@@ -111,6 +111,8 @@ class DocumentProducingNode {
 
   virtual void recalculateProjections(ExecutionPlan* plan);
 
+  virtual bool isProduceResult() const;
+
  protected:
   Variable const* _outVariable;
 

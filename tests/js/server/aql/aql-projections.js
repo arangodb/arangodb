@@ -200,34 +200,34 @@ function projectionsPlansTestSuite () {
     testPersistentMultiAttribute : function () {
       c.ensureIndex({ type: "persistent", fields: ["value1", "value2"] });
       let queries = [
-        [`FOR doc IN ${cn} RETURN doc.value1`, 'persistent', ['value1'], true ],
-        [`FOR doc IN ${cn} RETURN doc.value2`, 'persistent', ['value2'], true ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 93 RETURN doc.value1`, 'persistent', ['value1'], true ],
-        [`FOR doc IN ${cn} FILTER doc.value2 == 93 RETURN doc.value1`, 'persistent', ['value1', 'value2'], true ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 93 RETURN doc.value2`, 'persistent', ['value2'], true ],
-        [`FOR doc IN ${cn} FILTER doc.value2 == 93 RETURN doc.value2`, 'persistent', ['value2'], true ],
-        [`FOR doc IN ${cn} FILTER doc._key == 'abc' RETURN doc.value1`, 'primary', ['value1'], false ],
-        [`FOR doc IN ${cn} FILTER doc._key == 'abc' RETURN doc.value2`, 'primary', ['value2'], false ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[*].abc`, 'persistent', ['value2'], true ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[**].abc`, 'persistent', ['value2'], true ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[*]`, 'persistent', [], false ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[**]`, 'persistent', [], false ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[*].abc`, 'persistent', [], false ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[**].abc`, 'persistent', [], false ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[*].value2`, 'persistent', [], false ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[**].value2`, 'persistent', [], false ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[*].foo.bar`, 'persistent', [], false ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER CURRENT > 1].abc`, 'persistent', ['value2'], true ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* RETURN CURRENT].abc`, 'persistent', ['value2'], true ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER CURRENT > 1 RETURN CURRENT].abc`, 'persistent', ['value2'], true ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER doc.value2 == 1].abc`, 'persistent', ['value2'], true ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* RETURN doc.value2 == 1].abc`, 'persistent', ['value2'], true ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER doc.value2 == 1 RETURN doc.value2].abc`, 'persistent', ['value2'], true ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER doc.value1 == 1].abc`, 'persistent', ['value1', 'value2'], true ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* RETURN doc.value1 == 1].abc`, 'persistent', ['value1', 'value2'], true ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER doc.value1 == 1 RETURN doc.value1].abc`, 'persistent', ['value1', 'value2'], true ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER doc.value1 == 1 && doc.value2 == 2].abc`, 'persistent', ['value1', 'value2'], true ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER doc.value3 == 1 && doc.value4 == 2].abc`, 'persistent', ['value2', 'value3', 'value4'], false ],
+        [`FOR doc IN ${cn} RETURN doc.value1`, 'persistent', ['value1'], true, []],
+        [`FOR doc IN ${cn} RETURN doc.value2`, 'persistent', ['value2'], true, []],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 93 RETURN doc.value1`, 'persistent', ['value1'], true, []],
+        [`FOR doc IN ${cn} FILTER doc.value2 == 93 RETURN doc.value1`, 'persistent', ['value1'], true, ['value2']],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 93 RETURN doc.value2`, 'persistent', ['value2'], true, []],
+        [`FOR doc IN ${cn} FILTER doc.value2 == 93 RETURN doc.value2`, 'persistent', ['value2'], true, ['value2']],
+        [`FOR doc IN ${cn} FILTER doc._key == 'abc' RETURN doc.value1`, 'primary', ['value1'], false, []],
+        [`FOR doc IN ${cn} FILTER doc._key == 'abc' RETURN doc.value2`, 'primary', ['value2'], false, []],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[*].abc`, 'persistent', ['value2'], true, []],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[**].abc`, 'persistent', ['value2'], true, []],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[*]`, 'persistent', [], false, []],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[**]`, 'persistent', [], false, []],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[*].abc`, 'persistent', [], false, []],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[**].abc`, 'persistent', [], false, []],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[*].value2`, 'persistent', [], false, []],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[**].value2`, 'persistent', [], false, []],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc[*].foo.bar`, 'persistent', [], false, []],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER CURRENT > 1].abc`, 'persistent', ['value2'], true, []],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* RETURN CURRENT].abc`, 'persistent', ['value2'], true, []],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER CURRENT > 1 RETURN CURRENT].abc`, 'persistent', ['value2'], true, []],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER doc.value2 == 1].abc`, 'persistent', ['value2'], true, []],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* RETURN doc.value2 == 1].abc`, 'persistent', ['value2'], true, []],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER doc.value2 == 1 RETURN doc.value2].abc`, 'persistent', ['value2'], true, []],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER doc.value1 == 1].abc`, 'persistent', ['value1', 'value2'], true, []],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* RETURN doc.value1 == 1].abc`, 'persistent', ['value1', 'value2'], true, []],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER doc.value1 == 1 RETURN doc.value1].abc`, 'persistent', ['value1', 'value2'], true, []],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER doc.value1 == 1 && doc.value2 == 2].abc`, 'persistent', ['value1', 'value2'], true, []],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER doc.value3 == 1 && doc.value4 == 2].abc`, 'persistent', ['value2', 'value3', 'value4'], false, []],
       ];
 
       queries.forEach(function(query) {
@@ -238,6 +238,7 @@ function projectionsPlansTestSuite () {
         assertEqual(query[1], nodes[0].indexes[0].type, query);
         assertEqual(normalize(query[2]), normalize(nodes[0].projections), query);
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
+        assertEqual(normalize(query[4]), normalize(nodes[0].filterProjections), query);
         if (query[2].length) {
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
         } else {
@@ -264,20 +265,19 @@ function projectionsPlansTestSuite () {
     testPersistentSubAttribute : function () {
       c.ensureIndex({ type: "persistent", fields: ["foo.bar"] });
       let queries = [
-        [`FOR doc IN ${cn} RETURN doc.foo.bar`, 'persistent', [['foo', 'bar']], true ],
-        [`FOR doc IN ${cn} RETURN doc.foo.bar.baz`, 'persistent', [['foo', 'bar', 'baz']], true ],
-        [`FOR doc IN ${cn} RETURN [doc.foo.bar.baz, doc.foo.bar.bat]`, 'persistent', [['foo', 'bar', 'bat'], ['foo', 'bar', 'baz']], true ],
+        [`FOR doc IN ${cn} RETURN doc.foo.bar`, 'persistent', [['foo', 'bar']], true, [] ],
+        [`FOR doc IN ${cn} RETURN doc.foo.bar.baz`, 'persistent', [['foo', 'bar', 'baz']], true, [] ],
+        [`FOR doc IN ${cn} RETURN [doc.foo.bar.baz, doc.foo.bar.bat]`, 'persistent', [['foo', 'bar', 'bat'], ['foo', 'bar', 'baz']], true, [] ],
         [`FOR doc IN ${cn} RETURN [doc.foo.bar, doc.foo.bar.baz]`, 'persistent', [['foo', 'bar']], true ],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc.foo.bar`, 'persistent', [['foo', 'bar']], true ],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN 1`, 'persistent', [], false ],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc.foo.bar`, 'persistent', [['foo', 'bar']], true ],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar[*].sub == 1 RETURN 1`, 'persistent', [['foo', 'bar']], true ],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER RAND()].sub == 1 RETURN 1`, 'persistent', [['foo', 'bar']], true ],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar[* RETURN RAND()].sub == 1 RETURN 1`, 'persistent', [['foo', 'bar']], true ],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER RAND() RETURN RAND()].sub == 1 RETURN 1`, 'persistent', [['foo', 'bar']], true ],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER doc.foo.bar == 1].sub == 1 RETURN 1`, 'persistent', [['foo', 'bar']], true ],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar[* RETURN doc.foo.bar == 1].sub == 1 RETURN 1`, 'persistent', [['foo', 'bar']], true ],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER doc.foo.bar == 1 RETURN doc.foo.bar == 1].sub == 1 RETURN 1`, 'persistent', [['foo', 'bar']], true ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc.foo.bar`, 'persistent', [['foo', 'bar']], true, [] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN 1`, 'persistent', [], false, [] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar[*].sub == 1 RETURN 1`, 'persistent', [], false, [['foo', 'bar']] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER RAND()].sub == 1 RETURN 1`, 'persistent', [['foo', 'bar']], true, [] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar[* RETURN RAND()].sub == 1 RETURN 1`, 'persistent', [['foo', 'bar']], true, [] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER RAND() RETURN RAND()].sub == 1 RETURN 1`, 'persistent', [['foo', 'bar']], true, [] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER doc.foo.bar == 1].sub == 1 RETURN 1`, 'persistent', [], false, [['foo', 'bar']] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar[* RETURN doc.foo.bar == 1].sub == 1 RETURN 1`, 'persistent', [], false, [['foo', 'bar']] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER doc.foo.bar == 1 RETURN doc.foo.bar == 1].sub == 1 RETURN 1`, 'persistent', [], false, [['foo', 'bar']] ],
       ];
 
       queries.forEach(function(query) {
@@ -288,37 +288,30 @@ function projectionsPlansTestSuite () {
         assertEqual(query[1], nodes[0].indexes[0].type, query);
         assertEqual(normalize(query[2]), normalize(nodes[0].projections), query);
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
-        if (query[2].length) {
-          assertNotEqual(-1, plan.rules.indexOf(ruleName));
-        } else {
-          assertEqual(-1, plan.rules.indexOf(ruleName));
-        }
+        assertEqual(normalize(query[4]), normalize(nodes[0].filterProjections), query);
       });
       
       queries = [
-        [`FOR doc IN ${cn} RETURN doc.boo`, ['boo'] ],
-        [`FOR doc IN ${cn} RETURN doc.foo`, ['foo'] ],
-        [`FOR doc IN ${cn} FILTER doc.foo == 1 RETURN doc`, [] ],
-        [`FOR doc IN ${cn} FILTER doc.foo == 1 RETURN doc.foo`, ['foo'] ],
-        [`FOR doc IN ${cn} RETURN doc.foo.baz`, [['foo', 'baz']] ],
-        [`FOR doc IN ${cn} RETURN doc.boo.far`, [['boo', 'far']] ],
-        [`FOR doc IN ${cn} RETURN [doc.foo.bar, doc.unrelated]`, [['foo', 'bar'], 'unrelated'] ],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER doc.foo == 1].sub == 1 RETURN 1`, ['foo'] ],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER doc.foo.baz == 1 RETURN doc.foo.bar == 1].sub == 1 RETURN 1`, [['foo', 'bar'], ['foo', 'baz']] ],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER doc.foo.bar == 1 RETURN doc.foo.baz == 1].sub == 1 RETURN 1`, [['foo', 'bar'], ['foo', 'baz']] ],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER doc.value1 == 1 RETURN doc.value2 == 1].sub == 1 RETURN 1`, [['foo', 'bar'], 'value1', 'value2'] ],
+        [`FOR doc IN ${cn} RETURN doc.boo`, ['boo'], [] ],
+        [`FOR doc IN ${cn} RETURN doc.foo`, ['foo'], [] ],
+        [`FOR doc IN ${cn} FILTER doc.foo == 1 RETURN doc`, [], ['foo'] ],
+        [`FOR doc IN ${cn} FILTER doc.foo == 1 RETURN doc.foo`, ['foo'], ['foo'] ],
+        [`FOR doc IN ${cn} RETURN doc.foo.baz`, [['foo', 'baz']], [] ],
+        [`FOR doc IN ${cn} RETURN doc.boo.far`, [['boo', 'far']], [] ],
+        [`FOR doc IN ${cn} RETURN [doc.foo.bar, doc.unrelated]`, [['foo', 'bar'], 'unrelated'], [] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER doc.foo == 1].sub == 1 RETURN 1`, [], ['foo'] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER doc.foo.baz == 1 RETURN doc.foo.bar == 1].sub == 1 RETURN 1`, [], [['foo', 'bar'], ['foo', 'baz']] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER doc.foo.bar == 1 RETURN doc.foo.baz == 1].sub == 1 RETURN 1`, [], [['foo', 'bar'], ['foo', 'baz']] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER doc.value1 == 1 RETURN doc.value2 == 1].sub == 1 RETURN 1`, [], [['foo', 'bar'], 'value1', 'value2'] ],
       ];
 
       queries.forEach(function(query) {
+        db._explain(query[0]);
         let plan = AQL_EXPLAIN(query[0]).plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
-        if (query[1].length) {
-          assertNotEqual(-1, plan.rules.indexOf(ruleName));
-        } else {
-          assertEqual(-1, plan.rules.indexOf(ruleName));
-        }
+        assertEqual(normalize(query[2]), normalize(nodes[0].filterProjections), query);
       });
     },
     
@@ -612,17 +605,17 @@ function projectionsPlansTestSuite () {
     
     testNoIndex : function () {
       let queries = [
-        [`FOR doc IN ${cn} RETURN doc.foo`, ['foo'] ],
-        [`FOR doc IN ${cn} FILTER doc.foo == 1 RETURN doc.foo`, ['foo'] ],
-        [`FOR doc IN ${cn} FILTER doc.foo == 1 RETURN doc.foo.bar`, ['foo'] ],
-        [`FOR doc IN ${cn} FILTER doc.moo == 1 RETURN doc.foo`, ['foo', 'moo'] ],
-        [`FOR doc IN ${cn} RETURN doc.foo.bar`, [['foo', 'bar']] ],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc.foo.bar`, [['foo', 'bar']] ],
-        [`FOR doc IN ${cn} FILTER doc.moo == 1 RETURN doc.foo.bar`, [['foo', 'bar'], 'moo'] ],
-        [`FOR doc IN ${cn} FILTER doc.moo == 1 RETURN doc.moo.bar`, ['moo'] ],
-        [`FOR doc IN ${cn} RETURN [doc.foo.a, doc.foo.b, doc.moo]`, [['foo', 'a'], ['foo', 'b'], 'moo'] ],
-        [`FOR doc IN ${cn} RETURN [doc.a, doc.b, doc.moo]`, ['a', 'b', 'moo'] ],
-        [`FOR doc IN ${cn} RETURN [doc.a, doc.b, doc.moo.far]`, ['a', 'b', ['moo', 'far']] ],
+        [`FOR doc IN ${cn} RETURN doc.foo`, ['foo'], [] ],
+        [`FOR doc IN ${cn} FILTER doc.foo == 1 RETURN doc.foo`, ['foo'], ['foo'] ],
+        [`FOR doc IN ${cn} FILTER doc.foo == 1 RETURN doc.foo.bar`, [['foo', 'bar']], ['foo'] ],
+        [`FOR doc IN ${cn} FILTER doc.moo == 1 RETURN doc.foo`, ['foo'], ['moo'] ],
+        [`FOR doc IN ${cn} RETURN doc.foo.bar`, [['foo', 'bar']], [] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc.foo.bar`, [['foo', 'bar']], [['foo', 'bar']] ],
+        [`FOR doc IN ${cn} FILTER doc.moo == 1 RETURN doc.foo.bar`, [['foo', 'bar']], ['moo'] ],
+        [`FOR doc IN ${cn} FILTER doc.moo == 1 RETURN doc.moo.bar`, [['moo', 'bar']], ['moo'] ],
+        [`FOR doc IN ${cn} RETURN [doc.foo.a, doc.foo.b, doc.moo]`, [['foo', 'a'], ['foo', 'b'], 'moo'], [] ],
+        [`FOR doc IN ${cn} RETURN [doc.a, doc.b, doc.moo]`, ['a', 'b', 'moo'], [] ],
+        [`FOR doc IN ${cn} RETURN [doc.a, doc.b, doc.moo.far]`, ['a', 'b', ['moo', 'far']], [] ],
       ];
 
       queries.forEach(function(query) {
@@ -630,6 +623,7 @@ function projectionsPlansTestSuite () {
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
+        assertEqual(normalize(query[2]), normalize(nodes[0].filterProjections), query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
       });
     },
@@ -671,8 +665,8 @@ function projectionsExtractionTestSuite () {
         [`FOR doc IN ${cn} FILTER doc.value2 == 93 RETURN doc.value1`, 'persistent', ['value1'], true, two, ['value2'] ],
         [`FOR doc IN ${cn} FILTER doc.value1 == 93 RETURN doc.value2`, 'persistent', ['value2'], true, two, [] ],
         [`FOR doc IN ${cn} FILTER doc.value2 == 93 RETURN doc.value2`, 'persistent', ['value2'], true, two, ['value2'] ],
-        [`FOR doc IN ${cn} FILTER doc._key == 'test93' RETURN doc.value1`, 'primary', ['value1'], false, two, ['_key'] ],
-        [`FOR doc IN ${cn} FILTER doc._key == 'test93' RETURN doc.value2`, 'primary', ['value2'], false, two, ['_key'] ],
+        [`FOR doc IN ${cn} FILTER doc._key == 'test93' RETURN doc.value1`, 'primary', ['value1'], false, two, [] ],
+        [`FOR doc IN ${cn} FILTER doc._key == 'test93' RETURN doc.value2`, 'primary', ['value2'], false, two, [] ],
       ];
 
       queries.forEach(function(query) {

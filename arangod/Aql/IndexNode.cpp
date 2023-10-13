@@ -329,6 +329,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   // check which variables are used by the node's post-filter
   std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
 
+  IndexNode::IndexFilterCoveringVars filterCoveringVars;
   if (hasFilter()) {
     VarSet inVars;
     filter()->variables(inVars);
@@ -339,6 +340,26 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
       TRI_ASSERT(var != nullptr);
       auto regId = variableToRegisterId(var);
       filterVarsToRegs.emplace_back(var->id, regId);
+    }
+
+    if (!isLateMaterialized() && filterProjections().usesCoveringIndex()) {
+      LOG_DEVEL << "optimizing filter condition";
+      // if the filter projections are covered by the index, optimize
+      // the expression by introducing new variables for the projected
+      // values
+      auto const& filterProj = filterProjections();
+      for (auto const& p : filterProj.projections()) {
+        auto const& path = p.path.get();
+        auto var =
+            engine.getQuery().ast()->variables()->createTemporaryVariable();
+        std::vector<std::string_view> pathView;
+        std::transform(
+            path.begin(), path.begin() + p.coveringIndexCutoff,
+            std::back_inserter(pathView),
+            [](std::string const& str) -> std::string_view { return str; });
+        filter()->replaceAttributeAccess(outVariable(), pathView, var);
+        filterCoveringVars.emplace(var, p.coveringIndexPosition);
+      }
     }
   }
 
@@ -393,7 +414,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
       std::move(nonConstExpressions), doCount(), canReadOwnWrites(),
       _condition->root(), _allCoveredByOneIndex, this->getIndexes(),
       _plan->getAst(), this->options(), _outNonMaterializedIndVars,
-      std::move(outNonMaterializedIndRegs));
+      std::move(outNonMaterializedIndRegs), std::move(filterCoveringVars));
 
   return std::make_unique<ExecutionBlockImpl<IndexExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -671,4 +692,14 @@ void IndexNode::recalculateProjections(ExecutionPlan* plan) {
       _filterProjections.setCoveringContext(collection()->id(), idx);
     }
   }
+}
+
+bool IndexNode::isProduceResult() const {
+  LOG_DEVEL << __PRETTY_FUNCTION__;
+  bool filterRequiresDocument =
+      _filter != nullptr && !_filterProjections.usesCoveringIndex();
+  LOG_DEVEL << "filterRequiresDocument = " << filterRequiresDocument;
+  LOG_DEVEL << "outvar used = " << isVarUsedLater(_outVariable);
+  LOG_DEVEL << "outvar = " << _outVariable->name;
+  return (isVarUsedLater(_outVariable) || filterRequiresDocument) && !doCount();
 }

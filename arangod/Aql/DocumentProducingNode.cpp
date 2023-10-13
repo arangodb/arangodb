@@ -131,11 +131,7 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
     TRI_ASSERT(_filter == nullptr);
     builder.add(StaticStrings::ProducesResult, VPackValue(false));
   } else {
-    builder.add(
-        StaticStrings::ProducesResult,
-        VPackValue(_filter != nullptr ||
-                   dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(
-                       _outVariable)));
+    builder.add(StaticStrings::ProducesResult, VPackValue(isProduceResult()));
   }
   builder.add(StaticStrings::ReadOwnWrites,
               VPackValue(_readOwnWrites == ReadOwnWrites::yes));
@@ -197,8 +193,17 @@ void DocumentProducingNode::recalculateProjections(ExecutionPlan* plan) {
                              /*expectedAttribute*/ "",
                              /*excludeStartNodeFilterCondition*/ true,
                              attributes)) {
-    _projections = Projections(std::move(attributes));
-
-    LOG_DEVEL << "found projections: " << _projections;
+    if (attributes.size() <= maxProjections()) {
+      LOG_DEVEL << "found projections: " << _projections;
+      _projections = Projections(std::move(attributes));
+    } else {
+      LOG_DEVEL << "too many projections: " << attributes << " ("
+                << attributes.size() << ") max: " << maxProjections();
+    }
   }
+}
+
+bool DocumentProducingNode::isProduceResult() const {
+  return _filter != nullptr ||
+         dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(_outVariable);
 }
