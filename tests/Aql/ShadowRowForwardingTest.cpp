@@ -37,8 +37,10 @@ namespace {
 
 // Static strings to use as datainput for test blocks.
 static std::vector<std::string> const rowContent{
-    R"("data row")", R"("shadow row depth 1")", R"("shadow row depth 2")",
-    R"("shadow row depth 3")", R"("shadow row depth 4")", R"("shadow row depth 5")",  R"("shadow row depth 6")"};
+    R"("data row")",           R"("shadow row depth 1")",
+    R"("shadow row depth 2")", R"("shadow row depth 3")",
+    R"("shadow row depth 4")", R"("shadow row depth 5")",
+    R"("shadow row depth 6")"};
 
 static std::string const emptySubqueryResult{R"([])"};
 static std::string const oneSubqueryResult{R"(["data row"])"};
@@ -55,7 +57,8 @@ RegisterInfos MakeBaseInfos(RegisterCount numRegs, size_t subqueryDepth = 2) {
   return RegisterInfos({}, {}, numRegs, numRegs, {}, regsToKeep);
 }
 
-RegisterInfos MakeSubqueryEndBaseInfos(RegisterCount numRegs, size_t subqueryDepth = 2) {
+RegisterInfos MakeSubqueryEndBaseInfos(RegisterCount numRegs,
+                                       size_t subqueryDepth = 2) {
   RegIdSet prototype{};
   for (RegisterId::value_t r = 0; r < numRegs - 1; ++r) {
     prototype.emplace(r);
@@ -65,8 +68,8 @@ RegisterInfos MakeSubqueryEndBaseInfos(RegisterCount numRegs, size_t subqueryDep
     regsToKeep.push_back({prototype});
   }
 
-  return RegisterInfos(RegIdSet{0}, RegIdSet{1}, numRegs, numRegs,
-                       {}, regsToKeep);
+  return RegisterInfos(RegIdSet{0}, RegIdSet{1}, numRegs, numRegs, {},
+                       regsToKeep);
 }
 
 auto createProduceCall() -> ProduceCall {
@@ -85,25 +88,29 @@ auto createProduceCall() -> ProduceCall {
 };
 
 auto createSkipCall() -> SkipCall {
-  return [](AqlItemBlockInputRange& input, AqlCall& call)
-             -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  };
+  return
+      [](AqlItemBlockInputRange& input,
+         AqlCall& call) -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
+        TRI_ASSERT(false);
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+      };
 };
 
 LambdaSkipExecutorInfos MakeNonPassThroughInfos() {
   return LambdaSkipExecutorInfos{createProduceCall(), createSkipCall()};
 }
 
-auto generateCallStack(size_t nestedSubqueryLevels, size_t callWithoutContinue, ExecutionNode::NodeType type = ExecutionNode::CALCULATION) -> AqlCallStack {
+auto generateCallStack(
+    size_t nestedSubqueryLevels, size_t callWithoutContinue,
+    ExecutionNode::NodeType type = ExecutionNode::CALCULATION) -> AqlCallStack {
   TRI_ASSERT(callWithoutContinue < nestedSubqueryLevels);
-  size_t indexWithoutContinueCall = nestedSubqueryLevels - 1 - callWithoutContinue;
+  size_t indexWithoutContinueCall =
+      nestedSubqueryLevels - 1 - callWithoutContinue;
   // MainQuery never has a continue call
   AqlCallStack stack{AqlCallList{AqlCall{}}};
   for (size_t i = 0; i < nestedSubqueryLevels; ++i) {
     if (i == indexWithoutContinueCall) {
-      stack.pushCall(AqlCallList{AqlCall{}}); // no continue call
+      stack.pushCall(AqlCallList{AqlCall{}});  // no continue call
     } else {
       stack.pushCall(AqlCallList{AqlCall{}, AqlCall{}});
     }
@@ -123,10 +130,9 @@ struct RunConfiguration {
   size_t skippedRowsAtFront;
   size_t callWithoutContinue;
 
-  /// Returns the amount of rows staring with the datarow, and one row per subquery level.
-  size_t getFullBlockSize() const {
-    return nestedSubqueries + 1;
-  }
+  /// Returns the amount of rows staring with the datarow, and one row per
+  /// subquery level.
+  size_t getFullBlockSize() const { return nestedSubqueries + 1; }
 
   /// Returns the amount of blocks we can return with the given split size
   /// before we reach the next data row
@@ -134,8 +140,9 @@ struct RunConfiguration {
     return (getFullBlockSize() - skippedRowsAtFront) / splitSize;
   }
 
-  /// Returns the amount of rows for the last split block, which has to stop before the next data row.
-  /// Can be 0, in this case we do not need another split block.
+  /// Returns the amount of rows for the last split block, which has to stop
+  /// before the next data row. Can be 0, in this case we do not need another
+  /// split block.
   size_t getSizeOfLastSplitBlock() const {
     return (getFullBlockSize() - skippedRowsAtFront) % splitSize;
   }
@@ -146,11 +153,13 @@ struct RunConfiguration {
     // How this calculation comes to be:
     // +1 is added to make it 1 aligned and not 0
     // +1 is added for the dataRow
-    // +1 is added because we can produce the next ShadowRow AFTER the shadowRow without continue call.
+    // +1 is added because we can produce the next ShadowRow AFTER the shadowRow
+    // without continue call.
     // + callWithoutContinue is the level of subquery we cannot continue.
-    // - skippedRowsAtFront is to align the calculation to the rows we have "seen before".
+    // - skippedRowsAtFront is to align the calculation to the rows we have
+    // "seen before".
     size_t positionOfNonDefaultMember =
-         2 + callWithoutContinue - skippedRowsAtFront;
+        2 + callWithoutContinue - skippedRowsAtFront;
     return std::min(
         static_cast<size_t>(std::ceil(
             static_cast<double>(positionOfNonDefaultMember) / splitSize)) *
@@ -164,9 +173,11 @@ struct RunConfiguration {
     // How this calculation comes to be:
     // +1 is added to make it 1 aligned and not 0
     // +1 is added for the dataRow
-    // +1 is added because we can produce the next ShadowRow AFTER the shadowRow without continue call.
+    // +1 is added because we can produce the next ShadowRow AFTER the shadowRow
+    // without continue call.
     // + callWithoutContinue is the level of subquery we cannot continue.
-    // - skippedRowsAtFront is to align the calculation to the rows we have "seen before".
+    // - skippedRowsAtFront is to align the calculation to the rows we have
+    // "seen before".
     size_t positionOfNonDefaultMember =
         2 + callWithoutContinue - skippedRowsAtFront + 1;
     return std::min(
@@ -185,10 +196,9 @@ struct RunConfiguration {
 
   std::string toString() const {
     return "with split type " + std::to_string(splitSize) +
-        " subqueryLevels: " + std::to_string(nestedSubqueries) +
-        " skippedRowsAtFront: " + std::to_string(skippedRowsAtFront) +
-        " indexWithoutContinueCall: " +
-        std::to_string(callWithoutContinue);
+           " subqueryLevels: " + std::to_string(nestedSubqueries) +
+           " skippedRowsAtFront: " + std::to_string(skippedRowsAtFront) +
+           " indexWithoutContinueCall: " + std::to_string(callWithoutContinue);
   }
 };
 
@@ -213,13 +223,14 @@ struct DataBlockInput {
  * ...
  * Dn Subquery
  *
- * So we have a DataRow followed by all higher level Subqueries, repeated 2 times.
- * with skipFrontRows we can skip rows from the beginning of the matrix.
+ * So we have a DataRow followed by all higher level Subqueries, repeated 2
+ * times. with skipFrontRows we can skip rows from the beginning of the matrix.
  * (At most nestedSubqueryLevels many rows.)
  * We can limit the amount of returned rows by setting the rowLimit.
  * rowLimit == 0 means no limit, otherwise we write exactly that many rows
  */
-auto generateOutputRowData(size_t nestedSubqueryLevels, size_t skipFrontRows, size_t rowLimit, ExecutionNode::NodeType nodeType)
+auto generateOutputRowData(size_t nestedSubqueryLevels, size_t skipFrontRows,
+                           size_t rowLimit, ExecutionNode::NodeType nodeType)
     -> DataBlockInput<1> {
   // Add the "data row"
   size_t numRows = nestedSubqueryLevels + 1;
@@ -237,12 +248,14 @@ auto generateOutputRowData(size_t nestedSubqueryLevels, size_t skipFrontRows, si
     if (nodeType == ExecutionNode::SUBQUERY_START) {
       if (index > 0) {
         // Writes index one higher than other block
-        shadowRows.emplace_back(std::make_pair(i - skipFrontRows + subqueryExecutorOffset, index));
+        shadowRows.emplace_back(
+            std::make_pair(i - skipFrontRows + subqueryExecutorOffset, index));
       } else {
         // Subquery Start writes a DataRow followed by a ShadowRow
         subqueryExecutorOffset++;
         data.emplace_back(RowBuilder<1>{rowContent[index].data()});
-        shadowRows.emplace_back(std::make_pair(i - skipFrontRows + subqueryExecutorOffset, 0));
+        shadowRows.emplace_back(
+            std::make_pair(i - skipFrontRows + subqueryExecutorOffset, 0));
       }
     } else {
       if (index > 0) {
@@ -268,7 +281,8 @@ auto generateOutputRowData(size_t nestedSubqueryLevels, size_t skipFrontRows, si
                            std::move(skipResult)};
 }
 
-auto generateOutputSubqueryEndRowData(size_t nestedSubqueryLevels, size_t skipFrontRows, size_t rowLimit)
+auto generateOutputSubqueryEndRowData(size_t nestedSubqueryLevels,
+                                      size_t skipFrontRows, size_t rowLimit)
     -> DataBlockInput<2> {
   // Add the "data row"
   size_t numRows = nestedSubqueryLevels + 2;
@@ -287,7 +301,8 @@ auto generateOutputSubqueryEndRowData(size_t nestedSubqueryLevels, size_t skipFr
       needToWriteDataRow = true;
       subqueryOffset++;
     } else {
-      // We need to pick the data entry of one higher level, As subquery end pops the top level.
+      // We need to pick the data entry of one higher level, As subquery end
+      // pops the top level.
       if (index == 1) {
         if (needToWriteDataRow) {
           data.emplace_back(RowBuilder<2>{rowContent[index].data(),
@@ -299,7 +314,8 @@ auto generateOutputSubqueryEndRowData(size_t nestedSubqueryLevels, size_t skipFr
         needToWriteDataRow = false;
       } else {
         data.emplace_back(RowBuilder<2>{rowContent[index].data()});
-        shadowRows.emplace_back(std::make_pair(i - skipFrontRows - subqueryOffset, index - 2));
+        shadowRows.emplace_back(
+            std::make_pair(i - skipFrontRows - subqueryOffset, index - 2));
       }
     }
 
@@ -320,8 +336,10 @@ auto generateOutputSubqueryEndRowData(size_t nestedSubqueryLevels, size_t skipFr
 
 auto generateInputRowData(size_t nestedSubqueryLevels, size_t skipFrontRows)
     -> DataBlockInput<1> {
-  // Type should not be any subquery variant here, we just want a full block, no special handling
-  return generateOutputRowData(nestedSubqueryLevels, skipFrontRows, 0, ExecutionNode::CALCULATION);
+  // Type should not be any subquery variant here, we just want a full block, no
+  // special handling
+  return generateOutputRowData(nestedSubqueryLevels, skipFrontRows, 0,
+                               ExecutionNode::CALCULATION);
 }
 
 auto generateSplitPattern(RunConfiguration const& config) -> SplitType {
@@ -365,9 +383,7 @@ TEST_F(ShadowRowForwardingTest, subqueryStart1) {
                                             MakeBaseInfos(1, 3),
                                             ExecutionNode::SUBQUERY_START)
         .setInputSubqueryDepth(2)
-        .setInputValue(
-            std::move(inputVal.data),
-            std::move(inputVal.shadowRows))
+        .setInputValue(std::move(inputVal.data), std::move(inputVal.shadowRows))
         .setInputSplitType(splitType)
         .setCallStack(generateCallStack(3, 1))
         .expectedStats(ExecutionStats{})
@@ -452,28 +468,30 @@ TEST_F(ShadowRowForwardingTest, nonForwardingExecutor) {
     SCOPED_TRACE(config.toString());
     SplitType splitType = generateSplitPattern(config);
 
-    auto inputVal = generateInputRowData(config.nestedSubqueries, config.skippedRowsAtFront);
+    auto inputVal = generateInputRowData(config.nestedSubqueries,
+                                         config.skippedRowsAtFront);
     {
       SCOPED_TRACE("only looking at first output block");
       // We can always return all rows before the next data row, as this input
       // only appends shadowRows of higher depth.
       // Which is 1 dataRow + all ShadowRows - the ones we skipped at the front.
       auto expectedRows = config.getNumberOfConsumableRowsInFirstCall();
-      auto outputVal = generateOutputRowData(config.nestedSubqueries, config.skippedRowsAtFront, expectedRows, ExecutionNode::CALCULATION);
+      auto outputVal = generateOutputRowData(
+          config.nestedSubqueries, config.skippedRowsAtFront, expectedRows,
+          ExecutionNode::CALCULATION);
       makeExecutorTestHelper<1, 1>()
-          .addConsumer<TestLambdaSkipExecutor>(MakeBaseInfos(1, config.nestedSubqueries),
-                                               MakeNonPassThroughInfos(),
-                                               ExecutionNode::CALCULATION)
+          .addConsumer<TestLambdaSkipExecutor>(
+              MakeBaseInfos(1, config.nestedSubqueries),
+              MakeNonPassThroughInfos(), ExecutionNode::CALCULATION)
           .setInputSubqueryDepth(config.nestedSubqueries)
           .setInputValue(inputVal.data, inputVal.shadowRows)
           .setInputSplitType(splitType)
-          .setCallStack(generateCallStack(config.nestedSubqueries, config.callWithoutContinue))
+          .setCallStack(generateCallStack(config.nestedSubqueries,
+                                          config.callWithoutContinue))
           .expectedStats(ExecutionStats{})
           .expectedState(ExecutionState::HASMORE)
-          .expectOutput(
-              {0},
-              std::move(outputVal.data),
-              std::move(outputVal.shadowRows))
+          .expectOutput({0}, std::move(outputVal.data),
+                        std::move(outputVal.shadowRows))
           .expectSkipped(std::move(outputVal.skip))
           .run();
     }
@@ -484,35 +502,37 @@ TEST_F(ShadowRowForwardingTest, nonForwardingExecutor) {
       // the first block is returned.
 
       makeExecutorTestHelper<1, 1>()
-          .addConsumer<TestLambdaSkipExecutor>(MakeBaseInfos(1, config.nestedSubqueries),
-                                               MakeNonPassThroughInfos(),
-                                               ExecutionNode::CALCULATION)
+          .addConsumer<TestLambdaSkipExecutor>(
+              MakeBaseInfos(1, config.nestedSubqueries),
+              MakeNonPassThroughInfos(), ExecutionNode::CALCULATION)
           .setInputSubqueryDepth(config.nestedSubqueries)
-          .setInputValue(inputVal.data,inputVal.shadowRows)
+          .setInputValue(inputVal.data, inputVal.shadowRows)
           .setInputSplitType(splitType)
-          .setCallStack(generateCallStack(config.nestedSubqueries, config.callWithoutContinue))
+          .setCallStack(generateCallStack(config.nestedSubqueries,
+                                          config.callWithoutContinue))
           .expectedStats(ExecutionStats{})
           .expectedState(ExecutionState::DONE)
-          .expectOutput(
-              {0},
-              std::move(inputVal.data),
-              std::move(inputVal.shadowRows))
+          .expectOutput({0}, std::move(inputVal.data),
+                        std::move(inputVal.shadowRows))
           .expectSkipped(std::move(inputVal.skip))
           .run(true);
     }
-
   };
 
   for (size_t nestedSubqueries = 2; nestedSubqueries < 6; ++nestedSubqueries) {
-    for (size_t callWithoutContinue = 0; callWithoutContinue < nestedSubqueries; ++callWithoutContinue) {
-      for (size_t skippedRowsAtFront = 0; skippedRowsAtFront <= callWithoutContinue + 1; ++skippedRowsAtFront) {
-        for (size_t splitSize = 1; splitSize < nestedSubqueries + 1 - skippedRowsAtFront; ++ splitSize) {
+    for (size_t callWithoutContinue = 0; callWithoutContinue < nestedSubqueries;
+         ++callWithoutContinue) {
+      for (size_t skippedRowsAtFront = 0;
+           skippedRowsAtFront <= callWithoutContinue + 1;
+           ++skippedRowsAtFront) {
+        for (size_t splitSize = 1;
+             splitSize < nestedSubqueries + 1 - skippedRowsAtFront;
+             ++splitSize) {
           test({splitSize, nestedSubqueries, skippedRowsAtFront,
                 callWithoutContinue});
         }
       }
     }
-
   }
 }
 
@@ -522,28 +542,32 @@ TEST_F(ShadowRowForwardingTest, subqueryStartExecutor) {
     SCOPED_TRACE(config.toString());
     SplitType splitType = generateSplitPattern(config);
 
-    auto inputVal = generateInputRowData(config.nestedSubqueries, config.skippedRowsAtFront);
+    auto inputVal = generateInputRowData(config.nestedSubqueries,
+                                         config.skippedRowsAtFront);
     {
       SCOPED_TRACE("only looking at first output block");
       // We can always return all rows before the next data row, as this input
       // only appends shadowRows of higher depth.
       // Which is 1 dataRow + all ShadowRows - the ones we skipped at the front.
       auto expectedRows = config.getNumberOfConsumableRowsInFirstCall();
-      auto outputVal = generateOutputRowData(config.nestedSubqueries, config.skippedRowsAtFront, expectedRows, ExecutionNode::SUBQUERY_START);
+      auto outputVal = generateOutputRowData(
+          config.nestedSubqueries, config.skippedRowsAtFront, expectedRows,
+          ExecutionNode::SUBQUERY_START);
       makeExecutorTestHelper<1, 1>()
-          .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1, config.nestedSubqueries + 1),
-                                              MakeBaseInfos(1, config.nestedSubqueries + 1),
-                                              ExecutionNode::SUBQUERY_START)
+          .addConsumer<SubqueryStartExecutor>(
+              MakeBaseInfos(1, config.nestedSubqueries + 1),
+              MakeBaseInfos(1, config.nestedSubqueries + 1),
+              ExecutionNode::SUBQUERY_START)
           .setInputSubqueryDepth(config.nestedSubqueries)
           .setInputValue(inputVal.data, inputVal.shadowRows)
           .setInputSplitType(splitType)
-          .setCallStack(generateCallStack(config.nestedSubqueries, config.callWithoutContinue, ExecutionNode::SUBQUERY_START))
+          .setCallStack(generateCallStack(config.nestedSubqueries,
+                                          config.callWithoutContinue,
+                                          ExecutionNode::SUBQUERY_START))
           .expectedStats(ExecutionStats{})
           .expectedState(ExecutionState::HASMORE)
-          .expectOutput(
-              {0},
-              std::move(outputVal.data),
-              std::move(outputVal.shadowRows))
+          .expectOutput({0}, std::move(outputVal.data),
+                        std::move(outputVal.shadowRows))
           .expectSkipped(std::move(outputVal.skip))
           .run();
     }
@@ -552,38 +576,44 @@ TEST_F(ShadowRowForwardingTest, subqueryStartExecutor) {
       // With a full run everything has to eventually be returned.
       // This tests if we get into undefined behaviour if we continue after
       // the first block is returned.
-      auto outputVal = generateOutputRowData(config.nestedSubqueries, config.skippedRowsAtFront, 0, ExecutionNode::SUBQUERY_START);
+      auto outputVal = generateOutputRowData(config.nestedSubqueries,
+                                             config.skippedRowsAtFront, 0,
+                                             ExecutionNode::SUBQUERY_START);
 
       makeExecutorTestHelper<1, 1>()
-          .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1, config.nestedSubqueries + 1),
-                                              MakeBaseInfos(1, config.nestedSubqueries + 1),
-                                              ExecutionNode::SUBQUERY_START)
+          .addConsumer<SubqueryStartExecutor>(
+              MakeBaseInfos(1, config.nestedSubqueries + 1),
+              MakeBaseInfos(1, config.nestedSubqueries + 1),
+              ExecutionNode::SUBQUERY_START)
           .setInputSubqueryDepth(config.nestedSubqueries)
-          .setInputValue(inputVal.data,inputVal.shadowRows)
+          .setInputValue(inputVal.data, inputVal.shadowRows)
           .setInputSplitType(splitType)
-          .setCallStack(generateCallStack(config.nestedSubqueries, config.callWithoutContinue, ExecutionNode::SUBQUERY_START))
+          .setCallStack(generateCallStack(config.nestedSubqueries,
+                                          config.callWithoutContinue,
+                                          ExecutionNode::SUBQUERY_START))
           .expectedStats(ExecutionStats{})
           .expectedState(ExecutionState::DONE)
-          .expectOutput(
-              {0},
-              std::move(outputVal.data),
-              std::move(outputVal.shadowRows))
+          .expectOutput({0}, std::move(outputVal.data),
+                        std::move(outputVal.shadowRows))
           .expectSkipped(std::move(outputVal.skip))
           .run(true);
     }
-
   };
 
   for (size_t nestedSubqueries = 2; nestedSubqueries < 5; ++nestedSubqueries) {
-    for (size_t callWithoutContinue = 0; callWithoutContinue < nestedSubqueries - 1; ++callWithoutContinue) {
-      for (size_t skippedRowsAtFront = 0; skippedRowsAtFront <= callWithoutContinue + 1; ++skippedRowsAtFront) {
-        for (size_t splitSize = 1; splitSize < nestedSubqueries + 1 - skippedRowsAtFront; ++ splitSize) {
+    for (size_t callWithoutContinue = 0;
+         callWithoutContinue < nestedSubqueries - 1; ++callWithoutContinue) {
+      for (size_t skippedRowsAtFront = 0;
+           skippedRowsAtFront <= callWithoutContinue + 1;
+           ++skippedRowsAtFront) {
+        for (size_t splitSize = 1;
+             splitSize < nestedSubqueries + 1 - skippedRowsAtFront;
+             ++splitSize) {
           test({splitSize, nestedSubqueries, skippedRowsAtFront,
                 callWithoutContinue});
         }
       }
     }
-
   }
 }
 
@@ -593,29 +623,32 @@ TEST_F(ShadowRowForwardingTest, subqueryEndExecutor) {
     SCOPED_TRACE(config.toString());
     SplitType splitType = generateSplitPattern(config);
 
-    auto inputVal = generateInputRowData(config.nestedSubqueries + 1, config.skippedRowsAtFront);
+    auto inputVal = generateInputRowData(config.nestedSubqueries + 1,
+                                         config.skippedRowsAtFront);
     {
       SCOPED_TRACE("only looking at first output block");
       // We can always return all rows before the next data row, as this input
       // only appends shadowRows of higher depth.
       // Which is 1 dataRow + all ShadowRows - the ones we skipped at the front.
-      auto expectedRows = config.getNumberOfConsumableRowsInFirstCallSubqueryEnd();
-      auto outputVal = generateOutputSubqueryEndRowData(config.nestedSubqueries, config.skippedRowsAtFront, expectedRows);
+      auto expectedRows =
+          config.getNumberOfConsumableRowsInFirstCallSubqueryEnd();
+      auto outputVal = generateOutputSubqueryEndRowData(
+          config.nestedSubqueries, config.skippedRowsAtFront, expectedRows);
 
       makeExecutorTestHelper<1, 2>()
-          .addConsumer<SubqueryEndExecutor>(MakeSubqueryEndBaseInfos(2, config.nestedSubqueries + 1),
-                                            MakeSubqueryEndExecutorInfos(0),
-                                              ExecutionNode::SUBQUERY_END)
+          .addConsumer<SubqueryEndExecutor>(
+              MakeSubqueryEndBaseInfos(2, config.nestedSubqueries + 1),
+              MakeSubqueryEndExecutorInfos(0), ExecutionNode::SUBQUERY_END)
           .setInputSubqueryDepth(config.nestedSubqueries + 1)
           .setInputValue(inputVal.data, inputVal.shadowRows)
           .setInputSplitType(splitType)
-          .setCallStack(generateCallStack(config.nestedSubqueries, config.callWithoutContinue, ExecutionNode::SUBQUERY_END))
+          .setCallStack(generateCallStack(config.nestedSubqueries,
+                                          config.callWithoutContinue,
+                                          ExecutionNode::SUBQUERY_END))
           .expectedStats(ExecutionStats{})
           .expectedState(ExecutionState::HASMORE)
-          .expectOutput(
-              {0, 1},
-              std::move(outputVal.data),
-              std::move(outputVal.shadowRows))
+          .expectOutput({0, 1}, std::move(outputVal.data),
+                        std::move(outputVal.shadowRows))
           .expectSkipped(std::move(outputVal.skip))
           .run();
     }
@@ -625,37 +658,41 @@ TEST_F(ShadowRowForwardingTest, subqueryEndExecutor) {
       // This tests if we get into undefined behaviour if we continue after
       // the first block is returned.
 
-      auto outputVal = generateOutputSubqueryEndRowData(config.nestedSubqueries, config.skippedRowsAtFront, 0);
+      auto outputVal = generateOutputSubqueryEndRowData(
+          config.nestedSubqueries, config.skippedRowsAtFront, 0);
 
       makeExecutorTestHelper<1, 2>()
-          .addConsumer<SubqueryEndExecutor>(MakeSubqueryEndBaseInfos(2, config.nestedSubqueries + 1),
-                                            MakeSubqueryEndExecutorInfos(0),
-                                            ExecutionNode::SUBQUERY_END)
+          .addConsumer<SubqueryEndExecutor>(
+              MakeSubqueryEndBaseInfos(2, config.nestedSubqueries + 1),
+              MakeSubqueryEndExecutorInfos(0), ExecutionNode::SUBQUERY_END)
           .setInputSubqueryDepth(config.nestedSubqueries + 1)
           .setInputValue(inputVal.data, inputVal.shadowRows)
           .setInputSplitType(splitType)
-          .setCallStack(generateCallStack(config.nestedSubqueries, config.callWithoutContinue, ExecutionNode::SUBQUERY_END))
+          .setCallStack(generateCallStack(config.nestedSubqueries,
+                                          config.callWithoutContinue,
+                                          ExecutionNode::SUBQUERY_END))
           .expectedStats(ExecutionStats{})
           .expectedState(ExecutionState::DONE)
-          .expectOutput(
-              {0, 1},
-              std::move(outputVal.data),
-              std::move(outputVal.shadowRows))
+          .expectOutput({0, 1}, std::move(outputVal.data),
+                        std::move(outputVal.shadowRows))
           .expectSkipped(std::move(outputVal.skip))
           .run(true);
     }
-
   };
 
   for (size_t nestedSubqueries = 2; nestedSubqueries < 5; ++nestedSubqueries) {
-    for (size_t callWithoutContinue = 0; callWithoutContinue < nestedSubqueries - 1; ++callWithoutContinue) {
-      for (size_t skippedRowsAtFront = 0; skippedRowsAtFront <= callWithoutContinue + 1; ++skippedRowsAtFront) {
-        for (size_t splitSize = 1; splitSize < nestedSubqueries + 1 - skippedRowsAtFront; ++ splitSize) {
+    for (size_t callWithoutContinue = 0;
+         callWithoutContinue < nestedSubqueries - 1; ++callWithoutContinue) {
+      for (size_t skippedRowsAtFront = 0;
+           skippedRowsAtFront <= callWithoutContinue + 1;
+           ++skippedRowsAtFront) {
+        for (size_t splitSize = 1;
+             splitSize < nestedSubqueries + 1 - skippedRowsAtFront;
+             ++splitSize) {
           test({splitSize, nestedSubqueries, skippedRowsAtFront,
                 callWithoutContinue});
         }
       }
     }
-
   }
 }
