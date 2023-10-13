@@ -93,6 +93,7 @@ class Manager {
     std::uint64_t freeMemoryTasksDuration = 0;  // total, micros
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     std::uint64_t tableCalls = 0;
+    std::uint64_t termCalls = 0;
 #endif
   };
 
@@ -221,6 +222,10 @@ class Manager {
   void trackTableCall() noexcept;
 #endif
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  void trackTermCall() noexcept;
+#endif
+
  private:
   // assume at most 16 slots in each stack -- TODO: check validity
   static constexpr std::uint64_t kTableListsOverhead =
@@ -281,6 +286,8 @@ class Manager {
   // for every cache removal. we can also expect calls to this
   // function when the cache runs a "free memory" task.
   std::atomic<std::uint64_t> _tableCalls;
+  // number of calls to the `term()` function.
+  std::atomic<std::uint64_t> _termCalls;
 #endif
 
   // last memory stats returned.
