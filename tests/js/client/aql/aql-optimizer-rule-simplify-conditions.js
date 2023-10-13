@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require("jsunity");
+const db = internal.db;
 
 function optimizerRuleTestSuite () {
   const ruleName = "simplify-conditions";

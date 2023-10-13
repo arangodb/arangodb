@@ -1,5 +1,5 @@
 /* jshint esnext: true */
-/* global assertTrue, assertEqual, assertNotEqual, fail */
+/* global assertTrue, assertEqual, assertNotEqual, fail, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER

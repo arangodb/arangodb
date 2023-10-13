@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse, fail */
+/*global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse, fail, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -698,7 +698,7 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
           `;
           let tmp_path = arango.POST("/_admin/execute", command);
 
-          dbPath = fs.safeJoin(tmp_path, 'databases');
+          let dbPath = fs.safeJoin(tmp_path, 'databases');
           let databases = fs.list(dbPath);
           assertTrue(databases.length >= 1, databases);
           dbPath = fs.safeJoin(dbPath, 'database-' + db._id());

@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
+const db = internal.db;
 
 function optimizerOperatorsTestSuite () {
   var testCombinations = function(queries, bind) {

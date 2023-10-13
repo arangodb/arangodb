@@ -1,6 +1,6 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global fail, assertEqual, assertTrue, assertFalse, assertMatch, AQL_EXECUTE, 
-  AQL_QUERY_CACHE_PROPERTIES, AQL_QUERY_CACHE_INVALIDATE */
+  AQL_QUERY_CACHE_PROPERTIES, AQL_QUERY_CACHE_INVALIDATE, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, bind parameters
@@ -68,7 +68,6 @@ function ahuacatlQueryCacheTestSuite () {
         return cacheProperties;
       `;
       cacheProperties = arango.POST("/_admin/execute", command);
-      print("setUp = ", cacheProperties);
 
       db._drop("UnitTestsAhuacatlQueryCache1");
       db._drop("UnitTestsAhuacatlQueryCache2");
@@ -92,7 +91,6 @@ function ahuacatlQueryCacheTestSuite () {
         AQL_QUERY_CACHE_PROPERTIES(${JSON.stringify(cacheProperties)});
         AQL_QUERY_CACHE_INVALIDATE();
       `;
-      print("tearDown = ", arango.POST("/_admin/execute", command));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,7 +107,6 @@ function ahuacatlQueryCacheTestSuite () {
       assertEqual(10000, result.getExtra().stats.fullCount);
 
       let result1 = db._createStatement({query: query, bindVars: null, options: {fullCount: true}}).execute();
-      print(result1._cached)
       assertTrue(result1._cached);
       assertEqual([ 11, 12, 13, 14, 15, 16, 17 ], result1.toArray());
       assertEqual(10000, result1.getExtra().stats.fullCount);

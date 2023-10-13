@@ -32,6 +32,7 @@ const _ = require('lodash');
 const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
 const isEqual = helper.isEqual;
+const db = internal.db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

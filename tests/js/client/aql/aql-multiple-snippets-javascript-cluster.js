@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 400 */
-/*global fail, assertEqual, assertMatch, AQL_EXECUTE, AQL_EXPLAIN */
+/*global fail, assertEqual, assertMatch, AQL_EXECUTE, AQL_EXPLAIN, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER

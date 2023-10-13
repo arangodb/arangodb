@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 7000 */
-/*global assertEqual, assertTrue, assertMatch, fail, AQL_EXECUTE, aql_parse */
+/*global assertEqual, assertTrue, assertMatch, fail, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, PARSE function
@@ -33,6 +33,7 @@ var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var getParseResults = helper.getParseResults;
 var assertParseError = helper.assertParseError;
+const db = internal.db;
 
 function aql_parse(query) {
   let command = `

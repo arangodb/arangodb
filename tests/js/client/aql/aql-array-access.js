@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 700 */
-/*global assertEqual, assertNotEqual,  AQL_EXECUTEJSON */
+/*global assertEqual, assertNotEqual,  AQL_EXECUTEJSON, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, array accesses

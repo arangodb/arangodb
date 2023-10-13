@@ -29,6 +29,7 @@
 const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
 const isEqual = helper.isEqual;
+const db = internal.db;
 
 function optimizerRuleTestSuite () {
   const ruleName = "remove-collect-variables";

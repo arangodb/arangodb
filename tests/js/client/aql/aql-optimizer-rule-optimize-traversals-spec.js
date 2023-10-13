@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 5000 */
-/* global describe, before, after, it, AQL_EXPLAIN, AQL_EXECUTE, AQL_EXECUTEJSON */
+/* global describe, before, after, it, AQL_EXPLAIN, AQL_EXECUTE, AQL_EXECUTEJSON, arango*/
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////

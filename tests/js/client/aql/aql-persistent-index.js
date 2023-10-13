@@ -30,6 +30,7 @@ const internal = require("internal");
 const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
 const getQueryResults = helper.getQueryResults;
+const db = internal.db;
 
 const cn = "UnitTestsCollection";
 const idxName = "testIdx";

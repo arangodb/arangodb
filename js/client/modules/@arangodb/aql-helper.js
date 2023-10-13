@@ -1,5 +1,5 @@
 /* jshint strict: false */
-/* global assertTrue, assertFalse, assertEqual, fail,
+/* global assertTrue, assertFalse, assertEqual, fail, arango
   AQL_EXECUTEJSON */
 
 // //////////////////////////////////////////////////////////////////////////////

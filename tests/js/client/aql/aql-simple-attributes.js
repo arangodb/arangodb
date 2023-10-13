@@ -31,6 +31,7 @@
 var jsunity = require("jsunity");
 var internal = require("internal");
 var errors = internal.errors;
+const db = internal.db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

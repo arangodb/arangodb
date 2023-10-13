@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXECUTE, AQL_EXPLAIN, AQL_EXECUTEJSON */
+/*global assertEqual, AQL_EXECUTE, AQL_EXPLAIN, AQL_EXECUTEJSON, print */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for dynamic attributes
@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
+const db = internal.db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
