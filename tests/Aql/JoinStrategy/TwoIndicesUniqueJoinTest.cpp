@@ -80,7 +80,19 @@ struct MyVectorIterator : MyIndexStreamIterator {
 
 }  // namespace
 
-TEST(UniqueIndexMerger, no_results) {
+enum class ReadMore { YES, NO };
+
+class UniqueIndexMerger : public ::testing::TestWithParam<ReadMore> {
+ protected:
+  UniqueIndexMerger() = default;
+
+  [[nodiscard]] bool doReadMore() { return GetParam() == ReadMore::YES; }
+};
+
+INSTANTIATE_TEST_CASE_P(UniqueIndexMergerTestRunner, UniqueIndexMerger,
+                        ::testing::Values(ReadMore::YES, ReadMore::NO));
+
+TEST_P(UniqueIndexMerger, no_results) {
   bool isUnique = true;
   std::vector<MyKeyValue> a = {
       1,
@@ -105,14 +117,14 @@ TEST(UniqueIndexMerger, no_results) {
     hasMore =
         merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
           count += 1;
-          return true;
+          return doReadMore();
         });
   }
 
   ASSERT_EQ(count, 0);
 }
 
-TEST(UniqueIndexMerger, some_results_a) {
+TEST_P(UniqueIndexMerger, some_results_a) {
   bool isUnique = true;
   std::vector<MyKeyValue> a = {
       1, 3, 5, 7, 8, 9,
@@ -137,14 +149,14 @@ TEST(UniqueIndexMerger, some_results_a) {
           EXPECT_EQ(docs[0], docs[1]);
 
           count += 1;
-          return true;
+          return doReadMore();
         });
   }
 
   ASSERT_EQ(count, 1);
 }
 
-TEST(UniqueIndexMerger, some_results_b) {
+TEST_P(UniqueIndexMerger, some_results_b) {
   bool isUnique = true;
   std::vector<MyKeyValue> a = {
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
@@ -169,14 +181,14 @@ TEST(UniqueIndexMerger, some_results_b) {
           EXPECT_EQ(docs[0], docs[1]);
 
           count += 1;
-          return true;
+          return doReadMore();
         });
   }
 
   ASSERT_EQ(count, 5);
 }
 
-TEST(UniqueIndexMerger, one_empty) {
+TEST_P(UniqueIndexMerger, one_empty) {
   bool isUnique = true;
   std::vector<MyKeyValue> a = {};
 
@@ -197,14 +209,14 @@ TEST(UniqueIndexMerger, one_empty) {
         merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
           EXPECT_EQ(docs[0], docs[1]);
           count += 1;
-          return true;
+          return doReadMore();
         });
   }
 
   ASSERT_EQ(count, 0);
 }
 
-TEST(UniqueIndexMerger, both_empty) {
+TEST_P(UniqueIndexMerger, both_empty) {
   bool isUnique = true;
   std::vector<MyKeyValue> a = {};
 
@@ -223,7 +235,7 @@ TEST(UniqueIndexMerger, both_empty) {
         merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
           EXPECT_EQ(docs[0], docs[1]);
           count += 1;
-          return true;
+          return doReadMore();
         });
   }
 
