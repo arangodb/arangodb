@@ -313,9 +313,16 @@ bool TransactionalCache<Hasher>::freeMemoryWhile(
 
     ++totalInspected;
 
+    // use a specialized simpler implementation of getBucket() here
+    // that does not report to the manager that the cache was accessed
+    // (after all, this is only a free memory operation), and that does
+    // not update the bucket's term. updating the term is not necessary
+    // here, as we are only evicting data from the bucket. evicting data
+    // does use the term. and when doing any other operation in the
+    // bucket (find, insert, remove), the term is properly updated at
+    // the beginning.
     auto [status, guard] =
-        getBucket(table.get(), Table::BucketId{index}, Cache::triesFast,
-                  /*singleOperation*/ false);
+        getBucketSimple(table.get(), Table::BucketId{index}, Cache::triesFast);
 
     if (status != TRI_ERROR_NO_ERROR) {
       continue;
@@ -475,29 +482,32 @@ TransactionalCache<Hasher>::getBucket(Table::HashOrId bucket,
   if (ADB_UNLIKELY(isShutdown() || table == nullptr)) {
     status = TRI_ERROR_SHUTTING_DOWN;
   } else {
-    std::tie(status, guard) =
-        getBucket(table.get(), bucket, maxTries, singleOperation);
+    if (singleOperation) {
+      _manager->reportAccess(_id);
+    }
+
+    std::uint64_t term = _manager->_transactions.term();
+    guard = table->fetchAndLockBucket(bucket, maxTries);
+    if (guard.isLocked()) {
+      guard.bucket<TransactionalBucket>().updateBanishTerm(term);
+    } else {
+      status = TRI_ERROR_LOCK_TIMEOUT;
+    }
   }
 
+  TRI_ASSERT(guard.isLocked() || status != TRI_ERROR_NO_ERROR);
   return std::make_tuple(status, std::move(guard));
 }
 
 template<typename Hasher>
 std::tuple<::ErrorCode, Table::BucketLocker>
-TransactionalCache<Hasher>::getBucket(Table* table, Table::HashOrId bucket,
-                                      std::uint64_t maxTries,
-                                      bool singleOperation) {
+TransactionalCache<Hasher>::getBucketSimple(Table* table,
+                                            Table::HashOrId bucket,
+                                            std::uint64_t maxTries) {
   ::ErrorCode status = TRI_ERROR_NO_ERROR;
 
-  if (singleOperation) {
-    _manager->reportAccess(_id);
-  }
-
-  std::uint64_t term = _manager->_transactions.term();
   Table::BucketLocker guard = table->fetchAndLockBucket(bucket, maxTries);
-  if (guard.isLocked()) {
-    guard.bucket<TransactionalBucket>().updateBanishTerm(term);
-  } else {
+  if (!guard.isLocked()) {
     status = TRI_ERROR_LOCK_TIMEOUT;
   }
 

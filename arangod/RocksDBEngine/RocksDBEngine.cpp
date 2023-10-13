@@ -3647,6 +3647,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     // description into Documentation/Metrics for an optional metric.
 
     // builder.add("cache.table-calls", VPackValue(stats.tableCalls));
+    // builder.add("cache.term-calls", VPackValue(stats.termCalls));
 #endif
 
     // edge cache compression ratio
