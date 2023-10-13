@@ -9,8 +9,12 @@ import React, { useEffect } from "react";
 import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
+import { getCurrentDB } from "../../../utils/arangoClient";
 import { CollectionsTable, DatabaseTableType } from "./CollectionsTable";
-import { getIsDefaultRow, PermissionSwitch } from "./PermissionSwitch";
+import {
+  DatabasePermissionSwitch,
+  getIsDefaultRow
+} from "./DatabasePermissionSwitch";
 import { useUsername } from "./useFetchDatabasePermissions";
 import { usePermissionTableData } from "./UserPermissionsView";
 
@@ -21,7 +25,9 @@ const permissionColumns = [
     header: "Administrate",
     id: "rw",
     cell: info => {
-      return <PermissionSwitch info={info} checked={info.cell.getValue()} />;
+      return (
+        <DatabasePermissionSwitch info={info} checked={info.cell.getValue()} />
+      );
     },
     enableSorting: false,
     meta: {
@@ -32,7 +38,9 @@ const permissionColumns = [
     header: "Access",
     id: "ro",
     cell: info => {
-      return <PermissionSwitch info={info} checked={info.cell.getValue()} />;
+      return (
+        <DatabasePermissionSwitch info={info} checked={info.cell.getValue()} />
+      );
     },
     enableSorting: false,
     meta: {
@@ -43,7 +51,9 @@ const permissionColumns = [
     header: "No Accesss",
     id: "none",
     cell: info => {
-      return <PermissionSwitch info={info} checked={info.cell.getValue()} />;
+      return (
+        <DatabasePermissionSwitch info={info} checked={info.cell.getValue()} />
+      );
     },
     enableSorting: false,
     meta: {
@@ -56,7 +66,12 @@ const permissionColumns = [
       header: "Use Default",
       id: "undefined",
       cell: info => {
-        return <PermissionSwitch info={info} checked={info.cell.getValue()} />;
+        return (
+          <DatabasePermissionSwitch
+            info={info}
+            checked={info.cell.getValue()}
+          />
+        );
       },
       enableSorting: false,
       meta: {
@@ -107,7 +122,30 @@ const TABLE_COLUMNS = [
   ...permissionColumns
 ];
 export const UserPermissionsTable = () => {
-  const { databaseTable } = usePermissionTableData();
+  const { databaseTable, refetchDatabasePermissions } =
+    usePermissionTableData();
+  const { username } = useUsername();
+  const handleCellClick = async ({
+    info,
+    permission
+  }: {
+    info: CellContext<DatabaseTableType, unknown>;
+    permission: string;
+  }) => {
+    const { databaseName } = info.row.original;
+    const currentDbRoute = getCurrentDB().route(
+      `_api/user/${username}/database/${databaseName}`
+    );
+    if (permission === "undefined") {
+      await currentDbRoute.delete();
+      refetchDatabasePermissions?.();
+      return;
+    }
+    await currentDbRoute.put({
+      grant: permission
+    });
+    refetchDatabasePermissions?.();
+  };
   const tableInstance = useSortableReactTable<DatabaseTableType>({
     data: databaseTable || [],
     columns: TABLE_COLUMNS,
@@ -117,13 +155,16 @@ export const UserPermissionsTable = () => {
         desc: false
       }
     ],
+    meta: {
+      handleCellClick
+    },
     getExpandedRowModel: getExpandedRowModel(),
     getRowCanExpand: () => true
   });
-  const { username } = useUsername();
   useEffect(() => {
     window.arangoHelper.buildUserSubNav(username, "Permissions");
   });
+
   return (
     <Stack padding="4">
       <FiltersList<DatabaseTableType>
@@ -135,7 +176,13 @@ export const UserPermissionsTable = () => {
         table={tableInstance}
         emptyStateMessage="No database permissions found"
         renderSubComponent={row => {
-          return <CollectionsTable row={row} />;
+          return (
+            <CollectionsTable
+              refetchDatabasePermissions={refetchDatabasePermissions}
+              databaseTable={databaseTable}
+              row={row}
+            />
+          );
         }}
       />
     </Stack>

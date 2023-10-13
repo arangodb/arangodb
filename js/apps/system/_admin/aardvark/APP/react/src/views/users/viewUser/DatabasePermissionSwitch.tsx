@@ -1,10 +1,8 @@
-import { Flex, Switch, Tag } from "@chakra-ui/react";
+import { Flex, Radio, Tag } from "@chakra-ui/react";
 import { CellContext } from "@tanstack/react-table";
 import React from "react";
 
-export const getIsDefaultRow = (
-  info: CellContext<any, unknown>
-) => {
+export const getIsDefaultRow = (info: CellContext<any, unknown>) => {
   return (
     info.row.original.databaseName === "*" ||
     info.row.original.collectionName === "*"
@@ -13,15 +11,13 @@ export const getIsDefaultRow = (
 const getIsDefaultForDatabase = (info: CellContext<any, unknown>) => {
   const useDefault = info.row.original.permission === "undefined";
   const rows = info.table.getRowModel().rows;
-  const defaultValue = rows.find(
-    row =>
-      row.original.databaseName === "*" || row.original.collectionName === "*"
-  )?.original.permission;
+  const defaultValue = rows.find(row => row.original.databaseName === "*")
+    ?.original.permission;
   const isDefault = useDefault && defaultValue === info.column.id;
   return isDefault;
 };
 
-export const PermissionSwitch = ({
+export const DatabasePermissionSwitch = ({
   checked,
   info
 }: {
@@ -34,9 +30,16 @@ export const PermissionSwitch = ({
   if (isDefaultRow && isUndefined) {
     return null;
   }
+  const handleChange = () => {
+    const { handleCellClick } = info.table.options.meta as any;
+    handleCellClick?.({
+      info,
+      permission: info.column.id
+    });
+  };
   return (
     <Flex gap="3">
-      <Switch isChecked={checked} />
+      <Radio isChecked={checked} onChange={handleChange} />
       {isDefaultForDatabase && <Tag size="sm">Default</Tag>}
     </Flex>
   );

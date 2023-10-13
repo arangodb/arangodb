@@ -1,9 +1,10 @@
-import { createColumnHelper, Row } from "@tanstack/react-table";
+import { CellContext, createColumnHelper, Row } from "@tanstack/react-table";
 import React from "react";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
-import { PermissionSwitch } from "./PermissionSwitch";
-import { PermissionType } from "./useFetchDatabasePermissions";
+import { getCurrentDB } from "../../../utils/arangoClient";
+import { CollectionPermissionSwitch } from "./CollectionPermissionSwitch";
+import { PermissionType, useUsername } from "./useFetchDatabasePermissions";
 
 export type CollectionType = {
   collectionName: string;
@@ -22,7 +23,12 @@ const collectionPermissionColumns = [
       header: "Administrate",
       id: "rw",
       cell: info => {
-        return <PermissionSwitch info={info} checked={info.cell.getValue()} />;
+        return (
+          <CollectionPermissionSwitch
+            info={info}
+            checked={info.cell.getValue()}
+          />
+        );
       },
       meta: {
         filterType: "single-select"
@@ -35,7 +41,12 @@ const collectionPermissionColumns = [
       header: "Access",
       id: "ro",
       cell: info => {
-        return <PermissionSwitch info={info} checked={info.cell.getValue()} />;
+        return (
+          <CollectionPermissionSwitch
+            info={info}
+            checked={info.cell.getValue()}
+          />
+        );
       },
       meta: {
         filterType: "single-select"
@@ -48,7 +59,12 @@ const collectionPermissionColumns = [
       header: "No Accesss",
       id: "none",
       cell: info => {
-        return <PermissionSwitch info={info} checked={info.cell.getValue()} />;
+        return (
+          <CollectionPermissionSwitch
+            info={info}
+            checked={info.cell.getValue()}
+          />
+        );
       },
       meta: {
         filterType: "single-select"
@@ -61,7 +77,12 @@ const collectionPermissionColumns = [
       header: "Use Default",
       id: "undefined",
       cell: info => {
-        return <PermissionSwitch info={info} checked={info.cell.getValue()} />;
+        return (
+          <CollectionPermissionSwitch
+            info={info}
+            checked={info.cell.getValue()}
+          />
+        );
       },
       meta: {
         filterType: "single-select"
@@ -89,11 +110,46 @@ const COLLECTION_COLUMNS = [
   }),
   ...collectionPermissionColumns
 ];
-export const CollectionsTable = ({ row }: { row: Row<DatabaseTableType> }) => {
+export const CollectionsTable = ({
+  row,
+  databaseTable,
+  refetchDatabasePermissions
+}: {
+  row: Row<DatabaseTableType>;
+  databaseTable: DatabaseTableType[];
+  refetchDatabasePermissions: (() => void) | undefined;
+}) => {
+  const { databaseName } = row.original;
+  const { username } = useUsername();
+  const handleCellClick = async ({
+    permission,
+    info
+  }: {
+    permission: string;
+    info: CellContext<CollectionType, unknown>;
+  }) => {
+    const { collectionName } = info.row.original;
+    const currentDbRoute = getCurrentDB().route(
+      `_api/user/${username}/database/${databaseName}/${collectionName}`
+    );
+    if (permission === "undefined") {
+      await currentDbRoute.delete();
+      refetchDatabasePermissions?.();
+      return;
+    }
+    await currentDbRoute.put({ grant: permission });
+    refetchDatabasePermissions?.();
+  };
   const tableInstance = useSortableReactTable<CollectionType>({
     data: row.original.collections || [],
-    columns: COLLECTION_COLUMNS
+    columns: COLLECTION_COLUMNS,
+    meta: {
+      databaseTable,
+      databaseName,
+      handleCellClick
+    }
   });
+
   return (
     <td colSpan={6}>
       <ReactTable<CollectionType> layout="fixed" table={tableInstance} />

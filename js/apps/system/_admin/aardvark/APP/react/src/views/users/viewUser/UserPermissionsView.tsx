@@ -6,7 +6,8 @@ import { useFetchDatabasePermissions } from "./useFetchDatabasePermissions";
 import { UserPermissionsTable } from "./UserPermissionsTable";
 
 export const usePermissionTableData = () => {
-  const { databasePermissions } = useFetchDatabasePermissions();
+  const { databasePermissions, refetchDatabasePermissions } =
+    useFetchDatabasePermissions();
   if (!databasePermissions)
     return {
       databaseTable: []
@@ -27,8 +28,16 @@ export const usePermissionTableData = () => {
       };
     })
     .filter(Boolean) as DatabaseTableType[];
+  let serverLevelDefaultPermission;
+  try {
+    serverLevelDefaultPermission = databasePermissions["*"].permission;
+  } catch (ignore) {
+    // just ignore, not part of the response
+  }
   return {
-    databaseTable: [...databaseTable]
+    databaseTable: [...databaseTable],
+    serverLevelDefaultPermission,
+    refetchDatabasePermissions
   };
 };
 export const UserPermissionsView = () => {

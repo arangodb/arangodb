@@ -14,7 +14,7 @@ import {
   Tr
 } from "@chakra-ui/react";
 import {
-  flexRender,
+  Cell, flexRender,
   Header,
   Row,
   Table as TableType
@@ -24,6 +24,7 @@ import * as React from "react";
 type ReactTableProps<Data extends object> = {
   table: TableType<Data>;
   emptyStateMessage?: string;
+  onCellClick?: (cell: Cell<Data, unknown>) => void;
   onRowSelect?: (row: Row<Data>) => void;
   children?: React.ReactNode;
   renderSubComponent?: (row: Row<Data>) => React.ReactNode;
@@ -36,7 +37,8 @@ export function ReactTable<Data extends object>({
   children,
   table,
   renderSubComponent,
-  layout
+  layout,
+  onCellClick
 }: ReactTableProps<Data>) {
   const rows = table.getRowModel().rows;
 
@@ -73,6 +75,7 @@ export function ReactTable<Data extends object>({
                     key={row.id}
                     row={row}
                     onRowSelect={onRowSelect}
+                    onCellClick={onCellClick}
                   />
                   <Tr>
                     {row.getIsExpanded() && renderSubComponent
@@ -182,10 +185,12 @@ const SortIcon = ({
 
 const SelectableTr = <Data extends object>({
   row,
-  onRowSelect
+  onRowSelect,
+  onCellClick
 }: {
   row: Row<Data>;
   onRowSelect: ((row: Row<Data>) => void) | undefined;
+  onCellClick?: (cell: Cell<Data, unknown>) => void;
 }) => {
   return (
     <Tr
@@ -202,7 +207,11 @@ const SelectableTr = <Data extends object>({
     >
       {row.getVisibleCells().map(cell => {
         return (
-          <Td key={cell.id} width={cell.column.getSize()}>
+          <Td
+            key={cell.id}
+            width={cell.column.getSize()}
+            onClick={() => onCellClick?.(cell)}
+          >
             {flexRender(cell.column.columnDef.cell, cell.getContext())}
           </Td>
         );
