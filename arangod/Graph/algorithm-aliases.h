@@ -26,6 +26,7 @@
 #include "Graph/Enumerators/OneSidedEnumerator.h"
 #include "Graph/Enumerators/TwoSidedEnumerator.h"
 #include "Graph/Enumerators/WeightedTwoSidedEnumerator.h"
+#include "Graph/Enumerators/WeightedShortestPathFinder.h"
 
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/Queues/LifoQueue.h"
@@ -50,6 +51,13 @@ using TwoSidedEnumeratorWithProvider = TwoSidedEnumerator<
 
 template<class Provider>
 using TwoSidedEnumeratorWithProviderWeighted = WeightedTwoSidedEnumerator<
+    WeightedQueue<typename Provider::Step>, PathStore<typename Provider::Step>,
+    Provider,
+    PathValidator<Provider, PathStore<typename Provider::Step>,
+                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+
+template<class Provider>
+using WeightedShortestPathFinderWithProvider = WeightedShortestPathFinder<
     WeightedQueue<typename Provider::Step>, PathStore<typename Provider::Step>,
     Provider,
     PathValidator<Provider, PathStore<typename Provider::Step>,
@@ -115,7 +123,7 @@ using ShortestPathEnumerator = TwoSidedEnumeratorWithProvider<Provider>;
 
 template<class Provider>
 using WeightedShortestPathEnumerator =
-    TwoSidedEnumeratorWithProviderWeighted<Provider>;
+    WeightedShortestPathFinderWithProvider<Provider>;
 
 // SHORTEST_PATH implementation using Tracing
 template<class Provider>
