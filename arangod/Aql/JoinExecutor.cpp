@@ -201,13 +201,40 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
           }
         };
 
+        auto filterWithProjectionsCallback =
+            [&](std::span<VPackSlice> projections) {
+              GenericDocumentExpressionContext ctx{
+                  _trx,
+                  *_infos.query,
+                  _functionsCache,
+                  idx.filter->filterVarsToRegs,
+                  _currentRow,
+                  idx.filter->documentVariable};
+              ctx.setCurrentDocument(VPackSlice::noneSlice());
+
+              TRI_ASSERT(idx.filter->projections.size() == projections.size());
+              for (size_t j = 0; j < projections.size(); j++) {
+                ctx.setVariable(idx.filter->filterProjectionVars[j],
+                                projections[j]);
+              }
+
+              bool mustDestroy;
+              AqlValue result =
+                  idx.filter->expression->execute(&ctx, mustDestroy);
+              AqlValueGuard guard(result, mustDestroy);
+              filtered = !result.toBoolean();
+            };
+
         if (idx.projections.usesCoveringIndex()) {
           buildProjections(k, idx.projections);
           filterCallback(_projectionsBuilder.slice());
           projectionsOffset += idx.projections.size();
         } else if (useFilterProjections) {
-          buildProjections(k, idx.filter->projections);
-          filterCallback(_projectionsBuilder.slice());
+          std::span<VPackSlice> projectionRange = {
+              projections.begin() + projectionsOffset,
+              projections.begin() + projectionsOffset +
+                  idx.filter->projections.size()};
+          filterWithProjectionsCallback(projectionRange);
           projectionsOffset += idx.filter->projections.size();
         } else {
           lookupDocument(k, docIds[k], filterCallback);
@@ -315,6 +342,7 @@ void JoinExecutor::constructStrategy() {
 
     auto& desc = indexDescription.emplace_back();
     desc.isUnique = idx.index->unique();
+    desc.numProjections = 0;
 
     if (idx.projections.usesCoveringIndex()) {
       std::transform(idx.projections.projections().begin(),
@@ -324,15 +352,17 @@ void JoinExecutor::constructStrategy() {
                        return proj.coveringIndexPosition;
                      });
 
-      desc.numProjections = idx.projections.size();
-    } else if (idx.filter && idx.filter->projections.usesCoveringIndex()) {
+      desc.numProjections += idx.projections.size();
+    }
+    if (idx.filter && idx.filter->projections.usesCoveringIndex()) {
       std::transform(idx.filter->projections.projections().begin(),
                      idx.filter->projections.projections().end(),
                      std::back_inserter(options.projectedFields),
                      [&](Projections::Projection const& proj) {
                        return proj.coveringIndexPosition;
                      });
-      desc.numProjections = idx.filter->projections.size();
+
+      desc.numProjections += idx.filter->projections.size();
     }
 
     auto stream = idx.index->streamForCondition(&_trx, options);
