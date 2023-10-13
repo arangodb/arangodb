@@ -26,11 +26,13 @@
 
 #include "Agency/PathComponent.h"
 #include "AgencyStrings.h"
-#include "Basics/StringUtils.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Metrics/GaugeBuilder.h"
+#include "Metrics/Metric.h"
+
+#include <absl/strings/str_cat.h>
 
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
@@ -1002,9 +1004,9 @@ DECLARE_GAUGE(arangodb_agency_node_memory_usage, uint64_t, nodeMetricsHelpText);
 void Node::toPrometheus(std::string& result) {
   auto name = arangodb_agency_node_memory_usage{}.name();
   auto nodeMemoryUsage = consensus::Node::getMemoryUsage();
-  result += basics::StringUtils::concatT(
-      "# HELP ", name, " ", nodeMetricsHelpText, "\n# TYPE ", name, " gauge\n",
-      name, " ", nodeMemoryUsage, "\n");
+
+  metrics::Metric::addInfo(result, name, nodeMetricsHelpText, "gauge");
+  absl::StrAppend(&result, name, " ", nodeMemoryUsage, "\n");
 }
 
 template<typename... Args>

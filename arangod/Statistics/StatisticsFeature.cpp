@@ -44,6 +44,7 @@
 #include "Metrics/FixScale.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
+#include "Metrics/Metric.h"
 #include "Metrics/MetricsFeature.h"
 #include "Network/NetworkFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -68,6 +69,7 @@
 #include <chrono>
 #include <thread>
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 
 using namespace arangodb;
@@ -834,38 +836,25 @@ void StatisticsFeature::appendHistogram(
   auto const type = stat[1];
   auto const help = stat[2];
 
-  (result.append("# HELP ").append(name) += ' ').append(help) += '\n';
-  (result.append("# TYPE ").append(name) += ' ').append(type) += '\n';
+  metrics::Metric::addInfo(result, name, help, type);
   TRI_ASSERT(les.size() == counts.length());
   size_t i = 0;
   uint64_t sum = 0;
   for (auto const& le : les) {
     sum += counts.at(i++).getNumber<uint64_t>();
-    result.append(name).append("_bucket{le=\"").append(le).append("\"}");
-    if (ensureWhitespace) {
-      result.push_back(' ');
-    }
-    result.append(std::to_string(sum)) += '\n';
+    absl::StrAppend(&result, name, "_bucket{le=\"", le, "\"}",
+                    (ensureWhitespace ? " " : ""), sum, "\n");
   }
-  result.append(name).append("_count{}");
-  if (ensureWhitespace) {
-    result.push_back(' ');
-  }
-  result.append(std::to_string(sum)) += '\n';
+  absl::StrAppend(&result, name, "_count{}", (ensureWhitespace ? " " : ""), sum,
+                  "\n");
   if (isInteger) {
     uint64_t v = slc.get("sum").getNumber<uint64_t>();
-    result.append(name).append("_sum{}");
-    if (ensureWhitespace) {
-      result.push_back(' ');
-    }
-    result.append(std::to_string(v)) += '\n';
+    absl::StrAppend(&result, name, "_sum{}", (ensureWhitespace ? " " : ""), v,
+                    "\n");
   } else {
     double v = slc.get("sum").getNumber<double>();
-    result.append(name).append("_sum{}");
-    if (ensureWhitespace) {
-      result.push_back(' ');
-    }
-    result.append(std::to_string(v)) += '\n';
+    absl::StrAppend(&result, name, "_sum{}", (ensureWhitespace ? " " : ""), v,
+                    "\n");
   }
 }
 
@@ -877,13 +866,9 @@ void StatisticsFeature::appendMetric(std::string& result,
   auto const name = stat[0];
   auto const type = stat[1];
   auto const help = stat[2];
-  (result.append("# HELP ").append(name) += ' ').append(help) += '\n';
-  (result.append("# TYPE ").append(name) += ' ').append(type) += '\n';
-  result.append(name).append("{}");
-  if (ensureWhitespace) {
-    result.push_back(' ');
-  }
-  result.append(val) += '\n';
+
+  metrics::Metric::addInfo(result, name, help, type);
+  absl::StrAppend(&result, name, "{}", ensureWhitespace ? " " : "", val, "\n");
 }
 
 void StatisticsFeature::toPrometheus(std::string& result, double now,

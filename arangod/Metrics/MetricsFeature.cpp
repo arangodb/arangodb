@@ -92,10 +92,9 @@ std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder) {
   MetricKeyView key{metric->name(), metric->labels()};
   std::lock_guard lock{_mutex};
   if (!_registry.try_emplace(key, metric).second) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   std::string{builder.type()} + " " +
-                                       std::string{builder.name()} +
-                                       " already exists");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        absl::StrCat(builder.type(), " ", builder.name(), " already exists"));
   }
   return metric;
 }
@@ -224,15 +223,16 @@ std::shared_lock<std::shared_mutex> MetricsFeature::initGlobalLabels() const {
     // isn't yet known. This check here is to prevent that the label is
     // permanently empty if metrics are requested too early.
     if (auto shortname = instance->getShortName(); !shortname.empty()) {
-      auto label = "shortname=\"" + shortname + "\"";
-      _globals = label + (_globals.empty() ? "" : "," + _globals);
+      _globals = absl::StrCat("shortname=\"", shortname, "\"",
+                              (_globals.empty() ? "" : ","), _globals);
       hasShortname = true;
     }
   }
   if (!hasRole) {
     if (auto role = instance->getRole(); role != ServerState::ROLE_UNDEFINED) {
-      auto label = "role=\"" + ServerState::roleToString(role) + "\"";
-      _globals += (_globals.empty() ? "" : ",") + label;
+      _globals =
+          absl::StrAppend(&_globals, (_globals.empty() ? "" : ","), "role=\"",
+                          ServerState::roleToString(role), "\"");
       hasRole = true;
     }
   }
