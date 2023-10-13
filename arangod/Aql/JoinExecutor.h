@@ -85,6 +85,7 @@ struct JoinExecutorInfos {
 
       // projections used for filtering
       Projections projections;
+      std::vector<Variable const*> filterProjectionVars;
     };
 
     std::optional<FilterInformation> filter;
