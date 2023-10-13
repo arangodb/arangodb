@@ -130,14 +130,16 @@ class IndexFactory {
   static Result validateFieldsDefinition(velocypack::Slice definition,
                                          std::string const& attributeName,
                                          size_t minFields, size_t maxFields,
-                                         bool allowSubAttributes = true);
+                                         bool allowSubAttributes,
+                                         bool allowIdAttribute);
 
   /// @brief process the "fields" list, deduplicate it, and add it to the json
   static Result processIndexFields(velocypack::Slice definition,
                                    velocypack::Builder& builder,
                                    size_t minFields, size_t maxFields,
                                    bool create, bool allowExpansion,
-                                   bool allowSubAttributes);
+                                   bool allowSubAttributes,
+                                   bool allowIdAttribute);
 
   /// @brief process the "storedValues" list, deduplicate it, and add it to the
   /// json

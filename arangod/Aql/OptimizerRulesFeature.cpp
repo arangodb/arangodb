@@ -29,6 +29,7 @@
 #include "Aql/OptimizerRules.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/Parameters.h"
@@ -50,7 +51,11 @@ std::unordered_map<std::string_view, int> OptimizerRulesFeature::_ruleLookup;
 OptimizerRulesFeature::OptimizerRulesFeature(Server& server)
     : ArangodFeature{server, *this} {
   setOptional(false);
+#ifdef USE_V8
   startsAfter<V8FeaturePhase>();
+#else
+  startsAfter<application_features::ClusterFeaturePhase>();
+#endif
 
   startsAfter<AqlFeature>();
 }
@@ -796,11 +801,10 @@ optimizations.)");
 
   // replace adjacent index nodes with a join node if the indexes qualify
   // for it.
-  registerRule(
-      "join-index-nodes", joinIndexNodesRule, OptimizerRule::joinIndexNodesRule,
-      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                               OptimizerRule::Flags::DisabledByDefault),
-      R"(Join adjacent index nodes and replace them with a join node
+  registerRule("join-index-nodes", joinIndexNodesRule,
+               OptimizerRule::joinIndexNodesRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Join adjacent index nodes and replace them with a join node
 in case the indexes qualify for it.)");
 
   // allow nodes to asynchronously prefetch the next batch while processing the

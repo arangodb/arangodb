@@ -43,6 +43,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
+#include "Aql/SharedQueryState.h"
 #include "Logger/LogMacros.h"
 
 #include <numeric>

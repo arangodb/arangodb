@@ -140,13 +140,12 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<
   VPackBuilder builder(buffer, &options);
   builder.openObject(/*unindexed*/ true);
 
+  // always false. currently still needed in mixed environments of
+  // 3.11 and higher. can be removed for 3.13.
   builder.add("done", VPackValue(false));
 
   builder.add(StaticStrings::Code, VPackValue(TRI_ERROR_NO_ERROR));
   builder.add(StaticStrings::Error, VPackValue(false));
-  // NOTE API change. Before all items have been send.
-  // Now only the one output row is send.
-  builder.add("pos", VPackValue(0));
   builder.add(VPackValue("items"));
   builder.openObject(/*unindexed*/ true);
   input.toVelocyPack(&_engine->getQuery().vpackOptions(), builder);
@@ -187,7 +186,9 @@ auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack const& stack)
     block->validateShadowRowConsistency();
   }
 #endif
-  traceExecuteEnd(res, server() + ":" + distributeId());
+  if (_profileLevel >= ProfileLevel::Blocks) {
+    traceExecuteEnd(res, absl::StrCat(server(), ":", distributeId()));
+  }
   return res;
 }
 
@@ -364,7 +365,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
 
   auto req = fuerte::createRequest(type, fuerte::ContentType::VPack);
   req->header.database = _query.vocbase().name();
-  req->header.path = urlPart + "/" + _queryId;
+  req->header.path = absl::StrCat(urlPart, "/", _queryId);
   req->addVPack(std::move(body));
 
   // Later, we probably want to set these sensibly:
@@ -414,7 +415,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
 
   _engine->getQuery().incHttpRequests(unsigned(1));
 
-  return {TRI_ERROR_NO_ERROR};
+  return {};
 }
 
 void ExecutionBlockImpl<RemoteExecutor>::traceExecuteRequest(
@@ -431,15 +432,14 @@ void ExecutionBlockImpl<RemoteExecutor>::traceInitializeCursorRequest(
     VPackSlice slice) {
   if (_profileLevel == ProfileLevel::TraceOne ||
       _profileLevel == ProfileLevel::TraceTwo) {
-    // only stringify if profile level requires us
-    using namespace std::string_literals;
-    traceRequest("initializeCursor", slice, ""s);
+    // only stringify if profile level requires it
+    traceRequest("initializeCursor", slice, "");
   }
 }
 
-void ExecutionBlockImpl<RemoteExecutor>::traceRequest(char const* rpc,
+void ExecutionBlockImpl<RemoteExecutor>::traceRequest(std::string_view rpc,
                                                       VPackSlice slice,
-                                                      std::string const& args) {
+                                                      std::string_view args) {
   if (_profileLevel == ProfileLevel::TraceOne ||
       _profileLevel == ProfileLevel::TraceTwo) {
     auto const queryId = this->_engine->getQuery().id();

@@ -122,6 +122,8 @@ struct AqlValueHintEmptyObject {
   constexpr AqlValueHintEmptyObject() noexcept = default;
 };
 
+using DocumentData = std::unique_ptr<std::string>;
+
 // TODO(MBkkt) Remove VPACK_INLINE_INT48
 struct AqlValue final {
   friend struct std::hash<aql::AqlValue>;
@@ -311,7 +313,7 @@ struct AqlValue final {
   // note: this is the default constructor and should be as cheap as possible
   AqlValue() noexcept;
 
-  explicit AqlValue(std::unique_ptr<std::string>& data) noexcept;
+  explicit AqlValue(DocumentData& data) noexcept;
 
   // construct from pointer, not copying!
   explicit AqlValue(uint8_t const* pointer) noexcept;
@@ -437,7 +439,7 @@ struct AqlValue final {
   AqlValue get(CollectionNameResolver const& resolver, std::string_view name,
                bool& mustDestroy, bool copy) const;
   AqlValue get(CollectionNameResolver const& resolver,
-               MonitoredStringVector const& names, bool& mustDestroy,
+               std::vector<std::string> const& names, bool& mustDestroy,
                bool copy) const;
   bool hasKey(std::string_view name) const;
 
@@ -457,8 +459,10 @@ struct AqlValue final {
   Range const* range() const;
 
   /// @brief construct a V8 value as input for the expression execution in V8
+#ifdef USE_V8
   v8::Handle<v8::Value> toV8(v8::Isolate* isolate,
                              velocypack::Options const*) const;
+#endif
 
   /// @brief materializes a value into the builder
   void toVelocyPack(velocypack::Options const*, velocypack::Builder&,

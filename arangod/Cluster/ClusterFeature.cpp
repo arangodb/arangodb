@@ -34,11 +34,16 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Endpoint/Endpoint.h"
+#include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -428,6 +433,25 @@ clicked in the web interface. For backwards compatibility, the default value is
       .setLongDescription(R"(The default behavior is to return an HTTP
 `403 Forbidden` status code. You can set the option to `503` to return a
 `503 Service Unavailable`.)");
+
+  options
+      ->addOption("--cluster.connectivity-check-interval",
+                  "The interval (in seconds) in which cluster-internal "
+                  "connectivity checks are performed.",
+                  new UInt32Parameter(&_connectivityCheckInterval),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnDBServer))
+      .setLongDescription(R"(Setting this option to a value greater than
+zero makes Coordinators and DB-Servers run period connectivity checks
+with approximately the specified frequency. The first connectivity check
+is carried out approximately 15 seconds after server start.
+Note that a random delay is added to the interval on each server, so that
+different servers do not execute their connectivity checks all at the
+same time.
+Setting this option to a value of zero disables these connectivity checks.")")
+      .setIntroducedIn(31104);
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -592,6 +616,16 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     }
     ServerState::instance()->setRole(_requestedRole);
   }
+
+  constexpr std::uint32_t minConnectivityCheckInterval = 10;  // seconds
+  if (_connectivityCheckInterval > 0 &&
+      _connectivityCheckInterval < minConnectivityCheckInterval) {
+    _connectivityCheckInterval = minConnectivityCheckInterval;
+    LOG_TOPIC("08b46", WARN, Logger::CLUSTER)
+        << "configured value for `--cluster.connectivity-check-interval` is "
+           "too low and was automatically adjusted to minimum value "
+        << minConnectivityCheckInterval;
+  }
 }
 
 void ClusterFeature::reportRole(arangodb::ServerState::RoleEnum role) {
@@ -725,6 +759,12 @@ DECLARE_COUNTER(arangodb_potentially_dirty_document_reads_total,
                 "Number of document reads which could be dirty");
 DECLARE_COUNTER(arangodb_dirty_read_queries_total,
                 "Number of queries which could be doing dirty reads");
+DECLARE_COUNTER(arangodb_network_connectivity_failures_coordinators_total,
+                "Number of times the cluster-internal connectivity check for "
+                "Coordinators failed.");
+DECLARE_COUNTER(arangodb_network_connectivity_failures_dbservers_total,
+                "Number of times the cluster-internal connectivity check for "
+                "DB-Servers failed.");
 
 // IMPORTANT: Please read the first comment block a couple of lines down, before
 // Adding code to this section.
@@ -808,6 +848,14 @@ void ClusterFeature::start() {
         &_metrics.add(arangodb_dirty_read_queries_total{});
   }
 
+  if (role == ServerState::RoleEnum::ROLE_DBSERVER ||
+      role == ServerState::RoleEnum::ROLE_COORDINATOR) {
+    _connectivityCheckFailsCoordinators = &_metrics.add(
+        arangodb_network_connectivity_failures_coordinators_total{});
+    _connectivityCheckFailsDBServers =
+        &_metrics.add(arangodb_network_connectivity_failures_dbservers_total{});
+  }
+
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)
       << "Cluster feature is turned on"
       << (_forceOneShard ? " with one-shard mode" : "")
@@ -881,11 +929,25 @@ void ClusterFeature::start() {
     }
   }
 #endif
+
+  if (_connectivityCheckInterval > 0 &&
+      (role == ServerState::ROLE_COORDINATOR ||
+       role == ServerState::ROLE_DBSERVER)) {
+    // if connectivity checks are enabled, start the first one 15s after
+    // ClusterFeature start. we also add a bit of random noise to the start
+    // time offset so that when multiple servers are started at the same time,
+    // they don't execute their connectivity checks all at the same time
+    scheduleConnectivityCheck(15 +
+                              RandomGenerator::interval(std::uint32_t(15)));
+  }
 }
 
 void ClusterFeature::beginShutdown() {
   if (_enableCluster) {
     _clusterInfo->shutdownSyncers();
+
+    std::lock_guard<std::mutex> guard(_connectivityCheckMutex);
+    _connectivityCheck.reset();
   }
   _agencyCache->beginShutdown();
 }
@@ -901,6 +963,11 @@ void ClusterFeature::stop() {
   if (!_enableCluster) {
     shutdownHeartbeatThread();
     return;
+  }
+
+  {
+    std::lock_guard<std::mutex> guard(_connectivityCheckMutex);
+    _connectivityCheck.reset();
   }
 
 #ifdef USE_ENTERPRISE
@@ -1131,4 +1198,113 @@ std::unordered_set<std::string> ClusterFeature::allDatabases() const {
     allDBNames.emplace(i);
   }
   return allDBNames;
+}
+
+void ClusterFeature::scheduleConnectivityCheck(std::uint32_t inSeconds) {
+  TRI_ASSERT(_connectivityCheckInterval > 0);
+
+  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  if (scheduler == nullptr || inSeconds == 0) {
+    return;
+  }
+
+  auto workItem = arangodb::SchedulerFeature::SCHEDULER->queueDelayed(
+      "connectivity-check", RequestLane::INTERNAL_LOW,
+      std::chrono::seconds(inSeconds), [this](bool canceled) {
+        if (canceled) {
+          return;
+        }
+
+        if (!this->server().isStopping()) {
+          runConnectivityCheck();
+        }
+        if (!this->server().isStopping()) {
+          scheduleConnectivityCheck(
+              _connectivityCheckInterval +
+              RandomGenerator::interval(std::uint32_t(3)));
+        }
+      });
+
+  std::lock_guard<std::mutex> guard(_connectivityCheckMutex);
+  _connectivityCheck = std::move(workItem);
+}
+
+void ClusterFeature::runConnectivityCheck() {
+  TRI_ASSERT(ServerState::instance()->isCoordinator() ||
+             ServerState::instance()->isDBServer());
+
+  TRI_ASSERT(_connectivityCheckFailsCoordinators != nullptr);
+  TRI_ASSERT(_connectivityCheckFailsDBServers != nullptr);
+
+  NetworkFeature const& nf = server().getFeature<NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+  if (!pool) {
+    return;
+  }
+
+  if (_clusterInfo == nullptr) {
+    return;
+  }
+
+  // we want to contact coordinators and DB servers, potentially
+  // including _ourselves_ (we need to be able to send requests
+  // to ourselves)
+  auto servers = _clusterInfo->getCurrentCoordinators();
+  for (auto& it : _clusterInfo->getCurrentDBServers()) {
+    servers.emplace_back(std::move(it));
+  }
+
+  LOG_TOPIC("601e3", DEBUG, Logger::CLUSTER)
+      << "sending connectivity check requests to " << servers.size()
+      << " servers: " << servers;
+
+  // run a basic connectivity check by calling /_api/version
+  static constexpr double timeout = 10.0;
+  network::RequestOptions reqOpts;
+  reqOpts.skipScheduler = true;
+  reqOpts.timeout = network::Timeout(timeout);
+
+  std::vector<futures::Future<network::Response>> futures;
+  futures.reserve(servers.size());
+
+  for (auto const& server : servers) {
+    futures.emplace_back(network::sendRequest(pool, "server:" + server,
+                                              fuerte::RestVerb::Get,
+                                              "/_api/version", {}, reqOpts));
+  }
+
+  for (futures::Future<network::Response>& f : futures) {
+    if (this->server().isStopping()) {
+      break;
+    }
+    network::Response const& r = f.get();
+    TRI_ASSERT(r.destination.starts_with("server:"));
+
+    if (r.ok()) {
+      LOG_TOPIC("803c0", DEBUG, Logger::CLUSTER)
+          << "connectivity check for endpoint " << r.destination
+          << " successful";
+    } else {
+      LOG_TOPIC("43fc0", WARN, Logger::CLUSTER)
+          << "unable to connect to endpoint " << r.destination << " within "
+          << timeout << " seconds: " << r.combinedResult().errorMessage();
+
+      auto ep = std::string_view(r.destination);
+      if (!ep.starts_with("server:")) {
+        TRI_ASSERT(false);
+        continue;
+      }
+      // strip "server:" prefix
+      ep = ep.substr(strlen("server:"));
+      if (ep.starts_with("PRMR-")) {
+        // DB-Server
+        _connectivityCheckFailsDBServers->count();
+      } else if (ep.starts_with("CRDN-")) {
+        _connectivityCheckFailsCoordinators->count();
+      } else {
+        // unknown server type!
+        TRI_ASSERT(false);
+      }
+    }
+  }
 }

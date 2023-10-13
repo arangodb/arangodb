@@ -427,8 +427,6 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
                                        _indexes, _allCoveredByOneIndex,
                                        _condition->clone(), _options);
 
-  c->_projections = _projections;
-  c->_filterProjections = _filterProjections;
   c->needsGatherNodeSort(_needsGatherNodeSort);
   c->_outNonMaterializedDocId = outNonMaterializedDocId;
   c->_outNonMaterializedIndVars = std::move(outNonMaterializedIndVars);
@@ -442,6 +440,19 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
 void IndexNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
   DocumentProducingNode::replaceVariables(replacements);
+  if (_condition) {
+    _condition->replaceVariables(replacements);
+  }
+}
+
+void IndexNode::replaceAttributeAccess(ExecutionNode const* self,
+                                       Variable const* searchVariable,
+                                       std::span<std::string_view> attribute,
+                                       Variable const* replaceVariable) {
+  if (_condition) {
+    _condition->replaceAttributeAccess(searchVariable, attribute,
+                                       replaceVariable);
+  }
 }
 
 /// @brief destroy the IndexNode

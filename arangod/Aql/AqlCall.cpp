@@ -145,7 +145,8 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
     }
   };
 
-  for (auto it : velocypack::ObjectIterator(slice)) {
+  for (auto it :
+       velocypack::ObjectIterator(slice, /*useSequentialIteration*/ true)) {
     auto keySlice = it.key;
     if (ADB_UNLIKELY(!keySlice.isString())) {
       return Result(TRI_ERROR_TYPE_ERROR,

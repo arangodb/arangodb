@@ -22,6 +22,7 @@ require('./views/views/ViewsReactView');
 require('./views/collections/indices/CollectionIndicesReactView');
 require('./views/query/QueryReactView');
 require('./views/shards/distribution/ShardDistributionReactView');
+require('./views/services/ServicesReactView');
 
 // old libraries
 const jQuery = require('jquery');

@@ -72,7 +72,8 @@ template<bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::getCallback(
     DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex,
     DocumentProducingFunctionContext& context) {
-  auto cb = [&context](LocalDocumentId token, VPackSlice slice) {
+  return [&context](LocalDocumentId token, aql::DocumentData&& data,
+                    VPackSlice slice) {
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
@@ -91,6 +92,32 @@ IndexIterator::DocumentCallback aql::getCallback(
       return true;
     }
 
+    InputAqlItemRow const& input = context.getInputRow();
+    OutputAqlItemRow& output = context.getOutputRow();
+    TRI_ASSERT(!output.isFull());
+
+#if 0
+    auto const& p = context.getProjections();
+    for (size_t i = 0; i < p.size(); ++i) {
+      RegisterId registerId = context.registerForVariable(p[i].variable->id);
+      TRI_ASSERT(registerId != RegisterId::maxRegisterId);
+      VPackSlice s = slice.get(p[i].path.get());
+      if (p[i].type == AttributeNamePath::Type::IdAttribute) {
+        // _id attribute
+        TRI_ASSERT(s.isCustom());
+        auto v = AqlValue(transaction::helpers::extractIdString(
+            context.getTrxPtr()->resolver(), s, slice));
+        AqlValueGuard guard{v, true};
+        output.moveValueInto(registerId, input, &guard);
+      } else {
+        TRI_ASSERT(!s.isCustom());
+        if (s.isNone()) {
+          s = VPackSlice::nullSlice();
+        }
+        output.moveValueInto(registerId, input, s);
+      }
+    } else {
+#endif
     // recycle our Builder object
     VPackBuilder& objectBuilder = context.getBuilder();
     objectBuilder.clear();
@@ -99,56 +126,58 @@ IndexIterator::DocumentCallback aql::getCallback(
                                                       context.getTrxPtr());
     objectBuilder.close();
 
-    InputAqlItemRow const& input = context.getInputRow();
-    OutputAqlItemRow& output = context.getOutputRow();
     RegisterId registerId = context.getOutputRegister();
 
-    TRI_ASSERT(!output.isFull());
     VPackSlice s = objectBuilder.slice();
     output.moveValueInto(registerId, input, s);
+#if 0
+    }
+#endif
     TRI_ASSERT(output.produced());
     output.advanceRow();
 
     return true;
   };
-  return IndexIterator::makeDocumentCallbackF(cb);
 }
 
 template<bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::getCallback(
     DocumentProducingCallbackVariant::DocumentCopy,
     DocumentProducingFunctionContext& context) {
-  return makeDocumentCallback(
-      [&](LocalDocumentId token, auto v, velocypack::Slice s) {
-        if constexpr (checkUniqueness) {
-          if (!context.checkUniqueness(token)) {
-            // Document already found, skip it
-            return false;
-          }
-        }
+  return [&](LocalDocumentId t, aql::DocumentData&& v, velocypack::Slice s) {
+    if constexpr (checkUniqueness) {
+      if (!context.checkUniqueness(t)) {
+        // Document already found, skip it
+        return false;
+      }
+    }
 
-        context.incrScanned();
+    context.incrScanned();
 
-        if (context.hasFilter() && !context.checkFilter(s)) {
-          context.incrFiltered();
-          return false;
-        }
+    if (context.hasFilter() && !context.checkFilter(s)) {
+      context.incrFiltered();
+      return false;
+    }
 
-        if constexpr (skip) {
-          return true;
-        }
+    if constexpr (skip) {
+      return true;
+    }
 
-        InputAqlItemRow const& input = context.getInputRow();
-        OutputAqlItemRow& output = context.getOutputRow();
-        RegisterId registerId = context.getOutputRegister();
+    InputAqlItemRow const& input = context.getInputRow();
+    OutputAqlItemRow& output = context.getOutputRow();
+    RegisterId registerId = context.getOutputRegister();
 
-        TRI_ASSERT(!output.isFull());
-        output.moveValueInto(registerId, input, v);
-        TRI_ASSERT(output.produced());
-        output.advanceRow();
+    TRI_ASSERT(!output.isFull());
+    if (v) {
+      output.moveValueInto(registerId, input, &v);
+    } else {
+      output.moveValueInto(registerId, input, s);
+    }
+    TRI_ASSERT(output.produced());
+    output.advanceRow();
 
-        return true;
-      });
+    return true;
+  };
 }
 
 template<bool checkUniqueness, bool skip>
@@ -158,11 +187,9 @@ IndexIterator::DocumentCallback aql::buildDocumentCallback(
     if (!context.getProduceResult()) {
       // This callback is disallowed use getNullCallback instead
       TRI_ASSERT(false);
-      return IndexIterator::makeDocumentCallbackF(
-          [](LocalDocumentId, VPackSlice /*slice*/) -> bool {
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                           "invalid callback");
-          });
+      return [](LocalDocumentId, aql::DocumentData&&, VPackSlice) -> bool {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid callback");
+      };
     }
   }
 
@@ -338,6 +365,11 @@ PhysicalCollection& DocumentProducingFunctionContext::getPhysical()
 
 velocypack::Builder& DocumentProducingFunctionContext::getBuilder() noexcept {
   return _objectBuilder;
+}
+
+RegisterId DocumentProducingFunctionContext::registerForVariable(
+    VariableId id) const noexcept {
+  return _expressionContext->registerForVariable(id);
 }
 
 bool DocumentProducingFunctionContext::getAllowCoveringIndexOptimization()
@@ -554,34 +586,38 @@ IndexIterator::CoveringCallback aql::getCallback(
     if constexpr (!skip) {
       // read the full document from the storage engine only now,
       // after checking the filter condition
-      auto cb = makeDocumentCallback(
-          [&](LocalDocumentId token, auto v, VPackSlice s) {
-            OutputAqlItemRow& output = context.getOutputRow();
-            TRI_ASSERT(!output.isFull());
+      auto cb = [&](LocalDocumentId token, aql::DocumentData&& v,
+                    VPackSlice s) {
+        OutputAqlItemRow& output = context.getOutputRow();
+        TRI_ASSERT(!output.isFull());
 
-            RegisterId registerId = context.getOutputRegister();
-            InputAqlItemRow const& input = context.getInputRow();
+        RegisterId registerId = context.getOutputRegister();
+        InputAqlItemRow const& input = context.getInputRow();
 
-            if (context.getProjections().empty()) {
-              output.moveValueInto(registerId, input, v);
-            } else {
-              objectBuilder.clear();
-              objectBuilder.openObject(true);
+        if (context.getProjections().empty()) {
+          if (v) {
+            output.moveValueInto(registerId, input, &v);
+          } else {
+            output.moveValueInto(registerId, input, s);
+          }
+        } else {
+          objectBuilder.clear();
+          objectBuilder.openObject(true);
 
-              // projections from the index for the filter condition
-              context.getProjections().toVelocyPackFromDocument(
-                  objectBuilder, s, context.getTrxPtr());
+          // projections from the index for the filter condition
+          context.getProjections().toVelocyPackFromDocument(
+              objectBuilder, s, context.getTrxPtr());
 
-              objectBuilder.close();
+          objectBuilder.close();
 
-              VPackSlice projectedSlice = objectBuilder.slice();
-              output.moveValueInto(registerId, input, projectedSlice);
-            }
+          VPackSlice projectedSlice = objectBuilder.slice();
+          output.moveValueInto(registerId, input, projectedSlice);
+        }
 
-            TRI_ASSERT(output.produced());
-            output.advanceRow();
-            return false;
-          });
+        TRI_ASSERT(output.produced());
+        output.advanceRow();
+        return false;
+      };
       context.getPhysical().lookup(
           context.getTrxPtr(), token, cb,
           {.readOwnWrites = static_cast<bool>(context.getReadOwnWrites())});

@@ -54,7 +54,6 @@ add_library(arango_rocksdb STATIC
   RocksDBTtlIndex.cpp
   RocksDBTypes.cpp
   RocksDBUpgrade.cpp
-  RocksDBV8Functions.cpp
   RocksDBVPackIndex.cpp
   RocksDBValue.cpp
   RocksDBWalAccess.cpp
@@ -63,6 +62,11 @@ add_library(arango_rocksdb STATIC
   ReplicatedRocksDBTransactionState.cpp
   SimpleRocksDBTransactionState.cpp
   SortedRowsStorageBackendRocksDB.cpp)
+
+if (USE_V8) 
+  target_sources(arango_rocksdb PRIVATE
+    RocksDBV8Functions.cpp)
+endif()
 
 target_link_libraries(arango_rocksdb
   arango_cache

@@ -29,7 +29,9 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
+#ifdef USE_V8
 #include "V8/v8-vpack.h"
+#endif
 
 #include <absl/strings/numbers.h>
 
@@ -540,7 +542,7 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
 }
 
 AqlValue AqlValue::get(CollectionNameResolver const& resolver,
-                       MonitoredStringVector const& names, bool& mustDestroy,
+                       std::vector<std::string> const& names, bool& mustDestroy,
                        bool doCopy) const {
   mustDestroy = false;
   if (names.empty()) {
@@ -826,6 +828,7 @@ void AqlValue::setManagedSliceData(MemoryOriginType mot,
   TRI_ASSERT(memoryUsage() == length);
 }
 
+#ifdef USE_V8
 v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate,
                                      velocypack::Options const* options) const {
   auto context = TRI_IGETC;
@@ -856,6 +859,7 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate,
       return TRI_VPackToV8(isolate, slice(t), options);
   }
 }
+#endif
 
 void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
                             bool resolveExternals, bool allowUnindexed) const {
@@ -1066,7 +1070,7 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
 
 AqlValue::AqlValue() noexcept { erase(); }
 
-AqlValue::AqlValue(std::unique_ptr<std::string>& data) noexcept {
+AqlValue::AqlValue(DocumentData& data) noexcept {
   TRI_ASSERT(data);
   auto size = data->size();
   TRI_ASSERT(size >= 1);
