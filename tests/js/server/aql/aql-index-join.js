@@ -142,7 +142,27 @@ const IndexJoinTestSuite = function () {
       assertEqual(result.length, 0);
     },
 
-    testEveryOtherMatch: function () {
+    testEveryOtherMatchSmall: function () {
+      const A = fillCollection("A", singleAttributeGenerator(10, "x", x => x));
+      A.ensureIndex({type: "persistent", fields: ["x"]});
+      const B = fillCollection("B", singleAttributeGenerator(5, "x", x => 2 * x));
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+
+      const result = runAndCheckQuery(`
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2.x
+              RETURN [doc1, doc2]
+      `);
+
+      assertEqual(result.length, 500);
+      for (const [a, b] of result) {
+        assertEqual(a.x, b.x);
+      }
+    },
+
+    testEveryOtherMatchMedium: function () {
       const A = fillCollection("A", singleAttributeGenerator(1000, "x", x => x));
       A.ensureIndex({type: "persistent", fields: ["x"]});
       const B = fillCollection("B", singleAttributeGenerator(500, "x", x => 2 * x));
@@ -157,6 +177,26 @@ const IndexJoinTestSuite = function () {
       `);
 
       assertEqual(result.length, 500);
+      for (const [a, b] of result) {
+        assertEqual(a.x, b.x);
+      }
+    },
+
+    testEveryOtherMatchBig: function () {
+      const A = fillCollection("A", singleAttributeGenerator(10000, "x", x => x));
+      A.ensureIndex({type: "persistent", fields: ["x"]});
+      const B = fillCollection("B", singleAttributeGenerator(5000, "x", x => 2 * x));
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+
+      const result = runAndCheckQuery(`
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2.x
+              RETURN [doc1, doc2]
+      `);
+
+      assertEqual(result.length, 5000);
       for (const [a, b] of result) {
         assertEqual(a.x, b.x);
       }
@@ -201,6 +241,53 @@ const IndexJoinTestSuite = function () {
         assertEqual(a.x, b.x);
       }
     },
+
+    testEveryOtherMatchUniqueLarge: function () {
+      const A = fillCollection("A", singleAttributeGenerator(10000, "x", x => x));
+      A.ensureIndex({type: "persistent", fields: ["x"], unique: true});
+      const B = fillCollection("B", singleAttributeGenerator(5000, "x", x => 2 * x));
+      B.ensureIndex({type: "persistent", fields: ["x"], unique: true});
+
+      const result = runAndCheckQuery(`
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2.x
+              RETURN [doc1, doc2]
+      `);
+
+      assertEqual(result.length, 5000);
+      for (const [a, b] of result) {
+        assertEqual(a.x, b.x);
+      }
+    },
+
+    /*
+    // TODO: This test needs to be activated as soon as the Optimizer is able to identify
+    // multiple attributes - and build the "JoinNode" afterwards.
+    testEveryOtherMatchUniqueSmallTwoAttributes: function () {
+      // Same amount of documents, but now in addition two values x and y covered by the index and
+      // both attributes used inside the query.
+      const A = fillCollection("A", attributeGenerator(10, {x: x => x, y: x => 2 * x}));
+      A.ensureIndex({type: "persistent", fields: ["x", "y"], unique: true});
+      // const B = fillCollection("B", singleAttributeGenerator(5, "x", x => 2 * x));
+      const B = fillCollection("B", attributeGenerator(10, {x: x => x, y: x => 2 * x}));
+      B.ensureIndex({type: "persistent", fields: ["x", "y"], unique: true});
+
+      const result = runAndCheckQuery(`
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2.x && doc1.y == doc2.y
+              RETURN [doc1, doc2]
+      `);
+
+      assertEqual(result.length, 5);
+      for (const [a, b] of result) {
+        assertEqual(a.x, b.x);
+      }
+    },
+    */
 
     testEveryMultipleMatches: function () {
       const A = fillCollection("A", singleAttributeGenerator(100, "x", x => x));
