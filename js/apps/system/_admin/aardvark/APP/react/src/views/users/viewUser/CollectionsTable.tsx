@@ -22,7 +22,7 @@ const collectionPermissionColumns = [
       header: "Administrate",
       id: "rw",
       cell: info => {
-        return <PermissionSwitch checked={info.cell.getValue()} />;
+        return <PermissionSwitch info={info} checked={info.cell.getValue()} />;
       },
       meta: {
         filterType: "single-select"
@@ -35,7 +35,7 @@ const collectionPermissionColumns = [
       header: "Access",
       id: "ro",
       cell: info => {
-        return <PermissionSwitch checked={info.cell.getValue()} />;
+        return <PermissionSwitch info={info} checked={info.cell.getValue()} />;
       },
       meta: {
         filterType: "single-select"
@@ -48,7 +48,7 @@ const collectionPermissionColumns = [
       header: "No Accesss",
       id: "none",
       cell: info => {
-        return <PermissionSwitch checked={info.cell.getValue()} />;
+        return <PermissionSwitch info={info} checked={info.cell.getValue()} />;
       },
       meta: {
         filterType: "single-select"
@@ -61,7 +61,7 @@ const collectionPermissionColumns = [
       header: "Use Default",
       id: "undefined",
       cell: info => {
-        return <PermissionSwitch checked={info.cell.getValue()} />;
+        return <PermissionSwitch info={info} checked={info.cell.getValue()} />;
       },
       meta: {
         filterType: "single-select"

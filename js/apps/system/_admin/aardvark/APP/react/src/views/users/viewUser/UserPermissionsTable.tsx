@@ -1,5 +1,5 @@
 import { ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
-import { Box, IconButton, Stack } from "@chakra-ui/react";
+import { IconButton, Stack, Tag } from "@chakra-ui/react";
 import {
   CellContext,
   createColumnHelper,
@@ -10,18 +10,20 @@ import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { CollectionsTable, DatabaseTableType } from "./CollectionsTable";
-import { PermissionSwitch } from "./PermissionSwitch";
+import { getIsDefaultRow, PermissionSwitch } from "./PermissionSwitch";
 import { useUsername } from "./useFetchDatabasePermissions";
 import { usePermissionTableData } from "./UserPermissionsView";
 
 const columnHelper = createColumnHelper<DatabaseTableType>();
+
 const permissionColumns = [
   columnHelper.accessor(row => (row.permission === "rw" ? true : false), {
     header: "Administrate",
     id: "rw",
     cell: info => {
-      return <PermissionSwitch checked={info.cell.getValue()} />;
+      return <PermissionSwitch info={info} checked={info.cell.getValue()} />;
     },
+    enableSorting: false,
     meta: {
       filterType: "single-select"
     }
@@ -30,8 +32,9 @@ const permissionColumns = [
     header: "Access",
     id: "ro",
     cell: info => {
-      return <PermissionSwitch checked={info.cell.getValue()} />;
+      return <PermissionSwitch info={info} checked={info.cell.getValue()} />;
     },
+    enableSorting: false,
     meta: {
       filterType: "single-select"
     }
@@ -40,8 +43,9 @@ const permissionColumns = [
     header: "No Accesss",
     id: "none",
     cell: info => {
-      return <PermissionSwitch checked={info.cell.getValue()} />;
+      return <PermissionSwitch info={info} checked={info.cell.getValue()} />;
     },
+    enableSorting: false,
     meta: {
       filterType: "single-select"
     }
@@ -52,8 +56,9 @@ const permissionColumns = [
       header: "Use Default",
       id: "undefined",
       cell: info => {
-        return <PermissionSwitch checked={info.cell.getValue()} />;
+        return <PermissionSwitch info={info} checked={info.cell.getValue()} />;
       },
+      enableSorting: false,
       meta: {
         filterType: "single-select"
       }
@@ -66,6 +71,9 @@ const TABLE_COLUMNS = [
     header: () => null,
     size: 8,
     cell: (info: CellContext<DatabaseTableType, unknown>) => {
+      if (getIsDefaultRow(info)) {
+        return "";
+      }
       return info.row.getCanExpand() ? (
         <IconButton
           variant="ghost"
@@ -90,8 +98,8 @@ const TABLE_COLUMNS = [
       filterType: "text"
     },
     cell: info => {
-      if (info.row.original.databaseName === "*") {
-        return <Box position={"sticky"}>* (Default)</Box>;
+      if (getIsDefaultRow(info)) {
+        return <Tag>Default</Tag>;
       }
       return info.cell.getValue();
     }
