@@ -120,10 +120,12 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     // index
     std::string iid = it.get("index").get("id").copyString();
 
-    auto projections = Projections::fromVelocyPack(
-        it, "projections", plan->getAst()->query().resourceMonitor());
-    auto filterProjections = Projections::fromVelocyPack(
-        it, "filterProjections", plan->getAst()->query().resourceMonitor());
+    auto projections =
+        Projections::fromVelocyPack(plan->getAst(), it, "projections",
+                                    plan->getAst()->query().resourceMonitor());
+    auto filterProjections =
+        Projections::fromVelocyPack(plan->getAst(), it, "filterProjections",
+                                    plan->getAst()->query().resourceMonitor());
 
     bool const usedAsSatellite = it.get("usedAsSatellite").isTrue();
 
@@ -147,6 +149,22 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     if (usedShard.isString()) {
       idx.usedShard = usedShard.copyString();
     }
+
+    auto const prepareProjections = [&](aql::Projections& proj,
+                                        bool expectation) {
+      if (!proj.empty()) {
+        if (idx.index->covers(proj)) {
+          proj.setCoveringContext(coll->id(), idx.index);
+        }
+        TRI_ASSERT(proj.usesCoveringIndex(idx.index) == expectation)
+            << "expectation = " << std::boolalpha << expectation;
+      }
+    };
+
+    prepareProjections(idx.projections,
+                       it.get("indexCoversProjections").isTrue());
+    prepareProjections(idx.filterProjections,
+                       it.get("indexCoversFilterProjections").isTrue());
   }
 
   TRI_ASSERT(_indexInfos.size() >= 2);
@@ -178,13 +196,15 @@ void JoinNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
     // projections
     it.projections.toVelocyPack(builder);
     builder.add("indexCoversProjections",
-                VPackValue(it.projections.usesCoveringIndex()));
+                VPackValue(it.projections.usesCoveringIndex(it.index)));
     builder.add("usedAsSatellite", VPackValue(it.usedAsSatellite));
     // filter
     if (it.filter) {
       builder.add(VPackValue("filter"));
       it.filter->toVelocyPack(builder, true);
       it.filterProjections.toVelocyPack(builder, "filterProjections");
+      builder.add("indexCoversFilterProjections",
+                  VPackValue(it.filterProjections.usesCoveringIndex(it.index)));
     }
     // index
     builder.add(VPackValue("index"));
@@ -247,6 +267,20 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
         TRI_ASSERT(var != nullptr);
         auto regId = variableToRegisterId(var);
         filter.filterVarsToRegs.emplace_back(var->id, regId);
+      }
+      if (filter.projections.usesCoveringIndex()) {
+        for (auto const& p : filter.projections.projections()) {
+          auto const& path = p.path.get();
+          auto var = infos.query->ast()->variables()->createTemporaryVariable();
+          std::vector<std::string_view> pathView;
+          std::transform(
+              path.begin(), path.begin() + p.coveringIndexCutoff,
+              std::back_inserter(pathView),
+              [](std::string const& str) -> std::string_view { return str; });
+          filter.expression->replaceAttributeAccess(filter.documentVariable,
+                                                    pathView, var);
+          filter.filterProjectionVars.push_back(var);
+        }
       }
     }
   }
@@ -367,4 +401,13 @@ Index::FilterCosts JoinNode::costsForIndexInfo(
                                                 itemsInCollection);
   }
   return costs;
+}
+
+std::ostream& arangodb::operator<<(std::ostream& os,
+                                   IndexStreamOptions const& opts) {
+  os << "{";
+  os << "keyFields = [ " << opts.usedKeyFields << "], ";
+  os << "projectedFields = [ " << opts.projectedFields << "]";
+  os << "}";
+  return os;
 }

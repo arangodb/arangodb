@@ -29,7 +29,10 @@
 #include "Containers/HashSet.h"
 #include "Transaction/Methods.h"
 
+#include <span>
 #include <string>
+#include <string_view>
+#include <unordered_map>
 #include <vector>
 
 namespace arangodb {
@@ -136,6 +139,13 @@ class Condition {
 
   /// @brief clone the condition
   std::unique_ptr<Condition> clone() const;
+
+  void replaceVariables(
+      std::unordered_map<VariableId, Variable const*> const& replacements);
+
+  void replaceAttributeAccess(Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable);
 
   /// @brief add a sub-condition to the condition
   /// the sub-condition will be AND-combined with the existing condition(s)

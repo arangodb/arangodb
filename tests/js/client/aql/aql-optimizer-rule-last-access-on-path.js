@@ -5,8 +5,6 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for optimizer rule that transforms last access on path to vertex and edge
 // /
-// / @file
-// /
 // / DISCLAIMER
 // /
 // / Copyright 2023-2023 ArangoDB GmbH, Cologne, Germany
@@ -31,6 +29,7 @@
 
 const jsunity = require("jsunity");
 const gm = require("@arangodb/general-graph");
+const normalize = require("@arangodb/aql-helper").normalizeProjections;
 const {db} = require("@arangodb");
 const ruleName = "optimize-traversal-last-element-access";
 
@@ -154,9 +153,9 @@ function TraversalOptimizeLastPathAccessTestSuite() {
     const assertHasProjection = (nodes, type, attribute) => {
         const traversalNodes = nodes.filter(n => n.type === "TraversalNode");
         assertEqual(traversalNodes.length, 1, `We do not have expected number of Traversal Nodes, please check the test query, it should contain exactly one traversal statement`);
-        const projections = traversalNodes[0].options[type];
+        const projections = normalize(traversalNodes[0].options[type]);
         assertTrue(Array.isArray(projections), `Projections not found, or unexpected format`);
-        assertEqual(projections.filter(p => p === attribute).length, 1, `Expected Projection ${attribute} not found in ${projections}`);
+        assertEqual(projections.filter(p => p.length === 1 &&  p[0] === attribute).length, 1, `Expected Projection ${attribute} not found in ${projections}`);
     };
 
     return {

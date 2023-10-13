@@ -452,6 +452,21 @@ function sanitizeStats (stats) {
   return stats;
 }
 
+function normalizeProjections (p) {
+  return (p || []).map((p) => {
+    if (Array.isArray(p)) {
+      return p;
+    }
+    if (typeof p === 'string') {
+      return [p];
+    }
+    if (p.hasOwnProperty("path")) {
+      return p.path;
+    }
+    return [];
+  }).sort();
+}
+
 exports.getParseResults = getParseResults;
 exports.assertParseError = assertParseError;
 exports.getQueryExplanation = getQueryExplanation;
@@ -472,3 +487,4 @@ exports.removeClusterNodesFromPlan = removeClusterNodesFromPlan;
 exports.removeCost = removeCost;
 exports.unpackRawExpression = unpackRawExpression;
 exports.sanitizeStats = sanitizeStats;
+exports.normalizeProjections = normalizeProjections;

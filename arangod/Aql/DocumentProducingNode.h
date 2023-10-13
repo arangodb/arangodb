@@ -76,6 +76,8 @@ class DocumentProducingNode {
   /// @brief return the early pruning condition for the node
   Expression* filter() const noexcept { return _filter.get(); }
 
+  void setFilterProjections(Projections projections);
+
   Projections const& filterProjections() const noexcept;
 
   /// @brief whether or not the node has an early pruning filter condition

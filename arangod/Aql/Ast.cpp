@@ -180,9 +180,7 @@ bool translateNodeStackToAttributePath(
     }
 
     // now take off all projections from the stack
-    ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor> alloc = {
-        resourceMonitor};
-    MonitoredStringVector path{alloc};
+    std::vector<std::string> path;
     while (top->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       path.emplace_back(top->getString());
       state.seen.pop_back();
@@ -193,7 +191,7 @@ bool translateNodeStackToAttributePath(
     }
 
     TRI_ASSERT(!path.empty());
-    state.attributes.emplace(AttributeNamePath(std::move(path)));
+    state.attributes.emplace(std::move(path), resourceMonitor);
   }
 
   return true;
@@ -2223,9 +2221,10 @@ void Ast::injectBindParameters(BindParameters& parameters,
 }
 
 /// @brief replace an attribute access with just the variable
-AstNode* Ast::replaceAttributeAccess(
-    AstNode* node, Variable const* variable,
-    std::vector<std::string> const& attribute) {
+AstNode* Ast::replaceAttributeAccess(Ast* ast, AstNode* node,
+                                     Variable const* searchVariable,
+                                     std::span<std::string_view> attribute,
+                                     Variable const* replaceVariable) {
   TRI_ASSERT(!attribute.empty());
   if (attribute.empty()) {
     return node;
@@ -2255,7 +2254,7 @@ AstNode* Ast::replaceAttributeAccess(
       return origNode;
     }
     for (size_t i = 0; i < attribute.size(); ++i) {
-      if (attributePath[i] != attribute[i]) {
+      if (attributePath[i] != attribute[attribute.size() - i - 1]) {
         // different attribute
         return origNode;
       }
@@ -2264,9 +2263,11 @@ AstNode* Ast::replaceAttributeAccess(
 
     if (node->type == NODE_TYPE_REFERENCE) {
       auto v = static_cast<Variable*>(node->getData());
-      if (v != nullptr && v->id == variable->id) {
+      if (v != nullptr && v->id == searchVariable->id) {
         // our variable... now replace the attribute access with just the
         // variable
+        node = ast->createNode(NODE_TYPE_REFERENCE);
+        node->setData(replaceVariable);
         return node;
       }
     }
