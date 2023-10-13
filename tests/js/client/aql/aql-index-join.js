@@ -580,7 +580,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1, doc2.x]
       `;
 
-      const plan = db._createStatement({query: query, bindVars: null, options: queryOptions}).explain().plan;
+      const plan = AQL_EXPLAIN(query, null, queryOptions).plan;
       const nodes = plan.nodes.map(x => x.type);
       assertEqual(nodes.indexOf("JoinNode"), -1);
     },
