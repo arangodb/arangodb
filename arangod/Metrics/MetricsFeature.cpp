@@ -230,9 +230,8 @@ std::shared_lock<std::shared_mutex> MetricsFeature::initGlobalLabels() const {
   }
   if (!hasRole) {
     if (auto role = instance->getRole(); role != ServerState::ROLE_UNDEFINED) {
-      _globals =
-          absl::StrAppend(&_globals, (_globals.empty() ? "" : ","), "role=\"",
-                          ServerState::roleToString(role), "\"");
+      absl::StrAppend(&_globals, (_globals.empty() ? "" : ","), "role=\"",
+                      ServerState::roleToString(role), "\"");
       hasRole = true;
     }
   }
