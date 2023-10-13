@@ -272,6 +272,34 @@ TEST(IndexMerger, two_phase_product_result_two_streaks) {
   ASSERT_EQ(count, 4 + 4);
 }
 
+// TODO: Add template test param for both boolean values inside the callback
+TEST(IndexMerger, two_phase_product_result_two_streaks_x) {
+  bool isUnique = false;
+
+  std::vector<MyKeyValue> a = {1, 1, 2, 2, 3, 4, 8};
+
+  std::vector<MyKeyValue> b = {1, 1, 2, 2, 5, 6, 8};
+
+  std::vector<Desc> iters;
+  iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0, isUnique);
+  iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0, isUnique);
+
+  Strategy merger{std::move(iters), 1};
+
+  bool hasMore = true;
+  std::size_t count = 0;
+  while (hasMore) {
+    hasMore =
+        merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
+          EXPECT_EQ(docs[0], docs[1]);
+          count += 1;
+          return false;
+        });
+  }
+
+  ASSERT_EQ(count, 4 + 4 + 1);
+}
+
 TEST(IndexMerger, three_iterators) {
   bool isUnique = false;
   std::vector<MyKeyValue> a = {
