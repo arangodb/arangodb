@@ -251,7 +251,7 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
     AqlValue val = this->groupValues[i];
     AqlValueGuard guard{val, true};
 
-    output.moveValueInto(it.first, _lastInputRow, guard);
+    output.moveValueInto(it.first, _lastInputRow, &guard);
     // ownership of value is transferred into res
     this->groupValues[i].erase();
     ++i;
@@ -263,7 +263,7 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
     AqlValue val = it->stealValue();
     AqlValueGuard guard{val, true};
     output.moveValueInto(infos.getAggregatedRegisters()[j].first, _lastInputRow,
-                         guard);
+                         &guard);
     ++j;
   }
 
@@ -277,7 +277,7 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
     TRI_ASSERT(_buffer.size() == 0);
     _builder.clear();  // necessary
 
-    output.moveValueInto(infos.getCollectRegister(), _lastInputRow, guard);
+    output.moveValueInto(infos.getCollectRegister(), _lastInputRow, &guard);
   }
 
   output.advanceRow();

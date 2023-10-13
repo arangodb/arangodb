@@ -33,6 +33,7 @@
 #include "Aql/ConstFetcher.h"
 #include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/EnumerateListExecutor.h"
+#include "Aql/EnumeratePathsNode.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNodeId.h"
@@ -43,7 +44,7 @@
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
-#include "Aql/EnumeratePathsNode.h"
+#include "Aql/JoinNode.h"
 #include "Aql/LimitExecutor.h"
 #include "Aql/MaterializeExecutor.h"
 #include "Aql/ModificationNodes.h"
@@ -127,6 +128,7 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::WINDOW), "WindowNode"},
     {static_cast<int>(ExecutionNode::OFFSET_INFO_MATERIALIZE),
      "OffsetMaterializeNode"},
+    {static_cast<int>(ExecutionNode::JOIN), "JoinNode"},
 };
 
 }  // namespace
@@ -259,8 +261,7 @@ void ExecutionNode::getSortElements(SortElementVector& elements,
   for (VPackSlice it : VPackArrayIterator(elementsSlice)) {
     bool ascending = it.get("ascending").getBoolean();
     Variable* v = Variable::varFromVPack(plan->getAst(), it, "inVariable");
-    elements.emplace_back(
-        SortElement{v, ascending, plan->getAst()->query().resourceMonitor()});
+    elements.emplace_back(v, ascending);
     // Is there an attribute path?
     VPackSlice path = it.get("path");
     if (path.isArray()) {
@@ -268,8 +269,7 @@ void ExecutionNode::getSortElements(SortElementVector& elements,
       auto& element = elements.back();
       for (auto const& it2 : VPackArrayIterator(path)) {
         if (it2.isString()) {
-          element.attributePath.emplace_back(MonitoredString{
-              it2.copyString(), plan->getAst()->query().resourceMonitor()});
+          element.attributePath.emplace_back(it2.copyString());
         }
       }
     }
@@ -395,6 +395,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
       return new NoResultsNode(plan, slice);
     case INDEX:
       return new IndexNode(plan, slice);
+    case JOIN:
+      return new JoinNode(plan, slice);
     case REMOTE:
       return new RemoteNode(plan, slice);
     case GATHER: {
@@ -725,6 +727,13 @@ void ExecutionNode::cloneRegisterPlan(ExecutionNode* dependency) {
 /// replacements are { old variable id => new variable }
 void ExecutionNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& /*replacements*/) {
+  // default implementation does nothing
+}
+
+void ExecutionNode::replaceAttributeAccess(
+    ExecutionNode const* /*self*/, Variable const* /*searchVariable*/,
+    std::span<std::string_view> /*attribute*/,
+    Variable const* /*replaceVariable*/) {
   // default implementation does nothing
 }
 
@@ -1601,6 +1610,7 @@ bool ExecutionNode::alwaysCopiesRows(NodeType type) {
     case UPSERT:
     case TRAVERSAL:
     case INDEX:
+    case JOIN:
     case SHORTEST_PATH:
     case ENUMERATE_PATHS:
     case REMOTESINGLE:
@@ -1746,10 +1756,27 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
     }
   }
 
-  auto const produceResult =
-      this->isVarUsedLater(_outVariable) || this->_filter != nullptr;
-  auto outputRegister = variableToRegisterId(_outVariable);
-  auto registerInfos = createRegisterInfos({}, RegIdSet{outputRegister});
+  auto const produceResult = this->isVarUsedLater(_outVariable) ||
+                             this->_filter != nullptr || !projections().empty();
+  RegisterId outputRegister = variableToRegisterId(_outVariable);
+
+  auto outputRegisters = RegIdSet{};
+  outputRegisters.emplace(outputRegister);
+#if 0
+  if (projections().empty()) {
+    outputRegisters.emplace(outputRegister);
+  } else {
+    auto const& p = projections();
+    for (size_t i = 0; i < p.size(); ++i) {
+      Variable const* var = p[i].variable;
+      TRI_ASSERT(var != nullptr);
+      auto regId = variableToRegisterId(var);
+      filterVarsToRegs.emplace_back(var->id, regId);
+      outputRegisters.emplace(regId);
+    }
+  }
+#endif
+  auto registerInfos = createRegisterInfos({}, std::move(outputRegisters));
   auto executorInfos = EnumerateCollectionExecutorInfos(
       outputRegister, engine.getQuery(), collection(), _outVariable,
       produceResult, this->_filter.get(), this->projections(),
@@ -1772,7 +1799,6 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
   auto c = std::make_unique<EnumerateCollectionNode>(
       plan, _id, collection(), outVariable, _random, _hint);
 
-  c->_projections = _projections;
   CollectionAccessingNode::cloneInto(*c);
   DocumentProducingNode::cloneInto(plan, *c);
 
@@ -1784,6 +1810,15 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
 void EnumerateCollectionNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
   DocumentProducingNode::replaceVariables(replacements);
+}
+
+void EnumerateCollectionNode::replaceAttributeAccess(
+    ExecutionNode const* self, Variable const* searchVariable,
+    std::span<std::string_view> attribute, Variable const* replaceVariable) {
+  if (hasFilter() && self != this) {
+    filter()->replaceAttributeAccess(searchVariable, attribute,
+                                     replaceVariable);
+  }
 }
 
 void EnumerateCollectionNode::setRandom() { _random = true; }
@@ -1800,12 +1835,50 @@ void EnumerateCollectionNode::getVariablesUsedHere(VarSet& vars) const {
     // planning's assumption is that all variables that are used in a
     // node must also be used later.
     vars.erase(outVariable());
+
+    auto const& p = _projections;
+    for (size_t i = 0; i < p.size(); ++i) {
+      if (p[i].variable == nullptr) {
+        continue;
+      }
+      vars.erase(p[i].variable);
+    }
   }
 }
 
 std::vector<Variable const*> EnumerateCollectionNode::getVariablesSetHere()
     const {
-  return std::vector<Variable const*>{_outVariable};
+  std::vector<Variable const*> result;
+  result.push_back(_outVariable);
+#if 0
+  // determine number of variables first
+  size_t n = 0;
+  auto& p = _projections;
+  for (size_t i = 0; i < p.size(); ++i) {
+    TRI_ASSERT(p[i].variable != nullptr);
+    ++n;
+  }
+
+  std::vector<Variable const*> result;
+  if (n == 0) {
+    result.push_back(_outVariable);
+  } else {
+    result.reserve(n + 1);
+    result.push_back(_outVariable);
+    for (size_t i = 0; i < p.size(); ++i) {
+      if (p[i].variable == nullptr) {
+        continue;
+      }
+      result.push_back(p[i].variable);
+    }
+    TRI_ASSERT(result.size() == n + 1);
+  }
+#endif
+  return result;
+}
+
+void EnumerateCollectionNode::setProjections(Projections projections) {
+  DocumentProducingNode::setProjections(std::move(projections));
 }
 
 /// @brief the cost of an enumerate collection node is a multiple of the cost of
@@ -2134,7 +2207,9 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
   if (isReference) {
     TRI_ASSERT(expInVarsToRegs.size() == 1);
   }
+#ifdef USE_V8
   bool const willUseV8 = expression()->willUseV8();
+#endif
 
   TRI_ASSERT(expression() != nullptr);
 
@@ -2162,13 +2237,15 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
     return std::make_unique<
         ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
-  } else if (!willUseV8) {
-    return std::make_unique<
-        ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>>(
-        &engine, this, std::move(registerInfos), std::move(executorInfos));
-  } else {
+#ifdef USE_V8
+  } else if (willUseV8) {
     return std::make_unique<
         ExecutionBlockImpl<CalculationExecutor<CalculationType::V8Condition>>>(
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
+#endif
+  } else {
+    return std::make_unique<
+        ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
   }
 }
@@ -2217,7 +2294,7 @@ void CalculationNode::replaceVariables(
   // check if the calculation uses any of the variables that we want to
   // replace
   for (auto const& it : variables) {
-    if (replacements.find(it->id) != replacements.end()) {
+    if (replacements.contains(it->id)) {
       // calculation uses a to-be-replaced variable
       expression()->replaceVariables(replacements);
       return;
@@ -2225,8 +2302,15 @@ void CalculationNode::replaceVariables(
   }
 }
 
+void CalculationNode::replaceAttributeAccess(
+    ExecutionNode const* self, Variable const* searchVariable,
+    std::span<std::string_view> attribute, Variable const* replaceVariable) {
+  expression()->replaceAttributeAccess(searchVariable, attribute,
+                                       replaceVariable);
+}
+
 void CalculationNode::getVariablesUsedHere(VarSet& vars) const {
-  _expression->variables(vars);
+  expression()->variables(vars);
 }
 
 std::vector<Variable const*> CalculationNode::getVariablesSetHere() const {
@@ -2320,6 +2404,7 @@ bool SubqueryNode::mayAccessCollections() {
       ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
       ExecutionNode::ENUMERATE_COLLECTION,
       ExecutionNode::INDEX,
+      ExecutionNode::JOIN,
       ExecutionNode::INSERT,
       ExecutionNode::UPDATE,
       ExecutionNode::REPLACE,
@@ -2735,18 +2820,12 @@ ExecutionNode* NoResultsNode::clone(ExecutionPlan* plan, bool withDependencies,
 
 size_t NoResultsNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
-SortElement::SortElement(Variable const* v, bool asc,
-                         arangodb::ResourceMonitor& resourceMonitor)
-    : var(v),
-      ascending(asc),
-      attributePath(
-          ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor>{
-              resourceMonitor}) {}
+SortElement::SortElement(Variable const* v, bool asc)
+    : var(v), ascending(asc) {}
 
 SortElement::SortElement(Variable const* v, bool asc,
-                         MonitoredStringVector const& path,
-                         arangodb::ResourceMonitor& resourceMonitor)
-    : var(v), ascending(asc), attributePath(path, resourceMonitor) {}
+                         std::vector<std::string> path)
+    : var(v), ascending(asc), attributePath(std::move(path)) {}
 
 std::string SortElement::toString() const {
   std::string result("$");
@@ -2863,13 +2942,9 @@ MaterializeNode* materialize::createMaterializeNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice const base) {
   auto isMulti = base.get(kMaterializeNodeMultiNodeParam);
   if (isMulti.isBoolean() && isMulti.getBoolean()) {
-    return new MaterializeMultiNode(plan, base);
+    return new MaterializeSearchNode(plan, base);
   }
-  auto inLocalDocId = base.get(kMaterializeNodeInLocalDocIdParam);
-  if (inLocalDocId.isBoolean() && inLocalDocId.getBoolean()) {
-    return new MaterializeSingleNode<true>(plan, base);
-  }
-  return new MaterializeSingleNode<false>(plan, base);
+  return new MaterializeRocksDBNode(plan, base);
 }
 
 MaterializeNode::MaterializeNode(ExecutionPlan* plan, ExecutionNodeId id,
@@ -2918,24 +2993,24 @@ std::vector<Variable const*> MaterializeNode::getVariablesSetHere() const {
   return std::vector<Variable const*>{_outVariable};
 }
 
-MaterializeMultiNode::MaterializeMultiNode(ExecutionPlan* plan,
-                                           ExecutionNodeId id,
-                                           aql::Variable const& inDocId,
-                                           aql::Variable const& outVariable)
+MaterializeSearchNode::MaterializeSearchNode(ExecutionPlan* plan,
+                                             ExecutionNodeId id,
+                                             aql::Variable const& inDocId,
+                                             aql::Variable const& outVariable)
     : MaterializeNode(plan, id, inDocId, outVariable) {}
 
-MaterializeMultiNode::MaterializeMultiNode(
+MaterializeSearchNode::MaterializeSearchNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : MaterializeNode(plan, base) {}
 
-void MaterializeMultiNode::doToVelocyPack(velocypack::Builder& nodes,
-                                          unsigned flags) const {
+void MaterializeSearchNode::doToVelocyPack(velocypack::Builder& nodes,
+                                           unsigned flags) const {
   // call base class method
   MaterializeNode::doToVelocyPack(nodes, flags);
   nodes.add(kMaterializeNodeMultiNodeParam, velocypack::Value(true));
 }
 
-std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
+std::unique_ptr<ExecutionBlock> MaterializeSearchNode::createBlock(
     ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
@@ -2959,16 +3034,16 @@ std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writableOutputRegisters));
 
-  auto executorInfos = MaterializerExecutorInfos<void>(
-      inNmDocIdRegId, outDocumentRegId, engine.getQuery());
+  auto executorInfos = MaterializerExecutorInfos(
+      inNmDocIdRegId, outDocumentRegId, engine.getQuery(), nullptr);
 
-  return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<void, false>>>(
+  return std::make_unique<ExecutionBlockImpl<MaterializeSearchExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
-ExecutionNode* MaterializeMultiNode::clone(ExecutionPlan* plan,
-                                           bool withDependencies,
-                                           bool withProperties) const {
+ExecutionNode* MaterializeSearchNode::clone(ExecutionPlan* plan,
+                                            bool withDependencies,
+                                            bool withProperties) const {
   TRI_ASSERT(plan);
 
   auto* outVariable = _outVariable;
@@ -2980,37 +3055,32 @@ ExecutionNode* MaterializeMultiNode::clone(ExecutionPlan* plan,
         plan->getAst()->variables()->createVariable(inNonMaterializedDocId);
   }
 
-  auto c = std::make_unique<MaterializeMultiNode>(
+  auto c = std::make_unique<MaterializeSearchNode>(
       plan, _id, *inNonMaterializedDocId, *outVariable);
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-template<bool localDocumentId>
-MaterializeSingleNode<localDocumentId>::MaterializeSingleNode(
+MaterializeRocksDBNode::MaterializeRocksDBNode(
     ExecutionPlan* plan, ExecutionNodeId id, aql::Collection const* collection,
     aql::Variable const& inDocId, aql::Variable const& outVariable)
     : MaterializeNode(plan, id, inDocId, outVariable),
       CollectionAccessingNode(collection) {}
 
-template<bool localDocumentId>
-MaterializeSingleNode<localDocumentId>::MaterializeSingleNode(
+MaterializeRocksDBNode::MaterializeRocksDBNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : MaterializeNode(plan, base), CollectionAccessingNode(plan, base) {}
 
-template<bool localDocumentId>
-void MaterializeSingleNode<localDocumentId>::doToVelocyPack(
-    velocypack::Builder& nodes, unsigned flags) const {
+void MaterializeRocksDBNode::doToVelocyPack(velocypack::Builder& nodes,
+                                            unsigned flags) const {
   // call base class method
   MaterializeNode::doToVelocyPack(nodes, flags);
 
   // add collection information
   CollectionAccessingNode::toVelocyPack(nodes, flags);
-  nodes.add(kMaterializeNodeInLocalDocIdParam, localDocumentId);
+  nodes.add(kMaterializeNodeInLocalDocIdParam, true);
 }
 
-template<bool localDocumentId>
-std::unique_ptr<ExecutionBlock>
-MaterializeSingleNode<localDocumentId>::createBlock(
+std::unique_ptr<ExecutionBlock> MaterializeRocksDBNode::createBlock(
     ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
@@ -3020,7 +3090,6 @@ MaterializeSingleNode<localDocumentId>::createBlock(
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     outDocumentRegId = it->second.registerId;
   }
-  auto const& name = collection()->name();
   RegisterId inNmDocIdRegId;
   {
     auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedDocId->id);
@@ -3036,16 +3105,16 @@ MaterializeSingleNode<localDocumentId>::createBlock(
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writableOutputRegisters));
 
-  auto executorInfos = MaterializerExecutorInfos<decltype(name)>(
-      inNmDocIdRegId, outDocumentRegId, engine.getQuery(), name);
-  return std::make_unique<
-      ExecutionBlockImpl<MaterializeExecutor<decltype(name), localDocumentId>>>(
+  auto executorInfos = MaterializerExecutorInfos(
+      inNmDocIdRegId, outDocumentRegId, engine.getQuery(), collection());
+
+  return std::make_unique<ExecutionBlockImpl<MaterializeRocksDBExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
-template<bool localDocumentId>
-ExecutionNode* MaterializeSingleNode<localDocumentId>::clone(
-    ExecutionPlan* plan, bool withDependencies, bool withProperties) const {
+ExecutionNode* MaterializeRocksDBNode::clone(ExecutionPlan* plan,
+                                             bool withDependencies,
+                                             bool withProperties) const {
   TRI_ASSERT(plan);
 
   auto* outVariable = _outVariable;
@@ -3057,11 +3126,8 @@ ExecutionNode* MaterializeSingleNode<localDocumentId>::clone(
         plan->getAst()->variables()->createVariable(inNonMaterializedDocId);
   }
 
-  auto c = std::make_unique<MaterializeSingleNode<localDocumentId>>(
+  auto c = std::make_unique<MaterializeRocksDBNode>(
       plan, _id, collection(), *inNonMaterializedDocId, *outVariable);
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
-
-template class arangodb::aql::materialize::MaterializeSingleNode<false>;
-template class arangodb::aql::materialize::MaterializeSingleNode<true>;

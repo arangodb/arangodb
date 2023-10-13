@@ -67,15 +67,15 @@ AqlValue LateMaterializedExpressionContext::getVariableValue(
           return AqlValue(AqlValueHintSliceNoCopy(s));
         }
 
-        for (auto const& [id, regId] : _filterVarsToRegister) {
+        auto regId = registerForVariable(variable->id);
+        TRI_ASSERT(regId != RegisterId::maxRegisterId);
+        if (regId != RegisterId::maxRegisterId) {
           // we can only get here in a post-filter expression
-          if (variable->id == id) {
-            TRI_ASSERT(regId < _inputRow.getNumRegisters());
-            if (doCopy) {
-              return _inputRow.getValue(regId).clone();
-            }
-            return _inputRow.getValue(regId);
+          TRI_ASSERT(regId < _inputRow.getNumRegisters());
+          if (doCopy) {
+            return _inputRow.getValue(regId).clone();
           }
+          return _inputRow.getValue(regId);
         }
 
         // should never happen

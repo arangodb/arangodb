@@ -34,24 +34,24 @@ namespace arangodb::cache {
 
 TransactionManager::TransactionManager() : _state({{0, 0, 0}, 0}) {}
 
-Transaction* TransactionManager::begin(bool readOnly) {
-  auto tx = std::make_unique<Transaction>(readOnly);
+void TransactionManager::begin(Transaction& tx, bool readOnly) {
+  tx = Transaction{readOnly};
 
   State newState;
   if (readOnly) {
     State state = _state.load(std::memory_order_relaxed);
     do {
-      tx->sensitive = false;
+      tx.sensitive = false;
       newState = state;
       newState.counters.openReads++;
       if (newState.counters.openWrites > 0) {
-        tx->sensitive = true;
+        tx.sensitive = true;
         newState.counters.openSensitive++;
       }
     } while (!_state.compare_exchange_strong(
         state, newState, std::memory_order_acq_rel, std::memory_order_relaxed));
   } else {
-    tx->sensitive = true;
+    tx.sensitive = true;
     State state = _state.load(std::memory_order_relaxed);
     do {
       newState = state;
@@ -66,35 +66,35 @@ Transaction* TransactionManager::begin(bool readOnly) {
     } while (!_state.compare_exchange_strong(
         state, newState, std::memory_order_acq_rel, std::memory_order_relaxed));
   }
-  tx->term = newState.term;
-  return tx.release();
+  tx.term = newState.term;
+  TRI_ASSERT(tx.term != Transaction::kInvalidTerm);
 }
 
-void TransactionManager::end(Transaction* tx) noexcept {
-  TRI_ASSERT(tx != nullptr);
+void TransactionManager::end(Transaction& tx) noexcept {
+  TRI_ASSERT(tx.term != Transaction::kInvalidTerm);
 
   State state = _state.load(std::memory_order_relaxed);
   State newState;
   do {
     if (((state.term & static_cast<uint64_t>(1)) > 0) &&
-        (state.term > tx->term)) {
-      tx->sensitive = true;
+        (state.term > tx.term)) {
+      tx.sensitive = true;
     }
 
     newState = state;
-    if (tx->readOnly) {
+    if (tx.readOnly) {
       newState.counters.openReads--;
     } else {
       newState.counters.openWrites--;
     }
 
-    if (tx->sensitive && (--newState.counters.openSensitive == 0)) {
+    if (tx.sensitive && (--newState.counters.openSensitive == 0)) {
       newState.term++;
     }
   } while (!_state.compare_exchange_strong(
       state, newState, std::memory_order_acq_rel, std::memory_order_relaxed));
 
-  delete tx;
+  tx = {};
 }
 
 uint64_t TransactionManager::term() const noexcept {

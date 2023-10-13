@@ -1048,6 +1048,12 @@ void ClusterInfo::loadPlan() {
       // that validate _existing_ databases. this must not fail.
       info.strictValidation(false);
 
+      // do not validate database names for existing databases.
+      // the rationale is that if a database was already created with
+      // an extended name, we should not declare it invalid and abort
+      // the startup once the extended names option is turned off.
+      info.validateNames(false);
+
       Result res = info.load(dbSlice, VPackSlice::emptyArraySlice());
 
       if (res.fail()) {
@@ -5342,7 +5348,7 @@ void ClusterInfo::startSyncers() {
 
   if (!_planSyncer->start() || !_curSyncer->start()) {
     LOG_TOPIC("b4fa6", FATAL, Logger::CLUSTER)
-        << "unable to start PlanSyncer/CurrentSYncer";
+        << "unable to start PlanSyncer/CurrentSyncer";
     FATAL_ERROR_EXIT();
   }
 }

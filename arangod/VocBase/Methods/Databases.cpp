@@ -45,11 +45,13 @@
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utilities/NameValidator.h"
+#ifdef USE_V8
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-utils.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Tasks.h"
+#endif
 #include "VocBase/Methods/Upgrade.h"
 #include "VocBase/vocbase.h"
 
@@ -58,7 +60,9 @@
 
 #include <absl/strings/str_cat.h>
 
+#ifdef USE_V8
 #include <v8.h>
+#endif
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -495,17 +499,9 @@ Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
     return TRI_ERROR_FORBIDDEN;
   }
 
-  bool extendedNames =
-      systemVocbase->server().getFeature<DatabaseFeature>().extendedNames();
-
-  if (auto res = DatabaseNameValidator::validateName(
-          /*allowSystem*/ false, extendedNames, dbName);
-      res.fail()) {
-    return res;
-  }
-
   Result res;
   auto& server = systemVocbase->server();
+#ifdef USE_V8
   if (server.hasFeature<V8DealerFeature>() &&
       server.isEnabled<V8DealerFeature>()) {
     V8DealerFeature& dealer = server.getFeature<V8DealerFeature>();
@@ -557,7 +553,9 @@ Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
       events::DropDatabase(dbName, Result(TRI_ERROR_INTERNAL), exec);
       return Result(TRI_ERROR_INTERNAL, dropError);
     }
-  } else {
+  } else
+#endif
+  {
     if (ServerState::instance()->isCoordinator()) {
       // If we are a coordinator in a cluster, we have to behave differently:
       auto& df = server.getFeature<DatabaseFeature>();

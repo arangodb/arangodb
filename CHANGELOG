@@ -1,6 +1,94 @@
 devel
 -----
 
+* Updated arangosync to v2.19.4.
+
+* Add cluster-internal connectivity checks.
+  This makes Coordinators and DB-Servers in a cluster periodically send check
+  requests to each other, in order to check if all servers can connect to
+  each other.
+  If a cluster-internal connection to another Coordinator or DB-Server cannot 
+  be established within 10 seconds, a warning will be logged. 
+
+  The new startup option `--cluster.connectivity-check-interval` can be used
+  to control the frequency of the connectivity check, in seconds.
+  If set to a value greater than zero, the initial connectivity check is
+  performed approximately 15 seconds after the instance start, and subsequent 
+  connectivity checks are executed with the specified frequency.
+  If set to a value of zero, connectivity checks are disabled.
+
+  This change also adds the metrics
+  `arangodb_network_connectivity_failures_coordinators` and
+  `arangodb_network_connectivity_failures_dbservers`, which can be monitored
+  for detecting temporary or permanent connectivity issues.
+
+* Change default value for `--database.extended-names` from `false` to `true`.
+  This will allow end users to use Unicode characters inside database names,
+  collection names, view names and index names by default, unless the
+  functionality is explicitly turned off.
+
+  Note: once a server in the deployment has been started with the flag set
+  to `true`, it will store that setting permanently. Switching the startup
+  option back to `false` will raise a warning about the option change at
+  startup, but not block the startup. Existing databases, collections, views
+  and indexes with extended names can still be used even with the option set
+  back to `false`, but no new database objects with extended names can be 
+  created with the option set back to `false`. So this state is only meant
+  to facilitate downgrading or reverting the option change. When the option
+  is supposed to be left at a value of `false`, all database objects with
+  extended names that were created in the meantime should be removed manually.
+
+* Allow the usage of the `_id` attribute in the stored values of persistent
+  indexes.
+
+* Updated arangosync to v2.19.4-preview-8.
+
+* Fix updating of collection properties (schema) when the collection has a
+  view on top.
+
+* Improve logging in case hot backup locks cannot be taken on coordinators.
+
+* Speed up incremental hotbackup upload by parallelization of
+  remote-to-remote copies. Tolerate deletion of old backups during
+  incremental upload.
+
+* Added the following metrics to improve observability of in-memory cache
+  subsystem:
+  - `rocksdb_cache_free_memory_tasks_total`: total number of `freeMemory`
+    tasks scheduled
+  - `rocksdb_cache_migrate_tasks_total`: total number of `migrate` tasks
+    scheduled
+  - `rocksdb_cache_free_memory_tasks_duration_total`: total time (microseconds)
+    spent in `freeMemory` tasks
+  - `rocksdb_cache_migrate_tasks_duration_total`: total time (microseconds)
+    spent in `migrate` tasks
+
+* Improve performance of AQL LimitExecutor for higher limit values.
+  The LimitExecutor now fast-forwards all input rows instead of working on the
+  individual input rows.
+
+* Remove special handling for backups taken with ArangoDB 3.5 in hot backup
+  restore.
+
+* Extend the internal state of ReadWriteLocks from 32-bit to 64-bit to prevent
+  potential overflows. Previously creating more than 64k streaming transactions
+  at the same time could produce an overflow that would effectively result in
+  undefined behavior.
+
+* Remove "database" attribute from the serialized version of AQL IndexNodes,
+  EnumerateCollectionNodes, EnumerateViewNodes, GraphNodes and RemoteNodes.
+  That attribute was never read back.
+
+  Also removed the "reverse" attribute from the serialized version of AQL 
+  IndexNodes, because it was also not read back except from tests.
+
+* Fixed issue with `keepNull=false` updates not being properly replicated
+  to followers.
+
+* FE-376: Fix Query UI crash on null values.
+
+* FE-375: Adds document counts to collection info screen.
+
 * Make replication WAL tailing schedule prefetch requests via the global
   scheduler, in the same way as the initial dump phase does. In the best
   case, this can speed up the getting-in-sync phase when getting shards in
@@ -255,6 +343,13 @@ devel
 * Upgraded Swagger-UI to v5.4.1
 
 * FE-248: Improve collections list UI.
+
+* Updated JavaScript dependencies:
+
+  qs: 6.11.0 -> 6.11.2
+  semver: 7.3.8 -> 7.5.4
+
+  This addresses CVE-2022-25883 in the semver module.
 
 * BTS-1124: wait for license to be applied locally before responding to the request.
 

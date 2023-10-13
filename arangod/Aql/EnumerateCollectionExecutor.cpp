@@ -308,7 +308,7 @@ EnumerateCollectionExecutor::produceRows(AqlItemBlockInputRange& inputRange,
         TRI_ASSERT(!output.isFull());
         AqlValue v((AqlValueHintUInt(counter)));
         AqlValueGuard guard{v, true};
-        output.moveValueInto(registerId, input, guard);
+        output.moveValueInto(registerId, input, &guard);
         TRI_ASSERT(output.produced());
         output.advanceRow();
 

@@ -28,6 +28,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Query.h"
+#include "Aql/SharedQueryState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "VocBase/ticks.h"
@@ -92,7 +93,8 @@ EngineInfoContainerCoordinator::~EngineInfoContainerCoordinator() = default;
 
 void EngineInfoContainerCoordinator::addNode(ExecutionNode* node) {
   TRI_ASSERT(node->getType() != ExecutionNode::INDEX &&
-             node->getType() != ExecutionNode::ENUMERATE_COLLECTION);
+             node->getType() != ExecutionNode::ENUMERATE_COLLECTION &&
+             node->getType() != ExecutionNode::JOIN);
 
   TRI_ASSERT(!_engines.empty());
   TRI_ASSERT(!_engineStack.empty());

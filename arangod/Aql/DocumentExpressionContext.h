@@ -83,7 +83,7 @@ class SimpleDocumentExpressionContext final : public DocumentExpressionContext {
                             bool& mustDestroy) const override;
 };
 
-// expression context which only has multiple variables available
+// expression context which has multiple variables available
 class GenericDocumentExpressionContext final
     : public DocumentExpressionContext {
  public:

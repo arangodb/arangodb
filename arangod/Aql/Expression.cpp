@@ -35,7 +35,9 @@
 #include "Aql/Quantifier.h"
 #include "Aql/QueryContext.h"
 #include "Aql/Range.h"
+#ifdef USE_V8
 #include "Aql/V8Executor.h"
+#endif
 #include "Aql/Variable.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Basics/Exceptions.h"
@@ -47,8 +49,10 @@
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
+#ifdef USE_V8
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
+#endif
 
 #include <absl/strings/str_cat.h>
 
@@ -57,8 +61,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Sink.h>
 #include <velocypack/Slice.h>
-
-#include <v8.h>
 
 #include <limits>
 
@@ -159,13 +161,15 @@ void Expression::replaceVariableReference(Variable const* variable,
   invalidateAfterReplacements();
 }
 
-void Expression::replaceAttributeAccess(
-    Variable const* variable, std::vector<std::string> const& attribute) {
+void Expression::replaceAttributeAccess(Variable const* searchVariable,
+                                        std::span<std::string_view> attribute,
+                                        Variable const* replaceVariable) {
   _node = _ast->clone(_node);
   TRI_ASSERT(_node != nullptr);
 
-  _node = Ast::replaceAttributeAccess(const_cast<AstNode*>(_node), variable,
-                                      attribute);
+  _node =
+      Ast::replaceAttributeAccess(ast(), const_cast<AstNode*>(_node),
+                                  searchVariable, attribute, replaceVariable);
   invalidateAfterReplacements();
 }
 
@@ -354,13 +358,11 @@ void Expression::initAccessor() {
 
   TRI_ASSERT(_node->numMembers() == 1);
   auto member = _node->getMemberUnchecked(0);
-  ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor> alloc = {
-      _resourceMonitor};
-  MonitoredStringVector parts{alloc};
+  std::vector<std::string> parts;
   parts.emplace_back(_node->getString());
 
   while (member->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    parts.insert(parts.begin(), MonitoredString{member->getString(), alloc});
+    parts.insert(parts.begin(), member->getString());
     member = member->getMemberUnchecked(0);
   }
 
@@ -374,8 +376,8 @@ void Expression::initAccessor() {
     auto v = static_cast<Variable const*>(member->getData());
 
     // specialize the simple expression into an attribute accessor
-    _accessor =
-        AttributeAccessor::create(AttributeNamePath(std::move(parts)), v);
+    _accessor = AttributeAccessor::create(
+        AttributeNamePath(std::move(parts), _resourceMonitor), v);
     TRI_ASSERT(_accessor != nullptr);
   }
 }
@@ -893,8 +895,7 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(ExpressionContext& ctx,
     auto arg = member->getMemberUnchecked(i);
 
     if (arg->type == NODE_TYPE_COLLECTION) {
-      params.parameters.emplace_back(arg->getStringValue(),
-                                     arg->getStringLength());
+      params.parameters.emplace_back(arg->getStringView());
       params.destroyParameters.push_back(1);
     } else {
       bool localMustDestroy;
@@ -913,6 +914,7 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(ExpressionContext& ctx,
   return a;
 }
 
+#ifdef USE_V8
 AqlValue Expression::invokeV8Function(
     ExpressionContext& ctx, std::string const& jsName,
     std::string const& ucInvokeFN, char const* AFN, bool rethrowV8Exception,
@@ -970,6 +972,7 @@ AqlValue Expression::invokeV8Function(
   mustDestroy = true;  // builder = dynamic data
   return AqlValue(builder->slice(), builder->size());
 }
+#endif
 
 // execute an expression of type SIMPLE, JavaScript variant
 AqlValue Expression::executeSimpleExpressionFCallJS(ExpressionContext& ctx,
@@ -984,6 +987,7 @@ AqlValue Expression::executeSimpleExpressionFCallJS(ExpressionContext& ctx,
         "user-defined functions cannot be executed on DB-Servers");
   }
 
+#ifdef USE_V8
   auto member = node->getMemberUnchecked(0);
   TRI_ASSERT(member->type == NODE_TYPE_ARRAY);
 
@@ -1073,6 +1077,11 @@ AqlValue Expression::executeSimpleExpressionFCallJS(ExpressionContext& ctx,
     return invokeV8Function(ctx, jsName, "", "", true, callArgs, args.get(),
                             mustDestroy);
   }
+#else
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "this version of ArangoDB is built without JavaScript support");
+#endif
 }
 
 // execute an expression of type SIMPLE with NOT

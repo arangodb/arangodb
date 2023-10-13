@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, assertNotEqual, AQL_EXPLAIN */
+/*global assertEqual, assertTrue, assertFalse, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -28,6 +28,7 @@
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
+const normalize = require("@arangodb/aql-helper").normalizeProjections;
 const ruleName = "reduce-extraction-to-projection";
 const cn = "UnitTestsOptimizer";
 
@@ -79,7 +80,7 @@ function projectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2], nodes[0].projections, query);
+        assertEqual(normalize(query[2]), normalize(nodes[0].projections), query);
         if (query[2].length) {
           assertTrue(nodes[0].indexCoversProjections, query);
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
@@ -108,7 +109,7 @@ function projectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2], nodes[0].projections, query);
+        assertEqual(normalize(query[2]), normalize(nodes[0].projections), query);
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
         if (query[2].length) {
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
@@ -127,7 +128,7 @@ function projectionsPlansTestSuite () {
         let plan = AQL_EXPLAIN(query[0]).plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
-        assertEqual(query[1], nodes[0].projections, query);
+        assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
       });
     },
@@ -171,7 +172,7 @@ function projectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2], nodes[0].projections, query);
+        assertEqual(normalize(query[2]), normalize(nodes[0].projections), query);
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
         
         if (query[2].length) {
@@ -191,7 +192,7 @@ function projectionsPlansTestSuite () {
         let plan = AQL_EXPLAIN(query[0]).plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
-        assertEqual(query[1], nodes[0].projections, query);
+        assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
       });
     },
@@ -235,7 +236,7 @@ function projectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2], nodes[0].projections, query);
+        assertEqual(normalize(query[2]), normalize(nodes[0].projections), query);
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
         if (query[2].length) {
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
@@ -255,7 +256,7 @@ function projectionsPlansTestSuite () {
         let plan = AQL_EXPLAIN(query[0]).plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
-        assertEqual(query[1], nodes[0].projections, query);
+        assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
       });
     },
@@ -285,7 +286,7 @@ function projectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2], nodes[0].projections, query);
+        assertEqual(normalize(query[2]), normalize(nodes[0].projections), query);
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
         if (query[2].length) {
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
@@ -312,7 +313,7 @@ function projectionsPlansTestSuite () {
         let plan = AQL_EXPLAIN(query[0]).plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
-        assertEqual(query[1], nodes[0].projections, query);
+        assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
         if (query[1].length) {
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
         } else {
@@ -346,7 +347,7 @@ function projectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2], nodes[0].projections, query);
+        assertEqual(normalize(query[2]), normalize(nodes[0].projections), query);
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
         if (query[2].length) {
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
@@ -371,7 +372,7 @@ function projectionsPlansTestSuite () {
         let plan = AQL_EXPLAIN(query[0]).plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
-        assertEqual(query[1], nodes[0].projections, query);
+        assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
       });
     },
@@ -390,7 +391,7 @@ function projectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2], nodes[0].projections, query);
+        assertEqual(normalize(query[2]), normalize(nodes[0].projections), query);
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
         if (query[2].length) {
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
@@ -409,7 +410,7 @@ function projectionsPlansTestSuite () {
         let plan = AQL_EXPLAIN(query[0]).plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
-        assertEqual(query[1], nodes[0].projections, query);
+        assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
       });
     },
@@ -431,7 +432,7 @@ function projectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2], nodes[0].projections, query);
+        assertEqual(normalize(query[2]), normalize(nodes[0].projections), query);
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
         
         if (query[2].length) {
@@ -459,7 +460,7 @@ function projectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2], nodes[0].projections, query);
+        assertEqual(normalize(query[2]), normalize(nodes[0].projections), query);
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
         
         if (query[2].length) {
@@ -486,7 +487,7 @@ function projectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2], nodes[0].projections, query);
+        assertEqual(normalize(query[2]), normalize(nodes[0].projections), query);
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
         
         if (query[2].length) {
@@ -519,7 +520,7 @@ function projectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2], nodes[0].projections, query);
+        assertEqual(normalize(query[2]), normalize(nodes[0].projections), query);
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
         
         if (query[2].length) {
@@ -548,7 +549,7 @@ function projectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2], nodes[0].projections, query);
+        assertEqual(normalize(query[2]), normalize(nodes[0].projections), query);
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
         
         if (query[2].length) {
@@ -567,7 +568,7 @@ function projectionsPlansTestSuite () {
         let plan = AQL_EXPLAIN(query[0]).plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
-        assertEqual(query[1], nodes[0].projections, query);
+        assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
       });
     },
@@ -585,7 +586,7 @@ function projectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2], nodes[0].projections, query);
+        assertEqual(normalize(query[2]), normalize(nodes[0].projections), query);
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
         
         if (query[2].length) {
@@ -604,7 +605,7 @@ function projectionsPlansTestSuite () {
         let plan = AQL_EXPLAIN(query[0]).plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
-        assertEqual(query[1], nodes[0].projections, query);
+        assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
       });
     },
@@ -628,7 +629,7 @@ function projectionsPlansTestSuite () {
         let plan = AQL_EXPLAIN(query[0]).plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
-        assertEqual(query[1], nodes[0].projections, query);
+        assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
       });
     },
@@ -680,7 +681,7 @@ function projectionsExtractionTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2], nodes[0].projections, query);
+        assertEqual(normalize(query[2]), normalize(nodes[0].projections), query);
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let results = db._query(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).toArray();
@@ -713,7 +714,7 @@ function projectionsExtractionTestSuite () {
         let plan = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode' || node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
-        assertEqual(query[1], nodes[0].projections, query);
+        assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
         assertEqual(query[2] ? 'IndexNode' : 'EnumerateCollectionNode', nodes[0].type, query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let results = db._query(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).toArray();
@@ -745,13 +746,30 @@ function projectionsExtractionTestSuite () {
         let plan = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode' || node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
-        assertEqual(query[1], nodes[0].projections, query);
+        assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
         assertEqual(query[2] ? 'IndexNode' : 'EnumerateCollectionNode', nodes[0].type, query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let results = db._query(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).toArray();
         assertEqual(query[3], results);
       });
     },
+
+    testExtractSecondSubAttribute : function () {
+      // While the index is created on [p.s, p.k], the query filters by p.k but only extracts p.s.
+      c.ensureIndex({ type: "persistent", fields: ["p.s", "p.k"]});
+      c.insert({"p": {"s": 1234, "k": "hund"}});
+      c.insert({"p": {"s": 1235, "k": "katze"}});
+      c.insert({"p": {"s": 1236, "k": "schnecke"}});
+      c.insert({"p": {"s": 1237, "k": "kuh"}});
+      let bindVars = {'@coll': cn};
+      let q = "" +
+        "FOR doc in @@coll " +
+        "FILTER doc.p.k == 'hund' " +
+        "SORT doc.p.s DESC " +
+        "RETURN doc.p.s";
+      let result = AQL_EXECUTE(q, bindVars);
+      assertEqual(result.json, [1234]);
+    }
   };
 }
 
@@ -793,7 +811,7 @@ function projectionsMaxProjectionsTestSuite () {
         let plan = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
-        assertEqual(query[1], nodes[0].projections, query);
+        assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
         if (query[1].length) {
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
         } else {
@@ -823,7 +841,7 @@ function projectionsMaxProjectionsTestSuite () {
         let plan = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
-        assertEqual(query[1].sort(), nodes[0].projections.sort(), query);
+        assertEqual(normalize(query[1].sort()), normalize(nodes[0].projections.sort()), query);
         if (query[1].length) {
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
         } else {

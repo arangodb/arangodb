@@ -492,7 +492,7 @@ arangodb::Result recreateCollection(
 
   VPackSlice parameters = job.parameters;
   int type = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-      parameters, "type", 2);
+      parameters.get(std::vector<std::string_view>({"parameters", "type"})), 2);
   std::string const collectionType(type == 2 ? "document" : "edge");
 
   // re-create collection
@@ -1309,7 +1309,9 @@ Result RestoreFeature::RestoreMainJob::run(
 
       if (options.progress) {
         int type = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-            parameters, "type", 2);
+            parameters.get(
+                std::vector<std::string_view>({"parameters", "type"})),
+            2);
         std::string const collectionType(type == 2 ? "document" : "edge");
         LOG_TOPIC("6ae09", INFO, arangodb::Logger::RESTORE)
             << "# Successfully restored " << collectionType << " collection '"
@@ -1445,7 +1447,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
   using arangodb::basics::StringUtils::formatSize;
 
   int type = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-      parameters, std::vector<std::string_view>({"parameters", "type"}), 2);
+      parameters.get(std::vector<std::string_view>({"parameters", "type"})), 2);
   std::string const collectionType(type == 2 ? "document" : "edge");
 
   auto&& currentStatus = progressTracker.getStatus(collectionName);
