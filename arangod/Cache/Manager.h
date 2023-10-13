@@ -91,6 +91,7 @@ class Manager {
     std::uint64_t freeMemoryTasksDuration = 0;  // total, micros
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     std::uint64_t tableCalls = 0;
+    std::uint64_t termCalls = 0;
 #endif
   };
 
@@ -210,6 +211,10 @@ class Manager {
   void trackTableCall() noexcept;
 #endif
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  void trackTermCall() noexcept;
+#endif
+
  private:
   // use sizeof(uint64_t) + sizeof(std::shared_ptr<Cache>) + 64 for upper bound
   // on size of std::set<std::shared_ptr<Cache>> node -- should be valid for
@@ -274,6 +279,8 @@ class Manager {
   // for every cache removal. we can also expect calls to this
   // function when the cache runs a "free memory" task.
   std::atomic<std::uint64_t> _tableCalls;
+  // number of calls to the `term()` function.
+  std::atomic<std::uint64_t> _termCalls;
 #endif
 
   // transaction management
