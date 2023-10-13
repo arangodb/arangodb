@@ -306,7 +306,6 @@ function projectionsPlansTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        db._explain(query[0]);
         let plan = AQL_EXPLAIN(query[0]).plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
@@ -318,20 +317,20 @@ function projectionsPlansTestSuite () {
     testPersistentSubAttributesMulti : function () {
       c.ensureIndex({ type: "persistent", fields: ["foo.bar", "foo.baz"] });
       let queries = [
-        [`FOR doc IN ${cn} RETURN doc.foo.bar`, 'persistent', [['foo', 'bar']], true ],
-        [`FOR doc IN ${cn} RETURN doc.foo.baz`, 'persistent', [['foo', 'baz']], true ],
-        [`FOR doc IN ${cn} RETURN doc.foo.bar.baz`, 'persistent', [['foo', 'bar', 'baz']], true ],
-        [`FOR doc IN ${cn} RETURN doc.foo.baz.bar`, 'persistent', [['foo', 'baz', 'bar']], true ],
-        [`FOR doc IN ${cn} RETURN [doc.foo.bar.baz, doc.foo.bar.bat]`, 'persistent', [['foo', 'bar', 'bat'], ['foo', 'bar', 'baz']], true ],
-        [`FOR doc IN ${cn} RETURN [doc.foo.baz.bar, doc.foo.baz.bat]`, 'persistent', [['foo', 'baz', 'bar'], ['foo', 'baz', 'bat']], true ],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc.foo.bar`, 'persistent', [['foo', 'bar']], true ],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc.foo.baz`, 'persistent', [['foo', 'baz']], true ],
-        [`FOR doc IN ${cn} FILTER doc.foo.baz == 1 RETURN doc.foo.baz`, 'persistent', [['foo', 'baz']], true ],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN 1`, 'persistent', [], false ],
-        [`FOR doc IN ${cn} FILTER doc.foo.baz == 1 RETURN 1`, 'persistent', [['foo', 'baz']], true ],
-        [`FOR doc IN ${cn} RETURN [doc.foo.bar, doc.foo.baz]`, 'persistent', [['foo', 'bar'], ['foo', 'baz']], true ],
-        [`FOR doc IN ${cn} RETURN [doc.foo.bar, doc.foo.baz.bar]`, 'persistent', [['foo', 'bar'], ['foo', 'baz', 'bar']], true ],
-        [`FOR doc IN ${cn} FILTER doc.foo.baz == 1 RETURN doc.foo.bar`, 'persistent', [['foo', 'bar'], ['foo', 'baz']], true ],
+        [`FOR doc IN ${cn} RETURN doc.foo.bar`, 'persistent', [['foo', 'bar']], true, [] ],
+        [`FOR doc IN ${cn} RETURN doc.foo.baz`, 'persistent', [['foo', 'baz']], true, [] ],
+        [`FOR doc IN ${cn} RETURN doc.foo.bar.baz`, 'persistent', [['foo', 'bar', 'baz']], true, [] ],
+        [`FOR doc IN ${cn} RETURN doc.foo.baz.bar`, 'persistent', [['foo', 'baz', 'bar']], true, [] ],
+        [`FOR doc IN ${cn} RETURN [doc.foo.bar.baz, doc.foo.bar.bat]`, 'persistent', [['foo', 'bar', 'bat'], ['foo', 'bar', 'baz']], true, [] ],
+        [`FOR doc IN ${cn} RETURN [doc.foo.baz.bar, doc.foo.baz.bat]`, 'persistent', [['foo', 'baz', 'bar'], ['foo', 'baz', 'bat']], true, [] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc.foo.bar`, 'persistent', [['foo', 'bar']], true, [] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc.foo.baz`, 'persistent', [['foo', 'baz']], true, [] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.baz == 1 RETURN doc.foo.baz`, 'persistent', [['foo', 'baz']], true, [['foo', 'baz']] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN 1`, 'persistent', [], false, [] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.baz == 1 RETURN 1`, 'persistent', [], false, [['foo', 'baz']] ],
+        [`FOR doc IN ${cn} RETURN [doc.foo.bar, doc.foo.baz]`, 'persistent', [['foo', 'bar'], ['foo', 'baz']], true, [] ],
+        [`FOR doc IN ${cn} RETURN [doc.foo.bar, doc.foo.baz.bar]`, 'persistent', [['foo', 'bar'], ['foo', 'baz', 'bar']], true, [] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.baz == 1 RETURN doc.foo.bar`, 'persistent', [['foo', 'bar']], true, [['foo', 'baz']] ],
       ];
 
       queries.forEach(function(query) {
@@ -342,11 +341,7 @@ function projectionsPlansTestSuite () {
         assertEqual(query[1], nodes[0].indexes[0].type, query);
         assertEqual(normalize(query[2]), normalize(nodes[0].projections), query);
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
-        if (query[2].length) {
-          assertNotEqual(-1, plan.rules.indexOf(ruleName));
-        } else {
-          assertEqual(-1, plan.rules.indexOf(ruleName));
-        }
+        assertEqual(normalize(query[4]), normalize(nodes[0].filterProjections), query);
       });
       
       queries = [
@@ -366,6 +361,7 @@ function projectionsPlansTestSuite () {
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
+        assertEqual(normalize(query[2]), normalize(nodes[0].filterProjections), query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
       });
     },
@@ -411,12 +407,12 @@ function projectionsPlansTestSuite () {
     testPersistentOnKeyAndOtherAttribute : function () {
       c.ensureIndex({ type: "persistent", fields: ["_key", "value1"] });
       let queries = [
-        [`FOR doc IN ${cn} RETURN doc.value1`, 'persistent', ['value1'], true ],
-        [`FOR doc IN ${cn} RETURN doc._key`, 'primary', ['_key'], true ],
-        [`FOR doc IN ${cn} FILTER doc._key == 'abc' RETURN doc.value1`, 'primary', ['value1'], false ],
-        [`FOR doc IN ${cn} FILTER doc._key == 'abc' RETURN doc.value2`, 'primary', ['value2'], false ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 93 RETURN doc.value1`, 'persistent', ['value1'], true ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 93 RETURN doc._key`, 'persistent', ['_key', 'value1'], true ],
+        [`FOR doc IN ${cn} RETURN doc.value1`, 'persistent', ['value1'], true, [] ],
+        [`FOR doc IN ${cn} RETURN doc._key`, 'primary', ['_key'], true, [] ],
+        [`FOR doc IN ${cn} FILTER doc._key == 'abc' RETURN doc.value1`, 'primary', ['value1'], false, [] ],
+        [`FOR doc IN ${cn} FILTER doc._key == 'abc' RETURN doc.value2`, 'primary', ['value2'], false, [] ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 93 RETURN doc.value1`, 'persistent', ['value1'], true, ['value1'] ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 93 RETURN doc._key`, 'persistent', ['_key'], true, ['value1'] ],
       ];
 
       queries.forEach(function(query) {
@@ -427,12 +423,7 @@ function projectionsPlansTestSuite () {
         assertEqual(query[1], nodes[0].indexes[0].type, query);
         assertEqual(normalize(query[2]), normalize(nodes[0].projections), query);
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
-        
-        if (query[2].length) {
-          assertNotEqual(-1, plan.rules.indexOf(ruleName));
-        } else {
-          assertEqual(-1, plan.rules.indexOf(ruleName));
-        }
+        assertEqual(normalize(query[4]), normalize(nodes[0].filterProjections), query);
       });
     },
     
@@ -670,7 +661,6 @@ function projectionsExtractionTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        db._explain(query[0]);
         let plan = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
         assertEqual(1, nodes.length, query);
@@ -771,7 +761,6 @@ function projectionsExtractionTestSuite () {
       // While the index is created on [p.s, p.k], the query filters by p.k but only extracts p.s.
       c.ensureIndex({ type: "persistent", fields: ["x", "y"], storedValues: ["z", "w"]});
       let q = `for doc1 in ${cn} filter doc1.x == 5 AND doc1.z == 8 return doc1.w`;
-      db._explain(q);
       let plan = AQL_EXPLAIN(q).plan;
       const index = plan.nodes[1];
       assertEqual(index.type, "IndexNode");
@@ -782,7 +771,6 @@ function projectionsExtractionTestSuite () {
     testRemoveUnnecessaryProjectionsCollection : function () {
       // While the index is created on [p.s, p.k], the query filters by p.k but only extracts p.s.
       let q = `for doc1 in ${cn} filter doc1.x == 5 AND doc1.z == 8 return doc1.w`;
-      db._explain(q);
       let plan = AQL_EXPLAIN(q).plan;
       const ec = plan.nodes[1];
       assertEqual(ec.type, "EnumerateCollectionNode");
