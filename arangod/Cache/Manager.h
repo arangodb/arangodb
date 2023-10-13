@@ -89,6 +89,9 @@ class Manager {
     std::uint64_t freeMemoryTasks = 0;
     std::uint64_t migrateTasksDuration = 0;     // total, micros
     std::uint64_t freeMemoryTasksDuration = 0;  // total, micros
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    std::uint64_t tableCalls = 0;
+#endif
   };
 
   static constexpr std::uint64_t kMinSize = 1024 * 1024;
@@ -203,6 +206,10 @@ class Manager {
   // track duration of free memory task, in ms
   void trackFreeMemoryTaskDuration(std::uint64_t duration) noexcept;
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  void trackTableCall() noexcept;
+#endif
+
  private:
   // use sizeof(uint64_t) + sizeof(std::shared_ptr<Cache>) + 64 for upper bound
   // on size of std::set<std::shared_ptr<Cache>> node -- should be valid for
@@ -257,6 +264,17 @@ class Manager {
   std::uint64_t _freeMemoryTasks;
   std::uint64_t _migrateTasksDuration;     // total, micros
   std::uint64_t _freeMemoryTasksDuration;  // total, micros
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // number of calls to the function `Cache::table()`.
+  // calling this function is expensive, because it loads an
+  // atomic shared_ptr, which currently requires an internal
+  // mutex.
+  // we can expect one call to Cache::table() for every
+  // cache lookup, one call for every cache insert, and one
+  // for every cache removal. we can also expect calls to this
+  // function when the cache runs a "free memory" task.
+  std::atomic<std::uint64_t> _tableCalls;
+#endif
 
   // transaction management
   TransactionManager _transactions;

@@ -29,6 +29,7 @@
 #include "Cache/Cache.h"
 #include "Cache/Manager.h"
 #include "Cache/Metadata.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 
 #include <chrono>
@@ -122,6 +123,11 @@ void FreeMemoryTask::run() {
     // do not toggle the resizing flag twice
     toggleResizingGuard.cancel();
   }
+
+  LOG_TOPIC("dce52", TRACE, Logger::CACHE)
+      << "freeMemory task took "
+      << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count()
+      << "ms";
 }
 
 MigrateTask::MigrateTask(Manager::TaskEnvironment environment, Manager& manager,
@@ -178,6 +184,11 @@ void MigrateTask::run() {
   auto diff = std::chrono::steady_clock::now() - now;
   _manager.trackMigrateTaskDuration(
       std::chrono::duration_cast<std::chrono::microseconds>(diff).count());
+
+  LOG_TOPIC("f4c44", TRACE, Logger::CACHE)
+      << "migrate task on table with " << _table->size() << " slots took "
+      << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count()
+      << "ms";
 
   // migrate() must have unset the migrating flag, but we
   // cannot check it here because another MigrateTask may
