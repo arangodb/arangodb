@@ -26,6 +26,7 @@
 
 const jsunity = require("jsunity");
 const errors = require("internal").errors;
+const db = require('internal').db;
 
 function binaryLiteralsSuite () {
   return {

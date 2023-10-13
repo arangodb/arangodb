@@ -35,7 +35,7 @@ const {assertEqual, assertTrue, assertFalse, fail} = jsunity.jsUnity.assertions;
 
 var _ = require('lodash');
 const internal = require('internal');
-const db = internal.db;
+const db = require('internal').db;
 
 const gm = require('@arangodb/general-graph');
 const vn = 'UnitTestVertexCollection';

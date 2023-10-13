@@ -35,7 +35,7 @@ var isEqual = helper.isEqual;
 var findExecutionNodes = helper.findExecutionNodes;
 var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
 var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
-const db = internal.db;
+const db = require('internal').db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

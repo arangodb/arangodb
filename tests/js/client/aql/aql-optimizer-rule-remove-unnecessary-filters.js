@@ -31,7 +31,7 @@
 var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var isEqual = helper.isEqual;
-const db = internal.db;
+const db = require('internal').db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

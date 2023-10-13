@@ -29,7 +29,7 @@
 var jsunity = require("jsunity");
 var internal = require("internal");
 var helper = require("@arangodb/aql-helper");
-const db = internal.db;
+const db = require('internal').db;
 
 function ahuacatlDocumentsTestSuite () {
   var c = null;

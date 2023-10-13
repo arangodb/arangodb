@@ -33,7 +33,7 @@ var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var getParseResults = helper.getParseResults;
 var assertParseError = helper.assertParseError;
-const db = internal.db;
+const db = require('internal').db;
 
 function aql_parse(query) {
   let command = `

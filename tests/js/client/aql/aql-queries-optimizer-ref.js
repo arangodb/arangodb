@@ -30,7 +30,7 @@ const jsunity = require("jsunity");
 const internal = require("internal");
 const helper = require("@arangodb/aql-helper");
 const getQueryResults = helper.getQueryResults;
-const db = internal.db;
+const db = require('internal').db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

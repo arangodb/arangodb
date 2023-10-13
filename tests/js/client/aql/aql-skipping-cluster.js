@@ -29,7 +29,7 @@ const internal = require("internal");
 const jsunity = require("jsunity");
 const {assertEqual} = jsunity.jsUnity.assertions;
 
-const db = internal.db;
+const db = require('internal').db;
 
 
 function aqlSkippingClusterTestsuite () {

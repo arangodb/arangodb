@@ -36,7 +36,7 @@ const jsunity = require("jsunity");
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const isEnterprise = require("internal").isEnterprise();
 
-const db = internal.db;
+const db = require('internal').db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

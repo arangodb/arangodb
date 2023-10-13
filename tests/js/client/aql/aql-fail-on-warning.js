@@ -30,7 +30,7 @@
 
 var internal = require("internal");
 var jsunity = require("jsunity");
-const db = internal.db;
+const db = require('internal').db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

@@ -34,7 +34,7 @@ const jsunity = require('jsunity');
 const {assertEqual, assertTrue, assertFalse, fail} = jsunity.jsUnity.assertions;
 
 const internal = require('internal');
-const db = internal.db;
+const db = require('internal').db;
 
 
 const vn = 'UnitTestVertexCollection';

@@ -29,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require("jsunity");
-const db = internal.db;
+const db = require('internal').db;
 
 function optimizerRuleTestSuite () {
   const ruleName = "fuse-filters";

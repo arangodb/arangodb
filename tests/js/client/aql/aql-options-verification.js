@@ -27,7 +27,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");
-const db = internal.db;
+const db = require('internal').db;
 const jsunity = require("jsunity");
 const errors = internal.errors;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;

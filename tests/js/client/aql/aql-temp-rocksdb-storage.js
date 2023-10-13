@@ -28,7 +28,7 @@
 
 const jsunity = require('jsunity');
 const internal = require('internal');
-const db = internal.db;
+const db = require('internal').db;
 const fs = require('fs');
 
 function StorageForQueryWithCollectionSortSuite() {

@@ -28,7 +28,7 @@
 
 let internal = require("internal");
 let jsunity = require("jsunity");
-const db = internal.db;
+const db = require('internal').db;
 
 function aqlRegistersLimitTestSuite () {
   const errors = internal.errors;

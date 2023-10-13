@@ -35,7 +35,7 @@ const {assertEqual, assertTrue, assertFalse, fail} = jsunity.jsUnity.assertions;
 
 var _ = require('lodash');
 const internal = require('internal');
-const db = internal.db;
+const db = require('internal').db;
 const isCluster = require("internal").isCluster();
 const errors = require('@arangodb').errors;
 const gm = require('@arangodb/general-graph');
