@@ -25,8 +25,10 @@
 #pragma once
 
 #include "Aql/ExecutionNode.h"
-#include "Basics/MemoryTypes/MemoryTypes.h"
-#include "types.h"
+#include "Aql/types.h"
+
+#include <string>
+#include <vector>
 
 namespace arangodb {
 namespace aql {
@@ -37,7 +39,7 @@ struct SortRegister {
   SortRegister(SortRegister&) = delete;  // we can not copy the ireseach scorer
   SortRegister(SortRegister&&) = default;
 
-  MonitoredStringVector const& attributePath;
+  std::vector<std::string> const& attributePath;
   RegisterId reg;
   bool asc;
 

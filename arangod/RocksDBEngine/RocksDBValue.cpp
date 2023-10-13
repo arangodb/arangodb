@@ -65,7 +65,7 @@ RocksDBValue RocksDBValue::ReplicatedState(VPackSlice data) {
   return RocksDBValue(RocksDBEntryType::ReplicatedState, data);
 }
 
-RocksDBValue RocksDBValue::PrimaryIndexValue(LocalDocumentId const& docId,
+RocksDBValue RocksDBValue::PrimaryIndexValue(LocalDocumentId docId,
                                              RevisionId rev) {
   return RocksDBValue(RocksDBEntryType::PrimaryIndexValue, docId, rev);
 }
@@ -86,17 +86,17 @@ RocksDBValue RocksDBValue::ZkdIndexValue() {
   return RocksDBValue(RocksDBEntryType::ZkdIndexValue);
 }
 
-RocksDBValue RocksDBValue::UniqueZkdIndexValue(LocalDocumentId const& docId) {
+RocksDBValue RocksDBValue::UniqueZkdIndexValue(LocalDocumentId docId) {
   return RocksDBValue(RocksDBEntryType::UniqueZkdIndexValue, docId,
                       RevisionId::none());
 }
 
-RocksDBValue RocksDBValue::UniqueVPackIndexValue(LocalDocumentId const& docId) {
+RocksDBValue RocksDBValue::UniqueVPackIndexValue(LocalDocumentId docId) {
   return RocksDBValue(RocksDBEntryType::UniqueVPackIndexValue, docId,
                       RevisionId::none());
 }
 
-RocksDBValue RocksDBValue::UniqueVPackIndexValue(LocalDocumentId const& docId,
+RocksDBValue RocksDBValue::UniqueVPackIndexValue(LocalDocumentId docId,
                                                  VPackSlice data) {
   return RocksDBValue(RocksDBEntryType::UniqueVPackIndexValue, docId, data);
 }
@@ -214,7 +214,7 @@ replication2::LogPayload RocksDBValue::logPayload(rocksdb::Slice const& slice) {
 
 RocksDBValue::RocksDBValue(RocksDBEntryType type) : _type(type), _buffer() {}
 
-RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
+RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId docId,
                            RevisionId revision)
     : _type(type), _buffer() {
   switch (_type) {
@@ -237,7 +237,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
   }
 }
 
-RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
+RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId docId,
                            VPackSlice data)
     : _type(type), _buffer() {
   switch (_type) {

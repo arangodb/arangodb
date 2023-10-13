@@ -43,7 +43,6 @@
 #include "Transaction/Methods.h"
 #include "Transaction/SmartContext.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"

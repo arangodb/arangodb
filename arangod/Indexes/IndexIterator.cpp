@@ -113,9 +113,10 @@ bool IndexIterator::nextImpl(LocalDocumentIdCallback const&,
 bool IndexIterator::nextDocumentImpl(DocumentCallback const& cb,
                                      uint64_t limit) {
   return nextImpl(
-      [this, &cb](LocalDocumentId const& token) {
+      [this, &cb](LocalDocumentId token) {
         return _collection->getPhysical()
-            ->read(_trx, token, cb, _readOwnWrites)
+            ->lookup(_trx, token, cb,
+                     {.readOwnWrites = static_cast<bool>(_readOwnWrites)})
             .ok();
       },
       limit);
@@ -144,7 +145,7 @@ void IndexIterator::skipImpl(uint64_t count, uint64_t& skipped) {
   do {
     TRI_ASSERT(skipped >= skippedInitial && skipped - skippedInitial <= count);
     if (!nextImpl(
-            [&skipped](LocalDocumentId const&) {
+            [&skipped](LocalDocumentId) {
               ++skipped;
               return true;
             },

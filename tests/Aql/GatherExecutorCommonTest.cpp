@@ -609,7 +609,7 @@ class CommonGatherExecutorTest
         old += (*val)++;
         AqlValue v{AqlValueHintInt(old)};
         AqlValueGuard guard(v, true);
-        output.moveValueInto(0, input, guard);
+        output.moveValueInto(0, input, &guard);
         output.advanceRow();
 
         if (*val == numDataRows) {
@@ -696,7 +696,7 @@ class CommonGatherExecutorTest
 
   // We need to retain the memory of this SortElement. Otherwise we have invalid
   // memory access, for sorting nodes.
-  SortElement _sortElement{nullptr, true, _resMonitor};
+  SortElement _sortElement{nullptr, true};
 
 };  // namespace arangodb::tests::aql
 

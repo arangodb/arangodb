@@ -79,7 +79,7 @@ class OutputAqlItemRow {
   // responsibility of possibly referenced external memory.
   template<class ItemRowType, class ValueType>
   void moveValueInto(RegisterId registerId, ItemRowType const& sourceRow,
-                     ValueType& value);
+                     ValueType value);
 
   // Consume the given shadow row and transform it into a InputAqlItemRow
   // for the next consumer of this block.
@@ -131,17 +131,17 @@ class OutputAqlItemRow {
   auto fastForwardAllRows(InputAqlItemRow const& sourceRow, size_t rows)
       -> void;
 
-  [[nodiscard]] RegisterCount getNumRegisters() const;
+  [[nodiscard]] RegisterCount getNumRegisters() const noexcept;
 
   /**
    * @brief May only be called after all output values in the current row have
    * been set, or in case there are zero output registers, after copyRow has
    * been called.
    */
-  void advanceRow();
+  void advanceRow() noexcept;
 
   // returns true if row was produced
-  [[nodiscard]] bool produced() const {
+  [[nodiscard]] bool produced() const noexcept {
     return _inputRowCopied && allValuesWritten();
   }
 
@@ -161,14 +161,14 @@ class OutputAqlItemRow {
    *        the client call as well. We are considered full as soon as
    *        hard or softLimit are reached.
    */
-  [[nodiscard]] bool isFull() const { return numRowsLeft() == 0; }
+  [[nodiscard]] bool isFull() const noexcept { return numRowsLeft() == 0; }
 
   /**
    * @brief Test if all allocated rows are used.
    *        this does not consider the client call and allows to use
    *        the left-over space for ShadowRows.
    */
-  [[nodiscard]] bool allRowsUsed() const {
+  [[nodiscard]] bool allRowsUsed() const noexcept {
     return _block == nullptr || block().numRows() <= _baseIndex;
   }
 
@@ -189,6 +189,11 @@ class OutputAqlItemRow {
     }
     return (std::min)(block().numRows() - _baseIndex, _call.getLimit());
   }
+
+  /**
+   * @brief Returns the number of rows of the underlying block
+   */
+  [[nodiscard]] size_t blockNumRows() const noexcept;
 
   // Use this function with caution! We need it only for the
   // ConstrainedSortExecutor
@@ -219,10 +224,6 @@ class OutputAqlItemRow {
 #endif
 
   void setCall(AqlCall call) noexcept;
-
-  size_t blockNumRows() const noexcept {
-    return _block == nullptr ? 0 : _block->numRows();
-  }
 
  private:
   [[nodiscard]] RegIdSet const& outputRegisters() const noexcept {
@@ -291,7 +292,7 @@ class OutputAqlItemRow {
   /// @brief move the value into the given output registers and count the value
   /// as written in _numValuesWritten.
   template<class ItemRowType, class ValueType>
-  void moveValueWithoutRowCopy(RegisterId registerId, ValueType& value);
+  void moveValueWithoutRowCopy(RegisterId registerId, ValueType value);
 
   template<class ItemRowType>
   void memorizeRow(ItemRowType const& sourceRow);

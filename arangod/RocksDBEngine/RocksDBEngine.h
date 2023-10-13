@@ -63,10 +63,16 @@ class TransactionDB;
 
 namespace arangodb {
 
-namespace replication2::storage::rocksdb {
+namespace replication2::storage {
+namespace rocksdb {
 struct AsyncLogWriteBatcherMetrics;
 struct IAsyncLogWriteBatcher;
-}  // namespace replication2::storage::rocksdb
+}  // namespace rocksdb
+
+namespace wal {
+struct WalManager;
+}
+}  // namespace replication2::storage
 
 class PhysicalCollection;
 class RocksDBBackgroundErrorListener;
@@ -321,8 +327,10 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
 
+#ifdef USE_V8
   /// @brief Add engine-specific V8 functions
   void addV8Functions() override;
+#endif
 
   /// @brief Add engine-specific REST handlers
   void addRestHandlers(rest::RestHandlerFactory& handlerFactory) override;
@@ -554,6 +562,12 @@ class RocksDBEngine final : public StorageEngine {
   bool checkExistingDB(
       std::vector<rocksdb::ColumnFamilyDescriptor> const& cfFamilies);
 
+  auto makeLogStorageMethods(replication2::LogId logId, uint64_t objectId,
+                             std::uint64_t vocbaseId,
+                             ::rocksdb::ColumnFamilyHandle* const logCf,
+                             ::rocksdb::ColumnFamilyHandle* const metaCf)
+      -> std::unique_ptr<replication2::storage::IStorageEngineMethods>;
+
   RocksDBOptionsProvider const& _optionsProvider;
 
   /// single rocksdb database used in this storage engine
@@ -782,6 +796,8 @@ class RocksDBEngine final : public StorageEngine {
   std::unique_ptr<rocksdb::Env> _checksumEnv;
 
   std::unique_ptr<RocksDBDumpManager> _dumpManager;
+
+  std::shared_ptr<replication2::storage::wal::WalManager> _walManager;
 };
 
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";

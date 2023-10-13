@@ -63,15 +63,22 @@ class Scheduler {
   // ---------------------------------------------------------------------------
   // Scheduling and Task Queuing - the relevant stuff
   // ---------------------------------------------------------------------------
- public:
   class DelayedWorkItem;
   typedef std::chrono::steady_clock clock;
   typedef std::shared_ptr<DelayedWorkItem> WorkHandle;
 
+  // push an item onto the queue. does not indicate success or failure
+  // by returning a value, but will throw if the item could not be pushed
+  // onto the queue. as the function is marked noexcept, this will also
+  // lead to the program aborting with std::terminate.
   template<typename F,
            std::enable_if_t<std::is_class_v<std::decay_t<F>>, int> = 0>
   void queue(RequestLane lane, F&& fn) noexcept {
-    doQueue(lane, std::forward<F>(fn), false);
+    // doQueue() will always return true for unbounded queues.
+    // in the case of failure, doQueue() will throw
+    [[maybe_unused]] bool result =
+        doQueue(lane, std::forward<F>(fn), /*bounded*/ false);
+    TRI_ASSERT(result);
   }
   template<typename F, typename R = std::invoke_result_t<F>,
            std::enable_if_t<std::is_class_v<std::decay_t<F>>, int> = 0>
@@ -84,6 +91,8 @@ class Scheduler {
     return f;
   }
 
+  // push an item onto the queue. indicates success or failure by returning
+  // a boolean value (true = queueing successful, false = queueing failed)
   template<typename F,
            std::enable_if_t<std::is_class_v<std::decay_t<F>>, int> = 0>
   [[nodiscard]] bool tryBoundedQueue(RequestLane lane, F&& fn) noexcept {
@@ -195,7 +204,7 @@ class Scheduler {
  private:
   template<typename F,
            std::enable_if_t<std::is_class_v<std::decay_t<F>>, int> = 0>
-  bool doQueue(RequestLane lane, F&& fn, bool bounded) {
+  [[nodiscard]] bool doQueue(RequestLane lane, F&& fn, bool bounded) {
     auto item = std::make_unique<Scheduler::WorkItem<std::decay_t<F>>>(
         std::forward<F>(fn));
     auto result = queueItem(lane, std::move(item), bounded);

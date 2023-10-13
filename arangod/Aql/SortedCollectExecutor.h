@@ -208,7 +208,6 @@ class SortedCollectExecutor {
  private:
   Infos const& infos() const noexcept { return _infos; };
 
- private:
   Infos const& _infos;
 
   /// @brief details about the current group

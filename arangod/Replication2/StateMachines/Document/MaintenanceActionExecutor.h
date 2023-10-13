@@ -41,9 +41,9 @@ struct IMaintenanceActionExecutor {
   virtual auto executeDropCollectionAction(ShardID shard,
                                            CollectionID collection)
       -> Result = 0;
-  virtual auto executeModifyCollectionAction(
-      ShardID shard, CollectionID collection,
-      std::shared_ptr<VPackBuilder> properties, std::string followersToDrop)
+  virtual auto executeModifyCollectionAction(ShardID shard,
+                                             CollectionID collection,
+                                             velocypack::SharedSlice)
       -> Result = 0;
   virtual auto executeCreateIndex(
       ShardID shard, std::shared_ptr<VPackBuilder> const& properties,
@@ -65,8 +65,7 @@ class MaintenanceActionExecutor : public IMaintenanceActionExecutor {
   auto executeDropCollectionAction(ShardID shard, CollectionID collection)
       -> Result override;
   auto executeModifyCollectionAction(ShardID shard, CollectionID collection,
-                                     std::shared_ptr<VPackBuilder> properties,
-                                     std::string followersToDrop)
+                                     velocypack::SharedSlice properties)
       -> Result override;
   auto executeCreateIndex(
       ShardID shard, std::shared_ptr<VPackBuilder> const& properties,
@@ -75,6 +74,10 @@ class MaintenanceActionExecutor : public IMaintenanceActionExecutor {
   auto executeDropIndex(ShardID shard, velocypack::SharedSlice index)
       -> Result override;
   void addDirty() override;
+
+ private:
+  auto lookupShard(ShardID const& shard) noexcept
+      -> ResultT<std::shared_ptr<LogicalCollection>>;
 
  private:
   GlobalLogIdentifier _gid;

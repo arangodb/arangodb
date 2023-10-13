@@ -69,10 +69,6 @@ ExecutionBlockImpl<AsyncExecutor>::execute(AqlCallStack const& stack) {
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
     AqlCallStack const& stack) {
-  //  if (getQuery().killed()) {
-  //    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-  //  }
-
   std::lock_guard<std::mutex> guard(_mutex);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool old = false;
@@ -107,7 +103,7 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
 
   _internalState = AsyncState::InProgress;
   bool queued =
-      _sharedState->asyncExecuteAndWakeup([this, stack](bool const isAsync) {
+      _sharedState->asyncExecuteAndWakeup([this, stack](bool isAsync) {
         std::unique_lock<std::mutex> guard(_mutex, std::defer_lock);
 
         try {

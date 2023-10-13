@@ -105,7 +105,7 @@ struct Collection {
     // Did a short_cut here to avoid concatenated changes
     std::optional<arangodb::velocypack::Builder> schema{std::nullopt};
 
-    bool operator==(MutableProperties other) const noexcept;
+    bool operator==(MutableProperties const& other) const noexcept;
   };
 
   MutableProperties mutableProperties;

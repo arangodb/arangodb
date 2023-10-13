@@ -80,7 +80,6 @@ function explainSuite () {
       node = nodes[n++];
       assertEqual("EnumerateCollectionNode", node.type);
       assertEqual([ prev ], node.dependencies);
-      assertEqual("_system", node.database);
       assertEqual(cn, node.collection);
       assertEqual("i", node.outVariable.name);
       prev = node.id;

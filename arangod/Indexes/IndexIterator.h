@@ -150,10 +150,30 @@ class IndexIterator {
     velocypack::ValueLength _storedValuesLength;
   };
 
-  // TODO: Move to iresearch
+  // TODO(MBkkt) move callback stuff to separate header
+  // TODO(MBkkt) try to use view/move_only options
   template<typename... Funcs>
-  class CallbackImpl : private fu2::function<Funcs...> {
+  class CallbackImplStrict : fu2::function<Funcs...> {
     using Base = fu2::function<Funcs...>;
+
+   public:
+    using Base::operator();
+    using Base::operator bool;
+
+    bool operator==(std::nullptr_t) { return !bool(*this); }
+
+    bool operator!=(std::nullptr_t) { return bool(*this); }
+
+    CallbackImplStrict() noexcept = default;
+
+    template<typename... Fs>
+    CallbackImplStrict(Fs&&... fs)
+        : Base{fu2::overload(std::forward<Fs>(fs)...)} {}
+  };
+
+  template<typename... Funcs>
+  class CallbackImplWeak : CallbackImplStrict<Funcs...> {
+    using Base = CallbackImplStrict<Funcs...>;
 
     struct DummyRetval {
       template<typename T>
@@ -171,25 +191,41 @@ class IndexIterator {
 
     bool operator!=(std::nullptr_t) { return bool(*this); }
 
-    CallbackImpl() noexcept = default;
+    CallbackImplWeak() noexcept = default;
 
     template<typename... Fs>
-    CallbackImpl(Fs&&... fs)
-        : Base{fu2::overload(std::forward<Fs>(fs)...,
-                             [](auto&&...) { return DummyRetval{}; })} {}
+    CallbackImplWeak(Fs&&... fs)
+        : Base{std::forward<Fs>(fs)...,
+               [](auto&&...) { return DummyRetval{}; }} {}
   };
 
   using LocalDocumentIdCallback =
-      CallbackImpl<bool(LocalDocumentId const& token) const>;
+      fu2::function<bool(LocalDocumentId token) const>;
 
-  using DocumentCallback = CallbackImpl<bool(LocalDocumentId const& token,
-                                             velocypack::Slice doc) const>;
+  // the bool return value of the callback indicates whether the callback
+  // has ignored or used the document.
+  // if the callback returns true, it means the callback has done something
+  // meaningful with the document, e.g. used it to write a result row into
+  // some output block in AQL. the caller can then use the returned true
+  // value as an indicator to count up the number of rows produced.
+  // if the callback returns false, it means the callback has ignored the
+  // document. this is true for example for callbacks that actively filter
+  // out certain documents.
+  using DocumentCallback = fu2::function<bool(
+      LocalDocumentId token, aql::DocumentData&& data, VPackSlice doc) const>;
+
+  static DocumentCallback makeDocumentCallback(velocypack::Builder& builder) {
+    return [&](LocalDocumentId, aql::DocumentData&&, VPackSlice doc) {
+      builder.add(doc);
+      return true;
+    };
+  }
 
   using CoveringCallback =
-      CallbackImpl<bool(LocalDocumentId const& token,
-                        IndexIteratorCoveringData& covering) const,
-                   bool(aql::AqlValue&& searchDoc,
-                        IndexIteratorCoveringData& covering) const>;
+      CallbackImplWeak<bool(LocalDocumentId token,
+                            IndexIteratorCoveringData& covering) const,
+                       bool(aql::AqlValue&& searchDoc,
+                            IndexIteratorCoveringData& covering) const>;
 
  public:
   IndexIterator(IndexIterator const&) = delete;

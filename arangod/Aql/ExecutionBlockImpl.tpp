@@ -80,8 +80,9 @@ class ConstFetcher;
 template<class UsedFetcher>
 class IdExecutor;
 class IndexExecutor;
-template<typename T, bool localDocumentId>
-class MaterializeExecutor;
+class JoinExecutor;
+class MaterializeRocksDBExecutor;
+class MaterializeSearchExecutor;
 template<typename FetcherType, typename ModifierType>
 class ModificationExecutor;
 
@@ -330,7 +331,10 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
     // Assert that the block has enough registers. This must be guaranteed by
     // the register planning.
     TRI_ASSERT(newBlock->numRegisters() ==
-               _registerInfos.numberOfOutputRegisters());
+               _registerInfos.numberOfOutputRegisters())
+        << "newBlock->numRegisters() = " << newBlock->numRegisters()
+        << " _registerInfos.numberOfOutputRegisters() = "
+        << _registerInfos.numberOfOutputRegisters();
     // Check that all output registers are empty.
     size_t const n = newBlock->numRows();
     auto const& regs = _registerInfos.getOutputRegisters();
@@ -758,7 +762,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   EnumeratePathsExecutor<WeightedKShortestPathsTracer>,
                   EnumeratePathsExecutor<WeightedKShortestPathsCluster>,
                   EnumeratePathsExecutor<WeightedKShortestPathsClusterTracer>,
-                  ParallelUnsortedGatherExecutor,
+                  ParallelUnsortedGatherExecutor, JoinExecutor,
                   IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>,
                   IdExecutor<ConstFetcher>, HashedCollectExecutor,
                   AccuWindowExecutor, WindowExecutor, IndexExecutor,
@@ -794,9 +798,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   MultipleRemoteModificationExecutor, SortExecutor,
                   // only available in Enterprise
                   arangodb::iresearch::OffsetMaterializeExecutor,
-                  MaterializeExecutor<void, false>,
-                  MaterializeExecutor<std::string const&, true>,
-                  MaterializeExecutor<std::string const&, false>>) ||
+                  MaterializeSearchExecutor, MaterializeRocksDBExecutor>) ||
           IsSearchExecutor<Executor>::value,
       "Unexpected executor for SkipVariants::EXECUTOR");
 

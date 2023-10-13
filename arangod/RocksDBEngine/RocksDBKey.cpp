@@ -53,8 +53,7 @@ RocksDBKey::RocksDBKey(RocksDBKey&& other) noexcept
 }
 
 /// @brief verify that a key actually contains the given local document id
-bool RocksDBKey::containsLocalDocumentId(
-    LocalDocumentId const& documentId) const {
+bool RocksDBKey::containsLocalDocumentId(LocalDocumentId documentId) const {
   switch (_type) {
     case RocksDBEntryType::Document:
     case RocksDBEntryType::EdgeIndexValue:
@@ -524,7 +523,7 @@ std::string_view RocksDBKey::vertexId(char const* data, size_t size) {
 
 VPackSlice RocksDBKey::indexedVPack(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
-  TRI_ASSERT(size > sizeof(uint64_t));
+  TRI_ASSERT(size > sizeof(uint64_t)) << "size = " << size;
   return VPackSlice(reinterpret_cast<uint8_t const*>(data) + sizeof(uint64_t));
 }
 
