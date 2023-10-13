@@ -38,6 +38,21 @@ var db = require("@arangodb").db;
 
 exports.isEqual = isEqual;
 
+function normalizeProjections (p) {
+  return (p || []).map((p) => {
+    if (Array.isArray(p)) {
+      return p;
+    }
+    if (typeof p === 'string') {
+      return [p];
+    }
+    if (p.hasOwnProperty("path")) {
+      return p.path;
+    }
+    return [];
+  }).sort();
+}
+
 function normalizeRow (row, recursive) {
   if (row !== null &&
     typeof row === 'object' &&
@@ -478,3 +493,4 @@ exports.removeClusterNodesFromPlan = removeClusterNodesFromPlan;
 exports.removeCost = removeCost;
 exports.unpackRawExpression = unpackRawExpression;
 exports.sanitizeStats = sanitizeStats;
+exports.normalizeProjections = normalizeProjections;
