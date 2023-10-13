@@ -176,7 +176,7 @@ function iResearchFeatureAqlTestSuite () {
         }
       }
       {
-        const filePath = require("fs").join(internal.pathForTesting('client'), 'aql', 'iresearch', `model_cooking.bin`);
+        const filePath = require("fs").join(internal.pathForTesting('common'), 'aql', 'iresearch', `model_cooking.bin`);
         const modelFile = require("path").resolve(filePath);
 
         if (!isEnterprise) {
@@ -202,7 +202,7 @@ function iResearchFeatureAqlTestSuite () {
         }
       }
       {
-        const filePath = require("fs").join(internal.pathForTesting('client'), 'aql', 'iresearch', `model_cooking.bin`);
+        const filePath = require("fs").join(internal.pathForTesting('common'), 'aql', 'iresearch', `model_cooking.bin`);
         const modelFile = require("path").resolve(filePath);
 
         if (!isEnterprise) {
@@ -1666,7 +1666,7 @@ function iResearchFeatureAqlTestSuite () {
       }
 
       let analyzerName = "classificationUnderTest";
-      const filePath = require("fs").join(internal.pathForTesting('client'), 'aql', 'iresearch', `model_cooking.bin`);
+      const filePath = require("fs").join(internal.pathForTesting('common'), 'aql', 'iresearch', `model_cooking.bin`);
       const modelFile = require("path").resolve(filePath);
 
       // all defaults
@@ -1778,7 +1778,7 @@ function iResearchFeatureAqlTestSuite () {
 
 
       let analyzerName = "nearestNeighborsUnderTest";
-      const filePath = require("fs").join(internal.pathForTesting('client'), 'aql', 'iresearch', `model_cooking.bin`);
+      const filePath = require("fs").join(internal.pathForTesting('common'), 'aql', 'iresearch', `model_cooking.bin`);
       const modelFile = require("path").resolve(filePath);
 
 

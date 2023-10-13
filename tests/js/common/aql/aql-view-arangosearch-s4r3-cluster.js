@@ -30,7 +30,7 @@
 
 const jsunity = require("jsunity");
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
-const base = require("fs").join(require('internal').pathForTesting('client'),
+const base = require("fs").join(require('internal').pathForTesting('common'),
   'aql', 'aql-view-arangosearch-cluster.inc');
 const IResearchAqlTestSuite = require("internal").load(base);
 
@@ -38,17 +38,18 @@ const IResearchAqlTestSuite = require("internal").load(base);
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(function IResearchAqlTestSuite_s4_r1() {
-  let suite = {};
+jsunity.run(function IResearchAqlTestSuite_s4_r3() {
+  let suite = {
+  };
 
   deriveTestSuite(
-    IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 1 }),
+    IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 2 }),
     suite,
-    "_FourShards"
+    "_FourShardsReplTwo"
   );
 
   // order for multiple shards is nondeterministic
-  suite.testInTokensFilterSortTFIDF_FourShards = function () {
+  suite.testInTokensFilterSortTFIDF_FourShardsReplTwo = function () {
     var result = require('internal').db._query(
       "FOR doc IN UnitTestsView SEARCH ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') OPTIONS { waitForSync : true } SORT TFIDF(doc) LIMIT 4 RETURN doc"
     ).toArray();
