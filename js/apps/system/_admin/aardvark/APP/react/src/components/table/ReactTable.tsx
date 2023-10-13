@@ -8,6 +8,7 @@ import {
   Tbody,
   Td,
   Text,
+  Tfoot,
   Th,
   Thead,
   Tr
@@ -26,6 +27,7 @@ type ReactTableProps<Data extends object> = {
   onRowSelect?: (row: Row<Data>) => void;
   children?: React.ReactNode;
   renderSubComponent?: (row: Row<Data>) => React.ReactNode;
+  layout?: "fixed" | "auto";
 };
 
 export function ReactTable<Data extends object>({
@@ -33,9 +35,11 @@ export function ReactTable<Data extends object>({
   onRowSelect,
   children,
   table,
-  renderSubComponent
+  renderSubComponent,
+  layout
 }: ReactTableProps<Data>) {
   const rows = table.getRowModel().rows;
+
   return (
     <Stack>
       {children}
@@ -44,7 +48,14 @@ export function ReactTable<Data extends object>({
         borderColor="gray.200"
         backgroundColor="white"
       >
-        <Table whiteSpace="normal" size="sm" colorScheme="gray">
+        <Table
+          whiteSpace="normal"
+          size="sm"
+          colorScheme="gray"
+          css={{
+            tableLayout: layout
+          }}
+        >
           <Thead>
             {table.getHeaderGroups().map(headerGroup => (
               <Tr key={headerGroup.id}>
@@ -74,6 +85,25 @@ export function ReactTable<Data extends object>({
               <Box padding="4">{emptyStateMessage}</Box>
             )}
           </Tbody>
+          <Tfoot>
+            {table.getFooterGroups().map(group => {
+              return (
+                <Tr key={group.id}>
+                  {group.headers.map(header => {
+                    return (
+                      <Th key={header.id}>
+                        {" "}
+                        {flexRender(
+                          header.column.columnDef.footer,
+                          header.getContext()
+                        )}
+                      </Th>
+                    );
+                  })}
+                </Tr>
+              );
+            })}
+          </Tfoot>
         </Table>
       </TableContainer>
     </Stack>
@@ -88,6 +118,8 @@ const SortableTh = <Data extends object>({
   const canSort = header.column.getCanSort();
   return (
     <Th
+      left={header.getStart()}
+      width={header.getSize()}
       onClick={header.column.getToggleSortingHandler()}
       _hover={
         canSort
@@ -170,7 +202,7 @@ const SelectableTr = <Data extends object>({
     >
       {row.getVisibleCells().map(cell => {
         return (
-          <Td key={cell.id}>
+          <Td key={cell.id} width={cell.column.getSize()}>
             {flexRender(cell.column.columnDef.cell, cell.getContext())}
           </Td>
         );
