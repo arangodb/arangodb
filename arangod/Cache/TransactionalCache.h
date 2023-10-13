@@ -127,7 +127,8 @@ class TransactionalCache final : public Cache {
                                        bool enableWindowedStats);
 
   bool freeMemoryWhile(std::function<bool(std::uint64_t)> const& cb) override;
-  void migrateBucket(void* sourcePtr, std::unique_ptr<Table::Subtable> targets,
+  void migrateBucket(Table* table, void* sourcePtr,
+                     std::unique_ptr<Table::Subtable> targets,
                      Table& newTable) override;
 
   // helpers
