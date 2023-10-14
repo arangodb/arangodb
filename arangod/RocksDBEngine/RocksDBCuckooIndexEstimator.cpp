@@ -33,6 +33,8 @@
 
 #include <snappy.h>
 
+#undef ARANGODB_DEBUG_MEMORY_USAGE
+
 namespace arangodb {
 
 template<class Key>
@@ -833,7 +835,7 @@ void RocksDBCuckooIndexEstimator<Key>::checkInvariants() const {
   // invariants check is disabled because it slows down
   // everything considerably. can be turned back on for
   // debugging.
-#if 0
+#if ARANGODB_DEBUG_MEMORY_USAGE
   uint64_t memoryUsage = 0;
   for (auto const& it : _insertBuffers) {
     memoryUsage +=
