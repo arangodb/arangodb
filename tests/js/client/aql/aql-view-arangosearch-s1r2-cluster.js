@@ -30,7 +30,7 @@
 
 const jsunity = require("jsunity");
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
-const base = require("fs").join(require('internal').pathForTesting('common'),
+const base = require("fs").join(require('internal').pathForTesting('client'),
   'aql', 'aql-view-arangosearch-cluster.inc');
 const IResearchAqlTestSuite = require("internal").load(base);
 
