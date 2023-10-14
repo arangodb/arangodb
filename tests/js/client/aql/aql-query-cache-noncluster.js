@@ -91,6 +91,7 @@ function ahuacatlQueryCacheTestSuite () {
         AQL_QUERY_CACHE_PROPERTIES(${JSON.stringify(cacheProperties)});
         AQL_QUERY_CACHE_INVALIDATE();
       `;
+      arango.POST("/_admin/execute", command);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
