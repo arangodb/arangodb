@@ -47,6 +47,8 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
             "--log.force-direct", "true",
             '--log.level', 'warning',
             "--log.level", "v8=debug",
+            # ATM CircleCI does not support to attach debuggers, so instead we generate core dumps
+            "--coreAbrt", "true",
             '--server.endpoint', 'none',
             '--javascript.allow-external-process-control', 'true',
             '--javascript.execute', testscript,
