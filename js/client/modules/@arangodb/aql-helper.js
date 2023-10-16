@@ -363,18 +363,7 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
 
     results[i] = execute_json(plans[i].plan, paramNone);
     // ignore these statistics for comparisons
-    delete results[i].stats.scannedFull;
-    delete results[i].stats.scannedIndex;
-    delete results[i].stats.cursorsCreated;
-    delete results[i].stats.cursorsRearmed;
-    delete results[i].stats.cacheHits;
-    delete results[i].stats.cacheMisses;
-    delete results[i].stats.filtered;
-    delete results[i].stats.executionTime;
-    delete results[i].stats.httpRequests;
-    delete results[i].stats.peakMemoryUsage;
-    delete results[i].stats.intermediateCommits;
-    delete results[i].stats.fullCount;
+    results[i].stats = sanitizeStats(results[i].stats);
 
     if (debug) {
       require('internal').print('\n' + i + ' DONE\n');
