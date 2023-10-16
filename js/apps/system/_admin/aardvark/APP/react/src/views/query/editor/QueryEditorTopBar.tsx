@@ -1,9 +1,18 @@
-import { Button, Flex, Icon, IconButton } from "@chakra-ui/react";
+import {
+  Button,
+  Flex,
+  Icon,
+  IconButton,
+  Tooltip,
+  useDisclosure
+} from "@chakra-ui/react";
 import React from "react";
 import { MagicWand } from "styled-icons/boxicons-solid";
+import { Bug } from "styled-icons/fa-solid";
 import { ExternalLink } from "../../../components/link/ExternalLink";
 import SingleSelect from "../../../components/select/SingleSelect";
 import { useQueryContext } from "../QueryContextProvider";
+import { DebugPackageModal } from "./DebugPackageModal";
 import { QuerySpotlight } from "./QuerySpotlight";
 
 export const QueryEditorTopBar = () => {
@@ -29,6 +38,11 @@ export const QueryEditorTopBar = () => {
     });
     setResetEditor(!resetEditor);
   };
+  const {
+    isOpen: isDebugPackageModalOpen,
+    onOpen: onOpenDebugPackageModal,
+    onClose: onCloseDebugPackageModal
+  } = useDisclosure();
   return (
     <Flex
       gap="2"
@@ -46,6 +60,11 @@ export const QueryEditorTopBar = () => {
       >
         Saved Queries
       </Button>
+
+      <DebugPackageModal
+        isDebugPackageModalOpen={isDebugPackageModalOpen}
+        onCloseDebugPackageModal={onCloseDebugPackageModal}
+      />
       {showNewButton && (
         <Button size="sm" colorScheme="gray" onClick={onNewQuery}>
           New
@@ -55,6 +74,14 @@ export const QueryEditorTopBar = () => {
         <ExternalLink href="https://www.arangodb.com/docs/stable/http/aql-query.html#create-a-cursor">
           Docs
         </ExternalLink>
+        <Tooltip label="Create debug package">
+          <IconButton
+            colorScheme="gray"
+            onClick={onOpenDebugPackageModal}
+            icon={<Icon as={Bug} />}
+            aria-label={"Create debug package"}
+          />
+        </Tooltip>
         <IconButton
           onClick={onOpenSpotlight}
           icon={<Icon as={MagicWand} />}

@@ -1885,7 +1885,7 @@ AqlValue Expression::executeSimpleExpressionArithmetic(ExpressionContext& ctx,
   }
 
   mustDestroy = false;
-  double result;
+  double result = 0.0;
 
   switch (node->type) {
     case NODE_TYPE_OPERATOR_BINARY_PLUS:
@@ -1904,7 +1904,7 @@ AqlValue Expression::executeSimpleExpressionArithmetic(ExpressionContext& ctx,
       result = fmod(l, r);
       break;
     default:
-      return AqlValue(AqlValueHintZero());
+      break;
   }
 
   // this will convert NaN, +inf & -inf to null
