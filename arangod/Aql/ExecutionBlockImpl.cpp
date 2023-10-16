@@ -1071,6 +1071,8 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(
     // Let client call again
     return ExecState::NEXTSUBQUERY;
   }
+  bool const hasDoneNothing =
+      _outputItemRow->numRowsWritten() == 0 and _skipped.nothingSkipped();
   auto&& [state, shadowRow] = _lastRange.nextShadowRow();
   TRI_ASSERT(shadowRow.isInitialized());
   if (shadowRow.isRelevant()) {

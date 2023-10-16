@@ -62,7 +62,6 @@ using SortInputParam = std::tuple<SplitType>;
 
 class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
  protected:
-
   auto getSplit() -> SplitType {
     auto const& [split] = GetParam();
     return split;
