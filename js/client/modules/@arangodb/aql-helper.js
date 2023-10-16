@@ -462,6 +462,51 @@ function sanitizeStats (stats) {
   return stats;
 }
 
+function execute_query(query, bindVars = null, options = {}) {
+  let stmt = db._createStatement({query, bindVars: bindVars, count: true});
+  return stmt.execute();
+};
+
+function execute_all_json(plans, result, query) {
+  plans.forEach(function (plan) {
+    var jsonResult = db._executeJson(plan, {optimizer: {rules: ['-all']}});
+    assertEqual(jsonResult, result, query);
+  });
+};
+
+function query_cache_properties(arg) {
+  let command;
+  if (arg) {
+    command = `
+      return AQL_QUERY_CACHE_PROPERTIES(${JSON.stringify(arg)})
+    `;
+  } else {
+    command = `
+      return AQL_QUERY_CACHE_PROPERTIES()
+    `;
+  }
+
+  let res = arango.POST("/_admin/execute", command);
+  return res;
+};
+
+function query_cache_properties_invalidate(cacheProperties = {}) {
+  let cachePropertiesStr = "";
+  if (cacheProperties !== {}) {
+    cachePropertiesStr = JSON.stringify(cacheProperties);
+  }
+  let command = `
+    let cacheProperties = AQL_QUERY_CACHE_PROPERTIES(${cachePropertiesStr});
+    AQL_QUERY_CACHE_INVALIDATE();
+    return cacheProperties;
+  `;
+  return arango.POST("/_admin/execute", command);
+}
+
+exports.query_cache_properties_invalidate = query_cache_properties_invalidate;
+exports.query_cache_properties = query_cache_properties;
+exports.execute_all_json = execute_all_json;
+exports.execute_query = execute_query;
 exports.getParseResults = getParseResults;
 exports.assertParseError = assertParseError;
 exports.getQueryExplanation = getQueryExplanation;
