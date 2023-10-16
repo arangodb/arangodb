@@ -40,7 +40,7 @@ const db = require('internal').db;
 const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 
-const waitForEstimatorSync = require('@arangodb/test-helper').waitForEstimatorSync
+const waitForEstimatorSync = require('@arangodb/test-helper').waitForEstimatorSync;
 
 const gh = require('@arangodb/graph/helpers');
 
