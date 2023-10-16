@@ -541,11 +541,8 @@ std::size_t hash_value(Projections::Projection const& p) {
 }
 
 std::size_t Projections::hash() const noexcept {
-  std::size_t hash = 0;
-  for (auto const& p : _projections) {
-    boost::hash_combine(hash, p);
-  }
-  return hash;
+  using boost::hash_value;
+  return hash_value(_projections);
 }
 
 std::ostream& operator<<(std::ostream& stream,
