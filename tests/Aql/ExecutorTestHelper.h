@@ -256,8 +256,7 @@ struct ExecutorTestHelper {
     return *this;
   }
 
-  auto expectSkipped(SkipResult expectedSkip)
-      -> ExecutorTestHelper& {
+  auto expectSkipped(SkipResult expectedSkip) -> ExecutorTestHelper& {
     _expectedSkip = std::move(expectedSkip);
     return *this;
   }
@@ -429,7 +428,9 @@ struct ExecutorTestHelper {
     return engine()->sharedState();
   }
   template<typename F>
-  auto setWakeupHandler(F&& func) requires std::is_invocable_r_v<bool, F> {
+  auto setWakeupHandler(F&& func)
+    requires std::is_invocable_r_v<bool, F>
+  {
     return sharedState()->setWakeupHandler(std::forward<F>(func));
   }
 
