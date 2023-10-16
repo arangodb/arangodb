@@ -1174,12 +1174,7 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryStart(
     _executorReturnedDone = false;
 
     if (hasDoneNothing) {
-      auto didPop = stack.popDepthsLowerThan(shadowRow.getDepth());
-      if (didPop) {
-        // this case is hit by ShadowRowForwardingTest.subqueryStart1
-        LOG_DEVEL << ADB_HERE;
-        // TRI_ASSERT(false);
-      }
+      stack.popDepthsLowerThan(shadowRow.getDepth());
     }
 
     return ExecState::NEXTSUBQUERY;
@@ -1226,15 +1221,9 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryEnd(
     // Done with this query
     return ExecState::DONE;
   } else if (_lastRange.hasDataRow()) {
-    if (hasDoneNothing && !shadowRow.isRelevant()) {
-      // TODO Figure out if this case is necessary and correct
-      auto didPop = stack.popDepthsLowerThan(shadowRow.getDepth());
-      if (didPop) {
-        // TODO Write a unit test for this case
-        LOG_DEVEL << ADB_HERE;
-        TRI_ASSERT(false);
-      }
-    }
+    /// NOTE: We do not need popDepthsLowerThan here, as we already
+    /// have a new DataRow from upstream, so the upstream
+    /// block has decided it is correct to continue.
     // Multiple concatenated Subqueries
     return ExecState::NEXTSUBQUERY;
   } else if (_lastRange.hasShadowRow()) {
@@ -1247,12 +1236,7 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryEnd(
     return ExecState::DONE;
   } else {
     if (hasDoneNothing && !shadowRow.isRelevant()) {
-      auto didPop = stack.popDepthsLowerThan(shadowRow.getDepth());
-      if (didPop) {
-        // this case is hit by ShadowRowForwardingTest.subqueryEnd1
-        LOG_DEVEL << ADB_HERE;
-        // TRI_ASSERT(false);
-      }
+      stack.popDepthsLowerThan(shadowRow.getDepth());
     }
 
     // End of input, we are done for now
@@ -1312,15 +1296,9 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
       // Done with this query
       return ExecState::DONE;
     } else if (_lastRange.hasDataRow()) {
-      if (hasDoneNothing && !shadowRow.isRelevant()) {
-        // TODO Figure out if this case is necessary and correct
-        auto didPop = stack.popDepthsLowerThan(shadowRow.getDepth());
-        if (didPop) {
-          // TODO Write a unit test for this case
-          LOG_DEVEL << ADB_HERE;
-          TRI_ASSERT(false);
-        }
-      }
+      /// NOTE: We do not need popDepthsLowerThan here, as we already
+      /// have a new DataRow from upstream, so the upstream
+      /// block has decided it is correct to continue.
       // Multiple concatenated Subqueries
       return ExecState::NEXTSUBQUERY;
     } else if (_lastRange.hasShadowRow()) {
@@ -1339,14 +1317,7 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
       return ExecState::SHADOWROWS;
     } else {
       if (hasDoneNothing && !shadowRow.isRelevant()) {
-        auto didPop = stack.popDepthsLowerThan(shadowRow.getDepth());
-        if (didPop) {
-          // this case is hit by ShadowRowForwardingTest.subqueryStart1 and
-          // ShadowRowForwardingTest.subqueryEnd1, though by accident only.
-          // TODO write a targeted test for this case
-          LOG_DEVEL << ADB_HERE;
-          // TRI_ASSERT(false);
-        }
+        stack.popDepthsLowerThan(shadowRow.getDepth());
       }
 
       // End of input, need to fetch new!

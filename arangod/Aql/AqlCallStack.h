@@ -74,7 +74,7 @@ class AqlCallStack {
   // This is popped of the stack and caller can take responsibility for it
   AqlCallList popCall();
 
-  bool popDepthsLowerThan(size_t depth);
+  void popDepthsLowerThan(size_t depth);
 
   // Peek at the topmost Call element (this must be relevant).
   // The responsibility for the peek-ed call will stay with the stack
