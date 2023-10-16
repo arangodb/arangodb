@@ -291,6 +291,8 @@ def generate_output(config, tests, enterprise):
     workflows = config["workflows"]
     edition = "ee" if enterprise else "ce"
     for workflow, jobs in workflows.items():
+        if ("windows" in workflow):
+            continue # ATM we don't generate tests for windows
         if (enterprise and "enterprise" in workflow) or (not enterprise and "community" in workflow):
             arch = get_arch(workflow)
             add_test_jobs_to_workflow(config, tests, workflow, edition, arch)
@@ -313,9 +315,8 @@ def main():
         with open(args.base_config, "r", encoding="utf-8") as instream:
             with open(args.output, "w", encoding="utf-8") as outstream:
                 config = yaml.safe_load(instream)
-                # disable tests for now
-                # generate_jobs(config, args, tests, False) # community
-                # generate_jobs(config, args, tests, True) # enterprise
+                generate_jobs(config, args, tests, False) # community
+                generate_jobs(config, args, tests, True) # enterprise
                 yaml.dump(config, outstream)
     except Exception as exc:
         traceback.print_exc(exc, file=sys.stderr)
