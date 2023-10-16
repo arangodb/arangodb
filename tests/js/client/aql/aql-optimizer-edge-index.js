@@ -31,7 +31,7 @@
 var jsunity = require('jsunity');
 var db = require('@arangodb').db;
 var internal = require('internal');
-const waitForEstimatorSync = require('@arangodb/test-helper').waitForEstimatorSync
+const waitForEstimatorSync = require('@arangodb/test-helper').waitForEstimatorSync;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test suite

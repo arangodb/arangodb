@@ -32,7 +32,7 @@ var jsunity = require("jsunity");
 var internal = require("internal");
 var db = require("@arangodb").db;
 const isCluster = require("internal").isCluster();
-const waitForEstimatorSync = require('@arangodb/test-helper').waitForEstimatorSync
+const waitForEstimatorSync = require('@arangodb/test-helper').waitForEstimatorSync;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
