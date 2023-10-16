@@ -15,8 +15,46 @@ import {
   DatabasePermissionSwitch,
   getIsDefaultRow
 } from "./DatabasePermissionSwitch";
-import { useUsername } from "./useFetchDatabasePermissions";
-import { usePermissionTableData } from "./UserPermissionsView";
+import {
+  useFetchDatabasePermissions,
+  useUsername
+} from "./useFetchDatabasePermissions";
+
+const usePermissionTableData = () => {
+  const { databasePermissions, refetchDatabasePermissions } =
+    useFetchDatabasePermissions();
+  if (!databasePermissions)
+    return {
+      databaseTable: []
+    };
+  const databaseTable = Object.entries(databasePermissions)
+    .map(([databaseName, permissionObject]) => {
+      return {
+        databaseName,
+        permission: permissionObject.permission,
+        collections: Object.entries(permissionObject.collections || {}).map(
+          ([collectionName, collectionPermission]) => {
+            return {
+              collectionName,
+              permission: collectionPermission
+            };
+          }
+        )
+      };
+    })
+    .filter(Boolean) as DatabaseTableType[];
+  let serverLevelDefaultPermission;
+  try {
+    serverLevelDefaultPermission = databasePermissions["*"].permission;
+  } catch (ignore) {
+    // just ignore, not part of the response
+  }
+  return {
+    databaseTable: [...databaseTable],
+    serverLevelDefaultPermission,
+    refetchDatabasePermissions
+  };
+};
 
 const columnHelper = createColumnHelper<DatabaseTableType>();
 
@@ -87,7 +125,7 @@ const TABLE_COLUMNS = [
     size: 2,
     cell: (info: CellContext<DatabaseTableType, unknown>) => {
       if (getIsDefaultRow(info) || !info.row.getCanExpand()) {
-        return null;
+        return "";
       }
       return (
         <IconButton
