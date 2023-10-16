@@ -185,8 +185,6 @@ class ShortestPathNode : public virtual GraphNode {
   std::unique_ptr<ExecutionBlock> _makeExecutionBlockImpl(
       graph::ShortestPathOptions* opts, ProviderOptions forwardProviderOptions,
       ProviderOptions backwardProviderOptions,
-      arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions,
-      arangodb::graph::PathValidatorOptions validatorOptions,
       typename ShortestPathExecutorInfos<
           ShortestPathRefactored>::RegisterMapping&& outputRegister,
       ExecutionEngine& engine, InputVertex sourceInput, InputVertex targetInput,

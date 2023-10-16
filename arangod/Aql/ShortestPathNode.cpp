@@ -33,6 +33,7 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/ShortestPathExecutor.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Graph/PathManagement/PathValidatorOptions.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Indexes/Index.h"
 
@@ -70,27 +71,28 @@ static void parseNodeInput(AstNode const* node, std::string& id,
                                          "_id string or an object with _id.");
   }
 }
-static GraphNode::InputVertex prepareVertexInput(ShortestPathNode const* node,
-                                                 bool isTarget) {
-  using InputVertex = GraphNode::InputVertex;
-  if (isTarget) {
-    if (node->usesTargetInVariable()) {
-      auto it =
-          node->getRegisterPlan()->varInfo.find(node->targetInVariable()->id);
-      TRI_ASSERT(it != node->getRegisterPlan()->varInfo.end());
-      return InputVertex{it->second.registerId};
-    } else {
-      return InputVertex{node->getTargetVertex()};
-    }
+
+static GraphNode::InputVertex prepareVertexInputSource(
+    ShortestPathNode const* node) {
+  if (node->usesStartInVariable()) {
+    auto it =
+        node->getRegisterPlan()->varInfo.find(node->startInVariable()->id);
+    TRI_ASSERT(it != node->getRegisterPlan()->varInfo.end());
+    return GraphNode::InputVertex{it->second.registerId};
   } else {
-    if (node->usesStartInVariable()) {
-      auto it =
-          node->getRegisterPlan()->varInfo.find(node->startInVariable()->id);
-      TRI_ASSERT(it != node->getRegisterPlan()->varInfo.end());
-      return InputVertex{it->second.registerId};
-    } else {
-      return InputVertex{node->getStartVertex()};
-    }
+    return GraphNode::InputVertex{node->getStartVertex()};
+  }
+}
+
+static GraphNode::InputVertex prepareVertexInputTarget(
+    ShortestPathNode const* node) {
+  if (node->usesTargetInVariable()) {
+    auto it =
+        node->getRegisterPlan()->varInfo.find(node->targetInVariable()->id);
+    TRI_ASSERT(it != node->getRegisterPlan()->varInfo.end());
+    return GraphNode::InputVertex{it->second.registerId};
+  } else {
+    return GraphNode::InputVertex{node->getTargetVertex()};
   }
 }
 }  // namespace
@@ -323,12 +325,17 @@ template<typename ShortestPath, typename Provider, typename ProviderOptions>
 std::unique_ptr<ExecutionBlock> ShortestPathNode::_makeExecutionBlockImpl(
     ShortestPathOptions* opts, ProviderOptions forwardProviderOptions,
     ProviderOptions backwardProviderOptions,
-    arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions,
-    PathValidatorOptions validatorOptions,
     typename ShortestPathExecutorInfos<ShortestPath>::RegisterMapping&&
         outputRegisterMapping,
     ExecutionEngine& engine, InputVertex sourceInput, InputVertex targetInput,
     RegisterInfos registerInfos) const {
+  arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{
+      0, std::numeric_limits<size_t>::max(),
+      arangodb::graph::PathType::Type::ShortestPath};
+
+  auto validatorOptions =
+      PathValidatorOptions(opts->tmpVar(), opts->getExpressionCtx());
+
   auto shortestPathFinder = std::make_unique<ShortestPath>(
       Provider{opts->query(), std::move(forwardProviderOptions),
                opts->query().resourceMonitor()},
@@ -356,8 +363,8 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
 
   auto opts = static_cast<ShortestPathOptions*>(options());
 
-  auto sourceInput = ::prepareVertexInput(this, false);
-  auto targetInput = ::prepareVertexInput(this, true);
+  auto sourceInput = ::prepareVertexInputSource(this);
+  auto targetInput = ::prepareVertexInputTarget(this);
   auto checkWeight = [&]<typename ProviderOptionsType>(
                          ProviderOptionsType& forwardProviderOptions,
                          ProviderOptionsType& backwardProviderOptions) -> bool {
@@ -404,27 +411,20 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     return false;
   };
 
-  arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{
-      0, std::numeric_limits<size_t>::max(),
-      arangodb::graph::PathType::Type::ShortestPath};
-  PathValidatorOptions validatorOptions(opts->tmpVar(),
-                                        opts->getExpressionCtx());
-
   if (!ServerState::instance()->isCoordinator()) {
     std::pair<std::vector<IndexAccessor>,
               std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
         usedIndexes{};
     usedIndexes.first = buildUsedIndexes();
+    SingleServerBaseProviderOptions forwardProviderOptions(
+        opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(), {},
+        opts->collectionToShard(), opts->getVertexProjections(),
+        opts->getEdgeProjections(), opts->produceVertices());
 
     std::pair<std::vector<IndexAccessor>,
               std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
         reversedUsedIndexes{};
     reversedUsedIndexes.first = buildReverseUsedIndexes();
-
-    SingleServerBaseProviderOptions forwardProviderOptions(
-        opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(), {},
-        opts->collectionToShard(), opts->getVertexProjections(),
-        opts->getEdgeProjections(), opts->produceVertices());
 
     SingleServerBaseProviderOptions backwardProviderOptions(
         opts->tmpVar(), std::move(reversedUsedIndexes),
@@ -448,9 +448,9 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
                                        Provider,
                                        SingleServerBaseProviderOptions>(
             opts, std::move(forwardProviderOptions),
-            std::move(backwardProviderOptions), enumeratorOptions,
-            validatorOptions, std::move(outputRegisterMapping), engine,
-            sourceInput, targetInput, registerInfos);
+            std::move(backwardProviderOptions),
+            std::move(outputRegisterMapping), engine, sourceInput, targetInput,
+            registerInfos);
       } else {
         auto [outputRegisters, outputRegisterMapping] =
             _buildOutputRegisters<ShortestPath>();
@@ -460,9 +460,9 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
                                        Provider,
                                        SingleServerBaseProviderOptions>(
             opts, std::move(forwardProviderOptions),
-            std::move(backwardProviderOptions), enumeratorOptions,
-            validatorOptions, std::move(outputRegisterMapping), engine,
-            sourceInput, targetInput, registerInfos);
+            std::move(backwardProviderOptions),
+            std::move(outputRegisterMapping), engine, sourceInput, targetInput,
+            registerInfos);
       }
     } else {
       // SingleServer Tracing enabled
@@ -475,9 +475,9 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
             TracedWeightedShortestPathEnumerator<Provider>,
             ProviderTracer<Provider>, SingleServerBaseProviderOptions>(
             opts, std::move(forwardProviderOptions),
-            std::move(backwardProviderOptions), enumeratorOptions,
-            validatorOptions, std::move(outputRegisterMapping), engine,
-            sourceInput, targetInput, registerInfos);
+            std::move(backwardProviderOptions),
+            std::move(outputRegisterMapping), engine, sourceInput, targetInput,
+            registerInfos);
       } else {
         auto [outputRegisters, outputRegisterMapping] =
             _buildOutputRegisters<ShortestPathTracer>();
@@ -487,9 +487,9 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
                                        ProviderTracer<Provider>,
                                        SingleServerBaseProviderOptions>(
             opts, std::move(forwardProviderOptions),
-            std::move(backwardProviderOptions), enumeratorOptions,
-            validatorOptions, std::move(outputRegisterMapping), engine,
-            sourceInput, targetInput, registerInfos);
+            std::move(backwardProviderOptions),
+            std::move(outputRegisterMapping), engine, sourceInput, targetInput,
+            registerInfos);
       }
     }
   } else {
@@ -515,11 +515,11 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
                                                  std::move(outputRegisters));
         return _makeExecutionBlockImpl<
             WeightedShortestPathEnumerator<ClusterProvider>, ClusterProvider,
-            ClusterBaseProviderOptions>(
-            opts, std::move(forwardProviderOptions),
-            std::move(backwardProviderOptions), enumeratorOptions,
-            validatorOptions, std::move(outputRegisterMapping), engine,
-            sourceInput, targetInput, registerInfos);
+            ClusterBaseProviderOptions>(opts, std::move(forwardProviderOptions),
+                                        std::move(backwardProviderOptions),
+                                        std::move(outputRegisterMapping),
+                                        engine, sourceInput, targetInput,
+                                        registerInfos);
       } else {
         auto [outputRegisters, outputRegisterMapping] =
             _buildOutputRegisters<ShortestPathCluster>();
@@ -529,9 +529,9 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
                                        ClusterProvider,
                                        ClusterBaseProviderOptions>(
             opts, std::move(forwardProviderOptions),
-            std::move(backwardProviderOptions), enumeratorOptions,
-            validatorOptions, std::move(outputRegisterMapping), engine,
-            sourceInput, targetInput, registerInfos);
+            std::move(backwardProviderOptions),
+            std::move(outputRegisterMapping), engine, sourceInput, targetInput,
+            registerInfos);
       }
     } else {
       auto [outputRegisters, outputRegisterMapping] =
@@ -543,9 +543,8 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
           TracedShortestPathEnumerator<ClusterProvider>,
           ProviderTracer<ClusterProvider>, ClusterBaseProviderOptions>(
           opts, std::move(forwardProviderOptions),
-          std::move(backwardProviderOptions), enumeratorOptions,
-          validatorOptions, std::move(outputRegisterMapping), engine,
-          sourceInput, targetInput, registerInfos);
+          std::move(backwardProviderOptions), std::move(outputRegisterMapping),
+          engine, sourceInput, targetInput, registerInfos);
     }
   }
   TRI_ASSERT(false);
