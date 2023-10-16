@@ -9,7 +9,7 @@ parameters:
     default: "devel"
   build-targets:
     type: string
-    default: "arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench"
+    default: "arangod arangoimport arangoexport arangodump arangorestore arangobench"
   test-build-targets:
     type: string
     default: "arangodbtests fuertetest"
@@ -59,7 +59,6 @@ commands:
           fingerprints:
             - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
       - run:
-          shell: bash
           name: Checkout Enterprise
           command: |
             ssh-keyscan github.com >> ~/.ssh/known_hosts
