@@ -395,8 +395,10 @@ IndexExecutor::CursorReader::CursorReader(
       _cursorStats(cursorStats),
       _type(infos.getCount()             ? Type::Count
             : infos.isLateMaterialized() ? Type::LateMaterialized
-            : !infos.getProduceResult()  ? Type::NoResult
-            : infos.getProjections().usesCoveringIndex(index) ? Type::Covering
+            : (!infos.getProduceResult() && !infos.getFilter()) ? Type::NoResult
+            : (infos.getProjections().usesCoveringIndex(index) &&
+               infos.getFilterProjections().usesCoveringIndex(index))
+                ? Type::Covering
             : infos.getFilterProjections().usesCoveringIndex(index)
                 ? Type::CoveringFilterOnly
                 : Type::Document),

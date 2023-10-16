@@ -518,7 +518,9 @@ IndexIterator::CoveringCallback aql::getCallback(
     DocumentProducingFunctionContext& context) {
   if (context.hasFilter()) {
     TRI_ASSERT(!context.getFilterProjections().empty());
-    TRI_ASSERT(context.getFilterProjections().usesCoveringIndex());
+    TRI_ASSERT(context.getFilterProjections().usesCoveringIndex())
+        << "not using covering index " << context.getFilterProjections()
+        << " projections are: " << context.getProjections();
   }
 
   return

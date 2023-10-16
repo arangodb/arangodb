@@ -78,18 +78,6 @@ void moveValueIntoRegister(OutputAqlItemRow& output, RegisterId reg,
   output.moveValueInto(reg, inputRow, &ptr);
 }
 
-void pushDocumentToVector(std::vector<std::unique_ptr<std::string>>& vec,
-                          VPackSlice doc) {
-  // TODO use string leaser for transaction here?
-  auto ptr = std::make_unique<std::string>(doc.startAs<char>(), doc.byteSize());
-  vec.emplace_back(std::move(ptr));
-}
-
-void pushDocumentToVector(std::vector<std::unique_ptr<std::string>>& vec,
-                          std::unique_ptr<std::string>& doc) {
-  vec.emplace_back(std::move(doc));
-}
-
 template<typename F>
 struct DocumentCallbackOverload : F {
   DocumentCallbackOverload(F&& f) : F(std::forward<F>(f)) {}
@@ -167,10 +155,9 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
       for (std::size_t k = 0; k < docIds.size(); k++) {
         auto& idx = _infos.indexes[k];
-
+        projectionsOffset += idx.projections.size();
         // evaluate filter conditions
         if (!idx.filter.has_value()) {
-          projectionsOffset += idx.projections.size();
           continue;
         }
 
@@ -194,7 +181,8 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
           if (!filtered && !useFilterProjections) {
             // add document to the list
-            pushDocumentToVector(_documents, docPtr);
+            _documents[k] = std::make_unique<std::string>(
+                doc.template startAs<char>(), doc.byteSize());
           }
         };
 
@@ -222,11 +210,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
               filtered = !result.toBoolean();
             };
 
-        if (idx.projections.usesCoveringIndex()) {
-          buildProjections(k, idx.projections);
-          filterCallback(_projectionsBuilder.slice());
-          projectionsOffset += idx.projections.size();
-        } else if (useFilterProjections) {
+        if (useFilterProjections) {
           std::span<VPackSlice> projectionRange = {
               projections.begin() + projectionsOffset,
               projections.begin() + projectionsOffset +
