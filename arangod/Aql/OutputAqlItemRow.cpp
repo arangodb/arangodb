@@ -607,9 +607,6 @@ template void
 OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintUInt>(
     RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintUInt);
 template void
-OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintZero>(
-    RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintZero);
-template void
 OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintNone>(
     RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintNone);
 template void
