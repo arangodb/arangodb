@@ -1346,8 +1346,9 @@ function processQuery(query, explain, planIndex) {
           viewAnnotation += ' without materialization';
         }
         if (node.hasOwnProperty('options')) {
-          if (node.options.hasOwnProperty('countApproximate'))
-          viewAnnotation += '. Count mode is ' + node.options.countApproximate;
+          if (node.options.hasOwnProperty('countApproximate')) {
+            viewAnnotation += '. Count mode is ' + node.options.countApproximate;
+          }
         }
         viewAnnotation += ' */';
         let viewVariables = '';

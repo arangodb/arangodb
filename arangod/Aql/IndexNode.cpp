@@ -217,8 +217,15 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
 
   // this attribute is never read back by arangod, but it is used a lot
   // in tests, so it can't be removed easily
-  builder.add("indexCoversProjections",
+  builder.add(
+      "indexCoversProjections",
+      VPackValue(_projections.usesCoveringIndex() &&
+                 (!hasFilter() || _filterProjections.usesCoveringIndex())));
+  builder.add("indexCoversOutProjections",
               VPackValue(_projections.usesCoveringIndex()));
+  builder.add(
+      "indexCoversFilterProjections",
+      VPackValue(hasFilter() && _filterProjections.usesCoveringIndex()));
 
   builder.add(VPackValue("indexes"));
   {
