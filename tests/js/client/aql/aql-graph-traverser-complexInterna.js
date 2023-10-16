@@ -1,5 +1,5 @@
 /* jshint esnext: true */
-/* global AQL_EXECUTE, AQL_EXPLAIN, AQL_EXECUTEJSON, arango*/
+/* global arango*/
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Spec for the AQL FOR x IN GRAPH name statement
@@ -38,11 +38,7 @@ const internal = require('internal');
 const db = require('internal').db;
 const errors = require('@arangodb').errors;
 const gh = require("@arangodb/graph/helpers");
-
-function execute_query(query, bindVars = null, options = {}) {
-  let stmt = db._createStatement({query: query, bindVars: bindVars, count: true});
-  return stmt.execute();
-};
+const execute_query = require("@arangodb/aql-helper").execute_query;
 
 function complexInternaSuite() {
   var ruleName = 'optimize-traversals';
@@ -125,13 +121,7 @@ function complexInternaSuite() {
       assertEqual(result.length, amount);
       var plans = db._createStatement({query: query, bindVars: bindVars, options: opts}).explain().plans;
       plans.forEach(function (plan) {
-        
-        let command = `
-          let plan = ${JSON.stringify(plan)};
-          let opts = ${JSON.stringify({optimizer: {rules: ['-all']}})}
-          return AQL_EXECUTEJSON(plan, opts);
-        `;
-        var jsonResult = arango.POST("/_admin/execute", command).json;
+        var jsonResult = db._executeJson(plan, {optimizer: {rules: ['-all']}});
         assertEqual(jsonResult, result, query);
       });
     },
@@ -195,12 +185,7 @@ function complexInternaSuite() {
 
       const plans = db._createStatement({query: query, bindVars: bindVars, options: opts}).explain().plans;
       plans.forEach(function (plan) {
-        let command = `
-          let plan = ${JSON.stringify(plan)};
-          let opts = ${JSON.stringify({optimizer: {rules: ['-all']}})}
-          return AQL_EXECUTEJSON(plan, opts);
-        `;
-        var jsonResult = arango.POST("/_admin/execute", command).json;
+        var jsonResult = db._executeJson(plan, {optimizer: {rules: ['-all']}});
         assertTrue(isValidResult(jsonResult), JSON.stringify({jsonResult, plan}));
       });
     },

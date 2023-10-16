@@ -1,5 +1,4 @@
 /* jshint esnext: true */
-/* global AQL_EXECUTE, AQL_EXPLAIN, AQL_EXECUTEJSON */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Spec for the AQL FOR x IN GRAPH name statement
@@ -43,11 +42,7 @@ const en = 'UnitTestEdgeCollection';
 const isCluster = require("internal").isCluster();
 
 const gh = require('@arangodb/graph/helpers');
-
-function execute_query(query, bindVars = null, options = {}) {
-  let stmt = db._createStatement({query, bindVars: bindVars, count: true});
-  return stmt.execute();
-};
+const execute_query = require("@arangodb/aql-helper").execute_query;
 
 function complexFilteringSuite() {
   var vertex = {};
