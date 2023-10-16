@@ -101,6 +101,9 @@ struct DocumentCallbackOverload : F {
 auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
+  AqlCall upstreamCall{};
+  upstreamCall.fullCount = output.getClientCall().fullCount;
+
   bool hasMore = false;
   while (inputRange.hasDataRow() && !output.isFull()) {
     if (!_currentRow) {
@@ -274,12 +277,11 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
     if (!hasMore) {
       _currentRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+      inputRange.advanceDataRow();
     }
-
-    inputRange.advanceDataRow();
   }
 
-  return {inputRange.upstreamState(), Stats{}, AqlCall{}};
+  return {inputRange.upstreamState(), Stats{}, upstreamCall};
 }
 
 auto JoinExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
@@ -323,7 +325,9 @@ void JoinExecutor::constructStrategy() {
     options.usedKeyFields = {0};
 
     auto& desc = indexDescription.emplace_back();
+    desc.isUnique = idx.index->unique();
     desc.numProjections = 0;
+
     if (idx.projections.usesCoveringIndex()) {
       std::transform(idx.projections.projections().begin(),
                      idx.projections.projections().end(),
