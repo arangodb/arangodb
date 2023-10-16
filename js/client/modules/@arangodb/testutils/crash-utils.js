@@ -659,13 +659,20 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
       return;
     }
 
+    const knownPatterns = ["%s", "%d", "%e", "%E", "%g", "%h", "%i", "%I", "%s", "%t", "%u"];
+    const replaceKnownPatterns = (s) => {
+      for (p in knownPatterns) {
+        s = s.replace(p, "*");
+      }
+      return s;
+    };
     if (matchSystemdCoredump.exec(cp) !== null) {
       options.coreDirectory = '/var/lib/systemd/coredump/*core*' + instanceInfo.pid + '*';
     } else if (matchVarTmp.exec(cp) !== null) {
-      options.coreDirectory = cp.replace('%e', '*').replace('%t', '*').replace('%p', instanceInfo.pid);
+      options.coreDirectory = replaceKnownPatterns(cp).replace('%p', instanceInfo.pid);
     } else {
       let found = false;
-      options.coreDirectory = cp.replace('%e', '.*').replace('%t', '.*').replace('%p', instanceInfo.pid).trim();
+      options.coreDirectory = replaceKnownPatterns(cp).replace('%p', instanceInfo.pid).trim();
       if (options.coreDirectory.search('/') < 0) {
         let rx = new RegExp(options.coreDirectory);
         fs.list('.').forEach((file) => {
@@ -740,10 +747,6 @@ function generateCrashDump (binary, instanceInfo, options, checkStr) {
   } else if (platform === 'darwin') {
     instanceInfo.debuggerInfo = generateCoreDumpMac(instanceInfo, options, binary, instanceInfo.pid, generateCoreDump);
     instanceInfo.exitStatus = { status: 'TERMINATED'};
-  } else if (options.coreAbrt){
-    instanceInfo.debuggerInfo = {binary: binary};
-    instanceInfo.exitStatus = killExternal(instanceInfo.pid, abortSignal);
-    return;
   } else {
     instanceInfo.debuggerInfo = generateCoreDumpGDB(instanceInfo, options, binary, instanceInfo.pid, generateCoreDump);
     instanceInfo.exitStatus = { status: 'TERMINATED'};
@@ -758,10 +761,6 @@ function generateCrashDump (binary, instanceInfo, options, checkStr) {
 
 function aggregateDebugger(instanceInfo, options) {
   print("collecting debugger info for: " + JSON.stringify(instanceInfo.getStructure()));
-  if (options.coreAbrt) {
-    analyzeCrash (instanceInfo.binary, instanceInfo, options, "aggregateDebugger");
-    return true;
-  }
   if (!instanceInfo.hasOwnProperty('debuggerInfo')) {
     print("No debugger info persisted to " + JSON.stringify(instanceInfo.getStructure()));
     return false;
