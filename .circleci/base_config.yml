@@ -282,9 +282,11 @@ jobs:
       - checkout-arangodb:
           with-submodules: true
           destination: "D:/CircleCI/project"
+      # TODO - checking out enterprise is does currently not work on windows; will be addressed in a separate PR
       # for windows we build only enterprise, so we can check it out unconditionally
       # - checkout-enterprise:
       #    destination: "D:/CircleCI/project/enterprise"
+      # TODO - sccache currently doesn't work on windows; will be addressed in a separate PR
       # - run:
       #     name: Print SCCache Settings
       #     command: sccache -s
@@ -302,20 +304,7 @@ jobs:
           command: |
             docker run --rm --isolation process -v D:/CircleCI/project:C:/project -w C:/project/build arangodb/build-windows-x64:latest cmake --build . --config `"RelWithDebInfo`" --parallel -- /p:CL_MPcount=24
 
-      # - run:
-      #     name: Configure
-      #     command: |
-      #       cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib
-      # - run:
-      #     name: Build
-      #     command: |
-      #       TARGETS="<< pipeline.parameters.build-targets >>"
-      #       TARGETS="$TARGETS << pipeline.parameters.enterprise-build-targets >>"
-      #       if [ << parameters.build-tests >> = true ]; then
-      #         TARGETS="$TARGETS << pipeline.parameters.test-build-targets >>"
-      #       fi
-      #       echo "Building targets: $TARGETS"
-      #       cmake --build --preset << parameters.preset >> --parallel 8 --target $TARGETS
+      # TODO - enable artifact upload once we actually use them
       # - run:
       #     name: Cleanup build directory
       #     command: |
@@ -464,102 +453,102 @@ jobs:
           path: /root/project/cppcheck-junit.xml
 
 workflows:
-  # lint:
-  #   jobs:
-  #     - minimal-checkout:
-  #         name: minimal-checkout
-  #     - check-log-ids:
-  #         name: check-log-ids
-  #         requires:
-  #           - minimal-checkout
-  #     - clang-format:
-  #         name: clang-format
-  #         requires:
-  #           - minimal-checkout
-  #     - eslint:
-  #         name: eslint
-  #         requires:
-  #           - minimal-checkout
+  lint:
+    jobs:
+      - minimal-checkout:
+          name: minimal-checkout
+      - check-log-ids:
+          name: check-log-ids
+          requires:
+            - minimal-checkout
+      - clang-format:
+          name: clang-format
+          requires:
+            - minimal-checkout
+      - eslint:
+          name: eslint
+          requires:
+            - minimal-checkout
 
-  # x64-community-pr:
-  #   jobs:
-  #     - compile-linux:
-  #         context:
-  #           - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-  #         resource-class: xlarge
-  #         name: build-ce-x64
-  #         preset: community-pr
-  #         enterprise: false
-  #     - run-cppcheck:
-  #         name: cppcheck
-  #         requires:
-  #           - build-ce-x64
+  x64-community-pr:
+    jobs:
+      - compile-linux:
+          context:
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          resource-class: xlarge
+          name: build-ce-x64
+          preset: community-pr
+          enterprise: false
+      - run-cppcheck:
+          name: cppcheck
+          requires:
+            - build-ce-x64
 
-  # x64-enterprise-pr:
-  #   jobs:
-  #     - compile-linux:
-  #         context:
-  #           - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-  #         resource-class: xlarge
-  #         name: build-ee-x64
-  #         preset: enterprise-pr
-  #         enterprise: true
-  #     - compile-linux:
-  #         context:
-  #           - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-  #         resource-class: xlarge
-  #         name: build-ee-non-maintainer-x64
-  #         preset: enterprise-pr-non-maintainer
-  #         enterprise: true
-  #         publish-artifacts: false
-  #         build-tests: false
-  #     - compile-linux:
-  #         context:
-  #           - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-  #         resource-class: xlarge
-  #         name: build-ee-no-v8-x64
-  #         preset: enterprise-pr-no-v8
-  #         enterprise: true
-  #         publish-artifacts: false
-  #         build-tests: false
-  #         build-v8: false
+  x64-enterprise-pr:
+    jobs:
+      - compile-linux:
+          context:
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          resource-class: xlarge
+          name: build-ee-x64
+          preset: enterprise-pr
+          enterprise: true
+      - compile-linux:
+          context:
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          resource-class: xlarge
+          name: build-ee-non-maintainer-x64
+          preset: enterprise-pr-non-maintainer
+          enterprise: true
+          publish-artifacts: false
+          build-tests: false
+      - compile-linux:
+          context:
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          resource-class: xlarge
+          name: build-ee-no-v8-x64
+          preset: enterprise-pr-no-v8
+          enterprise: true
+          publish-artifacts: false
+          build-tests: false
+          build-v8: false
 
-  #     - run-cppcheck:
-  #         name: cppcheck
-  #         requires:
-  #           - build-ee-x64
-  #     - run-hotbackup-tests:
-  #         name: run-hotbackup-tests-x64
-  #         size: medium
-  #         requires:
-  #           - build-ee-x64
+      - run-cppcheck:
+          name: cppcheck
+          requires:
+            - build-ee-x64
+      - run-hotbackup-tests:
+          name: run-hotbackup-tests-x64
+          size: medium
+          requires:
+            - build-ee-x64
 
-  # aarch64-community-pr:
-  #   jobs:
-  #     - compile-linux:
-  #         context:
-  #           - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-  #         resource-class: arm.xlarge
-  #         s3-prefix: aarch64
-  #         name: build-ce-aarch64
-  #         preset: community-pr
-  #         enterprise: false
+  aarch64-community-pr:
+    jobs:
+      - compile-linux:
+          context:
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          resource-class: arm.xlarge
+          s3-prefix: aarch64
+          name: build-ce-aarch64
+          preset: community-pr
+          enterprise: false
 
-  # aarch64-enterprise-pr:
-  #   jobs:
-  #     - compile-linux:
-  #         context:
-  #           - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-  #         resource-class: arm.xlarge
-  #         s3-prefix: aarch64
-  #         name: build-ee-aarch64
-  #         preset: enterprise-pr
-  #         enterprise: true
-  #     - run-hotbackup-tests:
-  #         name: run-hotbackup-tests-aarch64
-  #         size: arm.medium
-  #         requires:
-  #           - build-ee-aarch64
+  aarch64-enterprise-pr:
+    jobs:
+      - compile-linux:
+          context:
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          resource-class: arm.xlarge
+          s3-prefix: aarch64
+          name: build-ee-aarch64
+          preset: enterprise-pr
+          enterprise: true
+      - run-hotbackup-tests:
+          name: run-hotbackup-tests-aarch64
+          size: arm.medium
+          requires:
+            - build-ee-aarch64
 
   windows-enterprise-pr:
     jobs:
