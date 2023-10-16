@@ -71,6 +71,7 @@ auto AqlCallStack::popCall() -> AqlCallList {
 
 void AqlCallStack::popDepthsLowerThan(size_t depth) {
   TRI_ASSERT(!_operations.empty());
+  TRI_ASSERT(depth <= _operations.size());
   for (auto i = _operations.size() - depth; i < _operations.size(); ++i) {
     auto& operation = _operations[i];
     if (operation.hasMoreCalls()) {
