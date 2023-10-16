@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXECUTE, AQL_EXPLAIN, AQL_EXECUTEJSON, arango */
+/*global assertEqual, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for dynamic attributes
@@ -310,12 +310,7 @@ function ahuacatlDynamicAttributesTestSuite () {
       let stmt = db._createStatement({query, bindVars: null, options: { verbosePlans: true }});
 
       var plan = stmt.explain().plan;
-
-      let command = `
-        let data = ${JSON.stringify(plan)};
-        return AQL_EXECUTEJSON(data);
-      `;
-      var actual = arango.POST("/_admin/execute", command).json;
+      var actual = db._executeJson(plan);
 
       assertEqual(expected, actual);
     }
