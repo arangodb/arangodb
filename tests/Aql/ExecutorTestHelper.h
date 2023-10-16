@@ -429,9 +429,7 @@ struct ExecutorTestHelper {
     return engine()->sharedState();
   }
   template<typename F>
-  auto setWakeupHandler(F&& func)
-    requires std::is_invocable_r_v<bool, F>
-  {
+  auto setWakeupHandler(F&& func) requires std::is_invocable_r_v<bool, F> {
     return sharedState()->setWakeupHandler(std::forward<F>(func));
   }
 
