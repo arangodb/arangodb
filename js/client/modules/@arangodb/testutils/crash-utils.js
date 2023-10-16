@@ -661,7 +661,7 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
 
     const knownPatterns = ["%s", "%d", "%e", "%E", "%g", "%h", "%i", "%I", "%s", "%t", "%u"];
     const replaceKnownPatterns = (s) => {
-      for (p in knownPatterns) {
+      for (let p in knownPatterns) {
         s = s.replace(p, "*");
       }
       return s;
