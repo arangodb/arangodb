@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE, AQL_EXECUTEJSON,arango */
+/*global assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -186,11 +186,7 @@ function optimizerRuleTestSuite () {
         // iterate over all plans
         let withRule = 0;
         plansEnabled.plans.forEach(function(plan) {
-          let command = `
-            let data = ${JSON.stringify(plan)};
-            return AQL_EXECUTEJSON(data);
-          `;
-          let resultEnabled =  arango.POST("/_admin/execute", command).json;
+          let resultEnabled = db._executeJson(plan);
           assertTrue(isEqual(resultDisabled, resultEnabled), query[0]);
           if (plan.rules.indexOf(ruleName) !== -1) {
             withRule++;

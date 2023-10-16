@@ -1,5 +1,4 @@
 /* jshint esnext: true */
-/* global AQL_EXECUTE, AQL_EXPLAIN, AQL_EXECUTEJSON, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Spec for the AQL FOR x IN GRAPH name statement
@@ -41,8 +40,7 @@ const gm = require('@arangodb/general-graph');
 const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 
-
-
+const execute_json = require("@arangodb/aql-helper").execute_all_json;
 const gh = require('@arangodb/graph/helpers');
 
 function multiEdgeCollectionGraphSuite() {
@@ -64,18 +62,6 @@ function multiEdgeCollectionGraphSuite() {
   var vertex = {};
   var edge = {};
   var vc, ec;
-
-  function execute_json(plans, result, query) {
-    plans.forEach(function (plan) {
-    let command = `
-      let plan = ${JSON.stringify(plan)};
-      return AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}});
-    `;
-      var jsonResult = arango.POST("/_admin/execute", command).json;
-      assertEqual(jsonResult, result, query);
-    });
-  }
-  
 
   return {
 
