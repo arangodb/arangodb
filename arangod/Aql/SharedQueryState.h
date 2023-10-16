@@ -49,8 +49,6 @@ class SharedQueryState final
 
   void invalidate();
 
-  bool consumeWakeup();
-
   /// @brief executeAndWakeup is to be called on the query object to
   /// continue execution in this query part, if the query got paused
   /// because it is waiting for network responses. The idea is that a

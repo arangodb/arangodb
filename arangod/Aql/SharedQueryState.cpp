@@ -65,15 +65,6 @@ void SharedQueryState::invalidate() {
   }
 }
 
-bool SharedQueryState::consumeWakeup() {
-  std::lock_guard<std::mutex> guard(_mutex);
-  if (_numWakeups > 0) {
-    --_numWakeups;
-    return true;
-  }
-  return false;
-}
-
 /// this has to stay for a backwards-compatible AQL HTTP API (hasMore).
 void SharedQueryState::waitForAsyncWakeup() {
   std::unique_lock<std::mutex> guard(_mutex);

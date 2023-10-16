@@ -386,7 +386,7 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
       }
       TRI_ASSERT(res.is(TRI_ERROR_QUERY_NOT_FOUND));
       generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND,
-                    "query ID " + idString + " not found");
+                    absl::StrCat("query ID ", idString, " not found"));
       return RestStatus::DONE;
     }
     std::shared_ptr<SharedQueryState> ss = _engine->sharedState();
@@ -407,14 +407,6 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
 
   try {
     return handleUseQuery(operation, querySlice);
-#if 0
-    RestStatus state;
-    do {
-      state = handleUseQuery(operation, querySlice);
-    } while (state == RestStatus::WAITING &&
-             _engine->sharedState()->consumeWakeup());
-    return state;
-#endif
   } catch (arangodb::basics::Exception const& ex) {
     generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), ex.what());
   } catch (std::exception const& ex) {
