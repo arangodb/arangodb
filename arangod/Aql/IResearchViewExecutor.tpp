@@ -33,6 +33,7 @@
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Futures/Try.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchFilterFactory.h"
@@ -1008,7 +1009,7 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::readStoredValues(
   bool const found = (doc.value == reader.itr->seek(doc.value));
   if (found && !payload.empty()) {
     if constexpr (parallel) {
-      _indexReadBuffer.setStoredValue(bufferIndex);
+      _indexReadBuffer.setStoredValue(bufferIndex, payload);
     } else {
       _indexReadBuffer.pushStoredValue(payload);
     }
@@ -1433,7 +1434,7 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
 template<typename ExecutionTraits>
 template<bool parallel>
 bool IResearchViewExecutor<ExecutionTraits>::readSegment(
-    SegmentReader& reader, size_t readerIndex, std::atomic<size_t>& bufferIdx) {
+    SegmentReader& reader, std::atomic<size_t>& bufferIdx) {
   bool gotData = false;
   auto reset = [&] {
     reader.currentSegmentPos = 0;
@@ -1477,7 +1478,7 @@ bool IResearchViewExecutor<ExecutionTraits>::readSegment(
       }
     }
     auto current = bufferIdx.load(std::memory_order_relaxed);
-    if constexpr (!parallel) {
+    if constexpr (parallel) {
       while (!bufferIdx.compare_exchange_weak(current, current + 1)) {
       }
     }
@@ -1492,9 +1493,9 @@ bool IResearchViewExecutor<ExecutionTraits>::readSegment(
       }
     } else {
       if constexpr (parallel) {
-        this->_indexReadBuffer.setValue(current, documentId, viewSegment);
+        this->_indexReadBuffer.setValue(current, viewSegment, documentId);
       } else {
-        this->_indexReadBuffer.pushValue(documentId, viewSegment);
+        this->_indexReadBuffer.pushValue(viewSegment, documentId);
       }
     }
     ++reader.numFilled;
@@ -1503,8 +1504,8 @@ bool IResearchViewExecutor<ExecutionTraits>::readSegment(
     if constexpr (ExecutionTraits::EmitSearchDoc) {
       TRI_ASSERT(this->infos().searchDocIdRegId().isValid());
       if constexpr (parallel) {
-        this->_indexReadBuffer.setSearchDoc(current, reader.doc->value,
-                                            viewSegment);
+        this->_indexReadBuffer.setSearchDoc(current,
+                                            viewSegment, reader.doc->value);
       } else {
         this->_indexReadBuffer.pushSearchDoc(reader.doc->value, viewSegment);
       }
@@ -1522,7 +1523,8 @@ bool IResearchViewExecutor<ExecutionTraits>::readSegment(
 
     if constexpr (Base::usesStoredValues) {
       TRI_ASSERT(reader.doc);
-      this->pushStoredValues<parallel>(*reader.doc, readerIndex, current);
+      this->pushStoredValues<parallel>(*reader.doc, reader.readerOffset,
+                                       current);
     }
     if constexpr (!parallel) {
       // doc and scores are both pushed, sizes must now be coherent
@@ -1544,33 +1546,103 @@ bool IResearchViewExecutor<ExecutionTraits>::readSegment(
 template<typename ExecutionTraits>
 bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
   TRI_ASSERT(this->_filter != nullptr);
-  size_t const atMost = ctx.outputRow.numRowsLeft();
+  size_t const count = this->_reader->size();
+  size_t atMost = ctx.outputRow.numRowsLeft();
   TRI_ASSERT(this->_indexReadBuffer.empty());
   this->_isMaterialized = false;
+  auto const& clientCall = ctx.outputRow.getClientCall();
+  auto limit = clientCall.getUnclampedLimit();
+  bool const isUnlimited = limit == aql::AqlCall::Infinity{};
+  //bool const fullRead = isUnlimited || clientCall.needsFullCount();
+  TRI_ASSERT(isUnlimited || std::holds_alternative<std::size_t>(limit));
+  // FIXME: Maybe have limit >  atMost * 2 for triggering parallism.
+  auto const parallelism = this->_infos.parallelism();
+  auto windowSize = atMost;
+  if (parallelism > 1 &&
+      (isUnlimited || std::get<std::size_t>(limit) > atMost)) {
+    atMost = atMost * parallelism;
+  }
+  LOG_DEVEL << "CALL LIMIT:" << AqlCall::LimitPrinter(limit)
+            << " Parallelism:" << parallelism << " AtMost Corrected:" << atMost;
   this->_indexReadBuffer.reset();
   this->_indexReadBuffer.preAllocateStoredValuesBuffer(
       atMost, this->_infos.getScoreRegisters().size(),
       this->_infos.getOutNonMaterializedViewRegs().size());
-  size_t const count = this->_reader->size();
-  auto const& clientCall = ctx.outputRow.getClientCall();
-  auto limit = clientCall.getUnclampedLimit();
-  bool const isUnlimited = limit == aql::AqlCall::Infinity{};
-  bool const fullRead = isUnlimited || clientCall.needsFullCount();
-  LOG_DEVEL << "CALL LIMIT:" << AqlCall::LimitPrinter(limit);
-  auto const parallelism = this->_infos.parallelism();
+  this->_indexReadBuffer.setForParallelAccess(
+      atMost, this->_infos.getScoreRegisters().size(),
+      this->_infos.getOutNonMaterializedViewRegs().size());
   bool gotData = false;
   std::atomic<size_t> bufferIdx{0};
-  auto& reader = _segmentReaders.front();
-  for (; _segmentOffset < count;) {
-    reader.atMost = atMost;
-    reader.readerOffset = _segmentOffset;
-    gotData = readSegment<false>(reader, 0, bufferIdx);
-    if (gotData) {
-      break;
-    } else {
-      ++_segmentOffset;
+  std::vector<std::thread> runners;
+  std::vector<futures::Try<bool>> results;
+  results.resize(parallelism);
+  irs::Finally cleanupThreads = [&]() noexcept {
+    for (auto& t : runners) {
+      t.join();
+    }
+  };
+  // launching additional workers
+  size_t i = 0;
+  if (atMost > windowSize) {
+    for (; i < _segmentReaders.size() && atMost > windowSize; ++i) {
+      auto& reader = _segmentReaders[i];
+      if (!reader.itr ) {
+        if (count >= _segmentOffset) {
+          continue;
+        }
+        reader.readerOffset = _segmentOffset++;
+        reader.currentSegmentPos = 0;
+      }
+      reader.atMost = windowSize;
+      atMost -= windowSize;
+      auto loader = [&, i](SegmentReader* ctx) {
+        try {
+          results[i].emplace(readSegment<true>(*ctx, bufferIdx));
+        } catch (...) {
+          results[i].set_exception(std::move(std::current_exception()));
+        }
+      };
+      runners.push_back(std::thread(loader, &reader));
     }
   }
+  {
+    TRI_ASSERT(i < _segmentReaders.size());
+    auto& reader = _segmentReaders[i];
+    if (!reader.itr && count < _segmentOffset) {
+      reader.readerOffset = _segmentOffset++;
+      reader.currentSegmentPos = 0;
+    }
+    reader.atMost = windowSize;
+    if (parallelism > 1) {
+      gotData = readSegment<true>(reader, bufferIdx);
+    } else {
+      gotData = readSegment<false>(reader, bufferIdx);
+    }
+  }
+  for (auto& t : runners) {
+    t.join();
+    runners.clear();
+  }
+  for (size_t j = 0; j < i; ++j) {
+    gotData |= results[j].get();
+  }
+  if (gotData) {
+    this->_indexReadBuffer.setForParallelAccess(
+        bufferIdx + 1, this->_infos.getScoreRegisters().size(),
+        this->_infos.getOutNonMaterializedViewRegs().size());
+  }
+
+  //auto& reader = _segmentReaders.front();
+  //for (; _segmentOffset < count;) {
+  //  reader.atMost = atMost;
+  //  reader.readerOffset = _segmentOffset;
+  //  gotData = readSegment<false>(reader, 0, bufferIdx);
+  //  if (gotData) {
+  //    break;
+  //  } else {
+  //    ++_segmentOffset;
+  //  }
+  //}
   return gotData;
 }
 
@@ -1947,7 +2019,7 @@ bool IResearchViewMergeExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
     if constexpr (Base::isLateMaterialized) {
       this->_indexReadBuffer.pushValue(viewSegment, segment.doc->value);
     } else {
-      this->_indexReadBuffer.pushValue(documentId, viewSegment);
+      this->_indexReadBuffer.pushValue(viewSegment, documentId);
     }
     gotData = true;
     // in the ordered case we have to write scores as well as a document

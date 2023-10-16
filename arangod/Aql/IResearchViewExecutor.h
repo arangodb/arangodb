@@ -307,8 +307,8 @@ class IndexReadBuffer {
   }
 
   template<typename... Args>
-  void setValue(size_t idx, StorageSnapshot const& snapshot, Args&&... args) {
-    _keyBuffer[idx] = BufferValueType(snapshot, std::forward<Args>(args)...);
+  void setValue(size_t idx, iresearch::ViewSegment const& segment, Args&&... args) noexcept {
+    _keyBuffer[idx] = ValueType(segment, std::forward<Args>(args)...);
   }
 
   void pushSearchDoc(irs::doc_id_t docId,
@@ -317,7 +317,7 @@ class IndexReadBuffer {
   }
 
   void setSearchDoc(size_t idx, iresearch::ViewSegment const& segment,
-                    irs::doc_id_t docId) {
+                    irs::doc_id_t docId) noexcept {
     _searchDocs[idx] = iresearch::SearchDoc{segment, docId};
   }
 
@@ -666,11 +666,10 @@ class IResearchViewExecutor
     ColumnIterator pkReader;  // current primary key reader
     irs::doc_iterator::ptr itr;
     irs::document const* doc{};
-    size_t readerOffset{0};
+    size_t readerOffset{0}; // REMOVE?
     size_t currentSegmentPos{0};           // current document iterator position in segment
     size_t totalPos{0};  // total position for full snapshot
     size_t numScores{0};
-    size_t bufferOffset{0};
     size_t numFilled{0};
     size_t atMost{0};
     LogicalCollection const* collection{};
@@ -684,7 +683,7 @@ class IResearchViewExecutor
   bool fillBuffer(ReadContext& ctx);
 
   template<bool parallel>
-  bool readSegment(SegmentReader& reader, size_t readerIndex,
+  bool readSegment(SegmentReader& reader,
                    std::atomic<size_t>& bufferIdxGlobal);
 
   bool writeRow(ReadContext& ctx, size_t idx);
@@ -713,7 +712,7 @@ struct DocumentValue {
 
 struct ExecutorValue {
   explicit ExecutorValue(
-      LocalDocumentId id, iresearch::ViewSegment const& segment) noexcept
+      iresearch::ViewSegment const& segment, LocalDocumentId id) noexcept
       : _value{id}, _segment{&segment} {}
 
   auto const& value() const noexcept { return _value; }
