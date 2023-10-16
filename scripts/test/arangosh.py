@@ -39,7 +39,6 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
        # pylint: disable=R0913 disable=R0902
         """ testing.js wrapper """
         logging.info('------')
-        logging.info(testing_args)
         testscript = self.cfg.base_path / 'js' / 'client' / 'modules' / '@arangodb' / 'testutils' / 'unittest.js'
         args = [
             '-c', str(self.cfg.cfgdir / 'arangosh.conf'),
@@ -53,10 +52,12 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
             ]
         run_cmd = args +[
             '--',
-            # ATM CircleCI does not support to attach debuggers, so instead we generate core dumps
-            "--coreAbrt", "true",
             testcase,
-            '--testOutput', directory ] + testing_args
+            '--testOutput', directory,
+            # ATM CircleCI does not support to attach debuggers, so we generate core dumps instead
+            "--coreAbrt", "true"
+        ] + testing_args
+        logging.info(run_cmd)
         params = make_logfile_params(verbose, logfile, self.cfg.trace, temp_dir)
         ret = self.run_monitored(
             self.cfg.bin_dir / "arangosh",
