@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global fail, assertEqual, assertNotEqual, assertTrue, AQL_EXECUTE, AQL_EXPLAIN */
+/*global fail, assertEqual, assertNotEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -107,8 +107,7 @@ const IndexUniqueJoinTestSuite = function () {
       db._explain(query, null, queryOptions);
     }
     assertNotEqual(planNodes.indexOf("JoinNode"), -1);
-
-    const result = AQL_EXECUTE(query, null, queryOptions);
+    const result = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).execute();
     return result.json;
   };
 
