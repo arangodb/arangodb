@@ -807,7 +807,8 @@ std::string getFileNameFromHandle(HANDLE fileHandle) {
                                     sizeof(buff))) {
     return std::string();
   }
-  return fromWString(FileInformation->FileName, FileInformation->FileNameLength);
+  return fromWString(FileInformation->FileName,
+                     FileInformation->FileNameLength);
 }
 
 static std::vector<std::string> argVec;
