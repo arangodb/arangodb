@@ -3036,13 +3036,14 @@ std::unique_ptr<AqlIndexStreamIterator> RocksDBVPackIndex::streamForCondition(
   return stream;
 }
 
-bool RocksDBVPackIndex::supportsStreamInterface(
-    IndexStreamOptions const& streamOpts) const noexcept {
+bool RocksDBVPackIndex::checkSupportsStreamInterface(
+    std::vector<std::vector<basics::AttributeName>> const& coveredFields,
+    IndexStreamOptions const& streamOpts) noexcept {
   // TODO expand this for fixed values that can be moved into the index
 
   // we can only project values that are in range
   for (auto idx : streamOpts.projectedFields) {
-    if (idx > _fields.size() + _storedValues.size()) {
+    if (idx > coveredFields.size()) {
       return false;
     }
   }
@@ -3057,6 +3058,11 @@ bool RocksDBVPackIndex::supportsStreamInterface(
   }
 
   return true;
+}
+
+bool RocksDBVPackIndex::supportsStreamInterface(
+    IndexStreamOptions const& streamOpts) const noexcept {
+  return checkSupportsStreamInterface(_coveredFields, streamOpts);
 }
 
 }  // namespace arangodb

@@ -161,13 +161,15 @@ void Expression::replaceVariableReference(Variable const* variable,
   invalidateAfterReplacements();
 }
 
-void Expression::replaceAttributeAccess(
-    Variable const* variable, std::vector<std::string> const& attribute) {
+void Expression::replaceAttributeAccess(Variable const* searchVariable,
+                                        std::span<std::string_view> attribute,
+                                        Variable const* replaceVariable) {
   _node = _ast->clone(_node);
   TRI_ASSERT(_node != nullptr);
 
-  _node = Ast::replaceAttributeAccess(const_cast<AstNode*>(_node), variable,
-                                      attribute);
+  _node =
+      Ast::replaceAttributeAccess(ast(), const_cast<AstNode*>(_node),
+                                  searchVariable, attribute, replaceVariable);
   invalidateAfterReplacements();
 }
 
@@ -356,13 +358,11 @@ void Expression::initAccessor() {
 
   TRI_ASSERT(_node->numMembers() == 1);
   auto member = _node->getMemberUnchecked(0);
-  ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor> alloc = {
-      _resourceMonitor};
-  MonitoredStringVector parts{alloc};
+  std::vector<std::string> parts;
   parts.emplace_back(_node->getString());
 
   while (member->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    parts.insert(parts.begin(), MonitoredString{member->getString(), alloc});
+    parts.insert(parts.begin(), member->getString());
     member = member->getMemberUnchecked(0);
   }
 
@@ -376,8 +376,8 @@ void Expression::initAccessor() {
     auto v = static_cast<Variable const*>(member->getData());
 
     // specialize the simple expression into an attribute accessor
-    _accessor =
-        AttributeAccessor::create(AttributeNamePath(std::move(parts)), v);
+    _accessor = AttributeAccessor::create(
+        AttributeNamePath(std::move(parts), _resourceMonitor), v);
     TRI_ASSERT(_accessor != nullptr);
   }
 }
@@ -1885,7 +1885,7 @@ AqlValue Expression::executeSimpleExpressionArithmetic(ExpressionContext& ctx,
   }
 
   mustDestroy = false;
-  double result;
+  double result = 0.0;
 
   switch (node->type) {
     case NODE_TYPE_OPERATOR_BINARY_PLUS:
@@ -1904,7 +1904,7 @@ AqlValue Expression::executeSimpleExpressionArithmetic(ExpressionContext& ctx,
       result = fmod(l, r);
       break;
     default:
-      return AqlValue(AqlValueHintZero());
+      break;
   }
 
   // this will convert NaN, +inf & -inf to null

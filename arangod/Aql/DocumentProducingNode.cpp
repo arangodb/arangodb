@@ -52,10 +52,10 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
                                              arangodb::velocypack::Slice slice)
     : _outVariable(
           Variable::varFromVPack(plan->getAst(), slice, "outVariable")),
-      _projections(arangodb::aql::Projections::fromVelocyPack(
-          slice, plan->getAst()->query().resourceMonitor())),
-      _filterProjections(arangodb::aql::Projections::fromVelocyPack(
-          slice, "filterProjections",
+      _projections(aql::Projections::fromVelocyPack(
+          plan->getAst(), slice, plan->getAst()->query().resourceMonitor())),
+      _filterProjections(aql::Projections::fromVelocyPack(
+          plan->getAst(), slice, "filterProjections",
           plan->getAst()->query().resourceMonitor())),
       _count(false),
       _useCache(true),
@@ -87,10 +87,12 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
 
 void DocumentProducingNode::cloneInto(ExecutionPlan* plan,
                                       DocumentProducingNode& c) const {
-  if (_filter != nullptr) {
+  if (hasFilter()) {
     c.setFilter(
         std::unique_ptr<Expression>(_filter->clone(plan->getAst(), true)));
   }
+  c.setProjections(_projections);
+  c.setFilterProjections(_filterProjections);
   c.copyCountFlag(this);
   c.setCanReadOwnWrites(canReadOwnWrites());
   c.setMaxProjections(maxProjections());
@@ -149,25 +151,26 @@ void DocumentProducingNode::setFilter(std::unique_ptr<Expression> filter) {
   _filter = std::move(filter);
 }
 
-arangodb::aql::Projections const& DocumentProducingNode::projections()
-    const noexcept {
+Projections const& DocumentProducingNode::projections() const noexcept {
   return _projections;
 }
 
-arangodb::aql::Projections& DocumentProducingNode::projections() noexcept {
+Projections& DocumentProducingNode::projections() noexcept {
   return _projections;
 }
 
-arangodb::aql::Projections const& DocumentProducingNode::filterProjections()
-    const noexcept {
+Projections const& DocumentProducingNode::filterProjections() const noexcept {
   return _filterProjections;
 }
 
-void DocumentProducingNode::setProjections(
-    arangodb::aql::Projections projections) {
+void DocumentProducingNode::setProjections(aql::Projections projections) {
   _projections = std::move(projections);
 }
 
+void DocumentProducingNode::setFilterProjections(aql::Projections projections) {
+  _filterProjections = std::move(projections);
+}
+
 bool DocumentProducingNode::doCount() const noexcept {
-  return _count && (_filter == nullptr);
+  return _count && !hasFilter();
 }

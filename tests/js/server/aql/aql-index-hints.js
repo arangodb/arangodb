@@ -2,10 +2,6 @@
 /*global fail, assertEqual, assertNotEqual, assertTrue, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for Ahuacatl, skiplist index queries
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2016 ArangoDB GmbH, Cologne, Germany
@@ -31,6 +27,7 @@
 const internal = require("internal");
 const db = internal.db;
 const jsunity = require("jsunity");
+const normalize = require("@arangodb/aql-helper").normalizeProjections;
 const errors = internal.errors;
 const analyzers = require("@arangodb/analyzers");
 
@@ -1000,7 +997,7 @@ function indexHintDisableIndexSuite () {
             assertEqual(query[1], node.indexes[0].name, query);
             assertEqual(query[3], node.indexCoversProjections, query);
           }
-          assertEqual(query[2], node.projections);
+          assertEqual(normalize(query[2]), normalize(node.projections));
         });
       });
     },
@@ -1031,7 +1028,7 @@ function indexHintDisableIndexSuite () {
         let ns = nodes.filter((node) => node.type === 'EnumerateCollectionNode');
         assertEqual(1, ns.length, query);
         let node = ns[0];
-        assertEqual(query[1], node.projections.sort(), query);
+        assertEqual(normalize(query[1]), normalize(node.projections), query);
       });
     },
 

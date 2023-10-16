@@ -37,6 +37,7 @@
 #include "Basics/Exceptions.h"
 #include "Containers/Enumerate.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -48,10 +49,10 @@ using namespace arangodb::aql;
 VarInfo::VarInfo(unsigned int depth, RegisterId registerId)
     : depth(depth), registerId(registerId) {
   if (!registerId.isValid()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT,
-                                   std::string("too many registers (") +
-                                       std::to_string(registerId.value()) +
-                                       ") needed for AQL query");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_RESOURCE_LIMIT,
+        absl::StrCat("too many registers (", registerId.value(),
+                     ") needed for AQL query"));
   }
 }
 
@@ -176,14 +177,14 @@ void RegisterPlanWalkerT<T>::after(T* en) {
             // report an error here to prevent crashing
             THROW_ARANGO_EXCEPTION_MESSAGE(
                 TRI_ERROR_INTERNAL,
-                std::string("missing variable ") +
-                    ((!v->name.empty() && v->name[0] >= '0' &&
-                      v->name[0] <= '9')
-                         ? "#"
-                         : "") +
-                    v->name + " (id " + std::to_string(v->id) + ") for node #" +
-                    std::to_string(en->id().id()) + " (" + en->getTypeString() +
-                    ") while planning registers");
+                absl::StrCat("missing variable ",
+                             ((!v->name.empty() && v->name[0] >= '0' &&
+                               v->name[0] <= '9')
+                                  ? "#"
+                                  : ""),
+                             v->name, " (id ", v->id, ") for node #",
+                             en->id().id(), " (", en->getTypeString(),
+                             ") while planning registers"));
           }
         }
       }
@@ -516,9 +517,8 @@ RegisterId RegisterPlanT<T>::registerVariable(
   if (!inserted) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
-        std::string("duplicate register assignment for variable " + v->name +
-                    " #") +
-            std::to_string(v->id) + " while planning registers");
+        absl::StrCat("duplicate register assignment for variable ", v->name,
+                     " #", v->id, " while planning registers"));
   }
 
   return regId;
