@@ -142,7 +142,27 @@ const IndexJoinTestSuite = function () {
       assertEqual(result.length, 0);
     },
 
-    testEveryOtherMatch: function () {
+    testEveryOtherMatchSmall: function () {
+      const A = fillCollection("A", singleAttributeGenerator(10, "x", x => x));
+      A.ensureIndex({type: "persistent", fields: ["x"]});
+      const B = fillCollection("B", singleAttributeGenerator(5, "x", x => 2 * x));
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+
+      const result = runAndCheckQuery(`
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2.x
+              RETURN [doc1, doc2]
+      `);
+
+      assertEqual(result.length, 5);
+      for (const [a, b] of result) {
+        assertEqual(a.x, b.x);
+      }
+    },
+
+    testEveryOtherMatchMedium: function () {
       const A = fillCollection("A", singleAttributeGenerator(1000, "x", x => x));
       A.ensureIndex({type: "persistent", fields: ["x"]});
       const B = fillCollection("B", singleAttributeGenerator(500, "x", x => 2 * x));
@@ -157,6 +177,26 @@ const IndexJoinTestSuite = function () {
       `);
 
       assertEqual(result.length, 500);
+      for (const [a, b] of result) {
+        assertEqual(a.x, b.x);
+      }
+    },
+
+    testEveryOtherMatchBig: function () {
+      const A = fillCollection("A", singleAttributeGenerator(10000, "x", x => x));
+      A.ensureIndex({type: "persistent", fields: ["x"]});
+      const B = fillCollection("B", singleAttributeGenerator(5000, "x", x => 2 * x));
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+
+      const result = runAndCheckQuery(`
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2.x
+              RETURN [doc1, doc2]
+      `);
+
+      assertEqual(result.length, 5000);
       for (const [a, b] of result) {
         assertEqual(a.x, b.x);
       }
@@ -528,8 +568,12 @@ const IndexJoinTestSuite = function () {
     },
 
     testJoinWithDocumentPostFilterFilterProjections: function () {
-      const A = fillCollection("A", attributeGenerator(20, {x: x => 2 * x, y: x => x}));
-      A.ensureIndex({type: "persistent", fields: ["x", "y"]});
+      const A = fillCollection("A", attributeGenerator(20, {
+        x: x => 2 * x, y: function (x) {
+          return {z: {w: x}};
+        }
+      }));
+      A.ensureIndex({type: "persistent", fields: ["x", "y.z"]});
       const B = fillCollection("B", singleAttributeGenerator(20, "x", x => x));
       B.ensureIndex({type: "persistent", fields: ["x"]});
 
@@ -538,7 +582,7 @@ const IndexJoinTestSuite = function () {
           SORT doc1.x
           FOR doc2 IN B
               FILTER doc1.x == doc2.x
-              FILTER doc1.y % 2 == 0
+              FILTER doc1.y.z.w % 2 == 0
               RETURN [doc1, doc2.x]
       `;
 
@@ -548,7 +592,8 @@ const IndexJoinTestSuite = function () {
       assertEqual(join.type, "JoinNode");
 
       assertEqual(join.indexInfos[0].projections, []);
-      assertEqual(normalize(join.indexInfos[0].filterProjections), normalize(["y"]));
+      assertEqual(normalize(join.indexInfos[0].filterProjections), normalize([["y", "z", "w"]]));
+      assertEqual(normalize(join.indexInfos[0].projections), normalize([]));
       assertEqual(normalize(join.indexInfos[1].projections), normalize(["x"]));
 
       const result = runAndCheckQuery(query);
@@ -556,7 +601,7 @@ const IndexJoinTestSuite = function () {
       assertEqual(result.length, 5);
       for (const [a, b] of result) {
         assertEqual(a.x, b);
-        assertEqual(a.y % 2, 0);
+        assertEqual(a.y.z.w % 2, 0);
       }
     },
 
