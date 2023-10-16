@@ -406,12 +406,15 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
   }
 
   try {
+    return handleUseQuery(operation, querySlice);
+#if 0
     RestStatus state;
     do {
       state = handleUseQuery(operation, querySlice);
     } while (state == RestStatus::WAITING &&
              _engine->sharedState()->consumeWakeup());
     return state;
+#endif
   } catch (arangodb::basics::Exception const& ex) {
     generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), ex.what());
   } catch (std::exception const& ex) {
