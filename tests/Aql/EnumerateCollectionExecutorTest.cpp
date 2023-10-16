@@ -250,11 +250,7 @@ TEST_F(EnumerateCollectionExecutorTest, the_skip_datarange) {
 
 // new framework tests
 
-// This is only to get a split-type. The Type is independent of actual template
-// parameters
-using EnumerateCollectionTestHelper = ExecutorTestHelper<1, 1>;
-using EnumerateCollectionSplitType = EnumerateCollectionTestHelper::SplitType;
-using EnumerateCollectionInputParam = std::tuple<EnumerateCollectionSplitType>;
+using EnumerateCollectionInputParam = std::tuple<SplitType>;
 
 class EnumerateCollectionExecutorTestProduce
     : public AqlExecutorTestCaseWithParam<EnumerateCollectionInputParam> {
@@ -471,11 +467,9 @@ TEST_P(EnumerateCollectionExecutorTestProduce,
 }
 
 template<size_t... vs>
-const EnumerateCollectionSplitType splitIntoBlocks =
-    EnumerateCollectionSplitType{std::vector<std::size_t>{vs...}};
+const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
 template<size_t step>
-const EnumerateCollectionSplitType splitStep =
-    EnumerateCollectionSplitType{step};
+const SplitType splitStep = SplitType{step};
 
 INSTANTIATE_TEST_CASE_P(EnumerateCollectionExecutor,
                         EnumerateCollectionExecutorTestProduce,
