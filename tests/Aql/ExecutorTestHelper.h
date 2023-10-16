@@ -44,6 +44,7 @@
 #include "Aql/Query.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Containers/Enumerate.h"
+#include "Aql/SharedQueryState.h"
 #include "Logger/LogMacros.h"
 
 #include <numeric>

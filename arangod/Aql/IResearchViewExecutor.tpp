@@ -266,7 +266,7 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::ReadContext::ReadContext(
 
 template<typename Impl, typename ExecutionTraits>
 void IResearchViewExecutorBase<Impl, ExecutionTraits>::ReadContext::moveInto(
-    std::unique_ptr<std::string> data) noexcept {
+    aql::DocumentData data) noexcept {
   static_assert(isMaterialized);
   outputRow.moveValueInto(documentOutReg, inputRow, &data);
 }

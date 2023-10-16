@@ -44,7 +44,7 @@ namespace aql {
 
 class Ast;
 struct AstNode;
-struct AttributeNamePath;
+class AttributeNamePath;
 struct Collection;
 class ExecutionNode;
 class IndexHint;

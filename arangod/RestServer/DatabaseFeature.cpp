@@ -395,15 +395,6 @@ void DatabaseFeature::initCalculationVocbase(ArangodServer& server) {
 }
 
 void DatabaseFeature::start() {
-  if (_extendedNames) {
-    LOG_TOPIC("2c0c6", WARN, arangodb::Logger::FIXME)
-        << "Enabling extended names for databases, collections, view, and "
-           "indexes "
-        << " is an experimental feature which can "
-           "cause incompatibility issues with not-yet-prepared drivers and "
-           "applications - do not use in production!";
-  }
-
 #ifdef USE_V8
   auto& dealer = server().getFeature<V8DealerFeature>();
   if (dealer.isEnabled()) {
@@ -692,13 +683,6 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
     info.toVelocyPack(markerBuilder);  // can we improve this
   }
   result = nullptr;
-
-  bool extendedNames = this->extendedNames();
-  if (auto res = DatabaseNameValidator::validateName(/*allowSystem*/ false,
-                                                     extendedNames, name);
-      res.fail()) {
-    return res;
-  }
 
   std::unique_ptr<TRI_vocbase_t> vocbase;
 
@@ -1210,14 +1194,22 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
     // we don't want the server start to fail here in case some
     // invalid settings are present
     info.strictValidation(false);
+
+    // do not validate database names for existing databases.
+    // the rationale is that if a database was already created with
+    // an extended name, we should not declare it invalid and abort
+    // the startup once the extended names option is turned off.
+    info.validateNames(false);
+
     auto res = info.load(it, velocypack::Slice::emptyArraySlice());
 
     if (res.fail()) {
       std::string errorMsg;
       // note: TRI_ERROR_ARANGO_DATABASE_NAME_INVALID should not be
       // used anymore in 3.11 and higher.
-      if (res.is(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID) ||
-          res.is(TRI_ERROR_ARANGO_ILLEGAL_NAME)) {
+      bool isNameError = res.is(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID) ||
+                         res.is(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+      if (isNameError) {
         // special case: if we find an invalid database name during startup,
         // we will give the user some hint how to fix it
         absl::StrAppend(&errorMsg, res.errorMessage(), ": '", name, "'");
@@ -1237,8 +1229,15 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
                         "': ", res.errorMessage());
       }
 
-      res.reset(res.errorNumber(), std::move(errorMsg));
-      THROW_ARANGO_EXCEPTION(res);
+      if (!isNameError) {
+        // rethrow all errors but "illegal name" errors.
+        // the "illegal name" errors will be silenced during startup,
+        // so that it will be possible to start a database server
+        // with existing databases with extended database names even
+        // if the extended names feature was turned off later.
+        res.reset(res.errorNumber(), std::move(errorMsg));
+        THROW_ARANGO_EXCEPTION(res);
+      }
     }
 
     auto database = engine.openDatabase(std::move(info), _upgrade);

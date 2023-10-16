@@ -26,11 +26,9 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutionEngine.h"
-
+#include "Aql/InsertModifier.h"
 #include "Aql/ModificationExecutorAccumulator.h"
 #include "Aql/ModificationExecutorInfos.h"
-
-#include "Aql/InsertModifier.h"
 #include "Aql/RemoveModifier.h"
 #include "Aql/UpdateReplaceModifier.h"
 
@@ -113,7 +111,6 @@ class SimpleModifier : public std::enable_shared_from_this<
     VPackArrayIterator _resultsIterator;
   };
 
- public:
   explicit SimpleModifier(ModificationExecutorInfos& infos)
       : _infos(infos),
         _completion(infos),

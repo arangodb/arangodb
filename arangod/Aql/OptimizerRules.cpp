@@ -43,6 +43,7 @@
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IndexNode.h"
 #include "Aql/JoinNode.h"
+#include "Aql/IndexStreamIterator.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerUtils.h"
@@ -1067,18 +1068,16 @@ bool optimizeTraversalPathVariable(
   bool producePathsWeights = false;
 
   for (auto const& it : attributes) {
-    TRI_ASSERT(!it._path.empty());
+    TRI_ASSERT(!it.empty());
     if (!producePathsVertices &&
-        it._path[0] == std::string_view{StaticStrings::GraphQueryVertices}) {
+        it[0] == std::string_view{StaticStrings::GraphQueryVertices}) {
       producePathsVertices = true;
     } else if (!producePathsEdges &&
-               it._path[0] ==
-                   std::string_view{StaticStrings::GraphQueryEdges}) {
+               it[0] == std::string_view{StaticStrings::GraphQueryEdges}) {
       producePathsEdges = true;
     } else if (!producePathsWeights &&
                options->mode == traverser::TraverserOptions::Order::WEIGHTED &&
-               it._path[0] ==
-                   std::string_view{StaticStrings::GraphQueryWeights}) {
+               it[0] == std::string_view{StaticStrings::GraphQueryWeights}) {
       producePathsWeights = true;
     }
   }
@@ -2199,8 +2198,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
           // add the post-SORT
           SortElementVector sortElements;
           for (auto const& v : collectNode->groupVariables()) {
-            sortElements.emplace_back(SortElement{
-                v.outVar, true, plan->getAst()->query().resourceMonitor()});
+            sortElements.emplace_back(v.outVar, true);
           }
 
           auto sortNode = plan->createNode<SortNode>(plan.get(), plan->nextId(),
@@ -2237,8 +2235,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
         // add the post-SORT
         SortElementVector sortElements;
         for (auto const& v : newCollectNode->groupVariables()) {
-          sortElements.emplace_back(SortElement{
-              v.outVar, true, plan->getAst()->query().resourceMonitor()});
+          sortElements.emplace_back(v.outVar, true);
         }
 
         auto sortNode = newPlan->createNode<SortNode>(
@@ -2285,8 +2282,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
     if (!groupVariables.empty()) {
       SortElementVector sortElements;
       for (auto const& v : groupVariables) {
-        sortElements.emplace_back(SortElement{
-            v.inVar, true, plan->getAst()->query().resourceMonitor()});
+        sortElements.emplace_back(v.inVar, true);
       }
 
       auto sortNode = plan->createNode<SortNode>(plan.get(), plan->nextId(),
@@ -3878,11 +3874,8 @@ auto insertGatherNode(
       // also check if we actually need to bother about the sortedness of the
       // result, or if we use the index for filtering only
       if (first->isSorted() && idxNode->needsGatherNodeSort()) {
-        for (auto const& path : first->trackedFieldNames(
-                 plan.getAst()->query().resourceMonitor())) {
-          elements.emplace_back(
-              SortElement{sortVariable, isSortAscending, path,
-                          plan.getAst()->query().resourceMonitor()});
+        for (auto const& path : first->fieldNames()) {
+          elements.emplace_back(sortVariable, isSortAscending, path);
         }
         for (auto const& it : allIndexes) {
           if (first != it) {
@@ -9057,18 +9050,11 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
   bool modified = false;
   if (nodes.size() >= 2) {
     // not yet supported:
-    // - projections
-    // - post-filtering
     // - IndexIteratorOptions: sorted, ascending, evalFCalls, useCache,
     // waitForSync, limit, lookahead
     // - reverse iteration
     // - support from GatherNodes
     auto nodeQualifies = [](IndexNode const& indexNode) {
-      if (indexNode.filter() != nullptr) {
-        // IndexNode has post-filter condition
-        return false;
-      }
-
       if (indexNode.condition() == nullptr) {
         // IndexNode does not have an index lookup condition
         return false;
@@ -9098,11 +9084,6 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
 
       if (index->hasExpansion()) {
         // index uses expansion ([*]) operator
-        return false;
-      }
-
-      if (index->type() != Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
-        // must be a persistent index. TODO: ask index if it supports join API.
         return false;
       }
 
@@ -9219,6 +9200,36 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
               }
             }
 
+            // if there is a post filter, make sure it only accesses variables
+            // that are available before all index nodes
+            if (c->hasFilter()) {
+              VarSet vars;
+              c->filter()->variables(vars);
+
+              for (auto* other : candidates) {
+                if (other != c && other->setsVariable(vars)) {
+                  eligible = false;
+                }
+              }
+            }
+
+            // check if filter supports streaming interface
+            {
+              IndexStreamOptions opts;
+              opts.usedKeyFields = {0};  // for now only 0 is supported
+              if (c->projections().usesCoveringIndex()) {
+                opts.projectedFields.reserve(c->projections().size());
+                auto& proj = c->projections().projections();
+                std::transform(
+                    proj.begin(), proj.end(),
+                    std::back_inserter(opts.projectedFields),
+                    [](auto const& p) { return p.coveringIndexPosition; });
+              }
+              if (!c->getIndexes()[0]->supportsStreamInterface(opts)) {
+                eligible = false;
+              }
+            }
+
             if (!eligible) {
               break;
             }
@@ -9233,8 +9244,11 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                   .collection = c->collection(),
                   .outVariable = c->outVariable(),
                   .condition = c->condition()->clone(),
+                  .filter = c->hasFilter() ? c->filter()->clone(plan->getAst())
+                                           : nullptr,
                   .index = c->getIndexes()[0],
                   .projections = c->projections(),
+                  .filterProjections = c->filterProjections(),
                   .usedAsSatellite = c->isUsedAsSatellite()});
               handled.emplace(c);
             }

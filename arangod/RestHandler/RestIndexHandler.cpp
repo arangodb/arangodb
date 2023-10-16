@@ -196,9 +196,7 @@ RestStatus RestIndexHandler::getIndexes() {
     tmp.add("identifiers", VPackValue(VPackValueType::Object));
     for (VPackSlice const& index : VPackArrayIterator(indexes.slice())) {
       VPackSlice id = index.get("id");
-      VPackValueLength l = 0;
-      char const* str = id.getString(l);
-      tmp.add(str, l, index);
+      tmp.add(id.stringView(), index);
     }
     tmp.close();
     tmp.close();

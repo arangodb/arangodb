@@ -421,8 +421,9 @@ bool AqlAnalyzer::next() {
       _resultRowIdx = 0;
       _queryResults = nullptr;
       try {
-        AqlCallStack aqlStack{
-            AqlCallList{AqlCall::SimulateGetSome(_options.batchSize)}};
+        AqlCallStack aqlStack{AqlCallList{
+            AqlCall{/*offset*/ 0, /*softLimit*/ _options.batchSize,
+                    /*hardLimit*/ AqlCall::Infinity{}, /*fullCount*/ false}}};
         SkipResult skip;
         std::tie(_executionState, skip, _queryResults) =
             _engine.execute(aqlStack);
