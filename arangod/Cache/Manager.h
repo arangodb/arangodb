@@ -85,6 +85,14 @@ class Manager {
     std::uint64_t spareAllocation = 0;
     std::uint64_t activeTables = 0;
     std::uint64_t spareTables = 0;
+    std::uint64_t migrateTasks = 0;
+    std::uint64_t freeMemoryTasks = 0;
+    std::uint64_t migrateTasksDuration = 0;     // total, micros
+    std::uint64_t freeMemoryTasksDuration = 0;  // total, micros
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    std::uint64_t tableCalls = 0;
+    std::uint64_t termCalls = 0;
+#endif
   };
 
   static constexpr std::uint64_t kMinSize = 1024 * 1024;
@@ -194,6 +202,19 @@ class Manager {
 
   SharedPRNGFeature& sharedPRNG() const noexcept { return _sharedPRNG; }
 
+  // track duration of migrate task, in ms
+  void trackMigrateTaskDuration(std::uint64_t duration) noexcept;
+  // track duration of free memory task, in ms
+  void trackFreeMemoryTaskDuration(std::uint64_t duration) noexcept;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  void trackTableCall() noexcept;
+#endif
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  void trackTermCall() noexcept;
+#endif
+
  private:
   // use sizeof(uint64_t) + sizeof(std::shared_ptr<Cache>) + 64 for upper bound
   // on size of std::set<std::shared_ptr<Cache>> node -- should be valid for
@@ -244,6 +265,23 @@ class Manager {
   std::uint64_t _peakGlobalAllocation;
   std::uint64_t _activeTables;
   std::uint64_t _spareTables;
+  std::uint64_t _migrateTasks;
+  std::uint64_t _freeMemoryTasks;
+  std::uint64_t _migrateTasksDuration;     // total, micros
+  std::uint64_t _freeMemoryTasksDuration;  // total, micros
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // number of calls to the function `Cache::table()`.
+  // calling this function is expensive, because it loads an
+  // atomic shared_ptr, which currently requires an internal
+  // mutex.
+  // we can expect one call to Cache::table() for every
+  // cache lookup, one call for every cache insert, and one
+  // for every cache removal. we can also expect calls to this
+  // function when the cache runs a "free memory" task.
+  std::atomic<std::uint64_t> _tableCalls;
+  // number of calls to the `term()` function.
+  std::atomic<std::uint64_t> _termCalls;
+#endif
 
   // transaction management
   TransactionManager _transactions;
@@ -295,7 +333,7 @@ class Manager {
 
   // coordinate state with task lifecycles
   void prepareTask(TaskEnvironment environment);
-  void unprepareTask(TaskEnvironment environment);
+  void unprepareTask(TaskEnvironment environment, bool internal) noexcept;
 
   // periodically run to rebalance allocations globally
   ErrorCode rebalance(bool onlyCalculate = false);
