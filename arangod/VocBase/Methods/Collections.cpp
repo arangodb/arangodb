@@ -1152,6 +1152,12 @@ Result Collections::rename(LogicalCollection& collection,
     return {TRI_ERROR_FORBIDDEN};
   }
 
+  std::string const oldName(collection.name());
+  if (oldName == newName) {
+    // no actual name change
+    return {};
+  }
+
   // check required to pass
   // shell-collection-rocksdb-noncluster.js::testSystemSpecial
   if (collection.system()) {
@@ -1159,7 +1165,7 @@ Result Collections::rename(LogicalCollection& collection,
   }
 
   if (!doOverride) {
-    bool const isSystem = NameValidator::isSystemName(collection.name());
+    bool const isSystem = NameValidator::isSystemName(oldName);
 
     if (isSystem != NameValidator::isSystemName(newName)) {
       // a system collection shall not be renamed to a non-system collection
@@ -1180,7 +1186,6 @@ Result Collections::rename(LogicalCollection& collection,
     }
   }
 
-  std::string const oldName(collection.name());
   auto res = collection.vocbase().renameCollection(collection.id(), newName);
 
   if (!res.ok()) {

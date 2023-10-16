@@ -273,7 +273,7 @@ AqlValue numberValue(double value, bool nullify) {
       return AqlValue(AqlValueHintNull());
     }
     // convert to 0
-    return AqlValue(AqlValueHintZero());
+    value = 0.0;
   }
 
   return AqlValue(AqlValueHintDouble(value));
@@ -1550,7 +1550,7 @@ AqlValue functions::ToNumber(ExpressionContext*, AstNode const&,
   double value = a.toDouble(failed);
 
   if (failed) {
-    return AqlValue(AqlValueHintZero());
+    value = 0.0;
   }
 
   return AqlValue(AqlValueHintDouble(value));

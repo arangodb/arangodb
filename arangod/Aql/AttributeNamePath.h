@@ -23,12 +23,13 @@
 
 #pragma once
 
-#include "Basics/MemoryTypes/MemoryTypes.h"
+#include "Basics/ResourceUsage.h"
 
 #include <cstdint>
 #include <functional>
 #include <iosfwd>
 #include <string>
+#include <vector>
 
 namespace arangodb::aql {
 
@@ -36,7 +37,8 @@ namespace arangodb::aql {
 /// a top-level attribute (e.g. _key) will be stored in a vector with a single
 /// element. nested attributes (e.g. a.b.c) will be stored in a vector with
 /// multiple elements
-struct AttributeNamePath {
+class AttributeNamePath {
+ public:
   enum class Type : uint8_t {
     IdAttribute,      // _id
     KeyAttribute,     // _key
@@ -46,20 +48,22 @@ struct AttributeNamePath {
     MultiAttribute    // sub-attribute, e.g. a.b.c
   };
 
-  explicit AttributeNamePath(
-      arangodb::ResourceMonitor& resourceMonitor) noexcept;
+  explicit AttributeNamePath(arangodb::ResourceMonitor& resourceMonitor);
 
   /// @brief construct an attribute path from a single attribute (e.g. _key)
   AttributeNamePath(std::string attribute,
                     arangodb::ResourceMonitor& resourceMonitor);
 
   /// @brief construct an attribute path from a nested attribute (e.g. a.b.c)
-  explicit AttributeNamePath(MonitoredStringVector path) noexcept;
+  AttributeNamePath(std::vector<std::string> path,
+                    arangodb::ResourceMonitor& resourceMonitor);
 
-  AttributeNamePath(AttributeNamePath const& other) = default;
-  AttributeNamePath& operator=(AttributeNamePath const& other) = default;
-  AttributeNamePath(AttributeNamePath&& other) noexcept = default;
-  AttributeNamePath& operator=(AttributeNamePath&& other) noexcept = default;
+  ~AttributeNamePath();
+
+  AttributeNamePath(AttributeNamePath const& other);
+  AttributeNamePath& operator=(AttributeNamePath const& other);
+  AttributeNamePath(AttributeNamePath&& other) noexcept;
+  AttributeNamePath& operator=(AttributeNamePath&& other) noexcept;
 
   /// @brief if the path is empty
   bool empty() const noexcept;
@@ -84,10 +88,17 @@ struct AttributeNamePath {
   bool operator<(AttributeNamePath const& other) const noexcept;
 
   /// @brief get the full path
-  [[nodiscard]] MonitoredStringVector const& get() const noexcept;
+  [[nodiscard]] std::vector<std::string> const& get() const noexcept;
 
   /// @brief clear all path attributes
   void clear() noexcept;
+
+  /// @brief add an attribute to the path
+  void add(std::string part);
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  void pop();
+#endif
 
   /// @brief reverse the attributes in the path
   AttributeNamePath& reverse();
@@ -99,7 +110,11 @@ struct AttributeNamePath {
   static size_t commonPrefixLength(AttributeNamePath const& lhs,
                                    AttributeNamePath const& rhs);
 
-  MonitoredStringVector _path;
+ private:
+  size_t memoryUsage() const noexcept;
+
+  arangodb::ResourceMonitor& _resourceMonitor;
+  std::vector<std::string> _path;
 };
 
 std::ostream& operator<<(std::ostream& stream, AttributeNamePath const& path);
