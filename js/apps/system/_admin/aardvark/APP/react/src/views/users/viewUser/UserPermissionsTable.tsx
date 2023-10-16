@@ -1,5 +1,5 @@
 import { ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
-import { IconButton, Stack, Tag } from "@chakra-ui/react";
+import { IconButton, Stack, Tag, Text } from "@chakra-ui/react";
 import {
   CellContext,
   createColumnHelper,
@@ -84,30 +84,32 @@ const TABLE_COLUMNS = [
   {
     id: "expander",
     header: () => null,
-    size: 8,
+    size: 2,
     cell: (info: CellContext<DatabaseTableType, unknown>) => {
-      if (getIsDefaultRow(info)) {
-        return "";
+      if (getIsDefaultRow(info) || !info.row.getCanExpand()) {
+        return null;
       }
-      return info.row.getCanExpand() ? (
+      return (
         <IconButton
-          variant="ghost"
+          display="block"
+          width="100%"
+          padding="0"
+          minWidth="4"
+          variant="unstyled"
           size="sm"
           aria-label="Expand/collapse row"
           icon={
-            info.row.getIsExpanded() ? <ChevronDownIcon /> : <ChevronUpIcon />
+            info.row.getIsExpanded() ? <ChevronUpIcon /> : <ChevronDownIcon />
           }
           onClick={info.row.getToggleExpandedHandler()}
         />
-      ) : (
-        ""
       );
     }
   },
   columnHelper.accessor("databaseName", {
     header: "Name",
     id: "databaseName",
-    size: 100,
+    size: 150,
     maxSize: 200,
     meta: {
       filterType: "text"
@@ -115,6 +117,9 @@ const TABLE_COLUMNS = [
     cell: info => {
       if (getIsDefaultRow(info)) {
         return <Tag>Default</Tag>;
+      }
+      if (info.row.getIsExpanded()) {
+        return <Text fontWeight="semibold">{info.cell.getValue()}</Text>;
       }
       return info.cell.getValue();
     }

@@ -1,9 +1,11 @@
+import { Tag } from "@chakra-ui/react";
 import { CellContext, createColumnHelper, Row } from "@tanstack/react-table";
 import React from "react";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { CollectionPermissionSwitch } from "./CollectionPermissionSwitch";
+import { getIsDefaultRow } from "./DatabasePermissionSwitch";
 import { PermissionType, useUsername } from "./useFetchDatabasePermissions";
 
 export type CollectionType = {
@@ -100,12 +102,18 @@ const COLLECTION_COLUMNS = [
     }
   },
   collectionColumnHelper.accessor("collectionName", {
-    header: "Name",
+    header: "Collections",
     id: "collectionName",
+    cell: info => {
+      if (getIsDefaultRow(info)) {
+        return <Tag>Default</Tag>;
+      }
+      return info.cell.getValue();
+    },
     meta: {
       filterType: "text"
     },
-    size: 100,
+    size: 150,
     maxSize: 200
   }),
   ...collectionPermissionColumns
@@ -143,6 +151,12 @@ export const CollectionsTable = ({
   const tableInstance = useSortableReactTable<CollectionType>({
     data: row.original.collections || [],
     columns: COLLECTION_COLUMNS,
+    initialSorting: [
+      {
+        id: "collectionName",
+        desc: false
+      }
+    ],
     meta: {
       databaseTable,
       databaseName,
