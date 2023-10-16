@@ -3448,7 +3448,7 @@ void RocksDBEngine::getStatistics(std::string& result) const {
 
       metrics::Metric::addInfo(result, name, /*help*/ name,
                                name.ends_with("_total") ? "counter" : "gauge");
-      result += absl::StrCat(name, " ", a.value.getNumber<uint64_t>(), "\n");
+      absl::StrAppend(&result, name, " ", a.value.getNumber<uint64_t>(), "\n");
     }
   }
 }
