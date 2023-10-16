@@ -98,7 +98,7 @@ const IndexUniqueJoinTestSuite = function () {
   };
 
   const runAndCheckQuery = function (query) {
-    const plan = AQL_EXPLAIN(query, null, queryOptions).plan;
+    const plan = db._explain(query, null, queryOptions).plan;
     let planNodes = plan.nodes.map(function (node) {
       return node.type;
     });
