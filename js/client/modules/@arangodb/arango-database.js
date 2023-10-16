@@ -997,8 +997,8 @@ ArangoDatabase.prototype._executeJson = function (plan, options = {}) {
         let opts = ${JSON.stringify(options)}
         return AQL_EXECUTEJSON(data);
       `;
-  return arango.POST("/_admin/execute", command).json;
-}
+  return this._connection.POST("/_admin/execute", command).json;
+};
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief factory method to create and execute a new statement
