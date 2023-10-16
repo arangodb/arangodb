@@ -462,6 +462,26 @@ TEST_F(ShadowRowForwardingTest, subqueryEnd1) {
   test(std::vector<std::size_t>{1, 3});
 };
 
+/**
+ * The following set of tests tries to simulate the different situations
+ * on Subqueries a Executor can be presented, and test it's reaction
+ * if there is no "default" call for one of the Subqueries.
+ * If we do not have a default call, we are not allowed to start the next Subquery run on this level.
+ * => If we do not have a deaultCall on depth 2, we can continue main and depth 1 and depth 2.
+ * But as soon as we only see a depth3 (or higher) shadow row, we have to stop asking from upstream
+ * And have to return.
+ * We can however return all higher shadowRows we already have from upstream, we are just not
+ * allowed to ask for more (even if it would be higher shadowRows, but we cannot see this)
+ *
+ *
+ * Therefore this test try to nest several levels of subqueries, the ask for a callstack which
+ * contains one call without a default in all possible levels. And checks if the Executor forwards
+ * only exactly those ShadowRows it can see from upstream.
+ * The upstream is split into several chunks of ShadowRows, the executor can never return a new datarow
+ * on first call, and it can only return the chunk of ShadowRows which contains the shadowRow one level
+ * higher than the one without default call.
+ */
+
 TEST_F(ShadowRowForwardingTest, nonForwardingExecutor) {
   auto const test = [&](RunConfiguration config) {
     config.validate();
