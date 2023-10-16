@@ -30,7 +30,9 @@ AqlFeaturePhase::AqlFeaturePhase(ArangodServer& server)
     : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
   startsAfter<CommunicationFeaturePhase, ArangodServer>();
+#ifdef USE_V8
   startsAfter<V8FeaturePhase, ArangodServer>();
+#endif
 
   startsAfter<AqlFeature, ArangodServer>();
   startsAfter<aql::AqlFunctionFeature, ArangodServer>();

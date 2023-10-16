@@ -411,11 +411,10 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
           // conflicting documents (that we just inserted), as documents may be
           // replicated in unexpected order.
           if (physical
-                  ->lookup(
-                      &trx, LocalDocumentId{rid.id()},
-                      IndexIterator::makeDocumentCallbackF(
-                          [](LocalDocumentId, VPackSlice) { return true; }),
-                      {.readOwnWrites = true})
+                  ->lookup(&trx, LocalDocumentId{rid.id()},
+                           [](LocalDocumentId, aql::DocumentData&&,
+                              VPackSlice) { return true; },
+                           {.readOwnWrites = true})
                   .ok()) {
             // already have exactly this revision. no need to insert
             sl.erase(rid);

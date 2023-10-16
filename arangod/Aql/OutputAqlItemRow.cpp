@@ -124,7 +124,7 @@ void OutputAqlItemRow::moveValueWithoutRowCopy(RegisterId registerId,
   if constexpr (std::is_same_v<V, AqlValueGuard>) {
     block().setValue(_baseIndex, registerId, value->value());
     value->steal();
-  } else if constexpr (std::is_same_v<V, std::unique_ptr<std::string>>) {
+  } else if constexpr (std::is_same_v<V, aql::DocumentData>) {
     block().emplaceValue(_baseIndex, registerId.value(), *value);
   } else {
     block().emplaceValue(_baseIndex, registerId.value(), value);
@@ -590,9 +590,9 @@ template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueGuard*>(
 template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, VPackSlice>(
     RegisterId registerId, InputAqlItemRow const& sourceRow, VPackSlice slice);
 template void
-OutputAqlItemRow::moveValueInto<InputAqlItemRow, std::unique_ptr<std::string>*>(
+OutputAqlItemRow::moveValueInto<InputAqlItemRow, aql::DocumentData*>(
     RegisterId registerId, InputAqlItemRow const& sourceRow,
-    std::unique_ptr<std::string>*);
+    aql::DocumentData*);
 
 template void
 OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintBool>(
@@ -606,9 +606,6 @@ template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintInt>(
 template void
 OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintUInt>(
     RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintUInt);
-template void
-OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintZero>(
-    RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintZero);
 template void
 OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintNone>(
     RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintNone);

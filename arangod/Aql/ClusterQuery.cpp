@@ -30,6 +30,7 @@
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/QueryProfile.h"
+#include "Aql/SharedQueryState.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"

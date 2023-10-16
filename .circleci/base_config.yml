@@ -16,6 +16,9 @@ parameters:
   enterprise-build-targets:
     type: string
     default: "arangobackup"
+  v8-build-targets:
+    type: string
+    default: "arangosh"
 
 commands:
   checkout-arangodb:
@@ -173,6 +176,9 @@ jobs:
       build-tests:
         type: boolean
         default: true
+      build-v8:
+        type: boolean
+        default: true
       publish-artifacts:
         type: boolean
         default: true
@@ -209,6 +215,9 @@ jobs:
           name: Build
           command: |
             TARGETS="<< pipeline.parameters.build-targets >>"
+            if [ << parameters.build-v8 >> = true ]; then
+              TARGETS="$TARGETS << pipeline.parameters.v8-build-targets >>"
+            fi
             if [ << parameters.enterprise >> = true ]; then
               TARGETS="$TARGETS << pipeline.parameters.enterprise-build-targets >>"
             fi
@@ -504,6 +513,17 @@ workflows:
   #         enterprise: true
   #         publish-artifacts: false
   #         build-tests: false
+  #     - compile-linux:
+  #         context:
+  #           - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+  #         resource-class: xlarge
+  #         name: build-ee-no-v8-x64
+  #         preset: enterprise-pr-no-v8
+  #         enterprise: true
+  #         publish-artifacts: false
+  #         build-tests: false
+  #         build-v8: false
+
   #     - run-cppcheck:
   #         name: cppcheck
   #         requires:

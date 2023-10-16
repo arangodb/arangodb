@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/AttributeNamePath.h"
-#include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
 #include "Basics/fasthash.h"
@@ -33,20 +32,69 @@
 namespace arangodb {
 namespace aql {
 
-AttributeNamePath::AttributeNamePath(
-    arangodb::ResourceMonitor& resourceMonitor) noexcept
-    : _path(ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor>{
-          resourceMonitor}) {}
+AttributeNamePath::AttributeNamePath(arangodb::ResourceMonitor& resourceMonitor)
+    : _resourceMonitor(resourceMonitor) {
+  // if this throws, we are ok. now dtor called
+  _resourceMonitor.increaseMemoryUsage(memoryUsage());
+}
 
 AttributeNamePath::AttributeNamePath(std::string attribute,
                                      arangodb::ResourceMonitor& resourceMonitor)
-    : _path(ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor>{
-          resourceMonitor}) {
+    : _resourceMonitor(resourceMonitor) {
   _path.emplace_back(std::move(attribute));
+
+  // if this throws, we are ok. now dtor called
+  _resourceMonitor.increaseMemoryUsage(memoryUsage());
 }
 
-AttributeNamePath::AttributeNamePath(MonitoredStringVector p) noexcept
-    : _path(std::move(p)) {}
+AttributeNamePath::AttributeNamePath(std::vector<std::string> path,
+                                     arangodb::ResourceMonitor& resourceMonitor)
+    : _resourceMonitor(resourceMonitor), _path(std::move(path)) {
+  // if this throws, we are ok. now dtor called
+  _resourceMonitor.increaseMemoryUsage(memoryUsage());
+}
+
+AttributeNamePath::AttributeNamePath(AttributeNamePath const& other)
+    : _resourceMonitor(other._resourceMonitor), _path(other._path) {
+  _resourceMonitor.increaseMemoryUsage(memoryUsage());
+}
+
+AttributeNamePath& AttributeNamePath::operator=(
+    AttributeNamePath const& other) {
+  if (this != &other) {
+    _resourceMonitor.decreaseMemoryUsage(memoryUsage());
+    _path.clear();
+    _path = other._path;
+    try {
+      _resourceMonitor.increaseMemoryUsage(memoryUsage());
+    } catch (...) {
+      _path.clear();
+      throw;
+    }
+  }
+  return *this;
+}
+
+AttributeNamePath::AttributeNamePath(AttributeNamePath&& other) noexcept
+    : _resourceMonitor(other._resourceMonitor), _path(std::move(other._path)) {
+  other._path.clear();
+  // no change in overall memory usage
+}
+
+AttributeNamePath& AttributeNamePath::operator=(
+    AttributeNamePath&& other) noexcept {
+  if (this != &other) {
+    _resourceMonitor.decreaseMemoryUsage(memoryUsage());
+    _path = std::move(other._path);
+    other._path.clear();
+    // no increase in overall memory usage
+  }
+  return *this;
+}
+
+AttributeNamePath::~AttributeNamePath() {
+  _resourceMonitor.decreaseMemoryUsage(memoryUsage());
+}
 
 bool AttributeNamePath::empty() const noexcept { return _path.empty(); }
 
@@ -115,15 +163,49 @@ bool AttributeNamePath::operator<(
   return (size() < other.size());
 }
 
-MonitoredStringVector const& AttributeNamePath::get() const noexcept {
+std::vector<std::string> const& AttributeNamePath::get() const noexcept {
   return _path;
 }
 
-void AttributeNamePath::clear() noexcept { _path.clear(); }
+void AttributeNamePath::clear() noexcept {
+  _resourceMonitor.decreaseMemoryUsage(memoryUsage());
+  _path.clear();
+}
+
+void AttributeNamePath::add(std::string part) {
+  auto previous = memoryUsage();
+  _path.emplace_back(std::move(part));
+  auto now = memoryUsage();
+  try {
+    _resourceMonitor.increaseMemoryUsage(now - previous);
+  } catch (...) {
+    _path.pop_back();
+    throw;
+  }
+}
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+void AttributeNamePath::pop() {
+  auto previous = memoryUsage();
+  TRI_ASSERT(!_path.empty());
+  _path.pop_back();
+  auto now = memoryUsage();
+  _resourceMonitor.decreaseMemoryUsage(previous - now);
+}
+#endif
 
 AttributeNamePath& AttributeNamePath::reverse() {
+  // no change in memory usage
   std::reverse(_path.begin(), _path.end());
   return *this;
+}
+
+size_t AttributeNamePath::memoryUsage() const noexcept {
+  size_t memoryUsage = 0;
+  for (size_t i = 0; i < _path.size(); ++i) {
+    memoryUsage += sizeof(std::string) + _path.size();
+  }
+  return memoryUsage;
 }
 
 /// @brief shorten the attributes in the path to the specified length
@@ -131,7 +213,11 @@ AttributeNamePath& AttributeNamePath::shortenTo(size_t length) {
   if (length >= size()) {
     return *this;
   }
+  auto previous = memoryUsage();
   _path.erase(_path.begin() + length, _path.end());
+  auto now = memoryUsage();
+  _resourceMonitor.decreaseMemoryUsage(previous - now);
+
   return *this;
 }
 
@@ -150,7 +236,7 @@ AttributeNamePath& AttributeNamePath::shortenTo(size_t length) {
 
 std::ostream& operator<<(std::ostream& stream, AttributeNamePath const& path) {
   stream << "[";
-  for (auto const& it : path._path) {
+  for (auto const& it : path.get()) {
     stream << ' ' << std::string_view{it};
   }
   stream << " ]";
