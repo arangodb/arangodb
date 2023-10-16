@@ -173,10 +173,12 @@ bool DocumentProducingNode::doCount() const noexcept {
   return _count && !hasFilter();
 }
 
-void DocumentProducingNode::recalculateProjections(ExecutionPlan* plan) {
+bool DocumentProducingNode::recalculateProjections(ExecutionPlan* plan) {
+  auto filterProjectionsHash = _filterProjections.hash();
+  auto projectionsHash = _projections.hash();
   _filterProjections.clear();
   _projections.clear();
-  LOG_DEVEL << __PRETTY_FUNCTION__;
+
   containers::FlatHashSet<AttributeNamePath> attributes;
   if (hasFilter()) {
     if (Ast::getReferencedAttributesRecursive(
@@ -184,7 +186,6 @@ void DocumentProducingNode::recalculateProjections(ExecutionPlan* plan) {
             /*expectedAttribute*/ "", attributes,
             plan->getAst()->query().resourceMonitor())) {
       _filterProjections = aql::Projections{std::move(attributes)};
-      LOG_DEVEL << "found filter projections: " << _filterProjections;
     }
   }
 
@@ -194,16 +195,10 @@ void DocumentProducingNode::recalculateProjections(ExecutionPlan* plan) {
                              /*excludeStartNodeFilterCondition*/ true,
                              attributes)) {
     if (attributes.size() <= maxProjections()) {
-      LOG_DEVEL << "found projections: " << _projections;
       _projections = Projections(std::move(attributes));
-    } else {
-      LOG_DEVEL << "too many projections: " << attributes << " ("
-                << attributes.size() << ") max: " << maxProjections();
     }
   }
-}
 
-bool DocumentProducingNode::isProduceResult() const {
-  return _filter != nullptr ||
-         dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(_outVariable);
+  return projectionsHash != _projections.hash() ||
+         filterProjectionsHash != _filterProjections.hash();
 }

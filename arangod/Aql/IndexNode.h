@@ -167,7 +167,7 @@ class IndexNode : public ExecutionNode,
   // prepare projections for usage with an index
   void prepareProjections();
 
-  void recalculateProjections(ExecutionPlan*) override;
+  bool recalculateProjections(ExecutionPlan*) override;
 
   bool isProduceResult() const override;
 

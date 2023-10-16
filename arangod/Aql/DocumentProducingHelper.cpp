@@ -311,7 +311,6 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
     } else {
       TRI_ASSERT(_outputVariable != nullptr);
       if (_filterProjections.usesCoveringIndex()) {
-        LOG_DEVEL << "using special materialize context for filter";
         _expressionContext =
             std::make_unique<LateMaterializedExpressionContext>(
                 _trx, _query, _aqlFunctionsInternalCache,
@@ -520,7 +519,6 @@ IndexIterator::CoveringCallback aql::getCallback(
   if (context.hasFilter()) {
     TRI_ASSERT(!context.getFilterProjections().empty());
     TRI_ASSERT(context.getFilterProjections().usesCoveringIndex());
-    LOG_DEVEL << "############### filter can use index";
   }
 
   return
@@ -543,7 +541,7 @@ IndexIterator::CoveringCallback aql::getCallback(
 
         // recycle our Builder object
         VPackBuilder& objectBuilder = context.getBuilder();
-        if (!skip) {
+        if constexpr (!skip) {
           objectBuilder.clear();
           objectBuilder.openObject(true);
 
@@ -552,8 +550,7 @@ IndexIterator::CoveringCallback aql::getCallback(
               objectBuilder, covering, context.getTrxPtr());
 
           objectBuilder.close();
-        }
-        if constexpr (!skip) {
+
           InputAqlItemRow const& input = context.getInputRow();
           OutputAqlItemRow& output = context.getOutputRow();
           RegisterId registerId = context.getOutputRegister();

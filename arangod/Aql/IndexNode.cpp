@@ -343,7 +343,6 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
     }
 
     if (!isLateMaterialized() && filterProjections().usesCoveringIndex()) {
-      LOG_DEVEL << "optimizing filter condition";
       // if the filter projections are covered by the index, optimize
       // the expression by introducing new variables for the projected
       // values
@@ -672,16 +671,16 @@ void IndexNode::prepareProjections() {
 #endif
 }
 
-void IndexNode::recalculateProjections(ExecutionPlan* plan) {
+bool IndexNode::recalculateProjections(ExecutionPlan* plan) {
   // by default, we do not use projections for the filter condition
   _filterProjections.clear();
 
   auto idx = getSingleIndex();
   if (idx == nullptr) {
-    return;
+    return false;
   }
 
-  DocumentProducingNode::recalculateProjections(plan);
+  bool wasUpdated = DocumentProducingNode::recalculateProjections(plan);
 
   if (idx->covers(_projections)) {
     _projections.setCoveringContext(collection()->id(), idx);
@@ -692,14 +691,12 @@ void IndexNode::recalculateProjections(ExecutionPlan* plan) {
       _filterProjections.setCoveringContext(collection()->id(), idx);
     }
   }
+
+  return wasUpdated;
 }
 
 bool IndexNode::isProduceResult() const {
-  LOG_DEVEL << __PRETTY_FUNCTION__;
   bool filterRequiresDocument =
       _filter != nullptr && !_filterProjections.usesCoveringIndex();
-  LOG_DEVEL << "filterRequiresDocument = " << filterRequiresDocument;
-  LOG_DEVEL << "outvar used = " << isVarUsedLater(_outVariable);
-  LOG_DEVEL << "outvar = " << _outVariable->name;
   return (isVarUsedLater(_outVariable) || filterRequiresDocument) && !doCount();
 }

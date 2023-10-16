@@ -76,7 +76,7 @@ class IndexExecutorInfos {
       IndexIteratorOptions options,
       IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
       IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs,
-      IndexNode::IndexFilterCoveringVars const& filterCoveringVars);
+      IndexNode::IndexFilterCoveringVars filterCoveringVars);
 
   IndexExecutorInfos() = delete;
   IndexExecutorInfos(IndexExecutorInfos&&) = default;

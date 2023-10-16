@@ -207,7 +207,7 @@ IndexExecutorInfos::IndexExecutorInfos(
     IndexIteratorOptions options,
     IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
     IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs,
-    IndexNode::IndexFilterCoveringVars const& filterCoveringVars)
+    IndexNode::IndexFilterCoveringVars filterCoveringVars)
     : _indexes(std::move(indexes)),
       _condition(condition),
       _ast(ast),
@@ -219,7 +219,7 @@ IndexExecutorInfos::IndexExecutorInfos(
       _projections(std::move(projections)),
       _filterProjections(std::move(filterProjections)),
       _filterVarsToRegs(std::move(filterVarsToRegs)),
-      _filterCoveringVars(filterCoveringVars),
+      _filterCoveringVars(std::move(filterCoveringVars)),
       _nonConstExpressions(std::move(nonConstExpressions)),
       _outputRegisterId(outputRegister),
       _outNonMaterializedIndVars(outNonMaterializedIndVars),
@@ -410,7 +410,6 @@ IndexExecutor::CursorReader::CursorReader(
 
   switch (_type) {
     case Type::NoResult: {
-      LOG_DEVEL << "no producer";
       _documentNonProducer = checkUniqueness ? getNullCallback<true>(context)
                                              : getNullCallback<false>(context);
       break;

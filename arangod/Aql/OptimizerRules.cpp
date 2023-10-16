@@ -9284,9 +9284,8 @@ void arangodb::aql::removeUnnecessaryProjections(
 
   bool modified = false;
   for (auto* n : nodes) {
-    modified = true;
     auto* documentNode = ExecutionNode::castTo<DocumentProducingNode*>(n);
-    documentNode->recalculateProjections(plan.get());
+    modified |= documentNode->recalculateProjections(plan.get());
   }
   opt->addPlan(std::move(plan), rule, modified);
 }
