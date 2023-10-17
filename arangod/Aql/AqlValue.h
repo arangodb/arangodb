@@ -95,10 +95,6 @@ struct AqlValueHintBool {
   bool value;
 };
 
-struct AqlValueHintZero {
-  constexpr AqlValueHintZero() noexcept = default;
-};
-
 struct AqlValueHintDouble {
   explicit AqlValueHintDouble(double v) noexcept : value{v} {}
   double value;
@@ -122,7 +118,8 @@ struct AqlValueHintEmptyObject {
   constexpr AqlValueHintEmptyObject() noexcept = default;
 };
 
-// TODO(MBkkt) Remove VPACK_INLINE_INT48
+using DocumentData = std::unique_ptr<std::string>;
+
 struct AqlValue final {
   friend struct std::hash<aql::AqlValue>;
   friend struct std::equal_to<aql::AqlValue>;
@@ -139,8 +136,6 @@ struct AqlValue final {
                            // std::string always bigger than 15 bytes,
                            // std::string* allocated via new
     RANGE,  // a pointer to a range remembering lower and upper bound, managed
-    VPACK_INLINE_INT48,   // contains vpack data, inline and unpacked 48bit
-                          // stored as 64bit int number value (system endianess)
     VPACK_INLINE_INT64,   // contains vpack data, inline and unpacked 64bit int
                           // number value (in little-endian)
     VPACK_INLINE_UINT64,  // contains vpack data, inline and unpacked 64bit uint
@@ -149,10 +144,10 @@ struct AqlValue final {
                           // double number value (in little-endian)
   };
 
-  static_assert(iresearch::adjacencyChecker<AqlValueType>::checkAdjacency<
-                    VPACK_INLINE_DOUBLE, VPACK_INLINE_UINT64,
-                    VPACK_INLINE_INT64, VPACK_INLINE_INT48>(),
-                "Values are not adjacent");
+  static_assert(
+      iresearch::adjacencyChecker<AqlValueType>::checkAdjacency<
+          VPACK_INLINE_DOUBLE, VPACK_INLINE_UINT64, VPACK_INLINE_INT64>(),
+      "Values are not adjacent");
 
   // clang-format off
   /// @brief Holds the actual data for this AqlValue
@@ -190,7 +185,6 @@ struct AqlValue final {
   /// | AT | XX | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD | PD | VPACK_MANAGED_STRING
   /// | AT | XX | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD | PD | RANGE
   /// | AT | ST | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | VPACK_INLINE
-  /// | AT | ST | SD | SD | SD | SD | SD | SD | ND | ND | ND | ND | ND | ND | ND | ND | VPACK_48BIT_INLINE_INT
   /// | AT | XX | XX | XX | XX | XX | XX | ST | SD | SD | SD | SD | SD | SD | SD | SD | VPACK_64BIT_INLINE_(INT/UINT/DOUBLE)
   // clang-format on
  private:
@@ -260,22 +254,6 @@ struct AqlValue final {
       uint8_t slice[15];
     } inlineSliceMeta;
 
-    // VPACK_INLINE_INT48
-    struct {
-      union {
-        struct {
-          uint8_t padding;
-          uint8_t slice[7];
-        } slice;
-        struct {
-          uint8_t padding[8];
-          int64_t val;
-        } int48;
-      } data;
-    } shortNumberMeta;
-    static_assert(sizeof(shortNumberMeta) == 16,
-                  "VPACK_INLINE_INT48 layout is not 16 bytes!");
-
     // VPACK_INLINE_INT64
     // VPACK_INLINE_UINT64
     // VPACK_INLINE_DOUBLE
@@ -311,7 +289,7 @@ struct AqlValue final {
   // note: this is the default constructor and should be as cheap as possible
   AqlValue() noexcept;
 
-  explicit AqlValue(std::unique_ptr<std::string>& data) noexcept;
+  explicit AqlValue(DocumentData& data) noexcept;
 
   // construct from pointer, not copying!
   explicit AqlValue(uint8_t const* pointer) noexcept;
@@ -324,8 +302,6 @@ struct AqlValue final {
   explicit AqlValue(AqlValueHintNull) noexcept;
 
   explicit AqlValue(AqlValueHintBool v) noexcept;
-
-  explicit AqlValue(AqlValueHintZero) noexcept;
 
   // construct from a double value
   explicit AqlValue(AqlValueHintDouble v) noexcept;
@@ -437,7 +413,7 @@ struct AqlValue final {
   AqlValue get(CollectionNameResolver const& resolver, std::string_view name,
                bool& mustDestroy, bool copy) const;
   AqlValue get(CollectionNameResolver const& resolver,
-               MonitoredStringVector const& names, bool& mustDestroy,
+               std::vector<std::string> const& names, bool& mustDestroy,
                bool copy) const;
   bool hasKey(std::string_view name) const;
 
@@ -503,6 +479,8 @@ struct AqlValue final {
  private:
   /// @brief initializes value from a slice, when the length is already known
   void initFromSlice(velocypack::Slice slice, velocypack::ValueLength length);
+  void initFromUint(uint64_t v);
+  void initFromInt(int64_t v);
 
   /// @brief sets the value type
   void setType(AqlValueType type) noexcept;

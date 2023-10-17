@@ -586,32 +586,31 @@ struct GetDocumentProcessor
       res.reset(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
     } else {
       bool conflict = false;
-      auto cb = IndexIterator::makeDocumentCallbackF(
-          [&](LocalDocumentId, VPackSlice doc) {
-            if (!_options.ignoreRevs && value.isObject()) {
-              RevisionId expectedRevision = RevisionId::fromSlice(value);
-              if (expectedRevision.isSet()) {
-                RevisionId foundRevision =
-                    transaction::helpers::extractRevFromDocument(doc);
-                if (expectedRevision != foundRevision) {
-                  if (!isMultiple) {
-                    // still return
-                    buildDocumentIdentity(key, foundRevision,
-                                          RevisionId::none(), nullptr, nullptr);
-                  }
-                  conflict = true;
-                  return false;
-                }
+      auto cb = [&](LocalDocumentId, aql::DocumentData&&, VPackSlice doc) {
+        if (!_options.ignoreRevs && value.isObject()) {
+          RevisionId expectedRevision = RevisionId::fromSlice(value);
+          if (expectedRevision.isSet()) {
+            RevisionId foundRevision =
+                transaction::helpers::extractRevFromDocument(doc);
+            if (expectedRevision != foundRevision) {
+              if (!isMultiple) {
+                // still return
+                buildDocumentIdentity(key, foundRevision, RevisionId::none(),
+                                      nullptr, nullptr);
               }
+              conflict = true;
+              return false;
             }
+          }
+        }
 
-            if (!_options.silent) {
-              _resultBuilder.add(doc);
-            } else if (isMultiple) {
-              _resultBuilder.add(VPackSlice::nullSlice());
-            }
-            return true;
-          });
+        if (!_options.silent) {
+          _resultBuilder.add(doc);
+        } else if (isMultiple) {
+          _resultBuilder.add(VPackSlice::nullSlice());
+        }
+        return true;
+      };
       res = _collection.getPhysical()->lookup(&_methods, key, cb, {});
 
       if (conflict) {

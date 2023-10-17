@@ -1862,7 +1862,7 @@ Result RocksDBCollection::lookupDocumentVPack(
     auto f = cache->find(key->string().data(),
                          static_cast<uint32_t>(key->string().size()));
     if (f.found()) {
-      cb(token,
+      cb(token, nullptr,
          VPackSlice(reinterpret_cast<uint8_t const*>(f.value()->value())));
       return {};
     }
@@ -1898,15 +1898,17 @@ Result RocksDBCollection::lookupDocumentVPack(
   }
   cache.reset();
 
+  VPackSlice doc{reinterpret_cast<uint8_t const*>(ps.data())};
   if (ps.IsPinned()) {
-    cb(token, VPackSlice{reinterpret_cast<uint8_t const*>(ps.data())});
+    cb(token, nullptr, doc);
     return {};
   }
 
   // TODO(MBkkt) in case of exception data will be destroyed
   //  We can avoid it (and return to the buffer instead), but is it worth?
   auto data = buffer.release();
-  cb(token, data);
+  // move twice is intentionally
+  cb(token, std::move(data), doc);
   buffer.acquire(std::move(data));
 
   return {};

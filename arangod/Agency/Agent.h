@@ -240,10 +240,6 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
 
   /// @brief execute a callback while holding _ioLock
   ///  and write lock for _readDB
-#if 0
-// currently not called from anywhere
-  void executeLockedWrite(std::function<void()> const& cb);
-#endif
 
   /// @brief execute a callback while holding _transientLock
   void executeTransientLocked(std::function<void()> const& cb);

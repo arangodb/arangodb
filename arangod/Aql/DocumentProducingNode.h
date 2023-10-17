@@ -76,6 +76,8 @@ class DocumentProducingNode {
   /// @brief return the early pruning condition for the node
   Expression* filter() const noexcept { return _filter.get(); }
 
+  void setFilterProjections(Projections projections);
+
   Projections const& filterProjections() const noexcept;
 
   /// @brief whether or not the node has an early pruning filter condition
@@ -106,6 +108,11 @@ class DocumentProducingNode {
 
   // arbitrary default value for the maximum number of projected attributes
   static constexpr size_t kMaxProjections = 5;
+
+  // returns true if projections have been updated
+  virtual bool recalculateProjections(ExecutionPlan* plan);
+
+  virtual bool isProduceResult() const = 0;
 
  protected:
   Variable const* _outVariable;

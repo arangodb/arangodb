@@ -126,7 +126,7 @@ class RocksDBAllIndexIterator final : public IndexIterator {
 
     do {
       // TODO(MBkkt) optimize it, extract value from rocksdb
-      cb(RocksDBKey::documentId(_iterator->key()),
+      cb(RocksDBKey::documentId(_iterator->key()), nullptr,
          VPackSlice(
              reinterpret_cast<uint8_t const*>(_iterator->value().data())));
       _iterator->Next();
@@ -277,7 +277,7 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 
   bool nextDocumentImpl(DocumentCallback const& cb, uint64_t limit) override {
     return doNext(limit, [&]() {
-      cb(RocksDBKey::documentId(_iterator->key()),
+      cb(RocksDBKey::documentId(_iterator->key()), nullptr,
          VPackSlice(
              reinterpret_cast<uint8_t const*>(_iterator->value().data())));
     });

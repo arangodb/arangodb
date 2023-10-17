@@ -418,7 +418,8 @@ function optimizerRuleTestSuite () {
                               "remove-data-modification-out-variables",
                               "remove-unnecessary-remote-scatter",
                               "scatter-in-cluster", 
-                              "undistribute-remove-after-enum-coll" 
+                              "undistribute-remove-after-enum-coll",
+                              "remove-unnecessary-projections"
                             ], 
                             [ 
                               "distribute-in-cluster", 
@@ -426,7 +427,8 @@ function optimizerRuleTestSuite () {
                               "remove-data-modification-out-variables",
                               "remove-unnecessary-remote-scatter",
                               "scatter-in-cluster", 
-                              "undistribute-remove-after-enum-coll" 
+                              "undistribute-remove-after-enum-coll",
+                              "remove-unnecessary-projections"
                             ],
                             [ 
                               "distribute-in-cluster", 
@@ -439,7 +441,8 @@ function optimizerRuleTestSuite () {
                               "distribute-in-cluster", 
                               "remove-data-modification-out-variables",
                               "remove-unnecessary-remote-scatter",
-                              "scatter-in-cluster"
+                              "scatter-in-cluster",
+                              "remove-unnecessary-projections"
                             ]
                           ];
 
@@ -514,7 +517,8 @@ function optimizerRuleTestSuite () {
                               "remove-data-modification-out-variables",
                               "remove-unnecessary-remote-scatter",
                               "scatter-in-cluster", 
-                              "undistribute-remove-after-enum-coll" 
+                              "undistribute-remove-after-enum-coll",
+                              "remove-unnecessary-projections"
                             ], 
                             [ 
                               "distribute-filtercalc-to-cluster", 
@@ -522,7 +526,8 @@ function optimizerRuleTestSuite () {
                               "remove-data-modification-out-variables",
                               "remove-unnecessary-remote-scatter",
                               "scatter-in-cluster", 
-                              "undistribute-remove-after-enum-coll" 
+                              "undistribute-remove-after-enum-coll",
+                              "remove-unnecessary-projections"
                             ],
                             [ 
                               "distribute-in-cluster", 
@@ -535,7 +540,8 @@ function optimizerRuleTestSuite () {
                               "distribute-in-cluster", 
                               "remove-data-modification-out-variables",
                               "remove-unnecessary-remote-scatter", 
-                              "scatter-in-cluster"
+                              "scatter-in-cluster",
+                              "remove-unnecessary-projections"
                             ]
                           ];
 

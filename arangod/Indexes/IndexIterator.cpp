@@ -154,3 +154,20 @@ void IndexIterator::skipImpl(uint64_t count, uint64_t& skipped) {
     }
   } while (skipped - skippedInitial < count);
 }
+
+std::ostream& arangodb::operator<<(std::ostream& os,
+                                   IndexIteratorCoveringData const& covering) {
+  if (covering.isArray()) {
+    os << "[";
+    for (std::size_t k = 0; k < covering.length(); k++) {
+      if (k != 0) {
+        os << ", ";
+      }
+      os << covering.at(k).toJson();
+    }
+    os << "]";
+  } else {
+    os << covering.value().toJson();
+  }
+  return os;
+}

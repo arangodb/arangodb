@@ -135,6 +135,8 @@ struct DocumentProducingFunctionContext {
 
   velocypack::Builder& getBuilder() noexcept;
 
+  RegisterId registerForVariable(VariableId id) const noexcept;
+
  private:
   bool checkFilter(DocumentProducingExpressionContext& ctx);
 

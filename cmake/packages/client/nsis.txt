@@ -5,6 +5,11 @@
 project(arangodb3-client)
 cmake_minimum_required(VERSION 2.8)
 
+option(USE_V8 "build with V8/JavaScript support" ON)
+if (USE_V8)
+  add_definitions("-DUSE_V8=1")
+endif ()
+
 ################################################################################
 # variables from the main build have to be explicitely forwarded:
 ################################################################################

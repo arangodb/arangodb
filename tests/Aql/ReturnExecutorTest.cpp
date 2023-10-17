@@ -45,16 +45,12 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-// This is only to get a split-type. The Type is independent of actual template
-// parameters
-using ReturnExecutorTestHelper = ExecutorTestHelper<1, 1>;
-using ReturnExecutorSplitType = ReturnExecutorTestHelper::SplitType;
-using ReturnExecutorParamType = std::tuple<ReturnExecutorSplitType, bool>;
+using ReturnExecutorParamType = std::tuple<SplitType, bool>;
 
 class ReturnExecutorTest
     : public AqlExecutorTestCaseWithParam<ReturnExecutorParamType> {
  protected:
-  auto getSplit() -> ReturnExecutorSplitType {
+  auto getSplit() -> SplitType {
     auto [split, unused] = GetParam();
     return split;
   }
@@ -74,10 +70,9 @@ class ReturnExecutorTest
 };
 
 template<size_t... vs>
-const ReturnExecutorSplitType splitIntoBlocks =
-    ReturnExecutorSplitType{std::vector<std::size_t>{vs...}};
+const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
 template<size_t step>
-const ReturnExecutorSplitType splitStep = ReturnExecutorSplitType{step};
+const SplitType splitStep = SplitType{step};
 
 INSTANTIATE_TEST_CASE_P(
     ReturnExecutor, ReturnExecutorTest,

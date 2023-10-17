@@ -273,7 +273,7 @@ AqlValue numberValue(double value, bool nullify) {
       return AqlValue(AqlValueHintNull());
     }
     // convert to 0
-    return AqlValue(AqlValueHintZero());
+    value = 0.0;
   }
 
   return AqlValue(AqlValueHintDouble(value));
@@ -1550,7 +1550,7 @@ AqlValue functions::ToNumber(ExpressionContext*, AstNode const&,
   double value = a.toDouble(failed);
 
   if (failed) {
-    return AqlValue(AqlValueHintZero());
+    value = 0.0;
   }
 
   return AqlValue(AqlValueHintDouble(value));
@@ -6831,7 +6831,7 @@ AqlValue functions::Zip(ExpressionContext* expressionContext, AstNode const&,
 
     if (keysSeen.emplace(buffer->data(), buffer->length()).second) {
       // non-duplicate key
-      builder->add(buffer->data(), buffer->length(), valuesIt.value());
+      builder->add(*buffer, valuesIt.value());
     }
 
     keysIt.next();
@@ -7923,7 +7923,7 @@ AqlValue functions::Pop(ExpressionContext* expressionContext, AstNode const&,
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
   auto iterator = VPackArrayIterator(slice);
-  while (iterator.valid() && !iterator.isLast()) {
+  while (iterator.valid() && iterator.index() + 1 != iterator.size()) {
     builder->add(iterator.value());
     iterator.next();
   }

@@ -246,15 +246,14 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto iterator =
       trx.indexScan(monitor, collectionName,
                     transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
-  auto cb = IndexIterator::makeDocumentCallbackF(
-      [&resultBuilder, &memoryScope](LocalDocumentId, VPackSlice slice) {
-        auto const& buffer = resultBuilder.bufferRef();
-        size_t memoryUsageOld = buffer.size();
-        resultBuilder.add(slice);
-        TRI_ASSERT(buffer.size() > memoryUsageOld);
-        memoryScope.increase(buffer.size() - memoryUsageOld);
-        return true;
-      });
+  auto cb = [&](LocalDocumentId, aql::DocumentData&&, VPackSlice slice) {
+    auto const& buffer = resultBuilder.bufferRef();
+    size_t memoryUsageOld = buffer.size();
+    resultBuilder.add(slice);
+    TRI_ASSERT(buffer.size() > memoryUsageOld);
+    memoryScope.increase(buffer.size() - memoryUsageOld);
+    return true;
+  };
   iterator->allDocuments(cb);
 
   resultBuilder.close();
