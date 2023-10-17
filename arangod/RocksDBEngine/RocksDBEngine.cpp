@@ -3429,7 +3429,8 @@ void RocksDBEngine::getCapabilities(velocypack::Builder& builder) const {
   VPackCollection::merge(builder, main.slice(), own.slice(), false);
 }
 
-void RocksDBEngine::getStatistics(std::string& result) const {
+void RocksDBEngine::toPrometheus(std::string& result, std::string_view globals,
+                                 bool ensureWhitespace) const {
   VPackBuffer<uint8_t> buffer;
   VPackBuilder stats(buffer);
   getStatistics(stats);
@@ -3448,7 +3449,9 @@ void RocksDBEngine::getStatistics(std::string& result) const {
 
       metrics::Metric::addInfo(result, name, /*help*/ name,
                                name.ends_with("_total") ? "counter" : "gauge");
-      absl::StrAppend(&result, name, " ", a.value.getNumber<uint64_t>(), "\n");
+      metrics::Metric::addMark(result, name, globals, "");
+      absl::StrAppend(&result, ensureWhitespace ? " " : "",
+                      a.value.getNumber<uint64_t>(), "\n");
     }
   }
 }

@@ -1001,12 +1001,14 @@ constexpr std::string_view nodeMetricsHelpText =
 
 DECLARE_GAUGE(arangodb_agency_node_memory_usage, uint64_t, nodeMetricsHelpText);
 
-void Node::toPrometheus(std::string& result) {
+void Node::toPrometheus(std::string& result, std::string_view globals,
+                        bool ensureWhitespace) {
   auto name = arangodb_agency_node_memory_usage{}.name();
   auto nodeMemoryUsage = consensus::Node::getMemoryUsage();
 
   metrics::Metric::addInfo(result, name, nodeMetricsHelpText, "gauge");
-  absl::StrAppend(&result, name, " ", nodeMemoryUsage, "\n");
+  metrics::Metric::addMark(result, name, globals, "");
+  absl::StrAppend(&result, ensureWhitespace ? " " : "", nodeMemoryUsage, "\n");
 }
 
 template<typename... Args>

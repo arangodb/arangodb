@@ -157,16 +157,16 @@ void MetricsFeature::toPrometheus(std::string& result, CollectMode mode) const {
   auto& sf = server().getFeature<StatisticsFeature>();
   auto time = std::chrono::duration<double, std::milli>(
       std::chrono::system_clock::now().time_since_epoch());
-  sf.toPrometheus(result, time.count(), _ensureWhitespace);
+  sf.toPrometheus(result, time.count(), _globals, _ensureWhitespace);
   auto& es = server().getFeature<EngineSelectorFeature>().engine();
   if (es.typeName() == RocksDBEngine::kEngineName) {
-    es.getStatistics(result);
+    es.toPrometheus(result, _globals, _ensureWhitespace);
   }
   auto& cm = server().getFeature<ClusterMetricsFeature>();
   if (hasGlobals && cm.isEnabled() && mode != CollectMode::Local) {
     cm.toPrometheus(result, _globals, _ensureWhitespace);
   }
-  consensus::Node::toPrometheus(result);
+  consensus::Node::toPrometheus(result, _globals, _ensureWhitespace);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
