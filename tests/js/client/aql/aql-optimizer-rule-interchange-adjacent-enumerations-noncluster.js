@@ -187,7 +187,7 @@ function optimizerRuleTestSuite () {
         // iterate over all plans
         let withRule = 0;
         plansEnabled.plans.forEach(function(plan) {
-          let resultEnabled = executeJson(plan);
+          let resultEnabled = executeJson(plan).json;
           assertTrue(isEqual(resultDisabled, resultEnabled), query[0]);
           if (plan.rules.indexOf(ruleName) !== -1) {
             withRule++;

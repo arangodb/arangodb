@@ -123,7 +123,7 @@ function complexInternaSuite() {
       assertEqual(result.length, amount);
       var plans = db._createStatement({query: query, bindVars: bindVars, options: opts}).explain().plans;
       plans.forEach(function (plan) {
-        var jsonResult = executeJson(plan, {optimizer: {rules: ['-all']}});
+        var jsonResult = executeJson(plan, {optimizer: {rules: ['-all']}}).json;
         assertEqual(jsonResult, result, query);
       });
     },
@@ -187,7 +187,7 @@ function complexInternaSuite() {
 
       const plans = db._createStatement({query: query, bindVars: bindVars, options: opts}).explain().plans;
       plans.forEach(function (plan) {
-        var jsonResult = executeJson(plan, {optimizer: {rules: ['-all']}});
+        var jsonResult = executeJson(plan, {optimizer: {rules: ['-all']}}).json;
         assertTrue(isValidResult(jsonResult), JSON.stringify({jsonResult, plan}));
       });
     },

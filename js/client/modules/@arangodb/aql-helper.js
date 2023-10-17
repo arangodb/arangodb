@@ -80,6 +80,20 @@ function normalizeRow (row, recursive) {
   return row;
 }
 
+function executeQuery(query, bindVars = null, options = {}) {
+  let stmt = db._createStatement({query, bindVars: bindVars, count: true});
+  return stmt.execute();
+};
+
+function executeJson (plan, options = {}) {
+  let command = `
+        let data = ${JSON.stringify(plan)};
+        let opts = ${JSON.stringify(options)}
+        return AQL_EXECUTEJSON(data);
+      `;
+  return arango.POST("/_admin/execute", command);
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief return the parse results for a query
 // //////////////////////////////////////////////////////////////////////////////
@@ -301,14 +315,6 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
   var printYaml = function (plan) {
     require('internal').print(require('js-yaml').safeDump(plan));
   };
-  var execute_json = function (plan, param) {
-    let command = `
-      let plan = ${JSON.stringify(plan)};
-      let opts = ${JSON.stringify(param)};
-      return AQL_EXECUTEJSON(plan, opts);
-    `;
-    return arango.POST("/_admin/execute", command);
-  };
 
   var i;
   var plans = [];
@@ -462,24 +468,9 @@ function sanitizeStats (stats) {
   return stats;
 }
 
-function executeQuery(query, bindVars = null, options = {}) {
-  let stmt = db._createStatement({query, bindVars: bindVars, count: true});
-  return stmt.execute();
-};
-
-function executeJson (plan, options = {}) {
-  let command = `
-        let data = ${JSON.stringify(plan)};
-        let opts = ${JSON.stringify(options)}
-        return AQL_EXECUTEJSON(data);
-      `;
-  return arango.POST("/_admin/execute", command).json;
-};
-
-
 function executeAllJson(plans, result, query) {
   plans.forEach(function (plan) {
-    let jsonResult = executeJson(plan, {optimizer: {rules: ['-all']}});
+    let jsonResult = executeJson(plan, {optimizer: {rules: ['-all']}}).json;
     assertEqual(jsonResult, result, query);
   });
 };

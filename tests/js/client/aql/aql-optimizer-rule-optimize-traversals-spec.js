@@ -79,7 +79,7 @@ const assertResultsAreUnchanged = (query) => {
 
   const plans = db._createStatement({query: query, bindVars:  {}, options:  opts}).explain().plans;
   plans.forEach(function (plan) {
-    var jsonResult = executeJson(plan, { optimizer: { rules: [ '-all' ] }});
+    var jsonResult = executeJson(plan, { optimizer: { rules: [ '-all' ] }}).json;
     expect(jsonResult).to.deep.equal(resultDisabled, query);
   });
 };
