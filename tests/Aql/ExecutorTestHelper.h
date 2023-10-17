@@ -43,6 +43,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
+#include "Containers/Enumerate.h"
 #include "Aql/SharedQueryState.h"
 #include "Logger/LogMacros.h"
 
@@ -95,11 +96,26 @@ class asserthelper {
           std::nullopt) -> void;
 };
 
+using SplitType =
+    std::variant<std::vector<std::size_t>, std::size_t, std::monostate>;
+
+auto inline to_string(SplitType const& splitType) -> std::string {
+  using namespace std::string_literals;
+  return std::visit(overload{
+                        [](std::vector<std::size_t> list) {
+                          return fmt::format("list{{{}}}",
+                                             fmt::join(list, ","));
+                        },
+                        [](std::size_t interval) {
+                          return fmt::format("interval{{{}}}", interval);
+                        },
+                        [](std::monostate) { return "none"s; },
+                    },
+                    splitType);
+}
+
 template<std::size_t inputColumns = 1, std::size_t outputColumns = 1>
 struct ExecutorTestHelper {
-  using SplitType =
-      std::variant<std::vector<std::size_t>, std::size_t, std::monostate>;
-
   ExecutorTestHelper(ExecutorTestHelper const&) = delete;
   ExecutorTestHelper(ExecutorTestHelper&&) = delete;
   explicit ExecutorTestHelper(Query& query,
@@ -127,14 +143,18 @@ struct ExecutorTestHelper {
     return *this;
   }
 
-  auto setInputValue(MatrixBuilder<inputColumns> in) -> ExecutorTestHelper& {
+  auto setInputValue(MatrixBuilder<inputColumns> in,
+                     std::vector<std::pair<size_t, uint64_t>> shadowRows = {})
+      -> ExecutorTestHelper& {
     _input = std::move(in);
+    _inputShadowRows = std::move(shadowRows);
     return *this;
   }
 
   template<typename... Ts>
   auto setInputValueList(Ts&&... ts) -> ExecutorTestHelper& {
     _input = MatrixBuilder<inputColumns>{{ts}...};
+    _inputShadowRows = {};
     return *this;
   }
 
@@ -144,12 +164,12 @@ struct ExecutorTestHelper {
     for (auto i = size_t{0}; i < rows; ++i) {
       _input.emplace_back(RowBuilder<1>{static_cast<int>(i)});
     }
+    _inputShadowRows = {};
     return *this;
   }
 
-  auto setInputSplit(std::vector<std::size_t> const& list)
-      -> ExecutorTestHelper& {
-    _inputSplit = list;
+  auto setInputSplit(std::vector<std::size_t> list) -> ExecutorTestHelper& {
+    _inputSplit = std::move(list);
     return *this;
   }
 
@@ -173,6 +193,11 @@ struct ExecutorTestHelper {
   auto setTesteeNodeType(ExecutionNode::NodeType nodeType)
       -> ExecutorTestHelper& {
     _testeeNodeType = nodeType;
+    return *this;
+  }
+
+  auto setInputSubqueryDepth(std::size_t depth) -> ExecutorTestHelper& {
+    _inputSubqueryDepth = depth;
     return *this;
   }
 
@@ -229,6 +254,11 @@ struct ExecutorTestHelper {
     // NOTE: the above will increment didSkip by the first entry.
     // For all following entries it will first increment the subquery depth
     // and then add the didSkip on them.
+    return *this;
+  }
+
+  auto expectSkipped(SkipResult expectedSkip) -> ExecutorTestHelper& {
+    _expectedSkip = std::move(expectedSkip);
     return *this;
   }
 
@@ -444,7 +474,30 @@ struct ExecutorTestHelper {
       end = std::get<VectorSizeT>(_inputSplit).end();
     }
 
-    for (auto const& value : _input) {
+    auto sit = _inputShadowRows.begin();
+    auto const send = _inputShadowRows.end();
+
+    auto baseRowIndex = std::size_t{0};
+
+    auto const buildAndEnqueueBlock =
+        [&itemBlockManager, &blockDeque, &sit, &send, &baseRowIndex](
+            MatrixBuilder<inputColumns> matrix, std::size_t currentRowIndex) {
+          SharedAqlItemBlockPtr inputBlock =
+              buildBlock<inputColumns>(itemBlockManager, std::move(matrix));
+          // inputBlock contains the _input slice [baseRowIndex,
+          // currentRowIndex] (inclusive). Set shadow rows where necessary:
+          TRI_ASSERT(sit == send or baseRowIndex <= sit->first);
+          for (; sit != send && sit->first <= currentRowIndex; ++sit) {
+            auto const [sidx, sdepth] = *sit;
+            inputBlock->makeShadowRow(sidx - baseRowIndex, sdepth);
+          }
+          blockDeque.emplace_back(std::move(inputBlock));
+          matrix.clear();
+          // set base index for the next block (if any)
+          baseRowIndex = currentRowIndex + 1;
+        };
+
+    for (auto const& [currentRowIndex, value] : enumerate(_input)) {
       matrix.push_back(value);
 
       TRI_ASSERT(!_inputSplit.valueless_by_exception());
@@ -459,20 +512,15 @@ struct ExecutorTestHelper {
                      return false;
                    },
                    [&](std::size_t size) { return matrix.size() == size; },
-                   [](auto) { return false; }},
+                   [](std::monostate) { return false; }},
           _inputSplit);
       if (openNewBlock) {
-        SharedAqlItemBlockPtr inputBlock =
-            buildBlock<inputColumns>(itemBlockManager, std::move(matrix));
-        blockDeque.emplace_back(inputBlock);
-        matrix.clear();
+        buildAndEnqueueBlock(std::move(matrix), currentRowIndex);
       }
     }
 
     if (!matrix.empty()) {
-      SharedAqlItemBlockPtr inputBlock =
-          buildBlock<inputColumns>(itemBlockManager, std::move(matrix));
-      blockDeque.emplace_back(inputBlock);
+      buildAndEnqueueBlock(std::move(matrix), _input.size());
     }
     if (_appendEmptyBlock) {
       blockDeque.emplace_back(nullptr);
@@ -480,13 +528,14 @@ struct ExecutorTestHelper {
 
     return std::make_unique<WaitingExecutionBlockMock>(
         _query.rootEngine(), _dummyNode.get(), std::move(blockDeque),
-        _waitingBehaviour, 0, _wakeupCallback);
+        _waitingBehaviour, _inputSubqueryDepth, _wakeupCallback);
   }
 
   // Default initialize with a fetchAll call.
   AqlCallStack _callStack{AqlCallList{AqlCall{}}};
   MatrixBuilder<inputColumns> _input;
   MatrixBuilder<outputColumns> _output;
+  std::vector<std::pair<size_t, uint64_t>> _inputShadowRows{};
   std::vector<std::pair<size_t, uint64_t>> _outputShadowRows{};
   std::array<RegisterId, outputColumns> _outputRegisters;
   SkipResult _expectedSkip;
@@ -500,6 +549,7 @@ struct ExecutorTestHelper {
   bool _unorderedOutput;
   bool _appendEmptyBlock;
   std::size_t _unorderedSkippedRows;
+  std::size_t _inputSubqueryDepth = 0;
 
   SplitType _inputSplit = {std::monostate()};
   SplitType _outputSplit = {std::monostate()};

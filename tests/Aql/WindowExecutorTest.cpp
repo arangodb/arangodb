@@ -51,17 +51,10 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-// This is only to get a split-type. The Type is independent of actual template
-// parameters
-using WindowTestHelper = ExecutorTestHelper<1, 1>;
-using WindowSplitType = WindowTestHelper::SplitType;
-using WindowInputParam = std::tuple<WindowSplitType, bool>;
-
 template<size_t... vs>
-const WindowSplitType splitIntoBlocks =
-    WindowSplitType{std::vector<std::size_t>{vs...}};
+const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
 template<size_t step>
-const WindowSplitType splitStep = WindowSplitType{step};
+const SplitType splitStep = SplitType{step};
 
 struct WindowInput {
   WindowBounds bounds;
@@ -86,12 +79,12 @@ std::ostream& operator<<(std::ostream& out, WindowInput const& agg) {
   return out;
 }
 
-using WindowAggregateInputParam = std::tuple<WindowSplitType, WindowInput>;
+using WindowAggregateInputParam = std::tuple<SplitType, WindowInput>;
 
 class WindowExecutorTest
     : public AqlExecutorTestCaseWithParam<WindowAggregateInputParam> {
  protected:
-  auto getSplit() -> WindowSplitType {
+  auto getSplit() -> SplitType {
     auto [split, unused] = GetParam();
     return split;
   }
