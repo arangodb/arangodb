@@ -107,8 +107,8 @@ const IndexUniqueJoinTestSuite = function () {
       db._explain(query, null, queryOptions);
     }
     assertNotEqual(planNodes.indexOf("JoinNode"), -1);
-    const result = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).execute();
-    return result.json;
+    const result = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).execute().toArray();
+    return result;
   };
 
   const databaseName = "IndexJoinDB";
