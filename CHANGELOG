@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-288: Improve collection index UI.
+
 * FE-321: add validation for query name in web UI.
 
 * Fixed BTS-1610: In certain situations with at least three levels of nested
