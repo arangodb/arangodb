@@ -1,6 +1,8 @@
 v3.10.11 (XXXX-XX-XX)
 ---------------------
 
+* Reduce number of atomic shared_ptr copies in in-memory cache subsystem.
+
 * Fixed BTS-1610: In certain situations with at least three levels of nested
   subqueries, of which some of the outer iterations don't return any results,
   results of later iterations could be lost.
