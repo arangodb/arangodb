@@ -468,7 +468,7 @@ function executeQuery(query, bindVars = null, options = {}) {
   return stmt.execute();
 };
 
-function executeJson = function (plan, options = {}) {
+function executeJson (plan, options = {}) {
   let command = `
         let data = ${JSON.stringify(plan)};
         let opts = ${JSON.stringify(options)}
