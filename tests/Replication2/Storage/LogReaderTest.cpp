@@ -32,11 +32,12 @@
 #include "Replication2/Storage/WAL/FileHeader.h"
 #include "Replication2/Storage/WAL/LogReader.h"
 #include "Replication2/Storage/WAL/Record.h"
-
-#include "Replication2/Storage/InMemoryLogFile.h"
-#include "Replication2/Storage/MockFileReader.h"
 #include "Replication2/Storage/WAL/RecordType.h"
 #include "velocypack/Builder.h"
+
+#include "Mocks/Death_Test.h"
+#include "Replication2/Storage/InMemoryLogFile.h"
+#include "Replication2/Storage/MockFileReader.h"
 
 namespace arangodb::replication2::storage::wal::test {
 
@@ -235,7 +236,7 @@ TEST(LogReaderTest,
                              sizeof(Record::Footer)});
 
   LogReader reader(std::make_unique<InMemoryFileReader>(buffer));
-  EXPECT_DEATH(reader.readNextLogEntry(), "");
+  ASSERT_DEATH_CORE_FREE(reader.readNextLogEntry(), "");
 }
 
 TEST(LogReaderTest,
@@ -248,7 +249,7 @@ TEST(LogReaderTest,
                              sizeof(Record::Footer)});
 
   LogReader reader(std::make_unique<InMemoryFileReader>(buffer));
-  EXPECT_DEATH(reader.readNextLogEntry(), "");
+  ASSERT_DEATH_CORE_FREE(reader.readNextLogEntry(), "");
 }
 
 TEST(
@@ -262,7 +263,7 @@ TEST(
                              sizeof(Record::Footer)});
 
   LogReader reader(std::make_unique<InMemoryFileReader>(buffer));
-  EXPECT_DEATH(reader.readNextLogEntry(), "");
+  ASSERT_DEATH_CORE_FREE(reader.readNextLogEntry(), "");
 }
 
 TEST(LogReaderTest, readNextLogEntry_can_read_normal_entry) {
@@ -466,7 +467,7 @@ TEST(LogReaderTest, seekLogIndexForward_should_crash_if_log_indexes_have_gaps) {
                              sizeof(Record::Footer)});
 
   LogReader reader(std::make_unique<InMemoryFileReader>(buffer));
-  EXPECT_DEATH(reader.seekLogIndexForward(LogIndex{4}), "");
+  ASSERT_DEATH_CORE_FREE(reader.seekLogIndexForward(LogIndex{4}), "");
 }
 
 TEST(LogReaderTest,
@@ -481,7 +482,7 @@ TEST(LogReaderTest,
                              sizeof(Record::Footer)});
 
   LogReader reader(std::make_unique<InMemoryFileReader>(buffer));
-  EXPECT_DEATH(reader.seekLogIndexForward(LogIndex{4}), "");
+  ASSERT_DEATH_CORE_FREE(reader.seekLogIndexForward(LogIndex{4}), "");
 }
 
 TEST(
