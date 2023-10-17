@@ -10,7 +10,17 @@ import {
   ModalHeader
 } from "../../../components/modal";
 import { useQueryContext } from "../QueryContextProvider";
+import { QueryType } from "./useFetchUserSavedQueries";
 
+const getQueryExists = ({
+  savedQueries,
+  queryName
+}: {
+  savedQueries: QueryType[] | undefined;
+  queryName: string;
+}) => {
+  return !!savedQueries?.some(query => query.name === queryName);
+};
 export const SaveAsModal = () => {
   const {
     onSaveAs,
@@ -21,9 +31,10 @@ export const SaveAsModal = () => {
     onCloseSaveAsModal
   } = useQueryContext();
   const handleSave = async (newQueryName: string) => {
-    const queryExists = !!savedQueries?.some(
-      query => query.name === newQueryName
-    );
+    const queryExists = getQueryExists({
+      savedQueries,
+      queryName: newQueryName
+    });
     if (queryExists) {
       await onSave(newQueryName);
       setCurrentQueryName(newQueryName);
@@ -51,9 +62,10 @@ export const SaveAsModal = () => {
         })}
       >
         {({ values: { newQueryName } }) => {
-          const queryExists = !!savedQueries?.find(
-            query => query.name === newQueryName
-          );
+          const queryExists = getQueryExists({
+            savedQueries,
+            queryName: newQueryName
+          });
           return (
             <Form>
               <ModalHeader>Save Query</ModalHeader>
