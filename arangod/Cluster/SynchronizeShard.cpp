@@ -1338,6 +1338,8 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
                                             std::move(errorMessage));
     }
 
+    auto lockAcquisitionTime = std::chrono::steady_clock::now();
+
     auto readLockGuard = arangodb::scopeGuard([&, this]() noexcept {
       try {
         // Always cancel the read lock.
@@ -1393,14 +1395,24 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     // Stop the read lock again:
     NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
     network::ConnectionPool* pool = nf.pool();
+
+    auto lockElapsed = std::chrono::steady_clock::now() - lockAcquisitionTime;
+
     res = cancelReadLockOnLeader(pool, ep, getDatabase(), lockJobId, clientId,
                                  60.0);
     // We removed the readlock
     readLockGuard.cancel();
     if (!res.ok()) {
+      // for debugging purposes, emit time difference here between lock
+      // acquistion on the leader and the time point when we try to release
+      // the lock on the leader.
+      // if this time difference is longer than timeout (300s), we expect
+      // to get an error back, because the lock's TTL on the leader expired.
       auto errorMessage = StringUtils::concatT(
           "synchronizeOneShard: error when cancelling soft read lock: ",
-          res.errorMessage());
+          res.errorMessage(), " - catchup duration: ",
+          std::chrono::duration_cast<std::chrono::seconds>(lockElapsed).count(),
+          "s");
       LOG_TOPIC("c37d1", INFO, Logger::MAINTENANCE) << errorMessage;
       result(TRI_ERROR_INTERNAL, errorMessage);
       return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, errorMessage);
