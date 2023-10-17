@@ -62,10 +62,14 @@ auto EdgeCache::createThreads(Execution& exec, Server& server)
 
   if (_options.defaultThreadOptions) {
     auto& defaultOpts = _options.defaultThreadOptions.value();
-    defaultThread.collection = defaultOpts.collection;
+    defaultThread.collections = defaultOpts.collections;
     defaultThread.documentsPerTrx = defaultOpts.documentsPerTrx;
     defaultThread.edgesPerVertex = defaultOpts.edgesPerVertex;
     defaultThread.readsPerEdge = defaultOpts.readsPerEdge;
+  }
+
+  if (defaultThread.collections.empty()) {
+    throw std::runtime_error("number of collections must not be 0");
   }
 
   WorkerThreadList result;
@@ -79,7 +83,7 @@ auto EdgeCache::createThreads(Execution& exec, Server& server)
 EdgeCache::Thread::Thread(ThreadOptions options, std::uint32_t id,
                           Execution& exec, Server& server)
     : ExecutionThread(id, exec, server), _options(std::move(options)) {
-  _prefix = _options.collection;
+  _prefix = _options.collections[id % _options.collections.size()];
   _prefix.append("/testvalue-");
   _prefix.append(std::to_string(id));
   _prefix.push_back('-');
@@ -94,11 +98,12 @@ void EdgeCache::Thread::run() {
 }
 
 void EdgeCache::Thread::executeWriteTransaction() {
+  auto collection = _options.collections[_id % _options.collections.size()];
   SingleCollectionTransaction trx(
       transaction::StandaloneContext::create(
           *_server.vocbase(),
           transaction::OperationOriginREST{"inserting edge(s)"}),
-      _options.collection, AccessMode::Type::WRITE);
+      collection, AccessMode::Type::WRITE);
 
   auto res = trx.begin();
   if (!res.ok()) {
@@ -128,7 +133,7 @@ void EdgeCache::Thread::executeWriteTransaction() {
   }
   builder.close();
 
-  auto r = trx.insert(_options.collection, builder.slice(), {});
+  auto r = trx.insert(collection, builder.slice(), {});
   if (!r.ok()) {
     throw std::runtime_error("Failed to insert edges in trx: " +
                              std::string(r.errorMessage()));
@@ -156,38 +161,35 @@ auto EdgeCache::Thread::report() const -> ThreadReport {
     auto stats = manager->memoryStats(cache::Cache::triesGuarantee);
 
     data.openObject();
-    if (stats.has_value()) {
-      data.add("peakMemoryUsage", VPackValue(stats->peakGlobalAllocation));
-      data.add("peakSpareAllocation", VPackValue(stats->peakSpareAllocation));
-      data.add("migrateTasks", VPackValue(stats->migrateTasks));
-      data.add("freeMemoryTasks", VPackValue(stats->freeMemoryTasks));
-      data.add("lifeTimeHitrate", VPackValue(rates.first));
+    data.add("peakMemoryUsage", VPackValue(stats.peakGlobalAllocation));
+    data.add("peakSpareAllocation", VPackValue(stats.peakSpareAllocation));
+    data.add("migrateTasks", VPackValue(stats.migrateTasks));
+    data.add("freeMemoryTasks", VPackValue(stats.freeMemoryTasks));
+    data.add("lifeTimeHitrate", VPackValue(rates.first));
 
-      auto& engine = _server.vocbase()
-                         ->server()
-                         .getFeature<EngineSelectorFeature>()
-                         .engine<RocksDBEngine>();
-      auto [entriesSizeTotal, entriesSizeEffective, inserts, compressedInserts,
-            emptyInserts] = engine.getCacheMetrics();
-      data.add("inserts", VPackValue(inserts));
-      data.add("compressedInserts", VPackValue(compressedInserts));
-      data.add(
-          "compressedInsertsRate",
-          VPackValue(inserts > 0
-                         ? 100.0 * (static_cast<double>(compressedInserts) /
-                                    static_cast<double>(inserts))
-                         : 0.0));
-      data.add("emptyInserts", VPackValue(emptyInserts));
-      data.add("payloadSizeBeforeCompression", VPackValue(entriesSizeTotal));
-      data.add("payloadSizeAfterCompression", VPackValue(entriesSizeEffective));
-      data.add(
-          "payloadCompressionRate",
-          VPackValue(
-              entriesSizeTotal > 0
-                  ? 100.0 * (1.0 - (static_cast<double>(entriesSizeEffective) /
-                                    static_cast<double>(entriesSizeTotal)))
-                  : 0.0));
-    }
+    auto& engine = _server.vocbase()
+                       ->server()
+                       .getFeature<EngineSelectorFeature>()
+                       .engine<RocksDBEngine>();
+    auto [entriesSizeTotal, entriesSizeEffective, inserts, compressedInserts,
+          emptyInserts] = engine.getCacheMetrics();
+    data.add("inserts", VPackValue(inserts));
+    data.add("compressedInserts", VPackValue(compressedInserts));
+    data.add("compressedInsertsRate",
+             VPackValue(inserts > 0
+                            ? 100.0 * (static_cast<double>(compressedInserts) /
+                                       static_cast<double>(inserts))
+                            : 0.0));
+    data.add("emptyInserts", VPackValue(emptyInserts));
+    data.add("payloadSizeBeforeCompression", VPackValue(entriesSizeTotal));
+    data.add("payloadSizeAfterCompression", VPackValue(entriesSizeEffective));
+    data.add(
+        "payloadCompressionRate",
+        VPackValue(entriesSizeTotal > 0
+                       ? 100.0 *
+                             (1.0 - (static_cast<double>(entriesSizeEffective) /
+                                     static_cast<double>(entriesSizeTotal)))
+                       : 0.0));
     data.close();
     std::cout << "cache stats: " << data.slice().toJson() << std::endl;
   }
@@ -198,9 +200,10 @@ void EdgeCache::Thread::executeReadTransaction(std::uint64_t startDocument) {
   constexpr std::string_view qs =
       "FOR doc IN @@collection FILTER doc._from IN @values RETURN doc";
 
+  auto collection = _options.collections[_id % _options.collections.size()];
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
-  bindVars->add("@collection", VPackValue(_options.collection));
+  bindVars->add("@collection", VPackValue(collection));
   bindVars->add("values", VPackValue(VPackValueType::Array));
   std::uint32_t j = 0;
   std::uint64_t currentDocument = startDocument;
@@ -225,13 +228,13 @@ void EdgeCache::Thread::executeReadTransaction(std::uint64_t startDocument) {
   bindVars->close();
   VPackSlice opts = VPackSlice::emptyObjectSlice();
 
-  // query 2 times so that stuff is not only loaded from RocksDB into the cache,
-  // but also queried from the cache
+  // query multiple times so that stuff is not only loaded from RocksDB into the
+  // cache, but also queried from the cache
   for (std::uint32_t i = 0; i < _options.readsPerEdge; ++i) {
     auto query = aql::Query::create(
         transaction::StandaloneContext::create(
             *_server.vocbase(),
-            transaction::OperationOriginREST{"inserting edge(s)"}),
+            transaction::OperationOriginREST{"querying edges"}),
         arangodb::aql::QueryString(qs), bindVars, aql::QueryOptions(opts));
 
     auto result = query->executeSync();
