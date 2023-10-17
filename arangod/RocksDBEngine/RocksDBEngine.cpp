@@ -3620,31 +3620,35 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
         server().getFeature<CacheManagerFeature>().manager();
 
     std::pair<double, double> rates;
-    std::optional<cache::Manager::MemoryStats> stats;
+    cache::Manager::MemoryStats stats;
     if (manager != nullptr) {
       // cache turned on
       stats = manager->memoryStats(cache::Cache::triesFast);
       rates = manager->globalHitRates();
     }
-    if (!stats.has_value()) {
-      stats = cache::Manager::MemoryStats{};
-    }
-    TRI_ASSERT(stats.has_value());
 
-    builder.add("cache.limit", VPackValue(stats->globalLimit));
-    builder.add("cache.allocated", VPackValue(stats->globalAllocation));
-    builder.add("cache.peak-allocated",
-                VPackValue(stats->peakGlobalAllocation));
-    builder.add("cache.active-tables", VPackValue(stats->activeTables));
-    builder.add("cache.unused-memory", VPackValue(stats->spareAllocation));
-    builder.add("cache.unused-tables", VPackValue(stats->spareTables));
-    builder.add("cache.migrate-tasks-total", VPackValue(stats->migrateTasks));
+    builder.add("cache.limit", VPackValue(stats.globalLimit));
+    builder.add("cache.allocated", VPackValue(stats.globalAllocation));
+    builder.add("cache.peak-allocated", VPackValue(stats.peakGlobalAllocation));
+    builder.add("cache.active-tables", VPackValue(stats.activeTables));
+    builder.add("cache.unused-memory", VPackValue(stats.spareAllocation));
+    builder.add("cache.unused-tables", VPackValue(stats.spareTables));
+    builder.add("cache.migrate-tasks-total", VPackValue(stats.migrateTasks));
     builder.add("cache.free-memory-tasks-total",
-                VPackValue(stats->freeMemoryTasks));
+                VPackValue(stats.freeMemoryTasks));
     builder.add("cache.migrate-tasks-duration-total",
-                VPackValue(stats->migrateTasksDuration));
+                VPackValue(stats.migrateTasksDuration));
     builder.add("cache.free-memory-tasks-duration-total",
-                VPackValue(stats->freeMemoryTasksDuration));
+                VPackValue(stats.freeMemoryTasksDuration));
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // only here for debugging. the value is not exposed in non-maintainer
+    // mode builds. the reason for this is to make calls to the `table` function
+    // more lightweight, and because we would need to put a metrics
+    // description into Documentation/Metrics for an optional metric.
+
+    // builder.add("cache.table-calls", VPackValue(stats.tableCalls));
+    // builder.add("cache.term-calls", VPackValue(stats.termCalls));
+#endif
 
     // edge cache compression ratio
     double compressionRatio = 0.0;
