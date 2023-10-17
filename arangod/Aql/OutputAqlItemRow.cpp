@@ -484,7 +484,9 @@ void OutputAqlItemRow::doCopyOrMoveRow(ItemRowType& sourceRow,
   size_t const rowDepth = baseRowDepth + delta;
 
   auto const roffset = rowDepth + 1;
-  TRI_ASSERT(roffset <= registersToKeep().size());
+  TRI_ASSERT(roffset <= registersToKeep().size())
+      << "roffset: " << roffset << " size: " << registersToKeep().size()
+      << " baseRowDepth: " << baseRowDepth << " delta: " << delta;
   auto idx = registersToKeep().size() - roffset;
   auto const& regsToKeep = registersToKeep().at(idx);
 
@@ -606,9 +608,6 @@ template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintInt>(
 template void
 OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintUInt>(
     RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintUInt);
-template void
-OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintZero>(
-    RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintZero);
 template void
 OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintNone>(
     RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintNone);

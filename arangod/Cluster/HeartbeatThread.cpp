@@ -1412,6 +1412,11 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
     // we don't want the heartbeat thread to fail here in case some
     // invalid settings are present
     info.strictValidation(false);
+    // do not validate database names for existing databases.
+    // the rationale is that if a database was already created with
+    // an extended name, we should not declare it invalid and abort
+    // the startup once the extended names option is turned off.
+    info.validateNames(false);
     // when loading we allow system database names
     auto infoResult = info.load(options.value, VPackSlice::emptyArraySlice());
     if (infoResult.fail()) {

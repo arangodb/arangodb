@@ -26,6 +26,7 @@
 #include <functional>
 #include <iterator>
 #include <memory>
+#include <span>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -483,8 +484,9 @@ class Ast {
 
   /// @brief replace an attribute access with just the variable
   static AstNode* replaceAttributeAccess(
-      AstNode* node, Variable const* variable,
-      std::vector<std::string> const& attributeName);
+      Ast* ast, AstNode* node, Variable const* searchVariable,
+      std::span<std::string_view> attributeName,
+      Variable const* replaceVariable);
 
   /// @brief recursively clone a node
   AstNode* clone(AstNode const*);

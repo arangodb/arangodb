@@ -2,10 +2,6 @@
 /*global fail, assertEqual, assertNotEqual, assertTrue, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for Ahuacatl, skiplist index queries
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2016 ArangoDB GmbH, Cologne, Germany
@@ -27,6 +23,7 @@
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
+const normalize = require("@arangodb/aql-helper").normalizeProjections;
 const internal = require('internal');
 const _ = require('lodash');
 
@@ -39,12 +36,13 @@ const IndexJoinTestSuite = function () {
     return {};
   }
 
-  const createCollection = function (name) {
+  const createCollection = function (name, shardKeys) {
+    shardKeys = shardKeys || ["x"];
     if (isCluster) {
       if (!db.prototype) {
-        db._create("prototype", {numberOfShards: 3, shardKeys: ["x"]});
+        db._create("prototype", {numberOfShards: 3});
       }
-      return db._create(name, {numberOfShards: 3, shardKeys: ["x"], distributeShardsLike: "prototype"});
+      return db._create(name, {numberOfShards: 3, shardKeys: shardKeys, distributeShardsLike: "prototype"});
     } else {
       return db._create(name);
     }
@@ -99,9 +97,7 @@ const IndexJoinTestSuite = function () {
     maxNumberOfPlans: 1
   };
 
-
   const runAndCheckQuery = function (query) {
-
     const plan = AQL_EXPLAIN(query, null, queryOptions).plan;
     let planNodes = plan.nodes.map(function (node) {
       return node.type;
@@ -146,7 +142,27 @@ const IndexJoinTestSuite = function () {
       assertEqual(result.length, 0);
     },
 
-    testEveryOtherMatch: function () {
+    testEveryOtherMatchSmall: function () {
+      const A = fillCollection("A", singleAttributeGenerator(10, "x", x => x));
+      A.ensureIndex({type: "persistent", fields: ["x"]});
+      const B = fillCollection("B", singleAttributeGenerator(5, "x", x => 2 * x));
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+
+      const result = runAndCheckQuery(`
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2.x
+              RETURN [doc1, doc2]
+      `);
+
+      assertEqual(result.length, 5);
+      for (const [a, b] of result) {
+        assertEqual(a.x, b.x);
+      }
+    },
+
+    testEveryOtherMatchMedium: function () {
       const A = fillCollection("A", singleAttributeGenerator(1000, "x", x => x));
       A.ensureIndex({type: "persistent", fields: ["x"]});
       const B = fillCollection("B", singleAttributeGenerator(500, "x", x => 2 * x));
@@ -161,6 +177,26 @@ const IndexJoinTestSuite = function () {
       `);
 
       assertEqual(result.length, 500);
+      for (const [a, b] of result) {
+        assertEqual(a.x, b.x);
+      }
+    },
+
+    testEveryOtherMatchBig: function () {
+      const A = fillCollection("A", singleAttributeGenerator(10000, "x", x => x));
+      A.ensureIndex({type: "persistent", fields: ["x"]});
+      const B = fillCollection("B", singleAttributeGenerator(5000, "x", x => 2 * x));
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+
+      const result = runAndCheckQuery(`
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2.x
+              RETURN [doc1, doc2]
+      `);
+
+      assertEqual(result.length, 5000);
       for (const [a, b] of result) {
         assertEqual(a.x, b.x);
       }
@@ -245,8 +281,8 @@ const IndexJoinTestSuite = function () {
 
       assertEqual(join.type, "JoinNode");
 
-      assertEqual(join.indexInfos[0].projections, ["x"]);
-      assertEqual(join.indexInfos[1].projections, ["x"]);
+      assertEqual(normalize(join.indexInfos[0].projections), normalize(["x"]));
+      assertEqual(normalize(join.indexInfos[1].projections), normalize(["x"]));
 
       const result = runAndCheckQuery(query);
 
@@ -275,8 +311,8 @@ const IndexJoinTestSuite = function () {
 
       assertEqual(join.type, "JoinNode");
 
-      assertEqual(join.indexInfos[0].projections, ["x"]);
-      assertEqual(join.indexInfos[1].projections, ["x"]);
+      assertEqual(normalize(join.indexInfos[0].projections), normalize(["x"]));
+      assertEqual(normalize(join.indexInfos[1].projections), normalize(["x"]));
 
       const result = runAndCheckQuery(query);
 
@@ -305,8 +341,8 @@ const IndexJoinTestSuite = function () {
 
       assertEqual(join.type, "JoinNode");
 
-      assertEqual(join.indexInfos[0].projections, ["x", "y"]);
-      assertEqual(join.indexInfos[1].projections, ["x"]);
+      assertEqual(normalize(join.indexInfos[0].projections), normalize(["x", "y"]));
+      assertEqual(normalize(join.indexInfos[1].projections), normalize(["x"]));
 
       const result = runAndCheckQuery(query);
 
@@ -335,8 +371,8 @@ const IndexJoinTestSuite = function () {
 
       assertEqual(join.type, "JoinNode");
 
-      assertEqual(join.indexInfos[0].projections, ["x", "y"]);
-      assertEqual(join.indexInfos[1].projections, ["x"]);
+      assertEqual(normalize(join.indexInfos[0].projections), normalize(["x", "y"]));
+      assertEqual(normalize(join.indexInfos[1].projections), normalize(["x"]));
 
       const result = runAndCheckQuery(query);
 
@@ -365,8 +401,8 @@ const IndexJoinTestSuite = function () {
 
       assertEqual(join.type, "JoinNode");
 
-      assertEqual(join.indexInfos[0].projections, ["x", "y"]);
-      assertEqual(join.indexInfos[1].projections, ["x"]);
+      assertEqual(normalize(join.indexInfos[0].projections), normalize(["x", "y"]));
+      assertEqual(normalize(join.indexInfos[1].projections), normalize(["x"]));
 
       const result = runAndCheckQuery(query);
 
@@ -395,8 +431,8 @@ const IndexJoinTestSuite = function () {
 
       assertEqual(join.type, "JoinNode");
 
-      assertEqual(join.indexInfos[0].projections, ["x", "y"]);
-      assertEqual(join.indexInfos[1].projections, ["x"]);
+      assertEqual(normalize(join.indexInfos[0].projections), normalize(["x", "y"]));
+      assertEqual(normalize(join.indexInfos[1].projections), normalize(["x"]));
 
       const result = runAndCheckQuery(query);
 
@@ -425,8 +461,8 @@ const IndexJoinTestSuite = function () {
 
       assertEqual(join.type, "JoinNode");
 
-      assertEqual(join.indexInfos[0].projections, ["x", "y"]);
-      assertEqual(join.indexInfos[1].projections, ["x"]);
+      assertEqual(normalize(join.indexInfos[0].projections), normalize(["x", "y"]));
+      assertEqual(normalize(join.indexInfos[1].projections), normalize(["x"]));
 
       const result = runAndCheckQuery(query);
 
@@ -456,8 +492,8 @@ const IndexJoinTestSuite = function () {
 
       assertEqual(join.type, "JoinNode");
 
-      assertEqual(join.indexInfos[0].projections, ["x", "y"]);
-      assertEqual(join.indexInfos[1].projections, ["x"]);
+      assertEqual(normalize(join.indexInfos[0].projections), normalize(["x", "y"]));
+      assertEqual(normalize(join.indexInfos[1].projections), normalize(["x"]));
 
       const result = runAndCheckQuery(query);
 
@@ -488,8 +524,8 @@ const IndexJoinTestSuite = function () {
 
       assertEqual(join.type, "JoinNode");
 
-      assertEqual(join.indexInfos[0].projections, []);
-      assertEqual(join.indexInfos[1].projections, ["x"]);
+      assertEqual(normalize(join.indexInfos[0].projections), normalize([]));
+      assertEqual(normalize(join.indexInfos[1].projections), normalize(["x"]));
 
       const result = runAndCheckQuery(query);
 
@@ -520,8 +556,8 @@ const IndexJoinTestSuite = function () {
 
       assertEqual(join.type, "JoinNode");
 
-      assertEqual(join.indexInfos[0].projections, ["x", "y"]);
-      assertEqual(join.indexInfos[1].projections, ["x"]);
+      assertEqual(normalize(join.indexInfos[0].projections), normalize(["x", "y"]));
+      assertEqual(normalize(join.indexInfos[1].projections), normalize(["x"]));
 
       const result = runAndCheckQuery(query);
 
@@ -532,8 +568,12 @@ const IndexJoinTestSuite = function () {
     },
 
     testJoinWithDocumentPostFilterFilterProjections: function () {
-      const A = fillCollection("A", attributeGenerator(20, {x: x => 2 * x, y: x => x}));
-      A.ensureIndex({type: "persistent", fields: ["x", "y"]});
+      const A = fillCollection("A", attributeGenerator(20, {
+        x: x => 2 * x, y: function (x) {
+          return {z: {w: x}};
+        }
+      }));
+      A.ensureIndex({type: "persistent", fields: ["x", "y.z"]});
       const B = fillCollection("B", singleAttributeGenerator(20, "x", x => x));
       B.ensureIndex({type: "persistent", fields: ["x"]});
 
@@ -542,7 +582,7 @@ const IndexJoinTestSuite = function () {
           SORT doc1.x
           FOR doc2 IN B
               FILTER doc1.x == doc2.x
-              FILTER doc1.y % 2 == 0
+              FILTER doc1.y.z.w % 2 == 0
               RETURN [doc1, doc2.x]
       `;
 
@@ -552,16 +592,37 @@ const IndexJoinTestSuite = function () {
       assertEqual(join.type, "JoinNode");
 
       assertEqual(join.indexInfos[0].projections, []);
-      assertEqual(join.indexInfos[0].filterProjections, ["y"]);
-      assertEqual(join.indexInfos[1].projections, ["x"]);
+      assertEqual(normalize(join.indexInfos[0].filterProjections), normalize([["y", "z", "w"]]));
+      assertEqual(normalize(join.indexInfos[0].projections), normalize([]));
+      assertEqual(normalize(join.indexInfos[1].projections), normalize(["x"]));
 
       const result = runAndCheckQuery(query);
 
       assertEqual(result.length, 5);
       for (const [a, b] of result) {
         assertEqual(a.x, b);
-        assertEqual(a.y % 2, 0);
+        assertEqual(a.y.z.w % 2, 0);
       }
+    },
+
+    testJoinWithPrimaryIndex: function () {
+      const A = createCollection("A", ["_key"]);
+      fillCollection("A", singleAttributeGenerator(20, "_key", x => `${x}`));
+      A.ensureIndex({type: "persistent", fields: ["x", "y"]});
+      const B = fillCollection("B", singleAttributeGenerator(20, "x", x => `${x}`));
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+
+      const query = `
+        FOR doc1 IN A
+          SORT doc1._key
+          FOR doc2 IN B
+              FILTER doc1._key == doc2.x
+              RETURN [doc1, doc2.x]
+      `;
+
+      const plan = AQL_EXPLAIN(query, null, queryOptions).plan;
+      const nodes = plan.nodes.map(x => x.type);
+      assertEqual(nodes.indexOf("JoinNode"), -1);
     },
     /*
         testMultipleJoins: function () {
