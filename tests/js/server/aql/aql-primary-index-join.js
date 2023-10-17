@@ -112,6 +112,7 @@ const IndexPrimaryJoinTestSuite = function () {
     if (planNodes.indexOf("JoinNode") === -1) {
       db._explain(query, null, queryOptions);
     }
+
     assertNotEqual(planNodes.indexOf("JoinNode"), -1);
 
     const result = AQL_EXECUTE(query, null, queryOptions);
@@ -131,7 +132,7 @@ const IndexPrimaryJoinTestSuite = function () {
       db._dropDatabase(databaseName);
     },
 
-    testEveryOtherMatchPrimaryIndexSmall: function () {
+    testAllMatchPrimaryIndex: function () {
       const B = fillCollection("B", singleAttributeGenerator(5, "x", x => 2 * x));
       // No additional index on B, we want to make use of the default (rocksdb) primary index
       const documentsB = B.all().toArray();
@@ -148,15 +149,48 @@ const IndexPrimaryJoinTestSuite = function () {
         FOR doc1 IN A
           SORT doc1.x
           FOR doc2 IN B
-              FILTER doc1.x != doc2._key
+              FILTER doc1.x == doc2._key
               RETURN [doc1, doc2]
       `);
 
       assertEqual(result.length, 5);
       for (const [a, b] of result) {
-        assertEqual(a.x, b.x);
+        assertEqual(a.x, b._key);
       }
     },
+
+    testAllMatchPrimaryIndexReturnProjection: function () {
+      const B = fillCollection("B", singleAttributeGenerator(5, "x", x => 2 * x));
+      // No additional index on B, we want to make use of the default (rocksdb) primary index
+      const documentsB = B.all().toArray();
+      let properties = [];
+      documentsB.forEach((doc) => {
+        properties.push({"x": doc._key});
+      });
+
+      const A = fillCollectionWith("A", properties);
+      A.ensureIndex({type: "persistent", fields: ["x"], unique: true});
+      print(A.all().toArray());
+
+      const result = runAndCheckQuery(`
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2._key
+              RETURN doc2._key
+      `);
+
+      assertEqual(result.length, 5);
+      for (const a of result) {
+        for (const b of documentsB) {
+          assertEqual(a._key, b._key);
+        }
+      }
+    },
+
+
+    // TODO: Add additional FILTER for doc2._key (e.g. calculation compare last character)
+
 
 
   };
