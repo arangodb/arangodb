@@ -177,8 +177,7 @@ const IndexUniqueJoinTestSuite = function () {
               RETURN [doc1, doc2]
       `);
 
-      // TODO: Find out how to collect all results, should be 5000!
-      assertEqual(result.length, 1000);
+      assertEqual(result.length, 5000);
       for (const [a, b] of result) {
         assertEqual(a.x, b.x);
       }
