@@ -55,7 +55,7 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
             testcase,
             '--testOutput', directory,
             # ATM CircleCI does not support to attach debuggers, so we generate core dumps instead
-            "--coreAbrt", "true"
+            "--coreAbort", "true"
         ] + testing_args
         logging.info(run_cmd)
         params = make_logfile_params(verbose, logfile, self.cfg.trace, temp_dir)

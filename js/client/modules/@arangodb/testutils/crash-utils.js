@@ -664,6 +664,13 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
       for (let p in knownPatterns) {
         s = s.replace(p, "*");
       }
+      while (true) {
+        let oldLength = s.length;
+        s = s.replace("**", "*");
+        if (s.length === oldLength) { // no more replacements
+          break;
+        }
+      }
       return s;
     };
     if (matchSystemdCoredump.exec(cp) !== null) {
