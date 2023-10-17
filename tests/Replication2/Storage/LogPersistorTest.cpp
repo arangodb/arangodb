@@ -537,6 +537,39 @@ TEST_F(LogPersistorMultiFileTest, loading_file_set_ignores_invalid_files) {
             persistor->lastWrittenEntry().value());
 }
 
+TEST_F(LogPersistorMultiFileTest,
+       loading_file_set_does_not_add_current_log_file_to_set) {
+  auto activeBuffer = createBufferWithLogEntries(9, 10, LogTerm{2});
+
+  _completedFiles = {
+      {.filename = "file1",
+       .buffer = createBufferWithLogEntries(1, 3, LogTerm{1})},
+      {.filename = "file2",
+       .buffer = createBufferWithLogEntries(4, 8, LogTerm{2})},
+  };
+  std::vector<std::string> completedFilenames;
+  for (auto& e : _completedFiles) {
+    completedFilenames.push_back(e.filename);
+    EXPECT_CALL(*fileManager, createReader(e.filename))
+        .WillOnce(Return(std::make_unique<InMemoryFileReader>(e.buffer)));
+  }
+  // the active file should not be opened via a createReader call
+  completedFilenames.push_back("_current.log");
+
+  EXPECT_CALL(*fileManager, listFiles()).WillOnce(Return(completedFilenames));
+
+  writeBuffers.emplace_back(std::move(activeBuffer));
+  auto activeFile = std::make_unique<InMemoryFileWriter>(writeBuffers.back());
+  EXPECT_CALL(*fileManager, createWriter("_current.log"))
+      .WillOnce(Return(std::move(activeFile)));
+
+  persistor = std::make_unique<LogPersistor>(LogId{42}, fileManager, Options{});
+
+  auto fileSet = persistor->fileSet();
+  ASSERT_EQ(2, fileSet.size());
+  EXPECT_EQ("file2", fileSet.rbegin()->second.filename);
+}
+
 TEST_F(LogPersistorMultiFileTest, loading_file_set_throws_if_set_has_gaps) {
   initializeCompletedFiles(
       {{.filename = "file1",

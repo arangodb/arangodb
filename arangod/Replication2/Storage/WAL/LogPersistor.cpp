@@ -81,6 +81,9 @@ auto LogPersistor::fileSet() const -> std::map<LogIndex, LogFile> {
 
 void LogPersistor::loadFileSet() {
   for (auto& file : _fileManager->listFiles()) {
+    if (file == activeLogFileName) {
+      continue;
+    }
     try {
       auto res = addToFileSet(_files.getLockedGuard().get(), file);
       if (res.fail()) {
@@ -207,6 +210,7 @@ auto LogPersistor::getIterator(IteratorPosition position)
     auto it = f.fileSet.lower_bound(position.index());
 
     if (it == f.fileSet.end()) {  // index must be in active file
+      LOG_DEVEL << "getIterator: returning file reader for active file";
       return std::make_unique<FileIterator>(
           position, f.activeFile.writer->getReader(), []() { return nullptr; });
     }
@@ -214,15 +218,21 @@ auto LogPersistor::getIterator(IteratorPosition position)
     auto moveToNextFile = [it, this]() mutable {
       return _files.doUnderLock([&](Files& f) -> std::unique_ptr<IFileReader> {
         if (it == f.fileSet.end()) {
+          LOG_DEVEL << "moveToNextFile reached end of file set";
           return nullptr;
         }
         ++it;
         if (it == f.fileSet.end()) {
+          LOG_DEVEL << "moveToNextFile: returning active file reader";
           return f.activeFile.writer->getReader();
         }
+        LOG_DEVEL << "moveToNextFile: returning file reader for "
+                  << it->second.filename;
         return _fileManager->createReader(it->second.filename);
       });
     };
+    LOG_DEVEL << "getIterator: returning file reader for "
+              << it->second.filename;
     return std::make_unique<FileIterator>(
         position, _fileManager->createReader(it->second.filename),
         std::move(moveToNextFile));
