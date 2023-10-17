@@ -51,6 +51,11 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/Metric.h"
+#include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationClients.h"
@@ -61,10 +66,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
-#include "Metrics/CounterBuilder.h"
-#include "Metrics/GaugeBuilder.h"
-#include "Metrics/HistogramBuilder.h"
-#include "Metrics/MetricsFeature.h"
 #include "RestServer/DumpLimitsFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
 #include "RestServer/ServerIdFeature.h"
@@ -3428,7 +3429,8 @@ void RocksDBEngine::getCapabilities(velocypack::Builder& builder) const {
   VPackCollection::merge(builder, main.slice(), own.slice(), false);
 }
 
-void RocksDBEngine::getStatistics(std::string& result) const {
+void RocksDBEngine::toPrometheus(std::string& result, std::string_view globals,
+                                 bool ensureWhitespace) const {
   VPackBuffer<uint8_t> buffer;
   VPackBuilder stats(buffer);
   getStatistics(stats);
@@ -3444,17 +3446,12 @@ void RocksDBEngine::getStatistics(std::string& result) const {
         // prepend name with "rocksdb_"
         name = absl::StrCat(kEngineName, "_", name);
       }
-      if (name.ends_with("_total")) {
-        // counter
-        result += absl::StrCat("\n# HELP ", name, " ", name, "\n# TYPE ", name,
-                               " counter\n", name, " ",
-                               a.value.getNumber<uint64_t>(), "\n");
-      } else {
-        // gauge
-        result += absl::StrCat("\n# HELP ", name, " ", name, "\n# TYPE ", name,
-                               " gauge\n", name, " ",
-                               a.value.getNumber<uint64_t>(), "\n");
-      }
+
+      metrics::Metric::addInfo(result, name, /*help*/ name,
+                               name.ends_with("_total") ? "counter" : "gauge");
+      metrics::Metric::addMark(result, name, globals, "");
+      absl::StrAppend(&result, ensureWhitespace ? " " : "",
+                      a.value.getNumber<uint64_t>(), "\n");
     }
   }
 }
