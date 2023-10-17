@@ -361,7 +361,7 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
       }
     }
 
-    results[i] = execute_json(plans[i].plan, paramNone);
+    results[i] = executeJson(plans[i].plan, paramNone);
     // ignore these statistics for comparisons
     results[i].stats = sanitizeStats(results[i].stats);
 
@@ -467,15 +467,26 @@ function executeQuery(query, bindVars = null, options = {}) {
   return stmt.execute();
 };
 
-function execute_all_json(plans, result, query) {
+function executeJson = function (plan, options = {}) {
+  let command = `
+        let data = ${JSON.stringify(plan)};
+        let opts = ${JSON.stringify(options)}
+        return AQL_EXECUTEJSON(data);
+      `;
+  return this._connection.POST("/_admin/execute", command).json;
+};
+
+
+function executeAllJson(plans, result, query) {
   plans.forEach(function (plan) {
-    let jsonResult = db._executeJson(plan, {optimizer: {rules: ['-all']}});
+    let jsonResult = executeJson(plan, {optimizer: {rules: ['-all']}});
     assertEqual(jsonResult, result, query);
   });
 };
 
-exports.execute_all_json = execute_all_json;
-exports.executeQuery = execute_query;
+exports.executeJson = executeJson;
+exports.executeAllJson = executeAllJson;
+exports.executeQuery = executeQuery;
 exports.getParseResults = getParseResults;
 exports.assertParseError = assertParseError;
 exports.getQueryExplanation = getQueryExplanation;

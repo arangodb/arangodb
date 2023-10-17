@@ -991,19 +991,6 @@ ArangoDatabase.prototype._createStatement = function (data) {
 // / @brief factory method to create and execute a new statement
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._executeJson = function (plan, options = {}) {
-  let command = `
-        let data = ${JSON.stringify(plan)};
-        let opts = ${JSON.stringify(options)}
-        return AQL_EXECUTEJSON(data);
-      `;
-  return this._connection.POST("/_admin/execute", command).json;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief factory method to create and execute a new statement
-// //////////////////////////////////////////////////////////////////////////////
-
 ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, options) {
   let payload = {
     query,
