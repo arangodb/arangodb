@@ -36,7 +36,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-#include "Logger/LogMacros.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
