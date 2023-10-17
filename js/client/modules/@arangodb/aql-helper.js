@@ -473,7 +473,7 @@ function executeJson (plan, options = {}) {
         let opts = ${JSON.stringify(options)}
         return AQL_EXECUTEJSON(data);
       `;
-  return this._connection.POST("/_admin/execute", command).json;
+  return arango.POST("/_admin/execute", command).json;
 };
 
 
