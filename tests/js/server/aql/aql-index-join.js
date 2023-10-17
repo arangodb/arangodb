@@ -556,8 +556,10 @@ const IndexJoinTestSuite = function () {
 
       assertEqual(join.type, "JoinNode");
 
-      assertEqual(normalize(join.indexInfos[0].projections), normalize(["x", "y"]));
+      assertEqual(normalize(join.indexInfos[0].projections), normalize(["x"]));
+      assertEqual(normalize(join.indexInfos[0].filterProjections), normalize(["y"]));
       assertEqual(normalize(join.indexInfos[1].projections), normalize(["x"]));
+      assertEqual(normalize(join.indexInfos[1].filterProjections), normalize([]));
 
       const result = runAndCheckQuery(query);
 

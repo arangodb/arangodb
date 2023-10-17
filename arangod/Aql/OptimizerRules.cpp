@@ -9275,3 +9275,17 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
 
   opt->addPlan(std::move(plan), rule, modified);
 }
+
+void arangodb::aql::removeUnnecessaryProjections(
+    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+    OptimizerRule const& rule) {
+  containers::SmallVector<ExecutionNode*, 8> nodes;
+  plan->findNodesOfType(nodes, {EN::INDEX, EN::ENUMERATE_COLLECTION}, true);
+
+  bool modified = false;
+  for (auto* n : nodes) {
+    auto* documentNode = ExecutionNode::castTo<DocumentProducingNode*>(n);
+    modified |= documentNode->recalculateProjections(plan.get());
+  }
+  opt->addPlan(std::move(plan), rule, modified);
+}
