@@ -42,7 +42,7 @@ const en = 'UnitTestEdgeCollection';
 const isCluster = require("internal").isCluster();
 
 const gh = require('@arangodb/graph/helpers');
-const execute_query = require("@arangodb/aql-helper").execute_query;
+const executeQuery = require("@arangodb/aql-helper").executeQuery;
 
 function complexFilteringSuite() {
   var vertex = {};
@@ -98,7 +98,7 @@ function complexFilteringSuite() {
           '@eCol': en,
           'start': vertex.Tri1
         };
-        execute_query(query, bindVars);
+        executeQuery(query, bindVars);
         fail();
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
@@ -116,7 +116,7 @@ function complexFilteringSuite() {
           '@eCol': en,
           'start': vertex.Tri1
         };
-        execute_query(query, bindVars);
+        executeQuery(query, bindVars);
         fail();
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
@@ -131,8 +131,8 @@ function complexFilteringSuite() {
         '@eCol': en,
         'start': vertex.A
       };
-      let query1result = execute_query(query, bindVars).toArray();
-      let query2result = execute_query(query2, bindVars).toArray();
+      let query1result = executeQuery(query, bindVars).toArray();
+      let query2result = executeQuery(query2, bindVars).toArray();
       assertTrue(_.isEqual(query1result, query2result));
     },
 
@@ -143,7 +143,7 @@ function complexFilteringSuite() {
         '@eCol': en,
         'start': vertex.A
       };
-      let queryResult = execute_query(query, bindVars).toArray();
+      let queryResult = executeQuery(query, bindVars).toArray();
       assertEqual(queryResult.length, 4);
       let queryExplain = db._createStatement({query, bindVars, options: {}}).explain().plan.nodes; 
       let foundExtraLet = false;
@@ -164,8 +164,8 @@ function complexFilteringSuite() {
         '@eCol': en,
         'start': vertex.A
       };
-      let query1result = execute_query(query, bindVars).toArray();
-      let query2result = execute_query(query2, bindVars).toArray();
+      let query1result = executeQuery(query, bindVars).toArray();
+      let query2result = executeQuery(query2, bindVars).toArray();
       assertEqual(query1result.length, 1);
       assertEqual(query2result.length, 1);
       assertTrue(_.isEqual(query1result, query2result));
@@ -183,8 +183,8 @@ function complexFilteringSuite() {
         '@eCol': en,
         'start': vertex.A
       };
-      let query1result = execute_query(query, bindVars).toArray();
-      let query2result = execute_query(query2, bindVars).toArray();
+      let query1result = executeQuery(query, bindVars).toArray();
+      let query2result = executeQuery(query2, bindVars).toArray();
       assertEqual(query1result.length, 1);
       assertEqual(query2result.length, 1);
       assertTrue(_.isEqual(query1result, query2result));
@@ -202,8 +202,8 @@ function complexFilteringSuite() {
         '@eCol': en,
         'start': vertex.A
       };
-      let query1result = execute_query(query, bindVars).toArray();
-      let query2result = execute_query(query2, bindVars).toArray();
+      let query1result = executeQuery(query, bindVars).toArray();
+      let query2result = executeQuery(query2, bindVars).toArray();
       assertEqual(query1result.length, 2);
       assertEqual(query2result.length, 2);
       assertTrue(_.isEqual(query1result, query2result));
@@ -220,7 +220,7 @@ function complexFilteringSuite() {
           '@eCol': en,
           'start': vertex.A
         };
-        execute_query(query, bindVars);
+        executeQuery(query, bindVars);
         fail();
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
@@ -234,7 +234,7 @@ function complexFilteringSuite() {
           '@eCol': en,
           'start': vertex.A
         };
-        execute_query(query, bindVars);
+        executeQuery(query, bindVars);
         fail();
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_QUERY_VARIABLE_REDECLARED.code);
@@ -248,7 +248,7 @@ function complexFilteringSuite() {
           '@eCol': en,
           'start': vertex.A
         };
-        execute_query(query, bindVars);
+        executeQuery(query, bindVars);
         fail();
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_QUERY_VARIABLE_REDECLARED.code);
@@ -262,7 +262,7 @@ function complexFilteringSuite() {
           '@eCol': en,
           'start': vertex.A
         };
-        execute_query(query, bindVars);
+        executeQuery(query, bindVars);
         fail();
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_QUERY_VARIABLE_REDECLARED.code);
@@ -277,7 +277,7 @@ function complexFilteringSuite() {
           '@eCol': en,
           'start': vertex.A
         };
-        execute_query(query, bindVars);
+        executeQuery(query, bindVars);
         fail();
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_QUERY_VARIABLE_REDECLARED.code);
@@ -291,7 +291,7 @@ function complexFilteringSuite() {
           '@eCol': en,
           'start': vertex.A
         };
-        execute_query(query, bindVars);
+        executeQuery(query, bindVars);
         fail();
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
@@ -306,7 +306,7 @@ function complexFilteringSuite() {
         '@eCol': en,
         'start': vertex.A
       };
-      let queryResult = execute_query(query, bindVars).toArray();
+      let queryResult = executeQuery(query, bindVars).toArray();
       assertEqual(queryResult.length, 2);
       assertEqual(queryResult[0].outerVertex, 'G');
       assertEqual(queryResult[1].outerVertex, 'G');
@@ -320,7 +320,7 @@ function complexFilteringSuite() {
         '@eCol': en,
         'start': vertex.A
       };
-      let queryResult = execute_query(query, bindVars).toArray();
+      let queryResult = executeQuery(query, bindVars).toArray();
       assertEqual(queryResult.length, 6); //B, C, D, E, F, G
       queryResult.forEach((result, index) => {
         if(index < 5) {
@@ -341,7 +341,7 @@ function complexFilteringSuite() {
         '@eCol': en,
         'start': vertex.A
       };
-      let queryResult = execute_query(query, bindVars).toArray();
+      let queryResult = executeQuery(query, bindVars).toArray();
       assertEqual(queryResult.length, 3);
       assertFalse(queryResult[0][0]); //D
       assertFalse(queryResult[1][0]); //E
@@ -354,7 +354,7 @@ function complexFilteringSuite() {
         '@eCol': en,
         'start': vertex.A
       };
-      let queryResult = execute_query(query, bindVars).toArray();
+      let queryResult = executeQuery(query, bindVars).toArray();
       assertEqual(queryResult.length, 5);
       assertEqual(queryResult[0].vertex, 'B');
       assertEqual(queryResult[1].vertex, 'C');
@@ -370,7 +370,7 @@ function complexFilteringSuite() {
         '@eCol': en,
         'start': vertex.A
       };
-      let queryResult = execute_query(query, bindVars).toArray();
+      let queryResult = executeQuery(query, bindVars).toArray();
       assertEqual(queryResult.length, 3);
       assertEqual(queryResult[0].vertex, 'B');
       assertTrue(queryResult[0].subquery.length === 0);
@@ -392,7 +392,7 @@ function complexFilteringSuite() {
           '@eCol': en,
           'start': vertex.A
         };
-        execute_query(query, bindVars);
+        executeQuery(query, bindVars);
         fail();
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
@@ -407,7 +407,7 @@ function complexFilteringSuite() {
           '@eCol': en,
           'start': vertex.A
         };
-        execute_query(query, bindVars);
+        executeQuery(query, bindVars);
         fail();
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
@@ -422,8 +422,8 @@ function complexFilteringSuite() {
         '@eCol': en,
         'start': vertex.A
       };
-      let query1result = execute_query(query, bindVars).toArray();
-      let query2result = execute_query(query2, bindVars).toArray();
+      let query1result = executeQuery(query, bindVars).toArray();
+      let query2result = executeQuery(query2, bindVars).toArray();
       assertEqual(query1result.length, 4);
       assertEqual(query2result.length, 4);
       assertTrue(_.isEqual(query1result, query2result));
@@ -437,8 +437,8 @@ function complexFilteringSuite() {
         '@eCol': en,
         'start': vertex.A
       };
-      let query1result = execute_query(query, bindVars).toArray();
-      let query2result = execute_query(query2, bindVars).toArray();
+      let query1result = executeQuery(query, bindVars).toArray();
+      let query2result = executeQuery(query2, bindVars).toArray();
       assertEqual(query1result.length, 1);
       assertEqual(query2result.length, 1);
       assertTrue(_.isEqual(query1result, query2result));
@@ -454,8 +454,8 @@ function complexFilteringSuite() {
         '@eCol': en,
         'start': vertex.A
       };
-      let query1result = execute_query(query, bindVars).toArray();
-      let query2result = execute_query(query2, bindVars).toArray();
+      let query1result = executeQuery(query, bindVars).toArray();
+      let query2result = executeQuery(query2, bindVars).toArray();
       assertEqual(query1result.length, 4);
       assertEqual(query2result.length, 4);
       assertTrue(_.isEqual(query1result, query2result));
@@ -469,8 +469,8 @@ function complexFilteringSuite() {
         '@eCol': en,
         'start': vertex.A
       };
-      let query1result = execute_query(query, bindVars).toArray();
-      let query2result = execute_query(query2, bindVars).toArray();
+      let query1result = executeQuery(query, bindVars).toArray();
+      let query2result = executeQuery(query2, bindVars).toArray();
       assertEqual(query1result.length, 1);
       assertEqual(query2result.length, 1);
       assertTrue(_.isEqual(query1result, query2result));
@@ -645,7 +645,7 @@ function complexFilteringSuite() {
         '@eCol': en,
         'start': vertex.Tri1
       };
-      var cursor = execute_query(query, bindVars);
+      var cursor = executeQuery(query, bindVars);
       assertEqual(cursor.count(), 0);
       var stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
@@ -674,7 +674,7 @@ function complexFilteringSuite() {
         '@eCol': en,
         'start': vertex.Tri1
       };
-      var cursor = execute_query(query, bindVars);
+      var cursor = executeQuery(query, bindVars);
       assertEqual(cursor.count(), 0);
       var stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
@@ -692,7 +692,7 @@ function complexFilteringSuite() {
         '@eCol': en,
         'start': vertex.Tri1
       };
-      var cursor = execute_query(query, bindVars);
+      var cursor = executeQuery(query, bindVars);
       assertEqual(cursor.count(), 0);
       var stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
@@ -719,7 +719,7 @@ function complexFilteringSuite() {
         '@ecol': en,
         start: vertex.A
       };
-      var cursor = execute_query(query, bindVars);
+      var cursor = executeQuery(query, bindVars);
       assertEqual(cursor.count(), 0);
       var stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
@@ -740,7 +740,7 @@ function complexFilteringSuite() {
         '@ecol': en,
         start: vertex.A
       };
-      var cursor = execute_query(query, bindVars);
+      var cursor = executeQuery(query, bindVars);
       assertEqual(cursor.count(), 3);
       assertEqual(cursor.toArray(), ['B', 'C', 'F']);
       var stats = cursor.getExtra().stats;
@@ -783,7 +783,7 @@ function complexFilteringSuite() {
         '@ecol': en,
         start: vertex.A
       };
-      var cursor = execute_query(query, bindVars);
+      var cursor = executeQuery(query, bindVars);
       // We expect to find C, F
       // B and D will be post filtered
       assertEqual(cursor.count(), 2);
@@ -828,7 +828,7 @@ function complexFilteringSuite() {
         '@ecol': en,
         start: vertex.A
       };
-      var cursor = execute_query(query, bindVars);
+      var cursor = executeQuery(query, bindVars);
       // Everything should be filtered, no results
       assertEqual(cursor.count(), 0);
       var stats = cursor.getExtra().stats;
@@ -869,7 +869,7 @@ function complexFilteringSuite() {
         '@ecol': en,
         start: vertex.A
       };
-      var cursor = execute_query(query, bindVars);
+      var cursor = executeQuery(query, bindVars);
       assertEqual(cursor.count(), 3);
       assertEqual(cursor.toArray(), ['B', 'C', 'F']);
       var stats = cursor.getExtra().stats;
@@ -909,7 +909,7 @@ function complexFilteringSuite() {
         '@ecol': en,
         start: vertex.A
       };
-      var cursor = execute_query(query, bindVars);
+      var cursor = executeQuery(query, bindVars);
       assertEqual(cursor.count(), 2);
       assertEqual(cursor.toArray(), ['C', 'F']);
       var stats = cursor.getExtra().stats;
@@ -966,7 +966,7 @@ function complexFilteringSuite() {
           '@ecol': en,
           start: vertex.A
         };
-        var cursor = execute_query(query, bindVars);
+        var cursor = executeQuery(query, bindVars);
         assertEqual(cursor.count(), 3, query);
         assertEqual(cursor.toArray(), ['B', 'C', 'F']);
         var stats = cursor.getExtra().stats;
@@ -1024,7 +1024,7 @@ function complexFilteringSuite() {
           '@ecol': en,
           start: vertex.A
         };
-        var cursor = execute_query(query, bindVars);
+        var cursor = executeQuery(query, bindVars);
         assertEqual(cursor.count(), 3, query);
         assertEqual(cursor.toArray(), ['D', 'E', 'G']);
         var stats = cursor.getExtra().stats;
@@ -1073,7 +1073,7 @@ function complexFilteringSuite() {
         '@vcol': vn,
         start: vertex.A
       };
-      var cursor = execute_query(query, bindVars);
+      var cursor = executeQuery(query, bindVars);
       assertEqual(cursor.count(), 3);
       assertEqual(cursor.toArray(), ['B', 'C', 'F']);
       var stats = cursor.getExtra().stats;
