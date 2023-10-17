@@ -58,7 +58,7 @@ const TABLE_COLUMNS = [
     header: "Actions",
     id: "actions",
     cell: info => {
-      return <CollectionIndexActionButtons index={info.row.original} />;
+      return <CollectionIndexActionButtons collectionIndex={info.row.original} />;
     }
   })
 ];
