@@ -148,8 +148,8 @@ class IndexNode : public ExecutionNode,
     Variable const* var;
   };
 
-  using IndexValuesVars =
-      std::pair<IndexId, std::unordered_map<Variable const*, size_t>>;
+  using IndexFilterCoveringVars = std::unordered_map<Variable const*, size_t>;
+  using IndexValuesVars = std::pair<IndexId, IndexFilterCoveringVars>;
 
   using IndexValuesRegisters =
       std::pair<IndexId, std::unordered_map<size_t, RegisterId>>;
@@ -170,6 +170,10 @@ class IndexNode : public ExecutionNode,
   // prepare projections for usage with an index
   void prepareProjections();
 
+  bool recalculateProjections(ExecutionPlan*) override;
+
+  bool isProduceResult() const override;
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
@@ -177,10 +181,6 @@ class IndexNode : public ExecutionNode,
 
  private:
   NonConstExpressionContainer buildNonConstExpressions() const;
-
-  bool isProduceResult() const {
-    return (isVarUsedLater(_outVariable) || _filter != nullptr) && !doCount();
-  }
 
   /// @brief adds a UNIQUE() to a dynamic IN condition
   arangodb::aql::AstNode* makeUnique(AstNode*) const;

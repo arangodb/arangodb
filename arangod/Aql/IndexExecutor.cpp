@@ -206,7 +206,8 @@ IndexExecutorInfos::IndexExecutorInfos(
     std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
     IndexIteratorOptions options,
     IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
-    IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs)
+    IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs,
+    IndexNode::IndexFilterCoveringVars filterCoveringVars)
     : _indexes(std::move(indexes)),
       _condition(condition),
       _ast(ast),
@@ -218,6 +219,7 @@ IndexExecutorInfos::IndexExecutorInfos(
       _projections(std::move(projections)),
       _filterProjections(std::move(filterProjections)),
       _filterVarsToRegs(std::move(filterVarsToRegs)),
+      _filterCoveringVars(std::move(filterCoveringVars)),
       _nonConstExpressions(std::move(nonConstExpressions)),
       _outputRegisterId(outputRegister),
       _outNonMaterializedIndVars(outNonMaterializedIndVars),
@@ -393,8 +395,10 @@ IndexExecutor::CursorReader::CursorReader(
       _cursorStats(cursorStats),
       _type(infos.getCount()             ? Type::Count
             : infos.isLateMaterialized() ? Type::LateMaterialized
-            : !infos.getProduceResult()  ? Type::NoResult
-            : infos.getProjections().usesCoveringIndex(index) ? Type::Covering
+            : (!infos.getProduceResult() && !infos.getFilter()) ? Type::NoResult
+            : (infos.getProjections().usesCoveringIndex(index) &&
+               infos.getFilterProjections().usesCoveringIndex(index))
+                ? Type::Covering
             : infos.getFilterProjections().usesCoveringIndex(index)
                 ? Type::CoveringFilterOnly
                 : Type::Document),

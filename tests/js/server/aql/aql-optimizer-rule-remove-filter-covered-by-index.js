@@ -234,7 +234,7 @@ function optimizerRuleTestSuite() {
       query = "FOR v IN " + colName + " FILTER 'foo' IN v.z && 'bar' IN v.z RETURN v";
       result = AQL_EXPLAIN(query);
       // should optimize away one part of the filter
-      assertEqual(addPrefetch([ "remove-filter-covered-by-index", "use-indexes", "move-filters-into-enumerate" ]).sort(),  
+      assertEqual(addPrefetch([ "remove-filter-covered-by-index", "use-indexes", "move-filters-into-enumerate", "remove-unnecessary-projections" ]).sort(),
         removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
       hasIndexNodeWithRanges(result);
       
@@ -248,7 +248,7 @@ function optimizerRuleTestSuite() {
       query = "FOR v IN " + colName + " FILTER 'foo' IN v.z[*] && 'bar' IN v.z[*] RETURN v";
       result = AQL_EXPLAIN(query);
       // should optimize away one part of the filter
-      assertEqual(addPrefetch([ "remove-filter-covered-by-index", "use-indexes", "move-filters-into-enumerate" ]).sort(),  
+      assertEqual(addPrefetch([ "remove-filter-covered-by-index", "use-indexes", "move-filters-into-enumerate", "remove-unnecessary-projections" ]).sort(),
         removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
       hasIndexNodeWithRanges(result);
       

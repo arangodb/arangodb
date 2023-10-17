@@ -37,6 +37,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <boost/container_hash/hash.hpp>
 
 namespace {
 
@@ -527,6 +528,21 @@ Projections::Projection& Projections::operator[](size_t index) {
 std::vector<Projections::Projection> const& Projections::projections()
     const noexcept {
   return _projections;
+}
+
+std::size_t hash_value(Projections::Projection const& p) {
+  std::size_t hash = 0;
+  boost::hash_combine(hash, static_cast<int>(p.type));
+  boost::hash_combine(hash, p.levelsToClose);
+  boost::hash_combine(hash, p.startsAtLevel);
+  boost::hash_combine(hash, p.variable);
+  boost::hash_combine(hash, p.path.hash());
+  return hash;
+}
+
+std::size_t Projections::hash() const noexcept {
+  using boost::hash_value;
+  return hash_value(_projections);
 }
 
 std::ostream& operator<<(std::ostream& stream,

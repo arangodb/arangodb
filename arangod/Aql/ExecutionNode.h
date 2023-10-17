@@ -732,6 +732,8 @@ class EnumerateCollectionNode : public ExecutionNode,
 
   void setProjections(Projections projections) override;
 
+  bool isProduceResult() const override;
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,

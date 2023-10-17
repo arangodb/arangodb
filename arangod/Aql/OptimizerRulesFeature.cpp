@@ -451,6 +451,11 @@ optimizations)");
 they are declared but unused in the query, or only used in filters that are
 pulled into the traversal, significantly reducing overhead.)");
 
+  registerRule("remove-unnecessary-projections", removeUnnecessaryProjections,
+               OptimizerRule::removeUnnecessaryProjections,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Remove projections that are no longer used.)");
+
   registerRule("optimize-cluster-single-document-operations",
                substituteClusterSingleDocumentOperationsRule,
                OptimizerRule::substituteSingleDocumentOperations,
