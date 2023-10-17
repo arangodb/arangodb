@@ -186,7 +186,7 @@ Table::Table(std::uint32_t logSize)
       _evictions(false),
       _logSize(std::min(logSize, kMaxLogSize)),
       _size(static_cast<std::uint64_t>(1) << _logSize),
-      _shift(32 - _logSize),
+      _shift(kMaxLogSize - _logSize),
       _mask(static_cast<std::uint32_t>((_size - 1) << _shift)),
       _buffer(new std::uint8_t[(_size * BUCKET_SIZE) + Table::padding]),
       _buckets(reinterpret_cast<GenericBucket*>(
@@ -196,6 +196,10 @@ Table::Table(std::uint32_t logSize)
       _bucketClearer(defaultClearer),
       _slotsTotal(_size),
       _slotsUsed(static_cast<std::uint64_t>(0)) {
+  TRI_ASSERT(_logSize <= kMaxLogSize);
+  TRI_ASSERT(_size == (std::uint64_t(1) << _logSize));
+  TRI_ASSERT(_size <= std::numeric_limits<std::uint32_t>::max());
+
   for (std::size_t i = 0; i < _size; i++) {
     // use placement new in order to properly initialize the bucket
     new (_buckets + i) GenericBucket();

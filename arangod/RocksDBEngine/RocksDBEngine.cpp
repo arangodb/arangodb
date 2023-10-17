@@ -3281,6 +3281,15 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
                 VPackValue(stats.migrateTasksDuration));
     builder.add("cache.free-memory-tasks-duration-total",
                 VPackValue(stats.freeMemoryTasksDuration));
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // only here for debugging. the value is not exposed in non-maintainer
+    // mode builds. the reason for this is to make calls to the `table` function
+    // more lightweight, and because we would need to put a metrics
+    // description into Documentation/Metrics for an optional metric.
+
+    // builder.add("cache.table-calls", VPackValue(stats.tableCalls));
+    // builder.add("cache.term-calls", VPackValue(stats.termCalls));
+#endif
     // handle NaN
     builder.add("cache.hit-rate-lifetime",
                 VPackValue(rates.first >= 0.0 ? rates.first : 0.0));
