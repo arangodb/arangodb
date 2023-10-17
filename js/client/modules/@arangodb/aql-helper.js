@@ -470,7 +470,7 @@ function execute_query(query, bindVars = null, options = {}) {
 
 function execute_all_json(plans, result, query) {
   plans.forEach(function (plan) {
-    var jsonResult = db._executeJson(plan, {optimizer: {rules: ['-all']}});
+    let jsonResult = db._executeJson(plan, {optimizer: {rules: ['-all']}});
     assertEqual(jsonResult, result, query);
   });
 };
