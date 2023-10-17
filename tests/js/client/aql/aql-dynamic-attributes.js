@@ -311,7 +311,7 @@ function ahuacatlDynamicAttributesTestSuite () {
       let stmt = db._createStatement({query, bindVars: null, options: { verbosePlans: true }});
 
       var plan = stmt.explain().plan;
-      var actual = executeJson(plan);
+      var actual = executeJson(plan).json;
 
       assertEqual(expected, actual);
     }

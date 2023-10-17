@@ -119,7 +119,7 @@ function optimizerRuleTestSuite () {
         var total = db._query(query);
         var plans = db._createStatement({query: query, bindVars:  { }, options:  opts}).explain().plans;
         plans.forEach(function(plan) {
-          var result = helper.executeJson(plan, rulesNone);
+          var result = helper.executeJson(plan, rulesNone).json;
           assertTrue(_.isEqual(total.toArray(), result),
                       query +'\n' +
                       'result: ' + JSON.stringify(result) + '\n' +
