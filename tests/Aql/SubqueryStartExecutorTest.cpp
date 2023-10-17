@@ -58,13 +58,10 @@ RegisterInfos MakeBaseInfos(RegisterCount numRegs, size_t subqueryDepth = 2) {
 }
 }  // namespace
 
-using SubqueryStartSplitType = ExecutorTestHelper<1, 1>::SplitType;
-
 class SubqueryStartExecutorTest
-    : public AqlExecutorTestCaseWithParam<std::tuple<SubqueryStartSplitType>,
-                                          false> {
+    : public AqlExecutorTestCaseWithParam<std::tuple<SplitType>, false> {
  protected:
-  auto GetSplit() const -> SubqueryStartSplitType {
+  auto GetSplit() const -> SplitType {
     auto const [split] = GetParam();
     return split;
   }
@@ -82,10 +79,9 @@ class SubqueryStartExecutorTest
 };
 
 template<size_t... vs>
-const SubqueryStartSplitType splitIntoBlocks =
-    SubqueryStartSplitType{std::vector<std::size_t>{vs...}};
+const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
 template<size_t step>
-const SubqueryStartSplitType splitStep = SubqueryStartSplitType{step};
+const SplitType splitStep = SplitType{step};
 
 INSTANTIATE_TEST_CASE_P(SubqueryStartExecutorTest, SubqueryStartExecutorTest,
                         ::testing::Values(splitIntoBlocks<2, 3>,
