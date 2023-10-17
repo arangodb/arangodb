@@ -38,7 +38,9 @@ const internal = require('internal');
 const db = require('internal').db;
 const errors = require('@arangodb').errors;
 const gh = require("@arangodb/graph/helpers");
-const executeQuery = require("@arangodb/aql-helper").executeQuery;
+const {
+  executeQuery,
+  executeJson } = require("@arangodb/aql-helper");
 
 function complexInternaSuite() {
   var ruleName = 'optimize-traversals';
@@ -121,7 +123,7 @@ function complexInternaSuite() {
       assertEqual(result.length, amount);
       var plans = db._createStatement({query: query, bindVars: bindVars, options: opts}).explain().plans;
       plans.forEach(function (plan) {
-        var jsonResult = db._executeJson(plan, {optimizer: {rules: ['-all']}});
+        var jsonResult = executeJson(plan, {optimizer: {rules: ['-all']}});
         assertEqual(jsonResult, result, query);
       });
     },
@@ -185,7 +187,7 @@ function complexInternaSuite() {
 
       const plans = db._createStatement({query: query, bindVars: bindVars, options: opts}).explain().plans;
       plans.forEach(function (plan) {
-        var jsonResult = db._executeJson(plan, {optimizer: {rules: ['-all']}});
+        var jsonResult = executeJson(plan, {optimizer: {rules: ['-all']}});
         assertTrue(isValidResult(jsonResult), JSON.stringify({jsonResult, plan}));
       });
     },

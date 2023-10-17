@@ -30,6 +30,7 @@
 
 var jsunity = require("jsunity");
 const db = require('internal').db;
+const executeJson =  require("@arangodb/aql-helper").executeJson;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -310,7 +311,7 @@ function ahuacatlDynamicAttributesTestSuite () {
       let stmt = db._createStatement({query, bindVars: null, options: { verbosePlans: true }});
 
       var plan = stmt.explain().plan;
-      var actual = db._executeJson(plan);
+      var actual = executeJson(plan);
 
       assertEqual(expected, actual);
     }

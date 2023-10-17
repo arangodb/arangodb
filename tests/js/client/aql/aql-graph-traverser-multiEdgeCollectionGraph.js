@@ -40,7 +40,7 @@ const gm = require('@arangodb/general-graph');
 const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 
-const execute_json = require("@arangodb/aql-helper").execute_all_json;
+const executeAllJson = require("@arangodb/aql-helper").executeAllJson;
 const gh = require('@arangodb/graph/helpers');
 
 function multiEdgeCollectionGraphSuite() {
@@ -114,7 +114,7 @@ function multiEdgeCollectionGraphSuite() {
 
       assertEqual(result, expectResult, query);
       var plans = db._createStatement({query: query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     }
 
   };
