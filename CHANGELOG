@@ -1,4 +1,4 @@
-v3.10.9.2 (XXXX-XX-XX)
+v3.10.9.2 (2023-10-17)
 ----------------------
 
 * Reduce number of atomic shared_ptr copies in in-memory cache subsystem.
