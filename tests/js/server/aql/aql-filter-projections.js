@@ -61,9 +61,9 @@ function filterProjectionsPlansTestSuite () {
       c.ensureIndex({ type: "persistent", fields: ["value1"] });
 
       let queries = [
-        [`FOR doc IN ${cn} FILTER doc.value1 == 93 FILTER doc.value2 == 1 RETURN doc.value1`, 'persistent', ['value1', 'value2'] ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 93 FILTER doc.value2 == 1 RETURN [doc.value1, doc.value2]`, 'persistent', ['value1', 'value2'] ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 93 FILTER doc.value2 == 1 RETURN doc`, 'persistent', [] ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 93 FILTER doc.value2 == 1 RETURN doc.value1`, 'persistent', ['value1'], ['value2'] ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 93 FILTER doc.value2 == 1 RETURN [doc.value1, doc.value2]`, 'persistent', ['value1', 'value2'], ['value2'] ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 93 FILTER doc.value2 == 1 RETURN doc`, 'persistent', [], ['value2'] ],
       ];
 
       queries.forEach(function(query) {
@@ -73,7 +73,7 @@ function filterProjectionsPlansTestSuite () {
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
         assertEqual(normalize(query[2]), normalize(nodes[0].projections), query);
-        assertEqual(normalize([]), normalize(nodes[0].filterProjections), query);
+        assertEqual(normalize(query[3]), normalize(nodes[0].filterProjections), query);
         if (nodes[0].projections.length > 0) {
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
         }
@@ -113,9 +113,9 @@ function filterProjectionsPlansTestSuite () {
       // no filter projections will be used for these queries
       c.ensureIndex({ type: "persistent", fields: ["foo.bar"] });
       let queries = [
-        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc.foo.bar`, 'persistent', [['foo', 'bar']] ],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc.value`, 'persistent', ['value'] ],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc`, 'persistent', [] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc.foo.bar`, 'persistent', [['foo', 'bar']], []],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc.value`, 'persistent', ['value'], [] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc`, 'persistent', [], [] ],
       ];
 
       queries.forEach(function(query) {
@@ -125,7 +125,7 @@ function filterProjectionsPlansTestSuite () {
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
         assertEqual(normalize(query[2]), normalize(nodes[0].projections), query);
-        assertEqual(normalize([]), normalize(nodes[0].filterProjections), query);
+        assertEqual(normalize(query[3]), normalize(nodes[0].filterProjections), query);
         if (nodes[0].projections.length > 0) {
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
         }

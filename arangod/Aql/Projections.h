@@ -162,6 +162,8 @@ class Projections {
                                     std::string_view attributeName,
                                     ResourceMonitor& resourceMonitor);
 
+  std::size_t hash() const noexcept;
+
  private:
   /// @brief shared init function
   template<typename T>
