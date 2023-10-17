@@ -95,7 +95,8 @@ function ahuacatlQueryCacheTestSuite () {
 
       result = cache.properties({ mode: "off" });
       assertEqual("off", result.mode);
-      result = cache.properties({});
+      cache.clear();
+      result = cache.properties();
       assertEqual("off", result.mode);
 
       result = cache.properties({ mode: "on" });
@@ -105,7 +106,8 @@ function ahuacatlQueryCacheTestSuite () {
 
       result = cache.properties({ mode: "demand" });
       assertEqual("demand", result.mode);
-      result = cache.properties({});
+      cache.clear();
+      result = cache.properties();
       assertEqual("demand", result.mode);
     },
 
