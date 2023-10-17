@@ -390,25 +390,21 @@ static arangodb::Result cancelReadLockOnLeader(network::ConnectionPool* pool,
   auto res = response.combinedResult();
   if (res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
     // database is gone. that means our lock is also gone
-    return arangodb::Result();
+    return {};
   }
 
   if (res.fail()) {
-    // rebuild body since we stole it earlier
-    VPackBuilder body;
-    {
-      VPackObjectBuilder b(&body);
-      body.add(ID, VPackValue(std::to_string(lockJobId)));
+    if (res.isNot(TRI_ERROR_HTTP_NOT_FOUND)) {
+      LOG_TOPIC("52924", WARN, Logger::MAINTENANCE)
+          << "cancelReadLockOnLeader: exception caught for lock id "
+          << lockJobId << ": " << res.errorMessage();
     }
-    LOG_TOPIC("52924", WARN, Logger::MAINTENANCE)
-        << "cancelReadLockOnLeader: exception caught for " << body.toJson()
-        << ": " << res.errorMessage();
-    return arangodb::Result(TRI_ERROR_INTERNAL, res.errorMessage());
+    return res;
   }
 
   LOG_TOPIC("4355c", DEBUG, Logger::MAINTENANCE)
       << "cancelReadLockOnLeader: success";
-  return arangodb::Result();
+  return {};
 }
 
 arangodb::Result SynchronizeShard::collectionCountOnLeader(
@@ -534,7 +530,7 @@ arangodb::Result SynchronizeShard::getReadLock(network::ConnectionPool* pool,
 
   LOG_TOPIC("cba32", DEBUG, Logger::MAINTENANCE)
       << "startReadLockOnLeader: couldn't POST lock body, "
-      << network::fuerteToArangoErrorMessage(response) << ", giving up.";
+      << res.errorMessage() << ", giving up.";
 
   // We MUSTN'T exit without trying to clean up a lock that was maybe acquired
   if (response.error == fuerte::Error::CouldNotConnect) {
@@ -550,7 +546,7 @@ arangodb::Result SynchronizeShard::getReadLock(network::ConnectionPool* pool,
                              REPL_HOLD_READ_LOCK, *buf, options)
             .get();
     auto cancelRes = cancelResponse.combinedResult();
-    if (cancelRes.fail()) {
+    if (cancelRes.fail() && cancelRes.isNot(TRI_ERROR_HTTP_NOT_FOUND)) {
       LOG_TOPIC("4f34d", WARN, Logger::MAINTENANCE)
           << "startReadLockOnLeader: cancelation error for shard "
           << getDatabase() << "/" << collection << ": "
