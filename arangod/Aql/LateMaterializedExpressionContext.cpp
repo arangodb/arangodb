@@ -33,7 +33,8 @@ LateMaterializedExpressionContext::LateMaterializedExpressionContext(
     aql::AqlFunctionsInternalCache& cache,
     std::vector<std::pair<VariableId, RegisterId>> const& filterVarsToRegister,
     InputAqlItemRow const& inputRow,
-    IndexNode::IndexValuesVars const& outNonMaterializedIndVars) noexcept
+    IndexNode::IndexFilterCoveringVars const&
+        outNonMaterializedIndVars) noexcept
     : DocumentProducingExpressionContext(trx, query, cache,
                                          filterVarsToRegister, inputRow),
       _outNonMaterializedIndVars(outNonMaterializedIndVars),
@@ -47,8 +48,8 @@ AqlValue LateMaterializedExpressionContext::getVariableValue(
       variable, doCopy, mustDestroy,
       [this](Variable const* variable, bool doCopy, bool& mustDestroy) {
         mustDestroy = doCopy;
-        auto const it = _outNonMaterializedIndVars.second.find(variable);
-        if (it != _outNonMaterializedIndVars.second.end()) {
+        auto const it = _outNonMaterializedIndVars.find(variable);
+        if (it != _outNonMaterializedIndVars.end()) {
           // return data from current index entry
           velocypack::Slice s;
           // hash/skiplist/persistent

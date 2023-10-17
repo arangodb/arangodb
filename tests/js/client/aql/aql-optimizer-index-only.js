@@ -74,8 +74,8 @@ function optimizerIndexOnlyPrimaryTestSuite () {
         [ `FOR doc IN ${c.name()} FILTER doc._key == "test123" RETURN [ doc._key, doc.b ]`, ["_key", "b"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._key == "test123" RETURN [ doc.a, doc.b ]`, ["a", "b"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._key == "test123" RETURN [ doc.c, doc.d ]`, ["c", "d"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._key == "test123" && doc.b == 1 RETURN doc.x`, ["b", "x"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._key == "test123" && doc.b == 1 RETURN CONCAT(doc._key, doc.u)`, ["_key", "b", "u"] ],
+        [ `FOR doc IN ${c.name()} FILTER doc._key == "test123" && doc.b == 1 RETURN doc.x`, ["x"] ],
+        [ `FOR doc IN ${c.name()} FILTER doc._key == "test123" && doc.b == 1 RETURN CONCAT(doc._key, doc.u)`, ["_key", "u"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._key == "test123" SORT doc.x RETURN doc.x`, ["x"] ]
       ];
     
@@ -166,15 +166,15 @@ function optimizerIndexOnlyEdgeTestSuite () {
         [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN [ doc._from, doc.b ]`, ["_from", "b"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN [ doc.a, doc.b ]`, ["a", "b"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN [ doc.c, doc.d ]`, ["c", "d"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" && doc.b == 1 RETURN doc.x`, ["b", "x"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" && doc.b == 1 RETURN CONCAT(doc._from, doc.u)`, ["_from", "b", "u"] ],
+        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" && doc.b == 1 RETURN doc.x`, ["x"] ],
+        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" && doc.b == 1 RETURN CONCAT(doc._from, doc.u)`, ["_from", "u"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" SORT doc.x RETURN doc.x`, ["x"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN doc.b`, ["b"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN [ doc._to, doc.b ]`, ["_to", "b"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN [ doc.a, doc.b ]`, ["a", "b"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN [ doc.c, doc.d ]`, ["c", "d"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" && doc.b == 1 RETURN doc.x`, ["b", "x"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" && doc.b == 1 RETURN CONCAT(doc._to, doc.u)`, ["_to", "b", "u"] ],
+        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" && doc.b == 1 RETURN doc.x`, ["x"] ],
+        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" && doc.b == 1 RETURN CONCAT(doc._to, doc.u)`, ["_to", "u"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" SORT doc.x RETURN doc.x`, ["x"] ]
 
       ];
@@ -261,7 +261,6 @@ function optimizerIndexOnlyVPackTestSuite () {
       let queries = [
         `FOR doc IN ${c.name()} RETURN doc`,
         `FOR doc IN ${c.name()} FILTER doc.a == 1 && doc.b == 1 && doc.c == 1 && doc.d == 1 && doc.e == 1 RETURN doc`,
-        `FOR doc IN ${c.name()} FILTER doc.a == 1 && doc.b == 1 && doc.c == 1 && doc.d == 1 && doc.e == 1 RETURN doc.f`,
         `FOR doc IN ${c.name()} RETURN [doc.a, doc.b, doc.c, doc.d, doc.e, doc.f]`
       ];
 
@@ -282,8 +281,8 @@ function optimizerIndexOnlyVPackTestSuite () {
         [ `FOR doc IN ${c.name()} RETURN [ doc.a, doc.b, doc.c, doc.d ]`, ["a", "b", "c", "d"] ],
         [ `FOR doc IN ${c.name()} RETURN [ doc.a, doc.b, doc.c, doc.d, doc.e ]`, ["a", "b", "c", "d", "e"] ],
         [ `FOR doc IN ${c.name()} RETURN [ doc.a, doc.b, doc.c, doc.d, doc.e, 123 ]`, ["a", "b", "c", "d", "e"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc.y == 1 RETURN [ doc.a, doc.b ]`, ["a", "b", "y"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc.x == 1 && doc.y == 1 RETURN [ doc.a, doc.b ]`, ["a", "b", "x", "y"] ],
+        [ `FOR doc IN ${c.name()} FILTER doc.y == 1 RETURN [ doc.a, doc.b ]`, ["a", "b"] ],
+        [ `FOR doc IN ${c.name()} FILTER doc.x == 1 && doc.y == 1 RETURN [ doc.a, doc.b ]`, ["a", "b"] ],
         [ `FOR doc IN ${c.name()} SORT doc.x RETURN doc.a`, ["a", "x"] ],
         [ `FOR doc IN ${c.name()} SORT doc.x, doc.y RETURN doc.a`, ["a", "x", "y"] ]
       ];
@@ -323,8 +322,8 @@ function optimizerIndexOnlyVPackTestSuite () {
         [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 RETURN doc.b`, ["b"] ],
         [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 RETURN [ doc.a, doc.b ]`, ["a", "b"] ],
         [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 RETURN [ doc.c, doc.d ]`, ["c", "d"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 && doc.b == 1 RETURN doc.x`, ["b", "x"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 && doc.b == 1 RETURN doc.a + doc.u`, ["a", "b", "u"] ],
+        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 && doc.b == 1 RETURN doc.x`, ["x"] ],
+        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 && doc.b == 1 RETURN doc.a + doc.u`, ["a", "u"] ],
         [ `FOR doc IN ${c.name()} FILTER doc.a == 1 SORT doc.x RETURN doc.x`, ["x"] ]
       ];
     
@@ -389,7 +388,7 @@ function optimizerIndexOnlyVPackTestSuite () {
         [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 SORT doc.a, doc.b RETURN doc.a`, ["a"] ],
         [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 SORT doc.a, doc.b RETURN [ doc.a, doc.b ]`, ["a", "b"] ],
         [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 RETURN [ doc.a, doc.b ]`, ["a", "b"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 && doc.b >= 0 RETURN doc.a`, ["a", "b"] ],
+        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 && doc.b >= 0 RETURN doc.a`, ["a"] ],
         [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 && doc.b >= 0 RETURN [ doc.a, doc.b ]`, ["a", "b"] ],
         [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 && doc.b >= 0 SORT doc.a RETURN [ doc.a, doc.b ]`, ["a", "b"] ],
         [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 && doc.b >= 0 SORT doc.a, doc.b RETURN [ doc.a, doc.b ]`, ["a", "b"] ],
@@ -414,7 +413,7 @@ function optimizerIndexOnlyVPackTestSuite () {
         [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 SORT doc.a, doc.b RETURN doc.a`, ["a"] ],
         [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 SORT doc.a, doc.b RETURN [ doc.a, doc.b ]`, ["a", "b"] ],
         [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 RETURN [ doc.a, doc.b ]`, ["a", "b"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 && doc.b >= 0 RETURN doc.a`, ["a", "b"] ],
+        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 && doc.b >= 0 RETURN doc.a`, ["a"] ],
         [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 && doc.b >= 0 RETURN [ doc.a, doc.b ]`, ["a", "b"] ],
         [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 && doc.b >= 0 SORT doc.a RETURN [ doc.a, doc.b ]`, ["a", "b"] ],
         [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 && doc.b >= 0 SORT doc.a, doc.b RETURN [ doc.a, doc.b ]`, ["a", "b"] ],

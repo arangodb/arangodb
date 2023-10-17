@@ -236,4 +236,3 @@ function explainSuite () {
 jsunity.run(explainSuite);
 
 return jsunity.done();
-
