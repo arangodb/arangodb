@@ -98,7 +98,7 @@ const IndexUniqueJoinTestSuite = function () {
   };
 
   const runAndCheckQuery = function (query) {
-    const plan = db._explain(query, null, queryOptions).plan;
+    var plan = db._createStatement({query: query, bindVars:  {}, options:  queryOptions}).explain().plan;
     let planNodes = plan.nodes.map(function (node) {
       return node.type;
     });
