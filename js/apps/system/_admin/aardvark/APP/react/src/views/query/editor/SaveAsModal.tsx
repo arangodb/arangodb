@@ -21,7 +21,7 @@ export const SaveAsModal = () => {
     onCloseSaveAsModal
   } = useQueryContext();
   const handleSave = async (newQueryName: string) => {
-    const queryExists = !!savedQueries?.find(
+    const queryExists = !!savedQueries?.some(
       query => query.name === newQueryName
     );
     if (queryExists) {
