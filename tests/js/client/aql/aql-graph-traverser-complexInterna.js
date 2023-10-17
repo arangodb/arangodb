@@ -38,7 +38,7 @@ const internal = require('internal');
 const db = require('internal').db;
 const errors = require('@arangodb').errors;
 const gh = require("@arangodb/graph/helpers");
-const execute_query = require("@arangodb/aql-helper").execute_query;
+const executeQuery = require("@arangodb/aql-helper").executeQuery;
 
 function complexInternaSuite() {
   var ruleName = 'optimize-traversals';
@@ -76,7 +76,7 @@ function complexInternaSuite() {
         'startId': gh.vn + '/1'
       };
       // NOTE: vn2 is not explicitly named in AQL
-      var result = execute_query(query, bindVars).toArray();
+      var result = executeQuery(query, bindVars).toArray();
       assertEqual(result.length, 1);
       assertEqual(result[0]._id, vn2 + '/1');
       db._drop(vn2);
@@ -92,7 +92,7 @@ function complexInternaSuite() {
         'startId': gh.vertex.A
       };
 
-      var result = execute_query(query, bindVars).toArray();
+      var result = executeQuery(query, bindVars).toArray();
       assertEqual(result.length, 1);
       assertEqual(result[0]._id, gh.vertex.B);
     },
@@ -116,7 +116,7 @@ function complexInternaSuite() {
       }
 
       // Check that we can get all of them out again.
-      var result = execute_query(query, bindVars).toArray();
+      var result = executeQuery(query, bindVars).toArray();
       // Internally: The Query selects elements in chunks, check that nothing is lost.
       assertEqual(result.length, amount);
       var plans = db._createStatement({query: query, bindVars: bindVars, options: opts}).explain().plans;
@@ -176,7 +176,7 @@ function complexInternaSuite() {
       };
 
       // Check that we can get all of them out again.
-      const result = execute_query(query, bindVars).toArray();
+      const result = executeQuery(query, bindVars).toArray();
       assertTrue(isValidResult(result), result);
 
       // Each of the 3 parts of this graph contains of 4 nodes, one connected to the start.
@@ -205,7 +205,7 @@ function complexInternaSuite() {
         var _id = gh.vc.save({});
         gh.ec.save(startId, _id, {});
       }
-      var result = execute_query(query, bindVars);
+      var result = executeQuery(query, bindVars);
       var found = 0;
       // Count has to be correct
       assertEqual(result.count(), amount);
@@ -227,7 +227,7 @@ function complexInternaSuite() {
       RETURN v
       `;
 
-      let res = execute_query(query);
+      let res = executeQuery(query);
       assertEqual(res.count(), 0);
       // With inifinit callstack in getSome this
       // test will segfault
@@ -243,7 +243,7 @@ function complexInternaSuite() {
       FILTER p.edges[1]._id != "${gh.edge.BC}"
       RETURN v._id`;
 
-      let res = execute_query(query);
+      let res = executeQuery(query);
       assertEqual(res.count(), 1);
       assertEqual(res.toArray(), [gh.vertex.B]);
     },
@@ -258,7 +258,7 @@ function complexInternaSuite() {
       FILTER p.vertices[2]._id != "${gh.vertex.C}"
       RETURN v._id`;
 
-      let res = execute_query(query);
+      let res = executeQuery(query);
       assertEqual(res.count(), 1);
       assertEqual(res.toArray(), [gh.vertex.B]);
     },
@@ -274,7 +274,7 @@ function complexInternaSuite() {
       FILTER p.vertices[2]._id != "${gh.vertex.C}"
       RETURN v._id`;
 
-      let res = execute_query(query);
+      let res = executeQuery(query);
       assertEqual(res.count(), 1);
       assertEqual(res.toArray(), [gh.vertex.B]);
     },
@@ -287,7 +287,7 @@ function complexInternaSuite() {
       FILTER p.vertices[2]._id != "${gh.vertex.C}"
       RETURN v._id`;
 
-      let res = execute_query(query);
+      let res = executeQuery(query);
       assertEqual(res.count(), 1);
       assertEqual(res.toArray(), [gh.vertex.B]);
     },
@@ -300,7 +300,7 @@ function complexInternaSuite() {
       FILTER p.vertices[2]._id != "${gh.vertex.C}"
       RETURN v._id`;
 
-      let res = execute_query(query);
+      let res = executeQuery(query);
       assertEqual(res.count(), 1);
       assertEqual(res.toArray(), [gh.vertex.B]);
     },
@@ -315,7 +315,7 @@ function complexInternaSuite() {
       RETURN v._id`;
 
       try {
-        execute_query(query);
+        executeQuery(query);
         fail();
       } catch (e) {
         assertEqual(e.errorNum, errors.ERROR_QUERY_PARSE.code);
@@ -330,7 +330,7 @@ function complexInternaSuite() {
       FILTER p.vertices[2]._id != "${gh.vertex.C}"
       RETURN v._id`;
       try {
-        execute_query(query);
+        executeQuery(query);
         fail();
       } catch (e) {
         assertEqual(e.errorNum, errors.ERROR_QUERY_PARSE.code);
@@ -346,7 +346,7 @@ function complexInternaSuite() {
       RETURN v._id`;
 
       try {
-        execute_query(query);
+        executeQuery(query);
         fail();
       } catch (e) {
         assertEqual(e.errorNum, errors.ERROR_QUERY_PARSE.code);

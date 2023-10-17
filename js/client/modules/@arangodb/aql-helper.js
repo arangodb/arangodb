@@ -462,7 +462,7 @@ function sanitizeStats (stats) {
   return stats;
 }
 
-function execute_query(query, bindVars = null, options = {}) {
+function executeQuery(query, bindVars = null, options = {}) {
   let stmt = db._createStatement({query, bindVars: bindVars, count: true});
   return stmt.execute();
 };
@@ -475,7 +475,7 @@ function execute_all_json(plans, result, query) {
 };
 
 exports.execute_all_json = execute_all_json;
-exports.execute_query = execute_query;
+exports.executeQuery = execute_query;
 exports.getParseResults = getParseResults;
 exports.assertParseError = assertParseError;
 exports.getQueryExplanation = getQueryExplanation;

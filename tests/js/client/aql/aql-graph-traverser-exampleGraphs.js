@@ -39,7 +39,7 @@ const db = require('internal').db;
 const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 
-const execute_query = require("@arangodb/aql-helper").execute_query;
+const executeQuery = require("@arangodb/aql-helper").executeQuery;
 
 function exampleGraphsSuite() {
   let ex = require('@arangodb/graph-examples/example-graph');
@@ -48,7 +48,7 @@ function exampleGraphsSuite() {
 
   const evaluate = (q, expected) => {
     for (const rules of ruleList) {
-      let res = execute_query(q, {}, { optimizer: { rules } });
+      let res = executeQuery(q, {}, { optimizer: { rules } });
       const info = `Query ${q} using rules ${rules}`;
       assertEqual(res.count(), expected.length, info);
       let resArr = res.toArray().sort();
