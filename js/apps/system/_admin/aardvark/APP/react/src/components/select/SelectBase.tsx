@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 
 import Select, {
-  SelectInstance,
   components,
+  GroupBase,
   OptionProps,
   Props,
-  GroupBase
+  SelectInstance,
+  SingleValueProps
 } from "react-select";
 export type OptionType = {
   value: string;
@@ -15,11 +16,21 @@ export type OptionType = {
 const Option = <IsMulti extends boolean>(
   props: OptionProps<OptionType, IsMulti>
 ) => {
+  const finalChildren =
+    typeof props.children === "boolean" ? `${props.children}` : props.children;
   return (
     <div title={props.data.value}>
-      <components.Option {...props} />
+      <components.Option {...props} children={finalChildren} />
     </div>
   );
+};
+
+const SingleValue = <IsMulti extends boolean>(
+  props: SingleValueProps<OptionType, IsMulti>
+) => {
+  const finalChildren =
+    typeof props.children === "boolean" ? `${props.children}` : props.children;
+  return <components.SingleValue {...props} children={finalChildren} />;
 };
 
 export const getSelectBase = <IsMulti extends boolean = false>(
@@ -48,7 +59,8 @@ export const getSelectBase = <IsMulti extends boolean = false>(
           menuPortalTarget={document.body}
           components={{
             ...props.components,
-            Option
+            Option,
+            SingleValue
           }}
           styles={{
             ...props.styles,

@@ -2480,36 +2480,38 @@ void Supervision::checkBrokenCollections() {
 
       // also check all indexes of the collection to see if they are abandoned
       if (collectionPair.second->has("indexes")) {
-        auto& indexes = *collectionPair.second->get("indexes")->getArray();
-        // check if the coordinator which started creating this index is
-        // still present...
-        for (VPackSlice planIndex : indexes) {
-          if (VPackSlice isBuildingSlice =
-                  planIndex.get(StaticStrings::AttrIsBuilding);
-              !isBuildingSlice.isTrue()) {
-            // we are only interested in indexes that are still building
-            continue;
-          }
+        auto* indexes = collectionPair.second->get("indexes")->getArray();
+        if (indexes != nullptr) {
+          // check if the coordinator which started creating this index is
+          // still present...
+          for (VPackSlice planIndex : *indexes) {
+            if (VPackSlice isBuildingSlice =
+                    planIndex.get(StaticStrings::AttrIsBuilding);
+                !isBuildingSlice.isTrue()) {
+              // we are only interested in indexes that are still building
+              continue;
+            }
 
-          VPackSlice rebootIDSlice =
-              planIndex.get(StaticStrings::AttrCoordinatorRebootId);
-          VPackSlice coordinatorIDSlice =
-              planIndex.get(StaticStrings::AttrCoordinator);
+            VPackSlice rebootIDSlice =
+                planIndex.get(StaticStrings::AttrCoordinatorRebootId);
+            VPackSlice coordinatorIDSlice =
+                planIndex.get(StaticStrings::AttrCoordinator);
 
-          if (rebootIDSlice.isNumber() && coordinatorIDSlice.isString()) {
-            auto rebootID = rebootIDSlice.getUInt();
-            auto coordinatorID = coordinatorIDSlice.copyString();
+            if (rebootIDSlice.isNumber() && coordinatorIDSlice.isString()) {
+              auto rebootID = rebootIDSlice.getUInt();
+              auto coordinatorID = coordinatorIDSlice.copyString();
 
-            bool coordinatorFound = false;
-            bool keepResource = verifyServerRebootID(
-                snapshot(), coordinatorID, rebootID, coordinatorFound);
+              bool coordinatorFound = false;
+              bool keepResource = verifyServerRebootID(
+                  snapshot(), coordinatorID, rebootID, coordinatorFound);
 
-            if (!keepResource) {
-              // index creation still ongoing, but started by a coordinator that
-              // has failed by now. delete this index
-              deleteBrokenIndex(_agent, dbpair.first, collectionPair.first,
-                                planIndex, coordinatorID, rebootID,
-                                coordinatorFound);
+              if (!keepResource) {
+                // index creation still ongoing, but started by a coordinator
+                // that has failed by now. delete this index
+                deleteBrokenIndex(_agent, dbpair.first, collectionPair.first,
+                                  planIndex, coordinatorID, rebootID,
+                                  coordinatorFound);
+              }
             }
           }
         }
@@ -2965,10 +2967,10 @@ void Supervision::readyOrphanedIndexCreations() {
         std::string const& colPath = dbname + "/" + colname + "/";
         auto const& collection = *(col.second);
         std::unordered_set<std::string> built;
-        Node::Array const& indexes = *collection.get("indexes")->getArray();
         if (collection.has("indexes")) {
-          if (indexes.size() > 0) {
-            for (auto planIndex : indexes) {
+          Node::Array const* indexes = collection.get("indexes")->getArray();
+          if (indexes != nullptr && indexes->size() > 0) {
+            for (auto planIndex : *indexes) {
               if (planIndex.hasKey(StaticStrings::IndexIsBuilding) &&
                   collection.has("shards")) {
                 auto const& planId = planIndex.get("id");
@@ -3017,6 +3019,9 @@ void Supervision::readyOrphanedIndexCreations() {
         // We have some indexes, that have been fully built and have their
         // isBuilding attribute still set.
         if (!built.empty()) {
+          // note: if built is non-empty, we must have had valid indexes
+          Node::Array const* indexes = collection.get("indexes")->getArray();
+          TRI_ASSERT(indexes != nullptr);
           velocypack::Builder envelope;
           {
             VPackArrayBuilder trxs(&envelope);
@@ -3032,7 +3037,7 @@ void Supervision::readyOrphanedIndexCreations() {
                 envelope.add(VPackValue(_agencyPrefix + planColPrefix +
                                         colPath + "indexes"));
                 VPackArrayBuilder value(&envelope);
-                for (auto planIndex : indexes) {
+                for (auto planIndex : *indexes) {
                   if (built.find(planIndex.get("id").copyString()) !=
                       built.end()) {
                     {
@@ -3056,7 +3061,7 @@ void Supervision::readyOrphanedIndexCreations() {
                 envelope.add(VPackValue(_agencyPrefix + planColPrefix +
                                         colPath + "indexes"));
                 VPackArrayBuilder ab(&envelope);
-                for (auto const& slice : indexes) {
+                for (auto const& slice : *indexes) {
                   envelope.add(slice);
                 }
               }

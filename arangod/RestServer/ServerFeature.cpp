@@ -40,7 +40,9 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/StatisticsFeature.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
+#endif
 
 using namespace arangodb::application_features;
 using namespace arangodb::options;
@@ -186,6 +188,8 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
+  bool supportsV8 = false;
+#ifdef USE_V8
   V8DealerFeature& v8dealer = server().getFeature<V8DealerFeature>();
 
   if (v8dealer.isEnabled()) {
@@ -194,7 +198,10 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     } else {
       v8dealer.setMinimumContexts(1);
     }
-  } else if (_operationMode != OperationMode::MODE_SERVER) {
+    supportsV8 = true;
+  }
+#endif
+  if (!supportsV8 && _operationMode != OperationMode::MODE_SERVER) {
     LOG_TOPIC("a114b", FATAL, arangodb::Logger::FIXME)
         << "Options '--console', '--javascript.unit-tests'"
         << " or '--javascript.script' are not supported without V8";
@@ -229,10 +236,12 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     }
   }
 
+#ifdef USE_V8
   if (_operationMode == OperationMode::MODE_CONSOLE) {
     disableDeamonAndSupervisor();
     v8dealer.setMinimumContexts(2);
   }
+#endif
 
   if (_operationMode == OperationMode::MODE_SERVER ||
       _operationMode == OperationMode::MODE_CONSOLE) {

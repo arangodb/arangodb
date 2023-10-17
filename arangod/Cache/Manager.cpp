@@ -390,14 +390,6 @@ double Manager::idealUpperFillRatio() const noexcept {
   return _options.idealUpperFillRatio;
 }
 
-Transaction* Manager::beginTransaction(bool readOnly) {
-  return _transactions.begin(readOnly);
-}
-
-void Manager::endTransaction(Transaction* tx) noexcept {
-  _transactions.end(tx);
-}
-
 bool Manager::post(std::function<void()> fn) {
   // lock already acquired by caller
   TRI_ASSERT(_lock.isLockedWrite());

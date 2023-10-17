@@ -3,6 +3,57 @@ devel
 
 * FE-288: Improve collection index UI.
 
+* FE-321: add validation for query name in web UI.
+
+* Fixed BTS-1610: In certain situations with at least three levels of nested
+  subqueries, of which some of the outer iterations don't return any results,
+  results of later iterations could be lost.
+
+* Updated arangosync to v2.19.4.
+
+* Add cluster-internal connectivity checks.
+  This makes Coordinators and DB-Servers in a cluster periodically send check
+  requests to each other, in order to check if all servers can connect to
+  each other.
+  If a cluster-internal connection to another Coordinator or DB-Server cannot 
+  be established within 10 seconds, a warning will be logged. 
+
+  The new startup option `--cluster.connectivity-check-interval` can be used
+  to control the frequency of the connectivity check, in seconds.
+  If set to a value greater than zero, the initial connectivity check is
+  performed approximately 15 seconds after the instance start, and subsequent 
+  connectivity checks are executed with the specified frequency.
+  If set to a value of zero, connectivity checks are disabled.
+
+  This change also adds the metrics
+  `arangodb_network_connectivity_failures_coordinators` and
+  `arangodb_network_connectivity_failures_dbservers`, which can be monitored
+  for detecting temporary or permanent connectivity issues.
+
+* Change default value for `--database.extended-names` from `false` to `true`.
+  This will allow end users to use Unicode characters inside database names,
+  collection names, view names and index names by default, unless the
+  functionality is explicitly turned off.
+
+  Note: once a server in the deployment has been started with the flag set
+  to `true`, it will store that setting permanently. Switching the startup
+  option back to `false` will raise a warning about the option change at
+  startup, but not block the startup. Existing databases, collections, views
+  and indexes with extended names can still be used even with the option set
+  back to `false`, but no new database objects with extended names can be 
+  created with the option set back to `false`. So this state is only meant
+  to facilitate downgrading or reverting the option change. When the option
+  is supposed to be left at a value of `false`, all database objects with
+  extended names that were created in the meantime should be removed manually.
+
+* Allow the usage of the `_id` attribute in the stored values of persistent
+  indexes.
+
+* Updated arangosync to v2.19.4-preview-8.
+
+* Fix updating of collection properties (schema) when the collection has a
+  view on top.
+
 * Improve logging in case hot backup locks cannot be taken on coordinators.
 
 * Speed up incremental hotbackup upload by parallelization of

@@ -219,10 +219,11 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::GenericMergeJoin(
     minHeap.push(&idx);
   }
 
-  positionAligned = IndexStreamCompare{}.cmp(*maxIter, *minHeap.top()) ==
-                    std::weak_ordering::equivalent;
-  if (positionAligned) {
+  auto isAligned = IndexStreamCompare{}.cmp(*maxIter, *minHeap.top()) ==
+                   std::weak_ordering::equivalent;
+  if (!maxIter->exhausted && isAligned) {
     fillInitialMatch();
+    positionAligned = true;
   }
 }
 
@@ -355,6 +356,10 @@ bool GenericMergeJoin<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
     LOG_INDEX_MERGER << "max is " << maxIter->_position[0]
                      << " exhausted = " << std::boolalpha
                      << minIndex->exhausted;
+
+    if (maxIter->exhausted) {
+      return false;
+    }
 
     // check if min == max
     if (IndexStreamCompare::cmp(*minIndex, *maxIter) ==

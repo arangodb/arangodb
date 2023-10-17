@@ -523,7 +523,7 @@ std::string_view RocksDBKey::vertexId(char const* data, size_t size) {
 
 VPackSlice RocksDBKey::indexedVPack(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
-  TRI_ASSERT(size > sizeof(uint64_t));
+  TRI_ASSERT(size > sizeof(uint64_t)) << "size = " << size;
   return VPackSlice(reinterpret_cast<uint8_t const*>(data) + sizeof(uint64_t));
 }
 

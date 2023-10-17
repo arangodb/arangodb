@@ -34,7 +34,7 @@
       'databases': 'databases',
       'databases/:name': 'databases',
       'settings': 'databases',
-      'services': 'applications',
+      'services': 'services',
       'services/install': 'installService',
       'services/install/new': 'installNewService',
       'services/install/github': 'installGitHubService',
@@ -1018,7 +1018,7 @@
       });
     },
 
-    applications: function () {
+    services: function () {
       this.checkUser();
 
       this.init.then(() => {
@@ -1026,6 +1026,10 @@
           this.navigate('#dashboard', { trigger: true });
           return;
         }
+        
+        ReactDOM.render(React.createElement(window.ServicesReactView),
+          document.getElementById('content-react'));
+
         if (this.applicationsView === undefined) {
           this.applicationsView = new window.ApplicationsView({
             collection: this.foxxList

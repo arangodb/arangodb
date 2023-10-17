@@ -942,10 +942,27 @@ const replicatedStateDocumentShardsSuite = function () {
     for (const shard in shards) {
       const servers = shards[shard];
 
-      for (const server of servers) {
-        const assocShards = dh.getAssociatedShards(lh.getServerUrl(server), database, shardsToLogs[shard]);
-        assertTrue(_.includes(assocShards, shard));
-      }
+      // The leader must have the shard already.
+      const leader = servers[0];
+      let assocShards = dh.getAssociatedShards(lh.getServerUrl(leader), database, shardsToLogs[shard]);
+      assertTrue(_.includes(assocShards, shard),
+        `Expected shard ${shard} to be already created on leader ${leader}, but got ${JSON.stringify(assocShards)}`);
+
+      // Followers may experience delays in creating the shard, and that is normal.
+      servers.slice(1).forEach((server) => {
+        lh.waitFor(() => {
+          try {
+            assocShards = dh.getAssociatedShards(lh.getServerUrl(server), database, shardsToLogs[shard]);
+          } catch (e) {
+            // The request might fail on followers in case they did not initialize the replicated state yet.
+            return e;
+          }
+          if (_.includes(assocShards, shard)) {
+            return true;
+          }
+          return Error(`Expected shard ${shard} to be created on server ${server}, but got ${JSON.stringify(assocShards)}`);
+        });
+      });
     }
   };
 
@@ -956,7 +973,7 @@ const replicatedStateDocumentShardsSuite = function () {
   const indexTestHelper = function (unique, inBackground) {
     return () => {
       let collection = db._create(collectionName, {numberOfShards: 2, writeConcern: 3, replicationFactor: 3});
-      let {logs} = dh.getCollectionShardsAndLogs(db, collection);
+      let {shardsToLogs, logs} = dh.getCollectionShardsAndLogs(db, collection);
 
       // Create an index.
       let index = collection.ensureIndex({
@@ -971,6 +988,7 @@ const replicatedStateDocumentShardsSuite = function () {
       if (unique) {
         assertTrue(index.unique);
       }
+      const indexId = index.id.split('/')[1];
 
       // Check if the CreateIndex operation appears in the log.
       for (let log of logs) {
@@ -978,9 +996,6 @@ const replicatedStateDocumentShardsSuite = function () {
         assertTrue(dh.getOperationsByType(logContents, "CreateIndex").length > 0,
           `CreateIndex not found! Contents of log ${log.id()}: ${JSON.stringify(logContents)}`);
       }
-
-      const indexId = index.id.split('/')[1];
-      const shardsToLogs = lh.getShardsToLogsMapping(database, collection._id);
 
       // Check that the newly created index is available on all participants.
       for (const [shard, log] of Object.entries(shardsToLogs)) {

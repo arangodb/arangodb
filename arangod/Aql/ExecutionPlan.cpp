@@ -1692,14 +1692,11 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
       // sort operand is a variable
       auto v = static_cast<Variable*>(expression->getData());
       TRI_ASSERT(v != nullptr);
-      auto elem = SortElement{v, isAscending, _ast->query().resourceMonitor()};
-      elements.emplace_back(std::move(elem));
+      elements.emplace_back(v, isAscending);
     } else {
       // sort operand is some misc expression
       auto calc = createTemporaryCalculation(expression, previous);
-      auto elem = SortElement{getOutVariable(calc), isAscending,
-                              _ast->query().resourceMonitor()};
-      elements.emplace_back(std::move(elem));
+      elements.emplace_back(getOutVariable(calc), isAscending);
       previous = calc;
     }
   }
@@ -2219,10 +2216,9 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous,
 
     // add a sort on rangeVariable in front of the WINDOW
     SortElementVector elements;
-    elements.emplace_back(SortElement{rangeVar, /*isAscending*/ true,
-                                      _ast->query().resourceMonitor()});
+    elements.emplace_back(rangeVar, /*isAscending*/ true);
     auto en = registerNode(
-        std::make_unique<SortNode>(this, nextId(), elements, false));
+        std::make_unique<SortNode>(this, nextId(), std::move(elements), false));
     previous = addDependency(previous, en);
   }
 
@@ -2457,7 +2453,8 @@ void ExecutionPlan::findEndNodes(
 
 /// @brief determine and set _varsUsedLater in all nodes
 /// as a side effect, count the different types of nodes in the plan
-/// and if there are any forced index hints left in the plan on collection nodes
+/// and if there are any forced index hints left in the plan on collection
+/// nodes
 void ExecutionPlan::findVarUsage() {
   if (varUsageComputed()) {
     return;
@@ -2508,8 +2505,8 @@ void ExecutionPlan::unlinkNode(ExecutionNode* node, bool allowUnlinkingRoot) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "Cannot unlink root node of plan");
     }
-    // adjust root node. the caller needs to make sure that a new root node gets
-    // inserted
+    // adjust root node. the caller needs to make sure that a new root node
+    // gets inserted
     if (node == _root) {
       _root = nullptr;
     }
@@ -2654,8 +2651,8 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
     }
 
     ret = ExecutionNode::fromVPackFactory(this, it);
-    // We need to adjust nextId here, otherwise we cannot add new nodes to this
-    // plan anymore
+    // We need to adjust nextId here, otherwise we cannot add new nodes to
+    // this plan anymore
     if (_nextId <= ret->id()) {
       _nextId = ExecutionNodeId{ret->id().id() + 1};
     }
