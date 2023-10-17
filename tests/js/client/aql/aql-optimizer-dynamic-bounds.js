@@ -34,7 +34,7 @@ var isEqual = helper.isEqual;
 var db = require("@arangodb").db;
 var _ = require("lodash");
 
-const execute_json = require("@arangodb/aql-helper").execute_all_json;
+const executeAllJson = require("@arangodb/aql-helper").executeAllJson;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -116,7 +116,7 @@ function singleAttributeTestSuite () {
         assertTrue(isEqual(query[1], resultEnabled), query[0]);
 
         var plans = db._createStatement({query: query[0], bindVars: { }, options: opts}).explain().plans;
-        execute_json(plans, query[1], query[0]);
+        executeAllJson(plans, query[1], query[0]);
       });
     }
 
@@ -196,7 +196,7 @@ function nonIndexedAttributeTestSuite () {
         assertTrue(isEqual(query[1], resultEnabled), query[0]);
 
         var plans = db._createStatement({query: query[0], bindVars: { }, options: opts}).explain().plans;
-        execute_json(plans, query[1], query[0]);
+        executeAllJson(plans, query[1], query[0]);
       });
     }
 
@@ -281,7 +281,7 @@ function nestedAttributeTestSuite () {
         assertTrue(isEqual(query[1], resultEnabled), query[0]);
 
         var plans = db._createStatement({query: query[0], bindVars: { }, options: opts}).explain().plans;
-        execute_json(plans, query[1], query[0]);
+        executeAllJson(plans, query[1], query[0]);
       });
     }
 

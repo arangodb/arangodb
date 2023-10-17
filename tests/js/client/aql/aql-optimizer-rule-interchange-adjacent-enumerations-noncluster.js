@@ -33,6 +33,7 @@ const helper = require("@arangodb/aql-helper");
 const isEqual = helper.isEqual;
 const db = require("@arangodb").db;
 const _ = require("lodash");
+const executeJson =  helper.executeJson;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -186,7 +187,7 @@ function optimizerRuleTestSuite () {
         // iterate over all plans
         let withRule = 0;
         plansEnabled.plans.forEach(function(plan) {
-          let resultEnabled = db._executeJson(plan);
+          let resultEnabled = executeJson(plan);
           assertTrue(isEqual(resultDisabled, resultEnabled), query[0]);
           if (plan.rules.indexOf(ruleName) !== -1) {
             withRule++;

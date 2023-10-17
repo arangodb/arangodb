@@ -37,6 +37,7 @@ const graphModule = require('@arangodb/general-graph');
 const graphName = 'myUnittestGraph';
 const db = require('internal').db;
 const {getCompactStatsNodes, TraversalBlock } = require("@arangodb/testutils/aql-profiler-test-helper");
+const executeJson =  require("@arangodb/aql-helper").executeJson;
 
 
 let graph;
@@ -78,7 +79,7 @@ const assertResultsAreUnchanged = (query) => {
 
   const plans = db._createStatement({query: query, bindVars:  {}, options:  opts}).explain().plans;
   plans.forEach(function (plan) {
-    var jsonResult = db._executeJson(plan, { optimizer: { rules: [ '-all' ] }});
+    var jsonResult = executeJson(plan, { optimizer: { rules: [ '-all' ] }});
     expect(jsonResult).to.deep.equal(resultDisabled, query);
   });
 };
