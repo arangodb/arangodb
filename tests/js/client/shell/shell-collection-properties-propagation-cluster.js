@@ -30,9 +30,7 @@ const jsunity = require("jsunity");
 const request = require("@arangodb/request");
 const internal = require("internal");
 const db = require("@arangodb").db;
-const {
-  getDBServers,
-} = require('@arangodb/test-helper');
+const { getDBServers } = require('@arangodb/test-helper');
 
 const proto = "UnitTestsCollectionProto";
 const other = "UnitTestsCollectionOther";
@@ -140,18 +138,41 @@ function CollectionPropertiesPropagationSuite() {
       
       let p = db[proto].properties();
       assertEqual(2, p.replicationFactor);
-  
-      internal.sleep(2);
-      shards = db[proto].shards(true);
-      // just focus on one of the shards. should be enough
-      shard = Object.keys(shards)[0]; 
-      servers = Object.values(shards)[0];
+ 
+      let tries = 15;
+      while (tries-- > 0) {
+        shards = db[proto].shards(true);
+        // just focus on one of the shards. should be enough
+        shard = Object.keys(shards)[0]; 
+        servers = Object.values(shards)[0];
+        if (servers.length === 2) {
+          break;
+        }
+        internal.sleep(1);
+      }
       assertEqual(2, servers.length);
-      
+     
       // shards do not see the replicationFactor update
-      p = propertiesOnDBServers(db[proto]);
-      let keys = Object.keys(p);
-      assertTrue(keys.length > 0);
+      let keys;
+      tries = 15;
+      // propagation to DB servers is carried out by the
+      // maintenance. give it some time...
+      while (tries-- > 0) {
+        p = propertiesOnDBServers(db[proto]);
+        keys = Object.keys(p);
+        assertTrue(keys.length > 0);
+        let found = 0;
+        keys.forEach((s) => {
+          if (p[s].replicationFactor === 3) {
+            ++found;
+          }
+        });
+        if (found === keys.length) {
+          break;
+        }
+        internal.sleep(1);
+      }
+          
       keys.forEach((s) => {
         assertEqual(3, p[s].replicationFactor, {s, p});
       });
@@ -179,9 +200,26 @@ function CollectionPropertiesPropagationSuite() {
       assertEqual(1, p.writeConcern);
       
       // shards will see the writeConcern update
-      p = propertiesOnDBServers(db[proto]);
-      let keys = Object.keys(p);
-      assertTrue(keys.length > 0);
+      let keys;
+      let tries = 15;
+      // propagation to DB servers is carried out by the
+      // maintenance. give it some time...
+      while (tries-- > 0) {
+        p = propertiesOnDBServers(db[proto]);
+        keys = Object.keys(p);
+        assertTrue(keys.length > 0);
+        let found = 0;
+        keys.forEach((s) => {
+          if (p[s].writeConcern === 1) {
+            ++found;
+          }
+        });
+        if (found === keys.length) {
+          break;
+        }
+        internal.sleep(1);
+      }
+        
       keys.forEach((s) => {
         assertEqual(1, p[s].writeConcern, {s, p});
       });
