@@ -1567,24 +1567,28 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
   this->_indexReadBuffer.preAllocateStoredValuesBuffer(
       atMost, this->_infos.getScoreRegisters().size(),
       this->_infos.getOutNonMaterializedViewRegs().size());
+  std::vector<futures::Future<bool>> results;
+  std::vector<futures::Promise<bool>> promises;
   if (parallelism > 1) {
     this->_indexReadBuffer.setForParallelAccess(
         atMost, this->_infos.getScoreRegisters().size(),
         this->_infos.getOutNonMaterializedViewRegs().size());
+    if (parallelism > _readersPool.threads()) {
+      _readersPool.max_idle(parallelism - 1);
+      _readersPool.max_threads(parallelism - 1);
+    }
+    promises.reserve(parallelism);
   }
   bool gotData = false;
   std::atomic<size_t> bufferIdx{0};
+  auto cleanupThreads = irs::Finally([&]() noexcept {
+    if (_readersPool.tasks_pending() || _readersPool.tasks_active()) {
+      _readersPool.stop(true);
+    }
+  });
   while (bufferIdx.load() < atMostInitial) {
-    std::vector<std::thread> runners;
-    std::vector<futures::Try<bool>> results;
-    results.resize(parallelism - 1);
-    irs::Finally cleanupThreads = [&]() noexcept {
-      for (auto& t : runners) {
-        if (t.joinable()) {
-          t.join();
-        }
-      }
-    };
+    results.clear();
+    promises.clear();
     // launching additional workers
     size_t i = 0;
     size_t selfExecute{_segmentReaders.size()};
@@ -1603,14 +1607,17 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
       reader.atMost = std::min(windowSize, toFetch);
       toFetch -= reader.atMost;
       if (selfExecute < _segmentReaders.size()) {
-        auto loader = [&, i = runners.size()](SegmentReader* ctx) {
+        promises.emplace_back();
+        results.push_back(promises.back().getFuture());
+        // TODO: find a way to just move Promise inside lambda.
+        // for now functor should be copyable and that breaks Promise.
+        _readersPool.run([&, ctx = &reader, pr = &promises.back()]() mutable {
           try {
-            results[i].emplace(readSegment<true>(*ctx, bufferIdx));
+            pr->setValue(readSegment<true>(*ctx, bufferIdx));
           } catch (...) {
-            results[i].set_exception(std::move(std::current_exception()));
+            pr->setException(std::move(std::current_exception()));
           }
-        };
-        runners.push_back(std::thread(loader, &reader));
+        });
       } else {
         selfExecute = i;
       }
@@ -1623,17 +1630,14 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
         gotData = readSegment<false>(_segmentReaders[selfExecute], bufferIdx);
       }
     } else {
-      TRI_ASSERT(runners.empty());
+      TRI_ASSERT(results.empty());
       break;
     }
-    results.resize(runners.size());
-    for (auto& t : runners) {
-      t.join();
-    }
-    for (auto& r : results) {
+    auto runners = futures::collectAll(results);
+    runners.wait();
+    for (auto& r : runners.result().get()) {
       gotData |= r.get();
     }
-    runners.clear();
   }
   if (parallelism > 1) {
     this->_indexReadBuffer.setForParallelAccess(
