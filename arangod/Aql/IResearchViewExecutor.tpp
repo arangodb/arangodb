@@ -1721,8 +1721,6 @@ size_t IResearchViewExecutor<ExecutionTraits>::skip(size_t limit,
   TRI_ASSERT(this->_filter);
 
   size_t const toSkip = limit;
-
-  size_t parallelism = this->_infos.parallelism();
   for (auto& r : _segmentReaders) {
     if (!r.itr) {
       continue;
