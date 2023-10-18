@@ -86,9 +86,9 @@ TEST_F(LoggerTest, test_fds) {
   EXPECT_EQ(std::get<1>(fds[0]), logfile1);
   EXPECT_EQ(std::get<2>(fds[0])->fd(), std::get<0>(fds[0]));
 
-  logger1.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::ERR,
+  logger1.logMessageGuarded(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::ERR,
                                 0, "some error message", 0, true));
-  logger2.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__,
+  logger2.logMessageGuarded(LogMessage(__FUNCTION__, __FILE__, __LINE__,
                                 LogLevel::WARN, 0, "some warning message", 0,
                                 true));
 
@@ -113,9 +113,9 @@ TEST_F(LoggerTest, test_fds_after_reopen) {
   EXPECT_EQ(std::get<1>(fds[0]), logfile1);
   EXPECT_EQ(std::get<2>(fds[0])->fd(), std::get<0>(fds[0]));
 
-  logger1.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::ERR,
+  logger1.logMessageGuarded(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::ERR,
                                 0, "some error message", 0, true));
-  logger2.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__,
+  logger2.logMessageGuarded(LogMessage(__FUNCTION__, __FILE__, __LINE__,
                                 LogLevel::WARN, 0, "some warning message", 0,
                                 true));
 
@@ -137,9 +137,9 @@ TEST_F(LoggerTest, test_fds_after_reopen) {
   EXPECT_EQ(std::get<1>(fds[0]), logfile1);
   EXPECT_EQ(std::get<2>(fds[0])->fd(), std::get<0>(fds[0]));
 
-  logger1.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::ERR,
+  logger1.logMessageGuarded(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::ERR,
                                 0, "some other error message", 0, true));
-  logger2.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__,
+  logger2.logMessageGuarded(LogMessage(__FUNCTION__, __FILE__, __LINE__,
                                 LogLevel::WARN, 0, "some other warning message",
                                 0, true));
 

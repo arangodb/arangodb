@@ -159,19 +159,22 @@ std::shared_ptr<LogAppender> LogAppender::buildAppender(
   } else if (output.starts_with(::filePrefix)) {
     result =
         std::make_shared<LogAppenderFile>(output.substr(::filePrefix.size()));
+  } else if (output.starts_with("slow://")) {
+    result =
+        std::make_shared<LogAppenderSlowFile>(output.substr(7));
   }
 
   return result;
 }
 
 void LogAppender::logGlobal(LogGroup const& group, LogMessage const& message) {
-  WRITE_LOCKER(guard, _appendersLock);
+  READ_LOCKER(guard, _appendersLock);
 
   auto& appenders = _globalAppenders[group.id()];
 
   // append to global appenders first
   for (auto const& appender : appenders) {
-    appender->logMessage(message);
+    appender->logMessageGuarded(message);
   }
 }
 
@@ -187,7 +190,7 @@ void LogAppender::log(LogGroup const& group, LogMessage const& message) {
       auto const& appenders = it->second;
 
       for (auto const& appender : appenders) {
-        appender->logMessage(message);
+        appender->logMessageGuarded(message);
       }
       shown = true;
     }
@@ -200,7 +203,7 @@ void LogAppender::log(LogGroup const& group, LogMessage const& message) {
   // try to find a topic-specific appender
   size_t topicId = message._topicId;
 
-  WRITE_LOCKER(guard, _appendersLock);
+  READ_LOCKER(guard, _appendersLock);
 
   if (topicId < LogTopic::MAX_LOG_TOPICS) {
     shown = output(group, message, topicId);
@@ -232,6 +235,13 @@ void LogAppender::reopen() {
 
   LogAppenderFile::reopenAll();
 }
+
+void LogAppender::logMessageGuarded(LogMessage const& message) {
+  // Only one thread is allowed to actually write logs to the file.
+  std::lock_guard<std::mutex> guard(_logOutputMutex);
+  logMessage(message);
+}
+
 
 Result LogAppender::parseDefinition(std::string const& definition,
                                     std::string& topicName, std::string& output,
