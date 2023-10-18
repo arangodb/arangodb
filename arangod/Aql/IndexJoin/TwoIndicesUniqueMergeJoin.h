@@ -237,10 +237,12 @@ bool TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::next(
 
       LOG_INDEX_UNIQUE_MERGER << "Value Left: " << keyCache[0]
                               << ", Value Right: " << keyCache[1];
-      leftIteratorHasMore = leftIndex->_iter->next(
-          {keyCache.begin(), keyCache.begin() + 1}, documentCache[0], {});
-      rightIteratorHasMore = rightIndex->_iter->next(
-          {keyCache.begin() + 1, keyCache.begin() + 2}, documentCache[1], {});
+      leftIteratorHasMore =
+          leftIndex->_iter->next({keyCache.begin(), keyCache.begin() + 1},
+                                 documentCache[0], leftIndex->_projections);
+      rightIteratorHasMore =
+          rightIndex->_iter->next({keyCache.begin() + 1, keyCache.begin() + 2},
+                                  documentCache[1], rightIndex->_projections);
       isDocsPopulated = true;
 
       if (!readMore) {
