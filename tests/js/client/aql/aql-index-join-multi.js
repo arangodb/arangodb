@@ -250,6 +250,8 @@ const parameters = _.groupBy(generateParameters({
 }), (c) => ["filterAttribute1", "filterAttribute2", "projectedAttribute1", "projectedAttribute2", "unique"].map(k => c[k]).join(""));
 
 for (const configs of Object.values(parameters)) {
-  jsunity.run(indexJoinTestMultiSuite(configs));
+  jsunity.run(function () {
+    return indexJoinTestMultiSuite(configs);
+  });
 }
 return jsunity.done();
