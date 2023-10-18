@@ -2056,11 +2056,13 @@ function processQuery(query, explain, planIndex) {
         let line = nodePrefix(node);
         if (profileMode) {
           line += pad(1 + maxCallsLen) +  '   ' +
+            pad(1 + maxParallelLen) + '   ' +
             pad(1 + maxItemsLen) + '   ' +
             pad(1 + maxFilteredLen) + '   ' +
             pad(1 + maxRuntimeLen) + '   ';
         } else {
-          line += pad(1 + maxEstimateLen - String(info.estimatedNrItems).length) + value(info.estimatedNrItems) + '   ';
+          line += pad('Par'.length) + value(info.isAsyncPrefetchEnabled ? '✓' : ' ') + '   ' +
+            pad(1 + maxEstimateLen - String(info.estimatedNrItems).length) + value(info.estimatedNrItems) + '   ';
         }
         let label = keyword('FOR ') + variableName(info.outVariable) + keyword(' IN ') + collection(info.collection);
         let filter = '';

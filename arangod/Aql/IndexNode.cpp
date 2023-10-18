@@ -526,6 +526,12 @@ CostEstimate IndexNode::estimateCost() const {
 }
 
 AsyncPrefetchEligibility IndexNode::canUseAsyncPrefetching() const noexcept {
+  if (_condition != nullptr && _condition->root() != nullptr &&
+      (!_condition->root()->isDeterministic() ||
+       _condition->root()->willUseV8())) {
+    // non-deterministic or V8 index lookup condition
+    return AsyncPrefetchEligibility::kDisableForNode;
+  }
   return DocumentProducingNode::canUseAsyncPrefetching();
 }
 
