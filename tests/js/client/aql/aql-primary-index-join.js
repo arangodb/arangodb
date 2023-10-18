@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global fail, assertEqual, assertNotEqual, assertTrue, AQL_EXECUTE, AQL_EXPLAIN */
+/*global fail, assertEqual, assertNotEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -104,7 +104,12 @@ const IndexPrimaryJoinTestSuite = function () {
   };
 
   const runAndCheckQuery = function (query) {
-    const plan = AQL_EXPLAIN(query, null, queryOptions).plan;
+    const plan = db._createStatement({
+      query: query,
+      bindVars: null,
+      options: queryOptions
+    }).explain().plan;
+
     let planNodes = plan.nodes.map(function (node) {
       return node.type;
     });
@@ -115,8 +120,8 @@ const IndexPrimaryJoinTestSuite = function () {
 
     assertNotEqual(planNodes.indexOf("JoinNode"), -1);
 
-    const result = AQL_EXECUTE(query, null, queryOptions);
-    return result.json;
+    const result = db._createStatement({query: query, bindVars: null, options: queryOptions}).execute();
+    return result.toArray();
   };
 
   const databaseName = "IndexJoinDB";
@@ -143,7 +148,6 @@ const IndexPrimaryJoinTestSuite = function () {
 
       const A = fillCollectionWith("A", properties);
       A.ensureIndex({type: "persistent", fields: ["x"], unique: true});
-      print(A.all().toArray());
 
       const result = runAndCheckQuery(`
         FOR doc1 IN A
@@ -158,7 +162,6 @@ const IndexPrimaryJoinTestSuite = function () {
         assertEqual(a.x, b._key);
       }
     },
-
     /*
     TODO: enable as soon as filter issue in VPackStreamIterator is fixed.
     testAllMatchPrimaryIndexReturnProjection: function () {
@@ -188,11 +191,9 @@ const IndexPrimaryJoinTestSuite = function () {
         }
       }
     },*/
-
     // TODO: Add additional FILTER for doc2._key (e.g. calculation compare last character)
   };
 };
-
 
 jsunity.run(IndexPrimaryJoinTestSuite);
 return jsunity.done();
