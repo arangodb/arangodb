@@ -521,17 +521,20 @@ bool ClusterIndex::inProgress() const {
 bool ClusterIndex::supportsStreamInterface(
     IndexStreamOptions const& opts) const noexcept {
   switch (_indexType) {
-    case Index::TRI_IDX_TYPE_PERSISTENT_INDEX:
+    case Index::TRI_IDX_TYPE_PERSISTENT_INDEX: {
       if (_engineType == ClusterEngineType::RocksDBEngine) {
         return RocksDBVPackIndex::checkSupportsStreamInterface(_coveredFields,
                                                                opts);
       }
+      [[fallthrough]];
+    }
 
     case Index::TRI_IDX_TYPE_PRIMARY_INDEX: {
       if (_engineType == ClusterEngineType::RocksDBEngine) {
         return RocksDBPrimaryIndex::checkSupportsStreamInterface(_coveredFields,
                                                                  opts);
       }
+      [[fallthrough]];
     }
 
     default:
