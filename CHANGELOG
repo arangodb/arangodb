@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated OpenSSL to 3.1.3.
+
 * Updated arangosync to v2.19.4.
 
 * Add cluster-internal connectivity checks.
