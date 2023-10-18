@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix a race in controlled leader change which could lead to a situation 
+  in which a shard follower is dropped when the first write operation
+  happens. This fixes BTS-1647.
+
 * FE-385: fix web UI query import stuck on loading for faulty JSON.
 
 * FE-378: fix fields containing spaces during index creation on web UI.
