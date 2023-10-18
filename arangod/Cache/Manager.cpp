@@ -97,6 +97,11 @@ Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
       _freeMemoryTasks(0),
       _migrateTasksDuration(0),
       _freeMemoryTasksDuration(0),
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      _tableCalls(0),
+      _termCalls(0),
+#endif
+      _transactions(this),
       _schedulerPost(std::move(schedulerPost)),
       _resizeAttempt(0),
       _outstandingTasks(0),
@@ -280,6 +285,10 @@ Manager::MemoryStats Manager::memoryStats() const noexcept {
   result.freeMemoryTasks = _freeMemoryTasks;
   result.migrateTasksDuration = _migrateTasksDuration;
   result.freeMemoryTasksDuration = _freeMemoryTasksDuration;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  result.tableCalls = _tableCalls.load(std::memory_order_relaxed);
+  result.termCalls = _termCalls.load(std::memory_order_relaxed);
+#endif
   return result;
 }
 
@@ -678,6 +687,18 @@ void Manager::trackFreeMemoryTaskDuration(std::uint64_t duration) noexcept {
   SpinLocker guard(SpinLocker::Mode::Write, _lock);
   _freeMemoryTasksDuration += duration;
 }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+void Manager::trackTableCall() noexcept {
+  _tableCalls.fetch_add(1, std::memory_order_relaxed);
+}
+#endif
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+void Manager::trackTermCall() noexcept {
+  _termCalls.fetch_add(1, std::memory_order_relaxed);
+}
+#endif
 
 void Manager::freeUnusedTables() {
   TRI_ASSERT(_lock.isLockedWrite());
