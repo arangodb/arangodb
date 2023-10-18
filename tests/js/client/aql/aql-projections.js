@@ -75,7 +75,7 @@ function projectionsPlansTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).explain().plan;
+        let plan = db._createStatement({query: query[0], options: { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
@@ -104,7 +104,7 @@ function projectionsPlansTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).explain().plan;
+        let plan = db._createStatement({query: query[0], options: { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
@@ -125,7 +125,7 @@ function projectionsPlansTestSuite () {
       ];
       
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0]).explain().plan;
+        let plan = db._createStatement({query: query[0]}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
@@ -167,7 +167,7 @@ function projectionsPlansTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).explain().plan;
+        let plan = db._createStatement({query: query[0], options: { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
@@ -189,7 +189,7 @@ function projectionsPlansTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0]).explain().plan;
+        let plan = db._createStatement({query: query[0]}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
@@ -231,7 +231,7 @@ function projectionsPlansTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).explain().plan;
+        let plan = db._createStatement({query: query[0], options: { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
@@ -254,7 +254,7 @@ function projectionsPlansTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0]).explain().plan;
+        let plan = db._createStatement({query: query[0]}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
@@ -281,7 +281,7 @@ function projectionsPlansTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).explain().plan;
+        let plan = db._createStatement({query: query[0], options: { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
@@ -306,7 +306,7 @@ function projectionsPlansTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0]).explain().plan;
+        let plan = db._createStatement({query: query[0]}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
@@ -334,7 +334,7 @@ function projectionsPlansTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).explain().plan;
+        let plan = db._createStatement({query: query[0], options: { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
@@ -357,7 +357,7 @@ function projectionsPlansTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0]).explain().plan;
+        let plan = db._createStatement({query: query[0]}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
@@ -375,7 +375,7 @@ function projectionsPlansTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).explain().plan;
+        let plan = db._createStatement({query: query[0], options: { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
@@ -396,7 +396,7 @@ function projectionsPlansTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0]).explain().plan;
+        let plan = db._createStatement({query: query[0]}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
@@ -416,7 +416,7 @@ function projectionsPlansTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).explain().plan;
+        let plan = db._createStatement({query: query[0], options: { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
@@ -439,7 +439,7 @@ function projectionsPlansTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).explain().plan;
+        let plan = db._createStatement({query: query[0], options: { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
@@ -466,7 +466,7 @@ function projectionsPlansTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).explain().plan;
+        let plan = db._createStatement({query: query[0], options: { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
@@ -499,7 +499,7 @@ function projectionsPlansTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).explain().plan;
+        let plan = db._createStatement({query: query[0], options: { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
@@ -528,7 +528,7 @@ function projectionsPlansTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).explain().plan;
+        let plan = db._createStatement({query: query[0], options: { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
@@ -549,7 +549,7 @@ function projectionsPlansTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0]).explain().plan;
+        let plan = db._createStatement({query: query[0]}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
@@ -565,7 +565,7 @@ function projectionsPlansTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).explain().plan;
+        let plan = db._createStatement({query: query[0], options: { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
@@ -586,7 +586,7 @@ function projectionsPlansTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0]).explain().plan;
+        let plan = db._createStatement({query: query[0]}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
@@ -610,7 +610,7 @@ function projectionsPlansTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0]).explain().plan;
+        let plan = db._createStatement({query: query[0]}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
@@ -661,7 +661,7 @@ function projectionsExtractionTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).explain().plan;
+        let plan = db._createStatement({query: query[0], options: { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
@@ -697,7 +697,7 @@ function projectionsExtractionTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).explain().plan;
+        let plan = db._createStatement({query: query[0], options: { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode' || node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
@@ -729,7 +729,7 @@ function projectionsExtractionTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).explain().plan;
+        let plan = db._createStatement({query: query[0], options: { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode' || node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
@@ -753,7 +753,7 @@ function projectionsExtractionTestSuite () {
         "FILTER doc.p.k == 'hund' " +
         "SORT doc.p.s DESC " +
         "RETURN doc.p.s";
-      let result = db._createStatement({query: q, bindVars: bindVars}).execute();
+      let result = db._createStatement({query: q, bindVars}).execute();
       assertEqual(result.toArray(), [1234]);
     },
   
@@ -815,7 +815,7 @@ function projectionsMaxProjectionsTestSuite () {
       }
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).explain().plan;
+        let plan = db._createStatement({query: query[0], options: { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
@@ -845,7 +845,7 @@ function projectionsMaxProjectionsTestSuite () {
       });
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).explain().plan;
+        let plan = db._createStatement({query: query[0], options: { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }}).explain().plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(normalize(query[1].sort()), normalize(nodes[0].projections.sort()), query);
