@@ -822,6 +822,7 @@ void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
       break;
     case VPACK_SLICE_POINTER:
       if (!resolveExternals && isManagedDocument()) {
+        TRI_ASSERT(false);
         builder.addExternal(_data.slicePointerMeta.pointer);
         break;
       }
