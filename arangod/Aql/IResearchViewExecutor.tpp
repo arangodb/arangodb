@@ -732,7 +732,8 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::materialize() {
   auto end = pkReadingOrder.end();
   iresearch::ViewSegment const* segment{};
   constexpr bool haveMultiSnapshots =
-      std::is_same_v<ExecutorValue, typename Traits::IndexBufferValueType>;
+      std::is_same_v<ExecutorValue, typename Traits::IndexBufferValueType> ||
+      std::is_same_v<HeapSortExecutorValue, typename Traits::IndexBufferValueType>;
   if constexpr (haveMultiSnapshots) {
     std::sort(it, end, [&](size_t lhs, size_t rhs) {
       auto const& lhs_val = _indexReadBuffer.getValue(lhs);
@@ -1099,7 +1100,8 @@ IResearchViewExecutor<ExecutionTraits>::IResearchViewExecutor(Fetcher& fetcher,
                                                               Infos& infos)
     : Base{fetcher, infos}, _segmentOffset {0} {
   this->_storedValuesReaders.resize(
-      this->_infos.getOutNonMaterializedViewRegs().size());
+      this->_infos.getOutNonMaterializedViewRegs().size() *
+      infos.parallelism());
   TRI_ASSERT(infos.heapSort().empty());
   TRI_ASSERT(infos.parallelism() > 0);
   _segmentReaders.resize(infos.parallelism());
@@ -1479,6 +1481,8 @@ bool IResearchViewExecutor<ExecutionTraits>::readSegment(
     if constexpr (parallel) {
       while (!bufferIdx.compare_exchange_weak(current, current + 1)) {
       }
+    } else {
+      bufferIdx++;
     }
     auto& viewSegment = this->_reader->segment(reader.readerOffset);
     if constexpr (Base::isLateMaterialized) {
@@ -1521,7 +1525,7 @@ bool IResearchViewExecutor<ExecutionTraits>::readSegment(
 
     if constexpr (Base::usesStoredValues) {
       TRI_ASSERT(reader.doc);
-      this->pushStoredValues<parallel>(*reader.doc, reader.readerOffset,
+      this->pushStoredValues<parallel>(*reader.doc, std::distance(_segmentReaders.data(), &reader),
                                        current);
     }
     if constexpr (!parallel) {
@@ -1552,17 +1556,16 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
   auto const& clientCall = ctx.outputRow.getClientCall();
   auto limit = clientCall.getUnclampedLimit();
   bool const isUnlimited = limit == aql::AqlCall::Infinity{};
-  //bool const fullRead = isUnlimited || clientCall.needsFullCount();
   TRI_ASSERT(isUnlimited || std::holds_alternative<std::size_t>(limit));
   // FIXME: Maybe have limit >  atMost * 2 for triggering parallism.
-  auto const parallelism = std::min(count, this->_infos.parallelism());
+  auto parallelism = std::min(count, this->_infos.parallelism());
   auto const windowSize = atMostInitial;
   if (parallelism > 1 &&
       (isUnlimited || std::get<std::size_t>(limit) > atMostInitial)) {
     atMost = atMostInitial * parallelism;
+  } else {
+    parallelism = 1;
   }
-  //LOG_DEVEL << "CALL LIMIT:" << AqlCall::LimitPrinter(limit)
-  //          << " Parallelism:" << parallelism << " AtMost Corrected:" << atMost;
   this->_indexReadBuffer.reset();
   this->_indexReadBuffer.preAllocateStoredValuesBuffer(
       atMost, this->_infos.getScoreRegisters().size(),
@@ -1587,19 +1590,22 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
     };
     // launching additional workers
     size_t i = 0;
+    size_t selfExecute{_segmentReaders.size()};
     auto toFetch = atMost - bufferIdx.load();
-    if (toFetch > windowSize) {
-      for (; i < _segmentReaders.size() && toFetch > windowSize; ++i) {
-        auto& reader = _segmentReaders[i];
-        if (!reader.itr) {
-          if (_segmentOffset >= count) {
-            continue;
-          }
-          reader.readerOffset = _segmentOffset++;
-          reader.currentSegmentPos = 0;
+    while (toFetch && i < _segmentReaders.size()) {
+      auto& reader = _segmentReaders[i];
+      if (!reader.itr) {
+        if (_segmentOffset >= count) {
+          // no new segments. But maybe some existing readers still alive
+          ++i;
+          continue;
         }
-        reader.atMost = windowSize;
-        toFetch -= windowSize;
+        reader.readerOffset = _segmentOffset++;
+        reader.currentSegmentPos = 0;
+      }
+      reader.atMost = std::min(windowSize, toFetch);
+      toFetch -= reader.atMost;
+      if (selfExecute < _segmentReaders.size()) {
         auto loader = [&, i = runners.size()](SegmentReader* ctx) {
           try {
             results[i].emplace(readSegment<true>(*ctx, bufferIdx));
@@ -1608,36 +1614,24 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
           }
         };
         runners.push_back(std::thread(loader, &reader));
+      } else {
+        selfExecute = i;
       }
+      ++i;
     }
-    if (i < _segmentReaders.size()) {
-      auto& reader = _segmentReaders[i];
-      if (!reader.itr) {
-        if (_segmentOffset < count) {
-          reader.readerOffset = _segmentOffset++;
-          reader.currentSegmentPos = 0;
-        } else {
-          reader.readerOffset = count + 1;
-        }
+    if (selfExecute < _segmentReaders.size()) {
+      if (parallelism > 1) {
+        gotData = readSegment<true>(_segmentReaders[selfExecute], bufferIdx);
+      } else {
+        gotData = readSegment<false>(_segmentReaders[selfExecute], bufferIdx);
       }
-      reader.atMost = toFetch;
-      if (reader.readerOffset < count) {
-        if (parallelism > 1) {
-          gotData = readSegment<true>(reader, bufferIdx);
-        } else {
-          gotData = readSegment<false>(reader, bufferIdx);
-        }
-      } else if (_segmentOffset >= count) {
-        TRI_ASSERT(runners.empty());
-        break;
-      }
-    } else if (runners.empty()) {
+    } else {
+      TRI_ASSERT(runners.empty());
       break;
     }
     results.resize(runners.size());
     for (auto& t : runners) {
       t.join();
-      //LOG_DEVEL << "Joined Thread";
     }
     for (auto& r : results) {
       gotData |= r.get();
@@ -1673,7 +1667,7 @@ bool IResearchViewExecutor<ExecutionTraits>::resetIterator(SegmentReader& reader
   }
 
   if constexpr (Base::usesStoredValues) {
-    if (ADB_UNLIKELY(!this->getStoredValuesReaders(segmentReader))) {
+    if (ADB_UNLIKELY(!this->getStoredValuesReaders(segmentReader, std::distance(_segmentReaders.data(), &reader)))) {
       return false;
     }
   }
