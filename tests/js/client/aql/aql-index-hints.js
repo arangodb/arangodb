@@ -976,7 +976,7 @@ function indexHintDisableIndexSuite () {
         ];
 
         queries.forEach((query) => {
-          let plan = db._createStatement(query[0], null, {optimizer: {rules: ["-optimize-cluster-single-document-operations"]}}).explain().plan;
+          let plan = db._createStatement({ query: query[0], bindVars: null, options: {optimizer: {rules: ["-optimize-cluster-single-document-operations"]}}}).explain().plan;
           let nodes = plan.nodes;
 
           let node;
