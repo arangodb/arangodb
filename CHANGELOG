@@ -5,6 +5,8 @@ v3.11.5 (XXXX-XX-XX)
   single run than before. This change can help to reclaim memory of expired
   cursors quicker than in previous versions.
 
+* Reduce number of atomic shared_ptr copies in in-memory cache subsystem.
+
 * Updated arangosync to v2.19.4.
 
 * Add cluster-internal connectivity checks.
