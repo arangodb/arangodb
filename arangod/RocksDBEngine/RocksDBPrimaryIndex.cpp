@@ -1444,9 +1444,12 @@ bool RocksDBPrimaryIndex::checkSupportsStreamInterface(
     std::vector<std::vector<basics::AttributeName>> const& coveredFields,
     IndexStreamOptions const& streamOpts) noexcept {
   // we can only project values that are in range
-  TRI_ASSERT(coveredFields.size() == 2 &&
-             coveredFields[0][0].name == StaticStrings::KeyString &&
-             coveredFields[1][0].name == StaticStrings::IdString);
+  TRI_ASSERT(coveredFields.size() == 2);
+  TRI_ASSERT(
+      (coveredFields[0][0].name == StaticStrings::KeyString &&  // SingleServer
+       coveredFields[1][0].name == StaticStrings::IdString) ||
+      (coveredFields[0][0].name == StaticStrings::IdString &&  // Cluster
+       coveredFields[1][0].name == StaticStrings::KeyString));
   for (auto idx : streamOpts.projectedFields) {
     if (idx != 0) {
       return false;

@@ -30,11 +30,6 @@ const isCluster = internal.isCluster();
 const isEnterprise = internal.isEnterprise();
 
 const IndexPrimaryJoinTestSuite = function () {
-
-  if (isCluster && !isEnterprise) {
-    return {};
-  }
-
   const createCollection = function (name, shardKeys) {
     shardKeys = shardKeys || ["x"];
     if (isCluster) {
@@ -47,8 +42,13 @@ const IndexPrimaryJoinTestSuite = function () {
     }
   };
 
-  const fillCollection = function (name, generator) {
-    const collection = db[name] || createCollection(name);
+  const fillCollection = function (name, generator, shardKeys) {
+    let collection;
+    if (shardKeys) {
+      collection = db[name] || createCollection(name, shardKeys);
+    } else {
+      collection = db[name] || createCollection(name);
+    }
     let docs = [];
     while (true) {
       let v = generator();
@@ -69,8 +69,8 @@ const IndexPrimaryJoinTestSuite = function () {
     return collection;
   };
 
-  const fillCollectionWith = (collectionName, properties) => {
-    const collection = db[collectionName] || createCollection(collectionName);
+  const fillCollectionWith = (collectionName, properties, shardKeys = []) => {
+    const collection = db[collectionName] || createCollection(collectionName, shardKeys);
     db[collectionName].save(properties);
 
     return collection;
@@ -138,7 +138,7 @@ const IndexPrimaryJoinTestSuite = function () {
     },
 
     testAllMatchPrimaryIndex: function () {
-      const B = fillCollection("B", singleAttributeGenerator(5, "x", x => 2 * x));
+      const B = fillCollection("B", singleAttributeGenerator(5, "x", x => 2 * x), ["_key"]);
       // No additional index on B, we want to make use of the default (rocksdb) primary index
       const documentsB = B.all().toArray();
       let properties = [];
@@ -146,7 +146,7 @@ const IndexPrimaryJoinTestSuite = function () {
         properties.push({"x": doc._key});
       });
 
-      const A = fillCollectionWith("A", properties);
+      const A = fillCollectionWith("A", properties, ["x"]);
       A.ensureIndex({type: "persistent", fields: ["x"], unique: true});
 
       const result = runAndCheckQuery(`
