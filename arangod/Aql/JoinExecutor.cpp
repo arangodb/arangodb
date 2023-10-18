@@ -214,10 +214,6 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                   _currentRow,
                   idx.filter->documentVariable};
               ctx.setCurrentDocument(VPackSlice::noneSlice());
-              VPackBuilder builder;
-              idx.filter->expression->toVelocyPack(builder, true);
-              LOG_JOIN << "INDEX " << k
-                       << " filter expression = " << builder.toJson();
 
               TRI_ASSERT(idx.filter->projections.size() == projections.size());
               for (size_t j = 0; j < projections.size(); j++) {
