@@ -733,16 +733,14 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::materialize() {
   iresearch::ViewSegment const* segment{};
   constexpr bool haveMultiSnapshots =
       std::is_same_v<ExecutorValue, typename Traits::IndexBufferValueType>;
-  if constexpr (haveMultiSnapshots) { // TODO: mayb always fill all buffer
-    if (_infos.parallelism() > 1 || Impl::kSorted) {
-      std::sort(it, end, [&](size_t lhs, size_t rhs) {
-        auto const& lhs_val = _indexReadBuffer.getValue(lhs);
-        auto const& rhs_val = _indexReadBuffer.getValue(rhs);
-        auto const* lhs_segment = lhs_val.segment();
-        auto const* rhs_segment = rhs_val.segment();
-        return lhs_segment->snapshot < rhs_segment->snapshot;
-      });
-    }
+  if constexpr (haveMultiSnapshots) {
+    std::sort(it, end, [&](size_t lhs, size_t rhs) {
+      auto const& lhs_val = _indexReadBuffer.getValue(lhs);
+      auto const& rhs_val = _indexReadBuffer.getValue(rhs);
+      auto const* lhs_segment = lhs_val.segment();
+      auto const* rhs_segment = rhs_val.segment();
+      return lhs_segment->snapshot < rhs_segment->snapshot;
+    });
   }
   StorageSnapshot const* lastSnapshot{};
   auto fillKeys = [&] {
@@ -1441,7 +1439,7 @@ bool IResearchViewExecutor<ExecutionTraits>::readSegment(
     reader.itr.reset();
     reader.doc = nullptr;
   };
-  while (reader.numFilled < reader.atMost) {
+  while (reader.atMost) {
     if (!reader.itr) {
       if (!resetIterator(reader)) {
         reset();
@@ -1498,7 +1496,7 @@ bool IResearchViewExecutor<ExecutionTraits>::readSegment(
         this->_indexReadBuffer.pushValue(viewSegment, documentId);
       }
     }
-    ++reader.numFilled;
+    --reader.atMost;
     gotData = true;
 
     if constexpr (ExecutionTraits::EmitSearchDoc) {
@@ -1547,7 +1545,8 @@ template<typename ExecutionTraits>
 bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
   TRI_ASSERT(this->_filter != nullptr);
   size_t const count = this->_reader->size();
-  size_t atMost = ctx.outputRow.numRowsLeft();
+  size_t const atMostInitial = ctx.outputRow.numRowsLeft();
+  auto atMost = atMostInitial;
   TRI_ASSERT(this->_indexReadBuffer.empty());
   this->_isMaterialized = false;
   auto const& clientCall = ctx.outputRow.getClientCall();
@@ -1556,93 +1555,100 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
   //bool const fullRead = isUnlimited || clientCall.needsFullCount();
   TRI_ASSERT(isUnlimited || std::holds_alternative<std::size_t>(limit));
   // FIXME: Maybe have limit >  atMost * 2 for triggering parallism.
-  auto const parallelism = this->_infos.parallelism();
-  auto windowSize = atMost;
+  auto const parallelism = std::min(count, this->_infos.parallelism());
+  auto const windowSize = atMostInitial;
   if (parallelism > 1 &&
-      (isUnlimited || std::get<std::size_t>(limit) > atMost)) {
-    atMost = atMost * parallelism;
+      (isUnlimited || std::get<std::size_t>(limit) > atMostInitial)) {
+    atMost = atMostInitial * parallelism;
   }
-  LOG_DEVEL << "CALL LIMIT:" << AqlCall::LimitPrinter(limit)
-            << " Parallelism:" << parallelism << " AtMost Corrected:" << atMost;
+  //LOG_DEVEL << "CALL LIMIT:" << AqlCall::LimitPrinter(limit)
+  //          << " Parallelism:" << parallelism << " AtMost Corrected:" << atMost;
   this->_indexReadBuffer.reset();
   this->_indexReadBuffer.preAllocateStoredValuesBuffer(
       atMost, this->_infos.getScoreRegisters().size(),
       this->_infos.getOutNonMaterializedViewRegs().size());
-  this->_indexReadBuffer.setForParallelAccess(
-      atMost, this->_infos.getScoreRegisters().size(),
-      this->_infos.getOutNonMaterializedViewRegs().size());
-  bool gotData = false;
-  std::atomic<size_t> bufferIdx{0};
-  std::vector<std::thread> runners;
-  std::vector<futures::Try<bool>> results;
-  results.resize(parallelism);
-  irs::Finally cleanupThreads = [&]() noexcept {
-    for (auto& t : runners) {
-      t.join();
-    }
-  };
-  // launching additional workers
-  size_t i = 0;
-  if (atMost > windowSize) {
-    for (; i < _segmentReaders.size() && atMost > windowSize; ++i) {
-      auto& reader = _segmentReaders[i];
-      if (!reader.itr ) {
-        if (count >= _segmentOffset) {
-          continue;
-        }
-        reader.readerOffset = _segmentOffset++;
-        reader.currentSegmentPos = 0;
-      }
-      reader.atMost = windowSize;
-      atMost -= windowSize;
-      auto loader = [&, i](SegmentReader* ctx) {
-        try {
-          results[i].emplace(readSegment<true>(*ctx, bufferIdx));
-        } catch (...) {
-          results[i].set_exception(std::move(std::current_exception()));
-        }
-      };
-      runners.push_back(std::thread(loader, &reader));
-    }
-  }
-  {
-    TRI_ASSERT(i < _segmentReaders.size());
-    auto& reader = _segmentReaders[i];
-    if (!reader.itr && count < _segmentOffset) {
-      reader.readerOffset = _segmentOffset++;
-      reader.currentSegmentPos = 0;
-    }
-    reader.atMost = windowSize;
-    if (parallelism > 1) {
-      gotData = readSegment<true>(reader, bufferIdx);
-    } else {
-      gotData = readSegment<false>(reader, bufferIdx);
-    }
-  }
-  for (auto& t : runners) {
-    t.join();
-    runners.clear();
-  }
-  for (size_t j = 0; j < i; ++j) {
-    gotData |= results[j].get();
-  }
-  if (gotData) {
+  if (parallelism > 1) {
     this->_indexReadBuffer.setForParallelAccess(
-        bufferIdx + 1, this->_infos.getScoreRegisters().size(),
+        atMost, this->_infos.getScoreRegisters().size(),
         this->_infos.getOutNonMaterializedViewRegs().size());
   }
-
-  //auto& reader = _segmentReaders.front();
-  //for (; _segmentOffset < count;) {
-  //  reader.atMost = atMost;
-  //  reader.readerOffset = _segmentOffset;
-  //  gotData = readSegment<false>(reader, 0, bufferIdx);
-  //  if (gotData) {
-  //    break;
-  //  } else {
-  //    ++_segmentOffset;
-  //  }
-  //}
+  bool gotData = false;
+  std::atomic<size_t> bufferIdx{0};
+  while (bufferIdx.load() < atMostInitial) {
+    std::vector<std::thread> runners;
+    std::vector<futures::Try<bool>> results;
+    results.resize(parallelism - 1);
+    irs::Finally cleanupThreads = [&]() noexcept {
+      for (auto& t : runners) {
+        if (t.joinable()) {
+          t.join();
+        }
+      }
+    };
+    // launching additional workers
+    size_t i = 0;
+    auto toFetch = atMost - bufferIdx.load();
+    if (toFetch > windowSize) {
+      for (; i < _segmentReaders.size() && toFetch > windowSize; ++i) {
+        auto& reader = _segmentReaders[i];
+        if (!reader.itr) {
+          if (_segmentOffset >= count) {
+            continue;
+          }
+          reader.readerOffset = _segmentOffset++;
+          reader.currentSegmentPos = 0;
+        }
+        reader.atMost = windowSize;
+        toFetch -= windowSize;
+        auto loader = [&, i = runners.size()](SegmentReader* ctx) {
+          try {
+            results[i].emplace(readSegment<true>(*ctx, bufferIdx));
+          } catch (...) {
+            results[i].set_exception(std::move(std::current_exception()));
+          }
+        };
+        runners.push_back(std::thread(loader, &reader));
+      }
+    }
+    if (i < _segmentReaders.size()) {
+      auto& reader = _segmentReaders[i];
+      if (!reader.itr) {
+        if (_segmentOffset < count) {
+          reader.readerOffset = _segmentOffset++;
+          reader.currentSegmentPos = 0;
+        } else {
+          reader.readerOffset = count + 1;
+        }
+      }
+      reader.atMost = toFetch;
+      if (reader.readerOffset < count) {
+        if (parallelism > 1) {
+          gotData = readSegment<true>(reader, bufferIdx);
+        } else {
+          gotData = readSegment<false>(reader, bufferIdx);
+        }
+      } else if (_segmentOffset >= count) {
+        TRI_ASSERT(runners.empty());
+        break;
+      }
+    } else if (runners.empty()) {
+      break;
+    }
+    results.resize(runners.size());
+    for (auto& t : runners) {
+      t.join();
+      //LOG_DEVEL << "Joined Thread";
+    }
+    for (auto& r : results) {
+      gotData |= r.get();
+    }
+    runners.clear();
+  }
+  if (parallelism > 1) {
+    this->_indexReadBuffer.setForParallelAccess(
+        bufferIdx, this->_infos.getScoreRegisters().size(),
+        this->_infos.getOutNonMaterializedViewRegs().size());
+  }
   return gotData;
 }
 
@@ -1711,7 +1717,6 @@ void IResearchViewExecutor<ExecutionTraits>::reset(
     r.readerOffset = 0;
     r.currentSegmentPos = 0;
     r.totalPos = 0;
-    r.numFilled = 0;
   }
 }
 

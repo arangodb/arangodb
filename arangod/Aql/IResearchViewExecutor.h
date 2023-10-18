@@ -670,7 +670,6 @@ class IResearchViewExecutor
     size_t currentSegmentPos{0};           // current document iterator position in segment
     size_t totalPos{0};  // total position for full snapshot
     size_t numScores{0};
-    size_t numFilled{0};
     size_t atMost{0};
     LogicalCollection const* collection{};
     iresearch::ViewSegment const* segment{};
@@ -711,6 +710,9 @@ struct DocumentValue {
 };
 
 struct ExecutorValue {
+  
+  ExecutorValue() : _value{LocalDocumentId::none()}, _segment{nullptr} {}
+
   explicit ExecutorValue(
       iresearch::ViewSegment const& segment, LocalDocumentId id) noexcept
       : _value{id}, _segment{&segment} {}
@@ -722,7 +724,7 @@ struct ExecutorValue {
 
  private:
   DocumentValue _value;
-  iresearch::ViewSegment const* _segment;
+  iresearch::ViewSegment const* _segment{};
 };
 
 template<typename ExecutionTraits>
