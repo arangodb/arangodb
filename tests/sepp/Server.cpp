@@ -152,6 +152,12 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
         return std::make_unique<InitDatabaseFeature>(server,
                                                      kNonServerFeatures);
       },
+#ifdef TRI_HAVE_GETRLIMIT
+      [](auto& server, TypeTag<BumpFileDescriptorsFeature>) {
+        return std::make_unique<BumpFileDescriptorsFeature>(
+            server, "--server.descriptors-minimum");
+      },
+#endif
       [](auto& server, TypeTag<LoggerFeature>) {
         return std::make_unique<LoggerFeature>(server, true);
       },
