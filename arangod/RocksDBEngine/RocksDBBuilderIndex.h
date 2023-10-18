@@ -125,13 +125,13 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
 
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods*,
-                LocalDocumentId const& documentId, velocypack::Slice slice,
+                LocalDocumentId documentId, velocypack::Slice slice,
                 OperationOptions const& options,
                 bool /*performChecks*/) override;
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods*,
-                LocalDocumentId const& documentId, velocypack::Slice slice,
+                LocalDocumentId documentId, velocypack::Slice slice,
                 OperationOptions const& /*options*/) override;
 
   /// @brief get index estimator, optional

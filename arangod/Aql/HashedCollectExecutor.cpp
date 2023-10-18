@@ -183,7 +183,7 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(
     AqlValue& key = *const_cast<AqlValue*>(&it);
     AqlValueGuard guard{key, true};
     output.moveValueInto(_infos.getGroupRegisters()[i++].first,
-                         _lastInitializedInputRow, guard);
+                         _lastInitializedInputRow, &guard);
     key.erase();  // to prevent double-freeing later
   }
 
@@ -199,7 +199,7 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(
       AqlValue r = aggregators[aggregatorIdx].stealValue();
       AqlValueGuard guard{r, true};
       output.moveValueInto(_infos.getAggregatedRegisters()[j++].first,
-                           _lastInitializedInputRow, guard);
+                           _lastInitializedInputRow, &guard);
     }
   }
   if (_infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
@@ -213,7 +213,7 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(
     _currentGroup->second.second.reset();
 
     output.moveValueInto(_infos.getCollectRegister(), _lastInitializedInputRow,
-                         guard);
+                         &guard);
   }
 }
 
@@ -280,10 +280,9 @@ auto HashedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     }
   }
 
-  AqlCall upstreamCall{};
   // We cannot forward anything, no skip, no limit.
   // Need to request all from upstream.
-  return {returnState(), NoStats{}, upstreamCall};
+  return {returnState(), NoStats{}, AqlCall{}};
 }
 
 /**

@@ -31,23 +31,25 @@
 #include <system_error>
 #include <type_traits>
 
+#include <absl/strings/str_cat.h>
+
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
+#include <velocypack/Exception.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <velocypack/ValueType.h>
 
-#include "Basics/system-compiler.h"
-
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
+#include "Basics/system-compiler.h"
 #include "Basics/voc-errors.h"
+#include "Inspection/VPack.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "Inspection/VPack.h"
 
 namespace arangodb {
 class LoggerStream;
@@ -100,11 +102,11 @@ class VelocyPackHelper {
   static arangodb::velocypack::AttributeTranslator* getTranslator();
 
   struct VPackHash {
-    size_t operator()(arangodb::velocypack::Slice const&) const;
+    size_t operator()(arangodb::velocypack::Slice slice) const;
   };
 
   struct VPackStringHash {
-    size_t operator()(arangodb::velocypack::Slice const&) const noexcept;
+    size_t operator()(arangodb::velocypack::Slice slice) const noexcept;
   };
 
   /// @brief equality comparator for VelocyPack values
@@ -117,13 +119,13 @@ class VelocyPackHelper {
     explicit VPackEqual(arangodb::velocypack::Options const* opts)
         : _options(opts) {}
 
-    bool operator()(arangodb::velocypack::Slice const&,
-                    arangodb::velocypack::Slice const&) const;
+    bool operator()(arangodb::velocypack::Slice lhs,
+                    arangodb::velocypack::Slice rhs) const;
   };
 
   struct VPackStringEqual {
-    bool operator()(arangodb::velocypack::Slice const&,
-                    arangodb::velocypack::Slice const&) const noexcept;
+    bool operator()(arangodb::velocypack::Slice lhs,
+                    arangodb::velocypack::Slice rhs) const noexcept;
   };
 
   /// @brief less comparator for VelocyPack values
@@ -135,8 +137,8 @@ class VelocyPackHelper {
               arangodb::velocypack::Slice const* rhsBase = nullptr)
         : options(options), lhsBase(lhsBase), rhsBase(rhsBase) {}
 
-    inline bool operator()(arangodb::velocypack::Slice const& lhs,
-                           arangodb::velocypack::Slice const& rhs) const {
+    bool operator()(arangodb::velocypack::Slice lhs,
+                    arangodb::velocypack::Slice rhs) const {
       return VelocyPackHelper::compare(lhs, rhs, useUtf8, options, lhsBase,
                                        rhsBase) < 0;
     }
@@ -158,8 +160,8 @@ class VelocyPackHelper {
           lhsBase(lhsBase),
           rhsBase(rhsBase) {}
 
-    inline bool operator()(arangodb::velocypack::Slice const& lhs,
-                           arangodb::velocypack::Slice const& rhs) const {
+    bool operator()(arangodb::velocypack::Slice lhs,
+                    arangodb::velocypack::Slice rhs) const {
       if (_reverse) {
         return VelocyPackHelper::compare(lhs, rhs, useUtf8, options, lhsBase,
                                          rhsBase) > 0;
@@ -197,41 +199,57 @@ class VelocyPackHelper {
   /// @brief returns a numeric value
   template<typename T>
   static typename std::enable_if<std::is_signed<T>::value, T>::type
-  getNumericValue(VPackSlice const& slice, T defaultValue) {
+  getNumericValue(VPackSlice slice, T defaultValue) {
     if (slice.isNumber()) {
-      return slice.getNumber<T>();
+      try {
+        return slice.getNumber<T>();
+      } catch (VPackException const& ex) {
+        if (ex.errorCode() == VPackException::ExceptionType::NumberOutOfRange) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                         "invalid value for signed integer");
+        }
+        throw;
+      }
     }
     return defaultValue;
   }
 
   template<typename T>
   static typename std::enable_if<std::is_unsigned<T>::value, T>::type
-  getNumericValue(VPackSlice const& slice, T defaultValue) {
+  getNumericValue(VPackSlice slice, T defaultValue) {
     if (slice.isNumber()) {
       if (slice.isInt() && slice.getInt() < 0) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL,
+            TRI_ERROR_BAD_PARAMETER,
             "cannot assign negative value to unsigned type");
       }
       if (slice.isDouble() && slice.getDouble() < 0.0) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL,
+            TRI_ERROR_BAD_PARAMETER,
             "cannot assign negative value to unsigned type");
       }
-      return slice.getNumber<T>();
+      try {
+        return slice.getNumber<T>();
+      } catch (VPackException const& ex) {
+        if (ex.errorCode() == VPackException::ExceptionType::NumberOutOfRange) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                         "invalid value for unsigned number");
+        }
+        throw;
+      }
     }
     return defaultValue;
   }
 
   /// @brief returns a numeric sub-element, or a default if it does not exist
   template<typename T, typename NumberType = T, typename NameType>
-  static T getNumericValue(VPackSlice const& slice, NameType const& name,
+  static T getNumericValue(VPackSlice slice, NameType const& name,
                            T defaultValue);
 
   /// @brief returns a boolean sub-element, or a default if it does not exist or
   /// is not boolean
   template<typename NameType>
-  static bool getBooleanValue(VPackSlice const& slice, NameType const& name,
+  static bool getBooleanValue(VPackSlice slice, NameType const& name,
                               bool defaultValue) {
     if (slice.isObject()) {
       VPackSlice sub = slice.get(name);
@@ -244,31 +262,37 @@ class VelocyPackHelper {
 
   /// @brief returns a string sub-element, or throws if <name> does not exist
   /// or it is not a string
-  static std::string checkAndGetStringValue(VPackSlice const&, char const*);
+  static std::string checkAndGetStringValue(VPackSlice slice,
+                                            std::string_view name);
 
-  /// @brief ensures a sub-element is of type string
-  static std::string checkAndGetStringValue(VPackSlice const&,
-                                            std::string const&);
-
-  static void ensureStringValue(VPackSlice const&, std::string const&);
+  static void ensureStringValue(VPackSlice slice, std::string_view name);
 
   /// @brief returns a Numeric sub-element, or throws if <name> does not exist
   /// or it is not a Number
   template<typename T>
-  static T checkAndGetNumericValue(VPackSlice const& slice, char const* name) {
+  static T checkAndGetNumericValue(VPackSlice slice, std::string_view name) {
     TRI_ASSERT(slice.isObject());
-    VPackSlice const sub = slice.get(name);
+    VPackSlice sub = slice.get(name);
     if (sub.isNone()) {
-      std::string msg =
-          "The attribute '" + std::string(name) + "' was not found.";
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat("attribute '", name, "' was not found"));
     }
     if (!sub.isNumber()) {
-      std::string msg =
-          "The attribute '" + std::string(name) + "' is not a number.";
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat("attribute '", name, "' is not a number"));
     }
-    return sub.getNumericValue<T>();
+    try {
+      return sub.getNumericValue<T>();
+    } catch (VPackException const& ex) {
+      if (ex.errorCode() == VPackException::ExceptionType::NumberOutOfRange) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            absl::StrCat("invalid value for numeric attribute '", name, "'"));
+      }
+      throw;
+    }
   }
 
   /// @return string view, or the defaultValue if slice is not a string
@@ -404,12 +428,21 @@ class VelocyPackHelper {
 };
 
 template<typename T, typename NumberType, typename NameType>
-T VelocyPackHelper::getNumericValue(VPackSlice const& slice,
-                                    NameType const& name, T defaultValue) {
+T VelocyPackHelper::getNumericValue(VPackSlice slice, NameType const& name,
+                                    T defaultValue) {
   if (slice.isObject()) {
     VPackSlice sub = slice.get(name);
     if (sub.isNumber()) {
-      return static_cast<T>(sub.getNumber<NumberType>());
+      try {
+        return static_cast<T>(sub.getNumber<NumberType>());
+      } catch (VPackException const& ex) {
+        if (ex.errorCode() == VPackException::ExceptionType::NumberOutOfRange) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_BAD_PARAMETER,
+              absl::StrCat("invalid value for numeric attribute '", name, "'"));
+        }
+        throw;
+      }
     }
   }
   return defaultValue;
@@ -420,15 +453,7 @@ T VelocyPackHelper::getNumericValue(VPackSlice const& slice,
 template<>
 inline ErrorCode
 VelocyPackHelper::getNumericValue<ErrorCode, ErrorCode, std::string_view>(
-    VPackSlice const& slice, std::string_view const& name,
-    ErrorCode defaultValue) {
-  return ErrorCode{
-      getNumericValue<int>(slice, name, static_cast<int>(defaultValue))};
-}
-template<>
-inline ErrorCode
-VelocyPackHelper::getNumericValue<ErrorCode, ErrorCode, std::string>(
-    VPackSlice const& slice, std::string const& name, ErrorCode defaultValue) {
+    VPackSlice slice, std::string_view const& name, ErrorCode defaultValue) {
   return ErrorCode{
       getNumericValue<int>(slice, name, static_cast<int>(defaultValue))};
 }

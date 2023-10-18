@@ -66,12 +66,7 @@ using namespace arangodb;
 RocksDBTransactionState::RocksDBTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
     transaction::Options const& options, transaction::OperationOrigin trxType)
-    : TransactionState(vocbase, tid, options, trxType),
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      _users(0),
-#endif
-      _cacheTx(nullptr) {
-}
+    : TransactionState(vocbase, tid, options, trxType) {}
 
 /// @brief free a transaction container
 RocksDBTransactionState::~RocksDBTransactionState() {
@@ -141,26 +136,24 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   _counterGuard = mgr->registerTransaction(id(), isReadOnlyTransaction(),
                                            isFollowerTransaction());
 
-  TRI_ASSERT(_cacheTx == nullptr);
+  TRI_ASSERT(_cacheTx.term == cache::Transaction::kInvalidTerm);
 
   // start cache transaction
   auto* manager =
       vocbase().server().getFeature<CacheManagerFeature>().manager();
   if (manager != nullptr) {
-    _cacheTx = manager->beginTransaction(isReadOnlyTransaction());
+    manager->beginTransaction(_cacheTx, isReadOnlyTransaction());
   }
 
   return res;
 }
 
 void RocksDBTransactionState::cleanupTransaction() noexcept {
-  if (_cacheTx != nullptr) {
-    // note: endTransaction() will delete _cacheTrx!
+  if (_cacheTx.term != cache::Transaction::kInvalidTerm) {
     auto* manager =
         vocbase().server().getFeature<CacheManagerFeature>().manager();
     TRI_ASSERT(manager != nullptr);
     manager->endTransaction(_cacheTx);
-    _cacheTx = nullptr;
 
     RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
     for (auto& trxColl : _collections) {
@@ -204,7 +197,7 @@ futures::Future<Result> RocksDBTransactionState::commitTransaction(
       //  operations, it same as reverting intermediate commits.
       std::ignore = self->abortTransaction(activeTrx);  // deletes trx
     }
-    TRI_ASSERT(!self->_cacheTx);
+    TRI_ASSERT(self->_cacheTx.term == cache::Transaction::kInvalidTerm);
     return std::forward<Result>(res);
   });
 }
@@ -228,7 +221,7 @@ Result RocksDBTransactionState::abortTransaction(
     clearQueryCache();
   }
 
-  TRI_ASSERT(!_cacheTx);
+  TRI_ASSERT(_cacheTx.term == cache::Transaction::kInvalidTerm);
   ++statistics()._transactionsAborted;
 
   return result;

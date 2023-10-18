@@ -109,14 +109,19 @@ class PlainCache final : public Cache {
                                        bool enableWindowedStats);
 
   bool freeMemoryWhile(std::function<bool(std::uint64_t)> const& cb) override;
-  virtual void migrateBucket(void* sourcePtr,
-                             std::unique_ptr<Table::Subtable> targets,
-                             Table& newTable) override;
+  void migrateBucket(Table* table, void* sourcePtr,
+                     std::unique_ptr<Table::Subtable> targets,
+                     Table& newTable) override;
 
   // helpers
   std::pair<::ErrorCode, Table::BucketLocker> getBucket(
       Table::HashOrId bucket, std::uint64_t maxTries,
       bool singleOperation = true);
+
+  std::pair<::ErrorCode, Table::BucketLocker> getBucket(Table* table,
+                                                        Table::HashOrId bucket,
+                                                        std::uint64_t maxTries,
+                                                        bool singleOperation);
 
   static Table::BucketClearer bucketClearer(Cache* cache, Metadata* metadata);
 };

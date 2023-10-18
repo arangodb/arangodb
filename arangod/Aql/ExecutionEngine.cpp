@@ -676,51 +676,6 @@ auto ExecutionEngine::executeForClient(AqlCallStack const& stack,
   return res;
 }
 
-std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionEngine::getSome(
-    size_t atMost) {
-  if (_query.killed()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-  }
-  if (!_initializeCursorCalled) {
-    auto res = initializeCursor(nullptr, 0);
-    if (res.first == ExecutionState::WAITING) {
-      return {res.first, nullptr};
-    }
-  }
-  // we use a backwards compatible stack here.
-  // This will always continue with a fetch-all on underlying subqueries (if
-  // any)
-  AqlCallStack compatibilityStack{
-      AqlCallList{AqlCall::SimulateGetSome(atMost)}};
-  auto const [state, skipped, block] = execute(std::move(compatibilityStack));
-  // We cannot trigger a skip operation from here
-  TRI_ASSERT(skipped.nothingSkipped());
-  return {state, std::move(block)};
-}
-
-std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
-  if (_query.killed()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-  }
-  if (!_initializeCursorCalled) {
-    auto res = initializeCursor(nullptr, 0);
-    if (res.first == ExecutionState::WAITING) {
-      return {res.first, 0};
-    }
-  }
-
-  // we use a backwards compatible stack here.
-  // This will always continue with a fetch-all on underlying subqueries (if
-  // any)
-  AqlCallStack compatibilityStack{
-      AqlCallList{AqlCall::SimulateSkipSome(atMost)}};
-  auto const [state, skipped, block] = execute(std::move(compatibilityStack));
-  // We cannot be triggered within a subquery from earlier versions.
-  // Also we cannot produce anything ourselfes here.
-  TRI_ASSERT(block == nullptr);
-  return {state, skipped.getSkipCount()};
-}
-
 // @brief create an execution engine from a plan
 void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
                                           bool planRegisters) {

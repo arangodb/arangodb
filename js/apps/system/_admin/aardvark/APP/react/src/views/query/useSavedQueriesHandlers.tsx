@@ -71,21 +71,31 @@ export const useSavedQueriesHandlers = ({
     mutate("/savedQueries");
   };
 
-  const onSaveQueryList = async (queries: QueryType[]) => {
-    // add queries to savedQueries and dedupe
-    const newQueries = [
-      ...(savedQueries || []),
-      ...queries.filter(
-        query =>
-          !savedQueries?.find(savedQuery => savedQuery.name === query.name)
-      )
-    ];
-    await patchQueries({
-      queries: newQueries,
-      onSuccess: () => {
-        window.arangoHelper.arangoNotification(`Saved queries`);
-      }
-    });
+  const onSaveQueryList = async ({
+    sanitizedQueries,
+    onSuccess,
+    onFailure
+  }: {
+    sanitizedQueries: QueryType[];
+    onSuccess: () => void;
+    onFailure: (e: any) => void;
+  }) => {
+    try {
+      // add queries to savedQueries and dedupe
+      const newQueries = [
+        ...(savedQueries || []),
+        ...sanitizedQueries.filter(
+          query =>
+            !savedQueries?.find(savedQuery => savedQuery.name === query.name)
+        )
+      ];
+      await patchQueries({
+        queries: newQueries,
+        onSuccess
+      });
+    } catch (e: any) {
+      onFailure(e);
+    }
   };
   const {
     isOpen: isSaveAsModalOpen,

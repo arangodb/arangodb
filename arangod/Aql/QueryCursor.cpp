@@ -24,18 +24,23 @@
 
 #include "QueryCursor.h"
 
+#include "Aql/AqlCall.h"
+#include "Aql/AqlCallList.h"
+#include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/SharedQueryState.h"
 #include "Basics/ScopeGuard.h"
-#include "Basics/StringUtils.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
+
+#include <absl/strings/str_cat.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -255,31 +260,32 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(
     return {writeResult(builder), TRI_ERROR_NO_ERROR};
   } catch (arangodb::basics::Exception const& ex) {
     this->setDeleted();
-    return {ExecutionState::DONE,
-            Result(ex.code(), "AQL: " + ex.message() +
-                                  QueryExecutionState::toStringWithPrefix(
-                                      _query->state()))};
+    return {
+        ExecutionState::DONE,
+        Result(ex.code(), absl::StrCat("AQL: ", ex.message(),
+                                       QueryExecutionState::toStringWithPrefix(
+                                           _query->state())))};
   } catch (std::bad_alloc const&) {
+    this->setDeleted();
+    return {ExecutionState::DONE,
+            Result(TRI_ERROR_OUT_OF_MEMORY,
+                   absl::StrCat(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
+                                QueryExecutionState::toStringWithPrefix(
+                                    _query->state())))};
+  } catch (std::exception const& ex) {
     this->setDeleted();
     return {
         ExecutionState::DONE,
-        Result(TRI_ERROR_OUT_OF_MEMORY,
-               StringUtils::concatT(
-                   TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
-                   QueryExecutionState::toStringWithPrefix(_query->state())))};
-  } catch (std::exception const& ex) {
-    this->setDeleted();
-    return {ExecutionState::DONE,
-            Result(TRI_ERROR_INTERNAL,
-                   ex.what() + QueryExecutionState::toStringWithPrefix(
-                                   _query->state()))};
+        Result(TRI_ERROR_INTERNAL,
+               absl::StrCat(ex.what(), QueryExecutionState::toStringWithPrefix(
+                                           _query->state())))};
   } catch (...) {
     this->setDeleted();
     return {ExecutionState::DONE,
             Result(TRI_ERROR_INTERNAL,
-                   StringUtils::concatT(TRI_errno_string(TRI_ERROR_INTERNAL),
-                                        QueryExecutionState::toStringWithPrefix(
-                                            _query->state())))};
+                   absl::StrCat(TRI_errno_string(TRI_ERROR_INTERNAL),
+                                QueryExecutionState::toStringWithPrefix(
+                                    _query->state())))};
   }
 }
 
@@ -335,27 +341,28 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
 
   } catch (arangodb::basics::Exception const& ex) {
     this->setDeleted();
-    return Result(ex.code(),
-                  "AQL: " + ex.message() +
-                      QueryExecutionState::toStringWithPrefix(_query->state()));
+    return Result(
+        ex.code(),
+        absl::StrCat("AQL: ", ex.message(),
+                     QueryExecutionState::toStringWithPrefix(_query->state())));
   } catch (std::bad_alloc const&) {
     this->setDeleted();
     return Result(
         TRI_ERROR_OUT_OF_MEMORY,
-        StringUtils::concatT(
-            TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
-            QueryExecutionState::toStringWithPrefix(_query->state())));
+        absl::StrCat(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
+                     QueryExecutionState::toStringWithPrefix(_query->state())));
   } catch (std::exception const& ex) {
     this->setDeleted();
     return Result(
         TRI_ERROR_INTERNAL,
-        ex.what() + QueryExecutionState::toStringWithPrefix(_query->state()));
+        absl::StrCat(ex.what(),
+                     QueryExecutionState::toStringWithPrefix(_query->state())));
   } catch (...) {
     this->setDeleted();
-    return Result(TRI_ERROR_INTERNAL,
-                  StringUtils::concatT(TRI_errno_string(TRI_ERROR_INTERNAL),
-                                       QueryExecutionState::toStringWithPrefix(
-                                           _query->state())));
+    return Result(
+        TRI_ERROR_INTERNAL,
+        absl::StrCat(TRI_errno_string(TRI_ERROR_INTERNAL),
+                     QueryExecutionState::toStringWithPrefix(_query->state())));
   }
 
   return Result();
@@ -489,11 +496,18 @@ ExecutionState QueryStreamCursor::prepareDump() {
   // We want to fill a result of batchSize if possible and have at least
   // one row left (or be definitively DONE) to set "hasMore" reliably.
   ExecutionState state = ExecutionState::HASMORE;
+  SkipResult skipped;
   bool const silent = _query->queryOptions().silent;
+
+  AqlCall call;
+  call.softLimit = batchSize();
+  AqlCallList callList{std::move(call)};
+  AqlCallStack callStack{std::move(callList)};
 
   while (state != ExecutionState::DONE && (silent || numRows <= batchSize())) {
     SharedAqlItemBlockPtr resultBlock;
-    std::tie(state, resultBlock) = engine->getSome(batchSize());
+    std::tie(state, skipped, resultBlock) = engine->execute(callStack);
+    TRI_ASSERT(skipped.nothingSkipped());
     if (state == ExecutionState::WAITING) {
       break;
     }
@@ -506,7 +520,7 @@ ExecutionState QueryStreamCursor::prepareDump() {
     }
   }
 
-  // remember not to call getSome() again
+  // remember not to call execute() again
   _finalization = (state == ExecutionState::DONE);
   if (_finalization) {
     cleanupStateCallback();

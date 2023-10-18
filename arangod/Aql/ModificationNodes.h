@@ -109,21 +109,21 @@ class ModificationNode : public ExecutionNode, public CollectionAccessingNode {
   /// @brief whether or not the node produces results
   /// this is normally turned on unless an optimizer rule
   /// explicitly turns this off as a performance optimization
-  bool producesResults() const { return _producesResults; }
+  bool producesResults() const noexcept { return _producesResults; }
 
   /// @brief whether or not the node produces results
-  void producesResults(bool value) { _producesResults = value; }
+  void producesResults(bool value) noexcept { _producesResults = value; }
 
   /// @brief whether or not the node is a data modification node
   bool isModificationNode() const override { return true; }
 
   /// @brief whether this node contributes to statistics. Only disabled in
   /// SmartGraph case
-  bool countStats() const { return _countStats; }
+  bool countStats() const noexcept { return _countStats; }
 
   /// @brief Disable that this node is contributing to statistics. Only disabled
   /// in SmartGraph case
-  void disableStatistics() { _countStats = false; }
+  void disableStatistics() noexcept { _countStats = false; }
 
  protected:
   /// @brief export to VelocyPack

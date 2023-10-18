@@ -29,6 +29,7 @@
 #include "Aql/OptimizerRules.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/Parameters.h"
@@ -50,7 +51,11 @@ std::unordered_map<std::string_view, int> OptimizerRulesFeature::_ruleLookup;
 OptimizerRulesFeature::OptimizerRulesFeature(Server& server)
     : ArangodFeature{server, *this} {
   setOptional(false);
+#ifdef USE_V8
   startsAfter<V8FeaturePhase>();
+#else
+  startsAfter<application_features::ClusterFeaturePhase>();
+#endif
 
   startsAfter<AqlFeature>();
 }
@@ -446,6 +451,11 @@ optimizations)");
 they are declared but unused in the query, or only used in filters that are
 pulled into the traversal, significantly reducing overhead.)");
 
+  registerRule("remove-unnecessary-projections", removeUnnecessaryProjections,
+               OptimizerRule::removeUnnecessaryProjections,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Remove projections that are no longer used.)");
+
   registerRule("optimize-cluster-single-document-operations",
                substituteClusterSingleDocumentOperationsRule,
                OptimizerRule::substituteSingleDocumentOperations,
@@ -793,6 +803,14 @@ return a few results at a time.
 
 This optimization is performed on all subqueries and is applied after all other
 optimizations.)");
+
+  // replace adjacent index nodes with a join node if the indexes qualify
+  // for it.
+  registerRule("join-index-nodes", joinIndexNodesRule,
+               OptimizerRule::joinIndexNodesRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Join adjacent index nodes and replace them with a join node
+in case the indexes qualify for it.)");
 
   // allow nodes to asynchronously prefetch the next batch while processing the
   // current batch. this effectively allows parts of the query to run in

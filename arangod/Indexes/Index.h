@@ -44,6 +44,8 @@ class IndexIterator;
 class LogicalCollection;
 struct IndexIteratorOptions;
 struct ResourceMonitor;
+struct AqlIndexStreamIterator;
+struct IndexStreamOptions;
 
 namespace velocypack {
 class Builder;
@@ -178,26 +180,6 @@ class Index {
 
     for (auto const& it : _fields) {
       std::vector<std::string> parts;
-      parts.reserve(it.size());
-      for (auto const& it2 : it) {
-        parts.emplace_back(it2.name);
-      }
-      result.emplace_back(std::move(parts));
-    }
-    return result;
-  }
-
-  /// @brief return the index fields names incl. tracking the resources
-  /// using a resourceMonitor. This needed to be implemented next to the
-  /// method above as we do not have always a resourceMonitor in place
-  /// when acquiring the index fields names.
-  std::vector<MonitoredStringVector> trackedFieldNames(
-      arangodb::ResourceMonitor& resourceMonitor) const {
-    std::vector<MonitoredStringVector> result;
-    result.reserve(_fields.size());
-
-    for (auto const& it : _fields) {
-      MonitoredStringVector parts{resourceMonitor};
       parts.reserve(it.size());
       for (auto const& it2 : it) {
         parts.emplace_back(it2.name);
@@ -452,6 +434,14 @@ class Index {
       aql::AstNode const* access, aql::AstNode const* other,
       aql::AstNode const* op, aql::Variable const* reference,
       containers::FlatHashSet<std::string>& nonNullAttributes, bool) const;
+
+  virtual bool supportsStreamInterface(
+      IndexStreamOptions const&) const noexcept {
+    return false;
+  }
+
+  virtual std::unique_ptr<AqlIndexStreamIterator> streamForCondition(
+      transaction::Methods* trx, IndexStreamOptions const&);
 
   virtual bool canWarmup() const noexcept;
   virtual Result warmup();

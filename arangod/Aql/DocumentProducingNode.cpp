@@ -28,10 +28,11 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/OptimizerUtils.h"
+#include "Aql/QueryContext.h"
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "QueryContext.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -52,10 +53,10 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
                                              arangodb::velocypack::Slice slice)
     : _outVariable(
           Variable::varFromVPack(plan->getAst(), slice, "outVariable")),
-      _projections(arangodb::aql::Projections::fromVelocyPack(
-          slice, plan->getAst()->query().resourceMonitor())),
-      _filterProjections(arangodb::aql::Projections::fromVelocyPack(
-          slice, "filterProjections",
+      _projections(aql::Projections::fromVelocyPack(
+          plan->getAst(), slice, plan->getAst()->query().resourceMonitor())),
+      _filterProjections(aql::Projections::fromVelocyPack(
+          plan->getAst(), slice, "filterProjections",
           plan->getAst()->query().resourceMonitor())),
       _count(false),
       _useCache(true),
@@ -72,10 +73,9 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
 
   _count = arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "count",
                                                                false);
-  _readOwnWrites = arangodb::basics::VelocyPackHelper::getBooleanValue(
-                       slice, StaticStrings::ReadOwnWrites, false)
-                       ? ReadOwnWrites::yes
-                       : ReadOwnWrites::no;
+  _readOwnWrites =
+      ReadOwnWrites{arangodb::basics::VelocyPackHelper::getBooleanValue(
+          slice, StaticStrings::ReadOwnWrites, false)};
 
   _useCache = arangodb::basics::VelocyPackHelper::getBooleanValue(
       slice, StaticStrings::UseCache, _useCache);
@@ -88,10 +88,12 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
 
 void DocumentProducingNode::cloneInto(ExecutionPlan* plan,
                                       DocumentProducingNode& c) const {
-  if (_filter != nullptr) {
+  if (hasFilter()) {
     c.setFilter(
         std::unique_ptr<Expression>(_filter->clone(plan->getAst(), true)));
   }
+  c.setProjections(_projections);
+  c.setFilterProjections(_filterProjections);
   c.copyCountFlag(this);
   c.setCanReadOwnWrites(canReadOwnWrites());
   c.setMaxProjections(maxProjections());
@@ -128,11 +130,7 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
     TRI_ASSERT(_filter == nullptr);
     builder.add(StaticStrings::ProducesResult, VPackValue(false));
   } else {
-    builder.add(
-        StaticStrings::ProducesResult,
-        VPackValue(_filter != nullptr ||
-                   dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(
-                       _outVariable)));
+    builder.add(StaticStrings::ProducesResult, VPackValue(isProduceResult()));
   }
   builder.add(StaticStrings::ReadOwnWrites,
               VPackValue(_readOwnWrites == ReadOwnWrites::yes));
@@ -150,25 +148,56 @@ void DocumentProducingNode::setFilter(std::unique_ptr<Expression> filter) {
   _filter = std::move(filter);
 }
 
-arangodb::aql::Projections const& DocumentProducingNode::projections()
-    const noexcept {
+Projections const& DocumentProducingNode::projections() const noexcept {
   return _projections;
 }
 
-arangodb::aql::Projections& DocumentProducingNode::projections() noexcept {
+Projections& DocumentProducingNode::projections() noexcept {
   return _projections;
 }
 
-arangodb::aql::Projections const& DocumentProducingNode::filterProjections()
-    const noexcept {
+Projections const& DocumentProducingNode::filterProjections() const noexcept {
   return _filterProjections;
 }
 
-void DocumentProducingNode::setProjections(
-    arangodb::aql::Projections projections) {
+void DocumentProducingNode::setProjections(aql::Projections projections) {
   _projections = std::move(projections);
 }
 
-bool DocumentProducingNode::doCount() const {
-  return _count && (_filter == nullptr);
+void DocumentProducingNode::setFilterProjections(aql::Projections projections) {
+  _filterProjections = std::move(projections);
+}
+
+bool DocumentProducingNode::doCount() const noexcept {
+  return _count && !hasFilter();
+}
+
+bool DocumentProducingNode::recalculateProjections(ExecutionPlan* plan) {
+  auto filterProjectionsHash = _filterProjections.hash();
+  auto projectionsHash = _projections.hash();
+  _filterProjections.clear();
+  _projections.clear();
+
+  containers::FlatHashSet<AttributeNamePath> attributes;
+  if (hasFilter()) {
+    if (Ast::getReferencedAttributesRecursive(
+            this->filter()->node(), this->outVariable(),
+            /*expectedAttribute*/ "", attributes,
+            plan->getAst()->query().resourceMonitor())) {
+      _filterProjections = aql::Projections{std::move(attributes)};
+    }
+  }
+
+  attributes.clear();
+  if (utils::findProjections(dynamic_cast<ExecutionNode*>(this), outVariable(),
+                             /*expectedAttribute*/ "",
+                             /*excludeStartNodeFilterCondition*/ true,
+                             attributes)) {
+    if (attributes.size() <= maxProjections()) {
+      _projections = Projections(std::move(attributes));
+    }
+  }
+
+  return projectionsHash != _projections.hash() ||
+         filterProjectionsHash != _filterProjections.hash();
 }

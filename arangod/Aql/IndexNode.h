@@ -105,6 +105,11 @@ class IndexNode : public ExecutionNode,
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
 
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable) override;
+
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;
 
@@ -140,8 +145,8 @@ class IndexNode : public ExecutionNode,
     Variable const* var;
   };
 
-  using IndexValuesVars =
-      std::pair<IndexId, std::unordered_map<Variable const*, size_t>>;
+  using IndexFilterCoveringVars = std::unordered_map<Variable const*, size_t>;
+  using IndexValuesVars = std::pair<IndexId, IndexFilterCoveringVars>;
 
   using IndexValuesRegisters =
       std::pair<IndexId, std::unordered_map<size_t, RegisterId>>;
@@ -162,6 +167,10 @@ class IndexNode : public ExecutionNode,
   // prepare projections for usage with an index
   void prepareProjections();
 
+  bool recalculateProjections(ExecutionPlan*) override;
+
+  bool isProduceResult() const override;
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
@@ -169,10 +178,6 @@ class IndexNode : public ExecutionNode,
 
  private:
   NonConstExpressionContainer buildNonConstExpressions() const;
-
-  bool isProduceResult() const {
-    return (isVarUsedLater(_outVariable) || _filter != nullptr) && !doCount();
-  }
 
   /// @brief adds a UNIQUE() to a dynamic IN condition
   arangodb::aql::AstNode* makeUnique(AstNode*) const;
@@ -193,9 +198,8 @@ class IndexNode : public ExecutionNode,
   /// @brief We have single index and this index covered whole condition
   bool _allCoveredByOneIndex;
 
-  /// @brief if the (post) filter condition is fully covered by the index
-  /// attributes
-  bool _indexCoversFilterCondition;
+  /// @brief if the projections are fully covered by the index attributes
+  std::optional<bool> _indexCoversProjections;
 
   /// @brief the index iterator options - same for all indexes
   IndexIteratorOptions _options;

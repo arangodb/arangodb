@@ -159,7 +159,6 @@ add_library(arango STATIC
   ApplicationFeatures/OptionsCheckFeature.cpp
   ApplicationFeatures/ShutdownFeature.cpp
   ApplicationFeatures/TempFeature.cpp
-  ApplicationFeatures/V8PlatformFeature.cpp
   ApplicationFeatures/VersionFeature.cpp
   Assertions/AssertionConditionalLogger.cpp
   Assertions/AssertionLogger.cpp
@@ -234,6 +233,11 @@ add_library(arango STATIC
   Zip/zip.cpp
 )
 
+if (USE_V8) 
+  target_sources(arango PRIVATE
+    ApplicationFeatures/V8PlatformFeature.cpp)
+endif()
+
 target_link_libraries(arango
   PUBLIC s2
          arango_build_id
@@ -245,7 +249,6 @@ target_link_libraries(arango
          velocypack
          linenoise-ng
          date_interface
-         ${V8_LIBS}
          ${SYSTEM_LIBRARIES}
          ${ICU_LIBS}
          absl::crc32c
@@ -256,6 +259,10 @@ target_link_libraries(arango
          absl::synchronization
          absl::strings
          arango_lightweight)
+
+if (USE_V8)
+  target_link_libraries(arango PUBLIC ${V8_LIBS})
+endif()
 
 target_link_libraries(arango PUBLIC fmt::fmt)
 
@@ -271,7 +278,9 @@ target_include_directories(arango SYSTEM PUBLIC ${ICU_INCLUDE_DIR})
 
 target_link_libraries(arango PUBLIC rocksdb_interface)
 target_link_libraries(arango PUBLIC zlib_interface)
-target_link_libraries(arango PUBLIC v8_interface)
+if (USE_V8)
+  target_link_libraries(arango PUBLIC v8_interface)
+endif()
 
 add_dependencies(arango v8_build)
 
@@ -299,7 +308,9 @@ endif()
 
 add_subdirectory(Futures)
 add_subdirectory(Geo)
-add_subdirectory(V8)
+if (USE_V8)
+  add_subdirectory(V8)
+endif()
 add_subdirectory(VelocypackUtils)
 add_subdirectory(CrashHandler)
 add_subdirectory(Assertions)

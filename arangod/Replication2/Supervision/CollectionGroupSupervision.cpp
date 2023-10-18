@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "Agency/TransactionBuilder.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/Utils/EvenDistribution.h"
 #include "CollectionGroupSupervision.h"
 #include "Replication2/AgencyCollectionSpecification.h"
@@ -420,8 +421,8 @@ auto checkCollectionsOfGroup(CollectionGroup const& group,
         << "the collection " << cid << " is listed in Target/CollectionGroups/"
         << group.target.id.id() << " but does not exist in Target/Collections";
 
-    if (not group.planCollections.contains(cid)) {
-      ADB_PROD_ASSERT(not group.plan->collections.contains(cid))
+    if (not group.plan->collections.contains(cid)) {
+      ADB_PROD_ASSERT(not group.planCollections.contains(cid))
           << "the target collection " << cid
           << " is not listed in Plan/CollectionGroup/" << group.target.id.id()
           << ", but exists in Plan/Collections.";
@@ -443,6 +444,90 @@ auto checkCollectionsOfGroup(CollectionGroup const& group,
 
     if (collection.mutableProperties != iter->second.mutableProperties) {
       return UpdateCollectionPlan{cid, iter->second.mutableProperties};
+    }
+
+    {
+      // Compare Indexes
+      auto const& targetIndexes = iter->second.indexes.indexes;
+      auto const& planIndexes = collection.indexes.indexes;
+
+      // NOTE/TODO: Maybe we want to make the Target entry for Indexes an Object
+      // where the keys are the IndexIds, this way we already have the
+      // lookupList here.
+
+      // This lookup set should map indexId -> foundInPlan
+      // It will be seeded with all indexes from the target.
+      // If an index is found in plan it is supposed to erase
+      // it's entry. => Whatever is left is missing in Plan.
+      std::unordered_set<std::string> lookupTargetIndexes;
+      lookupTargetIndexes.reserve(targetIndexes.size());
+      for (auto const& it : targetIndexes) {
+        auto idx = it.slice().get(StaticStrings::IndexId);
+        TRI_ASSERT(idx.isString());
+        lookupTargetIndexes.emplace(idx.copyString());
+      }
+
+      // Now check what we have in Plan
+      for (auto const& it : planIndexes) {
+        auto idx = it.slice();
+        auto idxId = idx.get(StaticStrings::IndexId);
+        TRI_ASSERT(idxId.isString());
+        auto indexId = idxId.copyString();
+        auto removedCount = lookupTargetIndexes.erase(indexId);
+        if (removedCount == 0) {
+          // This is an Index that is in Plan but not in Target
+          return RemoveCollectionIndexPlan{cid, it.sharedSlice()};
+        }
+        if (arangodb::basics::VelocyPackHelper::getBooleanValue(
+                idx, StaticStrings::IndexIsBuilding, false)) {
+          // Index is still Flagged as isBuilding. Let us test if it converged
+
+          // TODO: We do not yet implement errors that could appear during
+          // creation of a UniqueIndex
+          auto const& currentCollection = group.currentCollections.find(cid);
+          // Let us protect against Collection not created, although it should
+          // be, as we are trying to add an index to it right now.
+          if (currentCollection != group.currentCollections.end()) {
+            auto const& currentShards = currentCollection->second.shards;
+            bool allConverged = true;
+            for (auto const& [shardId, shard] : currentShards) {
+              bool foundLocalIndex = false;
+              for (auto const& index : shard.indexes) {
+                if (index.get(StaticStrings::IndexId).isEqualString(indexId)) {
+                  foundLocalIndex = true;
+                  break;
+                }
+              }
+              if (!foundLocalIndex) {
+                allConverged = false;
+                break;
+              }
+            }
+            if (allConverged) {
+              return IndexConvergedCurrent{cid, it.sharedSlice()};
+            }
+          }
+        }
+      }
+
+      if (!lookupTargetIndexes.empty()) {
+        // This is at least one Index that is in Target but not yet in Plan
+        // Create an action to create the first one
+        auto const& missingIndex = lookupTargetIndexes.begin();
+        // We need to find the index again in the list of all Indexes in Target
+        for (auto const& it : targetIndexes) {
+          if (it.slice()
+                  .get(StaticStrings::IndexId)
+                  .isEqualString(*missingIndex)) {
+            // If we do have shards, we need to create the isBuilding Flag,
+            // otherwise index is already converged
+            return AddCollectionIndexPlan{cid, it.buffer(),
+                                          !collection.shardList.empty()};
+          }
+        }
+        TRI_ASSERT(false) << "We discovered a missing index, it has to be part "
+                             "of the list of indexes";
+      }
     }
 
     if (!collection.immutableProperties.shadowCollections.has_value()) {
@@ -621,6 +706,75 @@ struct TransactionBuilder {
       tmp = std::move(tmp).remove(basics::StringUtils::concatT(
           "/arango/Plan/Collections/", database, "/", action.cid, "/schema"));
     }
+    env = std::move(tmp)
+              .inc("/arango/Plan/Version")
+              .precs()
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Plan/Collections/", database, "/", action.cid))
+              .end();
+  }
+
+  void operator()(RemoveCollectionIndexPlan const& action) {
+    auto tmp = env.write();
+    // Just overwrite all indexes as defined by the Action
+    tmp = std::move(tmp).erase_object(
+        basics::StringUtils::concatT("/arango/Plan/Collections/", database, "/",
+                                     action.cid, "/indexes"),
+        [&](VPackBuilder& builder) { builder.add(action.index.slice()); });
+    env = std::move(tmp)
+              .inc("/arango/Plan/Version")
+              .precs()
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Plan/Collections/", database, "/", action.cid))
+              .end();
+  }
+
+  void operator()(AddCollectionIndexPlan const& action) {
+    auto tmp = env.write();
+    // Just overwrite all indexes as defined by the Action
+    tmp = std::move(tmp).push_object(
+        basics::StringUtils::concatT("/arango/Plan/Collections/", database, "/",
+                                     action.cid, "/indexes"),
+        [&](VPackBuilder& builder) {
+          arangodb::velocypack::Slice indexData{action.index->data()};
+          // We need to add the isBuildingFlag
+          TRI_ASSERT(indexData.isObject());
+          VPackObjectBuilder guard{&builder};
+          builder.add(VPackObjectIterator(indexData));
+          if (action.useIsBuilding) {
+            builder.add(StaticStrings::IndexIsBuilding, VPackValue(true));
+          }
+        });
+    env = std::move(tmp)
+              .inc("/arango/Plan/Version")
+              .precs()
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Plan/Collections/", database, "/", action.cid))
+              .end();
+  }
+
+  void operator()(IndexConvergedCurrent const& action) {
+    auto tmp = env.write();
+    // Just overwrite all indexes as defined by the Action
+    tmp = std::move(tmp).replace(
+        basics::StringUtils::concatT("/arango/Plan/Collections/", database, "/",
+                                     action.cid, "/indexes"),
+        [&](VPackBuilder& builder) {
+          // Old value, take from the Action
+          builder.add(action.index.slice());
+        },
+        [&](VPackBuilder& builder) {
+          // New value, take everything from the action, but remove the
+          // isBuilding Flag
+          TRI_ASSERT(action.index.slice().isObject());
+          VPackObjectBuilder guard{&builder};
+          for (auto const& [key, value] :
+               VPackObjectIterator(action.index.slice())) {
+            if (!key.isEqualString(StaticStrings::IndexIsBuilding)) {
+              builder.add(key.copyString(), value);
+            }
+          }
+        });
     env = std::move(tmp)
               .inc("/arango/Plan/Version")
               .precs()

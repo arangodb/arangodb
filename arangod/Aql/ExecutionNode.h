@@ -55,6 +55,9 @@
 #pragma once
 
 #include <memory>
+#include <span>
+#include <string>
+#include <string_view>
 #include <vector>
 #include <unordered_map>
 
@@ -106,12 +109,11 @@ size_t estimateListLength(ExecutionPlan const* plan, Variable const* var);
 struct SortElement {
   Variable const* var;
   bool ascending;
-  MonitoredStringVector attributePath;
+  std::vector<std::string> attributePath;
 
-  SortElement(Variable const* v, bool asc, arangodb::ResourceMonitor& monitor);
+  SortElement(Variable const* v, bool asc);
 
-  SortElement(Variable const* v, bool asc, MonitoredStringVector const& path,
-              arangodb::ResourceMonitor& monitor);
+  SortElement(Variable const* v, bool asc, std::vector<std::string> path);
 
   /// @brief stringify a sort element. note: the output of this should match the
   /// stringification output of an AstNode for an attribute access
@@ -169,6 +171,7 @@ class ExecutionNode {
     WINDOW = 34,
     OFFSET_INFO_MATERIALIZE = 35,
     REMOTE_MULTIPLE = 36,
+    JOIN = 37,
 
     MAX_NODE_TYPE_VALUE
   };
@@ -352,6 +355,13 @@ class ExecutionNode {
   virtual void replaceVariables(
       std::unordered_map<VariableId, Variable const*> const& replacements);
 
+  /// @brief replaces an attribute access in the internals of the execution
+  /// node with a simple variable access
+  virtual void replaceAttributeAccess(ExecutionNode const* self,
+                                      Variable const* searchVariable,
+                                      std::span<std::string_view> attribute,
+                                      Variable const* replaceVariable);
+
   /// @brief check equality of ExecutionNodes
   virtual bool isEqualTo(ExecutionNode const& other) const;
 
@@ -499,9 +509,9 @@ class ExecutionNode {
   void enableCallstackSplit() noexcept { _isCallstackSplitEnabled = true; }
 
   [[nodiscard]] static bool isIncreaseDepth(NodeType type);
-  [[nodiscard]] bool isIncreaseDepth() const;
+  [[nodiscard]] virtual bool isIncreaseDepth() const;
   [[nodiscard]] static bool alwaysCopiesRows(NodeType type);
-  [[nodiscard]] bool alwaysCopiesRows() const;
+  [[nodiscard]] virtual bool alwaysCopiesRows() const;
 
   auto getRegsToKeepStack() const -> RegIdSetStack;
 
@@ -675,6 +685,13 @@ class EnumerateCollectionNode : public ExecutionNode,
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
 
+  /// @brief replaces an attribute access in the internals of the execution
+  /// node with a simple variable access
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable) override;
+
   /// @brief the cost of an enumerate collection node is a multiple of the cost
   /// of its unique dependency
   CostEstimate estimateCost() const override final;
@@ -693,6 +710,10 @@ class EnumerateCollectionNode : public ExecutionNode,
 
   /// @brief user hint regarding which index ot use
   IndexHint const& hint() const;
+
+  void setProjections(Projections projections) override;
+
+  bool isProduceResult() const override;
 
  protected:
   /// @brief export to VelocyPack
@@ -856,6 +877,13 @@ class CalculationNode : public ExecutionNode {
 
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
+
+  /// @brief replaces an attribute access in the internals of the execution
+  /// node with a simple variable access
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
@@ -1194,14 +1222,14 @@ class MaterializeNode : public ExecutionNode {
   Variable const* _outVariable;
 };
 
-class MaterializeMultiNode : public MaterializeNode {
+class MaterializeSearchNode : public MaterializeNode {
  public:
-  MaterializeMultiNode(ExecutionPlan* plan, ExecutionNodeId id,
-                       aql::Variable const& inDocId,
-                       aql::Variable const& outVariable);
+  MaterializeSearchNode(ExecutionPlan* plan, ExecutionNodeId id,
+                        aql::Variable const& inDocId,
+                        aql::Variable const& outVariable);
 
-  MaterializeMultiNode(ExecutionPlan* plan,
-                       arangodb::velocypack::Slice const& base);
+  MaterializeSearchNode(ExecutionPlan* plan,
+                        arangodb::velocypack::Slice const& base);
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -1217,17 +1245,16 @@ class MaterializeMultiNode : public MaterializeNode {
                       unsigned flags) const override final;
 };
 
-template<bool localDocumentId>
-class MaterializeSingleNode : public MaterializeNode,
-                              public CollectionAccessingNode {
+class MaterializeRocksDBNode : public MaterializeNode,
+                               public CollectionAccessingNode {
  public:
-  MaterializeSingleNode(ExecutionPlan* plan, ExecutionNodeId id,
-                        aql::Collection const* collection,
-                        aql::Variable const& inDocId,
-                        aql::Variable const& outVariable);
+  MaterializeRocksDBNode(ExecutionPlan* plan, ExecutionNodeId id,
+                         aql::Collection const* collection,
+                         aql::Variable const& inDocId,
+                         aql::Variable const& outVariable);
 
-  MaterializeSingleNode(ExecutionPlan* plan,
-                        arangodb::velocypack::Slice const& base);
+  MaterializeRocksDBNode(ExecutionPlan* plan,
+                         arangodb::velocypack::Slice const& base);
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -1236,6 +1263,9 @@ class MaterializeSingleNode : public MaterializeNode,
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
+
+  bool alwaysCopiesRows() const override { return false; }
+  bool isIncreaseDepth() const override { return false; }
 
  protected:
   /// @brief export to VelocyPack

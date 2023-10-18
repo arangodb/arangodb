@@ -83,6 +83,9 @@ template<typename Payload>
 void RestBaseHandler::generateResult(rest::ResponseCode code,
                                      Payload&& payload) {
   resetResponse(code);
+  if (_potentialDirtyReads) {
+    _response->setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
+  }
   writeResult(std::forward<Payload>(payload), VPackOptions::Defaults);
 }
 
@@ -90,6 +93,9 @@ template<typename Payload>
 void RestBaseHandler::generateResult(rest::ResponseCode code, Payload&& payload,
                                      VPackOptions const* options) {
   resetResponse(code);
+  if (_potentialDirtyReads) {
+    _response->setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
+  }
   writeResult(std::forward<Payload>(payload), *options);
 }
 ////////////////////////////////////////////////////////////////////////////////
