@@ -14,6 +14,7 @@ declare global {
     frontendConfig: FrontendConfig;
     versionHelper: { [key: string]: any };
     arangoValidationHelper: { [key: string]: any };
+    prettyBytes: (bytes: number) => string;
     App: any;
   }
 }

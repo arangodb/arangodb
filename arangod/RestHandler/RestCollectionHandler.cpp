@@ -370,7 +370,7 @@ void RestCollectionHandler::handleCommandPost() {
 
   std::shared_ptr<LogicalCollection> coll;
   // backwards compatibility transformation:
-  Result res{TRI_ERROR_NO_ERROR};
+  Result res;
   if (result.fail()) {
     res = result.result();
   } else {

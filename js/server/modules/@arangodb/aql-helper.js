@@ -1,6 +1,6 @@
 /* jshint strict: false */
-/* global assertTrue, assertFalse, assertEqual, fail,
-  AQL_EXECUTE, AQL_PARSE, AQL_EXPLAIN, AQL_EXECUTEJSON */
+/* global assertTrue, assertFalse, assertEqual, fail, arango
+  AQL_EXECUTEJSON */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief aql test helper functions
@@ -33,7 +33,8 @@
 // / @brief normalize a single row result
 // //////////////////////////////////////////////////////////////////////////////
 
-let isEqual = require("@arangodb/test-helper").isEqual;
+let isEqual = require("@arangodb/test-helper-common").isEqual;
+var db = require("@arangodb").db;
 
 exports.isEqual = isEqual;
 
@@ -69,7 +70,7 @@ function normalizeRow (row, recursive) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function getParseResults (query) {
-  return AQL_PARSE(query);
+  return db._parse(query);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -91,7 +92,7 @@ function assertParseError (errorCode, query) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function getQueryExplanation (query, bindVars) {
-  return AQL_EXPLAIN(query, bindVars);
+  return db._createStatement({query, bindVars}).explain();
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -99,7 +100,7 @@ function getQueryExplanation (query, bindVars) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function getModifyQueryResults (query, bindVars, options = {}) {
-  return  AQL_EXECUTE(query, bindVars, options).stats;
+  return  db._createStatement({query, bindVars, options}).execute().getExtra().stats;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -107,7 +108,7 @@ function getModifyQueryResults (query, bindVars, options = {}) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function getModifyQueryResultsRaw (query, bindVars, options = {}) {
-  return AQL_EXECUTE(query, bindVars, options);
+  return db._query(query, bindVars, options);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -116,8 +117,8 @@ function getModifyQueryResultsRaw (query, bindVars, options = {}) {
 
 function getRawQueryResults (query, bindVars, options = {}) {
   var finalOptions = Object.assign({ count: true, batchSize: 3000 }, options);
-  var queryResult = AQL_EXECUTE(query, bindVars, finalOptions);
-  return queryResult.json;
+  var queryResult = db._query(query, bindVars, finalOptions);
+  return queryResult.toArray();
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -157,14 +158,14 @@ function assertQueryError (errorCode, query, bindVars, options = {}) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function assertQueryWarningAndNull (errorCode, query, bindVars) {
-  var result = AQL_EXECUTE(query, bindVars), i, found = { };
+  var result = db._query(query, bindVars).data, i, found = { };
 
-  for (i = 0; i < result.warnings.length; ++i) {
-    found[result.warnings[i].code] = true;
+  for (i = 0; i < result.extra.warnings.length; ++i) {
+    found[result.extra.warnings[i].code] = true;
   }
 
   assertTrue(found[errorCode]);
-  assertEqual([ null ], result.json);
+  assertEqual([ null ], result.result);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -274,10 +275,20 @@ function findReferencedNodes (plan, testNode) {
   return matches;
 }
 
+
 function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug) {
   var printYaml = function (plan) {
     require('internal').print(require('js-yaml').safeDump(plan));
   };
+  var execute_json = function (plan, param) {
+    let command = `
+      let plan = ${JSON.stringify(plan)};
+      let opts = ${JSON.stringify(param)};
+      return AQL_EXECUTEJSON(plan, opts);
+    `;
+    return arango.POST("/_admin/execute", command);
+  };
+
   var i;
   var plans = [];
   var allPlans = [];
@@ -298,13 +309,13 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
   if (debug) {
     require('internal').print('Analyzing Query unoptimized: ' + query);
   }
-  plans[0] = AQL_EXPLAIN(query, bindVars, paramNone);
+  plans[0] = db._createStatement({query: query, bindVars: bindVars, options: paramNone}).explain();
   // then all of the ones permuted by by the optimizer.
   if (debug) {
     require('internal').print('Unoptimized Plan (0):');
     printYaml(plans[0]);
   }
-  allPlans = AQL_EXPLAIN(query, bindVars, paramAllPlans);
+  allPlans = db._createStatement({query: query, bindVars: bindVars, options: paramAllPlans}).explain();
 
   for (i = 0; i < allPlans.plans.length; i++) {
     if (debug) {
@@ -329,7 +340,7 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
       }
     }
 
-    results[i] = AQL_EXECUTEJSON(plans[i].plan, paramNone);
+    results[i] = execute_json(plans[i].plan, paramNone);
     // ignore these statistics for comparisons
     delete results[i].stats.scannedFull;
     delete results[i].stats.scannedIndex;
