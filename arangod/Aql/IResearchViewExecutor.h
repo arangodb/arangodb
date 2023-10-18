@@ -48,6 +48,7 @@
 #include <formats/formats.hpp>
 #include <index/heap_iterator.hpp>
 #include <utils/empty.hpp>
+#include <search/score.hpp>
 
 #include <utility>
 #include <variant>

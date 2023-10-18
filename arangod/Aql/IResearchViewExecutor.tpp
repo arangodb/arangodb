@@ -51,7 +51,6 @@
 #include <absl/strings/str_cat.h>
 #include <analysis/token_attributes.hpp>
 #include <search/boolean_filter.hpp>
-#include <search/score.hpp>
 #include <search/cost.hpp>
 #include <utility>
 
