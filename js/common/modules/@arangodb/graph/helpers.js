@@ -1,11 +1,6 @@
 /* jshint strict: true, unused: true */
-/* global AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Helpers for graph tests
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2016-2016 ArangoDB GmbH, Cologne, Germany
@@ -28,7 +23,7 @@
 /// @author Copyright 2016-2016, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require('jsunity');
+const jsunity = require('jsunity');
 const db = require("@arangodb").db;
 const {assertEqual, assertNotEqual} = jsunity.jsUnity.assertions;
 
@@ -718,7 +713,7 @@ let runTraversalRestrictEdgeCollectionTests = function (vn, en, gn, checkOptimiz
 
   queries.forEach(function(q) {
     if (checkOptimizerRule) {
-      assertNotEqual(-1, AQL_EXPLAIN(q[0]).plan.rules.indexOf(checkOptimizerRule));
+      assertNotEqual(-1, db._createStatement(q[0]).explain().plan.rules.indexOf(checkOptimizerRule));
     }
     const actual = db._query(q[0]).toArray();
     let expected = [];

@@ -192,7 +192,8 @@ class RocksDBEngine final : public StorageEngine {
 
   void getCapabilities(velocypack::Builder& builder) const override;
   void getStatistics(velocypack::Builder& builder) const override;
-  void getStatistics(std::string& result) const override;
+  void toPrometheus(std::string& result, std::string_view globals,
+                    bool ensureWhitespace) const override;
 
   // inventory functionality
   // -----------------------

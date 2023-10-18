@@ -36,7 +36,7 @@ export const useCreateGeoIndex = () => {
   const onCreate = async ({ values }: { values: typeof INITIAL_VALUES }) => {
     return onCreateIndex({
       ...values,
-      fields: values.fields.split(",")
+      fields: values.fields.split(",").map(field => field.trim())
     });
   };
   return { onCreate };

@@ -3,6 +3,10 @@ devel
 
 * Fix propagation of collection `writeConcern` changes to DB servers.
 
+* FE-385: fix web UI query import stuck on loading for faulty JSON.
+
+* FE-378: fix fields containing spaces during index creation on web UI.
+
 * FE-288: Improve collection index UI.
 
 * FE-321: add validation for query name in web UI.
