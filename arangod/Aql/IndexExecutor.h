@@ -75,7 +75,8 @@ class IndexExecutorInfos {
       std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
       IndexIteratorOptions options,
       IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
-      IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs);
+      IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs,
+      IndexNode::IndexFilterCoveringVars filterCoveringVars);
 
   IndexExecutorInfos() = delete;
   IndexExecutorInfos(IndexExecutorInfos&&) = default;
@@ -130,6 +131,11 @@ class IndexExecutorInfos {
     return _outNonMaterializedIndRegs;
   }
 
+  IndexNode::IndexFilterCoveringVars const& getFilterCoveringVars()
+      const noexcept {
+    return _filterCoveringVars;
+  }
+
   bool isOneIndexCondition() const noexcept { return _oneIndexCondition; }
 
  private:
@@ -161,6 +167,7 @@ class IndexExecutorInfos {
   arangodb::aql::Projections _filterProjections;
 
   std::vector<std::pair<VariableId, RegisterId>> _filterVarsToRegs;
+  IndexNode::IndexFilterCoveringVars _filterCoveringVars;
 
   NonConstExpressionContainer _nonConstExpressions;
 

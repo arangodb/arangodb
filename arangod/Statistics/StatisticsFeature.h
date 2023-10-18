@@ -23,15 +23,17 @@
 
 #pragma once
 
-#include <array>
-#include <initializer_list>
-
 #include "Basics/Result.h"
 #include "Basics/system-functions.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/arangod.h"
 #include "Statistics/Descriptions.h"
 #include "Statistics/figures.h"
+
+#include <array>
+#include <initializer_list>
+#include <string>
+#include <string_view>
 
 struct TRI_vocbase_t;
 
@@ -96,15 +98,13 @@ class StatisticsFeature final : public ArangodFeature {
   void prepare() override final;
   void start() override final;
   void stop() override final;
-  void toPrometheus(std::string& result, double now, bool ensureWhitespace);
+  void toPrometheus(std::string& result, double now, std::string_view globals,
+                    bool ensureWhitespace);
 
   stats::Descriptions const& descriptions() const { return _descriptions; }
 
   static arangodb::velocypack::Builder fillDistribution(
       statistics::Distribution const& dist);
-
-  static void appendMetric(std::string& result, std::string const& val,
-                           std::string const& label, bool ensureWhitespace);
 
   Result getClusterSystemStatistics(
       TRI_vocbase_t& vocbase, double start,
@@ -113,11 +113,16 @@ class StatisticsFeature final : public ArangodFeature {
   bool allDatabases() const noexcept { return _statisticsAllDatabases; }
 
  private:
+  static void appendMetric(std::string& result, std::string const& val,
+                           std::string const& label, std::string_view globals,
+                           bool ensureWhitespace);
+
   static void appendHistogram(std::string& result,
                               statistics::Distribution const& dist,
                               std::string const& label,
                               std::initializer_list<std::string> const& les,
-                              bool isInteger, bool ensureWhitespace);
+                              bool isInteger, std::string_view globals,
+                              bool ensureWhitespace);
   bool _statistics;
   bool _statisticsHistory;
   bool _statisticsHistoryTouched;

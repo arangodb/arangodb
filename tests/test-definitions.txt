@@ -48,12 +48,12 @@ shell_client_traffic !mac priority=250 parallelity=1 single suffix=ssl-http -- h
 shell_client_traffic !mac priority=250 parallelity=1 single suffix=ssl-http2 -- --http2 true --protocol ssl
 shell_client_traffic !mac priority=250 parallelity=1 single suffix=ssl-vst -- --vst true --protocol ssl
 
-shell_client_aql priority=250  single suffix=http -- --http true
-shell_client_aql !mac priority=500  single suffix=http2 -- --http2 true
-shell_client_aql !mac priority=750  single suffix=vst -- --vst true
-shell_client_aql !mac priority=1000 single enterprise suffix=encrypt -- --encryptionAtRest true
+shell_client_aql priority=250  single suffix=http -- --http true buckets=17
+shell_client_aql !mac priority=500  single suffix=http2 -- --http2 true buckets=17
+shell_client_aql !mac priority=750  single suffix=vst -- --vst true buckets=17
+shell_client_aql !mac priority=1000 single enterprise suffix=encrypt -- --encryptionAtRest true buckets=17
 
-shell_server_aql priority=750 single buckets=5
+# shell_server_aql priority=750 single buckets=5
 # execute without buckets in single server, but use 5 buckets in cluster
 shell_server priority=1000 single buckets=3
 
@@ -97,7 +97,7 @@ shell_client_multi priority=1500 cluster suffix=http2 -- --http2 true
 shell_client_multi priority=2500 cluster suffix=vst -- --vst true
 
 # different number of buckets in cluster
-shell_server_aql priority=1000 size=medium+ cluster buckets=16 -- --dumpAgencyOnError true
+shell_client_aql !mac priority=1000 size=medium+ cluster buckets=17 -- --dumpAgencyOnError true
 shell_client priority=500 cluster buckets=5 -- --dumpAgencyOnError true
 shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5 -- --dumpAgencyOnError true
 shell_client_replication2_recovery priority=500 size=small cluster -- --dumpAgencyOnError true
@@ -164,7 +164,6 @@ resilience_failover_view !mac full cluster priority=500 -- --dumpAgencyOnError t
 resilience_move_view !mac full cluster priority=750 -- --dumpAgencyOnError true
 resilience_repair !mac full cluster priority=500 -- --dumpAgencyOnError true
 resilience_transactions !mac full cluster priority=500 -- --dumpAgencyOnError true
-shell_client_aql !mac full cluster priority=2500 -- --dumpAgencyOnError true
 wal_cleanup full cluster priority=2500 -- --dumpAgencyOnError true
 
 # Common Full Tests
