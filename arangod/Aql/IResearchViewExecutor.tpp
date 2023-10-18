@@ -1785,7 +1785,6 @@ size_t IResearchViewExecutor<ExecutionTraits>::skipAll(IResearchViewStats&) {
     _segmentOffset = count;
   } else {
     auto const approximate = this->infos().countApproximate();
-    size_t parallelism = this->_infos.parallelism();
     for (auto& r : _segmentReaders) {
       if (r.itr) {
         skipped +=
