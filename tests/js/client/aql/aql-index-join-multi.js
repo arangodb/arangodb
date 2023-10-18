@@ -54,7 +54,7 @@ const indexJoinTestMultiSuite = function (parameters) {
   const collection1 = "A";
   const collection2 = "B";
 
-  const numDocuments = 10;
+  const numDocuments = 2000;
   const documentsA = Array.from({length: numDocuments}).map(function (v, idx) { return {x: idx, y: 2 * idx, z: 3 * idx + 1}; });
   const documentsB = Array.from({length: numDocuments}).map(function (v, idx) { return {x: idx, y: 2 * idx, z: 3 * idx}; });
 
