@@ -22,10 +22,12 @@ export const ImportQueryModal = ({
         "parameter": "Query Bind Parameter as Object"
       }]
     `;
-  const [file, setFile] = useState<File | null>(null);
+  const [file, setFile] = useState<File | undefined>();
   const onSelectFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      return;
+    }
     setFile(file);
   };
   const { onUpload, isUploading } = useQueryImport({ onClose });

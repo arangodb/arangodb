@@ -9,7 +9,7 @@ const useReadFile = () => {
     file,
     onLoad
   }: {
-    file?: File | null;
+    file: File | undefined;
     onLoad: (data: { [key: string]: any }) => void;
   }) => {
     if (!file) {
@@ -73,7 +73,7 @@ export const useQueryImport = ({ onClose }: { onClose: () => void }) => {
     setIsUploading(false);
     onClose();
   };
-  const onUpload = async (file?: File | null) => {
+  const onUpload = async (file: File | undefined) => {
     if (!file) {
       return;
     }
