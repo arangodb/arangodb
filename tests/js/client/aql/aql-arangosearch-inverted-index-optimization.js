@@ -64,6 +64,22 @@ function testOptimizeFilterCondition() {
           RETURN [contribution, d]`;
       let docs = db._query(query).toArray();
       assertEqual(docs.length, 5);
+
+      let plan = db._createStatement(query).explain();
+      plan = require("@arangodb/aql-helper").getCompactPlan(plan);
+      let hasInRangeCalculationNode = false;
+      let hasFilter = false;
+      for (let node of plan) {
+        if (!hasInRangeCalculationNode) {
+          if (node.type === "CalculationNode" && node.expression.includes("IN_RANGE")) {
+            hasInRangeCalculationNode = true;
+          }
+        } else if (node.type === "FilterNode") {
+          hasFilter = true;
+        }
+      }
+      assertTrue(hasInRangeCalculationNode);
+      assertTrue(hasFilter);  
     },
 
     testBTS1495_earlyPrunning: function() {
@@ -85,6 +101,18 @@ function testOptimizeFilterCondition() {
           RETURN [productLocationId, maxCumulative]`;
       let docs = db._query(query).toArray();
       assertEqual(docs.length, 1);
+
+      let plan = db._createStatement(query).explain();
+      plan = require("@arangodb/aql-helper").getLinearizedPlan(plan);
+
+      let hasFilter = false;
+      for (let node of plan) {
+        if (node.type === "IndexNode" && node.filter !== undefined && node.filter.name === "IN_RANGE") {
+          hasFilter = true;
+          break;
+        }
+      }
+      assertTrue(hasFilter);
     }
   };
 }
