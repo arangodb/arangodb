@@ -41,7 +41,7 @@ auto IndexJoinStrategyFactory::createStrategy(std::vector<Descriptor> desc,
                                               std::size_t numKeyComponents)
     -> std::unique_ptr<AqlIndexJoinStrategy> {
   if (desc.size() == 2) {
-    if (false && desc[0].isUnique && desc[1].isUnique) {
+    if (desc[0].isUnique && desc[1].isUnique) {
       // build optimized merge join strategy for two unique indices
       return std::make_unique<TwoIndicesUniqueMergeJoin<
           velocypack::Slice, LocalDocumentId, VPackSliceComparator>>(
