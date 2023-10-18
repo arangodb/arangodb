@@ -46,7 +46,7 @@ function ahuacatlQueryCacheTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      cacheProperties = cache.clear();
+      cacheProperties = cache.properties({});
       db._drop("UnitTestsAhuacatlQueryCache1");
       db._drop("UnitTestsAhuacatlQueryCache2");
 
@@ -988,7 +988,7 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
   return {
 
     setUp: function () {
-      cacheProperties = cache.clear();
+      cacheProperties = cache.properties({});
 
       db._drop("UnitTestsAhuacatlQueryCache1");
       db._drop("UnitTestsAhuacatlQueryCache2");
