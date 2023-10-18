@@ -213,9 +213,7 @@ const indexJoinTestMultiSuite = function (parameters) {
     testsuite["testJoin_" + configDDLToString(config) + "_" + configToString(config)] = generateTestFunction(config);
   }
 
-  return function () {
-    return testsuite;
-  };
+  return testsuite;
 };
 
 const generateParameters = function(prototype) {
