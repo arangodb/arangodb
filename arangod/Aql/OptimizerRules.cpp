@@ -77,6 +77,7 @@
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/Methods/Collections.h"
+#include "Logger/LogMacros.h"
 
 #include <tuple>
 
