@@ -1,6 +1,16 @@
 devel
 -----
 
+* Fixed BTS-1273: While queueing an async server log message, we could be
+  blocked by IO on the log-writer thread. This could slow down the main
+  path. In case the log-writer is configured to use slow device
+  (e.g. using syslog) this could have significant impact.
+
+* Introduced an upper bound of queued async log messages. If we would log
+  more messages then the background logger thread can actually process, we
+  start to write log messages synchronously. This is to prevent the queue
+  to grow indefinitely.
+
 * Fixed BTS-1610: In certain situations with at least three levels of nested
   subqueries, of which some of the outer iterations don't return any results,
   results of later iterations could be lost.
