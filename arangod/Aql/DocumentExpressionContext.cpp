@@ -86,7 +86,9 @@ AqlValue GenericDocumentExpressionContext::getVariableValue(
           return AqlValue(AqlValueHintSliceNoCopy(_document));
         }
         auto regId = registerForVariable(variable->id);
-        TRI_ASSERT(regId != RegisterId::maxRegisterId);
+        TRI_ASSERT(regId != RegisterId::maxRegisterId)
+            << "variable " << variable->name << " (" << variable->id
+            << ") not found";
         if (regId != RegisterId::maxRegisterId) {
           // we can only get here in a post-filter expression
           TRI_ASSERT(regId < _inputRow.getNumRegisters());
