@@ -1521,16 +1521,8 @@ bool IResearchViewExecutor<ExecutionTraits>::readSegment(
 
     if constexpr (Base::usesStoredValues) {
       TRI_ASSERT(reader.doc);
-      if constexpr (parallel) {
-        this->pushStoredValues<true>(
-            *reader.doc, std::distance(_segmentReaders.data(), &reader),
-            current);
-      } else {
-        this->pushStoredValues<false>(
-            *reader.doc, std::distance(_segmentReaders.data(), &reader),
-            current);
-      }
-     
+      pushStoredValues<parallel>(
+          *reader.doc, std::distance(_segmentReaders.data(), &reader), current);
     }
     if constexpr (!parallel) {
       // doc and scores are both pushed, sizes must now be coherent
