@@ -88,9 +88,9 @@ export const useQueryImport = ({ onClose }: { onClose: () => void }) => {
             created_at: Date.now()
           };
         }) as QueryType[];
+        setIsUploading(true);
         // if auth is preset, upload via aardvark server
         if (!window.frontendConfig.ldapEnabled) {
-          setIsUploading(true);
           await uploadToServer({
             sanitizedQueries,
             onSuccess: handleSuccess,
@@ -98,7 +98,6 @@ export const useQueryImport = ({ onClose }: { onClose: () => void }) => {
           });
           return;
         }
-        setIsUploading(true);
         // if no ldap, upload to localstorage
         await onSaveQueryList({
           sanitizedQueries,
