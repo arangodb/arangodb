@@ -72,7 +72,7 @@ function optimizerIndexesRangesTestSuite () {
           return lhs._key < rhs._key;
         });
 
-        let plan = db._createStatement(query, null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).explain().plan;
+        let plan = db._createStatement({query, options: { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }}).explain().plan;
         let nodes = plan.nodes.filter(function(node) {
           return node.type === 'IndexNode';
         });
@@ -108,7 +108,7 @@ function optimizerIndexesRangesTestSuite () {
           return lhs._key < rhs._key;
         });
 
-        let plan = db._createStatement(query, null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).explain().plan;
+        let plan = db._createStatement({query, options: { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }}).explain().plan;
         let nodes = plan.nodes.filter(function(node) {
           return node.type === 'IndexNode';
         });
@@ -143,7 +143,7 @@ function optimizerIndexesRangesTestSuite () {
           return lhs._key < rhs._key;
         });
 
-        let plan = db._createStatement(query, null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).explain().plan;
+        let plan = db._createStatement({query, options: { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }}).explain().plan;
         let nodes = plan.nodes.filter(function(node) {
           return node.type === 'IndexNode';
         });
@@ -621,7 +621,7 @@ function optimizerIndexesRangesSimpleCasesTestSuite () {
   const candidates = ["", "\u0000", "\u0000\u0000", "\u0000", "\u0001", "\u0001", "\u0001\u0001", "a", "a\u0000", "a\u0001", "a\u0000\u0000", "a\u0000\u00001", "j", "ja", "ja\u0000", "ja\u0001", "ja\uffff", "jaa", "jak", "jal", "jall", "jam", "jan", "jan\u0000", "jan\u0001", "jan\uffff", "jan-", "jan-\u0000", "jan-\u0001", "jan-\uffff", "jan-0", "jan-1", "jan-2", "jan-3", "jaz", "jb", "z", "z\uffff", "z\uffff\uffff"];
 
   let runTest = function(query, candidate, expected) {
-    let plan = db._createStatement({query: query, bindVars: { candidate }}).explain().plan;
+    let plan = db._createStatement({query, bindVars: { candidate }}).explain().plan;
     let nodeTypes = plan.nodes.map(function(node) {
       return node.type;
     });
