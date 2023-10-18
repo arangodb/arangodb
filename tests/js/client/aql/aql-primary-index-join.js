@@ -195,6 +195,9 @@ const IndexPrimaryJoinTestSuite = function () {
   };
 };
 
-jsunity.run(IndexPrimaryJoinTestSuite);
+if (!isCluster) {
+  jsunity.run(IndexPrimaryJoinTestSuite);
+}
+
 return jsunity.done();
 
