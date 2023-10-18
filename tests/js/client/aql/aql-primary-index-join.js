@@ -74,7 +74,7 @@ const IndexPrimaryJoinTestSuite = function () {
     db[collectionName].save(properties);
 
     return collection;
-  }
+  };
 
   const singleAttributeGenerator = function (n, attr, gen) {
     let count = 0;
