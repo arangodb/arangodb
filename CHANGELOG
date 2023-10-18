@@ -1,6 +1,10 @@
 v3.10.11 (XXXX-XX-XX)
 ---------------------
 
+* Make AQL query cursor garbage-collection clean up more expired cursors in a
+  single run than before. This change can help to reclaim memory of expired
+  cursors quicker than in previous versions.
+
 * Reduce number of atomic shared_ptr copies in in-memory cache subsystem.
 
 * Fixed BTS-1610: In certain situations with at least three levels of nested

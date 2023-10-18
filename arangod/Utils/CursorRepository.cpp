@@ -51,7 +51,7 @@ bool authorized(std::pair<arangodb::Cursor*, std::string> const& cursor) {
 
 using namespace arangodb;
 
-size_t const CursorRepository::MaxCollectCount = 32;
+size_t const CursorRepository::MaxCollectCount = 1024;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a cursor repository
