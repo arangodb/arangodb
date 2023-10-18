@@ -39,6 +39,7 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Cluster/ResignShardLeadership.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -1158,8 +1159,25 @@ bool SynchronizeShard::first() {
       }
 
       // Configure the shard to follow the leader without any following
-      // term id:
+      // term id, this is necessary, such that no replication requests
+      // from synchronous replication can interfere with the initial
+      // synchronization, regardless of whether they come from an old
+      // leader or from the right leader with whom we want to synchronize.
+      // Note that it is possible that the proper leader thinks that we
+      // are in sync, but we still run this SynchronizeShard job, simply
+      // because it was scheduled earlier:
       collection->followers()->setTheLeader(leader);
+
+      // If we fail to get in sync with this task, then we want to make
+      // sure that the leader is reset to a known value, such that the
+      // Maintenance will trigger another SynchronizeShard job eventually:
+      ScopeGuard rollbackTheLeader([&]() noexcept {
+        collection->followers()->setTheLeader(
+            ResignShardLeadership::LeaderNotYetKnownString);
+        LOG_TOPIC("ca777", INFO, Logger::MAINTENANCE)
+            << "SynchronizeShard failed for shard " << collection->name()
+            << ", resetting shard leader to trigger new run.";
+      });
 
       startTime = std::chrono::system_clock::now();
 
@@ -1171,12 +1189,16 @@ bool SynchronizeShard::first() {
       auto const endTime = std::chrono::system_clock::now();
 
       // Long shard sync initialization
-      if (endTime - startTime > seconds(5)) {
+      if (endTime - startTime > seconds(15)) {
         LOG_TOPIC("ca7e3", INFO, Logger::MAINTENANCE)
-            << "synchronizeOneShard: long call to syncCollection for shard"
+            << "synchronizeOneShard: call to syncCollection for shard"
             << database << "/" << shard << " " << syncRes.errorMessage()
             << " start time: " << timepointToString(startTime)
-            << ", end time: " << timepointToString(endTime);
+            << ", end time: " << timepointToString(endTime) << ", duration: "
+            << std::chrono::duration_cast<std::chrono::seconds>(endTime -
+                                                                startTime)
+                   .count()
+            << " seconds.";
       }
 
       // If this did not work, then we cannot go on:
@@ -1193,7 +1215,7 @@ bool SynchronizeShard::first() {
         std::stringstream error;
         error << "could not initially synchronize shard " << database << "/"
               << shard << ": " << syncRes.errorMessage();
-        LOG_TOPIC("c1b31", DEBUG, Logger::MAINTENANCE)
+        LOG_TOPIC("c1b31", INFO, Logger::MAINTENANCE)
             << "SynchronizeOneShard: " << error.str();
 
         result(syncRes.errorNumber(), error.str());
@@ -1211,7 +1233,7 @@ bool SynchronizeShard::first() {
             << "shard " << database << "/" << shard
             << " seems to be gone from leader, this "
                "can happen if a collection was dropped during synchronization!";
-        LOG_TOPIC("664ae", WARN, Logger::MAINTENANCE)
+        LOG_TOPIC("664ae", INFO, Logger::MAINTENANCE)
             << "SynchronizeOneShard: " << error.str();
         result(TRI_ERROR_INTERNAL, error.str());
         return false;
@@ -1263,6 +1285,12 @@ bool SynchronizeShard::first() {
         result(res);
         return false;
       }
+
+      // Now that we have set the correct leader with the correct
+      // FollowerTermInfo, we must stop the rollbackTheLeader scope
+      // guard from wasting everything:
+      rollbackTheLeader.cancel();
+
     } catch (basics::Exception const& e) {
       // don't log errors for already dropped databases/collections
       if (e.code() != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
