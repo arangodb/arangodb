@@ -2029,7 +2029,7 @@ bool IResearchViewMergeExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
 
     if constexpr (Base::usesStoredValues) {
       TRI_ASSERT(segment.doc);
-      this->pushStoredValues<false>(*segment.doc, segment.segmentIndex);
+      pushStoredValues<false>(*segment.doc, segment.segmentIndex);
     }
 
     if constexpr (ExecutionTraits::EmitSearchDoc) {
