@@ -1352,7 +1352,6 @@ struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
   }
 
   bool position(std::span<VPackSlice> span) const override {
-    LOG_DEVEL << "Called position";
     if (!_iterator->Valid()) {
       return false;
     }
@@ -1364,8 +1363,6 @@ struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
   }
 
   void seekInternal(std::string_view key) {
-    LOG_DEVEL << "Called seekInternal";
-    LOG_DEVEL << "Called with: " << key;
     if (key.empty()) {
       _iterator->Seek(_bounds.start());
     } else {
@@ -1376,12 +1373,11 @@ struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
     if (_iterator->Valid()) {
       auto keySlice = RocksDBKey::primaryKey(_iterator->key());
       _builder.clear();
-      _builder.add(VPackValue(keySlice));
+      _builder.add(VPackValue(std::string{keySlice.begin(), keySlice.end()}));
     }
   }
 
   bool seek(std::span<VPackSlice> span) override {
-    LOG_DEVEL << "Called seek";
     TRI_ASSERT(span.size() == 1 && span[0].isString());
     seekInternal(span[0].stringView());
 
@@ -1389,7 +1385,6 @@ struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
   }
 
   LocalDocumentId load(std::span<VPackSlice> projections) const override {
-    LOG_DEVEL << "Called load";
     TRI_ASSERT(_iterator->Valid());
 
     for (auto& slice : projections) {
@@ -1401,8 +1396,6 @@ struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
 
   bool next(std::span<VPackSlice> key, LocalDocumentId& docId,
             std::span<VPackSlice> projections) override {
-    LOG_DEVEL << "Called next";
-
     _iterator->Next();
 
     auto hasMore = position(key);
@@ -1415,15 +1408,12 @@ struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
   }
 
   void cacheCurrentKey(std::span<VPackSlice> cache) override {
-    LOG_DEVEL << "Called cacheCurrentKey";
     _cache = VPackString{_builder.slice()};
     cache[0] = _cache;
   }
 
   bool reset(std::span<VPackSlice> span) override {
-    LOG_DEVEL << "Called reset";
     seekInternal({});
-    // _iterator->Seek(_bounds.start());
     return position(span);
   }
 };

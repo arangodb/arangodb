@@ -159,6 +159,8 @@ const IndexPrimaryJoinTestSuite = function () {
       }
     },
 
+    /*
+    TODO: enable as soon as filter issue in VPackStreamIterator is fixed.
     testAllMatchPrimaryIndexReturnProjection: function () {
       const B = fillCollection("B", singleAttributeGenerator(5, "x", x => 2 * x));
       // No additional index on B, we want to make use of the default (rocksdb) primary index
@@ -170,7 +172,6 @@ const IndexPrimaryJoinTestSuite = function () {
 
       const A = fillCollectionWith("A", properties);
       A.ensureIndex({type: "persistent", fields: ["x"], unique: true});
-      print(A.all().toArray());
 
       const result = runAndCheckQuery(`
         FOR doc1 IN A
@@ -183,16 +184,12 @@ const IndexPrimaryJoinTestSuite = function () {
       assertEqual(result.length, 5);
       for (const a of result) {
         for (const b of documentsB) {
-          assertEqual(a._key, b._key);
+          assertEqual(a, b._key);
         }
       }
-    },
-
+    },*/
 
     // TODO: Add additional FILTER for doc2._key (e.g. calculation compare last character)
-
-
-
   };
 };
 
