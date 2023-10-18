@@ -1167,13 +1167,24 @@ function processQuery(query, explain, planIndex) {
 
   const projections = function (value, attributeName, label) {
     if (value && value.hasOwnProperty(attributeName) && value[attributeName].length > 0) {
-      let p = value[attributeName].map(function(p) {
+      let fields = value[attributeName].map(function(p) {
         if (Array.isArray(p)) {
-          return p.join('`.`', p);
+          return '`' + p.join('`.`') + '`';
+        } else if (typeof p === 'string') {
+          return '`' + p + '`';
+        } else if (p.hasOwnProperty('path')) {
+          let path = '`' + p.path.join('`.`') + '`';
+          if (p.hasOwnProperty('variable')) {
+            if (/^[0-9_]/.test(p.variable.name)) {
+              path += ': #' + p.variable.name;
+            } else {
+              path += ': ' + p.variable.name;
+            }
+          }
+          return path;
         }
-        return p;
       });
-      return ' (' + label + ': `' + p.join('`, `') + '`)';
+      return ' (' + label + ': ' + fields.join(', ') + ')';
     }
     return '';
   };
@@ -1335,8 +1346,9 @@ function processQuery(query, explain, planIndex) {
           viewAnnotation += ' without materialization';
         }
         if (node.hasOwnProperty('options')) {
-          if (node.options.hasOwnProperty('countApproximate'))
-          viewAnnotation += '. Count mode is ' + node.options.countApproximate;
+          if (node.options.hasOwnProperty('countApproximate')) {
+            viewAnnotation += '. Count mode is ' + node.options.countApproximate;
+          }
         }
         viewAnnotation += ' */';
         let viewVariables = '';

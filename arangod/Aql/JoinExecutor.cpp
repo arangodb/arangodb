@@ -78,18 +78,6 @@ void moveValueIntoRegister(OutputAqlItemRow& output, RegisterId reg,
   output.moveValueInto(reg, inputRow, &ptr);
 }
 
-void pushDocumentToVector(std::vector<std::unique_ptr<std::string>>& vec,
-                          VPackSlice doc) {
-  // TODO use string leaser for transaction here?
-  auto ptr = std::make_unique<std::string>(doc.startAs<char>(), doc.byteSize());
-  vec.emplace_back(std::move(ptr));
-}
-
-void pushDocumentToVector(std::vector<std::unique_ptr<std::string>>& vec,
-                          std::unique_ptr<std::string>& doc) {
-  vec.emplace_back(std::move(doc));
-}
-
 template<typename F>
 struct DocumentCallbackOverload : F {
   DocumentCallbackOverload(F&& f) : F(std::forward<F>(f)) {}
@@ -113,6 +101,9 @@ struct DocumentCallbackOverload : F {
 auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
+  AqlCall upstreamCall{};
+  upstreamCall.fullCount = output.getClientCall().fullCount;
+
   bool hasMore = false;
   while (inputRange.hasDataRow() && !output.isFull()) {
     if (!_currentRow) {
@@ -167,10 +158,9 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
       for (std::size_t k = 0; k < docIds.size(); k++) {
         auto& idx = _infos.indexes[k];
-
+        projectionsOffset += idx.projections.size();
         // evaluate filter conditions
         if (!idx.filter.has_value()) {
-          projectionsOffset += idx.projections.size();
           continue;
         }
 
@@ -194,17 +184,41 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
           if (!filtered && !useFilterProjections) {
             // add document to the list
-            pushDocumentToVector(_documents, docPtr);
+            _documents[k] = std::make_unique<std::string>(
+                doc.template startAs<char>(), doc.byteSize());
           }
         };
 
-        if (idx.projections.usesCoveringIndex()) {
-          buildProjections(k, idx.projections);
-          filterCallback(_projectionsBuilder.slice());
-          projectionsOffset += idx.projections.size();
-        } else if (useFilterProjections) {
-          buildProjections(k, idx.filter->projections);
-          filterCallback(_projectionsBuilder.slice());
+        auto filterWithProjectionsCallback =
+            [&](std::span<VPackSlice> projections) {
+              GenericDocumentExpressionContext ctx{
+                  _trx,
+                  *_infos.query,
+                  _functionsCache,
+                  idx.filter->filterVarsToRegs,
+                  _currentRow,
+                  idx.filter->documentVariable};
+              ctx.setCurrentDocument(VPackSlice::noneSlice());
+
+              TRI_ASSERT(idx.filter->projections.size() == projections.size());
+              for (size_t j = 0; j < projections.size(); j++) {
+                ctx.setVariable(idx.filter->filterProjectionVars[j],
+                                projections[j]);
+              }
+
+              bool mustDestroy;
+              AqlValue result =
+                  idx.filter->expression->execute(&ctx, mustDestroy);
+              AqlValueGuard guard(result, mustDestroy);
+              filtered = !result.toBoolean();
+            };
+
+        if (useFilterProjections) {
+          std::span<VPackSlice> projectionRange = {
+              projections.begin() + projectionsOffset,
+              projections.begin() + projectionsOffset +
+                  idx.filter->projections.size()};
+          filterWithProjectionsCallback(projectionRange);
           projectionsOffset += idx.filter->projections.size();
         } else {
           lookupDocument(k, docIds[k], filterCallback);
@@ -263,12 +277,11 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
     if (!hasMore) {
       _currentRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+      inputRange.advanceDataRow();
     }
-
-    inputRange.advanceDataRow();
   }
 
-  return {inputRange.upstreamState(), Stats{}, AqlCall{}};
+  return {inputRange.upstreamState(), Stats{}, upstreamCall};
 }
 
 auto JoinExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
@@ -312,6 +325,8 @@ void JoinExecutor::constructStrategy() {
     options.usedKeyFields = {0};
 
     auto& desc = indexDescription.emplace_back();
+    desc.isUnique = idx.index->unique();
+    desc.numProjections = 0;
 
     if (idx.projections.usesCoveringIndex()) {
       std::transform(idx.projections.projections().begin(),
@@ -321,15 +336,17 @@ void JoinExecutor::constructStrategy() {
                        return proj.coveringIndexPosition;
                      });
 
-      desc.numProjections = idx.projections.size();
-    } else if (idx.filter && idx.filter->projections.usesCoveringIndex()) {
+      desc.numProjections += idx.projections.size();
+    }
+    if (idx.filter && idx.filter->projections.usesCoveringIndex()) {
       std::transform(idx.filter->projections.projections().begin(),
                      idx.filter->projections.projections().end(),
                      std::back_inserter(options.projectedFields),
                      [&](Projections::Projection const& proj) {
                        return proj.coveringIndexPosition;
                      });
-      desc.numProjections = idx.filter->projections.size();
+
+      desc.numProjections += idx.filter->projections.size();
     }
 
     auto stream = idx.index->streamForCondition(&_trx, options);

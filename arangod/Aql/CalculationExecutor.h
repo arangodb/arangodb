@@ -63,7 +63,6 @@ struct CalculationExecutorInfos {
   RegisterId getOutputRegisterId() const noexcept;
 
   QueryContext& getQuery() const noexcept;
-  transaction::Methods* getTrx() const noexcept;
 
   Expression& getExpression() const noexcept;
 

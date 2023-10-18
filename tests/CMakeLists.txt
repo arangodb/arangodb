@@ -128,6 +128,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/InsertExecutorTest.cpp
   Aql/JaccardFunctionTest.cpp
   Aql/JoinStrategy/GenericJoinTest.cpp
+  Aql/JoinStrategy/TwoIndicesUniqueJoinTest.cpp
   Aql/LevenshteinMatchFunctionTest.cpp
   Aql/LimitExecutorTest.cpp
   Aql/MinHashFunctionsTest.cpp
@@ -148,6 +149,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/ReturnExecutorTest.cpp
   Aql/RowFetcherHelper.cpp
   Aql/ScatterExecutorTest.cpp
+  Aql/ShadowRowForwardingTest.cpp
   Aql/ShortestPathExecutorTest.cpp
   Aql/ShortestPathNodeTest.cpp
   Aql/SkipResultTest.cpp
