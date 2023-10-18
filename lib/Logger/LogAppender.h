@@ -94,6 +94,7 @@ class LogAppender {
       _definition2appenders;
   static bool _allowStdLogging;
 
-  std::mutex _logOutputMutex;
+  basics::ReadWriteLock _logOutputMutex;
+  std::atomic<std::thread::id> _logOutputMutexOwner;
 };
 }  // namespace arangodb

@@ -31,6 +31,7 @@
 
 #include "Basics/operating-system.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/RecursiveLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/voc-errors.h"
@@ -159,9 +160,6 @@ std::shared_ptr<LogAppender> LogAppender::buildAppender(
   } else if (output.starts_with(::filePrefix)) {
     result =
         std::make_shared<LogAppenderFile>(output.substr(::filePrefix.size()));
-  } else if (output.starts_with("slow://")) {
-    result =
-        std::make_shared<LogAppenderSlowFile>(output.substr(7));
   }
 
   return result;
@@ -238,10 +236,12 @@ void LogAppender::reopen() {
 
 void LogAppender::logMessageGuarded(LogMessage const& message) {
   // Only one thread is allowed to actually write logs to the file.
-  std::lock_guard<std::mutex> guard(_logOutputMutex);
+  // We use a recusive lock here, just in case writing the log message
+  // causes a crash, in this case we may trigger another force-direct
+  // log. This is not very likely, but it is better to be safe than sorry.
+  RECURSIVE_WRITE_LOCKER(_logOutputMutex, _logOutputMutexOwner);
   logMessage(message);
 }
-
 
 Result LogAppender::parseDefinition(std::string const& definition,
                                     std::string& topicName, std::string& output,

@@ -26,6 +26,12 @@
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 
+// Hard-coded limit of delayed messages. If this limit is reached, we will
+// directly log all following messages. This is to prevent the queue from
+// growing indefinitely if the log thread is not able to keep up with the
+// incoming messages.
+static constexpr size_t MAX_QUEUED_MESSAGES = 10000;
+
 using namespace arangodb;
 
 LogThread::LogThread(application_features::ApplicationServer& server,
@@ -50,9 +56,11 @@ bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
       (message->_level == LogLevel::FATAL || message->_level == LogLevel::ERR ||
        message->_level == LogLevel::WARN);
 
-  if (!_messages.push({&group, message.get()})) {
+  if (_pendingMessages.load() >= MAX_QUEUED_MESSAGES ||
+      !_messages.push({&group, message.get()})) {
     return false;
   }
+  _pendingMessages.fetch_add(1);
 
   // only release message if adding to the queue succeeded
   // otherwise we would leak here
@@ -105,6 +113,7 @@ bool LogThread::processPendingMessages() {
   MessageEnvelope env{nullptr, nullptr};
 
   while (_messages.pop(env)) {
+    _pendingMessages.fetch_sub(1);
     worked = true;
     TRI_ASSERT(env.group != nullptr);
     TRI_ASSERT(env.msg != nullptr);

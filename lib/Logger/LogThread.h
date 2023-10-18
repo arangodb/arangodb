@@ -71,5 +71,6 @@ class LogThread final : public Thread {
  private:
   arangodb::basics::ConditionVariable _condition;
   boost::lockfree::queue<MessageEnvelope> _messages;
+  std::atomic<size_t> _pendingMessages{0};
 };
 }  // namespace arangodb
