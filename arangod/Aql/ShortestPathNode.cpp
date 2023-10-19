@@ -347,6 +347,32 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::_makeExecutionBlockImpl(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 };
 
+template<typename ShortestPath, typename Provider, typename ProviderOptions>
+std::unique_ptr<ExecutionBlock> ShortestPathNode::_makeExecutionBlockImpl(
+    ShortestPathOptions* opts, ProviderOptions forwardProviderOptions,
+    ProviderOptions backwardProviderOptions,
+    PathValidatorOptions validatorOptions,
+    typename ShortestPathExecutorInfos<ShortestPath>::RegisterMapping&&
+        outputRegisterMapping,
+    ExecutionEngine& engine, InputVertex sourceInput, InputVertex targetInput,
+    RegisterInfos registerInfos) const {
+  auto shortestPathFinder = std::make_unique<ShortestPath>(
+      Provider{opts->query(), std::move(forwardProviderOptions),
+               opts->query().resourceMonitor()},
+      Provider{opts->query(), std::move(backwardProviderOptions),
+               opts->query().resourceMonitor()},
+      std::move(validatorOptions), opts->query().resourceMonitor());
+
+  auto executorInfos = ShortestPathExecutorInfos<ShortestPath>(
+      engine.getQuery(), std::move(shortestPathFinder),
+      std::move(outputRegisterMapping), std::move(sourceInput),
+      std::move(targetInput));
+
+  return std::make_unique<
+      ExecutionBlockImpl<ShortestPathExecutor<ShortestPath>>>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
+};
+
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     ExecutionEngine& engine) const {
@@ -407,6 +433,7 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
   arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{
       0, std::numeric_limits<size_t>::max(),
       arangodb::graph::PathType::Type::ShortestPath};
+
   PathValidatorOptions validatorOptions(opts->tmpVar(),
                                         opts->getExpressionCtx());
 
@@ -448,9 +475,9 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
                                        Provider,
                                        SingleServerBaseProviderOptions>(
             opts, std::move(forwardProviderOptions),
-            std::move(backwardProviderOptions), enumeratorOptions,
-            validatorOptions, std::move(outputRegisterMapping), engine,
-            sourceInput, targetInput, registerInfos);
+            std::move(backwardProviderOptions), validatorOptions,
+            std::move(outputRegisterMapping), engine, sourceInput, targetInput,
+            registerInfos);
       } else {
         auto [outputRegisters, outputRegisterMapping] =
             _buildOutputRegisters<ShortestPath>();
@@ -517,9 +544,9 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
             WeightedShortestPathEnumerator<ClusterProvider>, ClusterProvider,
             ClusterBaseProviderOptions>(
             opts, std::move(forwardProviderOptions),
-            std::move(backwardProviderOptions), enumeratorOptions,
-            validatorOptions, std::move(outputRegisterMapping), engine,
-            sourceInput, targetInput, registerInfos);
+            std::move(backwardProviderOptions), validatorOptions,
+            std::move(outputRegisterMapping), engine, sourceInput, targetInput,
+            registerInfos);
       } else {
         auto [outputRegisters, outputRegisterMapping] =
             _buildOutputRegisters<ShortestPathCluster>();

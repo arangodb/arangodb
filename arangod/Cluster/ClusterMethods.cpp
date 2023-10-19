@@ -318,8 +318,7 @@ void mergeResultsAllShards(
        ++currentIndex) {
     bool foundRes = false;
     for (VPackSlice oneRes : results) {
-      TRI_ASSERT(oneRes.isArray());
-      oneRes = oneRes.at(currentIndex);
+      Tluster oneRes = oneRes.at(currentIndex);
 
       auto errorNum = TRI_ERROR_NO_ERROR;
       if (auto errorNumSlice = oneRes.get(StaticStrings::ErrorNum);

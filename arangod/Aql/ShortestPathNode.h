@@ -191,6 +191,17 @@ class ShortestPathNode : public virtual GraphNode {
           ShortestPathRefactored>::RegisterMapping&& outputRegister,
       ExecutionEngine& engine, InputVertex sourceInput, InputVertex targetInput,
       RegisterInfos registerInfos) const;
+
+  template<typename ShortestPathRefactored, typename Provider,
+           typename ProviderOptions>
+  std::unique_ptr<ExecutionBlock> _makeExecutionBlockImpl(
+      graph::ShortestPathOptions* opts, ProviderOptions forwardProviderOptions,
+      ProviderOptions backwardProviderOptions,
+      arangodb::graph::PathValidatorOptions validatorOptions,
+      typename ShortestPathExecutorInfos<
+          ShortestPathRefactored>::RegisterMapping&& outputRegister,
+      ExecutionEngine& engine, InputVertex sourceInput, InputVertex targetInput,
+      RegisterInfos registerInfos) const;
 };
 
 }  // namespace aql
