@@ -10,7 +10,10 @@ import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { getCurrentDB } from "../../../utils/arangoClient";
-import { CollectionsPermissionsTable, DatabaseTableType } from "./CollectionsPermissionsTable";
+import {
+  CollectionsPermissionsTable,
+  DatabaseTableType
+} from "./CollectionsPermissionsTable";
 import {
   DatabasePermissionSwitch,
   getIsDefaultRow
@@ -139,6 +142,9 @@ const TABLE_COLUMNS = [
           icon={
             info.row.getIsExpanded() ? <ChevronUpIcon /> : <ChevronDownIcon />
           }
+          _focus={{
+            boxShadow: "none"
+          }}
           onClick={info.row.getToggleExpandedHandler()}
         />
       );
@@ -225,6 +231,13 @@ export const UserPermissionsTable = () => {
       <ReactTable<DatabaseTableType>
         table={tableInstance}
         emptyStateMessage="No database permissions found"
+        getCellProps={cell => {
+          if (cell.column.id === "expander") {
+            return {
+              padding: "0"
+            };
+          }
+        }}
         renderSubComponent={row => {
           return (
             <CollectionsPermissionsTable

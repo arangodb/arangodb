@@ -29,6 +29,7 @@ type ReactTableProps<Data extends object> = {
   children?: React.ReactNode;
   renderSubComponent?: (row: Row<Data>) => React.ReactNode;
   layout?: "fixed" | "auto";
+  getCellProps?: (cell: Cell<Data, unknown>) => any;
 };
 
 export function ReactTable<Data extends object>({
@@ -38,7 +39,8 @@ export function ReactTable<Data extends object>({
   table,
   renderSubComponent,
   layout,
-  onCellClick
+  onCellClick,
+  getCellProps
 }: ReactTableProps<Data>) {
   const rows = table.getRowModel().rows;
 
@@ -76,6 +78,7 @@ export function ReactTable<Data extends object>({
                     row={row}
                     onRowSelect={onRowSelect}
                     onCellClick={onCellClick}
+                    getCellProps={getCellProps}
                   />
                   <Tr>
                     {row.getIsExpanded() && renderSubComponent
@@ -167,11 +170,13 @@ const SortIcon = ({
 const SelectableTr = <Data extends object>({
   row,
   onRowSelect,
-  onCellClick
+  onCellClick,
+  getCellProps
 }: {
   row: Row<Data>;
   onRowSelect: ((row: Row<Data>) => void) | undefined;
   onCellClick?: (cell: Cell<Data, unknown>) => void;
+  getCellProps?: (cell: Cell<Data, unknown>) => any;
 }) => {
   return (
     <Tr
@@ -192,6 +197,7 @@ const SelectableTr = <Data extends object>({
             key={cell.id}
             width={cell.column.getSize()}
             onClick={() => onCellClick?.(cell)}
+            {...getCellProps?.(cell)}
           >
             {flexRender(cell.column.columnDef.cell, cell.getContext())}
           </Td>
