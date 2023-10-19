@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXECUTE, AQL_EXPLAIN, AQL_EXECUTEJSON, arango */
+/*global assertEqual, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for dynamic attributes
@@ -30,6 +30,7 @@
 
 var jsunity = require("jsunity");
 const db = require('internal').db;
+const executeJson =  require("@arangodb/aql-helper").executeJson;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -310,12 +311,7 @@ function ahuacatlDynamicAttributesTestSuite () {
       let stmt = db._createStatement({query, bindVars: null, options: { verbosePlans: true }});
 
       var plan = stmt.explain().plan;
-
-      let command = `
-        let data = ${JSON.stringify(plan)};
-        return AQL_EXECUTEJSON(data);
-      `;
-      var actual = arango.POST("/_admin/execute", command).json;
+      var actual = executeJson(plan).json;
 
       assertEqual(expected, actual);
     }
