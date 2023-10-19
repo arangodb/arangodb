@@ -215,6 +215,14 @@ export const UserPermissionsTable = () => {
         table={tableInstance}
       />
       <ReactTable<DatabaseTableType>
+        getCellProps={cell => {
+          if (cell.column.id === "expander") {
+            return {
+              padding: "0",
+              paddingY: "0"
+            };
+          }
+        }}
         table={tableInstance}
         emptyStateMessage="No database permissions found"
         renderSubComponent={row => {

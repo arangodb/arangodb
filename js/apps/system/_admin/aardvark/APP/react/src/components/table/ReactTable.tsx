@@ -1,20 +1,9 @@
 import { ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
+import { Box, Flex, Grid, Text } from "@chakra-ui/react";
 import {
-  Box,
-  Flex,
-  Stack,
-  Table,
-  TableContainer,
-  Tbody,
-  Td,
-  Text,
-  Tfoot,
-  Th,
-  Thead,
-  Tr
-} from "@chakra-ui/react";
-import {
-  Cell, flexRender,
+  Cell,
+  CellContext,
+  flexRender,
   Header,
   Row,
   Table as TableType
@@ -26,84 +15,79 @@ type ReactTableProps<Data extends object> = {
   emptyStateMessage?: string;
   onCellClick?: (cell: Cell<Data, unknown>) => void;
   onRowSelect?: (row: Row<Data>) => void;
-  children?: React.ReactNode;
   renderSubComponent?: (row: Row<Data>) => React.ReactNode;
-  layout?: "fixed" | "auto";
+  getCellProps?: (
+    cell: CellContext<Data, unknown>
+  ) => { [key: string]: any } | undefined;
 };
 
 export function ReactTable<Data extends object>({
   emptyStateMessage = "No data found.",
   onRowSelect,
-  children,
   table,
   renderSubComponent,
-  layout,
-  onCellClick
+  onCellClick,
+  getCellProps
 }: ReactTableProps<Data>) {
   const rows = table.getRowModel().rows;
 
   return (
-    <Stack>
-      {children}
-      <TableContainer
-        borderY="1px solid"
-        borderColor="gray.200"
-        backgroundColor="white"
-      >
-        <Table
-          whiteSpace="normal"
-          size="sm"
-          colorScheme="gray"
-          css={{
-            tableLayout: layout
-          }}
-        >
-          <Thead>
-            {table.getHeaderGroups().map(headerGroup => (
-              <Tr key={headerGroup.id}>
-                {headerGroup.headers.map(header => {
-                  return <SortableTh<Data> key={header.id} header={header} />;
-                })}
-              </Tr>
-            ))}
-          </Thead>
-          <Tbody>
-            {rows.length > 0 ? (
-              rows.map(row => (
-                <>
-                  <SelectableTr<Data>
-                    key={row.id}
-                    row={row}
-                    onRowSelect={onRowSelect}
-                    onCellClick={onCellClick}
-                  />
-                  <Tr>
-                    {row.getIsExpanded() && renderSubComponent
-                      ? renderSubComponent(row)
-                      : null}
-                  </Tr>
-                </>
-              ))
-            ) : (
-              <Box padding="4">{emptyStateMessage}</Box>
-            )}
-          </Tbody>
-        </Table>
-      </TableContainer>
-    </Stack>
+    <Grid
+      overflow="auto"
+      gridTemplateRows="auto 1fr"
+      borderY="1px solid"
+      borderColor="gray.200"
+      backgroundColor="white"
+    >
+      <Grid gridAutoFlow="column">
+        {table.getHeaderGroups().map(headerGroup => (
+          <Grid gridAutoFlow="column" key={headerGroup.id}>
+            {headerGroup.headers.map(header => {
+              return (
+                <SortableTableHeader<Data> key={header.id} header={header} />
+              );
+            })}
+          </Grid>
+        ))}
+      </Grid>
+      <Grid gridAutoFlow="rows">
+        {rows.length > 0 ? (
+          rows.map(row => (
+            <>
+              <SelectableTableRow<Data>
+                getCellProps={getCellProps}
+                key={row.id}
+                row={row}
+                onRowSelect={onRowSelect}
+                onCellClick={onCellClick}
+              />
+              <Box>
+                {row.getIsExpanded() && renderSubComponent
+                  ? renderSubComponent(row)
+                  : null}
+              </Box>
+            </>
+          ))
+        ) : (
+          <Box padding="4">{emptyStateMessage}</Box>
+        )}
+      </Grid>
+    </Grid>
   );
 }
 
-const SortableTh = <Data extends object>({
+const SortableTableHeader = <Data extends object>({
   header
 }: {
   header: Header<Data, unknown>;
 }) => {
   const canSort = header.column.getCanSort();
   return (
-    <Th
-      left={header.getStart()}
-      width={header.getSize()}
+    <Box
+      padding="1"
+      width={header.column.getSize()}
+      paddingY="2"
+      fontWeight="500"
       onClick={header.column.getToggleSortingHandler()}
       _hover={
         canSort
@@ -120,7 +104,7 @@ const SortableTh = <Data extends object>({
         </Text>
         {canSort && <SortIcon sortedDirection={header.column.getIsSorted()} />}
       </Box>
-    </Th>
+    </Box>
   );
 };
 
@@ -164,17 +148,22 @@ const SortIcon = ({
   );
 };
 
-const SelectableTr = <Data extends object>({
+const SelectableTableRow = <Data extends object>({
   row,
   onRowSelect,
-  onCellClick
+  onCellClick,
+  getCellProps
 }: {
   row: Row<Data>;
   onRowSelect: ((row: Row<Data>) => void) | undefined;
   onCellClick?: (cell: Cell<Data, unknown>) => void;
+  getCellProps?: (
+    cell: CellContext<Data, unknown>
+  ) => { [key: string]: any } | undefined;
 }) => {
   return (
-    <Tr
+    <Grid
+      gridAutoFlow="column"
       onClick={() => onRowSelect?.(row)}
       _hover={
         onRowSelect
@@ -188,15 +177,18 @@ const SelectableTr = <Data extends object>({
     >
       {row.getVisibleCells().map(cell => {
         return (
-          <Td
+          <Box
             key={cell.id}
             width={cell.column.getSize()}
             onClick={() => onCellClick?.(cell)}
+            padding="1"
+            paddingY="2"
+            {...getCellProps?.(cell.getContext())}
           >
             {flexRender(cell.column.columnDef.cell, cell.getContext())}
-          </Td>
+          </Box>
         );
       })}
-    </Tr>
+    </Grid>
   );
 };
