@@ -567,7 +567,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
       arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
       arangodb::iresearch::CountApproximate::Exact,
       arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0,
-      nullptr);
+      nullptr, 1);
 
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable>
@@ -649,7 +649,7 @@ TEST_F(IResearchViewCountApproximateTest,
       arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
       arangodb::iresearch::CountApproximate::Exact,
       arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0,
-      nullptr);
+      nullptr, 1);
 
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable>
@@ -733,7 +733,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
       arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
       arangodb::iresearch::CountApproximate::Cost,
       arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0,
-      nullptr);
+      nullptr, 1);
 
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable>

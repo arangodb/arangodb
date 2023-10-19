@@ -1521,7 +1521,9 @@ bool IResearchViewExecutor<ExecutionTraits>::readSegment(
 
     if constexpr (Base::usesStoredValues) {
       TRI_ASSERT(reader.doc);
-      pushStoredValues<parallel>(
+      TRI_ASSERT(std::distance(_segmentReaders.data(), &reader) <
+                 static_cast<ptrdiff_t>(_segmentReaders.size()));
+      this->template pushStoredValues<parallel>(
           *reader.doc, std::distance(_segmentReaders.data(), &reader), current);
     }
     if constexpr (!parallel) {
@@ -2026,7 +2028,7 @@ bool IResearchViewMergeExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
 
     if constexpr (Base::usesStoredValues) {
       TRI_ASSERT(segment.doc);
-      pushStoredValues<false>(*segment.doc, segment.segmentIndex);
+      this->template pushStoredValues<false>(*segment.doc, segment.segmentIndex);
     }
 
     if constexpr (ExecutionTraits::EmitSearchDoc) {
