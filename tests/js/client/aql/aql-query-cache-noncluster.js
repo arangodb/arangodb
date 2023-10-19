@@ -46,7 +46,8 @@ function ahuacatlQueryCacheTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      cacheProperties = cache.properties({});
+      cacheProperties = cache.properties();
+      cache.clear();
       db._drop("UnitTestsAhuacatlQueryCache1");
       db._drop("UnitTestsAhuacatlQueryCache2");
 
@@ -101,7 +102,7 @@ function ahuacatlQueryCacheTestSuite () {
 
       result = cache.properties({ mode: "on" });
       assertEqual("on", result.mode);
-      result = cache.properties({});
+      result = cache.properties();
       assertEqual("on", result.mode);
 
       result = cache.properties({ mode: "demand" });
@@ -988,7 +989,8 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
   return {
 
     setUp: function () {
-      cacheProperties = cache.properties({});
+      cacheProperties = cache.properties();
+      cache.clear();
 
       db._drop("UnitTestsAhuacatlQueryCache1");
       db._drop("UnitTestsAhuacatlQueryCache2");
