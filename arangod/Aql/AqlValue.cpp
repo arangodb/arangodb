@@ -510,8 +510,7 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
           // fetch subattribute
           prev = s;
           s = s.get(names[i]);
-          // TODO(MBkkt) Is it needed?
-          s = s.resolveExternal();
+          TRI_ASSERT(!s.isExternal());
 
           if (s.isNone()) {
             // not found
@@ -802,9 +801,7 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate,
 #endif
 
 void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
-                            bool resolveExternals, bool allowUnindexed) const {
-  // TODO(MBkkt) remove resolveExternals?
-  //  It feels like we don't have externals in AqlValue now
+                            bool allowUnindexed) const {
   auto t = type();
   switch (t) {
     case VPACK_INLINE_INT64:
@@ -818,16 +815,10 @@ void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
     case VPACK_INLINE_UINT64:
     case VPACK_INLINE_DOUBLE:
     case VPACK_MANAGED_SLICE:
-    case VPACK_MANAGED_STRING:
-      if (auto s = slice(t); resolveExternals) {
-        basics::VelocyPackHelper::sanitizeNonClientTypes(
-            s, VPackSlice::noneSlice(), builder, options,
-            /*sanitizeExternals=*/true, /*sanitizeCustom=*/true,
-            allowUnindexed);
-      } else {
-        builder.add(s);
-      }
-      break;
+    case VPACK_MANAGED_STRING: {
+      auto s = slice(t);
+      builder.add(s);
+    } break;
     case RANGE: {
       builder.openArray(/*unindexed*/ allowUnindexed);
       size_t const n = _data.rangeMeta.range->size();
@@ -840,14 +831,14 @@ void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
   }
 }
 
-AqlValue AqlValue::materialize(VPackOptions const* options, bool& hasCopied,
-                               bool resolveExternals) const {
+AqlValue AqlValue::materialize(VPackOptions const* options,
+                               bool& hasCopied) const {
   auto t = type();
   switch (t) {
     case RANGE: {
       VPackBuffer<uint8_t> buffer;
       VPackBuilder builder{buffer};
-      toVelocyPack(options, builder, resolveExternals, /*allowUnindexed*/ true);
+      toVelocyPack(options, builder, /*allowUnindexed*/ true);
       hasCopied = true;
       return AqlValue{std::move(buffer)};
     }
@@ -927,12 +918,10 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
   if ((leftType == RANGE) != (rightType == RANGE)) {
     // TODO implement this case more efficiently
     VPackBuilder leftBuilder;
-    left.toVelocyPack(options, leftBuilder, /*resolveExternal*/ false,
-                      /*allowUnindexed*/ true);
+    left.toVelocyPack(options, leftBuilder, /*allowUnindexed*/ true);
 
     VPackBuilder rightBuilder;
-    right.toVelocyPack(options, rightBuilder, /*resolveExternal*/ false,
-                       /*allowUnindexed*/ true);
+    right.toVelocyPack(options, rightBuilder, /*allowUnindexed*/ true);
 
     return basics::VelocyPackHelper::compare(
         leftBuilder.slice(), rightBuilder.slice(), compareUtf8, options);
@@ -1017,11 +1006,9 @@ AqlValue::AqlValue(DocumentData& data) noexcept {
 }
 
 AqlValue::AqlValue(uint8_t const* pointer) noexcept {
-  // TODO(MBkkt) Is external possible here?
-  // we must get rid of Externals first here, because all
-  // methods that use VPACK_SLICE_POINTER expect its contents
-  // to be non-Externals
-  setPointer(VPackSlice{pointer}.resolveExternals().begin());
+  TRI_ASSERT(pointer != nullptr);
+  TRI_ASSERT(!VPackSlice{pointer}.isExternal());
+  setPointer(pointer);
 }
 
 AqlValue::AqlValue(AqlValue const& other, void const* data) noexcept {
@@ -1153,10 +1140,8 @@ AqlValue::AqlValue(velocypack::Buffer<uint8_t>&& buffer) {
   }
 }
 
-AqlValue::AqlValue(AqlValueHintSliceNoCopy v) noexcept {
-  TRI_ASSERT(!v.slice.isExternal());
-  setPointer(v.slice.start());
-}
+AqlValue::AqlValue(AqlValueHintSliceNoCopy v) noexcept
+    : AqlValue{v.slice.start()} {}
 
 AqlValue::AqlValue(AqlValueHintSliceCopy v) : AqlValue{v.slice} {}
 

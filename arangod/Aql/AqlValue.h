@@ -434,11 +434,10 @@ struct AqlValue final {
 
   /// @brief materializes a value into the builder
   void toVelocyPack(velocypack::Options const*, velocypack::Builder&,
-                    bool resolveExternals, bool allowUnindexed) const;
+                    bool allowUnindexed) const;
 
   /// @brief materialize a value into a new one. this expands ranges
-  AqlValue materialize(velocypack::Options const*, bool& hasCopied,
-                       bool resolveExternals) const;
+  AqlValue materialize(velocypack::Options const*, bool& hasCopied) const;
 
   /// @brief return the slice for the value
   /// this will throw if the value type is not VPACK_SLICE_POINTER,
@@ -463,9 +462,7 @@ struct AqlValue final {
   static int Compare(velocypack::Options const*, AqlValue const& left,
                      AqlValue const& right, bool useUtf8);
 
-  /// @brief Returns the type of this value. If true it uses an external pointer
-  /// if false it uses the internal data structure.
-  /// Do not move it to cpp file as MSVC does not inline it.
+  /// @brief Returns the type of this value
   AqlValueType type() const noexcept {
     return static_cast<AqlValueType>(_data.aqlValueType);
   }

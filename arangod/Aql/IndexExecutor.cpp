@@ -735,7 +735,7 @@ void IndexExecutor::executeExpressions(InputAqlItemRow const& input) {
     AqlValueGuard guard(a, mustDestroy);
 
     AqlValueMaterializer materializer(&_trx.vpackOptions());
-    VPackSlice slice = materializer.slice(a, false);
+    VPackSlice slice = materializer.slice(a);
     AstNode* evaluatedNode = _ast.nodeFromVPack(slice, true);
 
     AstNode* tmp = condition;
