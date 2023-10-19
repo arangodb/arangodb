@@ -8,13 +8,13 @@ import {
   Tbody,
   Td,
   Text,
-  Tfoot,
   Th,
   Thead,
   Tr
 } from "@chakra-ui/react";
 import {
-  Cell, flexRender,
+  Cell,
+  flexRender,
   Header,
   Row,
   Table as TableType
