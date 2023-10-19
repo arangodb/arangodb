@@ -274,27 +274,19 @@ function optimizerRuleTestSuite () {
         "FOR doc1 IN @@cn FOR doc2 IN @@cn FILTER doc1.value == doc2._key RETURN [doc1.value, doc2._key]",
       ];
 
+      const queryOptions = {optimizer: {rules: ["-join-index-nodes"]}};
       queries.forEach(function(query) {
-        let result = db._createStatement({query: query, bindVars:  { "@cn" : cn }}).explain();
+        let result = db._createStatement({query: query, bindVars:  { "@cn" : cn }, options: queryOptions}).explain();
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
 
         let found = 0;
-        let joinNodeFound = false;
         result.plan.nodes.filter(function(node) {
-          return node.type === 'IndexNode' || node.type === 'EnumerateCollectionNode' || node.type === 'JoinNode';
+          return node.type === 'IndexNode' || node.type === 'EnumerateCollectionNode';
         }).forEach(function(node) {
-          if (node.type === 'JoinNode') {
-            joinNodeFound = true;
-          }
           ++found;
         });
 
-        if (joinNodeFound) {
-          assertEqual(1, found);
-        } else {
-          assertEqual(2, found);
-        }
-
+        assertEqual(2, found);
       });
     },
 
