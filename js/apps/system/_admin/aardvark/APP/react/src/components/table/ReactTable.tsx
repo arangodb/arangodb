@@ -19,6 +19,7 @@ type ReactTableProps<Data extends object> = {
   getCellProps?: (
     cell: CellContext<Data, unknown>
   ) => { [key: string]: any } | undefined;
+  getRowProps?: (row: Row<Data>) => { [key: string]: any } | undefined;
 };
 
 export function ReactTable<Data extends object>({
@@ -27,12 +28,14 @@ export function ReactTable<Data extends object>({
   table,
   renderSubComponent,
   onCellClick,
-  getCellProps
+  getCellProps,
+  getRowProps
 }: ReactTableProps<Data>) {
   const rows = table.getRowModel().rows;
 
   return (
     <Grid
+      position="relative"
       overflow="auto"
       gridTemplateRows="auto 1fr"
       borderY="1px solid"
@@ -50,12 +53,13 @@ export function ReactTable<Data extends object>({
           </Grid>
         ))}
       </Grid>
-      <Grid gridAutoFlow="rows">
+      <Grid gridAutoFlow="row">
         {rows.length > 0 ? (
           rows.map(row => (
             <>
               <SelectableTableRow<Data>
                 getCellProps={getCellProps}
+                getRowProps={getRowProps}
                 key={row.id}
                 row={row}
                 onRowSelect={onRowSelect}
@@ -152,7 +156,8 @@ const SelectableTableRow = <Data extends object>({
   row,
   onRowSelect,
   onCellClick,
-  getCellProps
+  getCellProps,
+  getRowProps
 }: {
   row: Row<Data>;
   onRowSelect: ((row: Row<Data>) => void) | undefined;
@@ -160,6 +165,7 @@ const SelectableTableRow = <Data extends object>({
   getCellProps?: (
     cell: CellContext<Data, unknown>
   ) => { [key: string]: any } | undefined;
+  getRowProps?: (row: Row<Data>) => { [key: string]: any } | undefined;
 }) => {
   return (
     <Grid
@@ -174,6 +180,8 @@ const SelectableTableRow = <Data extends object>({
           : {}
       }
       backgroundColor={row.getIsSelected() ? "gray.100" : undefined}
+      alignItems="center"
+      {...getRowProps?.(row)}
     >
       {row.getVisibleCells().map(cell => {
         return (

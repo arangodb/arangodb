@@ -168,9 +168,5 @@ export const CollectionsTable = ({
     }
   });
 
-  return (
-    <td colSpan={6}>
-      <ReactTable<CollectionType> table={tableInstance} />
-    </td>
-  );
+  return <ReactTable<CollectionType> table={tableInstance} />;
 };

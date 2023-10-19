@@ -209,7 +209,7 @@ export const UserPermissionsTable = () => {
   });
 
   return (
-    <Stack padding="4">
+    <Stack padding="4" maxHeight="calc(100vh - 164px)">
       <FiltersList<DatabaseTableType>
         columns={TABLE_COLUMNS}
         table={tableInstance}
@@ -220,6 +220,16 @@ export const UserPermissionsTable = () => {
             return {
               padding: "0",
               paddingY: "0"
+            };
+          }
+        }}
+        getRowProps={row => {
+          if (row.original.databaseName === "*") {
+            return {
+              backgroundColor: "gray.50",
+              position: "sticky",
+              top: "0",
+              zIndex: "sticky"
             };
           }
         }}
