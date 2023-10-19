@@ -33,18 +33,22 @@ function optimizerRuleTestSuite () {
   const modificationNodes = ['InsertNode', 'UpdateNode', 'ReplaceNode', 'RemoveNode', 'UpsertNode'];
 
   const cn = "UnitTestsCollection";
+  const en = "UnitTestsEdge";
   const vn = "UnitTestsView";
 
   return {
     setUpAll : function () {
-      let c = db._create(cn, { numberOfShards: 3 });
+      let c = db._create(cn);
       c.ensureIndex({ type: "persistent", fields: ["indexed"] });
+
+      db._createEdgeCollection(en);
 
       db._createView(vn, "arangosearch", {});
     },
     
     tearDownAll : function () {
       db._dropView(vn);
+      db._drop(en);
       db._drop(cn);
     },
 
@@ -77,19 +81,28 @@ function optimizerRuleTestSuite () {
         [ "FOR doc IN " + cn + " COLLECT v = doc.value % 2 RETURN v", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["CalculationNode", true], ["CollectNode", true], ["SortNode", true], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + cn + " RETURN DISTINCT doc.value", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["CalculationNode", true], ["CollectNode", true], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + cn + " FILTER doc.value > 3 LIMIT 10 RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["LimitNode", false], ["ReturnNode", false] ] ],
+        [ "FOR doc IN " + cn + " FILTER doc.a == '123' RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["ReturnNode", false] ] ],
+        [ "FOR doc IN " + cn + " FILTER doc._key == '123' RETURN doc", [ ["SingletonNode", false], ["IndexNode", true], ["ReturnNode", false] ] ],
+        [ "FOR doc IN " + cn + " FILTER doc._key == '123' LIMIT 3 RETURN doc", [ ["SingletonNode", false], ["IndexNode", true], ["LimitNode", false], ["ReturnNode", false] ] ],
+        // views
         [ "FOR doc IN " + vn + " FILTER doc.value > 3 RETURN doc", [ ["SingletonNode", false], ["EnumerateViewNode", true], ["CalculationNode", true], ["FilterNode", true], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + vn + " FILTER doc.value > 3 LIMIT 3 RETURN doc", [ ["SingletonNode", false], ["EnumerateViewNode", true], ["CalculationNode", true], ["FilterNode", true], ["LimitNode", false], ["ReturnNode", false] ] ],
+        // modification queries
         [ "FOR i IN 1..1000 INSERT {} INTO " + cn, [ ["SingletonNode", false], ["CalculationNode", false], ["CalculationNode", false], ["EnumerateListNode", false], ["InsertNode", false] ] ],
         [ "FOR doc IN " + cn + " REMOVE doc IN " + cn, [ ["SingletonNode", false], ["IndexNode", false], ["RemoveNode", false] ] ],
         [ "FOR doc IN " + cn + " UPDATE doc WITH {} IN " + cn, [ ["SingletonNode", false], ["CalculationNode", false], ["IndexNode", false], ["UpdateNode", false] ] ],
         [ "FOR doc IN " + cn + " REPLACE doc WITH {} IN " + cn, [ ["SingletonNode", false], ["CalculationNode", false], ["IndexNode", false], ["ReplaceNode", false] ] ],
-        [ "FOR doc IN " + cn + " FILTER doc.a == '123' RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["ReturnNode", false] ] ],
+        // usage of V8
         [ "FOR doc IN " + cn + " FILTER doc.a == V8('123') RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["CalculationNode", false], ["FilterNode", true], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " FILTER doc._key == '123' RETURN doc", [ ["SingletonNode", false], ["IndexNode", true], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " FILTER doc._key == '123' LIMIT 3 RETURN doc", [ ["SingletonNode", false], ["IndexNode", true], ["LimitNode", false], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + cn + " FILTER doc._key == V8('123') LIMIT 3 RETURN doc", [ ["SingletonNode", false], ["IndexNode", false], ["LimitNode", false], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + cn + " FILTER doc._key == 'fuchs' FILTER doc.a == V8('123') RETURN doc", [ ["SingletonNode", false], ["IndexNode", true], ["CalculationNode", false], ["FilterNode", true], ["ReturnNode", false] ] ],
+        // join
         [ "FOR doc1 IN " + cn + " SORT doc1.indexed FOR doc2 IN " + cn + " FILTER doc2.indexed == doc1.indexed RETURN [doc1, doc2]", [ ["SingletonNode", false], ["JoinNode", true], ["CalculationNode", true], ["ReturnNode", false] ] ],
+        // subquery
+        [ "FOR i IN 1..100 LET sub = (FOR doc IN " + cn + " SORT doc.value RETURN doc.value) FILTER LENGTH(sub) > 0 RETURN sub[0]", [ ["SingletonNode", false], ["SubqueryStartNode", false], ["EnumerateCollectionNode", false], ["CalculationNode", false], ["SortNode", false], ["SubqueryEndNode", false], ["CalculationNode", true], ["FilterNode", true], ["CalculationNode", true], ["CalculationNode", true], ["EnumerateListNode", true], ["ReturnNode", false] ] ],
+        // traversal
+        [ "FOR v, e, p IN 1..3 OUTBOUND '" + cn + "/test' " + en + " FILTER v.value == 1 RETURN p", [ ["SingletonNode", false], ["TraversalNode", false], ["ReturnNode", false] ] ],
+        [ "FOR v, e, p IN 1..3 OUTBOUND '" + cn + "/test' " + en + " FILTER NOOPT(v.value == 1) SORT e.value RETURN p", [ ["SingletonNode", false], ["TraversalNode", false], ["CalculationNode", false], ["FilterNode", false], ["CalculationNode", false], ["SortNode", false], ["ReturnNode", false] ] ],
       ];
 
       queries.forEach(function(query) {
