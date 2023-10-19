@@ -30,6 +30,8 @@ const _ = require('lodash');
 const isCluster = internal.isCluster();
 const isEnterprise = internal.isEnterprise();
 
+const numDocuments = 2000;
+
 const indexJoinTestMultiSuite = function (parameters) {
 
   const indexAttribute = "x";
@@ -54,7 +56,6 @@ const indexJoinTestMultiSuite = function (parameters) {
   const collection1 = "A";
   const collection2 = "B";
 
-  const numDocuments = 2000;
   const documentsA = Array.from({length: numDocuments}).map(function (v, idx) { return {x: idx, y: 2 * idx, z: 3 * idx + 1}; });
   const documentsB = Array.from({length: numDocuments}).map(function (v, idx) { return {x: idx, y: 2 * idx, z: 3 * idx}; });
 
@@ -66,6 +67,7 @@ const indexJoinTestMultiSuite = function (parameters) {
       FILTER d1.${indexAttribute} == d2.${indexAttribute}
       FILTER ${config.filter1 ? `d1.${filterAttribute} % 4 == 0` : "TRUE"}
       FILTER ${config.filter2 ? `d2.${filterAttribute} % 4 == 0` : "TRUE"}
+      ${config.limit === false ? "/* no limit */" : `LIMIT ${config.limit[0]}, ${config.limit[1]}`}
       RETURN [
         ${config.projection1 ? `{z: d1.${projectionAttribute}}` : 'KEEP(d1, "x", "y", "z")'},
         ${config.projection2 ? `{z: d2.${projectionAttribute}}` : 'KEEP(d2, "x", "y", "z")'},
@@ -107,12 +109,18 @@ const indexJoinTestMultiSuite = function (parameters) {
   };
 
   const computeResult = function (config) {
-    return _.zip(documentsA, documentsB).filter(function ([docA, docB]) {
+    const result = _.zip(documentsA, documentsB).filter(function ([docA, docB]) {
       return (!config.filter1 || docA[filterAttribute] % 4 === 0) &&
           (!config.filter2 || docB[filterAttribute] % 4 === 0);
     }).map(function ([docA, docB]) {
       return [config.projection1 ? {z: docA.z} : docA, config.projection2 ? {z: docB.z} : docB];
     });
+
+    if (config.limit === false) {
+      return result;
+    } else {
+      return _.take(_.drop(result, config.limit[0]), config.limit[1]);
+    }
   };
 
   const checkIndexInfos = function (infos, filter, filterAttr, projection, projectionAttr) {
@@ -171,7 +179,6 @@ const indexJoinTestMultiSuite = function (parameters) {
       const expectedResult = computeResult(config);
       // sorting by x is required, because the query does not imply any sorting order
       const actualResult = db._query(query).toArray().sort((left, right) => left[0].z - right[0].z);
-
       // db._explain(query);
       // print(expectedResult);
       // print(actualResult);
@@ -202,6 +209,7 @@ const indexJoinTestMultiSuite = function (parameters) {
     if (config.projection2) { str += "p2"; }
     if (config.filter1) { str += "f1"; }
     if (config.filter2) { str += "f2"; }
+    if (config.limit !== false) { str += `L_${config.limit[0]}_${config.limit[1]}`; }
     return str;
   };
   const configDDLToString = function (config) {
@@ -246,6 +254,13 @@ const parameters = _.groupBy(generateParameters({
   filterAttribute2: ["indexed", "stored", "document"],
   projectedAttribute1: ["indexed", "stored", "document"],
   projectedAttribute2: ["indexed", "stored", "document"],
+  limit: [
+    false,
+    [0, numDocuments / 20],
+    [0, numDocuments / 2],
+    [numDocuments / 4, numDocuments / 2],
+    [numDocuments / 2, numDocuments],
+  ],
   unique: [true, false],
 }), (c) => ["filterAttribute1", "filterAttribute2", "projectedAttribute1", "projectedAttribute2", "unique"].map(k => c[k]).join(""));
 
