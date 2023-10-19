@@ -162,10 +162,9 @@ const IndexPrimaryJoinTestSuite = function () {
         assertEqual(a.x, b._key);
       }
     },
-    /*
-    TODO: enable as soon as filter issue in VPackStreamIterator is fixed.
+
     testAllMatchPrimaryIndexReturnProjection: function () {
-      const B = fillCollection("B", singleAttributeGenerator(5, "x", x => 2 * x));
+      const B = fillCollection("B", singleAttributeGenerator(5, "x", x => 2 * x), ["_key"]);
       // No additional index on B, we want to make use of the default (rocksdb) primary index
       const documentsB = B.all().toArray();
       let properties = [];
@@ -173,7 +172,7 @@ const IndexPrimaryJoinTestSuite = function () {
         properties.push({"x": doc._key});
       });
 
-      const A = fillCollectionWith("A", properties);
+      const A = fillCollectionWith("A", properties, ["x"]);
       A.ensureIndex({type: "persistent", fields: ["x"], unique: true});
 
       const result = runAndCheckQuery(`
@@ -183,14 +182,13 @@ const IndexPrimaryJoinTestSuite = function () {
               FILTER doc1.x == doc2._key
               RETURN doc2._key
       `);
-
+      assertEqual(result.length, documentsB.length);
       assertEqual(result.length, 5);
-      for (const a of result) {
-        for (const b of documentsB) {
-          assertEqual(a, b._key);
-        }
+
+      for (let counter = 0; counter < result.length; counter++) {
+        assertEqual(result[counter], documentsB[counter]._key);
       }
-    },*/
+    },
     // TODO: Add additional FILTER for doc2._key (e.g. calculation compare last character)
   };
 };
