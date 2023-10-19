@@ -72,7 +72,7 @@ function optimizerRuleTestSuite () {
       });
     },
 
-    testRuleEffects : function () {
+    testSinglePlans : function () {
       let queries = [
         [ "FOR i IN 1..100 LET b = i * 2 RETURN b", [ ["SingletonNode", false], ["CalculationNode", true], ["EnumerateListNode", true], ["CalculationNode", true], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + cn + " FILTER doc.value > 3 RETURN doc.a", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["CalculationNode", true], ["ReturnNode", false] ] ],
