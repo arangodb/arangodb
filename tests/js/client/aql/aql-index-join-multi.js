@@ -56,8 +56,17 @@ const indexJoinTestMultiSuite = function (parameters) {
   const collection1 = "A";
   const collection2 = "B";
 
-  const documentsA = Array.from({length: numDocuments}).map(function (v, idx) { return {x: idx, y: 2 * idx, z: 3 * idx + 1}; });
-  const documentsB = Array.from({length: numDocuments}).map(function (v, idx) { return {x: idx, y: 2 * idx, z: 3 * idx}; });
+  const queryOptions = {
+    optimizer: {
+      rules: ["-late-document-materialization"], // turn off late materialization
+    },
+    maxNumberOfPlans: 1
+  };
+
+  const documentsA = Array.from({length: numDocuments})
+      .map(function (v, idx) { return {x: idx, y: 2 * idx, z: 3 * idx + 1}; });
+  const documentsB = Array.from({length: numDocuments})
+      .map(function (v, idx) { return {x: idx, y: 2 * idx, z: 3 * idx}; });
 
   const buildQuery = function(config) {
     return `
@@ -67,6 +76,7 @@ const indexJoinTestMultiSuite = function (parameters) {
       FILTER d1.${indexAttribute} == d2.${indexAttribute}
       FILTER ${config.filter1 ? `d1.${filterAttribute} % 4 == 0` : "TRUE"}
       FILTER ${config.filter2 ? `d2.${filterAttribute} % 4 == 0` : "TRUE"}
+      ${config.sort ? "SORT d1.z" : "/* no sort */"}
       ${config.limit === false ? "/* no limit */" : `LIMIT ${config.limit[0]}, ${config.limit[1]}`}
       RETURN [
         ${config.projection1 ? `{z: d1.${projectionAttribute}}` : 'KEEP(d1, "x", "y", "z")'},
@@ -163,8 +173,11 @@ const indexJoinTestMultiSuite = function (parameters) {
     return function () {
       const query = buildQuery(config);
 
-      const plan = db._createStatement({query: query}).explain().plan;
+      const plan = db._createStatement({query: query, options: queryOptions}).explain().plan;
       const nodes = plan.nodes.map(x => x.type);
+      if (nodes.indexOf("JoinNode") === -1) {
+        db._explain(query, null, queryOptions);
+      }
       assertEqual(nodes.indexOf("JoinNode"), 1);
 
       const join = plan.nodes[1];
@@ -178,14 +191,25 @@ const indexJoinTestMultiSuite = function (parameters) {
 
       const expectedResult = computeResult(config);
       // sorting by x is required, because the query does not imply any sorting order
-      const actualResult = db._query(query).toArray().sort((left, right) => left[0].z - right[0].z);
+      const actualResult = db._query(query, null, queryOptions)
+          .toArray().sort((left, right) => left[0].z - right[0].z);
       // db._explain(query);
       // print(expectedResult);
       // print(actualResult);
 
       assertEqual(expectedResult.length, actualResult.length);
-      for (const [expected, actual] of _.zip(expectedResult, actualResult)) {
-        assertEqual(expected, actual);
+      if (config.sort || !isCluster) {
+        // On single server or with explicit sort we can assort a correct sert order in combination with limit
+        // otherwise the result is undefined.
+        for (const [expected, actual] of _.zip(expectedResult, actualResult)) {
+          assertEqual(expected, actual);
+        }
+      } else {
+        // The result is actually undefined, we can only check for internal correctness, i.e. the entries actually
+        // match the join condition
+        for (const [docA, docB] of actualResult) {
+          assertEqual(docA.z, docB.z + 1);
+        }
       }
     };
   };
@@ -209,6 +233,7 @@ const indexJoinTestMultiSuite = function (parameters) {
     if (config.projection2) { str += "p2"; }
     if (config.filter1) { str += "f1"; }
     if (config.filter2) { str += "f2"; }
+    if (config.sort) { str += "S"; }
     if (config.limit !== false) { str += `L_${config.limit[0]}_${config.limit[1]}`; }
     return str;
   };
@@ -254,6 +279,7 @@ const parameters = _.groupBy(generateParameters({
   filterAttribute2: ["indexed", "stored", "document"],
   projectedAttribute1: ["indexed", "stored", "document"],
   projectedAttribute2: ["indexed", "stored", "document"],
+  sort: [true, false],
   limit: [
     false,
     [0, numDocuments / 20],
