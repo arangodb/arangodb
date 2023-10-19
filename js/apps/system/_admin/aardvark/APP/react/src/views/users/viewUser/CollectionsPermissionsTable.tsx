@@ -114,6 +114,14 @@ const COLLECTION_COLUMNS = [
       }
       return info.cell.getValue();
     },
+    sortingFn: (rowA, rowB, columnId) => {
+      if (rowA.original.collectionName === "*") {
+        return 0;
+      }
+      return rowA
+        .getValue<string>(columnId)
+        ?.localeCompare(rowB.getValue<string>(columnId) || "");
+    },
     meta: {
       filterType: "text"
     },
@@ -122,7 +130,7 @@ const COLLECTION_COLUMNS = [
   }),
   ...collectionPermissionColumns
 ];
-export const CollectionsTable = ({
+export const CollectionsPermissionsTable = ({
   row,
   databaseTable,
   refetchDatabasePermissions

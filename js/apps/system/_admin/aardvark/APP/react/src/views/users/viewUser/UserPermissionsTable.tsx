@@ -10,7 +10,7 @@ import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { getCurrentDB } from "../../../utils/arangoClient";
-import { CollectionsTable, DatabaseTableType } from "./CollectionsTable";
+import { CollectionsPermissionsTable, DatabaseTableType } from "./CollectionsPermissionsTable";
 import {
   DatabasePermissionSwitch,
   getIsDefaultRow
@@ -152,6 +152,14 @@ const TABLE_COLUMNS = [
     meta: {
       filterType: "text"
     },
+    sortingFn: (rowA, rowB, columnId) => {
+      if (rowA.original.databaseName === "*") {
+        return 0;
+      }
+      return rowA
+        .getValue<string>(columnId)
+        ?.localeCompare(rowB.getValue<string>(columnId) || "");
+    },
     cell: info => {
       if (getIsDefaultRow(info)) {
         return <Tag>Default</Tag>;
@@ -219,7 +227,7 @@ export const UserPermissionsTable = () => {
         emptyStateMessage="No database permissions found"
         renderSubComponent={row => {
           return (
-            <CollectionsTable
+            <CollectionsPermissionsTable
               refetchDatabasePermissions={refetchDatabasePermissions}
               databaseTable={databaseTable}
               row={row}
