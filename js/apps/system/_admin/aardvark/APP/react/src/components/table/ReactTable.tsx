@@ -88,25 +88,6 @@ export function ReactTable<Data extends object>({
               <Box padding="4">{emptyStateMessage}</Box>
             )}
           </Tbody>
-          <Tfoot>
-            {table.getFooterGroups().map(group => {
-              return (
-                <Tr key={group.id}>
-                  {group.headers.map(header => {
-                    return (
-                      <Th key={header.id}>
-                        {" "}
-                        {flexRender(
-                          header.column.columnDef.footer,
-                          header.getContext()
-                        )}
-                      </Th>
-                    );
-                  })}
-                </Tr>
-              );
-            })}
-          </Tfoot>
         </Table>
       </TableContainer>
     </Stack>
