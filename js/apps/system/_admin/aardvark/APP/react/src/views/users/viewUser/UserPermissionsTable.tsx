@@ -215,7 +215,6 @@ export const UserPermissionsTable = () => {
         table={tableInstance}
       />
       <ReactTable<DatabaseTableType>
-        layout="fixed"
         table={tableInstance}
         emptyStateMessage="No database permissions found"
         renderSubComponent={row => {

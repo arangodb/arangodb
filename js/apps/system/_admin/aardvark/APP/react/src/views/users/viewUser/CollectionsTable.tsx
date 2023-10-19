@@ -166,7 +166,7 @@ export const CollectionsTable = ({
 
   return (
     <td colSpan={6}>
-      <ReactTable<CollectionType> layout="fixed" table={tableInstance} />
+      <ReactTable<CollectionType> table={tableInstance} />
     </td>
   );
 };
