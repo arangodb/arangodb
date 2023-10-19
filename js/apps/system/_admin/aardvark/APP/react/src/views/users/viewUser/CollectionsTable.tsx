@@ -32,6 +32,7 @@ const collectionPermissionColumns = [
           />
         );
       },
+      enableSorting: false,
       meta: {
         filterType: "single-select"
       }
@@ -50,6 +51,7 @@ const collectionPermissionColumns = [
           />
         );
       },
+      enableSorting: false,
       meta: {
         filterType: "single-select"
       }
@@ -68,6 +70,7 @@ const collectionPermissionColumns = [
           />
         );
       },
+      enableSorting: false,
       meta: {
         filterType: "single-select"
       }
@@ -86,6 +89,7 @@ const collectionPermissionColumns = [
           />
         );
       },
+      enableSorting: false,
       meta: {
         filterType: "single-select"
       }
