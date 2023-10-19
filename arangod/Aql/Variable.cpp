@@ -91,8 +91,7 @@ void Variable::toVelocyPack(velocypack::Builder& builder,
 
   if (type() == Variable::Type::Const) {
     builder.add(VPackValue("constantValue"));
-    _constantValue.toVelocyPack(nullptr, builder, /*resolveExternals*/ false,
-                                /*allowUnindexed*/ true);
+    _constantValue.toVelocyPack(nullptr, builder, /*allowUnindexed*/ true);
   }
 }
 

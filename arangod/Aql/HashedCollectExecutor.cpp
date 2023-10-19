@@ -445,7 +445,6 @@ void HashedCollectExecutor::addToIntoRegister(InputAqlItemRow const& input,
     // get result of INTO expression variable
     input.getValue(_infos.getExpressionRegister())
         .toVelocyPack(_infos.getVPackOptions(), builder,
-                      /*resolveExternals*/ false,
                       /*allowUnindexed*/ false);
   } else {
     // copy variables / keep variables into result register
@@ -454,7 +453,6 @@ void HashedCollectExecutor::addToIntoRegister(InputAqlItemRow const& input,
       builder.add(VPackValue(pair.first));
       input.getValue(pair.second)
           .toVelocyPack(_infos.getVPackOptions(), builder,
-                        /*resolveExternals*/ false,
                         /*allowUnindexed*/ false);
     }
     builder.close();
