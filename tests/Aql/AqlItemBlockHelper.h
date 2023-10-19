@@ -136,10 +136,8 @@ SharedAqlItemBlockPtr buildBlock(
     }
   }
 
-  if (!shadowRows.empty()) {
-    for (auto const& it : shadowRows) {
-      block->makeShadowRow(it.first, it.second);
-    }
+  for (auto const& it : shadowRows) {
+    block->makeShadowRow(it.first, it.second);
   }
 
   return block;

@@ -1,15 +1,12 @@
 import { Button, Input, Stack, Text } from "@chakra-ui/react";
 import React, { useState } from "react";
-import { mutate } from "swr";
 import {
   Modal,
   ModalBody,
   ModalFooter,
   ModalHeader
 } from "../../../components/modal";
-import { getAardvarkRouteForCurrentDb } from "../../../utils/arangoClient";
-import { useQueryContext } from "../QueryContextProvider";
-import { QueryType } from "./useFetchUserSavedQueries";
+import { useQueryImport } from "./useQueryImport";
 
 export const ImportQueryModal = ({
   isOpen,
@@ -18,7 +15,6 @@ export const ImportQueryModal = ({
   isOpen: boolean;
   onClose: () => void;
 }) => {
-  const { onSaveQueryList } = useQueryContext();
   const formatText = `JSON documents embedded into a list:
       [{
         "name": "Query Name",
@@ -26,72 +22,15 @@ export const ImportQueryModal = ({
         "parameter": "Query Bind Parameter as Object"
       }]
     `;
-  const [isUploading, setIsUploading] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
+  const [file, setFile] = useState<File | undefined>();
   const onSelectFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    setFile(file);
-  };
-  const onUpload = () => {
-    if (!file) return;
-    if (window.frontendConfig.ldapEnabled) {
-      setIsUploading(true);
-      const reader = new FileReader();
-      reader.readAsText(file);
-      reader.onload = async () => {
-        const data = reader.result;
-        if (typeof data !== "string") return;
-        const queries = JSON.parse(data) as QueryType[];
-        await onSaveQueryList(
-          queries.map(query => {
-            return {
-              ...query,
-              created_at: Date.now()
-            };
-          })
-        );
-        await mutate("/savedQueries");
-        setIsUploading(false);
-        onClose();
-      };
+    if (!file) {
       return;
     }
-    const route = getAardvarkRouteForCurrentDb(
-      `query/upload/${window.App.currentUser}`
-    );
-    setIsUploading(true);
-    try {
-      const reader = new FileReader();
-      reader.readAsText(file);
-      reader.onload = async () => {
-        const data = reader.result;
-        if (typeof data !== "string") {
-          return;
-        }
-        const queries = JSON.parse(data);
-        const sanitizedQueries = queries.map((query: QueryType) => {
-          return {
-            name: query.name,
-            value: query.value,
-            parameter: query.parameter
-          };
-        });
-        await route.request({
-          method: "POST",
-          body: sanitizedQueries
-        });
-        await mutate("/savedQueries");
-        window.arangoHelper.arangoNotification("Successfully uploaded queries");
-        setIsUploading(false);
-        onClose();
-      };
-    } catch (e) {
-      window.arangoHelper.arangoError("Failed to upload queries");
-      setIsUploading(false);
-      onClose();
-    }
+    setFile(file);
   };
+  const { onUpload, isUploading } = useQueryImport({ onClose });
   return (
     <Modal size="2xl" isOpen={isOpen} onClose={onClose}>
       <ModalHeader>Import custom queries</ModalHeader>
@@ -137,7 +76,7 @@ export const ImportQueryModal = ({
           <Button
             isLoading={isUploading}
             colorScheme="green"
-            onClick={onUpload}
+            onClick={() => onUpload(file)}
             isDisabled={!file}
           >
             Import

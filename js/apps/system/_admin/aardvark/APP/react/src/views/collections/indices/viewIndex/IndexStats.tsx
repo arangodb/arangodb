@@ -3,11 +3,11 @@ import { Flex, Stat, StatLabel, StatNumber } from "@chakra-ui/react";
 import { IndexWithFigures } from "../useFetchCollectionIndices";
 
 export const IndexStats = ({
-  currentIndex
+  foundCollectionIndex
 }: {
-  currentIndex: IndexWithFigures;
+  foundCollectionIndex: IndexWithFigures;
 }) => {
-  const { figures, type } = currentIndex;
+  const { figures, type } = foundCollectionIndex;
 
   if (type === "inverted") {
     const {

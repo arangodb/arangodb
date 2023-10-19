@@ -6,11 +6,11 @@ RUN apk --no-cache add bison flex make cmake g++ git linux-headers python3 curl 
 # we need only need perl for openssl installation and can later removed them again
 RUN apk --no-cache add perl
 COPY install-openssl.sh /tools/
-RUN [ "/tools/install-openssl.sh", "3.1", ".2" ]
+RUN [ "/tools/install-openssl.sh", "3.1", ".3" ]
 ENV OPENSSL_ROOT_DIR=/opt/openssl-3.1
 
 COPY install-openldap.sh /tools/
-RUN [ "/tools/install-openldap.sh", "3.1.2" ]
+RUN [ "/tools/install-openldap.sh", "3.1.3" ]
 RUN apk --no-cache del perl
 
 COPY install-cppcheck.sh /tools/

@@ -11,23 +11,25 @@ import { useCollectionIndicesContext } from "./CollectionIndicesContext";
 import { useDeleteIndex } from "./useDeleteIndex";
 
 export const DeleteIndexModal = ({
-  index,
+  foundCollectionIndex,
   onClose,
   onSuccess
 }: {
-  index: Index;
+  foundCollectionIndex: Index;
   onClose: () => void;
   onSuccess: () => void;
 }) => {
   const { collectionId } = useCollectionIndicesContext();
   const { onDeleteIndex } = useDeleteIndex({ collectionId });
   const onDelete = async () => {
-    onDeleteIndex({ id: index.id, onSuccess });
+    onDeleteIndex({ id: foundCollectionIndex.id, onSuccess });
   };
   return (
     <Modal isOpen onClose={onClose}>
       <ModalHeader>Delete Index</ModalHeader>
-      <ModalBody>Are you sure you want to delete {index.name}?</ModalBody>
+      <ModalBody>
+        Are you sure you want to delete {foundCollectionIndex.name}?
+      </ModalBody>
       <ModalFooter>
         <Stack direction="row">
           <Button colorScheme="gray" onClick={() => onClose()}>

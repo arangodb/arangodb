@@ -30,13 +30,13 @@ export const CollectionIndexDetails = () => {
     collectionNameFromUrl
   );
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
-  const currentIndex = collectionIndices?.find(collectionIndex => {
+  const foundCollectionIndex = collectionIndices?.find(collectionIndex => {
     return collectionIndex.id === `${decodedCollectionNameFromUrl}/${indexId}`;
   });
-  if (!currentIndex) {
+  if (!foundCollectionIndex) {
     return null;
   }
-  const { type } = currentIndex;
+  const { type } = foundCollectionIndex;
   // TODO arangojs does not currently support "edge" index type
   const isSystem = type === "primary" || (type as string) === "edge";
   const showDeleteButton = !isSystem && !readOnly;
@@ -65,10 +65,10 @@ export const CollectionIndexDetails = () => {
 
       <ModalBody>
         <Stack width="100%" height="calc(100vh - 280px)">
-          <IndexStats currentIndex={currentIndex} />
+          <IndexStats foundCollectionIndex={foundCollectionIndex} />
           <ControlledJSONEditor
             mode="code"
-            value={currentIndex}
+            value={foundCollectionIndex}
             htmlElementProps={{
               style: {
                 height: "calc(100%)",
@@ -78,7 +78,7 @@ export const CollectionIndexDetails = () => {
           />
           {showDeleteModal && (
             <DeleteIndexModal
-              index={currentIndex}
+              foundCollectionIndex={foundCollectionIndex}
               onSuccess={() => {
                 window.location.href = `#cIndices/${collectionNameFromUrl}`;
               }}

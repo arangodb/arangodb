@@ -142,52 +142,52 @@
       },
       testNotAppliedDueToNotSorted() {
         let query = "FOR d IN " + vn + " LIMIT 10 RETURN d";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertEqual(-1, plan.rules.indexOf(ruleName));
       },
       testNotAppliedDueToSortWrapped() {
         let query = "FOR d IN " + vn + " SORT ROUND(BM25(d)) LIMIT 10 RETURN d";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertEqual(-1, plan.rules.indexOf(ruleName));
       },
       testNotAppliedDueToNonDetermCalc() {
         let query = "FOR d IN " + vn + " SEARCH d.a.a1 == 0  LET a = NOOPT(d.b.b1) SORT BM25(d) LIMIT 10 RETURN {dD:d, aA:a}";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertEqual(-1, plan.rules.indexOf(ruleName));
       },
       testNotAppliedDueToNonDetermCalc2() {
         let query = "FOR d IN " + vn + " SEARCH d.a.a1 == 0  SORT BM25(d) LET a = NOOPT(d.b.b1) LIMIT 10 RETURN {dD:d, aA:a}";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertEqual(-1, plan.rules.indexOf(ruleName));
       },
       testNotAppliedDueToNoLimit() {
         let query = "FOR d IN " + vn + " SEARCH d.a.a1 == 0 SORT BM25(d) RETURN d";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertEqual(-1, plan.rules.indexOf(ruleName));
       },
       testNotAppliedDueToLimitBefore() {
         let query = "FOR d IN " + vn + " SEARCH d.a.a1 == 0 LIMIT 10 SORT BM25(d) RETURN d";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertEqual(-1, plan.rules.indexOf(ruleName));
       },
       testNotAppliedDueToInLoop() {
         let query = "FOR a IN 1..10 FOR d IN " + vn + " SEARCH d.a.a1 == a SORT BM25(d) LIMIT 10 RETURN d";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertEqual(-1, plan.rules.indexOf(ruleName));
       },
       testNotAppliedDueToNonScoresSort() {
         let query = "FOR d IN " + vn + " SEARCH d.a.a1 == 1 SORT BM25(d), d.a.a1 ASC LIMIT 10 RETURN d";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertEqual(-1, plan.rules.indexOf(ruleName));
       },
       testNotAppliedDueToNonScoresSort2() {
         let query = "FOR d IN " + vn + " SEARCH d.a.a1 == 1 SORT d.a.a1 ASC, BM25(d) LIMIT 10 RETURN d";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertEqual(-1, plan.rules.indexOf(ruleName));
       },
       testNotAppliedDueToUpdateDoc() {
         let query = "FOR d IN " + vn + " SEARCH d.field1 IN [1, 2, 11, 12] UPDATE d IN " + cn + " SORT BM25(d) DESC LIMIT 10 RETURN d";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertEqual(-1, plan.rules.indexOf(ruleName));
       },
       testNotAppliedDueToSubqueryWithDocumentAccess() {
@@ -195,7 +195,7 @@
                     "LET a = NOOPT(d.foo) " +
                     "LET e = SUM(FOR c IN " + vn + " LET p = CONCAT(d.field1, c.foo) RETURN p) " +
                     "SORT BM25(d) LIMIT 10 RETURN {dd:d, ee:e, aa:a}";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertEqual(-1, plan.rules.indexOf(ruleName));
       },
       testNotAppliedDueToSubqueryWithReturnDocument() {
@@ -203,125 +203,128 @@
                     "LET a = NOOPT(d.foo) " +
                     "LET e = SUM(FOR c IN " + vn + " LET p = NOOPT(CONCAT(d.foo, c.foo)) RETURN d) " +
                     "SORT BM25(d) LIMIT 10 RETURN {dd:d, ee:e, aa:a}";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertEqual(-1, plan.rules.indexOf(ruleName));
       },
       testApplyWithFullCount() {
           let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3' SORT BM25(d) " +
                       " DESC LIMIT 1000, 300 COLLECT WITH COUNT INTO c  RETURN c ";
-          let plan = AQL_EXPLAIN(query).plan;
+          let plan = db._createStatement(query).explain().plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
-          let result = AQL_EXECUTE(query, {}, {fullCount:true});
-          assertEqual(1, result.json.length);
-          assertEqual(300, result.json[0]);
-          assertEqual(6216, result.stats.fullCount);
-          assertEqual(6216, result.stats.scannedIndex);
+          let result = db._query(query, {}, {fullCount:true});
+          let res = result.toArray();
+          assertEqual(1, res.length);
+          assertEqual(300, res[0]);
+          assertEqual(6216, result.getExtra().stats.fullCount);
+          assertEqual(6216, result.getExtra().stats.scannedIndex);
       },
       testApplyWithNoFullCount() {
           let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3' SORT BM25(d) " +
                       " DESC LIMIT 1000, 300 COLLECT WITH COUNT INTO c  RETURN c ";
-          let plan = AQL_EXPLAIN(query).plan;
+          let plan = db._createStatement(query).explain().plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
-          let result = AQL_EXECUTE(query, {}, {fullCount:false});
-          assertEqual(1, result.json.length);
-          assertEqual(300, result.json[0]);
-          assertEqual(6216, result.stats.scannedIndex);
+          let result = db._query(query, {}, {fullCount:false});
+          let res = result.toArray();
+          assertEqual(1, res.length);
+          assertEqual(300, res[0]);
+          assertEqual(6216, result.getExtra().stats.scannedIndex);
       },
       testApplyWithFullCountDocs() {
           let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3' SORT BM25(d) " +
                       " DESC LIMIT 1000, 300 RETURN d ";
-          let plan = AQL_EXPLAIN(query).plan;
+          let plan = db._createStatement(query).explain().plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
-          let result = AQL_EXECUTE(query, {}, {fullCount:true});
-          assertEqual(300, result.json.length);
-          assertEqual(6216, result.stats.fullCount);
-          assertEqual(6216, result.stats.scannedIndex);
+          let result = db._query(query, {}, {fullCount:true});
+          assertEqual(300, result.toArray().length);
+          assertEqual(6216, result.getExtra().stats.fullCount);
+          assertEqual(6216, result.getExtra().stats.scannedIndex);
       },
       testApplyWithNoFullCountDocs() {
           let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3' SORT BM25(d) " +
                       " DESC LIMIT 1000, 300 RETURN d";
-          let plan = AQL_EXPLAIN(query).plan;
+          let plan = db._createStatement(query).explain().plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
-          let result = AQL_EXECUTE(query, {}, {fullCount:false});
-          assertEqual(300, result.json.length);
-          assertEqual(6216, result.stats.scannedIndex);
+          let result = db._query(query, {}, {fullCount:false});
+          assertEqual(300, result.toArray().length);
+          assertEqual(6216, result.getExtra().stats.scannedIndex);
       },
       testApplyWithFullCountDocsNoOffset() {
           let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3' SORT BM25(d) " +
                       " DESC LIMIT 1500 RETURN d ";
-          let plan = AQL_EXPLAIN(query).plan;
+          let plan = db._createStatement(query).explain().plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
-          let result = AQL_EXECUTE(query, {}, {fullCount:true});
-          assertEqual(1500, result.json.length);
-          assertEqual(6216, result.stats.fullCount);
-          assertEqual(6216, result.stats.scannedIndex);
+          let result = db._query(query, {}, {fullCount:true});
+          assertEqual(1500, result.toArray().length);
+          assertEqual(6216, result.getExtra().stats.fullCount);
+          assertEqual(6216, result.getExtra().stats.scannedIndex);
       },
       testApplyWithNoFullCountDocsNoOffset() {
           let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3' SORT BM25(d) " +
                       " DESC LIMIT 1500 RETURN d";
-          let plan = AQL_EXPLAIN(query).plan;
+          let plan = db._createStatement(query).explain().plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
-          let result = AQL_EXECUTE(query, {}, {fullCount:false});
-          assertEqual(1500, result.json.length);
-          assertEqual(6216, result.stats.scannedIndex);
+          let result = db._query(query, {}, {fullCount:false});
+          assertEqual(1500, result.toArray().length);
+          assertEqual(6216, result.getExtra().stats.scannedIndex);
       },
       testAppliedWithNonDetermAfter() {
         let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3'  SORT BM25(d) LIMIT 10 LET a = NOOPT(d.b.b1) RETURN {dD:d, aA:a}";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
-        let result = AQL_EXECUTE(query, {}, {fullCount:true});
-        assertEqual(10, result.json.length);
-        assertEqual(6216, result.stats.scannedIndex);
-        assertEqual(6216, result.stats.fullCount);
+        let result = db._query(query, {}, {fullCount:true});
+        assertEqual(10, result.toArray().length);
+        assertEqual(6216, result.getExtra().stats.scannedIndex);
+        assertEqual(6216, result.getExtra().stats.fullCount);
       },
       testAppliedDeterministicUsedBetweenSort() {
         let query = "FOR d IN " + vn + " SEARCH d.field2 < 'A3'  SORT BM25(d) LET a = UPPER(d.b.b1) LIMIT 10 RETURN {dD:d, aA:a}";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName), {}, {optimizer:{rules:['-move-calculations-down']}});
-        let result = AQL_EXECUTE(query, {}, {fullCount:true, optimizer:{rules:['-move-calculations-down']}});
-        assertEqual(10, result.json.length);
-        assertEqual(3784, result.stats.scannedIndex);
-        assertEqual(3784, result.stats.fullCount);
+        let result = db._query(query, {}, {fullCount:true, optimizer:{rules:['-move-calculations-down']}});
+        assertEqual(10, result.toArray().length);
+        assertEqual(3784, result.getExtra().stats.scannedIndex);
+        assertEqual(3784, result.getExtra().stats.fullCount);
       },
       testAppliedDeterministicUsedBeforeSort() {
         let query = "FOR d IN " + vn + " SEARCH d.field2 < 'A3' LET a = UPPER(d.b.b1) SORT BM25(d)  LIMIT 10 RETURN {dD:d, aA:a}";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName), {}, {optimizer:{rules:['-move-calculations-down']}});
-        let result = AQL_EXECUTE(query, {}, {fullCount:true, optimizer:{rules:['-move-calculations-down']}});
-        assertEqual(10, result.json.length);
-        assertEqual(3784, result.stats.scannedIndex);
-        assertEqual(3784, result.stats.fullCount);
+        let result = db._query(query, {}, {fullCount:true, optimizer:{rules:['-move-calculations-down']}});
+        assertEqual(10, result.toArray().length);
+        assertEqual(3784, result.getExtra().stats.scannedIndex);
+        assertEqual(3784, result.getExtra().stats.fullCount);
       },
       testAppliedDeterministicUsedBeforeSortTwoSorts() {
         let query = "FOR d IN " + vn + " SEARCH d.field2 < 'A3' LET a = UPPER(d.b.b1) SORT BM25(d) ASC "
                     + "LIMIT 10 SORT TFIDF(d) DESC RETURN {dD:d, aA:a}";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName), {}, {optimizer:{rules:['-move-calculations-down']}});
-        let result = AQL_EXECUTE(query, {}, {fullCount:true, optimizer:{rules:['-move-calculations-down']}});
-        assertEqual(10, result.json.length);
-        assertEqual(3784, result.stats.scannedIndex);
-        assertEqual(3784, result.stats.fullCount);
+        let result = db._query(query, {}, {fullCount:true, optimizer:{rules:['-move-calculations-down']}});
+        assertEqual(10, result.toArray().length);
+        assertEqual(3784, result.getExtra().stats.scannedIndex);
+        assertEqual(3784, result.getExtra().stats.fullCount);
       },
       testAppliedMultiSorts() {
         let query = "FOR d IN " + vn + " SEARCH d.field2 < 'A3' LET a = TFIDF(d) LET b = BM25(d) LET t = a + b SORT b ASC, a DESC "
                     + "LIMIT 10 RETURN {dD:d, aA:t}";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName), {}, {optimizer:{rules:['-move-calculations-down']}});
-        let result = AQL_EXECUTE(query, {}, {fullCount:true, optimizer:{rules:['-move-calculations-down']}});
-        assertEqual(10, result.json.length);
-        assertEqual(3784, result.stats.scannedIndex);
-        assertEqual(3784, result.stats.fullCount);
+        let result = db._query(query, {}, {fullCount:true, optimizer:{rules:['-move-calculations-down']}});
+        assertEqual(10, result.toArray().length);
+        assertEqual(3784, result.getExtra().stats.scannedIndex);
+        assertEqual(3784, result.getExtra().stats.fullCount);
       },
       testAppliedSort() {
         let query = "FOR d IN " + vn + " SEARCH ANALYZER(d.strval == 'cat', 'text_en') SORT TFIDF(d) DESC LIMIT 10, 10 "
                     + " RETURN {idx:d.idx, score:TFIDF(d)}";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
-        let result = AQL_EXECUTE(query);
-        assertEqual(10, result.json.length);
+        let result = db._query(query);
+        let res = result.toArray();
+        assertEqual(10, res.length);
         let expectedIdx = 4994;
         for (let i = 0; i < 10; ++i) {
-          assertEqual(result.json[i].idx, expectedIdx);
+          assertEqual(res[i].idx, expectedIdx);
           if (i % 2 === 1) {
             expectedIdx--;
           }
@@ -330,13 +333,14 @@
       testAppliedSortAsc() {
         let query = "FOR d IN " + vn + " SEARCH ANALYZER(d.strval == 'cat', 'text_en') SORT TFIDF(d) ASC LIMIT 1002, 10 "
                     + " RETURN {idx:d.idx, score:TFIDF(d)}";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
-        let result = AQL_EXECUTE(query);
-        assertEqual(10, result.json.length);
+        let result = db._query(query);
+        let res = result.toArray();
+        assertEqual(10, res.length);
         let expectedIdx = 501;
         for (let i = 0; i < 10; ++i) {
-          assertEqual(result.json[i].idx, expectedIdx);
+          assertEqual(res[i].idx, expectedIdx);
           if (i % 2 === 1) {
             expectedIdx++;
           }
@@ -345,13 +349,14 @@
       testAppliedSortAscWithStoredValues() {
         let query = "FOR d IN " + vn + " SEARCH ANALYZER(d.strval == 'cat', 'text_en') SORT TFIDF(d) ASC LIMIT 1002, 10 "
                     + " RETURN {dv:d.storedVal, score:TFIDF(d)}";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
-        let result = AQL_EXECUTE(query);
-        assertEqual(10, result.json.length);
+        let result = db._query(query);
+        let res = result.toArray();
+        assertEqual(10, res.length);
         let expectedIdx = 501;
         for (let i = 0; i < 10; ++i) {
-          assertEqual(result.json[i].dv, longValue + expectedIdx);
+          assertEqual(res[i].dv, longValue + expectedIdx);
           if (i % 2 === 1) {
             expectedIdx++;
           }
@@ -360,13 +365,14 @@
       testAppliedStoredValuesOnly() {
         let query = "FOR d IN " + vn + " SEARCH ANALYZER(d.strval == 'cat', 'text_en') SORT d.storedVal ASC LIMIT 10 "
                     + " RETURN {dv:d.storedVal, score:TFIDF(d)}";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
-        let result = AQL_EXECUTE(query);
-        assertEqual(10, result.json.length);
+        let result = db._query(query);
+        let res = result.toArray();
+        assertEqual(10, res.length);
         let expectedIdx = 0;
         for (let i = 0; i < 10; ++i) {
-          assertEqual(result.json[i].dv, longValue + expectedIdx);
+          assertEqual(res[i].dv, longValue + expectedIdx);
           if (i % 2 === 1) {
             if (expectedIdx === 0) {
                 expectedIdx = 1;
@@ -379,13 +385,14 @@
       testAppliedStoredValuesSplitted() {
         let query = "FOR d IN " + vn + " SEARCH ANALYZER(d.strval == 'cat', 'text_en') SORT d.storedVal ASC LIMIT 10 "
                     + " RETURN {dv:d.obj.c, score:TFIDF(d)}";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
-        let result = AQL_EXECUTE(query);
-        assertEqual(10, result.json.length);
+        let result = db._query(query);
+        let res = result.toArray();
+        assertEqual(10, res.length);
         let expectedIdx = 0;
         for (let i = 0; i < 10; ++i) {
-          assertEqual(result.json[i].dv, expectedIdx);
+          assertEqual(res[i].dv, expectedIdx);
           if (i % 2 === 1) {
             if (expectedIdx === 0) {
                 expectedIdx = 1;
@@ -398,16 +405,17 @@
       testAppliedStoredValuesScoreAndStoredDesc() {
         let query = "FOR d IN " + vn + " SEARCH ANALYZER(d.strval == 'cat', 'text_en') SORT TFIDF(d) ASC, d.obj.f DESC LIMIT 10 "
                     + " RETURN {dv:d.obj.f, score:TFIDF(d)}";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
-        let result = AQL_EXECUTE(query);
-        assertEqual(10, result.json.length);
+        let result = db._query(query);
+        let res = result.toArray();
+        assertEqual(10, res.length);
         let expectedIdx = 1;
         let score = 0;
         for (let i = 0; i < 10; ++i) {
-          assertTrue(score <= result.json[i].score);
-          score = result.json[i].score;
-          assertEqual(result.json[i].dv, expectedIdx);
+          assertTrue(score <= res[i].score);
+          score = res[i].score;
+          assertEqual(res[i].dv, expectedIdx);
           if (expectedIdx === 0) {
             expectedIdx = 1;
           } else {
@@ -418,16 +426,17 @@
       testAppliedStoredValuesScoreAndStoredAsc() {
         let query = "FOR d IN " + vn + " SEARCH ANALYZER(d.strval == 'cat', 'text_en') SORT TFIDF(d) ASC, d.obj.f ASC LIMIT 10 "
                     + " RETURN {dv:d.obj.f, score:TFIDF(d)}";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
-        let result = AQL_EXECUTE(query);
-        assertEqual(10, result.json.length);
+        let result = db._query(query);
+        let res = result.toArray();
+        assertEqual(10, res.length);
         let expectedIdx = 0;
         let score = 0;
         for (let i = 0; i < 10; ++i) {
-          assertTrue(score <= result.json[i].score);
-          score = result.json[i].score;
-          assertEqual(result.json[i].dv, expectedIdx);
+          assertTrue(score <= res[i].score);
+          score = res[i].score;
+          assertEqual(res[i].dv, expectedIdx);
           if (expectedIdx === 0) {
             expectedIdx = 1;
           } else {
@@ -438,39 +447,42 @@
       testAppliedUsePrimarySort() {
         let query = "FOR d IN " + vn + " SEARCH ANALYZER(d.strval == 'cat', 'text_en') SORT d.obj.ps ASC LIMIT 10, 10 "
                     + " RETURN {dv:d.obj.ps}";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
-        let result = AQL_EXECUTE(query);
-        assertEqual(10, result.json.length);
+        let result = db._query(query);
+        let res = result.toArray();
+        assertEqual(10, res.length);
         let expectedIdx = 10;
         for (let i = 0; i < 10; ++i) {
-          assertEqual(result.json[i].dv, expectedIdx);
+          assertEqual(res[i].dv, expectedIdx);
           expectedIdx = expectedIdx + 1;
         }
       },
       testAppliedWithPostfix() {
         let query = "FOR d IN " + vn + " SEARCH ANALYZER(d.strval == 'cat', 'text_en') SORT d.compound.val DESC LIMIT 10, 10 "
                     + " RETURN {dv:d.compound.val, stored: d.storedVal}";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
-        let result = AQL_EXECUTE(query);
-        assertEqual(10, result.json.length);
+        let result = db._query(query);
+        let res = result.toArray();
+        assertEqual(10, res.length);
         let expectedIdx = 9989;
         for (let i = 0; i < 10; ++i) {
-          assertEqual(result.json[i].dv, expectedIdx);
+          assertEqual(res[i].dv, expectedIdx);
           expectedIdx = expectedIdx - 1;
         }
       },
       testAppliedWithPostfixNoReturnValue() {
         let query = "FOR d IN " + vn + " SEARCH ANALYZER(d.strval == 'cat', 'text_en') SORT d.compound.val DESC LIMIT 10, 10 "
                     + " RETURN {stored: d.obj.ps}";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
-        let result = AQL_EXECUTE(query);
-        assertEqual(10, result.json.length);
+        let result = db._query(query);
+        let res = result.toArray();
+        assertEqual(10, res.length);
         let expectedIdx = 9989;
         for (let i = 0; i < 10; ++i) {
-          assertEqual(result.json[i].stored, expectedIdx);
+          assertEqual(res[i].stored, expectedIdx);
           expectedIdx = expectedIdx - 1;
         }
       }

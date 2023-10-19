@@ -217,8 +217,15 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
 
   // this attribute is never read back by arangod, but it is used a lot
   // in tests, so it can't be removed easily
-  builder.add("indexCoversProjections",
+  builder.add(
+      "indexCoversProjections",
+      VPackValue(_projections.usesCoveringIndex() &&
+                 (!hasFilter() || _filterProjections.usesCoveringIndex())));
+  builder.add("indexCoversOutProjections",
               VPackValue(_projections.usesCoveringIndex()));
+  builder.add(
+      "indexCoversFilterProjections",
+      VPackValue(hasFilter() && _filterProjections.usesCoveringIndex()));
 
   builder.add(VPackValue("indexes"));
   {
@@ -329,6 +336,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   // check which variables are used by the node's post-filter
   std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
 
+  IndexNode::IndexFilterCoveringVars filterCoveringVars;
   if (hasFilter()) {
     VarSet inVars;
     filter()->variables(inVars);
@@ -339,6 +347,25 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
       TRI_ASSERT(var != nullptr);
       auto regId = variableToRegisterId(var);
       filterVarsToRegs.emplace_back(var->id, regId);
+    }
+
+    if (!isLateMaterialized() && filterProjections().usesCoveringIndex()) {
+      // if the filter projections are covered by the index, optimize
+      // the expression by introducing new variables for the projected
+      // values
+      auto const& filterProj = filterProjections();
+      for (auto const& p : filterProj.projections()) {
+        auto const& path = p.path.get();
+        auto var =
+            engine.getQuery().ast()->variables()->createTemporaryVariable();
+        std::vector<std::string_view> pathView;
+        std::transform(
+            path.begin(), path.begin() + p.coveringIndexCutoff,
+            std::back_inserter(pathView),
+            [](std::string const& str) -> std::string_view { return str; });
+        filter()->replaceAttributeAccess(outVariable(), pathView, var);
+        filterCoveringVars.emplace(var, p.coveringIndexPosition);
+      }
     }
   }
 
@@ -393,7 +420,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
       std::move(nonConstExpressions), doCount(), canReadOwnWrites(),
       _condition->root(), _allCoveredByOneIndex, this->getIndexes(),
       _plan->getAst(), this->options(), _outNonMaterializedIndVars,
-      std::move(outNonMaterializedIndRegs));
+      std::move(outNonMaterializedIndRegs), std::move(filterCoveringVars));
 
   return std::make_unique<ExecutionBlockImpl<IndexExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -577,64 +604,44 @@ transaction::Methods::IndexHandle IndexNode::getSingleIndex() const {
   return idx;
 }
 
-void IndexNode::prepareProjections() {
+void IndexNode::prepareProjections() { recalculateProjections(plan()); }
+
+bool IndexNode::recalculateProjections(ExecutionPlan* plan) {
   // by default, we do not use projections for the filter condition
   _filterProjections.clear();
 
   auto idx = getSingleIndex();
   if (idx == nullptr) {
-    return;
+    return false;
   }
 
-  auto coversProjections = std::invoke([&]() {
-    if (_indexCoversProjections.has_value()) {
-      // On a DBServer, already got this information from the Coordinator.
-      if (*_indexCoversProjections) {
-        // Although we have the information, we still need to call covers() for
-        // its side effects, as it sets some _projections fields.
-        auto coveringResult = idx->covers(_projections);
-        TRI_ASSERT(coveringResult)
-            << "Coordinator thinks the index is covering the projections, but "
-               "the DBServer found that it is not.";
-        return coveringResult;
-      }
-      return false;
-    } else {
-      // On the Coordinator, let's check.
-      return idx->covers(_projections);
-    }
-  });
+  bool wasUpdated = DocumentProducingNode::recalculateProjections(plan);
 
-  if (coversProjections) {
+  if (idx->covers(_projections)) {
     _projections.setCoveringContext(collection()->id(), idx);
-  } else if (this->hasFilter()) {
-    // if we have a covering index and a post-filter condition,
-    // extract which projections we will need just to execute
-    // the filter condition
-    containers::FlatHashSet<AttributeNamePath> attributes;
+  }
 
-    if (Ast::getReferencedAttributesRecursive(
-            this->filter()->node(), this->outVariable(),
-            /*expectedAttribute*/ "", attributes,
-            plan()->getAst()->query().resourceMonitor())) {
-      if (!attributes.empty()) {
-        Projections filterProjections(std::move(attributes));
-        if (idx->covers(filterProjections)) {
-          _filterProjections = std::move(filterProjections);
-          _filterProjections.setCoveringContext(collection()->id(), idx);
-
-          attributes.clear();
-          // try to exclude all projection attributes which are only
-          // used for the filter condition
-          if (utils::findProjections(
-                  this, outVariable(), /*expectedAttribute*/ "",
-                  /*excludeStartNodeFilterCondition*/ true, attributes)) {
-            _projections = Projections(std::move(attributes));
-            // note: idx->covers(...) modifies the projections object!
-            idx->covers(_projections);
-          }
+  if (hasFilter()) {
+    if (idx->covers(_filterProjections)) {
+      bool containsId = false;
+      for (auto const& p : _filterProjections.projections()) {
+        if (p.path.type() == AttributeNamePath::Type::IdAttribute) {
+          containsId = true;
+          break;
         }
       }
+
+      if (!containsId) {
+        _filterProjections.setCoveringContext(collection()->id(), idx);
+      }
     }
   }
+
+  return wasUpdated;
+}
+
+bool IndexNode::isProduceResult() const {
+  bool filterRequiresDocument =
+      _filter != nullptr && !_filterProjections.usesCoveringIndex();
+  return (isVarUsedLater(_outVariable) || filterRequiresDocument) && !doCount();
 }

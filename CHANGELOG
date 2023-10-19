@@ -1,6 +1,20 @@
 devel
 -----
 
+* Updated OpenSSL to 3.1.3.
+
+* FE-385: fix web UI query import stuck on loading for faulty JSON.
+
+* FE-378: fix fields containing spaces during index creation on web UI.
+
+* FE-288: Improve collection index UI.
+
+* FE-321: add validation for query name in web UI.
+
+* Fixed BTS-1610: In certain situations with at least three levels of nested
+  subqueries, of which some of the outer iterations don't return any results,
+  results of later iterations could be lost.
+
 * Updated arangosync to v2.19.4.
 
 * Add cluster-internal connectivity checks.

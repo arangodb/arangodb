@@ -22,7 +22,7 @@ export const useFetchCollectionIndices = (collectionName: string) => {
       const data = (await getApiRouteForCurrentDB().get(
         `/index/`,
         `collection=${encodedCollectionName}&withStats=true`
-      )) as any as IndicesResponse;
+      )) as IndicesResponse;
       return data.body.indexes;
     }
   );
