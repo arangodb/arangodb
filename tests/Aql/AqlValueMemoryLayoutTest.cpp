@@ -45,7 +45,6 @@ void runChecksForNumber(AqlValue const& value, uint8_t const* expected) {
   EXPECT_FALSE(value.requiresDestruction());
   EXPECT_FALSE(value.isEmpty());
   EXPECT_FALSE(value.isPointer());
-  EXPECT_FALSE(value.isManagedDocument());
   EXPECT_FALSE(value.isRange());
   EXPECT_FALSE(value.isNone());
   EXPECT_FALSE(value.isNull(false));

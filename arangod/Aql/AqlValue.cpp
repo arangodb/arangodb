@@ -45,17 +45,9 @@
 using namespace arangodb;
 using namespace aql;
 
-template<bool isManagedDoc>
 void AqlValue::setPointer(uint8_t const* pointer) noexcept {
-  _data.slicePointerMeta.pointer = pointer;
-  // we use isManagedDoc flag to distinguish between data pointing to
-  // database documents (1) and other data(0)
-  if constexpr (isManagedDoc) {
-    _data.slicePointerMeta.isManagedDoc = 1;
-  } else {
-    _data.slicePointerMeta.isManagedDoc = 0;
-  }
   setType(AqlValueType::VPACK_SLICE_POINTER);
+  _data.slicePointerMeta.pointer = pointer;
 }
 
 uint64_t AqlValue::hash(uint64_t seed) const {
@@ -812,6 +804,7 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate,
 void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
                             bool resolveExternals, bool allowUnindexed) const {
   // TODO(MBkkt) remove resolveExternals?
+  //  It feels like we don't have externals in AqlValue now
   auto t = type();
   switch (t) {
     case VPACK_INLINE_INT64:
@@ -821,11 +814,6 @@ void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
           _data.longNumberMeta.data.intLittleEndian.val)});
       break;
     case VPACK_SLICE_POINTER:
-      if (!resolveExternals && isManagedDocument()) {
-        builder.addExternal(_data.slicePointerMeta.pointer);
-        break;
-      }
-      [[fallthrough]];
     case VPACK_INLINE:
     case VPACK_INLINE_UINT64:
     case VPACK_INLINE_DOUBLE:
@@ -872,12 +860,6 @@ AqlValue AqlValue::materialize(VPackOptions const* options, bool& hasCopied,
 AqlValue AqlValue::clone() const {
   auto t = type();
   switch (t) {
-    case VPACK_SLICE_POINTER:
-      if (isManagedDocument()) {
-        return AqlValue{AqlValueHintSliceNoCopy{
-            VPackSlice{_data.slicePointerMeta.pointer}}};
-      }
-      return AqlValue{_data.slicePointerMeta.pointer};
     case VPACK_MANAGED_SLICE:
       return AqlValue{VPackSlice{_data.managedSliceMeta.pointer},
                       _data.managedSliceMeta.getLength()};
@@ -1039,7 +1021,7 @@ AqlValue::AqlValue(uint8_t const* pointer) noexcept {
   // we must get rid of Externals first here, because all
   // methods that use VPACK_SLICE_POINTER expect its contents
   // to be non-Externals
-  setPointer<false>(VPackSlice{pointer}.resolveExternals().begin());
+  setPointer(VPackSlice{pointer}.resolveExternals().begin());
 }
 
 AqlValue::AqlValue(AqlValue const& other, void const* data) noexcept {
@@ -1137,13 +1119,13 @@ AqlValue::AqlValue(std::string_view s) {
 }
 
 AqlValue::AqlValue(AqlValueHintEmptyArray) noexcept {
-  _data.inlineSliceMeta.slice[0] = 0x01;  // empty array in VPack
   setType(AqlValueType::VPACK_INLINE);
+  _data.inlineSliceMeta.slice[0] = 0x01;  // empty array in VPack
 }
 
 AqlValue::AqlValue(AqlValueHintEmptyObject) noexcept {
-  _data.inlineSliceMeta.slice[0] = 0x0a;  // empty object in VPack
   setType(AqlValueType::VPACK_INLINE);
+  _data.inlineSliceMeta.slice[0] = 0x0a;  // empty object in VPack
 }
 
 AqlValue::AqlValue(velocypack::Buffer<uint8_t>&& buffer) {
@@ -1173,13 +1155,10 @@ AqlValue::AqlValue(velocypack::Buffer<uint8_t>&& buffer) {
 
 AqlValue::AqlValue(AqlValueHintSliceNoCopy v) noexcept {
   TRI_ASSERT(!v.slice.isExternal());
-  setPointer<true>(v.slice.start());
+  setPointer(v.slice.start());
 }
 
-AqlValue::AqlValue(AqlValueHintSliceCopy v) {
-  TRI_ASSERT(v.slice.start() != nullptr);
-  initFromSlice(v.slice, v.slice.byteSize());
-}
+AqlValue::AqlValue(AqlValueHintSliceCopy v) : AqlValue{v.slice} {}
 
 AqlValue::AqlValue(VPackSlice slice) { initFromSlice(slice, slice.byteSize()); }
 
@@ -1213,10 +1192,6 @@ bool AqlValue::isEmpty() const noexcept {
 
 bool AqlValue::isPointer() const noexcept {
   return type() == VPACK_SLICE_POINTER;
-}
-
-bool AqlValue::isManagedDocument() const noexcept {
-  return isPointer() && _data.slicePointerMeta.isManagedDoc == 1;
 }
 
 bool AqlValue::isRange() const noexcept { return type() == RANGE; }
