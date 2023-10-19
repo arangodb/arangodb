@@ -115,6 +115,7 @@ const SortableTh = <Data extends object>({
             }
           : {}
       }
+      height={canSort ? "36px" : ""}
       role="group"
     >
       <Box display="flex" alignItems="center">
