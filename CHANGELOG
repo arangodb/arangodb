@@ -1,4 +1,4 @@
-v3.10.11 (XXXX-XX-XX)
+v3.10.11 (2023-10-19)
 ---------------------
 
 * Fix a race in failure oracle feature on server shutdown.
