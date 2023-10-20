@@ -291,6 +291,8 @@ def generate_output(config, tests, enterprise):
     workflows = config["workflows"]
     edition = "ee" if enterprise else "ce"
     for workflow, jobs in workflows.items():
+        if ("windows" in workflow):
+            continue # ATM we don't generate tests for windows
         if (enterprise and "enterprise" in workflow) or (not enterprise and "community" in workflow):
             arch = get_arch(workflow)
             add_test_jobs_to_workflow(config, tests, workflow, edition, arch)
