@@ -1,5 +1,9 @@
 v3.11.5 (XXXX-XX-XX)
 --------------------
+  
+* Make AQL query cursor garbage-collection clean up more expired cursors in a
+  single run than before. This change can help to reclaim memory of expired
+  cursors quicker than in previous versions.
 
 * Updated OpenSSL to 3.0.11.
 
