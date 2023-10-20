@@ -3,6 +3,22 @@ v3.11.5 (XXXX-XX-XX)
 
 * Backport multiple fixes for the scheduler behavior during ArangoDB shutdown.
 
+* FE-374: Query UI - fix switching from table to JSON.
+
+* Make AQL query cursor garbage-collection clean up more expired cursors in a
+  single run than before. This change can help to reclaim memory of expired
+  cursors quicker than in previous versions.
+
+* Updated OpenSSL to 3.0.11.
+
+* Reduce number of atomic shared_ptr copies in in-memory cache subsystem.
+
+* Fixed BTS-1610: In certain situations with at least three levels of nested
+  subqueries, of which some of the outer iterations don't return any results,
+  results of later iterations could be lost.
+
+* Updated arangosync to v2.19.4.
+
 * Add cluster-internal connectivity checks.
   This makes Coordinators and DB-Servers in a cluster periodically send check
   requests to each other, in order to check if all servers can connect to each
