@@ -70,6 +70,7 @@ function connectToServer(leader) {
 function getClusterEndpoints() {
   //let jwt = crypto.jwtEncode(options['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
   let tries = 60;
+  let res;
   while (tries-- > 0) {
     res = request.get({
       url: baseUrl() + "/_api/cluster/endpoints",
