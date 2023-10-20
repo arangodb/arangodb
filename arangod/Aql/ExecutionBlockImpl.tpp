@@ -1101,6 +1101,10 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryStart(
   } else {
     // Need to forward the ShadowRows
     auto&& [state, shadowRow] = _lastRange.nextShadowRow();
+
+    bool const hasDoneNothing =
+        _outputItemRow->numRowsWritten() == 0 and _skipped.nothingSkipped();
+
     TRI_ASSERT(shadowRow.isInitialized());
     _outputItemRow->increaseShadowRowDepth(shadowRow);
     TRI_ASSERT(_outputItemRow->produced());
@@ -1130,6 +1134,10 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryStart(
 
     _executorReturnedDone = false;
 
+    if (hasDoneNothing) {
+      stack.popDepthsLowerThan(shadowRow.getDepth());
+    }
+
     return ExecState::NEXTSUBQUERY;
   }
 }
@@ -1146,6 +1154,9 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryEnd(
     // Let client call again
     return ExecState::NEXTSUBQUERY;
   }
+  bool const hasDoneNothing =
+      _outputItemRow->numRowsWritten() == 0 and _skipped.nothingSkipped();
+
   auto&& [state, shadowRow] = _lastRange.nextShadowRow();
   TRI_ASSERT(shadowRow.isInitialized());
   if (shadowRow.isRelevant()) {
@@ -1161,7 +1172,7 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryEnd(
 
   TRI_ASSERT(_outputItemRow->produced());
   _outputItemRow->advanceRow();
-  // The stack in used here contains all calls for within the subquery.
+  // The stack in use here contains all calls for within the subquery.
   // Hence any inbound subquery needs to be counted on its level
 
   countShadowRowProduced(stack, shadowRow.getDepth());
@@ -1171,6 +1182,9 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryEnd(
     // Done with this query
     return ExecState::DONE;
   } else if (_lastRange.hasDataRow()) {
+    /// NOTE: We do not need popDepthsLowerThan here, as we already
+    /// have a new DataRow from upstream, so the upstream
+    /// block has decided it is correct to continue.
     // Multiple concatenated Subqueries
     return ExecState::NEXTSUBQUERY;
   } else if (_lastRange.hasShadowRow()) {
@@ -1182,6 +1196,10 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryEnd(
     // Need to return!
     return ExecState::DONE;
   } else {
+    if (hasDoneNothing && !shadowRow.isRelevant()) {
+      stack.popDepthsLowerThan(shadowRow.getDepth());
+    }
+
     // End of input, we are done for now
     // Need to call again
     return ExecState::NEXTSUBQUERY;
@@ -1205,6 +1223,8 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
       return ExecState::NEXTSUBQUERY;
     }
 
+    bool const hasDoneNothing =
+        _outputItemRow->numRowsWritten() == 0 and _skipped.nothingSkipped();
     auto&& [state, shadowRow] = _lastRange.nextShadowRow();
     TRI_ASSERT(shadowRow.isInitialized());
 
@@ -1237,6 +1257,9 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
       // Done with this query
       return ExecState::DONE;
     } else if (_lastRange.hasDataRow()) {
+      /// NOTE: We do not need popDepthsLowerThan here, as we already
+      /// have a new DataRow from upstream, so the upstream
+      /// block has decided it is correct to continue.
       // Multiple concatenated Subqueries
       return ExecState::NEXTSUBQUERY;
     } else if (_lastRange.hasShadowRow()) {
@@ -1254,6 +1277,10 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
       // we need to forward them
       return ExecState::SHADOWROWS;
     } else {
+      if (hasDoneNothing && !shadowRow.isRelevant()) {
+        stack.popDepthsLowerThan(shadowRow.getDepth());
+      }
+
       // End of input, need to fetch new!
       // Just start with the next subquery.
       // If in doubt the next row will be a shadowRow again,
@@ -1556,7 +1583,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
   }
 
   auto returnToState = ExecState::CHECKCALL;
-
   LOG_QUERY("007ac", DEBUG)
       << "starting statemachine of executor " << printBlockInfo();
   while (_execState != ExecState::DONE) {
@@ -2056,8 +2082,14 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
 
   if constexpr (Executor::Properties::allowsBlockPassthrough ==
                 BlockPassthrough::Enable) {
-    // We can never return less rows then what we got!
-    TRI_ASSERT(_outputItemRow == nullptr || _outputItemRow->numRowsLeft() == 0);
+    // We can never return less rows than what we got!
+    TRI_ASSERT(_outputItemRow == nullptr || _outputItemRow->numRowsLeft() == 0)
+        << printBlockInfo() << " Passthrough block didn't process all rows. "
+        << (_outputItemRow == nullptr
+                ? fmt::format("output == nullptr")
+                : fmt::format("rows left = {}, rows written = {}",
+                              _outputItemRow->numRowsLeft(),
+                              _outputItemRow->numRowsWritten()));
   }
 
   auto outputBlock = _outputItemRow != nullptr ? _outputItemRow->stealBlock()
@@ -2077,7 +2109,11 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
                ctx.stack.subqueryLevel() /*we injected a call*/);
   } else {
     TRI_ASSERT(skipped.subqueryDepth() ==
-               ctx.stack.subqueryLevel() + 1 /*we took our call*/);
+               ctx.stack.subqueryLevel() + 1 /*we took our call*/)
+        << printBlockInfo()
+        << " skipped.subqueryDepth() = " << skipped.subqueryDepth()
+        << ", ctx.stack.subqueryLevel() + 1 = "
+        << ctx.stack.subqueryLevel() + 1;
   }
 #endif
   _skipped.reset();
