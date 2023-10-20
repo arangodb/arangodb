@@ -279,7 +279,7 @@ bool fromVelocyPack(velocypack::Slice optionsSlice,
           filterOptimizationSlice.getNumber<int>());
     }
   }
-  { // parallelism
+  {  // parallelism
     auto const parallelismSlice = optionsSlice.get("parallelism");
     if (!parallelismSlice.isNone()) {
       if (!parallelismSlice.isNumber<size_t>()) {
@@ -454,7 +454,7 @@ constexpr auto kHandlers = frozen::make_map<std::string_view, OptionHandler>(
         }
         options.parallelism = static_cast<size_t>(intValue);
         return true;
-     }}});
+      }}});
 
 bool parseOptions(aql::QueryContext& query, LogicalView const& view,
                   aql::AstNode const* optionsNode,
@@ -2068,7 +2068,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         filterOptimization(),
         _heapSort,
         _heapSortLimit,
-        _meta.get(), _options.parallelism};
+        _meta.get(),
+        _options.parallelism};
     return std::make_tuple(materializeType, std::move(executorInfos),
                            std::move(registerInfos));
   };

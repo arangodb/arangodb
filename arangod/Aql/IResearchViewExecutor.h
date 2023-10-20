@@ -308,7 +308,8 @@ class IndexReadBuffer {
   }
 
   template<typename... Args>
-  void setValue(size_t idx, iresearch::ViewSegment const& segment, Args&&... args) noexcept {
+  void setValue(size_t idx, iresearch::ViewSegment const& segment,
+                Args&&... args) noexcept {
     _keyBuffer[idx] = ValueType(segment, std::forward<Args>(args)...);
   }
 
@@ -606,7 +607,8 @@ class IResearchViewExecutorBase {
                         FieldRegisters const& fieldsRegs);
 
   template<bool parallel>
-  void readStoredValues(irs::document const& doc, size_t index, size_t bufferIndex = 0);
+  void readStoredValues(irs::document const& doc, size_t index,
+                        size_t bufferIndex = 0);
 
   template<bool parallel>
   void pushStoredValues(irs::document const& doc, size_t storedValuesIndex = 0,
@@ -664,18 +666,21 @@ class IResearchViewExecutor
   using ReadContext = typename Base::ReadContext;
 
   struct SegmentReader {
-    ColumnIterator pkReader;  // current primary key reader
+    // current primary key reader
+    ColumnIterator pkReader;
     irs::doc_iterator::ptr itr;
     irs::document const* doc{};
-    size_t readerOffset{0}; // REMOVE?
-    size_t currentSegmentPos{0};           // current document iterator position in segment
-    size_t totalPos{0};  // total position for full snapshot
+    size_t readerOffset{0};
+    // current document iterator position in segment
+    size_t currentSegmentPos{0};
+    // total position for full snapshot
+    size_t totalPos{0};
     size_t numScores{0};
     size_t atMost{0};
     LogicalCollection const* collection{};
     iresearch::ViewSegment const* segment{};
     irs::score const* scr{&irs::score::kNoScore};
-  }; 
+  };
 
   size_t skip(size_t toSkip, IResearchViewStats&);
   size_t skipAll(IResearchViewStats&);
@@ -683,8 +688,7 @@ class IResearchViewExecutor
   bool fillBuffer(ReadContext& ctx);
 
   template<bool parallel>
-  bool readSegment(SegmentReader& reader,
-                   std::atomic<size_t>& bufferIdxGlobal);
+  bool readSegment(SegmentReader& reader, std::atomic<size_t>& bufferIdxGlobal);
 
   bool writeRow(ReadContext& ctx, size_t idx);
 
@@ -713,11 +717,10 @@ struct DocumentValue {
 };
 
 struct ExecutorValue {
-  
   ExecutorValue() : _value{LocalDocumentId::none()}, _segment{nullptr} {}
 
-  explicit ExecutorValue(
-      iresearch::ViewSegment const& segment, LocalDocumentId id) noexcept
+  explicit ExecutorValue(iresearch::ViewSegment const& segment,
+                         LocalDocumentId id) noexcept
       : _value{id}, _segment{&segment} {}
 
   auto const& value() const noexcept { return _value; }
@@ -816,8 +819,6 @@ class IResearchViewMergeExecutor
   std::vector<Segment> _segments;
   irs::ExternalMergeIterator<MinHeapContext> _heap_it;
 };
-
-
 
 template<typename ExecutionTraits>
 struct IResearchViewExecutorTraits<

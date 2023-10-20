@@ -158,7 +158,7 @@ class Try {
   /// Set an exception value into this Try object.
   /// Destroys any previous value prior to constructing the new value.
   /// Leaves *this empty if throws
-  void set_exception(std::exception_ptr const& e) {
+  void set_exception(std::exception_ptr e) {
     this->destroy();
     new (&_exception) std::exception_ptr(e);
     _content = Content::Exception;
@@ -378,6 +378,10 @@ class Try<void> {
   /// In-place construct a 'void' value into this Try object.
   /// This has the effect of clearing any existing exception stored
   void emplace() noexcept { _exception = nullptr; }
+
+  /// Set an exception value into this Try object.
+  /// This has the effect of clearing any existing exception stored
+  void set_exception(std::exception_ptr e) noexcept { _exception = e; }
 
   /// Set an exception value into this Try object.
   /// This has the effect of clearing any existing exception stored
