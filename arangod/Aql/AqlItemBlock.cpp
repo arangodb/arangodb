@@ -804,8 +804,7 @@ void AqlItemBlock::toVelocyPack(size_t from, size_t to,
 
         if (it == table.end()) {
           currentState = Next;
-          a.toVelocyPack(trxOptions, raw, /*resolveExternals*/ false,
-                         /*allowUnindexed*/ true);
+          a.toVelocyPack(trxOptions, raw, /*allowUnindexed*/ true);
           table.try_emplace(a, pos++);
         } else {
           currentState = Positional;
@@ -870,8 +869,7 @@ void AqlItemBlock::rowToSimpleVPack(
     if (ref.isEmpty()) {
       builder.add(VPackSlice::noneSlice());
     } else {
-      ref.toVelocyPack(options, builder, /*resolveExternals*/ false,
-                       /*allowUnindexed*/ true);
+      ref.toVelocyPack(options, builder, /*allowUnindexed*/ true);
     }
   }
 }

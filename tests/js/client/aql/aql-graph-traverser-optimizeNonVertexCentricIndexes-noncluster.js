@@ -1,5 +1,4 @@
 /* jshint esnext: true */
-/* global AQL_EXECUTE, AQL_EXPLAIN, AQL_EXECUTEJSON, arango*/
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Spec for the AQL FOR x IN GRAPH name statement
@@ -41,6 +40,7 @@ const db = require('internal').db;
 const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 
+const waitForEstimatorSync = require('@arangodb/test-helper').waitForEstimatorSync;
 
 const gh = require('@arangodb/graph/helpers');
 
@@ -100,7 +100,7 @@ function optimizeNonVertexCentricIndexesSuite() {
       let q = `WITH ${vn} FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
       FILTER p.edges[0].foo == 'A'
       RETURN v._id`;
-      arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();"); // make sure estimates are consistent
+      waitForEstimatorSync();
 
       let exp = explain(q, {}).plan.nodes.filter(node => {
         return node.type === 'TraversalNode';
@@ -124,7 +124,7 @@ function optimizeNonVertexCentricIndexesSuite() {
       let q = `WITH ${vn} FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
       FILTER p.edges[0].foo == 'A'
       RETURN v._id`;
-      arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();"); // make sure estimates are consistent
+      waitForEstimatorSync();
 
       let exp = explain(q, {}).plan.nodes.filter(node => {
         return node.type === 'TraversalNode';
