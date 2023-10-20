@@ -158,6 +158,12 @@ class ExecutionBlock {
   /// @brief profiling level
   ProfileLevel _profileLevel;
 
+  /// @brief start time of execution of block. initially -1.0 (used only
+  /// in assertions). will be reset to -1.0 will be set to current time
+  /// in traceExecuteBegin() and be reset to -1.0 in traceExecuteEnd.
+  /// only populated when profiling is turned on.
+  double _startOfExecution;
+
   /// @brief if this is set, we are done, this is reset to false by execute()
   bool _done;
 

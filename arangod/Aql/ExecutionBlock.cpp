@@ -82,6 +82,7 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
       _dependencies(),
       _dependencyPos(_dependencies.end()),
       _profileLevel(engine->getQuery().queryOptions().getProfileLevel()),
+      _startOfExecution(-1.0),
       _done(false) {}
 
 ExecutionBlock::~ExecutionBlock() = default;
@@ -135,20 +136,11 @@ void ExecutionBlock::collectExecStats(ExecutionStats& stats) {
 void ExecutionBlock::traceExecuteBegin(AqlCallStack const& stack,
                                        std::string_view clientId) {
   // add timing for block in case profiling is turned on.
-
-  // intentionally negative so it is easier to spot calculation errors.
-  double start = -1.0;
-  auto profilingGuard = scopeGuard([&]() noexcept {
-    _execNodeStats.runtime += currentSteadyClockValue() - start;
-  });
   if (_profileLevel >= ProfileLevel::Blocks) {
     // only if profiling is turned on, get current time
-    start = currentSteadyClockValue();
-  } else {
-    // if profiling is turned off, don't get current time, but instead
-    // cancel the scopeGuard so we don't unnecessarily call timing
-    // functions on exit
-    profilingGuard.cancel();
+    TRI_ASSERT(_startOfExecution < 0.0);
+    _startOfExecution = currentSteadyClockValue();
+    TRI_ASSERT(_startOfExecution > 0.0);
   }
 
   if (_profileLevel >= ProfileLevel::TraceOne) {
@@ -173,6 +165,10 @@ void ExecutionBlock::traceExecuteEnd(
     _execNodeStats.items += skipped.getSkipCount() + items;
 
     if (_profileLevel >= ProfileLevel::TraceOne) {
+      TRI_ASSERT(_startOfExecution > 0.0);
+      _execNodeStats.runtime += currentSteadyClockValue() - _startOfExecution;
+      _startOfExecution = -1.0;
+
       size_t rows = 0;
       size_t shadowRows = 0;
       if (block != nullptr) {
