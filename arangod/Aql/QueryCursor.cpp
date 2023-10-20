@@ -420,8 +420,7 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
         if (!value.isEmpty()) {  // ignore empty blocks (e.g. from UpdateBlock)
           uint64_t oldCapacity = buffer.capacity();
 
-          value.toVelocyPack(&vopts, builder, /*resolveExternals*/ false,
-                             /*allowUnindexed*/ true);
+          value.toVelocyPack(&vopts, builder, /*allowUnindexed*/ true);
           ++rowsWritten;
 
           // track memory usage

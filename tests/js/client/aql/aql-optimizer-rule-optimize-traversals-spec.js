@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 5000 */
-/* global describe, before, after, it, AQL_EXPLAIN, AQL_EXECUTE, AQL_EXECUTEJSON, arango*/
+/* global describe, before, after, it */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -37,6 +37,7 @@ const graphModule = require('@arangodb/general-graph');
 const graphName = 'myUnittestGraph';
 const db = require('internal').db;
 const {getCompactStatsNodes, TraversalBlock } = require("@arangodb/testutils/aql-profiler-test-helper");
+const executeJson =  require("@arangodb/aql-helper").executeJson;
 
 
 let graph;
@@ -78,11 +79,7 @@ const assertResultsAreUnchanged = (query) => {
 
   const plans = db._createStatement({query: query, bindVars:  {}, options:  opts}).explain().plans;
   plans.forEach(function (plan) {
-    let command = `
-      let data = ${JSON.stringify(plan)};
-      return AQL_EXECUTEJSON(data, { optimizer: { rules: [ '-all' ] }});
-    `;
-    var jsonResult = arango.POST("/_admin/execute", command).json;
+    var jsonResult = executeJson(plan, { optimizer: { rules: [ '-all' ] }}).json;
     expect(jsonResult).to.deep.equal(resultDisabled, query);
   });
 };
