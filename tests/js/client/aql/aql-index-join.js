@@ -125,6 +125,31 @@ const IndexJoinTestSuite = function () {
       db._dropDatabase(databaseName);
     },
 
+
+    testJoinWithSort: function () {
+      const A = fillCollection("A", singleAttributeGenerator(10, "x", x => x));
+      A.ensureIndex({type: "persistent", fields: ["x"]});
+      const B = fillCollection("B", singleAttributeGenerator(10, "x", x => 2 * x));
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+
+      const result = runAndCheckQuery(`
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2.x
+              SORT doc2.x
+              RETURN [doc1, doc2]
+      `);
+
+      assertEqual(result.length, 5);
+      let currentX = -1;
+      for (const [a, b] of result) {
+        assertEqual(a.x, b.x);
+        assertTrue(a.x > currentX, `a.y = ${a.x}, current = ${currentX}`);
+        currentX = a.x;
+      }
+    },
+
     testEvenOdd: function () {
       const A = fillCollection("A", singleAttributeGenerator(1000, "x", x => 2 * x + 1));
       A.ensureIndex({type: "persistent", fields: ["x"]});
