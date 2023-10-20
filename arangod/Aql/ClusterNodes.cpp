@@ -185,6 +185,10 @@ CostEstimate RemoteNode::estimateCost() const {
 size_t RemoteNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 /// @brief construct a scatter node
+ScatterNode::ScatterNode(ExecutionPlan* plan, ExecutionNodeId id,
+                         ScatterType type)
+    : ExecutionNode(plan, id), _type(type) {}
+
 ScatterNode::ScatterNode(ExecutionPlan* plan,
                          arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base) {
@@ -202,6 +206,14 @@ std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
 
   return std::make_unique<ExecutionBlockImpl<ScatterExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
+}
+
+/// @brief clone ExecutionNode recursively
+ExecutionNode* ScatterNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                  bool withProperties) const {
+  auto c = std::make_unique<ScatterNode>(plan, _id, getScatterType());
+  c->copyClients(clients());
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 /// @brief doToVelocyPack, for ScatterNode
@@ -761,6 +773,11 @@ void SingleRemoteOperationNode::doToVelocyPack(VPackBuilder& nodes,
 CostEstimate SingleRemoteOperationNode::estimateCost() const {
   CostEstimate estimate = _dependencies[0]->getCost();
   return estimate;
+}
+
+AsyncPrefetchEligibility SingleRemoteOperationNode::canUseAsyncPrefetching()
+    const noexcept {
+  return AsyncPrefetchEligibility::kDisableGlobally;
 }
 
 std::vector<Variable const*> SingleRemoteOperationNode::getVariablesSetHere()

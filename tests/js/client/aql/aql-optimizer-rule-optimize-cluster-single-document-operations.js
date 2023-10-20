@@ -35,8 +35,8 @@ const helper = require("@arangodb/aql-helper");
 function optimizerClusterSingleDocumentTestSuite() {
   var ruleName = "optimize-cluster-single-document-operations";
   // various choices to control the optimizer:
-  var thisRuleEnabled = {optimizer: {rules: ["+all", "-move-filters-into-enumerate", "-parallelize-gather"]}}; // we can only work after other rules
-  var thisRuleDisabled = {optimizer: {rules: ["+all", "-move-filters-into-enumerate", "-parallelize-gather", "-" + ruleName]}};
+  var thisRuleEnabled = {optimizer: {rules: ["+all", "-move-filters-into-enumerate", "-parallelize-gather", "-async-prefetch"]}}; // we can only work after other rules
+  var thisRuleDisabled = {optimizer: {rules: ["+all", "-move-filters-into-enumerate", "-parallelize-gather", "-async-prefetch", "-" + ruleName]}};
   var notHereDoc = "notHereDoc";
   var yeOldeDoc = "yeOldeDoc";
 
