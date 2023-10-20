@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 500 */
-/* global assertEqual, assertTrue, assertFalse, AQL_EXECUTE, AQL_EXPLAIN, arango */
+/* global assertEqual, assertTrue, assertFalse */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for index usage
@@ -31,6 +31,7 @@
 var jsunity = require('jsunity');
 var db = require('@arangodb').db;
 var internal = require('internal');
+const waitForEstimatorSync = require('@arangodb/test-helper').waitForEstimatorSync;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test suite
@@ -58,7 +59,7 @@ function optimizerEdgeIndexTestSuite () {
         }
       }
       e.insert(edocs);
-      arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+      waitForEstimatorSync();
     },
 
     tearDownAll: function () {

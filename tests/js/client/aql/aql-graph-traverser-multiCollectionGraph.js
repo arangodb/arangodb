@@ -1,5 +1,4 @@
 /* jshint esnext: true */
-/* global AQL_EXECUTE, AQL_EXPLAIN, AQL_EXECUTEJSON, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Spec for the AQL FOR x IN GRAPH name statement
@@ -40,16 +39,7 @@ const gm = require('@arangodb/general-graph');
 const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 
-function execute_json(plans, result, query) {
-  plans.forEach(function (plan) {
-  let command = `
-    let plan = ${JSON.stringify(plan)};
-    return AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}});
-  `;
-    var jsonResult = arango.POST("/_admin/execute", command).json;
-    assertEqual(jsonResult, result, query);
-  });
-};
+const executeAllJson = require("@arangodb/aql-helper").executeAllJson;
 
 const gh = require('@arangodb/graph/helpers');
 var _ = require('lodash');
@@ -115,14 +105,14 @@ function multiCollectionGraphSuite() {
         ' FOR x, e, p IN OUTBOUND t ' + en + ' SORT x._key, e._key RETURN {vertex: x, path: p}';
       var result = db._query(query).toArray();
       var plans = db._createStatement({query: query, bindVars: {}, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testNoBindParameterSingleFor: function () {
       var query = 'FOR s IN ' + vn + ' FOR x, e, p IN OUTBOUND s ' + en + ' SORT x._key RETURN x';
       var result = db._query(query).toArray();
       var plans = db._createStatement({query: query, bindVars: {}, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testNoBindParameterSingleForFilter: function () {
@@ -131,7 +121,7 @@ function multiCollectionGraphSuite() {
       var result = db._query(query).toArray();
       assertEqual(result.length, 0);
       var plans = db._createStatement({query: query, bindVars: {}, options: opts}).explain().plans;
-            execute_json(plans, result, query);
+            executeAllJson(plans, result, query);
     },
 
     testNoBindParameterRandFunction: function () {
@@ -140,7 +130,7 @@ function multiCollectionGraphSuite() {
       var result = db._query(query).toArray();
       assertEqual(result.length, 0);
       var plans = db._createStatement({query: query, bindVars: {}, options: opts}).explain().plans;
-            execute_json(plans, result, query);
+            executeAllJson(plans, result, query);
     },
 
     testNoBindParameter: function () {
@@ -151,7 +141,7 @@ function multiCollectionGraphSuite() {
       var result = db._query(query).toArray();
       validateResult(result);
       var plans = db._createStatement({query: query, bindVars: {}, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testStartBindParameter: function () {
@@ -165,7 +155,7 @@ function multiCollectionGraphSuite() {
       var result = db._query(query, bindVars).toArray();
       validateResult(result);
       var plans =  db._createStatement({query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testEdgeCollectionBindParameter: function () {
@@ -179,7 +169,7 @@ function multiCollectionGraphSuite() {
       var result = db._query(query, bindVars).toArray();
       validateResult(result);
       var plans =  db._createStatement({query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
     
     testEdgeCollectionBindParameterNoCol: function () {
@@ -193,7 +183,7 @@ function multiCollectionGraphSuite() {
       var result = db._query(query, bindVars).toArray();
       validateResult(result);
       var plans =  db._createStatement({query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
     
     testEdgeCollectionBindParameterNonExisting: function () {
@@ -239,7 +229,7 @@ function multiCollectionGraphSuite() {
       var result = db._query(query, bindVars).toArray();
       validateResult(result);
       var plans =  db._createStatement({query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testStepsRangeBindParameter: function () {
@@ -254,7 +244,7 @@ function multiCollectionGraphSuite() {
       var result = db._query(query, bindVars).toArray();
       validateResult(result);
       var plans =  db._createStatement({query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testFirstEntryIsVertex: function () {
@@ -270,7 +260,7 @@ function multiCollectionGraphSuite() {
       assertEqual(result.length, 1);
       assertEqual(result[0]._id, gh.vertex.C);
       var plans =  db._createStatement({query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testSecondEntryIsEdge: function () {
@@ -286,7 +276,7 @@ function multiCollectionGraphSuite() {
       assertEqual(result.length, 1);
       assertEqual(result[0]._id, gh.edge.BC);
       var plans =  db._createStatement({query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testThirdEntryIsPath: function () {
@@ -307,7 +297,7 @@ function multiCollectionGraphSuite() {
       assertEqual(entry.edges.length, 1);
       assertEqual(entry.edges[0]._id, gh.edge.BC);
       var plans =  db._createStatement({query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testOutboundDirection: function () {
@@ -324,7 +314,7 @@ function multiCollectionGraphSuite() {
       var entry = result[0];
       assertEqual(entry, gh.vertex.C);
       var plans =  db._createStatement({query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testInboundDirection: function () {
@@ -341,7 +331,7 @@ function multiCollectionGraphSuite() {
       var entry = result[0];
       assertEqual(entry, gh.vertex.B);
       var plans =  db._createStatement({query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testAnyDirection: function () {
@@ -362,7 +352,7 @@ function multiCollectionGraphSuite() {
       entry = result[2];
       assertEqual(entry, gh.vertex.E);
       var plans =  db._createStatement({query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testExactNumberSteps: function () {
@@ -380,7 +370,7 @@ function multiCollectionGraphSuite() {
       assertEqual(result[0], gh.vertex.D);
       assertEqual(result[1], gh.vertex.F);
       var plans =  db._createStatement({query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testRangeNumberSteps: function () {
@@ -399,7 +389,7 @@ function multiCollectionGraphSuite() {
       assertEqual(result[1], gh.vertex.E);
       assertEqual(result[2], gh.vertex.F);
       var plans =  db._createStatement({query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testComputedNumberSteps: function () {
@@ -416,7 +406,7 @@ function multiCollectionGraphSuite() {
 
       assertEqual(result[0], gh.vertex.D);
       var plans =  db._createStatement({query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testSort: function () {
@@ -445,7 +435,7 @@ function multiCollectionGraphSuite() {
       assertEqual(result[0], gh.vertex.F);
       assertEqual(result[1], gh.vertex.D);
       var plans =  db._createStatement({query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testSingleDocumentInput: function () {
@@ -460,7 +450,7 @@ function multiCollectionGraphSuite() {
       assertEqual(result.length, 1);
       assertEqual(result[0]._id, gh.vertex.C);
       var plans =  db._createStatement({query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testListDocumentInput: function () {
@@ -482,7 +472,7 @@ function multiCollectionGraphSuite() {
       assertEqual(result[4], gh.vertex.E);
       assertEqual(result[5], gh.vertex.F);
       var plans =  db._createStatement({query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testOtherCollectionAttributeAccessInput: function () {

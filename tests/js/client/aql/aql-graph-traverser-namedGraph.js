@@ -1,5 +1,4 @@
 /* jshint esnext: true */
-/* global AQL_EXECUTE, AQL_EXPLAIN, AQL_EXECUTEJSON, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Spec for the AQL FOR x IN GRAPH name statement
@@ -41,17 +40,7 @@ const gm = require('@arangodb/general-graph');
 const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 const gh = require('@arangodb/graph/helpers');
-
-function execute_json(plans, result, query) {
-  plans.forEach(function (plan) {
-  let command = `
-    let plan = ${JSON.stringify(plan)};
-    return AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}});
-  `;
-    var jsonResult = arango.POST("/_admin/execute", command).json;
-    assertEqual(jsonResult, result, query);
-  });
-};
+const executeAllJson = require("@arangodb/aql-helper").executeAllJson;
 
 function namedGraphSuite() {
   /* *********************************************************************
@@ -113,7 +102,7 @@ function namedGraphSuite() {
       assertEqual(result.length, 1);
       assertEqual(result[0]._id, gh.vertex.C);
       var plans = db._createStatement({query: query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testNamedSecondEntryIsEdge: function () {
@@ -126,7 +115,7 @@ function namedGraphSuite() {
       assertEqual(result.length, 1);
       assertEqual(result[0]._id, gh.edge.BC);
       var plans = db._createStatement({query: query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testNamedThirdEntryIsPath: function () {
@@ -144,7 +133,7 @@ function namedGraphSuite() {
       assertEqual(entry.edges.length, 1);
       assertEqual(entry.edges[0]._id, gh.edge.BC);
       var plans = db._createStatement({query: query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testNamedOutboundDirection: function () {
@@ -158,7 +147,7 @@ function namedGraphSuite() {
       var entry = result[0];
       assertEqual(entry, gh.vertex.C);
       var plans = db._createStatement({query: query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testNamedInboundDirection: function () {
@@ -172,7 +161,7 @@ function namedGraphSuite() {
       var entry = result[0];
       assertEqual(entry, gh.vertex.B);
       var plans = db._createStatement({query: query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testNamedAnyDirection: function () {
@@ -190,7 +179,7 @@ function namedGraphSuite() {
       entry = result[2];
       assertEqual(entry, gh.vertex.E);
       var plans = db._createStatement({query: query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testNamedExactNumberSteps: function () {
@@ -205,7 +194,7 @@ function namedGraphSuite() {
       assertEqual(result[0], gh.vertex.D);
       assertEqual(result[1], gh.vertex.F);
       var plans = db._createStatement({query: query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testNamedRangeNumberSteps: function () {
@@ -221,7 +210,7 @@ function namedGraphSuite() {
       assertEqual(result[1], gh.vertex.E);
       assertEqual(result[2], gh.vertex.F);
       var plans = db._createStatement({query: query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testNamedComputedNumberSteps: function () {
@@ -235,7 +224,7 @@ function namedGraphSuite() {
 
       assertEqual(result[0], gh.vertex.D);
       var plans = db._createStatement({query: query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testNamedZeroSteps: function () {
@@ -249,7 +238,7 @@ function namedGraphSuite() {
       assertEqual(result.length, 1);
       assertEqual(result[0], gh.vertex.B);
       var plans = db._createStatement({query: query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testNamedZeroStartRangeSteps: function () {
@@ -264,7 +253,7 @@ function namedGraphSuite() {
       assertEqual(result[0], gh.vertex.B);
       assertEqual(result[1], gh.vertex.C);
       var plans = db._createStatement({query: query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testNamedSort: function () {
@@ -288,7 +277,7 @@ function namedGraphSuite() {
       assertEqual(result[1], gh.vertex.D);
 
       var plans = db._createStatement({query: query, bindVars: bindVars, options: opts}).explain().plans;
-      execute_json(plans, result, query);
+      executeAllJson(plans, result, query);
     },
 
     testNamedUniqueEdgesOnPath: function () {

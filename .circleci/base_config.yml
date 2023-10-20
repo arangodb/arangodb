@@ -261,6 +261,82 @@ jobs:
                   - 3rdParty/iresearch/tests/resources
                   - 3rdParty/rta-makedata
 
+  compile-windows:
+    parameters:
+      preset:
+        type: string
+      build-tests:
+        type: boolean
+      publish-artifacts:
+        type: boolean
+        default: true
+    machine: true
+    resource_class: "arangodb/win"
+    shell: powershell.exe
+    environment:
+      GIT_SSH_COMMAND: ssh
+      SCCACHE_ERROR_LOG: /tmp/sccache.log
+      SCCACHE_LOG: info,sccache::cache=debug,sccache::compiler::compiler=debug
+    steps:
+      - checkout-arangodb:
+          with-submodules: true
+          destination: "D:/CircleCI/project"
+      # TODO - checking out enterprise is does currently not work on windows; will be addressed in a separate PR
+      # for windows we build only enterprise, so we can check it out unconditionally
+      # - checkout-enterprise:
+      #    destination: "D:/CircleCI/project/enterprise"
+      # TODO - sccache currently doesn't work on windows; will be addressed in a separate PR
+      # - run:
+      #     name: Print SCCache Settings
+      #     command: sccache -s
+      - run:
+          name: "Configure"
+          shell: powershell.exe
+          command: |
+            mkdir build
+            # make sure we have the latest image!
+            docker pull arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.3
+            # TODO - use preset
+            # TODO - enable enterprise!
+            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -w C:/project/build arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.3 cmake -G 'Visual Studio 17 2022' -T 'v143,host=x64' -DUSE_MAINTAINER_MODE=On -DUSE_GOOGLE_TESTS=On -DUSE_ENTERPRISE=Off -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPACKAGING=NSIS -DCMAKE_INSTALL_PREFIX=/ -DSKIP_PACKAGING=On -DUSE_FAILURE_TESTS=On -DSTATIC_EXECUTABLES=On -DOPENSSL_USE_STATIC_LIBS=On -DUSE_STRICT_OPENSSL_VERSION=On ..
+      - run:
+          name: "Build"
+          shell: powershell.exe
+          command: |
+            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -w C:/project/build arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.3 cmake --build . --config `"RelWithDebInfo`" --parallel -- /p:CL_MPcount=24
+
+      # TODO - enable artifact upload once we actually use them
+      # - run:
+      #     name: Cleanup build directory
+      #     command: |
+      #       find build/ -iname *.a -delete || true
+      #       find build/ -iname *.o -delete || true
+      # - run:
+      #     name: SCCache Statistics
+      #     command: sccache -s
+      # - store_artifacts:
+      #     path: /tmp/sccache.log
+      # - when:
+      #     condition: << parameters.publish-artifacts >>
+      #     steps:
+      #       - store_artifacts:
+      #           path: build/bin/arango*
+      #       - persist_to_workspace:
+      #           root: .
+      #           paths:
+      #             - CMakePresets.json
+      #             - build/
+      #             - scripts/
+      #             - js/
+      #             - enterprise/js
+      #             - etc/
+      #             - tests/js
+      #             - enterprise/tests/js
+      #             - utils
+      #             - UnitTests
+      #             - 3rdParty/iresearch/tests/resources
+      #             - 3rdParty/rta-makedata
+
   run-tests:
     docker:
       - image: arangodb/test-ubuntu:22.04-1f010839b06
@@ -289,6 +365,8 @@ jobs:
           command: ulimit -c unlimited
       - run:
           name: Run << parameters.suiteName >> tests
+          # we increase the no_output_timeout so our own timeout mechanism can kick in and gather more information
+          no_output_timeout: 20m
           command: |
             mkdir work
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
@@ -474,3 +552,12 @@ workflows:
           size: arm.medium
           requires:
             - build-ee-aarch64
+
+  windows-enterprise-pr:
+    jobs:
+      - compile-windows:
+          context:
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          name: build-ee-win
+          preset: enterprise-pr
+          build-tests: true

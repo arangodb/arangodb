@@ -590,7 +590,6 @@ ExecutionState Query::execute(QueryResult& queryResult) {
 
               if (!val.isEmpty()) {
                 val.toVelocyPack(&vpackOpts, resultBuilder,
-                                 /*resolveExternals*/ useQueryCache,
                                  /*allowUnindexed*/ true);
               }
             }
@@ -827,9 +826,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
                   .FromMaybe(false);
 
               if (useQueryCache) {
-                val.toVelocyPack(&vpackOpts, *builder,
-                                 /*resolveExternals*/ true,
-                                 /*allowUnindexed*/ true);
+                val.toVelocyPack(&vpackOpts, *builder, /*allowUnindexed*/ true);
               }
               memoryUsage += sizeof(v8::Value);
               if (val.requiresDestruction()) {

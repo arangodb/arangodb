@@ -3496,7 +3496,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(
 
   AqlValueMaterializer materializer(
       trx.transactionContextPtr()->getVPackOptions());
-  return nodeFromVPack(materializer.slice(a, false), true);
+  return nodeFromVPack(materializer.slice(a), true);
 }
 
 /// @brief optimizes the binary arithmetic operators +, -, *, / and %
@@ -3799,7 +3799,7 @@ AstNode* Ast::optimizeFunctionCall(
 
   AqlValueMaterializer materializer(
       trx.transactionContextPtr()->getVPackOptions());
-  return nodeFromVPack(materializer.slice(a, false), true);
+  return nodeFromVPack(materializer.slice(a), true);
 }
 
 /// @brief optimizes indexed access, e.g. a[0] or a['foo']
