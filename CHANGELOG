@@ -1,6 +1,8 @@
 v3.11.5 (XXXX-XX-XX)
 --------------------
-  
+
+* FE-374: Query UI - fix switching from table to JSON.
+
 * Make AQL query cursor garbage-collection clean up more expired cursors in a
   single run than before. This change can help to reclaim memory of expired
   cursors quicker than in previous versions.
@@ -14,8 +16,6 @@ v3.11.5 (XXXX-XX-XX)
   results of later iterations could be lost.
 
 * Updated arangosync to v2.19.4.
-
-* FE-374: Query UI - fix switching from table to JSON.
 
 * Add cluster-internal connectivity checks.
   This makes Coordinators and DB-Servers in a cluster periodically send check
