@@ -158,6 +158,10 @@ void ExecutionBlock::traceExecuteEnd(
     std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> const& result,
     std::string_view clientId) {
   if (_profileLevel >= ProfileLevel::Blocks) {
+    TRI_ASSERT(_startOfExecution > 0.0);
+    _execNodeStats.runtime += currentSteadyClockValue() - _startOfExecution;
+    _startOfExecution = -1.0;
+
     auto const& [state, skipped, block] = result;
     auto const items = block != nullptr ? block->numRows() : 0;
 
@@ -165,10 +169,6 @@ void ExecutionBlock::traceExecuteEnd(
     _execNodeStats.items += skipped.getSkipCount() + items;
 
     if (_profileLevel >= ProfileLevel::TraceOne) {
-      TRI_ASSERT(_startOfExecution > 0.0);
-      _execNodeStats.runtime += currentSteadyClockValue() - _startOfExecution;
-      _startOfExecution = -1.0;
-
       size_t rows = 0;
       size_t shadowRows = 0;
       if (block != nullptr) {
