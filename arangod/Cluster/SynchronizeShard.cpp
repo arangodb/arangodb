@@ -394,17 +394,14 @@ static arangodb::Result cancelReadLockOnLeader(network::ConnectionPool* pool,
   }
 
   if (res.fail()) {
-    if (res.isNot(TRI_ERROR_HTTP_NOT_FOUND)) {
-      LOG_TOPIC("52924", WARN, Logger::MAINTENANCE)
-          << "cancelReadLockOnLeader: exception caught for lock id "
-          << lockJobId << ": " << res.errorMessage();
-    }
-    return res;
+    LOG_TOPIC("52924", WARN, Logger::MAINTENANCE)
+        << "cancelReadLockOnLeader: exception caught for lock id " << lockJobId
+        << ": " << res.errorMessage();
+  } else {
+    LOG_TOPIC("4355c", DEBUG, Logger::MAINTENANCE)
+        << "cancelReadLockOnLeader: success";
   }
-
-  LOG_TOPIC("4355c", DEBUG, Logger::MAINTENANCE)
-      << "cancelReadLockOnLeader: success";
-  return {};
+  return res;
 }
 
 arangodb::Result SynchronizeShard::collectionCountOnLeader(
@@ -528,7 +525,7 @@ arangodb::Result SynchronizeShard::getReadLock(network::ConnectionPool* pool,
     return {};
   }
 
-  LOG_TOPIC("cba32", DEBUG, Logger::MAINTENANCE)
+  LOG_TOPIC("cba32", WARN, Logger::MAINTENANCE)
       << "startReadLockOnLeader: couldn't POST lock body, "
       << res.errorMessage() << ", giving up.";
 
@@ -547,6 +544,9 @@ arangodb::Result SynchronizeShard::getReadLock(network::ConnectionPool* pool,
             .get();
     auto cancelRes = cancelResponse.combinedResult();
     if (cancelRes.fail() && cancelRes.isNot(TRI_ERROR_HTTP_NOT_FOUND)) {
+      // don't warn if the lock wasn't successfully created on the
+      // leader and we now cannot cancel it. we already warned about
+      // the failed log creation above.
       LOG_TOPIC("4f34d", WARN, Logger::MAINTENANCE)
           << "startReadLockOnLeader: cancelation error for shard "
           << getDatabase() << "/" << collection << ": "
