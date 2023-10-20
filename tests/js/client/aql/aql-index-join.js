@@ -634,7 +634,9 @@ const IndexJoinTestSuite = function () {
       fillCollection("A", singleAttributeGenerator(20, "_key", x => `${x}`));
       A.ensureIndex({type: "persistent", fields: ["x", "y"]});
       const documentIdsOfA = [];
-      A.all().toArray().forEach((document) => {documentIdsOfA.push(document._id)});
+      A.all().toArray().forEach((document) => {
+        documentIdsOfA.push(document._id);
+      });
       fillEdgeCollectionWith("B", documentIdsOfA);
 
       const generateQuery = (filterAttribute) => {
