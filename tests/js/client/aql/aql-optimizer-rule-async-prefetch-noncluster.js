@@ -80,13 +80,13 @@ function optimizerRuleTestSuite () {
         [ "FOR i IN 1..100 SORT i RETURN i", [ ["SingletonNode", false], ["CalculationNode", true], ["EnumerateListNode", true], ["SortNode", true], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + cn + " COLLECT v = doc.value % 2 RETURN v", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["CalculationNode", true], ["CollectNode", true], ["SortNode", true], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + cn + " RETURN DISTINCT doc.value", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["CalculationNode", true], ["CollectNode", true], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " FILTER doc.value > 3 LIMIT 10 RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["LimitNode", false], ["ReturnNode", false] ] ],
+        [ "FOR doc IN " + cn + " FILTER doc.value > 3 LIMIT 10 RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", false], ["LimitNode", false], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + cn + " FILTER doc.a == '123' RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + cn + " FILTER doc._key == '123' RETURN doc", [ ["SingletonNode", false], ["IndexNode", true], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " FILTER doc._key == '123' LIMIT 3 RETURN doc", [ ["SingletonNode", false], ["IndexNode", true], ["LimitNode", false], ["ReturnNode", false] ] ],
+        [ "FOR doc IN " + cn + " FILTER doc._key == '123' LIMIT 3 RETURN doc", [ ["SingletonNode", false], ["IndexNode", false], ["LimitNode", false], ["ReturnNode", false] ] ],
         // views
         [ "FOR doc IN " + vn + " FILTER doc.value > 3 RETURN doc", [ ["SingletonNode", false], ["EnumerateViewNode", true], ["CalculationNode", true], ["FilterNode", true], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + vn + " FILTER doc.value > 3 LIMIT 3 RETURN doc", [ ["SingletonNode", false], ["EnumerateViewNode", true], ["CalculationNode", true], ["FilterNode", true], ["LimitNode", false], ["ReturnNode", false] ] ],
+        [ "FOR doc IN " + vn + " FILTER doc.value > 3 LIMIT 3 RETURN doc", [ ["SingletonNode", false], ["EnumerateViewNode", false], ["CalculationNode", false], ["FilterNode", false], ["LimitNode", false], ["ReturnNode", false] ] ],
         // modification queries
         [ "FOR i IN 1..1000 INSERT {} INTO " + cn, [ ["SingletonNode", false], ["CalculationNode", false], ["CalculationNode", false], ["EnumerateListNode", false], ["InsertNode", false] ] ],
         [ "FOR doc IN " + cn + " REMOVE doc IN " + cn, [ ["SingletonNode", false], ["IndexNode", false], ["RemoveNode", false] ] ],

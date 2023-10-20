@@ -30,6 +30,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/Timing.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
@@ -133,6 +134,23 @@ void ExecutionBlock::collectExecStats(ExecutionStats& stats) {
 
 void ExecutionBlock::traceExecuteBegin(AqlCallStack const& stack,
                                        std::string_view clientId) {
+  // add timing for block in case profiling is turned on.
+
+  // intentionally negative so it is easier to spot calculation errors.
+  double start = -1.0;
+  auto profilingGuard = scopeGuard([&]() noexcept {
+    _execNodeStats.runtime += currentSteadyClockValue() - start;
+  });
+  if (_profileLevel >= ProfileLevel::Blocks) {
+    // only if profiling is turned on, get current time
+    start = currentSteadyClockValue();
+  } else {
+    // if profiling is turned off, don't get current time, but instead
+    // cancel the scopeGuard so we don't unnecessarily call timing
+    // functions on exit
+    profilingGuard.cancel();
+  }
+
   if (_profileLevel >= ProfileLevel::TraceOne) {
     auto const queryId = this->_engine->getQuery().id();
     LOG_TOPIC("1e717", INFO, Logger::QUERIES)

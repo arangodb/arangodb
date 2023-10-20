@@ -2126,7 +2126,7 @@ ExecutionNode* LimitNode::clone(ExecutionPlan* plan, bool withDependencies,
 
 AsyncPrefetchEligibility LimitNode::canUseAsyncPrefetching() const noexcept {
   // LimitNodes do not support async prefetching.
-  return AsyncPrefetchEligibility::kDisableForNode;
+  return AsyncPrefetchEligibility::kDisableForNodeAndDependencies;
 }
 
 void LimitNode::setFullCount(bool enable) { _fullCount = enable; }
@@ -2322,6 +2322,15 @@ CostEstimate CalculationNode::estimateCost() const {
 
 AsyncPrefetchEligibility CalculationNode::canUseAsyncPrefetching()
     const noexcept {
+  // we cannot use prefetching if the calculation employs V8, because the
+  // Query object only has a single V8 context, which it can enter and exit.
+  // with prefetching, multiple threads can execute calculations in the same
+  // Query instance concurrently, and when using V8, they could try to
+  // enter/exit the V8 context of the query concurrently. this is currently
+  // not thread-safe, so we don't use prefetching.
+  // the constraint for determinism is there because we could produce
+  // different query results when prefetching is enabled, at least in
+  // streaming queries.
   return expression()->isDeterministic() && !expression()->willUseV8()
              ? AsyncPrefetchEligibility::kEnableForNode
              : AsyncPrefetchEligibility::kDisableForNode;
@@ -2809,8 +2818,9 @@ CostEstimate ReturnNode::estimateCost() const {
 }
 
 AsyncPrefetchEligibility ReturnNode::canUseAsyncPrefetching() const noexcept {
-  // ReturnNodes could make use of async prefetching, but the gain
-  // is too little to justify it.
+  // cannot enable async prefetching for return nodes right now,
+  // as it will produce assertion failures regarding the reference
+  // count of the result block
   return AsyncPrefetchEligibility::kDisableForNode;
 }
 

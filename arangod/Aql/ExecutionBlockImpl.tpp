@@ -477,23 +477,6 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
     THROW_ARANGO_EXCEPTION(_firstFailure);
   }
 
-  // add timing for block in case profiling is turned on.
-
-  // intentionally negative so it is easier to spot calculation errors.
-  double start = -1.0;
-  auto profilingGuard = scopeGuard([&]() noexcept {
-    _execNodeStats.runtime += currentSteadyClockValue() - start;
-  });
-  if (_profileLevel >= ProfileLevel::Blocks) {
-    // only if profiling is turned on, get current time
-    start = currentSteadyClockValue();
-  } else {
-    // if profiling is turned off, don't get current time, but instead
-    // cancel the scopeGuard so we don't unnecessarily call timing
-    // functions on exit
-    profilingGuard.cancel();
-  }
-
   traceExecuteBegin(stack);
   // silence tests -- we need to introduce new failure tests for fetchers
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
@@ -955,6 +938,15 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
     if (SchedulerFeature::SCHEDULER != nullptr &&
         std::get<ExecutionState>(result) == ExecutionState::HASMORE &&
         _exeNode->isAsyncPrefetchEnabled() && !ctx.clientCall.hasLimit()) {
+      // the only node types that use a limit are the LimitNode (and its
+      // dependencies in the plan) and EnumerateViewNode.
+      TRI_ASSERT(!ctx.clientCall.hasLimit() ||
+                 getPlanNode()->getType() ==
+                     ExecutionNode::ENUMERATE_IRESEARCH_VIEW);
+      // Async prefetching.
+      // we can only use async prefetching if the call does not use a limit.
+      // this is because otherwise the prefetching could lead to an overfetching
+      // of data.
       if (_prefetchTask == nullptr) {
         _prefetchTask = std::make_shared<PrefetchTask>();
       } else {
@@ -964,8 +956,6 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
       // TODO - we should avoid flooding the queue with too many tasks as that
       // can significantly delay processing of user REST requests.
 
-      // we can safely ignore the result here, because we will try to
-      // claim the task ourselves anyway.
       bool queued = SchedulerFeature::SCHEDULER->tryBoundedQueue(
           RequestLane::INTERNAL_LOW,
           [block = this, task = _prefetchTask, stack = ctx.stack]() mutable {
