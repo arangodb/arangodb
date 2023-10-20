@@ -1,5 +1,4 @@
 /* jshint esnext: true */
-/* global AQL_EXECUTE, AQL_EXPLAIN, AQL_EXECUTEJSON */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Spec for the AQL FOR x IN GRAPH name statement
@@ -40,10 +39,7 @@ const db = require('internal').db;
 const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 
-function query_execute(query, bindVars = null, options = {}) {
-  let stmt = db._createStatement({query, bindVars: bindVars, options: options, count: true});
-  return stmt.execute();
-};
+const executeQuery = require("@arangodb/aql-helper").executeQuery;
 
 function exampleGraphsSuite() {
   let ex = require('@arangodb/graph-examples/example-graph');
@@ -52,7 +48,7 @@ function exampleGraphsSuite() {
 
   const evaluate = (q, expected) => {
     for (const rules of ruleList) {
-      let res = query_execute(q, {}, { optimizer: { rules } });
+      let res = executeQuery(q, {}, { optimizer: { rules } });
       const info = `Query ${q} using rules ${rules}`;
       assertEqual(res.count(), expected.length, info);
       let resArr = res.toArray().sort();
