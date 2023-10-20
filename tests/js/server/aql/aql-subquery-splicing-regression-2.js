@@ -1,5 +1,4 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertLess, AQL_EXECUTE, assertTrue, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for regression returning blocks to the manager
@@ -29,10 +28,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
-const {assertEqual} = jsunity.jsUnity.assertions;
-const internal = require("internal");
-const errors = internal.errors;
+const {assertEqual, assertTrue} = jsunity.jsUnity.assertions;
 const db = require("@arangodb").db;
+const _ = require('lodash');
 
 // Regression test suite for https://github.com/arangodb/arangodb/issues/15107
 function subquerySplicingCrashRegressionSuite() {
@@ -105,7 +103,41 @@ function subquerySplicingLimitDroppingOuterRowsSuite() {
   };
 }
 
+// Regression test for https://arangodb.atlassian.net/browse/BTS-1610
+function subquerySplicingNonRelevantShadowRowForwardingAtBlockStart() {
+  return {
+    testRegressionBTS1610: function () {
+      // When an item block starts with a non-relevant shadow row, calls with a lower depth than that need to be popped
+      // from the call lists. This didn't happen, causing BTS-1610.
+      const query = `
+        FOR i IN 1..2
+        LET outer = (
+          // start with an outer shadow row
+          FILTER i == 2
+          LET inner = FIRST(
+            // the subquery here has to forward the outer shadow rows and return them before getting more from upstream:
+            // this holds for both start and end nodes.
+            LET innermost = (FILTER false RETURN 1)
+            // this calculation node would trigger a maintainer mode assertion (or return too few results in production)
+            // when its input block didn't end with the outer shadow row, but instead contained more rows.
+            LET x = innermost[0]
+            // TODO add an additional test with UPDATE here
+            FILTER x == null
+            COLLECT WITH COUNT INTO n
+            RETURN 1
+          )
+          RETURN inner
+        )
+        RETURN outer
+      `;
+      const res = db._query(query, {}, {optimizer: {rules: ["-all"]}, profile: 4}).toArray();
+      assertTrue(_.isEqual(res, [[], [1]]), "Expected [[], [1]], got " + JSON.stringify(res));
+    },
+  };
+}
+
 jsunity.run(subquerySplicingCrashRegressionSuite);
 jsunity.run(subquerySplicingLimitDroppingOuterRowsSuite);
+jsunity.run(subquerySplicingNonRelevantShadowRowForwardingAtBlockStart);
 
 return jsunity.done();
