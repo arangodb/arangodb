@@ -289,6 +289,8 @@ jobs:
           command: ulimit -c unlimited
       - run:
           name: Run << parameters.suiteName >> tests
+          # we increase the no_output_timeout so our own timeout mechanism can kick in and gather more information
+          no_output_timeout: 20m
           command: |
             mkdir work
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
