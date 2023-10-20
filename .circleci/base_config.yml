@@ -294,14 +294,16 @@ jobs:
           shell: powershell.exe
           command: |
             mkdir build
+            # make sure we have the latest image!
+            docker pull arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.3
             # TODO - use preset
             # TODO - enable enterprise!
-            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -w C:/project/build arangodb/build-windows-x64:latest cmake -G 'Visual Studio 17 2022' -T 'v143,host=x64' -DUSE_MAINTAINER_MODE=On -DUSE_GOOGLE_TESTS=On -DUSE_ENTERPRISE=Off -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPACKAGING=NSIS -DCMAKE_INSTALL_PREFIX=/ -DSKIP_PACKAGING=On -DUSE_FAILURE_TESTS=On -DSTATIC_EXECUTABLES=On -DOPENSSL_USE_STATIC_LIBS=On -DUSE_STRICT_OPENSSL_VERSION=On ..
+            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -w C:/project/build arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.3 cmake -G 'Visual Studio 17 2022' -T 'v143,host=x64' -DUSE_MAINTAINER_MODE=On -DUSE_GOOGLE_TESTS=On -DUSE_ENTERPRISE=Off -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPACKAGING=NSIS -DCMAKE_INSTALL_PREFIX=/ -DSKIP_PACKAGING=On -DUSE_FAILURE_TESTS=On -DSTATIC_EXECUTABLES=On -DOPENSSL_USE_STATIC_LIBS=On -DUSE_STRICT_OPENSSL_VERSION=On ..
       - run:
           name: "Build"
           shell: powershell.exe
           command: |
-            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -w C:/project/build arangodb/build-windows-x64:latest cmake --build . --config `"RelWithDebInfo`" --parallel -- /p:CL_MPcount=24
+            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -w C:/project/build arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.3 cmake --build . --config `"RelWithDebInfo`" --parallel -- /p:CL_MPcount=24
 
       # TODO - enable artifact upload once we actually use them
       # - run:
