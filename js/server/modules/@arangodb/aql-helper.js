@@ -275,18 +275,18 @@ function findReferencedNodes (plan, testNode) {
   return matches;
 }
 
-
-function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug) {
-  var printYaml = function (plan) {
-    require('internal').print(require('js-yaml').safeDump(plan));
-  };
-  var execute_json = function (plan, param) {
-    let command = `
+const executeJson = function (plan, param) {
+  let command = `
       let plan = ${JSON.stringify(plan)};
       let opts = ${JSON.stringify(param)};
       return AQL_EXECUTEJSON(plan, opts);
     `;
-    return arango.POST("/_admin/execute", command);
+  return arango.POST("/_admin/execute", command);
+};
+
+function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug) {
+  var printYaml = function (plan) {
+    require('internal').print(require('js-yaml').safeDump(plan));
   };
 
   var i;
@@ -340,21 +340,9 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
       }
     }
 
-    results[i] = execute_json(plans[i].plan, paramNone);
+    results[i] = executeJson(plans[i].plan, paramNone);
     // ignore these statistics for comparisons
-    delete results[i].stats.scannedFull;
-    delete results[i].stats.scannedIndex;
-    delete results[i].stats.cursorsCreated;
-    delete results[i].stats.cursorsRearmed;
-    delete results[i].stats.cacheHits;
-    delete results[i].stats.cacheMisses;
-    delete results[i].stats.filtered;
-    delete results[i].stats.executionTime;
-    delete results[i].stats.httpRequests;
-    delete results[i].stats.peakMemoryUsage;
-    delete results[i].stats.intermediateCommits;
-    delete results[i].stats.fullCount;
-
+    sanitizeStats(results[i]);
     if (debug) {
       require('internal').print('\n' + i + ' DONE\n');
     }
@@ -437,18 +425,19 @@ function unpackRawExpression (node, transform = false) {
 function sanitizeStats (stats) {
   // remove these members from the stats because they don't matter
   // for the comparisons
-  delete stats.scannedFull;
-  delete stats.scannedIndex;
-  delete stats.cursorsCreated;
-  delete stats.cursorsRearmed;
-  delete stats.cacheHits;
-  delete stats.cacheMisses;
-  delete stats.filtered;
-  delete stats.executionTime;
-  delete stats.httpRequests;
-  delete stats.fullCount;
-  delete stats.peakMemoryUsage;
-  delete stats.intermediateCommits;
+  [
+    'scannedFull',
+    'scannedIndex',
+    'cursorsCreated',
+    'cursorsRearmed',
+    'cacheHits',
+    'cacheMisses',
+    'filtered',
+    'executionTime',
+    'httpRequests',
+    'fullCount',
+    'peakMemoryUsage',
+    'intermediateCommits'].forEach(item => { delete stats[item]; });
   return stats;
 }
 

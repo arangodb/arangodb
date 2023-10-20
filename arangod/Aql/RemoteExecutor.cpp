@@ -265,9 +265,10 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(
 auto ExecutionBlockImpl<RemoteExecutor>::deserializeExecuteCallResultBody(
     VPackSlice slice) const -> ResultT<AqlExecuteResult> {
   // Errors should have been caught earlier
-  TRI_ASSERT(TRI_ERROR_NO_ERROR ==
-             VelocyPackHelper::getNumericValue<ErrorCode>(
-                 slice, StaticStrings::Code, TRI_ERROR_INTERNAL));
+  TRI_ASSERT(
+      TRI_ERROR_NO_ERROR ==
+      (VelocyPackHelper::getNumericValue<ErrorCode, ErrorCode::ValueType>(
+          slice, StaticStrings::Code, TRI_ERROR_INTERNAL)));
 
   if (ADB_UNLIKELY(!slice.isObject())) {
     using namespace std::string_literals;
@@ -321,8 +322,9 @@ Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
     if (slice.isObject()) {
       VPackSlice errSlice = slice.get(StaticStrings::Error);
       if (errSlice.isBool() && errSlice.getBool()) {
-        res = VelocyPackHelper::getNumericValue<ErrorCode>(
-            slice, StaticStrings::ErrorNum, res);
+        res =
+            VelocyPackHelper::getNumericValue<ErrorCode, ErrorCode::ValueType>(
+                slice, StaticStrings::ErrorNum, res);
         std::string_view ref = VelocyPackHelper::getStringView(
             slice, StaticStrings::ErrorMessage,
             std::string_view("(no valid error in response)"));

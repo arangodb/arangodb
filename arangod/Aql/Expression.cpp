@@ -666,7 +666,6 @@ AqlValue Expression::executeSimpleExpressionArray(ExpressionContext& ctx,
         executeSimpleExpression(ctx, member, localMustDestroy, false);
     AqlValueGuard guard(result, localMustDestroy);
     result.toVelocyPack(&trx.vpackOptions(), *builder.get(),
-                        /*resolveExternals*/ false,
                         /*allowUnindexed*/ false);
   }
 
@@ -721,7 +720,7 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
 
       // make sure key is a string, and convert it if not
       AqlValueMaterializer materializer(&vopts);
-      VPackSlice slice = materializer.slice(result, false);
+      VPackSlice slice = materializer.slice(result);
 
       buffer->clear();
       functions::Stringify(&vopts, adapter, slice);
@@ -780,8 +779,7 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
     AqlValue result =
         executeSimpleExpression(ctx, member, localMustDestroy, false);
     AqlValueGuard guard(result, localMustDestroy);
-    result.toVelocyPack(&vopts, *builder.get(), /*resolveExternals*/ false,
-                        /*allowUnindexed*/ false);
+    result.toVelocyPack(&vopts, *builder.get(), /*allowUnindexed*/ false);
   }
 
   builder->close();
@@ -1769,7 +1767,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
 
     AqlValueMaterializer materializer(&vopts);
     // register temporary variable in context
-    ctx.setVariable(variable, materializer.slice(item, false));
+    ctx.setVariable(variable, materializer.slice(item));
 
     bool takeItem = true;
 
@@ -1798,8 +1796,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
         if (!isBoolean) {
           AqlValue sub = executeSimpleExpression(ctx, projectionNode,
                                                  localMustDestroy, false);
-          sub.toVelocyPack(&vopts, builder, /*resolveExternals*/ true,
-                           /*allowUnindexed*/ false);
+          sub.toVelocyPack(&vopts, builder, /*allowUnindexed*/ false);
           if (localMustDestroy) {
             sub.destroy();
           }

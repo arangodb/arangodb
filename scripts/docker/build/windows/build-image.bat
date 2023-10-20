@@ -1,0 +1,1 @@
+ docker build -t arangodb/build-windows-x64:latest --file .\arangodb-build-win.Dockerfile --compress -m 32g .
