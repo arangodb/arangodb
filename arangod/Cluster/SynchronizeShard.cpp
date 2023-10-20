@@ -390,25 +390,18 @@ static arangodb::Result cancelReadLockOnLeader(network::ConnectionPool* pool,
   auto res = response.combinedResult();
   if (res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
     // database is gone. that means our lock is also gone
-    return arangodb::Result();
+    return {};
   }
 
   if (res.fail()) {
-    // rebuild body since we stole it earlier
-    VPackBuilder body;
-    {
-      VPackObjectBuilder b(&body);
-      body.add(ID, VPackValue(std::to_string(lockJobId)));
-    }
     LOG_TOPIC("52924", WARN, Logger::MAINTENANCE)
-        << "cancelReadLockOnLeader: exception caught for " << body.toJson()
+        << "cancelReadLockOnLeader: exception caught for lock id " << lockJobId
         << ": " << res.errorMessage();
-    return arangodb::Result(TRI_ERROR_INTERNAL, res.errorMessage());
+  } else {
+    LOG_TOPIC("4355c", DEBUG, Logger::MAINTENANCE)
+        << "cancelReadLockOnLeader: success";
   }
-
-  LOG_TOPIC("4355c", DEBUG, Logger::MAINTENANCE)
-      << "cancelReadLockOnLeader: success";
-  return arangodb::Result();
+  return res;
 }
 
 arangodb::Result SynchronizeShard::collectionCountOnLeader(
@@ -532,9 +525,9 @@ arangodb::Result SynchronizeShard::getReadLock(network::ConnectionPool* pool,
     return {};
   }
 
-  LOG_TOPIC("cba32", DEBUG, Logger::MAINTENANCE)
+  LOG_TOPIC("cba32", WARN, Logger::MAINTENANCE)
       << "startReadLockOnLeader: couldn't POST lock body, "
-      << network::fuerteToArangoErrorMessage(response) << ", giving up.";
+      << res.errorMessage() << ", giving up.";
 
   // We MUSTN'T exit without trying to clean up a lock that was maybe acquired
   if (response.error == fuerte::Error::CouldNotConnect) {
@@ -550,7 +543,10 @@ arangodb::Result SynchronizeShard::getReadLock(network::ConnectionPool* pool,
                              REPL_HOLD_READ_LOCK, *buf, options)
             .get();
     auto cancelRes = cancelResponse.combinedResult();
-    if (cancelRes.fail()) {
+    if (cancelRes.fail() && cancelRes.isNot(TRI_ERROR_HTTP_NOT_FOUND)) {
+      // don't warn if the lock wasn't successfully created on the
+      // leader and we now cannot cancel it. we already warned about
+      // the failed log creation above.
       LOG_TOPIC("4f34d", WARN, Logger::MAINTENANCE)
           << "startReadLockOnLeader: cancelation error for shard "
           << getDatabase() << "/" << collection << ": "
@@ -1342,6 +1338,8 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
                                             std::move(errorMessage));
     }
 
+    auto lockAcquisitionTime = std::chrono::steady_clock::now();
+
     auto readLockGuard = arangodb::scopeGuard([&, this]() noexcept {
       try {
         // Always cancel the read lock.
@@ -1397,14 +1395,24 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     // Stop the read lock again:
     NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
     network::ConnectionPool* pool = nf.pool();
+
+    auto lockElapsed = std::chrono::steady_clock::now() - lockAcquisitionTime;
+
     res = cancelReadLockOnLeader(pool, ep, getDatabase(), lockJobId, clientId,
                                  60.0);
     // We removed the readlock
     readLockGuard.cancel();
     if (!res.ok()) {
+      // for debugging purposes, emit time difference here between lock
+      // acquistion on the leader and the time point when we try to release
+      // the lock on the leader.
+      // if this time difference is longer than timeout (300s), we expect
+      // to get an error back, because the lock's TTL on the leader expired.
       auto errorMessage = StringUtils::concatT(
           "synchronizeOneShard: error when cancelling soft read lock: ",
-          res.errorMessage());
+          res.errorMessage(), " - catchup duration: ",
+          std::chrono::duration_cast<std::chrono::seconds>(lockElapsed).count(),
+          "s");
       LOG_TOPIC("c37d1", INFO, Logger::MAINTENANCE) << errorMessage;
       result(TRI_ERROR_INTERNAL, errorMessage);
       return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, errorMessage);
