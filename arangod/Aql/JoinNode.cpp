@@ -150,21 +150,24 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
       idx.usedShard = usedShard.copyString();
     }
 
-    auto const prepareProjections = [&](aql::Projections& proj,
+    auto const prepareProjections = [&](aql::Projections& proj, bool prohibited,
                                         bool expectation) {
       if (!proj.empty()) {
-        if (idx.index->covers(proj)) {
+        if (!prohibited && idx.index->covers(proj)) {
           proj.setCoveringContext(coll->id(), idx.index);
         }
         TRI_ASSERT(proj.usesCoveringIndex(idx.index) == expectation)
-            << "expectation = " << std::boolalpha << expectation;
+            << "expectation = " << std::boolalpha << expectation
+            << " prohibited = " << prohibited;
       }
     };
 
-    prepareProjections(idx.projections,
-                       it.get("indexCoversProjections").isTrue());
-    prepareProjections(idx.filterProjections,
+    prepareProjections(idx.filterProjections, false,
                        it.get("indexCoversFilterProjections").isTrue());
+    prepareProjections(
+        idx.projections,
+        idx.filter != nullptr && !idx.filterProjections.usesCoveringIndex(),
+        it.get("indexCoversProjections").isTrue());
   }
 
   TRI_ASSERT(_indexInfos.size() >= 2);

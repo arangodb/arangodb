@@ -76,6 +76,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include "Containers/Enumerate.h"
+
 using namespace arangodb;
 
 namespace {
@@ -2876,8 +2878,16 @@ namespace {
 
 struct RocksDBVPackStreamOptions {
   std::size_t keyPrefixSize;
-  std::vector<std::size_t> projectedKeyValues;
-  std::vector<std::size_t> projectedStoredValues;
+  struct ProjectedValuePair {
+    explicit ProjectedValuePair(std::size_t resultOffset,
+                                std::size_t indexOffset)
+        : resultOffset(resultOffset), indexOffset(indexOffset) {}
+    std::size_t resultOffset;
+    std::size_t indexOffset;
+  };
+
+  std::vector<ProjectedValuePair> projectedKeyValues;
+  std::vector<ProjectedValuePair> projectedStoredValues;
 };
 
 template<bool isUnique>
@@ -2954,21 +2964,20 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
 
   LocalDocumentId load(std::span<VPackSlice> projections) const override {
     TRI_ASSERT(_iterator->Valid());
-    std::size_t idx = 0;
     TRI_ASSERT(projections.size() == _options.projectedKeyValues.size() +
                                          _options.projectedStoredValues.size());
 
-    auto keySlice = RocksDBKey::indexedVPack(_iterator->key());
-    for (auto pos : _options.projectedKeyValues) {
-      projections[idx++] = keySlice.at(pos);
-    }
     if (!_options.projectedStoredValues.empty()) {
       auto valueSlice =
           isUnique ? RocksDBValue::uniqueIndexStoredValues(_iterator->value())
                    : RocksDBValue::indexStoredValues(_iterator->value());
       for (auto pos : _options.projectedStoredValues) {
-        projections[idx++] = valueSlice.at(pos);
+        projections[pos.resultOffset] = valueSlice.at(pos.indexOffset);
       }
+    }
+    auto keySlice = RocksDBKey::indexedVPack(_iterator->key());
+    for (auto pos : _options.projectedKeyValues) {
+      projections[pos.resultOffset] = keySlice.at(pos.indexOffset);
     }
 
     if constexpr (isUnique) {
@@ -3013,11 +3022,12 @@ std::unique_ptr<AqlIndexStreamIterator> RocksDBVPackIndex::streamForCondition(
 
   RocksDBVPackStreamOptions streamOptions;
   streamOptions.keyPrefixSize = opts.usedKeyFields.size();
-  for (auto idx : opts.projectedFields) {
+  for (auto [offset, idx] : enumerate(opts.projectedFields)) {
     if (idx < _fields.size()) {
-      streamOptions.projectedKeyValues.push_back(idx);
+      streamOptions.projectedKeyValues.emplace_back(offset, idx);
     } else if (idx < _fields.size() + _storedValues.size()) {
-      streamOptions.projectedStoredValues.push_back(idx - _fields.size());
+      streamOptions.projectedStoredValues.emplace_back(offset,
+                                                       idx - _fields.size());
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL, "index does not cover field with given index");

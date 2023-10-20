@@ -777,8 +777,10 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
     return RestStatus::DONE;
   }
 
-  auto errorCode = basics::VelocyPackHelper::getNumericValue<ErrorCode>(
-      querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
+  auto errorCode =
+      basics::VelocyPackHelper::getNumericValue<ErrorCode,
+                                                ErrorCode::ValueType>(
+          querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
 
   auto f =
       _queryRegistry->finishQuery(qid, errorCode)

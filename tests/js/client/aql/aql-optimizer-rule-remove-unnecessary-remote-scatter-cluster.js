@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertEqual, AQL_EXPLAIN, AQL_EXECUTE, AQL_EXECUTEJSON, arango */
+/*global assertTrue, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -119,12 +119,7 @@ function optimizerRuleTestSuite () {
         var total = db._query(query);
         var plans = db._createStatement({query: query, bindVars:  { }, options:  opts}).explain().plans;
         plans.forEach(function(plan) {
-          let command = `
-            let plan = ${JSON.stringify(plan)};
-            let rulesNone = ${JSON.stringify(rulesNone)};
-            return AQL_EXECUTEJSON(plan, rulesNone);
-          `;
-          var result = arango.POST("/_admin/execute", command).json;
+          var result = helper.executeJson(plan, rulesNone).json;
           assertTrue(_.isEqual(total.toArray(), result),
                       query +'\n' +
                       'result: ' + JSON.stringify(result) + '\n' +

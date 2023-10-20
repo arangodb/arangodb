@@ -617,10 +617,6 @@ bool IndexNode::recalculateProjections(ExecutionPlan* plan) {
 
   bool wasUpdated = DocumentProducingNode::recalculateProjections(plan);
 
-  if (idx->covers(_projections)) {
-    _projections.setCoveringContext(collection()->id(), idx);
-  }
-
   if (hasFilter()) {
     if (idx->covers(_filterProjections)) {
       bool containsId = false;
@@ -637,6 +633,18 @@ bool IndexNode::recalculateProjections(ExecutionPlan* plan) {
     }
   }
 
+  const bool filterCoveredByIndex =
+      !hasFilter() || _filterProjections.usesCoveringIndex();
+
+  if (filterCoveredByIndex && idx->covers(_projections)) {
+    _projections.setCoveringContext(collection()->id(), idx);
+  }
+
+  // If we use projections to create the document, the filter projections
+  // have to be covered by the index. Otherwise, we have to load the
+  // document anyways.
+  TRI_ASSERT(!_projections.usesCoveringIndex() || !hasFilter() ||
+             _filterProjections.usesCoveringIndex());
   return wasUpdated;
 }
 

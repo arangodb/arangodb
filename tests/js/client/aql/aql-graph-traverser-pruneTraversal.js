@@ -1,5 +1,5 @@
 /* jshint esnext: true */
-/* global AQL_EXECUTE, AQL_EXPLAIN, AQL_EXECUTEJSON, fail */
+/* global fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Spec for the AQL FOR x IN GRAPH name statement
