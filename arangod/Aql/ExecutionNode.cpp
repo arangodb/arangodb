@@ -1881,6 +1881,11 @@ void EnumerateCollectionNode::setProjections(Projections projections) {
   DocumentProducingNode::setProjections(std::move(projections));
 }
 
+bool EnumerateCollectionNode::isProduceResult() const {
+  return _filter != nullptr ||
+         dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(_outVariable);
+}
+
 /// @brief the cost of an enumerate collection node is a multiple of the cost of
 /// its unique dependency
 CostEstimate EnumerateCollectionNode::estimateCost() const {

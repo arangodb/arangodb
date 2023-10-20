@@ -99,6 +99,11 @@ Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
       _freeMemoryTasks(0),
       _migrateTasksDuration(0),
       _freeMemoryTasksDuration(0),
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      _tableCalls(0),
+      _termCalls(0),
+#endif
+      _transactions(this),
       _schedulerPost(std::move(schedulerPost)),
       _outstandingTasks(0),
       _rebalancingTasks(0),
@@ -320,7 +325,7 @@ std::uint64_t Manager::globalAllocation() const noexcept {
   return _globalAllocation;
 }
 
-std::optional<Manager::MemoryStats> Manager::memoryStats(
+Manager::MemoryStats Manager::memoryStats(
     std::uint64_t maxTries) const noexcept {
   SpinLocker guard(SpinLocker::Mode::Read, _lock,
                    static_cast<size_t>(maxTries));
@@ -339,10 +344,25 @@ std::optional<Manager::MemoryStats> Manager::memoryStats(
     result.freeMemoryTasks = _freeMemoryTasks;
     result.migrateTasksDuration = _migrateTasksDuration;
     result.freeMemoryTasksDuration = _freeMemoryTasksDuration;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    result.tableCalls = _tableCalls.load(std::memory_order_relaxed);
+    result.termCalls = _termCalls.load(std::memory_order_relaxed);
+#endif
+
+    guard.release();
+    {
+      // store result for next time
+      std::lock_guard<std::mutex> statsGuard(_lastMemoryStatsMutex);
+      _lastMemoryStatsResult = result;
+    }
     return result;
   }
 
-  return std::nullopt;
+  // couldn't acquire the cache manager mutex in time.
+  // in this case, we simply return the last memory stats that we
+  // previously returned. this is better than returning no data at all.
+  std::lock_guard<std::mutex> statsGuard(_lastMemoryStatsMutex);
+  return _lastMemoryStatsResult;
 }
 
 std::pair<double, double> Manager::globalHitRates() {
@@ -774,6 +794,18 @@ void Manager::trackFreeMemoryTaskDuration(std::uint64_t duration) noexcept {
   SpinLocker guard(SpinLocker::Mode::Write, _lock);
   _freeMemoryTasksDuration += duration;
 }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+void Manager::trackTableCall() noexcept {
+  _tableCalls.fetch_add(1, std::memory_order_relaxed);
+}
+#endif
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+void Manager::trackTermCall() noexcept {
+  _termCalls.fetch_add(1, std::memory_order_relaxed);
+}
+#endif
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 void Manager::freeUnusedTablesForTesting() {

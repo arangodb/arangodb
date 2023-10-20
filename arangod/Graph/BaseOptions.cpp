@@ -237,7 +237,7 @@ void BaseOptions::LookupInfo::calculateIndexExpressions(
     AqlValueGuard guard(a, mustDestroy);
 
     AqlValueMaterializer materializer(&(ctx.trx().vpackOptions()));
-    VPackSlice slice = materializer.slice(a, false);
+    VPackSlice slice = materializer.slice(a);
     AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
 
     AstNode* tmp = indexCondition;

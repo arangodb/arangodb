@@ -49,9 +49,7 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-using FilterExecutorTestHelper = ExecutorTestHelper<2, 2>;
-using FilterExecutorSplitType = FilterExecutorTestHelper::SplitType;
-using FilterExecutorInputParam = std::tuple<FilterExecutorSplitType>;
+using FilterExecutorInputParam = std::tuple<SplitType>;
 
 class FilterExecutorTest
     : public AqlExecutorTestCaseWithParam<FilterExecutorInputParam> {
@@ -70,7 +68,7 @@ class FilterExecutorTest
         outputRegisters(),
         infos(0) {}
 
-  auto getSplit() -> FilterExecutorSplitType {
+  auto getSplit() -> SplitType {
     auto [split] = GetParam();
     return split;
   }
@@ -84,10 +82,9 @@ class FilterExecutorTest
 };
 
 template<size_t... vs>
-const FilterExecutorSplitType splitIntoBlocks =
-    FilterExecutorSplitType{std::vector<std::size_t>{vs...}};
+const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
 template<size_t step>
-const FilterExecutorSplitType splitStep = FilterExecutorSplitType{step};
+const SplitType splitStep = SplitType{step};
 
 INSTANTIATE_TEST_CASE_P(FilterExecutor, FilterExecutorTest,
                         ::testing::Values(splitIntoBlocks<2, 3>,
