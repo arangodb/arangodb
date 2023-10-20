@@ -26,6 +26,54 @@
 
 namespace arangodb {
 
-void waitForGlobalEvent(std::string_view id, std::string_view selector);
+// The following two functions can be used to serialize events globally
+// in a cluster. Note that this only works for "local" clusters, in which
+// all `arangod` instances share a common file system and use the same
+// temporary path. This is the typical situation for our integration tests.
+//
+// In such a test, one can specify a straight line program of events,
+// which provides the serialization which the test wants to stage.
+// Each line of the straight line program is of the form
+//
+//   <SOURCEID> <SELECTOR> <LABEL>
+//
+// The line must contain exactly 3 spaces separating the 3 parts. The
+// `<SOURCEID>` is an identifier used in the code to mark the code
+// place, it corresponds to the `id` argument in the functions below.
+// The `<SELECTOR>` is a string (without spaces) which can be used that
+// not every passing of the code place triggers. It can for example be
+// used to only trigger on a specific server or for a specific shard.
+// This corresponds to the `selector` argument in the functions below.
+// The `<LABEL>` part is only a label to indicate in logs, which line of
+// the straight line program was triggered.
+//
+// The serialization semantics are implemented as follows. The straight
+// line program resides in some file in the file system, to which all
+// `arangod` instances have access. It is called `globalSLP` and resides
+// in the temporary path (which can be specified by an environment variable).
+// In the same directory there is a file `globalSLP_PC`, which serves
+// as the program counter of the straight line program. This file is initially
+// empty and each line of the straight line program which is triggered,
+// is then appended to the file to track progress. In this way, there is
+// always a "next line" to be executed, which is the first line in
+// `globalSLP` which is not (yet) in `globalSLP_PC`.
+//
+// The semantics is as follows:
+//
+// If `waitForGlobalEvent` is called, then the SLP is read and it is
+// determined, if the current line matches `id` and `selector`. If not,
+// the function waits until it is. Once the current line matches the
+// current line is advanced by one, a log message is written and the
+// function returns. If the straight line program is completed (all
+// lines were triggered) or the `globalSLP_PC` file no longer exists
+// , then `waitForGlobalEvent` immediately returns with no further
+// action.
+//
+// If `observeGlobalEvent` is called, then the SLP is read and it is
+// determined, if the current line matches `id` and `selector`. If so,
+// the current line is advanced, otherwise it stays. In any case, the
+// function immediately returns.
 
-}
+void waitForGlobalEvent(std::string_view id, std::string_view selector);
+void observeGlobalEvent(std::string_view id, std::string_view selector);
+}  // namespace arangodb

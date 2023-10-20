@@ -27,6 +27,7 @@
 
 #include "Agency/AgencyCommon.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/GlobalSerialization.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/AgencyCache.h"
@@ -221,6 +222,10 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
         currentInfo->servers(collection.name());
     std::shared_ptr<std::vector<ServerID>> realInsyncFollowers;
 
+    TRI_IF_FAILURE("HandleLeadership::before") {
+      waitForGlobalEvent("HandleLeadership::before", collection.name());
+    }
+
     if (!currentServers.empty()) {
       std::string& oldLeader = currentServers[0];
       // Check if the old leader has resigned and stopped all write
@@ -242,6 +247,10 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
         currentInfo->failoverCandidates(collection.name());
     followers->takeOverLeadership(failoverCandidates, realInsyncFollowers);
     transaction::cluster::abortFollowerTransactionsOnShard(collection.id());
+
+    TRI_IF_FAILURE("HandleLeadership::after") {
+      waitForGlobalEvent("HandleLeadership::after", collection.name());
+    }
   }
 }
 

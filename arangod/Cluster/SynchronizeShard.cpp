@@ -26,6 +26,7 @@
 
 #include "Agency/AgencyStrings.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/GlobalSerialization.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/TimeString.h"
@@ -915,6 +916,11 @@ bool SynchronizeShard::first() {
       << "SynchronizeShard: synchronizing shard '" << database << "/" << shard
       << "' for central '" << database << "/" << planId << "'";
 
+  TRI_IF_FAILURE("SynchronizeShard::beginning") {
+    waitForGlobalEvent("SynchronizeShard::beginning", shard);
+    waitForGlobalEvent("SynchronizeShard::beginning2", shard);
+  }
+
   auto& clusterInfo =
       _feature.server().getFeature<ClusterFeature>().clusterInfo();
   auto const ourselves = arangodb::ServerState::instance()->getId();
@@ -1158,6 +1164,9 @@ bool SynchronizeShard::first() {
         config.add("verbose", VPackValue(false));
       }
 
+      TRI_IF_FAILURE("SynchronizeShard::beforeSetTheLeader") {
+        waitForGlobalEvent("SynchronizeShard::beforeSetTheLeader", shard);
+      }
       // Configure the shard to follow the leader without any following
       // term id, this is necessary, such that no replication requests
       // from synchronous replication can interfere with the initial
@@ -1199,6 +1208,14 @@ bool SynchronizeShard::first() {
                                                                 startTime)
                    .count()
             << " seconds.";
+      }
+
+      TRI_IF_FAILURE("SynchronizeShard::fail") {
+        LOG_TOPIC("ca778", INFO, Logger::MAINTENANCE)
+            << "SynchronizeShard failed for shard " << collection->name()
+            << " because of a failure point.";
+        result(TRI_ERROR_FAILED, "Failure point");
+        return false;
       }
 
       // If this did not work, then we cannot go on:

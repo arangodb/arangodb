@@ -26,69 +26,148 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/files.h"
 #include "Logger/LogMacros.h"
 
 namespace arangodb {
 
 void waitForGlobalEvent(std::string_view id, std::string_view selector) {
+  std::string path = TRI_GetTempPath();
+  auto pos = path.rfind(TRI_DIR_SEPARATOR_CHAR);
+  if (pos != std::string::npos) {
+    path = path.substr(0, pos);
+  }
+  std::string progPath =
+      basics::FileUtils::buildFilename(path.c_str(), "globalSLP");
+  std::string pcPath =
+      basics::FileUtils::buildFilename(path.c_str(), "globalSLP_PC");
+
   std::vector<std::string> progLines;
   // Read program:
   try {
-    std::string prog = arangodb::basics::FileUtils::slurp("/tmp/debuggingSLP");
+    std::string prog = arangodb::basics::FileUtils::slurp(progPath);
+    if (prog.empty()) {
+      return;
+    }
     progLines = arangodb::basics::StringUtils::split(prog, '\n');
+    progLines.pop_back();  // Ignore last line, since every line is
+                           // ended by \n.
+    if (progLines.empty()) {
+      return;
+    }
   } catch (std::exception const&) {
     return;  // No program, no waiting
   }
-  TRI_ASSERT(!progLines.empty());
-  // Check if we are affected:
-  bool affected = false;
-  for (size_t i = 0; i < progLines.size(); ++i) {
-    std::vector<std::string> parts =
-        arangodb::basics::StringUtils::split(progLines[i], ' ');
-    if (parts.size() >= 2 && parts[0] == id && parts[1] == selector) {
-      affected = true;
-      break;
-    }
-  }
-  if (!affected) {
-    return;
-  }
-  LOG_DEVEL << "Waiting for global event " << id << " with selector "
-            << selector << "...";
+  LOG_TOPIC("ace32", INFO, Logger::MAINTENANCE)
+      << "Waiting for global event " << id << " with selector " << selector
+      << "...";
   while (true) {
-    // Read current line:
-    std::string current;
+    // Read pc
+    std::vector<std::string> executedLines;
     try {
-      current = arangodb::basics::FileUtils::slurp("/tmp/debuggingSLPCurrent");
+      std::string pc = arangodb::basics::FileUtils::slurp(pcPath);
+      executedLines = basics::StringUtils::split(pc, '\n');
+      if (!executedLines.empty() > 0) {
+        executedLines.pop_back();
+      }
     } catch (std::exception const&) {
+      return;
     }
-    LOG_DEVEL << "Waiting for global event " << id << " with selector "
-              << selector << "..." << current;
-    if (!current.empty()) {
-      // Protect against the case that the file might not be there currently,
-      // this also covers the case that the file exists but is empty.
-      uint64_t line = arangodb::basics::StringUtils::uint64(current);
-      if (line >= progLines.size()) {
-        return;
+    if (executedLines.size() >= progLines.size()) {
+      return;
+    }
+    std::string current = progLines[executedLines.size()];
+    std::vector<std::string> parts =
+        arangodb::basics::StringUtils::split(current, ' ');
+    if (parts.size() >= 2 && id == parts[0] && selector == parts[1]) {
+      // Hurray! We can make progress:
+      if (parts.size() >= 3) {
+        LOG_TOPIC("ace33", INFO, Logger::MAINTENANCE)
+            << "Global event " << id << " with selector " << selector
+            << " and comment " << parts[2] << " has happened...";
+      } else {
+        LOG_TOPIC("ace34", INFO, Logger::MAINTENANCE)
+            << "Global event " << id << " with selector " << selector
+            << " has happened...";
       }
-      std::vector<std::string> parts =
-          arangodb::basics::StringUtils::split(progLines[line], ' ');
-      if (parts.size() >= 2 && id == parts[0] && selector == parts[1]) {
-        // Hurray! We can make progress:
-        if (parts.size() >= 3) {
-          LOG_DEVEL << "Global event " << id << " with selector " << selector
-                    << " and comment " << parts[2] << " has happened...";
-        } else {
-          LOG_DEVEL << "Global event " << id << " with selector " << selector
-                    << " has happened...";
-        }
-        arangodb::basics::FileUtils::spit("/tmp/debuggingSLPCurrent",
-                                          std::to_string(line + 1));
-        return;
+      current.push_back('\n');
+      try {
+        arangodb::basics::FileUtils::appendToFile("/tmp/debuggingSLPCurrent",
+                                                  current);
+      } catch (std::exception const&) {
+        // ignore
       }
+      return;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
   }
 }
 
+void observeGlobalEvent(std::string_view id, std::string_view selector) {
+  std::string path = TRI_GetTempPath();
+  auto pos = path.rfind(TRI_DIR_SEPARATOR_CHAR);
+  if (pos != std::string::npos) {
+    path = path.substr(0, pos);
+  }
+  std::string progPath =
+      basics::FileUtils::buildFilename(path.c_str(), "globalSLP");
+  std::string pcPath =
+      basics::FileUtils::buildFilename(path.c_str(), "globalSLP_PC");
+
+  std::vector<std::string> progLines;
+  // Read program:
+  try {
+    std::string prog = arangodb::basics::FileUtils::slurp(progPath);
+    if (prog.empty()) {
+      return;
+    }
+    progLines = arangodb::basics::StringUtils::split(prog, '\n');
+    progLines.pop_back();  // Ignore last line, since every line is
+                           // ended by \n.
+    if (progLines.empty()) {
+      return;
+    }
+  } catch (std::exception const&) {
+    return;  // No program, no waiting
+  }
+  LOG_TOPIC("ace35", INFO, Logger::MAINTENANCE)
+      << "Observing global event " << id << " with selector " << selector
+      << "...";
+  // Read pc
+  std::vector<std::string> executedLines;
+  try {
+    std::string pc = arangodb::basics::FileUtils::slurp(pcPath);
+    executedLines = basics::StringUtils::split(pc, '\n');
+    if (!executedLines.empty() > 0) {
+      executedLines.pop_back();
+    }
+  } catch (std::exception const&) {
+    return;
+  }
+  if (executedLines.size() >= progLines.size()) {
+    return;
+  }
+  std::string current = progLines[executedLines.size()];
+  std::vector<std::string> parts =
+      arangodb::basics::StringUtils::split(current, ' ');
+  if (parts.size() >= 2 && id == parts[0] && selector == parts[1]) {
+    // Hurray! We can make progress:
+    if (parts.size() >= 3) {
+      LOG_TOPIC("ace33", INFO, Logger::MAINTENANCE)
+          << "Global event " << id << " with selector " << selector
+          << " and comment " << parts[2] << " was observed...";
+    } else {
+      LOG_TOPIC("ace34", INFO, Logger::MAINTENANCE)
+          << "Global event " << id << " with selector " << selector
+          << " was observed...";
+    }
+    current.push_back('\n');
+    try {
+      arangodb::basics::FileUtils::appendToFile("/tmp/debuggingSLPCurrent",
+                                                current);
+    } catch (std::exception const&) {
+      // ignore
+    }
+  }
+}
 }  // namespace arangodb
