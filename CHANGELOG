@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added metric `arangodb_aql_cursors_active` to show the number of active
+  AQL query cursors.
+
 * Add AQL optimizer rule "async-prefetch", which allows certain AQL query parts
   to asynchronously prefetch data while other parts of the query are still
   operating.
