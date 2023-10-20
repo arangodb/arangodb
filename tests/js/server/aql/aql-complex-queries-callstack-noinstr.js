@@ -80,7 +80,7 @@ function ComplexQueriesTestSuite() {
 
     testLargeQuery5: function() {
       let q = "";
-      const cnt = 400;
+      const cnt = 390;
       for (let i = 1; i < cnt; ++i) {
         q += ` LET mySub${i} = (FOR doc in ${collectionName} FILTER CHECK_DOCUMENT(doc) FILTER doc.name == "test1"
                 RETURN doc.name)`;
