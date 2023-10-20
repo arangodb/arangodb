@@ -134,7 +134,7 @@ class SharedQueryState final
   }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  bool noTasksRunning() const noexcept;
+  bool noTasksRunning() const noexcept { return _numTasks.load() == 0; }
 #endif
 
  private:

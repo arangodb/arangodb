@@ -178,9 +178,3 @@ bool SharedQueryState::queueAsyncTask(fu2::unique_function<void()> cb) {
   }
   return false;
 }
-
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-bool SharedQueryState::noTasksRunning() const noexcept {
-  return _numTasks.load() == 0;
-}
-#endif
