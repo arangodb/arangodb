@@ -37,7 +37,6 @@ const path = require('path');
 const utils = require('@arangodb/foxx/manager-utils');
 const arango = internal.arango;
 const db = internal.db;
-const wait = internal.wait;
 const compareTicks = require("@arangodb/replication").compareTicks;
 
 const jwtSecret = 'haxxmann';
@@ -70,13 +69,22 @@ function connectToServer(leader) {
 // getEndponts works with any server
 function getClusterEndpoints() {
   //let jwt = crypto.jwtEncode(options['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
-  var res = request.get({
-    url: baseUrl() + "/_api/cluster/endpoints",
-    auth: {
-      bearer: jwtRoot,
-    },
-    timeout: 300
-  });
+  let tries = 60;
+  let res;
+  while (tries-- > 0) {
+    res = request.get({
+      url: baseUrl() + "/_api/cluster/endpoints",
+      auth: {
+        bearer: jwtRoot,
+      },
+      timeout: 300
+    });
+
+    if (res.statusCode === 200) {
+      break;
+    }
+    internal.sleep(0.5);
+  }
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
   assertEqual(res.statusCode, 200, JSON.stringify(res));
@@ -88,13 +96,22 @@ function getClusterEndpoints() {
 }
 
 function getLoggerState(endpoint) {
-  var res = request.get({
-    url: getUrl(endpoint) + "/_db/_system/_api/replication/logger-state",
-    auth: {
-      bearer: jwtRoot,
-    },
-    timeout: 300
-  });
+  let tries = 60;
+  let res;
+  while (tries-- > 0) {
+    res = request.get({
+      url: getUrl(endpoint) + "/_db/_system/_api/replication/logger-state",
+      auth: {
+        bearer: jwtRoot,
+      },
+      timeout: 300
+    });
+
+    if (res.statusCode === 200) {
+      break;
+    }
+    internal.sleep(0.5);
+  }
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'));
   assertEqual(res.statusCode, 200);
@@ -103,13 +120,22 @@ function getLoggerState(endpoint) {
 }
 
 function getApplierState(endpoint) {
-  var res = request.get({
-    url: getUrl(endpoint) + "/_db/_system/_api/replication/applier-state?global=true",
-    auth: {
-      bearer: jwtRoot,
-    },
-    timeout: 300
-  });
+  let tries = 60;
+  let res;
+  while (tries-- > 0) {
+    res = request.get({
+      url: getUrl(endpoint) + "/_db/_system/_api/replication/applier-state?global=true",
+      auth: {
+        bearer: jwtRoot,
+      },
+      timeout: 300
+    });
+
+    if (res.statusCode === 200) {
+      break;
+    }
+    internal.sleep(0.5);
+  }
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'));
   assertEqual(res.statusCode, 200, JSON.stringify(res));
@@ -142,7 +168,7 @@ function checkInSync(leader, servers, ignore) {
       print(Date() + "All followers are in sync with: ", leader);
       return true;
     }
-    wait(1.0);
+    internal.sleep(1.0);
   }
   print(Date() + "Timeout waiting for followers of: ", leader);
   return false;
@@ -150,22 +176,31 @@ function checkInSync(leader, servers, ignore) {
 
 function checkData(server, allowDirty = false) {
   print(Date() + "Checking data of ", server);
-  // Async agency cache should have received it's data
-  let trickleDown = request.get({ 
+  // Async agency cache should have received its data
+  request.get({ 
     url: getUrl(server) + "/_api/cluster/agency-cache", auth: { bearer: jwtRoot },
     headers: { "X-Arango-Allow-Dirty-Read": allowDirty }, timeout: 3 
   });
-  require('internal').wait(2.0);
-  let res = request.get({
-    url: getUrl(server) + "/_api/collection/" + cname + "/count",
-    auth: {
-      bearer: jwtRoot,
-    },
-    headers: {
-      "X-Arango-Allow-Dirty-Read": allowDirty
-    },
-    timeout: 300
-  });
+  internal.sleep(2);
+
+  let tries = 60;
+  let res;
+  while (tries-- > 0) {
+    res = request.get({
+      url: getUrl(server) + "/_api/collection/" + cname + "/count",
+      auth: {
+        bearer: jwtRoot,
+      },
+      headers: {
+        "X-Arango-Allow-Dirty-Read": allowDirty
+      },
+      timeout: 300
+    });
+    if (res.statusCode === 200) {
+      break;
+    }
+    internal.sleep(0.5);
+  }
 
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'));
@@ -177,7 +212,7 @@ function readAgencyValue(path) {
   let agents = global.instanceManager.arangods.filter(arangod => arangod.instanceRole === "agent");
   assertTrue(agents.length > 0, "No agents present");
   print(Date() + "Querying agency... (", path, ")");
-  var res = request.post({
+  let res = request.post({
     url: agents[0].url + "/_api/agency/read",
     auth: {
       bearer: jwtSuperuser,
@@ -203,7 +238,7 @@ function leaderInAgency() {
       res = readAgencyValue("/arango/Supervision/Health");
       return res[0].arango.Supervision.Health[uuid].Endpoint;
     }
-    internal.wait(1.0);
+    internal.sleep(1.0);
   } while (i-- > 0);
   throw "Unable to resole leader from agency";
 }
@@ -226,7 +261,7 @@ function checkForFailover(leader) {
     if (oldLeaderUUID !== "") {
       break;
     }
-    internal.wait(5.0);
+    internal.sleep(5.0);
   } while (i-- > 0);
 
   // now wait for new leader to appear
@@ -238,7 +273,7 @@ function checkForFailover(leader) {
       res = readAgencyValue("/arango/Supervision/Health");
       return res[0].arango.Supervision.Health[nextLeaderUUID].Endpoint;
     }
-    internal.wait(5.0);
+    internal.sleep(5.0);
   } while (i-- > 0);
   print(Date() + "Timing out, current leader value: ", nextLeaderUUID);
   throw "No failover occured";
@@ -247,7 +282,7 @@ function checkForFailover(leader) {
 function waitUntilHealthStatusIs(isHealthy, isFailed) {
   print(Date() + "Waiting for health status to be healthy: ", JSON.stringify(isHealthy), " failed: ", JSON.stringify(isFailed));
   // Wait 25 seconds, sleep 5 each run
-  for (const start = Date.now(); (Date.now() - start) / 1000 < 25; internal.wait(5.0)) {
+  for (const start = Date.now(); (Date.now() - start) / 1000 < 25; internal.sleep(5.0)) {
     let needToWait = false;
     let res = readAgencyValue("/arango/Supervision/Health");
     let srvHealth = res[0].arango.Supervision.Health;
@@ -452,7 +487,7 @@ function ActiveFailoverSuite() {
           return;
         }
         print(Date() + "cluster endpoints not as expected: found =", endpoints, " expected =", servers);
-        internal.wait(1); // settle down
+        internal.sleep(1); // settle down
       } while(i --> 0);
 
       let endpoints = getClusterEndpoints();
@@ -507,7 +542,7 @@ function ActiveFailoverSuite() {
         assertNotEqual(currentLead, oldLead);
         print(Date() + "Failover to new leader : ", currentLead);
 
-        internal.wait(5); // settle down, heartbeat interval is 1s
+        internal.sleep(5); // settle down, heartbeat interval is 1s
         assertEqual(checkData(currentLead), 10000);
         print(Date() + "New leader has correct data");
 
@@ -580,7 +615,7 @@ function ActiveFailoverSuite() {
           }`
       });
 
-      internal.wait(2.5);
+      internal.sleep(2.5);
 
       // pick a random follower
       let nextLead = endpoints[2]; // could be any one of them
@@ -600,7 +635,7 @@ function ActiveFailoverSuite() {
       do {
         endpoints = getClusterEndpoints();
         assertEqual(endpoints[0], currentLead, "Unwanted leadership failover");
-        internal.wait(1.0); // Health status may take some time to change
+        internal.sleep(1.0); // Health status may take some time to change
       } while (endpoints.length !== 2 && i-- > 0);
       assertTrue(i > 0, "timed-out waiting for followers to fail");
       assertEqual(endpoints.length, 2);
@@ -609,7 +644,7 @@ function ActiveFailoverSuite() {
       let upper = checkData(currentLead);
       let atLeast = 0;
       while (atLeast < upper) {
-        internal.wait(1.0);
+        internal.sleep(1.0);
         //update atLeast
         atLeast = checkData(nextLead, true);
       }
