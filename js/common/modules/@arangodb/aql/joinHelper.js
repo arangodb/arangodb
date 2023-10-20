@@ -268,7 +268,7 @@ const indexJoinTestMultiSuite = function (parameters) {
 };
 
 const createIndexJoinTestMultiSuite = function (configs) {
-  return indexJoinTestMultiSuite(configs)
+  return indexJoinTestMultiSuite(configs);
 };
 
 const createParameters = function (unique, sort) {
@@ -292,7 +292,7 @@ const createParameters = function (unique, sort) {
     ],
     unique: [unique],
   }), (c) => ["filterAttribute1", "filterAttribute2", "projectedAttribute1", "projectedAttribute2", "unique"].map(k => c[k]).join(""));
-}
+};
 
 exports.createIndexJoinTestMultiSuite = createIndexJoinTestMultiSuite;
 exports.createParameters = createParameters;
