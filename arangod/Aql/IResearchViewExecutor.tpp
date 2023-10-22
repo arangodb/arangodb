@@ -1584,8 +1584,9 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
   }
   bool gotData = false;
   std::atomic<size_t> bufferIdx{0};
+  bool killPool = true;
   auto cleanupThreads = irs::Finally([&]() noexcept {
-    if (_readersPool.tasks_pending() || _readersPool.tasks_active()) {
+    if (killPool) {
       _readersPool.stop(true);
     }
   });
@@ -1614,13 +1615,19 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
         results.push_back(promises.back().getFuture());
         // TODO: find a way to just move Promise inside lambda.
         // for now functor should be copyable and that breaks Promise.
-        _readersPool.run([&, ctx = &reader, pr = &promises.back()]() mutable {
-          try {
-            pr->setValue(readSegment<true>(*ctx, bufferIdx));
-          } catch (...) {
-            pr->setException(std::move(std::current_exception()));
-          }
-        });
+        if (ADB_UNLIKELY(!_readersPool.run(
+                [&, ctx = &reader, pr = &promises.back()]() mutable {
+                  try {
+                    pr->setValue(readSegment<true>(*ctx, bufferIdx));
+                  } catch (...) {
+                    pr->setException(std::current_exception());
+                  }
+                }))) {
+          TRI_ASSERT(false);
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL,
+              " Failed to schedule parallel search view reading");
+        }
       } else {
         selfExecute = i;
       }
@@ -1638,6 +1645,7 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
     }
     auto runners = futures::collectAll(results);
     runners.wait();
+    killPool = false;
     for (auto& r : runners.result().get()) {
       gotData |= r.get();
     }
