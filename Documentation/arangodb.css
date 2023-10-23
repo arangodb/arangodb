@@ -1,0 +1,242 @@
+.keyf .hentry h2, #fullsize .hentry h2 {
+  margin-bottom: 14px;
+  padding: 14px 0 3px;
+}
+
+/* ************************************************************************** */
+/* global                                                                     */
+/* ************************************************************************** */
+.page-id-1410 #wrapper {
+  margin-top: 75px;
+}
+
+#content div.arangodb {
+  background: none repeat scroll 0 0 transparent;
+  border: 0 none;
+  color: #666666;
+  font-family: "Helvetica",sans-serif;
+  font-size: 16px;
+  font-weight: 300;
+  line-height: 1.4em;
+  margin: 0px 0px 0px 0px;
+  padding: 0px;
+  vertical-align: baseline;
+}
+
+#content div.offlineview {
+  width: 980px;
+}
+
+#content div.arangodb p, #content div.arangodb ul, #content div.arangodb ol, #content div.arangodb dd, #content div.arangodb pre, #content div.arangodb hr {
+  margin-bottom: 24px;
+}
+
+/* ************************************************************************** */
+/* title                                                                      */
+/* ************************************************************************** */
+
+#content div.arangodb div.headertitle, #content div.arangodb h1, #content div.arangodb h2, #content div.arangodb h3, #content div.arangodb h4, #content div.arangodb h5, #content div.arangodb h6 {
+    color: #000000;
+    font-family: Helvetica;
+    font-weight: lighter;
+    line-height: 1em;
+    margin: 0 0 20px;
+    text-align: left;
+}
+
+#content div.arangodb div.headertitle {
+  border-bottom: 1px solid #EFECE9;
+  font-family: Rockwell,Georgia,"Times New Roman",Times,serif;
+  font-size: 2em;
+  margin-bottom: 40px;
+  padding: 3px 0 3px;
+}
+
+#content div.arangodb h2 {
+  border-bottom: 1px solid #EFECE9;
+  color: #404040;
+  font-family: Helvetica,Times New Roman;
+  font-size: 26px;
+  margin-bottom: 14px;
+  padding: 14px 0 3px;
+}
+
+/* ************************************************************************** */
+/* navigation bar                                                             */
+/* ************************************************************************** */
+
+#content div.arangodb div.navigate {
+  height:     0px;
+  position:   relative;
+  text-align: right;
+  top:        -69px;
+}
+
+#content div.arangodb div.bottom-navigate {
+  position:   relative;
+  text-align: right;
+  top:        10px;
+}
+
+/* ************************************************************************** */
+/* table of contents                                                          */
+/* ************************************************************************** */
+
+#content div.arangodb div.toc {
+  border-width: thin;
+  border-style: solid;
+  background-color: #F8F8F8;
+  margin-bottom: 14px;
+  padding: 4px;
+}
+
+#content div.arangodb div.toc ul {
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+
+#content div.arangodb ul ul {
+  margin-bottom: 0px;
+}
+
+/* ************************************************************************** */
+/* function signature                                                         */
+/* ************************************************************************** */
+
+#content div.arangodb div.functionsignature {
+  font-family: monospace,fixed;
+  margin-top: 14px;
+  margin-bottom: 14px;
+}
+
+/* ************************************************************************** */
+/* command line options                                                       */
+/* ************************************************************************** */
+
+#content div.arangodb div.commandlineoption {
+  font-family: monospace,fixed;
+  margin-bottom: 14px;
+}
+
+#content div.arangodb span.commandlineargument {
+  font-style: italic;
+}
+
+/* ************************************************************************** */
+/* rest call                                                                  */
+/* ************************************************************************** */
+
+#content div.arangodb div.restheader {
+  font-size: 18px;
+  font-family: monospace,fixed;
+  border-bottom: 1px dotted;
+  margin-bottom: 14px;
+}
+
+#content div.arangodb div.restheaderremark {
+  font-size: 18px;
+  float: right;
+  font-family: "Helvetica",sans-serif;
+}
+
+#content div.arangodb div.restqueryparameters {
+  font-weight: bold;
+  margin-top: 14px;
+  margin-bottom: 14px;
+}
+
+#content div.arangodb div.restqueryparam {
+  font-style: italic;
+}
+
+#content div.arangodb div.restdescription {
+  font-weight: bold;
+  margin-top: 14px;
+  margin-bottom: 14px;
+}
+
+#content div.arangodb div.restreturncodes {
+  font-weight: bold;
+  margin-top: 14px;
+  margin-bottom: 14px;
+}
+
+#content div.arangodb div.restreturncode {
+  font-style: italic;
+}
+
+/* ************************************************************************** */
+/* examples                                                                   */
+/* ************************************************************************** */
+
+#content div.arangodb div.example {
+  font-weight: bold;
+  margin-top: 14px;
+  margin-bottom: 14px;
+}
+
+/* ************************************************************************** */
+/* pre & code                                                                 */
+/* ************************************************************************** */
+
+#content div.arangodb pre {
+  background-color: #FBFCFD !important;
+  border: 1px solid #C4CFE5 !important;
+  font-family: monospace,fixed;
+  font-size: 105%;
+  font-size: 15px;
+  line-height: 21px;
+  margin: 4px 8px 24px 2px;
+  overflow: auto;
+  padding: 4px 6px;
+  word-wrap: break-word;
+}
+
+#content div.arangodb div.fragment {
+  background-color: #FBFCFD !important;
+  border: 1px solid #C4CFE5 !important;
+  font-family: monospace,fixed;
+  font-size: 105%;
+  font-size: 15px;
+  line-height: 21px;
+  margin: 4px 8px 24px 2px;
+  overflow: auto;
+  padding: 4px 6px;
+  word-wrap: break-word;
+}
+
+#content div.arangodb code {
+  background-color: #FFFFFF !important;
+  border: 0px !important;
+  margin: 0px 0px 0px 0px;
+  padding: 0px 0px;
+  overflow: auto;
+  line-height: 100%;
+  font-size: 16px;
+  font-family: monospace,fixed;
+}
+
+/* ************************************************************************** */
+/* other                                                                      */
+/* ************************************************************************** */
+
+#content div.arangodb div.image div.caption {
+  text-align: center;
+}
+
+#content div.arangodb div.image img {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#content hr {
+  margin-top:     15px;
+  margin-bottom:  2px;
+}
+
+a.anchor {
+  padding-top:  80px;
+  width:        0;
+  font-size:    0;
+}
