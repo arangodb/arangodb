@@ -5861,7 +5861,7 @@ Result AnalyzerModificationTransaction::abort() {
   try {
     if (_rollbackRevision) {
       TRI_ASSERT(
-          !_cleanupTransaction);  // cleanup transaction has nothing torollback
+          !_cleanupTransaction);  // cleanup transaction has nothing to rollback
       _rollbackRevision = false;  // ok, we tried. Even if failed -> recovery
                                   // job will do the rest
       res = _clusterInfo->finishModifyingAnalyzerCoordinator(_database, true);
