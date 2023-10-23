@@ -301,7 +301,7 @@ void CursorRepository::release(Cursor* cursor) {
   }
 
   if (_metric != nullptr) {
-    _metric->fetch_add(1);
+    _metric->fetch_sub(1);
   }
 
   // and free the cursor
