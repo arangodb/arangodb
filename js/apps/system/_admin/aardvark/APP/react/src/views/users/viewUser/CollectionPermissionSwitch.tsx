@@ -57,11 +57,6 @@ const getMaxLevel = (info: CellContext<any, unknown>) => {
     .find((row: any) => row.databaseName === databaseName)
     ?.collections.find((row: any) => row.collectionName === "*")?.permission;
 
-  // console.log({
-  //   serverLevelDefaultPermission,
-  //   databaseLevelDefaultPermission,
-  //   collectionLevelDefaultPermission
-  // });
   if (
     databaseLevelDefaultPermission === "undefined" &&
     collectionLevelDefaultPermission === "undefined" &&
