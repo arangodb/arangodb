@@ -1994,8 +1994,6 @@ void ClusterInfo::loadCurrent() {
             observeGlobalEvent(
                 "ClusterInfo::loadCurrentSeesLeader",
                 absl::StrCat(myShortName, ":", shardID, ":", xx[0]));
-            LOG_DEVEL << "Leader discovered: " << myShortName
-                      << " shard: " << shardID << " new leader: " << xx[0];
           }
         }
       }
