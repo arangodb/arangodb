@@ -397,7 +397,8 @@ IndexExecutor::CursorReader::CursorReader(
             : infos.isLateMaterialized() ? Type::LateMaterialized
             : (!infos.getProduceResult() && !infos.getFilter()) ? Type::NoResult
             : (infos.getProjections().usesCoveringIndex(index) &&
-               infos.getFilterProjections().usesCoveringIndex(index))
+               (infos.getFilterProjections().usesCoveringIndex(index) ||
+                infos.getFilterProjections().empty()))
                 ? Type::Covering
             : infos.getFilterProjections().usesCoveringIndex(index)
                 ? Type::CoveringFilterOnly
