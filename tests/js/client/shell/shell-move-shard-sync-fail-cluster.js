@@ -75,13 +75,10 @@ function moveShard(database, collection, shard, fromServer, toServer, dontwait) 
   if (dontwait) {
     return result;
   }
-  console.error("moveShard job:", JSON.stringify(body));
-  console.error("result of request:", JSON.stringify(result));
   // Now wait until the job we triggered is finished:
   var count = 600;   // seconds
   while (true) {
     var job = queryAgencyJob(result.parsedBody.id);
-    console.error("Status of moveShard job:", job.status);
     if (job.error === false && job.status === "Finished") {
       return result;
     }
@@ -99,7 +96,6 @@ function moveShardSynchronizeShardFailureSuite() {
   'use strict';
   const cn = 'UnitTestsMoveShardSyncShardFailure';
 
-  const { endpointMap } = getEndpointAndIdMap();
   const setupTeardown = function () {
     db._drop(cn);
   };
@@ -114,8 +110,10 @@ function moveShardSynchronizeShardFailureSuite() {
       
       let followerEndpoint = collInfo.endpointMap[collInfo.follower];
       let leaderEndpoint = collInfo.endpointMap[collInfo.leader];
-      let slpPath = fs.getTempPath();
-      let slpPath = slpPath.slice(0, slpPath.lastIndexOf(fs.pathSeparator));
+      let followerId = collInfo.idMap[collInfo.follower];
+      let slpPath = global.instanceManager.rootDir;
+      // C++ will find this directory via ARANGOTEST_ROOT_DIR from the
+      // environment.
       let progPath = fs.join(slpPath, "globalSLP");
       let pcPath = fs.join(slpPath, "globalSLP_PC");
 
@@ -141,13 +139,14 @@ function moveShardSynchronizeShardFailureSuite() {
           `HandleLeadership::after ${collInfo.follower}:${collInfo.shard} HandleLeadershipAfter`,
           `Maintenance::BeforePhaseTwo ${collInfo.follower} LeaderSendsCurrent`,
           `Maintenance::AfterPhaseTwo ${collInfo.follower} LeaderSentCurrent`,
-          `ClusterInfo::loadCurrentSeesLeader ${collInfo.leader}:${collInfo.shard}:${collInfo.follower} FollowerUpdatesCurrent`,
+          `ClusterInfo::loadCurrentSeesLeader ${collInfo.leader}:${collInfo.shard}:${followerId} FollowerUpdatesCurrent`,
           `ClusterInfo::loadCurrentDone ${collInfo.leader} FollowerHasUpdatedCurrent`,
-          `SynchronizeShard::beginning2 ${collInfo.follower}:${collInfo.shard} SynchronizeShardStartedContinuing`,
-          `SynchronizeShard::beforeSetTheLeader ${collInfo.follower}:${collInfo.shard} SynchronizeShardRunning`,
-          `SynchronizeShard::beginning ${collInfo.follower}:${collInfo.shard} SynchronizeShardStarted2`,
-          `SynchronizeShard::beginning2 ${collInfo.follower}:${collInfo.shard} SynchronizeShardStartedContinuing2`,
-          `SynchronizeShard::beforeSetTheLeader ${collInfo.follower}:${collInfo.shard} SynchronizeShardRunning2`
+          `SynchronizeShard::beginning2 ${collInfo.leader}:${collInfo.shard} SynchronizeShardStartedContinuing`,
+          `SynchronizeShard::beforeSetTheLeader ${collInfo.leader}:${collInfo.shard} SynchronizeShardRunning`,
+          `SynchronizeShard::beginning ${collInfo.leader}:${collInfo.shard} SynchronizeShardStarted2`,
+          `SynchronizeShard::beginning2 ${collInfo.leader}:${collInfo.shard} SynchronizeShardStartedContinuing2`,
+          `SynchronizeShard::beforeSetTheLeader ${collInfo.leader}:${collInfo.shard} SynchronizeShardRunning2`,
+          ""  // want to have a new line at the end of the last line!
         ].join("\n");
         fs.writeFileSync(progPath, prog);
         fs.writeFileSync(pcPath, "");
@@ -169,11 +168,10 @@ function moveShardSynchronizeShardFailureSuite() {
         // See if the program was executed:
         let count = 0;
         let nrSteps;
-        while (count <= 60) {
+        while (count <= 600) {
           let steps = fs.readFileSync(pcPath).toString().split("\n");
           nrSteps = steps.length - 1;
-          console.error("Steps of globalSLP is:", steps);
-          if (nrStep === 12) {
+          if (nrSteps === 12) {
             break;
           }
           count += 1;
@@ -192,7 +190,6 @@ function moveShardSynchronizeShardFailureSuite() {
   };
 }
 
-const { endpointMap } = getEndpointAndIdMap();
 if (db._properties().replicationVersion !== "2" &&
     internal.debugCanUseFailAt()) {
   jsunity.run(moveShardSynchronizeShardFailureSuite);

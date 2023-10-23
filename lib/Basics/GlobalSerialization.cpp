@@ -33,11 +33,8 @@ namespace arangodb {
 
 namespace {
 std::pair<std::string, std::string> findSLPProgramPaths() {
-  std::string path = TRI_GetTempPath();
-  auto pos = path.rfind(TRI_DIR_SEPARATOR_CHAR);
-  if (pos != std::string::npos) {
-    path = path.substr(0, pos);
-  }
+  std::string path = "/tmp";
+  TRI_GETENV("ARANGOTEST_ROOT_DIR", path);
   std::string progPath =
       basics::FileUtils::buildFilename(path.c_str(), "globalSLP");
   std::string pcPath =
@@ -118,6 +115,8 @@ void observeGlobalEvent(std::string_view id, std::string_view selector) {
   // Read pc
   std::vector<std::string> executedLines = readSLPProgram(pcPath);
   if (executedLines.size() >= progLines.size()) {
+    LOG_TOPIC("ace38", DEBUG, Logger::MAINTENANCE)
+        << "SLP has already finished";
     return;  // program already finished
   }
   std::string current = progLines[executedLines.size()];
@@ -126,11 +125,11 @@ void observeGlobalEvent(std::string_view id, std::string_view selector) {
   if (parts.size() >= 2 && id == parts[0] && selector == parts[1]) {
     // Hurray! We can make progress:
     if (parts.size() >= 3) {
-      LOG_TOPIC("ace37", INFO, Logger::MAINTENANCE)
+      LOG_TOPIC("ace36", INFO, Logger::MAINTENANCE)
           << "Global event " << id << " with selector " << selector
           << " and comment " << parts[2] << " was observed...";
     } else {
-      LOG_TOPIC("ace38", INFO, Logger::MAINTENANCE)
+      LOG_TOPIC("ace37", INFO, Logger::MAINTENANCE)
           << "Global event " << id << " with selector " << selector
           << " was observed...";
     }
