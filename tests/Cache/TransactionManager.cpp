@@ -33,7 +33,7 @@ using namespace arangodb::cache;
 
 TEST(CacheTransactionalManagerTest,
      verify_that_transaction_term_is_maintained_correctly) {
-  TransactionManager transactions;
+  TransactionManager transactions(nullptr);
   Transaction tx1;
   Transaction tx2;
   Transaction tx3;

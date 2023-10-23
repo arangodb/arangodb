@@ -30,13 +30,13 @@
 #include <chrono>
 #include <cstdint>
 #include <cstring>
+#include <span>
 #include <string>
 #include <string_view>
-#include <span>
 #include <vector>
 
-#include <velocypack/String.h>
 #include <velocypack/Slice.h>
+#include <velocypack/String.h>
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
@@ -149,7 +149,8 @@ class Node : public std::enable_shared_from_this<Node> {
   using allocator_type = AccountingAllocator<Node>;
 
   static std::size_t getMemoryUsage() noexcept { return memoryUsage; }
-  static void toPrometheus(std::string&);
+  static void toPrometheus(std::string& result, std::string_view globals,
+                           bool ensureWhitespace);
 
   // If you want those types to be accounted for as well, please do so.
   // But be aware that this will change the type and the interface and you have

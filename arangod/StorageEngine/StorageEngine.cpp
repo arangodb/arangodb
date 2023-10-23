@@ -119,7 +119,9 @@ void StorageEngine::getStatistics(velocypack::Builder& builder) const {
   builder.close();
 }
 
-void StorageEngine::getStatistics(std::string& result) const {}
+void StorageEngine::toPrometheus(std::string& /*result*/,
+                                 std::string_view /*globals*/,
+                                 bool /*ensureWhitespace*/) const {}
 
 void StorageEngine::registerCollection(
     TRI_vocbase_t& vocbase,

@@ -196,32 +196,6 @@ std::unique_ptr<EdgeCursor> ShortestPathOptions::buildCursor(bool backward) {
       backward ? _reverseLookupInfos : _baseLookupInfos);
 }
 
-template<typename ListType>
-void ShortestPathOptions::fetchVerticesCoordinator(ListType const& vertexIds) {
-  if (!arangodb::ServerState::instance()->isCoordinator()) {
-    return;
-  }
-
-  // In Coordinator all caches are ClusterTraverserCache instances
-  auto ch = reinterpret_cast<ClusterTraverserCache*>(cache());
-  TRI_ASSERT(ch != nullptr);
-  // get the map of _ids into the datalake
-  graph::ClusterTraverserCache::Cache& cache = ch->cache();
-
-  std::unordered_set<arangodb::velocypack::HashedStringRef> fetch;
-  for (auto const& it : vertexIds) {
-    arangodb::velocypack::HashedStringRef hashedId(
-        it.data(), static_cast<uint32_t>(it.length()));
-    if (cache.find(hashedId) == cache.end()) {
-      // We do not have this vertex
-      fetch.emplace(hashedId);
-    }
-  }
-  if (!fetch.empty()) {
-    fetchVerticesFromEngines(_trx, *ch, fetch, cache, /*forShortestPath*/ true);
-  }
-}
-
 auto ShortestPathOptions::estimateDepth() const noexcept -> uint64_t {
   // We certainly have no clue how the depth actually is.
   // So we return a "random" number here.
@@ -266,10 +240,3 @@ ShortestPathOptions::ShortestPathOptions(ShortestPathOptions const& other,
       _defaultWeight{other._defaultWeight} {
   TRI_ASSERT(other._defaultWeight >= 0.);
 }
-
-template void
-ShortestPathOptions::fetchVerticesCoordinator<std::deque<std::string_view>>(
-    std::deque<std::string_view> const& vertexIds);
-template void ShortestPathOptions::fetchVerticesCoordinator<
-    std::vector<arangodb::velocypack::HashedStringRef>>(
-    std::vector<arangodb::velocypack::HashedStringRef> const& vertexIds);

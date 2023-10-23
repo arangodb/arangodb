@@ -79,7 +79,7 @@ function StatementSuiteNonCluster () {
       var plan = result.plan;
       assertTrue(plan.hasOwnProperty("estimatedCost"));
       assertTrue(plan.hasOwnProperty("rules"));
-      assertEqual([ ], plan.rules);
+      assertEqual([ "async-prefetch" ], plan.rules);
       assertTrue(plan.hasOwnProperty("nodes"));
       assertTrue(plan.hasOwnProperty("collections"));
       assertEqual([ { "name" : "_users", "type" : "read" } ], plan.collections);

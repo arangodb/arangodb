@@ -89,6 +89,8 @@
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/Methods/Indexes.h"
 
+#include <absl/strings/str_cat.h>
+
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -671,12 +673,6 @@ bool ClusterInfo::doesDatabaseExist(std::string_view databaseID) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<DatabaseID> ClusterInfo::databases() {
-  std::vector<DatabaseID> result;
-
-  if (_clusterId.empty()) {
-    loadClusterId();
-  }
-
   if (!_planProt.isValid) {
     Result r = waitForPlan(1).get();
     if (r.fail()) {
@@ -704,6 +700,7 @@ std::vector<DatabaseID> ClusterInfo::databases() {
     expectedSize = _dbServers.size();
   }
 
+  std::vector<DatabaseID> result;
   {
     READ_LOCKER(readLockerPlanned, _planProt.lock);
     READ_LOCKER(readLockerCurrent, _currentProt.lock);
@@ -721,20 +718,6 @@ std::vector<DatabaseID> ClusterInfo::databases() {
   }
 
   return result;
-}
-
-/// @brief Load cluster ID
-void ClusterInfo::loadClusterId() {
-  // Contact agency for /<prefix>/Cluster
-
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [acb, index] = agencyCache.get("Cluster");
-
-  // Parse
-  VPackSlice slice = acb->slice();
-  if (slice.isString()) {
-    _clusterId = slice.copyString();
-  }
 }
 
 /// @brief create a new collecion object from the data, using the cache if

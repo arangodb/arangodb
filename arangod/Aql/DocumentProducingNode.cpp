@@ -28,6 +28,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/OptimizerUtils.h"
 #include "Aql/QueryContext.h"
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"
@@ -129,11 +130,7 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
     TRI_ASSERT(_filter == nullptr);
     builder.add(StaticStrings::ProducesResult, VPackValue(false));
   } else {
-    builder.add(
-        StaticStrings::ProducesResult,
-        VPackValue(_filter != nullptr ||
-                   dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(
-                       _outVariable)));
+    builder.add(StaticStrings::ProducesResult, VPackValue(isProduceResult()));
   }
   builder.add(StaticStrings::ReadOwnWrites,
               VPackValue(_readOwnWrites == ReadOwnWrites::yes));
@@ -173,4 +170,50 @@ void DocumentProducingNode::setFilterProjections(aql::Projections projections) {
 
 bool DocumentProducingNode::doCount() const noexcept {
   return _count && !hasFilter();
+}
+
+AsyncPrefetchEligibility DocumentProducingNode::canUseAsyncPrefetching()
+    const noexcept {
+  // we cannot use prefetching if the filter employs V8, because the
+  // Query object only has a single V8 context, which it can enter and exit.
+  // with prefetching, multiple threads can execute calculations in the same
+  // Query instance concurrently, and when using V8, they could try to
+  // enter/exit the V8 context of the query concurrently. this is currently
+  // not thread-safe, so we don't use prefetching.
+  // the constraint for determinism is there because we could produce
+  // different query results when prefetching is enabled, at least in
+  // streaming queries.
+  return (!hasFilter() || (_filter->isDeterministic() && !_filter->willUseV8()))
+             ? AsyncPrefetchEligibility::kEnableForNode
+             : AsyncPrefetchEligibility::kDisableForNode;
+}
+
+bool DocumentProducingNode::recalculateProjections(ExecutionPlan* plan) {
+  auto filterProjectionsHash = _filterProjections.hash();
+  auto projectionsHash = _projections.hash();
+  _filterProjections.clear();
+  _projections.clear();
+
+  containers::FlatHashSet<AttributeNamePath> attributes;
+  if (hasFilter()) {
+    if (Ast::getReferencedAttributesRecursive(
+            this->filter()->node(), this->outVariable(),
+            /*expectedAttribute*/ "", attributes,
+            plan->getAst()->query().resourceMonitor())) {
+      _filterProjections = aql::Projections{std::move(attributes)};
+    }
+  }
+
+  attributes.clear();
+  if (utils::findProjections(dynamic_cast<ExecutionNode*>(this), outVariable(),
+                             /*expectedAttribute*/ "",
+                             /*excludeStartNodeFilterCondition*/ true,
+                             attributes)) {
+    if (attributes.size() <= maxProjections()) {
+      _projections = Projections(std::move(attributes));
+    }
+  }
+
+  return projectionsHash != _projections.hash() ||
+         filterProjectionsHash != _filterProjections.hash();
 }

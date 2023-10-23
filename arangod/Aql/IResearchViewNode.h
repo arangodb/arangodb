@@ -164,6 +164,9 @@ class IResearchViewNode final : public aql::ExecutionNode,
   // The cost of an enumerate view node.
   aql::CostEstimate estimateCost() const final;
 
+  aql::AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
+
   // TODO(MBkkt) Use containers::FlatHashMap
   void replaceVariables(
       std::unordered_map<aql::VariableId, aql::Variable const*> const&

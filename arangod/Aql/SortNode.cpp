@@ -226,6 +226,10 @@ CostEstimate SortNode::estimateCost() const {
   return estimate;
 }
 
+AsyncPrefetchEligibility SortNode::canUseAsyncPrefetching() const noexcept {
+  return AsyncPrefetchEligibility::kEnableForNode;
+}
+
 void SortNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
   for (auto& variable : _elements) {
