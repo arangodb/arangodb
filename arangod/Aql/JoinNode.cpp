@@ -150,21 +150,24 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
       idx.usedShard = usedShard.copyString();
     }
 
-    auto const prepareProjections = [&](aql::Projections& proj,
+    auto const prepareProjections = [&](aql::Projections& proj, bool prohibited,
                                         bool expectation) {
       if (!proj.empty()) {
-        if (idx.index->covers(proj)) {
+        if (!prohibited && idx.index->covers(proj)) {
           proj.setCoveringContext(coll->id(), idx.index);
         }
         TRI_ASSERT(proj.usesCoveringIndex(idx.index) == expectation)
-            << "expectation = " << std::boolalpha << expectation;
+            << "expectation = " << std::boolalpha << expectation
+            << " prohibited = " << prohibited;
       }
     };
 
-    prepareProjections(idx.projections,
-                       it.get("indexCoversProjections").isTrue());
-    prepareProjections(idx.filterProjections,
+    prepareProjections(idx.filterProjections, false,
                        it.get("indexCoversFilterProjections").isTrue());
+    prepareProjections(
+        idx.projections,
+        idx.filter != nullptr && !idx.filterProjections.usesCoveringIndex(),
+        it.get("indexCoversProjections").isTrue());
   }
 
   TRI_ASSERT(_indexInfos.size() >= 2);
@@ -321,7 +324,6 @@ ExecutionNode* JoinNode::clone(ExecutionPlan* plan, bool withDependencies,
 void JoinNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
   // TODO: replace variables inside index conditions.
-  // IndexNode doesn't do this either, which seems questionable
 }
 
 /// @brief the cost of an join node is a multiple of the cost of
@@ -335,7 +337,6 @@ CostEstimate JoinNode::estimateCost() const {
 
   for (auto const& it : _indexInfos) {
     Index::FilterCosts costs = costsForIndexInfo(it);
-    // TODO: perhaps we should multiply here
     totalItems *= costs.estimatedItems;
     totalCost *= costs.estimatedCosts;
   }
@@ -345,10 +346,43 @@ CostEstimate JoinNode::estimateCost() const {
   return estimate;
 }
 
+AsyncPrefetchEligibility JoinNode::canUseAsyncPrefetching() const noexcept {
+  for (auto const& it : _indexInfos) {
+    if (it.filter != nullptr &&
+        (!it.filter->isDeterministic() || it.filter->willUseV8())) {
+      // we cannot use prefetching if the filter employs V8, because the
+      // Query object only has a single V8 context, which it can enter and exit.
+      // with prefetching, multiple threads can execute calculations in the same
+      // Query instance concurrently, and when using V8, they could try to
+      // enter/exit the V8 context of the query concurrently. this is currently
+      // not thread-safe, so we don't use prefetching.
+      // the constraint for determinism is there because we could produce
+      // different query results when prefetching is enabled, at least in
+      // streaming queries.
+      return AsyncPrefetchEligibility::kDisableForNode;
+    }
+    if (it.condition != nullptr && it.condition->root() != nullptr &&
+        (!it.condition->root()->isDeterministic() ||
+         it.condition->root()->willUseV8())) {
+      // we cannot use prefetching if the lookup employs V8, because the
+      // Query object only has a single V8 context, which it can enter and exit.
+      // with prefetching, multiple threads can execute calculations in the same
+      // Query instance concurrently, and when using V8, they could try to
+      // enter/exit the V8 context of the query concurrently. this is currently
+      // not thread-safe, so we don't use prefetching.
+      // the constraint for determinism is there because we could produce
+      // different query results when prefetching is enabled, at least in
+      // streaming queries.
+      return AsyncPrefetchEligibility::kDisableForNode;
+    }
+  }
+  return AsyncPrefetchEligibility::kEnableForNode;
+}
+
 /// @brief getVariablesUsedHere, modifying the set in-place
 void JoinNode::getVariablesUsedHere(VarSet& vars) const {
   for (auto const& it : _indexInfos) {
-    if (it.condition->root() != nullptr) {
+    if (it.condition != nullptr && it.condition->root() != nullptr) {
       Ast::getReferencedVariables(it.condition->root(), vars);
     }
   }

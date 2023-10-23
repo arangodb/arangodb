@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertFalse, assertEqual, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE, arango */
+/*global assertTrue, assertFalse, assertEqual, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for index usage
@@ -32,6 +32,7 @@ var jsunity = require("jsunity");
 var internal = require("internal");
 var db = require("@arangodb").db;
 const isCluster = require("internal").isCluster();
+const waitForEstimatorSync = require('@arangodb/test-helper').waitForEstimatorSync;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -138,7 +139,7 @@ function optimizerIndexesSortTestSuite () {
       c.ensureIndex({ type: "hash", fields: ["value"] });
       c.ensureIndex({ type: "hash", fields: ["value", "value2"] });
       c.ensureIndex({ type: "skiplist", fields: ["value", "value2"] });
-      arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();"); // make sure estimates are consistent
+      waitForEstimatorSync();
 
       var query = "FOR i IN " + c.name() + " FILTER i.value == 1 SORT i.value, i.value2 RETURN i.value";
 
@@ -175,7 +176,7 @@ function optimizerIndexesSortTestSuite () {
       c.ensureIndex({ type: "hash", fields: ["value"] });
       c.ensureIndex({ type: "hash", fields: ["value", "value2"] });
       c.ensureIndex({ type: "skiplist", fields: ["value", "value2"] });
-      arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();"); // make sure estimates are consistent
+      waitForEstimatorSync();
 
       var query = "FOR i IN " + c.name() + " FILTER i.value == 9 || i.value == 1 SORT i.value, i.value2 RETURN i.value";
 

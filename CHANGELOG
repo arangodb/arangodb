@@ -1,6 +1,67 @@
 devel
 -----
 
+* Add AQL optimizer rule "async-prefetch", which allows certain AQL query parts
+  to asynchronously prefetch data while other parts of the query are still
+  operating.
+  Several parts of the same AQL query operating concurrently can lead to query
+  performance improvements in case there is still reserve (scheduler) capacity.
+
+  The following parts of an AQL query can be executed in parallel to other
+  parts:
+
+  - CalculationNode
+  - CollectNode
+  - EnumerateCollectionNode
+  - EnumerateViewNode
+  - FilterNode
+  - IndexNode
+  - SortNode
+
+  Asynchronous prefetching is disabled for the following parts of an AQL query
+
+  - LimitNode: asynchronously prefetching data for a LimitNode must be disabled
+    because otherwise we may overfetch data and the LIMIT values could be
+    violated.
+  - NoResultsNode: the NoResultsNode produces an empty result, and is always
+    quick to execute. There is no need to make it fetch its dependent data
+    asynchronously.
+  - ReturnNode: the ReturnNode normally only passes through existing values and
+    should be quick to execute.
+  - SingletonNode: the SingletonNode only produces a single value and is always
+    quick to execute. It also doesn't have any dependencies.
+  - any nodes inside a subquery
+
+  If the following nodes occur inside an AQL query, asynchronous prefetching is
+  disabled for the entire query:
+
+  - InsertNode, UpdateNode, ReplaceNode, RemoveNode, UpsertNode: prefetching is
+    currently not compatible with these node types.
+  - EnumeratePathsNode, ShortestPathNode, TraversalNode: graph nodes currently
+    do not support prefetching in all cases, thus the functionality is turned
+    off.
+
+  AQL queries in which some nodes are eligible for asynchronous prefetching 
+  will be marked with the optimizer rule "async-prefetch" having been applied.
+
+  The explain output for queries is now extended with a new "Par" column, which
+  shows which nodes in the query are eligible for asynchronous prefetching.
+  All nodes denoted with "✓" will support asynchronous prefetching at runtime.
+
+  The profiling output for queries is now extended with a new "Par" column,
+  which shows the actual number of parallel calls during query execution. Note
+  that every call to a query node will be counted in "Calls" in addition. 
+  "Calls" contains the total number of calls made to the query node, and "Par"
+  contains the number of successful asynchronous prefetch calls.
+
+  Note that asynchronous prefetching is done on a best effort basis, but there 
+  is no guarantee that query parts actually execute concurrently. The reason
+  for this is that asynchronous prefetching tasks are posted to the server's
+  scheduler with normal priority, so they compete for scheduler threads in the
+  same way as other operations do. The more capacity the server's scheduler
+  still has, the more likely it is that query parts can actually run 
+  concurrently.
+
 * Updated OpenSSL to 3.1.3.
 
 * FE-385: fix web UI query import stuck on loading for faulty JSON.

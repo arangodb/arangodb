@@ -593,6 +593,10 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, velocypack::Slice slice)
 
   _isCallstackSplitEnabled = VelocyPackHelper::getBooleanValue(
       slice, "isCallstackSplitEnabled", false);
+
+  if (_isAsyncPrefetchEnabled) {
+    plan->getAst()->setContainsAsyncPrefetch();
+  }
 }
 
 ExecutionNode::ExecutionNode(ExecutionPlan& plan, ExecutionNode const& other)
@@ -1000,6 +1004,7 @@ void ExecutionNode::toVelocyPack(velocypack::Builder& builder,
   if (flags & ExecutionNode::SERIALIZE_DETAILS) {
     builder.add("typeID", VPackValue(static_cast<int>(getType())));
   }
+
   {
     VPackArrayBuilder guard(&builder, "dependencies");
     for (auto const& it : _dependencies) {
@@ -1127,10 +1132,18 @@ void ExecutionNode::toVelocyPack(velocypack::Builder& builder,
     }
 
     builder.add("isInSplicedSubquery", VPackValue(_isInSplicedSubquery));
-    builder.add("isAsyncPrefetchEnabled", VPackValue(_isAsyncPrefetchEnabled));
-    builder.add("isCallstackSplitEnabled",
-                VPackValue(_isCallstackSplitEnabled));
   }
+
+  // serialize these flags in all modes, but only if they are enabled.
+  // this works because they default to false, and helps to keep the output
+  // small.
+  if (_isAsyncPrefetchEnabled) {
+    builder.add("isAsyncPrefetchEnabled", VPackValue(true));
+  }
+  if (_isCallstackSplitEnabled) {
+    builder.add("isCallstackSplitEnabled", VPackValue(true));
+  }
+
   TRI_ASSERT(builder.isOpenObject());
   doToVelocyPack(builder, flags);
 }
@@ -1514,6 +1527,13 @@ bool ExecutionNode::isModificationNode() const {
   return false;
 }
 
+AsyncPrefetchEligibility ExecutionNode::canUseAsyncPrefetching()
+    const noexcept {
+  // async prefetching is disabled by default.
+  // dedicated node types can override this for themselves.
+  return AsyncPrefetchEligibility::kDisableForNode;
+}
+
 ExecutionPlan const* ExecutionNode::plan() const { return _plan; }
 
 ExecutionPlan* ExecutionNode::plan() { return _plan; }
@@ -1699,6 +1719,13 @@ CostEstimate SingletonNode::estimateCost() const {
   estimate.estimatedNrItems = 1;
   estimate.estimatedCost = 1.0;
   return estimate;
+}
+
+AsyncPrefetchEligibility SingletonNode::canUseAsyncPrefetching()
+    const noexcept {
+  // a singleton node has no predecessors. so prefetching isn't
+  // necessary.
+  return AsyncPrefetchEligibility::kDisableForNode;
 }
 
 SingletonNode::SingletonNode(ExecutionPlan* plan, ExecutionNodeId id)
@@ -1919,6 +1946,11 @@ CostEstimate EnumerateCollectionNode::estimateCost() const {
   return estimate;
 }
 
+AsyncPrefetchEligibility EnumerateCollectionNode::canUseAsyncPrefetching()
+    const noexcept {
+  return DocumentProducingNode::canUseAsyncPrefetching();
+}
+
 EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
                                      arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
@@ -1977,6 +2009,11 @@ CostEstimate EnumerateListNode::estimateCost() const {
   estimate.estimatedNrItems *= length;
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
+}
+
+AsyncPrefetchEligibility EnumerateListNode::canUseAsyncPrefetching()
+    const noexcept {
+  return AsyncPrefetchEligibility::kEnableForNode;
 }
 
 EnumerateListNode::EnumerateListNode(ExecutionPlan* plan, ExecutionNodeId id,
@@ -2085,6 +2122,11 @@ ExecutionNode* LimitNode::clone(ExecutionPlan* plan, bool withDependencies,
   }
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
+}
+
+AsyncPrefetchEligibility LimitNode::canUseAsyncPrefetching() const noexcept {
+  // LimitNodes do not support async prefetching.
+  return AsyncPrefetchEligibility::kDisableForNodeAndDependencies;
 }
 
 void LimitNode::setFullCount(bool enable) { _fullCount = enable; }
@@ -2276,6 +2318,22 @@ CostEstimate CalculationNode::estimateCost() const {
   CostEstimate estimate = _dependencies.at(0)->getCost();
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
+}
+
+AsyncPrefetchEligibility CalculationNode::canUseAsyncPrefetching()
+    const noexcept {
+  // we cannot use prefetching if the calculation employs V8, because the
+  // Query object only has a single V8 context, which it can enter and exit.
+  // with prefetching, multiple threads can execute calculations in the same
+  // Query instance concurrently, and when using V8, they could try to
+  // enter/exit the V8 context of the query concurrently. this is currently
+  // not thread-safe, so we don't use prefetching.
+  // the constraint for determinism is there because we could produce
+  // different query results when prefetching is enabled, at least in
+  // streaming queries.
+  return expression()->isDeterministic() && !expression()->willUseV8()
+             ? AsyncPrefetchEligibility::kEnableForNode
+             : AsyncPrefetchEligibility::kDisableForNode;
 }
 
 ExecutionNode::NodeType CalculationNode::getType() const { return CALCULATION; }
@@ -2649,6 +2707,10 @@ CostEstimate FilterNode::estimateCost() const {
   return estimate;
 }
 
+AsyncPrefetchEligibility FilterNode::canUseAsyncPrefetching() const noexcept {
+  return AsyncPrefetchEligibility::kEnableForNode;
+}
+
 FilterNode::FilterNode(ExecutionPlan* plan, ExecutionNodeId id,
                        Variable const* inVariable)
     : ExecutionNode(plan, id), _inVariable(inVariable) {
@@ -2755,6 +2817,13 @@ CostEstimate ReturnNode::estimateCost() const {
   return estimate;
 }
 
+AsyncPrefetchEligibility ReturnNode::canUseAsyncPrefetching() const noexcept {
+  // cannot enable async prefetching for return nodes right now,
+  // as it will produce assertion failures regarding the reference
+  // count of the result block
+  return AsyncPrefetchEligibility::kDisableForNode;
+}
+
 ReturnNode::ReturnNode(ExecutionPlan* plan, ExecutionNodeId id,
                        Variable const* inVariable)
     : ExecutionNode(plan, id), _inVariable(inVariable), _count(false) {
@@ -2821,6 +2890,13 @@ ExecutionNode* NoResultsNode::clone(ExecutionPlan* plan, bool withDependencies,
                                     bool withProperties) const {
   return cloneHelper(std::make_unique<NoResultsNode>(plan, _id),
                      withDependencies, withProperties);
+}
+
+AsyncPrefetchEligibility NoResultsNode::canUseAsyncPrefetching()
+    const noexcept {
+  // NoResultsNodes could make use of async prefetching, but the gain
+  // is too little to justify it.
+  return AsyncPrefetchEligibility::kDisableForNode;
 }
 
 size_t NoResultsNode::getMemoryUsedBytes() const { return sizeof(*this); }

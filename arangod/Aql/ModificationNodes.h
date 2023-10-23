@@ -67,6 +67,9 @@ class ModificationNode : public ExecutionNode, public CollectionAccessingNode {
   /// why we can make it final here.
   CostEstimate estimateCost() const override final;
 
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
+
   /// @brief data modification is non-deterministic
   bool isDeterministic() override final { return false; }
 

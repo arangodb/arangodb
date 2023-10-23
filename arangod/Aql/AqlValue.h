@@ -177,10 +177,9 @@ struct AqlValue final {
   /// PD - pointer data
   /// MO - memory origin
   /// ML - managed slice length
-  /// ID - isDocument flag
   /// XX - unused
   /// | 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  | 10 | 11 | 12 | 13 | 14 | 15 | Bytes
-  /// | AT | ID | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD | PD | VPACK_SLICE_POINTER
+  /// | AT | XX | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD | PD | VPACK_SLICE_POINTER
   /// | AT | MO | ML | ML | ML | ML | ML | ML | PD | PD | PD | PD | PD | PD | PD | PD | VPACK_MANAGED_SLICE
   /// | AT | XX | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD | PD | VPACK_MANAGED_STRING
   /// | AT | XX | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD | PD | RANGE
@@ -240,9 +239,7 @@ struct AqlValue final {
 
     // VPACK_SLICE_POINTER
     struct {
-      uint8_t padding;
-      uint8_t isManagedDoc;
-      uint8_t padding2[6];
+      uint8_t padding[8];
       uint8_t const* pointer;
     } slicePointerMeta;
     static_assert(sizeof(slicePointerMeta) == 16,
@@ -356,9 +353,6 @@ struct AqlValue final {
   /// @brief whether or not the value is a pointer
   bool isPointer() const noexcept;
 
-  /// @brief whether or not the value is an external manager document
-  bool isManagedDocument() const noexcept;
-
   /// @brief whether or not the value is a range
   bool isRange() const noexcept;
 
@@ -440,11 +434,10 @@ struct AqlValue final {
 
   /// @brief materializes a value into the builder
   void toVelocyPack(velocypack::Options const*, velocypack::Builder&,
-                    bool resolveExternals, bool allowUnindexed) const;
+                    bool allowUnindexed) const;
 
   /// @brief materialize a value into a new one. this expands ranges
-  AqlValue materialize(velocypack::Options const*, bool& hasCopied,
-                       bool resolveExternals) const;
+  AqlValue materialize(velocypack::Options const*, bool& hasCopied) const;
 
   /// @brief return the slice for the value
   /// this will throw if the value type is not VPACK_SLICE_POINTER,
@@ -469,9 +462,7 @@ struct AqlValue final {
   static int Compare(velocypack::Options const*, AqlValue const& left,
                      AqlValue const& right, bool useUtf8);
 
-  /// @brief Returns the type of this value. If true it uses an external pointer
-  /// if false it uses the internal data structure.
-  /// Do not move it to cpp file as MSVC does not inline it.
+  /// @brief Returns the type of this value
   AqlValueType type() const noexcept {
     return static_cast<AqlValueType>(_data.aqlValueType);
   }
@@ -485,7 +476,6 @@ struct AqlValue final {
   /// @brief sets the value type
   void setType(AqlValueType type) noexcept;
 
-  template<bool isManagedDoc>
   void setPointer(uint8_t const* pointer) noexcept;
 
   /// @brief return the memory origin type for values of type
