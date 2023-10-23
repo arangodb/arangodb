@@ -9160,17 +9160,44 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
         containers::SmallVector<IndexNode*, 8> candidates;
         IndexNode* indexNode = startNode;
 
+        containers::SmallVector<CalculationNode*, 8> calculations;
+
         while (true) {
           if (handled.contains(indexNode) || !nodeQualifies(*indexNode)) {
             break;
           }
           candidates.emplace_back(indexNode);
           auto* parent = indexNode->getFirstParent();
-          if (parent == nullptr || parent->getType() != EN::INDEX) {
-            break;
+          while (true) {
+            if (parent == nullptr) {
+              goto endOfIndexNodeSearch;
+            } else if (parent->getType() == EN::CALCULATION) {
+              // store this calculation and check later if and index depends on
+              // it
+              auto calc = ExecutionNode::castTo<CalculationNode*>(parent);
+              calculations.push_back(calc);
+              parent = parent->getFirstParent();
+              continue;
+            } else if (parent->getType() == EN::INDEX) {
+              // check that this index node does not depend on previous
+              // calculations
+
+              indexNode = ExecutionNode::castTo<IndexNode*>(parent);
+              VarSet usedVariables;
+              indexNode->getVariablesUsedHere(usedVariables);
+              for (auto* calc : calculations) {
+                if (calc->setsVariable(usedVariables)) {
+                  // can not join past this calculation
+                  goto endOfIndexNodeSearch;
+                }
+              }
+              break;
+            } else {
+              goto endOfIndexNodeSearch;
+            }
           }
-          indexNode = ExecutionNode::castTo<IndexNode*>(parent);
         }
+      endOfIndexNodeSearch:
 
         if (candidates.size() >= 2) {
           bool eligible = true;
@@ -9304,6 +9331,8 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
             JoinNode* jn = plan->createNode<JoinNode>(
                 plan.get(), plan->nextId(), std::move(indexInfos),
                 IndexIteratorOptions{});
+            // Nodes we jumped over (like calculations) are left in place
+            // and are now below the Join Node
             plan->replaceNode(candidates[0], jn);
             for (size_t i = 1; i < candidates.size(); ++i) {
               plan->unlinkNode(candidates[i]);
