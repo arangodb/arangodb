@@ -702,7 +702,7 @@ class IResearchViewExecutor
   bool readPK(LocalDocumentId& documentId, SegmentReader& reader);
 
   // important that pool is destroed before readers
-  irs::async_utils::thread_pool _readersPool;
+  irs::async_utils::thread_pool<false> _readersPool;
 
   std::vector<SegmentReader> _segmentReaders;
   size_t _segmentOffset;

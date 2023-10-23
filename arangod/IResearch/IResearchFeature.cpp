@@ -812,7 +812,7 @@ class AssertionCallbackSetter {
 ////////////////////////////////////////////////////////////////////////////////
 class IResearchAsync {
  public:
-  using ThreadPool = irs::async_utils::thread_pool;
+  using ThreadPool = irs::async_utils::thread_pool<>;
 
   ~IResearchAsync() { stop(); }
 
@@ -1261,7 +1261,7 @@ void cleanupDatabase(TRI_vocbase_t& database) {
 
 bool IResearchFeature::queue(ThreadGroup id,
                              std::chrono::steady_clock::duration delay,
-                             std::function<void()>&& fn) {
+                             fu2::unique_function<void()>&& fn) {
   try {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
     TRI_IF_FAILURE("IResearchFeature::queue") {

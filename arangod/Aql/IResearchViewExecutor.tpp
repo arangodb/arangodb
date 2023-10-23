@@ -1480,8 +1480,6 @@ bool IResearchViewExecutor<ExecutionTraits>::readSegment(
     if constexpr (parallel) {
       while (!bufferIdx.compare_exchange_weak(current, current + 1)) {
       }
-    } else {
-      bufferIdx++;
     }
     auto& viewSegment = this->_reader->segment(reader.readerOffset);
     if constexpr (Base::isLateMaterialized) {
@@ -1549,42 +1547,61 @@ template<typename ExecutionTraits>
 bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
   TRI_ASSERT(this->_filter != nullptr);
   size_t const count = this->_reader->size();
+  bool gotData = false;
   size_t const atMostInitial = ctx.outputRow.numRowsLeft();
   auto atMost = atMostInitial;
   TRI_ASSERT(this->_indexReadBuffer.empty());
   this->_isMaterialized = false;
+  auto parallelism = this->_infos.parallelism();
+  this->_indexReadBuffer.reset();
+  std::atomic<size_t> bufferIdx{0};
+  if (this->_infos.parallelism() == 1) {
+    this->_indexReadBuffer.preAllocateStoredValuesBuffer(
+        atMost, this->_infos.getScoreRegisters().size(),
+        this->_infos.getOutNonMaterializedViewRegs().size());
+    auto& reader = _segmentReaders.front();
+    while (_segmentOffset < count) {
+      reader.atMost = atMost;
+      reader.readerOffset = _segmentOffset;
+      gotData = readSegment<false>(reader, bufferIdx);
+      if (!reader.itr) {
+        ++_segmentOffset;
+      }
+      if (gotData) {
+        break;
+      }
+    }
+    return gotData;
+  }
+
   auto const& clientCall = ctx.outputRow.getClientCall();
   auto limit = clientCall.getUnclampedLimit();
   bool const isUnlimited = limit == aql::AqlCall::Infinity{};
   TRI_ASSERT(isUnlimited || std::holds_alternative<std::size_t>(limit));
-  // FIXME: Maybe have limit >  atMost * 2 for triggering parallism.
-  auto parallelism = std::min(count, this->_infos.parallelism());
-  auto const windowSize = atMostInitial;
+  parallelism = std::min(count, parallelism);
+  if (!isUnlimited) {
+    parallelism = std::min(parallelism,
+                           (std::get<std::size_t>(limit) / atMostInitial) + 1);
+  }
   if (parallelism > 1 &&
       (isUnlimited || std::get<std::size_t>(limit) > atMostInitial)) {
     atMost = atMostInitial * parallelism;
   } else {
     parallelism = 1;
   }
-  this->_indexReadBuffer.reset();
+  std::vector<futures::Future<bool>> results;
   this->_indexReadBuffer.preAllocateStoredValuesBuffer(
       atMost, this->_infos.getScoreRegisters().size(),
       this->_infos.getOutNonMaterializedViewRegs().size());
-  std::vector<futures::Future<bool>> results;
-  std::vector<futures::Promise<bool>> promises;
-  if (parallelism > 1) {
-    this->_indexReadBuffer.setForParallelAccess(
-        atMost, this->_infos.getScoreRegisters().size(),
-        this->_infos.getOutNonMaterializedViewRegs().size());
-    if (parallelism > _readersPool.threads()) {
-      _readersPool.max_idle(parallelism - 1);
-      _readersPool.max_threads(parallelism - 1);
-    }
-    promises.reserve(parallelism);
+  this->_indexReadBuffer.setForParallelAccess(
+      atMost, this->_infos.getScoreRegisters().size(),
+      this->_infos.getOutNonMaterializedViewRegs().size());
+  if (parallelism > _readersPool.threads()) {
+    _readersPool.max_idle(parallelism - 1);
+    _readersPool.max_threads(parallelism - 1);
+    results.reserve(parallelism);
   }
-  bool gotData = false;
-  std::atomic<size_t> bufferIdx{0};
-  bool killPool = true;
+  bool killPool =true;
   auto cleanupThreads = irs::Finally([&]() noexcept {
     if (killPool) {
       _readersPool.stop(true);
@@ -1592,8 +1609,6 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
   });
   while (bufferIdx.load() < atMostInitial) {
     results.clear();
-    promises.clear();
-    // launching additional workers
     size_t i = 0;
     size_t selfExecute{_segmentReaders.size()};
     auto toFetch = atMost - bufferIdx.load();
@@ -1606,21 +1621,18 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
           continue;
         }
         reader.readerOffset = _segmentOffset++;
-        reader.currentSegmentPos = 0;
       }
-      reader.atMost = std::min(windowSize, toFetch);
+      reader.atMost = std::min(atMostInitial, toFetch);
       toFetch -= reader.atMost;
       if (selfExecute < _segmentReaders.size()) {
-        promises.emplace_back();
-        results.push_back(promises.back().getFuture());
-        // TODO: find a way to just move Promise inside lambda.
-        // for now functor should be copyable and that breaks Promise.
+        futures::Promise<bool> promise;
+        results.push_back(promise.getFuture());
         if (ADB_UNLIKELY(!_readersPool.run(
-                [&, ctx = &reader, pr = &promises.back()]() mutable {
+                [&, ctx = &reader, pr = std::move(promise)]() mutable {
                   try {
-                    pr->setValue(readSegment<true>(*ctx, bufferIdx));
+                    pr.setValue(readSegment<true>(*ctx, bufferIdx));
                   } catch (...) {
-                    pr->setException(std::current_exception());
+                    pr.setException(std::current_exception());
                   }
                 }))) {
           TRI_ASSERT(false);
@@ -1634,11 +1646,7 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
       ++i;
     }
     if (selfExecute < _segmentReaders.size()) {
-      if (parallelism > 1) {
         gotData |= readSegment<true>(_segmentReaders[selfExecute], bufferIdx);
-      } else {
-        gotData |= readSegment<false>(_segmentReaders[selfExecute], bufferIdx);
-      }
     } else {
       TRI_ASSERT(results.empty());
       break;
@@ -1650,11 +1658,10 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
       gotData |= r.get();
     }
   }
-  if (parallelism > 1) {
-    this->_indexReadBuffer.setForParallelAccess(
-        bufferIdx, this->_infos.getScoreRegisters().size(),
-        this->_infos.getOutNonMaterializedViewRegs().size());
-  }
+  // shrink to actual size so we can emit rows as usual
+  this->_indexReadBuffer.setForParallelAccess(
+      bufferIdx, this->_infos.getScoreRegisters().size(),
+      this->_infos.getOutNonMaterializedViewRegs().size());
   return gotData;
 }
 

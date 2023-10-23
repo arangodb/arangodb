@@ -30,6 +30,7 @@
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 #include "resource_manager.hpp"
+#include "function2.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -122,7 +123,7 @@ class IResearchFeature final : public ArangodFeature {
   /// @param delay how log to sleep before the execution
   //////////////////////////////////////////////////////////////////////////////
   bool queue(ThreadGroup id, std::chrono::steady_clock::duration delay,
-             std::function<void()>&& fn);
+             fu2::unique_function<void()>&& fn);
 
   std::tuple<size_t, size_t, size_t> stats(ThreadGroup id) const;
   std::pair<size_t, size_t> limits(ThreadGroup id) const;
