@@ -525,6 +525,24 @@ CostEstimate IndexNode::estimateCost() const {
   return estimate;
 }
 
+AsyncPrefetchEligibility IndexNode::canUseAsyncPrefetching() const noexcept {
+  if (_condition != nullptr && _condition->root() != nullptr &&
+      (!_condition->root()->isDeterministic() ||
+       _condition->root()->willUseV8())) {
+    // we cannot use prefetching if the lookup employs V8, because the
+    // Query object only has a single V8 context, which it can enter and exit.
+    // with prefetching, multiple threads can execute calculations in the same
+    // Query instance concurrently, and when using V8, they could try to
+    // enter/exit the V8 context of the query concurrently. this is currently
+    // not thread-safe, so we don't use prefetching.
+    // the constraint for determinism is there because we could produce
+    // different query results when prefetching is enabled, at least in
+    // streaming queries.
+    return AsyncPrefetchEligibility::kDisableForNode;
+  }
+  return DocumentProducingNode::canUseAsyncPrefetching();
+}
+
 /// @brief getVariablesUsedHere, modifying the set in-place
 void IndexNode::getVariablesUsedHere(VarSet& vars) const {
   Ast::getReferencedVariables(_condition->root(), vars);
@@ -617,10 +635,6 @@ bool IndexNode::recalculateProjections(ExecutionPlan* plan) {
 
   bool wasUpdated = DocumentProducingNode::recalculateProjections(plan);
 
-  if (idx->covers(_projections)) {
-    _projections.setCoveringContext(collection()->id(), idx);
-  }
-
   if (hasFilter()) {
     if (idx->covers(_filterProjections)) {
       bool containsId = false;
@@ -637,6 +651,18 @@ bool IndexNode::recalculateProjections(ExecutionPlan* plan) {
     }
   }
 
+  const bool filterCoveredByIndex =
+      !hasFilter() || _filterProjections.usesCoveringIndex();
+
+  if (filterCoveredByIndex && idx->covers(_projections)) {
+    _projections.setCoveringContext(collection()->id(), idx);
+  }
+
+  // If we use projections to create the document, the filter projections
+  // have to be covered by the index. Otherwise, we have to load the
+  // document anyways.
+  TRI_ASSERT(!_projections.usesCoveringIndex() || !hasFilter() ||
+             _filterProjections.usesCoveringIndex());
   return wasUpdated;
 }
 

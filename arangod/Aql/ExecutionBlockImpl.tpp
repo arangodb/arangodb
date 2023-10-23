@@ -40,6 +40,7 @@
 #include "Aql/ShadowAqlItemRow.h"
 #include "Aql/SkipResult.h"
 #include "Aql/SimpleModifier.h"
+#include "Aql/Timing.h"
 #include "Aql/UpsertModifier.h"
 #include "Basics/ScopeGuard.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -48,6 +49,8 @@
 #include "Graph/Steps/ClusterProviderStep.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/algorithm-aliases.h"
+
+#include <absl/strings/str_cat.h>
 
 #include <type_traits>
 
@@ -295,7 +298,6 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(
       _rowFetcher(std::in_place, _dependencyProxy),
       _executorInfos(std::move(executorInfos)),
       _executor(std::in_place, *_rowFetcher, _executorInfos),
-      _outputItemRow(),
       _query(engine->getQuery()),
       _state(InternalState::FETCH_DATA),
       _execState{ExecState::CHECKCALL},
@@ -465,6 +467,16 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
   if (getQuery().killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
+
+  // check if this block failed already.
+  if (ADB_UNLIKELY(_firstFailure.fail())) {
+    // if so, just return the stored error.
+    // we need to do this because if a block fails with
+    // an exception, it is in an invalid state, and all
+    // subsequent calls into it may behave badly.
+    THROW_ARANGO_EXCEPTION(_firstFailure);
+  }
+
   traceExecuteBegin(stack);
   // silence tests -- we need to introduce new failure tests for fetchers
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
@@ -475,15 +487,6 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
   }
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  // check if this block failed already.
-  if (_firstFailure.fail()) {
-    // if so, just return the stored error.
-    // we need to do this because if a block fails with
-    // an exception, it is in an invalid state, and all
-    // subsequent calls into it may behave badly.
-    THROW_ARANGO_EXCEPTION(_firstFailure);
   }
 
   try {
@@ -513,30 +516,28 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
   } catch (basics::Exception const& ex) {
     TRI_ASSERT(_firstFailure.ok());
     // store only the first failure we got
-    std::string msg(ex.what());
-    msg.append(" [node #")
-        .append(std::to_string(getPlanNode()->id().id()))
-        .append(": ")
-        .append(getPlanNode()->getTypeString())
-        .append("]");
-    _firstFailure.reset(ex.code(), std::move(msg));
+    setFailure({ex.code(),
+                absl::StrCat(ex.what(), " [node #", getPlanNode()->id().id(),
+                             ": ", getPlanNode()->getTypeString(), "]")});
     LOG_QUERY("7289a", DEBUG)
         << printBlockInfo()
         << " local statemachine failed with exception: " << ex.what();
-    throw;
+    if (_prefetchTask && !_prefetchTask->isConsumed()) {
+      _prefetchTask->waitFor();
+    }
+    THROW_ARANGO_EXCEPTION(_firstFailure);
   } catch (std::exception const& ex) {
     TRI_ASSERT(_firstFailure.ok());
     // store only the first failure we got
-    std::string msg(ex.what());
-    msg.append(" [node #")
-        .append(std::to_string(getPlanNode()->id().id()))
-        .append(": ")
-        .append(getPlanNode()->getTypeString())
-        .append("]");
-    _firstFailure.reset(TRI_ERROR_INTERNAL, std::move(msg));
+    setFailure({TRI_ERROR_INTERNAL,
+                absl::StrCat(ex.what(), " [node #", getPlanNode()->id().id(),
+                             ": ", getPlanNode()->getTypeString(), "]")});
     LOG_QUERY("2bbd5", DEBUG)
         << printBlockInfo()
         << " local statemachine failed with exception: " << ex.what();
+    if (_prefetchTask && !_prefetchTask->isConsumed()) {
+      _prefetchTask->waitFor();
+    }
     // Rewire the error, to be consistent with potentially next caller.
     THROW_ARANGO_EXCEPTION(_firstFailure);
   }
@@ -854,6 +855,20 @@ template<class Executor>
 auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
                                                   AqlCallType const& aqlCall)
     -> std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange> {
+  double start = -1.0;
+  auto profilingGuard = scopeGuard([&]() noexcept {
+    _execNodeStats.fetching += currentSteadyClockValue() - start;
+  });
+  if (_profileLevel >= ProfileLevel::Blocks) {
+    // only if profiling is turned on, get current time
+    start = currentSteadyClockValue();
+  } else {
+    // if profiling is turned off, don't get current time, but instead
+    // cancel the scopeGuard so we don't unnecessarily call timing
+    // functions on exit
+    profilingGuard.cancel();
+  }
+
   // TODO The logic in the MultiDependencySingleRowFetcher branch should be
   //      moved into the MultiDependencySingleRowFetcher.
   static_assert(isMultiDepExecutor<Executor> ==
@@ -899,33 +914,49 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
     }
 
     auto const result = std::invoke([&]() {
-      if (_prefetchTask && !_prefetchTask->isConsumed() &&
-          !_prefetchTask->tryClaim()) {
-        // some other thread is currently executing our prefetch task
-        // -> wait till it has finished.
-        _prefetchTask->waitFor();
-        return _prefetchTask->stealResult();
-      } else {
-        return fetcher().execute(ctx.stack);
+      if (_prefetchTask && !_prefetchTask->isConsumed()) {
+        if (!_prefetchTask->tryClaim()) {
+          TRI_ASSERT(!_dependencies.empty());
+          if (_profileLevel >= ProfileLevel::Blocks) {
+            // count the parallel invocation
+            _dependencies[0]->stats().parallel += 1;
+          }
+          // some other thread is currently executing our prefetch task
+          // -> wait till it has finished.
+          _prefetchTask->waitFor();
+          return _prefetchTask->stealResult();
+        }
+
+        // we have claimed the task, but we are executing the fetcher
+        // ourselves. so let's reset the task's internals properly.
+        _prefetchTask->discard(/*isFinished*/ false);
       }
+      return fetcher().execute(ctx.stack);
     });
 
-    // TODO - we should also consider the limit here, but unfortunately the
-    // softLimit is currently also used for the batchSize
-    if (std::get<ExecutionState>(result) == ExecutionState::HASMORE &&
-        _exeNode->isAsyncPrefetchEnabled()) {
+    // note: SCHEDULER is a nullptr in unit tests
+    if (SchedulerFeature::SCHEDULER != nullptr &&
+        std::get<ExecutionState>(result) == ExecutionState::HASMORE &&
+        _exeNode->isAsyncPrefetchEnabled() && !ctx.clientCall.hasLimit()) {
+      // the only node types that use a limit are the LimitNode (and its
+      // dependencies in the plan) and EnumerateViewNode.
+      TRI_ASSERT(!ctx.clientCall.hasLimit() ||
+                 getPlanNode()->getType() ==
+                     ExecutionNode::ENUMERATE_IRESEARCH_VIEW);
+      // Async prefetching.
+      // we can only use async prefetching if the call does not use a limit.
+      // this is because otherwise the prefetching could lead to an overfetching
+      // of data.
       if (_prefetchTask == nullptr) {
         _prefetchTask = std::make_shared<PrefetchTask>();
+      } else {
+        _prefetchTask->reset();
       }
-      _prefetchTask->reset();
 
       // TODO - we should avoid flooding the queue with too many tasks as that
       // can significantly delay processing of user REST requests.
 
-      // we can safely ignore the result here, because we will try to
-      // claim the task ourselves anyway.
-
-      SchedulerFeature::SCHEDULER->queue(
+      bool queued = SchedulerFeature::SCHEDULER->tryBoundedQueue(
           RequestLane::INTERNAL_LOW,
           [block = this, task = _prefetchTask, stack = ctx.stack]() mutable {
             if (!task->tryClaim()) {
@@ -937,8 +968,27 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
             // scheduler queue even after the execution block has been
             // destroyed, because in this case we will not be able to claim the
             // task and simply return early without accessing the block.
-            task->execute(*block, stack);
+            try {
+              task->execute(*block, stack);
+            } catch (basics::Exception const& ex) {
+              task->setFailure(
+                  {ex.code(),
+                   absl::StrCat(ex.what(), " [node #",
+                                block->getPlanNode()->id().id(), ": ",
+                                block->getPlanNode()->getTypeString(), "]")});
+            } catch (std::exception const& ex) {
+              task->setFailure(
+                  {TRI_ERROR_INTERNAL,
+                   absl::StrCat(ex.what(), " [node #",
+                                block->getPlanNode()->id().id(), ": ",
+                                block->getPlanNode()->getTypeString(), "]")});
+            }
           });
+
+      if (!queued) {
+        // clear prefetch task
+        _prefetchTask.reset();
+      }
     }
 
     if constexpr (!std::is_same_v<Executor, SubqueryStartExecutor>) {
@@ -2202,6 +2252,11 @@ void ExecutionBlockImpl<Executor>::resetExecutor() {
 }
 
 template<class Executor>
+void ExecutionBlockImpl<Executor>::setFailure(Result&& res) {
+  _firstFailure = std::move(res);
+}
+
+template<class Executor>
 auto ExecutionBlockImpl<Executor>::outputIsFull() const noexcept -> bool {
   return _outputItemRow != nullptr && _outputItemRow->isInitialized() &&
          _outputItemRow->allRowsUsed();
@@ -2309,7 +2364,7 @@ auto ExecutionBlockImpl<Executor>::testInjectInputRange(DataRange range,
   _lastRange = std::move(range);
   _skipped = skipped;
   if constexpr (std::is_same_v<Fetcher, MultiDependencySingleRowFetcher>) {
-    // Make sure we have initialized the Fetcher / Dependencides properly
+    // Make sure we have initialized the Fetcher / Dependencies properly
     initOnce();
     // Now we need to initialize the SkipCounts, to simulate that something
     // was skipped.
@@ -2366,10 +2421,11 @@ template<class Executor>
 void ExecutionBlockImpl<Executor>::PrefetchTask::reset() noexcept {
   TRI_ASSERT(!_result);
   _state.store(State::Pending);
+  // intentionally do not reset _firstFailure
 }
 
 template<class Executor>
-void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() noexcept {
+void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
   // (1) - this acquire-load synchronizes with the release-store (3)
   if (_state.load(std::memory_order_acquire) == State::Finished) {
     return;
@@ -2382,10 +2438,23 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() noexcept {
 }
 
 template<class Executor>
-auto ExecutionBlockImpl<Executor>::PrefetchTask::stealResult() noexcept
+auto ExecutionBlockImpl<Executor>::PrefetchTask::discard(
+    bool isFinished) noexcept -> void {
+  _result.reset();
+  _state.store(isFinished ? State::Finished : State::Consumed,
+               std::memory_order_release);
+}
+
+template<class Executor>
+auto ExecutionBlockImpl<Executor>::PrefetchTask::stealResult()
     -> PrefetchResult {
-  TRI_ASSERT(_result);
+  TRI_ASSERT(_result || _firstFailure.fail())
+      << "prefetch task state: " << (int)_state.load(std::memory_order_relaxed);
   _state.store(State::Consumed, std::memory_order_relaxed);
+  if (_firstFailure.fail()) {
+    _result.reset();
+    THROW_ARANGO_EXCEPTION(_firstFailure);
+  }
   auto r = std::move(_result.value());
   _result.reset();
   return r;
@@ -2400,18 +2469,36 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::execute(
   } else {
     TRI_ASSERT(_state.load() == State::InProgress);
     TRI_ASSERT(!_result);
+
     _result = block.fetcher().execute(stack);
+
+    TRI_ASSERT(_result.has_value());
 
     // (3) - this release-store synchronizes with the acquire-load (1, 2)
     _state.store(State::Finished, std::memory_order_release);
 
-    // need to temporarily lock the mutex to enforce serialization with the
-    // waiting thread
-    _lock.lock();
-    _lock.unlock();
-
-    _bell.notify_one();
+    wakeupWaiter();
   }
+}
+
+template<class Executor>
+void ExecutionBlockImpl<Executor>::PrefetchTask::setFailure(Result&& res) {
+  TRI_ASSERT(res.fail());
+  if (_firstFailure.ok()) {
+    _firstFailure = std::move(res);
+  }
+  discard(/*isFinished*/ true);
+  wakeupWaiter();
+}
+
+template<class Executor>
+void ExecutionBlockImpl<Executor>::PrefetchTask::wakeupWaiter() noexcept {
+  // need to temporarily lock the mutex to enforce serialization with the
+  // waiting thread
+  _lock.lock();
+  _lock.unlock();
+
+  _bell.notify_one();
 }
 
 template<class Executor>

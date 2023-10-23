@@ -106,6 +106,9 @@ class JoinNode : public ExecutionNode {
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
+
   /// @brief getIndexesInfos, hand out the index infos
   std::vector<IndexInfo> const& getIndexInfos() const;
   std::vector<IndexInfo>& getIndexInfos();

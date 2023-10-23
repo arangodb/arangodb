@@ -178,5 +178,3 @@ bool SharedQueryState::queueAsyncTask(fu2::unique_function<void()> cb) {
   }
   return false;
 }
-
-bool SharedQueryState::noTasksRunning() { return _numTasks.load() == 0; }

@@ -226,8 +226,8 @@ void Query::destroy() {
   }
 
   // log to audit log
-  if (!_queryOptions.skipAudit && (ServerState::instance()->isCoordinator() ||
-                                   ServerState::instance()->isSingleServer())) {
+  if (!_queryOptions.skipAudit &&
+      ServerState::instance()->isSingleServerOrCoordinator()) {
     try {
       events::AqlQuery(*this);
     } catch (...) {
@@ -435,11 +435,11 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   }
 #endif
 
+  // create the transaction object
   _trx = AqlTransaction::create(_transactionContext, _collections,
                                 _queryOptions.transactionOptions,
                                 std::move(inaccessibleCollections));
 
-  // create the transaction object, but do not start it yet
   _trx->addHint(
       transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
 
@@ -590,7 +590,6 @@ ExecutionState Query::execute(QueryResult& queryResult) {
 
               if (!val.isEmpty()) {
                 val.toVelocyPack(&vpackOpts, resultBuilder,
-                                 /*resolveExternals*/ useQueryCache,
                                  /*allowUnindexed*/ true);
               }
             }
@@ -797,6 +796,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
         std::tie(state, skipped, value) = engine->execute(::defaultStack);
         // We cannot trigger a skip operation from here
         TRI_ASSERT(skipped.nothingSkipped());
+
         while (state == ExecutionState::WAITING) {
           ss->waitForAsyncWakeup();
           std::tie(state, skipped, value) = engine->execute(::defaultStack);
@@ -827,9 +827,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
                   .FromMaybe(false);
 
               if (useQueryCache) {
-                val.toVelocyPack(&vpackOpts, *builder,
-                                 /*resolveExternals*/ true,
-                                 /*allowUnindexed*/ true);
+                val.toVelocyPack(&vpackOpts, *builder, /*allowUnindexed*/ true);
               }
               memoryUsage += sizeof(v8::Value);
               if (val.requiresDestruction()) {
@@ -1023,11 +1021,10 @@ QueryResult Query::explain() {
     // optimize and validate the ast
     enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);
 
-    // create the transaction object, but do not start it yet
+    // create the transaction object
     _trx = AqlTransaction::create(_transactionContext, _collections,
                                   _queryOptions.transactionOptions);
 
-    // we have an AST
     Result res = _trx->begin();
 
     if (!res.ok()) {
@@ -1524,10 +1521,15 @@ std::shared_ptr<transaction::Context> Query::newTrxContext() const {
   TRI_ASSERT(_transactionContext != nullptr);
   TRI_ASSERT(_trx != nullptr);
 
-  if (_ast->canApplyParallelism()) {
+  if (_ast->canApplyParallelism() || _ast->containsAsyncPrefetch()) {
+    // some degree of parallel execution. nodes should better not
+    // share the transaction context, but create their own, non-shared
+    // objects.
     TRI_ASSERT(!_ast->containsModificationNode());
     return _transactionContext->clone();
   }
+  // no parallelism in this query. all parts can use the same
+  // transaction context
   return _transactionContext;
 }
 

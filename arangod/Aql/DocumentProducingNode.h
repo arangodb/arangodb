@@ -46,6 +46,8 @@ class ExecutionPlan;
 class Expression;
 struct Variable;
 
+enum class AsyncPrefetchEligibility;
+
 class DocumentProducingNode {
  public:
   explicit DocumentProducingNode(Variable const* outVariable);
@@ -105,6 +107,8 @@ class DocumentProducingNode {
   size_t maxProjections() const noexcept { return _maxProjections; }
 
   void setMaxProjections(size_t value) noexcept { _maxProjections = value; }
+
+  AsyncPrefetchEligibility canUseAsyncPrefetching() const noexcept;
 
   // arbitrary default value for the maximum number of projected attributes
   static constexpr size_t kMaxProjections = 5;

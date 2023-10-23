@@ -1,5 +1,4 @@
 /* jshint esnext: true */
-/* global AQL_EXECUTE, AQL_EXPLAIN, AQL_EXECUTEJSON, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Spec for the AQL FOR x IN GRAPH name statement
@@ -45,6 +44,7 @@ const en = 'UnitTestEdgeCollection';
 const removeCost = require('@arangodb/aql-helper').removeCost;
 
 const gh = require('@arangodb/graph/helpers');
+const waitForEstimatorSync = require('@arangodb/test-helper').waitForEstimatorSync;
 
 function optimizeInSuite() {
   var ruleName = 'optimize-traversals';
@@ -73,7 +73,7 @@ function optimizeInSuite() {
     tearDownAll: gh.cleanup,
 
     testSingleOptimize: function () {
-      arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();"); // make sure estimates are consistent
+      waitForEstimatorSync();
       var vertexQuery = `WITH ${vn}
       FOR v, e, p IN 2 OUTBOUND @startId @@eCol
       FILTER p.vertices[1]._key IN @keys
@@ -124,7 +124,7 @@ function optimizeInSuite() {
     },
 
     testCombinedAndOptimize: function () {
-      arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();"); // make sure estimates are consistent
+      waitForEstimatorSync();
       var vertexQuery = `WITH ${vn}
       FOR v, e, p IN 2 OUTBOUND @startId @@eCol
       FILTER p.vertices[1]._key IN @keys

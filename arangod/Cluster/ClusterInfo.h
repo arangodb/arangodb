@@ -984,7 +984,6 @@ class ClusterInfo final {
 
   Result waitForDatabaseInCurrent(CreateDatabaseInfo const& database,
                                   AgencyWriteTransaction const& trx);
-  void loadClusterId();
 
   void triggerWaiting(AssocMultiMap<uint64_t, futures::Promise<Result>>& mm,
                       uint64_t commitIndex);
@@ -1086,8 +1085,6 @@ class ClusterInfo final {
 
   FlatMapShared<pmr::DatabaseID, VPackBuilder> _plan;
   FlatMapShared<pmr::DatabaseID, VPackBuilder> _current;
-
-  std::string _clusterId;
 
   FlatMap<pmr::DatabaseID, VPackSlice>
       _plannedDatabases;  // from Plan/Databases

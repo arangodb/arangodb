@@ -25,7 +25,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Logger/LogMacros.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -63,9 +62,11 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder,
       builder.openObject();
       builder.add("id", VPackValue(pair.first.id()));
       builder.add("calls", VPackValue(pair.second.calls));
+      builder.add("parallel", VPackValue(pair.second.parallel));
       builder.add("items", VPackValue(pair.second.items));
       builder.add("filtered", VPackValue(pair.second.filtered));
       builder.add("runtime", VPackValue(pair.second.runtime));
+      builder.add("fetching", VPackValue(pair.second.fetching));
       builder.close();
     }
     builder.close();
@@ -208,11 +209,19 @@ ExecutionStats::ExecutionStats(VPackSlice slice) : ExecutionStats() {
       auto nid =
           ExecutionNodeId{val.get("id").getNumber<ExecutionNodeId::BaseType>()};
       node.calls = val.get("calls").getNumber<uint64_t>();
+      if (auto v = val.get("parallel"); v.isNumber()) {
+        node.parallel = v.getNumber<uint64_t>();
+      }
       node.items = val.get("items").getNumber<uint64_t>();
       if (VPackSlice s = val.get("filtered"); !s.isNone()) {
         node.filtered = s.getNumber<uint64_t>();
       }
       node.runtime = val.get("runtime").getNumber<double>();
+      if (auto v = val.get("fetching"); v.isNumber()) {
+        // fetching is introduced in 3.12. older versions do not
+        // have it.
+        node.fetching = v.getNumber<double>();
+      }
       auto const& alias = _nodeAliases.find(nid);
       if (alias != _nodeAliases.end()) {
         nid = alias->second;
