@@ -306,6 +306,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   void resetExecutor();
 
+  void setFailure(Result&& res);
+
   // Forwarding of ShadowRows if the executor has SideEffects.
   // This skips over ShadowRows, and counts them in the correct
   // position of the callStack as "skipped".
@@ -364,17 +366,25 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
     bool isConsumed() const noexcept;
     bool tryClaim() noexcept;
-    void waitFor() noexcept;
+    void waitFor() const noexcept;
     void reset() noexcept;
-    PrefetchResult stealResult() noexcept;
+    void discard(bool isFinished) noexcept;
+    // note: this will throw if the PrefetchTask ran into an exception
+    // during execution.
+    PrefetchResult stealResult();
+    void wakeupWaiter() noexcept;
+    void setFailure(Result&& result);
 
     void execute(ExecutionBlockImpl& block, AqlCallStack& stack);
 
    private:
     std::atomic<State> _state{State::Pending};
-    std::mutex _lock;
-    std::condition_variable _bell;
+    std::mutex mutable _lock;
+    std::condition_variable mutable _bell;
     std::optional<PrefetchResult> _result;
+    // _firstFailure contains the first error that happened in the prefetch
+    // task and it will not be resetted.
+    Result _firstFailure;
   };
 
   /**

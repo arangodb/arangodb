@@ -28,13 +28,10 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var jsunity = require("jsunity");
-var helper = require("@arangodb/aql-helper");
-var isEqual = helper.isEqual;
-var findExecutionNodes = helper.findExecutionNodes;
-var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
-var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
+const internal = require("internal");
+const jsunity = require("jsunity");
+const { findExecutionNodes, isEqual, getQueryMultiplePlansAndExecutions, removeAlwaysOnClusterRules } = require("@arangodb/aql-helper");
+const isCluster = internal.isCluster();
 const db = require('internal').db;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -218,9 +215,15 @@ function optimizerRuleTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultipleConditions : function () {
+      let addPrefetch = (rules) => {
+        if (!isCluster) {
+          return rules.concat("async-prefetch");
+        }
+        return rules;
+      };
       var query = "FOR v IN " + colName + " FILTER v.d == 'foo' || v.d == 'bar' RETURN v";
       var result = db._createStatement(query).explain();
-      assertEqual([ "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "use-indexes", "replace-or-with-in" ].sort(),  
+      assertEqual(addPrefetch([ "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "use-indexes", "replace-or-with-in" ]).sort(),  
         removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
       hasNoFilterNode(result);
       hasIndexNodeWithRanges(result);
@@ -228,13 +231,13 @@ function optimizerRuleTestSuite() {
       query = "FOR v IN " + colName + " FILTER 'foo' IN v.z && 'bar' IN v.z RETURN v";
       result = db._createStatement(query).explain();
       // should optimize away one part of the filter
-      assertEqual([ "remove-filter-covered-by-index", "use-indexes", "move-filters-into-enumerate", "remove-unnecessary-projections" ].sort(),
+      assertEqual(addPrefetch([ "remove-filter-covered-by-index", "use-indexes", "move-filters-into-enumerate", "remove-unnecessary-projections" ]).sort(),
         removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
       hasIndexNodeWithRanges(result);
       
       result = db._createStatement({query: query, bindVars:  null, options:  { optimizer: { rules: ["-move-filters-into-enumerate"] } }}).explain();
       // should optimize away one part of the filter
-      assertEqual([ "remove-filter-covered-by-index", "use-indexes" ].sort(),  
+      assertEqual([ "async-prefetch", "remove-filter-covered-by-index", "use-indexes" ].sort(),  
         removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
       hasFilterNode(result);
       hasIndexNodeWithRanges(result);
@@ -242,27 +245,27 @@ function optimizerRuleTestSuite() {
       query = "FOR v IN " + colName + " FILTER 'foo' IN v.z[*] && 'bar' IN v.z[*] RETURN v";
       result = db._createStatement(query).explain();
       // should optimize away one part of the filter
-      assertEqual([ "remove-filter-covered-by-index", "use-indexes", "move-filters-into-enumerate", "remove-unnecessary-projections" ].sort(),
+      assertEqual(addPrefetch([ "remove-filter-covered-by-index", "use-indexes", "move-filters-into-enumerate", "remove-unnecessary-projections" ]).sort(),
         removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
       hasIndexNodeWithRanges(result);
       
       result = db._createStatement({query: query, bindVars:  null, options:  { optimizer: { rules: ["-move-filters-into-enumerate"] } }}).explain();
       // should optimize away one part of the filter
-      assertEqual([ "remove-filter-covered-by-index", "use-indexes" ].sort(),  
+      assertEqual([ "async-prefetch", "remove-filter-covered-by-index", "use-indexes" ].sort(),  
         removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
       hasFilterNode(result);
       hasIndexNodeWithRanges(result);
       
       query = "FOR v IN " + colName + " FILTER 'foo' IN v.z || 'bar' IN v.z RETURN v";
       result = db._createStatement(query).explain();
-      assertEqual([ "use-indexes" ].sort(),  
+      assertEqual([ "async-prefetch", "use-indexes" ].sort(),  
         removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
       hasFilterNode(result);
       hasIndexNodeWithRanges(result);
       
       query = "FOR v IN " + colName + " FILTER 'foo' IN v.z[*] || 'bar' IN v.z[*] RETURN v";
       result = db._createStatement(query).explain();
-      assertEqual([ "use-indexes" ].sort(),  
+      assertEqual([ "async-prefetch", "use-indexes" ].sort(),  
         removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
       hasFilterNode(result);
       hasIndexNodeWithRanges(result);

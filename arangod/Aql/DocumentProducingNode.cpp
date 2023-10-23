@@ -172,6 +172,22 @@ bool DocumentProducingNode::doCount() const noexcept {
   return _count && !hasFilter();
 }
 
+AsyncPrefetchEligibility DocumentProducingNode::canUseAsyncPrefetching()
+    const noexcept {
+  // we cannot use prefetching if the filter employs V8, because the
+  // Query object only has a single V8 context, which it can enter and exit.
+  // with prefetching, multiple threads can execute calculations in the same
+  // Query instance concurrently, and when using V8, they could try to
+  // enter/exit the V8 context of the query concurrently. this is currently
+  // not thread-safe, so we don't use prefetching.
+  // the constraint for determinism is there because we could produce
+  // different query results when prefetching is enabled, at least in
+  // streaming queries.
+  return (!hasFilter() || (_filter->isDeterministic() && !_filter->willUseV8()))
+             ? AsyncPrefetchEligibility::kEnableForNode
+             : AsyncPrefetchEligibility::kDisableForNode;
+}
+
 bool DocumentProducingNode::recalculateProjections(ExecutionPlan* plan) {
   auto filterProjectionsHash = _filterProjections.hash();
   auto projectionsHash = _projections.hash();

@@ -525,6 +525,24 @@ CostEstimate IndexNode::estimateCost() const {
   return estimate;
 }
 
+AsyncPrefetchEligibility IndexNode::canUseAsyncPrefetching() const noexcept {
+  if (_condition != nullptr && _condition->root() != nullptr &&
+      (!_condition->root()->isDeterministic() ||
+       _condition->root()->willUseV8())) {
+    // we cannot use prefetching if the lookup employs V8, because the
+    // Query object only has a single V8 context, which it can enter and exit.
+    // with prefetching, multiple threads can execute calculations in the same
+    // Query instance concurrently, and when using V8, they could try to
+    // enter/exit the V8 context of the query concurrently. this is currently
+    // not thread-safe, so we don't use prefetching.
+    // the constraint for determinism is there because we could produce
+    // different query results when prefetching is enabled, at least in
+    // streaming queries.
+    return AsyncPrefetchEligibility::kDisableForNode;
+  }
+  return DocumentProducingNode::canUseAsyncPrefetching();
+}
+
 /// @brief getVariablesUsedHere, modifying the set in-place
 void IndexNode::getVariablesUsedHere(VarSet& vars) const {
   Ast::getReferencedVariables(_condition->root(), vars);

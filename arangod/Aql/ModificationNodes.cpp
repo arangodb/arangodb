@@ -92,6 +92,11 @@ CostEstimate ModificationNode::estimateCost() const {
   return estimate;
 }
 
+AsyncPrefetchEligibility ModificationNode::canUseAsyncPrefetching()
+    const noexcept {
+  return AsyncPrefetchEligibility::kDisableGlobally;
+}
+
 void ModificationNode::cloneCommon(ModificationNode* c) const {
   if (!_countStats) {
     c->disableStatistics();

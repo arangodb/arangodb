@@ -129,6 +129,9 @@ class CollectNode : public ExecutionNode {
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
+
   /// @brief whether or not the node has an outVariable (i.e. INTO ...)
   bool hasOutVariable() const;
 
