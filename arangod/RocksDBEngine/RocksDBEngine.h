@@ -192,7 +192,8 @@ class RocksDBEngine final : public StorageEngine {
 
   void getCapabilities(velocypack::Builder& builder) const override;
   void getStatistics(velocypack::Builder& builder) const override;
-  void getStatistics(std::string& result) const override;
+  void toPrometheus(std::string& result, std::string_view globals,
+                    bool ensureWhitespace) const override;
 
   // inventory functionality
   // -----------------------
@@ -327,8 +328,10 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
 
+#ifdef USE_V8
   /// @brief Add engine-specific V8 functions
   void addV8Functions() override;
+#endif
 
   /// @brief Add engine-specific REST handlers
   void addRestHandlers(rest::RestHandlerFactory& handlerFactory) override;

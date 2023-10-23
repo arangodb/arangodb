@@ -61,8 +61,10 @@ class JoinNode : public ExecutionNode {
     std::string usedShard;
     Variable const* outVariable;
     std::unique_ptr<Condition> condition;
+    std::unique_ptr<Expression> filter;
     transaction::Methods::IndexHandle index;
     Projections projections;
+    Projections filterProjections;
     bool usedAsSatellite;  // TODO maybe use CollectionAccess class
   };
 
@@ -103,6 +105,9 @@ class JoinNode : public ExecutionNode {
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
+
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
 
   /// @brief getIndexesInfos, hand out the index infos
   std::vector<IndexInfo> const& getIndexInfos() const;

@@ -21,6 +21,10 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include "v8-vocindex.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"

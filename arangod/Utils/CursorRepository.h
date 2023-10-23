@@ -97,7 +97,7 @@ class CursorRepository {
   Cursor* addCursor(std::unique_ptr<Cursor> cursor);
 
   /// @brief maximum number of cursors to garbage-collect in one go
-  static constexpr size_t maxCollectCount = 32;
+  static constexpr size_t maxCollectCount = 1024;
 
   TRI_vocbase_t& _vocbase;
 

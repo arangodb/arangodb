@@ -261,8 +261,7 @@ void ExecutionNode::getSortElements(SortElementVector& elements,
   for (VPackSlice it : VPackArrayIterator(elementsSlice)) {
     bool ascending = it.get("ascending").getBoolean();
     Variable* v = Variable::varFromVPack(plan->getAst(), it, "inVariable");
-    elements.emplace_back(
-        SortElement{v, ascending, plan->getAst()->query().resourceMonitor()});
+    elements.emplace_back(v, ascending);
     // Is there an attribute path?
     VPackSlice path = it.get("path");
     if (path.isArray()) {
@@ -270,8 +269,7 @@ void ExecutionNode::getSortElements(SortElementVector& elements,
       auto& element = elements.back();
       for (auto const& it2 : VPackArrayIterator(path)) {
         if (it2.isString()) {
-          element.attributePath.emplace_back(MonitoredString{
-              it2.copyString(), plan->getAst()->query().resourceMonitor()});
+          element.attributePath.emplace_back(it2.copyString());
         }
       }
     }
@@ -595,6 +593,10 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, velocypack::Slice slice)
 
   _isCallstackSplitEnabled = VelocyPackHelper::getBooleanValue(
       slice, "isCallstackSplitEnabled", false);
+
+  if (_isAsyncPrefetchEnabled) {
+    plan->getAst()->setContainsAsyncPrefetch();
+  }
 }
 
 ExecutionNode::ExecutionNode(ExecutionPlan& plan, ExecutionNode const& other)
@@ -729,6 +731,13 @@ void ExecutionNode::cloneRegisterPlan(ExecutionNode* dependency) {
 /// replacements are { old variable id => new variable }
 void ExecutionNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& /*replacements*/) {
+  // default implementation does nothing
+}
+
+void ExecutionNode::replaceAttributeAccess(
+    ExecutionNode const* /*self*/, Variable const* /*searchVariable*/,
+    std::span<std::string_view> /*attribute*/,
+    Variable const* /*replaceVariable*/) {
   // default implementation does nothing
 }
 
@@ -995,6 +1004,7 @@ void ExecutionNode::toVelocyPack(velocypack::Builder& builder,
   if (flags & ExecutionNode::SERIALIZE_DETAILS) {
     builder.add("typeID", VPackValue(static_cast<int>(getType())));
   }
+
   {
     VPackArrayBuilder guard(&builder, "dependencies");
     for (auto const& it : _dependencies) {
@@ -1122,10 +1132,18 @@ void ExecutionNode::toVelocyPack(velocypack::Builder& builder,
     }
 
     builder.add("isInSplicedSubquery", VPackValue(_isInSplicedSubquery));
-    builder.add("isAsyncPrefetchEnabled", VPackValue(_isAsyncPrefetchEnabled));
-    builder.add("isCallstackSplitEnabled",
-                VPackValue(_isCallstackSplitEnabled));
   }
+
+  // serialize these flags in all modes, but only if they are enabled.
+  // this works because they default to false, and helps to keep the output
+  // small.
+  if (_isAsyncPrefetchEnabled) {
+    builder.add("isAsyncPrefetchEnabled", VPackValue(true));
+  }
+  if (_isCallstackSplitEnabled) {
+    builder.add("isCallstackSplitEnabled", VPackValue(true));
+  }
+
   TRI_ASSERT(builder.isOpenObject());
   doToVelocyPack(builder, flags);
 }
@@ -1509,6 +1527,13 @@ bool ExecutionNode::isModificationNode() const {
   return false;
 }
 
+AsyncPrefetchEligibility ExecutionNode::canUseAsyncPrefetching()
+    const noexcept {
+  // async prefetching is disabled by default.
+  // dedicated node types can override this for themselves.
+  return AsyncPrefetchEligibility::kDisableForNode;
+}
+
 ExecutionPlan const* ExecutionNode::plan() const { return _plan; }
 
 ExecutionPlan* ExecutionNode::plan() { return _plan; }
@@ -1696,6 +1721,13 @@ CostEstimate SingletonNode::estimateCost() const {
   return estimate;
 }
 
+AsyncPrefetchEligibility SingletonNode::canUseAsyncPrefetching()
+    const noexcept {
+  // a singleton node has no predecessors. so prefetching isn't
+  // necessary.
+  return AsyncPrefetchEligibility::kDisableForNode;
+}
+
 SingletonNode::SingletonNode(ExecutionPlan* plan, ExecutionNodeId id)
     : ExecutionNode(plan, id) {}
 
@@ -1751,10 +1783,27 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
     }
   }
 
-  auto const produceResult =
-      this->isVarUsedLater(_outVariable) || this->_filter != nullptr;
-  auto outputRegister = variableToRegisterId(_outVariable);
-  auto registerInfos = createRegisterInfos({}, RegIdSet{outputRegister});
+  auto const produceResult = this->isVarUsedLater(_outVariable) ||
+                             this->_filter != nullptr || !projections().empty();
+  RegisterId outputRegister = variableToRegisterId(_outVariable);
+
+  auto outputRegisters = RegIdSet{};
+  outputRegisters.emplace(outputRegister);
+#if 0
+  if (projections().empty()) {
+    outputRegisters.emplace(outputRegister);
+  } else {
+    auto const& p = projections();
+    for (size_t i = 0; i < p.size(); ++i) {
+      Variable const* var = p[i].variable;
+      TRI_ASSERT(var != nullptr);
+      auto regId = variableToRegisterId(var);
+      filterVarsToRegs.emplace_back(var->id, regId);
+      outputRegisters.emplace(regId);
+    }
+  }
+#endif
+  auto registerInfos = createRegisterInfos({}, std::move(outputRegisters));
   auto executorInfos = EnumerateCollectionExecutorInfos(
       outputRegister, engine.getQuery(), collection(), _outVariable,
       produceResult, this->_filter.get(), this->projections(),
@@ -1777,7 +1826,6 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
   auto c = std::make_unique<EnumerateCollectionNode>(
       plan, _id, collection(), outVariable, _random, _hint);
 
-  c->_projections = _projections;
   CollectionAccessingNode::cloneInto(*c);
   DocumentProducingNode::cloneInto(plan, *c);
 
@@ -1789,6 +1837,15 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
 void EnumerateCollectionNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
   DocumentProducingNode::replaceVariables(replacements);
+}
+
+void EnumerateCollectionNode::replaceAttributeAccess(
+    ExecutionNode const* self, Variable const* searchVariable,
+    std::span<std::string_view> attribute, Variable const* replaceVariable) {
+  if (hasFilter() && self != this) {
+    filter()->replaceAttributeAccess(searchVariable, attribute,
+                                     replaceVariable);
+  }
 }
 
 void EnumerateCollectionNode::setRandom() { _random = true; }
@@ -1805,12 +1862,55 @@ void EnumerateCollectionNode::getVariablesUsedHere(VarSet& vars) const {
     // planning's assumption is that all variables that are used in a
     // node must also be used later.
     vars.erase(outVariable());
+
+    auto const& p = _projections;
+    for (size_t i = 0; i < p.size(); ++i) {
+      if (p[i].variable == nullptr) {
+        continue;
+      }
+      vars.erase(p[i].variable);
+    }
   }
 }
 
 std::vector<Variable const*> EnumerateCollectionNode::getVariablesSetHere()
     const {
-  return std::vector<Variable const*>{_outVariable};
+  std::vector<Variable const*> result;
+  result.push_back(_outVariable);
+#if 0
+  // determine number of variables first
+  size_t n = 0;
+  auto& p = _projections;
+  for (size_t i = 0; i < p.size(); ++i) {
+    TRI_ASSERT(p[i].variable != nullptr);
+    ++n;
+  }
+
+  std::vector<Variable const*> result;
+  if (n == 0) {
+    result.push_back(_outVariable);
+  } else {
+    result.reserve(n + 1);
+    result.push_back(_outVariable);
+    for (size_t i = 0; i < p.size(); ++i) {
+      if (p[i].variable == nullptr) {
+        continue;
+      }
+      result.push_back(p[i].variable);
+    }
+    TRI_ASSERT(result.size() == n + 1);
+  }
+#endif
+  return result;
+}
+
+void EnumerateCollectionNode::setProjections(Projections projections) {
+  DocumentProducingNode::setProjections(std::move(projections));
+}
+
+bool EnumerateCollectionNode::isProduceResult() const {
+  return _filter != nullptr ||
+         dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(_outVariable);
 }
 
 /// @brief the cost of an enumerate collection node is a multiple of the cost of
@@ -1844,6 +1944,11 @@ CostEstimate EnumerateCollectionNode::estimateCost() const {
                             1.0;
 
   return estimate;
+}
+
+AsyncPrefetchEligibility EnumerateCollectionNode::canUseAsyncPrefetching()
+    const noexcept {
+  return DocumentProducingNode::canUseAsyncPrefetching();
 }
 
 EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
@@ -1904,6 +2009,11 @@ CostEstimate EnumerateListNode::estimateCost() const {
   estimate.estimatedNrItems *= length;
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
+}
+
+AsyncPrefetchEligibility EnumerateListNode::canUseAsyncPrefetching()
+    const noexcept {
+  return AsyncPrefetchEligibility::kEnableForNode;
 }
 
 EnumerateListNode::EnumerateListNode(ExecutionPlan* plan, ExecutionNodeId id,
@@ -2012,6 +2122,11 @@ ExecutionNode* LimitNode::clone(ExecutionPlan* plan, bool withDependencies,
   }
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
+}
+
+AsyncPrefetchEligibility LimitNode::canUseAsyncPrefetching() const noexcept {
+  // LimitNodes do not support async prefetching.
+  return AsyncPrefetchEligibility::kDisableForNodeAndDependencies;
 }
 
 void LimitNode::setFullCount(bool enable) { _fullCount = enable; }
@@ -2139,7 +2254,9 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
   if (isReference) {
     TRI_ASSERT(expInVarsToRegs.size() == 1);
   }
+#ifdef USE_V8
   bool const willUseV8 = expression()->willUseV8();
+#endif
 
   TRI_ASSERT(expression() != nullptr);
 
@@ -2167,13 +2284,15 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
     return std::make_unique<
         ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
-  } else if (!willUseV8) {
-    return std::make_unique<
-        ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>>(
-        &engine, this, std::move(registerInfos), std::move(executorInfos));
-  } else {
+#ifdef USE_V8
+  } else if (willUseV8) {
     return std::make_unique<
         ExecutionBlockImpl<CalculationExecutor<CalculationType::V8Condition>>>(
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
+#endif
+  } else {
+    return std::make_unique<
+        ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
   }
 }
@@ -2201,6 +2320,22 @@ CostEstimate CalculationNode::estimateCost() const {
   return estimate;
 }
 
+AsyncPrefetchEligibility CalculationNode::canUseAsyncPrefetching()
+    const noexcept {
+  // we cannot use prefetching if the calculation employs V8, because the
+  // Query object only has a single V8 context, which it can enter and exit.
+  // with prefetching, multiple threads can execute calculations in the same
+  // Query instance concurrently, and when using V8, they could try to
+  // enter/exit the V8 context of the query concurrently. this is currently
+  // not thread-safe, so we don't use prefetching.
+  // the constraint for determinism is there because we could produce
+  // different query results when prefetching is enabled, at least in
+  // streaming queries.
+  return expression()->isDeterministic() && !expression()->willUseV8()
+             ? AsyncPrefetchEligibility::kEnableForNode
+             : AsyncPrefetchEligibility::kDisableForNode;
+}
+
 ExecutionNode::NodeType CalculationNode::getType() const { return CALCULATION; }
 
 size_t CalculationNode::getMemoryUsedBytes() const { return sizeof(*this); }
@@ -2222,7 +2357,7 @@ void CalculationNode::replaceVariables(
   // check if the calculation uses any of the variables that we want to
   // replace
   for (auto const& it : variables) {
-    if (replacements.find(it->id) != replacements.end()) {
+    if (replacements.contains(it->id)) {
       // calculation uses a to-be-replaced variable
       expression()->replaceVariables(replacements);
       return;
@@ -2230,8 +2365,15 @@ void CalculationNode::replaceVariables(
   }
 }
 
+void CalculationNode::replaceAttributeAccess(
+    ExecutionNode const* self, Variable const* searchVariable,
+    std::span<std::string_view> attribute, Variable const* replaceVariable) {
+  expression()->replaceAttributeAccess(searchVariable, attribute,
+                                       replaceVariable);
+}
+
 void CalculationNode::getVariablesUsedHere(VarSet& vars) const {
-  _expression->variables(vars);
+  expression()->variables(vars);
 }
 
 std::vector<Variable const*> CalculationNode::getVariablesSetHere() const {
@@ -2565,6 +2707,10 @@ CostEstimate FilterNode::estimateCost() const {
   return estimate;
 }
 
+AsyncPrefetchEligibility FilterNode::canUseAsyncPrefetching() const noexcept {
+  return AsyncPrefetchEligibility::kEnableForNode;
+}
+
 FilterNode::FilterNode(ExecutionPlan* plan, ExecutionNodeId id,
                        Variable const* inVariable)
     : ExecutionNode(plan, id), _inVariable(inVariable) {
@@ -2671,6 +2817,13 @@ CostEstimate ReturnNode::estimateCost() const {
   return estimate;
 }
 
+AsyncPrefetchEligibility ReturnNode::canUseAsyncPrefetching() const noexcept {
+  // cannot enable async prefetching for return nodes right now,
+  // as it will produce assertion failures regarding the reference
+  // count of the result block
+  return AsyncPrefetchEligibility::kDisableForNode;
+}
+
 ReturnNode::ReturnNode(ExecutionPlan* plan, ExecutionNodeId id,
                        Variable const* inVariable)
     : ExecutionNode(plan, id), _inVariable(inVariable), _count(false) {
@@ -2739,20 +2892,21 @@ ExecutionNode* NoResultsNode::clone(ExecutionPlan* plan, bool withDependencies,
                      withDependencies, withProperties);
 }
 
+AsyncPrefetchEligibility NoResultsNode::canUseAsyncPrefetching()
+    const noexcept {
+  // NoResultsNodes could make use of async prefetching, but the gain
+  // is too little to justify it.
+  return AsyncPrefetchEligibility::kDisableForNode;
+}
+
 size_t NoResultsNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
-SortElement::SortElement(Variable const* v, bool asc,
-                         arangodb::ResourceMonitor& resourceMonitor)
-    : var(v),
-      ascending(asc),
-      attributePath(
-          ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor>{
-              resourceMonitor}) {}
+SortElement::SortElement(Variable const* v, bool asc)
+    : var(v), ascending(asc) {}
 
 SortElement::SortElement(Variable const* v, bool asc,
-                         MonitoredStringVector const& path,
-                         arangodb::ResourceMonitor& resourceMonitor)
-    : var(v), ascending(asc), attributePath(path, resourceMonitor) {}
+                         std::vector<std::string> path)
+    : var(v), ascending(asc), attributePath(std::move(path)) {}
 
 std::string SortElement::toString() const {
   std::string result("$");

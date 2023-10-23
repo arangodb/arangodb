@@ -61,9 +61,7 @@ using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
 using namespace arangodb::basics;
 
-using SubqueryExecutorTestHelper = ExecutorTestHelper<1, 1>;
-using SubqueryExecutorSplitType = SubqueryExecutorTestHelper::SplitType;
-using SubqueryExecutorParamType = std::tuple<SubqueryExecutorSplitType>;
+using SubqueryExecutorParamType = std::tuple<SplitType>;
 
 using RegisterSet = std::unordered_set<RegisterId>;
 using LambdaExePassThrough = TestLambdaExecutor;
@@ -240,17 +238,16 @@ class SplicedSubqueryIntegrationTest
       return {input.upstreamState(), stats, call};
     };
   }
-  auto getSplit() -> SubqueryExecutorSplitType {
+  auto getSplit() -> SplitType {
     auto [split] = GetParam();
     return split;
   }
 };
 
 template<size_t... vs>
-const SubqueryExecutorSplitType splitIntoBlocks =
-    SubqueryExecutorSplitType{std::vector<std::size_t>{vs...}};
+const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
 template<size_t step>
-const SubqueryExecutorSplitType splitStep = SubqueryExecutorSplitType{step};
+const SplitType splitStep = SplitType{step};
 
 INSTANTIATE_TEST_CASE_P(SplicedSubqueryIntegrationTest,
                         SplicedSubqueryIntegrationTest,

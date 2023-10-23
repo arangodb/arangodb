@@ -1963,16 +1963,6 @@ void Agent::executeLockedRead(std::function<void()> const& cb) {
   cb();
 }
 
-#if 0
-// currently not called from anywhere
-void Agent::executeLockedWrite(std::function<void()> const& cb) {
-  std::lock_guard ioLocker{_ioLock};
-  WRITE_LOCKER(oLocker, _outputLock);
-  std::lock_guard guard{_waitForCV.mutex};
-  cb();
-}
-#endif
-
 void Agent::executeTransientLocked(std::function<void()> const& cb) {
   std::lock_guard transientLocker{_transientLock};
   cb();

@@ -76,6 +76,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include "Containers/Enumerate.h"
+
 using namespace arangodb;
 
 namespace {
@@ -1652,19 +1654,19 @@ Result RocksDBVPackIndex::checkOperation(transaction::Methods& trx,
         }
         res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
         // find conflicting document's key
-        auto callback = IndexIterator::makeDocumentCallbackF(
-            [&](LocalDocumentId, VPackSlice doc) {
-              auto key = transaction::helpers::extractKeyFromDocument(doc);
-              if (mode == IndexOperationMode::internal) {
-                // in this error mode, we return the conflicting document's key
-                // inside the error message string (and nothing else)!
-                res = Result{res.errorNumber(), key.copyString()};
-              } else {
-                // normal mode: build a proper error message
-                addErrorMsg(res, key.copyString());
-              }
-              return true;  // return value does not matter here
-            });
+        auto callback = [&](LocalDocumentId, aql::DocumentData&&,
+                            VPackSlice doc) {
+          auto key = transaction::helpers::extractKeyFromDocument(doc);
+          if (mode == IndexOperationMode::internal) {
+            // in this error mode, we return the conflicting document's key
+            // inside the error message string (and nothing else)!
+            res = Result{res.errorNumber(), key.copyString()};
+          } else {
+            // normal mode: build a proper error message
+            addErrorMsg(res, key.copyString());
+          }
+          return true;  // return value does not matter here
+        };
         // modifications always need to observe all changes
         // in order to validate uniqueness constraints
         auto readResult = _collection.getPhysical()->lookup(
@@ -1731,7 +1733,15 @@ Result RocksDBVPackIndex::insertUnique(
     transaction::BuilderLeaser leased(&trx);
     leased->openArray(true);
     for (auto const& it : _storedValuesPaths) {
-      VPackSlice s = doc.get(it);
+      VPackSlice s;
+      if (it.size() == 1 && it[0] == StaticStrings::IdString) {
+        // instead of storing the value of _id, we instead store the
+        // value of _key. we will retranslate the value to an _id later
+        // again upon retrieval
+        s = transaction::helpers::extractKeyFromDocument(doc);
+      } else {
+        s = doc.get(it);
+      }
       if (s.isNone()) {
         s = VPackSlice::nullSlice();
       }
@@ -1783,20 +1793,20 @@ Result RocksDBVPackIndex::insertUnique(
     if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
       // find conflicting document's key
       LocalDocumentId docId = RocksDBValue::documentId(existing);
-      auto callback = IndexIterator::makeDocumentCallbackF(
-          [&](LocalDocumentId, VPackSlice doc) {
-            IndexOperationMode mode = options.indexOperationMode;
-            VPackSlice key = transaction::helpers::extractKeyFromDocument(doc);
-            if (mode == IndexOperationMode::internal) {
-              // in this error mode, we return the conflicting document's key
-              // inside the error message string (and nothing else)!
-              res = Result{res.errorNumber(), key.copyString()};
-            } else {
-              // normal mode: build a proper error message
-              addErrorMsg(res, key.copyString());
-            }
-            return true;  // return value does not matter here
-          });
+      auto callback = [&](LocalDocumentId, aql::DocumentData&&,
+                          VPackSlice doc) {
+        IndexOperationMode mode = options.indexOperationMode;
+        VPackSlice key = transaction::helpers::extractKeyFromDocument(doc);
+        if (mode == IndexOperationMode::internal) {
+          // in this error mode, we return the conflicting document's key
+          // inside the error message string (and nothing else)!
+          res = Result{res.errorNumber(), key.copyString()};
+        } else {
+          // normal mode: build a proper error message
+          addErrorMsg(res, key.copyString());
+        }
+        return true;  // return value does not matter here
+      };
       // modifications always need to observe all changes
       // in order to validate uniqueness constraints
       auto readResult = _collection.getPhysical()->lookup(
@@ -1845,7 +1855,15 @@ Result RocksDBVPackIndex::insertNonUnique(
     transaction::BuilderLeaser leased(&trx);
     leased->openArray(true);
     for (auto const& it : _storedValuesPaths) {
-      VPackSlice s = doc.get(it);
+      VPackSlice s;
+      if (it.size() == 1 && it[0] == StaticStrings::IdString) {
+        // instead of storing the value of _id, we instead store the
+        // value of _key. we will retranslate the value to an _id later
+        // again upon retrieval
+        s = transaction::helpers::extractKeyFromDocument(doc);
+      } else {
+        s = doc.get(it);
+      }
       if (s.isNone()) {
         s = VPackSlice::nullSlice();
       }
@@ -2860,8 +2878,16 @@ namespace {
 
 struct RocksDBVPackStreamOptions {
   std::size_t keyPrefixSize;
-  std::vector<std::size_t> projectedKeyValues;
-  std::vector<std::size_t> projectedStoredValues;
+  struct ProjectedValuePair {
+    explicit ProjectedValuePair(std::size_t resultOffset,
+                                std::size_t indexOffset)
+        : resultOffset(resultOffset), indexOffset(indexOffset) {}
+    std::size_t resultOffset;
+    std::size_t indexOffset;
+  };
+
+  std::vector<ProjectedValuePair> projectedKeyValues;
+  std::vector<ProjectedValuePair> projectedStoredValues;
 };
 
 template<bool isUnique>
@@ -2937,25 +2963,25 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
   }
 
   LocalDocumentId load(std::span<VPackSlice> projections) const override {
-    std::size_t idx = 0;
+    TRI_ASSERT(_iterator->Valid());
     TRI_ASSERT(projections.size() == _options.projectedKeyValues.size() +
                                          _options.projectedStoredValues.size());
 
-    auto keySlice = RocksDBKey::indexedVPack(_iterator->key());
-    for (auto pos : _options.projectedKeyValues) {
-      projections[idx++] = keySlice.at(pos);
-    }
     if (!_options.projectedStoredValues.empty()) {
       auto valueSlice =
           isUnique ? RocksDBValue::uniqueIndexStoredValues(_iterator->value())
                    : RocksDBValue::indexStoredValues(_iterator->value());
       for (auto pos : _options.projectedStoredValues) {
-        projections[idx++] = valueSlice.at(pos);
+        projections[pos.resultOffset] = valueSlice.at(pos.indexOffset);
       }
+    }
+    auto keySlice = RocksDBKey::indexedVPack(_iterator->key());
+    for (auto pos : _options.projectedKeyValues) {
+      projections[pos.resultOffset] = keySlice.at(pos.indexOffset);
     }
 
     if constexpr (isUnique) {
-      return RocksDBValue::documentId(_iterator->key());
+      return RocksDBValue::documentId(_iterator->value());
     } else {
       return RocksDBKey::indexDocumentId(_iterator->key());
     }
@@ -2996,11 +3022,12 @@ std::unique_ptr<AqlIndexStreamIterator> RocksDBVPackIndex::streamForCondition(
 
   RocksDBVPackStreamOptions streamOptions;
   streamOptions.keyPrefixSize = opts.usedKeyFields.size();
-  for (auto idx : opts.projectedFields) {
+  for (auto [offset, idx] : enumerate(opts.projectedFields)) {
     if (idx < _fields.size()) {
-      streamOptions.projectedKeyValues.push_back(idx);
+      streamOptions.projectedKeyValues.emplace_back(offset, idx);
     } else if (idx < _fields.size() + _storedValues.size()) {
-      streamOptions.projectedStoredValues.push_back(idx - _fields.size());
+      streamOptions.projectedStoredValues.emplace_back(offset,
+                                                       idx - _fields.size());
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL, "index does not cover field with given index");
@@ -3019,13 +3046,14 @@ std::unique_ptr<AqlIndexStreamIterator> RocksDBVPackIndex::streamForCondition(
   return stream;
 }
 
-bool RocksDBVPackIndex::supportsStreamInterface(
-    IndexStreamOptions const& streamOpts) const noexcept {
+bool RocksDBVPackIndex::checkSupportsStreamInterface(
+    std::vector<std::vector<basics::AttributeName>> const& coveredFields,
+    IndexStreamOptions const& streamOpts) noexcept {
   // TODO expand this for fixed values that can be moved into the index
 
   // we can only project values that are in range
   for (auto idx : streamOpts.projectedFields) {
-    if (idx > _fields.size() + _storedValues.size()) {
+    if (idx > coveredFields.size()) {
       return false;
     }
   }
@@ -3040,6 +3068,11 @@ bool RocksDBVPackIndex::supportsStreamInterface(
   }
 
   return true;
+}
+
+bool RocksDBVPackIndex::supportsStreamInterface(
+    IndexStreamOptions const& streamOpts) const noexcept {
+  return checkSupportsStreamInterface(_coveredFields, streamOpts);
 }
 
 }  // namespace arangodb

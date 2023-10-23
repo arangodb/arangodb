@@ -72,6 +72,23 @@ struct JoinExecutorInfos {
 
     // Values used for projection
     Projections projections;
+
+    struct FilterInformation {
+      // post filter expression
+      std::unique_ptr<Expression> expression;
+
+      // variable in the expression referring to the current document
+      Variable const* documentVariable;
+
+      // mapping of other variables to register in the input row
+      std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
+
+      // projections used for filtering
+      Projections projections;
+      std::vector<Variable const*> filterProjectionVars;
+    };
+
+    std::optional<FilterInformation> filter;
   };
 
   std::vector<IndexInfo> indexes;
@@ -108,6 +125,7 @@ class JoinExecutor {
  private:
   void constructStrategy();
 
+  aql::AqlFunctionsInternalCache _functionsCache;
   Fetcher& _fetcher;
   Infos& _infos;
   std::unique_ptr<AqlIndexJoinStrategy> _strategy;
@@ -117,6 +135,7 @@ class JoinExecutor {
   InputAqlItemRow _currentRow{CreateInvalidInputRowHint()};
   ExecutorState _currentRowState{ExecutorState::HASMORE};
   velocypack::Builder _projectionsBuilder;
+  std::vector<std::unique_ptr<std::string>> _documents;
 };
 
 }  // namespace aql

@@ -50,7 +50,9 @@
 #include "Indexes/IndexIterator.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/Helpers.h"
+#ifdef USE_V8
 #include "V8/v8-globals.h"
+#endif
 
 #include <velocypack/Iterator.h>
 
@@ -204,7 +206,8 @@ IndexExecutorInfos::IndexExecutorInfos(
     std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
     IndexIteratorOptions options,
     IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
-    IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs)
+    IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs,
+    IndexNode::IndexFilterCoveringVars filterCoveringVars)
     : _indexes(std::move(indexes)),
       _condition(condition),
       _ast(ast),
@@ -216,6 +219,7 @@ IndexExecutorInfos::IndexExecutorInfos(
       _projections(std::move(projections)),
       _filterProjections(std::move(filterProjections)),
       _filterVarsToRegs(std::move(filterVarsToRegs)),
+      _filterCoveringVars(std::move(filterCoveringVars)),
       _nonConstExpressions(std::move(nonConstExpressions)),
       _outputRegisterId(outputRegister),
       _outNonMaterializedIndVars(outNonMaterializedIndVars),
@@ -391,8 +395,10 @@ IndexExecutor::CursorReader::CursorReader(
       _cursorStats(cursorStats),
       _type(infos.getCount()             ? Type::Count
             : infos.isLateMaterialized() ? Type::LateMaterialized
-            : !infos.getProduceResult()  ? Type::NoResult
-            : infos.getProjections().usesCoveringIndex(index) ? Type::Covering
+            : (!infos.getProduceResult() && !infos.getFilter()) ? Type::NoResult
+            : (infos.getProjections().usesCoveringIndex(index) &&
+               infos.getFilterProjections().usesCoveringIndex(index))
+                ? Type::Covering
             : infos.getFilterProjections().usesCoveringIndex(index)
                 ? Type::CoveringFilterOnly
                 : Type::Document),
@@ -661,6 +667,7 @@ void IndexExecutor::initIndexes(InputAqlItemRow const& input) {
     TRI_ASSERT(_infos.getCondition() != nullptr);
 
     if (_infos.getV8Expression()) {
+#ifdef USE_v8
       // must have a V8 context here to protect Expression::execute()
       auto cleanup = [this]() {
         if (arangodb::ServerState::instance()->isRunningInCluster()) {
@@ -678,6 +685,11 @@ void IndexExecutor::initIndexes(InputAqlItemRow const& input) {
       TRI_IF_FAILURE("IndexBlock::executeV8") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
+#else
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "unexpected v8 function call in IndexExecutor");
+#endif
     } else {
       // no V8 context required!
       executeExpressions(input);
@@ -723,7 +735,7 @@ void IndexExecutor::executeExpressions(InputAqlItemRow const& input) {
     AqlValueGuard guard(a, mustDestroy);
 
     AqlValueMaterializer materializer(&_trx.vpackOptions());
-    VPackSlice slice = materializer.slice(a, false);
+    VPackSlice slice = materializer.slice(a);
     AstNode* evaluatedNode = _ast.nodeFromVPack(slice, true);
 
     AstNode* tmp = condition;

@@ -81,17 +81,17 @@ using namespace arangodb::graph;
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);                  \
   }
 
-#define GENERATE_ORDER_SWITCH(Provider)                                   \
-  switch (order) {                                                        \
-    case traverser::TraverserOptions::Order::DFS:                         \
-      GENERATE_UNIQUENESS_SWITCH(DFSEnumerator, Provider);                \
-      break;                                                              \
-    case traverser::TraverserOptions::Order::BFS:                         \
-      GENERATE_UNIQUENESS_SWITCH(BFSEnumerator, Provider);                \
-      break;                                                              \
-    case traverser::TraverserOptions::Order::WEIGHTED:                    \
-      GENERATE_UNIQUENESS_SWITCH(WeightedEnumeratorRefactored, Provider); \
-      break;                                                              \
+#define GENERATE_ORDER_SWITCH(Provider)                         \
+  switch (order) {                                              \
+    case traverser::TraverserOptions::Order::DFS:               \
+      GENERATE_UNIQUENESS_SWITCH(DFSEnumerator, Provider);      \
+      break;                                                    \
+    case traverser::TraverserOptions::Order::BFS:               \
+      GENERATE_UNIQUENESS_SWITCH(BFSEnumerator, Provider);      \
+      break;                                                    \
+    case traverser::TraverserOptions::Order::WEIGHTED:          \
+      GENERATE_UNIQUENESS_SWITCH(WeightedEnumerator, Provider); \
+      break;                                                    \
   }
 
 #define GENERATE_TRACED_ORDER_SWITCH(Provider)                        \

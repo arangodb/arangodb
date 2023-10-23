@@ -44,7 +44,6 @@
 #include "win-utils.h"
 
 #include <VersionHelpers.h>
-#include <atlstr.h>
 #include <crtdbg.h>
 #include <malloc.h>
 #include <string.h>
@@ -808,7 +807,8 @@ std::string getFileNameFromHandle(HANDLE fileHandle) {
                                     sizeof(buff))) {
     return std::string();
   }
-  return std::string((LPCTSTR)CString(FileInformation->FileName));
+  return fromWString(FileInformation->FileName,
+                     FileInformation->FileNameLength);
 }
 
 static std::vector<std::string> argVec;

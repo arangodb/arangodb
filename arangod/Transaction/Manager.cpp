@@ -1218,7 +1218,8 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
       // transaction.
       res.reset(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED);
     } else if (res.ok() && wasExpired) {
-      res.reset(TRI_ERROR_TRANSACTION_ABORTED);
+      res.reset(TRI_ERROR_TRANSACTION_ABORTED,
+                "transaction was already expired");
     }
   }
   TRI_ASSERT(!trx.state()->isRunning());
