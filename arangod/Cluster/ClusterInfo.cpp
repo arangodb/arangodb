@@ -2767,9 +2767,9 @@ Result ClusterInfo::createIsBuildingDatabaseCoordinator(
                 "database creation failed");
 }
 
-// Finalize creation of database in cluster by removing isBuilding,
-// coordinator, and coordinatorRebootId; as precondition that the entry we put
-// in createIsBuildingDatabaseCoordinator is still in Plan/ unchanged.
+// Finalize creation of database in cluster by removing isBuilding, coordinator,
+// and coordinatorRebootId; as precondition that the entry we put in
+// createIsBuildingDatabaseCoordinator is still in Plan/ unchanged.
 Result ClusterInfo::createFinalizeDatabaseCoordinator(
     CreateDatabaseInfo const& database) {
   AgencyComm ac(_server);
@@ -2874,9 +2874,9 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(
       VPackSlice preconditionId = builder.slice().get("id");
       if (agencyId.isString() && preconditionId.isString() &&
           !agencyId.isEqualString(preconditionId.stringView())) {
-        // database key is there, but has a different id, this can happen if
-        // the database has already been dropped in the meantime and
-        // recreated, in any case, let's get us out of here...
+        // database key is there, but has a different id, this can happen if the
+        // database has already been dropped in the meantime and recreated, in
+        // any case, let's get us out of here...
         break;
       }
     }
@@ -3037,8 +3037,8 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
         continue;
       }
 
-      // The following code is there to support collection which are not part
-      // of any collection group, soon to be removed
+      // The following code is there to support collection which are not part of
+      // any collection group, soon to be removed
       auto shardIds = collection->shardIds();
       replicatedStates.reserve(replicatedStates.size() + shardIds->size());
       std::transform(
@@ -3047,8 +3047,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
             return LogicalCollection::shardIdToStateId(shardPair.first);
           });
     }
-    // replicatedStatesCleanup = deleteReplicatedStates(name,
-    // replicatedStates);
+    // replicatedStatesCleanup = deleteReplicatedStates(name, replicatedStates);
   }
 
   // Now wait stuff in Current to disappear and thus be complete:
@@ -3750,8 +3749,8 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(
     // Only if not precondition failed
     if (!res.successful()) {
       // if preconditions failed -> somebody already finished our revision
-      // record. That means agency maintenance already reverted our operation
-      // - we must abandon this operation. So it differs from what we do in
+      // record. That means agency maintenance already reverted our operation -
+      // we must abandon this operation. So it differs from what we do in
       // startModifying.
       if (res.httpCode() != rest::ResponseCode::PRECONDITION_FAILED) {
         if (TRI_microtime() > endTime) {
@@ -3890,8 +3889,7 @@ void ClusterInfo::proposeMetricsLeader(uint64_t oldRebootId,
     LOG_TOPIC("bfdc5", TRACE, Logger::CLUSTER)
         << "Failed to self-propose leader";
   } else {
-    // We don't need retry here, because we have retry in
-    // ClusterMetricsFeature
+    // We don't need retry here, because we have retry in ClusterMetricsFeature
     LOG_TOPIC("bfdc6", WARN, Logger::CLUSTER)
         << "Failed to self-propose leader with httpCode: " << r.httpCode();
   }
@@ -4036,8 +4034,8 @@ void ClusterInfo::loadServers() {
     // for now as the only write (not include setters for tests) is in this
     // method and it is protexted by mutex _serversProt.mutex
 
-    // Our own RebootId might have changed if we have been FAILED at least
-    // once since our last actual reboot, let's update it:
+    // Our own RebootId might have changed if we have been FAILED at least once
+    // since our last actual reboot, let's update it:
     auto* serverState = ServerState::instance();
     if (auto it = _serversKnown.find(serverState->getId());
         it != _serversKnown.end()) {
@@ -4050,8 +4048,7 @@ void ClusterInfo::loadServers() {
     } else {
       LOG_TOPIC("feaaa", WARN, Logger::CLUSTER)
           << "Cannot find my own rebootId in the list of known servers, this "
-             "is very strange and should not happen, if this persists, "
-             "please "
+             "is very strange and should not happen, if this persists, please "
              "report this error!";
     }
     // RebootTracker has its own mutex, and doesn't strictly need to be in
@@ -4324,8 +4321,8 @@ static std::string const prefixCurrentDBServers = "Current/DBServers";
 static std::string const prefixTarget = "Target";
 
 void ClusterInfo::loadCurrentDBServers() {
-  ++_dbServersProt.wantedVersion;  // Indicate that after *NOW* somebody has
-                                   // to reread from the agency!
+  ++_dbServersProt.wantedVersion;  // Indicate that after *NOW* somebody has to
+                                   // reread from the agency!
   std::lock_guard mutexLocker{_dbServersProt.mutex};
   uint64_t storedVersion = _dbServersProt.wantedVersion;  // this is the version
   // we will set in the end
@@ -4483,8 +4480,8 @@ ClusterInfo::getResponsibleServer(std::string_view shardID) {
       // std::shared_ptr<std::vector<ServerId>>>
       if (auto it = _shardsToCurrentServers.find(shardID);
           it != _shardsToCurrentServers.end()) {
-        // TODO throw an exception if we don't find the shard or the server
-        // list is null or empty?
+        // TODO throw an exception if we don't find the shard or the server list
+        // is null or empty?
         auto serverList = it->second;
         if (serverList != nullptr && !serverList->empty() &&
             (*serverList)[0].starts_with('_')) {
@@ -5303,8 +5300,7 @@ Result ClusterInfo::agencyHotBackupUnlock(std::string_view backupId,
 
     if (!res->slice().isString()) {
       LOG_TOPIC("6ae46", WARN, Logger::BACKUP)
-          << "Invalid JSON from agency when deactivating supervision mode "
-             "for "
+          << "Invalid JSON from agency when deactivating supervision mode for "
              "backup "
           << backupId;
       return Result{
@@ -5480,9 +5476,9 @@ void ClusterInfo::SyncerThread::run() {
           << "caught an error while loading " << _section;
     }
   };
-  // This first call needs to be done or else we might miss all potential
-  // until such time, that we are ready to receive. Under no circumstances can
-  // we assume that this first call can be neglected.
+  // This first call needs to be done or else we might miss all potential until
+  // such time, that we are ready to receive. Under no circumstances can we
+  // assume that this first call can be neglected.
   call();
   for (std::unique_lock lk{_m}; !isStopping();) {
     if (!_news) {
@@ -5848,8 +5844,8 @@ Result AnalyzerModificationTransaction::commit() {
       _database, _cleanupTransaction);
   _rollbackRevision = res.fail() && !_cleanupTransaction;
   // if succesful revert mark our transaction as completed (otherwise postpone
-  // it to abort call). for cleanup - always this attempt is completed
-  // (cleanup should not waste much time). Will try next time
+  // it to abort call). for cleanup - always this attempt is completed (cleanup
+  // should not waste much time). Will try next time
   if (res.ok() || _cleanupTransaction) {
     revertCounter();
   }
@@ -5864,8 +5860,8 @@ Result AnalyzerModificationTransaction::abort() {
   Result res{};
   try {
     if (_rollbackRevision) {
-      TRI_ASSERT(!_cleanupTransaction);  // cleanup transaction has nothing to
-                                         // rollback
+      TRI_ASSERT(
+          !_cleanupTransaction);  // cleanup transaction has nothing torollback
       _rollbackRevision = false;  // ok, we tried. Even if failed -> recovery
                                   // job will do the rest
       res = _clusterInfo->finishModifyingAnalyzerCoordinator(_database, true);
