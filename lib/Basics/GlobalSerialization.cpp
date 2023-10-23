@@ -31,7 +31,8 @@
 
 namespace arangodb {
 
-void waitForGlobalEvent(std::string_view id, std::string_view selector) {
+namespace {
+std::pair<std::string, std::string> findSLPProgramPaths() {
   std::string path = TRI_GetTempPath();
   auto pos = path.rfind(TRI_DIR_SEPARATOR_CHAR);
   if (pos != std::string::npos) {
@@ -41,40 +42,42 @@ void waitForGlobalEvent(std::string_view id, std::string_view selector) {
       basics::FileUtils::buildFilename(path.c_str(), "globalSLP");
   std::string pcPath =
       basics::FileUtils::buildFilename(path.c_str(), "globalSLP_PC");
+  return std::pair(progPath, pcPath);
+}
 
-  std::vector<std::string> progLines;
+std::vector<std::string> readSLPProgram(std::string const& progPath) {
   // Read program:
+  std::vector<std::string> progLines;
   try {
     std::string prog = arangodb::basics::FileUtils::slurp(progPath);
     if (prog.empty()) {
-      return;
+      return progLines;
     }
     progLines = arangodb::basics::StringUtils::split(prog, '\n');
     progLines.pop_back();  // Ignore last line, since every line is
                            // ended by \n.
-    if (progLines.empty()) {
-      return;
-    }
   } catch (std::exception const&) {
-    return;  // No program, no waiting
+    // No program, return empty
+  }
+  return progLines;
+}
+
+}  // namespace
+
+void waitForGlobalEvent(std::string_view id, std::string_view selector) {
+  auto [progPath, pcPath] = findSLPProgramPaths();
+  std::vector<std::string> progLines = readSLPProgram(progPath);
+  if (progLines.empty()) {
+    return;
   }
   LOG_TOPIC("ace32", INFO, Logger::MAINTENANCE)
       << "Waiting for global event " << id << " with selector " << selector
       << "...";
   while (true) {
     // Read pc
-    std::vector<std::string> executedLines;
-    try {
-      std::string pc = arangodb::basics::FileUtils::slurp(pcPath);
-      executedLines = basics::StringUtils::split(pc, '\n');
-      if (!executedLines.empty() > 0) {
-        executedLines.pop_back();
-      }
-    } catch (std::exception const&) {
-      return;
-    }
+    std::vector<std::string> executedLines = readSLPProgram(pcPath);
     if (executedLines.size() >= progLines.size()) {
-      return;
+      return;  // program already finished
     }
     std::string current = progLines[executedLines.size()];
     std::vector<std::string> parts =
@@ -92,8 +95,7 @@ void waitForGlobalEvent(std::string_view id, std::string_view selector) {
       }
       current.push_back('\n');
       try {
-        arangodb::basics::FileUtils::appendToFile("/tmp/debuggingSLPCurrent",
-                                                  current);
+        arangodb::basics::FileUtils::appendToFile(pcPath, current);
       } catch (std::exception const&) {
         // ignore
       }
@@ -104,48 +106,19 @@ void waitForGlobalEvent(std::string_view id, std::string_view selector) {
 }
 
 void observeGlobalEvent(std::string_view id, std::string_view selector) {
+  auto [progPath, pcPath] = findSLPProgramPaths();
+  std::vector<std::string> progLines = readSLPProgram(progPath);
+  if (progLines.empty()) {
+    return;
+  }
   std::string path = TRI_GetTempPath();
-  auto pos = path.rfind(TRI_DIR_SEPARATOR_CHAR);
-  if (pos != std::string::npos) {
-    path = path.substr(0, pos);
-  }
-  std::string progPath =
-      basics::FileUtils::buildFilename(path.c_str(), "globalSLP");
-  std::string pcPath =
-      basics::FileUtils::buildFilename(path.c_str(), "globalSLP_PC");
-
-  std::vector<std::string> progLines;
-  // Read program:
-  try {
-    std::string prog = arangodb::basics::FileUtils::slurp(progPath);
-    if (prog.empty()) {
-      return;
-    }
-    progLines = arangodb::basics::StringUtils::split(prog, '\n');
-    progLines.pop_back();  // Ignore last line, since every line is
-                           // ended by \n.
-    if (progLines.empty()) {
-      return;
-    }
-  } catch (std::exception const&) {
-    return;  // No program, no waiting
-  }
   LOG_TOPIC("ace35", INFO, Logger::MAINTENANCE)
       << "Observing global event " << id << " with selector " << selector
       << "...";
   // Read pc
-  std::vector<std::string> executedLines;
-  try {
-    std::string pc = arangodb::basics::FileUtils::slurp(pcPath);
-    executedLines = basics::StringUtils::split(pc, '\n');
-    if (!executedLines.empty() > 0) {
-      executedLines.pop_back();
-    }
-  } catch (std::exception const&) {
-    return;
-  }
+  std::vector<std::string> executedLines = readSLPProgram(pcPath);
   if (executedLines.size() >= progLines.size()) {
-    return;
+    return;  // program already finished
   }
   std::string current = progLines[executedLines.size()];
   std::vector<std::string> parts =
@@ -153,21 +126,21 @@ void observeGlobalEvent(std::string_view id, std::string_view selector) {
   if (parts.size() >= 2 && id == parts[0] && selector == parts[1]) {
     // Hurray! We can make progress:
     if (parts.size() >= 3) {
-      LOG_TOPIC("ace33", INFO, Logger::MAINTENANCE)
+      LOG_TOPIC("ace37", INFO, Logger::MAINTENANCE)
           << "Global event " << id << " with selector " << selector
           << " and comment " << parts[2] << " was observed...";
     } else {
-      LOG_TOPIC("ace34", INFO, Logger::MAINTENANCE)
+      LOG_TOPIC("ace38", INFO, Logger::MAINTENANCE)
           << "Global event " << id << " with selector " << selector
           << " was observed...";
     }
     current.push_back('\n');
     try {
-      arangodb::basics::FileUtils::appendToFile("/tmp/debuggingSLPCurrent",
-                                                current);
+      arangodb::basics::FileUtils::appendToFile(pcPath, current);
     } catch (std::exception const&) {
       // ignore
     }
   }
 }
+
 }  // namespace arangodb

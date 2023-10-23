@@ -223,7 +223,9 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
     std::shared_ptr<std::vector<ServerID>> realInsyncFollowers;
 
     TRI_IF_FAILURE("HandleLeadership::before") {
-      waitForGlobalEvent("HandleLeadership::before", collection.name());
+      std::string shortName = ServerState::instance()->getShortName();
+      waitForGlobalEvent("HandleLeadership::before",
+                         absl::StrCat(shortName, ":", collection.name()));
     }
 
     if (!currentServers.empty()) {
@@ -249,7 +251,9 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
     transaction::cluster::abortFollowerTransactionsOnShard(collection.id());
 
     TRI_IF_FAILURE("HandleLeadership::after") {
-      waitForGlobalEvent("HandleLeadership::after", collection.name());
+      std::string shortName = ServerState::instance()->getShortName();
+      waitForGlobalEvent("HandleLeadership::after",
+                         absl::StrCat(shortName, ":", collection.name()));
     }
   }
 }

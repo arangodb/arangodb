@@ -299,7 +299,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     currentShardLocks = mfeature.getShardLocks();
 
     TRI_IF_FAILURE("Maintenance::BeforePhaseTwo") {
-      waitForGlobalEvent("Maintenance::BeforePhaseTwo",
+      observeGlobalEvent("Maintenance::BeforePhaseTwo",
                          ServerState::instance()->getShortName());
     }
 
@@ -326,8 +326,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
                                           currentShardLocks, localLogs);
 
     TRI_IF_FAILURE("Maintenance::AfterPhaseTwo") {
-      waitForGlobalEvent("Maintenance::AfterPhaseTwo",
-                         ServerState::instance()->getId());
+      observeGlobalEvent("Maintenance::AfterPhaseTwo",
+                         ServerState::instance()->getShortName());
     }
 
     LOG_TOPIC("dfc54", TRACE, Logger::MAINTENANCE)

@@ -58,21 +58,24 @@ namespace arangodb {
 // always a "next line" to be executed, which is the first line in
 // `globalSLP` which is not (yet) in `globalSLP_PC`.
 //
-// The semantics is as follows:
+// The semantics are as follows:
 //
 // If `waitForGlobalEvent` is called, then the SLP is read and it is
 // determined, if the current line matches `id` and `selector`. If not,
 // the function waits until it is. Once the current line matches the
 // current line is advanced by one, a log message is written and the
 // function returns. If the straight line program is completed (all
-// lines were triggered) or the `globalSLP_PC` file no longer exists
-// , then `waitForGlobalEvent` immediately returns with no further
+// lines were triggered) or the `globalSLP_PC` file no longer exists,
+// then `waitForGlobalEvent` immediately returns with no further
 // action.
 //
 // If `observeGlobalEvent` is called, then the SLP is read and it is
 // determined, if the current line matches `id` and `selector`. If so,
 // the current line is advanced, otherwise it stays. In any case, the
-// function immediately returns.
+// function returns immediately.
+//
+// For an example test which uses this see
+//   tests/js/client/shell/shell-move-shard-sync-fail-cluster.js
 
 void waitForGlobalEvent(std::string_view id, std::string_view selector);
 void observeGlobalEvent(std::string_view id, std::string_view selector);
