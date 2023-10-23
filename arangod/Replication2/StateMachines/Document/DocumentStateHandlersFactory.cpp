@@ -53,7 +53,7 @@ auto DocumentStateHandlersFactory::createShardHandler(TRI_vocbase_t& vocbase,
 }
 
 auto DocumentStateHandlersFactory::createSnapshotHandler(
-    TRI_vocbase_t& vocbase, GlobalLogIdentifier const& gid)
+    TRI_vocbase_t& vocbase, GlobalLogIdentifier gid)
     -> std::shared_ptr<IDocumentStateSnapshotHandler> {
   // TODO: this looks unsafe, because the vocbase that we have fetched above
   // is just a raw pointer. there may be a concurrent thread that deletes
@@ -62,7 +62,8 @@ auto DocumentStateHandlersFactory::createSnapshotHandler(
   // instead, which returns a managed pointer.
   auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
   return std::make_shared<DocumentStateSnapshotHandler>(
-      std::make_unique<DatabaseSnapshotFactory>(vocbase), ci.rebootTracker());
+      std::make_unique<DatabaseSnapshotFactory>(vocbase), ci.rebootTracker(),
+      std::move(gid));
 }
 
 auto DocumentStateHandlersFactory::createTransactionHandler(

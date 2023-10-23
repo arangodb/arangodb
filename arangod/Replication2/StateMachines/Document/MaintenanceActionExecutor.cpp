@@ -22,15 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Replication2/StateMachines/Document/MaintenanceActionExecutor.h"
+
 #include "Cluster/ActionDescription.h"
 #include "Cluster/CreateCollection.h"
-#include "Cluster/DropCollection.h"
 #include "Cluster/EnsureIndex.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/UpdateCollection.h"
 #include "Logger/LogMacros.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/Methods/Collections.h"
+#include "VocBase/LogicalCollection.h"
 
 namespace arangodb::replication2::replicated_state::document {
 MaintenanceActionExecutor::MaintenanceActionExecutor(
@@ -41,120 +42,107 @@ MaintenanceActionExecutor::MaintenanceActionExecutor(
       _server(std::move(server)),
       _vocbase(vocbase) {}
 
-auto MaintenanceActionExecutor::executeCreateCollectionAction(
-    ShardID shard, CollectionID collection,
-    std::shared_ptr<VPackBuilder> properties) -> Result {
-  namespace maintenance = arangodb::maintenance;
+auto MaintenanceActionExecutor::executeCreateCollection(
+    ShardID const& shard, TRI_col_type_e collectionType,
+    velocypack::SharedSlice const& properties) noexcept -> Result {
+  std::shared_ptr<LogicalCollection> col;
+  auto res = basics::catchToResult([&]() -> Result {
+    OperationOptions options(ExecContext::current());
+    return methods::Collections::createShard(
+        _vocbase, options, shard, collectionType, properties.slice(), col);
+  });
 
-  maintenance::ActionDescription actionDescription(
-      std::map<std::string, std::string>{
-          {maintenance::NAME, maintenance::CREATE_COLLECTION},
-          {maintenance::COLLECTION, std::move(collection)},
-          {maintenance::SHARD, std::move(shard)},
-          {maintenance::DATABASE, _gid.database},
-          {maintenance::SERVER_ID, _server},
-          {maintenance::THE_LEADER, "replication2"},
-          {maintenance::REPLICATED_LOG_ID, to_string(_gid.id)}},
-      maintenance::HIGHER_PRIORITY, false, std::move(properties));
-  maintenance::CreateCollection createCollectionAction(_maintenanceFeature,
-                                                       actionDescription);
-  createCollectionAction.first();
-  return createCollectionAction.result();
+  LOG_TOPIC("ef1bc", DEBUG, Logger::MAINTENANCE)
+      << "Local collection " << _vocbase.name() << "/" << shard << " "
+      << (col ? "successful" : "failed") << " upon creation (gid: " << _gid
+      << ") " << res;
+  return res;
 }
 
-auto MaintenanceActionExecutor::executeDropCollectionAction(
-    ShardID shard, CollectionID collection) -> Result {
-  namespace maintenance = arangodb::maintenance;
-
-  maintenance::ActionDescription actionDescription(
-      std::map<std::string, std::string>{
-          {maintenance::NAME, maintenance::DROP_COLLECTION},
-          {maintenance::COLLECTION, std::move(collection)},
-          {maintenance::SHARD, std::move(shard)},
-          {maintenance::DATABASE, _gid.database},
-          {maintenance::SERVER_ID, _server},
-          {maintenance::THE_LEADER, "replication2"},
-      },
-      maintenance::HIGHER_PRIORITY, false);
-  maintenance::DropCollection dropCollectionAction(_maintenanceFeature,
-                                                   actionDescription);
-  dropCollectionAction.first();
-  return dropCollectionAction.result();
-}
-
-auto MaintenanceActionExecutor::executeModifyCollectionAction(
-    ShardID shard, CollectionID collection, velocypack::SharedSlice properties)
-    -> Result {
-  auto col = lookupShard(shard);
-  if (col.fail()) {
-    return {col.errorNumber(),
-            fmt::format("Error while modifying shard: {}", col.errorMessage())};
-  }
-
+auto MaintenanceActionExecutor::executeDropCollection(
+    std::shared_ptr<LogicalCollection> col) noexcept -> Result {
   auto res = basics::catchToResult(
-      [col = std::move(col.get()), properties = std::move(properties)]() {
+      [&]() { return methods::Collections::drop(*col, false); });
+
+  LOG_TOPIC("accd8", DEBUG, Logger::MAINTENANCE)
+      << "Dropping local collection " << _vocbase.name() << "/" << col->name()
+      << " (gid: " << _gid << "): " << res;
+
+  return res;
+}
+
+auto MaintenanceActionExecutor::executeModifyCollection(
+    std::shared_ptr<LogicalCollection> col, CollectionID colId,
+    velocypack::SharedSlice properties) noexcept -> Result {
+  auto res =
+      basics::catchToResult([&col, properties = std::move(properties)]() {
         OperationOptions options(ExecContext::current());
-        return methods::Collections::updateProperties(
-            *col.get(), properties.slice(), options);
+        return methods::Collections::updateProperties(*col, properties.slice(),
+                                                      options);
       });
 
   if (res.fail()) {
-    _maintenanceFeature.storeShardError(_vocbase.name(), collection, shard,
-                                        _server, res);
+    if (auto storeErrorRes = basics::catchToResult([&]() {
+          return _maintenanceFeature.storeShardError(_vocbase.name(), colId,
+                                                     col->name(), _server, res);
+        });
+        storeErrorRes.fail()) {
+      LOG_TOPIC("d3f2a", DEBUG, Logger::MAINTENANCE)
+          << "Replicated log: " << _gid
+          << " failed storeShardError call on shard " << col->name() << ": "
+          << storeErrorRes;
+    }
   }
+
   LOG_TOPIC("bffdd", DEBUG, Logger::MAINTENANCE)
-      << "Modifying local shard " << shard << " in database " << _vocbase.name()
-      << " result: " << res;
+      << "Modifying local collection " << _vocbase.name() << "/" << col->name()
+      << " (gid: " << _gid << "): " << res;
 
   return res;
 }
 
 auto MaintenanceActionExecutor::executeCreateIndex(
-    ShardID shard, std::shared_ptr<VPackBuilder> const& properties,
-    std::shared_ptr<methods::Indexes::ProgressTracker> progress) -> Result {
-  auto col = lookupShard(shard);
-  if (col.fail()) {
-    return {col.errorNumber(),
-            fmt::format("Error while creating index: {}", col.errorMessage())};
-  }
-
-  VPackBuilder output;
-  auto res = methods::Indexes::ensureIndex(*col.get(), properties->slice(),
-                                           true, output, std::move(progress));
-  if (res.ok()) {
-    arangodb::maintenance::EnsureIndex::indexCreationLogging(output.slice());
-  }
-  return res;
-}
-
-auto MaintenanceActionExecutor::executeDropIndex(ShardID shard,
-                                                 velocypack::SharedSlice index)
+    std::shared_ptr<LogicalCollection> col, velocypack::SharedSlice properties,
+    std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
     -> Result {
-  auto col = lookupShard(shard);
-  if (col.fail()) {
-    return {col.errorNumber(),
-            fmt::format("Error while dropping index: {}", col.errorMessage())};
+  VPackBuilder output;
+  auto res = basics::catchToResult([&]() {
+    return methods::Indexes::ensureIndex(*col, properties.slice(), true, output,
+                                         std::move(progress));
+  });
+
+  if (res.ok()) {
+    std::ignore = basics::catchVoidToResult([&]() {
+      arangodb::maintenance::EnsureIndex::indexCreationLogging(output.slice());
+    });
   }
 
-  auto res = methods::Indexes::drop(*col.get(), index.slice());
-  LOG_TOPIC("e155f", DEBUG, Logger::MAINTENANCE)
-      << "Dropping local index " << index.toJson() << " of shard " << shard
-      << " in database " << _vocbase.name() << " result: " << res;
+  LOG_TOPIC("eb458", DEBUG, Logger::MAINTENANCE)
+      << "Creating index for " << _vocbase.name() << "/" << col->name()
+      << " (gid: " << _gid << "): " << res;
+
   return res;
 }
 
-void MaintenanceActionExecutor::addDirty() {
-  _maintenanceFeature.addDirty(_gid.database);
+auto MaintenanceActionExecutor::executeDropIndex(
+    std::shared_ptr<LogicalCollection> col,
+    velocypack::SharedSlice index) noexcept -> Result {
+  auto res = basics::catchToResult(
+      [&]() { return methods::Indexes::drop(*col, index.slice()); });
+
+  LOG_TOPIC("e155f", DEBUG, Logger::MAINTENANCE)
+      << "Dropping local index " << index.toJson() << " of " << _vocbase.name()
+      << "/" << col->name() << ": " << res;
+  return res;
 }
 
-auto MaintenanceActionExecutor::lookupShard(ShardID const& shard) noexcept
-    -> ResultT<std::shared_ptr<LogicalCollection>> {
-  auto col = _vocbase.lookupCollection(shard);
-  if (col == nullptr) {
-    return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                  fmt::format("Failed to lookup shard {} in database {}", shard,
-                              _vocbase.name())};
+auto MaintenanceActionExecutor::addDirty() noexcept -> Result {
+  auto res = basics::catchVoidToResult(
+      [&]() { _maintenanceFeature.addDirty(_gid.database); });
+  if (res.fail()) {
+    LOG_TOPIC("d3f2a", DEBUG, Logger::MAINTENANCE)
+        << "Replicated log: " << _gid << " failed addDirty call: " << res;
   }
-  return col;
+  return res;
 }
 }  // namespace arangodb::replication2::replicated_state::document

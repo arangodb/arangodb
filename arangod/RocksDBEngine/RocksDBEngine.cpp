@@ -150,7 +150,7 @@
 // correct sequence numbers for the files without gaps
 #undef USE_SST_INGESTION
 
-//#define USE_CUSTOM_WAL
+// #define USE_CUSTOM_WAL
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -3169,12 +3169,6 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       LOG_TOPIC("39404", DEBUG, arangodb::Logger::ENGINES)
           << "added collection '" << vocbase->name() << "/"
           << collection->name() << "'";
-
-      if (collection->replicationVersion() ==
-          arangodb::replication::Version::TWO) {
-        vocbase->_logManager->_initCollections.emplace(
-            collection->replicatedStateId(), collection);
-      }
     }
   } catch (std::exception const& ex) {
     LOG_TOPIC("8d427", ERR, arangodb::Logger::ENGINES)

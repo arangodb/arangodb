@@ -30,6 +30,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshotInspectors.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
@@ -41,7 +42,7 @@ DocumentStateLeaderInterface::DocumentStateLeaderInterface(
       _pool(pool) {}
 
 auto DocumentStateLeaderInterface::startSnapshot()
-    -> futures::Future<ResultT<SnapshotConfig>> {
+    -> futures::Future<ResultT<SnapshotBatch>> {
   VPackBuilder builder;
   auto params =
       SnapshotParams::Start{.serverId = ServerState::instance()->getId(),
@@ -53,8 +54,8 @@ auto DocumentStateLeaderInterface::startSnapshot()
                                  _gid.id, "snapshot", "start");
   network::RequestOptions opts;
   opts.database = _gid.database;
-  return postSnapshotRequest<SnapshotConfig>(std::move(path),
-                                             std::move(*builder.steal()), opts);
+  return postSnapshotRequest<SnapshotBatch>(std::move(path),
+                                            std::move(*builder.steal()), opts);
 }
 
 auto DocumentStateLeaderInterface::nextSnapshotBatch(SnapshotId id)
@@ -106,6 +107,13 @@ auto DocumentStateLeaderInterface::postSnapshotRequest(
           return resp.combinedResult();
         }
         auto slice = resp.slice();
+        if (!slice.hasKey("result")) {
+          return ResultT<T>::error(
+              TRI_ERROR_INTERNAL,
+              fmt::format("Missing \"result\" key in slice {}, while "
+                          "processing snapshot response",
+                          slice.toJson()));
+        }
         return velocypack::deserialize<T>(slice.get("result"));
       });
 }

@@ -440,9 +440,6 @@ static void handlePlanShard(
                 {SHARD, shname},
                 {DATABASE, dbname},
                 {SERVER_ID, serverId},
-                {"from", "maintenance"},  // ugly hack - leader uses maintenance
-                                          // action as well. Used to distinguish
-                                          // between callers.
                 {THE_LEADER, CreateLeaderString(leaderId, shouldBeLeading)}},
             SLOW_OP_PRIORITY, true, std::move(props));
         makeDirty.insert(dbname);
@@ -491,9 +488,7 @@ static void handleLocalShard(
           std::map<std::string, std::string>{
               {NAME, DROP_COLLECTION},
               {DATABASE, dbname},
-              {SHARD, colname},
-              {"from",
-               "maintenance"}},  // parameter used on replication2 leader
+              {SHARD, colname}},  // parameter used on replication2 leader
           isLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true);
       makeDirty.insert(dbname);
       callNotify = true;

@@ -47,7 +47,7 @@ namespace replication2::replicated_state::document {
  */
 struct IDocumentStateLeaderInterface {
   virtual ~IDocumentStateLeaderInterface() = default;
-  virtual auto startSnapshot() -> futures::Future<ResultT<SnapshotConfig>> = 0;
+  virtual auto startSnapshot() -> futures::Future<ResultT<SnapshotBatch>> = 0;
   virtual auto nextSnapshotBatch(SnapshotId id)
       -> futures::Future<ResultT<SnapshotBatch>> = 0;
   virtual auto finishSnapshot(SnapshotId id) -> futures::Future<Result> = 0;
@@ -61,7 +61,7 @@ class DocumentStateLeaderInterface
                                         GlobalLogIdentifier gid,
                                         network::ConnectionPool* pool);
 
-  auto startSnapshot() -> futures::Future<ResultT<SnapshotConfig>> override;
+  auto startSnapshot() -> futures::Future<ResultT<SnapshotBatch>> override;
   auto nextSnapshotBatch(SnapshotId id)
       -> futures::Future<ResultT<SnapshotBatch>> override;
   auto finishSnapshot(SnapshotId id) -> futures::Future<Result> override;

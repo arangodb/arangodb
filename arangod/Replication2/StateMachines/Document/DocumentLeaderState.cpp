@@ -25,8 +25,8 @@
 
 #include "Basics/application-exit.h"
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
+#include "Replication2/StateMachines/Document/DocumentStateErrorHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
-#include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
 #include "Transaction/Manager.h"
@@ -42,7 +42,9 @@ DocumentLeaderState::GuardedData::GuardedData(
     std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory)
     : core(std::move(core)) {
   transactionHandler = handlersFactory->createTransactionHandler(
-      this->core->getVocbase(), this->core->gid, this->core->getShardHandler());
+      this->core->getVocbase(), this->core->gid,
+      handlersFactory->createShardHandler(this->core->getVocbase(),
+                                          this->core->gid));
 }
 
 DocumentLeaderState::DocumentLeaderState(
@@ -52,10 +54,13 @@ DocumentLeaderState::DocumentLeaderState(
     : gid(core->gid),
       loggerContext(
           core->loggerContext.with<logContextKeyStateComponent>("LeaderState")),
+      errorHandler(loggerContext),
       _handlersFactory(std::move(handlersFactory)),
+      _shardHandler(
+          _handlersFactory->createShardHandler(core->getVocbase(), gid)),
       _snapshotHandler(
           _handlersFactory->createSnapshotHandler(core->getVocbase(), gid)),
-      _guardedData(std::move(core), this->_handlersFactory),
+      _guardedData(std::move(core), _handlersFactory),
       _transactionManager(transactionManager) {}
 
 auto DocumentLeaderState::resign() && noexcept
@@ -122,18 +127,6 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
       auto res = std::visit(
           overload{
               [&](ModifiesUserTransaction auto& op) -> Result {
-                if (auto res = data.transactionHandler->validate(
-                        doc.getInnerOperation());
-                    res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-                  // The shard might've been dropped before doing recovery.
-                  LOG_CTX("e76f8", INFO, self->loggerContext)
-                      << "will not apply transaction " << op.tid
-                      << " for shard " << op.shard
-                      << " because it is not available";
-                  return {};
-                } else if (res.fail()) {
-                  return res;
-                }
                 activeTransactions.insert(op.tid);
                 return data.transactionHandler->applyEntry(op);
               },
@@ -164,7 +157,12 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
                     return abortRes;
                   }
                 }
-                return data.transactionHandler->applyEntry(op);
+                return self->errorHandler.handleOpResult(
+                    op, data.transactionHandler->applyEntry(op));
+              },
+              [&](ReplicatedOperation::CreateShard& op) -> Result {
+                return self->errorHandler.handleOpResult(
+                    op, data.transactionHandler->applyEntry(op));
               },
               [&](auto&& op) {
                 return data.transactionHandler->applyEntry(op);
@@ -172,9 +170,12 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
           doc.getInnerOperation());
 
       if (res.fail()) {
-        LOG_CTX("cbc5b", FATAL, self->loggerContext)
-            << "failed to apply entry " << doc << " during recovery: " << res;
-        FATAL_ERROR_EXIT();
+        if (self->errorHandler.handleOpResult(doc.getInnerOperation(), res)
+                .fail()) {
+          LOG_CTX("cbc5b", FATAL, self->loggerContext)
+              << "failed to apply entry " << doc << " during recovery: " << res;
+          FATAL_ERROR_EXIT();
+        }
       }
     }
 
@@ -321,19 +322,48 @@ auto DocumentLeaderState::release(TransactionId tid, LogIndex index) -> Result {
   });
 }
 
-auto DocumentLeaderState::snapshotStart(SnapshotParams::Start const& params)
-    -> ResultT<SnapshotConfig> {
-  auto shardMap = _guardedData.doUnderLock([&](auto& data) {
-    if (data.didResign()) {
-      THROW_ARANGO_EXCEPTION(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
-    }
-    return data.core->getShardHandler()->getShardMap();
-  });
+template<class ResultType, class GetFunc, class ProcessFunc>
+auto DocumentLeaderState::executeSnapshotOperation(GetFunc getSnapshot,
+                                                   ProcessFunc processSnapshot)
+    -> ResultType {
+  // Fetch the snapshot
+  auto snapshotRes = _snapshotHandler.doUnderLock(
+      [&](auto& handler) -> ResultT<std::weak_ptr<Snapshot>> {
+        if (handler == nullptr) {
+          return Result{
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+              fmt::format(
+                  "Could not get snapshot status of {}, state resigned.", gid)};
+        }
+        return getSnapshot(handler);
+      });
+  if (snapshotRes.fail()) {
+    return snapshotRes.result();
+  }
 
-  return executeSnapshotOperation<ResultT<SnapshotConfig>>(
-      [&](auto& handler) { return handler->create(shardMap, params); },
-      [](auto& snapshot) { return snapshot->config(); });
+  // Do the necessary processing on it
+  if (auto snapshot = snapshotRes.get().lock(); snapshot != nullptr) {
+    return processSnapshot(snapshot);
+  }
+
+  return Result(TRI_ERROR_INTERNAL,
+                fmt::format("Snapshot not available for {}!", gid));
+}
+
+auto DocumentLeaderState::snapshotStatus(SnapshotId id)
+    -> ResultT<SnapshotStatus> {
+  return executeSnapshotOperation<ResultT<SnapshotStatus>>(
+      [&](auto& handler) { return handler->find(id); },
+      [](auto& snapshot) { return snapshot->status(); });
+}
+
+auto DocumentLeaderState::snapshotStart(SnapshotParams::Start const& params)
+    -> ResultT<SnapshotBatch> {
+  return executeSnapshotOperation<ResultT<SnapshotBatch>>(
+      [&](auto& handler) {
+        return handler->create(_shardHandler->getAvailableShards(), params);
+      },
+      [](auto& snapshot) { return snapshot->fetch(); });
 }
 
 auto DocumentLeaderState::snapshotNext(SnapshotParams::Next const& params)
@@ -356,13 +386,6 @@ auto DocumentLeaderState::snapshotFinish(const SnapshotParams::Finish& params)
   });
 }
 
-auto DocumentLeaderState::snapshotStatus(SnapshotId id)
-    -> ResultT<SnapshotStatus> {
-  return executeSnapshotOperation<ResultT<SnapshotStatus>>(
-      [&](auto& handler) { return handler->find(id); },
-      [](auto& snapshot) { return snapshot->status(); });
-}
-
 auto DocumentLeaderState::allSnapshotsStatus() -> ResultT<AllSnapshotsStatus> {
   return _snapshotHandler.doUnderLock(
       [&](auto& handler) -> ResultT<AllSnapshotsStatus> {
@@ -379,27 +402,30 @@ auto DocumentLeaderState::allSnapshotsStatus() -> ResultT<AllSnapshotsStatus> {
 
 auto DocumentLeaderState::getAssociatedShardList() const
     -> std::vector<ShardID> {
-  auto shardMap =
-      _guardedData.getLockedGuard()->core->getShardHandler()->getShardMap();
+  auto shards = _shardHandler->getAvailableShards();
 
   std::vector<ShardID> shardIds;
-  shardIds.reserve(shardMap.size());
-  for (auto const& [id, props] : shardMap) {
-    shardIds.emplace_back(id);
+  shardIds.reserve(shards.size());
+  for (auto&& shardId : shards) {
+    shardIds.emplace_back(shardId->name());
   }
   return shardIds;
 }
 
-auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
-                                      std::shared_ptr<VPackBuilder> properties)
+auto DocumentLeaderState::createShard(ShardID shard,
+                                      TRI_col_type_e collectionType,
+                                      velocypack::SharedSlice properties)
     -> futures::Future<Result> {
   auto op = ReplicatedOperation::buildCreateShardOperation(
-      std::move(shard), std::move(collectionId), std::move(properties));
+      std::move(shard), collectionType, std::move(properties));
 
   auto fut = _guardedData.doUnderLock([&](auto& data) {
     if (data.didResign()) {
-      THROW_ARANGO_EXCEPTION(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+          fmt::format(
+              "Leader {} resigned before replicating CreateShard operation",
+              gid));
     }
 
     return replicateOperation(
@@ -413,43 +439,45 @@ auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
     }
     auto logIndex = result.get();
 
-    return self->_guardedData.doUnderLock([self, logIndex, op = std::move(op)](
-                                              auto& data) mutable -> Result {
-      if (data.didResign()) {
-        return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
-      }
-      auto&& applyEntryRes = data.transactionHandler->applyEntry(std::move(op));
-      if (applyEntryRes.fail()) {
-        LOG_CTX("d11f0", FATAL, self->loggerContext)
-            << "CreateShard operation failed on the leader, after being "
-               "replicated to followers: "
-            << applyEntryRes;
-        FATAL_ERROR_EXIT();
-      }
+    return self->_guardedData.doUnderLock(
+        [self, logIndex, op = std::move(op)](auto& data) -> Result {
+          if (data.didResign()) {
+            return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
+          }
+          auto&& applyEntryRes = data.transactionHandler->applyEntry(op);
+          if (self->errorHandler.handleOpResult(op.operation, applyEntryRes)
+                  .fail()) {
+            LOG_CTX("d11f0", FATAL, self->loggerContext)
+                << "CreateShard operation failed on the leader, after being "
+                   "replicated to followers: "
+                << applyEntryRes;
+            FATAL_ERROR_EXIT();
+          }
 
-      if (auto releaseRes = self->release(logIndex); releaseRes.fail()) {
-        LOG_CTX("ed8e5", ERR, self->loggerContext)
-            << "Failed to call release: " << releaseRes;
-      }
-      return {};
-    });
+          if (auto releaseRes = self->release(logIndex); releaseRes.fail()) {
+            LOG_CTX("ed8e5", ERR, self->loggerContext)
+                << "Failed to call release on index " << logIndex << ": "
+                << releaseRes;
+          }
+          return applyEntryRes;
+        });
   });
 }
 
 auto DocumentLeaderState::modifyShard(ShardID shard, CollectionID collectionId,
                                       velocypack::SharedSlice properties)
     -> futures::Future<Result> {
-  // Lock shard
-  auto shardHandler = _guardedData.getLockedGuard()->core->getShardHandler();
   auto origin =
       transaction::OperationOriginREST{"leader collection properties update"};
-  auto trxLock = shardHandler->lockShard(shard, AccessMode::Type::EXCLUSIVE,
-                                         std::move(origin));
+  auto trxLock = _shardHandler->lockShard(shard, AccessMode::Type::EXCLUSIVE,
+                                          std::move(origin));
   if (trxLock.fail()) {
     return trxLock.result();
   }
   LOG_CTX("5a02d", DEBUG, loggerContext)
-      << "Locked shard " << shard << " for collection properties update";
+      << "Locked shard " << shard
+      << " for collection properties update using transaction "
+      << trxLock.get()->tid();
 
   // Replicate and wait for commit
   ReplicatedOperation op = ReplicatedOperation::buildModifyShardOperation(
@@ -501,17 +529,16 @@ auto DocumentLeaderState::modifyShard(ShardID shard, CollectionID collectionId,
 
           if (auto releaseRes = self->release(logIndex); releaseRes.fail()) {
             LOG_CTX("bbe40", ERR, self->loggerContext)
-                << "Failed to call release: " << releaseRes;
+                << "Failed to call release on index " << logIndex << ": "
+                << releaseRes;
           }
           return {};
         });
   });
 }
 
-auto DocumentLeaderState::dropShard(ShardID shard, CollectionID collectionId)
-    -> futures::Future<Result> {
-  ReplicatedOperation op = ReplicatedOperation::buildDropShardOperation(
-      shard, std::move(collectionId));
+auto DocumentLeaderState::dropShard(ShardID shard) -> futures::Future<Result> {
+  ReplicatedOperation op = ReplicatedOperation::buildDropShardOperation(shard);
 
   auto fut = _guardedData.doUnderLock([&](auto& data) {
     if (data.didResign()) {
@@ -531,49 +558,51 @@ auto DocumentLeaderState::dropShard(ShardID shard, CollectionID collectionId)
     }
     auto logIndex = result.get();
 
-    return self->_guardedData.doUnderLock([self, logIndex, op = std::move(op),
-                                           shard = std::move(shard)](
-                                              auto& data) mutable -> Result {
-      if (data.didResign()) {
-        return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
-      }
+    return self->_guardedData.doUnderLock(
+        [self, logIndex, op = std::move(op),
+         shard = std::move(shard)](auto& data) -> Result {
+          if (data.didResign()) {
+            return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
+          }
 
-      // This will release the shard lock. Currently ongoing snapshot transfers
-      // will not suffer from it, they will simply stop receiving batches for
-      // this shard. Later, when they start applying entries, it is going to be
-      // dropped anyway.
-      self->_snapshotHandler.getLockedGuard().get()->giveUpOnShard(shard);
+          // This will release the shard lock. Currently ongoing snapshot
+          // transfers will not suffer from it, they will simply stop receiving
+          // batches for this shard. Later, when they start applying entries, it
+          // is going to be dropped anyway.
+          self->_snapshotHandler.getLockedGuard().get()->giveUpOnShard(shard);
 
-      self->_activeTransactions.doUnderLock([&](auto& activeTransactions) {
-        for (auto const& tid :
-             data.transactionHandler->getTransactionsForShard(shard)) {
-          activeTransactions.markAsInactive(tid);
-        }
-      });
-      auto&& applyEntryRes = data.transactionHandler->applyEntry(std::move(op));
-      if (applyEntryRes.fail()) {
-        LOG_CTX("6865f", FATAL, self->loggerContext)
-            << "DropShard operation failed on the leader, after being "
-               "replicated to followers: "
-            << applyEntryRes;
-        FATAL_ERROR_EXIT();
-      }
+          self->_activeTransactions.doUnderLock([&](auto& activeTransactions) {
+            for (auto const& tid :
+                 data.transactionHandler->getTransactionsForShard(shard)) {
+              activeTransactions.markAsInactive(tid);
+            }
+          });
 
-      if (auto releaseRes = self->release(logIndex); releaseRes.fail()) {
-        LOG_CTX("6856b", ERR, self->loggerContext)
-            << "Failed to call release: " << releaseRes;
-      }
-      return {};
-    });
+          auto&& applyEntryRes = data.transactionHandler->applyEntry(op);
+          if (applyEntryRes.fail()) {
+            LOG_CTX("6865f", FATAL, self->loggerContext)
+                << "DropShard operation failed on the leader, after being "
+                   "replicated to followers: "
+                << applyEntryRes;
+            FATAL_ERROR_EXIT();
+          }
+
+          if (auto releaseRes = self->release(logIndex); releaseRes.fail()) {
+            LOG_CTX("6856b", ERR, self->loggerContext)
+                << "Failed to call release on index " << logIndex << ": "
+                << releaseRes;
+          }
+          return {};
+        });
   });
 }
 
 auto DocumentLeaderState::createIndex(
-    LogicalCollection& col, VPackSlice indexInfo,
+    ShardID shard, VPackSlice indexInfo,
     std::shared_ptr<methods::Indexes::ProgressTracker> progress)
     -> futures::Future<Result> {
   ReplicatedOperation op = ReplicatedOperation::buildCreateIndexOperation(
-      col.name(), std::make_shared<VPackBuilder>(indexInfo),
+      std::move(shard), VPackBuilder{indexInfo}.sharedSlice(),
       std::move(progress));
 
   if (arangodb::basics::VelocyPackHelper::getBooleanValue(indexInfo, "unique",
@@ -612,7 +641,7 @@ auto DocumentLeaderState::createIndex(
                     localIndexCreation = std::move(localIndexCreation)](
                        auto&& result) -> Result {
           if (result.fail()) {
-            if (localIndexCreation.fail()) {
+            if (localIndexCreation.ok()) {
               LOG_CTX("384bf", FATAL, self->loggerContext)
                   << "CreateIndex operation was applied locally, but the "
                      "leader failed to replicate it: "
@@ -625,27 +654,33 @@ auto DocumentLeaderState::createIndex(
           auto logIndex = result.get();
           if (auto releaseRes = self->release(logIndex); releaseRes.fail()) {
             LOG_CTX("3deea", ERR, self->loggerContext)
-                << "Failed to call release: " << releaseRes;
+                << "Failed to call release on index " << logIndex << ": "
+                << releaseRes;
           }
           return {};
         });
   }
 
   // For non-unique indexes, we can first replicate, then apply locally.
-  auto replication = _guardedData.doUnderLock([&](auto& data) {
-    if (data.didResign()) {
-      THROW_ARANGO_EXCEPTION(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
-    }
+  auto replication = _guardedData.doUnderLock(
+      [&](auto& data) -> futures::Future<ResultT<LogIndex>> {
+        if (data.didResign()) {
+          return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+                        "Leader resigned prior to CreateIndex replication"};
+        }
 
-    return replicateOperation(
-        op, ReplicationOptions{.waitForCommit = true, .waitForSync = true});
-  });
+        return replicateOperation(
+            op, ReplicationOptions{.waitForCommit = true, .waitForSync = true});
+      });
 
   return std::move(replication)
       .thenValue([self = shared_from_this(),
                   op = std::move(op)](auto&& result) mutable {
         if (result.fail()) {
+          LOG_CTX("e8c4a", DEBUG, self->loggerContext)
+              << "CreateIndex operation failed to be replicated, will not be "
+                 "applied locally on the leader: "
+              << result.result();
           return result.result();
         }
         auto logIndex = result.get();
@@ -670,33 +705,39 @@ auto DocumentLeaderState::createIndex(
 
           if (auto releaseRes = self->release(logIndex); releaseRes.fail()) {
             LOG_CTX("26355", ERR, self->loggerContext)
-                << "Failed to call release: " << releaseRes;
+                << "Failed to call release on index " << logIndex << ": "
+                << releaseRes;
           }
           return {};
         });
       });
 }
 
-auto DocumentLeaderState::dropIndex(LogicalCollection& col,
+auto DocumentLeaderState::dropIndex(ShardID shard,
                                     velocypack::SharedSlice indexInfo)
     -> futures::Future<Result> {
   ReplicatedOperation op = ReplicatedOperation::buildDropIndexOperation(
-      col.name(), std::move(indexInfo));
+      std::move(shard), std::move(indexInfo));
 
-  auto replication = _guardedData.doUnderLock([&](auto& data) {
-    if (data.didResign()) {
-      THROW_ARANGO_EXCEPTION(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
-    }
+  auto replication = _guardedData.doUnderLock(
+      [&](auto& data) -> futures::Future<ResultT<LogIndex>> {
+        if (data.didResign()) {
+          return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+                        "Leader resigned prior to DropIndex replication"};
+        }
 
-    return replicateOperation(
-        op, ReplicationOptions{.waitForCommit = true, .waitForSync = true});
-  });
+        return replicateOperation(
+            op, ReplicationOptions{.waitForCommit = true, .waitForSync = true});
+      });
 
   return std::move(replication)
       .thenValue([self = shared_from_this(),
                   op = std::move(op)](auto&& result) mutable {
         if (result.fail()) {
+          LOG_CTX("7c8bb", DEBUG, self->loggerContext)
+              << "DropIndex operation failed to be replicated, will not be "
+                 "applied locally on the leader: "
+              << result.result();
           return result.result();
         }
         auto logIndex = result.get();
@@ -720,38 +761,13 @@ auto DocumentLeaderState::dropIndex(LogicalCollection& col,
               if (auto releaseRes = self->release(logIndex);
                   releaseRes.fail()) {
                 LOG_CTX("57877", ERR, self->loggerContext)
-                    << "Failed to call release: " << releaseRes;
+                    << "Failed to call release on index " << logIndex << ": "
+                    << releaseRes;
               }
 
               return {};
             });
       });
-}
-
-template<class ResultType, class GetFunc, class ProcessFunc>
-auto DocumentLeaderState::executeSnapshotOperation(GetFunc getSnapshot,
-                                                   ProcessFunc processSnapshot)
-    -> ResultType {
-  auto snapshotRes = _snapshotHandler.doUnderLock(
-      [&](auto& handler) -> ResultT<std::weak_ptr<Snapshot>> {
-        if (handler == nullptr) {
-          return Result{
-              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
-              fmt::format(
-                  "Could not get snapshot status of {}, state resigned.", gid)};
-        }
-        return getSnapshot(handler);
-      });
-
-  if (snapshotRes.fail()) {
-    return snapshotRes.result();
-  }
-  if (auto snapshot = snapshotRes.get().lock(); snapshot != nullptr) {
-    return processSnapshot(snapshot);
-  }
-
-  return Result(TRI_ERROR_INTERNAL,
-                fmt::format("Snapshot not available for {}!", gid));
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

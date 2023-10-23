@@ -178,12 +178,20 @@ void UpdateCollection::setState(ActionState state) {
 auto UpdateCollection::updateCollectionReplication2(
     ShardID const& shard, CollectionID const& collection,
     velocypack::SharedSlice props,
-    std::shared_ptr<LogicalCollection> coll) const noexcept -> Result {
-  return basics::catchToResult([coll = std::move(coll),
-                                props = std::move(props), &collection,
-                                &shard]() mutable {
-    return coll->getDocumentStateLeader()
-        ->modifyShard(shard, collection, std::move(props))
-        .get();
-  });
+    std::shared_ptr<LogicalCollection> coll) noexcept -> Result {
+  auto res =
+      basics::catchToResult([coll = std::move(coll), props = std::move(props),
+                             &collection, &shard]() mutable {
+        return coll->getDocumentStateLeader()
+            ->modifyShard(shard, collection, std::move(props))
+            .get();
+      });
+
+  if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER) ||
+      res.is(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND)) {
+    // TODO prevent busy loop and wait for log to become ready (CINFRA-831).
+    std::this_thread::sleep_for(std::chrono::milliseconds{50});
+  }
+
+  return res;
 }

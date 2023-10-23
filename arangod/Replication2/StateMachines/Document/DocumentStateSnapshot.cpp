@@ -22,11 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshotInspectors.h"
 
 #include "Assertions/ProdAssert.h"
 #include "Replication2/StateMachines/Document/CollectionReader.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Logger/LogContextKeys.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
 namespace arangodb::replication2::replicated_state::document {
@@ -49,218 +51,342 @@ auto to_string(SnapshotId snapshotId) -> std::string {
   return std::to_string(snapshotId.id());
 }
 
-std::ostream& operator<<(std::ostream& os, SnapshotConfig const& config) {
-  return os << velocypack::serialize(config).toJson();
+std::ostream& operator<<(std::ostream& os, SnapshotBatch const& batch) {
+  return os << velocypack::serialize(batch).toJson();
 }
 
-Snapshot::GuardedData::GuardedData(std::unique_ptr<IDatabaseSnapshot> dbs,
-                                   ShardMap const& shardsConfig)
-    : databaseSnapshot(std::move(dbs)), state{state::Ongoing{}} {
-  for (auto const& [shardId, properties] : shardsConfig) {
-    auto reader = databaseSnapshot->createCollectionReader(shardId);
-    statistics.shards.emplace(
-        shardId, SnapshotStatistics::ShardStatistics{reader->getDocCount()});
-    shards.emplace_back(shardId, std::move(reader));
+SnapshotStatus::SnapshotStatus(SnapshotState const& state,
+                               SnapshotStatistics statistics)
+    : statistics(std::move(statistics)) {
+  this->state =
+      std::visit(overload{
+                     [](state::Started const&) { return kStringStarted; },
+                     [](state::Ongoing const&) { return kStringOngoing; },
+                     [](state::Finished const&) { return kStringFinished; },
+                     [](state::Aborted const&) { return kStringAborted; },
+                 },
+                 state);
+}
+
+Snapshot::GuardedData::GuardedData(
+    std::unique_ptr<IDatabaseSnapshot> databaseSnapshot,
+    std::vector<std::shared_ptr<LogicalCollection>> shards)
+    : databaseSnapshot(std::move(databaseSnapshot)) {
+  for (auto&& shard : shards) {
+    statistics.shards.emplace(shard->name(),
+                              SnapshotStatistics::ShardStatistics{});
+    this->shards.emplace_back(std::move(shard), nullptr);
   }
 }
 
-Snapshot::Snapshot(SnapshotId id, ShardMap shardsConfig,
+Snapshot::Snapshot(SnapshotId id, GlobalLogIdentifier gid,
+                   std::vector<std::shared_ptr<LogicalCollection>> shards,
                    std::unique_ptr<IDatabaseSnapshot> databaseSnapshot)
-    : logContext(LoggerContext(Logger::REPLICATED_STATE)
-                     .with<logContextKeyStateImpl>(DocumentState::NAME)
-                     .with<logContextKeySnapshotId>(id)),
-      _config{id, ShardMap{std::move(shardsConfig)}},
-      _guardedData(std::move(databaseSnapshot), _config.shards) {
-  LOG_CTX("d6c7f", DEBUG, logContext)
-      << "Created snapshot with config " << _config;
+    : _id{id},
+      _gid(std::move(gid)),
+      _state(state::Started{}),
+      _guardedData(std::move(databaseSnapshot), std::move(shards)),
+      loggerContext(LoggerContext(Logger::REPLICATED_STATE)
+                        .with<logContextKeyStateImpl>(DocumentState::NAME)
+                        .with<logContextKeyDatabaseName>(_gid.database)
+                        .with<logContextKeyLogId>(_gid.id)
+                        .with<logContextKeySnapshotId>(getId())) {
+  LOG_CTX("d6c7f", DEBUG, loggerContext) << "Created snapshot with id " << _id;
 }
 
-auto Snapshot::config() -> SnapshotConfig { return _config; }
-
 auto Snapshot::fetch() -> ResultT<SnapshotBatch> {
-  return _guardedData.doUnderLock([&](auto& data) {
-    return std::visit(
-        overload{
-            [&](state::Ongoing& ongoing) -> ResultT<SnapshotBatch> {
-              LOG_CTX("f9226", DEBUG, logContext) << "Reading next batch";
-
-              ongoing.builder.clear();
-              if (data.shards.empty()) {
-                auto batch = SnapshotBatch{.snapshotId = getId(),
-                                           .shardId = std::nullopt,
-                                           .hasMore = false};
-                LOG_CTX("ca1cb", DEBUG, logContext)
-                    << "No more shards to read from. Returning empty batch.";
-                return ResultT<SnapshotBatch>::success(std::move(batch));
-              }
-
-              TRI_IF_FAILURE("DocumentStateSnapshot::infiniteSnapshot") {
-                // Keep the snapshot alive by returning empty batches.
-                VPackBuilder fakePayload;
-                { VPackArrayBuilder{&fakePayload}; }
-
-                auto batch =
-                    SnapshotBatch{.snapshotId = getId(),
-                                  .shardId = data.shards.back().first,
-                                  .hasMore = true,
-                                  .payload = fakePayload.sharedSlice()};
-
-                // Sleep here, so the follower doesn't go into a busy loop.
-                std::this_thread::sleep_for(std::chrono::seconds(1));
-                return ResultT<SnapshotBatch>::success(std::move(batch));
-              }
-
-              auto& shard = data.shards.back();
-              auto& reader = *shard.second;
-              reader.read(ongoing.builder, kBatchSizeLimit);
-              auto readerHasMore = reader.hasMore();
-              auto batch = SnapshotBatch{
-                  .snapshotId = getId(),
-                  .shardId = shard.first,
-                  .hasMore = readerHasMore || data.shards.size() > 1,
-                  .payload = ongoing.builder.sharedSlice()};
-              ++data.statistics.batchesSent;
-              data.statistics.bytesSent += batch.payload.byteSize();
-              data.statistics.shards[shard.first].docsSent +=
-                  batch.payload.length();
-              data.statistics.lastBatchSent = data.statistics.lastUpdated =
-                  std::chrono::system_clock::now();
-
-              LOG_CTX("9d1b4", DEBUG, logContext)
-                  << "Read " << batch.payload.length() << " documents from "
-                  << batch.shardId.value() << " in batch "
-                  << data.statistics.batchesSent << " with "
-                  << batch.payload.byteSize() << " bytes. There is "
-                  << (readerHasMore ? "more" : "no more")
-                  << " data to read from this shard.";
-
-              if (!readerHasMore) {
-                data.shards.pop_back();
-                LOG_CTX("c00b1", DEBUG, logContext)
-                    << "Reading from shard " << batch.shardId.value()
-                    << " completed. " << data.shards.size() << " shards to go."
-                    << (data.shards.empty()
-                            ? ""
-                            : " Next shard is " + data.shards.back().first);
-              }
-              return ResultT<SnapshotBatch>::success(std::move(batch));
-            },
-            [&](state::Finished const&) -> ResultT<SnapshotBatch> {
-              LOG_CTX("fe02b", WARN, logContext)
-                  << "Trying to fetch data from a finished snapshot!";
-              return ResultT<SnapshotBatch>::error(
-                  TRI_ERROR_INTERNAL,
-                  fmt::format("Snapshot {} was finished!", getId()));
-            },
-            [&](state::Aborted const&) -> ResultT<SnapshotBatch> {
-              LOG_CTX("d4253", WARN, logContext)
-                  << "Trying to fetch data from an aborted snapshot!";
-              return ResultT<SnapshotBatch>::error(
-                  TRI_ERROR_INTERNAL,
-                  fmt::format("Snapshot {} was aborted!", getId()));
-            },
-        },
-        data.state);
+  return _state.doUnderLock([&](auto& state) -> ResultT<SnapshotBatch> {
+    return std::visit(overload{//
+                               [&](state::Started& arg) {
+                                 auto res = generateBatch(arg);
+                                 if (res.ok()) {
+                                   state = state::Ongoing{};
+                                 }
+                                 return res;
+                               },
+                               [&](auto& arg) { return generateBatch(arg); }},
+                      state);
   });
 }
 
 auto Snapshot::finish() -> Result {
-  return _guardedData.doUnderLock([&](auto& data) {
+  return _state.doUnderLock([&](auto& state) {
     return std::visit(
         overload{
-            [&](state::Ongoing& ongoing) -> Result {
-              if (!data.shards.empty()) {
-                LOG_CTX("23913", INFO, logContext)
-                    << "Snapshot is being finished, but still has more data!";
+            [&](state::Started&) -> Result {
+              LOG_CTX("75dc8", DEBUG, loggerContext)
+                  << "Snapshot finished, before being used!";
+              return {};
+            },
+            [&](state::Ongoing&) -> Result {
+              auto isEmpty = _guardedData.doUnderLock(
+                  [&](auto& data) { return data.shards.empty(); });
+              if (!isEmpty) {
+                LOG_CTX("23913", WARN, loggerContext)
+                    << "Snapshot is being finished, but still has more "
+                       "data!";
               }
-              data.state = state::Finished{};
-              LOG_CTX("9e190", DEBUG, logContext) << "Snapshot finished!";
+              state = state::Finished{};
+              LOG_CTX("9e190", DEBUG, loggerContext) << "Snapshot finished!";
               return {};
             },
             [&](state::Finished const&) -> Result {
-              LOG_CTX("16d04", WARN, logContext)
+              LOG_CTX("16d04", INFO, loggerContext)
                   << "Trying to finish snapshot, but it appears to be already "
                      "finished!";
               return {};
             },
             [&](state::Aborted const&) -> Result {
-              LOG_CTX("83e35", WARN, logContext)
-                  << "Trying to finish snapshot, but it appears to be aborted!";
-              return Result{TRI_ERROR_INTERNAL,
-                            fmt::format("Snapshot {} was aborted!", getId())};
+              LOG_CTX("83e35", WARN, loggerContext)
+                  << "Trying to finish snapshot, but it appears to be "
+                     "aborted!";
+              return Result{
+                  TRI_ERROR_INTERNAL,
+                  fmt::format("Snapshot {} is already aborted!", getId())};
             },
         },
-        data.state);
+        state);
   });
 }
 
-auto Snapshot::abort() -> Result {
-  return _guardedData.doUnderLock([&](auto& data) {
-    return std::visit(
+void Snapshot::abort() {
+  _state.doUnderLock([&](auto& state) {
+    std::visit(
         overload{
-            [&](state::Ongoing& ongoing) -> Result {
-              if (!data.shards.empty()) {
-                LOG_CTX("5ce86", INFO, logContext)
-                    << "Snapshot is being aborted, but still has more data!";
+            [&](state::Started&) {
+              LOG_CTX("95353", DEBUG, loggerContext)
+                  << "Snapshot aborted, before being used!";
+              state = state::Aborted{};
+            },
+            [&](state::Ongoing&) {
+              auto isEmpty = _guardedData.doUnderLock(
+                  [&](auto& data) { return data.shards.empty(); });
+              if (!isEmpty) {
+                LOG_CTX("5ce86", INFO, loggerContext)
+                    << "Snapshot is being aborted, but still has more "
+                       "data!";
               }
-              data.state = state::Aborted{};
-              LOG_CTX("a862c", DEBUG, logContext) << "Snapshot aborted!";
-              return {};
+              state = state::Aborted{};
+              LOG_CTX("a862c", DEBUG, loggerContext) << "Snapshot aborted!";
             },
-            [&](state::Finished const&) -> Result {
-              LOG_CTX("81ea0", WARN, logContext)
-                  << "Trying to abort snapshot, but it appears to be finished!";
-              return Result{TRI_ERROR_INTERNAL,
-                            fmt::format("Snapshot {} was finished!", getId())};
+            [&](state::Finished const&) {
+              LOG_CTX("81ea0", INFO, loggerContext)
+                  << "Trying to abort snapshot, but it appears to be already "
+                     "finished!";
             },
-            [&](state::Aborted const&) -> Result {
-              LOG_CTX("4daf1", WARN, logContext)
+            [&](state::Aborted const&) {
+              LOG_CTX("4daf1", WARN, loggerContext)
                   << "Trying to abort snapshot, but it appears to be already "
                      "aborted!";
-              return {};
             },
         },
-        data.state);
+        state);
   });
 }
 
 [[nodiscard]] auto Snapshot::status() const -> SnapshotStatus {
-  return _guardedData.doUnderLock([&](auto& data) -> SnapshotStatus {
-    return {data.state, data.statistics};
-  });
+  auto state = _state.doUnderLock([](auto& state) { return state; });
+  auto statistics =
+      _guardedData.doUnderLock([](auto& data) { return data.statistics; });
+  return {state, std::move(statistics)};
 }
 
-auto Snapshot::getId() const -> SnapshotId { return _config.snapshotId; }
+auto Snapshot::getId() const -> SnapshotId { return _id; }
 
 auto Snapshot::giveUpOnShard(ShardID const& shardId) -> Result {
   return _guardedData.doUnderLock([&](auto& data) -> Result {
-    if (auto res = data.databaseSnapshot->resetTransaction(); res.fail()) {
-      LOG_CTX("38d54", WARN, logContext)
-          << "Failed to reset transaction: " << res.errorMessage();
+    if (data.shards.empty()) {
+      return {};
+    }
+
+    if (data.shards.back().first != nullptr &&
+        data.shards.back().first->name() == shardId) {
+      auto res = data.databaseSnapshot->resetTransaction();
+      if (res.fail()) {
+        LOG_CTX("38d54", ERR, loggerContext)
+            << "Failed to reset snapshot transaction, this may prevent shard "
+            << shardId << " from being dropped: " << res;
+      }
+      data.shards.pop_back();
       return res;
     }
 
-    data.shards.erase(std::remove_if(data.shards.begin(), data.shards.end(),
-                                     [&shardId](auto const& shard) {
-                                       return shard.first == shardId;
-                                     }),
-                      data.shards.end());
-
-    for (auto& it : data.shards) {
-      auto reader = data.databaseSnapshot->createCollectionReader(it.first);
-      it.second = std::move(reader);
+    if (auto it = std::find_if(std::begin(data.shards), std::end(data.shards),
+                               [&](auto const& shard) {
+                                 return shard.first != nullptr &&
+                                        shard.first->name() == shardId;
+                               });
+        it != std::end(data.shards)) {
+      // Give up the shared pointer to the logical collection
+      it->first = nullptr;
     }
 
-    LOG_CTX("89271", DEBUG, logContext) << "Gave up on shard: " << shardId;
+    LOG_CTX("89271", DEBUG, loggerContext) << "Gave up on shard: " << shardId;
     return {};
   });
 }
 
 auto Snapshot::isInactive() const -> bool {
-  return _guardedData.doUnderLock([&](auto& data) {
-    return std::holds_alternative<state::Finished>(data.state) ||
-           std::holds_alternative<state::Aborted>(data.state);
+  return _state.doUnderLock([&](auto& state) {
+    return std::holds_alternative<state::Finished>(state) ||
+           std::holds_alternative<state::Aborted>(state);
   });
 }
 
+auto Snapshot::generateBatch(state::Started const&) -> ResultT<SnapshotBatch> {
+  LOG_CTX("4e4d4", DEBUG, loggerContext) << "Reading first batch";
+
+  TRI_IF_FAILURE("DocumentStateSnapshot::infiniteSnapshot") {
+    // Sleep before returning, so the follower doesn't go into a
+    // busy loop.
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    // Keep the snapshot alive by returning empty batches.
+    return SnapshotBatch{.snapshotId = getId(), .hasMore = true};
+  }
+
+  return _guardedData.doUnderLock([&](auto& data) -> ResultT<SnapshotBatch> {
+    if (data.shards.empty()) {
+      return SnapshotBatch{.snapshotId = getId(), .hasMore = false};
+    }
+
+    std::vector<ReplicatedOperation> operations;
+    operations.reserve(data.shards.size());
+
+    for (auto const& [shard, _] : data.shards) {
+      auto properties = VPackBuilder();
+      shard->properties(properties,
+                        LogicalDataSource::Serialization::Inventory);
+      operations.emplace_back(ReplicatedOperation::buildCreateShardOperation(
+          shard->name(), shard->type(), std::move(properties).sharedSlice()));
+    }
+
+    return SnapshotBatch{.snapshotId = getId(),
+                         .hasMore = true,
+                         .operations = std::move(operations)};
+  });
+}
+
+auto Snapshot::generateBatch(state::Ongoing const&) -> ResultT<SnapshotBatch> {
+  LOG_CTX("f9226", DEBUG, loggerContext) << "Reading next batch";
+
+  TRI_IF_FAILURE("DocumentStateSnapshot::infiniteSnapshot") {
+    // Sleep before returning, so the follower doesn't go into a
+    // busy loop.
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    // Keep the snapshot alive by returning empty batches.
+    return SnapshotBatch{.snapshotId = getId(), .hasMore = true};
+  }
+
+  return _guardedData.doUnderLock([&](auto& data) -> ResultT<SnapshotBatch> {
+    while (!data.shards.empty()) {
+      auto& currentShard = data.shards.back();
+      auto& shard = currentShard.first;
+      auto& reader = currentShard.second;
+
+      // The collection might have been dropped in the meantime.
+      if (shard == nullptr || shard->deleted()) {
+        data.shards.pop_back();
+        LOG_CTX("c9fba", DEBUG, loggerContext)
+            << "Skipping dropped shard " << shard->name();
+        continue;
+      }
+
+      if (reader == nullptr) {
+        auto res = basics::catchToResultT([&]() {
+          return data.databaseSnapshot->createCollectionReader(shard);
+        });
+
+        if (res.fail()) {
+          if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+            data.shards.pop_back();
+            LOG_CTX("3862c", DEBUG, loggerContext)
+                << "Skipping dropped shard " << shard->name();
+            continue;
+          }
+
+          LOG_CTX("5532c", ERR, loggerContext)
+              << "Encountered unexpected error while creating collection "
+                 "reader for shard "
+              << shard->name() << ": " << res.result();
+          return res.result();
+        }
+
+        reader = std::move(res.get());
+        data.statistics.shards.emplace(
+            shard->name(),
+            SnapshotStatistics::ShardStatistics{reader->getDocCount()});
+      }
+
+      break;
+    }
+
+    if (data.shards.empty()) {
+      LOG_CTX("ca1cb", DEBUG, loggerContext)
+          << "No more shards to read from. Returning empty "
+             "batch.";
+      return SnapshotBatch{.snapshotId = getId(), .hasMore = false};
+    }
+
+    auto& [shard, reader] = data.shards.back();
+    VPackBuilder builder;
+    reader->read(builder, kBatchSizeLimit);
+    auto payload = std::move(builder).sharedSlice();
+
+    auto readerHasMore = reader->hasMore();
+    if (!readerHasMore) {
+      data.shards.pop_back();
+      LOG_CTX("c00b1", DEBUG, loggerContext)
+          << "Reading from shard " << shard->name() << " completed. "
+          << data.shards.size() << " shards to go."
+          << (data.shards.empty()
+                  ? ""
+                  : " Next shard is " + data.shards.back().first->name());
+    }
+
+    ++data.statistics.batchesSent;
+    data.statistics.bytesSent += payload.byteSize();
+    data.statistics.lastBatchSent = data.statistics.lastUpdated =
+        std::chrono::system_clock::now();
+
+    LOG_CTX("9d1b4", DEBUG, loggerContext)
+        << "Read " << payload.slice().length() << " documents from "
+        << shard->name() << " in batch " << data.statistics.batchesSent
+        << " with " << payload.byteSize() << " bytes. There is "
+        << (readerHasMore ? "" : "no") << " more data to read from this shard.";
+
+    return SnapshotBatch{
+        .snapshotId = getId(),
+        .hasMore = readerHasMore || data.shards.size() > 1,
+        .operations = generateDocumentBatch(shard->name(), std::move(payload))};
+  });
+}
+
+auto Snapshot::generateBatch(state::Finished const&) -> ResultT<SnapshotBatch> {
+  LOG_CTX("fe02b", DEBUG, loggerContext)
+      << "Trying to fetch data from a finished snapshot!";
+  return ResultT<SnapshotBatch>::error(
+      TRI_ERROR_INTERNAL,
+      fmt::format("Snapshot {} is already finished!", getId()));
+}
+
+auto Snapshot::generateBatch(state::Aborted const&) -> ResultT<SnapshotBatch> {
+  LOG_CTX("d4253", DEBUG, loggerContext)
+      << "Trying to fetch data from an aborted snapshot!";
+  return ResultT<SnapshotBatch>::error(
+      TRI_ERROR_INTERNAL,
+      fmt::format("Snapshot {} is already aborted!", getId()));
+}
+
+auto Snapshot::generateDocumentBatch(ShardID shardId,
+                                     velocypack::SharedSlice slice)
+    -> std::vector<ReplicatedOperation> {
+  std::vector<ReplicatedOperation> batch;
+  batch.reserve(2);
+  auto tid = TransactionId::createFollower();
+  batch.emplace_back(ReplicatedOperation::buildDocumentOperation(
+      TRI_VOC_DOCUMENT_OPERATION_INSERT, tid, std::move(shardId),
+      std::move(slice)));
+  batch.emplace_back(ReplicatedOperation::buildCommitOperation(tid));
+  return batch;
+}
 }  // namespace arangodb::replication2::replicated_state::document
