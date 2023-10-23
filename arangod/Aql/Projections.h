@@ -27,6 +27,8 @@
 #include "Containers/FlatHashSet.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 
+#include <function2.hpp>
+
 #include <cstdint>
 #include <limits>
 #include <memory>
@@ -93,6 +95,9 @@ class Projections {
   /// @brief reset all projections
   void clear() noexcept;
 
+  /// @brief erase projection at index
+  void erase(size_t index);
+
   /// @brief set covering index context for these projections
   void setCoveringContext(DataSourceId const& id,
                           std::shared_ptr<Index> const& index);
@@ -125,6 +130,14 @@ class Projections {
 
   /// @brief get projection at position
   Projection& operator[](size_t index);
+
+  /// @brief extract projections from a full document, calling a callback for
+  /// each projection value
+  void produceWithCallback(
+      velocypack::Builder& b, velocypack::Slice slice,
+      transaction::Methods const* trxPtr,
+      fu2::unique_function<void(Variable const*, velocypack::Slice)
+                               const> const& cb) const;
 
   /// @brief extract projections from a full document
   void toVelocyPackFromDocument(velocypack::Builder& b, velocypack::Slice slice,

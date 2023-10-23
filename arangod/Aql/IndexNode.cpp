@@ -476,7 +476,9 @@ void IndexNode::replaceAttributeAccess(ExecutionNode const* self,
                                        Variable const* searchVariable,
                                        std::span<std::string_view> attribute,
                                        Variable const* replaceVariable) {
-  if (_condition) {
+  DocumentProducingNode::replaceAttributeAccess(self, searchVariable, attribute,
+                                                replaceVariable);
+  if (_condition && self != this) {
     _condition->replaceAttributeAccess(searchVariable, attribute,
                                        replaceVariable);
   }
@@ -573,7 +575,7 @@ void IndexNode::needsGatherNodeSort(bool value) {
 
 std::vector<Variable const*> IndexNode::getVariablesSetHere() const {
   if (!isLateMaterialized()) {
-    return std::vector<Variable const*>{_outVariable};
+    return DocumentProducingNode::getVariablesSetHere();
   }
 
   std::vector<arangodb::aql::Variable const*> vars;
@@ -635,23 +637,21 @@ bool IndexNode::recalculateProjections(ExecutionPlan* plan) {
 
   bool wasUpdated = DocumentProducingNode::recalculateProjections(plan);
 
-  if (hasFilter()) {
-    if (idx->covers(_filterProjections)) {
-      bool containsId = false;
-      for (auto const& p : _filterProjections.projections()) {
-        if (p.path.type() == AttributeNamePath::Type::IdAttribute) {
-          containsId = true;
-          break;
-        }
+  if (hasFilter() && idx->covers(_filterProjections)) {
+    bool containsId = false;
+    for (auto const& p : _filterProjections.projections()) {
+      if (p.path.type() == AttributeNamePath::Type::IdAttribute) {
+        containsId = true;
+        break;
       }
+    }
 
-      if (!containsId) {
-        _filterProjections.setCoveringContext(collection()->id(), idx);
-      }
+    if (!containsId) {
+      _filterProjections.setCoveringContext(collection()->id(), idx);
     }
   }
 
-  const bool filterCoveredByIndex =
+  bool filterCoveredByIndex =
       !hasFilter() || _filterProjections.usesCoveringIndex();
 
   if (filterCoveredByIndex && idx->covers(_projections)) {

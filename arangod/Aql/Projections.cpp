@@ -68,6 +68,16 @@ void Projections::clear() noexcept {
   _index.reset();
 }
 
+/// @brief erase projection at index
+void Projections::erase(size_t index) {
+  TRI_ASSERT(index < size());
+  uint16_t levelsToClose = _projections[index].levelsToClose;
+  _projections.erase(_projections.begin() + index);
+  if (index < size()) {
+    _projections[index].levelsToClose += levelsToClose;
+  }
+}
+
 /// @brief set the index context for projections using an index
 void Projections::setCoveringContext(DataSourceId const& id,
                                      std::shared_ptr<Index> const& index) {
@@ -101,6 +111,95 @@ uint16_t Projections::coveringIndexPosition(
                                  "unable to determine covering index position");
 }
 
+void Projections::produceWithCallback(
+    velocypack::Builder& b, velocypack::Slice slice,
+    transaction::Methods const* trxPtr,
+    fu2::unique_function<void(Variable const*, velocypack::Slice) const> const&
+        cb) const {
+  TRI_ASSERT(slice.isObject());
+
+  size_t levelsOpen = 0;
+
+  for (auto const& it : _projections) {
+    TRI_ASSERT(it.variable != nullptr);
+
+    if (it.type == AttributeNamePath::Type::IdAttribute) {
+      // projection for "_id"
+      TRI_ASSERT(levelsOpen == 0);
+      TRI_ASSERT(it.path.size() == 1);
+
+      b.clear();
+      b.add(VPackValue(transaction::helpers::extractIdString(trxPtr->resolver(),
+                                                             slice, slice)));
+      cb(it.variable, b.slice());
+    } else if (it.type == AttributeNamePath::Type::KeyAttribute) {
+      // projection for "_key"
+      TRI_ASSERT(levelsOpen == 0);
+      TRI_ASSERT(it.path.size() == 1);
+      b.clear();
+      cb(it.variable, transaction::helpers::extractKeyFromDocument(slice));
+    } else if (it.type == AttributeNamePath::Type::FromAttribute) {
+      // projection for "_from"
+      TRI_ASSERT(levelsOpen == 0);
+      TRI_ASSERT(it.path.size() == 1);
+      cb(it.variable, transaction::helpers::extractFromFromDocument(slice));
+    } else if (it.type == AttributeNamePath::Type::ToAttribute) {
+      // projection for "_to"
+      TRI_ASSERT(levelsOpen == 0);
+      TRI_ASSERT(it.path.size() == 1);
+      cb(it.variable, transaction::helpers::extractToFromDocument(slice));
+    } else if (it.type == AttributeNamePath::Type::SingleAttribute) {
+      // projection for any other top-level attribute
+      TRI_ASSERT(levelsOpen == 0);
+      TRI_ASSERT(it.path.size() == 1);
+      cb(it.variable, slice.get(it.path.get().at(0)));
+    } else {
+      // projection for a sub-attribute, e.g. a.b.c
+      // this is a lot more complex, because we may need to open and close
+      // multiple sub-objects, e.g. a projection on the sub-attribute a.b.c
+      // needs to build
+      //   { a: { b: { c: valueOfC } } }
+      TRI_ASSERT(levelsOpen <= it.startsAtLevel);
+      TRI_ASSERT(it.type == AttributeNamePath::Type::MultiAttribute);
+      TRI_ASSERT(it.path.size() > 1);
+
+      VPackSlice found = slice;
+      VPackSlice prev = found;
+      size_t level = 0;
+      while (level < it.path.size()) {
+        found = found.get(it.path[level]);
+        if (found.isNone() || level == it.path.size() - 1 ||
+            !found.isObject()) {
+          break;
+        }
+        if (level >= levelsOpen) {
+          ++levelsOpen;
+        }
+        ++level;
+        prev = found;
+      }
+      if (level >= it.startsAtLevel) {
+        if (found.isCustom()) {
+          b.clear();
+          b.add(VPackValue(transaction::helpers::extractIdString(
+              trxPtr->resolver(), found, prev)));
+          cb(it.variable, b.slice());
+        } else {
+          cb(it.variable, found);
+        }
+      }
+
+      TRI_ASSERT(it.path.size() > it.levelsToClose);
+      size_t closeUntil = it.path.size() - it.levelsToClose;
+      while (levelsOpen >= closeUntil) {
+        --levelsOpen;
+      }
+    }
+  }
+
+  TRI_ASSERT(levelsOpen == 0);
+}
+
 void Projections::toVelocyPackFromDocument(
     velocypack::Builder& b, velocypack::Slice slice,
     transaction::Methods const* trxPtr) const {
@@ -110,7 +209,7 @@ void Projections::toVelocyPackFromDocument(
   size_t levelsOpen = 0;
 
   // the single-attribute projections are easy. we dispatch here based on the
-  // attribute type there are a few optimized functions for retrieving _key,
+  // attribute type. there are a few optimized functions for retrieving _key,
   // _id, _from and _to.
   for (auto const& it : _projections) {
     if (it.type == AttributeNamePath::Type::IdAttribute) {

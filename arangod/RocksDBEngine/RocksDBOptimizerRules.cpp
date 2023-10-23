@@ -45,8 +45,6 @@
 #include "Indexes/Index.h"
 #include "VocBase/LogicalCollection.h"
 
-#include <span>
-
 using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
@@ -56,37 +54,6 @@ namespace {
 std::initializer_list<ExecutionNode::NodeType> const
     reduceExtractionToProjectionTypes = {ExecutionNode::ENUMERATE_COLLECTION,
                                          ExecutionNode::INDEX};
-
-class AttributeAccessReplacer final
-    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
- public:
-  AttributeAccessReplacer(ExecutionNode const* self,
-                          Variable const* searchVariable,
-                          std::span<std::string_view> attribute,
-                          Variable const* replaceVariable)
-      : _self(self),
-        _searchVariable(searchVariable),
-        _attribute(attribute),
-        _replaceVariable(replaceVariable) {
-    TRI_ASSERT(_searchVariable != nullptr);
-    TRI_ASSERT(!_attribute.empty());
-    TRI_ASSERT(_replaceVariable != nullptr);
-  }
-
-  bool before(ExecutionNode* en) override final {
-    en->replaceAttributeAccess(_self, _searchVariable, _attribute,
-                               _replaceVariable);
-
-    // always continue
-    return false;
-  }
-
- private:
-  ExecutionNode const* _self;
-  Variable const* _searchVariable;
-  std::span<std::string_view> _attribute;
-  Variable const* _replaceVariable;
-};
 
 }  // namespace
 
@@ -275,24 +242,6 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
       } else {
         // store projections in DocumentProducingNode
         e->setProjections(std::move(projections));
-#if 0
-        auto& p = e->projections();
-        std::vector<std::string_view> path;
-        for (size_t i = 0; i < p.size(); ++i) {
-          TRI_ASSERT(p[i].variable == nullptr);
-          p[i].variable =
-              plan->getAst()->variables()->createTemporaryVariable();
-
-          path.clear();
-          for (auto const& it : p[i].path.get()) {
-            path.emplace_back(it);
-          }
-
-          AttributeAccessReplacer replacer(n, e->outVariable(), std::span(path),
-                                           p[i].variable);
-          plan->root()->walk(replacer);
-        }
-#endif
       }
 
       modified = true;

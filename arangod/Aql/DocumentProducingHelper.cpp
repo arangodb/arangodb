@@ -37,6 +37,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 
+#include <function2.hpp>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
@@ -44,29 +45,6 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
-namespace {
-
-template<typename Func>
-struct MultiFunc2MultiFunc {
-  bool operator()(LocalDocumentId token, velocypack::Slice doc) const {
-    return func(token, doc, doc);
-  }
-  bool operator()(LocalDocumentId token,
-                  std::unique_ptr<std::string>& doc) const {
-    TRI_ASSERT(doc);
-    VPackSlice slice{reinterpret_cast<uint8_t const*>(doc->data())};
-    return func(token, &doc, slice);
-  }
-
-  Func func;
-};
-
-template<typename Func>
-IndexIterator::DocumentCallback makeDocumentCallback(Func&& func) {
-  return {MultiFunc2MultiFunc<std::decay_t<Func>>{std::forward<Func>(func)}};
-}
-
-}  // namespace
 
 template<bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::getCallback(
@@ -96,43 +74,31 @@ IndexIterator::DocumentCallback aql::getCallback(
     OutputAqlItemRow& output = context.getOutputRow();
     TRI_ASSERT(!output.isFull());
 
-#if 0
-    auto const& p = context.getProjections();
-    for (size_t i = 0; i < p.size(); ++i) {
-      RegisterId registerId = context.registerForVariable(p[i].variable->id);
-      TRI_ASSERT(registerId != RegisterId::maxRegisterId);
-      VPackSlice s = slice.get(p[i].path.get());
-      if (p[i].type == AttributeNamePath::Type::IdAttribute) {
-        // _id attribute
-        TRI_ASSERT(s.isCustom());
-        auto v = AqlValue(transaction::helpers::extractIdString(
-            context.getTrxPtr()->resolver(), s, slice));
-        AqlValueGuard guard{v, true};
-        output.moveValueInto(registerId, input, &guard);
-      } else {
-        TRI_ASSERT(!s.isCustom());
-        if (s.isNone()) {
-          s = VPackSlice::nullSlice();
-        }
-        output.moveValueInto(registerId, input, s);
-      }
+    if (context.getProjectionsForRegisters().empty()) {
+      // recycle our Builder object
+      VPackBuilder& objectBuilder = context.getBuilder();
+      objectBuilder.clear();
+      objectBuilder.openObject(true);
+      context.getProjections().toVelocyPackFromDocument(objectBuilder, slice,
+                                                        context.getTrxPtr());
+      objectBuilder.close();
+
+      VPackSlice s = objectBuilder.slice();
+      RegisterId registerId = context.getOutputRegister();
+      output.moveValueInto(registerId, input, s);
     } else {
-#endif
-    // recycle our Builder object
-    VPackBuilder& objectBuilder = context.getBuilder();
-    objectBuilder.clear();
-    objectBuilder.openObject(true);
-    context.getProjections().toVelocyPackFromDocument(objectBuilder, slice,
-                                                      context.getTrxPtr());
-    objectBuilder.close();
-
-    RegisterId registerId = context.getOutputRegister();
-
-    VPackSlice s = objectBuilder.slice();
-    output.moveValueInto(registerId, input, s);
-#if 0
+      context.getProjectionsForRegisters().produceWithCallback(
+          context.getBuilder(), slice, context.getTrxPtr(),
+          [&](Variable const* variable, velocypack::Slice slice) {
+            if (slice.isNone()) {
+              slice = VPackSlice::nullSlice();
+            }
+            RegisterId registerId = context.registerForVariable(variable->id);
+            TRI_ASSERT(registerId != RegisterId::maxRegisterId);
+            output.moveValueInto(registerId, input, slice);
+          });
     }
-#endif
+
     TRI_ASSERT(output.produced());
     output.advanceRow();
 
@@ -193,11 +159,12 @@ IndexIterator::DocumentCallback aql::buildDocumentCallback(
     }
   }
 
-  if (!context.getProjections().empty()) {
+  auto const& p = context.getProjections();
+  if (!p.empty()) {
     // return a projection
     TRI_ASSERT(!context.getProjections().usesCoveringIndex() ||
                !context.getAllowCoveringIndexOptimization());
-    // projections from a "real" document
+
     return getCallback<checkUniqueness, skip>(
         DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex{},
         context);
@@ -246,6 +213,7 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _filter(infos.getFilter()),
       _projections(infos.getProjections()),
       _filterProjections(infos.getFilterProjections()),
+      _projectionsForRegisters(_projections),  // do a full copy first
       _resourceMonitor(infos.getResourceMonitor()),
       _numScanned(0),
       _numFiltered(0),
@@ -256,6 +224,15 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _produceResult(infos.getProduceResult()),
       _allowCoveringIndexOptimization(false),
       _isLastIndex(false) {
+  // now erase all projections for which there is no output register
+  for (size_t i = 0; i < _projectionsForRegisters.size(); /**/) {
+    if (_projectionsForRegisters[i].variable == nullptr) {
+      _projectionsForRegisters.erase(i);
+    } else {
+      ++i;
+    }
+  }
+
   // build ExpressionContext for filtering if we need one
   if (hasFilter()) {
     TRI_ASSERT(_outputVariable != nullptr);
@@ -268,11 +245,24 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
           _trx, _query, _aqlFunctionsInternalCache,
           infos.getFilterVarsToRegister(), _inputRow, _outputVariable);
     } else {
-      // filter condition refers to addition variables.
+      // filter condition refers to additional variables.
       // we have to use a more generic expression context
       _expressionContext = std::make_unique<GenericDocumentExpressionContext>(
           _trx, _query, _aqlFunctionsInternalCache,
           infos.getFilterVarsToRegister(), _inputRow, _outputVariable);
+    }
+  }
+
+  if (_expressionContext == nullptr) {
+    // we also need an ExpressionContext in case we write projections into
+    // output registers
+    for (size_t i = 0; i < _projections.size(); ++i) {
+      if (_projections[i].variable != nullptr) {
+        _expressionContext = std::make_unique<SimpleDocumentExpressionContext>(
+            _trx, _query, _aqlFunctionsInternalCache,
+            infos.getFilterVarsToRegister(), _inputRow, _outputVariable);
+        break;
+      }
     }
   }
 }
@@ -363,6 +353,11 @@ aql::Projections const& DocumentProducingFunctionContext::getFilterProjections()
   return _filterProjections;
 }
 
+aql::Projections const&
+DocumentProducingFunctionContext::getProjectionsForRegisters() const noexcept {
+  return _projectionsForRegisters;
+}
+
 transaction::Methods* DocumentProducingFunctionContext::getTrxPtr()
     const noexcept {
   return &_trx;
@@ -379,6 +374,7 @@ velocypack::Builder& DocumentProducingFunctionContext::getBuilder() noexcept {
 
 RegisterId DocumentProducingFunctionContext::registerForVariable(
     VariableId id) const noexcept {
+  TRI_ASSERT(_expressionContext != nullptr);
   return _expressionContext->registerForVariable(id);
 }
 

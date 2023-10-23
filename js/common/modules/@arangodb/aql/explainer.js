@@ -1196,15 +1196,7 @@ function processQuery(query, explain, planIndex) {
         } else if (typeof p === 'string') {
           return '`' + p + '`';
         } else if (p.hasOwnProperty('path')) {
-          let path = '`' + p.path.join('`.`') + '`';
-          if (p.hasOwnProperty('variable')) {
-            if (/^[0-9_]/.test(p.variable.name)) {
-              path += ': #' + p.variable.name;
-            } else {
-              path += ': ' + p.variable.name;
-            }
-          }
-          return path;
+          return '`' + p.path.join('`.`') + '`';
         }
       });
       return ' (' + label + ': ' + fields.join(', ') + ')';
@@ -1379,6 +1371,18 @@ function processQuery(query, explain, planIndex) {
         if (node.filter) {
           filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
         }
+        if (node.projections) {
+          // produce LET nodes for each projection output register
+          let parts = [];
+          node.projections.forEach((p) => {
+            if (p.hasOwnProperty('variable')) {
+              parts.push(variableName(p.variable) + ' = ' + variableName(node.outVariable) + '.' + p.path.map((p) => attribute(p)).join('.'));
+            }
+          });
+          if (parts.length) {
+            filter = '   ' + keyword('LET') + ' ' + parts.join(', ') + filter;
+          }
+        }
         const enumAnnotation = annotation('/* full collection scan' + (node.random ? ', random order' : '') + projections(node, 'projections', 'projections') + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + (node.count ? ', with count optimization' : '') + `${restriction(node)} ${node.readOwnWrites ? '; read own writes' : ''} */`);
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + enumAnnotation + filter;
       case 'EnumerateListNode':
@@ -1468,6 +1472,18 @@ function processQuery(query, explain, planIndex) {
         collectionVariables[node.outVariable.id] = node.collection;
         if (node.filter) {
           filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
+        }
+        if (node.projections) {
+          // produce LET nodes for each projection output register
+          let parts = [];
+          node.projections.forEach((p) => {
+            if (p.hasOwnProperty('variable')) {
+              parts.push(variableName(p.variable) + ' = ' + variableName(node.outVariable) + '.' + p.path.map((p) => attribute(p)).join('.'));
+            }
+          });
+          if (parts.length) {
+            filter = '   ' + keyword('LET') + ' ' + parts.join(', ') + filter;
+          }
         }
         let indexAnnotation = '';
         let indexVariables = '';

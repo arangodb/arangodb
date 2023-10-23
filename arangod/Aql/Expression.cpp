@@ -200,7 +200,7 @@ void Expression::freeInternals() noexcept {
 /// @brief reset internal attributes after variables in the expression were
 /// changed
 void Expression::invalidateAfterReplacements() {
-  if (_type == ATTRIBUTE_ACCESS || _type == SIMPLE) {
+  if (_type == ATTRIBUTE_ACCESS || _type == SIMPLE || _type == JSON) {
     freeInternals();
     _node->clearFlagsRecursive();  // recursively delete the node's flags
   }

@@ -107,6 +107,15 @@ void DocumentProducingNode::replaceVariables(
   }
 }
 
+void DocumentProducingNode::replaceAttributeAccess(
+    ExecutionNode const* self, Variable const* searchVariable,
+    std::span<std::string_view> attribute, Variable const* replaceVariable) {
+  if (hasFilter() && self != dynamic_cast<ExecutionNode const*>(this)) {
+    filter()->replaceAttributeAccess(searchVariable, attribute,
+                                     replaceVariable);
+  }
+}
+
 void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
                                          unsigned flags) const {
   builder.add(VPackValue("outVariable"));
@@ -141,6 +150,26 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
 
 Variable const* DocumentProducingNode::outVariable() const {
   return _outVariable;
+}
+
+std::vector<Variable const*> DocumentProducingNode::getVariablesSetHere()
+    const {
+  std::vector<Variable const*> result;
+  if (_projections.empty()) {
+    // no projections. simply produce outvariable
+    result.push_back(_outVariable);
+  } else {
+    // projections. add one output register per projection
+    result.reserve(_projections.size() + 1);
+    result.push_back(_outVariable);
+    for (size_t i = 0; i < _projections.size(); ++i) {
+      // output registers are not necessarily set yet
+      if (_projections[i].variable != nullptr) {
+        result.push_back(_projections[i].variable);
+      }
+    }
+  }
+  return result;
 }
 
 /// @brief remember the condition to execute for early filtering

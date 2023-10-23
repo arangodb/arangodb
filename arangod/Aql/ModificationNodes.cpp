@@ -273,6 +273,16 @@ void InsertNode::replaceVariables(
   _inVariable = Variable::replace(_inVariable, replacements);
 }
 
+void InsertNode::replaceAttributeAccess(ExecutionNode const* self,
+                                        Variable const* searchVariable,
+                                        std::span<std::string_view> attribute,
+                                        Variable const* replaceVariable) {
+  if (_inVariable != nullptr && searchVariable == _inVariable &&
+      attribute.size() == 1 && attribute[0] == StaticStrings::KeyString) {
+    _inVariable = replaceVariable;
+  }
+}
+
 size_t InsertNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -315,6 +325,20 @@ void UpdateReplaceNode::replaceVariables(
   if (_inKeyVariable != nullptr) {
     _inKeyVariable = Variable::replace(_inKeyVariable, replacements);
   }
+}
+
+void UpdateReplaceNode::replaceAttributeAccess(
+    ExecutionNode const* self, Variable const* searchVariable,
+    std::span<std::string_view> attribute, Variable const* replaceVariable) {
+  auto replace = [&](Variable const*& variable) {
+    if (variable != nullptr && searchVariable == variable &&
+        attribute.size() == 1 && attribute[0] == StaticStrings::KeyString) {
+      variable = replaceVariable;
+    }
+  };
+
+  replace(_inKeyVariable);
+  replace(_inDocVariable);
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -364,6 +388,16 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
 void RemoveNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
   _inVariable = Variable::replace(_inVariable, replacements);
+}
+
+void RemoveNode::replaceAttributeAccess(ExecutionNode const* self,
+                                        Variable const* searchVariable,
+                                        std::span<std::string_view> attribute,
+                                        Variable const* replaceVariable) {
+  if (_inVariable != nullptr && searchVariable == _inVariable &&
+      attribute.size() == 1 && attribute[0] == StaticStrings::KeyString) {
+    _inVariable = replaceVariable;
+  }
 }
 
 size_t RemoveNode::getMemoryUsedBytes() const { return sizeof(*this); }
@@ -597,6 +631,22 @@ void UpsertNode::replaceVariables(
   if (_updateVariable != nullptr) {
     _updateVariable = Variable::replace(_updateVariable, replacements);
   }
+}
+
+void UpsertNode::replaceAttributeAccess(ExecutionNode const* self,
+                                        Variable const* searchVariable,
+                                        std::span<std::string_view> attribute,
+                                        Variable const* replaceVariable) {
+  auto replace = [&](Variable const*& variable) {
+    if (variable != nullptr && searchVariable == variable &&
+        attribute.size() == 1 && attribute[0] == StaticStrings::KeyString) {
+      variable = replaceVariable;
+    }
+  };
+
+  replace(_inDocVariable);
+  replace(_insertVariable);
+  replace(_updateVariable);
 }
 
 size_t UpsertNode::getMemoryUsedBytes() const { return sizeof(*this); }

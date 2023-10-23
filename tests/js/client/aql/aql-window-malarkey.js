@@ -48,7 +48,7 @@ function checkQueryError(query, message, errorCode) {
 }
 
 function checkQueryExplainOutput(query, part) {
-  const output = explainer.explain(query, {colors: false}, false);
+  const output = explainer.explain(query, {optimizer: {rules: ["-optimize-projections"]}, colors: false}, false);
   assertTrue(output.includes(part),
     "query explain output did not contain expected part \"" + part + "\". Output:\n" + output);
 }
@@ -225,7 +225,7 @@ function WindowTestSuite() {
         FILTER t.val > 5 AND t.val < 20
         RETURN { time: t.time, val: t.val, observations, observations2 }
       `;
-      const nodes = db._createStatement(query).explain().plan.nodes;
+      const nodes = db._createStatement({query, options: {optimizer: {rules: ["-optimize-projections"]}}}).explain().plan.nodes;
       if (isCluster) {
         assertEqual(nodes[8].type, "WindowNode");
         assertEqual(nodes[9].type, "FilterNode");

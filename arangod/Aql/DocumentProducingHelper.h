@@ -90,6 +90,8 @@ struct DocumentProducingFunctionContext {
 
   aql::Projections const& getFilterProjections() const noexcept;
 
+  aql::Projections const& getProjectionsForRegisters() const noexcept;
+
   transaction::Methods* getTrxPtr() const noexcept;
 
   PhysicalCollection& getPhysical() const noexcept;
@@ -149,6 +151,7 @@ struct DocumentProducingFunctionContext {
   Expression* _filter;
   aql::Projections const& _projections;
   aql::Projections const& _filterProjections;
+  aql::Projections _projectionsForRegisters;
   ResourceMonitor& _resourceMonitor;
 
   uint64_t _numScanned;
