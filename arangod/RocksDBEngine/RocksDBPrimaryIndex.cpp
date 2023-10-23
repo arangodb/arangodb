@@ -1450,9 +1450,16 @@ bool RocksDBPrimaryIndex::checkSupportsStreamInterface(
        coveredFields[1][0].name == StaticStrings::IdString) ||
       (coveredFields[0][0].name == StaticStrings::IdString &&  // Cluster
        coveredFields[1][0].name == StaticStrings::KeyString));
+
+  // TODO: Identify why this is different in different environments
+  // meaning: the difference between numeric values 0 and 1 in the
+  // SingleServer settings vs. Cluster setting.
+
   for (auto idx : streamOpts.projectedFields) {
-    if (idx != 0) {
-      return false;
+    if (idx == 0 && ServerState::instance()->isSingleServer()) {
+      return true;
+    } else if (idx == 1 && ServerState::instance()->isCoordinator()) {
+      return true;
     }
   }
 
