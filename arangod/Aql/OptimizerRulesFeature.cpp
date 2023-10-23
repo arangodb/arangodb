@@ -814,18 +814,13 @@ in case the indexes qualify for it.)");
 
   // allow nodes to asynchronously prefetch the next batch while processing the
   // current batch. this effectively allows parts of the query to run in
-  // parallel, but as some internal details are currently not guaranteed to be
-  // thread safe (e.g., TransactionState), this is currently disabled, and
-  // should only be activated for experimental usage at one's own risk.
+  // parallel. this is only supported by certain types of nodes and queries.
   registerRule("async-prefetch", asyncPrefetchRule,
                OptimizerRule::asyncPrefetch,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::DisabledByDefault,
-                                        OptimizerRule::Flags::Hidden),
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
                R"(Allow query execution nodes to asynchronously prefetch the
 next batch while processing the current batch, allowing parts of the query to
-run in parallel. This is an experimental option as not all operations are
-thread-safe.)");
+run in parallel. This is only possible for certain operations in a query.)");
 
   // finally sort all rules by their level
   std::sort(_rules.begin(), _rules.end(),

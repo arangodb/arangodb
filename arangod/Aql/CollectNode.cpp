@@ -753,6 +753,10 @@ CostEstimate CollectNode::estimateCost() const {
   return estimate;
 }
 
+AsyncPrefetchEligibility CollectNode::canUseAsyncPrefetching() const noexcept {
+  return AsyncPrefetchEligibility::kEnableForNode;
+}
+
 ExecutionNode::NodeType CollectNode::getType() const { return COLLECT; }
 
 size_t CollectNode::getMemoryUsedBytes() const { return sizeof(*this); }

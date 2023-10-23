@@ -179,12 +179,6 @@ class ExecutionPlan {
             _excludeFromScatterGather.end());
   }
 
-  void enableAsyncPrefetching() noexcept { _isAsyncPrefetchEnabled = true; }
-
-  bool isAsyncPrefetchEnabled() const noexcept {
-    return _isAsyncPrefetchEnabled;
-  }
-
   /// @brief get the node where variable with id <id> is introduced . . .
   ExecutionNode* getVarSetBy(VariableId id) const {
     auto it = _varSetBy.find(id);
@@ -430,10 +424,6 @@ class ExecutionPlan {
 
   /// @brief flag to indicate whether the variable usage is computed
   bool _varUsageComputed;
-
-  /// @brief flag to indicate whether the postprocessing step to enable async
-  /// prefetching on the node level should be executed.
-  bool _isAsyncPrefetchEnabled{false};
 
   // Flag there are collection nodes with forceIndexHint:true
   bool _hasForcedIndexHints{false};

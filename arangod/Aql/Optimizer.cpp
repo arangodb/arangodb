@@ -423,9 +423,6 @@ void Optimizer::finalizePlans() {
   for (auto& plan : _plans.list) {
     insertDistributeInputCalculation(*plan.first);
     activateCallstackSplit(*plan.first);
-    if (plan.first->isAsyncPrefetchEnabled()) {
-      enableAsyncPrefetching(*plan.first);
-    }
 
     plan.first->findVarUsage();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
