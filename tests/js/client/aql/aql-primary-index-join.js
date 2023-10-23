@@ -185,8 +185,20 @@ const IndexPrimaryJoinTestSuite = function () {
       assertEqual(result.length, documentsB.length);
       assertEqual(result.length, 5);
 
+      // Note: There is no guarantee that the sort order of inserted documents (documentsB) matches with the result
+      // to compare (even if there is a high chance that it does). Therefore, we'll sort both containers (result and
+      // inserted documents) to be able to check if the result set matches our expectation.
+      result.sort((a, b) => parseInt(a) - parseInt(b));
+      documentsB.sort((a, b) => parseInt(a._key) - parseInt(b._key));
+
       for (let counter = 0; counter < result.length; counter++) {
-        assertEqual(result[counter], documentsB[counter]._key);
+        assertEqual(
+          result[counter],
+          documentsB[counter]._key, "Failed at index " + counter +
+          ", Left: " + JSON.stringify(result[counter], null, 2) +
+          ", Right: " + JSON.stringify(documentsB[counter], null, 2) +
+          ", Result: " + JSON.stringify(result, null, 2)  +
+          ", Documents: " + JSON.stringify(documentsB, null, 2));
       }
     },
     // TODO: Add additional FILTER for doc2._key (e.g. calculation compare last character)
