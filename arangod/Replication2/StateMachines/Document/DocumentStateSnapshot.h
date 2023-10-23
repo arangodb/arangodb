@@ -146,9 +146,6 @@ struct SnapshotStatistics {
  * This namespace encloses the different states a snapshot can be in.
  */
 namespace state {
-// Freshly started snapshot, no batches have been sent yet.
-struct Started {};
-
 // Actively ongoing snapshot, although it may have had run out of documents.
 struct Ongoing {};
 
@@ -159,8 +156,8 @@ struct Aborted {};
 struct Finished {};
 }  // namespace state
 
-using SnapshotState = std::variant<state::Started, state::Ongoing,
-                                   state::Aborted, state::Finished>;
+using SnapshotState =
+    std::variant<state::Ongoing, state::Aborted, state::Finished>;
 
 struct SnapshotStatus {
   SnapshotStatus(SnapshotState const& state, SnapshotStatistics statistics);
@@ -211,7 +208,6 @@ class Snapshot {
                                     velocypack::SharedSlice slice)
       -> std::vector<ReplicatedOperation>;
 
-  auto generateBatch(state::Started const&) -> ResultT<SnapshotBatch>;
   auto generateBatch(state::Ongoing const&) -> ResultT<SnapshotBatch>;
   auto generateBatch(state::Finished const&) -> ResultT<SnapshotBatch>;
   auto generateBatch(state::Aborted const&) -> ResultT<SnapshotBatch>;

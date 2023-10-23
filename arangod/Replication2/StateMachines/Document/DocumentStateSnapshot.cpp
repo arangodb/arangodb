@@ -60,7 +60,6 @@ SnapshotStatus::SnapshotStatus(SnapshotState const& state,
     : statistics(std::move(statistics)) {
   this->state =
       std::visit(overload{
-                     [](state::Started const&) { return kStringStarted; },
                      [](state::Ongoing const&) { return kStringOngoing; },
                      [](state::Finished const&) { return kStringFinished; },
                      [](state::Aborted const&) { return kStringAborted; },
@@ -84,7 +83,7 @@ Snapshot::Snapshot(SnapshotId id, GlobalLogIdentifier gid,
                    std::unique_ptr<IDatabaseSnapshot> databaseSnapshot)
     : _id{id},
       _gid(std::move(gid)),
-      _state(state::Started{}),
+      _state(state::Ongoing{}),
       _guardedData(std::move(databaseSnapshot), std::move(shards)),
       loggerContext(LoggerContext(Logger::REPLICATED_STATE)
                         .with<logContextKeyStateImpl>(DocumentState::NAME)
@@ -96,16 +95,7 @@ Snapshot::Snapshot(SnapshotId id, GlobalLogIdentifier gid,
 
 auto Snapshot::fetch() -> ResultT<SnapshotBatch> {
   return _state.doUnderLock([&](auto& state) -> ResultT<SnapshotBatch> {
-    return std::visit(overload{//
-                               [&](state::Started& arg) {
-                                 auto res = generateBatch(arg);
-                                 if (res.ok()) {
-                                   state = state::Ongoing{};
-                                 }
-                                 return res;
-                               },
-                               [&](auto& arg) { return generateBatch(arg); }},
-                      state);
+    return std::visit([&](auto& arg) { return generateBatch(arg); }, state);
   });
 }
 
@@ -113,11 +103,6 @@ auto Snapshot::finish() -> Result {
   return _state.doUnderLock([&](auto& state) {
     return std::visit(
         overload{
-            [&](state::Started&) -> Result {
-              LOG_CTX("75dc8", DEBUG, loggerContext)
-                  << "Snapshot finished, before being used!";
-              return {};
-            },
             [&](state::Ongoing&) -> Result {
               auto isEmpty = _guardedData.doUnderLock(
                   [&](auto& data) { return data.shards.empty(); });
@@ -153,11 +138,6 @@ void Snapshot::abort() {
   _state.doUnderLock([&](auto& state) {
     std::visit(
         overload{
-            [&](state::Started&) {
-              LOG_CTX("95353", DEBUG, loggerContext)
-                  << "Snapshot aborted, before being used!";
-              state = state::Aborted{};
-            },
             [&](state::Ongoing&) {
               auto isEmpty = _guardedData.doUnderLock(
                   [&](auto& data) { return data.shards.empty(); });
@@ -233,39 +213,6 @@ auto Snapshot::isInactive() const -> bool {
   });
 }
 
-auto Snapshot::generateBatch(state::Started const&) -> ResultT<SnapshotBatch> {
-  LOG_CTX("4e4d4", DEBUG, loggerContext) << "Reading first batch";
-
-  TRI_IF_FAILURE("DocumentStateSnapshot::infiniteSnapshot") {
-    // Sleep before returning, so the follower doesn't go into a
-    // busy loop.
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-    // Keep the snapshot alive by returning empty batches.
-    return SnapshotBatch{.snapshotId = getId(), .hasMore = true};
-  }
-
-  return _guardedData.doUnderLock([&](auto& data) -> ResultT<SnapshotBatch> {
-    if (data.shards.empty()) {
-      return SnapshotBatch{.snapshotId = getId(), .hasMore = false};
-    }
-
-    std::vector<ReplicatedOperation> operations;
-    operations.reserve(data.shards.size());
-
-    for (auto const& [shard, _] : data.shards) {
-      auto properties = VPackBuilder();
-      shard->properties(properties,
-                        LogicalDataSource::Serialization::Inventory);
-      operations.emplace_back(ReplicatedOperation::buildCreateShardOperation(
-          shard->name(), shard->type(), std::move(properties).sharedSlice()));
-    }
-
-    return SnapshotBatch{.snapshotId = getId(),
-                         .hasMore = true,
-                         .operations = std::move(operations)};
-  });
-}
-
 auto Snapshot::generateBatch(state::Ongoing const&) -> ResultT<SnapshotBatch> {
   LOG_CTX("f9226", DEBUG, loggerContext) << "Reading next batch";
 
@@ -278,6 +225,8 @@ auto Snapshot::generateBatch(state::Ongoing const&) -> ResultT<SnapshotBatch> {
   }
 
   return _guardedData.doUnderLock([&](auto& data) -> ResultT<SnapshotBatch> {
+    std::vector<ReplicatedOperation> operations;
+
     while (!data.shards.empty()) {
       auto& currentShard = data.shards.back();
       auto& shard = currentShard.first;
@@ -292,6 +241,7 @@ auto Snapshot::generateBatch(state::Ongoing const&) -> ResultT<SnapshotBatch> {
       }
 
       if (reader == nullptr) {
+        // First time reading from this shard, taking its snapshot
         auto res = basics::catchToResultT([&]() {
           return data.databaseSnapshot->createCollectionReader(shard);
         });
@@ -312,9 +262,27 @@ auto Snapshot::generateBatch(state::Ongoing const&) -> ResultT<SnapshotBatch> {
         }
 
         reader = std::move(res.get());
+
+        operations.reserve(3);
+        {
+          auto properties = VPackBuilder();
+          shard->properties(properties,
+                            LogicalDataSource::Serialization::Inventory);
+          operations.emplace_back(
+              ReplicatedOperation::buildCreateShardOperation(
+                  shard->name(), shard->type(),
+                  std::move(properties).sharedSlice()));
+
+          LOG_CTX("c0864", DEBUG, loggerContext)
+              << "Sending shard " << shard->name()
+              << " over the wire along with its properties.";
+        }
+
         data.statistics.shards.emplace(
             shard->name(),
             SnapshotStatistics::ShardStatistics{reader->getDocCount()});
+      } else {
+        operations.reserve(2);
       }
 
       break;
@@ -331,33 +299,43 @@ auto Snapshot::generateBatch(state::Ongoing const&) -> ResultT<SnapshotBatch> {
     VPackBuilder builder;
     reader->read(builder, kBatchSizeLimit);
     auto payload = std::move(builder).sharedSlice();
+    auto payloadLen = payload.slice().length();
+    auto payloadSize = payload.byteSize();
+    auto shardId = shard->name();
+
+    auto tid = TransactionId::createFollower();
+    operations.emplace_back(ReplicatedOperation::buildDocumentOperation(
+        TRI_VOC_DOCUMENT_OPERATION_INSERT, tid, shardId, std::move(payload)));
+    operations.emplace_back(ReplicatedOperation::buildCommitOperation(tid));
 
     auto readerHasMore = reader->hasMore();
     if (!readerHasMore) {
+      // Removing the shard from the list will decrease the reference count on
+      // its logical collection
       data.shards.pop_back();
+      // Resetting the transaction will allow the maintenance to drop or modify
+      // the shard if needed
+      data.databaseSnapshot->resetTransaction();
+
       LOG_CTX("c00b1", DEBUG, loggerContext)
-          << "Reading from shard " << shard->name() << " completed. "
-          << data.shards.size() << " shards to go."
-          << (data.shards.empty()
-                  ? ""
-                  : " Next shard is " + data.shards.back().first->name());
+          << "Reading from shard " << shardId << " completed. "
+          << data.shards.size() << " shards to go.";
     }
 
     ++data.statistics.batchesSent;
-    data.statistics.bytesSent += payload.byteSize();
+    data.statistics.bytesSent += payloadSize;
     data.statistics.lastBatchSent = data.statistics.lastUpdated =
         std::chrono::system_clock::now();
 
     LOG_CTX("9d1b4", DEBUG, loggerContext)
-        << "Read " << payload.slice().length() << " documents from "
-        << shard->name() << " in batch " << data.statistics.batchesSent
-        << " with " << payload.byteSize() << " bytes. There is "
-        << (readerHasMore ? "" : "no") << " more data to read from this shard.";
+        << "Trx " << tid << " reading " << payloadLen << " documents from "
+        << shardId << " in batch " << data.statistics.batchesSent << " with "
+        << payloadSize << " bytes. There is " << (readerHasMore ? "" : "no")
+        << " more data to read from this shard.";
 
-    return SnapshotBatch{
-        .snapshotId = getId(),
-        .hasMore = readerHasMore || data.shards.size() > 1,
-        .operations = generateDocumentBatch(shard->name(), std::move(payload))};
+    return SnapshotBatch{.snapshotId = getId(),
+                         .hasMore = readerHasMore || data.shards.size() > 1,
+                         .operations = std::move(operations)};
   });
 }
 

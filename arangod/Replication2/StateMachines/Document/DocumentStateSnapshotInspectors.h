@@ -41,7 +41,6 @@ inline constexpr auto kStringStartTime = std::string_view{"startTime"};
 inline constexpr auto kStringLastUpdated = std::string_view{"lastUpdated"};
 inline constexpr auto kStringLastBatchSent = std::string_view{"lastBatchSent"};
 inline constexpr auto kStringSnapshots = std::string_view{"snapshots"};
-inline constexpr auto kStringStarted = std::string_view{"started"};
 inline constexpr auto kStringOngoing = std::string_view{"ongoing"};
 inline constexpr auto kStringAborted = std::string_view{"aborted"};
 inline constexpr auto kStringFinished = std::string_view{"finished"};
