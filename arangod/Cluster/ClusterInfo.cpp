@@ -2406,9 +2406,8 @@ QueryAnalyzerRevisions ClusterInfo::getQueryAnalyzersRevision(
     // analyzers from system also available
     // so grab revision for system database as well
     if (databaseID != StaticStrings::SystemDatabase) {
-      // if we have non-system database in plan system should be here for
-      // sure! but for freshly updated cluster this is not true so, check is
-      // necessary
+      // if we have non-system database in plan system should be here for sure!
+      // but for freshly updated cluster this is not true so, check is necessary
       if (auto sysIt = _dbAnalyzersRevision.find(StaticStrings::SystemDatabase);
           sysIt != _dbAnalyzersRevision.cend()) {
         systemDbRevision = sysIt->second->getRevision();
@@ -2719,9 +2718,9 @@ Result ClusterInfo::waitForDatabaseInCurrent(
   }
 }
 
-// Start creating a database in a coordinator by entering it into
-// Plan/Databases with, status flag `isBuilding`; this makes the database
-// invisible to the outside world.
+// Start creating a database in a coordinator by entering it into Plan/Databases
+// with, status flag `isBuilding`; this makes the database invisible to the
+// outside world.
 Result ClusterInfo::createIsBuildingDatabaseCoordinator(
     CreateDatabaseInfo const& database) {
   AgencyCommResult res;
