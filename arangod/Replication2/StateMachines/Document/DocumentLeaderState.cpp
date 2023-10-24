@@ -211,13 +211,21 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
 
     auto abortAllTrxStatus = data.transactionHandler->applyEntry(abortAll);
     TRI_ASSERT(abortAllTrxStatus.ok()) << abortAllTrxStatus;
+    if (abortAllTrxStatus.fail()) {
+      LOG_CTX("f3f91", WARN, self->loggerContext)
+          << "failed to abort all previous transactions during recovery: "
+          << abortAllTrxStatus;
+    }
 
     if (self->_resigning) {
       return {TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
     }
 
-    TRI_ASSERT(abortAllReplicationStatus.ok());
-    self->release(abortAllReplicationStatus.get());
+    if (auto releaseRes = self->release(abortAllReplicationStatus.get());
+        releaseRes.fail()) {
+      LOG_CTX("55140", DEBUG, self->loggerContext)
+          << "Failed to call release during leader recovery: " << releaseRes;
+    }
 
     return {TRI_ERROR_NO_ERROR};
   });
