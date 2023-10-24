@@ -2017,12 +2017,12 @@ avoiding repeated memory allocations for building new in-memory buffers.)");
       "--replication-factor myCollection=3).",
       new VectorParameter<StringParameter>(&_options.replicationFactor));
 
-  options->addOption(
-      "--write-concern",
-      "Override the `writeConcern` value (can be specified "
-      "multiple times, e.g. --write-concern 2 "
-      "--write-concern myCollection=3).",
-      new VectorParameter<StringParameter>(&_options.writeConcern))
+  options
+      ->addOption("--write-concern",
+                  "Override the `writeConcern` value (can be specified "
+                  "multiple times, e.g. --write-concern 2 "
+                  "--write-concern myCollection=3).",
+                  new VectorParameter<StringParameter>(&_options.writeConcern))
       .setIntroducedIn(31200);
 
   options->addOption(
