@@ -833,6 +833,16 @@ function dumpIntegrationSuite() {
         db._drop(cIgnoreB.name());
       }
     },
+
+    testDumpWithCollectionsToBeIgnoredAndCollectionsToNotBeIgnored: function () {
+      // Basically, tests the use of a blacklist in direct combination with a whitelist
+      // approach, which is currently not supported.
+      let path = fs.getTempFile();
+      let args = ['--collection', cn, '--ignore-collection', collectionToBeIgnored[1]];
+
+      // expected to fail
+      runDump(path, args, 1);
+    },
     
     testDumpCollectionWithExtendedName: function () {
       let c = db._create(extendedName);
