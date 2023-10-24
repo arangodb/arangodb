@@ -1,6 +1,9 @@
 devel
 -----
 
+* BTS-1633: One Shard databases would incorrectly not be indicated as being
+  One Shard databases in the new database view in the frontend.
+
 * Added --write-concern parameter similar to --replication-factor to
   arangodump. This enables the user to override the write concern for
   one or multiple collections.
