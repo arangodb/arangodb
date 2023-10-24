@@ -810,7 +810,8 @@ void DumpFeature::collectOptions(
       "--ignore-collection",
       "Ignore and exclude this collection during the dump process (can be "
       "specified multiple times).",
-      new VectorParameter<StringParameter>(&_options.collectionsToBeIgnored));
+      new VectorParameter<StringParameter>(&_options.collectionsToBeIgnored))
+      .setIntroducedIn(31200);
 
   options
       ->addOption(
