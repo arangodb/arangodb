@@ -192,7 +192,8 @@ uint64_t getWriteConcern(arangodb::RestoreFeature::Options const& options,
       auto parts = arangodb::basics::StringUtils::split(it, '=');
       if (parts.size() == 1) {
         result = arangodb::basics::StringUtils::uint64(parts[0]);
-      } else if (parts.size() != 2 || parts[0] != name) {
+      }
+      if (parts.size() != 2 || parts[0] != name) {
         // somehow invalid or different collection
         continue;
       }
