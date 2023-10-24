@@ -3,6 +3,17 @@ devel
 
 * Fix propagation of collection `writeConcern` changes to DB servers.
 
+* BTS-1259: Not all CRUD requests based on vertex and edge operations
+  using `_api/gharial` performed a check against the actual graph
+  definition. This behavior is now fixed. In case a collection is being
+  used but not known by the graph definition itself, this will now properly
+  be reported by either `ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED`,
+  in case of a vertex, or by `ERROR_GRAPH_EDGE_COLLECTION_NOT_USED`, in case
+  of an edge.
+    
+* Added metric `arangodb_aql_cursors_active` to show the number of active
+  AQL query cursors.
+
 * Add AQL optimizer rule "async-prefetch", which allows certain AQL query parts
   to asynchronously prefetch data while other parts of the query are still
   operating.
