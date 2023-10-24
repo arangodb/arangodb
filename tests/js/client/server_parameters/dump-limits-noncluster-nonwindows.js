@@ -188,32 +188,51 @@ function testSuite() {
         let id = res.headers["x-arango-dump-id"];
         assertMatch(/^dump-\d+$/, id);
 
-        dumps.push({ id, done: false, batchId: 1, lastBatch: null, shard });
+        dumps.push({ id, done: false, asyncId: undefined, batchId: 1, lastBatch: null, shard });
       }
        
       try {
         while (true) {
-          dumps.filter((d) => !d.done).forEach((d) => {
+          dumps.filter((d) => !d.done && d.asyncId === undefined).forEach((d) => {
             let url = "/_api/dump/next/" + d.id + "?batchId=" + d.batchId;
             if (d.lastBatch !== null) {
               url += "&lastBatch=" + d.lastBatch;
             }
-            let res = arango.POST_RAW(url, {});
-            if (res.code === 204) {
+            let res = arango.POST_RAW(url, {}, {"x-arango-async": "store"});
+            d.asyncId = res.headers["x-arango-async-id"];
+            assertEqual(202, res.code, res);
+          });
+          
+          dumps.filter((d) => d.asyncId !== undefined).forEach((d) => {
+            let url = "/_api/job/" + d.asyncId;
+            let res = arango.PUT_RAW(url, {});
+            if (res.code === 204 && !res.headers.hasOwnProperty(["x-arango-async-id"])) {
+              d.asyncId = undefined;
               d.done = true;
               return;
             }
             if (res.code === 500 && 
                 res.parsedBody.errorNum === internal.errors.ERROR_RESOURCE_LIMIT.code) {
               // resource limit temporarily exceeded. simply try again in this case.
+              d.asyncId = undefined;
               return;
             }
+            
+            if (res.code === 204) {
+              // dump is finished
+              d.asyncId = undefined;
+              d.done = true;
+              return;
+            }
+            assertTrue(res.headers.hasOwnProperty("x-arango-async-id"), res);
             let shard = res.headers["x-arango-dump-shard-id"];
             assertEqual(200, res.code, res);
             assertTrue(d.shard, shard, { shard, res });
             d.lastBatch = d.batchId;
+            d.asyncId = undefined;
             ++d.batchId;
           });
+
           // all done
           if (dumps.filter((d) => d.done).length === n) {
             break;
