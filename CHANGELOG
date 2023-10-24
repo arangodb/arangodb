@@ -1,6 +1,8 @@
 devel
 -----
 
+* Make arangodb::SchedulerFeature::SCHEDULER atomic to please TSAN.
+
 * Add AQL optimizer rule "async-prefetch", which allows certain AQL query parts
   to asynchronously prefetch data while other parts of the query are still
   operating.
