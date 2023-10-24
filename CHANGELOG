@@ -2,7 +2,7 @@ devel
 -----
 
 * Added --write-concern parameter similar to --replication-factor to
-  arangodump. This enabled the user to override the write concern for
+  arangodump. This enables the user to override the write concern for
   one or multiple collections.
 
 * Added metric `arangodb_aql_cursors_active` to show the number of active

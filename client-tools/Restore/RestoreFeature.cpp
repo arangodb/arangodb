@@ -192,9 +192,7 @@ uint64_t getWriteConcern(arangodb::RestoreFeature::Options const& options,
       auto parts = arangodb::basics::StringUtils::split(it, '=');
       if (parts.size() == 1) {
         result = arangodb::basics::StringUtils::uint64(parts[0]);
-      }
-
-      if (parts.size() != 2 || parts[0] != name) {
+      } else if (parts.size() != 2 || parts[0] != name) {
         // somehow invalid or different collection
         continue;
       }
@@ -2024,7 +2022,8 @@ avoiding repeated memory allocations for building new in-memory buffers.)");
       "Override the `writeConcern` value (can be specified "
       "multiple times, e.g. --write-concern 2 "
       "--write-concern myCollection=3).",
-      new VectorParameter<StringParameter>(&_options.writeConcern));
+      new VectorParameter<StringParameter>(&_options.writeConcern))
+      .setIntroducedIn(31200);
 
   options->addOption(
       "--ignore-distribute-shards-like-errors",
