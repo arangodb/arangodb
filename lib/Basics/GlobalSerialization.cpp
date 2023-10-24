@@ -22,6 +22,7 @@
 
 #include "Basics/GlobalSerialization.h"
 
+#include <mutex>
 #include <thread>
 
 #include "Basics/FileUtils.h"
@@ -59,6 +60,8 @@ std::vector<std::string> readSLPProgram(std::string const& progPath) {
   return progLines;
 }
 
+std::mutex globalSLPModificationMutex;
+
 }  // namespace
 
 void waitForGlobalEvent(std::string_view id, std::string_view selector) {
@@ -92,6 +95,7 @@ void waitForGlobalEvent(std::string_view id, std::string_view selector) {
       }
       current.push_back('\n');
       try {
+        std::lock_guard<std::mutex> guard(globalSLPModificationMutex);
         arangodb::basics::FileUtils::appendToFile(pcPath, current);
       } catch (std::exception const&) {
         // ignore
@@ -135,6 +139,7 @@ void observeGlobalEvent(std::string_view id, std::string_view selector) {
     }
     current.push_back('\n');
     try {
+      std::lock_guard<std::mutex> guard(globalSLPModificationMutex);
       arangodb::basics::FileUtils::appendToFile(pcPath, current);
     } catch (std::exception const&) {
       // ignore

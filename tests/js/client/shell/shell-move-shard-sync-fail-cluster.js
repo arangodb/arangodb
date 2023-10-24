@@ -24,6 +24,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
+const console = require('console');
 let jsunity = require('jsunity');
 let internal = require('internal');
 let arangodb = require('@arangodb');
@@ -37,7 +38,7 @@ function queryAgencyJob (id) {
     return {error: false, id, status: query.status};
   }
   return {error: true, errorMsg: "Did not find job.", id};
-};
+}
 
 function getEndpointAndIdMap() {
   const health = arango.GET("/_admin/cluster/health").Health;
@@ -63,8 +64,8 @@ function createCollectionWithKnownLeaderAndFollower(cn) {
 }
 
 function moveShard(database, collection, shard, fromServer, toServer, dontwait) {
-  var body = {database, collection, shard, fromServer, toServer};
-  var result;
+  let body = {database, collection, shard, fromServer, toServer};
+  let result;
   try {
     result = arango.POST_RAW("/_admin/cluster/moveShard", body);
   } catch (err) {
@@ -76,9 +77,9 @@ function moveShard(database, collection, shard, fromServer, toServer, dontwait) 
     return result;
   }
   // Now wait until the job we triggered is finished:
-  var count = 600;   // seconds
+  let count = 600;   // seconds
   while (true) {
-    var job = queryAgencyJob(result.parsedBody.id);
+    let job = queryAgencyJob(result.parsedBody.id);
     if (job.error === false && job.status === "Finished") {
       return result;
     }
@@ -147,8 +148,8 @@ function moveShardSynchronizeShardFailureSuite() {
           `SynchronizeShard::beginning2 ${collInfo.leader}:${collInfo.shard} SynchronizeShardStartedContinuing2`,
           `SynchronizeShard::beforeSetTheLeader ${collInfo.leader}:${collInfo.shard} SynchronizeShardRunning2`,
           ""  // want to have a new line at the end of the last line!
-        ].join("\n");
-        fs.writeFileSync(progPath, prog);
+        ];
+        fs.writeFileSync(progPath, prog.join("\n"));
         fs.writeFileSync(pcPath, "");
 
         // Activate failure points in leader and follower:
@@ -171,13 +172,13 @@ function moveShardSynchronizeShardFailureSuite() {
         while (count <= 600) {
           let steps = fs.readFileSync(pcPath).toString().split("\n");
           nrSteps = steps.length - 1;
-          if (nrSteps === 12) {
+          if (nrSteps === prog.length - 1) {
             break;
           }
           count += 1;
           internal.wait(1);
         }
-        assertEqual(nrSteps, 12);
+        assertEqual(nrSteps, prog.length - 1);
       } finally {
         // Remove program and failure points:
         fs.remove(progPath);
