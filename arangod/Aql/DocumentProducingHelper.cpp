@@ -149,16 +149,6 @@ IndexIterator::DocumentCallback aql::getCallback(
 template<bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::buildDocumentCallback(
     DocumentProducingFunctionContext& context) {
-  if constexpr (!skip) {
-    if (!context.getProduceResult()) {
-      // This callback is disallowed use getNullCallback instead
-      TRI_ASSERT(false);
-      return [](LocalDocumentId, aql::DocumentData&&, VPackSlice) -> bool {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid callback");
-      };
-    }
-  }
-
   auto const& p = context.getProjections();
   if (!p.empty()) {
     // return a projection
@@ -221,7 +211,6 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _outputRegister(infos.getOutputRegisterId()),
       _readOwnWrites(infos.canReadOwnWrites()),
       _checkUniqueness(false),
-      _produceResult(infos.getProduceResult()),
       _allowCoveringIndexOptimization(false),
       _isLastIndex(false) {
   // now erase all projections for which there is no output register
@@ -286,7 +275,6 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _readOwnWrites(infos.canReadOwnWrites()),
       _checkUniqueness(infos.getIndexes().size() > 1 ||
                        infos.hasMultipleExpansions()),
-      _produceResult(infos.getProduceResult()),
       _allowCoveringIndexOptimization(false),  // can be updated later
       _isLastIndex(false) {
   // build ExpressionContext for filtering if we need one
@@ -337,10 +325,6 @@ DocumentProducingFunctionContext::~DocumentProducingFunctionContext() {
 void DocumentProducingFunctionContext::setOutputRow(
     OutputAqlItemRow* outputRow) {
   _outputRow = outputRow;
-}
-
-bool DocumentProducingFunctionContext::getProduceResult() const noexcept {
-  return _produceResult;
 }
 
 aql::Projections const& DocumentProducingFunctionContext::getProjections()

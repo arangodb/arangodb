@@ -84,8 +84,6 @@ struct DocumentProducingFunctionContext {
 
   void setOutputRow(OutputAqlItemRow* outputRow);
 
-  bool getProduceResult() const noexcept;
-
   aql::Projections const& getProjections() const noexcept;
 
   aql::Projections const& getFilterProjections() const noexcept;
@@ -176,7 +174,6 @@ struct DocumentProducingFunctionContext {
   /// @brief Flag if we need to check for uniqueness
   bool const _checkUniqueness;
 
-  bool const _produceResult;
   bool _allowCoveringIndexOptimization;
   /// @brief Flag if the current index pointer is the last of the list.
   ///        Used in uniqueness checks.

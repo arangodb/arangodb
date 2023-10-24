@@ -213,6 +213,7 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
   // add collection information
   CollectionAccessingNode::toVelocyPack(builder, flags);
 
+  builder.add("strategy", VPackValue(strategyName(strategy())));
   builder.add("needsGatherNodeSort", VPackValue(_needsGatherNodeSort));
 
   // this attribute is never read back by arangod, but it is used a lot
@@ -323,6 +324,56 @@ NonConstExpressionContainer IndexNode::buildNonConstExpressions() const {
   return {};
 }
 
+/// @brief determine the IndexNode strategy
+IndexNode::Strategy IndexNode::strategy() const {
+  if (doCount()) {
+    TRI_ASSERT(_indexes.size() == 1);
+    return Strategy::kCount;
+  }
+
+  if (isLateMaterialized()) {
+    return Strategy::kLateMaterialized;
+  }
+
+  if (!isProduceResult() && !hasFilter()) {
+    return Strategy::kNoResult;
+  }
+
+  if (_indexes.size() == 1) {
+    if (projections().usesCoveringIndex(_indexes[0]) &&
+        (filterProjections().usesCoveringIndex(_indexes[0]) ||
+         filterProjections().empty())) {
+      return Strategy::kCovering;
+    }
+    if (filterProjections().usesCoveringIndex(_indexes[0])) {
+      return Strategy::kCoveringFilterOnly;
+    }
+  }
+
+  TRI_ASSERT(_indexes.size() >= 1);
+  return Strategy::kDocument;
+}
+
+std::string_view IndexNode::strategyName(
+    IndexNode::Strategy strategy) noexcept {
+  switch (strategy) {
+    case Strategy::kNoResult:
+      return "no result";
+    case Strategy::kCovering:
+      return "covering";
+    case Strategy::kCoveringFilterOnly:
+      return "covering, filter only";
+    case Strategy::kDocument:
+      return "document";
+    case Strategy::kLateMaterialized:
+      return "late materialized";
+    case Strategy::kCount:
+      return "count";
+  }
+  TRI_ASSERT(false);
+  return "unknown";
+}
+
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
     ExecutionEngine& engine) const {
@@ -414,13 +465,12 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
       createRegisterInfos({}, std::move(writableOutputRegisters));
 
   auto executorInfos = IndexExecutorInfos(
-      outRegister, engine.getQuery(), this->collection(), _outVariable,
-      isProduceResult(), this->_filter.get(), this->projections(),
-      this->filterProjections(), std::move(filterVarsToRegs),
-      std::move(nonConstExpressions), doCount(), canReadOwnWrites(),
-      _condition->root(), _allCoveredByOneIndex, this->getIndexes(),
-      _plan->getAst(), this->options(), _outNonMaterializedIndVars,
-      std::move(outNonMaterializedIndRegs), std::move(filterCoveringVars));
+      strategy(), outRegister, engine.getQuery(), collection(), _outVariable,
+      filter(), projections(), filterProjections(), std::move(filterVarsToRegs),
+      std::move(nonConstExpressions), canReadOwnWrites(), _condition->root(),
+      _allCoveredByOneIndex, getIndexes(), _plan->getAst(), this->options(),
+      _outNonMaterializedIndVars, std::move(outNonMaterializedIndRegs),
+      std::move(filterCoveringVars));
 
   return std::make_unique<ExecutionBlockImpl<IndexExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));

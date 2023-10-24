@@ -64,12 +64,12 @@ struct NonConstExpression;
 class IndexExecutorInfos {
  public:
   IndexExecutorInfos(
-      RegisterId outputRegister, QueryContext& query,
-      Collection const* collection, Variable const* outVariable,
-      bool produceResult, Expression* filter, aql::Projections projections,
-      aql::Projections filterProjections,
+      IndexNode::Strategy strategy, RegisterId outputRegister,
+      QueryContext& query, Collection const* collection,
+      Variable const* outVariable, Expression* filter,
+      aql::Projections projections, aql::Projections filterProjections,
       std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs,
-      NonConstExpressionContainer&& nonConstExpressions, bool count,
+      NonConstExpressionContainer&& nonConstExpressions,
       ReadOwnWrites readOwnWrites, AstNode const* condition,
       bool oneIndexCondition,
       std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
@@ -83,6 +83,7 @@ class IndexExecutorInfos {
   IndexExecutorInfos(IndexExecutorInfos const&) = delete;
   ~IndexExecutorInfos() = default;
 
+  IndexNode::Strategy strategy() const noexcept;
   Collection const* getCollection() const;
   Variable const* getOutVariable() const;
   arangodb::aql::Projections const& getProjections() const noexcept;
@@ -90,7 +91,6 @@ class IndexExecutorInfos {
   aql::QueryContext& query() noexcept;
   Expression* getFilter() const noexcept;
   ResourceMonitor& getResourceMonitor() noexcept;
-  bool getProduceResult() const noexcept;
   std::vector<transaction::Methods::IndexHandle> const& getIndexes()
       const noexcept;
   AstNode const* getCondition() const noexcept;
@@ -99,7 +99,6 @@ class IndexExecutorInfos {
   std::vector<std::unique_ptr<NonConstExpression>> const&
   getNonConstExpressions() const noexcept;
   bool hasMultipleExpansions() const noexcept;
-  bool getCount() const noexcept;
 
   ReadOwnWrites canReadOwnWrites() const noexcept { return _readOwnWrites; }
 
@@ -139,6 +138,8 @@ class IndexExecutorInfos {
   bool isOneIndexCondition() const noexcept { return _oneIndexCondition; }
 
  private:
+  IndexNode::Strategy const _strategy;
+
   /// @brief _indexes holds all Indexes used in this block
   std::vector<transaction::Methods::IndexHandle> _indexes;
 
@@ -179,13 +180,6 @@ class IndexExecutorInfos {
   /// @brief true if one of the indexes uses more than one expanded attribute,
   /// e.g. the index is on values[*].name and values[*].type
   bool const _hasMultipleExpansions;
-
-  bool const _produceResult;
-
-  /// @brief Counter how many documents have been returned/skipped
-  ///        during one call. Retained during WAITING situations.
-  ///        Needs to be 0 after we return a result.
-  bool const _count;
 
   bool const _oneIndexCondition;
 
@@ -269,7 +263,7 @@ class IndexExecutor {
     std::unique_ptr<IndexIterator> _cursor;
     DocumentProducingFunctionContext& _context;
     CursorStats& _cursorStats;
-    Type const _type;
+    IndexNode::Strategy const _strategy;
     bool const _checkUniqueness;
 
     // Only one of _documentProducer and _documentNonProducer is set at a time,
