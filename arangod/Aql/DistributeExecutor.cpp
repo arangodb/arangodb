@@ -135,7 +135,7 @@ auto DistributeExecutor::distributeBlock(
 
         if (!input.isObject()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_INTERNAL,
+              TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
               "DistributeExecutor requires an object as input");
         }
         // NONE is ignored.
