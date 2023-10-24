@@ -82,8 +82,8 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
     } else if (_indexType == TRI_IDX_TYPE_PRIMARY_INDEX) {
       // The Primary Index on RocksDB can serve _key and _id when being asked.
       _coveredFields = {
-          {basics::AttributeName(StaticStrings::IdString, false)},
-          {basics::AttributeName(StaticStrings::KeyString, false)}};
+          {basics::AttributeName(StaticStrings::KeyString, false)},
+          {basics::AttributeName(StaticStrings::IdString, false)}};
     } else if (_indexType == TRI_IDX_TYPE_PERSISTENT_INDEX) {
       _coveredFields = Index::mergeFields(
           _fields,
@@ -312,8 +312,8 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
       }
       // other...
       std::vector<std::vector<basics::AttributeName>> fields{
-          {basics::AttributeName(StaticStrings::IdString, false)},
-          {basics::AttributeName(StaticStrings::KeyString, false)}};
+          {basics::AttributeName(StaticStrings::KeyString, false)},
+          {basics::AttributeName(StaticStrings::IdString, false)}};
       SimpleAttributeEqualityMatcher matcher(fields);
       return matcher.matchOne(this, node, reference, itemsInIndex);
     }
