@@ -1379,12 +1379,16 @@ TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info)
     : _server(info.server()), _info(std::move(info)) {
   TRI_ASSERT(_info.valid());
 
+  metrics::Gauge<uint64_t>* metric = nullptr;
+
   if (_info.server().hasFeature<QueryRegistryFeature>()) {
     QueryRegistryFeature& feature =
         _info.server().getFeature<QueryRegistryFeature>();
     _queries = std::make_unique<aql::QueryList>(feature);
+
+    metric = feature.cursorsMetric();
   }
-  _cursorRepository = std::make_unique<CursorRepository>(*this);
+  _cursorRepository = std::make_unique<CursorRepository>(*this, metric);
 
   if (_info.server().hasFeature<ReplicationFeature>()) {
     auto& rf = _info.server().getFeature<ReplicationFeature>();
