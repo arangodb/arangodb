@@ -1,6 +1,23 @@
 devel
 -----
 
+* Change default value of arangodump startup option `--use-parallel-dump` 
+  from `false` to `true`.
+  This enables the more parallel dump procedure by default, which allows
+  dumps to be produced more quickly.
+  The parallel dump protocol needs server-side support, and the first 
+  ArangoDB version that completely supports it is 3.12.
+  In order to use a 3.12 arangodump to create dumps from servers that run
+  an older version of arangod, the option should be set to `false` when
+  invoking arangodump.
+  The parallel dump option also allows the usage of the `--split-files` 
+  option in arangodump. When enabled, the data of each collection/shard
+  can be dumped into multiple independent files, which can be written in
+  parallel, and that can also be restored in parallel.
+  Please note that you will need an arangorestore from version 3.12 or
+  higher to be able to restore a dump that was taken with the 
+  `--split-files` option.
+
 * BTS-1259: Not all CRUD requests based on vertex and edge operations
   using `_api/gharial` performed a check against the actual graph
   definition. This behavior is now fixed. In case a collection is being
