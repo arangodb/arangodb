@@ -935,7 +935,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
     });
 
     // note: SCHEDULER is a nullptr in unit tests
-    if (SchedulerFeature::SCHEDULER != nullptr &&
+    if (SchedulerFeature::instance() != nullptr &&
         std::get<ExecutionState>(result) == ExecutionState::HASMORE &&
         _exeNode->isAsyncPrefetchEnabled() && !ctx.clientCall.hasLimit()) {
       // the only node types that use a limit are the LimitNode (and its
