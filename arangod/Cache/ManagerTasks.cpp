@@ -29,7 +29,10 @@
 #include "Cache/Cache.h"
 #include "Cache/Manager.h"
 #include "Cache/Metadata.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
+
+#include <chrono>
 
 namespace arangodb::cache {
 
@@ -94,7 +97,12 @@ void FreeMemoryTask::run() {
     TRI_ASSERT(!metadata.isResizing());
   });
 
+  // execute freeMemory() with timing
+  auto now = std::chrono::steady_clock::now();
   bool ran = _cache->freeMemory();
+  auto diff = std::chrono::steady_clock::now() - now;
+  _manager.trackFreeMemoryTaskDuration(
+      std::chrono::duration_cast<std::chrono::microseconds>(diff).count());
 
   // flag must still be set after freeMemory()
   TRI_ASSERT(_cache->isResizingFlagSet());
@@ -114,8 +122,14 @@ void FreeMemoryTask::run() {
     toggleResizingGuard.cancel();
   }
 
+  LOG_TOPIC("dce52", TRACE, Logger::CACHE)
+      << "freeMemory task took "
+      << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count()
+      << "ms";
+
   if (_triggerShrinking) {
-    _cache->requestMigrate(_cache->table()->idealSize());
+    std::shared_ptr<Table> table = _cache->table();
+    _cache->requestMigrate(table.get(), table->idealSize(), table->logSize());
   }
 }
 
@@ -171,7 +185,16 @@ void MigrateTask::run() {
   TRI_ASSERT(_cache->isMigratingFlagSet());
 
   // do the actual migration
+  auto now = std::chrono::steady_clock::now();
   bool ran = _cache->migrate(_table);
+  auto diff = std::chrono::steady_clock::now() - now;
+  _manager.trackMigrateTaskDuration(
+      std::chrono::duration_cast<std::chrono::microseconds>(diff).count());
+
+  LOG_TOPIC("f4c44", TRACE, Logger::CACHE)
+      << "migrate task on table with " << _table->size() << " slots took "
+      << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count()
+      << "ms";
 
   // migrate() must have unset the migrating flag, but we
   // cannot check it here because another MigrateTask may

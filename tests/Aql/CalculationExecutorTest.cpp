@@ -65,9 +65,7 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-using CalculationExecutorTestHelper = ExecutorTestHelper<2, 2>;
-using CalculationExecutorSplitType = CalculationExecutorTestHelper::SplitType;
-using CalculationExecutorInputParam = std::tuple<CalculationExecutorSplitType>;
+using CalculationExecutorInputParam = std::tuple<SplitType>;
 
 // TODO Add tests for both
 // CalculationExecutor<CalculationType::V8Condition> and
@@ -107,7 +105,7 @@ class CalculationExecutorTest
                       2 /*out width*/, RegIdSet{} /*to clear*/,
                       RegIdSetStack{{}} /*to keep*/) {}
 
-  auto getSplit() -> CalculationExecutorSplitType {
+  auto getSplit() -> SplitType {
     auto [split] = GetParam();
     return split;
   }
@@ -121,11 +119,9 @@ class CalculationExecutorTest
 };
 
 template<size_t... vs>
-const CalculationExecutorSplitType splitIntoBlocks =
-    CalculationExecutorSplitType{std::vector<std::size_t>{vs...}};
+const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
 template<size_t step>
-const CalculationExecutorSplitType splitStep =
-    CalculationExecutorSplitType{step};
+const SplitType splitStep = SplitType{step};
 
 INSTANTIATE_TEST_CASE_P(CalculationExecutor, CalculationExecutorTest,
                         ::testing::Values(splitIntoBlocks<2, 3>,
@@ -351,6 +347,7 @@ TEST_P(CalculationExecutorTest, condition_some_input_limit_fullcount) {
       .run(true);
 }
 
+#ifdef USE_V8
 // Could be fixed and enabled if one enabled the V8 engine
 TEST_P(CalculationExecutorTest, DISABLED_v8condition_some_input) {
   AqlCall call{};
@@ -377,6 +374,7 @@ TEST_P(CalculationExecutorTest, DISABLED_v8condition_some_input) {
       .expectedState(ExecutionState::DONE)
       .run(true);
 }
+#endif
 
 }  // namespace aql
 }  // namespace tests

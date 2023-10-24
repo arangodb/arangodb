@@ -110,12 +110,12 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   Result drop() override;
 
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice doc,
+                LocalDocumentId documentId, velocypack::Slice doc,
                 OperationOptions const& options,
                 bool /*performChecks*/) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice doc,
+                LocalDocumentId documentId, velocypack::Slice doc,
                 OperationOptions const& options) override;
 
   void refillCache(transaction::Methods& trx,

@@ -224,7 +224,9 @@ struct TRI_vocbase_t {
                                                    // the state of the vocbase
 
   // structures for volatile cache data (used from JavaScript)
+#ifdef USE_V8
   std::unique_ptr<arangodb::DatabaseJavaScriptCache> _cacheData;
+#endif
 
   arangodb::ArangodServer& server() const noexcept { return _server; }
 

@@ -56,6 +56,18 @@ export const arangoSearchViewJSONSchema: JSONSchemaType<ArangoSearchViewProperti
                   }
                 }
               },
+              nested: {
+                type: "object",
+                nullable: true,
+                required: [],
+                patternProperties: {
+                  "^[a-zA-Z0-9-_]+$": {
+                    type: "object",
+                    nullable: true,
+                    $ref: "linkProperties.json"
+                  }
+                }
+              },
               includeAllFields: {
                 type: "boolean",
                 nullable: true

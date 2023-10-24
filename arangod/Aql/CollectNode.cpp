@@ -482,6 +482,7 @@ auto isStartNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::UPSERT:
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::INDEX:
+    case ExecutionNode::JOIN:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::ENUMERATE_PATHS:
     case ExecutionNode::REMOTESINGLE:
@@ -528,6 +529,7 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::UPSERT:
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::INDEX:
+    case ExecutionNode::JOIN:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::ENUMERATE_PATHS:
     case ExecutionNode::REMOTESINGLE:
@@ -552,6 +554,7 @@ auto isLoop(ExecutionNode const& node) -> bool {
   switch (node.getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::INDEX:
+    case ExecutionNode::JOIN:
     case ExecutionNode::ENUMERATE_LIST:
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::SHORTEST_PATH:
@@ -748,6 +751,10 @@ CostEstimate CollectNode::estimateCost() const {
   }
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
+}
+
+AsyncPrefetchEligibility CollectNode::canUseAsyncPrefetching() const noexcept {
+  return AsyncPrefetchEligibility::kEnableForNode;
 }
 
 ExecutionNode::NodeType CollectNode::getType() const { return COLLECT; }

@@ -59,6 +59,7 @@
 #include "ClusterEngine/ClusterEngine.h"
 #include "CrashHandler/CrashHandler.h"
 #include "Containers/SmallVector.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
 #include "IResearch/Containers.h"
@@ -197,7 +198,7 @@ aql::AqlValue contextFunc(aql::ExpressionContext* ctx, aql::AstNode const&,
   TRI_ASSERT(!args.empty());  // ensured by function signature
 
   aql::AqlValueMaterializer materializer(&ctx->trx().vpackOptions());
-  return aql::AqlValue{materializer.slice(args[0], true)};
+  return aql::AqlValue{materializer.slice(args[0])};
 }
 
 // Register invalid argument warning
@@ -889,7 +890,11 @@ IResearchFeature::IResearchFeature(Server& server)
       _threads(0),
       _threadsLimit(0) {
   setOptional(true);
+#ifdef USE_V8
   startsAfter<application_features::V8FeaturePhase>();
+#else
+  startsAfter<application_features::ClusterFeaturePhase>();
+#endif
   startsAfter<IResearchAnalyzerFeature>();
   startsAfter<aql::AqlFunctionFeature>();
 }

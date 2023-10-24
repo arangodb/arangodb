@@ -37,7 +37,7 @@ namespace aql {
 
 class AqlItemBlock;
 struct AqlValue;
-struct AttributeNamePath;
+class AttributeNamePath;
 class ExpressionContext;
 struct Variable;
 

@@ -26,6 +26,7 @@
 #include <functional>
 #include <iterator>
 #include <memory>
+#include <span>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -153,6 +154,8 @@ class Ast {
   bool containsUpsertNode() const noexcept;
   void setContainsUpsertNode() noexcept;
   void setContainsParallelNode() noexcept;
+  bool containsAsyncPrefetch() const noexcept;
+  void setContainsAsyncPrefetch() noexcept;
 
   bool canApplyParallelism() const noexcept {
     return _containsParallelNode && !_willUseV8 && !_containsModificationNode;
@@ -483,8 +486,9 @@ class Ast {
 
   /// @brief replace an attribute access with just the variable
   static AstNode* replaceAttributeAccess(
-      AstNode* node, Variable const* variable,
-      std::vector<std::string> const& attributeName);
+      Ast* ast, AstNode* node, Variable const* searchVariable,
+      std::span<std::string_view> attributeName,
+      Variable const* replaceVariable);
 
   /// @brief recursively clone a node
   AstNode* clone(AstNode const*);
@@ -686,13 +690,17 @@ class Ast {
   /// @brief whether or not the query contains bind parameters
   bool _containsBindParameters;
 
-  /// @brief contains INSERT / UPDATE / REPLACE / REMOVE
+  /// @brief contains INSERT / UPDATE / REPLACE / REMOVE / UPSERT
   bool _containsModificationNode;
 
-  bool _containsUpsertNode{false};
+  /// @brief contains UPSERT
+  bool _containsUpsertNode;
 
   /// @brief contains a parallel traversal
   bool _containsParallelNode;
+
+  /// @brief whether or not a part of the query uses async prefetching
+  bool _containsAsyncPrefetch;
 
   /// @brief query makes use of V8 function(s)
   bool _willUseV8;

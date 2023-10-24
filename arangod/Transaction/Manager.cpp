@@ -106,6 +106,16 @@ Manager::Manager(ManagerFeature& feature)
 
 Manager::~Manager() = default;
 
+void Manager::releaseTransactions() noexcept {
+  std::unique_lock<std::mutex> guard(_hotbackupMutex);
+  if (_hotbackupCommitLockHeld) {
+    LOG_TOPIC("eeddd", TRACE, Logger::TRANSACTIONS)
+        << "Releasing write lock to hold transactions.";
+    _hotbackupCommitLock.unlockWrite();
+    _hotbackupCommitLockHeld = false;
+  }
+}
+
 std::shared_ptr<CounterGuard> Manager::registerTransaction(
     TransactionId transactionId, bool isReadOnlyTransaction,
     bool isFollowerTransaction) {
@@ -1208,7 +1218,8 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
       // transaction.
       res.reset(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED);
     } else if (res.ok() && wasExpired) {
-      res.reset(TRI_ERROR_TRANSACTION_ABORTED);
+      res.reset(TRI_ERROR_TRANSACTION_ABORTED,
+                "transaction was already expired");
     }
   }
   TRI_ASSERT(!trx.state()->isRunning());

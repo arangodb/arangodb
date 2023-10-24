@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/SharedQueryState.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -537,9 +538,9 @@ void RestCursorHandler::buildOptions(velocypack::Slice slice) {
   VPackSlice batchSize = slice.get("batchSize");
   if (batchSize.isNumber()) {
     if ((batchSize.isDouble() && batchSize.getDouble() == 0.0) ||
-        (batchSize.isInteger() && batchSize.getUInt() == 0)) {
+        (batchSize.isInteger() && batchSize.getNumericValue<int64_t>() <= 0)) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_TYPE_ERROR, "expecting non-zero value for <batchSize>");
+          TRI_ERROR_TYPE_ERROR, "expecting positive value for <batchSize>");
     }
     _options->add("batchSize", batchSize);
   } else {

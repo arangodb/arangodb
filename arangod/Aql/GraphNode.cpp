@@ -649,9 +649,6 @@ std::string const& GraphNode::collectionToShardName(
 }
 
 void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
-  // Vocbase
-  nodes.add("database", VPackValue(_vocbase->name()));
-
   // TODO We need Both?!
   // Graph definition
   nodes.add("graph", _graphInfo.slice());
@@ -803,6 +800,10 @@ CostEstimate GraphNode::estimateCost() const {
   }
 
   return estimate;
+}
+
+AsyncPrefetchEligibility GraphNode::canUseAsyncPrefetching() const noexcept {
+  return AsyncPrefetchEligibility::kDisableGlobally;
 }
 
 void GraphNode::addEngine(aql::EngineId engineId, ServerID const& server) {

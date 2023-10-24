@@ -115,7 +115,7 @@ struct DocumentProducingFunctionContext {
 
   ReadOwnWrites getReadOwnWrites() const noexcept;
 
-  bool checkUniqueness(LocalDocumentId const& token);
+  bool checkUniqueness(LocalDocumentId token);
 
   // called for documents and indexes
   bool checkFilter(velocypack::Slice slice);
@@ -134,6 +134,8 @@ struct DocumentProducingFunctionContext {
   }
 
   velocypack::Builder& getBuilder() noexcept;
+
+  RegisterId registerForVariable(VariableId id) const noexcept;
 
  private:
   bool checkFilter(DocumentProducingExpressionContext& ctx);

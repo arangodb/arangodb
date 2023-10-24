@@ -58,6 +58,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/GeoAnalyzer.h"
 #include "IResearchAqlAnalyzer.h"
@@ -355,10 +356,12 @@ aql::AqlValue aqlFnTokens(aql::ExpressionContext* expressionContext,
       default:
         processNumeric(current);
     }
-    // de-stack all closing arrays
+    // de-stack all closing arrays.
+    // arrayIteratorsStack only contains non-empty arrays.
     while (!arrayIteratorStack.empty()) {
       auto& currentArrayIterator = arrayIteratorStack.back();
-      if (!currentArrayIterator.isLast()) {
+      if (currentArrayIterator.valid() &&
+          currentArrayIterator.index() + 1 < currentArrayIterator.size()) {
         currentArrayIterator.next();
         current = currentArrayIterator.value();
         // next array for next item
@@ -1085,7 +1088,11 @@ AnalyzerPool::CacheType::ptr AnalyzerPool::get() const noexcept {
 IResearchAnalyzerFeature::IResearchAnalyzerFeature(Server& server)
     : ArangodFeature{server, *this} {
   setOptional(true);
+#ifdef USE_V8
   startsAfter<application_features::V8FeaturePhase>();
+#else
+  startsAfter<application_features::ClusterFeaturePhase>();
+#endif
   // used for registering IResearch analyzer functions
   startsAfter<aql::AqlFunctionFeature>();
   // used for getting the system database

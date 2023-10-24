@@ -183,7 +183,7 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(
     AqlValue& key = *const_cast<AqlValue*>(&it);
     AqlValueGuard guard{key, true};
     output.moveValueInto(_infos.getGroupRegisters()[i++].first,
-                         _lastInitializedInputRow, guard);
+                         _lastInitializedInputRow, &guard);
     key.erase();  // to prevent double-freeing later
   }
 
@@ -199,7 +199,7 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(
       AqlValue r = aggregators[aggregatorIdx].stealValue();
       AqlValueGuard guard{r, true};
       output.moveValueInto(_infos.getAggregatedRegisters()[j++].first,
-                           _lastInitializedInputRow, guard);
+                           _lastInitializedInputRow, &guard);
     }
   }
   if (_infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
@@ -213,7 +213,7 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(
     _currentGroup->second.second.reset();
 
     output.moveValueInto(_infos.getCollectRegister(), _lastInitializedInputRow,
-                         guard);
+                         &guard);
   }
 }
 
@@ -445,7 +445,6 @@ void HashedCollectExecutor::addToIntoRegister(InputAqlItemRow const& input,
     // get result of INTO expression variable
     input.getValue(_infos.getExpressionRegister())
         .toVelocyPack(_infos.getVPackOptions(), builder,
-                      /*resolveExternals*/ false,
                       /*allowUnindexed*/ false);
   } else {
     // copy variables / keep variables into result register
@@ -454,7 +453,6 @@ void HashedCollectExecutor::addToIntoRegister(InputAqlItemRow const& input,
       builder.add(VPackValue(pair.first));
       input.getValue(pair.second)
           .toVelocyPack(_infos.getVPackOptions(), builder,
-                        /*resolveExternals*/ false,
                         /*allowUnindexed*/ false);
     }
     builder.close();

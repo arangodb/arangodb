@@ -55,10 +55,9 @@ namespace tests {
 namespace aql {
 
 using DistinctCollectTestHelper = ExecutorTestHelper<1, 1>;
-using DistinctCollectSplitType = DistinctCollectTestHelper::SplitType;
 
-class DistinctCollectExecutorTest : public AqlExecutorTestCaseWithParam<
-                                        std::tuple<DistinctCollectSplitType>> {
+class DistinctCollectExecutorTest
+    : public AqlExecutorTestCaseWithParam<std::tuple<SplitType>> {
  protected:
   ExecutionState state;
   arangodb::GlobalResourceMonitor global{};
@@ -128,10 +127,9 @@ TEST_P(DistinctCollectExecutorTest, split_2) {
 }
 
 template<size_t... vs>
-const DistinctCollectSplitType splitIntoBlocks =
-    DistinctCollectSplitType{std::vector<std::size_t>{vs...}};
+const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
 template<size_t step>
-const DistinctCollectSplitType splitStep = DistinctCollectSplitType{step};
+const SplitType splitStep = SplitType{step};
 
 INSTANTIATE_TEST_CASE_P(DistinctCollectExecutor, DistinctCollectExecutorTest,
                         ::testing::Values(splitIntoBlocks<2, 3>,

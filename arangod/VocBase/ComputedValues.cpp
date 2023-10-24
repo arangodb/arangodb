@@ -307,7 +307,7 @@ void ComputedValues::ComputedValue::computeAttribute(
 
   auto const& vopts = ctx.trx().vpackOptions();
   aql::AqlValueMaterializer materializer(&vopts);
-  output.add(_name, materializer.slice(result, false));
+  output.add(_name, materializer.slice(result));
 }
 
 ComputedValues::ComputedValues(TRI_vocbase_t& vocbase,

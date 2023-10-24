@@ -28,7 +28,10 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/VocBaseLogManager.h"
 #include "Transaction/Methods.h"
+#include "Transaction/StandaloneContext.h"
+#ifdef USE_V8
 #include "Transaction/V8Context.h"
+#endif
 #include "Utils/SingleCollectionTransaction.h"
 
 namespace arangodb::replication2::replicated_state::document {
@@ -210,8 +213,12 @@ auto DocumentStateShardHandler::lockShard(ShardID const& shard,
                               shard, _vocbase.name(), origin.description)};
   }
 
+#ifdef USE_V8
   auto ctx =
       transaction::V8Context::createWhenRequired(_vocbase, origin, false);
+#else
+  auto ctx = transaction::StandaloneContext::create(_vocbase, origin);
+#endif
 
   // Not replicating this transaction
   transaction::Options options;
