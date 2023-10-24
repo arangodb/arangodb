@@ -956,7 +956,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
       // TODO - we should avoid flooding the queue with too many tasks as that
       // can significantly delay processing of user REST requests.
 
-      bool queued = SchedulerFeature::SCHEDULER->tryBoundedQueue(
+      bool queued = SchedulerFeature::instance()->tryBoundedQueue(
           RequestLane::INTERNAL_LOW,
           [block = this, task = _prefetchTask, stack = ctx.stack]() mutable {
             if (!task->tryClaim()) {
