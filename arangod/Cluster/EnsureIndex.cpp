@@ -205,7 +205,15 @@ bool EnsureIndex::first() {
       // then, if you are missing components, such as database name, will
       // you be able to produce an IndexError?
 
-      _feature.storeIndexError(database, collection, shard, id, eb.steal());
+      // Temporary unavailability of the replication2 leader should not stop
+      // this server from creating the index eventually.
+      if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER) ||
+          res.is(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND)) {
+        // TODO prevent busy loop and wait for log to become ready (CINFRA-831).
+        std::this_thread::sleep_for(std::chrono::milliseconds{50});
+      } else {
+        _feature.storeIndexError(database, collection, shard, id, eb.steal());
+      }
       result(TRI_ERROR_INTERNAL, error.str());
       return false;
     }
@@ -234,18 +242,10 @@ auto EnsureIndex::ensureIndexReplication2(
     std::shared_ptr<LogicalCollection> coll, VPackSlice indexInfo,
     std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
     -> Result {
-  auto res = basics::catchToResult(
+  return basics::catchToResult(
       [&coll, indexInfo, progress = std::move(progress)]() mutable {
         return coll->getDocumentStateLeader()
             ->createIndex(coll->name(), indexInfo, std::move(progress))
             .get();
       });
-
-  if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER) ||
-      res.is(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND)) {
-    // TODO prevent busy loop and wait for log to become ready (CINFRA-831).
-    std::this_thread::sleep_for(std::chrono::milliseconds{50});
-  }
-
-  return res;
 }

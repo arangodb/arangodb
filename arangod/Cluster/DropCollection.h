@@ -44,7 +44,7 @@ class DropCollection : public ActionBase, ShardDefinition {
   void setState(ActionState state) override final;
 
  private:
-  Result dropCollectionReplication2(ShardID const& shard,
-                                    std::shared_ptr<LogicalCollection>& coll);
+  static Result dropCollectionReplication2(
+      ShardID const& shard, std::shared_ptr<LogicalCollection>& coll);
 };
 }  // namespace arangodb::maintenance

@@ -119,6 +119,10 @@ bool CreateCollection::first() {
 
   Result res;
 
+  // Temporary unavailability of the replication2 leader should not stop this
+  // server from creating the shard eventually.
+  bool ignoreTemporaryError = false;
+
   try {  // now try to guard the vocbase
     auto& df = _feature.server().getFeature<DatabaseFeature>();
     DatabaseGuard guard(df, database);
@@ -203,6 +207,14 @@ bool CreateCollection::first() {
             << "' failed: " << res;
       LOG_TOPIC("63687", ERR, Logger::MAINTENANCE) << error.str();
 
+      if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER) ||
+          res.is(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND)) {
+        // Do not store this error
+        // TODO prevent busy loop and wait for log to become ready (CINFRA-831).
+        std::this_thread::sleep_for(std::chrono::milliseconds{50});
+        ignoreTemporaryError = true;
+      }
+
       res.reset(TRI_ERROR_FAILED, error.str());
       result(res);
     }
@@ -215,7 +227,7 @@ bool CreateCollection::first() {
     result(res);
   }
 
-  if (res.fail()) {
+  if (res.fail() && !ignoreTemporaryError) {
     _feature.storeShardError(database, collection, shard,
                              _description.get(SERVER_ID), res);
   }
@@ -303,12 +315,6 @@ Result CreateCollection::createCollectionReplication2(
     }
   } else {
     res.reset(state.result());
-  }
-
-  if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER) ||
-      res.is(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND)) {
-    // TODO prevent busy loop and wait for log to become ready (CINFRA-831).
-    std::this_thread::sleep_for(std::chrono::milliseconds{50});
   }
 
   return res;

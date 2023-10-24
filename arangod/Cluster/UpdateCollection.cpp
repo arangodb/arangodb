@@ -162,8 +162,16 @@ bool UpdateCollection::first() {
   }
 
   if (res.fail()) {
-    _feature.storeShardError(database, collection, shard,
-                             _description.get(SERVER_ID), res);
+    if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER) ||
+        res.is(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND)) {
+      // Temporary unavailability of the replication2 leader should not stop
+      // this server from updating the shard eventually.
+      // TODO prevent busy loop and wait for log to become ready (CINFRA-831).
+      std::this_thread::sleep_for(std::chrono::milliseconds{50});
+    } else {
+      _feature.storeShardError(database, collection, shard,
+                               _description.get(SERVER_ID), res);
+    }
   }
 
   return false;
@@ -179,19 +187,11 @@ auto UpdateCollection::updateCollectionReplication2(
     ShardID const& shard, CollectionID const& collection,
     velocypack::SharedSlice props,
     std::shared_ptr<LogicalCollection> coll) noexcept -> Result {
-  auto res =
-      basics::catchToResult([coll = std::move(coll), props = std::move(props),
-                             &collection, &shard]() mutable {
-        return coll->getDocumentStateLeader()
-            ->modifyShard(shard, collection, std::move(props))
-            .get();
-      });
-
-  if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER) ||
-      res.is(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND)) {
-    // TODO prevent busy loop and wait for log to become ready (CINFRA-831).
-    std::this_thread::sleep_for(std::chrono::milliseconds{50});
-  }
-
-  return res;
+  return basics::catchToResult([coll = std::move(coll),
+                                props = std::move(props), &collection,
+                                &shard]() mutable {
+    return coll->getDocumentStateLeader()
+        ->modifyShard(shard, collection, std::move(props))
+        .get();
+  });
 }
