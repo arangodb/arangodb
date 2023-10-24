@@ -1,6 +1,10 @@
 devel
 -----
 
+* Added --write-concern parameter similar to --replication-factor to
+  arangodump. This enables the user to override the write concern for
+  one or multiple collections.
+
 * BTS-1259: Not all CRUD requests based on vertex and edge operations
   using `_api/gharial` performed a check against the actual graph
   definition. This behavior is now fixed. In case a collection is being
