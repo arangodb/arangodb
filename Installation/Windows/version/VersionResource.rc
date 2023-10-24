@@ -1,7 +1,7 @@
 #include "VersionInfo_@PRODUCT_NAME@.h"
 #include "winres.h"
 
-IDI_ICON1               ICON                    PRODUCT_ICON
+/*IDI_ICON1               ICON                    PRODUCT_ICON*/
 
 LANGUAGE LANG_ENGLISH, SUBLANG_DEFAULT
 
