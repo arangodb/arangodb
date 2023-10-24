@@ -163,6 +163,8 @@ DECLARE_COUNTER(arangodb_aql_global_query_memory_limit_reached_total,
                 "Number of global AQL query memory limit violations");
 DECLARE_COUNTER(arangodb_aql_local_query_memory_limit_reached_total,
                 "Number of local AQL query memory limit violations");
+DECLARE_GAUGE(arangodb_aql_cursors_active, uint64_t,
+              "Total amount of active AQL query results cursors");
 
 QueryRegistryFeature::QueryRegistryFeature(Server& server)
     : ArangodFeature{server, *this},
@@ -219,7 +221,9 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server)
               arangodb_aql_global_query_memory_limit_reached_total{})),
       _localQueryMemoryLimitReached(
           server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_aql_local_query_memory_limit_reached_total{})) {
+              arangodb_aql_local_query_memory_limit_reached_total{})),
+      _activeCursors(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_aql_cursors_active{})) {
   static_assert(
       Server::isCreatedAfter<QueryRegistryFeature, metrics::MetricsFeature>());
 

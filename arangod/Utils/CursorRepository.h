@@ -27,6 +27,7 @@
 #include <unordered_map>
 
 #include "Basics/Common.h"
+#include "Metrics/Fwd.h"
 #include "Utils/Cursor.h"
 #include "VocBase/voc-types.h"
 
@@ -52,7 +53,8 @@ class CursorRepository {
   CursorRepository& operator=(CursorRepository const&) = delete;
 
  public:
-  explicit CursorRepository(TRI_vocbase_t& vocbase);
+  explicit CursorRepository(TRI_vocbase_t& vocbase,
+                            metrics::Gauge<uint64_t>* metric);
 
   ~CursorRepository();
 
@@ -111,6 +113,10 @@ class CursorRepository {
   /// shutdown feature in coordinators, in all other instance types
   /// this pointer is a nullptr and not used.
   std::atomic<bool> const* _softShutdownOngoing;
+
+  /// @brief metric to increase/decrease for the number of cursors.
+  /// can be a nullptr in tests
+  metrics::Gauge<uint64_t>* _metric;
 };
 
 }  // namespace arangodb
