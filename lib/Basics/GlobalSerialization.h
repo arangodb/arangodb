@@ -83,6 +83,15 @@ namespace arangodb {
 //
 // For an example test which uses this see
 //   tests/js/client/shell/shell-move-shard-sync-fail-cluster.js
+//
+// PLEASE NOTE THAT THIS APPROACH HAS SOME SERIOUS LIMITATIONS:
+//
+//  - this only works in **local** clusters, in which all arangod instances
+//    share the same file system and temporary path!
+//  - the SLP file is **global**, it resides in a path which contains
+//    the name of the test suite (e.g. shell-client), but should at some
+//    stage multiple tests in this suite run concurrently **in the same
+//    cluster**, this will break! Beware of this!
 
 void waitForGlobalEvent(std::string_view id, std::string_view selector);
 void observeGlobalEvent(std::string_view id, std::string_view selector);
