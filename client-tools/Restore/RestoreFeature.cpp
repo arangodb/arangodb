@@ -188,7 +188,7 @@ uint64_t getWriteConcern(arangodb::RestoreFeature::Options const& options,
   if (!options.writeConcern.empty()) {
     std::string const name = s.copyString();
 
-    for (auto const& it : options.replicationFactor) {
+    for (auto const& it : options.writeConcern) {
       auto parts = arangodb::basics::StringUtils::split(it, '=');
       if (parts.size() == 1) {
         result = arangodb::basics::StringUtils::uint64(parts[0]);
