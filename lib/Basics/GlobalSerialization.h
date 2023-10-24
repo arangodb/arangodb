@@ -22,7 +22,6 @@
 
 #pragma once
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 // This functionality should only ever be used in test code and the
 // global synchronization points must only be in TRI_IF_FAILURE blocks.
 // Otherwise this could have catastrophic consequences for performance.
@@ -96,5 +95,3 @@ namespace arangodb {
 void waitForGlobalEvent(std::string_view id, std::string_view selector);
 void observeGlobalEvent(std::string_view id, std::string_view selector);
 }  // namespace arangodb
-
-#endif
