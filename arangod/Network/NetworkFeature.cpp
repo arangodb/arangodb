@@ -27,7 +27,9 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -289,7 +291,7 @@ void NetworkFeature::prepare() {
 
 void NetworkFeature::start() {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  if (scheduler != nullptr) {  // is nullptr in catch tests
+  if (scheduler != nullptr) {  // is nullptr in unit tests
     auto off = std::chrono::seconds(1);
     ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
   }
@@ -299,6 +301,11 @@ void NetworkFeature::beginShutdown() {
   {
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
+    for (auto const& [req, item] : _retryRequests) {
+      TRI_ASSERT(item != nullptr);
+      item->cancel();
+    }
+    _retryRequests.clear();
   }
   _poolPtr.store(nullptr, std::memory_order_relaxed);
   if (_pool) {  // first cancel all connections
@@ -311,6 +318,11 @@ void NetworkFeature::stop() {
     // we might have posted another workItem during shutdown.
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
+    for (auto const& [req, item] : _retryRequests) {
+      TRI_ASSERT(item != nullptr);
+      item->cancel();
+    }
+    _retryRequests.clear();
   }
   if (_pool) {
     _pool->shutdownConnections();
@@ -479,6 +491,59 @@ void NetworkFeature::finishRequest(network::ConnectionPool const& pool,
           << req->header.path;
     }
   }
+}
+
+void NetworkFeature::retryRequest(
+    std::shared_ptr<network::RetryableRequest> req, RequestLane lane,
+    std::chrono::steady_clock::duration duration) {
+  auto cb = [this, weak = std::weak_ptr(req)](bool cancelled) {
+    std::unique_lock guard(_workItemMutex);
+    if (auto self = weak.lock(); self) {
+      _retryRequests.erase(self);
+      guard.unlock();  // resuming the request does not access _retryRequests
+      if (cancelled) {
+        self->cancel();
+      } else {
+        self->retry();
+      }
+    }
+  };
+
+  // we need the mutex during `queueDelayed` because the lambda might be
+  // executed faster than we can add the work item to the _retryRequests map.
+  std::unique_lock guard(_workItemMutex);
+
+  // this will automatically cancel the request when we leave this
+  // method, unless we are canceling this scopeGuard explicitly.
+  auto cancelGuard = scopeGuard([req]() noexcept {
+    if (req) {
+      req->cancel();
+    }
+  });
+
+  if (server().isStopping()) {
+    // with trigger cancelGuard - cancels request
+    return;
+  }
+
+  auto item = SchedulerFeature::SCHEDULER->queueDelayed(
+      "retry-requests", lane, duration, std::move(cb));
+
+  if (item != nullptr) {
+    try {
+      TRI_IF_FAILURE("NetworkFeature::retryRequestFail") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
+      _retryRequests.emplace(std::move(req), std::move(item));
+      // the request successfully made it into _retryRequests.
+      // now abandon the automatic cancelation.
+      cancelGuard.cancel();
+    } catch (...) {
+    }
+  }
+  // if we get here and haven't canceled cancelGuard,
+  // the request will be automatically canceled
 }
 
 }  // namespace arangodb

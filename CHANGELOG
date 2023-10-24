@@ -1,6 +1,8 @@
 v3.11.5 (XXXX-XX-XX)
 --------------------
 
+* Backport multiple fixes for the scheduler behavior during ArangoDB shutdown.
+
 * FE-374: Query UI - fix switching from table to JSON.
 
 * Make AQL query cursor garbage-collection clean up more expired cursors in a
