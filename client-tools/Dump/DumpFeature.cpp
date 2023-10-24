@@ -806,6 +806,12 @@ void DumpFeature::collectOptions(
       "times).",
       new VectorParameter<StringParameter>(&_options.collections));
 
+  options->addOption(
+      "--ignore-collection",
+      "Ignore and exclude this collection during the dump process (can be "
+      "specified multiple times).",
+      new VectorParameter<StringParameter>(&_options.collectionsToBeIgnored));
+
   options
       ->addOption(
           "--shard",
@@ -1167,6 +1173,16 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
     if (cid == 0 || name.empty()) {
       return ::ErrorMalformedJsonResponse;
     }
+
+    // filtered based on the user-defined list of collections to be excluded
+    if (std::find(_options.collectionsToBeIgnored.begin(),
+                  _options.collectionsToBeIgnored.end(),
+                  name) != _options.collectionsToBeIgnored.end()) {
+      LOG_TOPIC("e413f", INFO, Logger::DUMP)
+          << "Collection: '" << name << "' will be ignored during the dump.";
+      continue;
+    }
+
     if (deleted) {
       continue;
     }
