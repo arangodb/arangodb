@@ -15,7 +15,6 @@ export const AddDatabaseForm = ({
 }) => {
   const { users: availableUsers = [] } = useFetchUsers();
   const { isFormDisabled: isDisabled } = useDatabasesContext();
-  const [isOneShard] = useField<boolean>("isOneShard");
   const [isSatellite] = useField<boolean>("isSatellite");
   const [path] = useField<string>("path");
   const [users] = useField<string[] | undefined>("users");
@@ -102,10 +101,6 @@ export const AddDatabaseForm = ({
                           isDisabled || window.frontendConfig.forceOneShard
                         }
                         name={"isOneShard"}
-                        switchProps={{
-                          isChecked:
-                            window.frontendConfig.forceOneShard || isOneShard.value
-                        }}
                       />
                       <InfoTooltip
                         label={
