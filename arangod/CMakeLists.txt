@@ -9,10 +9,10 @@ add_compile_warnings_flags()
 ################################################################################
 
 #if (MSVC AND NOT(SKIP_PACKAGING))
+#ICON ${ARANGO_ICON}
   generate_product_version(ProductVersionFiles
     NAME ${BIN_ARANGOD}
     FILE_DESCRIPTION ${ARANGODB_FRIENDLY_STRING}
-    ICON ${ARANGO_ICON}
     COMPANY_NAME ${ARANGODB_PACKAGE_COMPANY}
     VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
     VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
