@@ -1511,7 +1511,7 @@ void Agent::clearExpiredPolls() {
 /// Wake up everybody with query and delete with empty.
 /// If qu is nullptr, we're resigning.
 void Agent::triggerPollsNoLock(query_t qu, SteadyTimePoint const& tp) {
-  auto* scheduler = SchedulerFeature::SCHEDULER;
+  auto* scheduler = SchedulerFeature::instance();
   auto pit = _promises.begin();
   while (pit != _promises.end()) {
     if (pit->first < tp) {

@@ -508,7 +508,7 @@ void AgencyCache::run() {
 }
 
 void AgencyCache::triggerWaiting(index_t commitIndex) {
-  auto* scheduler = SchedulerFeature::SCHEDULER;
+  auto* scheduler = SchedulerFeature::instance();
   std::lock_guard w(_waitLock);
 
   auto pit = _waiting.begin();

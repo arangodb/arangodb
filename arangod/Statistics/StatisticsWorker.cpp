@@ -1066,7 +1066,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder,
 
   // export threads statistics
   builder.add("threads", VPackValue(VPackValueType::Object));
-  SchedulerFeature::SCHEDULER->toVelocyPack(builder);
+  SchedulerFeature::instance()->toVelocyPack(builder);
   builder.close();
 
   // export ttl statistics

@@ -1268,7 +1268,7 @@ void RocksDBEngine::start() {
   struct SchedulerExecutor
       : replication2::storage::rocksdb::AsyncLogWriteBatcher::IAsyncExecutor {
     explicit SchedulerExecutor(ArangodServer& server)
-        : _scheduler(server.getFeature<SchedulerFeature>().SCHEDULER) {}
+        : _scheduler(server.getFeature<SchedulerFeature>().instance()) {}
 
     void operator()(fu2::unique_function<void() noexcept> func) override {
       if (_scheduler->server().isStopping()) {
@@ -1851,7 +1851,7 @@ void RocksDBEngine::scheduleTreeRebuild(TRI_voc_tick_t database,
 }
 
 void RocksDBEngine::processTreeRebuilds() {
-  Scheduler* scheduler = arangodb::SchedulerFeature::SCHEDULER;
+  Scheduler* scheduler = arangodb::SchedulerFeature::instance();
   if (scheduler == nullptr) {
     return;
   }
@@ -1977,7 +1977,7 @@ void RocksDBEngine::compactRange(RocksDBKeyBounds bounds) {
 }
 
 void RocksDBEngine::processCompactions() {
-  Scheduler* scheduler = arangodb::SchedulerFeature::SCHEDULER;
+  Scheduler* scheduler = arangodb::SchedulerFeature::instance();
   if (scheduler == nullptr) {
     return;
   }

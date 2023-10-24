@@ -142,7 +142,7 @@ void RestAdminServerHandler::handleAvailability() {
   switch (ServerState::mode()) {
     case ServerState::Mode::DEFAULT: {
       available = !server().isStopping();
-      Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+      Scheduler* scheduler = SchedulerFeature::instance();
       if (available && scheduler) {
         // if the scheduler's queue is more than x% full, render
         // the server unavailable

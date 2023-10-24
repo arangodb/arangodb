@@ -530,7 +530,7 @@ void HeartbeatThread::runDBServer() {
       if (getNewsRunning->load(std::memory_order_seq_cst) == 0) {
         // Schedule a getNewsFromAgency call in the Scheduler:
         auto self = shared_from_this();
-        Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+        Scheduler* scheduler = SchedulerFeature::instance();
         *getNewsRunning = 1;
         scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self, getNewsRunning] {
           self->getNewsFromAgencyForDBServer();
@@ -1238,7 +1238,7 @@ void HeartbeatThread::runCoordinator() {
       if (getNewsRunning->load(std::memory_order_seq_cst) == 0) {
         // Schedule a getNewsFromAgency call in the Scheduler:
         auto self = shared_from_this();
-        Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+        Scheduler* scheduler = SchedulerFeature::instance();
         *getNewsRunning = 1;
         scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self, getNewsRunning] {
           self->getNewsFromAgencyForCoordinator();

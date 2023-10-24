@@ -86,8 +86,8 @@ bool Scheduler::start() {
 }
 
 void Scheduler::schedulerJobMemoryAccounting(std::int64_t x) noexcept {
-  if (SchedulerFeature::SCHEDULER) {
-    SchedulerFeature::SCHEDULER->trackQueueItemSize(x);
+  if (SchedulerFeature::instance()) {
+    SchedulerFeature::instance()->trackQueueItemSize(x);
   }
 }
 

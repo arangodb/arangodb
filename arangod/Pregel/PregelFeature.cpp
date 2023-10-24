@@ -339,8 +339,8 @@ void PregelFeature::scheduleGarbageCollection() {
   // GC will be run every 20 seconds
   std::chrono::seconds offset = std::chrono::seconds(20);
 
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  TRI_ASSERT(SchedulerFeature::instance() != nullptr);
+  Scheduler* scheduler = SchedulerFeature::instance();
   auto handle = scheduler->queueDelayed("pregel-gc", RequestLane::INTERNAL_LOW,
                                         offset, [this](bool canceled) {
                                           if (!canceled) {
@@ -759,8 +759,8 @@ void PregelFeature::cleanupConductor(ExecutionNumber executionNumber) {
 
 void PregelFeature::cleanupWorker(ExecutionNumber executionNumber) {
   // unmapping etc. might need a few seconds
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  TRI_ASSERT(SchedulerFeature::instance() != nullptr);
+  Scheduler* scheduler = SchedulerFeature::instance();
   scheduler->queue(RequestLane::INTERNAL_LOW, [this, executionNumber] {
     std::lock_guard guard{_mutex};
     _workers.erase(executionNumber);

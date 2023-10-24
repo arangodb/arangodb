@@ -141,7 +141,7 @@ auto agencyAsyncWait(std::string_view name, RequestMeta const& meta,
   }
 
   if (!meta.skipScheduler) {
-    return SchedulerFeature::SCHEDULER->delay(name, d);
+    return SchedulerFeature::instance()->delay(name, d);
   }
 
   std::this_thread::sleep_for(d);

@@ -119,7 +119,7 @@ RestStatus RestShutdownHandler::execute() {
   }
 
   auto self = shared_from_this();
-  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  Scheduler* scheduler = SchedulerFeature::instance();
   // don't block the response for workers waiting on this callback
   // this should allow workers to go into the IDLE state
   scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self] {

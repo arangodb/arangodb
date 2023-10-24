@@ -51,7 +51,7 @@ void queueGarbageCollection(std::mutex& mutex,
                             std::function<void(bool)>& gcfunc,
                             std::chrono::seconds offset) {
   std::lock_guard<std::mutex> guard(mutex);
-  workItem = arangodb::SchedulerFeature::SCHEDULER->queueDelayed(
+  workItem = arangodb::SchedulerFeature::instance()->queueDelayed(
       "networkfeature-gc", arangodb::RequestLane::INTERNAL_LOW, offset, gcfunc);
 }
 
@@ -284,7 +284,7 @@ void NetworkFeature::prepare() {
 }
 
 void NetworkFeature::start() {
-  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  Scheduler* scheduler = SchedulerFeature::instance();
   if (scheduler != nullptr) {  // is nullptr in unit tests
     auto off = std::chrono::seconds(1);
     ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
@@ -545,7 +545,7 @@ void NetworkFeature::retryRequest(
     return;
   }
 
-  auto item = SchedulerFeature::SCHEDULER->queueDelayed(
+  auto item = SchedulerFeature::instance()->queueDelayed(
       "retry-requests", lane, duration, std::move(cb));
 
   if (item != nullptr) {

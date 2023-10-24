@@ -64,13 +64,13 @@ namespace arangodb::pregel {
 
 struct PregelScheduler {
   auto operator()(auto fn) {
-    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-    Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+    TRI_ASSERT(SchedulerFeature::instance() != nullptr);
+    Scheduler* scheduler = SchedulerFeature::instance();
     scheduler->queue(RequestLane::INTERNAL_LOW, fn);
   }
   auto delay(std::chrono::seconds delay, std::function<void(bool)>&& fn) {
-    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-    Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+    TRI_ASSERT(SchedulerFeature::instance() != nullptr);
+    Scheduler* scheduler = SchedulerFeature::instance();
     std::ignore = scheduler->queueDelayed("pregel-actors",
                                           RequestLane::INTERNAL_LOW, delay, fn);
   }

@@ -304,13 +304,13 @@ void Worker<V, E, M>::cancelGlobalStep(VPackSlice const& data) {
 
 template<typename V, typename E, typename M>
 void Worker<V, E, M>::_startProcessing() {
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  TRI_ASSERT(SchedulerFeature::instance() != nullptr);
   auto self = shared_from_this();
   auto futures = std::vector<futures::Future<VertexProcessorResult>>();
   auto quiverIdx = std::make_shared<std::atomic<size_t>>(0);
 
   for (auto futureN = size_t{0}; futureN < _config->parallelism(); ++futureN) {
-    futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
+    futures.emplace_back(SchedulerFeature::instance()->queueWithFuture(
         RequestLane::INTERNAL_LOW, [self, this, quiverIdx, futureN]() {
           LOG_PREGEL("ee2ac", DEBUG) << fmt::format(
               "Starting vertex processor number {} with batch size", futureN,
@@ -503,8 +503,8 @@ template<typename V, typename E, typename M>
 void Worker<V, E, M>::_callConductor(std::string const& path,
                                      VPackBuilder const& message) const {
   if (!ServerState::instance()->isRunningInCluster()) {
-    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-    Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+    TRI_ASSERT(SchedulerFeature::instance() != nullptr);
+    Scheduler* scheduler = SchedulerFeature::instance();
     scheduler->queue(RequestLane::INTERNAL_LOW,
                      [this, self = shared_from_this(), path, message] {
                        VPackBuilder response;

@@ -346,8 +346,8 @@ void Conductor::finishedWorkerStep(GlobalSuperStepFinished const& data) {
       << _timing.gss.back().elapsedSeconds().count() << "s";
   _globalSuperstep++;
 
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  TRI_ASSERT(SchedulerFeature::instance() != nullptr);
+  Scheduler* scheduler = SchedulerFeature::instance();
   // don't block the response for workers waiting on this callback
   // this should allow workers to go into the IDLE state
   scheduler->queue(RequestLane::INTERNAL_LOW, [this,
@@ -537,7 +537,7 @@ void Conductor::finishedWorkerFinalize(Finished const& data) {
 
   // always try to cleanup
   if (_state == ExecutionState::CANCELED) {
-    auto* scheduler = SchedulerFeature::SCHEDULER;
+    auto* scheduler = SchedulerFeature::instance();
     if (scheduler) {
       auto exe = _specifications.executionNumber;
       scheduler->queue(RequestLane::CLUSTER_AQL,
@@ -786,8 +786,8 @@ ErrorCode Conductor::_sendToAllDBServers(
                                    message.slice(), response);
       handle(response.slice());
     } else {
-      TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-      Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+      TRI_ASSERT(SchedulerFeature::instance() != nullptr);
+      Scheduler* scheduler = SchedulerFeature::instance();
       scheduler->queue(RequestLane::INTERNAL_LOW, [this, path, message,
                                                    self = shared_from_this()] {
         TRI_vocbase_t& vocbase = _vocbaseGuard.database();

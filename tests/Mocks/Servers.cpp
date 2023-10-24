@@ -434,7 +434,7 @@ std::shared_ptr<transaction::Methods> MockAqlServer::createFakeTransaction()
 std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
     bool activateTracing, std::string queryString,
     std::function<void(aql::Query&)> callback) const {
-  return createFakeQuery(SchedulerFeature::SCHEDULER, activateTracing,
+  return createFakeQuery(SchedulerFeature::instance(), activateTracing,
                          queryString, callback);
 }
 

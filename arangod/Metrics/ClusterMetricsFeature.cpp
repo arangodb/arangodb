@@ -145,7 +145,7 @@ void ClusterMetricsFeature::rescheduleTimer(uint32_t timeoutMs) noexcept {
     return;
   }
 
-  auto h = SchedulerFeature::SCHEDULER->queueDelayed(
+  auto h = SchedulerFeature::instance()->queueDelayed(
       "metrics-reschedule-timer", RequestLane::DELAYED_FUTURE,
       std::chrono::milliseconds{timeoutMs}, [this](bool canceled) noexcept {
         if (canceled || wasStop()) {
@@ -162,7 +162,7 @@ void ClusterMetricsFeature::rescheduleUpdate(uint32_t timeoutMs) noexcept {
     return;
   }
 
-  auto h = SchedulerFeature::SCHEDULER->queueDelayed(
+  auto h = SchedulerFeature::instance()->queueDelayed(
       "metrics-reschedule-update", RequestLane::CLUSTER_INTERNAL,
       std::chrono::milliseconds{timeoutMs}, [this](bool canceled) noexcept {
         if (canceled || wasStop()) {

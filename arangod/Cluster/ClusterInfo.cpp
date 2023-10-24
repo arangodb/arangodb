@@ -284,7 +284,7 @@ constexpr frozen::unordered_map<std::string_view, ServerHealth, 4>
 
 void doQueueLinkDrop(IndexId id, std::string const& collection,
                      std::string const& vocbase, ClusterInfo& ci) {
-  auto* scheduler = SchedulerFeature::SCHEDULER;
+  auto* scheduler = SchedulerFeature::instance();
   if (!scheduler || ci.server().isStopping()) {
     return;
   }
@@ -388,7 +388,7 @@ ClusterInfo::ClusterInfo(ArangodServer& server,
     : _server(server),
       _agency(server),
       _agencyCallbackRegistry(agencyCallbackRegistry),
-      _rebootTracker(SchedulerFeature::SCHEDULER),
+      _rebootTracker(SchedulerFeature::instance()),
       _syncerShutdownCode(syncerShutdownCode),
       _memoryUsage(_server.getFeature<metrics::MetricsFeature>().add(
           arangodb_internal_cluster_info_memory_usage{})),
@@ -5728,7 +5728,7 @@ VPackBuilder ClusterInfo::toVelocyPack() {
 void ClusterInfo::triggerWaiting(
     AssocMultiMap<uint64_t, futures::Promise<Result>>& mm,
     uint64_t commitIndex) {
-  auto* scheduler = SchedulerFeature::SCHEDULER;
+  auto* scheduler = SchedulerFeature::instance();
   auto pit = mm.begin();
   while (pit != mm.end()) {
     if (pit->first > commitIndex) {

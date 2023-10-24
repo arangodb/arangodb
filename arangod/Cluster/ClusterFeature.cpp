@@ -1203,12 +1203,12 @@ std::unordered_set<std::string> ClusterFeature::allDatabases() const {
 void ClusterFeature::scheduleConnectivityCheck(std::uint32_t inSeconds) {
   TRI_ASSERT(_connectivityCheckInterval > 0);
 
-  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  Scheduler* scheduler = SchedulerFeature::instance();
   if (scheduler == nullptr || inSeconds == 0) {
     return;
   }
 
-  auto workItem = arangodb::SchedulerFeature::SCHEDULER->queueDelayed(
+  auto workItem = arangodb::SchedulerFeature::instance()->queueDelayed(
       "connectivity-check", RequestLane::INTERNAL_LOW,
       std::chrono::seconds(inSeconds), [this](bool canceled) {
         if (canceled) {

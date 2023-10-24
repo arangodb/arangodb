@@ -241,7 +241,7 @@ static void JS_ServerStatistics(
 
   v8::Handle<v8::Object> counters = v8::Object::New(isolate);
 
-  auto qs = SchedulerFeature::SCHEDULER->queueStatistics();
+  auto qs = SchedulerFeature::instance()->queueStatistics();
 
   counters
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "schedulerThreads"),

@@ -88,7 +88,7 @@ std::atomic<pid_t> processIdRequestingLogRotate{processIdUnspecified};
 
 namespace arangodb {
 
-Scheduler* SchedulerFeature::SCHEDULER = nullptr;
+std::atomic<Scheduler*> SchedulerFeature::SCHEDULER{nullptr};
 
 struct SchedulerFeature::AsioHandler {
   std::shared_ptr<asio_ns::signal_set> _exitSignals;
@@ -532,7 +532,7 @@ extern "C" void c_hangup_handler(int signal, siginfo_t* info, void*) {
   }
 
   // no log rotate request queued before. now issue one.
-  SchedulerFeature::SCHEDULER->queue(
+  SchedulerFeature::instance()->queue(
       RequestLane::CLIENT_SLOW, [processIdRequesting]() {
         try {
           LOG_TOPIC("33eae", INFO, arangodb::Logger::FIXME)

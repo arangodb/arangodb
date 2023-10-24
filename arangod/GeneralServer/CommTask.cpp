@@ -116,12 +116,12 @@ bool queueTimeViolated(GeneralRequest const& req) {
     // no queuing time restriction
     double requestedQueueTime = StringUtils::doubleDecimal(queueTimeValue);
     if (requestedQueueTime > 0.0) {
-      TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+      TRI_ASSERT(SchedulerFeature::instance() != nullptr);
       // value is > 0.0, so now check the last dequeue time that the scheduler
       // reported
       double lastDequeueTime =
           static_cast<double>(
-              SchedulerFeature::SCHEDULER->getLastLowPriorityDequeueTime()) /
+              SchedulerFeature::instance()->getLastLowPriorityDequeueTime()) /
           1000.0;
 
       if (lastDequeueTime > requestedQueueTime) {
@@ -129,7 +129,7 @@ bool queueTimeViolated(GeneralRequest const& req) {
         // level for the REQUESTS log topic is FATAL, so if we logged here in
         // INFO level, it would effectively be suppressed. thus we are using the
         // Scheduler's log topic here, which is somewhat related.
-        SchedulerFeature::SCHEDULER->trackQueueTimeViolation();
+        SchedulerFeature::instance()->trackQueueTimeViolation();
         LOG_TOPIC("1bbcc", WARN, Logger::THREADS)
             << "dropping incoming request because the client-specified maximum "
                "queue time requirement ("
@@ -450,12 +450,12 @@ void CommTask::finishExecution(GeneralResponse& res,
   if (_server.server()
           .getFeature<GeneralServerFeature>()
           .returnQueueTimeHeader()) {
-    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+    TRI_ASSERT(SchedulerFeature::instance() != nullptr);
     res.setHeaderNC(
         StaticStrings::XArangoQueueTimeSeconds,
         std::to_string(
             static_cast<double>(
-                SchedulerFeature::SCHEDULER->getLastLowPriorityDequeueTime()) /
+                SchedulerFeature::instance()->getLastLowPriorityDequeueTime()) /
             1000.0));
   }
 }
@@ -536,8 +536,8 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
     return;
   }
 
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  SchedulerFeature::SCHEDULER->trackCreateHandlerTask();
+  TRI_ASSERT(SchedulerFeature::instance() != nullptr);
+  SchedulerFeature::instance()->trackCreateHandlerTask();
 
   // asynchronous request
   if (found && (asyncExec == "true" || asyncExec == "store")) {
@@ -741,8 +741,8 @@ void CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
     });
   };
 
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  bool ok = SchedulerFeature::SCHEDULER->tryBoundedQueue(lane, std::move(cb));
+  TRI_ASSERT(SchedulerFeature::instance() != nullptr);
+  bool ok = SchedulerFeature::instance()->tryBoundedQueue(lane, std::move(cb));
 
   if (!ok) {
     sendErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE, respType, mid,
@@ -760,7 +760,7 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
   RequestLane lane = handler->determineRequestLane();
   handler->trackQueueStart();
 
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  TRI_ASSERT(SchedulerFeature::instance() != nullptr);
 
   if (jobId != nullptr) {
     auto& jobManager =
@@ -778,7 +778,7 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
     *jobId = handler->handlerId();
 
     // callback will persist the response with the AsyncJobManager
-    return SchedulerFeature::SCHEDULER->tryBoundedQueue(
+    return SchedulerFeature::instance()->tryBoundedQueue(
         lane, [handler = std::move(handler), manager(&jobManager)] {
           handler->trackQueueEnd();
           handler->trackTaskStart();
@@ -790,7 +790,7 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
         });
   } else {
     // here the response will just be ignored
-    return SchedulerFeature::SCHEDULER->tryBoundedQueue(
+    return SchedulerFeature::instance()->tryBoundedQueue(
         lane, [handler = std::move(handler)] {
           handler->trackQueueEnd();
           handler->trackTaskStart();

@@ -325,7 +325,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
     }
 
     // now do the work:
-    SchedulerFeature::SCHEDULER->queue(
+    SchedulerFeature::instance()->queue(
         RequestLane::INTERNAL_LOW, [self, this, execContext] {
           ExecContextScope scope(_user.empty() ? &ExecContext::superuser()
                                                : execContext.get());
@@ -383,7 +383,7 @@ bool Task::queue(std::chrono::microseconds offset) {
     return false;
   }
   std::lock_guard lock{_taskHandleMutex};
-  _taskHandle = SchedulerFeature::SCHEDULER->queueDelayed(
+  _taskHandle = SchedulerFeature::instance()->queueDelayed(
       "v8-task", RequestLane::INTERNAL_LOW, offset, callbackFunction());
   return true;
 }

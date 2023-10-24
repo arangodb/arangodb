@@ -42,7 +42,7 @@ namespace {
 void queueShutdownChecker(std::mutex& mutex,
                           arangodb::Scheduler::WorkHandle& workItem,
                           std::function<void(bool)>& checkFunc) {
-  arangodb::Scheduler* scheduler = arangodb::SchedulerFeature::SCHEDULER;
+  arangodb::Scheduler* scheduler = arangodb::SchedulerFeature::instance();
   std::lock_guard<std::mutex> guard(mutex);
   workItem = scheduler->queueDelayed("soft-shutdown",
                                      arangodb::RequestLane::CLUSTER_INTERNAL,
@@ -140,7 +140,7 @@ bool SoftShutdownTracker::checkAndShutdownIfAllClear() const {
 }
 
 void SoftShutdownTracker::initiateActualShutdown() const {
-  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  Scheduler* scheduler = SchedulerFeature::instance();
   auto self = shared_from_this();
   scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self = shared_from_this()] {
     // Give the server 2 seconds to finish stuff
@@ -194,7 +194,7 @@ SoftShutdownTracker::Status SoftShutdownTracker::getStatus() const {
 
   // Get number of ongoing and queued requests from scheduler:
   std::tie(status.lowPrioOngoingRequests, status.lowPrioQueuedRequests) =
-      SchedulerFeature::SCHEDULER->getNumberLowPrioOngoingAndQueued();
+      SchedulerFeature::instance()->getNumberLowPrioOngoingAndQueued();
 
   return status;
 }

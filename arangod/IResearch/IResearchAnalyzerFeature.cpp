@@ -788,7 +788,7 @@ AnalyzerModificationTransaction::Ptr createAnalyzerModificationTransaction(
 void queueGarbageCollection(std::mutex& mutex, Scheduler::WorkHandle& workItem,
                             std::function<void(bool)>& gcfunc) {
   std::lock_guard<std::mutex> guard(mutex);
-  workItem = SchedulerFeature::SCHEDULER->queueDelayed(
+  workItem = SchedulerFeature::instance()->queueDelayed(
       "analyzers-gc", RequestLane::INTERNAL_LOW, std::chrono::seconds(5),
       gcfunc);
 }

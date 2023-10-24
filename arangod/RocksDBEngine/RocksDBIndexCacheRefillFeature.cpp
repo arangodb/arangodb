@@ -310,7 +310,7 @@ void RocksDBIndexCacheRefillFeature::scheduleIndexRefillTasks() {
 
     lock.unlock();
 
-    SchedulerFeature::SCHEDULER->queue(
+    SchedulerFeature::instance()->queue(
         RequestLane::INTERNAL_LOW, [this, task = std::move(task)]() {
           if (!server().isStopping()) {
             Result res;

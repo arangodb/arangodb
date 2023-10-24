@@ -37,7 +37,7 @@ AqlExecutorTestCase<enableQueryTrace>::AqlExecutorTestCase(Scheduler* scheduler)
 
 template<bool enableQueryTrace>
 AqlExecutorTestCase<enableQueryTrace>::AqlExecutorTestCase()
-    : AqlExecutorTestCase(SchedulerFeature::SCHEDULER) {}
+    : AqlExecutorTestCase(SchedulerFeature::instance()) {}
 
 template<bool enableQueryTrace>
 AqlExecutorTestCase<enableQueryTrace>::~AqlExecutorTestCase() {

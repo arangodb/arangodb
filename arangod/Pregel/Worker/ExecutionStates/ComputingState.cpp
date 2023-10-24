@@ -215,13 +215,13 @@ auto Computing<V, E, M>::prepareGlobalSuperStep(
 template<typename V, typename E, typename M>
 auto Computing<V, E, M>::processVertices(Dispatcher const& dispatcher)
     -> VerticesProcessed {
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  TRI_ASSERT(SchedulerFeature::instance() != nullptr);
   auto futures = std::vector<futures::Future<ActorVertexProcessorResult>>();
   auto quiverIdx = std::make_shared<std::atomic<size_t>>(0);
 
   for (auto futureN = size_t{0}; futureN < worker.config->parallelism();
        ++futureN) {
-    futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
+    futures.emplace_back(SchedulerFeature::instance()->queueWithFuture(
         RequestLane::INTERNAL_LOW, [this, quiverIdx, futureN, dispatcher]() {
           auto processor = ActorVertexProcessor<V, E, M>(
               worker.config, worker.algorithm, worker.workerContext,

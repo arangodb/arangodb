@@ -129,7 +129,7 @@ void ManagerFeature::prepare() {
 }
 
 void ManagerFeature::start() {
-  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  Scheduler* scheduler = SchedulerFeature::instance();
   if (scheduler != nullptr) {  // is nullptr in catch tests
     queueGarbageCollection();
   }
@@ -201,7 +201,7 @@ void ManagerFeature::queueGarbageCollection() {
   // The RequestLane needs to be something which is `HIGH` priority, otherwise
   // all threads executing this might be blocking, waiting for a lock to be
   // released.
-  auto workItem = arangodb::SchedulerFeature::SCHEDULER->queueDelayed(
+  auto workItem = arangodb::SchedulerFeature::instance()->queueDelayed(
       "transactions-gc", RequestLane::CLUSTER_INTERNAL, std::chrono::seconds(2),
       _gcfunc);
   std::lock_guard<std::mutex> guard(_workItemMutex);

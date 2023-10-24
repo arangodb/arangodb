@@ -263,7 +263,7 @@ void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
           return;
         }
 
-        auto* sch = SchedulerFeature::SCHEDULER;
+        auto* sch = SchedulerFeature::instance();
         // cppcheck-suppress accessMoved
         if (pack->skipScheduler || sch == nullptr) {
           pack->promise.setValue(network::Response{
@@ -575,7 +575,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState>,
         << fuerte::to_string(_tmp_req->type()) << " " << _tmp_req->header.path
         << "' '" << fuerte::to_string(_tmp_err) << "'";
 
-    Scheduler* sch = SchedulerFeature::SCHEDULER;
+    Scheduler* sch = SchedulerFeature::instance();
     if (_options.skipScheduler || sch == nullptr) {
       _promise.setValue(Response{std::move(_destination), _tmp_err,
                                  std::move(_tmp_req), std::move(_tmp_res)});
@@ -597,7 +597,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState>,
         << fuerte::to_string(_tmp_req->type()) << " " << _tmp_req->header.path
         << "'";
 
-    auto* sch = SchedulerFeature::SCHEDULER;
+    auto* sch = SchedulerFeature::instance();
     if (ADB_UNLIKELY(sch == nullptr)) {
       _promise.setValue(Response{std::move(_destination),
                                  fuerte::Error::ConnectionCanceled, nullptr,

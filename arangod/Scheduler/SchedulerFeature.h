@@ -26,19 +26,25 @@
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
 
+#include <atomic>
 #include <functional>
 #include <memory>
 
 namespace arangodb {
 
 class SchedulerFeature final : public ArangodFeature {
+  static std::atomic<Scheduler*> SCHEDULER;  // Singleton
+
  public:
   static constexpr std::string_view name() noexcept { return "Scheduler"; }
 
-  static Scheduler* SCHEDULER;
-
   explicit SchedulerFeature(Server& server);
   ~SchedulerFeature();
+
+  static Scheduler* instance() noexcept {
+    Scheduler* s = SCHEDULER.load(std::memory_order_relaxed);
+    return s;
+  }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

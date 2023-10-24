@@ -153,7 +153,7 @@ auto GraphStorer<V, E>::storeQuiver(std::shared_ptr<Quiver<V, E>> quiver)
                             });
                           },
                           [](OldStoringUpdate const& update) {
-                            SchedulerFeature::SCHEDULER->queue(
+                            SchedulerFeature::instance()->queue(
                                 RequestLane::INTERNAL_LOW, update.fn);
                           }},
                  updateCallback);
@@ -166,7 +166,7 @@ auto GraphStorer<V, E>::storeQuiver(std::shared_ptr<Quiver<V, E>> quiver)
                         });
                       },
                       [](OldStoringUpdate const& update) {
-                        SchedulerFeature::SCHEDULER->queue(
+                        SchedulerFeature::instance()->queue(
                             RequestLane::INTERNAL_LOW, update.fn);
                       }},
              updateCallback);
@@ -185,7 +185,7 @@ auto GraphStorer<V, E>::store(Magazine<V, E> magazine)
   auto quiverIdx = std::make_shared<std::atomic<size_t>>(0);
 
   for (auto futureN = size_t{0}; futureN < parallelism; ++futureN) {
-    futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
+    futures.emplace_back(SchedulerFeature::instance()->queueWithFuture(
         RequestLane::INTERNAL_LOW, [this, self, quiverIdx, magazine] {
           while (true) {
             auto myCurrentQuiverIdx = quiverIdx->fetch_add(1);

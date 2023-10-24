@@ -233,7 +233,7 @@ bool RestBatchHandler::executeNextHandler() {
   auto const lane = RequestLane::CLIENT_V8;
 
   // now schedule the real handler
-  bool ok = SchedulerFeature::SCHEDULER->tryBoundedQueue(
+  bool ok = SchedulerFeature::instance()->tryBoundedQueue(
       lane, [this, self = shared_from_this(), handler]() {
         // start to work for this handler
         // ignore any errors here, will be handled later by inspecting the

@@ -418,7 +418,7 @@ void Syncer::JobSynchronizer::request(fu2::unique_function<void()> cb) {
     _cb = std::move(cb);
   }
 
-  SchedulerFeature::SCHEDULER->queue(
+  SchedulerFeature::instance()->queue(
       RequestLane::INTERNAL_LOW, [this, self = shared_from_this(), id]() {
         fu2::unique_function<void()> cb;
 

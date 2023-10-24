@@ -610,7 +610,7 @@ void DatabaseFeature::recoveryDone() {
   std::vector<futures::Future<Result>> futures;
   futures.reserve(_pendingRecoveryCallbacks.size());
   for (auto& entry : _pendingRecoveryCallbacks) {
-    futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
+    futures.emplace_back(SchedulerFeature::instance()->queueWithFuture(
         RequestLane::CLIENT_SLOW, std::move(entry)));
   }
   _pendingRecoveryCallbacks.clear();

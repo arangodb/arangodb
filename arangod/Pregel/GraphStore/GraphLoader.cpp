@@ -97,7 +97,7 @@ auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
   auto self = this->shared_from_this();
 
   for (auto futureN = size_t{0}; futureN < config->parallelism(); ++futureN) {
-    futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
+    futures.emplace_back(SchedulerFeature::instance()->queueWithFuture(
         RequestLane::INTERNAL_LOW,
         [this, self, futureN, loadableShardIdx, myLoadableVertexShards,
          server]() -> Magazine<V, E> {
@@ -153,7 +153,7 @@ auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
                               .memoryBytesUsed = 0});
                         },
                         [](OldLoadingUpdate const& update) {
-                          SchedulerFeature::SCHEDULER->queue(
+                          SchedulerFeature::instance()->queue(
                               RequestLane::INTERNAL_LOW, update.fn);
                         }},
                updateCallback);
@@ -251,7 +251,7 @@ auto GraphLoader<V, E>::loadVertices(LoadableVertexShard loadableVertexShard)
                           });
                         },
                         [](OldLoadingUpdate const& update) {
-                          SchedulerFeature::SCHEDULER->queue(
+                          SchedulerFeature::instance()->queue(
                               RequestLane::INTERNAL_LOW, update.fn);
                         }},
                updateCallback);

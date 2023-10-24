@@ -67,7 +67,7 @@ void safeInvokes(RebootTracker::RebootIds::value_type& callbacks) noexcept {
 }  // namespace
 
 static_assert(
-    std::is_same_v<decltype(SchedulerFeature::SCHEDULER),
+    std::is_same_v<decltype(SchedulerFeature::instance()),
                    RebootTracker::SchedulerPointer>,
     "Type of SchedulerPointer must match SchedulerFeature::SCHEDULER");
 static_assert(std::is_pointer<RebootTracker::SchedulerPointer>::value,

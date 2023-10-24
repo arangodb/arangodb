@@ -82,8 +82,8 @@ RestHandler::~RestHandler() {
     // someone forgot to call trackTaskEnd 🤔
     TRI_ASSERT(PriorityRequestLane(determineRequestLane()) ==
                RequestPriority::LOW);
-    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-    SchedulerFeature::SCHEDULER->trackEndOngoingLowPriorityTask();
+    TRI_ASSERT(SchedulerFeature::instance() != nullptr);
+    SchedulerFeature::instance()->trackEndOngoingLowPriorityTask();
   }
 }
 
@@ -127,9 +127,9 @@ RequestLane RestHandler::determineRequestLane() {
 }
 
 void RestHandler::trackQueueStart() noexcept {
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  TRI_ASSERT(SchedulerFeature::instance() != nullptr);
   _statistics.SET_QUEUE_START(
-      SchedulerFeature::SCHEDULER->queueStatistics()._queued);
+      SchedulerFeature::instance()->queueStatistics()._queued);
 }
 
 void RestHandler::trackQueueEnd() noexcept { _statistics.SET_QUEUE_END(); }
@@ -138,8 +138,8 @@ void RestHandler::trackTaskStart() noexcept {
   TRI_ASSERT(!_trackedAsOngoingLowPrio);
 
   if (PriorityRequestLane(determineRequestLane()) == RequestPriority::LOW) {
-    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-    SchedulerFeature::SCHEDULER->trackBeginOngoingLowPriorityTask();
+    TRI_ASSERT(SchedulerFeature::instance() != nullptr);
+    SchedulerFeature::instance()->trackBeginOngoingLowPriorityTask();
     _trackedAsOngoingLowPrio = true;
   }
 }
@@ -148,8 +148,8 @@ void RestHandler::trackTaskEnd() noexcept {
   if (_trackedAsOngoingLowPrio) {
     TRI_ASSERT(PriorityRequestLane(determineRequestLane()) ==
                RequestPriority::LOW);
-    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-    SchedulerFeature::SCHEDULER->trackEndOngoingLowPriorityTask();
+    TRI_ASSERT(SchedulerFeature::instance() != nullptr);
+    SchedulerFeature::instance()->trackEndOngoingLowPriorityTask();
     _trackedAsOngoingLowPrio = false;
 
     // update the time the last low priority item spent waiting in the queue.
@@ -157,7 +157,7 @@ void RestHandler::trackTaskEnd() noexcept {
     // the queueing time is in ms
     uint64_t queueTimeMs =
         static_cast<uint64_t>(_statistics.ELAPSED_WHILE_QUEUED() * 1000.0);
-    SchedulerFeature::SCHEDULER->setLastLowPriorityDequeueTime(queueTimeMs);
+    SchedulerFeature::instance()->setLastLowPriorityDequeueTime(queueTimeMs);
   }
 }
 

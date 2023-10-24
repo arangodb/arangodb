@@ -106,7 +106,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "JavaScript tasks are disabled");
   }
 
-  if (SchedulerFeature::SCHEDULER == nullptr) {
+  if (SchedulerFeature::instance() == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no scheduler found");
   } else if (v8g->server().isStopping()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
