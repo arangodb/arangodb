@@ -32,6 +32,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Metrics/Gauge.h"
 #include "RestServer/SoftShutdownFeature.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
@@ -55,9 +56,10 @@ using namespace arangodb;
 /// @brief create a cursor repository
 ////////////////////////////////////////////////////////////////////////////////
 
-CursorRepository::CursorRepository(TRI_vocbase_t& vocbase)
-    : _vocbase(vocbase), _lock(), _cursors(), _softShutdownOngoing(nullptr) {
-  _cursors.reserve(64);
+CursorRepository::CursorRepository(TRI_vocbase_t& vocbase,
+                                   metrics::Gauge<uint64_t>* metric)
+    : _vocbase(vocbase), _softShutdownOngoing(nullptr), _metric(metric) {
+  _cursors.reserve(16);
   if (ServerState::instance()->isCoordinator()) {
     try {
       auto const& softShutdownFeature{
@@ -101,6 +103,7 @@ CursorRepository::~CursorRepository() {
     ++tries;
   }
 
+  size_t n = 0;
   {
     std::lock_guard mutexLocker{_lock};
 
@@ -108,7 +111,13 @@ CursorRepository::~CursorRepository() {
       delete it.second.first;
     }
 
+    n = _cursors.size();
+
     _cursors.clear();
+  }
+
+  if (_metric != nullptr) {
+    _metric->fetch_sub(n);
   }
 }
 
@@ -127,6 +136,10 @@ Cursor* CursorRepository::addCursor(std::unique_ptr<Cursor> cursor) {
   {
     std::lock_guard mutexLocker{_lock};
     _cursors.emplace(id, std::make_pair(cursor.get(), std::move(user)));
+  }
+
+  if (_metric != nullptr) {
+    _metric->fetch_add(1);
   }
 
   TRI_IF_FAILURE(
@@ -216,6 +229,10 @@ bool CursorRepository::remove(CursorId id) {
     _cursors.erase(it);
   }
 
+  if (_metric != nullptr) {
+    _metric->fetch_sub(1);
+  }
+
   TRI_ASSERT(cursor != nullptr);
 
   delete cursor;
@@ -281,6 +298,10 @@ void CursorRepository::release(Cursor* cursor) {
 
     // remove from the list
     _cursors.erase(cursor->id());
+  }
+
+  if (_metric != nullptr) {
+    _metric->fetch_sub(1);
   }
 
   // and free the cursor
@@ -357,6 +378,10 @@ bool CursorRepository::garbageCollect(bool force) {
   for (auto it : found) {
     TRI_ASSERT(it != nullptr);
     delete it;
+  }
+
+  if (_metric != nullptr) {
+    _metric->fetch_sub(found.size());
   }
 
   return (!found.empty());
