@@ -51,6 +51,7 @@
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchInvertedIndex.h"
 #include "IResearch/IResearchViewCoordinator.h"
+#include "IResearch/IResearchFeature.h"
 #include "IResearch/Search.h"
 #include "IResearch/ViewSnapshot.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -2069,7 +2070,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         _heapSort,
         _heapSortLimit,
         _meta.get(),
-        _options.parallelism};
+        _options.parallelism,
+        _vocbase.server().getFeature<IResearchFeature>().getSearchPool()};
     return std::make_tuple(materializeType, std::move(executorInfos),
                            std::move(registerInfos));
   };

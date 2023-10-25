@@ -31,6 +31,7 @@
 #include "VocBase/voc-types.h"
 #include "resource_manager.hpp"
 #include "function2.hpp"
+#include "utils/async_utils.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -56,6 +57,58 @@ class IResearchAsync;
 class IResearchLink;
 class ResourceMutex;
 class IResearchRocksDBRecoveryHelper;
+
+class ArangoSearchPool {
+ public:
+  void setLimit(int newLimit) noexcept {
+    _limit = newLimit;
+  }
+
+  void stop() {
+    TRI_ASSERT(_allocatedThreads.load() == 0);
+    _pool.stop(true);
+  }
+
+  int allocateThreads(int n) {
+    auto curr = _allocatedThreads.load(std::memory_order_relaxed);
+    int add;
+    int newval;
+    do {
+      add = n;
+      newval = curr + add;
+      if (newval > _limit) {
+        add = _limit - curr;
+        newval = _limit;
+        if (add < 0) {
+          // someone suddenly lowered the limit?
+          return 0;
+        }
+      }
+    } while (!_allocatedThreads.compare_exchange_weak(curr, newval));
+    TRI_ASSERT(add <= n);
+    TRI_ASSERT(add >= 0);
+    if (add > 0) {
+      _pool.max_idle_delta(add);
+      _pool.max_threads_delta(add);
+    }
+    return add;
+  }
+
+  void releaseThreads(int n) {
+    TRI_ASSERT(n > 0);
+    _pool.max_idle_delta(-n);
+    _pool.max_threads_delta(-n);
+    _allocatedThreads.fetch_sub(n);
+  }
+  using Pool = irs::async_utils::thread_pool<false>;
+  bool run(Pool::func_t&& fn) {
+    return _pool.run(std::forward<Pool::func_t>(fn));
+  }
+ private:
+  Pool _pool;
+  std::atomic<int> _allocatedThreads{0};
+  std::atomic<int> _limit{0};
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @enum ThreadGroup
@@ -116,6 +169,7 @@ class IResearchFeature final : public ArangodFeature {
   void unprepare() final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
 
+  auto& getSearchPool() noexcept { return _searchExecutionPool; }
   //////////////////////////////////////////////////////////////////////////////
   /// @brief schedule an asynchronous task for execution
   /// @param id thread group to handle the execution
@@ -189,12 +243,15 @@ class IResearchFeature final : public ArangodFeature {
   uint32_t _commitThreadsIdle;
   uint32_t _threads;
   uint32_t _threadsLimit;
+  uint32_t _searchExecutionThreads;
 
   std::shared_ptr<IndexTypeFactory> _clusterFactory;
   std::shared_ptr<IndexTypeFactory> _rocksDBFactory;
 
   // helper object, only useful during WAL recovery
   std::shared_ptr<IResearchRocksDBRecoveryHelper> _recoveryHelper;
+
+  ArangoSearchPool _searchExecutionPool;
 };
 
 }  // namespace iresearch

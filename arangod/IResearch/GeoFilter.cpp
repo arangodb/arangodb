@@ -165,8 +165,8 @@ class GeoIterator : public irs::doc_iterator {
   irs::doc_iterator::ptr _columnIt;
   irs::payload const* _storedValue;
   Attributes _attrs;
-  Parser _parser;
   Acceptor& _acceptor;
+  IRS_NO_UNIQUE_ADDRESS Parser _parser;
 };
 
 template<typename Parser, typename Acceptor>

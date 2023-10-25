@@ -216,7 +216,8 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     iresearch::CountApproximate countApproximate,
     iresearch::FilterOptimization filterOptimization,
     std::vector<iresearch::HeapSortElement> const& heapSort,
-    size_t heapSortLimit, iresearch::SearchMeta const* meta, size_t parallelism)
+    size_t heapSortLimit, iresearch::SearchMeta const* meta, size_t parallelism,
+    iresearch::ArangoSearchPool& parallelExecutionPool)
     : _searchDocOutReg{searchDocRegister},
       _documentOutReg{outRegister},
       _scoreRegisters{std::move(scoreRegisters)},
@@ -240,6 +241,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _heapSortLimit{heapSortLimit},
       _parallelism{parallelism},
       _meta{meta},
+      _parallelExecutionPool {parallelExecutionPool},
       _depth{depth},
       _filterConditionIsEmpty{
           iresearch::isFilterConditionEmpty(&_filterCondition) &&
@@ -721,7 +723,6 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::skipRowsRange(
 template<typename Impl, typename ExecutionTraits>
 void IResearchViewExecutorBase<Impl, ExecutionTraits>::materialize() {
   // TODO(MBkkt) unify it more with MaterializeExecutor
-  // TODO: check HeapSort + skip + materialize - possibly skip here missing
   auto pkReadingOrder = _indexReadBuffer.getMaterializeRange(0);
   auto it = pkReadingOrder.begin();
   auto end = pkReadingOrder.end();
@@ -1103,6 +1104,13 @@ IResearchViewExecutor<ExecutionTraits>::IResearchViewExecutor(Fetcher& fetcher,
   TRI_ASSERT(infos.heapSort().empty());
   TRI_ASSERT(infos.parallelism() > 0);
   _segmentReaders.resize(infos.parallelism());
+}
+
+template<typename ExecutionTraits>
+IResearchViewExecutor<ExecutionTraits>::~IResearchViewExecutor() {
+  if (_allocatedThreads) {
+    this->_infos.parallelExecutionPool().releaseThreads(_allocatedThreads);
+  }
 }
 
 inline void commonReadPK(ColumnIterator& it, irs::doc_id_t docId,
@@ -1552,10 +1560,11 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
   auto atMost = atMostInitial;
   TRI_ASSERT(this->_indexReadBuffer.empty());
   this->_isMaterialized = false;
-  auto parallelism = this->_infos.parallelism();
+  auto parallelism = std::min(count, this->_infos.parallelism());
   this->_indexReadBuffer.reset();
   std::atomic<size_t> bufferIdx{0};
-  if (this->_infos.parallelism() == 1) {
+  // shortcut for sequential execution.
+  if (parallelism == 1) {
     this->_indexReadBuffer.preAllocateStoredValuesBuffer(
         atMost, this->_infos.getScoreRegisters().size(),
         this->_infos.getOutNonMaterializedViewRegs().size());
@@ -1573,22 +1582,27 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
     }
     return gotData;
   }
-
+  // here parallelism can be used or not depending on the
+  // current pipeline demand.
   auto const& clientCall = ctx.outputRow.getClientCall();
   auto limit = clientCall.getUnclampedLimit();
   bool const isUnlimited = limit == aql::AqlCall::Infinity{};
   TRI_ASSERT(isUnlimited || std::holds_alternative<std::size_t>(limit));
-  parallelism = std::min(count, parallelism);
   if (!isUnlimited) {
     parallelism = std::min(parallelism,
                            (std::get<std::size_t>(limit) / atMostInitial) + 1);
   }
-  if (parallelism > 1 &&
-      (isUnlimited || std::get<std::size_t>(limit) > atMostInitial)) {
-    atMost = atMostInitial * parallelism;
-  } else {
-    parallelism = 1;
+  // let's be greedy as it is more likely that we are
+  // asked to read some "tail" documents to fill the block
+  // and next time we would need all our parallelism again.
+  auto& readersPool = this->infos().parallelExecutionPool();
+  if (parallelism > (this->_allocatedThreads + 1)) {
+    this->_allocatedThreads +=
+        readersPool.allocateThreads(static_cast<int>(parallelism - this->_allocatedThreads - 1));
+    parallelism = this->_allocatedThreads + 1;
   }
+  atMost = atMostInitial * parallelism;
+  
   std::vector<futures::Future<bool>> results;
   this->_indexReadBuffer.preAllocateStoredValuesBuffer(
       atMost, this->_infos.getScoreRegisters().size(),
@@ -1596,23 +1610,27 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
   this->_indexReadBuffer.setForParallelAccess(
       atMost, this->_infos.getScoreRegisters().size(),
       this->_infos.getOutNonMaterializedViewRegs().size());
-  if (parallelism > _readersPool.threads()) {
-    _readersPool.max_idle(parallelism - 1);
-    _readersPool.max_threads(parallelism - 1);
-    results.reserve(parallelism);
-  }
-  bool killPool =true;
+  results.reserve(parallelism - 1);
+  // we must wait for our threads before bailing out
+  // as we most likely will release segments and
+  // "this" will also be invalid.
   auto cleanupThreads = irs::Finally([&]() noexcept {
-    if (killPool) {
-      _readersPool.stop(true);
+    if (results.empty()) {
+      return;
     }
+    results.erase(std::remove_if(results.begin(), results.end(),
+                                 [](auto& f) { return !f.valid(); }),
+                  results.end());
+    auto runners = futures::collectAll(results);
+    runners.wait();
   });
   while (bufferIdx.load() < atMostInitial) {
-    results.clear();
+    TRI_ASSERT(results.empty());
     size_t i = 0;
-    size_t selfExecute{_segmentReaders.size()};
+    size_t selfExecute{std::numeric_limits<size_t>::max()};
     auto toFetch = atMost - bufferIdx.load();
-    while (toFetch && i < _segmentReaders.size()) {
+    while (toFetch && results.size() < (parallelism - 1) &&
+           i < _segmentReaders.size()) {
       auto& reader = _segmentReaders[i];
       if (!reader.itr) {
         if (_segmentOffset >= count) {
@@ -1624,10 +1642,10 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
       }
       reader.atMost = std::min(atMostInitial, toFetch);
       toFetch -= reader.atMost;
-      if (selfExecute < _segmentReaders.size()) {
+      if (selfExecute < parallelism) {
         futures::Promise<bool> promise;
-        results.push_back(promise.getFuture());
-        if (ADB_UNLIKELY(!_readersPool.run(
+        auto future = promise.getFuture();
+        if (ADB_UNLIKELY(!readersPool.run(
                 [&, ctx = &reader, pr = std::move(promise)]() mutable {
                   try {
                     pr.setValue(readSegment<true>(*ctx, bufferIdx));
@@ -1640,23 +1658,30 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
               TRI_ERROR_INTERNAL,
               " Failed to schedule parallel search view reading");
         }
+        // this should be noexcept as we've reserved above
+        results.push_back(std::move(future));
       } else {
         selfExecute = i;
       }
       ++i;
     }
-    if (selfExecute < _segmentReaders.size()) {
+    if (selfExecute < std::numeric_limits<size_t>::max()) {
         gotData |= readSegment<true>(_segmentReaders[selfExecute], bufferIdx);
     } else {
       TRI_ASSERT(results.empty());
       break;
     }
-    auto runners = futures::collectAll(results);
-    runners.wait();
-    killPool = false;
-    for (auto& r : runners.result().get()) {
-      gotData |= r.get();
-    }
+    // we run this in noexcept mode as with current implementation
+    // we can not recover and properly wait for finish in case
+    // of exception in the middle of collectAll or wait.
+    [&]() noexcept {
+      auto runners = futures::collectAll(results);
+      runners.wait();
+      for (auto& r : runners.result().get()) {
+        gotData |= r.get();
+      }
+    } ();
+    results.clear();
   }
   // shrink to actual size so we can emit rows as usual
   this->_indexReadBuffer.setForParallelAccess(

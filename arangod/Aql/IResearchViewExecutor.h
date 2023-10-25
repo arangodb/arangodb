@@ -37,6 +37,7 @@
 #include "IResearch/IResearchExpressionContext.h"
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchView.h"
+#include "IResearch/IResearchFeature.h"
 #include "IResearch/SearchDoc.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
@@ -74,6 +75,8 @@ template<BlockPassthrough>
 class SingleRowFetcher;
 class QueryContext;
 
+
+
 class IResearchViewExecutorInfos {
  public:
   IResearchViewExecutorInfos(
@@ -94,7 +97,7 @@ class IResearchViewExecutorInfos {
       iresearch::CountApproximate, iresearch::FilterOptimization,
       std::vector<iresearch::HeapSortElement> const& heapSort,
       size_t heapSortLimit, iresearch::SearchMeta const* meta,
-      size_t parallelism);
+      size_t parallelism, iresearch::ArangoSearchPool& parallelExecutionPool);
 
   auto getDocumentRegister() const noexcept { return _documentOutReg; }
 
@@ -154,6 +157,10 @@ class IResearchViewExecutorInfos {
 
   auto parallelism() const noexcept { return _parallelism; }
 
+  auto& parallelExecutionPool() const noexcept {
+    return _parallelExecutionPool;
+  }
+
  private:
   RegisterId _searchDocOutReg;
   RegisterId _documentOutReg;
@@ -178,6 +185,7 @@ class IResearchViewExecutorInfos {
   size_t _heapSortLimit;
   size_t _parallelism;
   iresearch::SearchMeta const* _meta;
+  iresearch::ArangoSearchPool& _parallelExecutionPool;
   int const _depth;
   bool _filterConditionIsEmpty;
   bool const _volatileSort;
@@ -660,6 +668,7 @@ class IResearchViewExecutor
 
   IResearchViewExecutor(IResearchViewExecutor&&) = default;
   IResearchViewExecutor(Fetcher& fetcher, Infos&);
+  ~IResearchViewExecutor();
 
  private:
   friend Base;
@@ -701,11 +710,9 @@ class IResearchViewExecutor
   // unset if readPK returns true.
   bool readPK(LocalDocumentId& documentId, SegmentReader& reader);
 
-  // important that pool is destroed before readers
-  irs::async_utils::thread_pool<false> _readersPool;
-
   std::vector<SegmentReader> _segmentReaders;
   size_t _segmentOffset;
+  int _allocatedThreads{0};
 };
 
 struct DocumentValue {
