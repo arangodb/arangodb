@@ -107,6 +107,16 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
       transaction::Methods& trx, aql::AstNode* node,
       aql::Variable const* reference) const override;
 
+  bool supportsStreamInterface(
+      IndexStreamOptions const&) const noexcept override;
+
+  static bool checkSupportsStreamInterface(
+      std::vector<std::vector<basics::AttributeName>> const& coveredFields,
+      IndexStreamOptions const&) noexcept;
+
+  virtual std::unique_ptr<AqlIndexStreamIterator> streamForCondition(
+      transaction::Methods* trx, IndexStreamOptions const&) override;
+
   /// @brief returns whether the document can be inserted into the primary index
   /// (or if there will be a conflict)
   Result checkInsert(transaction::Methods& trx, RocksDBMethods* methods,
