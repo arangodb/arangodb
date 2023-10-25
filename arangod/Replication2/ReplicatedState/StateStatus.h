@@ -24,6 +24,8 @@
 
 #pragma once
 
+#include "Replication2/ReplicatedLog/LogCommon.h"
+
 #include <string_view>
 #include <variant>
 
@@ -43,7 +45,9 @@ struct Status {
   };
   struct Follower {
     struct Resigned {};
-    struct Constructed {};
+    struct Constructed {
+      LogIndex appliedIndex{};
+    };
     std::variant<Resigned, Constructed> value;
   };
   struct Unconfigured {};

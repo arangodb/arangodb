@@ -99,36 +99,42 @@ DocumentStateTransactionHandler::DocumentStateTransactionHandler(
 
 auto DocumentStateTransactionHandler::getTrx(TransactionId tid)
     -> std::shared_ptr<IDocumentStateTransaction> {
-  auto it = _transactions.find(tid);
-  if (it == _transactions.end()) {
-    return nullptr;
-  }
-  return it->second;
+  return _transactions.doUnderLock(
+      [&](auto& transactions) -> std::shared_ptr<IDocumentStateTransaction> {
+        auto it = transactions.find(tid);
+        if (it == transactions.end()) {
+          return nullptr;
+        }
+        return it->second;
+      });
 }
 
 void DocumentStateTransactionHandler::setTrx(
     TransactionId tid, std::shared_ptr<IDocumentStateTransaction> trx) {
-  auto [_, isInserted] = _transactions.emplace(tid, std::move(trx));
+  auto [_, isInserted] =
+      _transactions.getLockedGuard()->emplace(tid, std::move(trx));
   ADB_PROD_ASSERT(isInserted) << "Transaction " << tid << " already exists";
 }
 
 void DocumentStateTransactionHandler::removeTransaction(TransactionId tid) {
-  _transactions.erase(tid);
+  _transactions.getLockedGuard()->erase(tid);
 }
 
 auto DocumentStateTransactionHandler::getUnfinishedTransactions() const
-    -> TransactionMap const& {
-  return _transactions;
+    -> TransactionMap {
+  return _transactions.copy();
 }
 
 auto DocumentStateTransactionHandler::getTransactionsForShard(
     ShardID const& sid) -> std::vector<TransactionId> {
   std::vector<TransactionId> result;
-  for (auto const& [tid, trx] : _transactions) {
-    if (trx->containsShard(sid)) {
-      result.emplace_back(tid);
+  _transactions.doUnderLock([&](auto& transactions) {
+    for (auto const& [tid, trx] : transactions) {
+      if (trx->containsShard(sid)) {
+        result.emplace_back(tid);
+      }
     }
-  }
+  });
   return result;
 }
 
@@ -151,7 +157,7 @@ auto DocumentStateTransactionHandler::applyOp(
     FinishesUserTransaction auto const& op) -> Result {
   TRI_ASSERT(op.tid.isFollowerTransactionId());
   auto trx = getTrx(op.tid);
-  ADB_PROD_ASSERT(trx != nullptr);
+  ADB_PROD_ASSERT(trx != nullptr) << "Could not find transaction " << op.tid;
 
   auto res = std::invoke(
       overload{
@@ -199,7 +205,7 @@ auto DocumentStateTransactionHandler::applyOp(
 
 auto DocumentStateTransactionHandler::applyOp(
     ReplicatedOperation::AbortAllOngoingTrx const&) -> Result {
-  _transactions.clear();
+  _transactions.getLockedGuard()->clear();
   return Result{};
 }
 

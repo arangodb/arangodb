@@ -159,9 +159,11 @@ auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries(
   }
   if (_commitIndex > _lastAppliedPosition.index() and
       not _applyEntriesPositionInFlight.has_value()) {
-    // Apply at most 1000 entries at once, so we have a smoother progression.
-    _applyEntriesPositionInFlight = storage::IteratorPosition::fromLogIndex(
-        std::min(_commitIndex, _lastAppliedPosition.index() + 1000));
+    // // Apply at most 1000 entries at once, so we have a smoother progression.
+    // _applyEntriesPositionInFlight = storage::IteratorPosition::fromLogIndex(
+    //     std::min(_commitIndex, _lastAppliedPosition.index() + 1000));
+    _applyEntriesPositionInFlight =
+        storage::IteratorPosition::fromLogIndex(_commitIndex);
     auto range = LogRange{_lastAppliedPosition.index() + 1,
                           _applyEntriesPositionInFlight->index() + 1};
     auto promise = futures::Promise<Result>();
@@ -174,8 +176,7 @@ auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries(
     scheduler->queue([promise = std::move(promise), stream = _stream, range,
                       followerState = _followerState,
                       rttGuard = std::move(rttGuard)]() mutable {
-      using IterType =
-          LazyDeserializingIterator<EntryType const&, Deserializer>;
+      using IterType = LazyDeserializingIterator<EntryType, Deserializer>;
       auto iter = [&]() -> std::unique_ptr<IterType> {
         auto methods = stream->methods();
         if (methods.isResigned()) {
@@ -392,7 +393,9 @@ auto FollowerStateManager<S>::getInternalStatus() const -> Status::Follower {
   if (guard->_followerState == nullptr || guard->_stream->isResigned()) {
     return {Status::Follower::Resigned{}};
   } else {
-    return {Status::Follower::Constructed{}};
+    return {Status::Follower::Constructed{
+        .appliedIndex = guard->_lastAppliedPosition.index(),
+    }};
   }
 }
 

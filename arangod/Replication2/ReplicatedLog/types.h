@@ -198,6 +198,7 @@ struct LogStatistics {
   LogIndex firstIndex{};
   LogIndex releaseIndex{};
   LogIndex syncIndex{};
+  LogIndex appliedIndex{};
 
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice slice)
@@ -215,7 +216,8 @@ auto inspect(Inspector& f, LogStatistics& x) {
       f.field(StaticStrings::CommitIndex, x.commitIndex),
       f.field(StaticStrings::FirstIndex, x.firstIndex),
       f.field(StaticStrings::ReleaseIndex, x.releaseIndex),
-      f.field(StaticStrings::SyncIndex, x.syncIndex));
+      f.field(StaticStrings::SyncIndex, x.syncIndex),
+      f.field(StaticStrings::AppliedIndex, x.appliedIndex));
 }
 
 struct AbstractFollower {

@@ -357,6 +357,7 @@ class StaticStrings {
   static std::string const FirstIndex;
   static std::string const ReleaseIndex;
   static std::string const SyncIndex;
+  constexpr static std::string_view AppliedIndex = "appliedIndex";
   constexpr static std::string_view MessageId = "messageId";
   constexpr static std::string_view LogIndex = "logIndex";
   constexpr static std::string_view LogTerm = "logTerm";

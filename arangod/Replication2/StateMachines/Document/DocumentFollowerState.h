@@ -59,10 +59,8 @@ struct DocumentFollowerState
       -> futures::Future<Result> override;
 
  private:
-  static auto populateLocalShard(
-      ShardID shardId, velocypack::SharedSlice slice,
-      std::shared_ptr<IDocumentStateTransactionHandler> const&
-          transactionHandler) -> Result;
+  auto populateLocalShard(ShardID shardId, velocypack::SharedSlice slice)
+      -> Result;
 
   struct SnapshotTransferResult {
     Result res{};
@@ -83,43 +81,20 @@ struct DocumentFollowerState
       -> futures::Future<SnapshotTransferResult>;
 
  private:
+  struct EntryProcessor;
+
   struct GuardedData {
-    explicit GuardedData(
-        std::unique_ptr<DocumentCore> core,
-        std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory);
+    explicit GuardedData(std::unique_ptr<DocumentCore> core);
 
     [[nodiscard]] bool didResign() const noexcept { return core == nullptr; }
 
-    auto applyEntry(ModifiesUserTransaction auto const&, LogIndex)
-        -> ResultT<std::optional<LogIndex>>;
-    auto applyEntry(ReplicatedOperation::IntermediateCommit const&, LogIndex)
-        -> ResultT<std::optional<LogIndex>>;
-    auto applyEntry(FinishesUserTransaction auto const&, LogIndex)
-        -> ResultT<std::optional<LogIndex>>;
-    auto applyEntry(ReplicatedOperation::AbortAllOngoingTrx const&, LogIndex)
-        -> ResultT<std::optional<LogIndex>>;
-    auto applyEntry(ReplicatedOperation::ModifyShard const&, LogIndex)
-        -> ResultT<std::optional<LogIndex>>;
-    auto applyEntry(ReplicatedOperation::DropShard const&, LogIndex)
-        -> ResultT<std::optional<LogIndex>>;
-    auto applyEntry(ReplicatedOperation::CreateShard const&, LogIndex)
-        -> ResultT<std::optional<LogIndex>>;
-    auto applyEntry(ReplicatedOperation::CreateIndex const&, LogIndex)
-        -> ResultT<std::optional<LogIndex>>;
-    auto applyEntry(ReplicatedOperation::DropIndex const&, LogIndex)
-        -> ResultT<std::optional<LogIndex>>;
-
-    template<class T>
-    auto applyAndRelease(T const& op, LogIndex)
-        -> ResultT<std::optional<LogIndex>>;
-
     std::unique_ptr<DocumentCore> core;
     std::uint64_t currentSnapshotVersion;
-    std::shared_ptr<IDocumentStateTransactionHandler> transactionHandler;
     ActiveTransactionsQueue activeTransactions;
   };
 
-  std::shared_ptr<IDocumentStateNetworkHandler> _networkHandler;
+  std::shared_ptr<IDocumentStateNetworkHandler> const _networkHandler;
+  std::shared_ptr<IDocumentStateTransactionHandler> const _transactionHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
 
   std::atomic<bool> _resigning{false};  // Allows for a quicker shutdown of the
