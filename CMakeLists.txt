@@ -236,6 +236,7 @@ set(ARANGO_EXPORT_FRIENDLY_STRING  "arangoexport - data exporter")
 set(ARANGO_IMPORT_FRIENDLY_STRING  "arangoimport - data importer")
 set(ARANGOSH_FRIENDLY_STRING       "arangosh - commandline client")
 set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - VelocyPack formatter")
+set(ARANGODB_PACKAGE_COMPANY       "ArangoDB GmbH")
 
 # binaries
 set(BIN_ARANGOBENCH   arangobench)
