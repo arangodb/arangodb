@@ -1202,6 +1202,7 @@
         total.html(
           numeral(this.collection.getTotal()).format("0,0") + " edge(s)"
         );
+        total.append(recalculateButton);
       }
       if (this.collection.getTotal() > this.collection.MAX_SORT) {
         $("#docsSort").attr("disabled", true);
