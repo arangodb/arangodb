@@ -77,6 +77,7 @@
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/Methods/Collections.h"
+#include "Logger/LogMacros.h"
 
 #include <tuple>
 
@@ -9090,11 +9091,15 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
   }
 }
 
+#define LOG_INDEX_OPTIMIZER_RULE LOG_DEVEL_IF(false)
+
 void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                                        std::unique_ptr<ExecutionPlan> plan,
                                        OptimizerRule const& rule) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, EN::INDEX, true);
+
+  LOG_INDEX_OPTIMIZER_RULE << "Checking if we can join index nodes";
 
   bool modified = false;
   if (nodes.size() >= 2) {
@@ -9104,38 +9109,52 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
     // - reverse iteration
     // - support from GatherNodes
     auto nodeQualifies = [](IndexNode const& indexNode) {
+      LOG_INDEX_OPTIMIZER_RULE << "Index node id: " << indexNode.id();
       if (indexNode.condition() == nullptr) {
         // IndexNode does not have an index lookup condition
+        LOG_INDEX_OPTIMIZER_RULE << "IndexNode does not have an index lookup "
+                                    "condition, so we cannot join it";
         return false;
       }
 
       if (!indexNode.options().ascending) {
         // reverse sort not yet supported
+        LOG_INDEX_OPTIMIZER_RULE << "IndexNode is not sorted ascending, so we "
+                                    "cannot join it";
         return false;
       }
 
       auto const& indexes = indexNode.getIndexes();
       if (indexes.size() != 1) {
         // must use exactly one index (otherwise this would be an OR condition)
+        LOG_INDEX_OPTIMIZER_RULE << "IndexNode uses more than one index, so we "
+                                    "cannot join it";
         return false;
       }
 
       auto const& index = indexes[0];
       if (!index->isSorted()) {
         // must be a sorted index
+        LOG_INDEX_OPTIMIZER_RULE << "IndexNode uses an unsorted index, so we "
+                                    "cannot join it";
         return false;
       }
 
       if (index->fields().empty()) {
         // index on more than one attribute
+        LOG_INDEX_OPTIMIZER_RULE << "IndexNode uses an index on more than one "
+                                    "attribute, so we cannot join it";
         return false;
       }
 
       if (index->hasExpansion()) {
         // index uses expansion ([*]) operator
+        LOG_INDEX_OPTIMIZER_RULE << "IndexNode uses an index with expansion, "
+                                    "so we cannot join it";
         return false;
       }
 
+      LOG_INDEX_OPTIMIZER_RULE << "IndexNode qualifies for joining";
       return true;
     };
 
@@ -9200,6 +9219,8 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
       endOfIndexNodeSearch:
 
         if (candidates.size() >= 2) {
+          LOG_INDEX_OPTIMIZER_RULE << "Found " << candidates.size()
+                                   << " index nodes that qualify for joining";
           bool eligible = true;
           size_t i = 0;
           for (auto* c : candidates) {
@@ -9271,6 +9292,8 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
 
               if (!matches(lhs, rhs, c, candidates[i - 1]) &&
                   !matches(lhs, rhs, candidates[i - 1], c)) {
+                LOG_INDEX_OPTIMIZER_RULE
+                    << "IndexNode's lookup condition does not match";
                 eligible = false;
                 break;
               }
@@ -9284,6 +9307,10 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
 
               for (auto* other : candidates) {
                 if (other != c && other->setsVariable(vars)) {
+                  LOG_INDEX_OPTIMIZER_RULE << "IndexNode's post filter "
+                                              "accesses variables that are "
+                                              "not available before all "
+                                              "index nodes";
                   eligible = false;
                 }
               }
@@ -9302,6 +9329,11 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                     [](auto const& p) { return p.coveringIndexPosition; });
               }
               if (!c->getIndexes()[0]->supportsStreamInterface(opts)) {
+                LOG_INDEX_OPTIMIZER_RULE << "IndexNode's index does not "
+                                            "support streaming interface";
+                LOG_INDEX_OPTIMIZER_RULE
+                    << "-> Index name: " << c->getIndexes()[0]->name()
+                    << ", id: " << c->getIndexes()[0]->id();
                 eligible = false;
               }
             }
@@ -9313,6 +9345,7 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
           }
 
           if (eligible) {
+            LOG_INDEX_OPTIMIZER_RULE << "Should be eligible for index join";
             std::vector<JoinNode::IndexInfo> indexInfos;
             indexInfos.reserve(candidates.size());
             for (auto* c : candidates) {
@@ -9338,7 +9371,12 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
               plan->unlinkNode(candidates[i]);
             }
             modified = true;
+          } else {
+            LOG_INDEX_OPTIMIZER_RULE << "Not eligible for index join";
           }
+        } else {
+          LOG_INDEX_OPTIMIZER_RULE << "Not enough index nodes to join, size: "
+                                   << candidates.size();
         }
 
         // try starting from next start node
