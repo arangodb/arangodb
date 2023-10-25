@@ -170,7 +170,9 @@ function moveShardSynchronizeShardFailureSuite() {
         let count = 0;
         let nrSteps;
         while (count <= 600) {
-          let steps = fs.readFileSync(pcPath).toString().split("\n");
+          let steps = fs.readFileSync(pcPath).toString().split(/\r\n|\r|\n/g);
+          // Take care of some silly Windows magic which messes with my 
+          // line ends.
           nrSteps = steps.length - 1;
           if (nrSteps === prog.length - 1) {
             break;
