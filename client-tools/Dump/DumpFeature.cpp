@@ -904,7 +904,6 @@ void DumpFeature::collectOptions(
                   "Compress data for transport using the gzip format.",
                   new BooleanParameter(&_options.useGzipForTransport),
                   arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Experimental,
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31200);
 
@@ -919,11 +918,15 @@ void DumpFeature::collectOptions(
       .setIntroducedIn(31200);
 
   options
-      ->addOption("--parallel-dump", "Enable experimental dump behavior.",
+      ->addOption("--parallel-dump", "Enable highly parallel dump behavior.",
                   new BooleanParameter(&_options.useParalleDump),
                   arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Experimental,
                       arangodb::options::Flags::Uncommon))
+      .setLongDescription(R"(This option enables a highly parallel variant
+of the dump protocol on the server side. It is only supported with ArangoDB 
+servers running version 3.12 or higher.
+If the dump should be restored into versions of ArangoDB older than 3.12, this
+option should be turned off.)")
       .setIntroducedIn(31200);
   // option was renamed in 3.12
   options->addOldOption("--use-experimental-dump", "--parallel-dump");
@@ -932,13 +935,11 @@ void DumpFeature::collectOptions(
       ->addOption(
           "--split-files",
           "Split a collection in multiple files to increase throughput.",
-          new BooleanParameter(&_options.splitFiles),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon))
+          new BooleanParameter(&_options.splitFiles))
       .setLongDescription(R"(This option only has effect when the option
 `--parallel-dump` is set to `true`. Restoring split files also
 requires an arangorestore version that is capable of restoring data of a
-single collection/shard from multiple files.)")
+single collection/shard from multiple files, i.e. ArangoDB 3.12 or higher.)")
       .setIntroducedIn(31200);
 
   options
