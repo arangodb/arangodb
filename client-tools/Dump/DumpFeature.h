@@ -63,6 +63,8 @@ class DumpFeature final : public ArangoDumpFeature {
   /// @brief Holds configuration data to pass between methods
   struct Options {
     std::vector<std::string> collections{};
+    // Collections in here, will be ignored during the dump
+    std::vector<std::string> collectionsToBeIgnored{};
     std::vector<std::string> shards{};
     std::string outputPath{};
     std::string maskingsFile{};

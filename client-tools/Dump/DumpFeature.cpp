@@ -803,8 +803,19 @@ void DumpFeature::collectOptions(
   options->addOption(
       "--collection",
       "Restrict the dump to this collection name (can be specified multiple "
-      "times).",
+      "times). Either --collection or --ignore-collection can be used at the "
+      "same time.",
       new VectorParameter<StringParameter>(&_options.collections));
+
+  options
+      ->addOption(
+          "--ignore-collection",
+          "Ignore and exclude this collection during the dump process (can be "
+          "specified multiple times). Either --collection or "
+          "--ignore-collection can be used at the same time. ",
+          new VectorParameter<StringParameter>(
+              &_options.collectionsToBeIgnored))
+      .setIntroducedIn(31200);
 
   options
       ->addOption(
@@ -993,6 +1004,13 @@ void DumpFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
+  if (options->processingResult().touched("collection") &&
+      options->processingResult().touched("ignore-collection")) {
+    LOG_TOPIC("17e2a", FATAL, arangodb::Logger::DUMP)
+        << "cannot use --collection and --ignore-collection at the same time";
+    FATAL_ERROR_EXIT();
+  }
+
   // trim trailing slash from path because it may cause problems on ...
   // Windows
   if (!_options.outputPath.empty() &&
@@ -1168,6 +1186,16 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
     if (cid == 0 || name.empty()) {
       return ::ErrorMalformedJsonResponse;
     }
+
+    // filtered based on the user-defined list of collections to be excluded
+    if (std::find(_options.collectionsToBeIgnored.begin(),
+                  _options.collectionsToBeIgnored.end(),
+                  name) != _options.collectionsToBeIgnored.end()) {
+      LOG_TOPIC("e413f", INFO, Logger::DUMP)
+          << "Collection: '" << name << "' will be ignored during the dump.";
+      continue;
+    }
+
     if (deleted) {
       continue;
     }
