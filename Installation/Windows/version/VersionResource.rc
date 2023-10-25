@@ -1,7 +1,7 @@
 #include "VersionInfo_@PRODUCT_NAME@.h"
 #include "winres.h"
 
-/*IDI_ICON1               ICON                    PRODUCT_ICON*/
+IDI_ICON1               ICON                    PRODUCT_ICON
 
 LANGUAGE LANG_ENGLISH, SUBLANG_DEFAULT
 
@@ -28,7 +28,6 @@ BEGIN
             VALUE "FileVersion", FILE_VERSION_RESOURCE_STR
             VALUE "InternalName", PRODUCT_INTERNAL_NAME
             VALUE "LegalCopyright", PRODUCT_COMPANY_COPYRIGHT
-            VALUE "Publisher", PRODUCT_COMPANY_NAME
             VALUE "OriginalFilename", PRODUCT_ORIGINAL_FILENAME
             VALUE "ProductName", PRODUCT_BUNDLE
             VALUE "ProductVersion", PRODUCT_VERSION_RESOURCE_STR
