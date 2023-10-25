@@ -25,6 +25,7 @@
 
 #include "Agency/AgencyCommon.h"
 #include "Basics/ResultT.h"
+#include "Containers/ImmerMemoryPolicy.h"
 
 #include <atomic>
 #include <chrono>
@@ -136,10 +137,9 @@ class Node : public std::enable_shared_from_this<Node> {
     }
   };
 
-  using AccountingMemoryPolicy =
-      ::immer::memory_policy<AccountingHeap<::immer::default_heap_policy>,
-                             ::immer::default_refcount_policy,
-                             ::immer::default_lock_policy>;
+  using AccountingMemoryPolicy = ::immer::memory_policy<
+      AccountingHeap<arangodb::immer::arango_heap_policy>,
+      ::immer::default_refcount_policy, ::immer::default_lock_policy>;
 
   static void increaseMemoryUsage(std::size_t) noexcept;
   static void decreaseMemoryUsage(std::size_t) noexcept;
