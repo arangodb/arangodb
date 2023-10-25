@@ -803,6 +803,12 @@ CostEstimate GraphNode::estimateCost() const {
 }
 
 AsyncPrefetchEligibility GraphNode::canUseAsyncPrefetching() const noexcept {
+  if (ServerState::instance()->isSingleServer()) {
+    // in single server mode, we can allow prefetching unconditionally
+    return AsyncPrefetchEligibility::kEnableForNode;
+  }
+  // in cluster mode, we have to disallow prefetching because we may
+  // have TraverserEngines.
   return AsyncPrefetchEligibility::kDisableGlobally;
 }
 

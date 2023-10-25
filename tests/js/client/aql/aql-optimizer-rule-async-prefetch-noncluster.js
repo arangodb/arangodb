@@ -101,8 +101,8 @@ function optimizerRuleTestSuite () {
         // subquery
         [ "FOR i IN 1..100 LET sub = (FOR doc IN " + cn + " SORT doc.value RETURN doc.value) FILTER LENGTH(sub) > 0 RETURN sub[0]", [ ["SingletonNode", false], ["SubqueryStartNode", false], ["EnumerateCollectionNode", false], ["CalculationNode", false], ["SortNode", false], ["SubqueryEndNode", false], ["CalculationNode", true], ["FilterNode", true], ["CalculationNode", true], ["CalculationNode", true], ["EnumerateListNode", true], ["ReturnNode", false] ] ],
         // traversal
-        [ "FOR v, e, p IN 1..3 OUTBOUND '" + cn + "/test' " + en + " FILTER v.value == 1 RETURN p", [ ["SingletonNode", false], ["TraversalNode", false], ["ReturnNode", false] ] ],
-        [ "FOR v, e, p IN 1..3 OUTBOUND '" + cn + "/test' " + en + " FILTER NOOPT(v.value == 1) SORT e.value RETURN p", [ ["SingletonNode", false], ["TraversalNode", false], ["CalculationNode", false], ["FilterNode", false], ["CalculationNode", false], ["SortNode", false], ["ReturnNode", false] ] ],
+        [ "FOR v, e, p IN 1..3 OUTBOUND '" + cn + "/test' " + en + " FILTER v.value == 1 RETURN p", [ ["SingletonNode", false], ["TraversalNode", true], ["ReturnNode", false] ] ],
+        [ "FOR v, e, p IN 1..3 OUTBOUND '" + cn + "/test' " + en + " FILTER NOOPT(v.value == 1) SORT e.value RETURN p", [ ["SingletonNode", false], ["TraversalNode", true], ["CalculationNode", false], ["FilterNode", true], ["CalculationNode", true], ["SortNode", true], ["ReturnNode", false] ] ],
       ];
 
       queries.forEach(function(query) {
