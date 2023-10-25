@@ -158,6 +158,12 @@ void RestDumpHandler::handleCommandDumpStart() {
   auto useVPack = _request->parsedValue("useVPack", false);
 
   auto* manager = _engine.dumpManager();
+
+  // adjust permissions in single server case, so that the behavior
+  // is identical to non-parallel dumps
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser() &&
+                                   ServerState::instance()->isSingleServer());
+
   auto guard =
       manager->createContext(std::move(opts), user, database, useVPack);
 
@@ -287,7 +293,12 @@ Result RestDumpHandler::validateRequest() {
 
         for (auto const& it : opts.shards) {
           // get collection name
-          auto collectionName = _clusterInfo.getCollectionNameForShard(it);
+          std::string collectionName;
+          if (ServerState::instance()->isSingleServer()) {
+            collectionName = it;
+          } else {
+            collectionName = _clusterInfo.getCollectionNameForShard(it);
+          }
           if (!ExecContext::current().canUseCollection(
                   _request->databaseName(), collectionName, auth::Level::RO)) {
             return {TRI_ERROR_FORBIDDEN,
