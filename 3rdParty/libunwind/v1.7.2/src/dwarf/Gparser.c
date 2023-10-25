@@ -520,8 +520,10 @@ setup_fde (struct dwarf_cursor *c, dwarf_state_record_t *sr)
   for (i = 0; i < DWARF_NUM_PRESERVED_REGS + 2; ++i)
     set_reg (sr, i, DWARF_WHERE_SAME, 0);
 
+#if !defined(UNW_TARGET_ARM) && !(defined(UNW_TARGET_MIPS) && _MIPS_SIM == _ABI64)
   // SP defaults to CFA (but is overridable)
   set_reg (sr, TDEP_DWARF_SP, DWARF_WHERE_CFA, 0);
+#endif
 
   struct dwarf_cie_info *dci = c->pi.unwind_info;
   sr->rs_current.ret_addr_column  = dci->ret_addr_column;

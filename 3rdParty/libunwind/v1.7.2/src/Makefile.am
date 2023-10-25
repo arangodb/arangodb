@@ -6,16 +6,67 @@ COREDUMP_SO_VERSION=0:0:0
 #
 COMMON_SO_LDFLAGS = $(LDFLAGS_NOSTARTFILES)
 
-lib_LIBRARIES =
+#
+# Which libraries to build and install
+#
+# Order is important here. The names of teh libraries need to end up in reverse
+# dependency order for `make install` to do its job properly.
+#
 lib_LTLIBRARIES =
 if !REMOTE_ONLY
-lib_LTLIBRARIES += libunwind.la
-if BUILD_PTRACE
-lib_LTLIBRARIES += libunwind-ptrace.la
+ lib_LTLIBRARIES += libunwind.la
 endif
+if ARCH_AARCH64
+ lib_LTLIBRARIES += libunwind-aarch64.la
+endif
+if ARCH_ARM
+ lib_LTLIBRARIES += libunwind-arm.la
+endif
+if ARCH_HPPA
+ lib_LTLIBRARIES += libunwind-hppa.la
+endif
+if ARCH_IA64
+ lib_LTLIBRARIES += libunwind-ia64.la
+endif
+if ARCH_LOONGARCH64
+ lib_LTLIBRARIES += libunwind-loongarch64.la
+endif
+if ARCH_MIPS
+ lib_LTLIBRARIES += libunwind-mips.la
+endif
+if ARCH_PPC32
+ lib_LTLIBRARIES += libunwind-ppc32.la
+endif
+if ARCH_PPC64
+ lib_LTLIBRARIES += libunwind-ppc64.la
+endif
+if ARCH_RISCV
+ lib_LTLIBRARIES += libunwind-riscv.la
+endif
+if ARCH_S390X
+ lib_LTLIBRARIES += libunwind-s390x.la
+endif
+if ARCH_SH
+ lib_LTLIBRARIES += libunwind-sh.la
+endif
+if ARCH_TILEGX
+ lib_LTLIBRARIES += libunwind-tilegx.la
+endif
+if ARCH_X86
+ lib_LTLIBRARIES += libunwind-x86.la
+endif
+if ARCH_X86_64
+ lib_LTLIBRARIES += libunwind-x86_64.la
+endif
+
 if BUILD_COREDUMP
-lib_LTLIBRARIES += libunwind-coredump.la
+ lib_LTLIBRARIES += libunwind-coredump.la
 endif
+if BUILD_PTRACE
+ lib_LTLIBRARIES += libunwind-ptrace.la
+endif
+if BUILD_SETJMP
+ lib_LTLIBRARIES += libunwind-setjmp.la
 endif
 
 noinst_HEADERS =
@@ -49,6 +100,7 @@ libunwind_ptrace_la_SOURCES =						  \
 	ptrace/_UPT_find_proc_info.c ptrace/_UPT_get_dyn_info_list_addr.c \
 	ptrace/_UPT_put_unwind_info.c ptrace/_UPT_get_proc_name.c	  \
 	ptrace/_UPT_reg_offset.c ptrace/_UPT_resume.c
+libunwind_ptrace_la_LIBADD = libunwind-$(arch).la $(LIBLZMA)
 noinst_HEADERS += ptrace/_UPT_internal.h
 
 ### libunwind-coredump:
@@ -70,7 +122,7 @@ libunwind_coredump_la_SOURCES = \
 	coredump/_UPT_resume.c
 libunwind_coredump_la_LDFLAGS = $(COMMON_SO_LDFLAGS) \
 				-version-info $(COREDUMP_SO_VERSION)
-libunwind_coredump_la_LIBADD = $(LIBLZMA) $(LIBZ)
+libunwind_coredump_la_LIBADD = libunwind-$(arch).la $(LIBLZMA) $(LIBZ)
 noinst_HEADERS += coredump/_UCD_internal.h \
                   coredump/_UCD_lib.h \
                   coredump/ucd_file_table.h
@@ -611,7 +663,6 @@ if OS_QNX
 endif
 
 if ARCH_AARCH64
- lib_LTLIBRARIES += libunwind-aarch64.la
  libunwind_la_SOURCES = $(libunwind_la_SOURCES_aarch64)
  libunwind_aarch64_la_SOURCES = $(libunwind_aarch64_la_SOURCES_aarch64)
  libunwind_aarch64_la_LDFLAGS = $(COMMON_SO_LDFLAGS) -version-info $(SOVERSION)
@@ -623,7 +674,6 @@ endif
  libunwind_setjmp_la_SOURCES += aarch64/siglongjmp.S
 else
 if ARCH_ARM
- lib_LTLIBRARIES += libunwind-arm.la
  libunwind_la_SOURCES = $(libunwind_la_SOURCES_arm)
  libunwind_arm_la_SOURCES = $(libunwind_arm_la_SOURCES_arm)
  libunwind_arm_la_LDFLAGS = $(COMMON_SO_LDFLAGS) -version-info $(SOVERSION)
@@ -645,7 +695,6 @@ Gcursor_i.h: mk_Gcursor_i.s
 Lcursor_i.h: mk_Lcursor_i.s
 	"$(srcdir)/ia64/mk_cursor_i" mk_Lcursor_i.s > Lcursor_i.h
 
- lib_LTLIBRARIES += libunwind-ia64.la
  libunwind_la_SOURCES = $(libunwind_la_SOURCES_ia64)
  libunwind_ia64_la_SOURCES = $(libunwind_ia64_la_SOURCES_ia64)
  libunwind_ia64_la_LDFLAGS = $(COMMON_SO_LDFLAGS) -version-info $(SOVERSION)
@@ -657,7 +706,6 @@ endif
 				ia64/longjmp.S ia64/siglongjmp.S
 else
 if ARCH_HPPA
- lib_LTLIBRARIES += libunwind-hppa.la
  libunwind_la_SOURCES = $(libunwind_la_SOURCES_hppa)
  libunwind_hppa_la_SOURCES = $(libunwind_hppa_la_SOURCES_hppa)
  libunwind_hppa_la_LDFLAGS = $(COMMON_SO_LDFLAGS) -version-info $(SOVERSION)
@@ -669,7 +717,6 @@ endif
  libunwind_setjmp_la_SOURCES += hppa/siglongjmp.S
 else
 if ARCH_MIPS
- lib_LTLIBRARIES += libunwind-mips.la
  libunwind_la_SOURCES = $(libunwind_la_SOURCES_mips)
  libunwind_mips_la_SOURCES = $(libunwind_mips_la_SOURCES_mips)
  libunwind_mips_la_LDFLAGS = $(COMMON_SO_LDFLAGS) -version-info $(SOVERSION)
@@ -681,7 +728,6 @@ endif
  libunwind_setjmp_la_SOURCES += mips/siglongjmp.S
 else
 if ARCH_TILEGX
- lib_LTLIBRARIES += libunwind-tilegx.la
  libunwind_la_SOURCES = $(libunwind_la_SOURCES_tilegx)
  libunwind_tilegx_la_SOURCES = $(libunwind_tilegx_la_SOURCES_tilegx)
  libunwind_tilegx_la_LDFLAGS = $(COMMON_SO_LDFLAGS) -version-info $(SOVERSION)
@@ -693,7 +739,6 @@ endif
  libunwind_setjmp_la_SOURCES += tilegx/siglongjmp.S
 else
 if ARCH_RISCV
- lib_LTLIBRARIES += libunwind-riscv.la
  libunwind_la_SOURCES = $(libunwind_la_SOURCES_riscv)
  libunwind_riscv_la_SOURCES = $(libunwind_riscv_la_SOURCES_riscv)
  libunwind_riscv_la_LDFLAGS = $(COMMON_SO_LDFLAGS) -version-info $(SOVERSION)
@@ -705,7 +750,6 @@ endif
  libunwind_setjmp_la_SOURCES += riscv/siglongjmp.S
 else
 if ARCH_LOONGARCH64
- lib_LTLIBRARIES += libunwind-loongarch64.la
  libunwind_la_SOURCES = $(libunwind_la_SOURCES_loongarch64)
  libunwind_loongarch64_la_SOURCES = $(libunwind_loongarch64_la_SOURCES_loongarch64)
  libunwind_loongarch64_la_LDFLAGS = $(COMMON_SO_LDFLAGS) -version-info $(SOVERSION)
@@ -717,7 +761,6 @@ endif
  libunwind_setjmp_la_SOURCES += loongarch64/siglongjmp.S
 else
 if ARCH_X86
- lib_LTLIBRARIES += libunwind-x86.la
  libunwind_la_SOURCES = $(libunwind_la_SOURCES_x86) $(libunwind_x86_la_SOURCES_os)
  libunwind_x86_la_SOURCES = $(libunwind_x86_la_SOURCES_x86)
  libunwind_x86_la_LDFLAGS = $(COMMON_SO_LDFLAGS) -version-info $(SOVERSION)
@@ -729,7 +772,6 @@ endif
  libunwind_setjmp_la_SOURCES += x86/longjmp.S x86/siglongjmp.S
 else
 if ARCH_X86_64
- lib_LTLIBRARIES += libunwind-x86_64.la
  libunwind_la_SOURCES = $(libunwind_la_SOURCES_x86_64)
  libunwind_x86_64_la_SOURCES = $(libunwind_x86_64_la_SOURCES_x86_64)
  libunwind_x86_64_la_LDFLAGS = $(COMMON_SO_LDFLAGS) -version-info $(SOVERSION)
@@ -741,7 +783,6 @@ endif
  libunwind_setjmp_la_SOURCES += x86_64/longjmp.S x86_64/siglongjmp.S
 else
 if ARCH_PPC32
- lib_LTLIBRARIES += libunwind-ppc32.la
  libunwind_la_SOURCES = $(libunwind_la_SOURCES_ppc32)
  libunwind_ppc32_la_SOURCES = $(libunwind_ppc32_la_SOURCES_ppc32)
  libunwind_ppc32_la_LDFLAGS = $(COMMON_SO_LDFLAGS) -version-info $(SOVERSION)
@@ -753,7 +794,6 @@ endif
  libunwind_setjmp_la_SOURCES += ppc/longjmp.S ppc/siglongjmp.S
 else
 if ARCH_PPC64
- lib_LTLIBRARIES += libunwind-ppc64.la
  libunwind_la_SOURCES = $(libunwind_la_SOURCES_ppc64)
  libunwind_ppc64_la_SOURCES = $(libunwind_ppc64_la_SOURCES_ppc64)
  libunwind_ppc64_la_LDFLAGS = $(COMMON_SO_LDFLAGS) -version-info $(SOVERSION)
@@ -765,7 +805,6 @@ endif
  libunwind_setjmp_la_SOURCES += ppc/longjmp.S ppc/siglongjmp.S
 else
 if ARCH_SH
- lib_LTLIBRARIES += libunwind-sh.la
  libunwind_la_SOURCES = $(libunwind_la_SOURCES_sh)
  libunwind_sh_la_SOURCES = $(libunwind_sh_la_SOURCES_sh)
  libunwind_sh_la_LDFLAGS = $(COMMON_SO_LDFLAGS) -version-info $(SOVERSION)
@@ -777,7 +816,6 @@ endif
  libunwind_setjmp_la_SOURCES += sh/siglongjmp.S
 else
 if ARCH_S390X
- lib_LTLIBRARIES += libunwind-s390x.la
  libunwind_la_SOURCES = $(libunwind_la_SOURCES_s390x)
  libunwind_s390x_la_SOURCES = $(libunwind_s390x_la_SOURCES_s390x)
  libunwind_s390x_la_LDFLAGS = $(COMMON_SO_LDFLAGS) -version-info $(SOVERSION)
@@ -802,11 +840,6 @@ endif # ARCH_IA64
 endif # ARCH_ARM
 endif # ARCH_AARCH64
 
-# libunwind-setjmp depends on libunwind-$(arch). Therefore must be added
-# at the end.
-if BUILD_SETJMP
-lib_LTLIBRARIES += libunwind-setjmp.la
-endif
 
 #
 # Don't link with standard libraries, because those may mention

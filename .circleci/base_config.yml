@@ -556,7 +556,7 @@ workflows:
           requires:
             - build-ee-aarch64
 
-  windows-enterprise-pr:
+  windows-community-pr:
     jobs:
       - compile-windows:
           context:
