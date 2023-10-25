@@ -89,8 +89,8 @@ class GeoIterator : public irs::doc_iterator {
       : _approx{std::move(approx)},
         _columnIt{std::move(columnIt)},
         _storedValue{irs::get<irs::payload>(*_columnIt)},
-        _parser{parser},
-        _acceptor{acceptor} {
+        _acceptor{acceptor},
+        _parser{parser} {
     std::get<irs::attribute_ptr<irs::document>>(_attrs) =
         irs::get_mutable<irs::document>(_approx.get());
 
