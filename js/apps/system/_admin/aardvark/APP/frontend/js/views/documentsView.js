@@ -1183,7 +1183,18 @@
       const recalculateButton = $(
         '<a id="recalculateButton" title="Recalculate count"><i class="fa fa-refresh"></i></a>'
       );
-      recalculateButton.click(this.recalculateCount.bind(this));
+
+      recalculateButton.click(() => {
+        this.collection.recalculateCount((error, data)=>{
+          if(!error){
+            this.collection.setTotal(data.count);
+            this.rerender();
+            return;
+          }
+
+          arangoHelper.arangoError('Error', 'Could not recalculate count');
+        })
+      });
 
       var total = $("#totalDocuments");
       if (total.length === 0) {
