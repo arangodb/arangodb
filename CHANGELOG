@@ -1,6 +1,8 @@
 devel
 -----
 
+* MDS-1164: Added Publisher and Company to the Window binaries
+
 * Add AQL optimizer rule "async-prefetch", which allows certain AQL query parts
   to asynchronously prefetch data while other parts of the query are still
   operating.
