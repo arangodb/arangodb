@@ -557,20 +557,27 @@ OperationResult GraphOperations::addEdgeDefinition(
   return gmngr.storeGraph(_graph, waitForSync, true);
 }
 
-// vertices
-
-// TODO check if collection is a vertex collection in _graph?
-// TODO are orphans allowed?
 OperationResult GraphOperations::getVertex(std::string const& collectionName,
                                            std::string const& key,
                                            std::optional<RevisionId> rev) {
+  // check if the vertex collection is part of the graph
+  OperationOptions options(ExecContext::current());
+  Result checkVertexRes = checkVertexCollectionAvailability(collectionName);
+  if (checkVertexRes.fail()) {
+    return OperationResult(checkVertexRes, options);
+  }
   return getDocument(collectionName, key, std::move(rev));
 }
 
-// TODO check if definitionName is an edge collection in _graph?
 OperationResult GraphOperations::getEdge(std::string const& definitionName,
                                          std::string const& key,
                                          std::optional<RevisionId> rev) {
+  // check if the edge collection is part of the graph
+  OperationOptions options(ExecContext::current());
+  Result checkEdgeRes = checkEdgeCollectionAvailability(definitionName);
+  if (checkEdgeRes.fail()) {
+    return OperationResult(checkEdgeRes, options);
+  }
   return getDocument(definitionName, key, std::move(rev));
 }
 
@@ -622,6 +629,13 @@ OperationResult GraphOperations::removeEdge(std::string const& definitionName,
                                             std::string const& key,
                                             std::optional<RevisionId> rev,
                                             bool waitForSync, bool returnOld) {
+  // check if the edge collection is part of the graph
+  OperationOptions options(ExecContext::current());
+  Result checkEdgeRes = checkEdgeCollectionAvailability(definitionName);
+  if (checkEdgeRes.fail()) {
+    return OperationResult(checkEdgeRes, options);
+  }
+
   return removeEdgeOrVertex(definitionName, key, rev, waitForSync, returnOld);
 }
 
@@ -692,6 +706,13 @@ OperationResult GraphOperations::updateEdge(std::string const& definitionName,
                                             std::optional<RevisionId> rev,
                                             bool waitForSync, bool returnOld,
                                             bool returnNew, bool keepNull) {
+  // check if the edge collection is part of the graph
+  OperationOptions options(ExecContext::current());
+  Result checkEdgeRes = checkEdgeCollectionAvailability(definitionName);
+  if (checkEdgeRes.fail()) {
+    return OperationResult(checkEdgeRes, options);
+  }
+
   auto [res, trx] = validateEdge(definitionName, document, waitForSync, true);
   if (res.fail()) {
     // cppcheck-suppress returnStdMoveLocal
@@ -710,6 +731,13 @@ OperationResult GraphOperations::replaceEdge(std::string const& definitionName,
                                              std::optional<RevisionId> rev,
                                              bool waitForSync, bool returnOld,
                                              bool returnNew, bool keepNull) {
+  // check if the edge collection is part of the graph
+  OperationOptions options(ExecContext::current());
+  Result checkEdgeRes = checkEdgeCollectionAvailability(definitionName);
+  if (checkEdgeRes.fail()) {
+    return OperationResult(checkEdgeRes, options);
+  }
+
   auto [res, trx] = validateEdge(definitionName, document, waitForSync, false);
   if (res.fail()) {
     // cppcheck-suppress returnStdMoveLocal
@@ -901,6 +929,13 @@ OperationResult GraphOperations::updateVertex(std::string const& collectionName,
                                               std::optional<RevisionId> rev,
                                               bool waitForSync, bool returnOld,
                                               bool returnNew, bool keepNull) {
+  // check if the vertex collection is part of the graph
+  OperationOptions options(ExecContext::current());
+  Result checkVertexRes = checkVertexCollectionAvailability(collectionName);
+  if (checkVertexRes.fail()) {
+    return OperationResult(checkVertexRes, options);
+  }
+
   std::vector<std::string> writeCollections;
   writeCollections.emplace_back(collectionName);
 
@@ -922,6 +957,13 @@ OperationResult GraphOperations::replaceVertex(
     std::string const& collectionName, std::string const& key,
     VPackSlice document, std::optional<RevisionId> rev, bool waitForSync,
     bool returnOld, bool returnNew, bool keepNull) {
+  // check if the vertex collection is part of the graph
+  OperationOptions options(ExecContext::current());
+  Result checkVertexRes = checkVertexCollectionAvailability(collectionName);
+  if (checkVertexRes.fail()) {
+    return OperationResult(checkVertexRes, options);
+  }
+
   std::vector<std::string> writeCollections;
   writeCollections.emplace_back(collectionName);
 
@@ -1065,6 +1107,12 @@ OperationResult GraphOperations::removeVertex(std::string const& collectionName,
                                               std::optional<RevisionId> rev,
                                               bool waitForSync,
                                               bool returnOld) {
+  // check if the vertex collection is part of the graph
+  OperationOptions options(ExecContext::current());
+  Result checkVertexRes = checkVertexCollectionAvailability(collectionName);
+  if (checkVertexRes.fail()) {
+    return OperationResult(checkVertexRes, options);
+  }
   return removeEdgeOrVertex(collectionName, key, rev, waitForSync, returnOld);
 }
 
