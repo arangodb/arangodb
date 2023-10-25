@@ -31,11 +31,6 @@ const isCluster = internal.isCluster();
 const isEnterprise = internal.isEnterprise();
 
 const IndexJoinTestSuite = function () {
-
-  if (isCluster && !isEnterprise) {
-    return {};
-  }
-
   const createCollection = function (name, shardKeys) {
     shardKeys = shardKeys || ["x"];
     if (isCluster) {
@@ -45,6 +40,18 @@ const IndexJoinTestSuite = function () {
       return db._create(name, {numberOfShards: 3, shardKeys: shardKeys, distributeShardsLike: "prototype"});
     } else {
       return db._create(name);
+    }
+  };
+
+  const createEdgeCollection = function (name, shardKeys) {
+    shardKeys = shardKeys || ["x"];
+    if (isCluster) {
+      if (!db.prototype) {
+        db._create("prototype", {numberOfShards: 3});
+      }
+      return db._createEdgeCollection(name, {numberOfShards: 3, shardKeys: shardKeys, distributeShardsLike: "prototype"});
+    } else {
+      return db._createEdgeCollection(name);
     }
   };
 
@@ -66,6 +73,21 @@ const IndexJoinTestSuite = function () {
     if (docs.length > 0) {
       collection.save(docs);
     }
+
+    return collection;
+  };
+
+  const fillEdgeCollectionWith = function (name, fromToIds) {
+    const collection = db[name] || createEdgeCollection(name);
+    let documents = [];
+    fromToIds.forEach(documentId => {
+      documents.push({
+        _from: documentId,
+        _to: documentId
+      });
+    });
+
+    collection.save(documents);
 
     return collection;
   };
@@ -636,19 +658,30 @@ const IndexJoinTestSuite = function () {
       const A = createCollection("A", ["_key"]);
       fillCollection("A", singleAttributeGenerator(20, "_key", x => `${x}`));
       A.ensureIndex({type: "persistent", fields: ["x", "y"]});
-      const B = fillCollection("B", singleAttributeGenerator(20, "x", x => `${x}`));
-      B.ensureIndex({type: "persistent", fields: ["x"]});
+      const documentIdsOfA = [];
+      A.all().toArray().forEach((document) => {
+        documentIdsOfA.push(document._id);
+      });
+      fillEdgeCollectionWith("B", documentIdsOfA);
 
-      const query = `
-        FOR doc1 IN A
+      const generateQuery = (filterAttribute) => {
+        return `
+          FOR doc1 IN A
           SORT doc1._key
-          FOR doc2 IN B
-              FILTER doc1._key == doc2.x
-              RETURN [doc1, doc2.x]
-      `;
+            FOR doc2 IN B
+            FILTER doc1._key == doc2.${filterAttribute}
+            RETURN [doc1, doc2.x]
+        `;
+      };
 
-      const plan = db._createStatement({query: query, bindVars: null, options: queryOptions}).explain().plan;
-      const nodes = plan.nodes.map(x => x.type);
+      // Testing with edge index based on `_from` attribute
+      let plan = db._createStatement({query: generateQuery('_from'), bindVars: null, options: queryOptions}).explain().plan;
+      let nodes = plan.nodes.map(x => x.type);
+      assertEqual(nodes.indexOf("JoinNode"), -1);
+
+      // Testing with edge index based on `_to` attribute
+      plan = db._createStatement({query: generateQuery('_to'), bindVars: null, options: queryOptions}).explain().plan;
+      nodes = plan.nodes.map(x => x.type);
       assertEqual(nodes.indexOf("JoinNode"), -1);
     },
     /*
@@ -673,6 +706,9 @@ const IndexJoinTestSuite = function () {
   };
 };
 
-
-jsunity.run(IndexJoinTestSuite);
+if (isCluster && !isEnterprise) {
+  return jsunity.done();
+} else {
+  jsunity.run(IndexJoinTestSuite);
+}
 return jsunity.done();
