@@ -712,7 +712,7 @@ class IResearchViewExecutor
 
   std::vector<SegmentReader> _segmentReaders;
   size_t _segmentOffset;
-  int _allocatedThreads{0};
+  size_t _allocatedThreads{0};
 };
 
 struct DocumentValue {

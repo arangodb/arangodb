@@ -1109,7 +1109,8 @@ IResearchViewExecutor<ExecutionTraits>::IResearchViewExecutor(Fetcher& fetcher,
 template<typename ExecutionTraits>
 IResearchViewExecutor<ExecutionTraits>::~IResearchViewExecutor() {
   if (_allocatedThreads) {
-    this->_infos.parallelExecutionPool().releaseThreads(_allocatedThreads);
+    this->_infos.parallelExecutionPool().releaseThreads(
+        static_cast<int>(_allocatedThreads));
   }
 }
 
