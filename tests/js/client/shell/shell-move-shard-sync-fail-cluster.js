@@ -162,6 +162,7 @@ function moveShardSynchronizeShardFailureSuite() {
         debugSetFailAt(leaderEndpoint, "ClusterInfo::loadCurrentSeesLeader");
         debugSetFailAt(leaderEndpoint, "ClusterInfo::loadCurrentDone");
         debugSetFailAt(leaderEndpoint, "SynchronizeShard::fail");
+        console.error("Full SLP:", prog);
 
         // Now move the shard:
         let res = moveShard("_system", cn, collInfo.shard, collInfo.leader, collInfo.follower, false /* dontwait */);
@@ -174,6 +175,7 @@ function moveShardSynchronizeShardFailureSuite() {
           // Take care of some silly Windows magic which messes with my 
           // line ends.
           nrSteps = steps.length - 1;
+          console.error("executed steps in SLP:", steps);
           if (nrSteps === prog.length - 1) {
             break;
           }
