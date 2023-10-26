@@ -94,7 +94,9 @@ class ArangoSearchPool {
     _pool.max_threads_delta(-n);
     _allocatedThreads.fetch_sub(n);
   }
+
   using Pool = irs::async_utils::thread_pool<false>;
+  
   bool run(Pool::func_t&& fn) {
     return _pool.run(std::forward<Pool::func_t>(fn));
   }

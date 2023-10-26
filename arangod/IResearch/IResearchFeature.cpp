@@ -1051,7 +1051,8 @@ but the returned data may be incomplete.)");
       "indexes during SEARCH operation",
       new options::UInt32Parameter(&_searchExecutionThreads),
       options::makeDefaultFlags(options::Flags::DefaultNoComponents,
-                                options::Flags::OnDBServer));
+                                options::Flags::OnDBServer,
+                                options::Flags::OnSingle));
 }
 
 void IResearchFeature::validateOptions(

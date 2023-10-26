@@ -346,8 +346,6 @@ class IndexReadBuffer {
 
   void clear() noexcept;
 
-  void seal() noexcept { _keyBaseIdx = _keyBuffer.size(); }
-
   size_t size() const noexcept;
 
   bool empty() const noexcept;
@@ -384,7 +382,10 @@ class IndexReadBuffer {
     _storedValuesBuffer.resize(atMost * stored);
   }
 
-  irs::score_t* getScoreBuffer(size_t idx) { return _scoreBuffer.data() + idx; }
+  irs::score_t* getScoreBuffer(size_t idx) noexcept {
+    TRI_ASSERT(idx < _scoreBuffer.size());
+    return _scoreBuffer.data() + idx;
+  }
 
   void preAllocateStoredValuesBuffer(size_t atMost, size_t scores,
                                      size_t stored) {
