@@ -87,21 +87,25 @@ RequestLane RestDocumentHandler::lane() const {
         // executed with a higher prio than leader requests, even if they
         // are done from AQL.
       }
-      bool hasTrxId = false;
-      std::ignore = _request->header(StaticStrings::TransactionId, hasTrxId);
-      if (hasTrxId) {
-        // If we have an existing transaction id, we will not be lazy-locking
-        // for write we want to avoid that we need to wait in line with
-        // operations that potentially need to wait until they could get a lock.
-        static_assert(PriorityRequestLane(RequestLane::CLUSTER_AQL_DOCUMENT) ==
-                          RequestPriority::MED,
-                      "invalid request lane priority");
-        return RequestLane::CLUSTER_AQL_DOCUMENT;
-      }
-
       // fall through for not-GET, non-replication requests
     }
   }
+
+  bool hasTrxId = false;
+  std::ignore = _request->header(StaticStrings::TransactionId, hasTrxId);
+  if (hasTrxId) {
+    // If we have an existing transaction id, we will not be lazy-locking
+    // for write we want to avoid that we need to wait in line with
+    // operations that potentially need to wait until they could get a lock.
+    // Note: On Coordinator this bypasses the ongoing low-priority-threshold
+    // on purpose. Such a request is required to complete an already
+    // started transaction.
+    static_assert(PriorityRequestLane(RequestLane::CLUSTER_AQL_DOCUMENT) ==
+                      RequestPriority::MED,
+                  "invalid request lane priority");
+    return RequestLane::CLUSTER_AQL_DOCUMENT;
+  }
+
   return RequestLane::CLIENT_SLOW;
 }
 
