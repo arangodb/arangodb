@@ -277,17 +277,29 @@ jobs:
       - checkout-arangodb:
           with-submodules: true
           destination: "~/project"
+      - checkout-enterprise:
+          destination: "~/project/enterprise"
       - run:
-          name: "Install"
+          name: "Install llvm"
           command: |
-            brew install cmake openssl@3 llvm@14
+            brew install cmake llvm@14
+      - run:
+          name: "Install OpenSSL"
+          command: |
+            export MAC_OPENSSL=`grep OPENSSL_MACOS ~/project/VERSIONS|cut -d '"' -f 2-2`
+            wget https://www.openssl.org/source/openssl-$MAC_OPENSSL.tar.gz
+            mkdir openssl
+            tar zvxf openssl-$MAC_OPENSSL.tar.gz -C openssl --strip-components 1
+            cd ~/openssl/
+            ./config
+            make -j8
       - run:
           name: "Configure"
           command: |
             export PATH="/opt/homebrew/opt/llvm@14/bin:$PATH"
-            export MACOSX_DEPLOYMENT_TARGET=13.2
+            export MACOSX_DEPLOYMENT_TARGET=11.0
             mkdir ~/build
-            cmake -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -S ~/project -B ~/build
+            cmake -DCMAKE_C_COMPILER=clang -DUSE_ENTERPRISE=1 -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_LIBRARY_PATH=~/openssl/ -S ~/project -B ~/build
       - run:
           name: "Build"
           command: |
