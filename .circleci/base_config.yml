@@ -278,10 +278,22 @@ jobs:
           with-submodules: true
           destination: "~/project"
       - run:
+          name: "Install"
+          command: |
+            brew install cmake openssl@3 llvm@14
+            export PATH="/opt/homebrew/opt/llvm@14/bin:$PATH
+            export MACOSX_DEPLOYMENT_TARGET=13.2
+      - run:
           name: "Configure"
           command: |
             mkdir ~/build
-            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -S ~/project -B ~/build
+            cmake -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -S ~/project -B ~/build
+      - run:
+          name: "Build"
+          command: |
+            echo "Building targets: client-tools"
+            cmake --build ~/build --parallel 8 --target client-tools
+
 
   compile-windows:
     parameters:
