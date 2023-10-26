@@ -284,8 +284,8 @@ jobs:
       - run:
           name: "Configure"
           command: |
-            PATH="/opt/homebrew/opt/llvm@14/bin:$PATH"
-            MACOSX_DEPLOYMENT_TARGET=13.2
+            export PATH="/opt/homebrew/opt/llvm@14/bin:$PATH"
+            export MACOSX_DEPLOYMENT_TARGET=13.2
             mkdir ~/build
             cmake -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -S ~/project -B ~/build
       - run:
