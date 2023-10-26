@@ -133,8 +133,8 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
     builder.close();
   }
 
-  // "producesResult" is read by AQL explainer. don't remove it!
   builder.add("count", VPackValue(doCount()));
+  // "producesResult" is read by AQL explainer. don't remove it!
   if (doCount()) {
     TRI_ASSERT(_filter == nullptr);
     builder.add(StaticStrings::ProducesResult, VPackValue(false));

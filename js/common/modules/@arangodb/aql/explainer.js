@@ -1152,6 +1152,8 @@ function processQuery(query, explain, planIndex) {
       case 'parameter':
       case 'datasource parameter':
         return value('@' + node.name);
+      case undefined:
+        return '';
       default:
         return 'unhandled node type in buildExpression (' + node.type + ')';
     }

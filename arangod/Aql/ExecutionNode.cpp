@@ -1902,13 +1902,20 @@ bool EnumerateCollectionNode::isProduceResult() const {
     return isVarUsedLater(_outVariable);
   }
   // check output registers of projections
+  size_t found = 0;
   for (size_t i = 0; i < p.size(); ++i) {
     Variable const* var = p[i].variable;
     // the output register can be a nullptr if the "optimize-projections"
     // rule was not executed (potentially because it was disabled).
-    if (var != nullptr && isVarUsedLater(var)) {
-      return true;
+    if (var != nullptr) {
+      ++found;
+      if (isVarUsedLater(var)) {
+        return true;
+      }
     }
+  }
+  if (found == 0) {
+    return isVarUsedLater(_outVariable);
   }
   return false;
 }
