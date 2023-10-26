@@ -1621,12 +1621,12 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
   // as we most likely will release segments and
   // "this" will also be invalid.
   auto cleanupThreads = irs::Finally([&]() noexcept {
-    if (results.empty()) {
-      return;
-    }
     results.erase(std::remove_if(results.begin(), results.end(),
                                  [](auto& f) { return !f.valid(); }),
                   results.end());
+    if (results.empty()) {
+      return;
+    }
     auto runners = futures::collectAll(results);
     runners.wait();
   });
