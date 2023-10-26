@@ -261,6 +261,28 @@ jobs:
                   - 3rdParty/iresearch/tests/resources
                   - 3rdParty/rta-makedata
 
+  compile-mac:
+    parameters:
+      preset:
+        type: string
+      build-tests:
+        type: boolean
+      publish-artifacts:
+        type: boolean
+        default: true
+    macos:
+      xcode: 14.2.0
+    resource_class: macos.m1.medium.gen1
+    steps:
+      - checkout-arangodb:
+          with-submodules: true
+          destination: "~/project"
+      - run:
+          name: "Configure"
+          command: |
+            mkdir ~/build
+            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -S ~/project -B ~/build
+
   compile-windows:
     parameters:
       preset:
@@ -564,3 +586,12 @@ workflows:
           name: build-ee-win
           preset: enterprise-pr
           build-tests: true
+
+  mac-tools-pr:
+    jobs:
+      - compile-mac:
+          context:
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          name: build-tools-mac
+          preset: enterprise-pr
+          build-tests: false
