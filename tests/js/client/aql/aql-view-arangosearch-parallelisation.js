@@ -32,6 +32,7 @@ const jsunity = require("jsunity");
 const isCluster = require("internal").isCluster();
 const analyzers = require("@arangodb/analyzers");
 var internal = require("internal");
+let db = require("@arangodb").db;
 
 function ArangoSearchParallelisationTestSuite () {
     return {

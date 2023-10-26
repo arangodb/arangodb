@@ -1557,8 +1557,7 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
   TRI_ASSERT(this->_filter != nullptr);
   size_t const count = this->_reader->size();
   bool gotData = false;
-  size_t const atMostInitial = ctx.outputRow.numRowsLeft();
-  auto atMost = atMostInitial;
+  auto atMost = ctx.outputRow.numRowsLeft();
   TRI_ASSERT(this->_indexReadBuffer.empty());
   this->_isMaterialized = false;
   auto parallelism = std::min(count, this->_infos.parallelism());
@@ -1573,21 +1572,17 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
         atMost, this->_infos.getScoreRegisters().size(),
         this->_infos.getOutNonMaterializedViewRegs().size());
     auto& reader = _segmentReaders.front();
-    if (reader.itr) {
-      // read tail left by possible skip
-      reader.atMost = atMost;
-      gotData = readSegment<false>(reader, bufferIdx);
-    }
-    while (!gotData && _segmentOffset < count) {
-      reader.atMost = atMost;
-      reader.readerOffset = _segmentOffset;
-      gotData = readSegment<false>(reader, bufferIdx);
+    while (!gotData && (_segmentOffset < count || reader.itr)) {
       if (!reader.itr) {
-        ++_segmentOffset;
+        reader.readerOffset = _segmentOffset++;
+        TRI_ASSERT(reader.readerOffset < count);
       }
+      reader.atMost = atMost;
+      gotData = readSegment<false>(reader, bufferIdx);
     }
     return gotData;
   }
+  auto const atMostInitial = atMost;
   // here parallelism can be used or not depending on the
   // current pipeline demand.
   auto const& clientCall = ctx.outputRow.getClientCall();
