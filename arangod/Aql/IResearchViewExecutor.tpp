@@ -1566,19 +1566,24 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
   std::atomic<size_t> bufferIdx{0};
   // shortcut for sequential execution.
   if (parallelism == 1) {
+    TRI_IF_FAILURE("IResearchFeature::failNonParallelQuery") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
     this->_indexReadBuffer.preAllocateStoredValuesBuffer(
         atMost, this->_infos.getScoreRegisters().size(),
         this->_infos.getOutNonMaterializedViewRegs().size());
     auto& reader = _segmentReaders.front();
-    while (_segmentOffset < count) {
+    if (reader.itr) {
+      // read tail left by possible skip
+      reader.atMost = atMost;
+      gotData = readSegment<false>(reader, bufferIdx);
+    }
+    while (!gotData && _segmentOffset < count) {
       reader.atMost = atMost;
       reader.readerOffset = _segmentOffset;
       gotData = readSegment<false>(reader, bufferIdx);
       if (!reader.itr) {
         ++_segmentOffset;
-      }
-      if (gotData) {
-        break;
       }
     }
     return gotData;

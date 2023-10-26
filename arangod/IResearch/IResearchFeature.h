@@ -60,7 +60,10 @@ class IResearchRocksDBRecoveryHelper;
 
 class ArangoSearchPool {
  public:
+
   void setLimit(int newLimit) noexcept {
+    // should not be called during execution of queries!
+    TRI_ASSERT(_allocatedThreads.load() == 0);
     _limit = newLimit;
   }
 
@@ -71,23 +74,14 @@ class ArangoSearchPool {
 
   int allocateThreads(int n) {
     auto curr = _allocatedThreads.load(std::memory_order_relaxed);
-    int add;
     int newval;
     do {
-      add = n;
-      newval = curr + add;
-      if (newval > _limit) {
-        add = _limit - curr;
-        newval = _limit;
-        if (add < 0) {
-          // someone suddenly lowered the limit?
-          return 0;
-        }
-      }
+      newval = std::min(curr + n, _limit);
     } while (!_allocatedThreads.compare_exchange_weak(curr, newval));
-    TRI_ASSERT(add <= n);
+    int add = newval - curr;
     TRI_ASSERT(add >= 0);
     if (add > 0) {
+      // TODO: add a single call to thread_pool to change both
       _pool.max_idle_delta(add);
       _pool.max_threads_delta(add);
     }
@@ -96,6 +90,7 @@ class ArangoSearchPool {
 
   void releaseThreads(int n) {
     TRI_ASSERT(n > 0);
+    TRI_ASSERT(_allocatedThreads.load() >= n);
     _pool.max_idle_delta(-n);
     _pool.max_threads_delta(-n);
     _allocatedThreads.fetch_sub(n);
@@ -105,9 +100,9 @@ class ArangoSearchPool {
     return _pool.run(std::forward<Pool::func_t>(fn));
   }
  private:
-  Pool _pool;
+  Pool _pool{0, 0, IR_NATIVE_STRING("ARS-2")};
   std::atomic<int> _allocatedThreads{0};
-  std::atomic<int> _limit{0};
+  int _limit{0};
 };
 
 ////////////////////////////////////////////////////////////////////////////////
