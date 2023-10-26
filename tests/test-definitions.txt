@@ -121,14 +121,14 @@ dump size=medium -- --dumpAgencyOnError true
 dump_authentication size=medium -- --dumpAgencyOnError true
 dump_jwt size=medium -- --dumpAgencyOnError true
 dump_multiple size=medium -- --dumpAgencyOnError true
-dump_parallel size=medium -- --dumpAgencyOnError true
+dump_non_parallel size=medium -- --dumpAgencyOnError true
 dump_maskings  enterprise size=medium -- --dumpAgencyOnError true
 dump_encrypted enterprise size=medium -- --dumpAgencyOnError true
 dump_mixed_cluster_single size=medium -- --dumpAgencyOnError true
 dump_mixed_single_cluster size=large -- --dumpAgencyOnError true
 # takes long, needs to go first. However, doesn't utilize the SUT hard.
 dump_with_crashes !mac size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true
-dump_with_crashes_parallel !mac size=medium parallelity=1 priority=2000 cluster -- --dumpAgencyOnError true 
+dump_with_crashes_non_parallel !mac size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true 
 
 # Audit Tests
 audit_client,audit_server enterprise name=audit -- --dumpAgencyOnError true

@@ -1,6 +1,107 @@
 devel
 -----
 
+* Change default value of arangodump startup option `--use-parallel-dump` 
+  from `false` to `true`.
+  This enables the more parallel dump procedure by default, which allows
+  dumps to be produced more quickly.
+  The parallel dump protocol needs server-side support, and the first 
+  ArangoDB version that completely supports it is 3.12.
+  In order to use a 3.12 arangodump to create dumps from servers that run
+  an older version of arangod, the option should be set to `false` when
+  invoking arangodump.
+  The parallel dump option also allows the usage of the `--split-files` 
+  option in arangodump. When enabled, the data of each collection/shard
+  can be dumped into multiple independent files, which can be written in
+  parallel, and that can also be restored in parallel.
+  Please note that you will need an arangorestore from version 3.12 or
+  higher to be able to restore a dump that was taken with the 
+  `--split-files` option.
+
+* Added `--write-concern` parameter similar to `--replication-factor` to
+
+* MDS-1164: Added Publisher and Company to the Window binaries
+
+* BTS-1602: Added new flag `--ignore-collection` to the arangodump binary.
+  Collections can now be excluded by using this flag. This flag can be
+  specified multiple times to exclude multiple collections.
+
+* Added --write-concern parameter similar to --replication-factor to
+  arangodump. This enables the user to override the write concern for
+  one or multiple collections.
+
+* BTS-1259: Not all CRUD requests based on vertex and edge operations
+  using `_api/gharial` performed a check against the actual graph
+  definition. This behavior is now fixed. In case a collection is being
+  used but not known by the graph definition itself, this will now properly
+  be reported by either `ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED`,
+  in case of a vertex, or by `ERROR_GRAPH_EDGE_COLLECTION_NOT_USED`, in case
+  of an edge.
+    
+* Added metric `arangodb_aql_cursors_active` to show the number of active
+  AQL query cursors.
+
+* Add AQL optimizer rule "async-prefetch", which allows certain AQL query parts
+  to asynchronously prefetch data while other parts of the query are still
+  operating.
+  Several parts of the same AQL query operating concurrently can lead to query
+  performance improvements in case there is still reserve (scheduler) capacity.
+
+  The following parts of an AQL query can be executed in parallel to other
+  parts:
+
+  - CalculationNode
+  - CollectNode
+  - EnumerateCollectionNode
+  - EnumerateViewNode
+  - FilterNode
+  - IndexNode
+  - SortNode
+
+  Asynchronous prefetching is disabled for the following parts of an AQL query
+
+  - LimitNode: asynchronously prefetching data for a LimitNode must be disabled
+    because otherwise we may overfetch data and the LIMIT values could be
+    violated.
+  - NoResultsNode: the NoResultsNode produces an empty result, and is always
+    quick to execute. There is no need to make it fetch its dependent data
+    asynchronously.
+  - ReturnNode: the ReturnNode normally only passes through existing values and
+    should be quick to execute.
+  - SingletonNode: the SingletonNode only produces a single value and is always
+    quick to execute. It also doesn't have any dependencies.
+  - any nodes inside a subquery
+
+  If the following nodes occur inside an AQL query, asynchronous prefetching is
+  disabled for the entire query:
+
+  - InsertNode, UpdateNode, ReplaceNode, RemoveNode, UpsertNode: prefetching is
+    currently not compatible with these node types.
+  - EnumeratePathsNode, ShortestPathNode, TraversalNode: graph nodes currently
+    do not support prefetching in all cases, thus the functionality is turned
+    off.
+
+  AQL queries in which some nodes are eligible for asynchronous prefetching 
+  will be marked with the optimizer rule "async-prefetch" having been applied.
+
+  The explain output for queries is now extended with a new "Par" column, which
+  shows which nodes in the query are eligible for asynchronous prefetching.
+  All nodes denoted with "✓" will support asynchronous prefetching at runtime.
+
+  The profiling output for queries is now extended with a new "Par" column,
+  which shows the actual number of parallel calls during query execution. Note
+  that every call to a query node will be counted in "Calls" in addition. 
+  "Calls" contains the total number of calls made to the query node, and "Par"
+  contains the number of successful asynchronous prefetch calls.
+
+  Note that asynchronous prefetching is done on a best effort basis, but there 
+  is no guarantee that query parts actually execute concurrently. The reason
+  for this is that asynchronous prefetching tasks are posted to the server's
+  scheduler with normal priority, so they compete for scheduler threads in the
+  same way as other operations do. The more capacity the server's scheduler
+  still has, the more likely it is that query parts can actually run 
+  concurrently.
+
 * Updated OpenSSL to 3.1.3.
 
 * FE-385: fix web UI query import stuck on loading for faulty JSON.

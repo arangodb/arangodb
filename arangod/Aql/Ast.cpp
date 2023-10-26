@@ -368,7 +368,9 @@ Ast::Ast(QueryContext& query,
       _containsTraversal(false),
       _containsBindParameters(false),
       _containsModificationNode(false),
+      _containsUpsertNode(false),
       _containsParallelNode(false),
+      _containsAsyncPrefetch(false),
       _willUseV8(false),
       _astFlags(flags) {
   startSubQuery();
@@ -4360,6 +4362,12 @@ void Ast::setContainsParallelNode() noexcept {
   _containsParallelNode = true;
 #endif
 }
+
+bool Ast::containsAsyncPrefetch() const noexcept {
+  return _containsAsyncPrefetch;
+}
+
+void Ast::setContainsAsyncPrefetch() noexcept { _containsAsyncPrefetch = true; }
 
 AstNode const* Ast::getSubqueryForVariable(Variable const* variable) const {
   if (auto it = _subqueries.find(variable->id); it != _subqueries.end()) {

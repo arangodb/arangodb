@@ -77,6 +77,7 @@
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/Methods/Collections.h"
+#include "Logger/LogMacros.h"
 
 #include <tuple>
 
@@ -8410,44 +8411,93 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
 void arangodb::aql::asyncPrefetchRule(Optimizer* opt,
                                       std::unique_ptr<ExecutionPlan> plan,
                                       OptimizerRule const& rule) {
-  // at the moment we only allow async prefetching for read-only queries,
-  // ie., the query must not contain any modification nodes
-  struct ModificationNodeChecker : WalkerWorkerBase<ExecutionNode> {
+  struct AsyncPrefetchChecker : WalkerWorkerBase<ExecutionNode> {
     bool before(ExecutionNode* n) override {
-      if (n->isModificationNode()) {
-        containsModificationNode = true;
-        return true;  // found a modification node -> abort
+      auto eligibility = n->canUseAsyncPrefetching();
+      if (eligibility == AsyncPrefetchEligibility::kDisableGlobally) {
+        // found a node that we can't support -> abort
+        eligible = false;
+        return true;
       }
       return false;
     }
-    bool containsModificationNode{false};
+
+    bool eligible{true};
   };
-  ModificationNodeChecker checker;
-  plan->root()->walk(checker);
 
-  if (!checker.containsModificationNode) {
-    // here we only set a flag that this plan should use async prefetching.
-    // The actual prefetching is performed on node level and therefore also
-    // enbabled/disabled on the nodes. However, this is not done here but in
-    // a post-processing step so we can operate on the finalized query (e.g.,
-    // after subquery-splicing)
-    plan->enableAsyncPrefetching();
-  }
-  opt->addPlan(std::move(plan), rule, !checker.containsModificationNode);
-}
-
-void arangodb::aql::enableAsyncPrefetching(ExecutionPlan& plan) {
-  // TODO at the moment we enable prefetching on all nodes - this should be made
-  // configurable
   struct AsyncPrefetchEnabler : WalkerWorkerBase<ExecutionNode> {
+    AsyncPrefetchEnabler() { stack.emplace_back(0); }
+
     bool before(ExecutionNode* n) override {
-      TRI_ASSERT(!n->isModificationNode());
-      n->setIsAsyncPrefetchEnabled(true);
+      auto eligibility = n->canUseAsyncPrefetching();
+      if (eligibility == AsyncPrefetchEligibility::kDisableGlobally) {
+        // found a node that we can't support -> abort
+        TRI_ASSERT(!modified);
+        return true;
+      }
+      if (eligibility ==
+          AsyncPrefetchEligibility::kDisableForNodeAndDependencies) {
+        TRI_ASSERT(!stack.empty());
+        ++stack.back();
+      }
       return false;
     }
+
+    void after(ExecutionNode* n) override {
+      TRI_ASSERT(!stack.empty());
+      if (n->getType() == EN::REMOTE) {
+        ++stack.back();
+      }
+      auto eligibility = n->canUseAsyncPrefetching();
+      if (stack.back() == 0 &&
+          eligibility == AsyncPrefetchEligibility::kEnableForNode &&
+          (!n->hasParent() || n->getFirstParent()->getType() != EN::REMOTE)) {
+        // we are currently excluding any node inside a subquery and all
+        // nodes that are direct dependencies of REMOTE nodes from the
+        // optimization, because of assertion failures.
+        // TODO: lift these restrictions.
+        n->setIsAsyncPrefetchEnabled(true);
+        modified = true;
+      }
+      if (eligibility ==
+          AsyncPrefetchEligibility::kDisableForNodeAndDependencies) {
+        TRI_ASSERT(stack.back() > 0);
+        --stack.back();
+      }
+    }
+
+    bool enterSubquery(ExecutionNode*, ExecutionNode*) override {
+      // this will disable the optimization for subqueries right now
+      stack.push_back(1);
+      return true;
+    }
+
+    void leaveSubquery(ExecutionNode*, ExecutionNode*) override {
+      TRI_ASSERT(!stack.empty());
+      stack.pop_back();
+    }
+
+    // per query-level (main query, subqueries) stack of eligibilities
+    containers::SmallVector<uint32_t, 4> stack;
+    bool modified{false};
   };
-  AsyncPrefetchEnabler walker{};
-  plan.root()->walk(walker);
+
+  bool modified = false;
+  // first check if the query satisfies all constraints we have for
+  // async prefetching
+  AsyncPrefetchChecker checker;
+  plan->root()->walk(checker);
+
+  if (checker.eligible) {
+    // only if it does, start modifying nodes in the query
+    AsyncPrefetchEnabler enabler;
+    plan->root()->walk(enabler);
+    modified = enabler.modified;
+    if (modified) {
+      plan->getAst()->setContainsAsyncPrefetch();
+    }
+  }
+  opt->addPlan(std::move(plan), rule, modified);
 }
 
 void arangodb::aql::activateCallstackSplit(ExecutionPlan& plan) {
@@ -9041,11 +9091,15 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
   }
 }
 
+#define LOG_INDEX_OPTIMIZER_RULE LOG_DEVEL_IF(false)
+
 void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                                        std::unique_ptr<ExecutionPlan> plan,
                                        OptimizerRule const& rule) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, EN::INDEX, true);
+
+  LOG_INDEX_OPTIMIZER_RULE << "Checking if we can join index nodes";
 
   bool modified = false;
   if (nodes.size() >= 2) {
@@ -9055,38 +9109,52 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
     // - reverse iteration
     // - support from GatherNodes
     auto nodeQualifies = [](IndexNode const& indexNode) {
+      LOG_INDEX_OPTIMIZER_RULE << "Index node id: " << indexNode.id();
       if (indexNode.condition() == nullptr) {
         // IndexNode does not have an index lookup condition
+        LOG_INDEX_OPTIMIZER_RULE << "IndexNode does not have an index lookup "
+                                    "condition, so we cannot join it";
         return false;
       }
 
       if (!indexNode.options().ascending) {
         // reverse sort not yet supported
+        LOG_INDEX_OPTIMIZER_RULE << "IndexNode is not sorted ascending, so we "
+                                    "cannot join it";
         return false;
       }
 
       auto const& indexes = indexNode.getIndexes();
       if (indexes.size() != 1) {
         // must use exactly one index (otherwise this would be an OR condition)
+        LOG_INDEX_OPTIMIZER_RULE << "IndexNode uses more than one index, so we "
+                                    "cannot join it";
         return false;
       }
 
       auto const& index = indexes[0];
       if (!index->isSorted()) {
         // must be a sorted index
+        LOG_INDEX_OPTIMIZER_RULE << "IndexNode uses an unsorted index, so we "
+                                    "cannot join it";
         return false;
       }
 
       if (index->fields().empty()) {
         // index on more than one attribute
+        LOG_INDEX_OPTIMIZER_RULE << "IndexNode uses an index on more than one "
+                                    "attribute, so we cannot join it";
         return false;
       }
 
       if (index->hasExpansion()) {
         // index uses expansion ([*]) operator
+        LOG_INDEX_OPTIMIZER_RULE << "IndexNode uses an index with expansion, "
+                                    "so we cannot join it";
         return false;
       }
 
+      LOG_INDEX_OPTIMIZER_RULE << "IndexNode qualifies for joining";
       return true;
     };
 
@@ -9111,19 +9179,48 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
         containers::SmallVector<IndexNode*, 8> candidates;
         IndexNode* indexNode = startNode;
 
+        containers::SmallVector<CalculationNode*, 8> calculations;
+
         while (true) {
           if (handled.contains(indexNode) || !nodeQualifies(*indexNode)) {
             break;
           }
           candidates.emplace_back(indexNode);
           auto* parent = indexNode->getFirstParent();
-          if (parent == nullptr || parent->getType() != EN::INDEX) {
-            break;
+          while (true) {
+            if (parent == nullptr) {
+              goto endOfIndexNodeSearch;
+            } else if (parent->getType() == EN::CALCULATION) {
+              // store this calculation and check later if and index depends on
+              // it
+              auto calc = ExecutionNode::castTo<CalculationNode*>(parent);
+              calculations.push_back(calc);
+              parent = parent->getFirstParent();
+              continue;
+            } else if (parent->getType() == EN::INDEX) {
+              // check that this index node does not depend on previous
+              // calculations
+
+              indexNode = ExecutionNode::castTo<IndexNode*>(parent);
+              VarSet usedVariables;
+              indexNode->getVariablesUsedHere(usedVariables);
+              for (auto* calc : calculations) {
+                if (calc->setsVariable(usedVariables)) {
+                  // can not join past this calculation
+                  goto endOfIndexNodeSearch;
+                }
+              }
+              break;
+            } else {
+              goto endOfIndexNodeSearch;
+            }
           }
-          indexNode = ExecutionNode::castTo<IndexNode*>(parent);
         }
+      endOfIndexNodeSearch:
 
         if (candidates.size() >= 2) {
+          LOG_INDEX_OPTIMIZER_RULE << "Found " << candidates.size()
+                                   << " index nodes that qualify for joining";
           bool eligible = true;
           size_t i = 0;
           for (auto* c : candidates) {
@@ -9195,6 +9292,8 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
 
               if (!matches(lhs, rhs, c, candidates[i - 1]) &&
                   !matches(lhs, rhs, candidates[i - 1], c)) {
+                LOG_INDEX_OPTIMIZER_RULE
+                    << "IndexNode's lookup condition does not match";
                 eligible = false;
                 break;
               }
@@ -9208,6 +9307,10 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
 
               for (auto* other : candidates) {
                 if (other != c && other->setsVariable(vars)) {
+                  LOG_INDEX_OPTIMIZER_RULE << "IndexNode's post filter "
+                                              "accesses variables that are "
+                                              "not available before all "
+                                              "index nodes";
                   eligible = false;
                 }
               }
@@ -9226,6 +9329,11 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                     [](auto const& p) { return p.coveringIndexPosition; });
               }
               if (!c->getIndexes()[0]->supportsStreamInterface(opts)) {
+                LOG_INDEX_OPTIMIZER_RULE << "IndexNode's index does not "
+                                            "support streaming interface";
+                LOG_INDEX_OPTIMIZER_RULE
+                    << "-> Index name: " << c->getIndexes()[0]->name()
+                    << ", id: " << c->getIndexes()[0]->id();
                 eligible = false;
               }
             }
@@ -9237,6 +9345,7 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
           }
 
           if (eligible) {
+            LOG_INDEX_OPTIMIZER_RULE << "Should be eligible for index join";
             std::vector<JoinNode::IndexInfo> indexInfos;
             indexInfos.reserve(candidates.size());
             for (auto* c : candidates) {
@@ -9255,12 +9364,19 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
             JoinNode* jn = plan->createNode<JoinNode>(
                 plan.get(), plan->nextId(), std::move(indexInfos),
                 IndexIteratorOptions{});
+            // Nodes we jumped over (like calculations) are left in place
+            // and are now below the Join Node
             plan->replaceNode(candidates[0], jn);
             for (size_t i = 1; i < candidates.size(); ++i) {
               plan->unlinkNode(candidates[i]);
             }
             modified = true;
+          } else {
+            LOG_INDEX_OPTIMIZER_RULE << "Not eligible for index join";
           }
+        } else {
+          LOG_INDEX_OPTIMIZER_RULE << "Not enough index nodes to join, size: "
+                                   << candidates.size();
         }
 
         // try starting from next start node

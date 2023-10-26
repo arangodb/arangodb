@@ -114,6 +114,9 @@ class GraphNode : public ExecutionNode {
   /// @brief the cost of a graph node
   CostEstimate estimateCost() const override;
 
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
+
   /// @brief flag, if smart traversal (Enterprise Edition only!) is done
   bool isSmart() const;
 

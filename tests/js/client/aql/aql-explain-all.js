@@ -218,7 +218,7 @@ function explainSuite () {
       assertTrue(Array.isArray(nodes));
 
       nodes.forEach(function(node) {
-        assertTrue(node.hasOwnProperty("isCallstackSplitEnabled"));
+        assertTrue(node.isCallstackSplitEnabled || !node.hasOwnProperty("isCallstackSplitEnabled"));
         assertTrue(node.isCallstackSplitEnabled ^ (node.type === "RemoteNode"));
       });
       
