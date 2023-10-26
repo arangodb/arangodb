@@ -1960,7 +1960,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
       case ExecState::UPSTREAM: {
         LOG_QUERY("488de", DEBUG)
             << printTypeInfo() << " request dependency " << _upstreamRequest;
-        // If this triggers the executors produceRows function has returned
+        // If this triggers the executor's produceRows function has returned
         // HASMORE even if it knew that upstream has no further rows.
         TRI_ASSERT(_upstreamState != ExecutionState::DONE);
         // We need to make sure _lastRange is all used for single-dependency

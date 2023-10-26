@@ -118,12 +118,11 @@ auto LimitExecutor::calculateUpstreamCall(AqlCall const& clientCall) const
 auto LimitExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                 OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
+  static_assert(Properties::allowsBlockPassthrough == BlockPassthrough::Enable);
   // I think this *should* be the case, because we're passthrough. However,
   // isFull() ignores shadow rows in the passthrough case, which it probably
   // should not.
-  // static_assert(Properties::allowsBlockPassthrough ==
-  // BlockPassthrough::Enable); TRI_ASSERT(input.hasDataRow() ==
-  // !output.isFull());
+  // TRI_ASSERT(input.hasDataRow() == !output.isFull());
 
   auto const& clientCall = output.getClientCall();
   TRI_ASSERT(clientCall.getOffset() == 0);

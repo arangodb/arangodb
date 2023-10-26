@@ -2125,7 +2125,13 @@ ExecutionNode* LimitNode::clone(ExecutionPlan* plan, bool withDependencies,
 }
 
 AsyncPrefetchEligibility LimitNode::canUseAsyncPrefetching() const noexcept {
-  return AsyncPrefetchEligibility::kEnableForNode;
+  // disable async prefetching for the LimitNode itself, but allow it for
+  // the nodes above it.
+  // async prefetching is disabled for LimitNodes because the executors
+  // uses block-passthrough, which means the input and output block of the
+  // LimitExecutor are the same. enabling async prefetching then would
+  // lead to assertion failures.
+  return AsyncPrefetchEligibility::kDisableForNode;
 }
 
 void LimitNode::setFullCount(bool enable) { _fullCount = enable; }
