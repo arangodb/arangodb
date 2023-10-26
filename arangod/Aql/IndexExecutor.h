@@ -229,33 +229,6 @@ class IndexExecutor {
     CursorReader(CursorReader&& other) noexcept = default;
 
    private:
-    enum Type {
-      // no need to produce any result. we can scan over the index
-      // but do not have to look into its values
-      NoResult,
-
-      // index covers all projections of the query. we can get
-      // away with reading data from the index only
-      Covering,
-
-      // index covers the IndexNode's filter condition only,
-      // but not the rest of the query. that means we can use the
-      // index data to evaluate the IndexNode's post-filter condition,
-      // but for any entries that pass the filter, we will need to
-      // read the full documents in addition
-      CoveringFilterOnly,
-
-      // index does not cover the required data. we will need to
-      // read the full documents for all index entries
-      Document,
-
-      // late materialization
-      LateMaterialized,
-
-      // we only need to count the number of index entries
-      Count
-    };
-
     transaction::Methods& _trx;
     IndexExecutorInfos& _infos;
     AstNode const* _condition;

@@ -333,6 +333,13 @@ void UpdateReplaceNode::replaceAttributeAccess(
   auto replace = [&](Variable const*& variable) {
     if (variable != nullptr && searchVariable == variable &&
         attribute.size() == 1 && attribute[0] == StaticStrings::KeyString) {
+      // replace the following patterns:
+      // FOR doc IN collection LET #x = doc._key (projection)
+      //   UPDATE|REPLACE doc._key WITH ... INTO collection
+      // with
+      //   UPDATE|REPLACE #x WITH ... INTO collection
+      // doc._id does not need to be supported for the lookup value here,
+      // as using `_id` for the lookup value is not supported.
       variable = replaceVariable;
     }
   };
@@ -396,6 +403,13 @@ void RemoveNode::replaceAttributeAccess(ExecutionNode const* self,
                                         Variable const* replaceVariable) {
   if (_inVariable != nullptr && searchVariable == _inVariable &&
       attribute.size() == 1 && attribute[0] == StaticStrings::KeyString) {
+    // replace the following patterns:
+    // FOR doc IN collection LET #x = doc._key (projection)
+    //   REMOVE doc._key WITH ... INTO collection
+    // with
+    //   REMOVE #x WITH ... INTO collection
+    // doc._id does not need to be supported for the lookup value here,
+    // as using `_id` for the lookup value is not supported.
     _inVariable = replaceVariable;
   }
 }

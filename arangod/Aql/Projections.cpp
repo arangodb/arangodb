@@ -111,7 +111,7 @@ uint16_t Projections::coveringIndexPosition(
                                  "unable to determine covering index position");
 }
 
-void Projections::produceWithCallback(
+void Projections::produceFromDocument(
     velocypack::Builder& b, velocypack::Slice slice,
     transaction::Methods const* trxPtr,
     fu2::unique_function<void(Variable const*, velocypack::Slice) const> const&
@@ -163,6 +163,7 @@ void Projections::produceWithCallback(
       TRI_ASSERT(it.type == AttributeNamePath::Type::MultiAttribute);
       TRI_ASSERT(it.path.size() > 1);
 
+      // TODO: simplify level handling
       VPackSlice found = slice;
       VPackSlice prev = found;
       size_t level = 0;
@@ -193,6 +194,85 @@ void Projections::produceWithCallback(
       size_t closeUntil = it.path.size() - it.levelsToClose;
       while (levelsOpen >= closeUntil) {
         --levelsOpen;
+      }
+    }
+  }
+
+  TRI_ASSERT(levelsOpen == 0);
+}
+
+/// @brief projections from a covering index
+void Projections::produceFromIndex(
+    velocypack::Builder& b, IndexIteratorCoveringData& covering,
+    transaction::Methods const* trxPtr,
+    fu2::unique_function<void(Variable const*, velocypack::Slice) const> const&
+        cb) const {
+  TRI_ASSERT(_index != nullptr);
+
+  size_t levelsOpen = 0;
+
+  bool const isArray = covering.isArray();
+  for (auto const& it : _projections) {
+    if (isArray) {
+      // we will get a Slice with an array of index values. now we need
+      // to look up the array values from the correct positions to
+      // populate the result with the projection values. this case will
+      // be triggered for indexes that can be set up on any number of
+      // attributes (persistent/hash/skiplist)
+      TRI_ASSERT(isCoveringIndexPosition(it.coveringIndexPosition));
+      VPackSlice found = covering.at(it.coveringIndexPosition);
+
+      // TODO: remove entire level handling
+      TRI_ASSERT(levelsOpen <= it.startsAtLevel);
+      size_t level = 0;
+      size_t const n =
+          std::min(it.path.size(), static_cast<size_t>(it.coveringIndexCutoff));
+      while (level < n) {
+        if (level == n - 1) {
+          break;
+        }
+        if (level >= levelsOpen) {
+          ++levelsOpen;
+        }
+        ++level;
+      }
+      if (level >= it.startsAtLevel) {
+        // _id cannot be part of a user-defined index, but can be used
+        // from within stored values
+        if (it.type == AttributeNamePath::Type::IdAttribute) {
+          // _id attribute
+          b.add(it.path[level],
+                VPackValue(transaction::helpers::makeIdFromParts(
+                    trxPtr->resolver(), _datasourceId, found)));
+          b.clear();
+          b.add(VPackValue(transaction::helpers::makeIdFromParts(
+              trxPtr->resolver(), _datasourceId, found)));
+          cb(it.variable, b.slice());
+        } else {
+          cb(it.variable, found);
+        }
+      }
+
+      TRI_ASSERT(it.path.size() > it.levelsToClose);
+      size_t closeUntil = it.path.size() - it.levelsToClose;
+      while (levelsOpen >= closeUntil) {
+        --levelsOpen;
+      }
+    } else {
+      // no array Slice... this case will be triggered for indexes that
+      // contain simple string values, such as the primary index or the
+      // edge index
+      TRI_ASSERT(levelsOpen == 0);
+      TRI_ASSERT(it.path.size() == 1);
+
+      auto slice = covering.value();
+      if (it.type == AttributeNamePath::Type::IdAttribute) {
+        b.clear();
+        b.add(VPackValue(transaction::helpers::makeIdFromParts(
+            trxPtr->resolver(), _datasourceId, slice)));
+        cb(it.variable, b.slice());
+      } else {
+        cb(it.variable, slice);
       }
     }
   }

@@ -31,6 +31,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
+#include "Aql/IResearchViewNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/RegisterPlan.h"
@@ -1005,6 +1006,13 @@ bool findProjections(ExecutionNode* n, Variable const* v,
       CalculationNode const* calculationNode =
           ExecutionNode::castTo<CalculationNode const*>(current);
       if (!checkExpression(calculationNode, calculationNode->expression())) {
+        return false;
+      }
+    } else if (current->getType() == EN::ENUMERATE_IRESEARCH_VIEW) {
+      iresearch::IResearchViewNode const* viewNode =
+          ExecutionNode::castTo<iresearch::IResearchViewNode const*>(current);
+      if (!tryAndExtractProjectionsFromExpression(
+              viewNode, &viewNode->filterCondition())) {
         return false;
       }
     } else if (current->getType() == EN::GATHER) {

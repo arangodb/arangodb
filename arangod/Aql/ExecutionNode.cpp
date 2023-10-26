@@ -1783,8 +1783,6 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
     }
   }
 
-  auto const produceResult = this->isVarUsedLater(_outVariable) ||
-                             this->_filter != nullptr || !projections().empty();
   RegisterId outputRegister = variableToRegisterId(_outVariable);
 
   auto outputRegisters = RegIdSet{};
@@ -1824,9 +1822,8 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
   auto registerInfos = createRegisterInfos({}, std::move(outputRegisters));
   auto executorInfos = EnumerateCollectionExecutorInfos(
       outputRegister, engine.getQuery(), collection(), _outVariable,
-      produceResult, this->_filter.get(), this->projections(),
-      std::move(filterVarsToRegs), this->_random, this->doCount(),
-      this->canReadOwnWrites());
+      isProduceResult(), filter(), projections(), std::move(filterVarsToRegs),
+      _random, doCount(), canReadOwnWrites());
   return std::make_unique<ExecutionBlockImpl<EnumerateCollectionExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
@@ -1879,12 +1876,10 @@ void EnumerateCollectionNode::getVariablesUsedHere(VarSet& vars) const {
     // node must also be used later.
     vars.erase(outVariable());
 
-    auto const& p = _projections;
-    for (size_t i = 0; i < p.size(); ++i) {
-      if (p[i].variable == nullptr) {
-        continue;
+    for (size_t i = 0; i < _projections.size(); ++i) {
+      if (_projections[i].variable != nullptr) {
+        vars.erase(_projections[i].variable);
       }
-      vars.erase(p[i].variable);
     }
   }
 }
@@ -1899,10 +1894,23 @@ void EnumerateCollectionNode::setProjections(Projections projections) {
 }
 
 bool EnumerateCollectionNode::isProduceResult() const {
-  return _filter != nullptr ||
-         dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(
-             _outVariable) ||
-         !_projections.empty();
+  if (hasFilter()) {
+    return true;
+  }
+  auto const& p = projections();
+  if (p.empty()) {
+    return isVarUsedLater(_outVariable);
+  }
+  // check output registers of projections
+  for (size_t i = 0; i < p.size(); ++i) {
+    Variable const* var = p[i].variable;
+    // the output register can be a nullptr if the "optimize-projections"
+    // rule was not executed (potentially because it was disabled).
+    if (var != nullptr && isVarUsedLater(var)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /// @brief the cost of an enumerate collection node is a multiple of the cost of

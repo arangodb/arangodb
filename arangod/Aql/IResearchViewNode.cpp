@@ -1772,7 +1772,7 @@ void IResearchViewNode::replaceVariables(
   // replace
   aql::AstNode* cloned = nullptr;
   for (auto const& it : variables) {
-    if (replacements.find(it->id) != replacements.end()) {
+    if (replacements.contains(it->id)) {
       if (cloned == nullptr) {
         // only clone the original search condition once
         cloned = plan()->getAst()->clone(&search);
@@ -1785,6 +1785,21 @@ void IResearchViewNode::replaceVariables(
     // exchange the filter condition
     setFilterCondition(cloned);
   }
+}
+
+void IResearchViewNode::replaceAttributeAccess(
+    aql::ExecutionNode const* self, aql::Variable const* searchVariable,
+    std::span<std::string_view> attribute,
+    aql::Variable const* replaceVariable) {
+  aql::AstNode const& search = filterCondition();
+  if (isFilterConditionEmpty(&search)) {
+    return;
+  }
+
+  AstNode* cloned = plan()->getAst()->clone(&search);
+  cloned = Ast::replaceAttributeAccess(plan()->getAst(), cloned, searchVariable,
+                                       attribute, replaceVariable);
+  setFilterCondition(cloned);
 }
 
 void IResearchViewNode::getVariablesUsedHere(aql::VarSet& vars) const {

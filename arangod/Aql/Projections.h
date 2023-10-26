@@ -133,8 +133,16 @@ class Projections {
 
   /// @brief extract projections from a full document, calling a callback for
   /// each projection value
-  void produceWithCallback(
+  void produceFromDocument(
       velocypack::Builder& b, velocypack::Slice slice,
+      transaction::Methods const* trxPtr,
+      fu2::unique_function<void(Variable const*, velocypack::Slice)
+                               const> const& cb) const;
+
+  /// @brief extract projections from a covering index, calling a callback for
+  /// each projection value
+  void produceFromIndex(
+      velocypack::Builder& b, IndexIteratorCoveringData& covering,
       transaction::Methods const* trxPtr,
       fu2::unique_function<void(Variable const*, velocypack::Slice)
                                const> const& cb) const;
@@ -147,9 +155,10 @@ class Projections {
   void toVelocyPackFromIndex(velocypack::Builder& b,
                              IndexIteratorCoveringData& covering,
                              transaction::Methods const* trxPtr) const;
+
   /// @brief extract projections from a covering index
   /// this variant accesses the covering data using the projection index
-  // instead of coveringIndexPosition attribute.
+  /// instead of coveringIndexPosition attribute.
   void toVelocyPackFromIndexCompactArray(
       velocypack::Builder& b, IndexIteratorCoveringData& covering,
       transaction::Methods const* trxPtr) const;

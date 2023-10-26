@@ -642,7 +642,6 @@ void findShardKeysInExpression(arangodb::aql::AstNode const* root,
 std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
     removeUnnecessaryCalculationsNodeTypes{
         arangodb::aql::ExecutionNode::CALCULATION,
-        arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
         arangodb::aql::ExecutionNode::SUBQUERY};
 std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
     interchangeAdjacentEnumerationsNodeTypes{
@@ -2853,22 +2852,6 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
   bool modified = false;
 
   for (auto const& n : nodes) {
-    if (n->getType() == EN::ENUMERATE_COLLECTION) {
-#if 0
-      auto en = dynamic_cast<DocumentProducingNode*>(n);
-      auto& p = en->projections();
-      for (size_t i = 0; i < p.size(); /*not increased here*/) {
-        if (p[i].variable != nullptr && !n->isVarUsedLater(p[i].variable)) {
-          modified = true;
-          p.erase(i);
-        } else {
-          ++i;
-        }
-      }
-#endif
-      continue;
-    }
-
     Variable const* outVariable = nullptr;
 
     if (n->getType() == EN::CALCULATION) {
