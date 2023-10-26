@@ -934,15 +934,39 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
       return fetcher().execute(ctx.stack);
     });
 
+    auto isEligibleForAsyncPrefetch = std::invoke([&]() noexcept {
+      if (SchedulerFeature::SCHEDULER == nullptr) {
+        // note: SCHEDULER is a nullptr in unit tests
+        return false;
+      }
+
+      if (!_exeNode->isAsyncPrefetchEnabled()) {
+        // async prefetching is disabled for this node type
+        return false;
+      }
+
+      if (std::get<ExecutionState>(result) != ExecutionState::HASMORE) {
+        // nothing to fetch
+        return false;
+      }
+
+      auto const& call = ctx.stack.peek();
+      if (call.hasLimit()) {
+        // we do have a limit: we can only use async prefetching if we can
+        // guarantee that we will not overfetch
+        auto rowsCurrent = std::get<2>(result).numRowsLeft();
+        auto rowsToFetch = call.getUnclampedLimit();
+        if (std::holds_alternative<std::size_t>(rowsToFetch) &&
+            std::get<std::size_t>(rowsToFetch) <=
+                rowsCurrent + ExecutionBlock::DefaultBatchSize) {
+          return false;
+        }
+      }
+      return true;
+    });
+
     // note: SCHEDULER is a nullptr in unit tests
-    if (SchedulerFeature::SCHEDULER != nullptr &&
-        std::get<ExecutionState>(result) == ExecutionState::HASMORE &&
-        _exeNode->isAsyncPrefetchEnabled() && !ctx.clientCall.hasLimit()) {
-      // the only node types that use a limit are the LimitNode (and its
-      // dependencies in the plan) and EnumerateViewNode.
-      TRI_ASSERT(!ctx.clientCall.hasLimit() ||
-                 getPlanNode()->getType() ==
-                     ExecutionNode::ENUMERATE_IRESEARCH_VIEW);
+    if (isEligibleForAsyncPrefetch) {
       // Async prefetching.
       // we can only use async prefetching if the call does not use a limit.
       // this is because otherwise the prefetching could lead to an overfetching
