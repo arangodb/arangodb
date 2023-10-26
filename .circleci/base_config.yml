@@ -624,33 +624,33 @@ workflows:
       - compile-mac:
           context:
             - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          name: build-tools-mac
+          name: mac-tools-m1-enterprise-pr
           resource: macos.m1.medium.gen1
-          preset: mac-tools-m1-enterprise-pr
+          preset: enterprise-pr
           build-tests: false
           enterprise: true
       - compile-mac:
           context:
             - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          name: build-tools-mac
+          name: mac-tools-m1-community-pr
           resource: macos.m1.medium.gen1
-          preset: mac-tools-m1-community-pr
+          preset: community-pr
           build-tests: false
           enterprise: false
       - compile-mac:
           context:
             - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          name: build-tools-mac
+          name: mac-tools-x86-enterprise-pr
           resource: macos.x86.medium.gen2
-          preset: mac-tools-x86-enterprise-pr
+          preset: community-pr
           build-tests: false
           enterprise: true
       - compile-mac:
           context:
             - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          name: build-tools-mac
+          name: mac-tools-x86-community-pr
           resource: macos.x86.medium.gen2
-          preset: mac-tools-x86-community-pr
+          preset: community-pr
           build-tests: false
           enterprise: false
 
