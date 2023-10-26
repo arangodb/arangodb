@@ -304,7 +304,7 @@ jobs:
       - run:
           name: "Configure"
           command: |
-            export PATH="/opt/homebrew/opt/llvm@14/bin:$PATH"
+            export PATH="/opt/homebrew/opt/llvm@14/bin:/usr/local/opt/llvm@14/bin:$PATH"
             export MACOSX_DEPLOYMENT_TARGET=11.0
             export OPENSSL_ROOT_DIR=~/openssl
             mkdir ~/build
