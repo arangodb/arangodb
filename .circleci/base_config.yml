@@ -287,9 +287,9 @@ jobs:
           name: "Install OpenSSL"
           command: |
             export MAC_OPENSSL=`grep OPENSSL_MACOS ~/project/VERSIONS|cut -d '"' -f 2-2`
-            wget https://www.openssl.org/source/openssl-$MAC_OPENSSL.tar.gz --directory-prefix=~/ 
+            wget https://www.openssl.org/source/openssl-$MAC_OPENSSL.tar.gz --directory-prefix=/tmp
             mkdir ~/openssl
-            tar zvxf ~/openssl-$MAC_OPENSSL.tar.gz -C ~/openssl --strip-components 1
+            tar zvxf /tmp/openssl-$MAC_OPENSSL.tar.gz -C ~/openssl --strip-components 1
             cd ~/openssl/
             ./config
             make -j8
