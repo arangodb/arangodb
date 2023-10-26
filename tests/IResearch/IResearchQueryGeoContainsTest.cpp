@@ -379,7 +379,8 @@ class QueryGeoContains : public QueryTest {
         ])
         FOR d IN testView
         SEARCH ANALYZER(GEO_CONTAINS(box, d.geometry), 'mygeojson')
-        OPTIONS {parallelism:)", i, R"(}
+        OPTIONS {parallelism:)",
+          i, R"(}
         RETURN d)");
       EXPECT_TRUE(runQuery(q, all));
     }
@@ -450,13 +451,13 @@ class QueryGeoContains : public QueryTest {
         FOR d IN testView
         SEARCH GEO_CONTAINS(d.geometry, box) OPTIONS {parallelism:0}
         RETURN d)";
-        auto r = executeQuery(_vocbase, std::string{kQueryStr});
-        EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_BAD_PARAMETER) << kQueryStr;
+      auto r = executeQuery(_vocbase, std::string{kQueryStr});
+      EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_BAD_PARAMETER) << kQueryStr;
     }
     {
-        // invalid parallelism value
-        static constexpr std::string_view kQueryStr =
-            R"(LET box = GEO_POLYGON([
+      // invalid parallelism value
+      static constexpr std::string_view kQueryStr =
+          R"(LET box = GEO_POLYGON([
           [37.602682, 55.706853],
           [37.613025, 55.706853],
           [37.613025, 55.711906],
@@ -466,8 +467,8 @@ class QueryGeoContains : public QueryTest {
         FOR d IN testView
         SEARCH GEO_CONTAINS(d.geometry, box) OPTIONS {parallelism:-10}
         RETURN d)";
-        auto r = executeQuery(_vocbase, std::string{kQueryStr});
-        EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_BAD_PARAMETER) << kQueryStr;
+      auto r = executeQuery(_vocbase, std::string{kQueryStr});
+      EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_BAD_PARAMETER) << kQueryStr;
     }
   }
 
@@ -631,8 +632,6 @@ class QueryGeoContains : public QueryTest {
       ASSERT_EQ(3U, snapshot->size());
       ASSERT_EQ(_insertedDocs.size(), snapshot->docs_count());
       ASSERT_EQ(_insertedDocs.size(), snapshot->live_docs_count());
-
-     
 
       if (isVPack) {
         auto doc = _insertedDocs.begin();

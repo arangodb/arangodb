@@ -241,7 +241,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _heapSortLimit{heapSortLimit},
       _parallelism{parallelism},
       _meta{meta},
-      _parallelExecutionPool {parallelExecutionPool},
+      _parallelExecutionPool{parallelExecutionPool},
       _depth{depth},
       _filterConditionIsEmpty{
           iresearch::isFilterConditionEmpty(&_filterCondition) &&
@@ -1603,12 +1603,12 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
   // and next time we would need all our parallelism again.
   auto& readersPool = this->infos().parallelExecutionPool();
   if (parallelism > (this->_allocatedThreads + 1)) {
-    this->_allocatedThreads +=
-        readersPool.allocateThreads(static_cast<int>(parallelism - this->_allocatedThreads - 1));
+    this->_allocatedThreads += readersPool.allocateThreads(
+        static_cast<int>(parallelism - this->_allocatedThreads - 1));
     parallelism = this->_allocatedThreads + 1;
   }
   atMost = atMostInitial * parallelism;
-  
+
   std::vector<futures::Future<bool>> results;
   this->_indexReadBuffer.preAllocateStoredValuesBuffer(
       atMost, this->_infos.getScoreRegisters().size(),
@@ -1672,7 +1672,7 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
       ++i;
     }
     if (selfExecute < std::numeric_limits<size_t>::max()) {
-        gotData |= readSegment<true>(_segmentReaders[selfExecute], bufferIdx);
+      gotData |= readSegment<true>(_segmentReaders[selfExecute], bufferIdx);
     } else {
       TRI_ASSERT(results.empty());
       break;
@@ -1686,7 +1686,7 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
       for (auto& r : runners.result().get()) {
         gotData |= r.get();
       }
-    } ();
+    }();
     results.clear();
   }
   // shrink to actual size so we can emit rows as usual

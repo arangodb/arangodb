@@ -60,7 +60,6 @@ class IResearchRocksDBRecoveryHelper;
 
 class ArangoSearchPool {
  public:
-
   void setLimit(int newLimit) noexcept {
     // should not be called during execution of queries!
     TRI_ASSERT(_allocatedThreads.load() == 0);
@@ -99,6 +98,7 @@ class ArangoSearchPool {
   bool run(Pool::func_t&& fn) {
     return _pool.run(std::forward<Pool::func_t>(fn));
   }
+
  private:
   Pool _pool{0, 0, IR_NATIVE_STRING("ARS-2")};
   std::atomic<int> _allocatedThreads{0};

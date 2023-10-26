@@ -75,8 +75,6 @@ template<BlockPassthrough>
 class SingleRowFetcher;
 class QueryContext;
 
-
-
 class IResearchViewExecutorInfos {
  public:
   IResearchViewExecutorInfos(

@@ -168,7 +168,8 @@ std::string const FAIL_ON_OUT_OF_SYNC(
 std::string const SKIP_RECOVERY("--arangosearch.skip-recovery");
 std::string const CACHE_LIMIT("--arangosearch.columns-cache-limit");
 std::string const CACHE_ONLY_LEADER("--arangosearch.columns-cache-only-leader");
-std::string const SEARCH_THREADS_LIMIT("--arangosearch.execution-threads-limit");
+std::string const SEARCH_THREADS_LIMIT(
+    "--arangosearch.execution-threads-limit");
 
 aql::AqlValue dummyFunc(aql::ExpressionContext*, aql::AstNode const& node,
                         std::span<aql::AqlValue const>) {
@@ -1116,7 +1117,8 @@ void IResearchFeature::validateOptions(
           : _consolidationThreads;
 
   if (!args.touched(SEARCH_THREADS_LIMIT)) {
-    _searchExecutionThreads = static_cast<uint32_t>(2 * NumberOfCores::getValue());
+    _searchExecutionThreads =
+        static_cast<uint32_t>(2 * NumberOfCores::getValue());
   }
 
   _running.store(false);
