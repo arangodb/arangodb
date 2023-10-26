@@ -1728,19 +1728,21 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
       // keep the lock and exit
       return TRI_ERROR_NO_ERROR;
     }
+    LOG_DEVEL << "Did not get lock within 1 seconds... detaching thread...";
     Result r = arangodb::SchedulerFeature::SCHEDULER->detachThread();
     if (r.fail()) {
       return TRI_ERROR_LOCK_TIMEOUT;
     }
   }
 
-  timeout -= std::chrono::microseconds(1000000);
+  timeout_us -= std::chrono::microseconds(1000000);
 
   if (mode == AccessMode::Type::WRITE) {
     gotLock = _exclusiveLock.tryLockWriteFor(timeout_us);
   } else {
     gotLock = _exclusiveLock.tryLockReadFor(timeout_us);
   }
+  LOG_DEVEL << "Tried to get lock for longer in a detached thread: " << gotLock;
 
   if (gotLock) {
     // keep the lock and exit
