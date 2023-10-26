@@ -265,20 +265,28 @@ jobs:
     parameters:
       preset:
         type: string
+      resource:
+        type: string
       build-tests:
         type: boolean
+      enterprise:
+        type: boolean
+        default: false
       publish-artifacts:
         type: boolean
         default: true
     macos:
       xcode: 14.2.0
-    resource_class: macos.m1.medium.gen1
+    resource_class: << parameters.resource >>
     steps:
       - checkout-arangodb:
           with-submodules: true
           destination: "~/project"
-      - checkout-enterprise:
-          destination: "~/project/enterprise"
+      - when:
+          condition: << parameters.enterprise >>
+          steps:
+            - checkout-enterprise:
+                destination: "~/project/enterprise"
       - run:
           name: "Install llvm"
           command: |
@@ -300,7 +308,7 @@ jobs:
             export MACOSX_DEPLOYMENT_TARGET=11.0
             export OPENSSL_ROOT_DIR=~/openssl
             mkdir ~/build
-            cmake -DCMAKE_C_COMPILER=clang -DUSE_ENTERPRISE=1 -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_LIBRARY_PATH=~/openssl/ -S ~/project -B ~/build
+            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_LIBRARY_PATH=~/openssl/ -DSTATIC_EXECUTABLES=Off -DCMAKE_EXE_LINKER_FLAGS="-Wl" -S ~/project -B ~/build
       - run:
           name: "Build"
           command: |
@@ -617,5 +625,32 @@ workflows:
           context:
             - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           name: build-tools-mac
-          preset: enterprise-pr
+          resource: macos.m1.medium.gen1
+          preset: mac-tools-m1-enterprise-pr
           build-tests: false
+          enterprise: true
+      - compile-mac:
+          context:
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          name: build-tools-mac
+          resource: macos.m1.medium.gen1
+          preset: mac-tools-m1-community-pr
+          build-tests: false
+          enterprise: false
+      - compile-mac:
+          context:
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          name: build-tools-mac
+          resource: macos.x86.medium.gen2
+          preset: mac-tools-x86-enterprise-pr
+          build-tests: false
+          enterprise: true
+      - compile-mac:
+          context:
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          name: build-tools-mac
+          resource: macos.x86.medium.gen2
+          preset: mac-tools-x86-community-pr
+          build-tests: false
+          enterprise: false
+
