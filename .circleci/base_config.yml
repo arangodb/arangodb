@@ -298,6 +298,7 @@ jobs:
           command: |
             export PATH="/opt/homebrew/opt/llvm@14/bin:$PATH"
             export MACOSX_DEPLOYMENT_TARGET=11.0
+            export OPENSSL_ROOT_DIR=~/openssl
             mkdir ~/build
             cmake -DCMAKE_C_COMPILER=clang -DUSE_ENTERPRISE=1 -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_LIBRARY_PATH=~/openssl/ -S ~/project -B ~/build
       - run:
