@@ -44,6 +44,7 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
@@ -1715,6 +1716,26 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
       std::chrono::duration<double>(timeout));
 
   bool gotLock = false;
+  if (timeout_us > std::chrono::microseconds(1000000)) {
+    if (mode == AccessMode::Type::WRITE) {
+      gotLock =
+          _exclusiveLock.tryLockWriteFor(std::chrono::microseconds(1000000));
+    } else {
+      gotLock =
+          _exclusiveLock.tryLockReadFor(std::chrono::microseconds(1000000));
+    }
+    if (gotLock) {
+      // keep the lock and exit
+      return TRI_ERROR_NO_ERROR;
+    }
+    Result r = arangodb::SchedulerFeature::SCHEDULER->detachThread();
+    if (r.fail()) {
+      return TRI_ERROR_LOCK_TIMEOUT;
+    }
+  }
+
+  timeout -= std::chrono::microseconds(1000000);
+
   if (mode == AccessMode::Type::WRITE) {
     gotLock = _exclusiveLock.tryLockWriteFor(timeout_us);
   } else {

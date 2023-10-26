@@ -203,7 +203,7 @@ SupervisedScheduler::SupervisedScheduler(
     ArangodServer& server, uint64_t minThreads, uint64_t maxThreads,
     uint64_t maxQueueSize, uint64_t fifo1Size, uint64_t fifo2Size,
     uint64_t fifo3Size, uint64_t ongoingLowPriorityLimit,
-    double unavailabilityQueueFillGrade)
+    double unavailabilityQueueFillGrade, uint64_t maxNumberDetachedThreads)
     : Scheduler(server),
       _nf(server.getFeature<NetworkFeature>()),
       _sharedPRNG(server.getFeature<SharedPRNGFeature>()),
@@ -498,6 +498,37 @@ void SupervisedScheduler::shutdown() {
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
+}
+
+Result SupervisedScheduler::detachThread() {
+  std::lock_guard<std::mutex> guard(_mutex);
+  // Now we have access to the _workerStates and _abandonedWorkerStates
+  // Let's first find ourselves in the _workerStates:
+  uint64_t myNumber = Thread::currentThreadNumber();
+  auto it = _workerStates.begin();
+  while (it != _workerStates.end()) {
+    if ((*it)->_thread->threadNumber() == myNumber) {
+      break;
+    }
+    ++it;
+  }
+  if (it == _workerStates.end()) {
+    return Result(TRI_ERROR_WAS_ERLAUBE);
+  }
+  std::shared_ptr<WorkerState> state = *it;
+  _workerStates.erase(it);
+  // Since the thread is effectively taken out of the pool, decrease the
+  // number of workers.
+  --_numWorkers;
+  {
+    std::unique_lock<std::mutex> guard(state->_mutex);
+    state->_stop = true;  // We will be stopped after the current task is done
+                          // We know that we are working, so we do not
+                          // have to wake the thread.
+  }
+  ++_metricsThreadsStopped;
+  _abandonedWorkerStates.push_back(std::move(state));
+  return {};
 }
 
 constexpr uint64_t approxWorkerStackSize = 4'000'000;  // 4 MB

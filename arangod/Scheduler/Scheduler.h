@@ -63,6 +63,8 @@ class Scheduler {
   // ---------------------------------------------------------------------------
   // Scheduling and Task Queuing - the relevant stuff
   // ---------------------------------------------------------------------------
+  virtual Result detachThread();
+
   class DelayedWorkItem;
   typedef std::chrono::steady_clock clock;
   typedef std::shared_ptr<DelayedWorkItem> WorkHandle;

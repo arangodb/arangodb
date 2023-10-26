@@ -47,11 +47,21 @@ class SupervisedScheduler final : public Scheduler {
                       uint64_t maxThreads, uint64_t maxQueueSize,
                       uint64_t fifo1Size, uint64_t fifo2Size,
                       uint64_t fifo3Size, uint64_t ongoingLowPriorityLimit,
-                      double unavailabilityQueueFillGrade);
+                      double unavailabilityQueueFillGrade,
+                      uint64_t maxNumberDetachedThreads);
   ~SupervisedScheduler() final;
 
   bool start() override;
   void shutdown() override;
+
+  /// @brief Take current thread out of the Scheduler (to finish some
+  /// potentially long running task and allow a new thread to be started).
+  /// This should be called from a scheduler thread. If an error is returned
+  /// this operation has not worked. The thread can then consider to error
+  /// out instead of starting its long running task. Note that his also
+  /// happens if a configurable total number of detached threads has been
+  /// reached.
+  Result detachThread() override;
 
   void toVelocyPack(velocypack::Builder&) const override;
   Scheduler::QueueStatistics queueStatistics() const override;
