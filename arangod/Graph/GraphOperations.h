@@ -227,8 +227,13 @@ class GraphOperations {
                                  bool returnNew);
 
   Result checkEdgeCollectionAvailability(std::string const& edgeCollectionName);
+
+  /// @brief Validates the given vertex collection name and checks if it is
+  /// available or not. The variable edgeDocumentOrigin is used to
+  /// differentiate between the origin of the vertex collection name.
+  /// If it is true, the vertex collection name is coming from an edge.
   Result checkVertexCollectionAvailability(
-      std::string const& vertexCollectionName);
+      std::string const& vertexCollectionName, bool edgeDocumentOrigin = false);
 
   bool hasROPermissionsFor(std::string const& collection) const;
   bool hasRWPermissionsFor(std::string const& collection) const;
