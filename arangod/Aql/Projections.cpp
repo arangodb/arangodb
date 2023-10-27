@@ -70,21 +70,8 @@ void Projections::clear() noexcept {
 
 /// @brief erase projection members if cb returns true
 void Projections::erase(std::function<bool(Projection&)> const& cb) {
-  size_t src = 0;
-  size_t dst = 0;
-  for (/**/; src < _projections.size(); ++src) {
-    if (!cb(_projections[src])) {
-      // keep member
-      if (src != dst) {
-        _projections[dst] = std::move(_projections[src]);
-      }
-      ++dst;
-    }
-  }
-  if (src != dst) {
-    _projections.erase(_projections.begin() + dst, _projections.end());
-    handleSharedPrefixes();
-  }
+  std::erase_if(_projections, cb);
+  handleSharedPrefixes();
 }
 
 /// @brief set the index context for projections using an index
