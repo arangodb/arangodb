@@ -196,6 +196,7 @@ class SupervisedScheduler final : public Scheduler {
   size_t const _maxNumWorkers;
   uint64_t const _maxFifoSizes[NumberOfQueues];
   uint64_t const _ongoingLowPriorityLimit;
+  uint64_t const _maxNumberDetachedThreads;
 
   /// @brief fill grade of the scheduler's queue (in %) from which onwards
   /// the server is considered unavailable (because of overload)
@@ -203,9 +204,11 @@ class SupervisedScheduler final : public Scheduler {
 
   std::list<std::shared_ptr<WorkerState>> _workerStates;
   std::list<std::shared_ptr<WorkerState>> _abandonedWorkerStates;
-  std::atomic<uint64_t> _numWorking;  // Number of threads actually working
-  std::atomic<uint64_t> _numAwake;    // Number of threads working or spinning
-                                      // (i.e. not sleeping)
+  std::list<std::shared_ptr<WorkerState>> _detachedWorkerStates;
+  std::atomic<uint64_t> _numWorking;   // Number of threads actually working
+  std::atomic<uint64_t> _numAwake;     // Number of threads working or spinning
+                                       // (i.e. not sleeping)
+  std::atomic<uint64_t> _numDetached;  // Number of detached threads
 
   // The following mutex protects the lists _workerStates and
   // _abandonedWorkerStates, whenever one accesses any of these two
@@ -226,6 +229,7 @@ class SupervisedScheduler final : public Scheduler {
   metrics::Gauge<uint64_t>& _metricsNumAwakeThreads;
   metrics::Gauge<uint64_t>& _metricsNumWorkingThreads;
   metrics::Gauge<uint64_t>& _metricsNumWorkerThreads;
+  metrics::Gauge<uint64_t>& _metricsNumDetachedThreads;
   metrics::Gauge<uint64_t>& _metricsStackMemoryWorkerThreads;
   metrics::Gauge<int64_t>& _schedulerQueueMemory;
 

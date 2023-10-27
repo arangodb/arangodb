@@ -178,6 +178,8 @@ DECLARE_GAUGE(arangodb_scheduler_num_working_threads, uint64_t,
               "Number of working threads");
 DECLARE_GAUGE(arangodb_scheduler_num_worker_threads, uint64_t,
               "Number of worker threads");
+DECLARE_GAUGE(arangodb_scheduler_num_detached_threads, uint64_t,
+              "Number of detached worker threads");
 DECLARE_GAUGE(arangodb_scheduler_stack_memory_usage, uint64_t,
               "Approximate stack memory usage of worker threads");
 DECLARE_GAUGE(
@@ -217,6 +219,7 @@ SupervisedScheduler::SupervisedScheduler(
       _maxNumWorkers(maxThreads),
       _maxFifoSizes{maxQueueSize, fifo1Size, fifo2Size, fifo3Size},
       _ongoingLowPriorityLimit(ongoingLowPriorityLimit),
+      _maxNumberDetachedThreads(maxNumberDetachedThreads),
       _unavailabilityQueueFillGrade(unavailabilityQueueFillGrade),
       _numWorking(0),
       _numAwake(0),
@@ -237,6 +240,9 @@ SupervisedScheduler::SupervisedScheduler(
               arangodb_scheduler_num_working_threads{})),
       _metricsNumWorkerThreads(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_scheduler_num_worker_threads{})),
+      _metricsNumDetachedThreads(
+          server.getFeature<metrics::MetricsFeature>().add(
+              arangodb_scheduler_num_detached_threads{})),
       _metricsStackMemoryWorkerThreads(
           server.getFeature<metrics::MetricsFeature>().add(
               arangodb_scheduler_stack_memory_usage{})),
@@ -502,7 +508,7 @@ void SupervisedScheduler::shutdown() {
 
 Result SupervisedScheduler::detachThread() {
   std::lock_guard<std::mutex> guard(_mutex);
-  // Now we have access to the _workerStates and _abandonedWorkerStates
+  // Now we have access to the _workerStates and _detachedWorkerStates
   // Let's first find ourselves in the _workerStates:
   uint64_t myNumber = Thread::currentThreadNumber();
   auto it = _workerStates.begin();
@@ -527,7 +533,8 @@ Result SupervisedScheduler::detachThread() {
                           // have to wake the thread.
   }
   ++_metricsThreadsStopped;
-  _abandonedWorkerStates.push_back(std::move(state));
+  _detachedWorkerStates.push_back(std::move(state));
+  ++_numDetached;
   return {};
 }
 
@@ -624,8 +631,15 @@ void SupervisedScheduler::runSupervisor() {
     uint64_t numAwake = _numAwake.load(std::memory_order_relaxed);
     uint64_t numWorkers = _numWorkers.load(std::memory_order_relaxed);
     uint64_t numWorking = _numWorking.load(std::memory_order_relaxed);
+    uint64_t numDetached = _numDetached.load(std::memory_order_relaxed);
     bool sleeperFound = (numAwake < numWorkers);
 
+    LOG_DEVEL << "queuelength: " << queueLength << ", numWorkers:" << numWorkers
+              << ", lastQueueLength: " << lastQueueLength
+              << ", lastJobsSubmitted: " << lastJobsSubmitted
+              << ", jobsDone: " << jobsDone
+              << ", sleeperFound: " << sleeperFound
+              << ", maxNumWorkers: " << _maxNumWorkers;
     bool doStartOneThread =
         (((queueLength >= 3 * _numWorkers) &&
           ((lastQueueLength + _numWorkers) < queueLength)) ||
@@ -648,9 +662,10 @@ void SupervisedScheduler::runSupervisor() {
       _metricsJobsDequeuedTotal.operator=(jobsDequeued);
       _metricsNumAwakeThreads.operator=(numAwake);
       _metricsNumWorkingThreads.operator=(numWorking);
-      _metricsNumWorkerThreads.operator=(numWorkers);
-      _metricsStackMemoryWorkerThreads.operator=(
-          numWorkers* approxWorkerStackSize);
+      _metricsNumWorkerThreads.operator=(numWorkers + numDetached);
+      _metricsNumDetachedThreads.operator=(numDetached);
+      _metricsStackMemoryWorkerThreads.operator=((numWorkers + numDetached) *
+                                                 approxWorkerStackSize);
       roundCount = 0;
     }
 
@@ -687,7 +702,19 @@ void SupervisedScheduler::runSupervisor() {
 
 bool SupervisedScheduler::cleanupAbandonedThreads() {
   std::unique_lock<std::mutex> guard(_mutex);
-  auto i = _abandonedWorkerStates.begin();
+  auto i = _detachedWorkerStates.begin();
+
+  while (i != _detachedWorkerStates.end()) {
+    auto& state = *i;
+    if (!state->_thread->isRunning()) {
+      i = _detachedWorkerStates.erase(i);
+      --_numDetached;
+    } else {
+      i++;
+    }
+  }
+
+  i = _abandonedWorkerStates.begin();
 
   while (i != _abandonedWorkerStates.end()) {
     auto& state = *i;
@@ -698,7 +725,7 @@ bool SupervisedScheduler::cleanupAbandonedThreads() {
     }
   }
 
-  return _abandonedWorkerStates.empty();
+  return _detachedWorkerStates.empty() && _abandonedWorkerStates.empty();
 }
 
 bool SupervisedScheduler::sortoutLongRunningThreads() {
@@ -771,6 +798,12 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const noexcept {
   uint64_t jobsDequeued = _jobsDequeued.load(std::memory_order_relaxed);
   TRI_ASSERT(jobsDequeued >= jobsDone);
   uint64_t threadsWorking = jobsDequeued - jobsDone;
+  // Detached threads are typically working, too, but should not be
+  // counted here, since the ratios below are only for non-detached
+  // threads:
+  uint64_t threadsDetached = _numDetached.load(std::memory_order_relaxed);
+  threadsWorking =
+      threadsWorking > threadsDetached ? threadsWorking - threadsDetached : 0;
 
   if (queueIndex == HighPriorityQueue) {
     // We can work on high if less than 87.5% of the workers are busy
