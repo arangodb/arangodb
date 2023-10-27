@@ -644,7 +644,6 @@ describe('_api/gharial', () => {
           // get a (any) valid key of an existing edge document
           const _key = db.knows.any()._key;
           let req = arango.PATCH(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
-          print(req);
           expect(req.code).to.equal(404);
           expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code);
 
@@ -665,7 +664,6 @@ describe('_api/gharial', () => {
           // get a (any) valid key of an existing edge document
           const _key = db.knows.any()._key;
           let req = arango.PATCH(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
-          print(req);
           expect(req.code).to.equal(404);
           expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code);
 
