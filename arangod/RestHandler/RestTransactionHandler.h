@@ -55,12 +55,6 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
         // higher prio than leader requests, even if they are done from
         // AQL.
       }
-      auto const& type = _request->requestType();
-      if (type == rest::RequestType::PUT ||
-          type == rest::RequestType::DELETE_REQ) {
-        // Let Transaction Commit and abort move to Medium lane
-        return RequestLane::CONTINUATION;
-      }
     }
     return RequestLane::CLIENT_V8;
   }
