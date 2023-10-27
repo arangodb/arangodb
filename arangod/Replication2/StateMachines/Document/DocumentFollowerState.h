@@ -32,7 +32,7 @@
 
 #include "Basics/UnshackledMutex.h"
 
-#include <functional>
+#include <function2.hpp>
 
 namespace arangodb::replication2::replicated_state::document {
 
@@ -112,7 +112,7 @@ struct DocumentFollowerState
     template<class T>
     auto applyAndRelease(
         T const& op, std::optional<LogIndex> index = std::nullopt,
-        std::optional<std::function<void()>> fun = std::nullopt)
+        std::optional<fu2::unique_function<void(Result&&)>> fun = std::nullopt)
         -> ResultT<std::optional<LogIndex>>;
 
     std::unique_ptr<DocumentCore> core;

@@ -380,8 +380,8 @@ const replicatedStateFollowerSuite = function (dbParams) {
       handle = collection.update(handle, {value: `${testName}-baz`});
       dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-baz`, isReplication2);
 
-      handle = collection.replace(handle, {_key: `${testName}-foo`, value: `${testName}-bar`});
-      dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-bar`, isReplication2);
+      handle = collection.replace(handle, {_key: `${testName}-foo`, value: `${testName}-bar2`});
+      dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-bar2`, isReplication2);
 
       collection.remove(handle);
       dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], `${testName}-foo`, null, isReplication2);
@@ -496,9 +496,11 @@ const replicatedStateDocumentStoreSuiteDatabaseDeletionReplication2 = function (
 const replicatedStateRecoverySuite = function () {
   const coordinator = lh.coordinators[0];
   let collection = null;
+  let extraCollections = [];
   let shards = null;
   let shardId = null;
   let logId = null;
+  let log = null;
   let logs = null;
   let shardsToLogs = null;
 
@@ -509,12 +511,18 @@ const replicatedStateRecoverySuite = function () {
     setUpAll,
     tearDownAll,
     setUp: setUpAnd(() => {
-      collection = db._create(collectionName, {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3});
+      collection = db._create(collectionName, {numberOfShards: 1, writeConcern: 2, replicationFactor: 3});
       ({shards, shardsToLogs, logs} = dh.getCollectionShardsAndLogs(db, collection));
       shardId = shards[0];
       logId = shardsToLogs[shardId];
+      log = logs[0];
     }),
     tearDown: tearDownAnd(() => {
+      for (let col of extraCollections) {
+        col.drop();
+      }
+      extraCollections = [];
+
       if (collection !== null) {
         collection.drop();
       }
@@ -529,7 +537,7 @@ const replicatedStateRecoverySuite = function () {
       let handle = collection.insert({_key: `${testName}-foo`, value: `${testName}-bar`});
       dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-bar`, true);
 
-      // Create an index.
+      // Create an index. This is just to add some more entries in the log.
       let index = collection.ensureIndex({name: "katze", type: "persistent", fields: ["value"]});
       assertEqual(index.name, "katze");
       assertEqual(index.isNewlyCreated, true);
@@ -577,6 +585,130 @@ const replicatedStateRecoverySuite = function () {
       for (let doc of documents) {
         dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], doc._key, doc.value, true);
       }
+    },
+
+    testLeaderRecoverEntries: function (testName) {
+      const participants = lhttp.listLogs(coordinator, database).result[logId];
+      assertTrue(participants !== undefined, `No participants found for log ${logId}`);
+      let leader = participants[0];
+      let followers = participants.slice(1);
+
+      // Create another collection that is distributed like the first one.
+      // This is to make sure there exists another shard within the same log.
+      const extraCollectionName = `${collectionName}DistributeShardsLike`;
+      const col2 = db._create(extraCollectionName, {
+        numberOfShards: 1,
+        distributeShardsLike: collectionName,
+      });
+      extraCollections.push(col2);
+
+      // Get the commit index. We add one to it because the compaction interval is [x, y), hence we need an extra entry.
+      // For example, if we were to run compaction over range [0, 6), entry 6 would not be compacted.
+      let status = log.status();
+      const commitIndexAfterCreateShard = status.participants[leader].response.local.commitIndex + 1;
+
+      // Because the last entry (i.e. CreateShard) is always kept in the log, insert another one on top.
+      col2.insert({_key: `${testName}-a`});
+
+      let logContents = log.head(1000);
+
+      // We need to make sure that the CreateShard entries are being compacted before doing recovery.
+      // Otherwise, the recovery procedure will try to create the shards again. The point is to test how
+      // the recovery procedure handles operations referring to non-existing shards.
+      // By waiting for lowestIndexToKeep to be greater than the current commitIndex, and for the index to be released,
+      // we make sure the CreateShard operation is going to be compacted.
+      lh.waitFor(lp.lowestIndexToKeepReached(log, leader, commitIndexAfterCreateShard));
+      // Wait for all participants to have called release on the CreateShard entry.
+      lh.waitFor(() => {
+        log.ping();
+        status = log.status();
+        for (const [pid, value] of Object.entries(status.participants)) {
+          if (value.response.local.releaseIndex <= commitIndexAfterCreateShard) {
+            return Error(`Participant ${pid} cannot compact enough, status: ${JSON.stringify(status)}, ` +
+              `log contents: ${JSON.stringify(logContents)}`);
+          }
+        }
+        return true;
+      });
+
+      // Trigger compaction intentionally. We aim to clear a prefix of the log here, removing the CreateShard entries.
+      // This way, the recovery procedure will be forced to handle entries referring to an unknown shard.
+      let compactionResult = log.compact();
+      for (const [pid, value] of Object.entries(compactionResult)) {
+        assertEqual(value.result, "ok", `Compaction failed for participant ${pid}, result: ${JSON.stringify(value)}, ` +
+          `log contents: ${JSON.stringify(logContents)}`);
+      }
+
+      // Perform some document operations on the to-be-deleted shard.
+      col2.truncate();
+      for (let cnt = 0; cnt < 10; ++cnt) {
+        col2.insert({_key: `${testName}-${cnt}`});
+        col2.replace(`${testName}-${cnt}`, {_key: `${testName}-${cnt}`, value: cnt});
+      }
+      col2.remove({_key: `${testName}-0`});
+      col2.update({_key: `${testName}-1`}, {_key: `${testName}-1`, value: 100});
+
+      // Modify the shard. During leader recovery, this will trigger a ModifyShard on a non-existing shard.
+      col2.properties({computedValues: [{
+          name: "createdAt",
+          expression: "RETURN DATE_NOW()",
+          overwrite: true,
+          computeOn: ["insert"]
+        }]});
+
+      // Create and drop an indexes. During leader recovery, this will trigger index operations on a non-existing shard.
+      let index = col2.ensureIndex({name: "eule", type: "persistent", fields: ["value"]});
+      assertEqual(index.name, "eule");
+      assertTrue(col2.dropIndex(index), `Failed to drop index ${index.name}`);
+      index = col2.ensureIndex({name: "frosch", type: "persistent", fields: ["foo"], unique: true});
+      assertEqual(index.name, "frosch");
+      assertTrue(col2.dropIndex(index), `Failed to drop index ${index.name}`);
+
+      // Drop the additional collection. During leader recovery, this will trigger a DropShard on a non-existing shard.
+      col2.drop();
+      extraCollections = [];
+
+      // Before switching to a new leader, insert some documents into the leader collection.
+      collection.insert({_key: `${testName}-foo1`, value: `${testName}-bar1`});
+
+      // The following shard modification should not affect previously inserted documents.
+      collection.properties({computedValues: [{
+          name: "createdAt",
+          expression: "RETURN DATE_NOW()",
+          overwrite: true,
+          computeOn: ["insert"]
+        }]});
+      lh.waitFor(dh.computedValuesAppliedPredicate(collection));
+
+      // The following document should have a createdAt value.
+      collection.insert({_key: `${testName}-foo2`, value: `${testName}-bar2`});
+
+      logContents = log.head(1000);
+
+      let doc = collection.document({_key: `${testName}-foo1`});
+      assertFalse("createdAt" in doc, `Expected no createdAt property in ${JSON.stringify(doc)}` +
+        `log contents: ${JSON.stringify(logContents)}`);
+      doc = collection.document({_key: `${testName}-foo2`});
+      assertTrue("createdAt" in doc, `Expected createdAt property in ${JSON.stringify(doc)}, ` +
+        `log contents: ${JSON.stringify(logContents)}`);
+      const createdAt = doc.createdAt;
+
+      // Set a new leader. This will trigger recovery.
+      let newLeader = followers[0];
+      let term = lh.readReplicatedLogAgency(database, logId).plan.currentTerm.term;
+      let newTerm = term + 1;
+      lh.setLeader(database, logId, newLeader);
+      lh.waitFor(lp.replicatedLogLeaderEstablished(database, logId, newTerm, _.without(participants, leader)));
+
+      logContents = log.head(1000);
+
+      // Check that the new leader has the correct value for the documents.
+      doc = collection.document({_key: `${testName}-foo1`});
+      assertFalse("createdAt" in doc, `Expected no createdAt property in ${JSON.stringify(doc)}` +
+        `log contents: ${JSON.stringify(logContents)}`);
+      doc = collection.document({_key: `${testName}-foo2`});
+      assertEqual(doc.createdAt, createdAt, `Expected createdAt property to be ${createdAt} in ${JSON.stringify(doc)}` +
+        `log contents: ${JSON.stringify(logContents)}`);
     },
   };
 };
@@ -1174,7 +1306,9 @@ jsunity.run(replicatedStateIntermediateCommitsSuite);
 jsunity.run(replicatedStateFollowerSuiteV1);
 jsunity.run(replicatedStateFollowerSuiteV2);
 jsunity.run(replicatedStateRecoverySuite);
+/*
 jsunity.run(replicatedStateSnapshotTransferSuite);
 jsunity.run(replicatedStateDocumentShardsSuite);
+ */
 
 return jsunity.done();

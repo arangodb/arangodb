@@ -151,11 +151,6 @@ auto DocumentStateTransactionHandler::applyOp(
   auto opRes = trx->apply(op);
   auto res = opRes.fail() ? opRes.result
                           : makeResultFromOperationResult(opRes, op.tid);
-  if (res.fail() && _errorHandler.shouldIgnoreDocumentError(opRes)) {
-    LOG_CTX("0da00", DEBUG, _loggerContext)
-        << "Result " << res << " ignored while applying transaction " << op.tid;
-    return {};
-  }
   return res;
 }
 

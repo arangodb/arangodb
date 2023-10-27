@@ -427,16 +427,16 @@ auto DocumentFollowerState::applyEntries(
 template<class T>
 auto DocumentFollowerState::GuardedData::applyAndRelease(
     T const& op, std::optional<LogIndex> index,
-    std::optional<std::function<void()>> fun)
+    std::optional<fu2::unique_function<void(Result&&)>> fun)
     -> ResultT<std::optional<LogIndex>> {
-  auto res =
-      errorHandler.handleOpResult(op, transactionHandler->applyEntry(op));
+  auto originalRes = transactionHandler->applyEntry(op);
+  auto res = errorHandler.handleOpResult(op, originalRes);
   if (res.fail()) {
     return res;
   }
 
   if (fun.has_value()) {
-    fun->operator()();
+    fun->operator()(std::move(originalRes));
   }
 
   if (index.has_value()) {
@@ -452,7 +452,12 @@ auto DocumentFollowerState::GuardedData::applyEntry(
     -> ResultT<std::optional<LogIndex>> {
   activeTransactions.markAsActive(op.tid, index);
   // Will not release the index until the transaction is finished
-  return applyAndRelease(op);
+  return applyAndRelease(op, std::nullopt, [&](Result&& res) {
+    if (res.fail()) {
+      // If the transaction could not be applied, we have to mark it as inactive
+      activeTransactions.markAsInactive(op.tid);
+    }
+  });
 }
 
 auto DocumentFollowerState::GuardedData::applyEntry(
@@ -483,15 +488,16 @@ auto DocumentFollowerState::GuardedData::applyEntry(
     return ResultT<std::optional<LogIndex>>{std::nullopt};
   }
 
-  return applyAndRelease(op, index,
-                         [&]() { activeTransactions.markAsInactive(op.tid); });
+  return applyAndRelease(
+      op, index, [&](Result&&) { activeTransactions.markAsInactive(op.tid); });
 }
 
 auto DocumentFollowerState::GuardedData::applyEntry(
     ReplicatedOperation::AbortAllOngoingTrx const& op, LogIndex index)
     -> ResultT<std::optional<LogIndex>> {
   // Since everything was aborted, we can release all of it.
-  return applyAndRelease(op, index, [&]() { activeTransactions.clear(); });
+  return applyAndRelease(op, index,
+                         [&](Result&&) { activeTransactions.clear(); });
 }
 
 auto DocumentFollowerState::GuardedData::applyEntry(

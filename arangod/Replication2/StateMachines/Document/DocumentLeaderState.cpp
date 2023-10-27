@@ -127,8 +127,13 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
       auto res = std::visit(
           overload{
               [&](ModifiesUserTransaction auto& op) -> Result {
-                activeTransactions.insert(op.tid);
-                return data.transactionHandler->applyEntry(op);
+                auto trxResult = data.transactionHandler->applyEntry(op);
+                // Only add it as an active transaction if the operation was
+                // successful.
+                if (trxResult.ok()) {
+                  activeTransactions.insert(op.tid);
+                }
+                return trxResult;
               },
               [&](FinishesUserTransactionOrIntermediate auto& op) -> Result {
                 // There are two cases where we can end up here:

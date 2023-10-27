@@ -174,7 +174,7 @@ auto DocumentStateShardHandler::lookupShard(ShardID const& shard) noexcept
   if (col == nullptr) {
     return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   fmt::format("Replicated log {} failed to lookup shard {}",
-                              _gid, _vocbase.name())};
+                              _gid, shard)};
   }
   return col;
 }

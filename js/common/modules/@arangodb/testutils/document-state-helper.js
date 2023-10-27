@@ -299,6 +299,16 @@ const isIndexInCurrent = function (database, collectionId, indexId) {
   return Object.values(shards).some(shard => shard.indexes.some(index => index.id === indexId));
 };
 
+const computedValuesAppliedPredicate = function (collection) {
+  return function () {
+    if (collection.properties().computedValues !== null) {
+      return true;
+    }
+    return Error(`Computed values not applied to collection ${collection.name()}, ` +
+      `properties: ${JSON.stringify(collection.properties())}`);
+  };
+}
+
 exports.getLocalValue = getLocalValue;
 exports.getLocalIndex = getLocalIndex;
 exports.getAllLocalIndexes = getAllLocalIndexes;
@@ -322,3 +332,4 @@ exports.allSnapshotsStatus = allSnapshotsStatus;
 exports.getSingleLogId = getSingleLogId;
 exports.getCollectionShardsAndLogs = getCollectionShardsAndLogs;
 exports.isIndexInCurrent = isIndexInCurrent;
+exports.computedValuesAppliedPredicate = computedValuesAppliedPredicate;
