@@ -447,7 +447,6 @@ auto JoinExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
 
 void JoinExecutor::constructStrategy() {
   std::vector<IndexJoinStrategyFactory::Descriptor> indexDescription;
-
   for (auto const& idx : _infos.indexes) {
     IndexStreamOptions options;
     // TODO right now we only support the first indexed field
