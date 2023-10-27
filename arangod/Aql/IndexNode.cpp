@@ -532,6 +532,9 @@ void IndexNode::replaceAttributeAccess(ExecutionNode const* self,
     _condition->replaceAttributeAccess(searchVariable, attribute,
                                        replaceVariable);
   }
+  if (hasFilter()) {
+    _filter->replaceAttributeAccess(searchVariable, attribute, replaceVariable);
+  }
 }
 
 /// @brief destroy the IndexNode
