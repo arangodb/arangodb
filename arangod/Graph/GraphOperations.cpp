@@ -192,7 +192,8 @@ Result GraphOperations::checkEdgeCollectionAvailability(
 }
 
 Result GraphOperations::checkVertexCollectionAvailability(
-    std::string const& vertexCollectionName, bool edgeDocumentOrigin) {
+    std::string const& vertexCollectionName,
+    VertexValidationOrigin edgeDocumentOrigin) {
   // first check whether the collection is part of the graph
   bool found = false;
   if (_graph.vertexCollections().contains(vertexCollectionName) ||
@@ -201,10 +202,16 @@ Result GraphOperations::checkVertexCollectionAvailability(
   }
 
   if (!found) {
-    if (edgeDocumentOrigin) {
-      // In case we're validating the collection names out of "_from" or "_to"
-      // attributes
-      return Result(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED);
+    if (edgeDocumentOrigin == VertexValidationOrigin::FROM_ATTRIBUTE ||
+        edgeDocumentOrigin == VertexValidationOrigin::TO_ATTRIBUTE) {
+      std::string originString = "_from";
+      if (edgeDocumentOrigin == VertexValidationOrigin::TO_ATTRIBUTE) {
+        originString = "_to";
+      }
+
+      return Result(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED,
+                    "referenced " + originString + " collection '" +
+                        vertexCollectionName + "' is not part of the graph");
     }
     return Result(TRI_ERROR_GRAPH_VERTEX_COLLECTION_NOT_USED);
   }
@@ -718,16 +725,11 @@ OperationResult GraphOperations::updateEdge(std::string const& definitionName,
     return OperationResult(checkEdgeRes, options);
   }
 
-  LOG_DEVEL << "Validating edge: " << document.toJson();
   auto [res, trx] = validateEdge(definitionName, document, waitForSync, true);
   if (res.fail()) {
-    LOG_DEVEL << "BAD!";
-    LOG_DEVEL << "========";
     // cppcheck-suppress returnStdMoveLocal
     return std::move(res);
   }
-  LOG_DEVEL << "OK :-)";
-  LOG_DEVEL << "========";
   TRI_ASSERT(trx != nullptr);
 
   return modifyDocument(definitionName, key, document, true, std::move(rev),
@@ -864,8 +866,8 @@ std::pair<OperationResult, bool> GraphOperations::validateEdgeContent(
       if (pos != std::string::npos) {
         fromCollectionName = fromString.substr(0, pos);
         // check if vertex collections are part of the graph definition
-        auto foundFromRes =
-            checkVertexCollectionAvailability(fromCollectionName, true);
+        auto foundFromRes = checkVertexCollectionAvailability(
+            fromCollectionName, VertexValidationOrigin::FROM_ATTRIBUTE);
         if (foundFromRes.fail()) {
           return OperationResult(foundFromRes, options);
         }
@@ -883,8 +885,8 @@ std::pair<OperationResult, bool> GraphOperations::validateEdgeContent(
       size_t pos = toString.find('/');
       if (pos != std::string::npos) {
         toCollectionName = toString.substr(0, pos);
-        auto foundToRes =
-            checkVertexCollectionAvailability(toCollectionName, true);
+        auto foundToRes = checkVertexCollectionAvailability(
+            toCollectionName, VertexValidationOrigin::TO_ATTRIBUTE);
         if (foundToRes.fail()) {
           return OperationResult(foundToRes, options);
         }
