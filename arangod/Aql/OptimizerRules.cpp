@@ -8450,12 +8450,9 @@ void arangodb::aql::asyncPrefetchRule(Optimizer* opt,
       }
       auto eligibility = n->canUseAsyncPrefetching();
       if (stack.back() == 0 &&
-          eligibility == AsyncPrefetchEligibility::kEnableForNode &&
-          (!n->hasParent() || n->getFirstParent()->getType() != EN::REMOTE)) {
-        // we are currently excluding any node inside a subquery and all
-        // nodes that are direct dependencies of REMOTE nodes from the
-        // optimization, because of assertion failures.
-        // TODO: lift these restrictions.
+          eligibility == AsyncPrefetchEligibility::kEnableForNode) {
+        // we are currently excluding any node inside a subquery.
+        // TODO: lift this restriction.
         n->setIsAsyncPrefetchEnabled(true);
         modified = true;
       }
