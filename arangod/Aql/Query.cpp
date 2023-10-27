@@ -34,7 +34,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/GraphNode.h"
-#include "Aql/Optimizer.h"
+#include "Aql/Optimizer/Optimizer.h"
 #include "Aql/Parser.h"
 #include "Aql/ProfileLevel.h"
 #include "Aql/QueryCache.h"

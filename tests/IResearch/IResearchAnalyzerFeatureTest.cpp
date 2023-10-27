@@ -43,7 +43,7 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
-#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Optimizer/Rules/OptimizerRulesFeature.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/files.h"
 #include "Cluster/AgencyCache.h"

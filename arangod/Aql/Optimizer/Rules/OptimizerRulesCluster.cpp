@@ -33,7 +33,7 @@
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/MultipleRemoteModificationNode.h"
-#include "Aql/Optimizer.h"
+#include "Aql/Optimizer/Optimizer.h"
 #include "Aql/QueryContext.h"
 #include "Basics/StaticStrings.h"
 #include "Indexes/Index.h"

@@ -26,7 +26,7 @@
 
 #include <regex>
 
-#include "Aql/OptimizerRule.h"
+#include "Aql/Optimizer/Rules/OptimizerRule.h"
 #include "IResearchQueryCommon.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"

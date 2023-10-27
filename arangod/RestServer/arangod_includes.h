@@ -48,7 +48,7 @@
 #endif
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Aql/AqlFunctionFeature.h"
-#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Optimizer/Rules/OptimizerRulesFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"

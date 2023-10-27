@@ -35,7 +35,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/GraphNode.h"
 #include "Aql/IdExecutor.h"
-#include "Aql/OptimizerRule.h"
+#include "Aql/Optimizer/Rules/OptimizerRule.h"
 #include "Aql/QueryContext.h"
 #include "Aql/RemoteExecutor.h"
 #include "Aql/ReturnExecutor.h"

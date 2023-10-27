@@ -29,7 +29,7 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Optimizer/Rules/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "IResearch/ApplicationServerHelper.h"

@@ -30,7 +30,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/IResearchViewNode.h"
-#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Optimizer/Rules/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/SharedQueryState.h"

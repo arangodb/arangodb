@@ -36,7 +36,7 @@
 #include "Aql/IndexExecutor.h"
 #include "Aql/JoinExecutor.h"
 #include "Aql/NonConstExpressionContainer.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/OptimizerUtils.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"

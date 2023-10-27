@@ -69,24 +69,20 @@ add_library(arango_aql STATIC
   Function.cpp
   Functions.cpp
   GraphNode.cpp
-  GraphOptimizerRules.cpp
   Graphs.cpp
   HashedCollectExecutor.cpp
   IResearchViewNode.cpp
-  IResearchViewOptimizerRules.cpp
   IdExecutor.cpp
   InAndOutRowExpressionContext.cpp
   IndexExecutor.cpp
   IndexHint.cpp
   IndexJoinStrategy.cpp
   IndexNode.cpp
-  IndexNodeOptimizerRules.cpp
   InputAqlItemRow.cpp
   InsertModifier.cpp
   JoinExecutor.cpp
   JoinNode.cpp
   LateMaterializedExpressionContext.cpp
-  LateMaterializedOptimizerRulesCommon.cpp
   LimitExecutor.cpp
   LimitStats.cpp
   MaterializeExecutor.cpp
@@ -105,12 +101,6 @@ add_library(arango_aql STATIC
   NodeFinder.cpp
   NonConstExpression.cpp
   NonConstExpressionContainer.cpp
-  Optimizer.cpp
-  OptimizerRules.cpp
-  OptimizerRulesCluster.cpp
-  OptimizerRulesFeature.cpp
-  OptimizerRulesReplaceFunctions.cpp
-  OptimizerUtils.cpp
   OutputAqlItemRow.cpp
   ParallelUnsortedGatherExecutor.cpp
   Parser.cpp
@@ -183,6 +173,8 @@ if (USE_V8)
   target_sources(arango_aql PRIVATE
     V8Executor.cpp)
 endif()
+
+add_subdirectory(Optimizer)
 
 target_link_libraries(arango_aql
   arango_geo

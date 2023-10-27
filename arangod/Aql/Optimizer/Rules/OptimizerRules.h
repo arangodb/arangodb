@@ -25,11 +25,11 @@
 #pragma once
 
 #include "Aql/ExecutionPlan.h"
-#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Optimizer/Rules/OptimizerRulesFeature.h"
 #include "Basics/Common.h"
-#include "ClusterNodes.h"
+#include "Aql/ClusterNodes.h"
 #include "Containers/SmallUnorderedMap.h"
-#include "ExecutionNode.h"
+#include "Aql/ExecutionNode.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {

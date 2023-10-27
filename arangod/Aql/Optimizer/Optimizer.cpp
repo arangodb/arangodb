@@ -25,9 +25,9 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/OptimizerRule.h"
-#include "Aql/OptimizerRules.h"
-#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Optimizer/Rules/OptimizerRule.h"
+#include "Aql/Optimizer/Rules/OptimizerRules.h"
+#include "Aql/Optimizer/Rules/OptimizerRulesFeature.h"
 #include "Aql/QueryOptions.h"
 #include "Aql/ProfileLevel.h"
 #include "Basics/debugging.h"

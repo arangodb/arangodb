@@ -31,7 +31,7 @@
 #include "Aql/Function.h"
 #include "Aql/IndexHint.h"
 #include "Aql/IndexNode.h"
-#include "Aql/Optimizer.h"
+#include "Aql/Optimizer/Optimizer.h"
 #include "Aql/Query.h"
 #include "Aql/SortNode.h"
 #include "Aql/Variable.h"

@@ -27,7 +27,7 @@
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
-#include "Aql/LateMaterializedOptimizerRulesCommon.h"
+#include "Aql/Optimizer/Rules/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/types.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/FlatHashMap.h"

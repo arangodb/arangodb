@@ -24,7 +24,7 @@
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Optimizer.h"
+#include "Aql/Optimizer/Optimizer.h"
 #include "Aql/TraversalNode.h"
 #include "Containers/SmallVector.h"
 

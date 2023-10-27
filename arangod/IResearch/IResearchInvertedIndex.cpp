@@ -24,7 +24,7 @@
 #include "IResearchInvertedIndex.h"
 
 #include "AqlHelper.h"
-#include "Aql/LateMaterializedOptimizerRulesCommon.h"
+#include "Aql/Optimizer/Rules/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/Projections.h"
 #include "Aql/QueryCache.h"
 #include "Aql/IResearchViewNode.h"

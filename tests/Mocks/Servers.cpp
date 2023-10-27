@@ -33,7 +33,7 @@
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Optimizer/Rules/OptimizerRulesFeature.h"
 #include "Aql/ProfileLevel.h"
 #include "Aql/Query.h"
 #include "Basics/StringUtils.h"

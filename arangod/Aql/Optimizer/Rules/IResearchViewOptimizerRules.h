@@ -26,7 +26,7 @@
 
 #include <memory>
 
-#include "Aql/LateMaterializedOptimizerRulesCommon.h"
+#include "Aql/Optimizer/Rules/LateMaterializedOptimizerRulesCommon.h"
 
 namespace arangodb {
 

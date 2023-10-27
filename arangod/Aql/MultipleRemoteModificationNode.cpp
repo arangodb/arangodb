@@ -32,7 +32,6 @@
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/IdExecutor.h"
-#include "Aql/OptimizerRulesFeature.h"
 
 #include "Aql/MultipleRemoteModificationExecutor.h"
 #include "Aql/SortRegister.h"

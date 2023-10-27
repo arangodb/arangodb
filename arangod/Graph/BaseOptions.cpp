@@ -32,7 +32,7 @@
 #include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/NonConstExpression.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/OptimizerUtils.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Basics/ResourceUsage.h"

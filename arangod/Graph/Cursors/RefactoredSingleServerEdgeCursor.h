@@ -33,7 +33,7 @@
 
 // Note: only used for NonConstExpressionContainer
 // Could be extracted to it's own file.
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/OptimizerUtils.h"
 
 #include "Graph/Providers/TypeAliases.h"
 #include "Aql/InAndOutRowExpressionContext.h"

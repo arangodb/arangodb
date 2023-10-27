@@ -42,7 +42,6 @@
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/MultiDependencySingleRowFetcher.h"
-#include "Aql/OptimizerRulesFeature.h"
 #include "Aql/ParallelUnsortedGatherExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"

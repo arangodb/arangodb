@@ -32,7 +32,6 @@
 #include "Aql/IResearchViewNode.h"
 #include "Aql/JoinNode.h"
 #include "Aql/ModificationNodes.h"
-#include "Aql/OptimizerRule.h"
 #include "Aql/Query.h"
 #include "Cluster/ClusterFeature.h"
 #include "Logger/LogMacros.h"

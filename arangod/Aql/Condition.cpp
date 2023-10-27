@@ -28,7 +28,7 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/OptimizerUtils.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
 #include "Aql/QueryOptions.h"

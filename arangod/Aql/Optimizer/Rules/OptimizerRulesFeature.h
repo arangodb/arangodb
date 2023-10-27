@@ -27,7 +27,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Aql/OptimizerRule.h"
+#include "Aql/Optimizer/Rules/OptimizerRule.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {

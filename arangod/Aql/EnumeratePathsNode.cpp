@@ -42,7 +42,7 @@
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Indexes/Index.h"
-#include "OptimizerUtils.h"
+#include "Aql/Optimizer/OptimizerUtils.h"
 #include "Utils/CollectionNameResolver.h"
 
 #include "Graph/algorithm-aliases.h"

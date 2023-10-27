@@ -24,7 +24,7 @@
 #include "ClusterEngine.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Optimizer/Rules/OptimizerRulesFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
