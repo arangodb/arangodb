@@ -34,6 +34,14 @@ function projectionsPlansTestSuite () {
   let c = null;
 
   return {
+    setUpAll : function () {
+      db._createView(cn + "View", "arangosearch", {});
+    },
+    
+    tearDownAll : function () {
+      db._dropView(cn + "View");
+    },
+
     setUp : function () {
       db._drop(cn);
       c = db._createEdgeCollection(cn, { numberOfShards: 4 });
@@ -70,6 +78,8 @@ function projectionsPlansTestSuite () {
         [`FOR doc IN ${cn} REPLACE doc WITH {} IN ${cn}`, 'primary', ['_key'], "covering" ],
         [`FOR doc IN ${cn} REPLACE doc._key WITH {} IN ${cn}`, 'primary', ['_key'], "covering" ],
         [`FOR doc IN ${cn} REPLACE { _id: doc._id } WITH {} IN ${cn}`, 'primary', ['_id'], "covering" ],
+        [`FOR doc IN ${cn} FILTER doc._key == 'abc' FOR v IN ${cn}View SEARCH v.id == doc._key RETURN doc._key`, 'primary', ['_key'], "covering" ],
+        [`FOR doc IN ${cn} FILTER doc._key == 'abc' FOR v IN ${cn}View SEARCH v.id == doc._key && v.other == doc._id RETURN doc._key`, 'primary', ['_key', '_id'], "covering" ],
       ];
 
       queries.forEach(function(query) {
@@ -100,6 +110,9 @@ function projectionsPlansTestSuite () {
         [`FOR doc IN ${cn} FILTER doc._from == '${cn}/abc' RETURN doc._from`, 'edge', ['_from'], true, "covering" ],
         [`FOR doc IN ${cn} FILTER doc._from == '${cn}/abc' RETURN doc._to`, 'edge', ['_to'], true, "covering" ],
         [`FOR doc IN ${cn} FILTER doc._from == '${cn}/abc' RETURN [doc._from, doc._to]`, 'edge', ['_from', '_to'], true, "covering" ],
+        [`FOR doc IN ${cn} FILTER doc._from == '${cn}/abc' FOR v IN ${cn}View SEARCH v.id == doc._from RETURN doc._from`, 'edge', ['_from'], true, "covering" ],
+        [`FOR doc IN ${cn} FILTER doc._to == '${cn}/abc' FOR v IN ${cn}View SEARCH v.id == doc._from && v.other == doc._to RETURN [doc._from, doc._to]`, 'edge', ['_from', '_to'], true, "covering" ],
+        [`FOR doc IN ${cn} FILTER doc._to == '${cn}/abc' FOR v IN ${cn}View SEARCH v.id == doc._from && v.other == doc._to RETURN [doc._from, doc._to, doc.meow]`, 'edge', ['_from', '_to', 'meow'], false, "document" ],
       ];
 
       queries.forEach(function(query) {
@@ -164,6 +177,7 @@ function projectionsPlansTestSuite () {
         [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER doc.value1 == 1 RETURN doc.value1].abc`, 'persistent', ['value1', 'value2'], false, "document"],
         [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value1[* FILTER doc.value1 == 1 RETURN doc.value1].abc`, 'persistent', ['value1'], true, "covering"],
         [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value1[* FILTER doc.value1 == 1 RETURN doc.value2].abc`, 'persistent', ['value1', 'value2'], false, "document"],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' FOR v IN ${cn}View SEARCH v.value == doc.value1 RETURN doc.value2`, 'persistent', ['value1', 'value2'], false, "document"],
       ];
 
       queries.forEach(function(query) {
@@ -229,6 +243,8 @@ function projectionsPlansTestSuite () {
         [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER doc.value1 == 1 RETURN doc.value1].abc`, 'persistent', ['value1', 'value2'], true, [], "covering"],
         [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER doc.value1 == 1 && doc.value2 == 2].abc`, 'persistent', ['value1', 'value2'], true, [], "covering"],
         [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' RETURN doc.value2[* FILTER doc.value3 == 1 && doc.value4 == 2].abc`, 'persistent', ['value2', 'value3', 'value4'], false, [], "document"],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' FOR v IN ${cn}View SEARCH v.value1 == doc.value1 && v.value2 == doc.value2 RETURN doc.value2`, 'persistent', ['value1', 'value2'], true, [], "covering"],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 'abc' FILTER doc.meow == 2 FOR v IN ${cn}View SEARCH v.value1 == doc.value1 && v.value2 == doc.value2 RETURN doc.value2`, 'persistent', ['value1', 'value2'], false, ['meow'], "document"],
       ];
 
       queries.forEach(function(query) {
@@ -280,6 +296,7 @@ function projectionsPlansTestSuite () {
         [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER doc.foo.bar == 1].sub == 1 RETURN 1`, 'persistent', [], false, [['foo', 'bar']], "covering, filter only" ],
         [`FOR doc IN ${cn} FILTER doc.foo.bar[* RETURN doc.foo.bar == 1].sub == 1 RETURN 1`, 'persistent', [], false, [['foo', 'bar']], "covering, filter only" ],
         [`FOR doc IN ${cn} FILTER doc.foo.bar[* FILTER doc.foo.bar == 1 RETURN doc.foo.bar == 1].sub == 1 RETURN 1`, 'persistent', [], false, [['foo', 'bar']], "covering, filter only" ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar == 3 FOR v IN ${cn}View SEARCH v.id == doc.foo.bar && v.other == doc.x RETURN doc.test`, 'persistent', ['x', 'test', ['foo', 'bar']], false, [], "document" ],
       ];
 
       queries.forEach(function(query) {
