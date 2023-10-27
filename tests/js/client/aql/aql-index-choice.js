@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 7000 */
-/*global assertEqual, assertTrue, assertFalse, AQL_EXPLAIN */
+/*global assertEqual, assertTrue, assertFalse */
 
 const jsunity = require("jsunity");
 const db = require("internal").db;

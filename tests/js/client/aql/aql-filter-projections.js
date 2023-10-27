@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, AQL_EXPLAIN */
+/*global assertEqual, assertNotEqual */
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;

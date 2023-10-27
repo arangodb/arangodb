@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertMatch, fail, AQL_EXPLAIN */
+/*global assertEqual, assertTrue, assertMatch, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for invalid OPTIONS attributes
