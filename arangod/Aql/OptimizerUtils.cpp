@@ -1011,9 +1011,16 @@ bool findProjections(ExecutionNode* n, Variable const* v,
     } else if (current->getType() == EN::ENUMERATE_IRESEARCH_VIEW) {
       iresearch::IResearchViewNode const* viewNode =
           ExecutionNode::castTo<iresearch::IResearchViewNode const*>(current);
+      // filter condition
       if (!tryAndExtractProjectionsFromExpression(
               viewNode, &viewNode->filterCondition())) {
         return false;
+      }
+      // scorers
+      for (auto const& it : viewNode->scorers()) {
+        if (!tryAndExtractProjectionsFromExpression(viewNode, it.node)) {
+          return false;
+        }
       }
     } else if (current->getType() == EN::GATHER) {
       // compare sort attributes of GatherNode
