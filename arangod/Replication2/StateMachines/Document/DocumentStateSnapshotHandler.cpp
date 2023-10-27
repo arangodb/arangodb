@@ -113,8 +113,7 @@ auto DocumentStateSnapshotHandler::finish(SnapshotId const& id) noexcept
 void DocumentStateSnapshotHandler::clear() noexcept {
   for (auto& snapshot : _snapshots) {
     auto& snapshotGuard = snapshot.second;
-    if (auto res =
-            basics::catchVoidToResult([&]() { return snapshotGuard->abort(); });
+    if (auto res = basics::catchVoidToResult([&]() { snapshotGuard->abort(); });
         res.fail()) {
       LOG_CTX("3a2be", DEBUG, snapshotGuard->loggerContext)
           << "Snapshot abort failure before erasing snapshot: " << res;

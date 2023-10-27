@@ -769,11 +769,11 @@ const replicatedStateSnapshotTransferSuite = function () {
     tearDownAll,
     setUp: setUpAnd(() => {
       collection = db._create(collectionName,
-        {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3, "waitForSync": true});
+        {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3/*, "waitForSync": true*/});
       ({shards, shardsToLogs, logs} = dh.getCollectionShardsAndLogs(db, collection));
       shardId = shards[0];
       logId = shardsToLogs[shardId];
-      log = db._replicatedLog(logId);
+      log = logs[0];
     }),
     tearDown: tearDownAnd(() => {
       clearAllFailurePoints();
@@ -789,8 +789,14 @@ const replicatedStateSnapshotTransferSuite = function () {
       let leaderUrl = lh.getServerUrl(participants[0]);
       const follower = participants.slice(1)[0];
       const rebootId = lh.getServerRebootId(follower);
+
+      // This will cause the leader to hold an ongoing transaction on the shard.
+      helper.debugSetFailAt(leaderUrl, "DocumentStateSnapshot::foreverReadingFromSameShard");
+
       let result = dh.startSnapshot(leaderUrl, database, logId, follower, rebootId);
       lh.checkRequestResult(result);
+
+      // We should be able to drop the collection regardless of the ongoing snapshot transfer.
       collection.drop();
       collection = null;
     },
@@ -1306,8 +1312,8 @@ jsunity.run(replicatedStateIntermediateCommitsSuite);
 jsunity.run(replicatedStateFollowerSuiteV1);
 jsunity.run(replicatedStateFollowerSuiteV2);
 jsunity.run(replicatedStateRecoverySuite);
-/*
 jsunity.run(replicatedStateSnapshotTransferSuite);
+/*
 jsunity.run(replicatedStateDocumentShardsSuite);
  */
 

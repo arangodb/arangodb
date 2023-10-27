@@ -296,8 +296,16 @@ auto Snapshot::generateBatch(state::Ongoing const&) -> ResultT<SnapshotBatch> {
     }
 
     auto& [shard, reader] = data.shards.back();
+
     VPackBuilder builder;
-    reader->read(builder, kBatchSizeLimit);
+    TRI_IF_FAILURE("DocumentStateSnapshot::foreverReadingFromSameShard") {
+      // Unless the shard is already empty, we'll keep the transaction ongoing.
+      reader->read(builder, 0);
+    }
+    else {
+      reader->read(builder, kBatchSizeLimit);
+    }
+
     auto payload = std::move(builder).sharedSlice();
     auto payloadLen = payload.slice().length();
     auto payloadSize = payload.byteSize();
