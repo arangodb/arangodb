@@ -508,6 +508,11 @@ void SupervisedScheduler::shutdown() {
 
 Result SupervisedScheduler::detachThread() {
   std::lock_guard<std::mutex> guard(_mutex);
+  // First see if we have already reached the limit:
+  if (_numDetached >= _maxNumberDetachedThreads) {
+    return Result(TRI_ERROR_TOO_MANY_DETACHED_THREADS);
+  }
+
   // Now we have access to the _workerStates and _detachedWorkerStates
   // Let's first find ourselves in the _workerStates:
   uint64_t myNumber = Thread::currentThreadNumber();
@@ -519,7 +524,8 @@ Result SupervisedScheduler::detachThread() {
     ++it;
   }
   if (it == _workerStates.end()) {
-    return Result(TRI_ERROR_WAS_ERLAUBE);
+    return Result(TRI_ERROR_INTERNAL,
+                  "scheduler thread for detaching not found");
   }
   std::shared_ptr<WorkerState> state = *it;
   _workerStates.erase(it);

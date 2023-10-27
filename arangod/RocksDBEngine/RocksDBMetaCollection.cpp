@@ -1728,7 +1728,8 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
       // keep the lock and exit
       return TRI_ERROR_NO_ERROR;
     }
-    LOG_DEVEL << "Did not get lock within 1 seconds... detaching thread...";
+    LOG_TOPIC("dd231", INFO, Logger::THREADS)
+        << "Did not get lock within 1 seconds, detaching scheduler thread.";
     Result r = arangodb::SchedulerFeature::SCHEDULER->detachThread();
     if (r.fail()) {
       return TRI_ERROR_LOCK_TIMEOUT;
@@ -1742,7 +1743,6 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
   } else {
     gotLock = _exclusiveLock.tryLockReadFor(timeout_us);
   }
-  LOG_DEVEL << "Tried to get lock for longer in a detached thread: " << gotLock;
 
   if (gotLock) {
     // keep the lock and exit
