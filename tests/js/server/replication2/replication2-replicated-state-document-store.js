@@ -587,6 +587,38 @@ const replicatedStateRecoverySuite = function () {
       }
     },
 
+    testRecoveryAfterCompaction: function (testName) {
+      let documents = [];
+      for (let counter = 0; counter < 100; ++counter) {
+        documents.push({_key: `${testName}-${counter}`});
+      }
+      for (let idx = 0; idx < documents.length; ++idx) {
+        collection.insert(documents[idx]);
+      }
+
+      // Wait for operations to be synced
+      let {leader} = lh.getReplicatedLogLeaderPlan(database, logId);
+      let status = log.status();
+      const commitIndex = status.participants[leader].response.local.commitIndex;
+      lh.waitFor(lp.lowestIndexToKeepReached(log, leader, commitIndex));
+
+      // Trigger compaction intentionally.
+      log.compact();
+
+      // Trigger leader recovery
+      lh.bumpTermOfLogsAndWaitForConfirmation(database, collection);
+
+      // Check that all keys exist on the leader.
+      let checkKeys = documents.map(doc => doc._key);
+      let bulk = dh.getBulkDocuments(lh.getServerUrl(leader), database, shardId, checkKeys);
+      let keysSet = new Set(checkKeys);
+      for (let doc of bulk) {
+        assertFalse(doc.hasOwnProperty("error"), `Expected no error, got ${JSON.stringify(doc)}`);
+        assertTrue(keysSet.has(doc._key));
+        keysSet.delete(doc._key);
+      }
+    },
+
     testLeaderRecoverEntries: function (testName) {
       const participants = lhttp.listLogs(coordinator, database).result[logId];
       assertTrue(participants !== undefined, `No participants found for log ${logId}`);
@@ -857,33 +889,7 @@ const replicatedStateSnapshotTransferSuite = function () {
       }
     },
 
-    testRecoveryAfterCompaction: function () {
-      collection.insert([{_key: "test1"}, {_key: "test2"}]);
-      let documents = [];
-      for (let counter = 0; counter < 100; ++counter) {
-        documents.push({_key: `foo${counter}`});
-      }
-      for (let idx = 0; idx < documents.length; ++idx) {
-        collection.insert(documents[idx]);
-      }
-
-      // Trigger compaction intentionally.
-      log.compact();
-
-      lh.bumpTermOfLogsAndWaitForConfirmation(database, collection);
-
-      let checkKeys = documents.map(doc => doc._key);
-      let {leader} = lh.getReplicatedLogLeaderPlan(database, logId);
-      let bulk = dh.getBulkDocuments(lh.getServerUrl(leader), database, shardId, checkKeys);
-      let keysSet = new Set(checkKeys);
-      for (let doc of bulk) {
-        assertFalse(doc.hasOwnProperty("error"), `Expected no error, got ${JSON.stringify(doc)}`);
-        assertTrue(keysSet.has(doc._key));
-        keysSet.delete(doc._key);
-      }
-    },
-
-    testSnapshotDiscardedOnRebootIdChange: function() {
+   testSnapshotDiscardedOnRebootIdChange: function() {
       const participants = lhttp.listLogs(coordinator, database).result[logId];
       let leaderUrl = lh.getServerUrl(participants[0]);
       const follower = participants.slice(1)[0];
