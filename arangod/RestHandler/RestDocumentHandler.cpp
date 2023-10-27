@@ -78,25 +78,10 @@ RequestLane RestDocumentHandler::lane() const {
       std::ignore = _request->value(
           StaticStrings::IsSynchronousReplicationString, isSyncReplication);
       if (isSyncReplication) {
-        static_assert(
-            PriorityRequestLane(RequestLane::SERVER_SYNCHRONOUS_REPLICATION) ==
-                RequestPriority::HIGH,
-            "invalid request lane priority");
         return RequestLane::SERVER_SYNCHRONOUS_REPLICATION;
         // This leads to the high queue, we want replication requests to be
         // executed with a higher prio than leader requests, even if they
         // are done from AQL.
-      }
-      bool hasTrxId = false;
-      std::ignore = _request->header(StaticStrings::TransactionId, hasTrxId);
-      if (hasTrxId) {
-        // If we have an existing transaction id, we will not be lazy-locking
-        // for write we want to avoid that we need to wait in line with
-        // operations that potentially need to wait until they could get a lock.
-        static_assert(PriorityRequestLane(RequestLane::CLUSTER_AQL_DOCUMENT) ==
-                          RequestPriority::MED,
-                      "invalid request lane priority");
-        return RequestLane::CLUSTER_AQL_DOCUMENT;
       }
 
       // fall through for not-GET, non-replication requests
