@@ -95,8 +95,8 @@ class Projections {
   /// @brief reset all projections
   void clear() noexcept;
 
-  /// @brief erase projection at index
-  void erase(size_t index);
+  /// @brief erase projection members if cb returns true
+  void erase(std::function<bool(Projection&)> const& cb);
 
   /// @brief set covering index context for these projections
   void setCoveringContext(DataSourceId const& id,

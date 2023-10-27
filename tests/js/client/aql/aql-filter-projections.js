@@ -54,6 +54,7 @@ function filterProjectionsPlansTestSuite () {
         if (nodes[0].projections.length > 0) {
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
         }
+        assertEqual("covering, filter only", nodes[0].strategy);
         
         // query must not contain any FILTER nodes
         nodes = plan.nodes.filter(function(node) { return node.type === 'FilterNode'; });
@@ -66,9 +67,9 @@ function filterProjectionsPlansTestSuite () {
       c.ensureIndex({ type: "persistent", fields: ["value1"] });
 
       let queries = [
-        [`FOR doc IN ${cn} FILTER doc.value1 == 93 FILTER doc.value2 == 1 RETURN doc.value1`, 'persistent', ['value1'], ['value2'] ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 93 FILTER doc.value2 == 1 RETURN [doc.value1, doc.value2]`, 'persistent', ['value1', 'value2'], ['value2'] ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 93 FILTER doc.value2 == 1 RETURN doc`, 'persistent', [], ['value2'] ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 93 FILTER doc.value2 == 1 RETURN doc.value1`, 'persistent', ['value1'], ['value2'], "document" ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 93 FILTER doc.value2 == 1 RETURN [doc.value1, doc.value2]`, 'persistent', ['value1', 'value2'], ['value2'], "document" ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 93 FILTER doc.value2 == 1 RETURN doc`, 'persistent', [], ['value2'], "document" ],
       ];
 
       queries.forEach(function(query) {
@@ -82,6 +83,7 @@ function filterProjectionsPlansTestSuite () {
         if (nodes[0].projections.length > 0) {
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
         }
+        assertEqual(query[4], nodes[0].strategy);
         
         // query must not contain any FILTER nodes
         nodes = plan.nodes.filter(function(node) { return node.type === 'FilterNode'; });
@@ -107,6 +109,7 @@ function filterProjectionsPlansTestSuite () {
         if (nodes[0].projections.length > 0) {
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
         }
+        assertEqual("covering, filter only", nodes[0].strategy);
        
         // query must not contain any FILTER nodes
         nodes = plan.nodes.filter(function(node) { return node.type === 'FilterNode'; });
@@ -118,9 +121,9 @@ function filterProjectionsPlansTestSuite () {
       // no filter projections will be used for these queries
       c.ensureIndex({ type: "persistent", fields: ["foo.bar"] });
       let queries = [
-        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc.foo.bar`, 'persistent', [['foo', 'bar']], []],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc.value`, 'persistent', ['value'], [] ],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc`, 'persistent', [], [] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc.foo.bar`, 'persistent', [['foo', 'bar']], [], "covering"],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc.value`, 'persistent', ['value'], [], "document" ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc`, 'persistent', [], [], "document" ],
       ];
 
       queries.forEach(function(query) {
@@ -134,6 +137,7 @@ function filterProjectionsPlansTestSuite () {
         if (nodes[0].projections.length > 0) {
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
         }
+        assertEqual(query[4], nodes[0].strategy);
       });
     },
     
@@ -153,6 +157,7 @@ function filterProjectionsPlansTestSuite () {
         assertEqual(normalize(query[2]), normalize(nodes[0].filterProjections), query);
         assertEqual(normalize(query[3]), normalize(nodes[0].projections), query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        assertEqual("covering, filter only", nodes[0].strategy);
       });
     },
     
@@ -173,6 +178,7 @@ function filterProjectionsPlansTestSuite () {
         assertEqual(normalize(query[2]), normalize(nodes[0].filterProjections), query);
         assertEqual(normalize(query[3]), normalize(nodes[0].projections), query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        assertEqual("covering, filter only", nodes[0].strategy);
         
         // query must not contain any FILTER nodes
         nodes = plan.nodes.filter(function(node) { return node.type === 'FilterNode'; });
@@ -196,6 +202,7 @@ function filterProjectionsPlansTestSuite () {
         assertEqual(normalize(query[2]), normalize(nodes[0].filterProjections), query);
         assertEqual(normalize(query[3]), normalize(nodes[0].projections), query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        assertEqual("covering, filter only", nodes[0].strategy);
       });
     },
     
@@ -216,6 +223,7 @@ function filterProjectionsPlansTestSuite () {
         assertEqual(normalize(query[2]), normalize(nodes[0].filterProjections), query);
         assertEqual(normalize(query[3]), normalize(nodes[0].projections), query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        assertEqual("covering, filter only", nodes[0].strategy);
         
         // query must not contain any FILTER nodes
         nodes = plan.nodes.filter(function(node) { return node.type === 'FilterNode'; });
@@ -261,6 +269,7 @@ function filterProjectionsResultsTestSuite () {
         assertEqual("persistent", nodes[0].indexes[0].type, query);
         assertNotEqual(normalize([]), normalize(nodes[0].filterProjections), query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        assertEqual("covering, filter only", nodes[0].strategy);
         
         // query must not contain any FILTER nodes
         nodes = plan.nodes.filter(function(node) { return node.type === 'FilterNode'; });
@@ -287,6 +296,7 @@ function filterProjectionsResultsTestSuite () {
         assertEqual("persistent", nodes[0].indexes[0].type, query);
         assertNotEqual(normalize([]), normalize(nodes[0].filterProjections), query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        assertEqual("covering, filter only", nodes[0].strategy);
         
         // query must not contain any FILTER nodes
         nodes = plan.nodes.filter(function(node) { return node.type === 'FilterNode'; });

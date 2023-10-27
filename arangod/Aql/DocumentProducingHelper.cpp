@@ -30,12 +30,13 @@
 #include "Aql/IndexExecutor.h"
 #include "Aql/LateMaterializedExpressionContext.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Basics/DownCast.h"
 #include "StorageEngine/PhysicalCollection.h"
-#include "VocBase/LogicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <function2.hpp>
 #include <velocypack/Builder.h>
@@ -216,13 +217,8 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _allowCoveringIndexOptimization(false),
       _isLastIndex(false) {
   // now erase all projections for which there is no output register
-  for (size_t i = 0; i < _projectionsForRegisters.size(); /**/) {
-    if (_projectionsForRegisters[i].variable == nullptr) {
-      _projectionsForRegisters.erase(i);
-    } else {
-      ++i;
-    }
-  }
+  _projectionsForRegisters.erase(
+      [](Projections::Projection& p) { return p.variable == nullptr; });
 
   // build ExpressionContext for filtering if we need one
   if (hasFilter()) {
@@ -288,13 +284,9 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       // TODO: IndexNodes currently don't write their projections
       // into individual registers. this will be implemented soon.
   // now erase all projections for which there is no output register
-  for (size_t i = 0; i < _projectionsForRegisters.size(); /**/) {
-    if (_projectionsForRegisters[i].variable == nullptr) {
-      _projectionsForRegisters.erase(i);
-    } else {
-      ++i;
-    }
-  }
+  _projectionsForRegisters.erase([](Projections::Projection& p) {
+    return p.variable == nullptr;
+  });
 #endif
   TRI_ASSERT(_projectionsForRegisters.empty());
 
