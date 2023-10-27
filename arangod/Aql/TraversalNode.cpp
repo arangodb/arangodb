@@ -737,7 +737,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
                                                   // SingleServer, Cluster...
         outputRegisterMapping, getStartVertex(), inputRegister,
         plan()->getAst(), opts->uniqueVertices, opts->uniqueEdges, opts->mode,
-        opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
+        opts->defaultWeight, opts->weightAttribute, opts->query(),
         std::move(validatorOptions), std::move(options),
         std::move(clusterBaseProviderOptions), isSmart);
 
@@ -751,7 +751,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
                                                   // SingleServer, Cluster...
         outputRegisterMapping, getStartVertex(), inputRegister,
         plan()->getAst(), opts->uniqueVertices, opts->uniqueEdges, opts->mode,
-        opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
+        opts->defaultWeight, opts->weightAttribute, opts->query(),
         std::move(validatorOptions), std::move(options),
         std::move(singleServerBaseProviderOptions), isSmart);
 
