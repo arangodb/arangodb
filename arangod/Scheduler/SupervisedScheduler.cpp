@@ -640,12 +640,6 @@ void SupervisedScheduler::runSupervisor() {
     uint64_t numDetached = _numDetached.load(std::memory_order_relaxed);
     bool sleeperFound = (numAwake < numWorkers);
 
-    LOG_DEVEL << "queuelength: " << queueLength << ", numWorkers:" << numWorkers
-              << ", lastQueueLength: " << lastQueueLength
-              << ", lastJobsSubmitted: " << lastJobsSubmitted
-              << ", jobsDone: " << jobsDone
-              << ", sleeperFound: " << sleeperFound
-              << ", maxNumWorkers: " << _maxNumWorkers;
     bool doStartOneThread =
         (((queueLength >= 3 * _numWorkers) &&
           ((lastQueueLength + _numWorkers) < queueLength)) ||
