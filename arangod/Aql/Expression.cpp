@@ -139,7 +139,8 @@ void Expression::replaceVariables(
   _node = _ast->clone(_node);
   TRI_ASSERT(_node != nullptr);
 
-  _node = Ast::replaceVariables(const_cast<AstNode*>(_node), replacements);
+  _node = Ast::replaceVariables(const_cast<AstNode*>(_node), replacements,
+                                /*unlockNodes*/ false);
 
   if (_type == ATTRIBUTE_ACCESS && _accessor != nullptr) {
     _accessor->replaceVariable(replacements);
