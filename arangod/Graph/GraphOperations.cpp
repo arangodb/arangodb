@@ -201,7 +201,7 @@ Result GraphOperations::checkVertexCollectionAvailability(
   }
 
   if (!found) {
-    return Result(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED);
+    return Result(TRI_ERROR_GRAPH_VERTEX_COLLECTION_NOT_USED);
   }
 
   // check if the collection is available

@@ -404,6 +404,7 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED):
     case static_cast<int>(
         TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED):
+    case static_cast<int>(TRI_ERROR_GRAPH_VERTEX_COLLECTION_NOT_USED):
     case static_cast<int>(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND):
     case static_cast<int>(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND):
       return ResponseCode::NOT_FOUND;
