@@ -1,6 +1,16 @@
 devel
 -----
 
+* BTS-1661: In addition to BTS-1259: For some operations where a collection
+  is being used, but not known by the graph definition itself, we've
+  introduced a new, more precise error, called:
+  `ERROR_GRAPH_VERTEX_COLLECTION_NOT_USED`.
+  This error will be reported in case a vertex collection is being used,
+  but not part of the graph at all. Whereas the
+  `ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED` will be thrown in
+  such cases like a not known vertex is being used inside an edge documents
+  `_from` or `_to` attribute.
+
 * Change default value of arangodump startup option `--use-parallel-dump` 
   from `false` to `true`.
   This enables the more parallel dump procedure by default, which allows
