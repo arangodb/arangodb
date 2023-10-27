@@ -1343,7 +1343,7 @@ const assertVertexCollectionNotKnown = (response) => {
   assertTrue(response.parsedBody.error);
   assertEqual(
     response.parsedBody.errorNum,
-    internal.errors.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code
+    internal.errors.ERROR_GRAPH_VERTEX_COLLECTION_NOT_USED.code
   );
 };
 
@@ -1467,7 +1467,7 @@ function check_error_codeSuite() {
       assertEqual(response.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertTrue(response.parsedBody.error);
       assertEqual(response.parsedBody.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      assertEqual(response.parsedBody.errorNum, internal.errors.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code);
+      assertEqual(response.parsedBody.errorNum, internal.errors.ERROR_GRAPH_VERTEX_COLLECTION_NOT_USED.code);
     },
 
     test_get_vertex_unknown: function () {
