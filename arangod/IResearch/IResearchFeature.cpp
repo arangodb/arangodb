@@ -890,7 +890,8 @@ IResearchFeature::IResearchFeature(Server& server)
       _commitThreads(0),
       _commitThreadsIdle(0),
       _threads(0),
-      _threadsLimit(0) {
+      _threadsLimit(0),
+      _searchExecutionThreadsLimit(0) {
   setOptional(true);
 #ifdef USE_V8
   startsAfter<application_features::V8FeaturePhase>();
@@ -1049,7 +1050,7 @@ but the returned data may be incomplete.)");
       SEARCH_THREADS_LIMIT,
       "Max number of threads that could be used to process ArangoSearch "
       "indexes during SEARCH operation",
-      new options::UInt32Parameter(&_searchExecutionThreads),
+      new options::UInt32Parameter(&_searchExecutionThreadsLimit),
       options::makeDefaultFlags(options::Flags::DefaultNoComponents,
                                 options::Flags::OnDBServer,
                                 options::Flags::OnSingle));
@@ -1118,7 +1119,7 @@ void IResearchFeature::validateOptions(
           : _consolidationThreads;
 
   if (!args.touched(SEARCH_THREADS_LIMIT)) {
-    _searchExecutionThreads =
+    _searchExecutionThreadsLimit =
         static_cast<uint32_t>(2 * NumberOfCores::getValue());
   }
 
@@ -1239,10 +1240,10 @@ void IResearchFeature::start() {
     _startState = nullptr;
   }
 
-  _searchExecutionPool.setLimit(_searchExecutionThreads);
+  _searchExecutionPool.setLimit(_searchExecutionThreadsLimit);
   LOG_TOPIC("71efd", INFO, arangodb::iresearch::TOPIC)
       << "ArangoSearch execution parallel threads limit: "
-      << _searchExecutionThreads;
+      << _searchExecutionThreadsLimit;
   _running.store(true);
 }
 

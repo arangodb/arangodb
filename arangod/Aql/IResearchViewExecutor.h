@@ -707,7 +707,7 @@ class IResearchViewExecutor
   // Returns true unless the iterator is exhausted. documentId will always be
   // written. It will always be unset when readPK returns false, but may also be
   // unset if readPK returns true.
-  bool readPK(LocalDocumentId& documentId, SegmentReader& reader);
+  static bool readPK(LocalDocumentId& documentId, SegmentReader& reader);
 
   std::vector<SegmentReader> _segmentReaders;
   size_t _segmentOffset;

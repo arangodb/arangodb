@@ -96,7 +96,7 @@ class ArangoSearchPool {
   }
 
   using Pool = irs::async_utils::thread_pool<false>;
-  
+
   bool run(Pool::func_t&& fn) {
     return _pool.run(std::forward<Pool::func_t>(fn));
   }
@@ -240,7 +240,7 @@ class IResearchFeature final : public ArangodFeature {
   uint32_t _commitThreadsIdle;
   uint32_t _threads;
   uint32_t _threadsLimit;
-  uint32_t _searchExecutionThreads;
+  uint32_t _searchExecutionThreadsLimit;
 
   std::shared_ptr<IndexTypeFactory> _clusterFactory;
   std::shared_ptr<IndexTypeFactory> _rocksDBFactory;
