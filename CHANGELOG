@@ -1,6 +1,14 @@
 devel
 -----
 
+* Allow a scheduler thread to detach itself from the scheduler if it sees 
+  that it has to perform a potentially long running task like waiting For
+  a lock. This allows a new scheduler thread to be started and avoids
+  that it can happen that all threads are blocked waiting for a lock,
+  which has in the past lead to deadlock situations. The number of detached
+  threads is limited by a configurable option. Currently, only threads
+  waiting for more than 1 second on a collection lock will detach themselves.
+ 
 * Change default value of arangodump startup option `--use-parallel-dump` 
   from `false` to `true`.
   This enables the more parallel dump procedure by default, which allows
