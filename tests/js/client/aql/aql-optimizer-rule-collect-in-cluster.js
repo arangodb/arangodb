@@ -665,7 +665,7 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
         assertEqual(["SingletonNode", "EnumerateCollectionNode", "CollectNode", "SortNode", "CalculationNode", "RemoteNode", "GatherNode", "ReturnNode"], nodeTypes);
       } else {
         assertEqual(-1, plan.rules.indexOf("cluster-one-shard"));
-        assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "RemoteNode", "GatherNode", "CollectNode", "SortNode", "CalculationNode", "ReturnNode"], nodeTypes);
+        assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "CollectNode", "SortNode", "CalculationNode", "ReturnNode"], nodeTypes);
       }
 
       if (isSearchAlias) {
