@@ -1,6 +1,10 @@
 devel
 -----
 
+* BTS-1660: When updating (PATCH request) edges with API Gharial and only
+  specifying one of the two edge attributes `_from` or `_to` (not both),
+  the content of the edge was not fully validated. This has been fixed now.
+
 * BTS-1661: In addition to BTS-1259: For some operations where a collection
   is being used, but not known by the graph definition itself, we've
   introduced a new, more precise error, called:
