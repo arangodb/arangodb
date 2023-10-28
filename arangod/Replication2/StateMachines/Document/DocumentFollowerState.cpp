@@ -98,7 +98,7 @@ auto DocumentFollowerState::getAssociatedShardList() const
 
 auto DocumentFollowerState::acquireSnapshot(
     ParticipantId const& destination) noexcept -> futures::Future<Result> {
-  LOG_CTX("1f67d", DEBUG, loggerContext)
+  LOG_CTX("1f67d", INFO, loggerContext)
       << "Trying to acquire snapshot from destination " << destination;
 
   auto snapshotVersion = _guardedData.doUnderLock(
@@ -164,7 +164,7 @@ auto DocumentFollowerState::acquireSnapshot(
         }
 
         if (!snapshotTransferResult->snapshotId.has_value()) {
-          TRI_ASSERT(snapshotTransferResult->res.fail());
+          TRI_ASSERT(snapshotTransferResult->res.fail()) << self->gid;
           LOG_CTX("85628", ERR, self->loggerContext)
               << "Snapshot transfer failed: " << snapshotTransferResult->res;
           return snapshotTransferResult->res;
@@ -210,8 +210,9 @@ auto DocumentFollowerState::acquireSnapshot(
               if (snapshotTransferResult.reportFailure) {
                 // Some failures don't need to be reported. For example, it's
                 // totally fine for the follower to interrupt a snapshot
-                // transfer while resigning.
-                LOG_TOPIC("2883c", DEBUG, Logger::REPLICATION2)
+                // transfer while resigning, because there's no point in
+                // continuing it.
+                LOG_TOPIC("2883c", WARN, Logger::REPLICATION2)
                     << "During the processing of snapshot "
                     << *snapshotTransferResult.snapshotId
                     << ", the following problem occurred on the follower: "
@@ -302,7 +303,7 @@ auto DocumentFollowerState::handleSnapshotTransfer(
 
               LOG_CTX("c1d58", DEBUG, self->loggerContext)
                   << "Trying to apply " << snapshotRes->operations.size()
-                  << " documents operations during snapshot transfer "
+                  << " operations during snapshot transfer "
                   << snapshotRes->snapshotId;
               LOG_CTX("fcc92", TRACE, self->loggerContext)
                   << snapshotRes->snapshotId

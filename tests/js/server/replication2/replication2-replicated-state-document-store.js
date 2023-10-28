@@ -710,7 +710,7 @@ const replicatedStateRecoverySuite = function () {
           overwrite: true,
           computeOn: ["insert"]
         }]});
-      lh.waitFor(dh.computedValuesAppliedPredicate(collection));
+      lh.waitFor(dh.computedValuesAppliedPredicate(collection, "createdAt"));
 
       // The following document should have a createdAt value.
       collection.insert({_key: `${testName}-foo2`, value: `${testName}-bar2`});
@@ -736,7 +736,7 @@ const replicatedStateRecoverySuite = function () {
 
       // Check that the new leader has the correct value for the documents.
       doc = collection.document({_key: `${testName}-foo1`});
-      assertFalse("createdAt" in doc, `Expected no createdAt property in ${JSON.stringify(doc)}` +
+      assertFalse(doc.hasOwnProperty("createdAt"), `Expected no createdAt property in ${JSON.stringify(doc)}` +
         `log contents: ${JSON.stringify(logContents)}`);
       doc = collection.document({_key: `${testName}-foo2`});
       assertEqual(doc.createdAt, createdAt, `Expected createdAt property to be ${createdAt} in ${JSON.stringify(doc)}` +
@@ -779,6 +779,7 @@ const replicatedStateDocumentStoreSuiteReplication1 = function () {
 const replicatedStateSnapshotTransferSuite = function () {
   const coordinator = lh.coordinators[0];
   let collection = null;
+  let extraCollections = [];
   let shards = null;
   let shardId = null;
   let logId = null;
@@ -809,6 +810,12 @@ const replicatedStateSnapshotTransferSuite = function () {
     }),
     tearDown: tearDownAnd(() => {
       clearAllFailurePoints();
+
+      for (let col of extraCollections) {
+        col.drop();
+      }
+      extraCollections = [];
+
       if (collection !== null) {
         collection.drop();
       }
@@ -816,6 +823,7 @@ const replicatedStateSnapshotTransferSuite = function () {
     }),
 
     testDropCollectionOngoingTransfer: function(testName) {
+      // Insert one document, so the shard is not empty.
       collection.insert({_key: testName});
       const participants = lhttp.listLogs(coordinator, database).result[logId];
       let leaderUrl = lh.getServerUrl(participants[0]);
@@ -833,9 +841,10 @@ const replicatedStateSnapshotTransferSuite = function () {
       collection = null;
     },
 
-    testFollowerSnapshotTransfer: function() {
+    testFollowerSnapshotTransfer: function(testName) {
       // Prepare the grounds for replacing a follower.
       const participants = lhttp.listLogs(coordinator, database).result[logId];
+      const leader = participants[0];
       const followers = participants.slice(1);
       const oldParticipant = _.sample(followers);
       const nonParticipants = _.without(lh.dbservers, ...participants);
@@ -843,28 +852,72 @@ const replicatedStateSnapshotTransferSuite = function () {
       const newParticipant = _.sample(nonParticipants);
       const newParticipants = _.union(_.without(participants, oldParticipant), [newParticipant]).sort();
 
+      // Create another collection that is distributed like the first one.
+      // This is to test the snapshot transfer of emtpy shards.
+      const extraCollectionName = `${collectionName}DistributeShardsLike`;
+      const col2 = db._create(extraCollectionName, {
+        numberOfShards: 1,
+        distributeShardsLike: collectionName,
+      });
+      extraCollections.push(col2);
+
       let documents1 = [];
-      for (let counter = 0; counter < 100; ++counter) {
-        documents1.push({_key: `foo${counter}`});
+      for (let counter = 0; counter < 30; ++counter) {
+        documents1.push({_key: `foo-${testName}-${counter}`});
       }
       for (let idx = 0; idx < documents1.length; ++idx) {
         collection.insert(documents1[idx]);
       }
 
-      // Trigger compaction intentionally.
-      log.compact();
+      // Wait for operations to be synced to disk
+      let status = log.status();
+      const commitIndexBeforeCompaction = status.participants[leader].response.local.commitIndex;
+      lh.waitFor(lp.lowestIndexToKeepReached(log, leader, commitIndexBeforeCompaction));
 
+      let logContents = log.head(1000);
+
+      // Trigger compaction intentionally.
+      let compactionResult = log.compact();
+      for (const [pid, value] of Object.entries(compactionResult)) {
+        assertEqual(value.result, "ok", `Compaction failed for participant ${pid}, result: ${JSON.stringify(value)}, ` +
+          `log contents: ${JSON.stringify(logContents)}`);
+      }
+
+      // After compaction, insert some extra documents. These are going to be replayed after the snapshot transfer.
       let documents2 = [];
-      for (let counter = 0; counter < 100; ++counter) {
-        documents2.push({_key: `bar${counter}`});
+      for (let counter = 0; counter < 30; ++counter) {
+        documents2.push({_key: `bar-${testName}-${counter}`});
       }
       for (let idx = 0; idx < documents2.length; ++idx) {
         collection.insert(documents2[idx]);
       }
 
+      // The following shard modification should not affect previously inserted documents.
+      collection.properties({computedValues: [{
+          name: "createdAt",
+          expression: "RETURN DATE_NOW()",
+          overwrite: true,
+          computeOn: ["insert", "update", "replace"]
+        }]});
+      lh.waitFor(dh.computedValuesAppliedPredicate(collection, "createdAt"));
+
+      // The following documents should have a createdAt value.
+      let documents3 = [];
+      let createdAts = {};
+      for (let counter = 0; counter < 30; ++counter) {
+        documents3.push({_key: `baz'-${testName}-${counter}`});
+      }
+      for (let idx = 0; idx < documents3.length; ++idx) {
+        let doc = collection.insert(documents3[idx], {returnNew: true});
+        createdAts[doc.new._key] = doc.new.createdAt;
+      }
+
+      status = log.status();
+      const commitIndexBeforeReplace = status.participants[leader].response.local.commitIndex;
+
       // Replace the follower.
       const result = lh.replaceParticipant(database, logId, oldParticipant, newParticipant);
-      assertEqual({}, result);
+      assertEqual({}, result, `Old participant ${oldParticipant} was not replaced with ${newParticipant}, log id ${logId}`);
 
       // Wait for replicated state to be available on the new follower.
       lh.waitFor(() => {
@@ -879,12 +932,48 @@ const replicatedStateSnapshotTransferSuite = function () {
         }
       });
 
-      let checkKeys = [...documents1.map(doc => doc._key)].concat([...documents2.map(doc => doc._key)]);
-      let bulk = dh.getBulkDocuments(lh.getServerUrl(newParticipant), database, shardId, checkKeys);
+      // Wait for the new follower to catch up.
+      const checkKeys = [...documents1.map(doc => doc._key)]
+        .concat([...documents2.map(doc => doc._key)])
+        .concat([...documents3.map(doc => doc._key)]);
+      const newParticipantUrl = lh.getServerUrl(newParticipant);
+      let bulk = [];
+      lh.waitFor(() => {
+        const {current} = lh.readReplicatedLogAgency(database, logId);
+        const localStatus = current.localStatus[newParticipant];
+        if (localStatus.snapshotAvailable === true && localStatus.spearhead.index >= commitIndexBeforeReplace) {
+          bulk = dh.getBulkDocuments(newParticipantUrl, database, shardId, checkKeys);
+          if (!Array.isArray(bulk)) {
+            return Error(`Expected array, got ${JSON.stringify(bulk)}`);
+          }
+          if (bulk.length !== checkKeys.length) {
+            internal.print(`Expected ${checkKeys.length} documents, got ${bulk.length}`)
+            return Error(`Expected ${checkKeys.length} documents, got ${bulk.length}`);
+          }
+          return true;
+        }
+        return Error(`Participant ${newParticipant} is not caught up, local status: ${JSON.stringify(localStatus)}`);
+      });
+
+      logContents = log.head(1000);
       let keysSet = new Set(checkKeys);
       for (let doc of bulk) {
-        assertFalse(doc.hasOwnProperty("error"), `Expected no error, got ${JSON.stringify(doc)}`);
-        assertTrue(keysSet.has(doc._key));
+        assertFalse(doc.hasOwnProperty("error"), `Expected no error, got ${JSON.stringify(doc)}, ` +
+          `log contents: ${JSON.stringify(logContents)}`);
+        assertTrue(keysSet.has(doc._key), `Expected key ${doc._key} to be in ${JSON.stringify(checkKeys)}, `
+          + `log contents: ${JSON.stringify(logContents)}`);
+
+        // During the snapshot transfer, the shard is transferred with the computed values property.
+        // As the follower re-applies entries, the computed values should only appear on the documents that had them before.
+        if (doc._key.startsWith("baz")) {
+          assertTrue(doc.hasOwnProperty("createdAt"), `Expected createdAt property in ${JSON.stringify(doc)}, ` +
+            `log contents: ${JSON.stringify(logContents)}`);
+          assertEqual(doc.createdAt, createdAts[doc._key], `Expected createdAt property to be ${createdAts[doc._key]} in ${JSON.stringify(doc)}, ` +
+            `log contents: ${JSON.stringify(logContents)}`);
+        } else {
+          assertFalse(doc.hasOwnProperty("createdAt"), `Expected no createdAt property in ${JSON.stringify(doc)}, ` +
+            `log contents: ${JSON.stringify(logContents)}`);
+        }
         keysSet.delete(doc._key);
       }
     },

@@ -497,8 +497,9 @@ auto DocumentLeaderState::modifyShard(ShardID shard, CollectionID collectionId,
       shard, std::move(collectionId), std::move(properties));
   auto fut = _guardedData.doUnderLock([&](auto& data) {
     if (data.didResign()) {
-      THROW_ARANGO_EXCEPTION(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+          "Leader resigned before replicating ModifyShard operation");
     }
 
     return replicateOperation(

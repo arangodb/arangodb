@@ -266,8 +266,18 @@ auto Snapshot::generateBatch(state::Ongoing const&) -> ResultT<SnapshotBatch> {
         operations.reserve(3);
         {
           auto properties = VPackBuilder();
-          shard->properties(properties,
-                            LogicalDataSource::Serialization::Inventory);
+          {
+            VPackObjectBuilder ob(&properties);
+            if (auto shardSerializationRes = shard->properties(
+                    properties, LogicalDataSource::Serialization::Inventory);
+                shardSerializationRes.fail()) {
+              LOG_CTX("b8f94", ERR, loggerContext)
+                  << "Failed to serialize shard " << shard->name()
+                  << " properties: " << shardSerializationRes;
+              TRI_ASSERT(false) << shardSerializationRes;
+              return shardSerializationRes;
+            }
+          }
           operations.emplace_back(
               ReplicatedOperation::buildCreateShardOperation(
                   shard->name(), shard->type(),
@@ -342,7 +352,7 @@ auto Snapshot::generateBatch(state::Ongoing const&) -> ResultT<SnapshotBatch> {
         << " more data to read from this shard.";
 
     return SnapshotBatch{.snapshotId = getId(),
-                         .hasMore = readerHasMore || data.shards.size() > 1,
+                         .hasMore = readerHasMore || !data.shards.empty(),
                          .operations = std::move(operations)};
   });
 }
