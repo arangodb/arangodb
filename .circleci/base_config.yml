@@ -94,14 +94,14 @@ commands:
             ssh-keyscan github.com | Add-Content -Path $env:USERPROFILE\.ssh\known_hosts
             
             # Check the value of the enterprise-branch parameter
-            if (-not $env:pipeline_parameters.enterprise-branch) {
+            if (-not $env:pipeline_parameters.'enterprise-branch') {
               Set-Variable -Name ENTERPRISE_BRANCH -Value 'devel' -Option Constant
               git ls-remote --exit-code --heads git@github.com:arangodb/enterprise.git $env:CIRCLE_BRANCH | Out-Null
               if ($LASTEXITCODE -eq 0) {
                 $ENTERPRISE_BRANCH = $env:CIRCLE_BRANCH
               }
             } else {
-              $ENTERPRISE_BRANCH = $env:pipeline_parameters.enterprise-branch
+              $ENTERPRISE_BRANCH = $env:pipeline_parameters.'enterprise-branch'
             }
             
             Write-Host "Using enterprise branch $ENTERPRISE_BRANCH"
