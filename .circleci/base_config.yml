@@ -97,20 +97,21 @@ commands:
             ssh-keyscan github.com | Add-Content -Path $env:USERPROFILE\.ssh\known_hosts
             
             # Check the value of the enterprise-branch parameter
-            if (-not $env:pipeline_parameters.'enterprise-branch') {
-              Set-Variable -Name ENTERPRISE_BRANCH -Value 'devel' -Option Constant
+            if ( "<< pipeline.parameters.enterprise-branch >>" -eq "" ) {              
               git ls-remote --exit-code --heads git@github.com:arangodb/enterprise.git $env:CIRCLE_BRANCH | Out-Null
               if ($LASTEXITCODE -eq 0) {
-                $ENTERPRISE_BRANCH = $env:CIRCLE_BRANCH
+                Set-Variable -Name ENTERPRISE_BRANCH -Value $env:CIRCLE_BRANCH -Option Constant            
+              } else {
+                Set-Variable -Name ENTERPRISE_BRANCH -Value 'devel' -Option Constant
               }
             } else {
-              $ENTERPRISE_BRANCH = $env:pipeline_parameters.'enterprise-branch'
+              Set-Variable -Name ENTERPRISE_BRANCH -Value $env:pipeline_parameters.'enterprise-branch' -Option Constant
             }
             
             Write-Host "Using enterprise branch $ENTERPRISE_BRANCH"
             
             # Clone the repository with Git
-            git clone --depth 1 git@github.com:arangodb/enterprise.git --branch $ENTERPRISE_BRANCH $env:parameters.destination
+            git clone --depth 1 git@github.com:arangodb/enterprise.git --branch $ENTERPRISE_BRANCH  << parameters.destination >>
 
 jobs:
   minimal-checkout:
