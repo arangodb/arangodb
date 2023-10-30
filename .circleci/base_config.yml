@@ -77,6 +77,38 @@ commands:
             echo "Using enterprise branch $ENTERPRISE_BRANCH"
             git clone --depth 1 git@github.com:arangodb/enterprise.git --branch "$ENTERPRISE_BRANCH" << parameters.destination >>
 
+
+  checkout-enterprise-windows:
+    description: "Checkout enterprise code"
+    parameters:
+      destination:
+        type: string
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
+      - run:
+          name: Checkout Enterprise
+          command: |
+            # Perform SSH key scanning for GitHub
+            ssh-keyscan github.com | Add-Content -Path $env:USERPROFILE\.ssh\known_hosts
+            
+            # Check the value of the enterprise-branch parameter
+            if (-not $env:pipeline_parameters.enterprise-branch) {
+              Set-Variable -Name ENTERPRISE_BRANCH -Value 'devel' -Option Constant
+              git ls-remote --exit-code --heads git@github.com:arangodb/enterprise.git $env:CIRCLE_BRANCH | Out-Null
+              if ($LASTEXITCODE -eq 0) {
+                $ENTERPRISE_BRANCH = $env:CIRCLE_BRANCH
+              }
+            } else {
+              $ENTERPRISE_BRANCH = $env:pipeline_parameters.enterprise-branch
+            }
+            
+            Write-Host "Using enterprise branch $ENTERPRISE_BRANCH"
+            
+            # Clone the repository with Git
+            git clone --depth 1 git@github.com:arangodb/enterprise.git --branch $ENTERPRISE_BRANCH $env:parameters.destination
+
 jobs:
   minimal-checkout:
     docker:
@@ -336,7 +368,7 @@ jobs:
       - checkout-arangodb:
           with-submodules: true
           destination: "D:/CircleCI/project"
-      - checkout-enterprise:
+      - checkout-enterprise-windows:
           destination: "D:/CircleCI/project/enterprise"
       # TODO - sccache currently doesn't work on windows; will be addressed in a separate PR
       # - run:
