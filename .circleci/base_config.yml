@@ -90,6 +90,9 @@ commands:
       - run:
           name: Checkout Enterprise
           command: |
+            mkdir -p << parameters.destination >>
+            cd << parameters.destination >>
+
             # Perform SSH key scanning for GitHub
             ssh-keyscan github.com | Add-Content -Path $env:USERPROFILE\.ssh\known_hosts
             
