@@ -64,15 +64,10 @@ function ahuacatlProfilerTestSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
     tearDown : function () {
       db._drop(colName);
       db._drop(edgeColName);
     },
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test EnumerateCollectionBlock with multiple input rows. slow.
@@ -90,7 +85,7 @@ function ahuacatlProfilerTestSuite () {
           const profile = db._query(query, {listRows, '@col': colName},
             {
               profile: 2,
-              optimizer: {rules: ["-interchange-adjacent-enumerations"]}
+              optimizer: {rules: ["-interchange-adjacent-enumerations", "-optimize-projections"]}
             }
           ).getExtra();
 
@@ -160,7 +155,8 @@ function ahuacatlProfilerTestSuite () {
               profile: 2,
               optimizer: {rules: [
                   "-interchange-adjacent-enumerations",
-                  "-remove-redundant-calculations"
+                  "-remove-redundant-calculations",
+                  "-optimize-projections",
                 ]}
             }
           ).getExtra();
@@ -244,7 +240,7 @@ function ahuacatlProfilerTestSuite () {
             },
             {
               profile: 2,
-              optimizer: {rules: ["-interchange-adjacent-enumerations"]}
+              optimizer: {rules: ["-interchange-adjacent-enumerations", "-optimize-projections"]}
             }
           ).getExtra();
 
@@ -281,10 +277,6 @@ function ahuacatlProfilerTestSuite () {
 
   };
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlProfilerTestSuite);
 

@@ -1,6 +1,6 @@
 /*jshint globalstrict:false, strict:false, sub: true, maxlen: 500 */
 /*global assertEqual, assertFalse, assertNull, assertNotNull, assertTrue, 
-  assertNotEqual, assertUndefined, fail, AQL_EXECUTE */
+  assertNotEqual, assertUndefined, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER

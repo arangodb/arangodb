@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertEqual, assertNotEqual, fail, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertTrue, assertEqual, assertNotEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for COLLECT w/ COUNT

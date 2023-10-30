@@ -53,7 +53,7 @@ AqlValue SimpleDocumentExpressionContext::getVariableValue(
   TRI_ASSERT(variable != nullptr);
   return QueryExpressionContext::getVariableValue(
       variable, doCopy, mustDestroy,
-      [this](Variable const* variable, bool doCopy, bool& mustDestroy) {
+      [this](Variable const* /*variable*/, bool doCopy, bool& mustDestroy) {
         mustDestroy = doCopy;
         // return current document
         if (doCopy) {

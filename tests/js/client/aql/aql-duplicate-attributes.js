@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertMatch, assertNotMatch, AQL_EXECUTE */
+/*global assertEqual, assertMatch, assertNotMatch */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for duplicate attributes
