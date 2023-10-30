@@ -31,7 +31,9 @@ std::string to_debug_string(auto const& x) {
   using std::to_string;
   return to_string(x);
 }
-std::string to_debug_string(VPackSlice const& x) { return x.toJson(); }
+
+// Please keep this line. Needs to be enabled if `LOG_INDEX_MERGER` is used.
+// std::string to_debug_string(VPackSlice const& x) { return x.toJson(); }
 }  // namespace
 
 namespace arangodb::aql {
