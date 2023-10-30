@@ -356,10 +356,9 @@ jobs:
       publish-artifacts:
         type: boolean
         default: true
-    resource_class: 'windows.medium'
-    machine:
-      image: 'windows-server-2022-gui:current'
-      shell: 'powershell.exe -ExecutionPolicy Bypass'
+    machine: true
+    resource_class: "arangodb/win"
+    shell: powershell.exe
     environment:
       GIT_SSH_COMMAND: ssh
       SCCACHE_ERROR_LOG: /tmp/sccache.log
@@ -382,7 +381,6 @@ jobs:
             # make sure we have the latest image!
             docker pull arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.3
             # TODO - use preset
-            # TODO - enable enterprise!
             docker run --rm --isolation process -v C:/Users/circleci/project:C:/project -w C:/project/build arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.3 cmake -G 'Visual Studio 17 2022' -T 'v143,host=x64' -DUSE_MAINTAINER_MODE=On -DUSE_GOOGLE_TESTS=On -DUSE_ENTERPRISE=On -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPACKAGING=NSIS -DCMAKE_INSTALL_PREFIX=/ -DSKIP_PACKAGING=On -DUSE_FAILURE_TESTS=On -DSTATIC_EXECUTABLES=On -DOPENSSL_USE_STATIC_LIBS=On -DUSE_STRICT_OPENSSL_VERSION=On ..
       - run:
           name: "Build"
