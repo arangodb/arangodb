@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 400 */
-/*global fail, assertEqual, AQL_EXECUTE */
+/*global fail, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure scenarios for both single and cluster

@@ -1,5 +1,5 @@
 /*jshint globalstrict:true, strict:true, esnext: true */
-/*global AQL_EXPLAIN, assertEqual, assertFalse */
+/*global assertEqual, assertFalse */
 
 "use strict";
 

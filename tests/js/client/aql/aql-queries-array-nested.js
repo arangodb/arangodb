@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertFalse, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
+/*global assertEqual, assertFalse, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for array indexes in AQL
