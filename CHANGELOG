@@ -1,6 +1,31 @@
 devel
 -----
 
+* Change default value of arangodump startup option `--use-parallel-dump` 
+  from `false` to `true`.
+  This enables the more parallel dump procedure by default, which allows
+  dumps to be produced more quickly.
+  The parallel dump protocol needs server-side support, and the first 
+  ArangoDB version that completely supports it is 3.12.
+  In order to use a 3.12 arangodump to create dumps from servers that run
+  an older version of arangod, the option should be set to `false` when
+  invoking arangodump.
+  The parallel dump option also allows the usage of the `--split-files` 
+  option in arangodump. When enabled, the data of each collection/shard
+  can be dumped into multiple independent files, which can be written in
+  parallel, and that can also be restored in parallel.
+  Please note that you will need an arangorestore from version 3.12 or
+  higher to be able to restore a dump that was taken with the 
+  `--split-files` option.
+
+* Added `--write-concern` parameter similar to `--replication-factor` to
+
+* MDS-1164: Added Publisher and Company to the Window binaries
+
+* BTS-1602: Added new flag `--ignore-collection` to the arangodump binary.
+  Collections can now be excluded by using this flag. This flag can be
+  specified multiple times to exclude multiple collections.
+
 * Added --write-concern parameter similar to --replication-factor to
   arangodump. This enables the user to override the write concern for
   one or multiple collections.

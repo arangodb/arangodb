@@ -1,5 +1,5 @@
 /*jshint globalstrict:true, strict:true, maxlen: 500 */
-/*global assertTrue, assertEqual, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
+/*global assertTrue, assertEqual, assertNotEqual */
 
 "use strict";
 

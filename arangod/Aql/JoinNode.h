@@ -116,6 +116,11 @@ class JoinNode : public ExecutionNode {
   /// TODO: check if this is adequate
   bool isDeterministic() override final { return true; }
 
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable) override;
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,

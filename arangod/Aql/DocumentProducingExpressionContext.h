@@ -46,7 +46,7 @@ class DocumentProducingExpressionContext : public QueryExpressionContext {
       transaction::Methods& trx, QueryContext& query,
       aql::AqlFunctionsInternalCache& cache,
       std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister,
-      InputAqlItemRow const& inputRow) noexcept
+      InputAqlItemRow const& inputRow)
       : QueryExpressionContext(trx, query, cache), _inputRow(inputRow) {
     for (auto const& it : varsToRegister) {
       _varsToRegister.emplace(it.first, it.second);

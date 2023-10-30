@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global AQL_EXPLAIN, assertEqual, assertNotEqual */
+/*global assertEqual, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER

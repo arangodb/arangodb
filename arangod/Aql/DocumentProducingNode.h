@@ -25,6 +25,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <span>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -42,6 +43,7 @@ class Slice;
 }  // namespace velocypack
 namespace aql {
 
+class ExecutionNode;
 class ExecutionPlan;
 class Expression;
 struct Variable;
@@ -63,8 +65,15 @@ class DocumentProducingNode {
   void replaceVariables(
       std::unordered_map<VariableId, Variable const*> const& replacements);
 
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable);
+
   /// @brief return the out variable
   Variable const* outVariable() const;
+
+  std::vector<Variable const*> getVariablesSetHere() const;
 
   Projections const& projections() const noexcept;
 

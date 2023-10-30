@@ -1,11 +1,7 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertFalse, assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertTrue, assertFalse, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for index usage
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
