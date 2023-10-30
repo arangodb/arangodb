@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 7000 */
-/*global assertEqual, assertTrue, assertFalse, AQL_EXPLAIN */
+/*global assertEqual, assertTrue, assertFalse */
 
 const jsunity = require("jsunity");
 const db = require("internal").db;
@@ -82,8 +82,8 @@ function BaseTestConfig () {
       db[cn].ensureIndex({ type: "persistent", fields: ["pid", "dt", "uid", "other4"] });
       
       [
-        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 FILTER doc.dt == 1234 FILTER doc.uid == 1234 RETURN doc`, ["pid", "dt", "uid", "other4"] ],
-        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 FILTER doc.dt == 1234 FILTER doc.uid == 1234 SORT doc.other5 RETURN doc`, ["pid", "dt", "uid", "other4"] ],
+        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 FILTER doc.dt == 1234 FILTER doc.uid == 1234 RETURN doc`, ["pid", "dt", "uid", "other4"], "document" ],
+        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 FILTER doc.dt == 1234 FILTER doc.uid == 1234 SORT doc.other5 RETURN doc`, ["pid", "dt", "uid", "other4"], "document" ],
       ].forEach((q) => {
         let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -93,6 +93,7 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(q[1], index.fields, q);
+        assertEqual(q[2], indexNode.strategy);
       });
     },
     
@@ -109,11 +110,11 @@ function BaseTestConfig () {
       db[cn].ensureIndex({ type: "persistent", fields: ["uid", "other", "pid"] });
      
       [
-        [ `FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN doc`, ["uid", "pid", "dt"] ],
-        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 RETURN doc`, ["pid", "dt"] ],
-        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 && doc.uid == 1234 RETURN doc`, ["uid", "pid", "dt"] ],
-        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 && doc.dt == 1234 RETURN doc`, ["pid", "dt"] ],
-        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 && doc.dt == 1234 && doc.uid == 1234 RETURN doc`, ["uid", "pid", "dt"] ],
+        [ `FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN doc`, ["uid", "pid", "dt"], "document" ],
+        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 RETURN doc`, ["pid", "dt"], "document" ],
+        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 && doc.uid == 1234 RETURN doc`, ["uid", "pid", "dt"], "document" ],
+        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 && doc.dt == 1234 RETURN doc`, ["pid", "dt"], "document" ],
+        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 && doc.dt == 1234 && doc.uid == 1234 RETURN doc`, ["uid", "pid", "dt"], "document" ],
       ].forEach((q) => {
         let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -123,6 +124,7 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(q[1], index.fields, q);
+        assertEqual(q[2], indexNode.strategy);
       });
     },
     
@@ -130,11 +132,11 @@ function BaseTestConfig () {
       db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
       
       [
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.uid > 1234 RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.uid >= 1234 RETURN doc`
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid > 1234 RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 RETURN doc`, "document"],
       ].forEach((q) => {
-        let nodes = db._createStatement(q).explain().plan.nodes;
+        let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertEqual(normalize([]), normalize(indexNode.projections));
@@ -143,6 +145,7 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(["uid"], index.fields);
+        assertEqual(q[1], indexNode.strategy);
       });
     },
     
@@ -150,11 +153,11 @@ function BaseTestConfig () {
       db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
       
       [
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN doc.uid`,
-        `FOR doc IN ${cn} FILTER doc.uid > 1234 RETURN doc.uid`,
-        `FOR doc IN ${cn} FILTER doc.uid >= 1234 RETURN doc.uid`
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN doc.uid`, "covering"],
+        [`FOR doc IN ${cn} FILTER doc.uid > 1234 RETURN doc.uid`, "covering"],
+        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 RETURN doc.uid`, "covering"],
       ].forEach((q) => {
-        let nodes = db._createStatement(q).explain().plan.nodes;
+        let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertEqual(normalize(["uid"]), normalize(indexNode.projections));
@@ -163,6 +166,7 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(["uid"], index.fields);
+        assertEqual(q[1], indexNode.strategy);
       });
     },
     
@@ -171,11 +175,11 @@ function BaseTestConfig () {
       db[cn].ensureIndex({ type: "persistent", fields: ["uid", "dt"] });
       
       [
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.uid > 1234 RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.uid >= 1234 RETURN doc`
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid > 1234 RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 RETURN doc`, "document"],
       ].forEach((q) => {
-        let nodes = db._createStatement(q).explain().plan.nodes;
+        let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertEqual(normalize([]), normalize(indexNode.projections));
@@ -187,6 +191,7 @@ function BaseTestConfig () {
         // so it always picks the "longer" of the 2 indexes here in case everything
         // else is equal
         assertEqual(["uid", "dt"], index.fields);
+        assertEqual(q[1], indexNode.strategy);
       });
     },
     
@@ -195,11 +200,11 @@ function BaseTestConfig () {
       db[cn].ensureIndex({ type: "persistent", fields: ["uid", "dt"] });
       
       [
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN doc.uid`,
-        `FOR doc IN ${cn} FILTER doc.uid > 1234 RETURN doc.uid`,
-        `FOR doc IN ${cn} FILTER doc.uid >= 1234 RETURN doc.uid`
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN doc.uid`, "covering"],
+        [`FOR doc IN ${cn} FILTER doc.uid > 1234 RETURN doc.uid`, "covering"],
+        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 RETURN doc.uid`, "covering"],
       ].forEach((q) => {
-        let nodes = db._createStatement(q).explain().plan.nodes;
+        let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertEqual(normalize(["uid"]), normalize(indexNode.projections));
@@ -211,14 +216,15 @@ function BaseTestConfig () {
         // so it always picks the "longer" of the 2 indexes here in case everything
         // else is equal
         assertEqual(["uid", "dt"], index.fields);
+        assertEqual(q[1], indexNode.strategy);
       });
       
       [
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN doc.dt`,
-        `FOR doc IN ${cn} FILTER doc.uid > 1234 RETURN doc.dt`,
-        `FOR doc IN ${cn} FILTER doc.uid >= 1234 RETURN doc.dt`
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN doc.dt`, "covering"],
+        [`FOR doc IN ${cn} FILTER doc.uid > 1234 RETURN doc.dt`, "covering"],
+        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 RETURN doc.dt`, "covering"],
       ].forEach((q) => {
-        let nodes = db._createStatement(q).explain().plan.nodes;
+        let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertEqual(normalize(["dt"]), normalize(indexNode.projections));
@@ -230,14 +236,15 @@ function BaseTestConfig () {
         // so it always picks the "longer" of the 2 indexes here in case everything
         // else is equal
         assertEqual(["uid", "dt"], index.fields);
+        assertEqual(q[1], indexNode.strategy);
       });
       
       [
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN [doc.dt, doc.uid]`,
-        `FOR doc IN ${cn} FILTER doc.uid > 1234 RETURN [doc.dt, doc.uid]`,
-        `FOR doc IN ${cn} FILTER doc.uid >= 1234 RETURN [doc.dt, doc.uid]`
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN [doc.dt, doc.uid]`, "covering"],
+        [`FOR doc IN ${cn} FILTER doc.uid > 1234 RETURN [doc.dt, doc.uid]`, "covering"],
+        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 RETURN [doc.dt, doc.uid]`, "covering"],
       ].forEach((q) => {
-        let nodes = db._createStatement(q).explain().plan.nodes;
+        let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertEqual(normalize(["dt", "uid"]), normalize(indexNode.projections));
@@ -249,6 +256,7 @@ function BaseTestConfig () {
         // so it always picks the "longer" of the 2 indexes here in case everything
         // else is equal
         assertEqual(["uid", "dt"], index.fields);
+        assertEqual(q[1], indexNode.strategy);
       });
     },
     
@@ -256,12 +264,12 @@ function BaseTestConfig () {
       db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
       
       [
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt <= 1234 RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 && doc.dt <= 9999 RETURN doc`
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt <= 1234 RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 && doc.dt <= 9999 RETURN doc`, "document"],
       ].forEach((q) => {
-        let nodes = db._createStatement(q).explain().plan.nodes;
+        let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertEqual(normalize([]), normalize(indexNode.projections));
@@ -270,6 +278,7 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(["uid"], index.fields);
+        assertEqual(q[1], indexNode.strategy);
       });
     },
     
@@ -277,12 +286,12 @@ function BaseTestConfig () {
       db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
       
       [
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 RETURN doc.uid`,
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 RETURN doc.uid`,
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt <= 1234 RETURN doc.uid`,
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 && doc.dt <= 9999 RETURN doc.uid`
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 RETURN doc.uid`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 RETURN doc.uid`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt <= 1234 RETURN doc.uid`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 && doc.dt <= 9999 RETURN doc.uid`, "document"],
       ].forEach((q) => {
-        let nodes = db._createStatement(q).explain().plan.nodes;
+        let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertTrue(normalize(["uid"]), normalize(indexNode.projections));
@@ -291,15 +300,16 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(["uid"], index.fields);
+        assertEqual(q[1], indexNode.strategy);
       });
       
       [
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 RETURN doc.dt`,
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 RETURN doc.dt`,
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt <= 1234 RETURN doc.dt`,
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 && doc.dt <= 9999 RETURN doc.dt`
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 RETURN doc.dt`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 RETURN doc.dt`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt <= 1234 RETURN doc.dt`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 && doc.dt <= 9999 RETURN doc.dt`, "document"],
       ].forEach((q) => {
-        let nodes = db._createStatement(q).explain().plan.nodes;
+        let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertEqual(normalize(["dt"]), normalize(indexNode.projections));
@@ -308,6 +318,7 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(["uid"], index.fields);
+        assertEqual(q[1], indexNode.strategy);
       });
     },
     
@@ -316,12 +327,12 @@ function BaseTestConfig () {
       db[cn].ensureIndex({ type: "persistent", fields: ["uid", "dt"] });
 
       [
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt <= 1234 RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 && doc.dt <= 9999 RETURN doc`
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt <= 1234 RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 && doc.dt <= 9999 RETURN doc`, "document"],
       ].forEach((q) => {
-        let nodes = db._createStatement(q).explain().plan.nodes;
+        let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertEqual(normalize([]), normalize(indexNode.projections));
@@ -330,6 +341,7 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(["uid", "dt"], index.fields);
+        assertEqual(q[1], indexNode.strategy);
       });
     },
     
@@ -338,12 +350,12 @@ function BaseTestConfig () {
       db[cn].ensureIndex({ type: "persistent", fields: ["uid", "dt"] });
 
       [
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 RETURN doc.uid`,
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 RETURN doc.uid`,
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt <= 1234 RETURN doc.uid`,
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 && doc.dt <= 9999 RETURN doc.uid`
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 RETURN doc.uid`, "covering"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 RETURN doc.uid`, "covering"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt <= 1234 RETURN doc.uid`, "covering"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 && doc.dt <= 9999 RETURN doc.uid`, "covering"],
       ].forEach((q) => {
-        let nodes = db._createStatement(q).explain().plan.nodes;
+        let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertEqual(normalize(["uid"]), normalize(indexNode.projections));
@@ -352,15 +364,16 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(["uid", "dt"], index.fields);
+        assertEqual(q[1], indexNode.strategy);
       });
       
       [
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 RETURN doc.dt`,
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 RETURN doc.dt`,
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt <= 1234 RETURN doc.dt`,
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 && doc.dt <= 9999 RETURN doc.dt`
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 RETURN doc.dt`, "covering"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 RETURN doc.dt`, "covering"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt <= 1234 RETURN doc.dt`, "covering"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 && doc.dt <= 9999 RETURN doc.dt`, "covering"],
       ].forEach((q) => {
-        let nodes = db._createStatement(q).explain().plan.nodes;
+        let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertEqual(normalize(["dt"]), normalize(indexNode.projections));
@@ -369,12 +382,13 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(["uid", "dt"], index.fields);
+        assertEqual(q[1], indexNode.strategy);
       });
       
       [
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 RETURN [doc.dt, doc.uid]`,
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 RETURN [doc.dt, doc.uid]`, "covering"],
       ].forEach((q) => {
-        let nodes = db._createStatement(q).explain().plan.nodes;
+        let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertEqual(normalize(["dt", "uid"]), normalize(indexNode.projections));
@@ -383,14 +397,15 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(["uid", "dt"], index.fields);
+        assertEqual(q[1], indexNode.strategy);
       });
 
       [
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 RETURN [doc.dt, doc.uid]`,
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt <= 1234 RETURN [doc.dt, doc.uid]`,
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 && doc.dt <= 9999 RETURN [doc.dt, doc.uid]`
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 RETURN [doc.dt, doc.uid]`, "covering"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt <= 1234 RETURN [doc.dt, doc.uid]`, "covering"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 && doc.dt <= 9999 RETURN [doc.dt, doc.uid]`, "covering"],
       ].forEach((q) => {
-        let nodes = db._createStatement(q).explain().plan.nodes;
+        let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertEqual(normalize(["dt", "uid"]), normalize(indexNode.projections));
@@ -399,6 +414,7 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(["uid", "dt"], index.fields);
+        assertEqual(q[1], indexNode.strategy);
       });
     },
     
@@ -406,11 +422,11 @@ function BaseTestConfig () {
       db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
       
       [
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 SORT doc.dt RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.uid > 1234 SORT doc.dt RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.uid >= 1234 SORT doc.dt RETURN doc`
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 SORT doc.dt RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid > 1234 SORT doc.dt RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 SORT doc.dt RETURN doc`, "document"],
       ].forEach((q) => {
-        let nodes = db._createStatement(q).explain().plan.nodes;
+        let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertEqual(1, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
@@ -420,6 +436,7 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(["uid"], index.fields);
+        assertEqual(q[1], indexNode.strategy);
       });
     },
     
@@ -427,11 +444,11 @@ function BaseTestConfig () {
       db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
       
       [
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 SORT doc.uid RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.uid > 1234 SORT doc.uid RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.uid >= 1234 SORT doc.uid RETURN doc`
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 SORT doc.uid RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid > 1234 SORT doc.uid RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 SORT doc.uid RETURN doc`, "document"],
       ].forEach((q) => {
-        let nodes = db._createStatement(q).explain().plan.nodes;
+        let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
@@ -441,6 +458,7 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(["uid"], index.fields);
+        assertEqual(q[1], indexNode.strategy);
       });
     },
     
@@ -449,9 +467,9 @@ function BaseTestConfig () {
       db[cn].ensureIndex({ type: "persistent", fields: ["uid", "dt"] });
       
       [
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 SORT doc.dt RETURN doc`,
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 SORT doc.dt RETURN doc`, "document"],
       ].forEach((q) => {
-        let nodes = db._createStatement(q).explain().plan.nodes;
+        let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
@@ -461,13 +479,14 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(["uid", "dt"], index.fields);
+        assertEqual(q[1], indexNode.strategy);
       });
 
       [
-        `FOR doc IN ${cn} FILTER doc.uid > 1234 SORT doc.dt RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.uid >= 1234 SORT doc.dt RETURN doc`
+        [`FOR doc IN ${cn} FILTER doc.uid > 1234 SORT doc.dt RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 SORT doc.dt RETURN doc`, "document"],
       ].forEach((q) => {
-        let nodes = db._createStatement(q).explain().plan.nodes;
+        let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertEqual(1, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
@@ -477,6 +496,7 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(["uid", "dt"], index.fields);
+        assertEqual(q[1], indexNode.strategy);
       });
     },
     
@@ -485,12 +505,12 @@ function BaseTestConfig () {
       db[cn].ensureIndex({ type: "persistent", fields: ["uid", "dt"] });
 
       [
-        `FOR doc IN ${cn} FILTER doc.dt == 1234 SORT doc.uid RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.dt >= 1234 SORT doc.uid RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.dt <= 1234 SORT doc.uid RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.dt >= 1234 && doc.dt < 9999 SORT doc.uid RETURN doc`,
+        [`FOR doc IN ${cn} FILTER doc.dt == 1234 SORT doc.uid RETURN doc`, "covering, filter only"],
+        [`FOR doc IN ${cn} FILTER doc.dt >= 1234 SORT doc.uid RETURN doc`, "covering, filter only"],
+        [`FOR doc IN ${cn} FILTER doc.dt <= 1234 SORT doc.uid RETURN doc`, "covering, filter only"],
+        [`FOR doc IN ${cn} FILTER doc.dt >= 1234 && doc.dt < 9999 SORT doc.uid RETURN doc`, "covering, filter only"],
       ].forEach((q) => {
-        let nodes = db._createStatement(q).explain().plan.nodes;
+        let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
@@ -500,15 +520,16 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(["uid", "dt"], index.fields);
+        assertEqual(q[1], indexNode.strategy);
       });
       
       [
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 SORT doc.dt RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 SORT doc.dt RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt <= 1234 SORT doc.dt RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 && doc.dt < 9999 SORT doc.dt RETURN doc`,
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 SORT doc.dt RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 SORT doc.dt RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt <= 1234 SORT doc.dt RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 && doc.dt < 9999 SORT doc.dt RETURN doc`, "document"],
       ].forEach((q) => {
-        let nodes = db._createStatement(q).explain().plan.nodes;
+        let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
@@ -518,15 +539,16 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(["uid", "dt"], index.fields);
+        assertEqual(q[1], indexNode.strategy);
       });
 
       [
-        `FOR doc IN ${cn} FILTER doc.uid > 1234 && doc.dt == 1234 SORT doc.dt RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.uid >= 1234 && doc.dt >= 1234 SORT doc.dt RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.uid >= 1234 && doc.dt <= 1234 SORT doc.dt RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.uid >= 1234 && doc.dt >= 1234 && doc.dt < 9999 SORT doc.dt RETURN doc`
+        [`FOR doc IN ${cn} FILTER doc.uid > 1234 && doc.dt == 1234 SORT doc.dt RETURN doc`, "covering, filter only"],
+        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 && doc.dt >= 1234 SORT doc.dt RETURN doc`, "covering, filter only"],
+        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 && doc.dt <= 1234 SORT doc.dt RETURN doc`, "covering, filter only"],
+        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 && doc.dt >= 1234 && doc.dt < 9999 SORT doc.dt RETURN doc`, "covering, filter only"],
       ].forEach((q) => {
-        let nodes = db._createStatement(q).explain().plan.nodes;
+        let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertEqual(1, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
@@ -536,6 +558,7 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(["uid", "dt"], index.fields);
+        assertEqual(q[1], indexNode.strategy);
       });
     },
     
@@ -544,9 +567,9 @@ function BaseTestConfig () {
       db[cn].ensureIndex({ type: "persistent", fields: ["dt"] });
 
       [
-        `FOR doc IN ${cn} FILTER doc.dt == 1234 SORT doc.uid RETURN doc`,
+        [`FOR doc IN ${cn} FILTER doc.dt == 1234 SORT doc.uid RETURN doc`, "document"],
       ].forEach((q) => {
-        let nodes = db._createStatement(q).explain().plan.nodes;
+        let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertEqual(1, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
@@ -556,14 +579,15 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(["dt"], index.fields);
+        assertEqual(q[1], indexNode.strategy);
       });
       
       [
-        `FOR doc IN ${cn} FILTER doc.dt >= 1234 SORT doc.uid RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.dt <= 1234 SORT doc.uid RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.dt >= 1234 && doc.dt < 9999 SORT doc.uid RETURN doc`,
+        [`FOR doc IN ${cn} FILTER doc.dt >= 1234 SORT doc.uid RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.dt <= 1234 SORT doc.uid RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.dt >= 1234 && doc.dt < 9999 SORT doc.uid RETURN doc`, "document"],
       ].forEach((q) => {
-        let nodes = db._createStatement(q).explain().plan.nodes;
+        let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
@@ -573,6 +597,7 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(["uid"], index.fields);
+        assertEqual(q[1], indexNode.strategy);
       });
     },
     
@@ -580,12 +605,12 @@ function BaseTestConfig () {
       db[cn].ensureIndex({ type: "persistent", fields: ["dt"] });
 
       [
-        `FOR doc IN ${cn} COLLECT dt = doc.dt RETURN dt`,
-        `FOR doc IN ${cn} FILTER doc.dt == 1234 COLLECT dt = doc.dt RETURN dt`,
-        `FOR doc IN ${cn} SORT doc.dt COLLECT dt = doc.dt RETURN dt`,
-        `FOR doc IN ${cn} FILTER doc.dt == 1234 SORT doc.dt COLLECT dt = doc.dt RETURN dt`,
+        [`FOR doc IN ${cn} COLLECT dt = doc.dt RETURN dt`, "covering"],
+        [`FOR doc IN ${cn} FILTER doc.dt == 1234 COLLECT dt = doc.dt RETURN dt`, "covering"],
+        [`FOR doc IN ${cn} SORT doc.dt COLLECT dt = doc.dt RETURN dt`, "covering"],
+        [`FOR doc IN ${cn} FILTER doc.dt == 1234 SORT doc.dt COLLECT dt = doc.dt RETURN dt`, "covering"],
       ].forEach((q) => {
-        let nodes = db._createStatement(q).explain().plan.nodes;
+        let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
@@ -597,6 +622,7 @@ function BaseTestConfig () {
         assertEqual(["dt"], index.fields);
         let collectNode = nodes.filter((n) => n.type === 'CollectNode')[0];
         assertEqual("sorted", collectNode.collectOptions.method);
+        assertEqual(q[1], indexNode.strategy);
       });
     },
     
@@ -605,10 +631,10 @@ function BaseTestConfig () {
       db[cn].ensureIndex({ type: "persistent", fields: ["uid", "dt"] });
 
       [
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 COLLECT dt = doc.dt RETURN dt`,
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 SORT doc.dt COLLECT dt = doc.dt RETURN dt`,
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 COLLECT dt = doc.dt RETURN dt`, "covering"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 SORT doc.dt COLLECT dt = doc.dt RETURN dt`, "covering"],
       ].forEach((q) => {
-        let nodes = db._createStatement(q).explain().plan.nodes;
+        let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
@@ -620,6 +646,7 @@ function BaseTestConfig () {
         assertEqual(["uid", "dt"], index.fields);
         let collectNode = nodes.filter((n) => n.type === 'CollectNode')[0];
         assertEqual("sorted", collectNode.collectOptions.method);
+        assertEqual(q[1], indexNode.strategy);
       });
     },
     
@@ -658,6 +685,7 @@ function BaseTestConfig () {
         assertEqual(2, indexNode.condition.subNodes[0].subNodes.length);
         // since the index covers all conditions, the filter should be completely removed
         assertEqual(0, nodes.filter((n) => n.type === 'FilterNode').length);
+        assertEqual("document", indexNode.strategy);
       });
     },
     

@@ -437,6 +437,22 @@ Index::FilterCosts JoinNode::costsForIndexInfo(
   return costs;
 }
 
+void JoinNode::replaceAttributeAccess(const ExecutionNode* self,
+                                      const Variable* searchVariable,
+                                      std::span<std::string_view> attribute,
+                                      const Variable* replaceVariable) {
+  for (auto& idx : _indexInfos) {
+    if (idx.condition) {
+      idx.condition->replaceAttributeAccess(searchVariable, attribute,
+                                            replaceVariable);
+    }
+    if (idx.filter) {
+      idx.filter->replaceAttributeAccess(searchVariable, attribute,
+                                         replaceVariable);
+    }
+  }
+}
+
 std::ostream& arangodb::operator<<(std::ostream& os,
                                    IndexStreamOptions const& opts) {
   os << "{";

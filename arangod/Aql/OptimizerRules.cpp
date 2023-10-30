@@ -79,6 +79,7 @@
 #include "VocBase/Methods/Collections.h"
 #include "Logger/LogMacros.h"
 
+#include <span>
 #include <tuple>
 
 #include <absl/strings/str_cat.h>
@@ -2848,8 +2849,10 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
 
   ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
 
+  bool modified = false;
+
   for (auto const& n : nodes) {
-    arangodb::aql::Variable const* outVariable = nullptr;
+    Variable const* outVariable = nullptr;
 
     if (n->getType() == EN::CALCULATION) {
       auto nn = ExecutionNode::castTo<CalculationNode*>(n);
@@ -3029,16 +3032,17 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
   if (!toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
     TRI_ASSERT(nodes.size() >= toUnlink.size());
+    modified = true;
     if (nodes.size() - toUnlink.size() > 0) {
       // need to rerun the rule because removing calculations may unlock
       // removal of further calculations
-      opt->addPlanAndRerun(std::move(plan), rule, true);
+      opt->addPlanAndRerun(std::move(plan), rule, modified);
     } else {
       // no need to rerun the rule
-      opt->addPlan(std::move(plan), rule, true);
+      opt->addPlan(std::move(plan), rule, modified);
     }
   } else {
-    opt->addPlan(std::move(plan), rule, false);
+    opt->addPlan(std::move(plan), rule, modified);
   }
 }
 
@@ -9389,9 +9393,40 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-void arangodb::aql::removeUnnecessaryProjections(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-    OptimizerRule const& rule) {
+class AttributeAccessReplacer final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
+ public:
+  AttributeAccessReplacer(ExecutionNode const* self,
+                          Variable const* searchVariable,
+                          std::span<std::string_view> attribute,
+                          Variable const* replaceVariable)
+      : _self(self),
+        _searchVariable(searchVariable),
+        _attribute(attribute),
+        _replaceVariable(replaceVariable) {
+    TRI_ASSERT(_searchVariable != nullptr);
+    TRI_ASSERT(!_attribute.empty());
+    TRI_ASSERT(_replaceVariable != nullptr);
+  }
+
+  bool before(ExecutionNode* en) override final {
+    en->replaceAttributeAccess(_self, _searchVariable, _attribute,
+                               _replaceVariable);
+
+    // always continue
+    return false;
+  }
+
+ private:
+  ExecutionNode const* _self;
+  Variable const* _searchVariable;
+  std::span<std::string_view> _attribute;
+  Variable const* _replaceVariable;
+};
+
+void arangodb::aql::optimizeProjections(Optimizer* opt,
+                                        std::unique_ptr<ExecutionPlan> plan,
+                                        OptimizerRule const& rule) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, {EN::INDEX, EN::ENUMERATE_COLLECTION}, true);
 
@@ -9399,6 +9434,25 @@ void arangodb::aql::removeUnnecessaryProjections(
   for (auto* n : nodes) {
     auto* documentNode = ExecutionNode::castTo<DocumentProducingNode*>(n);
     modified |= documentNode->recalculateProjections(plan.get());
+
+    if (n->getType() != EN::ENUMERATE_COLLECTION) {
+      continue;
+    }
+    auto& p = documentNode->projections();
+    std::vector<std::string_view> path;
+    for (size_t i = 0; i < p.size(); ++i) {
+      TRI_ASSERT(p[i].variable == nullptr);
+      p[i].variable = plan->getAst()->variables()->createTemporaryVariable();
+      path.clear();
+      for (auto const& it : p[i].path.get()) {
+        path.emplace_back(it);
+      }
+
+      AttributeAccessReplacer replacer(n, documentNode->outVariable(),
+                                       std::span(path), p[i].variable);
+      plan->root()->walk(replacer);
+      modified = true;
+    }
   }
   opt->addPlan(std::move(plan), rule, modified);
 }
