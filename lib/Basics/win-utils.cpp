@@ -255,6 +255,10 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
       break;
   }
 
+  if (openFlags & O_APPEND) {
+    mode |= FILE_APPEND_DATA;
+  }
+
   icu::UnicodeString fn(filename);
   fileHandle =
       CreateFileW(reinterpret_cast<const wchar_t*>(fn.getTerminatedBuffer()),
@@ -265,8 +269,11 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
     return -1;
   }
 
-  fileDescriptor = _open_osfhandle(
-      (intptr_t)(fileHandle), (openFlags & (O_ACCMODE | O_APPEND)) | _O_BINARY);
+  int flags = (openFlags & O_ACCMODE) | _O_BINARY;
+  if (openFlags & O_APPEND) {
+    flags |= _O_APPEND;
+  }
+  fileDescriptor = _open_osfhandle((intptr_t)(fileHandle), flags);
   return fileDescriptor;
 }
 
