@@ -58,7 +58,10 @@ commands:
       - run:
           name: Checkout Enterprise
           command: |
-            ssh-keyscan github.com >> ~/.ssh/known_hosts
+            #ssh-keyscan github.com >> ~/.ssh/known_hosts
+            mkdir -p << parameters.destination >>
+            cd << parameters.destination >>
+            ssh-keyscan github.com | Add-Content -Path $env:USERPROFILE\.ssh\known_hosts
             git clone git@github.com:arangodb/enterprise.git << parameters.destination >>
             # ssh-keyscan github.com >> ~/.ssh/known_hosts
             # mkdir -p << parameters.destination >>
@@ -329,7 +332,7 @@ jobs:
           destination: "D:/CircleCI/project"
       # for windows we build only enterprise, so we can check it out unconditionally
       - checkout-enterprise:
-         destination: "D:/CircleCI/project/enterprise"
+          destination: "D:/CircleCI/project/enterprise"
       # TODO - sccache currently doesn't work on windows; will be addressed in a separate PR
       # - run:
       #     name: Print SCCache Settings
