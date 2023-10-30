@@ -1731,7 +1731,7 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
     LOG_TOPIC("dd231", INFO, Logger::THREADS)
         << "Did not get lock within 1 seconds, detaching scheduler thread.";
     Result r = arangodb::SchedulerFeature::SCHEDULER->detachThread();
-    if (r.fail()) {
+    if (r.fail() && r.is(TRI_ERROR_TOO_MANY_DETACHED_THREADS)) {
       LOG_TOPIC("dd232", WARN, Logger::THREADS)
           << "Could not detach scheduler thread, will continue to acquire "
              "lock in scheduler thread, this can potentially lead to "

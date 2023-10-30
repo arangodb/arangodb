@@ -785,10 +785,15 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
   TRI_IF_FAILURE("leaseManagedTrxFail") { return nullptr; }
 
   auto role = ServerState::instance()->getRole();
+  std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
   std::chrono::steady_clock::time_point endTime;
   if (!ServerState::isDBServer(role)) {  // keep end time as small as possible
-    endTime = std::chrono::steady_clock::now() +
-              std::chrono::milliseconds(int64_t(1000 * _streamingLockTimeout));
+    endTime =
+        now + std::chrono::milliseconds(int64_t(1000 * _streamingLockTimeout));
+  }
+  std::chrono::steady_clock::time_point detachTime;
+  if (_streamingLockTimeout >= 1.0) {
+    detachTime = now + std::chrono::milliseconds(1000);
   }
   // always serialize access on coordinator,
   // TransactionState::_knownServers is modified even for READ
@@ -898,8 +903,19 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
     TRI_ASSERT(endTime.time_since_epoch().count() == 0 ||
                !ServerState::instance()->isDBServer());
 
-    if (!ServerState::isDBServer(role) &&
-        std::chrono::steady_clock::now() > endTime) {
+    auto now = std::chrono::steady_clock::now();
+    if (detachTime.time_since_epoch().count() != 0 && now > detachTime) {
+      LOG_TOPIC("dd234", INFO, Logger::THREADS)
+          << "Did not get lock within 1 seconds, detaching scheduler thread.";
+      auto res = SchedulerFeature::SCHEDULER->detachThread();
+      if (res.fail() && res.is(TRI_ERROR_TOO_MANY_DETACHED_THREADS)) {
+        LOG_TOPIC("dd233", WARN, Logger::THREADS)
+            << "Could not detach scheduler thread, will continue to acquire "
+               "lock in scheduler thread, this can potentially lead to "
+               "blockages!";
+      }
+    }
+    if (!ServerState::isDBServer(role) && now > endTime) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_LOCKED, std::string("cannot write-lock, transaction ") +
                                 std::to_string(tid.id()) +
