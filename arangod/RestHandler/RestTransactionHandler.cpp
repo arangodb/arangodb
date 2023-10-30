@@ -100,6 +100,13 @@ RequestLane RestTransactionHandler::lane() const {
                       "invalid request lane priority");
         return RequestLane::CONTINUATION;
       }
+      default: {
+        // Not implemented, put it on high to get rid of it.
+        static_assert(PriorityRequestLane(RequestLane::CLUSTER_INTERNAL) ==
+                          RequestPriority::HIGH,
+                      "invalid request lane priority");
+        return RequestLane::CLUSTER_INTERNAL;
+      }
 
     }
   }
