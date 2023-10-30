@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNull, AQL_EXECUTE */
+/*global assertEqual, assertNull */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for DOCUMENT function

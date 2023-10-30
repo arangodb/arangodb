@@ -52,11 +52,11 @@ function optimizerRuleTestSuite () {
     testClusterPlans : function () {
       let queries = [
         [ "FOR i IN 1..100 LET b = i * 2 RETURN b", [ ["SingletonNode", false], ["CalculationNode", true], ["EnumerateListNode", true], ["CalculationNode", true], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " FILTER doc.value > 3 RETURN doc.a", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["CalculationNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " SORT doc.value1 RETURN doc.value2", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["CalculationNode", true], ["SortNode", true], ["CalculationNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
+        [ "FOR doc IN " + cn + " FILTER doc.value > 3 RETURN doc.a", [ ["SingletonNode", false], ["EnumerateCollectionNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
+        [ "FOR doc IN " + cn + " SORT doc.value1 RETURN doc.value2", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["SortNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
         [ "FOR i IN 1..100 SORT i RETURN i", [ ["SingletonNode", false], ["CalculationNode", true], ["EnumerateListNode", true], ["SortNode", true], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + cn + " COLLECT v = doc.value % 2 RETURN v", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["CalculationNode", true], ["CollectNode", false], ["RemoteNode", false], ["GatherNode", false], ["CollectNode", false], ["SortNode", false], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " RETURN DISTINCT doc.value", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["CalculationNode", true], ["CollectNode", false], ["RemoteNode", false], ["GatherNode", false], ["CollectNode", false], ["ReturnNode", false] ] ],
+        [ "FOR doc IN " + cn + " RETURN DISTINCT doc.value", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["CollectNode", false], ["RemoteNode", false], ["GatherNode", false], ["CollectNode", false], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + cn + " FILTER doc.value > 3 LIMIT 10 RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", false], ["RemoteNode", false],["GatherNode", false], ["LimitNode", false], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + vn + " FILTER doc.value > 3 RETURN doc", [ ["SingletonNode", false], ["EnumerateViewNode", true], ["CalculationNode", true], ["FilterNode", true], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + vn + " FILTER doc.value > 3 LIMIT 3 RETURN doc", [ ["SingletonNode", false], ["EnumerateViewNode", true], ["CalculationNode", true], ["FilterNode", true], ["LimitNode", false], ["ReturnNode", false] ] ],
@@ -125,11 +125,11 @@ function oneShardTestSuite () {
     testOneShardPlans : function () {
       let queries = [
         [ "FOR i IN 1..100 LET b = i * 2 RETURN b", [ ["SingletonNode", false], ["CalculationNode", true], ["EnumerateListNode", true], ["CalculationNode", true], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " FILTER doc.value > 3 RETURN doc.a", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["CalculationNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " SORT doc.value1 RETURN doc.value2", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["CalculationNode", true], ["SortNode", true], ["CalculationNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
+        [ "FOR doc IN " + cn + " FILTER doc.value > 3 RETURN doc.a", [ ["SingletonNode", false], ["EnumerateCollectionNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
+        [ "FOR doc IN " + cn + " SORT doc.value1 RETURN doc.value2", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["SortNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
         [ "FOR i IN 1..100 SORT i RETURN i", [ ["SingletonNode", false], ["CalculationNode", true], ["EnumerateListNode", true], ["SortNode", true], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + cn + " COLLECT v = doc.value % 2 RETURN v", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["CalculationNode", true], ["CollectNode", true], ["SortNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " RETURN DISTINCT doc.value", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["CalculationNode", true], ["CollectNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
+        [ "FOR doc IN " + cn + " RETURN DISTINCT doc.value", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["CollectNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + cn + " FILTER doc.value > 3 LIMIT 10 RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["LimitNode", false], ["RemoteNode", false],["GatherNode", false], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + vn + " FILTER doc.value > 3 RETURN doc", [ ["SingletonNode", false], ["EnumerateViewNode", true], ["CalculationNode", true], ["FilterNode", true], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + vn + " FILTER doc.value > 3 LIMIT 3 RETURN doc", [ ["SingletonNode", false], ["EnumerateViewNode", true], ["CalculationNode", true], ["FilterNode", true], ["LimitNode", false], ["ReturnNode", false] ] ],

@@ -261,6 +261,60 @@ jobs:
                   - 3rdParty/iresearch/tests/resources
                   - 3rdParty/rta-makedata
 
+  compile-mac:
+    parameters:
+      preset:
+        type: string
+      resource:
+        type: string
+      build-tests:
+        type: boolean
+      enterprise:
+        type: boolean
+        default: false
+      publish-artifacts:
+        type: boolean
+        default: true
+    macos:
+      xcode: 14.2.0
+    resource_class: << parameters.resource >>
+    steps:
+      - checkout-arangodb:
+          with-submodules: true
+          destination: "~/project"
+      - when:
+          condition: << parameters.enterprise >>
+          steps:
+            - checkout-enterprise:
+                destination: "~/project/enterprise"
+      - run:
+          name: "Install llvm"
+          command: |
+            brew install cmake llvm@14
+      - run:
+          name: "Install OpenSSL"
+          command: |
+            export MAC_OPENSSL=`grep OPENSSL_MACOS ~/project/VERSIONS|cut -d '"' -f 2-2`
+            wget https://www.openssl.org/source/openssl-$MAC_OPENSSL.tar.gz --directory-prefix=/tmp
+            mkdir ~/openssl
+            tar zvxf /tmp/openssl-$MAC_OPENSSL.tar.gz -C ~/openssl --strip-components 1
+            cd ~/openssl/
+            ./config
+            make -j8
+      - run:
+          name: "Configure"
+          command: |
+            export PATH="/opt/homebrew/opt/llvm@14/bin:/usr/local/opt/llvm@14/bin:$PATH"
+            export MACOSX_DEPLOYMENT_TARGET=11.0
+            export OPENSSL_ROOT_DIR=~/openssl
+            mkdir ~/build
+            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_LIBRARY_PATH=~/openssl/ -DSTATIC_EXECUTABLES=Off -DCMAKE_EXE_LINKER_FLAGS="-Wl" -S ~/project -B ~/build
+      - run:
+          name: "Build"
+          command: |
+            echo "Building targets: client-tools"
+            cmake --build ~/build --parallel 8 --target client-tools
+
   compile-windows:
     parameters:
       preset:
@@ -564,3 +618,39 @@ workflows:
           name: build-ee-win
           preset: enterprise-pr
           build-tests: true
+
+  mac-tools-pr:
+    jobs:
+      - compile-mac:
+          context:
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          name: mac-tools-m1-enterprise-pr
+          resource: macos.m1.medium.gen1
+          preset: enterprise-pr
+          build-tests: false
+          enterprise: true
+      - compile-mac:
+          context:
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          name: mac-tools-m1-community-pr
+          resource: macos.m1.medium.gen1
+          preset: community-pr
+          build-tests: false
+          enterprise: false
+      - compile-mac:
+          context:
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          name: mac-tools-x86-enterprise-pr
+          resource: macos.x86.medium.gen2
+          preset: enterprise-pr
+          build-tests: false
+          enterprise: true
+      - compile-mac:
+          context:
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          name: mac-tools-x86-community-pr
+          resource: macos.x86.medium.gen2
+          preset: community-pr
+          build-tests: false
+          enterprise: false
+

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertFalse, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertTrue, assertFalse, assertEqual, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for constrained sort arangosearch rule
@@ -30,7 +30,6 @@
 (function() {
   var db = require("@arangodb").db;
   const isCluster = require("internal").isCluster();
-  const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
   return function (isSearchAlias, isCluster, newDbName, dbArgs) {
     const ruleName = "arangosearch-constrained-sort";
     const cn = "UnitTestsCollection";

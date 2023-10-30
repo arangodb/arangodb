@@ -34,6 +34,7 @@
 #include "Containers/FlatHashMap.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Slice.h>
 
 using namespace arangodb;
@@ -41,18 +42,24 @@ using namespace arangodb::aql;
 
 DistributeExecutorInfos::DistributeExecutorInfos(
     std::vector<std::string> clientIds, Collection const* collection,
-    RegisterId regId, ScatterNode::ScatterType type,
-    std::vector<aql::Collection*> satellites)
+    RegisterId regId, std::vector<std::string> attribute,
+    ScatterNode::ScatterType type, std::vector<aql::Collection*> satellites)
     : ClientsExecutorInfos(std::move(clientIds)),
       _regId(regId),
+      _type(type),
+      _attribute(std::move(attribute)),
       _collection(collection),
       _logCol(collection->getCollection()),
-      _type(type),
       _satellites(std::move(satellites)) {}
 
 auto DistributeExecutorInfos::registerId() const noexcept -> RegisterId {
   TRI_ASSERT(_regId.isValid());
   return _regId;
+}
+
+auto DistributeExecutorInfos::attribute() const noexcept
+    -> std::vector<std::string> const& {
+  return _attribute;
 }
 
 auto DistributeExecutorInfos::scatterType() const noexcept
@@ -84,7 +91,16 @@ auto DistributeExecutorInfos::shouldDistributeToAll(
     // We can only distribute to all on Satellite Collections
     return false;
   }
-  auto id = value.get(StaticStrings::IdString);
+  velocypack::Slice id;
+  if (_attribute.empty()) {
+    TRI_ASSERT(value.isObject());
+    id = value.get(StaticStrings::IdString);
+  } else if (_attribute.size() == 1 &&
+             _attribute[0] == StaticStrings::IdString) {
+    id = value;
+  } else {
+    id = VPackSlice::nullSlice();
+  }
   if (!id.isString()) {
     // We can only distribute to all if we can detect the collection name
     return false;
@@ -132,16 +148,15 @@ auto DistributeExecutor::distributeBlock(
         if (input.isNone()) {
           continue;
         }
-
-        if (!input.isObject()) {
+        if (!input.isObject() && _infos.attribute().empty()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_INTERNAL,
+              TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
               "DistributeExecutor requires an object as input");
         }
         // NONE is ignored.
         // Object is processed
         // All others throw.
-        TRI_ASSERT(input.isObject());
+        TRI_ASSERT(input.isObject() || !_infos.attribute().empty());
         if (_infos.shouldDistributeToAll(input)) {
           // This input should be added to all clients
           for (auto const& [key, value] : blockMap) {
@@ -151,11 +166,12 @@ auto DistributeExecutor::distributeBlock(
           auto client = getClient(input);
           if (!client.empty()) {
             // We can only have clients we are prepared for
-            TRI_ASSERT(blockMap.find(client) != blockMap.end());
-            if (ADB_UNLIKELY(blockMap.find(client) == blockMap.end())) {
+            TRI_ASSERT(blockMap.contains(client));
+            if (ADB_UNLIKELY(!blockMap.contains(client))) {
               THROW_ARANGO_EXCEPTION_MESSAGE(
-                  TRI_ERROR_INTERNAL, std::string("unexpected client id '") +
-                                          client + "' found in blockMap");
+                  TRI_ERROR_INTERNAL,
+                  absl::StrCat("unexpected client id '", client,
+                               "' found in blockMap"));
             }
             chosenMap[client].emplace_back(i);
           }
@@ -184,6 +200,25 @@ auto DistributeExecutor::distributeBlock(
 }
 
 auto DistributeExecutor::getClient(VPackSlice input) const -> std::string {
+  auto const& a = _infos.attribute();
+  if (!a.empty()) {
+    // create {"a":{"b":{"c":<input>}}} from <input> and <attribute> vector
+    _temp.clear();
+    _temp.openObject(/*unindexed*/ true);
+    for (size_t i = 0; i < a.size(); ++i) {
+      _temp.add(VPackValue(a[i]));
+      if (i < a.size() - 1) {
+        _temp.openObject(/*unindexed*/ true);
+      }
+    }
+    _temp.add(input);
+    for (size_t i = 0; i < a.size(); ++i) {
+      _temp.close();
+    }
+    TRI_ASSERT(_temp.isClosed());
+    input = _temp.slice();
+  }
+
   auto res = _infos.getResponsibleClient(input);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(std::move(res).result());
