@@ -40,10 +40,8 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
-#include "AqlCall.h"
 #include "Transaction/Methods.h"
 
-#include <Logger/LogMacros.h>
 #include <utility>
 
 using namespace arangodb;

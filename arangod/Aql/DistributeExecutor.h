@@ -29,6 +29,11 @@
 #include "Aql/RegisterInfos.h"
 #include "Basics/ResultT.h"
 
+#include <velocypack/Builder.h>
+
+#include <string>
+#include <vector>
+
 namespace arangodb {
 namespace velocypack {
 class Slice;
@@ -44,11 +49,14 @@ class DistributeExecutorInfos : public ClientsExecutorInfos {
  public:
   DistributeExecutorInfos(std::vector<std::string> clientIds,
                           Collection const* collection, RegisterId regId,
+                          std::vector<std::string> attribute,
                           ScatterNode::ScatterType type,
                           std::vector<aql::Collection*> satellites);
 
   auto registerId() const noexcept -> RegisterId;
   auto scatterType() const noexcept -> ScatterNode::ScatterType;
+
+  std::vector<std::string> const& attribute() const noexcept;
 
   auto getResponsibleClient(arangodb::velocypack::Slice value) const
       -> ResultT<std::string>;
@@ -56,7 +64,12 @@ class DistributeExecutorInfos : public ClientsExecutorInfos {
   auto shouldDistributeToAll(arangodb::velocypack::Slice value) const -> bool;
 
  private:
-  RegisterId _regId;
+  RegisterId const _regId;
+
+  /// @brief type of distribution that this nodes follows.
+  ScatterNode::ScatterType _type;
+
+  std::vector<std::string> _attribute;
 
   /// @brief _colectionName: the name of the sharded collection
   Collection const* _collection;
@@ -64,9 +77,6 @@ class DistributeExecutorInfos : public ClientsExecutorInfos {
   /// @brief Cache for the Logical Collection. This way it is not refetched
   /// on every document.
   std::shared_ptr<arangodb::LogicalCollection> _logCol;
-
-  /// @brief type of distribution that this nodes follows.
-  ScatterNode::ScatterType _type;
 
   /// @brief list of collections that should be used
   std::vector<aql::Collection*> _satellites;
@@ -103,6 +113,9 @@ class DistributeExecutor {
   auto getClient(velocypack::Slice input) const -> std::string;
 
   DistributeExecutorInfos const& _infos;
+
+  // temporary buffer for building lookup objects
+  velocypack::Builder mutable _temp;
 };
 
 /**

@@ -344,6 +344,9 @@ function LeaderDisconnectedSuite() {
         // a new leader, this collection creation however will succeed.
         // unfortunately we cannot reliably test this here.
         db._create(cname + "2");
+        // also drop the collection, otherwise the testing framework will complain
+        // about a missing cleanup.
+        db[cname + "2"].drop();
       } catch (err) {
         assertEqual(errors.ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING.code, err.errorNum, err);
       }

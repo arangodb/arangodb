@@ -129,7 +129,7 @@ void OutputAqlItemRow::moveValueWithoutRowCopy(RegisterId registerId,
   } else {
     block().emplaceValue(_baseIndex, registerId.value(), value);
   }
-  _numValuesWritten++;
+  ++_numValuesWritten;
 }
 
 template<class ItemRowType, class ValueType>
