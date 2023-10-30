@@ -3671,6 +3671,9 @@ RequestLane RestReplicationHandler::lane() const {
       // should be done quickly. The follower at this stage
       // is assumed to be in-sync, but cannot be used for failover
       // as long as it is not added. So get this sorted out quickly.
+      static_assert(PriorityRequestLane(RequestLane::CLUSTER_INTERNAL) ==
+                        RequestPriority::HIGH,
+                    "invalid request lane priority");
       return RequestLane::CLUSTER_INTERNAL;
     }
     if (command == HoldReadLockCollection) {
@@ -3679,20 +3682,34 @@ RequestLane RestReplicationHandler::lane() const {
         // the collection / shard in question.
         // In case of a hard-lock this shard is actually blocking
         // other operations. So let's hurry up with this.
+        static_assert(PriorityRequestLane(RequestLane::CLUSTER_INTERNAL) ==
+                          RequestPriority::HIGH,
+                      "invalid request lane priority");
         return RequestLane::CLUSTER_INTERNAL;
       } else {
         // This process will determine the start of a replication.
         // It can be delayed a bit and can be queued after other write
-        // operations The follower is not in sync and requires to catch up
-        // anyways.
-        return RequestLane::SERVER_REPLICATION_CATCHUP;
+        // operations. However this needs to be on lowest priority.
+        // We could have open transactions on those shards, and we cannot
+        // fill up medium priority queues with waiting exclusive locks.
+        // The lane is required to release the open locks.
+        static_assert(PriorityRequestLane(RequestLane::SERVER_REPLICATION) ==
+                          RequestPriority::LOW,
+                      "invalid request lane priority");
+        return RequestLane::SERVER_REPLICATION;
       }
     }
     if (command == RemoveFollower || command == LoggerFollow ||
         command == Batch || command == Inventory || command == Revisions ||
         command == Dump) {
+      static_assert(PriorityRequestLane(RequestLane::SERVER_REPLICATION_CATCHUP) ==
+                        RequestPriority::MED,
+                    "invalid request lane priority");
       return RequestLane::SERVER_REPLICATION_CATCHUP;
     }
   }
+  static_assert(PriorityRequestLane(RequestLane::SERVER_REPLICATION) ==
+                    RequestPriority::LOW,
+                "invalid request lane priority");
   return RequestLane::SERVER_REPLICATION;
 }
