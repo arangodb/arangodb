@@ -1016,6 +1016,7 @@
         db[cn1].insert(secondHalf);
 
         let query = "FOR doc IN " + vn + " OPTIONS { waitForSync: true } SORT doc.value1 DESC, doc.value2 LIMIT 2000, 100 RETURN doc";
+        db._explain(query);
         let result = db._createStatement(query).explain();
         assertEqual(-1, result.plan.nodes.map(function (node) {
           return node.type;
@@ -1040,7 +1041,7 @@
           return -1;
         });
 
-        result = db._query(query, {}, {fullCount: true});
+        result = db._query(query, {}, {fullCount: true, profile: 3});
         assertEqual(100, result.toArray().length);
         assertEqual(4000, result.getExtra().stats.fullCount);
         let last1 = 99999;

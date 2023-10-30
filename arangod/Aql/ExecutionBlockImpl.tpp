@@ -939,13 +939,22 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
         // note: SCHEDULER is a nullptr in unit tests
         return false;
       }
+      if (ServerState::instance()->isDBServer()) {
+        LOG_DEVEL << "CHECKING ASYNC PREFETCH ELIGIBILITY FOR " << getPlanNode()->id();
+      }
 
       if (!_exeNode->isAsyncPrefetchEnabled()) {
+        if (ServerState::instance()->isDBServer()) {
+          LOG_DEVEL << "ASYNC PREFETCH DISABLED";
+        }
         // async prefetching is disabled for this node type
         return false;
       }
 
       if (std::get<ExecutionState>(result) != ExecutionState::HASMORE) {
+        if (ServerState::instance()->isDBServer()) {
+          LOG_DEVEL << "STATE IS NOT HASMORE BUT " << std::get<ExecutionState>(result);
+        }
         // nothing to fetch
         return false;
       }
@@ -956,16 +965,25 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
         // guarantee that we will not overfetch
         auto rowsCurrent = std::get<2>(result).numRowsLeft();
         auto rowsToFetch = call.getUnclampedLimit();
+        
+        if (ServerState::instance()->isDBServer()) {
+          LOG_DEVEL << "CALL HAS LIMIT. ROWSCURRENT: " << rowsCurrent << ", ROWSTOFETCH: " << (std::holds_alternative<std::size_t>(rowsToFetch) ? std::get<std::size_t>(rowsToFetch) : 9999999999) << ", OFFSET: " << call.getOffset() << ", SKIPPED: " << call.getSkipCount();
+        }
         if (std::holds_alternative<std::size_t>(rowsToFetch) &&
             std::get<std::size_t>(rowsToFetch) <=
                 rowsCurrent + ExecutionBlock::DefaultBatchSize) {
+          if (ServerState::instance()->isDBServer()) {
+            LOG_DEVEL << "CANNOT PREFETCH BECAUSE OF OVERFETCHING";
+          }
           return false;
         }
+      }
+      if (ServerState::instance()->isDBServer()) {
+        LOG_DEVEL << "ALLOWING ASYNC PREFETCHING";
       }
       return true;
     });
 
-    // note: SCHEDULER is a nullptr in unit tests
     if (isEligibleForAsyncPrefetch) {
       // Async prefetching.
       // we can only use async prefetching if the call does not use a limit.
@@ -979,10 +997,17 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
 
       // TODO - we should avoid flooding the queue with too many tasks as that
       // can significantly delay processing of user REST requests.
+     
+      // intentional copy
+      auto stack = ctx.stack;
+      auto& call = stack.modifyTopCall();
+      if (call.hasLimit()) {
+        call.didProduce(std::get<2>(result).numRowsLeft());
+      }
 
       bool queued = SchedulerFeature::SCHEDULER->tryBoundedQueue(
           RequestLane::INTERNAL_LOW,
-          [block = this, task = _prefetchTask, stack = ctx.stack]() mutable {
+          [block = this, task = _prefetchTask, stack = std::move(stack)]() mutable {
             if (!task->tryClaim()) {
               return;
             }
@@ -1958,11 +1983,17 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
         break;
       }
       case ExecState::UPSTREAM: {
+        if (_upstreamState == ExecutionState::DONE) {
+          localExecutorState = ExecutorState::DONE;
+          _execState = ExecState::DONE;
+          _lastRange.reset();
+          break;
+        }
         LOG_QUERY("488de", DEBUG)
             << printTypeInfo() << " request dependency " << _upstreamRequest;
         // If this triggers the executor's produceRows function has returned
         // HASMORE even if it knew that upstream has no further rows.
-        TRI_ASSERT(_upstreamState != ExecutionState::DONE);
+        TRI_ASSERT(_upstreamState != ExecutionState::DONE) << getPlanNode()->id();
         // We need to make sure _lastRange is all used for single-dependency
         // executors.
         TRI_ASSERT(isMultiDepExecutor<Executor> || !lastRangeHasDataRow());
