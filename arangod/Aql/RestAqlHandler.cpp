@@ -832,15 +832,45 @@ RequestLane RestAqlHandler::lane() const {
   }
 
   if (ServerState::instance()->isDBServer()) {
-    std::vector<std::string> const& suffixes = _request->suffixes();
-
-    if (suffixes.size() == 2 && suffixes[0] == "finish") {
-      // AQL shutdown requests should have medium priority, so it can release
-      // locks etc. and unblock other pending requests
+    bool isPartOfTransaction = false;
+    // We do not care for the real value, enough if it is there.
+    std::ignore = _request->value(
+        StaticStrings::TransactionId, isPartOfTransaction);
+    if (isPartOfTransaction) {
+      // If we are part of a transaction we already have all CollectionLocks
+      // we cannot lazy lock, however we need to be able to begin a new
+      // Query within this transaction in order to release it's lock
+      // hence we need to push this on MED lane, to avoid starving on LOW.
       static_assert(PriorityRequestLane(RequestLane::CLUSTER_AQL_SHUTDOWN) ==
                         RequestPriority::MED,
                     "invalid request lane priority");
       return RequestLane::CLUSTER_AQL_SHUTDOWN;
+    }
+
+    switch (_request->requestType()) {
+      case rest::RequestType::POST:
+        // AQL Setup requests potentially block for Collection locks.
+        // They have to be on lowest priority.
+        static_assert(
+            PriorityRequestLane(RequestLane::CLUSTER_AQL) == RequestPriority::LOW,
+            "invalid request lane priority");
+        return RequestLane::CLUSTER_AQL;
+      case rest::RequestType::PUT:
+      case rest::RequestType::DELETE_REQ: {
+        // PUT and delete are to continue and finish a query. They have to have a higher priority
+        // then to start a new one. We also have all Collection locks in our hands.
+        static_assert(PriorityRequestLane(RequestLane::CLUSTER_AQL_SHUTDOWN) ==
+                          RequestPriority::MED,
+                      "invalid request lane priority");
+        return RequestLane::CLUSTER_AQL_SHUTDOWN;
+      }
+      default: {
+        // Not implemented let's treat this as medium priority where it should not block
+        static_assert(PriorityRequestLane(RequestLane::CLUSTER_AQL_SHUTDOWN) ==
+                          RequestPriority::MED,
+                      "invalid request lane priority");
+        return RequestLane::CLUSTER_AQL_SHUTDOWN;
+      }
     }
   }
 
