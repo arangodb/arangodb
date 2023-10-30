@@ -1,5 +1,4 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for COLLECT w/ KEEP
