@@ -61,6 +61,51 @@ RestTransactionHandler::RestTransactionHandler(ArangodServer& server,
                                                GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response), _v8Context(nullptr) {}
 
+RequestLane RestTransactionHandler::lane() const {
+  if (ServerState::instance()->isDBServer()) {
+    bool isSyncReplication = false;
+    // We do not care for the real value, enough if it is there.
+    std::ignore = _request->value(
+        StaticStrings::IsSynchronousReplicationString, isSyncReplication);
+    if (isSyncReplication) {
+      return RequestLane::SERVER_SYNCHRONOUS_REPLICATION;
+      // This leads to the high queue, we want replication requests (for
+      // commit or abort in the El Cheapo case) to be executed with a
+      // higher prio than leader requests, even if they are done from
+      // AQL.
+    }
+
+    switch (_request->requestType()) {
+      case rest::RequestType::POST: {
+        //  Starting a new Transaction should always be lowest priority.
+        static_assert(PriorityRequestLane(RequestLane::CLIENT_V8) ==
+                          RequestPriority::LOW,
+                      "invalid request lane priority");
+        return RequestLane::CLIENT_V8;
+      }
+      case rest::RequestType::GET: {
+        // This is only to get status of running transactions without locks
+        // we should make this as quick as possible, so highest
+        static_assert(PriorityRequestLane(RequestLane::CLUSTER_INTERNAL) ==
+                          RequestPriority::HIGH,
+                      "invalid request lane priority");
+        return RequestLane::CLUSTER_INTERNAL;
+      }
+      case rest::RequestType::DELETE_REQ:
+      case rest::RequestType::PUT: {
+        // This is to finish a transaction. Either Commit or Abort.
+        // This has to be higher priority then starting a new one.
+        static_assert(PriorityRequestLane(RequestLane::CONTINUATION) ==
+                          RequestPriority::MED,
+                      "invalid request lane priority");
+        return RequestLane::CONTINUATION;
+      }
+
+    }
+  }
+  return RequestLane::CLIENT_V8;
+}
+
 RestStatus RestTransactionHandler::execute() {
   switch (_request->requestType()) {
     case rest::RequestType::POST:
