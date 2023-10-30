@@ -408,3 +408,30 @@ TEST_P(IndexMerger, one_iterator_corner_case) {
 
   ASSERT_EQ(count, a.size());
 }
+
+TEST_P(IndexMerger, change_me) {
+  bool isUnique = true;
+
+  std::vector<MyKeyValue> a = {2, 3, 4, 5};
+
+  std::vector<MyKeyValue> b = {1, 2, 3, 4};
+
+  std::vector<Desc> iters;
+  iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0, isUnique);
+  iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0, isUnique);
+
+  Strategy merger{std::move(iters), 1};
+
+  bool hasMore = true;
+  std::size_t count = 0;
+  while (hasMore) {
+    hasMore =
+        merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
+          EXPECT_EQ(docs[0], docs[1]);
+          count += 1;
+          return doReadMore();
+        });
+  }
+
+  ASSERT_EQ(count, 4 + 4 + 1);
+}
