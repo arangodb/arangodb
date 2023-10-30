@@ -78,13 +78,30 @@ RequestLane RestDocumentHandler::lane() const {
       std::ignore = _request->value(
           StaticStrings::IsSynchronousReplicationString, isSyncReplication);
       if (isSyncReplication) {
+        static_assert(PriorityRequestLane(RequestLane::SERVER_SYNCHRONOUS_REPLICATION) ==
+                          RequestPriority::HIGH,
+                      "invalid request lane priority");
         return RequestLane::SERVER_SYNCHRONOUS_REPLICATION;
         // This leads to the high queue, we want replication requests to be
         // executed with a higher prio than leader requests, even if they
         // are done from AQL.
       }
 
-      // fall through for not-GET, non-replication requests
+      bool isPartOfTransaction = false;
+      // We do not care for the real value, enough if it is there.
+      std::ignore = _request->value(
+          StaticStrings::TransactionId, isPartOfTransaction);
+      if (isPartOfTransaction) {
+        static_assert(PriorityRequestLane(RequestLane::CONTINUATION) ==
+                          RequestPriority::MED,
+                      "invalid request lane priority");
+        return RequestLane::CONTINUATION;
+        // This leads to the medium queue. We will start new transactions on LOW,
+        // we need to make sure that we can use and commit those transactions
+        // on better lanes than LOW, otherwise we could get stuck on waiting for
+        // locks, which can only be released by using an earlier transaction.
+      }
+      // fall through for not-GET, non-replication, non-transaction requests
     }
   }
   return RequestLane::CLIENT_SLOW;
