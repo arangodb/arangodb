@@ -26,16 +26,6 @@
 #include "Aql/IndexStreamIterator.h"
 #include "Aql/IndexJoinStrategy.h"
 
-namespace {
-std::string to_debug_string(auto const& x) {
-  using std::to_string;
-  return to_string(x);
-}
-
-// Please keep this line. Needs to be enabled if `LOG_INDEX_MERGER` is used.
-// std::string to_debug_string(VPackSlice const& x) { return x.toJson(); }
-}  // namespace
-
 namespace arangodb::aql {
 
 struct DefaultComparator {
@@ -291,12 +281,12 @@ bool GenericMergeJoin<SliceType, DocIdType, KeyCompare>::advanceIndexes() {
     if (!exhausted) {
       LOG_INDEX_MERGER << "at position " << where;
       for (auto k : indexes[where]._position) {
-        LOG_INDEX_MERGER << k << ", Value: " << to_debug_string(k);
+        LOG_INDEX_MERGER << k;
       }
 
       LOG_INDEX_MERGER << "at rbegin ";
       for (auto k : indexes.rbegin()->_position) {
-        LOG_INDEX_MERGER << k << ", Value: " << to_debug_string(k);
+        LOG_INDEX_MERGER << k;
       }
 
       LOG_INDEX_MERGER << "diff = "
@@ -317,7 +307,7 @@ bool GenericMergeJoin<SliceType, DocIdType, KeyCompare>::advanceIndexes() {
     auto& idx = indexes[where];
     LOG_INDEX_MERGER << "seeking iterator at " << where << " to";
     for (auto k : currentKeySet) {
-      LOG_INDEX_MERGER << k << ", Value: " << to_debug_string(k);
+      LOG_INDEX_MERGER << k;
     }
     idx.seekTo(currentKeySet);
     documentIds[where] = idx._iter->load(idx._projections);
