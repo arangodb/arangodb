@@ -1,4 +1,4 @@
-/* global describe, it, before, after, AQL_EXPLAIN*/
+/* global describe, it, before, after */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////

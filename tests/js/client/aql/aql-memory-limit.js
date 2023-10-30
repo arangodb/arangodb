@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, fail, AQL_EXECUTE */
+/*global assertEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for memory limits

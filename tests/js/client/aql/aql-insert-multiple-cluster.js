@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global arango, assertEqual, assertNotEqual, assertTrue, assertFalse, assertUndefined, assertNull, fail, AQL_EXECUTE */
+/*global arango, assertEqual, assertNotEqual, assertTrue, assertFalse, assertUndefined, assertNull, fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -27,7 +27,6 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const internal = require('internal');
 const ERRORS = require("@arangodb").errors;
-const isServer = require("@arangodb").isServer;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const isEnterprise = internal.isEnterprise();
 const cn = "UnitTestsCollection";
@@ -35,10 +34,9 @@ const cn2 = "UnitTestsCollection2";
 const db = arangodb.db;
 const numDocs = 10000;
 const ruleName = "optimize-cluster-multiple-document-operations";
-const aqlExplain = isServer ? global.AQL_EXPLAIN : (query, bindVars, options) => {
+const aqlExplain = (query, bindVars, options) => {
   return arango.POST("/_api/explain", {query, bindVars, options});
 };
-
 
 const assertRuleIsUsed = (query, bind = {}, options = {}) => {
   let res = aqlExplain(query, bind, options);
@@ -491,9 +489,6 @@ function InsertMultipleDocumentsSuite(params) {
     },
 
     testExclusive: function () {
-      if (isServer) {
-        return;
-      }
       const query = `FOR d IN [{_key: '123', value: "a"}] INSERT d INTO ${cn} OPTIONS {exclusive: true}`;
       assertRuleIsUsed(query);
 
@@ -520,9 +515,6 @@ function InsertMultipleDocumentsSuite(params) {
     },
 
     testFillIndexCache: function () {
-      if (isServer) {
-        return;
-      }
       let {
         getEndpointsByType,
         debugCanUseFailAt,
@@ -838,9 +830,7 @@ function InsertMultipleDocumentsExplainSuiteMultipleShards() {
 
 jsunity.run(InsertMultipleDocumentsSuiteSingleShard);
 jsunity.run(InsertMultipleDocumentsSuiteMultipleShards);
-if (isServer) {
-  jsunity.run(InsertMultipleDocumentsExplainSuiteSingleShard);
-  jsunity.run(InsertMultipleDocumentsExplainSuiteMultipleShards);
-}
+jsunity.run(InsertMultipleDocumentsExplainSuiteSingleShard);
+jsunity.run(InsertMultipleDocumentsExplainSuiteMultipleShards);
 
 return jsunity.done();

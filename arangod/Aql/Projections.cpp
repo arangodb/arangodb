@@ -68,6 +68,12 @@ void Projections::clear() noexcept {
   _index.reset();
 }
 
+/// @brief erase projection members if cb returns true
+void Projections::erase(std::function<bool(Projection&)> const& cb) {
+  std::erase_if(_projections, cb);
+  handleSharedPrefixes();
+}
+
 /// @brief set the index context for projections using an index
 void Projections::setCoveringContext(DataSourceId const& id,
                                      std::shared_ptr<Index> const& index) {
@@ -101,6 +107,175 @@ uint16_t Projections::coveringIndexPosition(
                                  "unable to determine covering index position");
 }
 
+void Projections::produceFromDocument(
+    velocypack::Builder& b, velocypack::Slice slice,
+    transaction::Methods const* trxPtr,
+    fu2::unique_function<void(Variable const*, velocypack::Slice) const> const&
+        cb) const {
+  TRI_ASSERT(slice.isObject());
+
+  size_t levelsOpen = 0;
+
+  for (auto const& it : _projections) {
+    TRI_ASSERT(it.variable != nullptr);
+
+    if (it.type == AttributeNamePath::Type::IdAttribute) {
+      // projection for "_id"
+      TRI_ASSERT(levelsOpen == 0);
+      TRI_ASSERT(it.path.size() == 1);
+
+      b.clear();
+      b.add(VPackValue(transaction::helpers::extractIdString(trxPtr->resolver(),
+                                                             slice, slice)));
+      cb(it.variable, b.slice());
+    } else if (it.type == AttributeNamePath::Type::KeyAttribute) {
+      // projection for "_key"
+      TRI_ASSERT(levelsOpen == 0);
+      TRI_ASSERT(it.path.size() == 1);
+      b.clear();
+      cb(it.variable, transaction::helpers::extractKeyFromDocument(slice));
+    } else if (it.type == AttributeNamePath::Type::FromAttribute) {
+      // projection for "_from"
+      TRI_ASSERT(levelsOpen == 0);
+      TRI_ASSERT(it.path.size() == 1);
+      cb(it.variable, transaction::helpers::extractFromFromDocument(slice));
+    } else if (it.type == AttributeNamePath::Type::ToAttribute) {
+      // projection for "_to"
+      TRI_ASSERT(levelsOpen == 0);
+      TRI_ASSERT(it.path.size() == 1);
+      cb(it.variable, transaction::helpers::extractToFromDocument(slice));
+    } else if (it.type == AttributeNamePath::Type::SingleAttribute) {
+      // projection for any other top-level attribute
+      TRI_ASSERT(levelsOpen == 0);
+      TRI_ASSERT(it.path.size() == 1);
+      cb(it.variable, slice.get(it.path.get().at(0)));
+    } else {
+      // projection for a sub-attribute, e.g. a.b.c
+      // this is a lot more complex, because we may need to open and close
+      // multiple sub-objects, e.g. a projection on the sub-attribute a.b.c
+      // needs to build
+      //   { a: { b: { c: valueOfC } } }
+      TRI_ASSERT(levelsOpen <= it.startsAtLevel);
+      TRI_ASSERT(it.type == AttributeNamePath::Type::MultiAttribute);
+      TRI_ASSERT(it.path.size() > 1);
+
+      // TODO: simplify level handling
+      VPackSlice found = slice;
+      VPackSlice prev = found;
+      size_t level = 0;
+      while (level < it.path.size()) {
+        found = found.get(it.path[level]);
+        if (found.isNone() || level == it.path.size() - 1 ||
+            !found.isObject()) {
+          break;
+        }
+        if (level >= levelsOpen) {
+          ++levelsOpen;
+        }
+        ++level;
+        prev = found;
+      }
+      if (level >= it.startsAtLevel) {
+        if (found.isCustom()) {
+          b.clear();
+          b.add(VPackValue(transaction::helpers::extractIdString(
+              trxPtr->resolver(), found, prev)));
+          cb(it.variable, b.slice());
+        } else {
+          cb(it.variable, found);
+        }
+      }
+
+      TRI_ASSERT(it.path.size() > it.levelsToClose);
+      size_t closeUntil = it.path.size() - it.levelsToClose;
+      while (levelsOpen >= closeUntil) {
+        --levelsOpen;
+      }
+    }
+  }
+
+  TRI_ASSERT(levelsOpen == 0);
+}
+
+/// @brief projections from a covering index
+void Projections::produceFromIndex(
+    velocypack::Builder& b, IndexIteratorCoveringData& covering,
+    transaction::Methods const* trxPtr,
+    fu2::unique_function<void(Variable const*, velocypack::Slice) const> const&
+        cb) const {
+  TRI_ASSERT(_index != nullptr);
+
+  size_t levelsOpen = 0;
+
+  bool const isArray = covering.isArray();
+  for (auto const& it : _projections) {
+    if (isArray) {
+      // we will get a Slice with an array of index values. now we need
+      // to look up the array values from the correct positions to
+      // populate the result with the projection values. this case will
+      // be triggered for indexes that can be set up on any number of
+      // attributes (persistent/hash/skiplist)
+      TRI_ASSERT(isCoveringIndexPosition(it.coveringIndexPosition));
+      VPackSlice found = covering.at(it.coveringIndexPosition);
+
+      // TODO: remove entire level handling
+      TRI_ASSERT(levelsOpen <= it.startsAtLevel);
+      size_t level = 0;
+      size_t const n =
+          std::min(it.path.size(), static_cast<size_t>(it.coveringIndexCutoff));
+      while (level < n) {
+        if (level == n - 1) {
+          break;
+        }
+        if (level >= levelsOpen) {
+          ++levelsOpen;
+        }
+        ++level;
+      }
+      if (level >= it.startsAtLevel) {
+        // _id cannot be part of a user-defined index, but can be used
+        // from within stored values
+        if (it.type == AttributeNamePath::Type::IdAttribute) {
+          // _id attribute
+          b.add(it.path[level],
+                VPackValue(transaction::helpers::makeIdFromParts(
+                    trxPtr->resolver(), _datasourceId, found)));
+          b.clear();
+          b.add(VPackValue(transaction::helpers::makeIdFromParts(
+              trxPtr->resolver(), _datasourceId, found)));
+          cb(it.variable, b.slice());
+        } else {
+          cb(it.variable, found);
+        }
+      }
+
+      TRI_ASSERT(it.path.size() > it.levelsToClose);
+      size_t closeUntil = it.path.size() - it.levelsToClose;
+      while (levelsOpen >= closeUntil) {
+        --levelsOpen;
+      }
+    } else {
+      // no array Slice... this case will be triggered for indexes that
+      // contain simple string values, such as the primary index or the
+      // edge index
+      TRI_ASSERT(levelsOpen == 0);
+      TRI_ASSERT(it.path.size() == 1);
+
+      auto slice = covering.value();
+      if (it.type == AttributeNamePath::Type::IdAttribute) {
+        b.clear();
+        b.add(VPackValue(transaction::helpers::makeIdFromParts(
+            trxPtr->resolver(), _datasourceId, slice)));
+        cb(it.variable, b.slice());
+      } else {
+        cb(it.variable, slice);
+      }
+    }
+  }
+
+  TRI_ASSERT(levelsOpen == 0);
+}
+
 void Projections::toVelocyPackFromDocument(
     velocypack::Builder& b, velocypack::Slice slice,
     transaction::Methods const* trxPtr) const {
@@ -110,7 +285,7 @@ void Projections::toVelocyPackFromDocument(
   size_t levelsOpen = 0;
 
   // the single-attribute projections are easy. we dispatch here based on the
-  // attribute type there are a few optimized functions for retrieving _key,
+  // attribute type. there are a few optimized functions for retrieving _key,
   // _id, _from and _to.
   for (auto const& it : _projections) {
     if (it.type == AttributeNamePath::Type::IdAttribute) {

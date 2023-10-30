@@ -195,12 +195,8 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     if (this.dumpOptions.hasOwnProperty("threads")) {
       this.dumpConfig.setThreads(this.dumpOptions.threads);
     }
-    if (this.dumpOptions.useParallelDump) {
-      this.dumpConfig.setUseParallelDump();
-    }
-    if (this.dumpOptions.splitFiles) {
-      this.dumpConfig.setUseSplitFiles();
-    }
+    this.dumpConfig.setUseParallelDump(this.dumpOptions.useParallelDump);
+    this.dumpConfig.setUseSplitFiles(this.dumpOptions.splitFiles);
     if (this.dumpOptions.jwtSecret) {
       this.keyDir = fs.join(fs.getTempPath(), 'jwtSecrets');
       if (!fs.exists(this.keyDir)) {  // needed on win32
@@ -669,7 +665,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       this.allDatabases.forEach(db => {
         if (!this.dumpFrom(db, true)) {
           this.results.RtaDump = {
-            message:  `RtaDump: failed for ${db}`,
+            message: `RtaDump: failed for ${db}`,
             status: false
           };
           success = false;
@@ -915,7 +911,9 @@ function dumpMultiple (options) {
   let dumpOptions = {
     dbServers: 3,
     allDatabases: true,
-    deactivateCompression: true
+    deactivateCompression: true,
+    parallelDump: true,
+    splitFiles: true,
   };
   _.defaults(dumpOptions, options);
   let c = getClusterStrings(dumpOptions);
@@ -937,7 +935,9 @@ function dumpWithCrashes (options) {
     allDatabases: true,
     deactivateCompression: true,
     activateFailurePoint: true,
-    threads: 1
+    threads: 1,
+    useParallelDump: true,
+    splitFiles: true,
   };
   _.defaults(dumpOptions, options);
   let c = getClusterStrings(dumpOptions);
@@ -953,14 +953,14 @@ function dumpWithCrashes (options) {
   return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes', tstFiles, function(){}, []);
 }
 
-function dumpWithCrashesParallel (options) {
+function dumpWithCrashesNonParallel (options) {
   let dumpOptions = {
     dbServers: 3,
     deactivateCompression: true,
     activateFailurePoint: true,
     threads: 1,
-    useParallelDump: true,
-    splitFiles: true,
+    useParallelDump: false,
+    splitFiles: false,
   };
   _.defaults(dumpOptions, options);
   let c = getClusterStrings(dumpOptions);
@@ -994,6 +994,7 @@ function dumpAuthentication (options) {
   _.defaults(dumpAuthOpts, options);
   _.defaults(restoreAuthOpts, options);
   dumpAuthOpts.dbServers = 3;
+  dumpAuthOpts.useParallelDump = false;
   restoreAuthOpts.dbServers = 3;
   let tstFiles = {
     dumpSetup: 'dump-authentication-setup.js',
@@ -1065,6 +1066,7 @@ function dumpEncrypted (options) {
   dumpOptions.encrypted = true;
   dumpOptions.compressed = true; // Should be overruled by 'encrypted'
   dumpOptions.dbServers = 3;
+  dumpOptions.splitFiles = false;
 
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
@@ -1078,12 +1080,12 @@ function dumpEncrypted (options) {
   return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart, []);
 }
 
-function dumpParallel (options) {
+function dumpNonParallel (options) {
   let c = getClusterStrings(options);
 
   let dumpOptions = _.clone(options);
-  dumpOptions.useParallelDump = true;
-  dumpOptions.splitFiles = true;
+  dumpOptions.useParallelDump = false;
+  dumpOptions.splitFiles = false;
   dumpOptions.dbServers = 3;
 
   let tstFiles = {
@@ -1255,8 +1257,8 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['dump_maskings'] = dumpMaskings;
   testFns['dump_multiple'] = dumpMultiple;
   testFns['dump_with_crashes'] = dumpWithCrashes;
-  testFns['dump_with_crashes_parallel'] = dumpWithCrashesParallel;
-  testFns['dump_parallel'] = dumpParallel;
+  testFns['dump_with_crashes_non_parallel'] = dumpWithCrashesNonParallel;
+  testFns['dump_non_parallel'] = dumpNonParallel;
   testFns['hot_backup'] = hotBackup;
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
