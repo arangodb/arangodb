@@ -9260,13 +9260,48 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
               auto* lhs = root->getMember(0);
               auto* rhs = root->getMember(1);
 
-              auto matches = [](AstNode const* lhs, AstNode const* rhs,
-                                IndexNode const* i1, IndexNode const* i2) {
+              auto matches = [&plan](AstNode const* lhs, AstNode const* rhs,
+                                     IndexNode const* i1, IndexNode const* i2) {
                 std::pair<Variable const*,
                           std::vector<arangodb::basics::AttributeName>>
                     usedVar;
+                LOG_INDEX_OPTIMIZER_RULE
+                    << "called with i1: " << i1->outVariable()->name
+                    << ", i2: " << i2->outVariable()->name
+                    << ", lhs: " << lhs->getTypeString()
+                    << ", rhs: " << rhs->getTypeString();
+                if (lhs->type == NODE_TYPE_REFERENCE) {
+                  Variable const* other =
+                      static_cast<Variable const*>(lhs->getData());
+                  LOG_INDEX_OPTIMIZER_RULE << "lhs is a reference to "
+                                           << other->name << ". looking for "
+                                           << i1->outVariable()->name;
+                  auto setter = plan->getVarSetBy(other->id);
+                  if (setter != nullptr &&
+                      (setter->getType() == EN::INDEX ||
+                       setter->getType() == EN::ENUMERATE_COLLECTION)) {
+                    LOG_INDEX_OPTIMIZER_RULE << "lhs is set by index|enum";
+                    auto* documentNode =
+                        ExecutionNode::castTo<DocumentProducingNode*>(setter);
+                    auto const& p = documentNode->projections();
+                    for (size_t i = 0; i < p.size(); ++i) {
+                      if (p[i].path.get()[0] ==
+                          i1->getIndexes()[0]->fields()[0][0].name) {
+                        usedVar.first = documentNode->outVariable();
+                        for (auto const& it : p[i].path.get()) {
+                          usedVar.second.emplace_back(it);
+                        }
+                        LOG_INDEX_OPTIMIZER_RULE << "lhs matched outvariable "
+                                                 << usedVar.first->name << ", "
+                                                 << p[i].path.get();
+                        break;
+                      }
+                    }
+                  }
+                }
 
-                if (!lhs->isAttributeAccessForVariable(
+                if (usedVar.first == nullptr &&
+                    !lhs->isAttributeAccessForVariable(
                         usedVar, /*allowIndexedAccess*/ false)) {
                   // lhs is not an attribute access
                   return false;
@@ -9277,7 +9312,42 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                   return false;
                 }
                 // lhs matches i1's FOR loop index field
-                if (!rhs->isAttributeAccessForVariable(
+
+                usedVar.first = nullptr;
+                usedVar.second.clear();
+
+                if (rhs->type == NODE_TYPE_REFERENCE) {
+                  Variable const* other =
+                      static_cast<Variable const*>(rhs->getData());
+                  LOG_INDEX_OPTIMIZER_RULE << "rhs is a reference to "
+                                           << other->name << ". looking for "
+                                           << i2->outVariable()->name;
+                  auto setter = plan->getVarSetBy(other->id);
+                  if (setter != nullptr &&
+                      (setter->getType() == EN::INDEX ||
+                       setter->getType() == EN::ENUMERATE_COLLECTION)) {
+                    LOG_INDEX_OPTIMIZER_RULE << "rhs is set by index|enum";
+                    auto* documentNode =
+                        ExecutionNode::castTo<DocumentProducingNode*>(setter);
+                    auto const& p = documentNode->projections();
+                    for (size_t i = 0; i < p.size(); ++i) {
+                      if (p[i].path.get()[0] ==
+                          i2->getIndexes()[0]->fields()[0][0].name) {
+                        usedVar.first = documentNode->outVariable();
+                        for (auto const& it : p[i].path.get()) {
+                          usedVar.second.emplace_back(it);
+                        }
+                        LOG_INDEX_OPTIMIZER_RULE << "rhs matched outvariable "
+                                                 << usedVar.first->name << ", "
+                                                 << p[i].path.get();
+                        break;
+                      }
+                    }
+                  }
+                }
+
+                if (usedVar.first == nullptr &&
+                    !rhs->isAttributeAccessForVariable(
                         usedVar, /*allowIndexedAccess*/ false)) {
                   // rhs is not an attribute access
                   return false;

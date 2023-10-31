@@ -22,13 +22,14 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/JoinExecutor.h"
-#include "Aql/OutputAqlItemRow.h"
+#include "JoinExecutor.h"
 #include "Aql/Collection.h"
+#include "Aql/DocumentExpressionContext.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/QueryContext.h"
-#include "VocBase/LogicalCollection.h"
+#include "Basics/system-compiler.h"
 #include "Logger/LogMacros.h"
-#include "DocumentExpressionContext.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -136,7 +137,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                return true;
                              }}},
                          {});
-        if (result.fail()) {
+        if (ADB_UNLIKELY(result.fail())) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               result.errorNumber(),
               basics::StringUtils::concatT(
