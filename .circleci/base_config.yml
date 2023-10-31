@@ -57,10 +57,12 @@ commands:
             - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
       - run:
           name: Checkout Enterprise
+          environment:
+            GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no"
           command: |
             mkdir -p << parameters.destination >>
             cd << parameters.destination >>
-            GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no" git clone git@github.com:arangodb/enterprise.git .
+            git clone git@github.com:arangodb/enterprise.git .
             git reset --hard << pipeline.parameters.enterprise-commit >>
 
 jobs:
@@ -600,7 +602,7 @@ workflows:
       - compile-windows:
           context:
             - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          name: build-enterprise-win
+          name: build-ee-x64
           preset: enterprise-pr
           build-tests: true
 
