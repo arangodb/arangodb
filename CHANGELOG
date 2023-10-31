@@ -1,15 +1,18 @@
-v3.10.11 (2023-10-19)
+v3.10.12 (XXXX-XX-XX)
 ---------------------
 
 * Fixed BTS-1669 Transaction Manager returns Error if we Abort an Expired
   Transaction.
   There was a small time window of around 2 seconds in which aborting expired
   transactions would return "transaction aborted" instead of returning success.
-  The time window was between when a transaction expired (according to its
-  TTL value) and when the transaction manager's garbage collection aborted
-  the transaction. The issue only happened for transactions which outlived
-  their TTL value and for which an abort operation was attempted in that
-  time window.
+  The time window was between when a transaction expired (according to its TTL
+  value) and when the transaction manager's garbage collection aborted the
+  transaction. The issue only happened for transactions which outlived their TTL
+  value and for which an abort operation was attempted in that time window.
+
+
+v3.10.11 (2023-10-19)
+---------------------
 
 * Fix a race in failure oracle feature on server shutdown.
 
