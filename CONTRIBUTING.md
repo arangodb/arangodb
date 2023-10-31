@@ -415,6 +415,12 @@ Depending on the platform, ArangoDB tries to locate the temporary directory:
 - Windows: the [W32 API function GetTempPath()](https://msdn.microsoft.com/en-us/library/windows/desktop/aa364992%28v=vs.85%29.aspx) is called
 - all platforms: `--temp.path` overrules the above system provided settings.
 
+This can be used in tests if you need a place for temporary data in the
+file system, to which all instances in the cluster have access.
+
+Use `require("fs").getTempPath()` from JavaScript and `TRI_GetTempPath`
+from C++ to get a path for that place.
+
 ### Local Cluster Startup
 
 The scripts `scripts/startLocalCluster` helps you to quickly fire up a testing
