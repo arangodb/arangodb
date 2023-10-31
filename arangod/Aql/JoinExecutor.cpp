@@ -180,6 +180,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
         bool filtered = false;
 
         auto filterCallback = [&](auto docPtr) {
+          TRI_ASSERT(!useFilterProjections);
           auto doc = extractSlice(docPtr);
           LOG_JOIN << "INDEX " << k << " read document " << doc.toJson();
           GenericDocumentExpressionContext ctx{_trx,
@@ -196,7 +197,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
           LOG_JOIN << "INDEX " << k << " filter = " << std::boolalpha
                    << filtered;
 
-          if (!filtered && !useFilterProjections) {
+          if (!filtered) {
             // add document to the list
             _documents[k] = std::make_unique<std::string>(
                 doc.template startAs<char>(), doc.byteSize());

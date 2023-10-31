@@ -38,6 +38,9 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
+#define DO_LOG 0
+#include "Logger/LogMacros.h"
+
 #include <function2.hpp>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -60,6 +63,11 @@ IndexIterator::DocumentCallback aql::getCallback(
       }
     }
 
+#if DO_LOG
+    LOG_DEVEL << "GETCALLBACK - WITH PROJECTIONS NOT COVERED BY INDEX "
+              << slice.toJson();
+#endif
+
     context.incrScanned();
 
     if (context.hasFilter() && !context.checkFilter(slice)) {
@@ -76,6 +84,9 @@ IndexIterator::DocumentCallback aql::getCallback(
     TRI_ASSERT(!output.isFull());
 
     if (context.getProjectionsForRegisters().empty()) {
+#if DO_LOG
+      LOG_DEVEL << "GET CALLBACK - NO REGISTERS";
+#endif
       // write all projections combined into the global output register
       // recycle our Builder object
       VPackBuilder& objectBuilder = context.getBuilder();
@@ -89,6 +100,9 @@ IndexIterator::DocumentCallback aql::getCallback(
       RegisterId registerId = context.getOutputRegister();
       output.moveValueInto(registerId, input, s);
     } else {
+#if DO_LOG
+      LOG_DEVEL << "GET CALLBACK - WITH REGISTERS";
+#endif
       // write projections into individual output registers
       context.getProjectionsForRegisters().produceFromDocument(
           context.getBuilder(), slice, context.getTrxPtr(),
@@ -121,6 +135,10 @@ IndexIterator::DocumentCallback aql::getCallback(
       }
     }
 
+#if DO_LOG
+    LOG_DEVEL << "GETCALLBACK - DOCUMENTCOPY";
+#endif
+
     context.incrScanned();
 
     if (context.hasFilter() && !context.checkFilter(s)) {
@@ -132,6 +150,9 @@ IndexIterator::DocumentCallback aql::getCallback(
       return true;
     }
 
+#if DO_LOG
+    LOG_DEVEL << "FULL COPY";
+#endif
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
     RegisterId registerId = context.getOutputRegister();
@@ -179,6 +200,10 @@ IndexIterator::LocalDocumentIdCallback aql::getNullCallback(
         return false;
       }
     }
+
+#if DO_LOG
+    LOG_DEVEL << "GETNULLCALLBACK";
+#endif
 
     context.incrScanned();
 
@@ -265,11 +290,7 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _filter(infos.getFilter()),
       _projections(infos.getProjections()),
       _filterProjections(infos.getFilterProjections()),
-#if 0
-      // TODO: IndexNodes currently don't write their projections
-      // into individual registers. this will be implemented soon.
       _projectionsForRegisters(_projections),  // do a full copy first
-#endif
       _resourceMonitor(infos.getResourceMonitor()),
       _numScanned(0),
       _numFiltered(0),
@@ -280,15 +301,9 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
                        infos.hasMultipleExpansions()),
       _allowCoveringIndexOptimization(false),  // can be updated later
       _isLastIndex(false) {
-#if 0
-      // TODO: IndexNodes currently don't write their projections
-      // into individual registers. this will be implemented soon.
   // now erase all projections for which there is no output register
-  _projectionsForRegisters.erase([](Projections::Projection& p) {
-    return p.variable == nullptr;
-  });
-#endif
-  TRI_ASSERT(_projectionsForRegisters.empty());
+  _projectionsForRegisters.erase(
+      [](Projections::Projection& p) { return p.variable == nullptr; });
 
   // build ExpressionContext for filtering if we need one
   if (hasFilter()) {
@@ -539,6 +554,10 @@ IndexIterator::CoveringCallback aql::getCallback(
       }
     }
 
+#if DO_LOG
+    LOG_DEVEL << "GETCALLBACK - WITHPROJECTIONSCOVEREDBYINDEX";
+#endif
+
     context.incrScanned();
 
     if (context.hasFilter() && !context.checkFilter(&covering)) {
@@ -551,6 +570,9 @@ IndexIterator::CoveringCallback aql::getCallback(
       InputAqlItemRow const& input = context.getInputRow();
 
       if (context.getProjectionsForRegisters().empty()) {
+#if DO_LOG
+        LOG_DEVEL << "PROJECTIONS COVERED BY INDEX - NO REGS";
+#endif
         // write all projections combined into the global output register
         // recycle our Builder object
         VPackBuilder& objectBuilder = context.getBuilder();
@@ -568,10 +590,10 @@ IndexIterator::CoveringCallback aql::getCallback(
         VPackSlice s = objectBuilder.slice();
         output.moveValueInto(registerId, input, s);
       } else {
+#if DO_LOG
+        LOG_DEVEL << "PROJECTIONS COVERED BY INDEX - WITH REGS";
+#endif
         // write projections into individual output registers
-        // currently this code cannot be reached, because IndexNode do not
-        // yet support writing projections into individual registers
-        TRI_ASSERT(false);
         context.getProjectionsForRegisters().produceFromIndex(
             context.getBuilder(), covering, context.getTrxPtr(),
             [&](Variable const* variable, velocypack::Slice slice) {
@@ -607,6 +629,10 @@ IndexIterator::CoveringCallback aql::getCallback(
       }
     }
 
+#if DO_LOG
+    LOG_DEVEL << "GETCALLBACK - WITHFILTERCOVEREDBYINDEX";
+#endif
+
     context.incrScanned();
 
     if (!context.checkFilter(&covering)) {
@@ -633,6 +659,9 @@ IndexIterator::CoveringCallback aql::getCallback(
           }
         } else {
           if (context.getProjectionsForRegisters().empty()) {
+#if DO_LOG
+            LOG_DEVEL << "FILTER COVERED BY INDEX - NO REGS";
+#endif
             // write all projections combined into the global output register
             // recycle our Builder object
             VPackBuilder& objectBuilder = context.getBuilder();
@@ -648,10 +677,10 @@ IndexIterator::CoveringCallback aql::getCallback(
             VPackSlice projectedSlice = objectBuilder.slice();
             output.moveValueInto(registerId, input, projectedSlice);
           } else {
+#if DO_LOG
+            LOG_DEVEL << "FILTER COVERED BY INDEX - WITH REGS";
+#endif
             // write projections into individual output registers
-            // currently this code cannot be reached, because IndexNode do not
-            // yet support writing projections into individual registers
-            TRI_ASSERT(false);
             context.getProjectionsForRegisters().produceFromDocument(
                 context.getBuilder(), s, context.getTrxPtr(),
                 [&](Variable const* variable, velocypack::Slice slice) {

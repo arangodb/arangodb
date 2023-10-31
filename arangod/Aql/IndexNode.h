@@ -211,6 +211,8 @@ class IndexNode : public ExecutionNode,
                       unsigned flags) const override final;
 
  private:
+  void updateProjectionsIndexInfo();
+
   /// @brief determine the IndexNode strategy
   Strategy strategy() const;
 

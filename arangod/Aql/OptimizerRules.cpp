@@ -9435,9 +9435,6 @@ void arangodb::aql::optimizeProjections(Optimizer* opt,
     auto* documentNode = ExecutionNode::castTo<DocumentProducingNode*>(n);
     modified |= documentNode->recalculateProjections(plan.get());
 
-    if (n->getType() != EN::ENUMERATE_COLLECTION) {
-      continue;
-    }
     auto& p = documentNode->projections();
     std::vector<std::string_view> path;
     for (size_t i = 0; i < p.size(); ++i) {

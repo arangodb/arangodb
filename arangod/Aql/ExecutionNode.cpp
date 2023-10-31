@@ -3029,7 +3029,7 @@ constexpr std::string_view kMaterializeNodeInLocalDocIdParam = "inLocalDocId";
 MaterializeNode* materialize::createMaterializeNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice const base) {
   auto isMulti = base.get(kMaterializeNodeMultiNodeParam);
-  if (isMulti.isBoolean() && isMulti.getBoolean()) {
+  if (isMulti.isTrue()) {
     return new MaterializeSearchNode(plan, base);
   }
   return new MaterializeRocksDBNode(plan, base);
