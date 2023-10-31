@@ -21,8 +21,6 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
-#include "Basics/DownCast.h"
-
 #include "IResearchViewNode.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -40,6 +38,7 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/SortCondition.h"
 #include "Aql/types.h"
+#include "Basics/DownCast.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
@@ -1793,28 +1792,55 @@ aql::AsyncPrefetchEligibility IResearchViewNode::canUseAsyncPrefetching()
 void IResearchViewNode::replaceVariables(
     std::unordered_map<aql::VariableId, aql::Variable const*> const&
         replacements) {
+  Ast* ast = plan()->getAst();
+  // replace in filter condition
   aql::AstNode const& search = filterCondition();
-  if (isFilterConditionEmpty(&search)) {
-    return;
-  }
-  aql::VarSet variables;
-  aql::Ast::getReferencedVariables(&search, variables);
-  // check if the search condition uses any of the variables that we want to
-  // replace
-  aql::AstNode* cloned = nullptr;
-  for (auto const& it : variables) {
-    if (replacements.find(it->id) != replacements.end()) {
-      if (cloned == nullptr) {
-        // only clone the original search condition once
-        cloned = plan()->getAst()->clone(&search);
+  if (!isFilterConditionEmpty(&search)) {
+    aql::VarSet variables;
+    aql::Ast::getReferencedVariables(&search, variables);
+    // check if the search condition uses any of the variables that we want to
+    // replace
+    aql::AstNode* cloned = nullptr;
+    for (auto const& it : variables) {
+      if (replacements.contains(it->id)) {
+        if (cloned == nullptr) {
+          // only clone the original search condition once
+          cloned = ast->clone(&search);
+        }
+        ast->replaceVariables(cloned, replacements);
       }
-      plan()->getAst()->replaceVariables(cloned, replacements);
+    }
+
+    if (cloned != nullptr) {
+      // exchange the filter condition
+      setFilterCondition(cloned);
     }
   }
 
-  if (cloned != nullptr) {
-    // exchange the filter condition
+  // replace in scorers
+  for (auto& it : _scorers) {
+    it.node = ast->replaceVariables(ast->clone(it.node), replacements);
+  }
+}
+
+void IResearchViewNode::replaceAttributeAccess(
+    aql::ExecutionNode const* self, aql::Variable const* searchVariable,
+    std::span<std::string_view> attribute,
+    aql::Variable const* replaceVariable) {
+  Ast* ast = plan()->getAst();
+  // replace in filter condition
+  aql::AstNode const& search = filterCondition();
+  if (!isFilterConditionEmpty(&search)) {
+    AstNode* cloned = ast->clone(&search);
+    cloned = Ast::replaceAttributeAccess(ast, cloned, searchVariable, attribute,
+                                         replaceVariable);
     setFilterCondition(cloned);
+  }
+
+  // replace in scorers
+  for (auto& it : _scorers) {
+    it.node = ast->replaceAttributeAccess(
+        ast, ast->clone(it.node), searchVariable, attribute, replaceVariable);
   }
 }
 

@@ -42,6 +42,8 @@
 
 #include "utils/bit_utils.hpp"
 
+#include <span>
+#include <string_view>
 #include <unordered_map>
 
 namespace arangodb {
@@ -174,6 +176,11 @@ class IResearchViewNode final : public aql::ExecutionNode,
   void replaceVariables(
       std::unordered_map<aql::VariableId, aql::Variable const*> const&
           replacements) final;
+
+  void replaceAttributeAccess(aql::ExecutionNode const* self,
+                              aql::Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              aql::Variable const* replaceVariable) override;
 
   std::vector<aql::Variable const*> getVariablesSetHere() const final;
 

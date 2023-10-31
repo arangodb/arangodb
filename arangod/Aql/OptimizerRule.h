@@ -362,12 +362,16 @@ struct OptimizerRule {
     lateMaterialiationOffsetInfoRule,
 #endif
 
-    // remove unnecessary projections
-    removeUnnecessaryProjections,
+    // remove unnecessary projections & store projection attributes in
+    // individual registers
+    optimizeProjections,
 
     // replace adjacent index nodes with a join node if the indexes qualify
     // for it.
     joinIndexNodesRule,
+
+    // final cleanup, after projections
+    removeUnnecessaryCalculationsRule4,
 
     // allows execution nodes to asynchronously prefetch the next batch from
     // their upstream node.

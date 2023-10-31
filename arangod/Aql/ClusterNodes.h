@@ -227,7 +227,7 @@ class DistributeNode final : public ScatterNode,
 
   Variable const* getVariable() const noexcept { return _variable; }
 
-  void setVariable(Variable const* var) noexcept { _variable = var; }
+  void setVariable(Variable const* var);
 
   ExecutionNodeId getTargetNodeId() const noexcept { return _targetNodeId; }
 
@@ -243,8 +243,12 @@ class DistributeNode final : public ScatterNode,
                       unsigned flags) const override final;
 
  private:
+  std::vector<std::string> determineProjectionAttribute() const;
+
   /// @brief the variable we must inspect to know where to distribute
   Variable const* _variable;
+
+  std::vector<std::string> _attribute;
 
   /// @brief the id of the target ExecutionNode this DistributeNode belongs to.
   ExecutionNodeId _targetNodeId;

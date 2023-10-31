@@ -150,6 +150,11 @@ class TraversalNode : public virtual GraphNode {
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
 
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable) override;
+
   /// @brief getVariablesUsedHere
   void getVariablesUsedHere(VarSet& result) const override final;
 

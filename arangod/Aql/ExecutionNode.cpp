@@ -1783,32 +1783,47 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
     }
   }
 
-  auto const produceResult = this->isVarUsedLater(_outVariable) ||
-                             this->_filter != nullptr || !projections().empty();
   RegisterId outputRegister = variableToRegisterId(_outVariable);
 
   auto outputRegisters = RegIdSet{};
-  outputRegisters.emplace(outputRegister);
-#if 0
-  if (projections().empty()) {
+
+  auto const& p = projections();
+  if (p.empty()) {
+    // no projections. we produce the full document in outputRegister
     outputRegisters.emplace(outputRegister);
   } else {
-    auto const& p = projections();
+    // projections. no need to produce the full document.
+    // instead create one register per projection.
     for (size_t i = 0; i < p.size(); ++i) {
       Variable const* var = p[i].variable;
+      if (var == nullptr) {
+        // the output register can be a nullptr if the "optimize-projections"
+        // rule was not executed (potentially because it was disabled).
+        continue;
+      }
       TRI_ASSERT(var != nullptr);
       auto regId = variableToRegisterId(var);
       filterVarsToRegs.emplace_back(var->id, regId);
       outputRegisters.emplace(regId);
     }
+    // we should either have as many output registers set as there are
+    // projections, or none. the latter can happen if the "optimize-projections"
+    // rule did not (yet) run
+    TRI_ASSERT(outputRegisters.empty() || outputRegisters.size() == p.size());
+    // in case we do not have any output registers for the projections,
+    // we must write them to the main output register, in a velocypack
+    // object
+    if (outputRegisters.empty()) {
+      outputRegisters.emplace(outputRegister);
+    }
   }
-#endif
+  TRI_ASSERT(!outputRegisters.empty());
+
   auto registerInfos = createRegisterInfos({}, std::move(outputRegisters));
   auto executorInfos = EnumerateCollectionExecutorInfos(
       outputRegister, engine.getQuery(), collection(), _outVariable,
-      produceResult, this->_filter.get(), this->projections(),
-      std::move(filterVarsToRegs), this->_random, this->doCount(),
-      this->canReadOwnWrites());
+      isProduceResult(), filter(), projections(), std::move(filterVarsToRegs),
+      _random, doCount(), canReadOwnWrites());
   return std::make_unique<ExecutionBlockImpl<EnumerateCollectionExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
@@ -1842,10 +1857,8 @@ void EnumerateCollectionNode::replaceVariables(
 void EnumerateCollectionNode::replaceAttributeAccess(
     ExecutionNode const* self, Variable const* searchVariable,
     std::span<std::string_view> attribute, Variable const* replaceVariable) {
-  if (hasFilter() && self != this) {
-    filter()->replaceAttributeAccess(searchVariable, attribute,
-                                     replaceVariable);
-  }
+  DocumentProducingNode::replaceAttributeAccess(self, searchVariable, attribute,
+                                                replaceVariable);
 }
 
 void EnumerateCollectionNode::setRandom() { _random = true; }
@@ -1863,45 +1876,17 @@ void EnumerateCollectionNode::getVariablesUsedHere(VarSet& vars) const {
     // node must also be used later.
     vars.erase(outVariable());
 
-    auto const& p = _projections;
-    for (size_t i = 0; i < p.size(); ++i) {
-      if (p[i].variable == nullptr) {
-        continue;
+    for (size_t i = 0; i < _projections.size(); ++i) {
+      if (_projections[i].variable != nullptr) {
+        vars.erase(_projections[i].variable);
       }
-      vars.erase(p[i].variable);
     }
   }
 }
 
 std::vector<Variable const*> EnumerateCollectionNode::getVariablesSetHere()
     const {
-  std::vector<Variable const*> result;
-  result.push_back(_outVariable);
-#if 0
-  // determine number of variables first
-  size_t n = 0;
-  auto& p = _projections;
-  for (size_t i = 0; i < p.size(); ++i) {
-    TRI_ASSERT(p[i].variable != nullptr);
-    ++n;
-  }
-
-  std::vector<Variable const*> result;
-  if (n == 0) {
-    result.push_back(_outVariable);
-  } else {
-    result.reserve(n + 1);
-    result.push_back(_outVariable);
-    for (size_t i = 0; i < p.size(); ++i) {
-      if (p[i].variable == nullptr) {
-        continue;
-      }
-      result.push_back(p[i].variable);
-    }
-    TRI_ASSERT(result.size() == n + 1);
-  }
-#endif
-  return result;
+  return DocumentProducingNode::getVariablesSetHere();
 }
 
 void EnumerateCollectionNode::setProjections(Projections projections) {
@@ -1909,8 +1894,30 @@ void EnumerateCollectionNode::setProjections(Projections projections) {
 }
 
 bool EnumerateCollectionNode::isProduceResult() const {
-  return _filter != nullptr ||
-         dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(_outVariable);
+  if (hasFilter()) {
+    return true;
+  }
+  auto const& p = projections();
+  if (p.empty()) {
+    return isVarUsedLater(_outVariable);
+  }
+  // check output registers of projections
+  size_t found = 0;
+  for (size_t i = 0; i < p.size(); ++i) {
+    Variable const* var = p[i].variable;
+    // the output register can be a nullptr if the "optimize-projections"
+    // rule was not executed (potentially because it was disabled).
+    if (var != nullptr) {
+      ++found;
+      if (isVarUsedLater(var)) {
+        return true;
+      }
+    }
+  }
+  if (found == 0) {
+    return isVarUsedLater(_outVariable);
+  }
+  return false;
 }
 
 /// @brief the cost of an enumerate collection node is a multiple of the cost of
