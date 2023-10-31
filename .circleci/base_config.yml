@@ -58,19 +58,10 @@ commands:
       - run:
           name: Checkout Enterprise
           command: |
-            #ssh-keyscan github.com >> ~/.ssh/known_hosts
-            # mkdir -p << parameters.destination >>
-            # cd << parameters.destination >>
-            # git clone git@github.com:arangodb/enterprise.git << parameters.destination >>
-            ssh-keyscan github.com >> ~/.ssh/known_hosts
             mkdir -p << parameters.destination >>
             cd << parameters.destination >>
-            git clone --depth 1 git@github.com:arangodb/enterprise.git .
+            git clone git@github.com:arangodb/enterprise.git .
             git reset --hard << pipeline.parameters.enterprise-commit >>
-#            git init
-#            git remote add origin ssh://git@github.com/arangodb/enterprise
-#            echo "Fetching stuff"
-#            git fetch --depth 1 origin << pipeline.parameters.enterprise-commit >>
 
 jobs:
   minimal-checkout:

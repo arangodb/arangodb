@@ -59,7 +59,10 @@ jobs:
       - run:
           name: Determine enterprise branch
           command: |
-            ssh-keyscan github.com >> ~/.ssh/known_hosts
+            CNT=`grep xgithub.com .ssh/known_hosts|wc -l`
+            if [ $CNT -eq 0 ]; then  
+              ssh-keyscan github.com >> ~/.ssh/known_hosts
+            fi  
             if ["<< pipeline.parameters.enterprise-branch >>" == ""]; then
               set +e
               git ls-remote --exit-code --heads git@github.com:arangodb/enterprise.git "$CIRCLE_BRANCH"
