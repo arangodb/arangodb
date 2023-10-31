@@ -1,5 +1,3 @@
-/* jshint browser: true */
-/* global Backbone, $, window, setTimeout, Joi, _, arangoHelper */
 /* global templateEngine */
 
 (function () {

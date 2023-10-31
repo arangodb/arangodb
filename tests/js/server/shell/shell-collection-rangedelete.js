@@ -99,8 +99,7 @@ function CollectionRangeDeleteSuite () {
         c.truncate({ compact: false });
         fail();
       } catch (err) {
-        assertTrue(err.errorNum === ERRORS.ERROR_DEBUG.code ||
-                   err.errorNum === ERRORS.ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION.code);
+        assertEqual(err.errorNum, ERRORS.ERROR_DEBUG.code);
       }
       
       assertEqual(100000, c.count());
@@ -134,8 +133,7 @@ function CollectionRangeDeleteSuite () {
         c.truncate();
         fail();
       } catch (err) {
-        assertTrue(err.errorNum === ERRORS.ERROR_DEBUG.code ||
-                   err.errorNum === ERRORS.ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION.code);
+        assertEqual(err.errorNum, ERRORS.ERROR_DEBUG.code);
       }
     },
   };

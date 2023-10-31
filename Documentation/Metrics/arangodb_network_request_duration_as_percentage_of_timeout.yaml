@@ -13,7 +13,7 @@ exposedBy:
 description: |
   Histogram providing the round-trip time of internal requests as a percentage
   of the respective request timeout.
-  This metric will provide values between 0 and 100.
+  This metric provides values between `0` and `100`.
 troubleshoot: |
   High values indicate problems with requests that have timed out or have not been
   far away from running into timeouts. If many requests timeout, this is normally

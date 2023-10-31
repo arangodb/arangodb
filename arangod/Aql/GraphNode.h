@@ -28,13 +28,15 @@
 #include "Aql/Graphs.h"
 #include "Aql/types.h"
 #include "Cluster/ClusterTypes.h"
+#include "Transaction/OperationOrigin.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
 
-#include <map>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace arangodb {
@@ -106,13 +108,13 @@ class GraphNode : public ExecutionNode {
   bool isUsedAsSatellite() const;
   // Defines whether a GraphNode can fully be pushed down to a DBServer
   bool isLocalGraphNode() const;
-  // Will wait as soon as any of our collections is a satellite (in sync)
-  void waitForSatelliteIfRequired(ExecutionEngine const* engine) const;
   // Can be fully pushed down to a DBServer and is available on all DBServers
   bool isEligibleAsSatelliteTraversal() const;
 
   /// @brief the cost of a graph node
   CostEstimate estimateCost() const override;
+
+  AsyncPrefetchEligibility canUseAsyncPrefetching() const noexcept override;
 
   /// @brief flag, if smart traversal (Enterprise Edition only!) is done
   bool isSmart() const;
@@ -232,6 +234,7 @@ class GraphNode : public ExecutionNode {
   void addEdgeCollection(aql::Collections const& collections,
                          std::string const& name, TRI_edge_direction_e dir);
   void addEdgeCollection(aql::Collection& collection, TRI_edge_direction_e dir);
+  void addEdgeAlias(std::string const& name);
   void addVertexCollection(aql::Collections const& collections,
                            std::string const& name);
   void addVertexCollection(aql::Collection& collection);
@@ -241,7 +244,8 @@ class GraphNode : public ExecutionNode {
 
   Collection const* getShardingPrototype() const;
 
-  void determineEnterpriseFlags(AstNode const* edgeCollectionList);
+  void determineEnterpriseFlags(AstNode const* edgeCollectionList,
+                                transaction::OperationOrigin operationOrigin);
 
  protected:
   /// @brief the database
@@ -271,12 +275,18 @@ class GraphNode : public ExecutionNode {
   /// @brief input graphInfo only used for serialization & info
   arangodb::velocypack::Builder _graphInfo;
 
-  /// @brief the edge collection names
+  /// @brief the edge collection names. for SmartGraph edge collections,
+  /// contains only the name of the parts.
   std::vector<aql::Collection*> _edgeColls;
 
   /// @brief the vertex collection names (can also be edge collections
   /// as an edge can also point to another edge, instead of a vertex).
   std::vector<aql::Collection*> _vertexColls;
+
+  /// real names of SmartGraph edge collections used in the traversal.
+  /// needed for checking collection names used in "edgeCollections"
+  /// option
+  std::unordered_set<std::string> _edgeAliases;
 
   /// @brief The default direction given in the query
   TRI_edge_direction_e const _defaultDirection;
@@ -298,7 +308,7 @@ class GraphNode : public ExecutionNode {
   /// @brief The directions edges are followed
   std::vector<TRI_edge_direction_e> _directions;
 
-  /// @brief Options for traversals
+  /// @brief Options for traversals (monitored)
   std::unique_ptr<graph::BaseOptions> _options;
 
   /// @brief The list of traverser engines grouped by server.

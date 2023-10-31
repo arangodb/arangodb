@@ -66,8 +66,7 @@ TEST(MaintenanceRestHandler, parse_rest_put) {
     body.add("collection", VPackValue("a"));
   }
 
-  auto* dummyRequest =
-      new arangodb::HttpRequest(arangodb::ConnectionInfo(), 1, false);
+  auto* dummyRequest = new arangodb::HttpRequest(arangodb::ConnectionInfo(), 1);
   dummyRequest->setDefaultContentType();  // JSON
   dummyRequest->setPayload(buffer);
   dummyRequest->setRequestType(arangodb::rest::RequestType::PUT);

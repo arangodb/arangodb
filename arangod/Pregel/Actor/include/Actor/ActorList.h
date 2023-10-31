@@ -48,6 +48,11 @@ struct ActorList {
   ActorList(ActorMap map) : actors{std::move(map)} {}
   ActorList() = default;
 
+  auto contains(ActorID id) const -> bool {
+    return actors.doUnderLock(
+        [id](ActorMap const& map) -> bool { return map.contains(id); });
+  }
+
   auto find(ActorID id) const -> std::optional<std::shared_ptr<ActorBase>> {
     return actors.doUnderLock(
         [id](ActorMap const& map) -> std::optional<std::shared_ptr<ActorBase>> {

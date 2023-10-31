@@ -31,12 +31,15 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
+#include "Aql/IResearchViewNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SortCondition.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/Variable.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/QueryContext.h"
 #include "Indexes/Index.h"
 #include "IResearch/IResearchFeature.h"
 #include "Logger/LogMacros.h"
@@ -918,7 +921,8 @@ bool findProjections(ExecutionNode* n, Variable const* v,
 
     if (vars.find(v) != vars.end() &&
         !Ast::getReferencedAttributesRecursive(
-            node, v, /*expectedAttribute*/ expectedAttribute, attributes)) {
+            node, v, /*expectedAttribute*/ expectedAttribute, attributes,
+            current->plan()->getAst()->query().resourceMonitor())) {
       // cannot use projections for this variable
       return false;
     }
@@ -944,7 +948,10 @@ bool findProjections(ExecutionNode* n, Variable const* v,
       if (traversalNode->usesInVariable() && traversalNode->inVariable() == v) {
         // start vertex of traversal is our input variable.
         // we need at least the _id attribute from the variable.
-        attributes.emplace(StaticStrings::IdString);
+        AttributeNamePath anp{
+            StaticStrings::IdString,
+            traversalNode->plan()->getAst()->query().resourceMonitor()};
+        attributes.emplace(std::move(anp));
       }
 
       // prune condition has to be treated in a special way, because the
@@ -955,11 +962,11 @@ bool findProjections(ExecutionNode* n, Variable const* v,
       if (pruneExpression != nullptr) {
         std::vector<Variable const*> pruneVars;
         traversalNode->getPruneVariables(pruneVars);
-
         if (std::find(pruneVars.begin(), pruneVars.end(), v) !=
                 pruneVars.end() &&
             !Ast::getReferencedAttributesRecursive(
-                pruneExpression->node(), v, expectedAttribute, attributes)) {
+                pruneExpression->node(), v, expectedAttribute, attributes,
+                traversalNode->plan()->getAst()->query().resourceMonitor())) {
           // cannot use projections for this variable
           return false;
         }
@@ -975,7 +982,9 @@ bool findProjections(ExecutionNode* n, Variable const* v,
           ExecutionNode::castTo<RemoveNode const*>(current);
       if (removeNode->inVariable() == v) {
         // FOR doc IN collection REMOVE doc IN ...
-        attributes.emplace(aql::AttributeNamePath(StaticStrings::KeyString));
+        attributes.emplace(aql::AttributeNamePath(
+            StaticStrings::KeyString,
+            removeNode->plan()->getAst()->query().resourceMonitor()));
       } else {
         doRegularCheck = true;
       }
@@ -987,7 +996,9 @@ bool findProjections(ExecutionNode* n, Variable const* v,
       if (modificationNode->inKeyVariable() == v &&
           modificationNode->inDocVariable() != v) {
         // FOR doc IN collection UPDATE/REPLACE doc IN ...
-        attributes.emplace(aql::AttributeNamePath(StaticStrings::KeyString));
+        attributes.emplace(aql::AttributeNamePath(
+            StaticStrings::KeyString,
+            modificationNode->plan()->getAst()->query().resourceMonitor()));
       } else {
         doRegularCheck = true;
       }
@@ -996,6 +1007,20 @@ bool findProjections(ExecutionNode* n, Variable const* v,
           ExecutionNode::castTo<CalculationNode const*>(current);
       if (!checkExpression(calculationNode, calculationNode->expression())) {
         return false;
+      }
+    } else if (current->getType() == EN::ENUMERATE_IRESEARCH_VIEW) {
+      iresearch::IResearchViewNode const* viewNode =
+          ExecutionNode::castTo<iresearch::IResearchViewNode const*>(current);
+      // filter condition
+      if (!tryAndExtractProjectionsFromExpression(
+              viewNode, &viewNode->filterCondition())) {
+        return false;
+      }
+      // scorers
+      for (auto const& it : viewNode->scorers()) {
+        if (!tryAndExtractProjectionsFromExpression(viewNode, it.node)) {
+          return false;
+        }
       }
     } else if (current->getType() == EN::GATHER) {
       // compare sort attributes of GatherNode
@@ -1009,7 +1034,8 @@ bool findProjections(ExecutionNode* n, Variable const* v,
           }
           // insert attribute name into the set of attributes that we need for
           // our projection
-          attributes.emplace(AttributeNamePath(it.attributePath));
+          attributes.emplace(it.attributePath,
+                             gn->plan()->getAst()->query().resourceMonitor());
         }
       }
     } else if (current->getType() == EN::ENUMERATE_COLLECTION) {
@@ -1020,7 +1046,8 @@ bool findProjections(ExecutionNode* n, Variable const* v,
           en->hasFilter()) {
         if (!Ast::getReferencedAttributesRecursive(
                 en->filter()->node(), v,
-                /*expectedAttribute*/ expectedAttribute, attributes)) {
+                /*expectedAttribute*/ expectedAttribute, attributes,
+                en->plan()->getAst()->query().resourceMonitor())) {
           return false;
         }
       }
@@ -1039,7 +1066,8 @@ bool findProjections(ExecutionNode* n, Variable const* v,
           indexNode->hasFilter()) {
         if (!Ast::getReferencedAttributesRecursive(
                 indexNode->filter()->node(), v,
-                /*expectedAttribute*/ expectedAttribute, attributes)) {
+                /*expectedAttribute*/ expectedAttribute, attributes,
+                indexNode->plan()->getAst()->query().resourceMonitor())) {
           return false;
         }
       }
@@ -1142,31 +1170,32 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
 
   // we might have an inverted index - it could cover whole condition at once.
   // Give it a try
-  for (auto& index : indexes) {
-    if (index.get()->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX &&
-        ((hint.type() ==  // apply this index only if hinted
-              IndexHint::Simple &&
+  if (std::exchange(isAllCoveredByIndex, false)) {
+    for (auto& index : indexes) {
+      if (index.get()->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX &&
+          // apply this index only if hinted
+          hint.type() == IndexHint::Simple &&
           std::find(hint.hint().begin(), hint.hint().end(), index->name()) !=
-              hint.hint().end()))) {
-      auto costs = index.get()->supportsFilterCondition(
-          trx, indexes, root, reference, itemsInCollection);
-      if (costs.supportsCondition) {
-        // we need to find 'root' in 'ast' and replace it with specialized
-        // version but for now we know that index will not alter the node, so
-        // just an assert
-        index.get()->specializeCondition(trx, root, reference);
-        usedIndexes.emplace_back(index);
-        isAllCoveredByIndex = true;
-        // FIXME: we should somehow consider other indices and calculate here
-        // "overall" score Also a question: if sort is covered but filter is not
-        // ? What is more optimal?
-        auto const sortSupport = index.get()->supportsSortCondition(
-            sortCondition, reference, itemsInCollection);
-        return std::make_pair(true, sortSupport.supportsCondition);
+              hint.hint().end()) {
+        auto costs = index.get()->supportsFilterCondition(
+            trx, indexes, root, reference, itemsInCollection);
+        if (costs.supportsCondition) {
+          // we need to find 'root' in 'ast' and replace it with specialized
+          // version but for now we know that index will not alter the node, so
+          // just an assert
+          index.get()->specializeCondition(trx, root, reference);
+          usedIndexes.emplace_back(index);
+          isAllCoveredByIndex = true;
+          // FIXME: we should somehow consider other indices and calculate here
+          // "overall" score Also a question: if sort is covered but filter is
+          // not ? What is more optimal?
+          auto const sortSupport = index.get()->supportsSortCondition(
+              sortCondition, reference, itemsInCollection);
+          return std::make_pair(true, sortSupport.supportsCondition);
+        }
       }
     }
   }
-  isAllCoveredByIndex = false;
   size_t const n = root->numMembers();
   for (size_t i = 0; i < n; ++i) {
     // BTS-398: if there are multiple OR-ed conditions, fail only for forced

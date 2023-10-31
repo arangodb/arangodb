@@ -47,18 +47,6 @@ function getFishbowlUrl () {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief returns the fishbowl collection
-// /
-// / this will create the collection if it does not exist. this is better than
-// / needlessly creating the collection for each database in case it is not
-// / used in context of the database.
-// //////////////////////////////////////////////////////////////////////////////
-
-var getFishbowlStorage = function () {
-  return db._collection('_fishbowl');
-};
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief comparator for services
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -82,12 +70,10 @@ var compareServices = function (l, r) {
 // //////////////////////////////////////////////////////////////////////////////
 
 var updateFishbowlFromZip = function (filename) {
-  var i;
-  var tempPath = fs.getTempPath();
-  var toSave = [];
+  let tempPath = fs.getTempPath();
 
   fs.makeDirectoryRecursive(tempPath);
-  var root = fs.join(tempPath, 'foxx-apps-master/applications');
+  let root = fs.join(tempPath, 'foxx-apps-master/applications');
 
   // remove any previous files in the directory
   fs.listTree(root).forEach(function (file) {
@@ -104,19 +90,19 @@ var updateFishbowlFromZip = function (filename) {
     throw new Error("'applications' directory is missing in foxx-apps-master, giving up");
   }
 
-  var m = fs.listTree(root);
-  var reSub = /(.*)\.json$/;
-  var f, match, service, desc;
+  const m = fs.listTree(root);
+  const reSub = /(.*)\.json$/;
 
-  for (i = 0; i < m.length; ++i) {
-    f = m[i];
-    match = reSub.exec(f);
+  let toSave = [];
+  for (let i = 0; i < m.length; ++i) {
+    let f = m[i];
+    let match = reSub.exec(f);
     if (match === null) {
       continue;
     }
 
-    service = fs.join(root, f);
-
+    let service = fs.join(root, f);
+    let desc;
     try {
       desc = JSON.parse(fs.read(service));
     } catch (err1) {
@@ -134,43 +120,8 @@ var updateFishbowlFromZip = function (filename) {
   }
 
   if (toSave.length > 0) {
-    let fishbowl = getFishbowlStorage();
-    if (!fishbowl) {
-      // collection is not present. now create it
-      try {
-        fishbowl = db._create('_fishbowl', { isSystem: true, distributeShardsLike: '_graphs' });
-      } catch (err) {
-        try {
-          fishbowl = db._create('_fishbowl', { isSystem: true, distributeShardsLike: '_users' });
-        } catch (err) {
-          require('console').warn('Unable to create _fishbowl collection for application results: ' + String(err));
-        }
-      }
-    }
-
-    if (fishbowl) {
-      let toRemove = {};
-      fishbowl.toArray().forEach((doc) => {
-        toRemove[doc._key] = { _key: doc._key };
-      });
-      toSave.forEach((doc) => {
-        delete toRemove[doc._key];
-      });
-     
-      // first insert/replace all apps that are new or remain
-      fishbowl.insert(toSave, { overwriteMode: "replace" });
-
-      // second remove all apps that are not present anymore
-      // (very unlikely)
-      toRemove = Object.values(toRemove);
-      // execute remove and insert in 2 separate steps. this is not transactional
-      // but cheaper
-      if (toRemove.length > 0) {
-        fishbowl.remove(toRemove);
-      }
-
-      require('console').debug('Updated local Foxx repository with ' + toSave.length + ' service(s)');
-    }
+    global.FISHBOWL_SET(toSave);
+    require('console').debug('Updated local Foxx repository with ' + toSave.length + ' service(s)');
   }
 };
 
@@ -179,21 +130,28 @@ var updateFishbowlFromZip = function (filename) {
 // //////////////////////////////////////////////////////////////////////////////
 
 var searchJson = function (name) {
-  var fishbowl = getFishbowlStorage();
+  let fishbowl = global.FISHBOWL_GET();
 
-  if (!fishbowl || fishbowl.count() === 0) {
+  if (!fishbowl || fishbowl.length === 0) {
     arangodb.print("Repository is empty, please use 'update'");
-
     return [];
   }
 
   if (name === undefined || (typeof name === 'string' && name.length === 0)) {
-    return fishbowl.toArray();
+    return fishbowl;
   } else {
-    name = name.replace(/[^a-zA-Z0-9]/g, ' ');
+    name = name.replace(/[^a-zA-Z0-9]/g, ' ').toLowerCase();
 
     // get results by looking in "description" and "name" attributes
-    return db._query('FOR doc IN @@collection FILTER CONTAINS(doc.description, @name) || CONTAINS(doc.name, @name) RETURN doc', { name, '@collection': fishbowl.name() }).toArray();
+    return fishbowl.filter((entry) => {
+      if (entry.description && entry.description.toLowerCase().includes(name)) {
+        return true;
+      }
+      if (entry.name && entry.name.toLowerCase().includes(name)) {
+        return true;
+      }
+      return false;
+    });
   }
 };
 
@@ -263,12 +221,9 @@ function extractMaxVersion (matchEngine, versionDoc) {
 function availableJson (matchEngine) {
   let result = [];
 
-  let fishbowl = getFishbowlStorage();
-  if (fishbowl && fishbowl.count() > 0) {
-    let cursor = fishbowl.all();
-
-    while (cursor.hasNext()) {
-      let doc = cursor.next();
+  let fishbowl = global.FISHBOWL_GET();
+  if (fishbowl && fishbowl.length > 0) {
+    fishbowl.forEach((doc) => {
       let latestVersion = extractMaxVersion(matchEngine, doc.versions);
 
       if (latestVersion) {
@@ -292,7 +247,7 @@ function availableJson (matchEngine) {
 
         result.push(res);
       }
-    }
+    });
   }
 
   return result;
@@ -312,7 +267,7 @@ var update = function () {
   }
 
   try {
-    var result = download(url, '', {
+    let result = download(url, '', {
       method: 'get',
       followRedirects: true,
       timeout: 15
@@ -349,7 +304,7 @@ var update = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 var available = function (matchEngine) {
-  var list = availableJson(matchEngine);
+  const list = availableJson(matchEngine);
 
   arangodb.printTable(
     list.sort(compareServices),
@@ -373,16 +328,22 @@ var available = function (matchEngine) {
 // //////////////////////////////////////////////////////////////////////////////
 
 var infoJson = function (name) {
-  var fishbowl = getFishbowlStorage();
+  let fishbowl = global.FISHBOWL_GET();
 
-  if (!fishbowl || fishbowl.count() === 0) {
+  if (!fishbowl || fishbowl.length === 0) {
     arangodb.print("Repository is empty, please use 'update'");
     return;
   }
 
-  var desc = db._query(
-    'FOR u IN @@storage FILTER u.name == @name OR @name IN u.aliases RETURN DISTINCT u',
-    { '@storage': fishbowl.name(), 'name': name }).toArray();
+  let desc = fishbowl.filter((entry) => {
+    if (entry.name && entry.name.toLowerCase() === name) {
+      return true;
+    }
+    if (entry.aliases && Array.isArray(entry.aliases) && entry.aliases.includes(name)) {
+      return true;
+    }
+    return false;
+  });
 
   if (desc.length === 0) {
     arangodb.print("No service '" + name + "' available, please try 'search'");
@@ -513,7 +474,6 @@ var info = function (name) {
 exports.available = available;
 exports.availableJson = availableJson;
 exports.installationInfo = installationInfo;
-exports.getFishbowlStorage = getFishbowlStorage;
 exports.info = info;
 exports.search = search;
 exports.searchJson = searchJson;

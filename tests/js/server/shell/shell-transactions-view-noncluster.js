@@ -114,6 +114,10 @@ function TransactionsIResearchSuite() {
       internal.wait(0.0);
     },
 
+    tearDownAll: function () {
+      analyzers.remove('myText');
+    },
+    
     ////////////////////////////////////////////////////////////////////////////
     /// @brief should honor rollbacks of inserts
     ////////////////////////////////////////////////////////////////////////////

@@ -38,19 +38,18 @@ class PregelFeature;
 struct AlgoRegistry {
   static IAlgorithm* createAlgorithm(std::string const& algorithm,
                                      VPackSlice userParams);
-  static std::shared_ptr<IWorker> createWorker(TRI_vocbase_t& vocbase,
-                                               CreateWorker const& parameters,
-                                               PregelFeature& feature);
+  static std::shared_ptr<IWorker> createWorker(
+      TRI_vocbase_t& vocbase, worker::message::CreateWorker const& parameters,
+      PregelFeature& feature);
   static auto createAlgorithmNew(std::string const& algorithm,
                                  VPackSlice userParams)
       -> std::optional<std::unique_ptr<IAlgorithm>>;
 
  private:
   template<typename V, typename E, typename M>
-  static std::shared_ptr<IWorker> createWorker(TRI_vocbase_t& vocbase,
-                                               Algorithm<V, E, M>* algo,
-                                               CreateWorker const& parameters,
-                                               PregelFeature& feature);
+  static std::shared_ptr<IWorker> createWorker(
+      TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
+      worker::message::CreateWorker const& parameters, PregelFeature& feature);
 };
 
 }  // namespace pregel

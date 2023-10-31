@@ -42,12 +42,14 @@
 #include "Aql/SkipResult.h"
 #include "Aql/SharedQueryState.h"
 #include "Basics/ScopeGuard.h"
+#include "Containers/FlatHashMap.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
+#include "RestServer/DatabaseFeature.h"
 #include "VocBase/Methods/Queries.h"
 
 using namespace arangodb;
@@ -133,7 +135,7 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
                                      MapRemoteToSnippet const& queryIds) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
 
-  std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
+  containers::FlatHashMap<ExecutionNode*, ExecutionBlock*> cache;
   RemoteNode* remoteNode = nullptr;
 
   // We need to traverse the nodes from back to front, the walker collects
@@ -148,15 +150,15 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
     }
 
     // for all node types but REMOTEs, we create blocks
-    auto uptrEb = en->createBlock(*this, cache);
+    auto block = en->createBlock(*this);
 
-    if (!uptrEb) {
+    if (!block) {
       return {TRI_ERROR_INTERNAL, "illegal node type"};
     }
 
     // transfers ownership
     // store the pointer to the block
-    auto eb = addBlock(std::move(uptrEb));
+    auto eb = addBlock(std::move(block));
 
     for (auto const& dep : en->getDependencies()) {
       auto d = cache.find(dep);
@@ -200,8 +202,7 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
             remoteNode->queryId(snippetId);
             remoteNode->server(serverID);
             remoteNode->setDistributeId({""});
-            std::unique_ptr<ExecutionBlock> r =
-                remoteNode->createBlock(*this, {});
+            std::unique_ptr<ExecutionBlock> r = remoteNode->createBlock(*this);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
             auto remoteBlock =
                 dynamic_cast<ExecutionBlockImpl<RemoteExecutor>*>(r.get());
@@ -236,7 +237,6 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
 /// @brief create the engine
 ExecutionEngine::ExecutionEngine(EngineId eId, QueryContext& query,
                                  AqlItemBlockManager& itemBlockMgr,
-                                 SerializationFormat format,
                                  std::shared_ptr<SharedQueryState> sqs)
     : _engineId(eId),
       _query(query),
@@ -263,7 +263,7 @@ struct SingleServerQueryInstanciator final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   ExecutionEngine& engine;
   ExecutionBlock* root{};
-  std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
+  containers::FlatHashMap<ExecutionNode*, ExecutionBlock*> cache;
 
   explicit SingleServerQueryInstanciator(ExecutionEngine& engine) noexcept
       : engine(engine) {}
@@ -298,7 +298,7 @@ struct SingleServerQueryInstanciator final
     }
 
     if (block == nullptr) {
-      block = engine.addBlock(en->createBlock(engine, cache));
+      block = engine.addBlock(en->createBlock(engine));
       TRI_ASSERT(block != nullptr);
       // We have visited this node earlier, so we got its dependencies
       // Now add dependencies:
@@ -563,18 +563,21 @@ struct DistributedQueryInstanciator final
       ClusterInfo& ci =
           _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
       engine->rebootTrackers().reserve(srvrQryId.size());
+      DatabaseFeature& df =
+          _query.vocbase().server().getFeature<DatabaseFeature>();
+
       for (auto const& [server, queryId, rebootId] : srvrQryId) {
-        TRI_ASSERT(server.substr(0, 7) != "server:");
+        TRI_ASSERT(!server.starts_with("server:"));
         std::string comment = std::string("AQL query from coordinator ") +
                               ServerState::instance()->getId();
 
         std::function<void(void)> f = [srvr = server, id = _query.id(),
-                                       &vocbase = _query.vocbase()]() {
+                                       vn = _query.vocbase().name(), &df]() {
           LOG_TOPIC("d2554", INFO, Logger::QUERIES)
               << "killing query " << id << " because participating DB server "
               << srvr << " is unavailable";
           try {
-            methods::Queries::kill(vocbase, id, false);
+            methods::Queries::kill(df, vn, id);
           } catch (...) {
             // it does not really matter if this fails.
             // if the coordinator contacts the failed DB server next time, it
@@ -673,55 +676,9 @@ auto ExecutionEngine::executeForClient(AqlCallStack const& stack,
   return res;
 }
 
-std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionEngine::getSome(
-    size_t atMost) {
-  if (_query.killed()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-  }
-  if (!_initializeCursorCalled) {
-    auto res = initializeCursor(nullptr, 0);
-    if (res.first == ExecutionState::WAITING) {
-      return {res.first, nullptr};
-    }
-  }
-  // we use a backwards compatible stack here.
-  // This will always continue with a fetch-all on underlying subqueries (if
-  // any)
-  AqlCallStack compatibilityStack{
-      AqlCallList{AqlCall::SimulateGetSome(atMost)}};
-  auto const [state, skipped, block] = execute(std::move(compatibilityStack));
-  // We cannot trigger a skip operation from here
-  TRI_ASSERT(skipped.nothingSkipped());
-  return {state, std::move(block)};
-}
-
-std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
-  if (_query.killed()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-  }
-  if (!_initializeCursorCalled) {
-    auto res = initializeCursor(nullptr, 0);
-    if (res.first == ExecutionState::WAITING) {
-      return {res.first, 0};
-    }
-  }
-
-  // we use a backwards compatible stack here.
-  // This will always continue with a fetch-all on underlying subqueries (if
-  // any)
-  AqlCallStack compatibilityStack{
-      AqlCallList{AqlCall::SimulateSkipSome(atMost)}};
-  auto const [state, skipped, block] = execute(std::move(compatibilityStack));
-  // We cannot be triggered within a subquery from earlier versions.
-  // Also we cannot produce anything ourselfes here.
-  TRI_ASSERT(block == nullptr);
-  return {state, skipped.getSkipCount()};
-}
-
 // @brief create an execution engine from a plan
 void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
-                                          bool planRegisters,
-                                          SerializationFormat format) {
+                                          bool planRegisters) {
   auto const role = arangodb::ServerState::instance()->getRole();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -778,8 +735,8 @@ void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
     // instantiate the engine on a local server
     EngineId eId =
         arangodb::ServerState::isDBServer(role) ? TRI_NewTickServer() : 0;
-    auto retEngine = std::make_unique<ExecutionEngine>(eId, query, mgr, format,
-                                                       query.sharedState());
+    auto retEngine =
+        std::make_unique<ExecutionEngine>(eId, query, mgr, query.sharedState());
 
 #ifdef USE_ENTERPRISE
     for (auto const& pair : aliases) {
@@ -924,14 +881,11 @@ void ExecutionEngine::collectExecutionStats(ExecutionStats& stats) {
   }
 }
 
-#ifndef USE_ENTERPRISE
-bool ExecutionEngine::waitForSatellites(
-    QueryContext& /*query*/, Collection const* /*collection*/) const {
-  return true;
-}
-#endif
-
 std::vector<arangodb::cluster::CallbackGuard>&
 ExecutionEngine::rebootTrackers() {
   return _rebootTrackers;
+}
+
+std::shared_ptr<SharedQueryState> const& ExecutionEngine::sharedState() const {
+  return _sharedState;
 }

@@ -64,8 +64,7 @@ const debug = function (text) {
 
 function getEndpointById(id) {
   const toEndpoint = (d) => (d.endpoint);
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-  return instanceInfo.arangods.filter((d) => (d.id === id))
+  return global.instanceManager.arangods.filter((d) => (d.id === id))
     .map(toEndpoint)
     .map(endpointToURL)[0];
 }
@@ -239,8 +238,7 @@ function CommunicationSuite() {
       return 'http' + endpoint.substr(pos);
     };
 
-    const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-    return instanceInfo.arangods.filter(isType)
+    return global.instanceManager.arangods.filter(isType)
       .map(toEndpoint)
       .map(endpointToURL);
   }

@@ -140,8 +140,7 @@ RemoteNode::RemoteNode(ExecutionPlan* plan,
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   auto const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
   auto const nrInRegs = nrOutRegs;
 
@@ -164,7 +163,6 @@ void RemoteNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   // call base class method
   DistributeConsumerNode::doToVelocyPack(nodes, flags);
 
-  nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("server", VPackValue(_server));
   nodes.add("queryId", VPackValue(_queryId));
 }
@@ -184,7 +182,13 @@ CostEstimate RemoteNode::estimateCost() const {
   return estimate;
 }
 
+size_t RemoteNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
 /// @brief construct a scatter node
+ScatterNode::ScatterNode(ExecutionPlan* plan, ExecutionNodeId id,
+                         ScatterType type)
+    : ExecutionNode(plan, id), _type(type) {}
+
 ScatterNode::ScatterNode(ExecutionPlan* plan,
                          arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base) {
@@ -193,8 +197,7 @@ ScatterNode::ScatterNode(ExecutionPlan* plan,
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
@@ -205,11 +208,21 @@ std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
+/// @brief clone ExecutionNode recursively
+ExecutionNode* ScatterNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                  bool withProperties) const {
+  auto c = std::make_unique<ScatterNode>(plan, _id, getScatterType());
+  c->copyClients(clients());
+  return cloneHelper(std::move(c), withDependencies, withProperties);
+}
+
 /// @brief doToVelocyPack, for ScatterNode
 void ScatterNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   // serialize clients
   writeClientsToVelocyPack(nodes);
 }
+
+size_t ScatterNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 bool ScatterNode::readClientsFromVelocyPack(VPackSlice base) {
   auto const clientsSlice = base.get("clients");
@@ -268,6 +281,7 @@ DistributeNode::DistributeNode(ExecutionPlan* plan, ExecutionNodeId id,
     : ScatterNode(plan, id, type),
       CollectionAccessingNode(collection),
       _variable(variable),
+      _attribute(determineProjectionAttribute()),
       _targetNodeId(targetNodeId) {}
 
 /// @brief construct a distribute node
@@ -276,8 +290,7 @@ DistributeNode::DistributeNode(ExecutionPlan* plan,
     : ScatterNode(plan, base),
       CollectionAccessingNode(plan, base),
       _variable(Variable::varFromVPack(plan->getAst(), base, "variable")) {
-  auto sats = base.get("satelliteCollections");
-  if (sats.isArray()) {
+  if (auto sats = base.get("satelliteCollections"); sats.isArray()) {
     auto& queryCols = plan->getAst()->query().collections();
     _satellites.reserve(sats.length());
 
@@ -287,6 +300,12 @@ DistributeNode::DistributeNode(ExecutionPlan* plan,
       auto c = queryCols.add(v, AccessMode::Type::READ,
                              aql::Collection::Hint::Collection);
       addSatellite(c);
+    }
+  }
+
+  if (auto attr = base.get("attribute"); attr.isArray()) {
+    for (VPackSlice it : VPackArrayIterator(attr)) {
+      _attribute.push_back(it.copyString());
     }
   }
 }
@@ -308,12 +327,12 @@ ExecutionNode* DistributeNode::clone(ExecutionPlan* plan, bool withDependencies,
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
   // get the variable to inspect . . .
+  TRI_ASSERT(_variable != nullptr);
   VariableId varId = _variable->id;
 
   // get the register id of the variable to inspect . . .
@@ -324,12 +343,43 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
   TRI_ASSERT(regId.isValid());
 
   auto inRegs = RegIdSet{regId};
-  auto registerInfos = createRegisterInfos(inRegs, {});
-  auto infos = DistributeExecutorInfos(clients(), collection(), regId,
-                                       getScatterType(), getSatellites());
+  auto registerInfos = createRegisterInfos(std::move(inRegs), {});
+  auto infos =
+      DistributeExecutorInfos(clients(), collection(), regId, _attribute,
+                              getScatterType(), getSatellites());
 
   return std::make_unique<ExecutionBlockImpl<DistributeExecutor>>(
       &engine, this, std::move(registerInfos), std::move(infos));
+}
+
+void DistributeNode::setVariable(Variable const* var) {
+  _variable = var;
+  determineProjectionAttribute();
+}
+
+std::vector<std::string> DistributeNode::determineProjectionAttribute() const {
+  std::vector<std::string> attribute;
+  // check where input variable of DISTRIBUTE comes from.
+  // if it is from a projection, we also look up the projection's
+  // attribute name
+  TRI_ASSERT(_variable != nullptr);
+  auto setter = plan()->getVarSetBy(_variable->id);
+  if (setter != nullptr &&
+      (setter->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
+       setter->getType() == ExecutionNode::INDEX)) {
+    DocumentProducingNode const* document =
+        dynamic_cast<DocumentProducingNode const*>(setter);
+    auto const& p = document->projections();
+    for (size_t i = 0; i < p.size(); ++i) {
+      if (p[i].variable == _variable) {
+        // found the DISTRIBUTE input variable in a projection
+        attribute = p[i].path.get();
+        break;
+      }
+    }
+  }
+
+  return attribute;
 }
 
 /// @brief doToVelocyPack, for DistributeNode
@@ -342,6 +392,12 @@ void DistributeNode::doToVelocyPack(VPackBuilder& builder,
 
   builder.add(VPackValue("variable"));
   _variable->toVelocyPack(builder);
+
+  builder.add("attribute", VPackValue(VPackValueType::Array));
+  for (auto const& it : _attribute) {
+    builder.add(VPackValue(it));
+  }
+  builder.close();  // "attribute"
 
   if (!_satellites.empty()) {
     builder.add(VPackValue("satelliteCollections"));
@@ -360,6 +416,7 @@ void DistributeNode::doToVelocyPack(VPackBuilder& builder,
 void DistributeNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
   _variable = Variable::replace(_variable, replacements);
+  _attribute = determineProjectionAttribute();
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place
@@ -379,6 +436,8 @@ void DistributeNode::addSatellite(aql::Collection* satellite) {
   TRI_ASSERT(satellite->isSatellite());
   _satellites.emplace_back(satellite);
 }
+
+size_t DistributeNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 /*static*/ Collection const* GatherNode::findCollection(
     GatherNode const& root) noexcept {
@@ -423,6 +482,7 @@ void DistributeNode::addSatellite(aql::Collection* satellite) {
         TRI_ASSERT(false);
         return nullptr;  // diamond boundary
       case REMOTESINGLE:
+      case REMOTE_MULTIPLE:
         // While being a CollectionAccessingNode, it lives on the Coordinator.
         // However it should thus not be encountered here.
         TRI_ASSERT(false);
@@ -506,8 +566,7 @@ void GatherNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   auto registerInfos = createRegisterInfos({}, {});
@@ -581,13 +640,20 @@ GatherNode::Parallelism GatherNode::evaluateParallelism(
 
 void GatherNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
-  for (auto& variable : _elements) {
-    auto v = Variable::replace(variable.var, replacements);
-    if (v != variable.var) {
-      variable.var = v;
+  for (auto& it : _elements) {
+    auto v = Variable::replace(it.var, replacements);
+    if (v != it.var) {
+      it.var = v;
     }
-    variable.attributePath.clear();
+    it.attributePath.clear();
   }
+}
+
+void GatherNode::replaceAttributeAccess(ExecutionNode const* self,
+                                        Variable const* searchVariable,
+                                        std::span<std::string_view> attribute,
+                                        Variable const* replaceVariable) {
+  // TODO!!!
 }
 
 void GatherNode::getVariablesUsedHere(VarSet& vars) const {
@@ -595,6 +661,8 @@ void GatherNode::getVariablesUsedHere(VarSet& vars) const {
     vars.emplace(p.var);
   }
 }
+
+size_t GatherNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 SingleRemoteOperationNode::SingleRemoteOperationNode(
     ExecutionPlan* plan, ExecutionNodeId id, NodeType mode,
@@ -630,8 +698,7 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(
 
 /// @brief creates corresponding SingleRemoteOperationNode
 std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
 
   TRI_ASSERT(previousNode != nullptr);
@@ -753,6 +820,11 @@ CostEstimate SingleRemoteOperationNode::estimateCost() const {
   return estimate;
 }
 
+AsyncPrefetchEligibility SingleRemoteOperationNode::canUseAsyncPrefetching()
+    const noexcept {
+  return AsyncPrefetchEligibility::kDisableGlobally;
+}
+
 std::vector<Variable const*> SingleRemoteOperationNode::getVariablesSetHere()
     const {
   std::vector<Variable const*> vec;
@@ -774,4 +846,8 @@ void SingleRemoteOperationNode::getVariablesUsedHere(VarSet& vars) const {
   if (_inVariable) {
     vars.emplace(_inVariable);
   }
+}
+
+size_t SingleRemoteOperationNode::getMemoryUsedBytes() const {
+  return sizeof(*this);
 }

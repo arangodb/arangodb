@@ -26,8 +26,7 @@
 #include <atomic>
 #include <cstdint>
 
-namespace arangodb {
-namespace cache {
+namespace arangodb::cache {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief This is the beginning of a cache data entry.
@@ -39,9 +38,9 @@ namespace cache {
 ////////////////////////////////////////////////////////////////////////////////
 struct CachedValue {
   // key size must fit in 3 bytes
-  static constexpr std::size_t maxKeySize = 0x00FFFFFFULL;
+  static constexpr std::size_t kMaxKeySize = 0x00FFFFFFULL;
   // value size must fit in 4 bytes
-  static constexpr std::size_t maxValueSize = 0xFFFFFFFFULL;
+  static constexpr std::size_t kMaxValueSize = 0xFFFFFFFFULL;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reference count (to avoid premature deletion)
@@ -52,7 +51,7 @@ struct CachedValue {
   /// @brief Size of the key in bytes
   //////////////////////////////////////////////////////////////////////////////
   inline std::size_t keySize() const noexcept {
-    return static_cast<std::size_t>(_keySize & _keyMask);
+    return static_cast<std::size_t>(_keySize & kKeyMask);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -81,9 +80,7 @@ struct CachedValue {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the allocated size of bytes including the key and value
   //////////////////////////////////////////////////////////////////////////////
-  inline std::size_t size() const noexcept {
-    return _headerAllocSize + keySize() + valueSize();
-  }
+  std::size_t size() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Increase reference count
@@ -116,29 +113,30 @@ struct CachedValue {
   //////////////////////////////////////////////////////////////////////////////
   static void operator delete(void* ptr);
 
- private:
-  static constexpr std::size_t _padding =
+  static constexpr std::size_t kPadding =
       alignof(std::atomic<std::uint32_t>) - 1;
-  static const std::size_t _headerAllocSize;
-  static constexpr std::size_t _headerAllocMask = ~_padding;
-  static constexpr std::size_t _headerAllocOffset = _padding;
-  static constexpr std::uint32_t _keyMask = 0x00FFFFFF;
-  static constexpr std::uint32_t _offsetMask = 0xFF000000;
-  static constexpr std::size_t _offsetShift = 24;
+
+ private:
+  static constexpr std::size_t kHeaderAllocMask = ~kPadding;
+  static constexpr std::size_t kHeaderAllocOffset = kPadding;
+  static constexpr std::uint32_t kKeyMask = 0x00FFFFFF;
+  static constexpr std::uint32_t kOffsetMask = 0xFF000000;
+  static constexpr std::size_t kOffsetShift = 24;
 
   std::atomic<std::uint32_t> _refCount;
   std::uint32_t _keySize;
   std::uint32_t _valueSize;
 
- private:
   CachedValue(std::size_t off, void const* k, std::size_t kSize, void const* v,
               std::size_t vSize) noexcept;
   CachedValue(CachedValue const& other) noexcept;
 
-  inline std::size_t offset() const noexcept {
-    return ((_keySize & _offsetMask) >> _offsetShift);
+  std::size_t offset() const noexcept {
+    return ((_keySize & kOffsetMask) >> kOffsetShift);
   }
 };
 
-};  // end namespace cache
-};  // end namespace arangodb
+constexpr std::size_t kCachedValueHeaderSize =
+    sizeof(CachedValue) + CachedValue::kPadding;
+
+};  // end namespace arangodb::cache

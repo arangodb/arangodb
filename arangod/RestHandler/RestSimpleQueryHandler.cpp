@@ -25,8 +25,8 @@
 
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Transaction/OperationOrigin.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
 #include "VocBase/LogicalCollection.h"
@@ -64,10 +64,6 @@ RestStatus RestSimpleQueryHandler::execute() {
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSA_put_api_simple_all
-////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestSimpleQueryHandler::allDocuments() {
   bool parseSuccess = false;
@@ -152,7 +148,8 @@ RestStatus RestSimpleQueryHandler::allDocuments() {
   data.close();
 
   // now run the actual query and handle the result
-  return registerQueryOrCursor(data.slice());
+  return registerQueryOrCursor(
+      data.slice(), transaction::OperationOriginREST{"fetching all documents"});
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -219,7 +216,8 @@ RestStatus RestSimpleQueryHandler::allDocumentKeys() {
   data.close();  // bindVars
   data.close();
 
-  return registerQueryOrCursor(data.slice());
+  return registerQueryOrCursor(data.slice(), transaction::OperationOriginREST{
+                                                 "fetching all document keys"});
 }
 
 static void buildExampleQuery(VPackBuilder& result, std::string const& cname,
@@ -263,14 +261,13 @@ static void buildExampleQuery(VPackBuilder& result, std::string const& cname,
 
 RestStatus RestSimpleQueryHandler::byExample() {
   bool parseSuccess = false;
-  VPackSlice const body = this->parseVPackBody(parseSuccess);
+  VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
     return RestStatus::DONE;
   }
 
-  if (!body.isObject() || !body.hasKey("example") ||
-      !body.get("example").isObject()) {
+  if (!body.isObject() || !body.get("example").isObject()) {
     generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
     return RestStatus::DONE;
   }
@@ -317,5 +314,6 @@ RestStatus RestSimpleQueryHandler::byExample() {
   data.add("count", VPackSlice::trueSlice());
   data.close();
 
-  return registerQueryOrCursor(data.slice());
+  return registerQueryOrCursor(
+      data.slice(), transaction::OperationOriginREST{"querying by example"});
 }

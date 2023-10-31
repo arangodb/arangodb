@@ -57,6 +57,9 @@ class ClusterIndex : public Index {
     return false;  // do not generally hide indexes
   }
 
+  /// @brief if true this index should not be shown externally
+  virtual bool inProgress() const override;
+
   IndexType type() const override { return _indexType; }
 
   char const* typeName() const override {
@@ -106,6 +109,9 @@ class ClusterIndex : public Index {
 
   std::vector<std::vector<basics::AttributeName>> const& coveredFields()
       const override;
+
+  bool supportsStreamInterface(
+      IndexStreamOptions const&) const noexcept override;
 
  protected:
   ClusterEngineType _engineType;

@@ -54,7 +54,6 @@ std::string const Utils::vertexShardsKey = "vertexShards";
 std::string const Utils::edgeShardsKey = "edgeShards";
 std::string const Utils::globalShardListKey = "globalShardList";
 std::string const Utils::userParametersKey = "userparams";
-std::string const Utils::useMemoryMapsKey = "useMemoryMaps";
 std::string const Utils::parallelismKey = "parallelism";
 
 std::string const Utils::globalSuperstepKey = "gss";

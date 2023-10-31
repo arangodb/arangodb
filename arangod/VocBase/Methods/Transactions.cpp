@@ -21,11 +21,14 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include <v8.h>
 #include "Transactions.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "V8/V8SecurityFeature.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/WriteLocker.h"
@@ -35,6 +38,7 @@
 #include "Transaction/Options.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CursorRepository.h"
+#include "V8/V8SecurityFeature.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-helper.h"
 #include "V8/v8-vpack.h"
@@ -78,7 +82,7 @@ Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
 
   READ_LOCKER(readLock, lock);
   if (canceled) {
-    return rv.reset(TRI_ERROR_REQUEST_CANCELED, "handler canceled");
+    return rv.reset(TRI_ERROR_REQUEST_CANCELED);
   }
 
   v8::HandleScope scope(isolate);
@@ -110,13 +114,7 @@ Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
   READ_LOCKER(readLock2, lock);
 
   if (canceled) {  // if it was ok we would already have committed
-    if (rv.ok()) {
-      rv.reset(TRI_ERROR_REQUEST_CANCELED,
-               "handler canceled - result already committed");
-    } else {
-      rv.reset(TRI_ERROR_REQUEST_CANCELED, "handler canceled");
-    }
-    return rv;
+    return rv.reset(TRI_ERROR_REQUEST_CANCELED);
   }
 
   if (rv.fail()) {
@@ -394,7 +392,8 @@ Result executeTransactionJS(v8::Isolate* isolate,
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  transaction::V8Context ctx(vocbase, embed);
+  auto origin = transaction::OperationOriginREST{"JavaScript transaction"};
+  transaction::V8Context ctx(vocbase, origin, embed);
   if (writeCollections.empty() && exclusiveCollections.empty()) {
     ctx.setReadOnly();
   }

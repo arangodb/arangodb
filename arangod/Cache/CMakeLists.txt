@@ -3,6 +3,7 @@ add_library(arango_cache STATIC
   Cache.cpp
   CacheManagerFeature.cpp
   CacheManagerFeatureThreads.cpp
+  CacheOptionsFeature.cpp
   CachedValue.cpp
   Finding.cpp
   Manager.cpp
@@ -12,7 +13,6 @@ add_library(arango_cache STATIC
   PlainCache.cpp
   Rebalancer.cpp
   Table.cpp
-  Transaction.cpp
   TransactionManager.cpp
   TransactionalBucket.cpp
   TransactionalCache.cpp)

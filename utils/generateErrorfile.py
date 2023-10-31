@@ -22,7 +22,7 @@ def wrap(string, width=80, ind1=0, ind2=0, prefix=''):
 
 # generate javascript file from errors
 def genJsFile(errors):
-  jslint = "/*jshint maxlen: 240 */\n/*global require */\n\n"
+  jslint = "/*jshint maxlen: 240 */\n\n"
 
   out = jslint \
       + prologue\

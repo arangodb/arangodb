@@ -21,6 +21,10 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include "v8-users.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -44,6 +48,8 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
 
+#include <string_view>
+
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,15 +63,15 @@ arangodb::Result existsCollection(v8::Isolate* isolate,
     return arangodb::Result(TRI_ERROR_INTERNAL,
                             "failure to find feature 'Database'");
   }
-  auto& databaseFeature = v8g->server().getFeature<arangodb::DatabaseFeature>();
 
-  static const std::string wildcard("*");
+  static constexpr std::string_view wildcard("*");
 
   if (wildcard == database) {
     return arangodb::Result();  // wildcard always matches
   }
 
-  auto* vocbase = databaseFeature.lookupDatabase(database);
+  auto& databaseFeature = v8g->server().getFeature<arangodb::DatabaseFeature>();
+  auto vocbase = databaseFeature.useDatabase(database);
 
   if (!vocbase) {
     return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);

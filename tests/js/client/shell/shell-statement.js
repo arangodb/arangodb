@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:1000*/
-/*global assertEqual, assertTrue, assertFalse, fail, more */
+/*global assertEqual, assertTrue, assertFalse, assertNotUndefined, fail, more */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the statement class
@@ -33,6 +33,7 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const queries = require('@arangodb/aql/queries');
 const db = arangodb.db;
+const ERRORS = arangodb.errors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: statements
@@ -50,6 +51,9 @@ function StatementSuite () {
       var stmt = db._createStatement({ query: "FOR i IN 1..11 RETURN i", count: true });
       var cursor = stmt.execute();
 
+      assertFalse(cursor.stream());
+      assertFalse(cursor.retriable());
+      assertFalse(cursor.cached());
       assertEqual(11, cursor.count());
       for (var i = 1; i <= 11; ++i) {
         assertEqual(i, cursor.next());
@@ -67,6 +71,9 @@ function StatementSuite () {
       var stmt = db._createStatement({ query: "FOR i IN 1..11 RETURN i", count: true });
       var cursor = stmt.execute();
 
+      assertFalse(cursor.stream());
+      assertFalse(cursor.retriable());
+      assertFalse(cursor.cached());
       assertEqual(11, cursor.count());
       assertTrue(cursor.hasNext());
 
@@ -80,6 +87,7 @@ function StatementSuite () {
       }
 
       assertFalse(cursor.hasNext());
+      assertFalse(cursor.stream());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,6 +98,9 @@ function StatementSuite () {
       var stmt = db._createStatement({ query: "FOR i IN 1..11 RETURN i", count: true });
       var cursor = stmt.execute();
 
+      assertFalse(cursor.stream());
+      assertFalse(cursor.retriable());
+      assertFalse(cursor.cached());
       assertEqual(11, cursor.count());
       assertTrue(cursor.hasNext());
 
@@ -97,6 +108,7 @@ function StatementSuite () {
       cursor.toString();
       assertTrue(more === cursor);
 
+      assertFalse(cursor.stream());
       cursor.toString();
       for (var i = 1; i <= 11; ++i) {
         assertEqual(i, cursor.next());
@@ -104,6 +116,7 @@ function StatementSuite () {
       }
 
       assertFalse(cursor.hasNext());
+      assertFalse(cursor.stream());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -114,6 +127,9 @@ function StatementSuite () {
       var stmt = db._createStatement({ query: "FOR i IN 1..11 RETURN i", count: true });
       var cursor = stmt.execute();
 
+      assertFalse(cursor.stream());
+      assertFalse(cursor.retriable());
+      assertFalse(cursor.cached());
       assertEqual(11, cursor.count());
       assertTrue(cursor.hasNext());
 
@@ -121,6 +137,7 @@ function StatementSuite () {
       cursor.toString();
       assertTrue(more === cursor);
 
+      assertFalse(cursor.stream());
       cursor.toString();
       try {
         cursor.toString();
@@ -129,6 +146,7 @@ function StatementSuite () {
         // we're expecting the cursor to be at the end
       }
       
+      assertFalse(cursor.stream());
       assertTrue(cursor.hasNext());
       for (var i = 1; i <= 11; ++i) {
         assertEqual(i, cursor.next());
@@ -136,11 +154,11 @@ function StatementSuite () {
       }
 
       assertFalse(cursor.hasNext());
-    }
+      assertFalse(cursor.stream());
+    },
 
   };
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: statements
@@ -161,6 +179,7 @@ function StatementStreamSuite () {
                                        batchSize: 50});
       var cursor = stmt.execute();
 
+      assertTrue(cursor.stream());
       assertEqual(undefined, cursor.count());
       for (var i = 1; i <= 100; ++i) {
         assertEqual(i, cursor.next());
@@ -176,6 +195,7 @@ function StatementStreamSuite () {
                                        batchSize: 50});
       var cursor = stmt.execute();
 
+      assertTrue(cursor.stream());
       assertEqual(undefined, cursor.count());
       for (var i = 1; i <= 100; ++i) {
         assertEqual(i, cursor.next());
@@ -183,6 +203,24 @@ function StatementStreamSuite () {
       }
 
       assertFalse(cursor.hasNext());
+    },
+    
+    testStreamCursorRetriable : function () {
+      var stmt = db._createStatement({ query: "FOR i IN 1..100 RETURN i",
+                                       stream: true, options: {allowRetry: true},
+                                       batchSize: 50});
+      var cursor = stmt.execute();
+
+      assertTrue(cursor.retriable());
+      assertTrue(cursor.stream());
+      assertEqual(undefined, cursor.count());
+      for (var i = 1; i <= 100; ++i) {
+        assertEqual(i, cursor.next());
+        assertEqual(i !== 100, cursor.hasNext());
+      }
+
+      assertFalse(cursor.hasNext());
+      assertTrue(cursor.retriable());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -194,6 +232,7 @@ function StatementStreamSuite () {
                                        options: { stream: true } });
       var cursor = stmt.execute();
 
+      assertTrue(cursor.stream());
       assertEqual(undefined, cursor.count()); // count is not supported
       assertTrue(cursor.hasNext());
 
@@ -215,6 +254,7 @@ function StatementStreamSuite () {
                                        stream: true });
       var cursor = stmt.execute();
 
+      assertTrue(cursor.stream());
       assertEqual(undefined, cursor.count()); // count is not supported
       assertTrue(cursor.hasNext());
 
@@ -229,7 +269,64 @@ function StatementStreamSuite () {
       }
 
       assertFalse(cursor.hasNext());
-    }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test constructor
+////////////////////////////////////////////////////////////////////////////////
+
+    testConstructWithOptions : function () {
+      var query = "for v in @values return v";
+      var bind = { values: [ 1, 2, 3 ] };
+      var st = db._createStatement({
+        query: query,
+        bindVars: bind,
+        count: true,
+        cache: true,
+        stream: true,
+        batchSize: 42,
+        ttl: 4.2,
+        options: {
+          allowDirtyReads: true
+        }
+      });
+
+      assertEqual(bind, st._bindVars);
+      assertTrue(st._doCount);
+      assertTrue(st._cache);
+      assertTrue(st._stream);
+      assertEqual(42, st._batchSize);
+      assertEqual(4.2, st._ttl);
+      assertNotUndefined(st._options);
+      assertTrue(st._options.allowDirtyReads);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test execute method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExecuteOptionsTtlError : function () {
+      var st = db._createStatement({
+        query : "FOR i IN 1..2000 RETURN i",
+        ttl : 0.00001,
+        batchSize : 1000, // default
+        options: {
+          stream : true,
+        }
+      });
+      var docs = [ ];
+      try {
+        var result = st.execute();
+        while (result.hasNext()) {
+          docs.push(result.next());
+        }
+        result = true;
+        fail();
+      } catch (e) {
+        assertEqual(ERRORS.ERROR_CURSOR_NOT_FOUND.code, e.errorNum);
+      }
+    },
+
 
   };
 }

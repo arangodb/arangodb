@@ -25,8 +25,6 @@
 #include <Mocks/Death_Test.h>
 
 #include "Basics/Guarded.h"
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
 
 #include <Basics/UnshackledMutex.h>
@@ -402,8 +400,7 @@ struct ParamT {
 
 using TestedTypes = ::testing::Types<
     std::pair<std::mutex, ParamT<std::unique_lock>>,
-    std::pair<arangodb::basics::UnshackledMutex, ParamT<std::unique_lock>>,
-    std::pair<arangodb::Mutex, ParamT<std::unique_lock>>>;
+    std::pair<arangodb::basics::UnshackledMutex, ParamT<std::unique_lock>>>;
 
 INSTANTIATE_TYPED_TEST_CASE_P(GuardedTestInstantiation, GuardedTest,
                               TestedTypes);

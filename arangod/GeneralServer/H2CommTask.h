@@ -26,9 +26,12 @@
 #include "GeneralServer/AsioSocket.h"
 #include "GeneralServer/GeneralCommTask.h"
 
-#include <boost/lockfree/queue.hpp>
+#include <atomic>
 #include <memory>
 #include <map>
+
+#include <boost/lockfree/queue.hpp>
+#include <velocypack/Buffer.h>
 
 // Work-around for nghttp2 non-standard definition ssize_t under windows
 // https://github.com/nghttp2/nghttp2/issues/616
@@ -54,7 +57,7 @@ template<SocketType T>
 class H2CommTask final : public GeneralCommTask<T> {
  public:
   H2CommTask(GeneralServer& server, ConnectionInfo,
-             std::unique_ptr<AsioSocket<T>> so);
+             std::shared_ptr<AsioSocket<T>> so);
   ~H2CommTask() noexcept;
 
   void start() override;
@@ -92,7 +95,6 @@ class H2CommTask final : public GeneralCommTask<T> {
                                const nghttp2_frame* frame, int lib_error_code,
                                void* user_data);
 
- private:
   // ongoing Http2 stream
   struct Stream final {
     explicit Stream(std::unique_ptr<HttpRequest> req)

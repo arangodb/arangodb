@@ -253,8 +253,7 @@ CollectNode::calcInputVariableNames() const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   switch (aggregationMethod()) {
     case CollectOptions::CollectMethod::HASH: {
       ExecutionNode const* previousNode = getFirstDependency();
@@ -483,9 +482,11 @@ auto isStartNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::UPSERT:
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::INDEX:
+    case ExecutionNode::JOIN:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::ENUMERATE_PATHS:
     case ExecutionNode::REMOTESINGLE:
+    case ExecutionNode::REMOTE_MULTIPLE:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_END:
@@ -528,9 +529,11 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::UPSERT:
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::INDEX:
+    case ExecutionNode::JOIN:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::ENUMERATE_PATHS:
     case ExecutionNode::REMOTESINGLE:
+    case ExecutionNode::REMOTE_MULTIPLE:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_END:
@@ -551,6 +554,7 @@ auto isLoop(ExecutionNode const& node) -> bool {
   switch (node.getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::INDEX:
+    case ExecutionNode::JOIN:
     case ExecutionNode::ENUMERATE_LIST:
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::SHORTEST_PATH:
@@ -577,6 +581,7 @@ auto isLoop(ExecutionNode const& node) -> bool {
     case ExecutionNode::DISTRIBUTE:
     case ExecutionNode::UPSERT:
     case ExecutionNode::REMOTESINGLE:
+    case ExecutionNode::REMOTE_MULTIPLE:
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
@@ -748,7 +753,13 @@ CostEstimate CollectNode::estimateCost() const {
   return estimate;
 }
 
+AsyncPrefetchEligibility CollectNode::canUseAsyncPrefetching() const noexcept {
+  return AsyncPrefetchEligibility::kEnableForNode;
+}
+
 ExecutionNode::NodeType CollectNode::getType() const { return COLLECT; }
+
+size_t CollectNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 bool CollectNode::isDistinctCommand() const { return _isDistinctCommand; }
 

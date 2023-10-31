@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <chrono>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -64,7 +65,8 @@ struct QueryOptions {
   size_t maxDNFConditionMembers;
   double maxRuntime;  // query has to execute within the given time or will be
                       // killed
-  double satelliteSyncWait;
+  std::chrono::duration<double> satelliteSyncWait;
+
   double ttl;  // time until query cursor expires - avoids coursors to
                // stick around for ever if client does not collect the data
   /// Level 0 nothing, Level 1 profile, Level 2,3 log tracing info

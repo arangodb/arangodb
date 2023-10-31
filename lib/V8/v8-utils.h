@@ -23,10 +23,14 @@
 
 #pragma once
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include <stddef.h>
 #include <cstdint>
 #include <string>
-
+#include <tuple>
 #include <v8.h>
 
 #include "Basics/ErrorCode.h"
@@ -34,6 +38,14 @@
 namespace arangodb {
 class Result;
 }
+
+/// @brief splits url into an endpoint, and a relative URL. the third return
+/// value contains an error message in case the first two returned parts are
+/// empty strings
+std::tuple<std::string, std::string, std::string> getEndpoint(
+    std::vector<std::string> const& endpoints, std::string& url,
+    std::string const& lastEndpoint);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Converts an object to a UTF-8-encoded and normalized character array.
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,12 +147,6 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(
     v8::Isolate* isolate, v8::Handle<v8::Context> context,
     v8::Handle<v8::String> const source, v8::Handle<v8::String> const name,
     bool printResult);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an error in a javascript object, based on error number only
-////////////////////////////////////////////////////////////////////////////////
-
-// void TRI_CreateErrorObject(v8::Isolate* isolate, ErrorCode errorNumber);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object, based on arangodb::Result

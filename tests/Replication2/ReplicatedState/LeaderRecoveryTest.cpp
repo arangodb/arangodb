@@ -98,7 +98,7 @@ struct MyHelperFactory {
 
 }  // namespace arangodb::replication2::test
 
-#include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
 #include "Replication2/Mocks/MockStatePersistorInterface.h"
 
 struct ReplicatedStateRecoveryTest : test::ReplicatedLogTest {

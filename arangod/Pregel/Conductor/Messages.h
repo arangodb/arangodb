@@ -24,13 +24,16 @@
 
 #include <map>
 
+#include "Actor/ActorPID.h"
 #include "Basics/ResultT.h"
 #include "Cluster/ClusterTypes.h"
 #include "Inspection/Format.h"
 #include "Inspection/Types.h"
 #include "Pregel/ExecutionNumber.h"
+#include "Pregel/Statistics.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/Utils.h"
+#include "Pregel/Worker/Messages.h"
 
 namespace arangodb::pregel {
 
@@ -41,11 +44,19 @@ template<typename Inspector>
 auto inspect(Inspector& f, ConductorStart& x) {
   return f.object(x).fields();
 }
+
+struct WorkerFailed {};
+template<typename Inspector>
+auto inspect(Inspector& f, WorkerFailed& x) {
+  return f.object(x).fields();
+}
+
 struct WorkerCreated {};
 template<typename Inspector>
 auto inspect(Inspector& f, WorkerCreated& x) {
   return f.object(x).fields();
 }
+
 struct GraphLoaded {
   ExecutionNumber executionNumber;
   uint64_t vertexCount;
@@ -57,6 +68,65 @@ auto inspect(Inspector& f, GraphLoaded& x) {
       f.field(Utils::executionNumberKey, x.executionNumber),
       f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount));
 }
+
+struct SendCountPerActor {
+  actor::ActorPID receiver;
+  uint64_t sendCount;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, SendCountPerActor& x) {
+  return f.object(x).fields(f.field("receiver", x.receiver),
+                            f.field("sendCount", x.sendCount));
+}
+
+struct GlobalSuperStepFinished {
+  GlobalSuperStepFinished() noexcept = default;
+  GlobalSuperStepFinished(uint64_t sendMessagesCount,
+                          uint64_t receivedMessagesCount,
+                          std::vector<SendCountPerActor> sendCountPerActor,
+                          uint64_t activeCount, uint64_t vertexCount,
+                          uint64_t edgeCount, VPackBuilder aggregators)
+      : sendMessagesCount{sendMessagesCount},
+        receivedMessagesCount{receivedMessagesCount},
+        sendCountPerActor{std::move(sendCountPerActor)},
+        activeCount{activeCount},
+        vertexCount{vertexCount},
+        edgeCount{edgeCount},
+        aggregators{std::move(aggregators)} {};
+
+  uint64_t sendMessagesCount = 0;
+  uint64_t receivedMessagesCount = 0;
+  std::vector<SendCountPerActor> sendCountPerActor;
+  uint64_t activeCount = 0;
+  uint64_t vertexCount = 0;
+  uint64_t edgeCount = 0;
+  VPackBuilder aggregators;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, GlobalSuperStepFinished& x) {
+  return f.object(x).fields(
+      f.field("sendMessagesCount", x.sendMessagesCount),
+      f.field("receivedMessagesCount", x.receivedMessagesCount),
+      f.field("sendCountPerActor", x.sendCountPerActor),
+      f.field("activeCount", x.activeCount),
+      f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount),
+      f.field("aggregators", x.aggregators));
+}
+
+struct Stored {};
+template<typename Inspector>
+auto inspect(Inspector& f, Stored& x) {
+  return f.object(x).fields();
+}
+
+struct ResultCreated {
+  ResultT<PregelResults> results = {PregelResults{}};
+};
+template<typename Inspector>
+auto inspect(Inspector& f, ResultCreated& x) {
+  return f.object(x).fields(f.field("results", x.results));
+}
+
 struct StatusUpdate {
   ExecutionNumber executionNumber;
   Status status;
@@ -67,50 +137,46 @@ auto inspect(Inspector& f, StatusUpdate& x) {
       f.field(Utils::executionNumberKey, x.executionNumber),
       f.field("status", x.status));
 }
-struct ConductorMessages : std::variant<ConductorStart, ResultT<WorkerCreated>,
-                                        ResultT<GraphLoaded>, StatusUpdate> {
-  using std::variant<ConductorStart, ResultT<WorkerCreated>,
-                     ResultT<GraphLoaded>, StatusUpdate>::variant;
+
+struct CleanupFinished {};
+template<typename Inspector>
+auto inspect(Inspector& f, CleanupFinished& x) {
+  return f.object(x).fields();
+}
+
+struct Cancel {};
+template<typename Inspector>
+auto inspect(Inspector& f, Cancel& x) {
+  return f.object(x).fields();
+}
+
+struct ConductorMessages
+    : std::variant<ConductorStart, ResultT<WorkerCreated>,
+                   ResultT<WorkerFailed>, ResultT<GraphLoaded>,
+                   ResultT<GlobalSuperStepFinished>, ResultT<Stored>,
+                   ResultCreated, StatusUpdate, CleanupFinished, Cancel> {
+  using std::variant<
+      ConductorStart, ResultT<WorkerCreated>, ResultT<WorkerFailed>,
+      ResultT<GraphLoaded>, ResultT<GlobalSuperStepFinished>, ResultT<Stored>,
+      ResultCreated, StatusUpdate, CleanupFinished, Cancel>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ConductorMessages& x) {
   return f.variant(x).unqualified().alternatives(
       arangodb::inspection::type<ConductorStart>("Start"),
       arangodb::inspection::type<ResultT<WorkerCreated>>("WorkerCreated"),
+      arangodb::inspection::type<ResultT<WorkerFailed>>("WorkerFailed"),
       arangodb::inspection::type<ResultT<GraphLoaded>>("GraphLoaded"),
-      arangodb::inspection::type<StatusUpdate>("StatusUpdate"));
+      arangodb::inspection::type<ResultT<GlobalSuperStepFinished>>(
+          "GlobalSuperStepFinished"),
+      arangodb::inspection::type<ResultT<Stored>>("Stored"),
+      arangodb::inspection::type<ResultCreated>("ResultCreated"),
+      arangodb::inspection::type<StatusUpdate>("StatusUpdate"),
+      arangodb::inspection::type<CleanupFinished>("CleanupFinished"),
+      arangodb::inspection::type<Cancel>("Cancel"));
 }
 
 }  // namespace conductor::message
-
-// TODO split LoadGraph off CreateWorker
-struct CreateWorker {
-  ExecutionNumber executionNumber;
-  std::string algorithm;
-  VPackBuilder userParameters;
-  std::string coordinatorId;
-  bool useMemoryMaps;
-  std::unordered_map<CollectionID, std::vector<ShardID>>
-      edgeCollectionRestrictions;
-  std::map<CollectionID, std::vector<ShardID>> vertexShards;
-  std::map<CollectionID, std::vector<ShardID>> edgeShards;
-  std::unordered_map<CollectionID, std::string> collectionPlanIds;
-  std::vector<ShardID> allShards;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, CreateWorker& x) {
-  return f.object(x).fields(
-      f.field(Utils::executionNumberKey, x.executionNumber),
-      f.field("algorithm", x.algorithm),
-      f.field("userParameters", x.userParameters),
-      f.field("coordinatorId", x.coordinatorId),
-      f.field("useMemoryMaps", x.useMemoryMaps),
-      f.field("edgeCollectionRestrictions", x.edgeCollectionRestrictions),
-      f.field("vertexShards", x.vertexShards),
-      f.field("edgeShards", x.edgeShards),
-      f.field("collectionPlanIds", x.collectionPlanIds),
-      f.field("allShards", x.allShards));
-}
 
 struct PrepareGlobalSuperStep {
   ExecutionNumber executionNumber;
@@ -173,4 +239,8 @@ struct fmt::formatter<arangodb::pregel::PrepareGlobalSuperStep>
     : arangodb::inspection::inspection_formatter {};
 template<>
 struct fmt::formatter<arangodb::pregel::RunGlobalSuperStep>
+    : arangodb::inspection::inspection_formatter {};
+template<>
+struct fmt::formatter<
+    arangodb::pregel::conductor::message::GlobalSuperStepFinished>
     : arangodb::inspection::inspection_formatter {};

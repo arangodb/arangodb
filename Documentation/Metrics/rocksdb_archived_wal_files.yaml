@@ -13,5 +13,5 @@ exposedBy:
 description: |
   This metric exhibits the total number of RocksDB WAL files in the
   "archive" subdirectory. These are WAL files that can be garbage-collected
-  eventually, when they are not used anymore by replication or other WAL
-  tailing.
+  eventually, when they are not used anymore by replication, WAL tailing
+  or other purposes.

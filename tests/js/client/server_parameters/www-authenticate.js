@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertFalse, assertTrue, arango */
+/* global getOptions, assertEqual, assertFalse, assertTrue, arango, print */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for server startup options
@@ -62,12 +62,13 @@ function HttpAuthenticateSuite() {
 
     testUnauthorized: function() {
       protocols.forEach((protocol) => {
+        print(`connecting with ${protocol}`);
         connectWith(protocol, user, "");
         // need to change password, otherwise, the request will return 200
         users.update(user, "abc");
         let result = arango.GET_RAW("/_api/version");
-        assertEqual(401, result.code);
-        assertTrue(result.headers.hasOwnProperty('www-authenticate'));
+        assertEqual(401, result.code, JSON.stringify(result));
+        assertTrue(result.headers.hasOwnProperty('www-authenticate'), JSON.stringify(result));
         // to change password back to the original one, we must reconnect with the current one, then change it back to the original one, then connect again
         arango.reconnectWithNewPassword("abc");
         users.update(user, "");
@@ -77,12 +78,13 @@ function HttpAuthenticateSuite() {
 
     testUnauthorizedOmit: function() {
       protocols.forEach(protocol => {
+        print(`connecting with ${protocol}`);
         connectWith(protocol, user, "");
         // need to change password, otherwise, the request will return 200
         users.update(user, "abc");
         let result = arango.GET_RAW("/_api/version", {"x-omit-www-authenticate": "abc"});
-        assertEqual(401, result.code);
-        assertFalse(result.headers.hasOwnProperty('www-authenticate'));
+        assertEqual(401, result.code, JSON.stringify(result));
+        assertFalse(result.headers.hasOwnProperty('www-authenticate'), JSON.stringify(result));
         // to change password back to the original one, we must reconnect with the current one, then change it back to the original one, then connect again
         arango.reconnectWithNewPassword("abc");
         users.update(user, "");
@@ -98,10 +100,11 @@ function HttpAuthenticateSuite() {
         "exp": Math.floor(Date.now() / 1000) + 3600
       }, 'HS256');
       protocols.forEach(protocol => {
+        print(`connecting with ${protocol}`);
         connectWith(protocol, user, "");
         let result = arango.GET_RAW("/_api/version", {"bearer": jwtRoot});
-        assertEqual(200, result.code);
-        assertFalse(result.headers.hasOwnProperty('www-authenticate'));
+        assertEqual(200, result.code, JSON.stringify(result));
+        assertFalse(result.headers.hasOwnProperty('www-authenticate'), JSON.stringify(result));
       });
     },
   };

@@ -55,12 +55,6 @@ void SingleServerProvider<Step>::addEdgeToBuilder(
   }
 };
 
-template<class StepImpl>
-auto SingleServerProvider<StepImpl>::getEdgeDocumentToken(
-    typename Step::Edge const& edge) -> EdgeDocumentToken {
-  return edge.getID();
-}
-
 template<class Step>
 void SingleServerProvider<Step>::addEdgeIDToBuilder(
     typename Step::Edge const& edge, arangodb::velocypack::Builder& builder) {
@@ -294,7 +288,7 @@ auto SingleServerProvider<StepType>::fetchVertices(
     -> futures::Future<std::vector<Step*>> {
   // We will never need to fetch anything
   TRI_ASSERT(false);
-  return std::move(fetch(looseEnds));
+  return fetch(looseEnds);
 }
 
 template<class StepType>

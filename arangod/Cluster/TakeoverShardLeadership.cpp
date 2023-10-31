@@ -55,17 +55,18 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include <string_view>
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
 namespace {
-static std::string serverPrefix("server:");
+constexpr std::string_view serverPrefix("server:");
 
 std::string stripServerPrefix(std::string const& destination) {
-  TRI_ASSERT(destination.size() >= serverPrefix.size() &&
-             destination.substr(0, serverPrefix.size()) == serverPrefix);
+  TRI_ASSERT(destination.starts_with(serverPrefix));
   return destination.substr(serverPrefix.size());
 }
 }  // namespace

@@ -174,9 +174,9 @@ void ProgramOptions::printUsage() const {
 // hidden
 void ProgramOptions::printHelp(std::string const& search) const {
   bool const colors = (isatty(STDOUT_FILENO) != 0);
-  TRI_TerminalSize ts = TRI_DefaultTerminalSize();
-  size_t const tw = ts.columns;
-  size_t const ow = optionsWidth();
+  auto ts = terminal_utils::defaultTerminalSize();
+  size_t tw = ts.columns;
+  size_t ow = optionsWidth();
 
   std::string normalized = search;
   if (normalized == "uncommon" || normalized == "hidden") {
@@ -421,6 +421,13 @@ bool ProgramOptions::require(std::string const& name) {
   auto it = _sections.find(parts.first);
 
   if (it == _sections.end()) {
+#ifndef USE_V8
+    if (modernized.starts_with("javascript.") ||
+        modernized.starts_with("--javascript.")) {
+      // hack: ignore all options starting with --javascript if V8 is disabled
+      return true;
+    }
+#endif
     unknownOption(modernized);
     return false;
   }
@@ -428,6 +435,13 @@ bool ProgramOptions::require(std::string const& name) {
   auto it2 = (*it).second.options.find(parts.second);
 
   if (it2 == (*it).second.options.end()) {
+#ifndef USE_V8
+    if (modernized.starts_with("javascript.") ||
+        modernized.starts_with("--javascript.")) {
+      // hack: ignore all options starting with --javascript if V8 is disabled
+      return true;
+    }
+#endif
     unknownOption(modernized);
     return false;
   }
@@ -449,6 +463,14 @@ bool ProgramOptions::setValue(std::string const& name,
   auto it = _sections.find(parts.first);
 
   if (it == _sections.end()) {
+#ifndef USE_V8
+    if (modernized.starts_with("javascript.") ||
+        modernized.starts_with("--javascript.")) {
+      // hack: ignore all options starting with --javascript if V8 is disabled
+      _processingResult.touch(modernized);
+      return true;
+    }
+#endif
     unknownOption(modernized);
     return false;
   }
@@ -461,6 +483,14 @@ bool ProgramOptions::setValue(std::string const& name,
   auto it2 = (*it).second.options.find(parts.second);
 
   if (it2 == (*it).second.options.end()) {
+#ifndef USE_V8
+    if (modernized.starts_with("javascript.") ||
+        modernized.starts_with("--javascript.")) {
+      // hack: ignore all options starting with --javascript if V8 is disabled
+      _processingResult.touch(modernized);
+      return true;
+    }
+#endif
     unknownOption(modernized);
     return false;
   }
@@ -582,6 +612,14 @@ Option& ProgramOptions::addObsoleteOption(std::string const& name,
 bool ProgramOptions::requiresValue(std::string const& name) {
   std::string const& modernized = modernize(name);
 
+#ifndef USE_V8
+  if (modernized.starts_with("javascript.") ||
+      modernized.starts_with("--javascript.")) {
+    // hack: make all options starting with --javascript not require a value
+    return false;
+  }
+#endif
+
   auto parts = Option::splitName(modernized);
   auto it = _sections.find(parts.first);
 
@@ -606,7 +644,7 @@ Option& ProgramOptions::getOption(std::string const& name) {
   size_t const pos = stripped.find(',');
   if (pos != std::string::npos) {
     // remove shorthand
-    stripped = stripped.substr(0, pos);
+    stripped.resize(pos);
   }
   auto parts = Option::splitName(stripped);
   auto it = _sections.find(parts.first);

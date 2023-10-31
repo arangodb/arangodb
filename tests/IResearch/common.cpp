@@ -24,7 +24,6 @@
 
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
@@ -32,7 +31,9 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/SharedQueryState.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
@@ -66,16 +67,21 @@
 #include "search/ngram_similarity_filter.hpp"
 #include "search/levenshtein_filter.hpp"
 #include "search/prefix_filter.hpp"
+#include "search/granular_range_filter.hpp"
 #include "utils/string.hpp"
 #include <filesystem>
 
 #include "../3rdParty/iresearch/tests/tests_config.hpp"
 
+#ifdef USE_V8
 #include <libplatform/libplatform.h>
 #include <v8.h>
+#endif
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
+
+#include <absl/strings/ascii.h>
 
 #include <unordered_set>
 
@@ -85,29 +91,54 @@ extern const char* ARGV0;  // defined in main.cpp
 namespace irs {
 std::ostream& operator<<(std::ostream& os, filter const& filter);
 
-std::ostream& operator<<(std::ostream& os, by_range const& range) {
-  os << "Range(" << range.field();
-  std::string termValueMin(
-      ViewCast<char>(irs::bytes_view{range.options().range.min}));
-  std::string termValueMax(
-      ViewCast<char>(irs::bytes_view{range.options().range.max}));
-  if (!termValueMin.empty()) {
-    os << " "
-       << (range.options().range.min_type == irs::BoundType::INCLUSIVE ? ">="
-                                                                       : ">")
-       << termValueMin;
+std::string ToString(bytes_view term) {
+  std::string s;
+  for (auto c : term) {
+    if (absl::ascii_isprint(c)) {
+      s += c;
+    } else {
+      s += " ";
+      s.append(absl::AlphaNum{int{c}}.Piece());
+      s += " ";
+    }
   }
-  if (!termValueMax.empty()) {
-    if (!termValueMin.empty()) {
+  return s;
+}
+
+std::string ToString(std::vector<bstring> const& terms) {
+  std::string s = "( ";
+  for (auto& term : terms) {
+    s += ToString(term) + " ";
+  }
+  s += ")";
+  return s;
+}
+
+template<typename T>
+std::ostream& operator<<(std::ostream& os, search_range<T> const& range) {
+  if (!range.min.empty()) {
+    os << " " << (range.min_type == irs::BoundType::INCLUSIVE ? ">=" : ">")
+       << ToString(range.min);
+  }
+  if (!range.max.empty()) {
+    if (!range.min.empty()) {
       os << ", ";
     } else {
       os << " ";
     }
-    os << (range.options().range.min_type == irs::BoundType::INCLUSIVE ? "<="
-                                                                       : "<")
-       << termValueMax;
+    os << (range.min_type == irs::BoundType::INCLUSIVE ? "<=" : "<")
+       << ToString(range.max);
   }
-  return os << ")";
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, by_range const& range) {
+  return os << "Range(" << range.field() << range.options().range << ")";
+}
+
+std::ostream& operator<<(std::ostream& os, by_granular_range const& range) {
+  return os << "GranularRange(" << range.field() << range.options().range
+            << ")";
 }
 
 std::ostream& operator<<(std::ostream& os, by_term const& term) {
@@ -133,7 +164,7 @@ std::ostream& operator<<(std::ostream& os, And const& filter) {
     if (it != filter.begin()) {
       os << " && ";
     }
-    os << *it;
+    os << **it;
   }
   os << "]";
   return os;
@@ -149,7 +180,7 @@ std::ostream& operator<<(std::ostream& os, Or const& filter) {
     if (it != filter.begin()) {
       os << " || ";
     }
-    os << *it;
+    os << **it;
   }
   os << "]";
   return os;
@@ -206,7 +237,8 @@ std::ostream& operator<<(std::ostream& os, by_terms const& filter) {
   os << "TERMS[";
   os << filter.field() << ", {";
   for (auto& [term, boost] : filter.options().terms) {
-    os << "[" << ViewCast<char>(irs::bytes_view{term}) << ", " << boost << "],";
+    os << "['" << ViewCast<char>(irs::bytes_view{term}) << "', " << boost
+       << "],";
   }
   os << "}, " << filter.options().min_match << "]";
   return os;
@@ -235,6 +267,8 @@ std::ostream& operator<<(std::ostream& os, filter const& filter) {
     return os << static_cast<by_terms const&>(filter);
   } else if (type == irs::type<by_range>::id()) {
     return os << static_cast<by_range const&>(filter);
+  } else if (type == irs::type<by_granular_range>::id()) {
+    return os << static_cast<by_granular_range const&>(filter);
   } else if (type == irs::type<by_ngram_similarity>::id()) {
     return os << static_cast<by_ngram_similarity const&>(filter);
   } else if (type == irs::type<by_edit_distance>::id()) {
@@ -263,117 +297,104 @@ std::string to_string(irs::filter const& f) {
 
 namespace {
 
-struct BoostScorer : public irs::sort {
+struct BoostScorer final : public irs::ScorerBase<void> {
   static constexpr std::string_view type_name() noexcept {
     return "boostscorer";
   }
 
-  struct Prepared : public irs::PreparedSortBase<void> {
-   public:
-    Prepared() = default;
+  void collect(irs::byte_type* stats, irs::FieldCollector const*,
+               irs::TermCollector const*) const final {
+    // NOOP
+  }
 
-    virtual void collect(irs::byte_type*, const irs::IndexReader&,
-                         const irs::sort::field_collector*,
-                         const irs::sort::term_collector*) const override {
-      // NOOP
-    }
+  irs::IndexFeatures index_features() const final {
+    return irs::IndexFeatures::NONE;
+  }
 
-    virtual irs::IndexFeatures features() const override {
-      return irs::IndexFeatures::NONE;
-    }
+  irs::FieldCollector::ptr prepare_field_collector() const final {
+    return nullptr;
+  }
 
-    virtual irs::sort::field_collector::ptr prepare_field_collector()
-        const override {
-      return nullptr;
-    }
+  irs::TermCollector::ptr prepare_term_collector() const final {
+    return nullptr;
+  }
 
-    virtual irs::sort::term_collector::ptr prepare_term_collector()
-        const override {
-      return nullptr;
-    }
+  irs::ScoreFunction prepare_scorer(
+      irs::ColumnProvider const&,
+      std::map<irs::type_info::type_id, irs::field_id> const&,
+      irs::byte_type const* stats, irs::attribute_provider const&,
+      irs::score_t boost) const final {
+    struct ScoreCtx final : public irs::score_ctx {
+      explicit ScoreCtx(irs::score_t b) noexcept : boost{b} {}
 
-    virtual irs::ScoreFunction prepare_scorer(
-        irs::SubReader const&, irs::term_reader const&, irs::byte_type const*,
-        irs::attribute_provider const&, irs::score_t boost) const override {
-      struct ScoreCtx : public irs::score_ctx {
-        explicit ScoreCtx(irs::score_t boost) noexcept : boost{boost} {}
+      irs::score_t boost;
+    };
 
-        irs::score_t boost;
-      };
+    return irs::ScoreFunction::Make<ScoreCtx>(
+        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+          *res = static_cast<ScoreCtx*>(ctx)->boost;
+        },
+        irs::ScoreFunction::DefaultMin, boost);
+  }
 
-      return irs::ScoreFunction::Make<ScoreCtx>(
-          [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-            *res = static_cast<ScoreCtx*>(ctx)->boost;
-          },
-          boost);
-    }
-  };  // namespace
-
-  static irs::sort::ptr make(std::string_view) {
+  static irs::Scorer::ptr make(std::string_view) {
     return std::make_unique<BoostScorer>();
   }
 
-  BoostScorer() : irs::sort(irs::type<BoostScorer>::get()) {}
-
-  virtual irs::sort::prepared::ptr prepare() const override {
-    return std::make_unique<Prepared>();
-  }
-};  // BoostScorer
+  BoostScorer() = default;
+};
 
 REGISTER_SCORER_JSON(BoostScorer, BoostScorer::make);
 
-struct CustomScorer : public irs::sort {
+struct CustomScorer final : public irs::ScorerBase<void> {
   static constexpr std::string_view type_name() noexcept {
     return "customscorer";
   }
 
-  struct Prepared : public irs::PreparedSortBase<void> {
-   public:
-    Prepared(float_t i) : i(i) {}
+  void collect(irs::byte_type*, irs::FieldCollector const*,
+               irs::TermCollector const*) const final {
+    // NOOP
+  }
 
-    virtual void collect(irs::byte_type*, const irs::IndexReader&,
-                         const irs::sort::field_collector*,
-                         const irs::sort::term_collector*) const override {
-      // NOOP
+  irs::IndexFeatures index_features() const final {
+    return irs::IndexFeatures::NONE;
+  }
+
+  irs::FieldCollector::ptr prepare_field_collector() const final {
+    return nullptr;
+  }
+
+  irs::TermCollector::ptr prepare_term_collector() const final {
+    return nullptr;
+  }
+
+  irs::ScoreFunction prepare_scorer(
+      irs::ColumnProvider const&,
+      std::map<irs::type_info::type_id, irs::field_id> const&,
+      irs::byte_type const* stats, irs::attribute_provider const&,
+      irs::score_t) const final {
+    struct ScoreCtx : public irs::score_ctx {
+      ScoreCtx(float v) noexcept : scoreValue{v} {}
+
+      float scoreValue;
+    };
+
+    return irs::ScoreFunction::Make<ScoreCtx>(
+        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+          *res = static_cast<ScoreCtx const*>(ctx)->scoreValue;
+        },
+        irs::ScoreFunction::DefaultMin, this->i);
+  }
+
+  bool equals(irs::Scorer const& other) const noexcept final {
+    if (!Scorer::equals(other)) {
+      return false;
     }
+    auto const& p = DownCast<CustomScorer>(other);
+    return p.i == i;
+  }
 
-    virtual irs::IndexFeatures features() const override {
-      return irs::IndexFeatures::NONE;
-    }
-
-    virtual irs::sort::field_collector::ptr prepare_field_collector()
-        const override {
-      return nullptr;
-    }
-
-    virtual irs::sort::term_collector::ptr prepare_term_collector()
-        const override {
-      return nullptr;
-    }
-
-    virtual irs::ScoreFunction prepare_scorer(irs::SubReader const&,
-                                              irs::term_reader const&,
-                                              irs::byte_type const*,
-                                              irs::attribute_provider const&,
-                                              irs::score_t) const override {
-      struct ScoreCtx : public irs::score_ctx {
-        ScoreCtx(float_t scoreValue) noexcept : scoreValue(scoreValue) {}
-
-        float_t scoreValue;
-      };
-
-      return irs::ScoreFunction::Make<ScoreCtx>(
-
-          [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-            *res = static_cast<ScoreCtx const*>(ctx)->scoreValue;
-          },
-          this->i);
-    }
-
-    float_t i;
-  };
-
-  static irs::sort::ptr make(std::string_view args) {
+  static irs::Scorer::ptr make(std::string_view args) {
     if (irs::IsNull(args)) {
       return std::make_unique<CustomScorer>(0u);
     }
@@ -387,7 +408,7 @@ struct CustomScorer : public irs::sort {
       return nullptr;  // incorrect argument format
     }
 
-    arangodb::velocypack::ArrayIterator itr(slice);
+    arangodb::velocypack::ArrayIterator itr{slice};
 
     if (!itr.valid()) {
       return nullptr;
@@ -395,21 +416,16 @@ struct CustomScorer : public irs::sort {
 
     auto const value = itr.value();
 
-    if (!value.isNumber()) {
+    if (!value.isNumber<size_t>()) {
       return nullptr;
     }
-
-    return std::make_unique<CustomScorer>(itr.value().getNumber<size_t>());
+    return std::make_unique<CustomScorer>(value.getNumber<size_t>());
   }
 
-  CustomScorer(size_t i) : irs::sort(irs::type<CustomScorer>::get()), i(i) {}
+  CustomScorer(size_t i) noexcept : i{static_cast<float>(i)} {}
 
-  virtual irs::sort::prepared::ptr prepare() const override {
-    return std::make_unique<Prepared>(static_cast<float_t>(i));
-  }
-
-  size_t i;
-};  // CustomScorer
+  float i;
+};
 
 REGISTER_SCORER_JSON(CustomScorer, CustomScorer::make);
 
@@ -490,6 +506,7 @@ void init(bool withICU /*= false*/) {
   }
 }
 
+#ifdef USE_V8
 /// @note once V8 is initialized all 'CATCH' errors will result in SIGILL
 void v8Init() {
   class V8Init {
@@ -511,6 +528,7 @@ void v8Init() {
   };
   [[maybe_unused]] static const V8Init init;
 }
+#endif
 
 bool assertRules(
     TRI_vocbase_t& vocbase, std::string const& queryString,
@@ -524,8 +542,8 @@ bool assertRules(
         arangodb::aql::OptimizerRulesFeature::translateRule(ruleId);
     expectedRules.emplace(std::string(translated));
   }
-  auto ctx =
-      std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+      vocbase, transaction::OperationOriginTestCase{});
   auto query = arangodb::aql::Query::create(
       ctx, arangodb::aql::QueryString(queryString), bindVars,
       arangodb::aql::QueryOptions(
@@ -552,10 +570,10 @@ arangodb::aql::QueryResult explainQuery(
     TRI_vocbase_t& vocbase, std::string const& queryString,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
     std::string const& optionsString /*= "{}"*/) {
-  auto ctx =
-      std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+      vocbase, transaction::OperationOriginTestCase{});
   auto query = arangodb::aql::Query::create(
-      ctx, arangodb::aql::QueryString(queryString), bindVars,
+      std::move(ctx), arangodb::aql::QueryString(queryString), bindVars,
       arangodb::aql::QueryOptions(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
@@ -567,10 +585,10 @@ arangodb::aql::QueryResult executeQuery(
     std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
     std::string const& optionsString /*= "{}"*/
 ) {
-  auto ctx =
-      std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+      vocbase, transaction::OperationOriginTestCase{});
   auto query = arangodb::aql::Query::create(
-      ctx, arangodb::aql::QueryString(queryString), bindVars,
+      std::move(ctx), arangodb::aql::QueryString(queryString), bindVars,
       arangodb::aql::QueryOptions(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
@@ -590,10 +608,10 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
     TRI_vocbase_t& vocbase, std::string const& queryString,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */,
     std::string const& optionsString /*= "{}"*/) {
-  auto ctx =
-      std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+      vocbase, transaction::OperationOriginTestCase{});
   auto query = arangodb::aql::Query::create(
-      ctx, arangodb::aql::QueryString(queryString), bindVars,
+      std::move(ctx), arangodb::aql::QueryString(queryString), bindVars,
       arangodb::aql::QueryOptions(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
   query->initTrxForTests();
@@ -611,14 +629,14 @@ std::shared_ptr<arangodb::aql::Query> prepareQuery(
     TRI_vocbase_t& vocbase, std::string const& queryString,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */,
     std::string const& optionsString /*= "{}"*/) {
-  auto ctx =
-      std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+      vocbase, transaction::OperationOriginTestCase{});
   auto query = arangodb::aql::Query::create(
-      ctx, arangodb::aql::QueryString(queryString), bindVars,
+      std::move(ctx), arangodb::aql::QueryString(queryString), bindVars,
       arangodb::aql::QueryOptions(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
-  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
   return query;
 }
 
@@ -634,7 +652,7 @@ void setDatabasePath(arangodb::DatabasePathFeature& feature) {
 
   path /= TRI_GetTempPath();
   path /= std::string("arangodb_tests.") + std::to_string(TRI_microtime());
-  const_cast<std::string&>(feature.directory()) = path.string();
+  feature.setDirectory(path.string());
 }
 
 void expectEqualSlices_(const VPackSlice& lhs, const VPackSlice& rhs,
@@ -717,13 +735,13 @@ void assertFilterOptimized(
       //    "{ \"tracing\" : 1 }"
       " { } ");
 
-  auto ctx =
-      std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+      vocbase, transaction::OperationOriginTestCase{});
   auto query = arangodb::aql::Query::create(
-      ctx, arangodb::aql::QueryString(queryString), bindVars,
+      std::move(ctx), arangodb::aql::QueryString(queryString), bindVars,
       arangodb::aql::QueryOptions(options->slice()));
 
-  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
   EXPECT_TRUE(query->plan());
   auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query->plan());
 
@@ -741,8 +759,9 @@ void assertFilterOptimized(
   // execution time
   {
     arangodb::transaction ::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-        arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, transaction::OperationOriginTestCase{}),
+        {}, {}, {}, arangodb::transaction::Options());
 
     auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
     if (mockCtx) {  // simon: hack to make expression context work again
@@ -766,7 +785,7 @@ void assertFilterOptimized(
                     &actualFilter, filterCtx, viewNode->filterCondition())
                     .ok());
     EXPECT_FALSE(actualFilter.empty());
-    EXPECT_EQ(expectedFilter, *actualFilter.begin());
+    EXPECT_EQ(expectedFilter, **actualFilter.begin());
   }
 }
 
@@ -779,10 +798,10 @@ void assertExpressionFilter(
   SCOPED_TRACE(testing::Message("assertExpressionFilter failed for query: <")
                << queryString << ">");
 
-  auto ctx =
-      std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+      vocbase, transaction::OperationOriginTestCase{});
   auto query = arangodb::aql::Query::create(
-      ctx, arangodb::aql::QueryString(queryString), nullptr);
+      std::move(ctx), arangodb::aql::QueryString(queryString), nullptr);
 
   auto const parseResult = query->parse();
   ASSERT_TRUE(parseResult.result.ok());
@@ -821,8 +840,9 @@ void assertExpressionFilter(
   // supportsFilterCondition
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-        arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, transaction::OperationOriginTestCase{}),
+        {}, {}, {}, arangodb::transaction::Options());
     arangodb::iresearch::QueryContext const ctx{
         .trx = &trx, .ref = ref, .isSearchQuery = true};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
@@ -837,8 +857,9 @@ void assertExpressionFilter(
   // iteratorForCondition
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-        arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, transaction::OperationOriginTestCase{}),
+        {}, {}, {}, arangodb::transaction::Options());
 
     ExpressionContextMock exprCtx;
     exprCtx.setTrx(&trx);
@@ -865,7 +886,7 @@ void assertExpressionFilter(
                     .ok());
     EXPECT_EQ(expected, actual) << to_string(expected) << "\n"
                                 << to_string(actual);
-    EXPECT_EQ(boost, actual.begin()->boost());
+    EXPECT_EQ(boost, (*actual.begin())->boost());
   }
 }
 
@@ -889,7 +910,7 @@ static bool assertFilterBoostImpl(irs::filter const& expected,
 
     for (auto actualBegin = actualBooleanFilter->begin();
          expectedBegin != expectedEnd;) {
-      if (!assertFilterBoostImpl(*expectedBegin, *actualBegin)) {
+      if (!assertFilterBoostImpl(**expectedBegin, **actualBegin)) {
         return false;
       }
       ++expectedBegin;
@@ -917,10 +938,10 @@ void buildActualFilter(
     std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
     std::string const& refName /*= "d"*/
 ) {
-  auto ctx =
-      std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+      vocbase, transaction::OperationOriginTestCase{});
   auto query = arangodb::aql::Query::create(
-      ctx, arangodb::aql::QueryString(queryString), bindVars);
+      std::move(ctx), arangodb::aql::QueryString(queryString), bindVars);
 
   auto const parseResult = query->parse();
   ASSERT_TRUE(parseResult.result.ok());
@@ -959,8 +980,9 @@ void buildActualFilter(
   // optimization time
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-        arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, transaction::OperationOriginTestCase{}),
+        {}, {}, {}, arangodb::transaction::Options());
 
     arangodb::iresearch::QueryContext const ctx{
         .trx = &trx, .ref = ref, .isSearchQuery = true};
@@ -976,8 +998,9 @@ void buildActualFilter(
   // execution time
   {
     arangodb::transaction ::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-        arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, transaction::OperationOriginTestCase{}),
+        {}, {}, {}, arangodb::transaction::Options());
 
     auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
     if (mockCtx) {  // simon: hack to make expression context work again
@@ -1015,9 +1038,10 @@ void assertFilter(
                << queryString << "> parseOk:" << parseOk
                << " execOk:" << execOk);
 
-  auto ctx = std::make_shared<transaction::StandaloneContext>(vocbase);
-  auto query = aql::Query::create(ctx, aql::QueryString(queryString), bindVars);
-
+  auto ctx = std::make_shared<transaction::StandaloneContext>(
+      vocbase, transaction::OperationOriginTestCase{});
+  auto query = aql::Query::create(std::move(ctx), aql::QueryString(queryString),
+                                  bindVars);
   auto const parseResult = query->parse();
   ASSERT_TRUE(parseResult.result.ok());
 
@@ -1054,8 +1078,10 @@ void assertFilter(
 
   // optimization time
   {
-    transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
-                             {}, {}, {}, transaction::Options());
+    transaction::Methods trx(
+        transaction::StandaloneContext::create(
+            vocbase, transaction::OperationOriginTestCase{}),
+        {}, {}, {}, transaction::Options());
 
     auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
     if (mockCtx) {  // simon: hack to make expression context work again
@@ -1080,8 +1106,10 @@ void assertFilter(
 
   // execution time
   {
-    transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
-                             {}, {}, {}, transaction::Options());
+    transaction::Methods trx(
+        transaction::StandaloneContext::create(
+            vocbase, transaction::OperationOriginTestCase{}),
+        {}, {}, {}, transaction::Options());
 
     auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
     if (mockCtx) {  // simon: hack to make expression context work again
@@ -1108,7 +1136,10 @@ void assertFilter(
     if (execOk) {
       EXPECT_TRUE(r.ok()) << r.errorMessage();
       if (r.ok()) {
-        EXPECT_EQ(expected, actual);
+        if (expected != actual) {
+          std::cerr << expected << std::endl;
+          std::cerr << actual << std::endl;
+        }
         EXPECT_TRUE(assertFilterBoostImpl(expected, actual));
       }
     } else {
@@ -1155,8 +1186,10 @@ void assertFilterParseFail(
     std::shared_ptr<velocypack::Builder> bindVars /*= nullptr*/) {
   SCOPED_TRACE(testing::Message("assertFilterParseFail failed for query:<")
                << queryString << ">");
-  auto ctx = std::make_shared<transaction::StandaloneContext>(vocbase);
-  auto query = aql::Query::create(ctx, aql::QueryString(queryString), bindVars);
+  auto ctx = std::make_shared<transaction::StandaloneContext>(
+      vocbase, transaction::OperationOriginTestCase{});
+  auto query = aql::Query::create(std::move(ctx), aql::QueryString(queryString),
+                                  bindVars);
 
   auto const parseResult = query->parse();
   ASSERT_TRUE(parseResult.result.fail());

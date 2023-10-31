@@ -24,6 +24,8 @@
 
 #include "gtest/gtest.h"
 
+#include <utils/lz4compression.hpp>
+
 #include "IResearch/common.h"
 #include "IResearch/IResearchInvertedIndexMeta.h"
 #include "Mocks/LogLevels.h"
@@ -116,6 +118,7 @@ class IResearchInvertedIndexMetaTest
     analyzers.emplace(
         result, "testVocbase::empty", "empty",
         VPackParser::fromJson("{ \"args\": \"de\" }")->slice(),
+        arangodb::transaction::OperationOriginTestCase{},
         Features(irs::IndexFeatures::FREQ));  // cache the 'empty' analyzer for
                                               // 'testVocbase'
   }

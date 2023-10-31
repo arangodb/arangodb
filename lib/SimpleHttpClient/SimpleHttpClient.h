@@ -33,6 +33,9 @@
 #include <string>
 #include <unordered_map>
 
+#include <absl/strings/str_cat.h>
+#include <absl/strings/escaping.h>
+
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
@@ -120,16 +123,16 @@ struct SimpleHttpClientParams {
                            std::string const& password) {
     TRI_ASSERT(prefix != nullptr);
     TRI_ASSERT(strcmp(prefix, "/") == 0);
-    _basicAuth =
-        arangodb::basics::StringUtils::encodeBase64(username + ":" + password);
+    _basicAuth = absl::Base64Escape(absl::StrCat(username, ":", password));
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief allows rewriting locations
   //////////////////////////////////////////////////////////////////////////////
 
-  void setLocationRewriter(void* data,
-                           std::string (*func)(void*, std::string const&)) {
+  void setLocationRewriter(void const* data,
+                           std::string (*func)(void const*,
+                                               std::string const&)) {
     _locationRewriter.data = data;
     _locationRewriter.func = func;
   }
@@ -173,8 +176,8 @@ struct SimpleHttpClientParams {
   //////////////////////////////////////////////////////////////////////////////
 
   struct {
-    void* data;
-    std::string (*func)(void*, std::string const&);
+    void const* data;
+    std::string (*func)(void const*, std::string const&);
   } _locationRewriter;
 
  private:

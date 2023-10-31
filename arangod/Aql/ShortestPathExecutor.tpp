@@ -44,6 +44,7 @@ bool ShortestPathExecutorInfos<FinderType>::useRegisterForTargetInput() const {
 template<class FinderType>
 RegisterId ShortestPathExecutorInfos<FinderType>::getSourceInputRegister()
     const {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(useRegisterForSourceInput());
   return _source.reg;
 }
@@ -51,6 +52,7 @@ RegisterId ShortestPathExecutorInfos<FinderType>::getSourceInputRegister()
 template<class FinderType>
 RegisterId ShortestPathExecutorInfos<FinderType>::getTargetInputRegister()
     const {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(useRegisterForTargetInput());
   return _target.reg;
 }
@@ -115,14 +117,9 @@ RegisterId ShortestPathExecutorInfos<FinderType>::findRegisterChecked(
 template<class FinderType>
 RegisterId ShortestPathExecutorInfos<FinderType>::getOutputRegister(
     OutputName type) const {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(usesOutputRegister(type));
   return findRegisterChecked(type);
-}
-
-template<class FinderType>
-graph::TraverserCache* ShortestPathExecutorInfos<FinderType>::cache() const {
-  TRI_ASSERT(false);  // TODO [GraphRefactor]:remove me later
-  return nullptr;
 }
 
 template<class FinderType>
@@ -204,7 +201,7 @@ auto ShortestPathExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output)
 
       output.moveValueInto(_infos.getOutputRegister(
                                ShortestPathExecutorInfos<FinderType>::VERTEX),
-                           _inputRow, vertexGuard);
+                           _inputRow, &vertexGuard);
     }
     if (_infos.usesOutputRegister(
             ShortestPathExecutorInfos<FinderType>::EDGE)) {
@@ -214,14 +211,14 @@ auto ShortestPathExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output)
         AqlValueGuard edgeGuard{e, true};
         output.moveValueInto(_infos.getOutputRegister(
                                  ShortestPathExecutorInfos<FinderType>::EDGE),
-                             _inputRow, edgeGuard);
+                             _inputRow, &edgeGuard);
       } else {
-        AqlValue e{edgesSlice.at(_posInPath - 1)};
+        AqlValue e{edgesSlice.at(_posInPath - 1).resolveExternal()};
         AqlValueGuard edgeGuard{e, true};
 
         output.moveValueInto(_infos.getOutputRegister(
                                  ShortestPathExecutorInfos<FinderType>::EDGE),
-                             _inputRow, edgeGuard);
+                             _inputRow, &edgeGuard);
       }
     }
     output.advanceRow();

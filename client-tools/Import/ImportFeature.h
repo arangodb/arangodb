@@ -26,24 +26,23 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Import/arangoimport.h"
 #include "Shell/ClientFeature.h"
-#include "V8Client/ArangoClientHelper.h"
+
+#include <memory>
 
 namespace arangodb {
 
 namespace httpclient {
-
 class GeneralClientConnection;
 class SimpleHttpClient;
 class SimpleHttpResult;
-
 }  // namespace httpclient
 
-class ImportFeature final : public ArangoImportFeature,
-                            public ArangoClientHelper {
+class ImportFeature final : public ArangoImportFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Import"; }
 
   ImportFeature(Server& server, int* result);
+  ~ImportFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(
@@ -53,6 +52,7 @@ class ImportFeature final : public ArangoImportFeature,
  private:
   ErrorCode tryCreateDatabase(ClientFeature& client, std::string const& name);
 
+  std::unique_ptr<httpclient::SimpleHttpClient> _httpClient;
   std::string _filename;
   bool _useBackslash;
   bool _convert;

@@ -39,10 +39,6 @@ namespace velocypack {
 class Slice;
 }
 
-namespace graph {
-class TraverserCache;
-}  // namespace graph
-
 namespace aql {
 
 template<BlockPassthrough>
@@ -113,8 +109,6 @@ class ShortestPathExecutorInfos {
    */
   [[nodiscard]] RegisterId getOutputRegister(OutputName type) const;
 
-  [[nodiscard]] graph::TraverserCache* cache() const;
-
   [[nodiscard]] GraphNode::InputVertex getSourceVertex() const noexcept;
   [[nodiscard]] GraphNode::InputVertex getTargetVertex() const noexcept;
 
@@ -147,7 +141,6 @@ class ShortestPathExecutor {
     static constexpr bool preservesOrder = true;
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Disable;
-    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = ShortestPathExecutorInfos<FinderType>;

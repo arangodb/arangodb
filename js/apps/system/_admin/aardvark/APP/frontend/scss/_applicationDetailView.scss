@@ -1,3 +1,5 @@
+@use "sass:math";
+
 .application-detail-view {
 
   h1, h2, h3, h4 {
@@ -216,7 +218,7 @@
         input.upgrade,
         input.switch-docu,
         input.switch-mode {
-          margin-top: (173.5px - 5 * 30px) / 3;
+          margin-top: math.div(173.5px - 5 * 30px, 3);
           padding-left: 10px;
           padding-right: 10px;
         }

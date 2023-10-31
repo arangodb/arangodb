@@ -28,7 +28,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 
@@ -93,9 +93,8 @@ IndexFactory const& StorageEngine::indexFactory() const {
 void StorageEngine::getCapabilities(velocypack::Builder& builder) const {
   builder.openObject();
   builder.add("name", velocypack::Value(typeName()));
+
   builder.add("supports", velocypack::Value(VPackValueType::Object));
-  // legacy attribute, always false since 3.7.
-  builder.add("dfdb", velocypack::Value(false));
 
   builder.add("indexes", velocypack::Value(VPackValueType::Array));
   for (auto const& it : indexFactory().supportedIndexes()) {
@@ -120,7 +119,9 @@ void StorageEngine::getStatistics(velocypack::Builder& builder) const {
   builder.close();
 }
 
-void StorageEngine::getStatistics(std::string& result) const {}
+void StorageEngine::toPrometheus(std::string& /*result*/,
+                                 std::string_view /*globals*/,
+                                 bool /*ensureWhitespace*/) const {}
 
 void StorageEngine::registerCollection(
     TRI_vocbase_t& vocbase,
@@ -136,8 +137,7 @@ void StorageEngine::registerView(
 
 void StorageEngine::registerReplicatedState(
     TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
-    std::unique_ptr<
-        arangodb::replication2::replicated_state::IStorageEngineMethods>
+    std::unique_ptr<arangodb::replication2::storage::IStorageEngineMethods>
         methods) {
   vocbase.registerReplicatedState(id, std::move(methods));
 }
@@ -146,6 +146,8 @@ std::string_view StorageEngine::typeName() const { return _typeName; }
 
 void StorageEngine::addOptimizerRules(aql::OptimizerRulesFeature&) {}
 
+#ifdef USE_V8
 void StorageEngine::addV8Functions() {}
+#endif
 
 void StorageEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {}

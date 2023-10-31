@@ -11,6 +11,6 @@ exposedBy:
   - agent
   - single
 description: |
-  This metric exhibits the RocksDB metric "rocksdb-live-sst-files-size".
+  This metric exhibits the RocksDB metric `rocksdb-live-sst-files-size`.
   It shows the total size in bytes of all SST files belonging to the latest
   LSM tree, summed over all column families.

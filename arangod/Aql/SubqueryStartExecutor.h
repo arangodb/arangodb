@@ -45,7 +45,6 @@ class SubqueryStartExecutor {
     static constexpr bool preservesOrder = true;
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Disable;
-    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
 
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -72,8 +71,8 @@ class SubqueryStartExecutor {
   auto produceShadowRow(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
       -> bool;
 
-  [[nodiscard]] auto expectedNumberOfRowsNew(
-      AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+  [[nodiscard]] auto expectedNumberOfRows(AqlItemBlockInputRange const& input,
+                                          AqlCall const& call) const noexcept
       -> size_t;
 
  private:

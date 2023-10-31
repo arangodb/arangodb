@@ -55,7 +55,6 @@ struct CollectionInternalProperties {
   bool syncByRevision = true;
   bool usesRevisionsAsDocumentIds = true;
   bool isSmartChild = false;
-  bool deleted = false;
   uint64_t internalValidatorType = 0;
 
   [[nodiscard]] arangodb::Result applyDefaultsAndValidateDatabaseConfiguration(
@@ -78,15 +77,14 @@ auto inspect(Inspector& f, CollectionInternalProperties& props) {
           .fallback(f.keep()),
       f.field(StaticStrings::IsSmartChild, props.isSmartChild)
           .fallback(f.keep()),
-      f.field(StaticStrings::DataSourceDeleted, props.deleted)
-          .fallback(f.keep()),
       f.field(StaticStrings::InternalValidatorTypes,
               props.internalValidatorType)
           .fallback(f.keep()),
       /* Backwards compatibility, field is documented but does not have an
        * effect
        */
-      f.ignoreField(StaticStrings::DataSourceGuid));
+      f.ignoreField(StaticStrings::DataSourceGuid),
+      f.ignoreField(StaticStrings::DataSourceDeleted));
 }
 
 }  // namespace arangodb

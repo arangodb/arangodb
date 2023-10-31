@@ -21,6 +21,10 @@
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include "RestAqlUserFunctionsHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -41,7 +45,6 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
   auto const type = _request->requestType();
 
   if (type == rest::RequestType::POST) {
-    // JSF_post_api_aqlfunction.md
     // POST /_api/aqlfunction
     bool parsingSuccess = false;
     VPackSlice body = this->parseVPackBody(parsingSuccess);
@@ -78,7 +81,6 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
 
     return RestStatus::DONE;
   } else if (type == rest::RequestType::DELETE_REQ) {
-    // JSF_delete_api_aqlfunction.md
     // DELETE /_api/aqlfunction/{name}
     std::vector<std::string> const& suffixes = _request->decodedSuffixes();
     if ((suffixes.size() != 1) || suffixes[0].empty()) {
@@ -113,7 +115,6 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
     return RestStatus::DONE;
     // DELETE
   } else if (type == rest::RequestType::GET) {
-    // JSF_get_api_aqlfunction.md
     // GET /_api/aqlfunction - figure out parameters - function namespace
     std::string functionNamespace;
     std::vector<std::string> const& suffixes = _request->decodedSuffixes();

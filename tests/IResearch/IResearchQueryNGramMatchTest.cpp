@@ -30,6 +30,8 @@
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewSort.h"
 #include "IResearchQueryCommon.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -78,6 +80,7 @@ class QueryNGramMatch : public QueryTest {
                 "{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
                 "\"preserveOriginal\":false}")
                 ->slice(),
+            arangodb::transaction::OperationOriginTestCase{},
             arangodb::iresearch::Features(
                 irs::IndexFeatures::FREQ |
                 irs::IndexFeatures::POS)  // required for PHRASE
@@ -109,7 +112,8 @@ class QueryNGramMatch : public QueryTest {
         arangodb::OperationOptions options;
         options.returnNew = true;
         arangodb::SingleCollectionTransaction trx(
-            arangodb::transaction::StandaloneContext::Create(vocbase),
+            arangodb::transaction::StandaloneContext::create(
+                vocbase, arangodb::transaction::OperationOriginTestCase{}),
             *collection, arangodb::AccessMode::Type::WRITE);
         EXPECT_TRUE(trx.begin().ok());
 
@@ -135,6 +139,7 @@ class QueryNGramMatch : public QueryTest {
                 "{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
                 "\"preserveOriginal\":false}")
                 ->slice(),
+            arangodb::transaction::OperationOriginTestCase{},
             arangodb::iresearch::Features(
                 irs::IndexFeatures::FREQ |
                 irs::IndexFeatures::POS)  // required for PHRASE
@@ -164,6 +169,7 @@ class QueryNGramMatch : public QueryTest {
                 "{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
                 "\"preserveOriginal\":false}")
                 ->slice(),
+            arangodb::transaction::OperationOriginTestCase{},
             arangodb::iresearch::Features(
                 irs::IndexFeatures::FREQ |
                 irs::IndexFeatures::POS));  // cache analyzer
@@ -194,7 +200,8 @@ class QueryNGramMatch : public QueryTest {
         arangodb::OperationOptions options;
         options.returnNew = true;
         arangodb::SingleCollectionTransaction trx(
-            arangodb::transaction::StandaloneContext::Create(vocbase),
+            arangodb::transaction::StandaloneContext::create(
+                vocbase, arangodb::transaction::OperationOriginTestCase{}),
             *collection, arangodb::AccessMode::Type::WRITE);
         EXPECT_TRUE(trx.begin().ok());
 

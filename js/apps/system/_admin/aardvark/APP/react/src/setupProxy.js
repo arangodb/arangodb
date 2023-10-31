@@ -1,24 +1,24 @@
-
-
 /*
  * Proxy Configuration (see routes array for details)
  */
 
-const ARANGODB_PORT = 8529;
+const ARANGODB_HOST = process.env.ARANGODB_HOST || "localhost";
+const ARANGODB_PORT = process.env.ARANGODB_PORT || 8529;
 
-const routes = [
-  '/_db/_system/_admin/aardvark/img/*', // Images
-  '/_db/_system/_admin/aardvark/statistics/*', // Statistics (foxx)
-  '/_db/_system/_api/' // ArangoDB API
-];
+if (isNaN(ARANGODB_PORT)) {
+  console.error("ARANGODB_PORT must be a number or empty");
+  process.exit(1);
+}
 
-const proxy = require('http-proxy-middleware');
+const { createProxyMiddleware } = require("http-proxy-middleware");
 module.exports = function (app) {
+  app.get("/", (_req, res) => {
+    res.redirect("/_db/_system/_admin/aardvark/index.html");
+  });
   app.use(
-    routes,
-    proxy({
-      target: `http://localhost:${ARANGODB_PORT}`,
-      changeOrigin: true
+    createProxyMiddleware(["/_db/**", "!/_db/*/_admin/aardvark/index.html"], {
+      target: `http://${ARANGODB_HOST}:${ARANGODB_PORT}`,
+      changeOrigin: true,
     })
   );
 };

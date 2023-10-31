@@ -49,6 +49,9 @@
 #include <velocypack/Options.h>
 #include <velocypack/Validator.h>
 
+#include <absl/strings/str_cat.h>
+#include <absl/strings/escaping.h>
+
 #include <string>
 #include <string_view>
 
@@ -58,7 +61,7 @@ using namespace arangodb::rest;
 
 template<SocketType T>
 VstCommTask<T>::VstCommTask(GeneralServer& server, ConnectionInfo info,
-                            std::unique_ptr<AsioSocket<T>> so,
+                            std::shared_ptr<AsioSocket<T>> so,
                             fuerte::vst::VSTVersion v)
     : GeneralCommTask<T>(server, std::move(info), std::move(so)),
       _writeLoopActive(false),
@@ -329,6 +332,17 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
           << VstRequest::translateMethod(req->requestType()) << "\",\""
           << url(req.get()) << "\"";
 
+      if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
+          Logger::logRequestParameters()) {
+        // Log HTTP headers:
+        this->logRequestHeaders("vst", req->headers());
+
+        std::string_view body = req->rawPayload();
+        if (!body.empty()) {
+          this->logRequestBody("vst", req->contentType(), body);
+        }
+      }
+
       // TODO use different token if authentication header is present
       CommTask::Flow cont = this->prepareExecution(_authToken, *req, mode);
       if (cont == CommTask::Flow::Continue) {
@@ -410,6 +424,19 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
         << "\"vst-request-statistics\",\"" << (void*)this << "\",\""
         << static_cast<int>(response.responseCode()) << ","
         << this->_connectionInfo.clientAddress << "\"," << stat.timingsCsv();
+  }
+
+  if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
+      Logger::logRequestParameters()) {
+    this->logResponseHeaders("vst", response.headers());
+
+    auto& payload = response.payload();
+    std::string_view body{reinterpret_cast<char const*>(payload.data()),
+                          payload.size()};
+    if (!body.empty()) {
+      this->logRequestBody("vst", response.contentType(), body,
+                           true /* isResponse */);
+    }
   }
 
   // and give some request information
@@ -517,7 +544,6 @@ template<SocketType T>
 void VstCommTask<T>::handleVstAuthRequest(VPackSlice header, uint64_t mId,
                                           ServerState::Mode mode) {
   std::string authString;
-  std::string user;
   _authMethod = AuthenticationMethod::NONE;
 
   std::string_view encryption = header.at(2).stringView();
@@ -525,9 +551,9 @@ void VstCommTask<T>::handleVstAuthRequest(VPackSlice header, uint64_t mId,
     authString = header.at(3).copyString();
     _authMethod = AuthenticationMethod::JWT;
   } else if (encryption == "plain") {
-    user = header.at(3).copyString();
-    std::string pass = header.at(4).copyString();
-    authString = basics::StringUtils::encodeBase64(user + ":" + pass);
+    auto user = header.at(3).stringView();
+    auto pass = header.at(4).stringView();
+    authString = absl::Base64Escape(absl::StrCat(user, ":", pass));
     _authMethod = AuthenticationMethod::BASIC;
   } else {
     LOG_TOPIC("01f44", WARN, Logger::REQUESTS) << "Unknown VST encryption type";

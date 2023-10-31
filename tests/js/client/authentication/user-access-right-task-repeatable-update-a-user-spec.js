@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global describe, before, after, it, require */
+/* global describe, before, after, it */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for user access rights

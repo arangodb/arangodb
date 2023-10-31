@@ -33,17 +33,18 @@ class ValidationResult {
   friend std::ostream& operator<<(std::ostream& stream,
                                   ValidationResult const& res);
 
-  enum class Type { TAKE, PRUNE, FILTER, FILTER_AND_PRUNE };
+  enum class Type { UNKNOWN, TAKE, PRUNE, FILTER, FILTER_AND_PRUNE };
 
   explicit ValidationResult(Type type) : _type(type) {}
 
   bool isPruned() const noexcept;
   bool isFiltered() const noexcept;
+  bool isUnknown() const noexcept;
 
   void combine(Type t) noexcept;
 
  private:
-  Type _type;
+  Type _type = Type::UNKNOWN;
 };
 
 std::ostream& operator<<(std::ostream& stream, ValidationResult const& res);

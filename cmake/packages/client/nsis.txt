@@ -5,6 +5,11 @@
 project(arangodb3-client)
 cmake_minimum_required(VERSION 2.8)
 
+option(USE_V8 "build with V8/JavaScript support" ON)
+if (USE_V8)
+  add_definitions("-DUSE_V8=1")
+endif ()
+
 ################################################################################
 # variables from the main build have to be explicitely forwarded:
 ################################################################################
@@ -100,7 +105,6 @@ set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL 1)
 SET(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
 SET(BITS 64)
 
-include(${ORIGINAL_SOURCE_DIR}/cmake/VcMacros.cmake)
 include(${ORIGINAL_SOURCE_DIR}/cmake/GNUInstallDirs.cmake)
 set(CMAKE_INSTALL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_SYSCONFDIR}/arangodb3")
 set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_FULL_SYSCONFDIR}/arangodb3")

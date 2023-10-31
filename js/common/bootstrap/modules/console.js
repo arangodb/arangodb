@@ -1,5 +1,4 @@
 /* jshint -W051:true */
-/* global Symbol */
 /* eslint-disable */
 global.DEFINE_MODULE('console', (function () {
   'use strict'

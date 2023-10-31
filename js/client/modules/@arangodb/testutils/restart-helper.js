@@ -1,10 +1,7 @@
-/*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertEqual, arango */
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,64 +19,56 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Lars Maier
-/// @author Copyright 2022, ArangoDB Inc, Cologne, Germany
+/// @author Tobias Gödderz
+/// @author Copyright 2023, ArangoDB Inc, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-const pu = require('@arangodb/testutils/process-utils');
-const _ = require('lodash');
+const jsunity = require('jsunity');
+const {assertTrue, assertFalse} = jsunity.jsUnity.assertions;
 
-const {shutdownServers, restartServers, restartAllServers} = (function () {
-  const getServersById = function (serverIds) {
-    return global.instanceInfo.arangods.filter((instance) => _.includes(serverIds, instance.id));
-  };
-
-  const waitForAlive = function (timeout, baseurl, data) {
-    const time = require("internal").time;
-    const request = require("@arangodb/request");
-    let res;
-    let all = Object.assign(data || {}, {method: "get", timeout: 1, url: baseurl + "/_api/version"});
-    const end = time() + timeout;
-    while (time() < end) {
-      res = request(all);
-      if (res.status === 200 || res.status === 401 || res.status === 403) {
-        break;
-      }
-      console.warn("waiting for server response from url " + baseurl);
-      require('internal').sleep(0.5);
-    }
-    return res.status;
-  };
-
+const {
+  shutdownServers,
+  restartServers,
+  restartAllServers,
+} = (function () {
   const stoppedServers = {};
 
-  const restartServers = function (serverIds) {
-    const servers = getServersById(serverIds);
-    pu.reStartInstance(global.testOptions, global.instanceInfo, {});
+  const restartServers = function (servers) {
     for (const server of servers) {
-      waitForAlive(30, server.url, {});
+      server.suspended = true;
+      server.restartOneInstance({
+        'server.authentication': 'false',
+      });
+      server.suspended = false;
+
+      assertTrue(stoppedServers.hasOwnProperty(server.id));
       delete stoppedServers[server.id];
     }
   };
 
-  const shutdownServers = function (serverIds) {
-    const servers = getServersById(serverIds);
-    const newInstanceInfo = {
-      arangods: servers,
-      endpoint: global.instanceInfo.endpoint,
-    };
-    const shutdownStatus = pu.shutdownInstance(newInstanceInfo, global.testOptions, false);
-    assertTrue(shutdownStatus);
+  const shutdownServers = function (servers) {
     for (const server of servers) {
+      server.shutdownArangod(false);
+    }
+    for (const server of servers) {
+      server.waitForInstanceShutdown(30);
+      server.exitStatus = null;
       server.pid = null;
-      stoppedServers[server.id] = true;
+      server.suspended = true;
+
+      assertFalse(stoppedServers.hasOwnProperty(server.id));
+      stoppedServers[server.id] = server;
     }
   };
 
+  const restartAllServers = function () {
+    restartServers(Object.values(stoppedServers));
+  };
+
   return {
-    shutdownServers, restartServers,
-    restartAllServers: function () {
-      restartServers(Object.keys(stoppedServers));
-    }
+    shutdownServers,
+    restartServers,
+    restartAllServers,
   };
 })();
 

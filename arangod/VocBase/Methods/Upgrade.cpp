@@ -24,7 +24,6 @@
 #include "Upgrade.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
@@ -234,7 +233,7 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
   TRI_ASSERT(_tasks.empty());
 
   // note: all tasks here should be idempotent, so that they produce the same
-  // result when run again
+  // result when run again.
   addTask(upgradeFeature, "createSystemCollectionsAndIndices",
           "creates all system collections including their indices",
           /*system*/ Flags::DATABASE_ALL,
@@ -258,6 +257,14 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
           /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::renameReplicationApplierStateFiles);
+
+  // Note: Added with ArangoDB version 3.11
+  addTask(upgradeFeature, "createHistoricPregelSystemCollection",
+          "creates the pregel system collection",
+          /*system*/ Flags::DATABASE_ALL,
+          /*cluster*/ Flags::CLUSTER_NONE,
+          /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
+          &UpgradeTasks::createHistoricPregelSystemCollection);
 
   // IResearch related upgrade tasks:
   // NOTE: db-servers do not have a dedicated collection for storing analyzers,

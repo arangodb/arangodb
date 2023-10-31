@@ -49,21 +49,17 @@ namespace arangodb::cache {
 ////////////////////////////////////////////////////////////////////////////////
 struct TransactionalBucket {
   BucketState _state;
+  std::uint16_t _slotsUsed;
 
   // banish entries for transactional semantics
-  static constexpr std::size_t slotsBanish = 5;
-  std::uint32_t _banishHashes[slotsBanish];
+  static constexpr std::size_t kSlotsBanish = 5;
+  std::uint32_t _banishHashes[kSlotsBanish];
   std::uint64_t _banishTerm;
 
   // actual cached entries
-  static constexpr std::size_t slotsData = 8;
-  std::uint32_t _cachedHashes[slotsData];
-  CachedValue* _cachedData[slotsData];
-
-  // padding, if necessary?
-#ifdef TRI_PADDING_32
-  uint32_t _padding[slotsData];
-#endif
+  static constexpr std::size_t kSlotsData = 8;
+  std::uint32_t _cachedHashes[kSlotsData];
+  CachedValue* _cachedData[kSlotsData];
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initialize an empty bucket.
@@ -172,7 +168,7 @@ struct TransactionalBucket {
   /// returns nullptr. In the case that ignoreRefCount is set to true, then it
   /// simply returns the least recently used value, regardless of freeability.
   //////////////////////////////////////////////////////////////////////////////
-  CachedValue* evictionCandidate(bool ignoreRefCount = false) const noexcept;
+  CachedValue* evictionCandidate() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief evicts a candidate in the bucket. Requires state to be locked.
@@ -185,11 +181,9 @@ struct TransactionalBucket {
   /// @brief Evicts the given value from the bucket. Requires state to be
   /// locked.
   ///
-  /// By default, it will move the empty slot to the back of the bucket. If
-  /// preparing an empty slot for insertion, specify the second parameter to be
-  /// true. This will move the empty slot to the front instead.
+  /// By default, it will move the empty slot to the back of the bucket.
   //////////////////////////////////////////////////////////////////////////////
-  void evict(CachedValue* value, bool optimizeForInsertion = false) noexcept;
+  void evict(CachedValue* value) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Updates the bucket's banish term. Requires state to be locked.
@@ -203,12 +197,24 @@ struct TransactionalBucket {
   void clear() noexcept;
 
  private:
-  void moveSlot(std::size_t slot, bool moveToFront) noexcept;
+  /// @brief overrides the slot <slot> with the last populated slot, moving
+  /// the contents of the last populated slot into <slot>. this is cheaper than
+  /// closing the gap by moving all following slots one to the front.
+  void closeGap(std::size_t slot) noexcept;
+
+  void moveSlotToFront(std::size_t slot) noexcept;
+
   bool haveOpenTransaction() const noexcept;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  void checkInvariants() const noexcept;
+#else
+  constexpr inline void checkInvariants() noexcept {}
+#endif
 };
 
-// ensure that TransactionalBucket is exactly BUCKET_SIZE
-static_assert(sizeof(TransactionalBucket) == BUCKET_SIZE,
-              "Expected sizeof(TransactionalBucket) == BUCKET_SIZE.");
+// ensure that TransactionalBucket is exactly kBucketSizeInBytes
+static_assert(sizeof(TransactionalBucket) == kBucketSizeInBytes,
+              "Expected sizeof(TransactionalBucket) == kBucketSizeInBytes.");
 
-};  // end namespace arangodb::cache
+}  // end namespace arangodb::cache

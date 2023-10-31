@@ -90,7 +90,7 @@ test('Typed Arrays', function (t) {
 		var TypedArray = global[typedArray];
 		if (isCallable(TypedArray)) {
 			var arr = new TypedArray(10);
-			t.equal(typedArray, whichTypedArray(arr), 'new ' + typedArray + '(10) is typed array of type ' + typedArray);
+			t.equal(whichTypedArray(arr), typedArray, 'new ' + typedArray + '(10) is typed array of type ' + typedArray);
 		} else {
 			t.comment('# SKIP ' + typedArray + ' is not supported');
 		}

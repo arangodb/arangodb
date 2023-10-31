@@ -21,6 +21,10 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include "Aql/Query.h"
 #include "Aql/QueryResultV8.h"
 #include "Aql/QueryString.h"
@@ -59,11 +63,12 @@ using namespace arangodb::basics;
 aql::QueryResultV8 AqlQuery(v8::Isolate* isolate,
                             arangodb::LogicalCollection const* col,
                             std::string const& aql,
-                            std::shared_ptr<VPackBuilder> const& bindVars) {
+                            std::shared_ptr<VPackBuilder> const& bindVars,
+                            transaction::OperationOrigin operationOrigin) {
   TRI_ASSERT(col != nullptr);
 
   auto query = arangodb::aql::Query::create(
-      transaction::V8Context::Create(col->vocbase(), true),
+      transaction::V8Context::create(col->vocbase(), operationOrigin, true),
       arangodb::aql::QueryString(aql), bindVars);
 
   arangodb::aql::QueryResultV8 queryResult = query->executeV8(isolate);
@@ -183,7 +188,9 @@ static void EdgesQuery(TRI_edge_direction_e direction,
 
   std::string const queryString =
       "FOR doc IN @@collection " + filter + " RETURN doc";
-  auto queryResult = AqlQuery(isolate, collection, queryString, bindVars);
+  auto queryResult =
+      AqlQuery(isolate, collection, queryString, bindVars,
+               transaction::OperationOriginREST{"fetching edges"});
 
   if (!queryResult.v8Data.IsEmpty()) {
     TRI_V8_RETURN(queryResult.v8Data);
@@ -211,10 +218,13 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   ResourceMonitor monitor(GlobalResourceMonitor::instance());
 
-  auto transactionContext =
-      transaction::V8Context::Create(collection->vocbase(), true);
+  auto operationOrigin =
+      transaction::OperationOriginREST{"enumerating collection documents"};
+  auto transactionContext = transaction::V8Context::create(
+      collection->vocbase(), operationOrigin, true);
   SingleCollectionTransaction trx(transactionContext, *collection,
                                   AccessMode::Type::READ);
+
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -236,16 +246,15 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto iterator =
       trx.indexScan(monitor, collectionName,
                     transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
-
-  iterator->allDocuments(
-      [&resultBuilder, &memoryScope](LocalDocumentId const&, VPackSlice slice) {
-        auto const& buffer = resultBuilder.bufferRef();
-        size_t memoryUsageOld = buffer.size();
-        resultBuilder.add(slice);
-        TRI_ASSERT(buffer.size() > memoryUsageOld);
-        memoryScope.increase(buffer.size() - memoryUsageOld);
-        return true;
-      });
+  auto cb = [&](LocalDocumentId, aql::DocumentData&&, VPackSlice slice) {
+    auto const& buffer = resultBuilder.bufferRef();
+    size_t memoryUsageOld = buffer.size();
+    resultBuilder.add(slice);
+    TRI_ASSERT(buffer.size() > memoryUsageOld);
+    memoryScope.increase(buffer.size() - memoryUsageOld);
+    return true;
+  };
+  iterator->allDocuments(cb);
 
   resultBuilder.close();
 
@@ -297,10 +306,13 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const collectionName(col->name());
 
+  auto operationOrigin =
+      transaction::OperationOriginREST{"fetching random document"};
   auto transactionContext =
-      transaction::V8Context::Create(col->vocbase(), true);
+      transaction::V8Context::create(col->vocbase(), operationOrigin, true);
   SingleCollectionTransaction trx(transactionContext, *col,
                                   AccessMode::Type::READ);
+
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -335,10 +347,6 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(TRI_VPackToV8(isolate, doc.at(0), &resultOptions));
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionChecksum
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ChecksumCollection(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -384,20 +392,12 @@ static void JS_ChecksumCollection(
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock edgeCollectionEdges
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_EdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   EdgesQuery(TRI_EDGE_ANY, args);
   // cppcheck-suppress *
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock edgeCollectionInEdges
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_InEdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -406,20 +406,12 @@ static void JS_InEdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock edgeCollectionOutEdges
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_OutEdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   EdgesQuery(TRI_EDGE_OUT, args);
   // cppcheck-suppress *
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionLookupByKeys
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -451,7 +443,9 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string const queryString(
       "FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
 
-  auto queryResult = AqlQuery(isolate, collection, queryString, bindVars);
+  auto queryResult =
+      AqlQuery(isolate, collection, queryString, bindVars,
+               transaction::OperationOriginREST{"looking up documents"});
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   if (!queryResult.v8Data.IsEmpty()) {
@@ -464,10 +458,6 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionRemoveByKeys
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -496,7 +486,9 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
       "FOR key IN @keys REMOVE key IN @@collection OPTIONS { ignoreErrors: "
       "true }");
 
-  auto queryResult = AqlQuery(isolate, collection, queryString, bindVars);
+  auto queryResult =
+      AqlQuery(isolate, collection, queryString, bindVars,
+               transaction::OperationOriginREST{"removing documents"});
 
   size_t ignored = 0;
   size_t removed = 0;

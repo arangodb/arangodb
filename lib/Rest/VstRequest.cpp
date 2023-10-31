@@ -56,10 +56,43 @@ VstRequest::VstRequest(ConnectionInfo const& connectionInfo,
       _validatedPayload(false) {
   _contentType = ContentType::UNSET;  // intentional
   _contentTypeResponse = ContentType::VPACK;
-  _payload = std::move(buffer), parseHeaderInformation();
+  _payload = std::move(buffer);
+  _memoryUsage += _payload.size();
+  parseHeaderInformation();
+  _memoryUsage += sizeof(VstRequest);
 }
 
-size_t VstRequest::contentLength() const {
+VstRequest::~VstRequest() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto expected = sizeof(VstRequest) + _fullUrl.size() + _requestPath.size() +
+                  _databaseName.size() + _user.size() + _prefix.size() +
+                  _contentTypeResponsePlain.size() + _payload.size();
+  for (auto const& it : _suffixes) {
+    expected += it.size();
+  }
+  for (auto const& it : _headers) {
+    expected += it.first.size() + it.second.size();
+  }
+  for (auto const& it : _values) {
+    expected += it.first.size() + it.second.size();
+  }
+  for (auto const& it : _arrayValues) {
+    expected += it.first.size();
+    for (auto const& it2 : it.second) {
+      expected += it2.size();
+    }
+  }
+  if (_vpackBuilder) {
+    expected += _vpackBuilder->bufferRef().size();
+  }
+
+  TRI_ASSERT(_memoryUsage == expected)
+      << "expected memory usage: " << expected << ", actual: " << _memoryUsage
+      << ", diff: " << (_memoryUsage - expected);
+#endif
+}
+
+size_t VstRequest::contentLength() const noexcept {
   TRI_ASSERT(_payload.size() >= _payloadOffset);
   if (_payload.size() < _payloadOffset) {
     return 0;
@@ -82,6 +115,7 @@ VPackSlice VstRequest::payload(bool strictValidation) {
       _vpackBuilder = VPackParser::fromJson(
           _payload.data() + _payloadOffset, _payload.size() - _payloadOffset,
           validationOptions(strictValidation));
+      _memoryUsage += _vpackBuilder->bufferRef().size();
     }
     if (_vpackBuilder) {
       return _vpackBuilder->slice();
@@ -106,7 +140,7 @@ VPackSlice VstRequest::payload(bool strictValidation) {
 }
 
 void VstRequest::setPayload(arangodb::velocypack::Buffer<uint8_t> buffer) {
-  _payload = std::move(buffer);
+  GeneralRequest::setPayload(std::move(buffer));
   _payloadOffset = 0;
 }
 
@@ -123,9 +157,9 @@ void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {
     StringUtils::tolowerInPlace(value);
     _contentTypeResponse = rest::stringToContentType(value, ContentType::VPACK);
     if (value.find(',') != std::string::npos) {
-      _contentTypeResponsePlain = value;
+      setStringValue(_contentTypeResponsePlain, std::move(value));
     } else {
-      _contentTypeResponsePlain.clear();
+      setStringValue(_contentTypeResponsePlain, std::string());
     }
     return;  // don't insert this header!!
   } else if ((_contentType == ContentType::UNSET) &&
@@ -142,8 +176,15 @@ void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {
     }
   }
 
-  // must lower-case the header key
-  _headers.try_emplace(std::move(key), std::move(value));
+  auto memoryUsage = key.size() + value.size();
+  auto it = _headers.try_emplace(std::move(key), std::move(value));
+  if (!it.second) {
+    auto old = it.first->first.size() + it.first->second.size();
+    // cppcheck-suppress accessMoved
+    _headers[std::move(key)] = std::move(value);
+    _memoryUsage -= old;
+  }
+  _memoryUsage += memoryUsage;
 }
 
 void VstRequest::parseHeaderInformation() {
@@ -161,7 +202,7 @@ void VstRequest::parseHeaderInformation() {
     auto type = vHeader.at(1).getInt();     // type
     {
       VPackSlice dbName = vHeader.at(2);  // database
-      _databaseName = dbName.copyString();
+      setDatabaseName(dbName.copyString());
       if (_databaseName != normalizeUtf8ToNFC(_databaseName)) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_ARANGO_ILLEGAL_NAME,
@@ -169,9 +210,9 @@ void VstRequest::parseHeaderInformation() {
       }
     }
     _type = meta::toEnum<RequestType>(vHeader.at(3).getInt());  // request type
-    _requestPath = vHeader.at(4).copyString();  // request (path)
-    VPackSlice params = vHeader.at(5);          // parameter
-    VPackSlice meta = vHeader.at(6);            // meta
+    setRequestPath(vHeader.at(4).copyString());  // request (path)
+    VPackSlice params = vHeader.at(5);           // parameter
+    VPackSlice meta = vHeader.at(6);             // meta
 
     if (version != 1) {
       LOG_TOPIC("e7fe5", WARN, Logger::COMMUNICATION)
@@ -184,13 +225,11 @@ void VstRequest::parseHeaderInformation() {
 
     for (auto it : VPackObjectIterator(params, true)) {
       if (it.value.isArray()) {
-        std::vector<std::string> tmp;
         for (auto itInner : VPackArrayIterator(it.value)) {
-          tmp.emplace_back(itInner.copyString());
+          setArrayValue(it.key.copyString(), itInner.copyString());
         }
-        _arrayValues.try_emplace(it.key.copyString(), std::move(tmp));
       } else {
-        _values.try_emplace(it.key.copyString(), it.value.copyString());
+        setValue(it.key.copyString(), it.value.copyString());
       }
     }
 
@@ -199,6 +238,7 @@ void VstRequest::parseHeaderInformation() {
     }
 
     // fullUrl should not be necessary for Vst
+    auto old = _fullUrl.size();
     _fullUrl = _requestPath;
     _fullUrl.push_back('?');  // intentional
     for (auto const& param : _values) {
@@ -215,7 +255,9 @@ void VstRequest::parseHeaderInformation() {
       }
     }
     _fullUrl.pop_back();  // remove last & or ?
-
+    _memoryUsage += _fullUrl.size();
+    TRI_ASSERT(_memoryUsage >= old);
+    _memoryUsage -= old;
   } catch (std::exception const& e) {
     throw std::runtime_error(
         std::string("Error during Parsing of VstHeader: ") + e.what());

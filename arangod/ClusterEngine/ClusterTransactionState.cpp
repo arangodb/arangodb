@@ -31,7 +31,6 @@
 #include "Cluster/ClusterTrxMethods.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterEngine/ClusterTransactionCollection.h"
-#include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -50,8 +49,11 @@ using namespace arangodb;
 /// @brief transaction type
 ClusterTransactionState::ClusterTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
-    transaction::Options const& options)
-    : TransactionState(vocbase, tid, options), _numIntermediateCommits(0) {
+    transaction::Options const& options,
+    transaction::OperationOrigin operationOrigin)
+    : TransactionState(vocbase, tid, options, operationOrigin),
+      _numIntermediateCommits(0) {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isCoordinator());
   // we have to read revisions here as validateAndOptimize is executed before
   // transaction is started and during validateAndOptimize some simple
@@ -63,13 +65,13 @@ ClusterTransactionState::ClusterTransactionState(
                               .getQueryAnalyzersRevision(vocbase.name()));
 }
 
+ClusterTransactionState::~ClusterTransactionState() = default;
+
 /// @brief start a transaction
 Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   LOG_TRX("03dec", TRACE, this)
       << "beginning " << AccessMode::typeString(_type) << " transaction";
 
-  TRI_ASSERT(!hasHint(transaction::Hints::Hint::NO_USAGE_LOCK) ||
-             !AccessMode::isWriteOrExclusive(_type));
   TRI_ASSERT(_status == transaction::Status::CREATED);
 
   // set hints
@@ -101,11 +103,15 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
     ++stats._transactionsStarted;
   }
 
-  transaction::ManagerFeature::manager()->registerTransaction(
-      id(), isReadOnlyTransaction(), false /* isFollowerTransaction */);
-  setRegistered();
-  if (AccessMode::isWriteOrExclusive(this->_type) &&
+  transaction::Manager* mgr = transaction::ManagerFeature::manager();
+  TRI_ASSERT(mgr != nullptr);
+
+  _counterGuard = mgr->registerTransaction(id(), isReadOnlyTransaction(),
+                                           isFollowerTransaction());
+
+  if (AccessMode::isWriteOrExclusive(_type) &&
       hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+    // cppcheck-suppress ignoredReturnValue
     TRI_ASSERT(isCoordinator());
 
     ClusterTrxMethods::SortedServersSet leaders{};

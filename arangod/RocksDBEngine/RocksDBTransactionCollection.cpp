@@ -45,6 +45,8 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <absl/strings/str_cat.h>
+
 using namespace arangodb;
 
 RocksDBTransactionCollection::RocksDBTransactionCollection(
@@ -61,7 +63,13 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(
                            .getFeature<arangodb::RocksDBOptionFeature>()
                            .exclusiveWrites()) {}
 
-RocksDBTransactionCollection::~RocksDBTransactionCollection() = default;
+RocksDBTransactionCollection::~RocksDBTransactionCollection() {
+  try {
+    // cppcheck-suppress virtualCallInConstructor
+    releaseUsage();
+  } catch (...) {
+  }
+}
 
 /// @brief whether or not any write operations for the collection happened
 bool RocksDBTransactionCollection::hasOperations() const {
@@ -122,9 +130,9 @@ Result RocksDBTransactionCollection::lockUsage() {
 
 void RocksDBTransactionCollection::releaseUsage() {
   // questionable, but seems to work
-  if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) ||
-      _transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
+  if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER)) {
     TRI_ASSERT(!_usageLocked);
+    TRI_ASSERT(!isLocked());
     _collection = nullptr;
     return;
   }
@@ -362,13 +370,11 @@ Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
     // acquired the lock ourselves
     res.reset(TRI_ERROR_LOCKED);
   } else if (res.is(TRI_ERROR_LOCK_TIMEOUT) && timeout >= 0.1) {
-    char const* actor = _transaction->actorName();
-    TRI_ASSERT(actor != nullptr);
-    std::string message = "timed out after " + std::to_string(timeout) +
-                          " s waiting for " + AccessMode::typeString(type) +
-                          "-lock on collection " +
-                          _transaction->vocbase().name() + "/" +
-                          _collection->name() + " on " + actor;
+    std::string message =
+        absl::StrCat("timed out after ", timeout, " s waiting for ",
+                     AccessMode::typeString(type), "-lock on collection ",
+                     _transaction->vocbase().name(), "/", _collection->name(),
+                     " on ", _transaction->actorName());
     LOG_TOPIC("4512c", WARN, Logger::QUERIES) << message;
     res.reset(TRI_ERROR_LOCK_TIMEOUT, std::move(message));
 
@@ -445,8 +451,7 @@ Result RocksDBTransactionCollection::doUnlock(AccessMode::Type type) {
 Result RocksDBTransactionCollection::ensureCollection() {
   if (_collection == nullptr) {
     // open the collection
-    if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
-        !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
+    if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER)) {
       // use and usage-lock
       LOG_TRX("b72bb", TRACE, _transaction) << "using collection " << _cid.id();
 
@@ -471,6 +476,7 @@ Result RocksDBTransactionCollection::ensureCollection() {
       _usageLocked = true;
     } else {
       // use without usage-lock (lock already set externally)
+      TRI_ASSERT(!_usageLocked);
       _collection = _transaction->vocbase().lookupCollection(_cid);
 
       if (_collection == nullptr) {

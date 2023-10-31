@@ -29,6 +29,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
+#include "resource_manager.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -37,6 +38,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <filesystem>
 
 namespace arangodb {
 struct IndexTypeFactory;
@@ -77,7 +79,7 @@ inline bool isScorer(aql::AstNode const& node) noexcept {
       aql::NODE_TYPE_FCALL_USER != node.type) {
     return false;
   }
-
+  // cppcheck-suppress throwInNoexceptFunction
   return isScorer(*static_cast<aql::Function const*>(node.getData()));
 }
 
@@ -91,6 +93,11 @@ inline bool isOffsetInfo(aql::AstNode const& node) noexcept {
          isOffsetInfo(*static_cast<aql::Function const*>(node.getData()));
 }
 
+std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
+                                       TRI_vocbase_t& database);
+
+void cleanupDatabase(TRI_vocbase_t& database);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @class IResearchFeature
 ////////////////////////////////////////////////////////////////////////////////
@@ -100,19 +107,13 @@ class IResearchFeature final : public ArangodFeature {
 
   explicit IResearchFeature(Server& server);
 
-  void beginShutdown() override;
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void prepare() override;
-  void start() override;
-  void stop() override;
-  void unprepare() override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief report progress during recovery phase
-  //////////////////////////////////////////////////////////////////////////////
-  void reportRecoveryProgress(arangodb::IndexId id, std::string_view phase,
-                              size_t current, size_t total);
+  void beginShutdown() final;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
+  void prepare() final;
+  void start() final;
+  void stop() final;
+  void unprepare() final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief schedule an asynchronous task for execution
@@ -129,20 +130,22 @@ class IResearchFeature final : public ArangodFeature {
   template<typename Engine>
   IndexTypeFactory& factory();
 
-  bool linkSkippedDuringRecovery(arangodb::IndexId id) const noexcept;
-
   void trackOutOfSyncLink() noexcept;
   void untrackOutOfSyncLink() noexcept;
 
   bool failQueriesOnOutOfSync() const noexcept;
 
 #ifdef USE_ENTERPRISE
-  bool trackColumnsCacheUsage(int64_t diff) noexcept;
+  irs::IResourceManager& getCachedColumnsManager() const noexcept {
+    return _columnsCacheMemoryUsed;
+  }
+  bool columnsCacheOnlyLeaders() const noexcept;
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   int64_t columnsCacheUsage() const noexcept;
+  void setCacheUsageLimit(uint64_t limit) noexcept;
 
-  void setCacheUsageLimit(uint64_t limit) noexcept {
-    _columnsCacheLimit = limit;
+  void setColumnsCacheOnlyOnLeader(bool b) noexcept {
+    _columnsCacheOnlyLeader = b;
   }
 #endif
 #endif
@@ -171,6 +174,14 @@ class IResearchFeature final : public ArangodFeature {
   // found during recovery.
   std::vector<std::string> _skipRecoveryItems;
 
+  // number of links/indexes currently out of sync
+  metrics::Gauge<uint64_t>& _outOfSyncLinks;
+
+#ifdef USE_ENTERPRISE
+  irs::IResourceManager& _columnsCacheMemoryUsed;
+  bool _columnsCacheOnlyLeader{false};
+#endif
+
   uint32_t _consolidationThreads;
   uint32_t _consolidationThreadsIdle;
   uint32_t _commitThreads;
@@ -181,22 +192,8 @@ class IResearchFeature final : public ArangodFeature {
   std::shared_ptr<IndexTypeFactory> _clusterFactory;
   std::shared_ptr<IndexTypeFactory> _rocksDBFactory;
 
-  // number of links/indexes currently out of sync
-  metrics::Gauge<uint64_t>& _outOfSyncLinks;
-
-#ifdef USE_ENTERPRISE
-  metrics::Gauge<int64_t>& _columnsCacheMemoryUsed;
-  uint64_t _columnsCacheLimit{0};
-#endif
-
   // helper object, only useful during WAL recovery
   std::shared_ptr<IResearchRocksDBRecoveryHelper> _recoveryHelper;
-
-  // state used for progress reporting only
-  struct ProgressReportState {
-    arangodb::IndexId lastReportId{0};
-    std::chrono::time_point<std::chrono::system_clock> lastReportTime{};
-  } _progressState;
 };
 
 }  // namespace iresearch

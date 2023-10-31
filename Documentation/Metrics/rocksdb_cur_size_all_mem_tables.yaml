@@ -11,6 +11,6 @@ exposedBy:
   - agent
   - single
 description: |
-  This metric exhibits the RocksDB metric "rocksdb-cur-size-all-mem-tables".
+  This metric exhibits the RocksDB metric `rocksdb-cur-size-all-mem-tables`.
   It shows the approximate size of active and unflushed immutable memtables
   in bytes, summed over all column families.

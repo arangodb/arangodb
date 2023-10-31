@@ -125,8 +125,7 @@ class WalAccess {
     TRI_voc_tick_t firstRegularTick = 0;
   };
 
-  typedef std::function<void(TRI_vocbase_t*, velocypack::Slice const&)>
-      MarkerCallback;
+  typedef std::function<void(TRI_vocbase_t*, velocypack::Slice)> MarkerCallback;
   typedef std::function<void(TransactionId, TransactionId)> TransactionCallback;
 
   /// {"tickMin":"123", "tickMax":"456",

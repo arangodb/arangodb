@@ -20,10 +20,18 @@
 ///
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
+#include <optional>
 #include "v8-deadline.h"
+
 // arangod dummy implementation doing nothing
 void setExecutionDeadlineInMS(uint64_t timeout) {}
 
+bool isExecutionDeadlineReached() { return false; }
 bool isExecutionDeadlineReached(v8::Isolate* isolate) { return false; }
 
 double correctTimeoutToExecutionDeadlineS(double timeoutSeconds) {
@@ -38,3 +46,11 @@ std::chrono::milliseconds correctTimeoutToExecutionDeadline(
 uint32_t correctTimeoutToExecutionDeadline(uint32_t timeout) { return timeout; }
 
 void TRI_InitV8Deadline(v8::Isolate* isolate) {}
+void triggerV8DeadlineNow(bool fromSignal) {}
+
+namespace arangodb {
+std::optional<ExternalProcessStatus> getHistoricStatus(
+    TRI_pid_t pid, arangodb::application_features::ApplicationServer& server) {
+  return std::nullopt;
+}
+}  // namespace arangodb

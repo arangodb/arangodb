@@ -44,8 +44,19 @@ class RestControlPregelHandler : public arangodb::RestVocbaseBaseHandler {
 
  private:
   void startExecution();
-  void getExecutionStatus();
-  void cancelExecution();
+
+  // Handled GET requests for APIs:
+  // - /_api/control_pregel[/<id>]
+  // - /_api/control_pregel/history[/<id>]
+  void handleGetRequest();
+
+  // Handled DELETE requests for APIs:
+  // - /_api/control_pregel[/<id>]
+  // - /_api/control_pregel/history[/<id>]
+  void handleDeleteRequest();
+
+  void handlePregelHistoryResult(ResultT<OperationResult> opResult,
+                                 bool onlyReturnFirstAqlResultEntry = false);
 
   pregel::PregelFeature& _pregel;
 };

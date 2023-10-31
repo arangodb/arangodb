@@ -22,9 +22,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "v8-analyzers.h"
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
 
-#include <string_view>
+#include "v8-analyzers.h"
 
 #include <velocypack/Parser.h>
 
@@ -39,6 +41,7 @@
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "Transaction/Hints.h"
 #include "Transaction/V8Context.h"
 #include "Utilities/NameValidator.h"
 #include "V8/v8-conv.h"
@@ -48,7 +51,10 @@
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/vocbase.h"
 
+#include <string_view>
+
 namespace {
+constexpr std::string_view moduleName("analyzers management");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unwraps an analyser wrapped via WrapAnalyzer(...)
@@ -306,13 +312,11 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
     return;
   }
 
-  bool extendedNames = v8g->server()
-                           .getFeature<arangodb::DatabaseFeature>()
-                           .extendedNamesForAnalyzers();
-  if (!arangodb::AnalyzerNameValidator::isAllowedName(
-          extendedNames,
-          std::string_view(splittedAnalyzerName.second.data(),
-                           splittedAnalyzerName.second.size()))) {
+  bool extendedNames =
+      v8g->server().getFeature<arangodb::DatabaseFeature>().extendedNames();
+  if (arangodb::AnalyzerNameValidator::validateName(extendedNames,
+                                                    splittedAnalyzerName.second)
+          .fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         std::string("invalid characters in analyzer name '")
@@ -385,7 +389,9 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   try {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    auto res = analyzers.emplace(result, name, type, propertiesSlice, features);
+    auto res = analyzers.emplace(
+        result, name, type, propertiesSlice,
+        arangodb::transaction::OperationOriginREST{::moduleName}, features);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -471,7 +477,8 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   try {
     auto analyzer =
-        analyzers.get(name, arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+        analyzers.get(name, arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                      arangodb::transaction::OperationOriginREST{::moduleName});
 
     if (!analyzer) {
       TRI_V8_RETURN_NULL();
@@ -528,11 +535,15 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
   };
 
   try {
-    analyzers.visit(visitor, nullptr);  // include static analyzers
+    analyzers.visit(visitor, nullptr,
+                    arangodb::transaction::OperationOriginREST{
+                        ::moduleName});  // include static
+                                         // analyzers
 
     if (arangodb::iresearch::IResearchAnalyzerFeature::canUse(
             vocbase, arangodb::auth::Level::RO)) {
-      analyzers.visit(visitor, &vocbase);
+      analyzers.visit(visitor, &vocbase,
+                      arangodb::transaction::OperationOriginREST{::moduleName});
     }
 
     // include analyzers from the system vocbase if possible
@@ -540,7 +551,8 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
         && sysVocbase->name() != vocbase.name()  // not same vocbase as current
         && arangodb::iresearch::IResearchAnalyzerFeature::canUse(
                *sysVocbase, arangodb::auth::Level::RO)) {
-      analyzers.visit(visitor, sysVocbase.get());
+      analyzers.visit(visitor, sysVocbase.get(),
+                      arangodb::transaction::OperationOriginREST{::moduleName});
     }
 
     auto v8Result = v8::Array::New(isolate);
@@ -604,13 +616,11 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
     return;
   }
 
-  bool extendedNames = v8g->server()
-                           .getFeature<arangodb::DatabaseFeature>()
-                           .extendedNamesForAnalyzers();
-  if (!arangodb::AnalyzerNameValidator::isAllowedName(
-          extendedNames,
-          std::string_view(splittedAnalyzerName.second.data(),
-                           splittedAnalyzerName.second.size()))) {
+  bool extendedNames =
+      v8g->server().getFeature<arangodb::DatabaseFeature>().extendedNames();
+  if (arangodb::AnalyzerNameValidator::validateName(extendedNames,
+                                                    splittedAnalyzerName.second)
+          .fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         std::string("Invalid characters in analyzer name '")
@@ -643,7 +653,8 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   try {
-    auto res = analyzers.remove(name, force);
+    auto res = analyzers.remove(
+        name, arangodb::transaction::OperationOriginREST{::moduleName}, force);
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);
     }

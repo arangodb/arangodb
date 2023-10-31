@@ -49,6 +49,9 @@ class DatabaseGuard final : public IDatabaseGuard {
   /// @brief create guard on existing db
   explicit DatabaseGuard(TRI_vocbase_t& vocbase);
 
+  /// @brief create guard from existing VocbasePtr
+  explicit DatabaseGuard(VocbasePtr vocbase);
+
   /// @brief create the guard, using a database id
   DatabaseGuard(DatabaseFeature& feature, TRI_voc_tick_t id);
 
@@ -61,8 +64,6 @@ class DatabaseGuard final : public IDatabaseGuard {
   TRI_vocbase_t* operator->() noexcept { return _vocbase.get(); }
 
  private:
-  explicit DatabaseGuard(VocbasePtr vocbase);
-
   VocbasePtr _vocbase;
 };
 

@@ -41,13 +41,17 @@
 #include "Aql/Stats.h"
 #include "Aql/SubqueryStartExecutor.h"
 #include "Aql/Variable.h"
+#include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "RestServer/TemporaryStorageFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
+#include "VelocypackUtils/VelocyPackStringLiteral.h"
+#include "Basics/VelocyPackHelper.h"
+
 #include "AqlItemBlockHelper.h"
-#include "search/sort.hpp"
+#include "search/scorer.hpp"
 
 #include <velocypack/Builder.h>
 
@@ -56,13 +60,14 @@ using namespace arangodb::aql;
 
 namespace arangodb::tests::aql {
 
-using SortTestHelper = ExecutorTestHelper<1, 1>;
-using SortSplitType = SortTestHelper::SplitType;
-using SortInputParam = std::tuple<SortSplitType>;
+using SortInputParam = std::tuple<SplitType>;
 
 class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
  protected:
-  auto getSplit() -> SortSplitType {
+  arangodb::GlobalResourceMonitor _globalResourceMonitor{};
+  arangodb::ResourceMonitor _resMonitor{_globalResourceMonitor};
+
+  auto getSplit() -> SplitType {
     auto const& [split] = GetParam();
     return split;
   }
@@ -92,8 +97,8 @@ class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
     sortRegisters.emplace_back(std::move(sortReg));
     return SortExecutorInfos(
         1, 1, {}, std::move(sortRegisters),
-        /*limit (ignored for default sort)*/ 0, manager(), *tempStorage,
-        vpackOptions, monitor, /*spillOverThresholdNumRows*/ 1000,
+        /*limit (ignored for default sort)*/ 0, manager(), *fakedQuery,
+        *tempStorage, vpackOptions, monitor, /*spillOverThresholdNumRows*/ 1000,
         /*spillOverThresholdMemoryUsage*/ 1024 * 1024, false);
   }
 
@@ -133,17 +138,20 @@ class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
     return TestLambdaSkipExecutor::Infos{dropAll, dropSkipAll};
   }
 
+ protected:
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
+
  private:
   std::unique_ptr<TemporaryStorageFeature> tempStorage;
   velocypack::Options const* vpackOptions{&velocypack::Options::Defaults};
-  Variable sortVar{"mySortVar", 0, false};
+  Variable sortVar{"mySortVar", 0, false, resourceMonitor};
 };
 
 template<size_t... vs>
-const SortSplitType splitIntoBlocks =
-    SortSplitType{std::vector<std::size_t>{vs...}};
+const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
 template<size_t step>
-const SortSplitType splitStep = SortSplitType{step};
+const SplitType splitStep = SplitType{step};
 
 INSTANTIATE_TEST_CASE_P(SortExecutorTest, SortExecutorTest,
                         ::testing::Values(splitIntoBlocks<2, 3>,
@@ -296,4 +304,29 @@ TEST_P(SortExecutorTest, skip_nested_subquery_no_data) {
       .expectedState(ExecutionState::DONE)
       .run();
 }
+
+// Regression test for BTS-1511:
+// https://arangodb.atlassian.net/browse/BTS-1511
+// The query
+//   FOR x IN [-220000000000002, 1, 10] SORT x RETURN x
+// resulted in
+//   [ 1, 10, -220000000000002 ]
+// while
+//   [ -220000000000002, 1, 10 ]
+// would be expected.
+TEST_P(SortExecutorTest, regression_bts_1511) {
+  AqlCall call{};          // unlimited produce
+  ExecutionStats stats{};  // No stats here
+  makeExecutorTestHelper()
+      .addConsumer<SortExecutor>(makeRegisterInfos(), makeExecutorInfos(),
+                                 ExecutionNode::SORT)
+      .setInputSplitType(getSplit())
+      .setInputValueList(R"(-220000000000002)", 1, 10)
+      .expectOutput({0}, {{R"(-220000000000002)"}, {1}, {10}})
+      .setCall(call)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}
+
 }  // namespace arangodb::tests::aql

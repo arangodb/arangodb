@@ -46,6 +46,9 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Context.h"
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#include "Transaction/History.h"
+#endif
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
@@ -62,13 +65,8 @@ using namespace arangodb;
 /// @brief transaction type
 RocksDBTransactionState::RocksDBTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
-    transaction::Options const& options)
-    : TransactionState(vocbase, tid, options),
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      _users(0),
-#endif
-      _cacheTx(nullptr) {
-}
+    transaction::Options const& options, transaction::OperationOrigin trxType)
+    : TransactionState(vocbase, tid, options, trxType) {}
 
 /// @brief free a transaction container
 RocksDBTransactionState::~RocksDBTransactionState() {
@@ -90,9 +88,6 @@ void RocksDBTransactionState::unuse() noexcept {
 Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   LOG_TRX("0c057", TRACE, this)
       << "beginning " << AccessMode::typeString(_type) << " transaction";
-
-  TRI_ASSERT(!hasHint(transaction::Hints::Hint::NO_USAGE_LOCK) ||
-             !AccessMode::isWriteOrExclusive(_type));
 
   _hints = hints;  // set hints before useCollections
 
@@ -120,10 +115,6 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     return res;
   }
 
-  // register with manager
-  transaction::ManagerFeature::manager()->registerTransaction(
-      id(), isReadOnlyTransaction(),
-      hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX));
   updateStatus(transaction::Status::RUNNING);
   if (isReadOnlyTransaction()) {
     ++stats._readTransactions;
@@ -131,29 +122,40 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     ++stats._transactionsStarted;
   }
 
-  setRegistered();
+  transaction::Manager* mgr = transaction::ManagerFeature::manager();
+  TRI_ASSERT(mgr != nullptr);
 
-  TRI_ASSERT(_cacheTx == nullptr);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // track currently ongoing transactions in history.
+  // we only do this in maintainer mode and not in production.
+  // the reason we insert into the history is only for testing
+  // purposes.
+  mgr->history().insert(*this);
+#endif
+
+  _counterGuard = mgr->registerTransaction(id(), isReadOnlyTransaction(),
+                                           isFollowerTransaction());
+
+  TRI_ASSERT(_cacheTx.term == cache::Transaction::kInvalidTerm);
 
   // start cache transaction
   auto* manager =
       vocbase().server().getFeature<CacheManagerFeature>().manager();
   if (manager != nullptr) {
-    _cacheTx = manager->beginTransaction(isReadOnlyTransaction());
+    manager->beginTransaction(_cacheTx, isReadOnlyTransaction());
   }
 
   return res;
 }
 
 void RocksDBTransactionState::cleanupTransaction() noexcept {
-  if (_cacheTx != nullptr) {
-    // note: endTransaction() will delete _cacheTrx!
+  if (_cacheTx.term != cache::Transaction::kInvalidTerm) {
     auto* manager =
         vocbase().server().getFeature<CacheManagerFeature>().manager();
     TRI_ASSERT(manager != nullptr);
     manager->endTransaction(_cacheTx);
-    _cacheTx = nullptr;
 
+    RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
     for (auto& trxColl : _collections) {
       auto* rcoll = static_cast<RocksDBTransactionCollection*>(trxColl);
       try {
@@ -195,7 +197,7 @@ futures::Future<Result> RocksDBTransactionState::commitTransaction(
       //  operations, it same as reverting intermediate commits.
       std::ignore = self->abortTransaction(activeTrx);  // deletes trx
     }
-    TRI_ASSERT(!self->_cacheTx);
+    TRI_ASSERT(self->_cacheTx.term == cache::Transaction::kInvalidTerm);
     return std::forward<Result>(res);
   });
 }
@@ -219,7 +221,7 @@ Result RocksDBTransactionState::abortTransaction(
     clearQueryCache();
   }
 
-  TRI_ASSERT(!_cacheTx);
+  TRI_ASSERT(_cacheTx.term == cache::Transaction::kInvalidTerm);
   ++statistics()._transactionsAborted;
 
   return result;
@@ -328,9 +330,16 @@ bool RocksDBTransactionState::isOnlyExclusiveTransaction() const noexcept {
   if (!AccessMode::isWriteOrExclusive(_type)) {
     return false;
   }
+
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   return std::none_of(_collections.begin(), _collections.end(), [](auto* coll) {
     return AccessMode::isWrite(coll->accessType());
   });
+}
+
+std::string RocksDBTransactionState::debugInfo() const {
+  // can be overriden by derived classes
+  return "n/a";
 }
 
 bool RocksDBTransactionState::hasFailedOperations() const noexcept {

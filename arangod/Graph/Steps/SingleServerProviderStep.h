@@ -94,6 +94,7 @@ class SingleServerProviderStep
   }
   bool isProcessable() const { return !isLooseEnd(); }
   bool isLooseEnd() const { return false; }
+  bool isUnknown() const { return false; }
 
   // beware: will return a *copy* of the vertex id
   VertexType getVertexIdentifier() const { return _vertex.getID(); }

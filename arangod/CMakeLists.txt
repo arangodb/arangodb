@@ -13,6 +13,7 @@ if (MSVC AND NOT(SKIP_PACKAGING))
     NAME ${BIN_ARANGOD}
     FILE_DESCRIPTION ${ARANGODB_FRIENDLY_STRING}
     ICON ${ARANGO_ICON}
+    COMPANY_NAME ${ARANGODB_PACKAGE_COMPANY}
     VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
     VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
     VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
@@ -36,6 +37,10 @@ else ()
 endif ()
 if (USE_JEMALLOC)
   add_dependencies(${BIN_ARANGOD} jemalloc_build)
+endif ()
+
+if (USE_JEMALLOC)
+  target_link_libraries(${BIN_ARANGOD} ${JEMALLOC_LIB})
 endif ()
 
 target_include_directories(${BIN_ARANGOD} PRIVATE
@@ -94,6 +99,8 @@ add_subdirectory(RestServer)
 add_subdirectory(RocksDBEngine)
 add_subdirectory(StorageEngine)
 add_subdirectory(Utils)
-add_subdirectory(V8Server)
+if (USE_V8)
+  add_subdirectory(V8Server)
+endif()
 add_subdirectory(VocBase)
 add_subdirectory(Zkd)

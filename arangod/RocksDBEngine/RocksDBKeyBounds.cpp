@@ -139,6 +139,10 @@ RocksDBKeyBounds RocksDBKeyBounds::DatabaseViews(TRI_voc_tick_t databaseId) {
   return RocksDBKeyBounds(RocksDBEntryType::View, databaseId);
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::DatabaseStates(TRI_voc_tick_t databaseId) {
+  return RocksDBKeyBounds(RocksDBEntryType::ReplicatedState, databaseId);
+}
+
 RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(uint64_t objectId,
                                                        std::string_view word) {
   // I did not want to pass a bool to the constructor for this
@@ -342,7 +346,8 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
     : _type(type) {
   switch (_type) {
     case RocksDBEntryType::Collection:
-    case RocksDBEntryType::View: {
+    case RocksDBEntryType::View:
+    case RocksDBEntryType::ReplicatedState: {
       // Collections are stored as follows:
       // Key: 1 + 8-byte ArangoDB database ID + 8-byte ArangoDB collection ID
       _internals.reserve(2 * sizeof(char) + 3 * sizeof(uint64_t));
@@ -415,7 +420,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
       uint8_t const maxSlice[] = {0x02, 0x03, 0x1f};
       VPackSlice max(maxSlice);
 
-      _internals.reserve(2 * sizeof(uint64_t) + (second ? max.byteSize() : 0));
+      _internals.reserve(2 * sizeof(uint64_t) + max.byteSize());
       uint64ToPersistent(_internals.buffer(), first);
       _internals.separate();
 
@@ -427,9 +432,18 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
         uint64ToPersistent(_internals.buffer(), first);
         _internals.buffer().append((char const*)(max.begin()), max.byteSize());
       } else {
-        // in case of forward iteration, we can use the next objectId as a quick
-        // termination case, as it will be in the next prefix
-        uint64ToPersistent(_internals.buffer(), first + 1);
+        // in case of forward iteration, we can use the next objectId as
+        // a quick termination case, as it will be in the next prefix,
+        // however, this trick only works when we have the big endian
+        // data format:
+        if (rocksDBEndianness == RocksDBEndianness::Big) {
+          uint64ToPersistent(_internals.buffer(), first + 1);
+        } else {
+          // little endian:
+          uint64ToPersistent(_internals.buffer(), first);
+          _internals.buffer().append((char const*)(max.begin()),
+                                     max.byteSize());
+        }
       }
       break;
     }
@@ -543,6 +557,20 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
       _internals.separate();
       uint64ToPersistent(_internals.buffer(), first);  // objectid
       uint64ToPersistent(_internals.buffer(), third);  // max revision
+      // This method does not work in the old, little endian encoding
+      // (used in databases created with ArangoDB 3.2 and 3.3), since
+      // in that encoding a range of document revision IDs as `uint64_t`
+      // does not map to a range of RocksDB keys. So this is unusable.
+      // Therefore, as a stop gap measure, we throw an exception here
+      // to avoid that somebody uses this code and runs into this very
+      // subtle bug. The old format is now deprecated and new features
+      // to not have to support it any more. Note that for UINT64_MAX
+      // as upper bound we can do not have to error out since endianess
+      // does not play a role. This case is used in various places!
+      if (third != UINT64_MAX &&
+          rocksDBEndianness == RocksDBEndianness::Little) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_OLD_ROCKSDB_FORMAT);
+      }
       break;
     }
     case RocksDBEntryType::GeoIndexValue: {

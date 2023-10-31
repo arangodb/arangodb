@@ -1,3 +1,6 @@
 target_sources(arango_pregel PRIVATE
-  WorkerConfig.cpp
-  Worker.cpp)
+        VertexProcessor.cpp
+        WorkerConfig.cpp
+        Worker.cpp)
+
+add_subdirectory(ExecutionStates)

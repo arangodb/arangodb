@@ -67,7 +67,7 @@ void AcceptorUnixDomain::open() {
 void AcceptorUnixDomain::asyncAccept() {
   IoContext& context = _server.selectIoContext();
 
-  auto asioSocket = std::make_unique<AsioSocket<SocketType::Unix>>(context);
+  auto asioSocket = std::make_shared<AsioSocket<SocketType::Unix>>(context);
   auto& socket = asioSocket->socket;
   auto& peer = asioSocket->peer;
   auto handler = [this, asioSocket = std::move(asioSocket)](

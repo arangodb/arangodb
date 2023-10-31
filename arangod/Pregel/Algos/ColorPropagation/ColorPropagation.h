@@ -255,7 +255,7 @@ struct ColorPropagationGraphFormat
                       std::string const& documentId,
                       arangodb::velocypack::Slice document,
                       ColorPropagationValue& senders,
-                      uint64_t& vertexIdRange) const override;
+                      uint64_t vertexId) const override;
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            ColorPropagationValue const* ptr) const override;

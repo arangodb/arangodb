@@ -23,10 +23,11 @@
 
 #include <optional>
 
+#include <absl/strings/escaping.h>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
-#include "Cluster/FailureOracleFeature.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ServerState.h"
 #include "Inspection/VPack.h"
@@ -35,7 +36,6 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
-#include "Replication2/ReplicatedLog/NetworkAttachedFollower.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "RestServer/DatabaseFeature.h"
 #include "UpdateReplicatedLogAction.h"
@@ -48,8 +48,8 @@ using namespace arangodb::replication2;
 
 bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
   auto spec = std::invoke([&]() -> std::optional<agency::LogPlanSpecification> {
-    auto buffer =
-        StringUtils::decodeBase64(_description.get(REPLICATED_LOG_SPEC));
+    std::string buffer;
+    absl::Base64Unescape(_description.get(REPLICATED_LOG_SPEC), &buffer);
     auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(buffer.c_str()));
     if (!slice.isNone()) {
       return velocypack::deserialize<agency::LogPlanSpecification>(slice);

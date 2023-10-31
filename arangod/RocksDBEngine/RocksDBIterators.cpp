@@ -125,7 +125,8 @@ class RocksDBAllIndexIterator final : public IndexIterator {
     TRI_ASSERT(limit > 0);
 
     do {
-      cb(RocksDBKey::documentId(_iterator->key()),
+      // TODO(MBkkt) optimize it, extract value from rocksdb
+      cb(RocksDBKey::documentId(_iterator->key()), nullptr,
          VPackSlice(
              reinterpret_cast<uint8_t const*>(_iterator->value().data())));
       _iterator->Next();
@@ -209,7 +210,7 @@ class RocksDBAllIndexIterator final : public IndexIterator {
             TRI_ASSERT(ro.prefix_same_as_start);
             ro.verify_checksums = false;  // TODO evaluate
             ro.iterate_upper_bound = &_upperBound;
-            ro.readOwnWrites = canReadOwnWrites() == ReadOwnWrites::yes;
+            ro.readOwnWrites = static_cast<bool>(canReadOwnWrites());
             // ro.readahead_size = 4 * 1024 * 1024;
           });
     }
@@ -261,7 +262,7 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
           TRI_ERROR_INTERNAL, "invalid iterator in RocksDBAnyIndexIterator");
     }
 
-    _total = collection->numberDocuments(trx, transaction::CountType::Normal);
+    _total = collection->getPhysical()->numberDocuments(trx);
     reset();  // initial seek
   }
 
@@ -276,7 +277,7 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 
   bool nextDocumentImpl(DocumentCallback const& cb, uint64_t limit) override {
     return doNext(limit, [&]() {
-      cb(RocksDBKey::documentId(_iterator->key()),
+      cb(RocksDBKey::documentId(_iterator->key()), nullptr,
          VPackSlice(
              reinterpret_cast<uint8_t const*>(_iterator->value().data())));
     });

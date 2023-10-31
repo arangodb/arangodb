@@ -45,6 +45,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
@@ -146,8 +147,10 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(ArangodServer& server) {
   // will ask us again for permissions and we get a deadlock
   ExecContextSuperuserScope scope;
   std::string const queryStr("FOR user IN _users RETURN user");
+  auto origin =
+      transaction::OperationOriginInternal{"querying all users from database"};
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(*vocbase),
+      transaction::StandaloneContext::create(*vocbase, origin),
       arangodb::aql::QueryString(queryStr), nullptr);
 
   query->queryOptions().cache = false;
@@ -207,7 +210,7 @@ void auth::UserManager::loadFromDB() {
   if (_internalVersion.load(std::memory_order_acquire) == globalVersion()) {
     return;
   }
-  MUTEX_LOCKER(guard, _loadFromDBLock);
+  std::lock_guard guard{_loadFromDBLock};
   uint64_t tmp = globalVersion();
   if (_internalVersion.load(std::memory_order_acquire) == tmp) {
     return;
@@ -293,7 +296,8 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry,
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContextSuperuserScope scope;
-  auto ctx = transaction::StandaloneContext::Create(*vocbase);
+  auto origin = transaction::OperationOriginInternal{"storing user"};
+  auto ctx = transaction::StandaloneContext::create(*vocbase, origin);
   SingleCollectionTransaction trx(ctx, StaticStrings::UsersCollection,
                                   AccessMode::Type::WRITE);
 
@@ -366,7 +370,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry,
 void auth::UserManager::createRootUser() {
   loadFromDB();
 
-  MUTEX_LOCKER(guard, _loadFromDBLock);      // must be first
+  std::lock_guard guard{_loadFromDBLock};    // must be first
   WRITE_LOCKER(writeGuard, _userCacheLock);  // must be second
   UserMap::iterator const& it = _userCache.find("root");
   if (it != _userCache.end()) {
@@ -423,6 +427,27 @@ void auth::UserManager::triggerCacheRevalidation() {
   triggerLocalReload();
   triggerGlobalReload();
   loadFromDB();
+}
+
+void auth::UserManager::setGlobalVersion(uint64_t version) noexcept {
+  uint64_t previous = _globalVersion.load(std::memory_order_relaxed);
+  while (version > previous) {
+    if (_globalVersion.compare_exchange_strong(previous, version,
+                                               std::memory_order_release,
+                                               std::memory_order_relaxed)) {
+      break;
+    }
+  }
+}
+
+/// @brief reload user cache and token caches
+void auth::UserManager::triggerLocalReload() noexcept {
+  _internalVersion.store(0, std::memory_order_release);
+}
+
+/// @brief used for caching
+uint64_t auth::UserManager::globalVersion() const noexcept {
+  return _globalVersion.load(std::memory_order_acquire);
 }
 
 /// Trigger eventual reload, user facing API call
@@ -657,7 +682,8 @@ static Result RemoveUserInternal(ArangodServer& server,
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContextSuperuserScope scope;
-  auto ctx = transaction::StandaloneContext::Create(*vocbase);
+  auto origin = transaction::OperationOriginInternal{"removing user"};
+  auto ctx = transaction::StandaloneContext::create(*vocbase, origin);
   SingleCollectionTransaction trx(ctx, StaticStrings::UsersCollection,
                                   AccessMode::Type::WRITE);
 
@@ -715,7 +741,7 @@ Result auth::UserManager::removeAllUsers() {
   Result res;
   {
     // do not get into race conditions with loadFromDB
-    MUTEX_LOCKER(guard, _loadFromDBLock);      // must be first
+    std::lock_guard guard{_loadFromDBLock};    // must be first
     WRITE_LOCKER(writeGuard, _userCacheLock);  // must be second
 
     for (auto pair = _userCache.cbegin(); pair != _userCache.cend();) {
@@ -805,7 +831,7 @@ auth::Level auth::UserManager::databaseAuthLevel(std::string const& user,
 
 auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
                                                    std::string const& dbname,
-                                                   std::string const& coll,
+                                                   std::string_view coll,
                                                    bool configured) {
   if (coll.empty()) {
     return auth::Level::NONE;
@@ -845,7 +871,7 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 /// Only used for testing
 void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
-  MUTEX_LOCKER(guard, _loadFromDBLock);      // must be first
+  std::lock_guard guard{_loadFromDBLock};    // must be first
   WRITE_LOCKER(writeGuard, _userCacheLock);  // must be second
   _userCache = newMap;
   _internalVersion.store(_globalVersion.load());

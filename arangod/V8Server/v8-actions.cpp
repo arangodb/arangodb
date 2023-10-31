@@ -21,12 +21,15 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include "v8-actions.h"
 #include "Actions/ActionFeature.h"
 #include "Actions/actions.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "V8/V8SecurityFeature.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
@@ -62,6 +65,7 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include <absl/strings/escaping.h>
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
@@ -119,7 +123,7 @@ class v8_action_t final : public TRI_action_t {
   }
 
   TRI_action_result_t execute(TRI_vocbase_t* vocbase, GeneralRequest* request,
-                              GeneralResponse* response, Mutex* dataLock,
+                              GeneralResponse* response, std::mutex* dataLock,
                               void** data) override {
     TRI_action_result_t result;
 
@@ -152,7 +156,7 @@ class v8_action_t final : public TRI_action_t {
       // and execute it
       {
         // cppcheck-suppress redundantPointerOp
-        MUTEX_LOCKER(mutexLocker, *dataLock);
+        std::lock_guard mutexLocker{*dataLock};
 
         if (*data != nullptr) {
           result.canceled = true;
@@ -178,7 +182,7 @@ class v8_action_t final : public TRI_action_t {
 
       {
         // cppcheck-suppress redundantPointerOp
-        MUTEX_LOCKER(mutexLocker, *dataLock);
+        std::lock_guard mutexLocker{*dataLock};
         *data = nullptr;
       }
     }
@@ -186,10 +190,10 @@ class v8_action_t final : public TRI_action_t {
     return result;
   }
 
-  void cancel(Mutex* dataLock, void** data) override {
+  void cancel(std::mutex* dataLock, void** data) override {
     {
       // cppcheck-suppress redundantPointerOp
-      MUTEX_LOCKER(mutexLocker, *dataLock);
+      std::lock_guard mutexLocker{*dataLock};
 
       // either we have not yet reached the execute above or we are already done
       if (*data == nullptr) {
@@ -826,9 +830,6 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>());
     switch (response->transportType()) {
       case Endpoint::TransportType::HTTP: {
-        //  OBI FIXME - vpack
-        //  HTTP SHOULD USE vpack interface
-
         HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
         v8::Handle<v8::Array> transformations = transformArray.As<v8::Array>();
         bool setRegularBody = !transformArray->IsArray();
@@ -844,13 +845,15 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
             // check available transformations
             if (name == "base64encode") {
               // base64-encode the result
-              out = StringUtils::encodeBase64(out);
+              out = absl::Base64Escape(out);
               // set the correct content-encoding header
               response->setHeaderNC(StaticStrings::ContentEncoding,
                                     StaticStrings::Base64);
             } else if (name == "base64decode") {
               // base64-decode the result
-              out = StringUtils::decodeBase64(out);
+              std::string dest;
+              absl::Base64Unescape(out, &dest);
+              out = std::move(dest);
               // set the correct content-encoding header
               response->setHeaderNC(StaticStrings::ContentEncoding,
                                     StaticStrings::Binary);
@@ -922,7 +925,9 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
             // we do not decode in the vst case
             // check available transformations
             if (name == "base64decode") {
-              out = StringUtils::decodeBase64(out);
+              std::string dst;
+              absl::Base64Unescape(out, &dst);
+              out = std::move(dst);
             } else if (name == StaticStrings::EncodingGzip) {
               response->setAllowCompression(true);
             } else if (name == StaticStrings::EncodingDeflate) {

@@ -24,7 +24,6 @@
 #include "ConnectionCache.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/debugging.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/LogMacros.h"
@@ -95,7 +94,7 @@ ConnectionLease ConnectionCache::acquire(std::string endpoint,
   uint64_t metric;
 
   {
-    MUTEX_LOCKER(locker, _lock);
+    std::lock_guard locker{_lock};
 
     auto it = _connections.find(endpoint);
     if (it != _connections.end()) {
@@ -183,7 +182,7 @@ void ConnectionCache::release(
         << "putting connection for endpoint " << endpoint
         << " back into connections cache";
 
-    MUTEX_LOCKER(locker, _lock);
+    std::lock_guard locker{_lock};
 
     // this may create the vector at _connections[endpoint]
     auto& connectionsForEndpoint = _connections[endpoint];

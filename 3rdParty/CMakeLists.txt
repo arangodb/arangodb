@@ -59,6 +59,7 @@ function (add_snappy)
     set(SNAPPY_INSTALL OFF CACHE BOOL "disable Snappy installation")
     set(SNAPPY_REQUIRE_AVX ON CACHE BOOL "target processors with AVX support" FORCE)
     set(SNAPPY_REQUIRE_AVX2 OFF CACHE BOOL "target processors with AVX2 support" FORCE)
+    set(SNAPPY_HAVE_BMI2 OFF CACHE BOOL "target processors with BMI2 support" FORCE)
     add_subdirectory(${SNAPPY_SOURCE_DIR})
 endfunction ()
 add_snappy()
@@ -87,6 +88,9 @@ if (USE_JEMALLOC)
   set(JEMALLOC_HOME "${JEMALLOC_HOME}" PARENT_SCOPE)
   set(SYS_LIBS ${SYS_LIBS} jemalloc PARENT_SCOPE)
   set(JEMALLOC_LIB "${JEMALLOC_LIB}" PARENT_SCOPE)
+  if (USE_JEMALLOC_PROF AND USE_LIBUNWIND)
+    add_dependencies(jemalloc_build libunwind_build)
+  endif()
 endif ()
 
 ################################################################################
@@ -211,7 +215,6 @@ foreach(ELEMENT ${IRESEARCH_PREBUILT})
 endforeach()
 
 add_subdirectory("${IRESEARCH_ROOT}" "${IRESEARCH_BUILD_DIR}")
-
 
 target_compile_definitions(iresearch-static PRIVATE -DDISABLE_EXECINFO)
 

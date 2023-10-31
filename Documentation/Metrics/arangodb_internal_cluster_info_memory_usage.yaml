@@ -1,0 +1,16 @@
+name: arangodb_internal_cluster_info_memory_usage
+introducedIn: "3.12"
+help: |
+  Amount of memory spent in ClusterInfo.
+unit: byte
+type: gauge
+# all other categories are too specific
+category: Statistics
+complexity: high
+exposedBy:
+  - coordinator
+  - dbserver
+description: |
+  Amount of memory spent in ClusterInfo. ClusterInfo keeps all relevant 
+  information about servers and shard distribution. It grows with the size
+  of servers, databases, collections/shards and indexes in the cluster.

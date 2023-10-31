@@ -40,8 +40,6 @@ class HttpResponse : public GeneralResponse {
   friend class RestBatchHandler;  // TODO must be removed
 
  public:
-  static bool HIDE_PRODUCT_HEADER;
-
   HttpResponse(ResponseCode code, uint64_t mid,
                std::unique_ptr<basics::StringBuffer> = nullptr);
   ~HttpResponse() = default;
@@ -72,6 +70,11 @@ class HttpResponse : public GeneralResponse {
   // you should call writeHeader only after the body has been created
   void writeHeader(basics::StringBuffer*);  // override;
 
+  void clearBody() noexcept {
+    _body->clear();
+    _bodySize = 0;
+  }
+
   void reset(ResponseCode code) override final;
 
   void addPayload(velocypack::Slice slice, velocypack::Options const* = nullptr,
@@ -81,7 +84,17 @@ class HttpResponse : public GeneralResponse {
                   bool resolve_externals = true) override final;
   void addRawPayload(std::string_view payload) override final;
 
-  bool isResponseEmpty() const override final { return _body->empty(); }
+  void setAllowCompression(bool allowed) noexcept override final {
+    _allowCompression = allowed;
+  }
+
+  bool isCompressionAllowed() const noexcept override final {
+    return _allowCompression;
+  }
+
+  bool isResponseEmpty() const noexcept override final {
+    return _body->empty();
+  }
 
   ErrorCode reservePayload(std::size_t size) override final {
     return _body->reserve(size);
@@ -111,5 +124,6 @@ class HttpResponse : public GeneralResponse {
   std::vector<std::string> _cookies;
   std::unique_ptr<basics::StringBuffer> _body;
   size_t _bodySize;
+  bool _allowCompression;
 };
 }  // namespace arangodb

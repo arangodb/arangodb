@@ -48,7 +48,10 @@ struct SupervisionContext {
 
   template<typename StatusType, typename... Args>
   void reportStatus(Args&&... args) {
-    if (_isErrorReportingEnabled) {
+    // Silently ignore reports if there's already an action, because an existing
+    // action prevents doing something (i.e. creating an action) anyway.
+    if (_isErrorReportingEnabled and
+        std::holds_alternative<EmptyAction>(_action)) {
       _reports.emplace_back(StatusType{std::forward<Args>(args)...});
     }
   }

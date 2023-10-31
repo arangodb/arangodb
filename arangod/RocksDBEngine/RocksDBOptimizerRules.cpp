@@ -63,13 +63,27 @@ void RocksDBOptimizerRules::registerResources(OptimizerRulesFeature& feature) {
   feature.registerRule(
       "reduce-extraction-to-projection", reduceExtractionToProjectionRule,
       OptimizerRule::reduceExtractionToProjectionRule,
-      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Modify `EnumerationCollectionNode` and `IndexNode` that would have
+extracted entire documents to only return a projection of each document.
+
+Projections are limited to at most 5 different document attributes by default.
+The maximum number of projected attributes can optionally be adjusted by
+setting the `maxProjections` hint for an AQL `FOR` operation since
+ArangoDB 3.9.1.)");
 
   // remove SORT RAND() LIMIT 1 if appropriate
   feature.registerRule(
       "remove-sort-rand-limit-1", removeSortRandRule,
       OptimizerRule::removeSortRandRule,
-      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Remove `SORT RAND() LIMIT 1` constructs by moving the random iteration
+into `EnumerateCollectionNode`.
+
+The RocksDB storage engine doesn't allow to seek random documents efficiently.
+This optimization picks a pseudo-random document based on a limited number of
+seeks within the collection's key range, selecting a random start key in the
+key range, and then going a few steps before or after that.)");
 }
 
 // simplify an EnumerationCollectionNode that fetches an entire document to a
@@ -193,7 +207,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
             // optimization, so force it - if we wouldn't force it here it would
             // mean that for a FILTER-less query we would be a lot less
             // efficient for some indexes
-            auto inode = new IndexNode(
+            auto inode = plan->createNode<IndexNode>(
                 plan.get(), plan->nextId(), en->collection(), en->outVariable(),
                 std::vector<transaction::Methods::IndexHandle>{picked},
                 false,  // here we are not using inverted index so for sure no
@@ -201,7 +215,6 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
                 std::move(condition), opts);
             en->CollectionAccessingNode::cloneInto(*inode);
             en->DocumentProducingNode::cloneInto(plan.get(), *inode);
-            plan->registerNode(inode);
             plan->replaceNode(n, inode);
 
             if (en->isRestricted()) {
@@ -296,13 +309,12 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           opts.useCache = false;
           auto condition = std::make_unique<Condition>(plan->getAst());
           condition->normalize(plan.get());
-          auto inode = new IndexNode(
+          auto inode = plan->createNode<IndexNode>(
               plan.get(), plan->nextId(), en->collection(), en->outVariable(),
               std::vector<transaction::Methods::IndexHandle>{picked},
               false,  // here we are not using inverted index so for sure no
                       // "whole" coverage
               std::move(condition), opts);
-          plan->registerNode(inode);
           plan->replaceNode(n, inode);
           en->CollectionAccessingNode::cloneInto(*inode);
           en->DocumentProducingNode::cloneInto(plan.get(), *inode);

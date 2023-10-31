@@ -24,8 +24,6 @@
 
 #include "ImportHelper.h"
 #include "Basics/application-exit.h"
-#include "Basics/ConditionLocker.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
@@ -210,8 +208,8 @@ ImportHelper::ImportHelper(EncryptionFeature* encryption,
     auto http = client.createHttpClient(endpoint, params);
     _senderThreads.emplace_back(
         new SenderThread(client.server(), std::move(http), &_stats, [this]() {
-          CONDITION_LOCKER(guard, _threadsCondition);
-          guard.signal();
+          std::lock_guard guard{_threadsCondition.mutex};
+          _threadsCondition.cv.notify_one();
         }));
     _senderThreads.back()->start();
   }
@@ -258,7 +256,7 @@ bool ImportHelper::readHeadersFile(std::string const& headersFile,
 
   std::string fileName(TRI_Basename(headersFile.c_str()));
   std::unique_ptr<arangodb::ManagedDirectory::File> fd =
-      directory.readableFile(fileName.c_str(), 0);
+      directory.readableFile(fileName, 0);
   if (!fd) {
     _errorMessages.push_back(TRI_LAST_ERROR_STR);
     return false;
@@ -400,7 +398,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   } else {
     // read filesize
     totalLength = TRI_SizeFile(pathName.c_str());
-    fd = directory.readableFile(fileName.c_str(), 0);
+    fd = directory.readableFile(fileName, 0);
 
     if (!fd) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
@@ -491,7 +489,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
   } else {
     // read filesize
     totalLength = TRI_SizeFile(pathName.c_str());
-    fd = directory.readableFile(fileName.c_str(), 0);
+    fd = directory.readableFile(fileName, 0);
 
     if (!fd) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
@@ -590,7 +588,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
   waitForSenders();
   reportProgress(totalLength, fd->offset(), nextProgress);
 
-  MUTEX_LOCKER(guard, _stats._mutex);
+  std::lock_guard guard{_stats._mutex};
   // this is an approximation only. _numberLines is more meaningful for CSV
   // imports
   _numberLines = _stats._numberErrors + _stats._numberCreated +
@@ -633,7 +631,7 @@ bool ImportHelper::importJsonWithRewrite(std::string const& collectionName,
   } else {
     // read filesize
     totalLength = TRI_SizeFile(pathName.c_str());
-    fd = directory.readableFile(fileName.c_str(), 0);
+    fd = directory.readableFile(fileName, 0);
 
     if (!fd) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
@@ -813,7 +811,7 @@ bool ImportHelper::importJsonWithRewrite(std::string const& collectionName,
         } catch (...) {
           {
             // Count the error
-            MUTEX_LOCKER(guard, _stats._mutex);
+            std::lock_guard guard{_stats._mutex};
             _stats._numberErrors++;
           }
           // Produce a log message
@@ -836,7 +834,7 @@ bool ImportHelper::importJsonWithRewrite(std::string const& collectionName,
   }
   reportProgress(totalLength, fd->offset(), nextProgress);
 
-  MUTEX_LOCKER(guard, _stats._mutex);
+  std::lock_guard guard{_stats._mutex};
   // this is an approximation only. _numberLines is more meaningful for CSV
   // imports
   _numberLines = _stats._numberErrors + _stats._numberCreated +
@@ -935,7 +933,7 @@ std::vector<ImportHelper::Step> ImportHelper::tokenizeInput(
       }
       std::string inputSubstr = input.substr(pos1 + 1, pos2 - pos1 - 1);
       verifyMergeAttributesSyntax(inputSubstr);
-      verifyNestedAttributes(std::move(inputSubstr), key);
+      verifyNestedAttributes(inputSubstr, key);
       steps.emplace_back(std::move(inputSubstr), false);
       pos = pos2 + 1;
     } else {
@@ -986,7 +984,7 @@ void ImportHelper::beginLine(size_t row) {
   _fieldsLookUpTable.clear();
   if (_lineBuffer.length() > 0) {
     // error
-    MUTEX_LOCKER(guard, _stats._mutex);
+    std::lock_guard guard{_stats._mutex};
     ++_stats._numberErrors;
     _lineBuffer.clear();
   }
@@ -1287,7 +1285,7 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
     return;
   } else if (row > _rowsToSkip && _firstLine.empty()) {
     // error
-    MUTEX_LOCKER(guard, _stats._mutex);
+    std::lock_guard guard{_stats._mutex};
     ++_stats._numberErrors;
     _lineBuffer.reset();
     return;
@@ -1303,7 +1301,7 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
     _outputBuffer.appendText(_lineBuffer);
     _lineBuffer.reset();
   } else {
-    MUTEX_LOCKER(guard, _stats._mutex);
+    std::lock_guard guard{_stats._mutex};
     ++_stats._numberErrors;
   }
 
@@ -1521,8 +1519,8 @@ SenderThread* ImportHelper::findIdleSender() {
       }
     }
 
-    CONDITION_LOCKER(guard, _threadsCondition);
-    guard.wait(10000);
+    std::unique_lock guard{_threadsCondition.mutex};
+    _threadsCondition.cv.wait_for(guard, std::chrono::milliseconds{10});
   }
   return nullptr;
 }

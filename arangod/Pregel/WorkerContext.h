@@ -35,11 +35,17 @@ class WorkerContext {
   template<typename V, typename E, typename M>
   friend class Worker;
 
-  uint64_t _vertexCount = 0, _edgeCount = 0;
-  std::unique_ptr<AggregatorHandler> _readAggregators;
-  std::unique_ptr<AggregatorHandler> _writeAggregators;
+ public:
+  WorkerContext(std::unique_ptr<AggregatorHandler> readAggregators,
+                std::unique_ptr<AggregatorHandler> writeAggregators)
+      : _readAggregators{std::move(readAggregators)},
+        _writeAggregators{std::move(writeAggregators)} {};
+  virtual ~WorkerContext() = default;
 
- protected:
+  inline uint64_t vertexCount() const { return _vertexCount; }
+
+  inline uint64_t edgeCount() const { return _edgeCount; }
+
   template<typename T>
   inline void aggregate(std::string const& name, T const& value) {
     T const* ptr = &value;
@@ -55,16 +61,9 @@ class WorkerContext {
   virtual void preGlobalSuperstep(uint64_t gss) {}
   virtual void postGlobalSuperstep(uint64_t gss) {}
 
- public:
-  WorkerContext(std::unique_ptr<AggregatorHandler> readAggregators,
-                std::unique_ptr<AggregatorHandler> writeAggregators)
-      : _readAggregators{std::move(readAggregators)},
-        _writeAggregators{std::move(writeAggregators)} {};
-  virtual ~WorkerContext() = default;
-
-  inline uint64_t vertexCount() const { return _vertexCount; }
-
-  inline uint64_t edgeCount() const { return _edgeCount; }
+  uint64_t _vertexCount = 0, _edgeCount = 0;
+  std::unique_ptr<AggregatorHandler> _readAggregators;
+  std::unique_ptr<AggregatorHandler> _writeAggregators;
 };
 }  // namespace pregel
 }  // namespace arangodb

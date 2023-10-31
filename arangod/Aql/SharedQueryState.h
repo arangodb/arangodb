@@ -30,6 +30,7 @@
 #include "RestServer/arangod.h"
 
 namespace arangodb {
+class Scheduler;
 namespace application_features {
 class ApplicationServer;
 }
@@ -41,7 +42,8 @@ class SharedQueryState final
   SharedQueryState(SharedQueryState const&) = delete;
   SharedQueryState& operator=(SharedQueryState const&) = delete;
 
-  explicit SharedQueryState(ArangodServer& server);
+  SharedQueryState(ArangodServer& server);
+  SharedQueryState(ArangodServer& server, Scheduler* scheduler);
   SharedQueryState() = delete;
   ~SharedQueryState() = default;
 
@@ -111,6 +113,7 @@ class SharedQueryState final
             try {
               cb(true);
             } catch (...) {
+              TRI_ASSERT(false);
             }
             std::unique_lock<std::mutex> guard(self->_mutex);
             self->_numTasks.fetch_sub(1);  // simon: intentionally under lock
@@ -130,6 +133,10 @@ class SharedQueryState final
     return queued;
   }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  bool noTasksRunning() const noexcept { return _numTasks.load() == 0; }
+#endif
+
  private:
   /// execute the _continueCallback. must hold _mutex
   void notifyWaiter(std::unique_lock<std::mutex>& guard);
@@ -139,6 +146,7 @@ class SharedQueryState final
 
  private:
   ArangodServer& _server;
+  Scheduler* _scheduler;
   mutable std::mutex _mutex;
   std::condition_variable _cv;
 
@@ -150,7 +158,7 @@ class SharedQueryState final
   unsigned _numWakeups;  // number of times
   unsigned _cbVersion;   // increased once callstack is done
 
-  const unsigned _maxTasks;
+  unsigned const _maxTasks;
   std::atomic<unsigned> _numTasks;
   std::atomic<bool> _valid;
 };

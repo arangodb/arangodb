@@ -27,6 +27,7 @@
 #include "Metrics/IBatch.h"
 #include "Metrics/Metric.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
 #include <vector>
@@ -36,7 +37,8 @@ namespace arangodb::metrics {
 template<typename T>
 class Batch final : public IBatch {
  public:
-  void toPrometheus(std::string& result, std::string_view globals) const final {
+  void toPrometheus(std::string& result, std::string_view globals,
+                    bool ensureWhitespace) const final {
     TRI_ASSERT(!_metrics.empty());
     std::vector<typename T::Data> metrics;
     metrics.reserve(_metrics.size());
@@ -50,7 +52,8 @@ class Batch final : public IBatch {
       Metric::addInfo(result, T::kName[i], T::kHelp[i], T::kType[i]);
       for (size_t j = 0; auto& [labels, _] : _metrics) {
         Metric::addMark(result, T::kName[i], globals, labels);
-        result.append(T::kToString[i](metrics[j++])) += '\n';
+        absl::StrAppend(&result, ensureWhitespace ? " " : "",
+                        T::kToString[i](metrics[j++]), "\n");
       }
     }
   }

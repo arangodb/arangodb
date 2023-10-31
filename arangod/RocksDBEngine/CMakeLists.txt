@@ -7,6 +7,8 @@ add_library(arango_rocksdb STATIC
   RocksDBCommon.cpp
   RocksDBComparator.cpp
   RocksDBCuckooIndexEstimator.cpp
+  RocksDBDumpContext.cpp
+  RocksDBDumpManager.cpp
   RocksDBEdgeIndex.cpp
   RocksDBEngine.cpp
   RocksDBFormat.cpp
@@ -17,16 +19,18 @@ add_library(arango_rocksdb STATIC
   RocksDBIndexCacheRefillFeature.cpp
   RocksDBIndexCacheRefillThread.cpp
   RocksDBIndexFactory.cpp
+  RocksDBIndexingDisabler.cpp
   RocksDBIterators.cpp
   RocksDBKey.cpp
   RocksDBKeyBounds.cpp
   RocksDBLogValue.cpp
   RocksDBMetaCollection.cpp
   RocksDBMetadata.cpp
+  RocksDBMethods.cpp
+  RocksDBMethodsMemoryTracker.cpp
   RocksDBOptimizerRules.cpp
   RocksDBOptionFeature.cpp
   RocksDBOptionsProvider.cpp
-  RocksDBPersistedLog.cpp
   RocksDBPrimaryIndex.cpp
   RocksDBRecoveryManager.cpp
   RocksDBReplicationCommon.cpp
@@ -50,7 +54,6 @@ add_library(arango_rocksdb STATIC
   RocksDBTtlIndex.cpp
   RocksDBTypes.cpp
   RocksDBUpgrade.cpp
-  RocksDBV8Functions.cpp
   RocksDBVPackIndex.cpp
   RocksDBValue.cpp
   RocksDBWalAccess.cpp
@@ -59,6 +62,11 @@ add_library(arango_rocksdb STATIC
   ReplicatedRocksDBTransactionState.cpp
   SimpleRocksDBTransactionState.cpp
   SortedRowsStorageBackendRocksDB.cpp)
+
+if (USE_V8) 
+  target_sources(arango_rocksdb PRIVATE
+    RocksDBV8Functions.cpp)
+endif()
 
 target_link_libraries(arango_rocksdb
   arango_cache
@@ -86,7 +94,7 @@ if (USE_ENTERPRISE)
     arango_rclone)
 endif()
 
-if ((CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG) AND NOT BUILDING_FOR_ARM64)
+if ((CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG) AND ARCH_AMD64)
   target_compile_options(arango_rocksdb PUBLIC "-maes")
 endif ()
 

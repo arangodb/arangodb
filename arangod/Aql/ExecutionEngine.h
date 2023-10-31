@@ -34,12 +34,10 @@
 
 #include <memory>
 #include <string>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 class AqlCallStack;
 class AqlItemBlock;
@@ -57,20 +55,20 @@ class SharedQueryState;
 
 class ExecutionEngine {
  public:
+  ExecutionEngine(ExecutionEngine const&) = delete;
+  ExecutionEngine& operator=(ExecutionEngine const&) = delete;
+
   /// @brief create the engine
   ExecutionEngine(EngineId eId, QueryContext& query,
                   AqlItemBlockManager& itemBlockManager,
-                  SerializationFormat format,
                   std::shared_ptr<SharedQueryState> sharedState = nullptr);
 
   /// @brief destroy the engine, frees all assigned blocks
   TEST_VIRTUAL ~ExecutionEngine();
 
- public:
   // @brief create an execution engine from a plan
   static void instantiateFromPlan(Query& query, ExecutionPlan& plan,
-                                  bool planRegisters,
-                                  SerializationFormat format);
+                                  bool planRegisters);
 
   /// @brief Prepares execution blocks for executing provided plan
   /// @param plan plan to execute, should be without cluster nodes. Only local
@@ -91,7 +89,7 @@ class ExecutionEngine {
   /// @brief get the query
   QueryContext& getQuery() const;
 
-  std::shared_ptr<SharedQueryState> sharedState() const { return _sharedState; }
+  std::shared_ptr<SharedQueryState> const& sharedState() const;
 
   /// @brief initializeCursor, could be called multiple times
   std::pair<ExecutionState, Result> initializeCursor(
@@ -102,12 +100,6 @@ class ExecutionEngine {
 
   auto executeForClient(AqlCallStack const& stack, std::string const& clientId)
       -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
-
-  /// @brief getSome
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost);
-
-  /// @brief skipSome
-  std::pair<ExecutionState, size_t> skipSome(size_t atMost);
 
   /// @brief whether or not initializeCursor was called
   bool initializeCursorCalled() const;
@@ -130,9 +122,6 @@ class ExecutionEngine {
 
   ///  @brief collected execution stats
   void collectExecutionStats(ExecutionStats& other);
-
-  bool waitForSatellites(aql::QueryContext& query,
-                         Collection const* collection) const;
 
   std::vector<arangodb::cluster::CallbackGuard>& rebootTrackers();
 
@@ -161,7 +150,7 @@ class ExecutionEngine {
   static void initializeConstValueBlock(ExecutionPlan& plan,
                                         AqlItemBlockManager& mgr);
 
-  const EngineId _engineId;
+  EngineId const _engineId;
 
   /// @brief a pointer to the query
   QueryContext& _query;
@@ -186,5 +175,5 @@ class ExecutionEngine {
   /// @brief whether or not initializeCursor was called
   bool _initializeCursorCalled;
 };
-}  // namespace aql
-}  // namespace arangodb
+
+}  // namespace arangodb::aql

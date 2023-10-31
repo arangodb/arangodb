@@ -31,15 +31,23 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#include "Transaction/History.h"
+#endif
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/Status.h"
+#include "Utils/ExecContext.h"
+#ifdef USE_V8
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Transactions.h"
+#endif
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -51,9 +59,7 @@ using namespace arangodb::rest;
 RestTransactionHandler::RestTransactionHandler(ArangodServer& server,
                                                GeneralRequest* request,
                                                GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response),
-      _v8Context(nullptr),
-      _lock() {}
+    : RestVocbaseBaseHandler(server, request, response), _v8Context(nullptr) {}
 
 RestStatus RestTransactionHandler::execute() {
   switch (_request->requestType()) {
@@ -89,6 +95,9 @@ RestStatus RestTransactionHandler::execute() {
 }
 
 void RestTransactionHandler::executeGetState() {
+  transaction::Manager* mgr = transaction::ManagerFeature::manager();
+  TRI_ASSERT(mgr != nullptr);
+
   if (_request->suffixes().empty()) {
     // no transaction id given - so list all the transactions
     ExecContext const& exec = ExecContext::current();
@@ -97,10 +106,8 @@ void RestTransactionHandler::executeGetState() {
     builder.openObject();
     builder.add("transactions", VPackValue(VPackValueType::Array));
 
-    bool const fanout = ServerState::instance()->isCoordinator() &&
-                        !_request->parsedValue("local", false);
-    transaction::Manager* mgr = transaction::ManagerFeature::manager();
-    TRI_ASSERT(mgr != nullptr);
+    bool fanout = ServerState::instance()->isCoordinator() &&
+                  !_request->parsedValue("local", false);
     mgr->toVelocyPack(builder, _vocbase.name(), exec.user(), fanout);
 
     builder.close();  // array
@@ -116,6 +123,22 @@ void RestTransactionHandler::executeGetState() {
     return;
   }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // unofficial API to retrieve the transactions history. NOT A PUBLIC API!
+  if (_request->suffixes()[0] == "history") {
+    auto auth = AuthenticationFeature::instance();
+    if ((auth == nullptr || !auth->isActive()) ||
+        (auth->isActive() && ExecContext::current().isSuperuser())) {
+      velocypack::Builder builder;
+      mgr->history().toVelocyPack(builder);
+      generateResult(rest::ResponseCode::OK, builder.slice());
+    } else {
+      generateError(TRI_ERROR_FORBIDDEN);
+    }
+    return;
+  }
+#endif
+
   TransactionId tid{StringUtils::uint64(_request->suffixes()[0])};
   if (tid.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
@@ -123,7 +146,6 @@ void RestTransactionHandler::executeGetState() {
     return;
   }
 
-  transaction::Manager* mgr = transaction::ManagerFeature::manager();
   transaction::Status status = mgr->getManagedTrxStatus(tid, _vocbase.name());
 
   if (status == transaction::Status::UNDEFINED) {
@@ -153,6 +175,8 @@ void RestTransactionHandler::executeBegin() {
       _request->header(StaticStrings::TransactionId, found);
   ServerState::RoleEnum role = ServerState::instance()->getRole();
 
+  auto origin = transaction::OperationOriginREST{"streaming transaction"};
+
   if (found) {
     if (!ServerState::isDBServer(role)) {
       // it is not expected that the user sends a transaction ID to begin
@@ -173,7 +197,7 @@ void RestTransactionHandler::executeBegin() {
     TRI_ASSERT(!tid.isLegacyTransactionId());
     TRI_ASSERT(tid.isSet());
 
-    Result res = mgr->ensureManagedTrx(_vocbase, tid, slice, false);
+    Result res = mgr->ensureManagedTrx(_vocbase, tid, slice, origin, false);
     if (res.fail()) {
       generateError(res);
     } else {
@@ -204,7 +228,7 @@ void RestTransactionHandler::executeBegin() {
 
     // start
     ResultT<TransactionId> res =
-        mgr->createManagedTrx(_vocbase, slice, allowDirtyReads);
+        mgr->createManagedTrx(_vocbase, slice, origin, allowDirtyReads);
     if (res.fail()) {
       generateError(res.result());
     } else {
@@ -250,8 +274,8 @@ void RestTransactionHandler::executeAbort() {
 
   if (_request->suffixes()[0] == "write") {
     // abort all write transactions
-    bool const fanout = ServerState::instance()->isCoordinator() &&
-                        !_request->parsedValue("local", false);
+    bool fanout = ServerState::instance()->isCoordinator() &&
+                  !_request->parsedValue("local", false);
     ExecContext const& exec = ExecContext::current();
     Result res = mgr->abortAllManagedWriteTrx(exec.user(), fanout);
 
@@ -260,6 +284,18 @@ void RestTransactionHandler::executeAbort() {
     } else {
       generateError(res);
     }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // unofficial API to clear the transactions history. NOT A PUBLIC API!
+  } else if (_request->suffixes()[0] == "history") {
+    auto auth = AuthenticationFeature::instance();
+    if ((auth == nullptr || !auth->isActive()) ||
+        (auth->isActive() && ExecContext::current().isSuperuser())) {
+      mgr->history().clear();
+      generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
+    } else {
+      generateError(TRI_ERROR_FORBIDDEN);
+    }
+#endif
   } else {
     TransactionId tid{basics::StringUtils::uint64(_request->suffixes()[0])};
     if (tid.empty()) {
@@ -299,6 +335,7 @@ void RestTransactionHandler::generateTransactionResult(
 
 /// start a legacy JS transaction
 void RestTransactionHandler::executeJSTransaction() {
+#ifdef USE_V8
   if (!server().isEnabled<V8DealerFeature>()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_NOT_IMPLEMENTED,
@@ -377,21 +414,29 @@ void RestTransactionHandler::executeJSTransaction() {
   } catch (...) {
     generateError(Result(TRI_ERROR_INTERNAL));
   }
+#else
+  generateError(
+      rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
+      "JavaScript operations are not available in this build of ArangoDB");
+#endif
 }
 
 void RestTransactionHandler::cancel() {
   // cancel v8 transaction
   WRITE_LOCKER(writeLock, _lock);
   _canceled.store(true);
+#ifdef USE_V8
   if (_v8Context != nullptr) {
     auto isolate = _v8Context->_isolate;
     if (!isolate->IsExecutionTerminating()) {
       isolate->TerminateExecution();
     }
   }
+#endif
 }
 
-/// @brief returns the short id of the server which should handle this request
+/// @brief returns the short id of the server which should handle this
+/// request
 ResultT<std::pair<std::string, bool>>
 RestTransactionHandler::forwardingTarget() {
   auto base = RestVocbaseBaseHandler::forwardingTarget();

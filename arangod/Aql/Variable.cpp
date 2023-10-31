@@ -24,6 +24,7 @@
 #include "Variable.h"
 #include "Aql/Ast.h"
 #include "Aql/VariableGenerator.h"
+#include "Aql/QueryContext.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
 
@@ -35,24 +36,32 @@ using namespace arangodb::aql;
 
 /// @brief create the variable
 Variable::Variable(std::string name, VariableId id,
-                   bool isFullDocumentFromCollection)
+                   bool isFullDocumentFromCollection,
+                   arangodb::ResourceMonitor& resourceMonitor)
     : id(id),
       name(std::move(name)),
-      isFullDocumentFromCollection(isFullDocumentFromCollection) {}
+      isFullDocumentFromCollection(isFullDocumentFromCollection),
+      _resourceMonitor(resourceMonitor) {}
 
-Variable::Variable(velocypack::Slice slice)
+Variable::Variable(velocypack::Slice slice,
+                   arangodb::ResourceMonitor& resourceMonitor)
     : id(basics::VelocyPackHelper::checkAndGetNumericValue<VariableId>(slice,
                                                                        "id")),
       name(basics::VelocyPackHelper::checkAndGetStringValue(slice, "name")),
       isFullDocumentFromCollection(basics::VelocyPackHelper::getBooleanValue(
           slice, "isFullDocumentFromCollection", false)),
-      _constantValue(slice.get("constantValue")) {}
+      _resourceMonitor(resourceMonitor) {
+  setConstantValue(AqlValue{slice.get("constantValue")});
+}
 
 /// @brief destroy the variable
-Variable::~Variable() { _constantValue.destroy(); }
+Variable::~Variable() {
+  _resourceMonitor.decreaseMemoryUsage(_constantValue.memoryUsage());
+  _constantValue.destroy();
+}
 
 Variable* Variable::clone() const {
-  return new Variable(name, id, isFullDocumentFromCollection);
+  return new Variable(name, id, isFullDocumentFromCollection, _resourceMonitor);
 }
 
 bool Variable::isUserDefined() const noexcept {
@@ -82,8 +91,7 @@ void Variable::toVelocyPack(velocypack::Builder& builder,
 
   if (type() == Variable::Type::Const) {
     builder.add(VPackValue("constantValue"));
-    _constantValue.toVelocyPack(nullptr, builder, /*resolveExternals*/ false,
-                                /*allowUnindexed*/ true);
+    _constantValue.toVelocyPack(nullptr, builder, /*allowUnindexed*/ true);
   }
 }
 
@@ -138,7 +146,14 @@ Variable::Type Variable::type() const noexcept {
   return Variable::Type::Const;
 }
 
-void Variable::setConstantValue(AqlValue value) noexcept {
+void Variable::setConstantValue(AqlValue value) {
+  _resourceMonitor.decreaseMemoryUsage(_constantValue.memoryUsage());
   _constantValue.destroy();
-  _constantValue = value;
+
+  try {
+    _resourceMonitor.increaseMemoryUsage(value.memoryUsage());
+    _constantValue = value;
+  } catch (...) {
+    throw;
+  }
 }

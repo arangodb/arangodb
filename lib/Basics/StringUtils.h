@@ -32,6 +32,7 @@
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <unordered_map>
 #include <vector>
 
 #include "Basics/Common.h"
@@ -406,27 +407,6 @@ static bool toNumber(std::string const& key, T& val) noexcept {
 }
 
 // -----------------------------------------------------------------------------
-// BASE64
-// -----------------------------------------------------------------------------
-
-/// @brief converts to base64
-std::string encodeBase64(char const* value, size_t length);
-std::string encodeBase64(std::string_view value);
-
-/// @brief converts from base64
-std::string decodeBase64(std::string_view);
-
-/// @brief converts to base64, URL friendly
-///
-/// '-' and '_' are used instead of '+' and '/'
-std::string encodeBase64U(std::string_view);
-
-/// @brief converts from base64, URL friendly
-///
-/// '-' and '_' are used instead of '+' and '/'
-std::string decodeBase64U(std::string_view);
-
-// -----------------------------------------------------------------------------
 // ADDITIONAL STRING UTILITIES
 // -----------------------------------------------------------------------------
 
@@ -568,6 +548,14 @@ auto joinT(std::string_view delim, Args&&... args) -> std::string {
       "it to an int instead.");
   return detail::joinImplStr(delim, detail::toStringOrView(args)...);
 }
+
+/// @brief Translates a set of HTTP headers into a string, which is
+/// properly escaped to put it into a log file.
+std::string headersToString(
+    std::unordered_map<std::string, std::string> const& headers);
+
+/// @brief returns the endpoint from a URL
+std::string getEndpointFromUrl(std::string const& url);
 
 }  // namespace StringUtils
 }  // namespace basics

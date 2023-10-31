@@ -49,6 +49,14 @@ function CollectionSuite() {
     },
 
     testCreateWithInvalidIndexes1 : function () {
+      // invalid indexes will simply be ignored
+      // This ignorance is only in Backwards compatibility with 3.11
+      // The commented test below will be used in the future
+      db._create(cn, {indexes: [{id: "1", type: "edge", fields: ["_from"]}]});
+      let indexes = db[cn].indexes();
+      assertEqual(1, indexes.length);
+      assertEqual("primary", indexes[0].type);
+      /*
       // invalid indexes will be rejected
       try {
         db._create(cn, { indexes: [{ id: "1", type: "edge", fields: ["_from"] }] });
@@ -56,9 +64,18 @@ function CollectionSuite() {
       } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
+      */
     },
     
     testCreateWithInvalidIndexes2 : function () {
+      // invalid indexes will simply be ignored
+      // This ignorance is only in Backwards compatibility with 3.11
+      // The commented test below will be used in the future
+      db._create(cn, { indexes: [{ id: "1234", type: "hash", fields: ["a"] }] });
+      let indexes = db[cn].indexes();
+      assertEqual(1, indexes.length);
+      assertEqual("primary", indexes[0].type);
+      /*
       // invalid indexes will be rejected
       try {
         db._create(cn, { indexes: [{ id: "1234", type: "hash", fields: ["a"] }] });
@@ -66,6 +83,7 @@ function CollectionSuite() {
       } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
+      */
     },
 
     testTruncateSelectivityEstimates : function () {

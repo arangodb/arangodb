@@ -27,8 +27,7 @@
 #include "Aql/RegisterId.h"
 #include "Basics/debugging.h"
 #include "Cluster/ClusterTypes.h"
-
-#include <Containers/HashSetFwd.h>
+#include "Containers/HashSetFwd.h"
 
 #include <map>
 #include <memory>

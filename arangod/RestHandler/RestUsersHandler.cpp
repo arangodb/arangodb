@@ -37,6 +37,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 
+#include <string_view>
+
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -49,15 +51,15 @@ arangodb::Result existsCollection(arangodb::ArangodServer& server,
     return arangodb::Result(TRI_ERROR_INTERNAL,
                             "failure to find feature 'Database'");
   }
-  auto& databaseFeature = server.getFeature<arangodb::DatabaseFeature>();
 
-  static const std::string wildcard("*");
+  static constexpr std::string_view wildcard("*");
 
   if (wildcard == database) {
     return arangodb::Result();  // wildcard always matches
   }
 
-  auto* vocbase = databaseFeature.lookupDatabase(database);
+  auto& databaseFeature = server.getFeature<arangodb::DatabaseFeature>();
+  auto vocbase = databaseFeature.useDatabase(database);
 
   if (!vocbase) {
     return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);

@@ -67,6 +67,9 @@ class ModificationNode : public ExecutionNode, public CollectionAccessingNode {
   /// why we can make it final here.
   CostEstimate estimateCost() const override final;
 
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
+
   /// @brief data modification is non-deterministic
   bool isDeterministic() override final { return false; }
 
@@ -109,21 +112,21 @@ class ModificationNode : public ExecutionNode, public CollectionAccessingNode {
   /// @brief whether or not the node produces results
   /// this is normally turned on unless an optimizer rule
   /// explicitly turns this off as a performance optimization
-  bool producesResults() const { return _producesResults; }
+  bool producesResults() const noexcept { return _producesResults; }
 
   /// @brief whether or not the node produces results
-  void producesResults(bool value) { _producesResults = value; }
+  void producesResults(bool value) noexcept { _producesResults = value; }
 
   /// @brief whether or not the node is a data modification node
   bool isModificationNode() const override { return true; }
 
   /// @brief whether this node contributes to statistics. Only disabled in
   /// SmartGraph case
-  bool countStats() const { return _countStats; }
+  bool countStats() const noexcept { return _countStats; }
 
   /// @brief Disable that this node is contributing to statistics. Only disabled
   /// in SmartGraph case
-  void disableStatistics() { _countStats = false; }
+  void disableStatistics() noexcept { _countStats = false; }
 
  protected:
   /// @brief export to VelocyPack
@@ -169,11 +172,12 @@ class RemoveNode : public ModificationNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return REMOVE; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -181,6 +185,11 @@ class RemoveNode : public ModificationNode {
 
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
+
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final {
@@ -223,11 +232,12 @@ class InsertNode : public ModificationNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return INSERT; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -235,6 +245,11 @@ class InsertNode : public ModificationNode {
 
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
+
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final {
@@ -289,6 +304,11 @@ class UpdateReplaceNode : public ModificationNode {
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
 
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable) override;
+
   /// @brief set the input key variable
   void setInKeyVariable(Variable const* var) { _inKeyVariable = var; }
 
@@ -330,11 +350,12 @@ class UpdateNode : public UpdateReplaceNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return UPDATE; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -360,11 +381,12 @@ class ReplaceNode : public UpdateReplaceNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return REPLACE; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -401,11 +423,12 @@ class UpsertNode : public ModificationNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return UPSERT; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -413,6 +436,11 @@ class UpsertNode : public ModificationNode {
 
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
+
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final {

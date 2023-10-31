@@ -68,7 +68,9 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
+#ifdef USE_V8
 #include "V8/v8-globals.h"
+#endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
@@ -224,8 +226,9 @@ TEST_P(IResearchViewSortedTest, SingleField) {
     arangodb::OperationOptions opt;
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
@@ -529,8 +532,9 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
     arangodb::OperationOptions opt;
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 

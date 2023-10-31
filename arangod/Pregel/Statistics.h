@@ -36,11 +36,14 @@ namespace pregel {
 struct MessageStats {
   size_t sendCount = 0;
   size_t receivedCount = 0;
+  size_t memoryBytesUsedForMessages = 0;
   double superstepRuntimeSecs = 0;
 
   MessageStats() = default;
-  explicit MessageStats(VPackSlice statValues) { accumulate(statValues); }
-  MessageStats(size_t s, size_t r) : sendCount(s), receivedCount(r) {}
+  MessageStats(size_t s, size_t r, size_t memoryBytesUsedForMessages)
+      : sendCount(s),
+        receivedCount(r),
+        memoryBytesUsedForMessages(memoryBytesUsedForMessages) {}
 
   void accumulate(MessageStats const& other) {
     sendCount += other.sendCount;
@@ -48,33 +51,16 @@ struct MessageStats {
     superstepRuntimeSecs += other.superstepRuntimeSecs;
   }
 
-  void accumulate(VPackSlice statValues) {
-    VPackSlice p = statValues.get(Utils::sendCountKey);
-    if (p.isInteger()) {
-      sendCount += p.getUInt();
-    }
-    p = statValues.get(Utils::receivedCountKey);
-    if (p.isInteger()) {
-      receivedCount += p.getUInt();
-    }
-    // p = statValues.get(Utils::superstepRuntimeKey);
-    // if (p.isNumber()) {
-    //  superstepRuntimeSecs += p.getNumber<double>();
-    //}
-  }
-
   void serializeValues(VPackBuilder& b) const {
     b.add(Utils::sendCountKey, VPackValue(sendCount));
     b.add(Utils::receivedCountKey, VPackValue(receivedCount));
   }
 
-  void resetTracking() {
+  void reset() {
     sendCount = 0;
     receivedCount = 0;
     superstepRuntimeSecs = 0;
   }
-
-  bool allMessagesProcessed() { return sendCount == receivedCount; }
 };
 template<typename Inspector>
 auto inspect(Inspector& f, MessageStats& x) {
@@ -97,13 +83,6 @@ struct StatsManager {
 
   void accumulateActiveCounts(std::string const& sender, uint64_t active) {
     _activeStats[sender] += active;
-  }
-
-  void accumulateMessageStats(VPackSlice data) {
-    VPackSlice sender = data.get(Utils::senderKey);
-    if (sender.isString()) {
-      _serverStats[sender.copyString()].accumulate(data);
-    }
   }
 
   void accumulateMessageStats(std::string const& sender,

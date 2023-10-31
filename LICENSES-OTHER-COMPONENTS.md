@@ -387,8 +387,8 @@ _Enterprise Edition only_
 ### libunwind
 
 * Name: libunwind
-* Version: 1.5
-* Date: 2020-11-10 16:16:31Z
+* Version: 1.7.2
+* Date: 2023-07-29 11:04:36 -0400
 * Project Home: https://github.com/libunwind/libunwind
 * License: https://raw.githubusercontent.com/libunwind/libunwind/master/LICENSE
 * License Name: MIT License
@@ -894,7 +894,7 @@ License Id: -
 #### Swagger UI
 
 * Name: swagger-ui
-* Version: 3.25.1
+* Version: 5.4.1
 * Project Home: http://swagger.io
 * GitHub: https://github.com/swagger-api/swagger-ui
 * License: https://raw.githubusercontent.com/swagger-api/swagger-ui/master/LICENSE

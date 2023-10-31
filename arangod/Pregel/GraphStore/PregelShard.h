@@ -25,6 +25,7 @@
 #pragma once
 
 #include <compare>
+#include <limits>
 
 #include <velocypack/Value.h>
 

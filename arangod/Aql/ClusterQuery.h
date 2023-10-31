@@ -60,6 +60,10 @@ class ClusterQuery : public Query {
   futures::Future<Result> finalizeClusterQuery(ErrorCode errorCode);
 
  private:
+#ifdef USE_ENTERPRISE
+  void waitForSatellites();
+#endif
+
   /// @brief first one should be the local one
   traverser::GraphEngineList _traversers;
 

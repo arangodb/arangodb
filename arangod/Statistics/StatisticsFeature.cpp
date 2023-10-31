@@ -39,32 +39,37 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "Network/NetworkFeature.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
-#include "RestServer/CpuUsageFeature.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Metrics/Builder.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/FixScale.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
+#include "Metrics/Metric.h"
 #include "Metrics/MetricsFeature.h"
+#include "Network/NetworkFeature.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
+#include "RestServer/CpuUsageFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/Descriptions.h"
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/ServerStatistics.h"
 #include "Statistics/StatisticsWorker.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
+#endif
 #include "VocBase/vocbase.h"
 
 #include <initializer_list>
 #include <chrono>
 #include <thread>
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 
 using namespace arangodb;
@@ -685,8 +690,6 @@ server statistics at `/_admin/statistics` returns HTTP 404.)");
                   new BooleanParameter(&_statisticsHistory),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Dynamic))
-      .setIntroducedIn(30409)
-      .setIntroducedIn(30501)
       .setLongDescription(R"(If you set this option to `false`, then ArangoDB's
 statistics gathering is turned off. Statistics gathering causes regular
 background CPU activity, memory usage, and writes to the storage engine, so
@@ -823,7 +826,7 @@ VPackBuilder StatisticsFeature::fillDistribution(
 void StatisticsFeature::appendHistogram(
     std::string& result, statistics::Distribution const& dist,
     std::string const& label, std::initializer_list<std::string> const& les,
-    bool isInteger) {
+    bool isInteger, std::string_view globals, bool ensureWhitespace) {
   VPackBuilder tmp = fillDistribution(dist);
   VPackSlice slc = tmp.slice();
   VPackSlice counts = slc.get("counts");
@@ -833,39 +836,51 @@ void StatisticsFeature::appendHistogram(
   auto const type = stat[1];
   auto const help = stat[2];
 
-  (result.append("# HELP ").append(name) += ' ').append(help) += '\n';
-  (result.append("# TYPE ").append(name) += ' ').append(type) += '\n';
+  metrics::Metric::addInfo(result, name, help, type);
   TRI_ASSERT(les.size() == counts.length());
   size_t i = 0;
   uint64_t sum = 0;
   for (auto const& le : les) {
     sum += counts.at(i++).getNumber<uint64_t>();
-    result.append(name).append("_bucket{le=\"").append(le).append("\"}");
-    result.append(std::to_string(sum)) += '\n';
+    absl::StrAppend(&result, name, "_bucket{le=\"", le, "\"",
+                    (globals.empty() ? "" : ","), globals, "}",
+                    (ensureWhitespace ? " " : ""), sum, "\n");
   }
-  result.append(name).append("_count{}").append(std::to_string(sum)) += '\n';
+  absl::StrAppend(&result, name, "_count{", globals, "}",
+                  (ensureWhitespace ? " " : ""), sum, "\n");
   if (isInteger) {
     uint64_t v = slc.get("sum").getNumber<uint64_t>();
-    result.append(name).append("_sum{}").append(std::to_string(v)) += '\n';
+    absl::StrAppend(&result, name, "_sum{", globals, "}",
+                    (ensureWhitespace ? " " : ""), v, "\n");
   } else {
     double v = slc.get("sum").getNumber<double>();
-    result.append(name).append("_sum{}").append(std::to_string(v)) += '\n';
+    // must use std::to_string() here because it produces a different
+    // string representation of large floating-point numbers than absl
+    // does. absl uses scientific notation for numbers that exceed 6
+    // digits, and std::to_string() doesn't.
+    absl::StrAppend(&result, name, "_sum{", globals, "}",
+                    (ensureWhitespace ? " " : ""), std::to_string(v), "\n");
   }
 }
 
 void StatisticsFeature::appendMetric(std::string& result,
                                      std::string const& val,
-                                     std::string const& label) {
+                                     std::string const& label,
+                                     std::string_view globals,
+                                     bool ensureWhitespace) {
   auto const& stat = statStrings.at(label);
   auto const name = stat[0];
   auto const type = stat[1];
   auto const help = stat[2];
-  (result.append("# HELP ").append(name) += ' ').append(help) += '\n';
-  (result.append("# TYPE ").append(name) += ' ').append(type) += '\n';
-  result.append(name).append("{}").append(val) += '\n';
+
+  metrics::Metric::addInfo(result, name, help, type);
+  metrics::Metric::addMark(result, name, globals, "");
+  absl::StrAppend(&result, ensureWhitespace ? " " : "", val, "\n");
 }
 
-void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
+void StatisticsFeature::toPrometheus(std::string& result, double now,
+                                     std::string_view globals,
+                                     bool ensureWhitespace) {
   ProcessInfo info = TRI_ProcessInfoSelf();
   uint64_t rss = static_cast<uint64_t>(info._residentSize);
   double rssp = 0;
@@ -879,38 +894,46 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
       server().getFeature<metrics::MetricsFeature>().serverStatistics();
 
   // processStatistics()
-  appendMetric(result, std::to_string(info._minorPageFaults),
-               "minorPageFaults");
-  appendMetric(result, std::to_string(info._majorPageFaults),
-               "majorPageFaults");
+  appendMetric(result, std::to_string(info._minorPageFaults), "minorPageFaults",
+               globals, ensureWhitespace);
+  appendMetric(result, std::to_string(info._majorPageFaults), "majorPageFaults",
+               globals, ensureWhitespace);
   if (info._scClkTck != 0) {  // prevent division by zero
     appendMetric(result,
                  std::to_string(static_cast<double>(info._userTime) /
                                 static_cast<double>(info._scClkTck)),
-                 "userTime");
+                 "userTime", globals, ensureWhitespace);
     appendMetric(result,
                  std::to_string(static_cast<double>(info._systemTime) /
                                 static_cast<double>(info._scClkTck)),
-                 "systemTime");
+                 "systemTime", globals, ensureWhitespace);
   }
-  appendMetric(result, std::to_string(info._numberThreads), "numberOfThreads");
-  appendMetric(result, std::to_string(rss), "residentSize");
-  appendMetric(result, std::to_string(rssp), "residentSizePercent");
-  appendMetric(result, std::to_string(info._virtualSize), "virtualSize");
+  appendMetric(result, std::to_string(info._numberThreads), "numberOfThreads",
+               globals, ensureWhitespace);
+  appendMetric(result, std::to_string(rss), "residentSize", globals,
+               ensureWhitespace);
+  appendMetric(result, std::to_string(rssp), "residentSizePercent", globals,
+               ensureWhitespace);
+  appendMetric(result, std::to_string(info._virtualSize), "virtualSize",
+               globals, ensureWhitespace);
   appendMetric(result, std::to_string(PhysicalMemory::getValue()),
-               "physicalSize");
-  appendMetric(result, std::to_string(serverInfo.uptime()), "uptime");
-  appendMetric(result, std::to_string(NumberOfCores::getValue()), "cores");
+               "physicalSize", globals, ensureWhitespace);
+  appendMetric(result, std::to_string(serverInfo.uptime()), "uptime", globals,
+               ensureWhitespace);
+  appendMetric(result, std::to_string(NumberOfCores::getValue()), "cores",
+               globals, ensureWhitespace);
 
   CpuUsageFeature& cpuUsage = server().getFeature<CpuUsageFeature>();
   if (cpuUsage.isEnabled()) {
     auto snapshot = cpuUsage.snapshot();
-    appendMetric(result, std::to_string(snapshot.userPercent()), "userPercent");
+    appendMetric(result, std::to_string(snapshot.userPercent()), "userPercent",
+                 globals, ensureWhitespace);
     appendMetric(result, std::to_string(snapshot.systemPercent()),
-                 "systemPercent");
-    appendMetric(result, std::to_string(snapshot.idlePercent()), "idlePercent");
+                 "systemPercent", globals, ensureWhitespace);
+    appendMetric(result, std::to_string(snapshot.idlePercent()), "idlePercent",
+                 globals, ensureWhitespace);
     appendMetric(result, std::to_string(snapshot.iowaitPercent()),
-                 "iowaitPercent");
+                 "iowaitPercent", globals, ensureWhitespace);
   }
 
   if (isEnabled()) {
@@ -923,92 +946,98 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
 
     // _clientStatistics()
     appendMetric(result, std::to_string(connectionStats.httpConnections.get()),
-                 "clientHttpConnections");
+                 "clientHttpConnections", globals, ensureWhitespace);
     appendHistogram(result, connectionStats.connectionTime, "connectionTime",
-                    {"0.01", "1.0", "60.0", "+Inf"}, false);
+                    {"0.01", "1.0", "60.0", "+Inf"}, false, globals,
+                    ensureWhitespace);
     appendHistogram(result, requestStats.totalTime, "totalTime",
                     {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
                      "30.0", "+Inf"},
-                    false);
+                    false, globals, ensureWhitespace);
     appendHistogram(result, requestStats.requestTime, "requestTime",
                     {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
                      "30.0", "+Inf"},
-                    false);
+                    false, globals, ensureWhitespace);
     appendHistogram(result, requestStats.queueTime, "queueTime",
                     {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
                      "30.0", "+Inf"},
-                    false);
+                    false, globals, ensureWhitespace);
     appendHistogram(result, requestStats.ioTime, "ioTime",
                     {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
                      "30.0", "+Inf"},
-                    false);
+                    false, globals, ensureWhitespace);
     appendHistogram(result, requestStats.bytesSent, "bytesSent",
-                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true);
+                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true,
+                    globals, ensureWhitespace);
     appendHistogram(result, requestStats.bytesReceived, "bytesReceived",
-                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true);
+                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true,
+                    globals, ensureWhitespace);
 
     RequestStatistics::Snapshot requestStatsUser;
     RequestStatistics::getSnapshot(requestStatsUser,
                                    stats::RequestStatisticsSource::USER);
     appendHistogram(result, requestStatsUser.bytesSent, "bytesSentUser",
-                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true);
+                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true,
+                    globals, ensureWhitespace);
     appendHistogram(result, requestStatsUser.bytesReceived, "bytesReceivedUser",
-                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true);
+                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true,
+                    globals, ensureWhitespace);
 
     // _httpStatistics()
     using rest::RequestType;
     appendMetric(result, std::to_string(connectionStats.asyncRequests.get()),
-                 "httpReqsAsync");
+                 "httpReqsAsync", globals, ensureWhitespace);
     appendMetric(
         result,
         std::to_string(
             connectionStats.methodRequests[(int)RequestType::DELETE_REQ].get()),
-        "httpReqsDelete");
+        "httpReqsDelete", globals, ensureWhitespace);
     appendMetric(
         result,
         std::to_string(
             connectionStats.methodRequests[(int)RequestType::GET].get()),
-        "httpReqsGet");
+        "httpReqsGet", globals, ensureWhitespace);
     appendMetric(
         result,
         std::to_string(
             connectionStats.methodRequests[(int)RequestType::HEAD].get()),
-        "httpReqsHead");
+        "httpReqsHead", globals, ensureWhitespace);
     appendMetric(
         result,
         std::to_string(
             connectionStats.methodRequests[(int)RequestType::OPTIONS].get()),
-        "httpReqsOptions");
+        "httpReqsOptions", globals, ensureWhitespace);
     appendMetric(
         result,
         std::to_string(
             connectionStats.methodRequests[(int)RequestType::PATCH].get()),
-        "httpReqsPatch");
+        "httpReqsPatch", globals, ensureWhitespace);
     appendMetric(
         result,
         std::to_string(
             connectionStats.methodRequests[(int)RequestType::POST].get()),
-        "httpReqsPost");
+        "httpReqsPost", globals, ensureWhitespace);
     appendMetric(
         result,
         std::to_string(
             connectionStats.methodRequests[(int)RequestType::PUT].get()),
-        "httpReqsPut");
+        "httpReqsPut", globals, ensureWhitespace);
     appendMetric(
         result,
         std::to_string(
             connectionStats.methodRequests[(int)RequestType::ILLEGAL].get()),
-        "httpReqsOther");
+        "httpReqsOther", globals, ensureWhitespace);
     appendMetric(result, std::to_string(connectionStats.totalRequests.get()),
-                 "httpReqsTotal");
+                 "httpReqsTotal", globals, ensureWhitespace);
     appendMetric(result,
                  std::to_string(connectionStats.totalRequestsSuperuser.get()),
-                 "httpReqsSuperuser");
+                 "httpReqsSuperuser", globals, ensureWhitespace);
     appendMetric(result,
                  std::to_string(connectionStats.totalRequestsUser.get()),
-                 "httpReqsUser");
+                 "httpReqsUser", globals, ensureWhitespace);
   }
 
+#ifdef USE_V8
   V8DealerFeature::Statistics v8Counters{};
   if (server().hasFeature<V8DealerFeature>()) {
     V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
@@ -1017,12 +1046,25 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
     }
   }
   appendMetric(result, std::to_string(v8Counters.available),
-               "v8ContextAvailable");
-  appendMetric(result, std::to_string(v8Counters.busy), "v8ContextBusy");
-  appendMetric(result, std::to_string(v8Counters.dirty), "v8ContextDirty");
-  appendMetric(result, std::to_string(v8Counters.free), "v8ContextFree");
-  appendMetric(result, std::to_string(v8Counters.min), "v8ContextMin");
-  appendMetric(result, std::to_string(v8Counters.max), "v8ContextMax");
+               "v8ContextAvailable", globals, ensureWhitespace);
+  appendMetric(result, std::to_string(v8Counters.busy), "v8ContextBusy",
+               globals, ensureWhitespace);
+  appendMetric(result, std::to_string(v8Counters.dirty), "v8ContextDirty",
+               globals, ensureWhitespace);
+  appendMetric(result, std::to_string(v8Counters.free), "v8ContextFree",
+               globals, ensureWhitespace);
+  appendMetric(result, std::to_string(v8Counters.min), "v8ContextMin", globals,
+               ensureWhitespace);
+  appendMetric(result, std::to_string(v8Counters.max), "v8ContextMax", globals,
+               ensureWhitespace);
+#else
+  appendMetric(result, "0", "v8ContextAvailable", globals, ensureWhitespace);
+  appendMetric(result, "0", "v8ContextBusy", globals, ensureWhitespace);
+  appendMetric(result, "0", "v8ContextDirty", globals, ensureWhitespace);
+  appendMetric(result, "0", "v8ContextFree", globals, ensureWhitespace);
+  appendMetric(result, "0", "v8ContextMin", globals, ensureWhitespace);
+  appendMetric(result, "0", "v8ContextMax", globals, ensureWhitespace);
+#endif
 }
 
 Result StatisticsFeature::getClusterSystemStatistics(
@@ -1062,6 +1104,9 @@ Result StatisticsFeature::getClusterSystemStatistics(
     bindVars->close();
   };
 
+  auto origin =
+      transaction::OperationOriginInternal{"retrieving cluster statistics"};
+
   auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDbFeature.use();
 
@@ -1069,7 +1114,7 @@ Result StatisticsFeature::getClusterSystemStatistics(
   {
     buildBindVars(StaticStrings::Statistics15Collection);
     auto query = arangodb::aql::Query::create(
-        transaction::StandaloneContext::Create(*sysVocbase),
+        transaction::StandaloneContext::create(*sysVocbase, origin),
         arangodb::aql::QueryString(stats15Query), bindVars);
 
     query->queryOptions().cache = false;
@@ -1087,7 +1132,7 @@ Result StatisticsFeature::getClusterSystemStatistics(
   {
     buildBindVars(StaticStrings::StatisticsCollection);
     auto query = arangodb::aql::Query::create(
-        transaction::StandaloneContext::Create(*sysVocbase),
+        transaction::StandaloneContext::create(*sysVocbase, origin),
         arangodb::aql::QueryString(statsSamplesQuery), bindVars);
 
     query->queryOptions().cache = false;

@@ -40,6 +40,8 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/MethodsApi.h"
 #include "VocBase/LogicalCollection.h"
@@ -99,7 +101,7 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
           auto shards = ci.getShardList(std::to_string(cc->id().id()));
           for (ShardID const& shard : *shards) {
             auto sss = ci.getResponsibleServer(shard);
-            if (server == sss->at(0)) {
+            if (std::string_view{server} == sss->at(0)) {
               if (numCollections == 0) {
                 builder.add(key, VPackValue(VPackValueType::Array));
               }
@@ -144,7 +146,7 @@ Future<network::Response> beginTransactionRequest(TransactionState& state,
   TransactionId tid = state.id().child();
   TRI_ASSERT(!tid.isLegacyTransactionId());
 
-  TRI_ASSERT(server.substr(0, 7) != "server:");
+  TRI_ASSERT(!server.starts_with("server:"));
 
   double const lockTimeout = state.options().lockTimeout;
 
@@ -198,8 +200,7 @@ Result checkTransactionResult(TransactionId desiredTid,
     TransactionId tid{StringUtils::uint64(idRef.data(), idRef.size())};
     std::string_view statusRef = statusSlice.stringView();
     if (tid == desiredTid &&
-        transaction::statusFromString(statusRef.data(), statusRef.size()) ==
-            desStatus) {
+        transaction::statusFromString(statusRef) == desStatus) {
       // all good
       return r.reset();
     }
@@ -233,6 +234,9 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
     return Result();
   }
 
+  auto commitGuard =
+      transaction::ManagerFeature::manager()->getTransactionCommitGuard();
+
   // only commit managed transactions, and AQL leader transactions (on
   // DBServers)
   if (!ClusterTrxMethods::isElCheapo(*state) ||
@@ -243,6 +247,18 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
   TRI_ASSERT(!state->isDBServer() || !state->id().isFollowerTransactionId());
 
   network::RequestOptions reqOpts;
+  // We intentionally choose the timeout to be 14 minutes on coordinators
+  // and 13 minutes on dbservers. It needs to be longer on the coordinator
+  // to give the leader a chance to time out earlier than the coordinator.
+  // In this case we need to drop a follower, but can proceed with the
+  // transaction. Both timeouts are intentionally smaller than the standard
+  // intra-cluster timeout of 15 minutes, but are large enough to withstand
+  // delays in the network infrastructure.
+  if (state->isCoordinator()) {
+    reqOpts.timeout = arangodb::network::Timeout(std::chrono::minutes(14));
+  } else {
+    reqOpts.timeout = arangodb::network::Timeout(std::chrono::minutes(13));
+  }
   reqOpts.database = state->vocbase().name();
   reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
 
@@ -273,13 +289,14 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
   std::vector<Future<network::Response>> requests;
   requests.reserve(state->knownServers().size());
   for (std::string const& server : state->knownServers()) {
-    TRI_ASSERT(server.substr(0, 7) != "server:");
+    TRI_ASSERT(!server.starts_with("server:"));
     requests.emplace_back(network::sendRequestRetry(
         pool, "server:" + server, verb, path, VPackBuffer<uint8_t>(), reqOpts));
   }
 
   return futures::collectAll(requests).thenValue(
-      [=](std::vector<Try<network::Response>>&& responses) -> Result {
+      [=, commitGuard = std::move(commitGuard)](
+          std::vector<Try<network::Response>>&& responses) -> Result {
         if (state->isCoordinator()) {
           TRI_ASSERT(state->id().isCoordinatorTransactionId());
 
@@ -535,7 +552,7 @@ void addTransactionHeader(transaction::Methods const& trx,
   TRI_ASSERT(!tidPlus.isLegacyTransactionId());
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
 
-  bool const addBegin = !state.knowsServer(server);
+  bool addBegin = !state.knowsServer(server);
   if (addBegin) {
     if (state.isCoordinator() &&
         state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
@@ -544,7 +561,7 @@ void addTransactionHeader(transaction::Methods const& trx,
     TRI_ASSERT(state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
                state.id().isLeaderTransactionId());
     transaction::BuilderLeaser builder(trx.transactionContextPtr());
-    ::buildTransactionBody(state, server, *builder.get());
+    ::buildTransactionBody(state, server, *builder);
     headers.try_emplace(StaticStrings::TransactionBody, builder->toJson());
     headers.try_emplace(arangodb::StaticStrings::TransactionId,
                         std::to_string(tidPlus.id()).append(" begin"));
@@ -572,7 +589,7 @@ void addAQLTransactionHeader(transaction::Methods const& trx,
     return;
   }
 
-  TRI_ASSERT(server.substr(0, 7) != "server:");
+  TRI_ASSERT(!server.starts_with("server:"));
 
   std::string value = std::to_string(state.id().child().id());
   bool const addBegin = !state.knowsServer(server);
@@ -581,7 +598,7 @@ void addAQLTransactionHeader(transaction::Methods const& trx,
       value.append(" aql");  // This is a single AQL query
     } else if (state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
       transaction::BuilderLeaser builder(trx.transactionContextPtr());
-      ::buildTransactionBody(state, server, *builder.get());
+      ::buildTransactionBody(state, server, *builder);
       headers.try_emplace(StaticStrings::TransactionBody, builder->toJson());
       value.append(" begin");  // part of a managed transaction
     } else {
@@ -601,6 +618,7 @@ void addAQLTransactionHeader(transaction::Methods const& trx,
   }
   headers.try_emplace(arangodb::StaticStrings::TransactionId, std::move(value));
 }
+
 template void addAQLTransactionHeader<std::map<std::string, std::string>>(
     transaction::Methods const&, ServerID const&,
     std::map<std::string, std::string>&);

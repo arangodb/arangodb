@@ -30,11 +30,14 @@
 #include "Agency/FailedLeader.h"
 #include "Agency/FailedServer.h"
 #include "Agency/MoveShard.h"
+#include "Agency/Node.h"
+#include "Agency/ReconfigureReplicatedLog.h"
 #include "Agency/RemoveFollower.h"
 #include "Agency/ResignLeadership.h"
 #include "Logger/LogMacros.h"
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 JobContext::JobContext(JOB_STATUS status, std::string const& id,
                        Node const& snapshot, AgentInterface* agent)
@@ -64,6 +67,9 @@ JobContext::JobContext(JOB_STATUS status, std::string const& id,
     _job = std::make_unique<RemoveFollower>(snapshot, agent, status, id);
   } else if (type == "activeFailover") {
     _job = std::make_unique<ActiveFailoverJob>(snapshot, agent, status, id);
+  } else if (type == "reconfigureReplicatedLog") {
+    _job =
+        std::make_unique<ReconfigureReplicatedLog>(snapshot, agent, status, id);
   } else {
     LOG_TOPIC("bb53f", ERR, Logger::AGENCY)
         << "Failed to run supervision job " << type << " with id " << id;

@@ -22,42 +22,76 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Basics/ResultT.h"
+#include "Basics/Guarded.h"
+#include "Basics/UnshackledMutex.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/StateMachines/Document/ShardProperties.h"
+#include "VocBase/AccessMode.h"
+#include "VocBase/Methods/Indexes.h"
+#include "Transaction/OperationOrigin.h"
 
-#include <velocypack/Builder.h>
+#include <shared_mutex>
 
-#include <string>
-#include <memory>
-
-namespace arangodb {
-class MaintenanceFeature;
-}
+struct TRI_vocbase_t;
 
 namespace arangodb::replication2::replicated_state::document {
 
+struct IMaintenanceActionExecutor;
+
 struct IDocumentStateShardHandler {
   virtual ~IDocumentStateShardHandler() = default;
-  virtual auto createLocalShard(
-      std::string const& collectionId,
-      std::shared_ptr<velocypack::Builder> const& properties)
-      -> ResultT<std::string> = 0;
-  virtual auto dropLocalShard(std::string const& collectionId) -> Result = 0;
+  virtual auto ensureShard(ShardID shard, CollectionID collection,
+                           std::shared_ptr<VPackBuilder> properties)
+      -> ResultT<bool> = 0;
+  virtual auto modifyShard(ShardID shard, CollectionID collection,
+                           velocypack::SharedSlice properties) -> Result = 0;
+  virtual auto dropShard(ShardID const& shard) -> ResultT<bool> = 0;
+  virtual auto dropAllShards() -> Result = 0;
+  virtual auto isShardAvailable(ShardID const& shard) -> bool = 0;
+  virtual auto getShardMap() -> ShardMap = 0;
+  virtual auto ensureIndex(
+      ShardID shard, std::shared_ptr<VPackBuilder> const& properties,
+      std::shared_ptr<methods::Indexes::ProgressTracker> progress)
+      -> Result = 0;
+  virtual auto dropIndex(ShardID shard, velocypack::SharedSlice index)
+      -> Result = 0;
+  virtual auto lockShard(ShardID const& shard, AccessMode::Type accessType,
+                         transaction::OperationOrigin origin)
+      -> ResultT<std::unique_ptr<transaction::Methods>> = 0;
 };
 
 class DocumentStateShardHandler : public IDocumentStateShardHandler {
  public:
-  explicit DocumentStateShardHandler(GlobalLogIdentifier gid,
-                                     MaintenanceFeature& maintenanceFeature);
-  static auto stateIdToShardId(LogId logId) -> std::string;
-  auto createLocalShard(std::string const& collectionId,
-                        std::shared_ptr<velocypack::Builder> const& properties)
-      -> ResultT<std::string> override;
-  auto dropLocalShard(const std::string& collectionId) -> Result override;
+  explicit DocumentStateShardHandler(
+      TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
+      std::shared_ptr<IMaintenanceActionExecutor> maintenance);
+  auto ensureShard(ShardID shard, CollectionID collection,
+                   std::shared_ptr<VPackBuilder> properties)
+      -> ResultT<bool> override;
+  auto modifyShard(ShardID shard, CollectionID collection,
+                   velocypack::SharedSlice properties) -> Result override;
+  auto dropShard(ShardID const& shard) -> ResultT<bool> override;
+  auto dropAllShards() -> Result override;
+  auto isShardAvailable(ShardID const& shardId) -> bool override;
+  auto getShardMap() -> ShardMap override;
+  auto ensureIndex(ShardID shard,
+                   std::shared_ptr<VPackBuilder> const& properties,
+                   std::shared_ptr<methods::Indexes::ProgressTracker> progress)
+      -> Result override;
+  auto dropIndex(ShardID shard, velocypack::SharedSlice index)
+      -> Result override;
+  auto lockShard(ShardID const& shard, AccessMode::Type accessType,
+                 transaction::OperationOrigin origin)
+      -> ResultT<std::unique_ptr<transaction::Methods>> override;
 
  private:
   GlobalLogIdentifier _gid;
-  MaintenanceFeature& _maintenanceFeature;
+  std::shared_ptr<IMaintenanceActionExecutor> _maintenance;
+  TRI_vocbase_t& _vocbase;
+  struct {
+    ShardMap shards;
+    std::shared_mutex mutex;
+  } _shardMap;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

@@ -27,11 +27,12 @@
 #include "Containers/FlatHashSet.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 
+#include <function2.hpp>
+
 #include <cstdint>
 #include <limits>
 #include <memory>
 #include <string_view>
-#include <unordered_set>
 #include <vector>
 
 namespace arangodb {
@@ -48,6 +49,8 @@ class Slice;
 }  // namespace velocypack
 
 namespace aql {
+class Ast;
+struct Variable;
 
 /// @brief helper class to manage projections and extract attribute data from
 /// documents and index entries
@@ -68,6 +71,8 @@ class Projections {
     uint16_t levelsToClose;
     /// @brief attribute type
     AttributeNamePath::Type type;
+
+    Variable const* variable;
   };
 
   static constexpr uint16_t kNoCoveringIndexPosition =
@@ -78,7 +83,6 @@ class Projections {
   /// @brief create projections from the vector of attributes passed.
   /// attributes will be sorted and made unique inside
   explicit Projections(std::vector<AttributeNamePath> paths);
-  explicit Projections(std::unordered_set<AttributeNamePath> paths);
   explicit Projections(containers::FlatHashSet<AttributeNamePath> paths);
 
   Projections(Projections&&) = default;
@@ -90,6 +94,9 @@ class Projections {
 
   /// @brief reset all projections
   void clear() noexcept;
+
+  /// @brief erase projection members if cb returns true
+  void erase(std::function<bool(Projection&)> const& cb);
 
   /// @brief set covering index context for these projections
   void setCoveringContext(DataSourceId const& id,
@@ -124,6 +131,22 @@ class Projections {
   /// @brief get projection at position
   Projection& operator[](size_t index);
 
+  /// @brief extract projections from a full document, calling a callback for
+  /// each projection value
+  void produceFromDocument(
+      velocypack::Builder& b, velocypack::Slice slice,
+      transaction::Methods const* trxPtr,
+      fu2::unique_function<void(Variable const*, velocypack::Slice)
+                               const> const& cb) const;
+
+  /// @brief extract projections from a covering index, calling a callback for
+  /// each projection value
+  void produceFromIndex(
+      velocypack::Builder& b, IndexIteratorCoveringData& covering,
+      transaction::Methods const* trxPtr,
+      fu2::unique_function<void(Variable const*, velocypack::Slice)
+                               const> const& cb) const;
+
   /// @brief extract projections from a full document
   void toVelocyPackFromDocument(velocypack::Builder& b, velocypack::Slice slice,
                                 transaction::Methods const* trxPtr) const;
@@ -132,6 +155,13 @@ class Projections {
   void toVelocyPackFromIndex(velocypack::Builder& b,
                              IndexIteratorCoveringData& covering,
                              transaction::Methods const* trxPtr) const;
+
+  /// @brief extract projections from a covering index
+  /// this variant accesses the covering data using the projection index
+  /// instead of coveringIndexPosition attribute.
+  void toVelocyPackFromIndexCompactArray(
+      velocypack::Builder& b, IndexIteratorCoveringData& covering,
+      transaction::Methods const* trxPtr) const;
 
   /// @brief serialize the projections to velocypack, under the attribute
   /// name "projections"
@@ -145,12 +175,16 @@ class Projections {
 
   /// @brief build projections from velocypack, looking for the attribute
   /// name "projections"
-  static Projections fromVelocyPack(velocypack::Slice slice);
+  static Projections fromVelocyPack(Ast* ast, velocypack::Slice slice,
+                                    ResourceMonitor& resourceMonitor);
 
   /// @brief build projections from velocypack, looking for a custom
   /// attribute name
-  static Projections fromVelocyPack(velocypack::Slice slice,
-                                    std::string_view attributeName);
+  static Projections fromVelocyPack(Ast* ast, velocypack::Slice slice,
+                                    std::string_view attributeName,
+                                    ResourceMonitor& resourceMonitor);
+
+  std::size_t hash() const noexcept;
 
  private:
   /// @brief shared init function

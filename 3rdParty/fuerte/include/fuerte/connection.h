@@ -118,8 +118,8 @@ class Connection : public std::enable_shared_from_this<Connection> {
  */
 class ConnectionBuilder {
  public:
-  inline std::string host() const { return _conf._host; }
-  inline std::string port() const { return _conf._port; }
+  std::string host() const { return _conf._host; }
+  std::string port() const { return _conf._port; }
 
   /// @brief takes url in the form (http|vst)[s]://(ip|hostname):port
   /// also supports the syntax "http+tcp://", "http+unix://" etc
@@ -132,7 +132,7 @@ class ConnectionBuilder {
   std::shared_ptr<Connection> connect(EventLoopService& eventLoopService);
 
   /// @brief connect timeout (15s default)
-  inline std::chrono::milliseconds connectTimeout() const {
+  std::chrono::milliseconds connectTimeout() const {
     return _conf._connectTimeout;
   }
   /// @brief set the connect connection timeout (15s default)
@@ -142,7 +142,7 @@ class ConnectionBuilder {
   }
 
   /// @brief idle connection timeout (300s default)
-  inline std::chrono::milliseconds idleTimeout() const {
+  std::chrono::milliseconds idleTimeout() const {
     return _conf._idleTimeout;
   }
   /// @brief set the idle connection timeout (300s default)
@@ -158,7 +158,7 @@ class ConnectionBuilder {
   }
 
   /// @brief connect retry pause (1s default)
-  inline std::chrono::milliseconds connectRetryPause() const {
+  std::chrono::milliseconds connectRetryPause() const {
     return _conf._connectRetryPause;
   }
   /// @brief set the connect retry pause (1s default)
@@ -168,7 +168,7 @@ class ConnectionBuilder {
   }
 
   /// @brief connect retries (3 default)
-  inline unsigned maxConnectRetries() const { return _conf._maxConnectRetries; }
+  unsigned maxConnectRetries() const { return _conf._maxConnectRetries; }
   /// @brief set the max connect retries (3 default)
   ConnectionBuilder& maxConnectRetries(unsigned r) {
     _conf._maxConnectRetries = r;
@@ -176,7 +176,7 @@ class ConnectionBuilder {
   }
 
   // Set the authentication type of the connection
-  inline AuthenticationType authenticationType() const {
+  AuthenticationType authenticationType() const {
     return _conf._authenticationType;
   }
   ConnectionBuilder& authenticationType(AuthenticationType t) {
@@ -184,33 +184,33 @@ class ConnectionBuilder {
     return *this;
   }
   // Set the username of the connection
-  inline std::string user() const { return _conf._user; }
+  std::string user() const { return _conf._user; }
   ConnectionBuilder& user(std::string const& u) {
     _conf._user = u;
     return *this;
   }
   // Set the password of the connection
-  inline std::string password() const { return _conf._password; }
+  std::string password() const { return _conf._password; }
   ConnectionBuilder& password(std::string const& p) {
     _conf._password = p;
     return *this;
   }
 
   // Set the jwt token of the connection
-  inline std::string jwtToken() const { return _conf._jwtToken; }
+  std::string jwtToken() const { return _conf._jwtToken; }
   ConnectionBuilder& jwtToken(std::string const& t) {
     _conf._jwtToken = t;
     return *this;
   }
 
   /// @brief tcp, ssl or unix
-  inline SocketType socketType() const { return _conf._socketType; }
+  SocketType socketType() const { return _conf._socketType; }
   /// @brief protocol type
-  inline ProtocolType protocolType() const { return _conf._protocolType; }
+  ProtocolType protocolType() const { return _conf._protocolType; }
   void protocolType(ProtocolType pt) { _conf._protocolType = pt; }
 
   // Set the VST version to use (VST only)
-  inline vst::VSTVersion vstVersion() const { return _conf._vstVersion; }
+  vst::VSTVersion vstVersion() const { return _conf._vstVersion; }
   ConnectionBuilder& vstVersion(vst::VSTVersion c) {
     _conf._vstVersion = c;
     return *this;
@@ -223,7 +223,7 @@ class ConnectionBuilder {
   }
 
   /// @brief should we verify the SSL host
-  inline bool verifyHost() const { return _conf._verifyHost; }
+  bool verifyHost() const { return _conf._verifyHost; }
   ConnectionBuilder& verifyHost(bool b) {
     _conf._verifyHost = b;
     return *this;

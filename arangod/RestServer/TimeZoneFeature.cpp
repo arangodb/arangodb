@@ -102,7 +102,7 @@ void TimeZoneFeature::prepareTimeZoneData(
   if (!gotTZ) {
     LOG_TOPIC("67bde", ERR, arangodb::Logger::STARTUP)
         << "Could not get current timezone from " << tz_path
-        << ". Functionality using timezones may missbehave!";
+        << ". Functionality using timezones may misbehave!";
   }
 }
 

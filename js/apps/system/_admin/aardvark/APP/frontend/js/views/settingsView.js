@@ -1,6 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global frontendConfig, arangoHelper, Joi, Backbone, window, $, _ */
+/* global frontendConfig */
 
 (function () {
   'use strict';
@@ -71,7 +69,7 @@
             if (isCoordinator) {
               newname = this.model.get('name');
             } else {
-              newname = $('#change-collection-name').val();
+              newname = String($('#change-collection-name').val()).normalize();
             }
 
             var self = this;
@@ -82,7 +80,7 @@
                 arangoHelper.arangoError('Collection error: ' + data.responseJSON.errorMessage);
               } else {
                 arangoHelper.arangoNotification('Collection: ' + 'Successfully changed.');
-                window.App.navigate('#cSettings/' + newname, {trigger: true});
+                window.App.navigate('#cSettings/' + encodeURIComponent(newname), {trigger: true});
               }
             };
 
@@ -146,7 +144,8 @@
 
           var buttons = [];
           var tableContent = [];
-
+          var collectionNameValidations = 
+            window.arangoValidationHelper.getCollectionNameValidations();
           if (!isCoordinator) {
             if (this.model.get('name').substr(0, 1) === '_') {
               tableContent.push(
@@ -157,20 +156,7 @@
                   false,
                   '',
                   true,
-                  [
-                    {
-                      rule: Joi.string().regex(/^[a-zA-Z]/),
-                      msg: 'Collection name must always start with a letter.'
-                    },
-                    {
-                      rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
-                      msg: 'Only Symbols "_" and "-" are allowed.'
-                    },
-                    {
-                      rule: Joi.string().required(),
-                      msg: 'No collection name given.'
-                    }
-                  ]
+                  collectionNameValidations
                 )
               );
             } else {
@@ -182,20 +168,7 @@
                   false,
                   '',
                   true,
-                  [
-                    {
-                      rule: Joi.string().regex(/^[a-zA-Z]/),
-                      msg: 'Collection name must always start with a letter.'
-                    },
-                    {
-                      rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
-                      msg: 'Only Symbols "_" and "-" are allowed.'
-                    },
-                    {
-                      rule: Joi.string().required(),
-                      msg: 'No collection name given.'
-                    }
-                  ]
+                  collectionNameValidations
                 )
               );
             }
@@ -239,10 +212,8 @@
                 this.saveModifiedCollection.bind(this)
               )
             );
-
+            var templates = ['modalTable.ejs'];
             var tabBar = ['General', 'Indexes'];
-            var templates = ['modalTable.ejs', 'indicesView.ejs'];
-
             window.modalView.show(
               templates,
               'Modify Collection',
@@ -317,7 +288,7 @@
                       true,
                       [
                         {
-                          rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                          rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
                           msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
                         }
                       ]

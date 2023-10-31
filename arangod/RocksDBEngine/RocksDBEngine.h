@@ -28,13 +28,14 @@
 #include <deque>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <unordered_map>
 #include <vector>
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTypes.h"
@@ -62,10 +63,21 @@ class TransactionDB;
 
 namespace arangodb {
 
-struct RocksDBAsyncLogWriteBatcher;
+namespace replication2::storage {
+namespace rocksdb {
+struct AsyncLogWriteBatcherMetrics;
+struct IAsyncLogWriteBatcher;
+}  // namespace rocksdb
+
+namespace wal {
+struct WalManager;
+}
+}  // namespace replication2::storage
+
 class PhysicalCollection;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
+class RocksDBDumpManager;
 class RocksDBKey;
 class RocksDBLogValue;
 class RocksDBRecoveryHelper;
@@ -171,14 +183,17 @@ class RocksDBEngine final : public StorageEngine {
       transaction::ManagerFeature&) override;
   std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId,
-      transaction::Options const& options) override;
+      transaction::Options const& options,
+      transaction::OperationOrigin operationOrigin) override;
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
       LogicalCollection& collection, velocypack::Slice info) override;
 
+  void getCapabilities(velocypack::Builder& builder) const override;
   void getStatistics(velocypack::Builder& builder) const override;
-  void getStatistics(std::string& result) const override;
+  void toPrometheus(std::string& result, std::string_view globals,
+                    bool ensureWhitespace) const override;
 
   // inventory functionality
   // -----------------------
@@ -244,7 +259,7 @@ class RocksDBEngine final : public StorageEngine {
   /// flushing column families becomes a separate API.
   Result flushWal(bool waitForSync = false,
                   bool flushColumnFamilies = false) override;
-  void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
+  void waitForEstimatorSync() override;
 
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(CreateDatabaseInfo&& info,
                                                       bool isUpgrade) override;
@@ -276,14 +291,14 @@ class RocksDBEngine final : public StorageEngine {
 
   auto dropReplicatedState(
       TRI_vocbase_t& vocbase,
-      std::unique_ptr<replication2::replicated_state::IStorageEngineMethods>&
-          ptr) -> Result override;
+      std::unique_ptr<replication2::storage::IStorageEngineMethods>& ptr)
+      -> Result override;
 
   auto createReplicatedState(
       TRI_vocbase_t& vocbase, replication2::LogId id,
-      replication2::replicated_state::PersistedStateInfo const& info)
+      replication2::storage::PersistedStateInfo const& info)
       -> ResultT<std::unique_ptr<
-          replication2::replicated_state::IStorageEngineMethods>> override;
+          replication2::storage::IStorageEngineMethods>> override;
 
   void createCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection) override;
@@ -313,8 +328,10 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
 
+#ifdef USE_V8
   /// @brief Add engine-specific V8 functions
   void addV8Functions() override;
+#endif
 
   /// @brief Add engine-specific REST handlers
   void addRestHandlers(rest::RestHandlerFactory& handlerFactory) override;
@@ -330,18 +347,20 @@ class RocksDBEngine final : public StorageEngine {
                                      velocypack::Slice slice,
                                      RocksDBLogValue&& logValue);
 
-  void addCollectionMapping(uint64_t, TRI_voc_tick_t, DataSourceId);
-  std::vector<std::pair<TRI_voc_tick_t, DataSourceId>> collectionMappings()
-      const;
-  void addIndexMapping(uint64_t objectId, TRI_voc_tick_t, DataSourceId,
-                       IndexId);
-  void removeIndexMapping(uint64_t);
+  void addCollectionMapping(uint64_t objectId, TRI_voc_tick_t dbId,
+                            DataSourceId cid);
+  std::vector<std::tuple<uint64_t, TRI_voc_tick_t, DataSourceId>>
+  collectionMappings() const;
+  void addIndexMapping(uint64_t objectId, TRI_voc_tick_t dbId, DataSourceId cid,
+                       IndexId iid);
+  void removeIndexMapping(uint64_t objectId);
 
   // Identifies a collection
-  typedef std::pair<TRI_voc_tick_t, DataSourceId> CollectionPair;
-  typedef std::tuple<TRI_voc_tick_t, DataSourceId, IndexId> IndexTriple;
-  CollectionPair mapObjectToCollection(uint64_t) const;
-  IndexTriple mapObjectToIndex(uint64_t) const;
+  using CollectionPair = std::pair<TRI_voc_tick_t, DataSourceId>;
+  using IndexTriple = std::tuple<TRI_voc_tick_t, DataSourceId, IndexId>;
+  CollectionPair mapObjectToCollection(uint64_t objectId) const;
+  IndexTriple mapObjectToIndex(uint64_t objectId) const;
+  void removeCollectionMapping(uint64_t objectId);
 
   /// @brief determine how many archived WAL files are available. this is called
   /// during the first few minutes after the instance start, when we don't want
@@ -386,6 +405,16 @@ class RocksDBEngine final : public StorageEngine {
 
   void trackRevisionTreeMemoryIncrease(std::uint64_t value) noexcept;
   void trackRevisionTreeMemoryDecrease(std::uint64_t value) noexcept;
+
+  void trackRevisionTreeBufferedMemoryIncrease(std::uint64_t value) noexcept;
+  void trackRevisionTreeBufferedMemoryDecrease(std::uint64_t value) noexcept;
+
+  void trackIndexSelectivityMemoryIncrease(std::uint64_t value) noexcept;
+  void trackIndexSelectivityMemoryDecrease(std::uint64_t value) noexcept;
+
+  metrics::Gauge<uint64_t>& indexEstimatorMemoryUsageMetric() const noexcept {
+    return _metricsIndexEstimatorMemoryUsage;
+  }
 
 #ifdef USE_ENTERPRISE
   bool encryptionKeyRotationEnabled() const;
@@ -441,6 +470,11 @@ class RocksDBEngine final : public StorageEngine {
     return _replicationManager.get();
   }
 
+  RocksDBDumpManager* dumpManager() const {
+    TRI_ASSERT(_dumpManager);
+    return _dumpManager.get();
+  }
+
   /// @brief returns a pointer to the sync thread
   /// note: returns a nullptr if automatic syncing is turned off!
   RocksDBSyncThread* syncThread() const { return _syncThread.get(); }
@@ -478,8 +512,16 @@ class RocksDBEngine final : public StorageEngine {
 
   std::shared_ptr<StorageSnapshot> currentSnapshot() override;
 
+  void addCacheMetrics(uint64_t initial, uint64_t effective,
+                       uint64_t totalInserts, uint64_t totalCompressedInserts,
+                       uint64_t totalEmptyInserts) noexcept;
+
+  std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t>
+  getCacheMetrics();
+
  private:
   void loadReplicatedStates(TRI_vocbase_t& vocbase);
+  [[nodiscard]] Result dropReplicatedStates(TRI_voc_tick_t databaseId);
   void shutdownRocksDBInstance() noexcept;
   void waitForCompactionJobsToFinish();
   velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key,
@@ -521,7 +563,11 @@ class RocksDBEngine final : public StorageEngine {
   bool checkExistingDB(
       std::vector<rocksdb::ColumnFamilyDescriptor> const& cfFamilies);
 
-  void removeEmptyJournalFilesFromArchive();
+  auto makeLogStorageMethods(replication2::LogId logId, uint64_t objectId,
+                             std::uint64_t vocbaseId,
+                             ::rocksdb::ColumnFamilyHandle* const logCf,
+                             ::rocksdb::ColumnFamilyHandle* const metaCf)
+      -> std::unique_ptr<replication2::storage::IStorageEngineMethods>;
 
   RocksDBOptionsProvider const& _optionsProvider;
 
@@ -558,6 +604,7 @@ class RocksDBEngine final : public StorageEngine {
   static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> _recoveryHelpers;
 
   mutable basics::ReadWriteLock _mapLock;
+  // object id (of collection) => { database id, data source id }
   std::unordered_map<uint64_t, CollectionPair> _collectionMap;
   std::unordered_map<uint64_t, IndexTriple> _indexMap;
 
@@ -647,7 +694,7 @@ class RocksDBEngine final : public StorageEngine {
   basics::ReadWriteLock _purgeLock;
 
   /// @brief mutex that protects the storage engine health check
-  Mutex _healthMutex;
+  std::mutex _healthMutex;
 
   /// @brief timestamp of last health check log message. we only log health
   /// check errors every so often, in order to prevent log spamming
@@ -661,7 +708,7 @@ class RocksDBEngine final : public StorageEngine {
   HealthData _healthData;
 
   /// @brief lock for _rebuildCollections
-  Mutex _rebuildCollectionsLock;
+  std::mutex _rebuildCollectionsLock;
   /// @brief map of database/collection-guids for which we need to repair trees
   std::map<std::pair<TRI_voc_tick_t, std::string>, bool> _rebuildCollections;
   /// @brief number of currently running tree rebuild jobs jobs
@@ -707,25 +754,51 @@ class RocksDBEngine final : public StorageEngine {
   // an auto-flush
   uint64_t _autoFlushMinWalFiles;
 
+  bool _forceLittleEndianKeys;  // force new database to use old format
+
+  metrics::Gauge<uint64_t>& _metricsIndexEstimatorMemoryUsage;
   metrics::Gauge<uint64_t>& _metricsWalReleasedTickFlush;
   metrics::Gauge<uint64_t>& _metricsWalSequenceLowerBound;
   metrics::Gauge<uint64_t>& _metricsLiveWalFiles;
   metrics::Gauge<uint64_t>& _metricsArchivedWalFiles;
+  metrics::Gauge<uint64_t>& _metricsLiveWalFilesSize;
+  metrics::Gauge<uint64_t>& _metricsArchivedWalFilesSize;
   metrics::Gauge<uint64_t>& _metricsPrunableWalFiles;
   metrics::Gauge<uint64_t>& _metricsWalPruningActive;
   metrics::Gauge<uint64_t>& _metricsTreeMemoryUsage;
+  metrics::Gauge<uint64_t>& _metricsTreeBufferedMemoryUsage;
   metrics::Counter& _metricsTreeRebuildsSuccess;
   metrics::Counter& _metricsTreeRebuildsFailure;
   metrics::Counter& _metricsTreeHibernations;
   metrics::Counter& _metricsTreeResurrections;
 
+  // total size of uncompressed values for the edge cache
+  metrics::Counter& _metricsEdgeCacheEntriesSizeInitial;
+  // total size of values stored in the edge cache (can be smaller than the
+  // initial size because of compression)
+  metrics::Counter& _metricsEdgeCacheEntriesSizeEffective;
+
+  // total number of inserts into edge cache
+  metrics::Counter& _metricsEdgeCacheInserts;
+  // total number of inserts into edge cache that were compressed
+  metrics::Counter& _metricsEdgeCacheCompressedInserts;
+  // total number of inserts into edge cache that stored an empty array
+  metrics::Counter& _metricsEdgeCacheEmptyInserts;
+
   // @brief persistor for replicated logs
-  std::shared_ptr<RocksDBAsyncLogWriteBatcher> _logPersistor;
+  std::shared_ptr<replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics>
+      _logMetrics;
+  std::shared_ptr<replication2::storage::rocksdb::IAsyncLogWriteBatcher>
+      _logPersistor;
 
   // Checksum env for when creation of sha files is enabled
   // this is for when encryption is enabled, sha files will be created
   // after the encryption of the .sst and .blob files
   std::unique_ptr<rocksdb::Env> _checksumEnv;
+
+  std::unique_ptr<RocksDBDumpManager> _dumpManager;
+
+  std::shared_ptr<replication2::storage::wal::WalManager> _walManager;
 };
 
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";

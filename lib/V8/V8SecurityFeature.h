@@ -23,6 +23,10 @@
 
 #pragma once
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include <memory>
 #include <regex>
 #include <string>
@@ -72,6 +76,7 @@ class V8SecurityFeature final
 
   /// @brief tests if in the current security context it is allowed to
   /// start, collect and kill external processes
+  bool isAllowedToControlProcesses() const;
   bool isAllowedToControlProcesses(v8::Isolate* isolate) const;
   bool isAllowedToTestPorts(v8::Isolate* isolate) const;
 

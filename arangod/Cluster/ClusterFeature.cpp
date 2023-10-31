@@ -29,17 +29,21 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
-#include "Basics/MutexLocker.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Endpoint/Endpoint.h"
+#include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -241,7 +245,6 @@ All specifications of endpoints apply.)");
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
-      .setIntroducedIn(30600)
       .setLongDescription(R"(This value is used as the default write concern
 for databases, which in turn is used as the default for collections.
 
@@ -265,7 +268,6 @@ the same value on all Coordinators.)");
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
-      .setIntroducedIn(30600)
       .setLongDescription(R"(If you don't set this option, it defaults to the
 value of the `--cluster.min-replication-factor` option. If set, the value must
 be between the values of `--cluster.min-replication-factor` and
@@ -286,7 +288,6 @@ Coordinators.)");
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
-      .setIntroducedIn(30600)
       .setLongDescription(R"(If you change the value of this setting and
 restart the servers, no changes are applied to existing collections that would
 violate the new setting.
@@ -304,7 +305,6 @@ Coordinators.)");
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
-      .setIntroducedIn(30600)
       .setLongDescription(R"(If you change the value of this setting and
 restart the servers, no changes are applied to existing collections that would
 violate the new setting.
@@ -321,7 +321,6 @@ Coordinators.)");
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnCoordinator))
-      .setIntroducedIn(30501)
       .setLongDescription(R"(If you change the value of this setting and
 restart the servers, no changes are applied to existing collections that would
 violate the new setting.
@@ -337,7 +336,6 @@ Coordinators.)");
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::Enterprise))
-      .setIntroducedIn(30600)
       .setLongDescription(R"(If set to `true`, forces the cluster into creating
 all future collections with only a single shard and using the same DB-Server as
 as these collections' shards leader. All collections created this way are
@@ -420,6 +418,40 @@ any extra JWT checks compared to v3.7.)");
 shards operations that can be made when the **Rebalance Shards** button is
 clicked in the web interface. For backwards compatibility, the default value is
 `10`. A value of `0` disables the button.)");
+
+  options
+      ->addOption(
+          "--cluster.failed-write-concern-status-code",
+          "The HTTP status code to send if a shard has not enough in-sync "
+          "replicas to fulfill the write concern.",
+          new DiscreteValuesParameter<UInt32Parameter>(
+              &_statusCodeFailedWriteConcern, {403, 503}),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer))
+      .setIntroducedIn(31100)
+      .setLongDescription(R"(The default behavior is to return an HTTP
+`403 Forbidden` status code. You can set the option to `503` to return a
+`503 Service Unavailable`.)");
+
+  options
+      ->addOption("--cluster.connectivity-check-interval",
+                  "The interval (in seconds) in which cluster-internal "
+                  "connectivity checks are performed.",
+                  new UInt32Parameter(&_connectivityCheckInterval),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnDBServer))
+      .setLongDescription(R"(Setting this option to a value greater than
+zero makes Coordinators and DB-Servers run period connectivity checks
+with approximately the specified frequency. The first connectivity check
+is carried out approximately 15 seconds after server start.
+Note that a random delay is added to the interval on each server, so that
+different servers do not execute their connectivity checks all at the
+same time.
+Setting this option to a value of zero disables these connectivity checks.")")
+      .setIntroducedIn(31104);
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -563,7 +595,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
   pos = fallback.rfind(':');
   if (pos != std::string::npos) {
-    fallback = fallback.substr(0, pos);
+    fallback.resize(pos);
   }
   auto ss = ServerState::instance();
   ss->findHost(fallback);
@@ -583,6 +615,16 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       FATAL_ERROR_EXIT();
     }
     ServerState::instance()->setRole(_requestedRole);
+  }
+
+  constexpr std::uint32_t minConnectivityCheckInterval = 10;  // seconds
+  if (_connectivityCheckInterval > 0 &&
+      _connectivityCheckInterval < minConnectivityCheckInterval) {
+    _connectivityCheckInterval = minConnectivityCheckInterval;
+    LOG_TOPIC("08b46", WARN, Logger::CLUSTER)
+        << "configured value for `--cluster.connectivity-check-interval` is "
+           "too low and was automatically adjusted to minimum value "
+        << minConnectivityCheckInterval;
   }
 }
 
@@ -710,10 +752,19 @@ DECLARE_COUNTER(arangodb_sync_wrong_checksum_total,
 DECLARE_COUNTER(arangodb_sync_rebuilds_total,
                 "Number of times a follower shard needed to be completely "
                 "rebuilt because of too many synchronization failures");
+DECLARE_COUNTER(arangodb_sync_tree_rebuilds_total,
+                "Number of times a shard rebuilt its revision tree "
+                "completely because of too many synchronization failures");
 DECLARE_COUNTER(arangodb_potentially_dirty_document_reads_total,
                 "Number of document reads which could be dirty");
 DECLARE_COUNTER(arangodb_dirty_read_queries_total,
                 "Number of queries which could be doing dirty reads");
+DECLARE_COUNTER(arangodb_network_connectivity_failures_coordinators_total,
+                "Number of times the cluster-internal connectivity check for "
+                "Coordinators failed.");
+DECLARE_COUNTER(arangodb_network_connectivity_failures_dbservers_total,
+                "Number of times the cluster-internal connectivity check for "
+                "DB-Servers failed.");
 
 // IMPORTANT: Please read the first comment block a couple of lines down, before
 // Adding code to this section.
@@ -774,8 +825,6 @@ void ClusterFeature::start() {
 
   auto const version = comm.version();
 
-  ServerState::instance()->setInitialized();
-
   std::string const endpoints =
       AsyncAgencyCommManager::INSTANCE->getCurrentEndpoint();
 
@@ -790,11 +839,21 @@ void ClusterFeature::start() {
         &_metrics.add(arangodb_sync_wrong_checksum_total{});
     _followersTotalRebuildCounter =
         &_metrics.add(arangodb_sync_rebuilds_total{});
+    _syncTreeRebuildCounter =
+        &_metrics.add(arangodb_sync_tree_rebuilds_total{});
   } else if (role == ServerState::RoleEnum::ROLE_COORDINATOR) {
     _potentiallyDirtyDocumentReadsCounter =
         &_metrics.add(arangodb_potentially_dirty_document_reads_total{});
     _dirtyReadQueriesCounter =
         &_metrics.add(arangodb_dirty_read_queries_total{});
+  }
+
+  if (role == ServerState::RoleEnum::ROLE_DBSERVER ||
+      role == ServerState::RoleEnum::ROLE_COORDINATOR) {
+    _connectivityCheckFailsCoordinators = &_metrics.add(
+        arangodb_network_connectivity_failures_coordinators_total{});
+    _connectivityCheckFailsDBServers =
+        &_metrics.add(arangodb_network_connectivity_failures_dbservers_total{});
   }
 
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)
@@ -870,11 +929,25 @@ void ClusterFeature::start() {
     }
   }
 #endif
+
+  if (_connectivityCheckInterval > 0 &&
+      (role == ServerState::ROLE_COORDINATOR ||
+       role == ServerState::ROLE_DBSERVER)) {
+    // if connectivity checks are enabled, start the first one 15s after
+    // ClusterFeature start. we also add a bit of random noise to the start
+    // time offset so that when multiple servers are started at the same time,
+    // they don't execute their connectivity checks all at the same time
+    scheduleConnectivityCheck(15 +
+                              RandomGenerator::interval(std::uint32_t(15)));
+  }
 }
 
 void ClusterFeature::beginShutdown() {
   if (_enableCluster) {
     _clusterInfo->shutdownSyncers();
+
+    std::lock_guard<std::mutex> guard(_connectivityCheckMutex);
+    _connectivityCheck.reset();
   }
   _agencyCache->beginShutdown();
 }
@@ -890,6 +963,11 @@ void ClusterFeature::stop() {
   if (!_enableCluster) {
     shutdownHeartbeatThread();
     return;
+  }
+
+  {
+    std::lock_guard<std::mutex> guard(_connectivityCheckMutex);
+    _connectivityCheck.reset();
   }
 
 #ifdef USE_ENTERPRISE
@@ -932,6 +1010,10 @@ void ClusterFeature::stop() {
 
   AsyncAgencyCommManager::INSTANCE->setStopping(true);
   shutdownAgencyCache();
+
+  // We try to actively cancel all open requests that may still be in the Agency
+  // We cannot react to them anymore.
+  _asyncAgencyCommPool->shutdownConnections();
 }
 
 void ClusterFeature::setUnregisterOnShutdown(bool unregisterOnShutdown) {
@@ -1054,7 +1136,7 @@ void ClusterFeature::allocateMembers() {
 void ClusterFeature::addDirty(
     containers::FlatHashSet<std::string> const& databases, bool callNotify) {
   if (databases.size() > 0) {
-    MUTEX_LOCKER(guard, _dirtyLock);
+    std::lock_guard guard{_dirtyLock};
     for (auto const& database : databases) {
       if (_dirtyDatabases.emplace(database).second) {
         LOG_TOPIC("35b75", DEBUG, Logger::MAINTENANCE)
@@ -1071,7 +1153,7 @@ void ClusterFeature::addDirty(
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         databases) {
   if (databases.size() > 0) {
-    MUTEX_LOCKER(guard, _dirtyLock);
+    std::lock_guard guard{_dirtyLock};
     bool addedAny = false;
     for (auto const& database : databases) {
       if (_dirtyDatabases.emplace(database.first).second) {
@@ -1087,7 +1169,7 @@ void ClusterFeature::addDirty(
 }
 
 void ClusterFeature::addDirty(std::string const& database) {
-  MUTEX_LOCKER(guard, _dirtyLock);
+  std::lock_guard guard{_dirtyLock};
   if (_dirtyDatabases.emplace(database).second) {
     LOG_TOPIC("357b9", DEBUG, Logger::MAINTENANCE)
         << "adding " << database << " to dirty databases";
@@ -1097,14 +1179,14 @@ void ClusterFeature::addDirty(std::string const& database) {
 }
 
 containers::FlatHashSet<std::string> ClusterFeature::dirty() {
-  MUTEX_LOCKER(guard, _dirtyLock);
+  std::lock_guard guard{_dirtyLock};
   containers::FlatHashSet<std::string> ret;
   ret.swap(_dirtyDatabases);
   return ret;
 }
 
 bool ClusterFeature::isDirty(std::string const& dbName) const {
-  MUTEX_LOCKER(guard, _dirtyLock);
+  std::lock_guard guard{_dirtyLock};
   return _dirtyDatabases.find(dbName) != _dirtyDatabases.end();
 }
 
@@ -1116,4 +1198,113 @@ std::unordered_set<std::string> ClusterFeature::allDatabases() const {
     allDBNames.emplace(i);
   }
   return allDBNames;
+}
+
+void ClusterFeature::scheduleConnectivityCheck(std::uint32_t inSeconds) {
+  TRI_ASSERT(_connectivityCheckInterval > 0);
+
+  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  if (scheduler == nullptr || inSeconds == 0) {
+    return;
+  }
+
+  auto workItem = arangodb::SchedulerFeature::SCHEDULER->queueDelayed(
+      "connectivity-check", RequestLane::INTERNAL_LOW,
+      std::chrono::seconds(inSeconds), [this](bool canceled) {
+        if (canceled) {
+          return;
+        }
+
+        if (!this->server().isStopping()) {
+          runConnectivityCheck();
+        }
+        if (!this->server().isStopping()) {
+          scheduleConnectivityCheck(
+              _connectivityCheckInterval +
+              RandomGenerator::interval(std::uint32_t(3)));
+        }
+      });
+
+  std::lock_guard<std::mutex> guard(_connectivityCheckMutex);
+  _connectivityCheck = std::move(workItem);
+}
+
+void ClusterFeature::runConnectivityCheck() {
+  TRI_ASSERT(ServerState::instance()->isCoordinator() ||
+             ServerState::instance()->isDBServer());
+
+  TRI_ASSERT(_connectivityCheckFailsCoordinators != nullptr);
+  TRI_ASSERT(_connectivityCheckFailsDBServers != nullptr);
+
+  NetworkFeature const& nf = server().getFeature<NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+  if (!pool) {
+    return;
+  }
+
+  if (_clusterInfo == nullptr) {
+    return;
+  }
+
+  // we want to contact coordinators and DB servers, potentially
+  // including _ourselves_ (we need to be able to send requests
+  // to ourselves)
+  auto servers = _clusterInfo->getCurrentCoordinators();
+  for (auto& it : _clusterInfo->getCurrentDBServers()) {
+    servers.emplace_back(std::move(it));
+  }
+
+  LOG_TOPIC("601e3", DEBUG, Logger::CLUSTER)
+      << "sending connectivity check requests to " << servers.size()
+      << " servers: " << servers;
+
+  // run a basic connectivity check by calling /_api/version
+  static constexpr double timeout = 10.0;
+  network::RequestOptions reqOpts;
+  reqOpts.skipScheduler = true;
+  reqOpts.timeout = network::Timeout(timeout);
+
+  std::vector<futures::Future<network::Response>> futures;
+  futures.reserve(servers.size());
+
+  for (auto const& server : servers) {
+    futures.emplace_back(network::sendRequest(pool, "server:" + server,
+                                              fuerte::RestVerb::Get,
+                                              "/_api/version", {}, reqOpts));
+  }
+
+  for (futures::Future<network::Response>& f : futures) {
+    if (this->server().isStopping()) {
+      break;
+    }
+    network::Response const& r = f.get();
+    TRI_ASSERT(r.destination.starts_with("server:"));
+
+    if (r.ok()) {
+      LOG_TOPIC("803c0", DEBUG, Logger::CLUSTER)
+          << "connectivity check for endpoint " << r.destination
+          << " successful";
+    } else {
+      LOG_TOPIC("43fc0", WARN, Logger::CLUSTER)
+          << "unable to connect to endpoint " << r.destination << " within "
+          << timeout << " seconds: " << r.combinedResult().errorMessage();
+
+      auto ep = std::string_view(r.destination);
+      if (!ep.starts_with("server:")) {
+        TRI_ASSERT(false);
+        continue;
+      }
+      // strip "server:" prefix
+      ep = ep.substr(strlen("server:"));
+      if (ep.starts_with("PRMR-")) {
+        // DB-Server
+        _connectivityCheckFailsDBServers->count();
+      } else if (ep.starts_with("CRDN-")) {
+        _connectivityCheckFailsCoordinators->count();
+      } else {
+        // unknown server type!
+        TRI_ASSERT(false);
+      }
+    }
+  }
 }

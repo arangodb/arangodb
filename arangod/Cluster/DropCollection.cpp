@@ -31,10 +31,14 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Replication2/ReplicatedState/ReplicatedState.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -60,6 +64,23 @@ DropCollection::DropCollection(MaintenanceFeature& feature,
 
 DropCollection::~DropCollection() = default;
 
+bool DropCollection::dropReplication2Shard(ShardID const& shard,
+                                           TRI_vocbase_t& vocbase) {
+  std::shared_ptr<LogicalCollection> coll;
+  Result found = methods::Collections::lookup(vocbase, shard, coll);
+  if (found.ok()) {
+    auto result = coll->getDocumentStateLeader()
+                      ->dropShard(shard, std::to_string(coll->planId().id()))
+                      .get();
+    if (result.fail()) {
+      LOG_TOPIC("2e981", ERR, Logger::MAINTENANCE)
+          << "failed to drop shard " << result;
+    }
+  }
+
+  return false;
+}
+
 bool DropCollection::first() {
   auto const& database = getDatabase();
   auto const& shard = getShard();
@@ -67,61 +88,68 @@ bool DropCollection::first() {
   LOG_TOPIC("a2961", DEBUG, Logger::MAINTENANCE)
       << "DropCollection: dropping local shard '" << database << "/" << shard;
 
+  std::string from;
+  _description.get("from", from);
+
   // Database still there?
-  auto* vocbase =
-      _feature.server().getFeature<DatabaseFeature>().lookupDatabase(database);
-  if (vocbase != nullptr) {
-    try {
-      DatabaseGuard guard(*vocbase);
-      auto& vocbase = guard.database();
+  auto& df = _feature.server().getFeature<DatabaseFeature>();
+  try {
+    // note: will throw if database is already deleted.
+    // exception TRI_ERROR_ARANGO_DATABASE_NOT_FOUND will be handled
+    // properly below
+    DatabaseGuard guard(df, database);
+    auto& vocbase = guard.database();
+    if (vocbase.replicationVersion() == replication::Version::TWO &&
+        from == "maintenance") {
+      return dropReplication2Shard(shard, vocbase);
+    }
 
-      std::shared_ptr<LogicalCollection> coll;
-      Result found = methods::Collections::lookup(vocbase, shard, coll);
-      if (found.ok()) {
-        TRI_ASSERT(coll);
-        LOG_TOPIC("03e2f", DEBUG, Logger::MAINTENANCE)
-            << "Dropping local collection " << shard;
-        result(Collections::drop(*coll, false));
+    std::shared_ptr<LogicalCollection> coll;
+    Result found = methods::Collections::lookup(vocbase, shard, coll);
+    if (found.ok()) {
+      TRI_ASSERT(coll);
+      LOG_TOPIC("03e2f", DEBUG, Logger::MAINTENANCE)
+          << "Dropping local collection " << shard;
+      result(Collections::drop(*coll, false));
 
-        // it is safe here to clear our replication failure statistics even
-        // if the collection could not be dropped. the drop attempt alone
-        // should be reason enough to zero our stats
-        _feature.removeReplicationError(vocbase.name(), shard);
-      } else {
-        std::stringstream error;
+      // it is safe here to clear our replication failure statistics even
+      // if the collection could not be dropped. the drop attempt alone
+      // should be reason enough to zero our stats
+      _feature.removeReplicationError(database, shard);
+    } else {
+      std::stringstream error;
 
-        error << "failed to lookup local collection " << database << "/"
-              << shard;
-        LOG_TOPIC("02722", ERR, Logger::MAINTENANCE)
-            << "DropCollection: " << error.str();
-        result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, error.str());
+      error << "failed to lookup local collection " << database << "/" << shard;
+      LOG_TOPIC("02722", ERR, Logger::MAINTENANCE)
+          << "DropCollection: " << error.str();
+      result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, error.str());
 
-        return false;
-      }
-    } catch (basics::Exception const& e) {
-      if (e.code() != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
-        // any error but database not found will be reported properly
-        std::stringstream error;
-
-        error << "action " << _description << " failed with exception "
-              << e.what();
-        LOG_TOPIC("761d2", ERR, Logger::MAINTENANCE) << error.str();
-        result(e.code(), error.str());
-
-        return false;
-      }
-      // TRI_ERROR_ARANGO_DATABASE_NOT_FOUND will fallthrough here,
-      // intentionally
-    } catch (std::exception const& e) {
+      return false;
+    }
+  } catch (basics::Exception const& e) {
+    if (e.code() != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
+      // any error but "database not found" will be reported properly.
+      // "database not found" is expected here for already-dropped
+      // databases.
       std::stringstream error;
 
       error << "action " << _description << " failed with exception "
             << e.what();
-      LOG_TOPIC("9dbd8", ERR, Logger::MAINTENANCE) << error.str();
-      result(TRI_ERROR_INTERNAL, error.str());
+      LOG_TOPIC("761d2", ERR, Logger::MAINTENANCE) << error.str();
+      result(e.code(), error.str());
 
       return false;
     }
+    // TRI_ERROR_ARANGO_DATABASE_NOT_FOUND will fallthrough here,
+    // intentionally
+  } catch (std::exception const& e) {
+    std::stringstream error;
+
+    error << "action " << _description << " failed with exception " << e.what();
+    LOG_TOPIC("9dbd8", ERR, Logger::MAINTENANCE) << error.str();
+    result(TRI_ERROR_INTERNAL, error.str());
+
+    return false;
   }
 
   // We're removing the shard version from MaintenanceFeature before notifying

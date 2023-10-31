@@ -38,6 +38,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
@@ -50,9 +51,15 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 
+#include <string_view>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+
+namespace {
+constexpr std::string_view moduleName("collection management");
+}
 
 RestCollectionHandler::RestCollectionHandler(ArangodServer& server,
                                              GeneralRequest* request,
@@ -291,33 +298,13 @@ RestStatus RestCollectionHandler::handleCommandGet() {
                                /*showProperties*/ true, FiguresType::None,
                                CountType::None);
 
-      auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-      auto shards = ci.getShardList(std::to_string(coll->planId().id()));
-
+      auto shardsMap = coll->shardIds();
       if (_request->parsedValue("details", false)) {
         // with details
-        VPackObjectBuilder arr(&_builder, "shards", true);
-        for (ShardID const& shard : *shards) {
-          std::vector<ServerID> servers;
-          ci.getShardServers(shard, servers);
-
-          if (servers.empty()) {
-            continue;
-          }
-
-          VPackArrayBuilder arr2(&_builder, shard);
-
-          for (auto const& server : servers) {
-            arr2->add(VPackValue(server));
-          }
-        }
+        coll->shardMapToVelocyPack(_builder);
       } else {
-        // no details
-        VPackArrayBuilder arr(&_builder, "shards", true);
-
-        for (ShardID const& shard : *shards) {
-          arr->add(VPackValue(shard));
-        }
+        // without details
+        coll->shardIDsToVelocyPack(_builder);
       }
     }
     return standardResponse();
@@ -341,7 +328,8 @@ void RestCollectionHandler::handleCommandPost() {
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
-    events::CreateCollection(_vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
+    events::CreateCollection(_vocbase.name(), StaticStrings::Empty,
+                             TRI_ERROR_BAD_PARAMETER);
     return;
   }
   auto& cluster = _vocbase.server().getFeature<ClusterFeature>();
@@ -352,7 +340,9 @@ void RestCollectionHandler::handleCommandPost() {
       _request->parsedValue("enforceReplicationFactor", true);
   auto config = _vocbase.getDatabaseConfiguration();
   config.enforceReplicationFactor = enforceReplicationFactor;
+
   auto planCollection = CreateCollectionBody::fromCreateAPIBody(body, config);
+
   if (planCollection.fail()) {
     // error message generated in inspect
     generateError(rest::ResponseCode::BAD, planCollection.errorNumber(),
@@ -361,16 +351,15 @@ void RestCollectionHandler::handleCommandPost() {
     // empty string
     auto collectionName = VelocyPackHelper::getStringValue(
         body, StaticStrings::DataSourceName, StaticStrings::Empty);
+
     events::CreateCollection(_vocbase.name(), collectionName,
                              planCollection.errorNumber());
     return;
   }
   std::vector<CreateCollectionBody> collections{
       std::move(planCollection.get())};
-  auto parameters = planCollection->toCollectionsCreate();
 
   OperationOptions options(_context);
-  std::shared_ptr<LogicalCollection> coll;
   auto result = methods::Collections::create(
       _vocbase,  // collection vocbase
       options, collections,
@@ -379,8 +368,9 @@ void RestCollectionHandler::handleCommandPost() {
       /*isNewDatabase*/ false    // here always false
   );
 
+  std::shared_ptr<LogicalCollection> coll;
   // backwards compatibility transformation:
-  Result res{TRI_ERROR_NO_ERROR};
+  Result res;
   if (result.fail()) {
     res = result.result();
   } else {
@@ -511,8 +501,9 @@ RestStatus RestCollectionHandler::handleCommandPut() {
         _request->value(StaticStrings::IsSynchronousReplicationString);
     opts.truncateCompact = _request->parsedValue(StaticStrings::Compact, true);
 
-    _activeTrx =
-        createTransaction(coll->name(), AccessMode::Type::EXCLUSIVE, opts);
+    _activeTrx = createTransaction(
+        coll->name(), AccessMode::Type::EXCLUSIVE, opts,
+        transaction::OperationOriginREST{"truncating collection"});
     _activeTrx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
     _activeTrx->addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
     res = _activeTrx->begin();
@@ -788,7 +779,7 @@ RestCollectionHandler::collectionRepresentationAsync(
         }
 
         if (showCount != CountType::None) {
-          auto trx = ctxt.trx(AccessMode::Type::READ, true, true);
+          auto trx = ctxt.trx(AccessMode::Type::READ, true);
           TRI_ASSERT(trx != nullptr);
           return trx->countAsync(coll->name(),
                                  showCount == CountType::Detailed
@@ -801,7 +792,7 @@ RestCollectionHandler::collectionRepresentationAsync(
       .thenValue([=, this, &ctxt](OperationResult&& opRes) -> void {
         if (opRes.fail()) {
           if (showCount != CountType::None) {
-            auto trx = ctxt.trx(AccessMode::Type::READ, true, true);
+            auto trx = ctxt.trx(AccessMode::Type::READ, true);
             TRI_ASSERT(trx != nullptr);
             std::ignore = trx->finish(opRes.result);
           }
@@ -828,16 +819,18 @@ RestStatus RestCollectionHandler::standardResponse() {
 
 void RestCollectionHandler::initializeTransaction(LogicalCollection& coll) {
   try {
-    _activeTrx = createTransaction(coll.name(), AccessMode::Type::READ,
-                                   OperationOptions());
+    _activeTrx = createTransaction(
+        coll.name(), AccessMode::Type::READ, OperationOptions(),
+        transaction::OperationOriginREST{::moduleName});
   } catch (basics::Exception const& ex) {
     if (ex.code() == TRI_ERROR_TRANSACTION_NOT_FOUND) {
       // this will happen if the tid of a managed transaction is passed in,
       // but the transaction hasn't yet started on the DB server. in
       // this case, we create an ad-hoc transaction on the underlying
       // collection
+      auto origin = transaction::OperationOriginREST{::moduleName};
       _activeTrx = std::make_unique<SingleCollectionTransaction>(
-          transaction::StandaloneContext::Create(_vocbase), coll.name(),
+          transaction::StandaloneContext::create(_vocbase, origin), coll.name(),
           AccessMode::Type::READ);
     } else {
       throw;

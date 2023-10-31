@@ -25,6 +25,7 @@
 #include "Basics/debugging.h"
 #include "Metrics/Metric.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Value.h>
 #include <velocypack/Builder.h>
 
@@ -33,17 +34,29 @@
 namespace arangodb::metrics {
 
 template<typename T>
-class Gauge final : public Metric {
+class Gauge : public Metric {
  public:
+  using Value = T;
+
   Gauge(T t, std::string_view name, std::string_view help,
         std::string_view labels)
       : Metric{name, help, labels}, _g{t} {}
 
   [[nodiscard]] std::string_view type() const noexcept final { return "gauge"; }
 
-  void toPrometheus(std::string& result, std::string_view globals) const final {
+  void toPrometheus(std::string& result, std::string_view globals,
+                    bool ensureWhitespace) const final {
     Metric::addMark(result, name(), globals, labels());
-    result.append(std::to_string(load())) += '\n';
+    if constexpr (std::is_integral_v<T>) {
+      absl::StrAppend(&result, ensureWhitespace ? " " : "", load(), "\n");
+    } else {
+      // must use std::to_string() here because it produces a different
+      // string representation of large floating-point numbers than absl
+      // does. absl uses scientific notation for numbers that exceed 6
+      // digits, and std::to_string() doesn't.
+      absl::StrAppend(&result, ensureWhitespace ? " " : "",
+                      std::to_string(load()), "\n");
+    }
   }
 
   void toVPack(velocypack::Builder& builder, ArangodServer&) const final {

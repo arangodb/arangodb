@@ -204,6 +204,9 @@ struct OptimizerRule {
     // sort values used in IN comparisons of remaining filters
     sortInValuesRule,
 
+    // Replaces the last element of the path on traversals, by direct output.
+    replaceLastAccessOnGraphPathRule,
+
     // merge filters into graph traversals
     optimizeTraversalsRule,
 
@@ -229,6 +232,9 @@ struct OptimizerRule {
     // when we have single document operations, fill in special cluster
     // handling.
     substituteSingleDocumentOperations,
+
+    // special cluster handling for multiple operations (babies)
+    substituteMultipleDocumentOperations,
 
     /// Pass 9: push down calculations beyond FILTERs and LIMITs
     moveCalculationsDownRule,
@@ -326,17 +332,11 @@ struct OptimizerRule {
     restrictToSingleShardRule,
 
     // turns LENGTH(FOR doc IN collection ... RETURN doc) into an optimized
-    // count
-    // operation
+    // count operation
     optimizeCountRule,
 
     // parallelizes execution in coordinator-sided GatherNodes
     parallelizeGatherRule,
-
-    // allows execution nodes to asynchronously prefetch the next batch from
-    // their
-    // upstream node.
-    asyncPrefetch,
 
     // reduce a sorted gather to an unsorted gather if only a single shard is
     // affected
@@ -361,6 +361,21 @@ struct OptimizerRule {
 #ifdef USE_ENTERPRISE
     lateMaterialiationOffsetInfoRule,
 #endif
+
+    // remove unnecessary projections & store projection attributes in
+    // individual registers
+    optimizeProjections,
+
+    // replace adjacent index nodes with a join node if the indexes qualify
+    // for it.
+    joinIndexNodesRule,
+
+    // final cleanup, after projections
+    removeUnnecessaryCalculationsRule4,
+
+    // allows execution nodes to asynchronously prefetch the next batch from
+    // their upstream node.
+    asyncPrefetch,
 
     // splice subquery into the place of a subquery node
     // enclosed by a SubqueryStartNode and a SubqueryEndNode
@@ -398,11 +413,17 @@ struct OptimizerRule {
   RuleFunction func;
   RuleLevel level;
   std::underlying_type<Flags>::type flags;
+  std::string_view description;
 
   OptimizerRule() = delete;
   OptimizerRule(std::string_view name, RuleFunction const& ruleFunc,
-                RuleLevel level, std::underlying_type<Flags>::type flags)
-      : name(name), func(ruleFunc), level(level), flags(flags) {}
+                RuleLevel level, std::underlying_type<Flags>::type flags,
+                std::string_view description)
+      : name(name),
+        func(ruleFunc),
+        level(level),
+        flags(flags),
+        description(description) {}
 
   OptimizerRule(OptimizerRule&& other) = default;
   OptimizerRule& operator=(OptimizerRule&& other) = default;

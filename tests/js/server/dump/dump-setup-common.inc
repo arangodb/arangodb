@@ -33,6 +33,7 @@ const analyzers = require("@arangodb/analyzers");
 const db = require("@arangodb").db;
 const isCluster = require('internal').isCluster();
 const isEnterprise = require("internal").isEnterprise();
+const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
 
 let sgm;
 let satgm;
@@ -82,6 +83,7 @@ function cleanup() {
   db._drop("UnitTestsDumpStrings");
   db._drop("UnitTestsDumpReplicationFactor1");
   db._drop("UnitTestsDumpReplicationFactor2");
+  db._drop(extendedName);
 }
 
 function createUsers() {
@@ -170,6 +172,14 @@ function createModifyCollection() {
     value3: "test" + i
   })));
   c.truncate({compact: false});
+}
+
+function createExtendedName() {
+  db._useDatabase("UnitTestsDumpSrc");
+
+  // we apply a series of updates & removals here
+  let c = db._create(extendedName);
+  c.save(Array(10000).fill().map((e, i, a) => Object({_key: "test" + i, value1: i})));
 }
 
 function createMultiShard() {
@@ -1421,6 +1431,7 @@ exports.createEmpty = createEmpty;
 exports.createMany = createMany;
 exports.createOrder = createOrder;
 exports.createModifyCollection = createModifyCollection;
+exports.createExtendedName = createExtendedName;
 exports.createMultiShard = createMultiShard;
 exports.createComputedValues = createComputedValues;
 exports.createAutoIncKeyGen = createAutoIncKeyGen;
@@ -1436,3 +1447,4 @@ exports.createReplicationFactors = createReplicationFactors;
 exports.createJobs = createJobs;
 exports.createFoxx = createFoxx;
 exports.createAnalyzers = createAnalyzers;
+exports.extendedName = extendedName;

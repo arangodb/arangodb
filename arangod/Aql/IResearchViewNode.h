@@ -31,7 +31,6 @@
 #include "Aql/types.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/FlatHashMap.h"
-#include "Containers/SmallVector.h"
 #include "IResearch/IResearchFilterOptimization.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchViewSort.h"
@@ -43,19 +42,22 @@
 
 #include "utils/bit_utils.hpp"
 
+#include <span>
+#include <string_view>
 #include <unordered_map>
 
 namespace arangodb {
 class LogicalView;
 namespace aql {
 struct Collection;
-class ExecutionNode;
 class ExecutionBlock;
 class ExecutionEngine;
 template<typename T>
 struct RegisterPlanT;
 using RegisterPlan = RegisterPlanT<ExecutionNode>;
 struct VarInfo;
+
+using FieldRegisters = std::map<size_t, RegisterId>;
 }  // namespace aql
 namespace iresearch {
 
@@ -76,7 +78,25 @@ enum class CountApproximate {
   Cost = 1,   // iterator cost could be used as skipAllCount
 };
 
-class IResearchViewNode final : public aql::ExecutionNode {
+struct HeapSortElement {
+  bool isScore() const noexcept {
+    // if fieldNumber is max then it is scored idx.
+    // Stored Column idx otherwise.
+    return fieldNumber == std::numeric_limits<size_t>::max();
+  }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  auto operator<=>(HeapSortElement const&) const noexcept = default;
+#endif
+
+  std::string postfix;
+  ptrdiff_t source{0};
+  size_t fieldNumber{std::numeric_limits<size_t>::max()};
+  bool ascending{true};
+};
+
+class IResearchViewNode final : public aql::ExecutionNode,
+                                public aql::DataAccessingNode {
  public:
   // Node options
   struct Options {
@@ -119,6 +139,9 @@ class IResearchViewNode final : public aql::ExecutionNode {
   // Return the type of the node.
   NodeType getType() const final { return ENUMERATE_IRESEARCH_VIEW; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   // Clone ExecutionNode recursively.
   aql::ExecutionNode* clone(aql::ExecutionPlan* plan, bool withDependencies,
                             bool withProperties) const final;
@@ -126,6 +149,13 @@ class IResearchViewNode final : public aql::ExecutionNode {
   using Collections =
       std::vector<std::pair<std::reference_wrapper<aql::Collection const>,
                             LogicalView::Indexes>>;
+
+  aql::Collection const* collection() const final;
+  bool isUsedAsSatellite() const final;
+  void useAsSatelliteOf(aql::ExecutionNodeId) final;
+  aql::Collection const* prototypeCollection() const final;
+  void setPrototype(arangodb::aql::Collection const* prototypeCollection,
+                    arangodb::aql::Variable const* prototypeOutVariable) final;
 
   // Returns the list of the linked collections.
   Collections collections() const;
@@ -136,10 +166,18 @@ class IResearchViewNode final : public aql::ExecutionNode {
   // The cost of an enumerate view node.
   aql::CostEstimate estimateCost() const final;
 
+  aql::AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
+
   // TODO(MBkkt) Use containers::FlatHashMap
   void replaceVariables(
       std::unordered_map<aql::VariableId, aql::Variable const*> const&
           replacements) final;
+
+  void replaceAttributeAccess(aql::ExecutionNode const* self,
+                              aql::Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              aql::Variable const* replaceVariable) override;
 
   std::vector<aql::Variable const*> getVariablesSetHere() const final;
 
@@ -177,6 +215,7 @@ class IResearchViewNode final : public aql::ExecutionNode {
   auto& shards() noexcept { return _shards; }
 
   // Return the scorers to pass to the view.
+  auto& scorers() noexcept { return _scorers; }
   auto const& scorers() const noexcept { return _scorers; }
 
   // Return current snapshot key
@@ -213,24 +252,20 @@ class IResearchViewNode final : public aql::ExecutionNode {
   //   sort condition
   std::pair<bool, bool> volatility(bool force = false) const;
 
-  void setScorersSort(std::vector<std::pair<size_t, bool>>&& sort,
-                      size_t limit) {
-    _scorersSort = std::move(sort);
-    _scorersSortLimit = limit;
+  void setHeapSort(std::vector<HeapSortElement>&& sort, size_t limit) {
+    _heapSort = std::move(sort);
+    _heapSortLimit = limit;
   }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  size_t getScorersSortLimit() const noexcept { return _scorersSortLimit; }
+  size_t getHeapSortLimit() const noexcept { return _heapSortLimit; }
 
-  auto getScorersSort() const noexcept { return std::span(_scorersSort); }
+  auto getHeapSort() const noexcept { return std::span(_heapSort); }
 #endif
 
   // Creates corresponding ExecutionBlock.
-  // TODO(MBkkt) Use containers::FlatHashMap
   std::unique_ptr<aql::ExecutionBlock> createBlock(
-      aql::ExecutionEngine& engine,
-      std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&)
-      const final;
+      aql::ExecutionEngine& engine) const final;
 
   aql::RegIdSet calcInputRegs() const;
 
@@ -245,6 +280,8 @@ class IResearchViewNode final : public aql::ExecutionNode {
   bool isLateMaterialized() const noexcept {
     return _outNonMaterializedDocId != nullptr;
   }
+
+  bool isHeapSort() const noexcept { return !_heapSort.empty(); }
 
   void setLateMaterialized(aql::Variable const& docIdVariable) noexcept {
     _outNonMaterializedDocId = &docIdVariable;
@@ -270,12 +307,14 @@ class IResearchViewNode final : public aql::ExecutionNode {
   using ViewValuesVars =
       containers::FlatHashMap<ptrdiff_t, std::vector<ViewVariable>>;
 
-  using ViewValuesRegisters =
-      std::map<ptrdiff_t, std::map<size_t, aql::RegisterId>>;
+  using ViewValuesRegisters = std::map<ptrdiff_t, aql::FieldRegisters>;
 
   using ViewVarsInfo =
       containers::FlatHashMap<std::vector<basics::AttributeName> const*,
                               ViewVariableWithColumn>;
+
+  std::pair<ptrdiff_t, size_t> getSourceColumnInfo(
+      aql::VariableId id) const noexcept;
 
   void setViewVariables(ViewVarsInfo const& viewVariables) {
     _outNonMaterializedViewVars.clear();
@@ -376,14 +415,19 @@ class IResearchViewNode final : public aql::ExecutionNode {
   Options _options;
 
   // Internal order for scorers.
-  std::vector<std::pair<size_t, bool>> _scorersSort;
-  size_t _scorersSortLimit{0};
+  std::vector<HeapSortElement> _heapSort;
+  size_t _heapSortLimit{0};
 
   // Volatility mask
   mutable int _volatilityMask{-1};
 
   // Whether "no materialization" rule should be applied
   bool _noMaterialization{false};
+
+  // Optimizing time support.
+  // Intentionally not serialized/copied
+  bool _isUsedAsSatellite{false};
+  arangodb::aql::Collection const* _prototypeCollection{};
 };
 
 }  // namespace iresearch

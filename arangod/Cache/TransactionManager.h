@@ -29,6 +29,7 @@
 #include "Cache/Transaction.h"
 
 namespace arangodb::cache {
+class Manager;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Manage global cache transactions.
@@ -45,7 +46,7 @@ class TransactionManager {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initialize state with no open transactions.
   //////////////////////////////////////////////////////////////////////////////
-  TransactionManager();
+  explicit TransactionManager(Manager* manager);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Open a new transaction.
@@ -54,12 +55,12 @@ class TransactionManager {
   /// to the backing store. A read-only transaction may, however, write to the
   /// cache.
   //////////////////////////////////////////////////////////////////////////////
-  Transaction* begin(bool readOnly);
+  void begin(Transaction& tx, bool readOnly);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Signal the end of a transaction. Deletes the passed Transaction.
   //////////////////////////////////////////////////////////////////////////////
-  void end(Transaction* tx) noexcept;
+  void end(Transaction& tx) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return the current window identifier.
@@ -90,6 +91,9 @@ class TransactionManager {
   };
 
   std::atomic<State> _state;
+
+  // note: can be a null pointer in unit tests
+  Manager* _manager;
 };
 
 };  // end namespace arangodb::cache

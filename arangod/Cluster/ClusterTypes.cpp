@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterTypes.h"
+#include "Agency/Supervision.h"
 #include "Basics/debugging.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/voc-errors.h"
@@ -33,6 +34,42 @@ namespace arangodb {
 std::ostream& operator<<(std::ostream& o,
                          arangodb::QueryAnalyzerRevisions const& r) {
   return r.print(o);
+}
+
+std::ostream& operator<<(std::ostream& o, ServerHealth r) {
+  switch (r) {
+    case ServerHealth::kGood:
+      o << consensus::Supervision::HEALTH_STATUS_GOOD;
+      break;
+    case ServerHealth::kBad:
+      o << consensus::Supervision::HEALTH_STATUS_BAD;
+      break;
+    case ServerHealth::kFailed:
+      o << consensus::Supervision::HEALTH_STATUS_FAILED;
+      break;
+    case ServerHealth::kUnclear:
+      o << consensus::Supervision::HEALTH_STATUS_UNCLEAR;
+      break;
+    default:
+      TRI_ASSERT(false);
+      o << consensus::Supervision::HEALTH_STATUS_UNCLEAR;
+  }
+  return o;
+}
+
+std::ostream& operator<<(std::ostream& o, ServerHealthState const& r) {
+  return o << "RebootId: " << r.rebootId << " Status: " << r.status;
+}
+
+auto to_string(PeerState const& peerState) -> std::string {
+  VPackBuilder builder;
+  velocypack::serialize(builder, peerState);
+  return builder.slice().toJson();
+}
+
+auto operator<<(std::ostream& ostream, PeerState const& peerState)
+    -> std::ostream& {
+  return ostream << to_string(peerState);
 }
 
 void QueryAnalyzerRevisions::toVelocyPack(VPackBuilder& builder) const {

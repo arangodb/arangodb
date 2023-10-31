@@ -9,7 +9,7 @@ complexity: advanced
 exposedBy:
   - dbserver
 description: |
-  Database servers execute reconciliation actions to let the cluster converge
+  DB-Servers execute reconciliation actions to let the cluster converge
   to the desired state. To identify the target state differences in the meta
   data store provided by the Agency are investigated and local changes are
   reported. This process is called Agency sync and is executed in regular

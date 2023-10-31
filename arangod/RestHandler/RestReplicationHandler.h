@@ -280,6 +280,11 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   void handleCommandRebuildRevisionTree();
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  /// @brief intentionally corrupt the revision of a collection
+  void handleCommandCorruptRevisionTree();
+#endif
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the requested revision ranges for a given collection, if
   ///        available
@@ -323,6 +328,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   bool prepareRevisionOperation(RevisionOperationContext&);
 
  private:
+  bool prepareCollectionForRevisionOperation(RevisionOperationContext&);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the structure of a collection
   //////////////////////////////////////////////////////////////////////////////
@@ -334,28 +341,33 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// processRestoreUsersBatch().
   Result parseBatchForSystemCollection(
       std::string const& collectionName, VPackBuilder& documentsToInsert,
-      std::unordered_set<std::string>& documentsToRemove,
-      bool generateNewRevisionIds);
+      std::unordered_set<std::string>& documentsToRemove);
+
+  Result parseBatchForSystemCollectionDump(
+      std::string const& collectionName, VPackBuilder& documentsToInsert,
+      std::unordered_set<std::string>& documentsToRemove);
+
+  Result parseBatchForSystemCollectionVPack(std::string const& collectionName,
+                                            VPackBuilder& documentsToInsert);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of the _analyzers collection in cluster
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreCoordinatorAnalyzersBatch(bool generateNewRevisionIds);
+  Result processRestoreCoordinatorAnalyzersBatch();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of the _users collection
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreUsersBatch(bool generateNewRevisionIds);
+  Result processRestoreUsersBatch();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of a collection
   //////////////////////////////////////////////////////////////////////////////
 
   Result processRestoreDataBatch(transaction::Methods& trx,
-                                 std::string const& colName,
-                                 bool generateNewRevisionIds);
+                                 std::string const& colName);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the indexes of a collection
@@ -382,14 +394,16 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   Result parseBatch(transaction::Methods& trx,
                     std::string const& collectionName,
                     VPackBuilder& documentToInsert,
-                    std::unordered_set<std::string>& documentsToRemove,
-                    bool generateNewRevisionIds);
+                    std::unordered_set<std::string>& documentsToRemove);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief creates a collection, based on the VelocyPack provided
-  //////////////////////////////////////////////////////////////////////////////
+  Result parseBatchDump(transaction::Methods& trx,
+                        std::string const& collectionName,
+                        VPackBuilder& documentToInsert,
+                        std::unordered_set<std::string>& documentsToRemove);
 
-  ErrorCode createCollection(VPackSlice slice);
+  Result parseBatchVPack(transaction::Methods& trx,
+                         std::string const& collectionName,
+                         VPackBuilder& documentToInsert);
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -547,5 +561,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ///        Will return error code otherwise.
   //////////////////////////////////////////////////////////////////////////////
   Result testPermissions();
+
+  static constexpr uint64_t defaultChunkSize = 128 * 1024;
+  static constexpr uint64_t maxChunkSize = 64 * 1024 * 1024;
 };
 }  // namespace arangodb

@@ -56,8 +56,8 @@
 
 namespace {
 
-bool operator==(std::span<irs::sort::ptr const> lhs,
-                std::vector<irs::sort::ptr> const& rhs) noexcept {
+bool operator==(std::span<irs::Scorer::ptr const> lhs,
+                std::vector<irs::Scorer::ptr> const& rhs) noexcept {
   if (lhs.size() != rhs.size()) {
     return false;
   }
@@ -82,17 +82,31 @@ bool operator==(std::span<irs::sort::ptr const> lhs,
   return true;
 }
 
-struct dummy_scorer : public irs::sort {
+struct dummy_scorer final : public irs::ScorerBase<void> {
   static std::function<bool(std::string_view)> validateArgs;
   static constexpr std::string_view type_name() noexcept {
     return "TEST::TFIDF";
   }
   static ptr make(std::string_view args) {
-    if (!validateArgs(args)) return nullptr;
+    if (!validateArgs(args)) {
+      return nullptr;
+    }
     return std::make_unique<dummy_scorer>();
   }
-  dummy_scorer() : irs::sort(irs::type<dummy_scorer>::get()) {}
-  virtual sort::prepared::ptr prepare() const override { return nullptr; }
+
+  irs::IndexFeatures index_features() const noexcept final {
+    return irs::IndexFeatures::NONE;
+  }
+  irs::ScoreFunction prepare_scorer(
+      const irs::ColumnProvider& /*segment*/,
+      const std::map<irs::type_info::type_id, irs::field_id>& /*features*/,
+      const irs::byte_type* /*stats*/,
+      const irs::attribute_provider& /*doc_attrs*/,
+      irs::score_t /*boost*/) const noexcept final {
+    return irs::ScoreFunction::Default(0);
+  }
+
+  dummy_scorer() = default;
 };
 
 /*static*/ std::function<bool(std::string_view)> dummy_scorer::validateArgs =
@@ -102,14 +116,15 @@ REGISTER_SCORER_JSON(dummy_scorer, dummy_scorer::make);
 
 void assertOrder(
     arangodb::ArangodServer& server, bool parseOk, bool execOk,
-    std::string const& queryString, std::span<irs::sort::ptr const> expected,
+    std::string const& queryString, std::span<irs::Scorer::ptr const> expected,
     arangodb::aql::ExpressionContext* exprCtx = nullptr,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d") {
   TRI_vocbase_t vocbase(testDBInfo(server));
 
   auto query = arangodb::aql::Query::create(
-      arangodb::transaction::StandaloneContext::Create(vocbase),
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
       arangodb::aql::QueryString(queryString), bindVars);
 
   auto const parseResult = query->parse();
@@ -164,12 +179,13 @@ void assertOrder(
 
   // execution time check
   {
-    std::vector<irs::sort::ptr> actual;
-    irs::sort::ptr actualScorer;
+    std::vector<irs::Scorer::ptr> actual;
+    irs::Scorer::ptr actualScorer;
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-        arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        {}, {}, {}, arangodb::transaction::Options());
 
     auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
     if (mockCtx) {  // simon: hack to make expression context work again
@@ -196,7 +212,7 @@ void assertOrder(
 
 void assertOrderSuccess(
     arangodb::ArangodServer& server, std::string const& queryString,
-    std::span<const irs::sort::ptr> expected,
+    std::span<const irs::Scorer::ptr> expected,
     arangodb::aql::ExpressionContext* exprCtx = nullptr,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d") {
@@ -227,7 +243,8 @@ void assertOrderParseFail(arangodb::ArangodServer& server,
   TRI_vocbase_t vocbase(testDBInfo(server));
 
   auto query = arangodb::aql::Query::create(
-      arangodb::transaction::StandaloneContext::Create(vocbase),
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
       arangodb::aql::QueryString(queryString), nullptr);
 
   auto const parseResult = query->parse();
@@ -707,6 +724,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
   }
 }
 
+#ifdef USE_V8
 TEST_F(IResearchOrderTest, test_FCallUser) {
   // function
   {
@@ -916,6 +934,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
     assertOrderFail(server, query);
   }
 }
+#endif
 
 TEST_F(IResearchOrderTest, test_StringValue) {
   // simple field
@@ -957,6 +976,7 @@ TEST_F(IResearchOrderTest, test_StringValue) {
   }
 }
 
+#ifdef USE_V8
 TEST_F(IResearchOrderTest, test_order) {
   // test mutiple sort
   {
@@ -982,3 +1002,4 @@ TEST_F(IResearchOrderTest, test_order) {
     assertOrderFail(server, query, &ctx);
   }
 }
+#endif

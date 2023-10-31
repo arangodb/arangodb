@@ -24,11 +24,14 @@
 #pragma once
 
 #include "IResearch/IResearchDataStoreMeta.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/IResearchOptimizeTopK.h"
+#endif
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchViewStoredValues.h"
 #include "IResearch/IResearchViewSort.h"
-#include "VocBase/LogicalCollection.h"
 #include "Containers/FlatHashMap.h"
+#include "Containers/NodeHashMap.h"
 #include "Containers/FlatHashSet.h"
 
 #include <unicode/locid.h>
@@ -173,12 +176,13 @@ struct IResearchInvertedIndexMetaIndexingContext {
 
   Features const& features() const noexcept { return _features; }
 
-  absl::flat_hash_map<std::string_view,
-                      IResearchInvertedIndexMetaIndexingContext>
-      _fields;
-  absl::flat_hash_map<std::string_view,
-                      IResearchInvertedIndexMetaIndexingContext>
-      _nested;
+  bool hasNested() const noexcept { return _hasNested; }
+
+  using Fields =
+      containers::NodeHashMap<std::string_view,
+                              IResearchInvertedIndexMetaIndexingContext>;
+  Fields _fields;
+  Fields _nested;
   std::array<FieldMeta::Analyzer, 1> const* _analyzers;
   size_t _primitiveOffset;
   IResearchInvertedIndexMeta const* _meta;
@@ -186,7 +190,6 @@ struct IResearchInvertedIndexMetaIndexingContext {
   IResearchInvertedIndexSort const& _sort;
   IResearchViewStoredValues const& _storedValues;
   MissingFieldsMap _missingFieldsMap;
-
   bool _isArray{false};
   bool _hasNested;
   bool _includeAllFields;
@@ -256,6 +259,9 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
   IResearchInvertedIndexSort _sort;
   // stored values associated with the link
   IResearchViewStoredValues _storedValues;
+#ifdef USE_ENTERPRISE
+  IResearchOptimizeTopK _optimizeTopK;
+#endif
   mutable std::string _collectionName;
   Consistency _consistency{Consistency::kEventual};
   bool _hasNested{false};

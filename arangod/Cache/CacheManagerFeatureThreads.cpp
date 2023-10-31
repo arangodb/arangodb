@@ -24,8 +24,6 @@
 #include <cstdint>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ConditionLocker.h"
-#include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 #include "Basics/voc-errors.h"
 #include "Cache/CacheManagerFeatureThreads.h"
@@ -49,8 +47,8 @@ CacheRebalancerThread::~CacheRebalancerThread() { shutdown(); }
 void CacheRebalancerThread::beginShutdown() {
   Thread::beginShutdown();
 
-  CONDITION_LOCKER(guard, _condition);
-  guard.signal();
+  std::lock_guard guard{_condition.mutex};
+  _condition.cv.notify_one();
 }
 
 void CacheRebalancerThread::run() {
@@ -60,8 +58,8 @@ void CacheRebalancerThread::run() {
       std::uint64_t interval =
           (result != TRI_ERROR_ARANGO_BUSY) ? _fullInterval : _shortInterval;
 
-      CONDITION_LOCKER(guard, _condition);
-      guard.wait(interval);
+      std::unique_lock guard{_condition.mutex};
+      _condition.cv.wait_for(guard, std::chrono::microseconds{interval});
     } catch (std::exception const& ex) {
       LOG_TOPIC("e78b8", ERR, Logger::CACHE)
           << "cache rebalancer thread caught exception: " << ex.what();

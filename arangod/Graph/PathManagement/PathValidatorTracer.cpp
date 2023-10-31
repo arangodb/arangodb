@@ -62,7 +62,7 @@ PathValidatorTracer<PathValidatorImplementation>::~PathValidatorTracer() {
 
 template<class PathValidatorImplementation>
 auto PathValidatorTracer<PathValidatorImplementation>::validatePath(
-    typename PathStore::Step const& step) -> ValidationResult {
+    typename PathStore::Step& step) -> ValidationResult {
   double start = TRI_microtime();
   auto sg = arangodb::scopeGuard([&]() noexcept {
     _stats["validatePath"].addTiming(TRI_microtime() - start);

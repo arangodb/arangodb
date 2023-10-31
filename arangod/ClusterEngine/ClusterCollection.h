@@ -77,8 +77,10 @@ class ClusterCollection final : public PhysicalCollection {
   // -- SECTION Indexes --
   ///////////////////////////////////
 
-  std::shared_ptr<Index> createIndex(velocypack::Slice info, bool restore,
-                                     bool& created) override;
+  std::shared_ptr<Index> createIndex(
+      velocypack::Slice info, bool restore, bool& created,
+      std::shared_ptr<std::function<arangodb::Result(double)>> =
+          nullptr) override;
 
   std::unique_ptr<IndexIterator> getAllIterator(
       transaction::Methods* trx, ReadOwnWrites readOwnWrites) const override;
@@ -106,18 +108,14 @@ class ClusterCollection final : public PhysicalCollection {
       transaction::Methods* trx, std::string_view key,
       std::pair<LocalDocumentId, RevisionId>& result) const override;
 
-  Result read(transaction::Methods*, std::string_view key,
-              IndexIterator::DocumentCallback const& cb,
-              ReadOwnWrites) const override;
+  Result lookup(transaction::Methods* trx, std::string_view key,
+                IndexIterator::DocumentCallback const& cb,
+                LookupOptions options) const final;
 
-  Result read(transaction::Methods* trx, LocalDocumentId const& token,
-              IndexIterator::DocumentCallback const& cb,
-              ReadOwnWrites) const override;
-
-  Result lookupDocument(transaction::Methods& trx, LocalDocumentId token,
-                        velocypack::Builder& builder, bool readCache,
-                        bool fillCache,
-                        ReadOwnWrites readOwnWrites) const override;
+  Result lookup(transaction::Methods* trx, LocalDocumentId token,
+                IndexIterator::DocumentCallback const& cb,
+                LookupOptions options,
+                StorageSnapshot const* snapshot = nullptr) const final;
 
   Result insert(transaction::Methods& trx,
                 IndexesSnapshot const& indexesSnapshot,

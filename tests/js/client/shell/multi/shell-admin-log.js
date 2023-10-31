@@ -31,8 +31,7 @@ const _ = require("lodash");
 
 const dbservers = (function () {
   const isType = (d) => (d.instanceRole.toLowerCase() === "dbserver");
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-  return instanceInfo.arangods.filter(isType).map((x) => x.id);
+  return global.instanceManager.arangods.filter(isType).map((x) => x.id);
 })();
 
 function adminLogSuite() {
@@ -42,17 +41,23 @@ function adminLogSuite() {
     arango.POST("/_admin/execute", `for (let i = 0; i < 50; ++i) require('console')._log('general=${level}', 'testi');`);
   };
 
-  let oldLogLevel;
+  let oldLogLevels;
 
   return {
     setUpAll: function () {
-      oldLogLevel = arango.GET("/_admin/log/level").general;
-      arango.PUT("/_admin/log/level", {general: "info"});
+      oldLogLevels = arango.GET("/_admin/log/level");
+      // set all log levels to "fatal" except for topic general
+      let adjusted = {};
+      Object.keys(oldLogLevels).forEach((k) => {
+        adjusted[k] = "fatal";
+      });
+      adjusted.general = "info";
+      arango.PUT("/_admin/log/level", adjusted);
     },
 
     tearDownAll: function () {
       // restore previous log level for "general" topic;
-      arango.PUT("/_admin/log/level", {general: oldLogLevel});
+      arango.PUT("/_admin/log/level", oldLogLevels);
     },
 
     setUp: function () {

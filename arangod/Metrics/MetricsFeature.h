@@ -45,7 +45,8 @@ class MetricsFeature final : public ArangodFeature {
 
   explicit MetricsFeature(Server& server);
 
-  bool exportAPI() const;
+  bool exportAPI() const noexcept;
+  bool ensureWhitespace() const noexcept;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
@@ -60,7 +61,7 @@ class MetricsFeature final : public ArangodFeature {
     return std::static_pointer_cast<typename MetricBuilder::MetricT>(
         doAdd(builder));
   }
-  Metric* get(MetricKeyView const& key);
+  Metric* get(MetricKeyView const& key) const;
   bool remove(Builder const& builder);
 
   void toPrometheus(std::string& result, CollectMode mode) const;
@@ -105,6 +106,9 @@ class MetricsFeature final : public ArangodFeature {
 
   bool _export;
   bool _exportReadWriteMetrics;
+  // ensure that there is whitespace before the reported value, regardless
+  // of whether it is preceeded by labels or not.
+  bool _ensureWhitespace;
 };
 
 }  // namespace arangodb::metrics

@@ -25,6 +25,7 @@
 #pragma once
 
 #include <atomic>
+#include <mutex>
 #include <unordered_map>
 
 #include "AutoTuneThread.h"
@@ -32,7 +33,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Mutex.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/csv.h"
 
@@ -64,7 +64,7 @@ struct ImportStatistics {
   size_t _numberUpdated = 0;
   size_t _numberIgnored = 0;
 
-  arangodb::Mutex _mutex;
+  std::mutex _mutex;
   QuickHistogram _histogram;
 
   explicit ImportStatistics(application_features::ApplicationServer&);

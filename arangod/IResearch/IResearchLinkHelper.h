@@ -35,24 +35,29 @@
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/IResearchOptimizeTopK.h"
+#endif
+
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
 
 class LogicalCollection;
 class LogicalView;
 
+namespace application_features {
+
+class ApplicationServer;
+
+}  // namespace application_features
 namespace velocypack {
 
 class Slice;
 class Builder;
 
 }  // namespace velocypack
-
 namespace iresearch {
 
-class IResearchLink;  // forward declaration
+class IResearchLink;
 struct IResearchLinkMeta;
 class IResearchViewSort;
 class IResearchViewStoredValues;
@@ -97,9 +102,11 @@ struct IResearchLinkHelper {
       IResearchViewSort const* primarySort = nullptr,
       irs::type_info::type_id const* primarySortCompression = nullptr,
       IResearchViewStoredValues const* storedValues = nullptr,
+#ifdef USE_ENTERPRISE
+      IResearchOptimizeTopK const* optimizeTopK = nullptr,
       bool const* pkCache = nullptr, bool const* sortCache = nullptr,
-      velocypack::Slice idSlice = velocypack::Slice(),
-      std::string_view collectionName = std::string_view{});
+#endif
+      velocypack::Slice idSlice = {}, std::string_view collectionName = {});
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief validate the link specifications for:
@@ -124,7 +131,7 @@ struct IResearchLinkHelper {
   /// @param view the view to associate created links with
   /// @param links the link modification definitions, null link == link removal
   /// @param stale links to remove if there is no creation definition in 'links'
-  /// @param linkVersion link version for creation if not set in a definition
+  /// @param defaultVersion link version for creation if not set in a definition
   //////////////////////////////////////////////////////////////////////////////
   static Result updateLinks(
       containers::FlatHashSet<DataSourceId>& modified, LogicalView& view,
@@ -133,7 +140,7 @@ struct IResearchLinkHelper {
 
  private:
   IResearchLinkHelper() = delete;
-};  // IResearchLinkHelper
+};
 
 }  // namespace iresearch
 }  // namespace arangodb

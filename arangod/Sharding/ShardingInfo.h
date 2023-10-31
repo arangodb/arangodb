@@ -56,18 +56,13 @@ class ShardingInfo {
   ShardingInfo& operator=(ShardingInfo const& other) = delete;
   ~ShardingInfo();
 
-  bool usesSameShardingStrategy(ShardingInfo const* other) const;
   std::string shardingStrategyName() const;
 
   LogicalCollection* collection() const noexcept;
-  void toVelocyPack(arangodb::velocypack::Builder& result,
-                    bool translateCids) const;
+  void toVelocyPack(arangodb::velocypack::Builder& result, bool translateCids,
+                    bool includeShardsEntry = true) const;
 
   std::string const& distributeShardsLike() const noexcept;
-  void distributeShardsLike(std::string const& cid, ShardingInfo const* other);
-
-  std::vector<std::string> const& avoidServers() const noexcept;
-  void avoidServers(std::vector<std::string> const&);
 
   size_t replicationFactor() const noexcept;
   void replicationFactor(size_t);
@@ -129,7 +124,7 @@ class ShardingInfo {
   // @brief the logical collection we are working for
   LogicalCollection* _collection;
 
-  // @brief number of shards
+  // @brief number of shards (0 for smart edge collections)
   size_t _numberOfShards;
 
   // _replicationFactor and _writeConcern are set in
@@ -139,7 +134,7 @@ class ShardingInfo {
   // different thread _replicationFactor and _writeConcern must both be atomic
   // to avoid data races.
 
-  // @brief replication factor (1 = no replication, 0 = smart edge collection)
+  // @brief replication factor (1 = no replication, 0 = satellite collection)
   std::atomic<size_t> _replicationFactor;
 
   // @brief write concern (_writeConcern <= _replicationFactor)

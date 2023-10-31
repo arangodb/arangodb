@@ -106,7 +106,7 @@ function runArangodRecovery (params, useEncryption) {
     }
 
     params.options.disableMonitor = true;
-    params.options =  ensureServers(params.options);
+    params.options = ensureServers(params.options);
     let args = {};
     
     // enable development debugging if extremeVerbosity is set
@@ -232,10 +232,14 @@ function runArangodRecovery (params, useEncryption) {
       arangod.pid = 0;
     });
   } else {
-    params.instanceManager.shutdownInstance(false);
+    return {
+      status: params.instanceManager.shutdownInstance(false),
+      message: "during shutdown"
+    };
   }
   return {
-    status: true
+    status: true,
+    message: ""
   };
 }
 
@@ -249,34 +253,37 @@ function recovery (options) {
       status: false
     };
   }
-  options.cluster = true;
+  let localOptions = _.clone(options);
+  localOptions.cluster = true;
+  localOptions.enableAliveMonitor = false;
 
   let results = {
     status: true
   };
   let useEncryption = isEnterprise();
 
-  let recoveryTests = tu.scanTestPaths(testPaths.recovery_cluster, options
+  let recoveryTests = tu.scanTestPaths(testPaths.recovery_cluster, localOptions,
                                        // At the moment only view-tests supported by cluster recovery tests:
-                                      ).filter(testname => testname.search('search') >= 0);
+                                       function(testname) { return testname.search('search') >= 0; }
+                                      );
 
-  recoveryTests = tu.splitBuckets(options, recoveryTests);
+  recoveryTests = tu.splitBuckets(localOptions, recoveryTests);
 
   let count = 0;
-  let tmpMgr = new tmpDirMmgr('recovery_cluster', options);
+  let tmpMgr = new tmpDirMmgr('recovery_cluster', localOptions);
 
   for (let i = 0; i < recoveryTests.length; ++i) {
     let test = recoveryTests[i];
     let filtered = {};
 
-    if (tu.filterTestcaseByOptions(test, options, filtered)) {
+    if (tu.filterTestcaseByOptions(test, localOptions, filtered)) {
       count += 1;
       ////////////////////////////////////////////////////////////////////////
       print(BLUE + "running setup of test " + count + " - " + test + RESET);
       let params = {
         tempDir: tmpMgr.tempDir,
         rootDir: fs.join(fs.getTempPath(), 'recovery_cluster', count.toString()),
-        options: _.cloneDeep(options),
+        options: _.cloneDeep(localOptions),
         script: test,
         setup: true,
         count: count,
@@ -292,7 +299,7 @@ function recovery (options) {
       }
       ////////////////////////////////////////////////////////////////////////
       print(BLUE + "running recovery of test " + count + " - " + test + RESET);
-      params.options.disableMonitor = options.disableMonitor;
+      params.options.disableMonitor = localOptions.disableMonitor;
       params.setup = false;
       try {
         tu.writeTestResult(params.temp_path, {
@@ -301,9 +308,10 @@ function recovery (options) {
           message: "unable to run recovery test " + test,
           duration: -1
         });
-    } catch (er) { print(er);}
+      } catch (er) { print(er);}
+      let res = { status: false};
       try {
-        runArangodRecovery(params, useEncryption);
+        res = runArangodRecovery(params, useEncryption);
       } catch (err) {
         results[test] = {
           failed: 1,
@@ -324,6 +332,12 @@ function recovery (options) {
         },
         test
       );
+      if (!res.status) {
+        results.status = false;
+        results[test].status = false;
+        results[test].failed = 1;
+        results[test].message += " - " + res.message;
+      }
       params.instanceManager.destructor(results[test].status);
       if (results[test].status) {
         if (params.keyDir !== "") {
@@ -334,12 +348,12 @@ function recovery (options) {
         results.status = false;
       }
     } else {
-      if (options.extremeVerbosity) {
+      if (localOptions.extremeVerbosity) {
         print('Skipped ' + test + ' because of ' + filtered.filter);
       }
     }
   }
-  tmpMgr.destructor(options.cleanup && results.status);
+  tmpMgr.destructor(localOptions.cleanup && results.status);
   if (count === 0) {
     print(RED + 'No testcase matched the filter.' + RESET);
     return {

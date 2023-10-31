@@ -73,8 +73,8 @@ class SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
   VertexCompensation<int64_t, int64_t, int64_t>* createCompensation(
       std::shared_ptr<WorkerConfig const>) const override;
 
-  uint32_t messageBatchSize(std::shared_ptr<WorkerConfig const> config,
-                            MessageStats const& stats) const override;
+  size_t messageBatchSize(std::shared_ptr<WorkerConfig const> config,
+                          MessageStats const& stats) const override;
 
   [[nodiscard]] auto workerContext(
       std::unique_ptr<AggregatorHandler> readAggregators,

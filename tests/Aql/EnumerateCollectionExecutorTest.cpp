@@ -77,6 +77,8 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
   TRI_vocbase_t& vocbase;
   std::shared_ptr<VPackBuilder> json;
   std::shared_ptr<LogicalCollection> collection;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
 
   Variable outVariable;
   bool varUsedLater;
@@ -94,13 +96,13 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
 
   EnumerateCollectionExecutorTest()
       : AqlExecutorTestCase(),
-        itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
+        itemBlockManager(monitor),
         vocbase(_server->getSystemDatabase()),
         json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
         collection(vocbase.lookupCollection("UnitTestCollection")
                        ? vocbase.lookupCollection("UnitTestCollection")
                        : vocbase.createCollection(json->slice())),
-        outVariable("name", 1, false),
+        outVariable("name", 1, false, resourceMonitor),
         varUsedLater(false),
         engine(fakedQuery->rootEngine()),
         aqlCollection("UnitTestCollection", &vocbase,
@@ -248,11 +250,7 @@ TEST_F(EnumerateCollectionExecutorTest, the_skip_datarange) {
 
 // new framework tests
 
-// This is only to get a split-type. The Type is independent of actual template
-// parameters
-using EnumerateCollectionTestHelper = ExecutorTestHelper<1, 1>;
-using EnumerateCollectionSplitType = EnumerateCollectionTestHelper::SplitType;
-using EnumerateCollectionInputParam = std::tuple<EnumerateCollectionSplitType>;
+using EnumerateCollectionInputParam = std::tuple<SplitType>;
 
 class EnumerateCollectionExecutorTestProduce
     : public AqlExecutorTestCaseWithParam<EnumerateCollectionInputParam> {
@@ -281,13 +279,13 @@ class EnumerateCollectionExecutorTestProduce
   EnumerateCollectionExecutorInfos executorInfos;
 
   EnumerateCollectionExecutorTestProduce()
-      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
+      : itemBlockManager(monitor),
         vocbase(_server->getSystemDatabase()),
         json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
         collection(vocbase.lookupCollection("UnitTestCollection")
                        ? vocbase.lookupCollection("UnitTestCollection")
                        : vocbase.createCollection(json->slice())),
-        outVariable("name", 1, false),
+        outVariable("name", 1, false, monitor),
         varUsedLater(true),
         engine(fakedQuery.get()->rootEngine()),
         aqlCollection("UnitTestCollection", &vocbase,
@@ -469,11 +467,9 @@ TEST_P(EnumerateCollectionExecutorTestProduce,
 }
 
 template<size_t... vs>
-const EnumerateCollectionSplitType splitIntoBlocks =
-    EnumerateCollectionSplitType{std::vector<std::size_t>{vs...}};
+const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
 template<size_t step>
-const EnumerateCollectionSplitType splitStep =
-    EnumerateCollectionSplitType{step};
+const SplitType splitStep = SplitType{step};
 
 INSTANTIATE_TEST_CASE_P(EnumerateCollectionExecutor,
                         EnumerateCollectionExecutorTestProduce,

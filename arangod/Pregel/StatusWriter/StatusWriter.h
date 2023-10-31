@@ -25,6 +25,10 @@
 
 namespace arangodb {
 
+namespace velocypack {
+class Slice;
+}  // namespace velocypack
+
 struct OperationResult;
 
 namespace pregel {
@@ -38,13 +42,15 @@ struct StatusWriterInterface {
   virtual ~StatusWriterInterface() = default;
 
   // CRUD interface definition
-  [[nodiscard]] virtual auto createResult(VPackSlice data)
+  [[nodiscard]] virtual auto createResult(velocypack::Slice data)
       -> OperationResult = 0;
-  [[nodiscard]] virtual auto readResult(VPackSlice data) -> OperationResult = 0;
-  [[nodiscard]] virtual auto updateResult(VPackSlice data)
+  [[nodiscard]] virtual auto readResult() -> OperationResult = 0;
+  [[nodiscard]] virtual auto readAllResults() -> OperationResult = 0;
+  [[nodiscard]] virtual auto readAllNonExpiredResults() -> OperationResult = 0;
+  [[nodiscard]] virtual auto updateResult(velocypack::Slice data)
       -> OperationResult = 0;
-  [[nodiscard]] virtual auto deleteResult(VPackSlice data)
-      -> OperationResult = 0;
+  [[nodiscard]] virtual auto deleteResult() -> OperationResult = 0;
+  [[nodiscard]] virtual auto deleteAllResults() -> OperationResult = 0;
 };
 
 }  // namespace arangodb::pregel::statuswriter

@@ -1,5 +1,4 @@
 /* jshint -W051, -W020 */
-/* global global:true, require */
 'use strict';
 
 // /////////////////////////////////////////////////////////////////////////////
@@ -42,7 +41,6 @@ delete global.IS_EXECUTE_SCRIPT;
 delete global.IS_EXECUTE_STRING;
 delete global.IS_CHECK_SCRIPT;
 delete global.IS_UNIT_TESTS;
-delete global.IS_JS_LINT;
 
 // print banner
 (function() {

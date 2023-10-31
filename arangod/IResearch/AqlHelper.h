@@ -31,7 +31,7 @@
 #include "IResearch/IResearchFilterOptimization.h"
 #include "IResearch/IResearchInvertedIndexMeta.h"
 
-#include "search/sort.hpp"
+#include "search/scorer.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
 #include "Cluster/ClusterInfo.h"
@@ -350,9 +350,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
   void toVelocyPack(velocypack::Builder& builder) const {
     _node->isConstant()
         ? _node->toVelocyPackValue(builder)
-        : _value.toVelocyPack(static_cast<velocypack::Options const*>(nullptr),
-                              builder, /*resoveExternals*/ false,
-                              /*allowUnindexed*/ false);
+        : _value.toVelocyPack(nullptr, builder, /*allowUnindexed*/ false);
   }
 
  private:

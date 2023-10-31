@@ -24,20 +24,23 @@
 
 #include "QueryCursor.h"
 
+#include "Aql/AqlCall.h"
+#include "Aql/AqlCallList.h"
+#include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/SharedQueryState.h"
 #include "Basics/ScopeGuard.h"
-#include "Basics/StringUtils.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
+
+#include <absl/strings/str_cat.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -68,14 +71,7 @@ VPackSlice QueryResultCursor::extra() const {
 }
 
 /// @brief check whether the cursor contains more data
-bool QueryResultCursor::hasNext() {
-  if (_iterator.valid()) {
-    return true;
-  }
-
-  _isDeleted = true;
-  return false;
-}
+bool QueryResultCursor::hasNext() const noexcept { return _iterator.valid(); }
 
 /// @brief return the next element
 VPackSlice QueryResultCursor::next() {
@@ -130,7 +126,7 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
 
     handleNextBatchIdValue(builder, hasNext());
 
-    if (!hasNext()) {
+    if (!hasNext() && !isRetriable()) {
       // mark the cursor as deleted
       this->setDeleted();
     }
@@ -142,26 +138,26 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
     return Result(TRI_ERROR_INTERNAL,
                   "internal error during QueryResultCursor::dump");
   }
-  return {TRI_ERROR_NO_ERROR};
+  return {};
 }
 
 // .............................................................................
 // QueryStreamCursor class
 // .............................................................................
 
-QueryStreamCursor::QueryStreamCursor(std::shared_ptr<arangodb::aql::Query> q,
-                                     size_t batchSize, double ttl,
-                                     bool isRetriable)
+QueryStreamCursor::QueryStreamCursor(
+    std::shared_ptr<arangodb::aql::Query> q, size_t batchSize, double ttl,
+    bool isRetriable, transaction::OperationOrigin operationOrigin)
     : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, /*hasCount*/ false,
              isRetriable),
       _query(std::move(q)),
       _queryResultPos(0),
       _finalization(false),
       _allowDirtyReads(false) {
-  _query->prepareQuery(SerializationFormat::SHADOWROWS);
+  _query->prepareQuery();
   _allowDirtyReads = _query->allowDirtyReads();  // is set by prepareQuery!
   TRI_IF_FAILURE("QueryStreamCursor::directKillAfterPrepare") {
-    debugKillQuery();
+    QueryStreamCursor::debugKillQuery();
   }
 
   // In all the following ASSERTs it is valid (though unlikely) that the query
@@ -175,7 +171,7 @@ QueryStreamCursor::QueryStreamCursor(std::shared_ptr<arangodb::aql::Query> q,
 
   transaction::Methods trx(_ctx);
   TRI_IF_FAILURE("QueryStreamCursor::directKillAfterTrxSetup") {
-    debugKillQuery();
+    QueryStreamCursor::debugKillQuery();
   }
   TRI_ASSERT(trx.status() == transaction::Status::RUNNING || _query->killed());
 
@@ -264,31 +260,32 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(
     return {writeResult(builder), TRI_ERROR_NO_ERROR};
   } catch (arangodb::basics::Exception const& ex) {
     this->setDeleted();
-    return {ExecutionState::DONE,
-            Result(ex.code(), "AQL: " + ex.message() +
-                                  QueryExecutionState::toStringWithPrefix(
-                                      _query->state()))};
+    return {
+        ExecutionState::DONE,
+        Result(ex.code(), absl::StrCat("AQL: ", ex.message(),
+                                       QueryExecutionState::toStringWithPrefix(
+                                           _query->state())))};
   } catch (std::bad_alloc const&) {
+    this->setDeleted();
+    return {ExecutionState::DONE,
+            Result(TRI_ERROR_OUT_OF_MEMORY,
+                   absl::StrCat(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
+                                QueryExecutionState::toStringWithPrefix(
+                                    _query->state())))};
+  } catch (std::exception const& ex) {
     this->setDeleted();
     return {
         ExecutionState::DONE,
-        Result(TRI_ERROR_OUT_OF_MEMORY,
-               StringUtils::concatT(
-                   TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
-                   QueryExecutionState::toStringWithPrefix(_query->state())))};
-  } catch (std::exception const& ex) {
-    this->setDeleted();
-    return {ExecutionState::DONE,
-            Result(TRI_ERROR_INTERNAL,
-                   ex.what() + QueryExecutionState::toStringWithPrefix(
-                                   _query->state()))};
+        Result(TRI_ERROR_INTERNAL,
+               absl::StrCat(ex.what(), QueryExecutionState::toStringWithPrefix(
+                                           _query->state())))};
   } catch (...) {
     this->setDeleted();
     return {ExecutionState::DONE,
             Result(TRI_ERROR_INTERNAL,
-                   StringUtils::concatT(TRI_errno_string(TRI_ERROR_INTERNAL),
-                                        QueryExecutionState::toStringWithPrefix(
-                                            _query->state())))};
+                   absl::StrCat(TRI_errno_string(TRI_ERROR_INTERNAL),
+                                QueryExecutionState::toStringWithPrefix(
+                                    _query->state())))};
   }
 }
 
@@ -344,27 +341,28 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
 
   } catch (arangodb::basics::Exception const& ex) {
     this->setDeleted();
-    return Result(ex.code(),
-                  "AQL: " + ex.message() +
-                      QueryExecutionState::toStringWithPrefix(_query->state()));
+    return Result(
+        ex.code(),
+        absl::StrCat("AQL: ", ex.message(),
+                     QueryExecutionState::toStringWithPrefix(_query->state())));
   } catch (std::bad_alloc const&) {
     this->setDeleted();
     return Result(
         TRI_ERROR_OUT_OF_MEMORY,
-        StringUtils::concatT(
-            TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
-            QueryExecutionState::toStringWithPrefix(_query->state())));
+        absl::StrCat(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
+                     QueryExecutionState::toStringWithPrefix(_query->state())));
   } catch (std::exception const& ex) {
     this->setDeleted();
     return Result(
         TRI_ERROR_INTERNAL,
-        ex.what() + QueryExecutionState::toStringWithPrefix(_query->state()));
+        absl::StrCat(ex.what(),
+                     QueryExecutionState::toStringWithPrefix(_query->state())));
   } catch (...) {
     this->setDeleted();
-    return Result(TRI_ERROR_INTERNAL,
-                  StringUtils::concatT(TRI_errno_string(TRI_ERROR_INTERNAL),
-                                       QueryExecutionState::toStringWithPrefix(
-                                           _query->state())));
+    return Result(
+        TRI_ERROR_INTERNAL,
+        absl::StrCat(TRI_errno_string(TRI_ERROR_INTERNAL),
+                     QueryExecutionState::toStringWithPrefix(_query->state())));
   }
 
   return Result();
@@ -422,8 +420,7 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
         if (!value.isEmpty()) {  // ignore empty blocks (e.g. from UpdateBlock)
           uint64_t oldCapacity = buffer.capacity();
 
-          value.toVelocyPack(&vopts, builder, /*resolveExternals*/ false,
-                             /*allowUnindexed*/ true);
+          value.toVelocyPack(&vopts, builder, /*allowUnindexed*/ true);
           ++rowsWritten;
 
           // track memory usage
@@ -463,11 +460,13 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
     TRI_ASSERT(!_extrasBuffer.empty());
     builder.add("extra", VPackSlice(_extrasBuffer.data()));
 
-    // very important here, because _query may become invalid after here!
-    guard.revert();
+    if (!isRetriable()) {
+      // very important here, because _query may become invalid after here!
+      guard.revert();
 
-    _query.reset();
-    this->setDeleted();
+      _query.reset();
+      this->setDeleted();
+    }
     return ExecutionState::DONE;
   }
 
@@ -496,11 +495,18 @@ ExecutionState QueryStreamCursor::prepareDump() {
   // We want to fill a result of batchSize if possible and have at least
   // one row left (or be definitively DONE) to set "hasMore" reliably.
   ExecutionState state = ExecutionState::HASMORE;
+  SkipResult skipped;
   bool const silent = _query->queryOptions().silent;
+
+  AqlCall call;
+  call.softLimit = batchSize();
+  AqlCallList callList{std::move(call)};
+  AqlCallStack callStack{std::move(callList)};
 
   while (state != ExecutionState::DONE && (silent || numRows <= batchSize())) {
     SharedAqlItemBlockPtr resultBlock;
-    std::tie(state, resultBlock) = engine->getSome(batchSize());
+    std::tie(state, skipped, resultBlock) = engine->execute(callStack);
+    TRI_ASSERT(skipped.nothingSkipped());
     if (state == ExecutionState::WAITING) {
       break;
     }
@@ -513,7 +519,7 @@ ExecutionState QueryStreamCursor::prepareDump() {
     }
   }
 
-  // remember not to call getSome() again
+  // remember not to call execute() again
   _finalization = (state == ExecutionState::DONE);
   if (_finalization) {
     cleanupStateCallback();

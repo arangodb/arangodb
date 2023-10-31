@@ -47,9 +47,6 @@ class OptimizerRulesFeature final : public ArangodFeature {
     return _optimizerRules;
   }
 
-  /// @brief whether or not certain write operations can be parallelized
-  bool parallelizeGatherWrites() const { return _parallelizeGatherWrites; }
-
   /// @brief translate a list of rule ids into rule name
   static std::vector<std::string_view> translateRules(std::vector<int> const&);
 
@@ -74,7 +71,8 @@ class OptimizerRulesFeature final : public ArangodFeature {
   /// @brief register a rule, don't call this after prepare()
   void registerRule(std::string_view name, RuleFunction func,
                     OptimizerRule::RuleLevel level,
-                    std::underlying_type<OptimizerRule::Flags>::type flags);
+                    std::underlying_type<OptimizerRule::Flags>::type flags,
+                    std::string_view description);
 
  private:
   void addRules();
@@ -82,11 +80,6 @@ class OptimizerRulesFeature final : public ArangodFeature {
   void enableOrDisableRules();
 
   std::vector<std::string> _optimizerRules;
-
-  /// @brief if set to true, a gather node will be parallelized even for
-  /// certain write operations. this is false by default, enabling it is
-  /// experimental
-  bool _parallelizeGatherWrites;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool _fixed = false;

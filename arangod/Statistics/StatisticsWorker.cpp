@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/process-utils.h"
@@ -48,10 +47,13 @@
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/ServerStatistics.h"
 #include "Statistics/StatisticsFeature.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
+#endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
@@ -163,8 +165,11 @@ void StatisticsWorker::collectGarbage(std::string const& name,
   bindVars->add("start", VPackValue(start));
   bindVars->close();
 
+  auto origin =
+      transaction::OperationOriginInternal{"statistics garbage collection"};
+
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(_vocbase),
+      transaction::StandaloneContext::create(_vocbase, origin),
       arangodb::aql::QueryString(::garbageCollectionQuery), _bindVars);
 
   query->queryOptions().cache = false;
@@ -183,8 +188,10 @@ void StatisticsWorker::collectGarbage(std::string const& name,
   opOptions.waitForSync = false;
   opOptions.silent = true;
 
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(ctx, name, AccessMode::Type::WRITE);
+  auto ctx = transaction::StandaloneContext::create(_vocbase, origin);
+  SingleCollectionTransaction trx(std::move(ctx), name,
+                                  AccessMode::Type::WRITE);
+
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -291,8 +298,11 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
 
   bindVars->close();
 
+  auto origin =
+      transaction::OperationOriginInternal{"fetching last statistics entry"};
+
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(_vocbase),
+      transaction::StandaloneContext::create(_vocbase, origin),
       arangodb::aql::QueryString(_clusterId.empty() ? ::lastEntryQuery
                                                     : ::filteredLastEntryQuery),
       _bindVars);
@@ -322,8 +332,11 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
 
   bindVars->close();
 
+  auto origin =
+      transaction::OperationOriginInternal{"computing statistics 15m average"};
+
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(_vocbase),
+      transaction::StandaloneContext::create(_vocbase, origin),
       arangodb::aql::QueryString(_clusterId.empty()
                                      ? ::fifteenMinuteQuery
                                      : ::filteredFifteenMinuteQuery),
@@ -1008,6 +1021,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder,
 
   // export v8 statistics
   builder.add("v8Context", VPackValue(VPackValueType::Object));
+#ifdef USE_V8
   V8DealerFeature::Statistics v8Counters{};
   // std::vector<V8DealerFeature::MemoryStatistics> memoryStatistics;
   // V8 may be turned off on a server
@@ -1024,6 +1038,14 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder,
   builder.add("free", VPackValue(v8Counters.free));
   builder.add("min", VPackValue(v8Counters.min));
   builder.add("max", VPackValue(v8Counters.max));
+#else
+  builder.add("available", VPackValue(0));
+  builder.add("busy", VPackValue(0));
+  builder.add("dirty", VPackValue(0));
+  builder.add("free", VPackValue(0));
+  builder.add("min", VPackValue(0));
+  builder.add("max", VPackValue(0));
+#endif
   /* at the time being we don't want to write this into the database so the data
   volume doesn't increase.
   {
@@ -1069,17 +1091,22 @@ void StatisticsWorker::saveSlice(VPackSlice slice,
   opOptions.silent = true;
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::WRITE);
+  auto origin = transaction::OperationOriginInternal{"storing statistics data"};
+
+  auto ctx = transaction::StandaloneContext::create(_vocbase, origin);
+  SingleCollectionTransaction trx(std::move(ctx), collection,
+                                  AccessMode::Type::WRITE);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
 
   if (!res.ok()) {
-    LOG_TOPIC("ecdb9", WARN, Logger::STATISTICS)
-        << "could not start transaction on " << collection << ": "
-        << res.errorMessage();
+    if (!res.is(TRI_ERROR_SHUTTING_DOWN)) {
+      LOG_TOPIC("ecdb9", WARN, Logger::STATISTICS)
+          << "could not start transaction on " << collection << ": "
+          << res.errorMessage();
+    }
     return;
   }
 
@@ -1100,8 +1127,8 @@ void StatisticsWorker::beginShutdown() {
   Thread::beginShutdown();
 
   // wake up
-  CONDITION_LOCKER(guard, _cv);
-  guard.signal();
+  std::lock_guard guard{_cv.mutex};
+  _cv.cv.notify_one();
 }
 
 void StatisticsWorker::run() {
@@ -1136,8 +1163,8 @@ void StatisticsWorker::run() {
   uint64_t seconds = 0;
   while (!isStopping()) {
     TRI_IF_FAILURE("StatisticsWorker::bypass") {
-      CONDITION_LOCKER(guard, _cv);
-      guard.wait(1000 * 1000);
+      std::unique_lock guard{_cv.mutex};
+      _cv.cv.wait_for(guard, std::chrono::seconds{1});
       continue;
     }
 
@@ -1165,7 +1192,7 @@ void StatisticsWorker::run() {
           << "caught unknown exception in StatisticsWorker";
     }
 
-    CONDITION_LOCKER(guard, _cv);
-    guard.wait(1000 * 1000);
+    std::unique_lock guard{_cv.mutex};
+    _cv.cv.wait_for(guard, std::chrono::seconds{1});
   }
 }

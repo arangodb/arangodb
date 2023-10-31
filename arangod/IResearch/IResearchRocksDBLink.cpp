@@ -57,7 +57,7 @@ IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid,
                        .server()
                        .getFeature<EngineSelectorFeature>()
                        .engine<RocksDBEngine>()},
-      IResearchLink{collection.vocbase().server()} {
+      IResearchLink{collection.vocbase().server(), collection} {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
   _sparse = true;   // always sparse
@@ -135,8 +135,8 @@ std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
         auto* encryption = engine.encryptionProvider();
         if (encryption) {
           return irs::directory_attributes{
-              0, std::make_unique<RocksDBEncryptionProvider>(
-                     *encryption, engine.rocksDBOptions())};
+              std::make_unique<RocksDBEncryptionProvider>(
+                  *encryption, engine.rocksDBOptions())};
         }
         return irs::directory_attributes{};
       });

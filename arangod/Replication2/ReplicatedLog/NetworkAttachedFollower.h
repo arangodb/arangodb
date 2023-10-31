@@ -34,9 +34,9 @@ class ConnectionPool;
 namespace arangodb::replication2::replicated_log {
 
 struct NetworkAttachedFollower : AbstractFollower {
-  explicit NetworkAttachedFollower(network::ConnectionPool* pool,
-                                   ParticipantId id, DatabaseID database,
-                                   LogId logId);
+  explicit NetworkAttachedFollower(
+      network::ConnectionPool* pool, ParticipantId id, DatabaseID database,
+      LogId logId, std::shared_ptr<ReplicatedLogGlobalSettings const> options);
   [[nodiscard]] auto getParticipantId() const noexcept
       -> ParticipantId const& override;
   auto appendEntries(AppendEntriesRequest request)
@@ -47,6 +47,7 @@ struct NetworkAttachedFollower : AbstractFollower {
   ParticipantId id;
   DatabaseID database;
   LogId logId;
+  std::shared_ptr<ReplicatedLogGlobalSettings const> options;
 };
 
 struct NetworkLeaderCommunicator : ILeaderCommunicator {

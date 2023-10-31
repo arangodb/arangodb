@@ -1,0 +1,19 @@
+name: arangodb_network_dequeue_duration
+introducedIn: "3.10.6"
+help: |
+  Internal request duration for the dequeue in seconds.
+unit: seconds
+type: histogram
+category: Network
+complexity: advanced
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Histogram providing the time from submitting an internal requests until
+  the IO thread in the fuerte driver starts working on it. Times are in
+  seconds.
+troubleshoot: |
+  Counts in the high brackets indicate that the IO threads cannot keep up
+  with the work.

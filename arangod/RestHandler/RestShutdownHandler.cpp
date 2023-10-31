@@ -44,10 +44,6 @@ RestShutdownHandler::RestShutdownHandler(ArangodServer& server,
                                          GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_get_api_initiate
-////////////////////////////////////////////////////////////////////////////////
-
 RestStatus RestShutdownHandler::execute() {
   if (_request->requestType() != rest::RequestType::DELETE_REQ &&
       _request->requestType() != rest::RequestType::GET) {
@@ -127,8 +123,8 @@ RestStatus RestShutdownHandler::execute() {
   // don't block the response for workers waiting on this callback
   // this should allow workers to go into the IDLE state
   scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self] {
-    // Give the server 2 seconds to send the reply:
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    // Give the server half a second to send the reply:
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     // Go down:
     self->server().beginShutdown();
   });

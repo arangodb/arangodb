@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <cstddef>
+
 namespace arangodb::pregel {
 
 template<typename M>

@@ -157,8 +157,6 @@ function replicationFuzz (options) {
 
 function replicationRandom (options) {
   let testCases = tu.scanTestPaths(testPaths.replication_random, options);
-
-
   return new replicationRunner(options, 'replication_random').run(testCases);
 }
 
@@ -178,7 +176,6 @@ function replicationAql (options) {
 var _replicationOngoing = function(path) {
   this.func = function replicationOngoing (options) {
     let testCases = tu.scanTestPaths(testPaths[path], options);
-
     return new replicationRunner(options, path).run(testCases);
   };
 };
@@ -197,7 +194,7 @@ function replicationStatic (options) {
 
   return new replicationRunner(
     options,
-    'master_static',
+    'leader_static',
     {
       'server.authentication': 'true'
     }, true).run(testCases);
@@ -211,7 +208,7 @@ function replicationSync (options) {
   let testCases = tu.scanTestPaths(testPaths.replication_sync, options);
   testCases = tu.splitBuckets(options, testCases);
 
-  return new replicationRunner(options, 'replication_sync').run(testCases);
+  return new replicationRunner(options, 'replication_sync', {"server.authentication": "true"}).run(testCases);
 }
 
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {

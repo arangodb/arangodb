@@ -178,8 +178,7 @@ SortInformation SortNode::getSortInformation() const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SortNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
@@ -197,7 +196,7 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
   auto executorInfos = SortExecutorInfos(
       registerInfos.numberOfInputRegisters(),
       registerInfos.numberOfOutputRegisters(), registerInfos.registersToClear(),
-      std::move(sortRegs), _limit, engine.itemBlockManager(),
+      std::move(sortRegs), _limit, engine.itemBlockManager(), engine.getQuery(),
       engine.getQuery()
           .vocbase()
           .server()
@@ -227,6 +226,10 @@ CostEstimate SortNode::estimateCost() const {
   return estimate;
 }
 
+AsyncPrefetchEligibility SortNode::canUseAsyncPrefetching() const noexcept {
+  return AsyncPrefetchEligibility::kEnableForNode;
+}
+
 void SortNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
   for (auto& variable : _elements) {
@@ -238,3 +241,5 @@ SortNode::SorterType SortNode::sorterType() const {
   return (!isStable() && _limit > 0) ? SorterType::ConstrainedHeap
                                      : SorterType::Standard;
 }
+
+size_t SortNode::getMemoryUsedBytes() const { return sizeof(*this); }

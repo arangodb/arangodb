@@ -14,5 +14,5 @@ description: |
   Number of failed background revision tree rebuilds.
   Ideally this value stays at 0, because if a revision tree rebuild
   fails, the system may stall and not be able to make progress in
-  terms of WAL file collection. In case the counter is increased,
-  an error message will also be logged to the arangod logfile.
+  terms of WAL file collection. When the counter increases,
+  an error message is also logged to the server logfile.

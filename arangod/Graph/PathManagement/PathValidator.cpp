@@ -65,12 +65,13 @@ PathValidator<ProviderType, PathStore, vertexUniqueness,
 template<class ProviderType, class PathStore,
          VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness>
-auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
-    validatePath(typename PathStore::Step const& step) -> ValidationResult {
+auto PathValidator<ProviderType, PathStore, vertexUniqueness,
+                   edgeUniqueness>::validatePath(typename PathStore::Step& step)
+    -> ValidationResult {
   auto res = evaluateVertexCondition(step);
   if (res.isFiltered() && res.isPruned()) {
     // Can give up here. This Value is not used
-    return res;
+    return handleValidationResult(res, step);
   }
 
 #ifdef USE_ENTERPRISE
@@ -79,7 +80,7 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     if (validDisjPathRes == ValidationResult::Type::FILTER_AND_PRUNE ||
         validDisjPathRes == ValidationResult::Type::FILTER) {
       res.combine(validDisjPathRes);
-      return res;
+      return handleValidationResult(res, step);
     }
   }
 #endif
@@ -134,7 +135,7 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
       }
     }
   }
-  return res;
+  return handleValidationResult(res, step);
 }
 
 template<class ProviderType, class PathStore,
@@ -191,6 +192,19 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness,
     -> ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
                                        std::equal_to<VertexRef>> const& {
   return _uniqueVertices;
+}
+
+template<class ProviderType, class PathStore,
+         VertexUniquenessLevel vertexUniqueness,
+         EdgeUniquenessLevel edgeUniqueness>
+auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
+    handleValidationResult(ValidationResult validationResult,
+                           typename PathStore::Step& step) -> ValidationResult {
+  if constexpr (std::is_same_v<ClusterProviderStep, typename PathStore::Step>) {
+    step.setValidationResult(validationResult);
+  }
+
+  return validationResult;
 }
 
 template<class ProviderType, class PathStore,

@@ -15,4 +15,4 @@ description: |
   Execution time histogram for slow AQL queries, in seconds.
   Queries are considered "slow" if their execution time is above the
   threshold configured in the startup options `--query.slow-threshold`
-  or `--query.slow-streaming-threshold`, resp.
+  or `--query.slow-streaming-threshold`, respectively.

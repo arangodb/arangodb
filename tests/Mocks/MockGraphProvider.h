@@ -32,6 +32,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
+#include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
 
 #include "Graph/Providers/BaseStep.h"
@@ -258,6 +259,8 @@ class MockGraphProvider {
     bool isProcessable() const { return _isProcessable; }
 
     bool isLooseEnd() const { return !isProcessable(); }
+
+    bool isUnknown() const { return false; }
 
     void resolve() {
       TRI_ASSERT(!isProcessable());

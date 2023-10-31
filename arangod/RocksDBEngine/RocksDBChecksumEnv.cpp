@@ -25,7 +25,6 @@
 
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/RocksDBUtils.h"
 #include "Basics/error.h"
 #include "Basics/files.h"
@@ -100,7 +99,7 @@ bool ChecksumHelper::writeShaFile(std::string const& fileName,
   auto res = TRI_WriteFile(shaFileName.c_str(), "", 0);
   if (res == TRI_ERROR_NO_ERROR) {
     std::string baseName = TRI_Basename(fileName);
-    MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
+    std::lock_guard mutexLock{_calculatedHashesMutex};
     _fileNamesToHashes.try_emplace(std::move(baseName), checksum);
     return true;
   }
@@ -213,7 +212,7 @@ void ChecksumHelper::checkMissingShaFiles() {
         std::string hash = it->substr(shaIndex + /*.sha.*/ 5, 64);
         // skip following .sst or .blob file
         it = nextIt;
-        MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
+        std::lock_guard mutexLock{_calculatedHashesMutex};
         _fileNamesToHashes.try_emplace(std::move(full), std::move(hash));
       } else {
         // .sha file is not followed by .sst or .blob file - remove it
@@ -223,7 +222,7 @@ void ChecksumHelper::checkMissingShaFiles() {
         TRI_UnlinkFile(tempPath.data());
 
         // remove hash values from hash table
-        MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
+        std::lock_guard mutexLock{_calculatedHashesMutex};
         _fileNamesToHashes.erase(baseName + ".sst");
         _fileNamesToHashes.erase(baseName + ".blob");
       }
@@ -252,7 +251,7 @@ std::string ChecksumHelper::removeFromTable(std::string const& fileName) {
   std::string baseName = TRI_Basename(fileName);
   std::string checksum;
   {
-    MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
+    std::lock_guard mutexLock{_calculatedHashesMutex};
     if (auto it = _fileNamesToHashes.find(baseName);
         it != _fileNamesToHashes.end()) {
       checksum = it->second;

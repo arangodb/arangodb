@@ -41,7 +41,11 @@
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
 
+#include <absl/strings/escaping.h>
+
 #include <cstring>
+
+#include <llhttp.h>
 
 // Work-around for nghttp2 non-standard definition ssize_t under windows
 // https://github.com/nghttp2/nghttp2/issues/616
@@ -72,25 +76,28 @@ struct H2Response : public HttpResponse {
 template<SocketType T>
 /*static*/ int H2CommTask<T>::on_begin_headers(nghttp2_session* session,
                                                const nghttp2_frame* frame,
-                                               void* user_data) {
+                                               void* user_data) try {
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
 
   if (frame->hd.type != NGHTTP2_HEADERS ||
       frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
-    return 0;
+    return HPE_OK;
   }
 
   int32_t const sid = frame->hd.stream_id;
   me->acquireStatistics(sid).SET_READ_START(TRI_microtime());
   auto req =
-      std::make_unique<HttpRequest>(me->_connectionInfo, /*messageId*/ sid,
-                                    /*allowMethodOverride*/ false);
+      std::make_unique<HttpRequest>(me->_connectionInfo, /*messageId*/ sid);
   me->createStream(sid, std::move(req));
 
   LOG_TOPIC("33598", TRACE, Logger::REQUESTS)
       << "<http2> creating new stream " << sid;
 
-  return 0;
+  return HPE_OK;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template<SocketType T>
@@ -98,18 +105,18 @@ template<SocketType T>
                                         const nghttp2_frame* frame,
                                         const uint8_t* name, size_t namelen,
                                         const uint8_t* value, size_t valuelen,
-                                        uint8_t flags, void* user_data) {
+                                        uint8_t flags, void* user_data) try {
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
   int32_t const sid = frame->hd.stream_id;
 
   if (frame->hd.type != NGHTTP2_HEADERS ||
       frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
-    return 0;
+    return HPE_OK;
   }
 
   Stream* strm = me->findStream(sid);
   if (!strm) {
-    return 0;
+    return HPE_OK;
   }
 
   // prevent stream headers from becoming too large
@@ -133,16 +140,20 @@ template<SocketType T>
   } else if (std::string_view(":authority") == field) {
     // simon: ignore, could treat like "Host" header
   } else {  // fall through
-    strm->request->setHeaderV2(std::string(field), std::string(val));
+    strm->request->setHeader(std::string(field), std::string(val));
   }
 
-  return 0;
+  return HPE_OK;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template<SocketType T>
 /*static*/ int H2CommTask<T>::on_frame_recv(nghttp2_session* session,
                                             const nghttp2_frame* frame,
-                                            void* user_data) {
+                                            void* user_data) try {
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
 
   switch (frame->hd.type) {
@@ -163,31 +174,37 @@ template<SocketType T>
     }
   }
 
-  return 0;
+  return HPE_OK;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template<SocketType T>
-/*static*/ int H2CommTask<T>::on_data_chunk_recv(nghttp2_session* session,
-                                                 uint8_t flags,
-                                                 int32_t stream_id,
-                                                 const uint8_t* data,
-                                                 size_t len, void* user_data) {
+/*static*/ int H2CommTask<T>::on_data_chunk_recv(
+    nghttp2_session* session, uint8_t flags, int32_t stream_id,
+    const uint8_t* data, size_t len, void* user_data) try {
   LOG_TOPIC("2823c", TRACE, Logger::REQUESTS)
       << "<http2> received data for stream " << stream_id;
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
   Stream* strm = me->findStream(stream_id);
   if (strm) {
-    strm->request->body().append(data, len);
+    strm->request->appendBody(reinterpret_cast<char const*>(data), len);
   }
 
-  return 0;
+  return HPE_OK;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template<SocketType T>
 /*static*/ int H2CommTask<T>::on_stream_close(nghttp2_session* session,
                                               int32_t stream_id,
                                               uint32_t error_code,
-                                              void* user_data) {
+                                              void* user_data) try {
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
   auto it = me->_streams.find(stream_id);
   if (it != me->_streams.end()) {
@@ -204,7 +221,11 @@ template<SocketType T>
         << nghttp2_http2_strerror(error_code) << "' (" << error_code << ")";
   }
 
-  return 0;
+  return HPE_OK;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template<SocketType T>
@@ -212,16 +233,16 @@ template<SocketType T>
                                             const nghttp2_frame* frame,
                                             void* user_data) {
   // can be used for push promises
-  return 0;
+  return HPE_OK;
 }
 
 template<SocketType T>
 /*static*/ int H2CommTask<T>::on_frame_not_send(nghttp2_session* session,
                                                 const nghttp2_frame* frame,
                                                 int lib_error_code,
-                                                void* user_data) {
+                                                void* user_data) try {
   if (frame->hd.type != NGHTTP2_HEADERS) {
-    return 0;
+    return HPE_OK;
   }
 
   int32_t const sid = frame->hd.stream_id;
@@ -233,12 +254,16 @@ template<SocketType T>
   nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, sid,
                             NGHTTP2_INTERNAL_ERROR);
 
-  return 0;
+  return HPE_OK;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template<SocketType T>
 H2CommTask<T>::H2CommTask(GeneralServer& server, ConnectionInfo info,
-                          std::unique_ptr<AsioSocket<T>> so)
+                          std::shared_ptr<AsioSocket<T>> so)
     : GeneralCommTask<T>(server, std::move(info), std::move(so)) {
   this->_connectionStatistics.SET_HTTP();
   this->_generalServerFeature.countHttp2Connection();
@@ -264,21 +289,29 @@ H2CommTask<T>::~H2CommTask() noexcept {
 
 namespace {
 int on_error_callback(nghttp2_session* session, int lib_error_code,
-                      const char* msg, size_t len, void*) {
+                      const char* msg, size_t len, void*) try {
   // use INFO log level, its still hidden by default
   LOG_TOPIC("bfcd0", INFO, Logger::REQUESTS)
-      << "http2 connection error: \"" << std::string(msg, len) << "\" ("
+      << "http2 connection error: \"" << std::string_view(msg, len) << "\" ("
       << lib_error_code << ")";
-  return 0;
+  return HPE_OK;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 int on_invalid_frame_recv(nghttp2_session* session, const nghttp2_frame* frame,
-                          int lib_error_code, void* user_data) {
+                          int lib_error_code, void* user_data) try {
   LOG_TOPIC("b5de2", INFO, Logger::REQUESTS)
       << "received illegal data frame on stream " << frame->hd.stream_id
       << ": '" << nghttp2_strerror(lib_error_code) << "' (" << lib_error_code
       << ")";
-  return 0;
+  return HPE_OK;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 constexpr uint32_t window_size = (1 << 30) - 1;  // 1 GiB
@@ -357,7 +390,8 @@ void H2CommTask<T>::upgradeHttp1(std::unique_ptr<HttpRequest> req) {
   std::string const& settings = req->header("http2-settings", found);
   bool const wasHead = req->requestType() == RequestType::HEAD;
 
-  std::string decoded = StringUtils::decodeBase64(settings);
+  std::string decoded;
+  absl::Base64Unescape(settings, &decoded);
   uint8_t const* src = reinterpret_cast<uint8_t const*>(decoded.data());
   int rv =
       nghttp2_session_upgrade2(_session, src, decoded.size(), wasHead, nullptr);
@@ -377,7 +411,7 @@ void H2CommTask<T>::upgradeHttp1(std::unique_ptr<HttpRequest> req) {
   asio_ns::async_write(
       this->_protocol->socket, buffer,
       withLogContext(
-          [self(this->shared_from_this()), req(std::move(req))](
+          [self(this->shared_from_this()), request(std::move(req))](
               asio_ns::error_code const& ec, std::size_t nwrite) mutable {
             auto& me = static_cast<H2CommTask<T>&>(*self);
             if (ec) {
@@ -392,8 +426,8 @@ void H2CommTask<T>::upgradeHttp1(std::unique_ptr<HttpRequest> req) {
             // Stream 1 is implicitly "half-closed" from the client toward the
             // server
 
-            TRI_ASSERT(req->messageId() == 1);
-            auto* strm = me.createStream(1, std::move(req));
+            TRI_ASSERT(request->messageId() == 1);
+            auto* strm = me.createStream(1, std::move(request));
             TRI_ASSERT(strm);
 
             // will start writing later
@@ -558,8 +592,7 @@ void H2CommTask<T>::processRequest(Stream& stream,
                                    std::unique_ptr<HttpRequest> req) {
   // ensure there is a null byte termination. RestHandlers use
   // C functions like strchr that except a C string as input
-  req->body().push_back('\0');
-  req->body().resetTo(req->body().size() - 1);
+  req->appendNullTerminator();
 
   if (this->stopped()) {
     return;  // we have to ignore this request because the connection has
@@ -577,27 +610,14 @@ void H2CommTask<T>::processRequest(Stream& stream,
 
     std::string_view body = req->rawPayload();
     this->_generalServerFeature.countHttp2Request(body.size());
-    if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
+    if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
         Logger::logRequestParameters()) {
-      std::string bodyForLogging;
-      try {
-        velocypack::Slice s = req->payload(false);
-        if (!s.isNone()) {
-          // "none" can happen if the content-type is neither JSON nor vpack
-          bodyForLogging = StringUtils::escapeUnicode(s.toJson());
-        }
-      } catch (...) {
-        // cannot stringify request body
-      }
+      // Log HTTP headers:
+      this->logRequestHeaders("h2", req->headers());
 
-      if (bodyForLogging.empty() && !body.empty()) {
-        bodyForLogging = "potential binary data";
+      if (!body.empty()) {
+        this->logRequestBody("h2", req->contentType(), body);
       }
-
-      LOG_TOPIC("b6dc3", TRACE, Logger::REQUESTS)
-          << "\"h2-request-body\",\"" << (void*)this << "\",\""
-          << rest::contentTypeToString(req->contentType()) << "\",\""
-          << req->contentLength() << "\",\"" << bodyForLogging << "\"";
     }
   }
 
@@ -674,6 +694,23 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
     return;
   }
 
+  auto* tmp = static_cast<H2Response*>(res.get());
+
+  // handle response code 204 No Content
+  if (tmp->responseCode() == rest::ResponseCode::NO_CONTENT) {
+    tmp->clearBody();
+  }
+
+  if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
+      Logger::logRequestParameters()) {
+    auto const& bodyBuf = tmp->body();
+    std::string_view body{bodyBuf.data(), bodyBuf.size()};
+    if (!body.empty()) {
+      this->logRequestBody("h2", res->contentType(), body,
+                           true /* isResponse */);
+    }
+  }
+
   // and give some request information
   LOG_TOPIC("924cc", DEBUG, Logger::REQUESTS)
       << "\"h2-request-end\",\"" << (void*)this << "\",\""
@@ -685,7 +722,6 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
       << "\"," << Logger::FIXED(stat.ELAPSED_SINCE_READ_START(), 6) << ","
       << Logger::FIXED(stat.ELAPSED_WHILE_QUEUED(), 6);
 
-  auto* tmp = static_cast<H2Response*>(res.get());
   tmp->statistics = std::move(stat);
 
   // this uses a fixed capacity queue, push might fail (unlikely, we limit max
@@ -746,6 +782,11 @@ void H2CommTask<T>::queueHttp2Responses() {
     // will add CORS headers if necessary
     this->finishExecution(res, strm->origin);
 
+    if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
+        Logger::logRequestParameters()) {
+      this->logResponseHeaders("h2", res.headers());
+    }
+
     // we need a continuous block of memory for headers
     std::vector<nghttp2_nv> nva;
     nva.reserve(4 + res.headers().size());
@@ -788,7 +829,7 @@ void H2CommTask<T>::queueHttp2Responses() {
     }
 
     // add "Server" response header
-    if (!seenServerHeader && !HttpResponse::HIDE_PRODUCT_HEADER) {
+    if (!seenServerHeader) {
       nva.push_back(
           {(uint8_t*)"server", (uint8_t*)"ArangoDB", 6, 8,
            NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE});

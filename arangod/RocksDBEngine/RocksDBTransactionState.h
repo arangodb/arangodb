@@ -29,6 +29,7 @@
 #include <limits>
 
 #include "Basics/Common.h"
+#include "Cache/Transaction.h"
 #include "Containers/SmallVector.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
@@ -52,10 +53,6 @@ class Iterator;
 
 namespace arangodb {
 
-namespace cache {
-struct Transaction;
-}
-
 class LogicalCollection;
 class LogicalDataSource;
 class RocksDBTransactionMethods;
@@ -66,7 +63,8 @@ class RocksDBTransactionState : public TransactionState {
 
  public:
   RocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
-                          transaction::Options const& options);
+                          transaction::Options const& options,
+                          transaction::OperationOrigin operationOrigin);
   ~RocksDBTransactionState() override;
 
   /// @brief begin a transaction
@@ -131,6 +129,9 @@ class RocksDBTransactionState : public TransactionState {
   /// @brief whether or not a transaction only has exclusive or read accesses
   bool isOnlyExclusiveTransaction() const noexcept;
 
+  /// @brief provide debug info for transaction state
+  virtual std::string debugInfo() const;
+
   [[nodiscard]] virtual rocksdb::SequenceNumber beginSeq() const = 0;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -150,11 +151,11 @@ class RocksDBTransactionState : public TransactionState {
   void cleanupTransaction() noexcept;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  std::atomic<uint32_t> _users;
+  std::atomic<uint32_t> _users{0};
 #endif
 
   /// @brief cache transaction to unblock banished keys
-  cache::Transaction* _cacheTx;
+  cache::Transaction _cacheTx;
 };
 
 /// @brief a struct that makes sure that the same RocksDBTransactionState

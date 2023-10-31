@@ -23,7 +23,7 @@
 
 #include "ShellFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/debugging.h"
 #include "FeaturePhases/V8ShellFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -31,7 +31,9 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "Shell/ClientFeature.h"
 #include "Shell/ShellConsoleFeature.h"
+#include "Shell/TelemetricsHandler.h"
 #include "Shell/V8ShellFeature.h"
+#include <velocypack/Builder.h>
 
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -40,18 +42,16 @@ namespace arangodb {
 
 ShellFeature::ShellFeature(Server& server, int* result)
     : ArangoshFeature(server, *this),
-      _jslint(),
       _result(result),
       _runMode(RunMode::INTERACTIVE) {
   setOptional(false);
   startsAfter<application_features::V8ShellFeaturePhase>();
 }
 
+ShellFeature::~ShellFeature() = default;
+
 void ShellFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  options->addOption("--jslint", "Do not start as a shell, run jslint instead.",
-                     new VectorParameter<StringParameter>(&_jslint));
-
   options->addSection("javascript", "JavaScript engine");
 
   options->addOption("--javascript.execute",
@@ -81,6 +81,13 @@ void ShellFeature::collectOptions(
   options->addOption("--javascript.run-main", "Execute main function.",
                      new BooleanParameter(&_runMain));
 #endif
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  options->addOption(
+      "--client.failure-points",
+      "The failure point to set during shell startup (requires compilation "
+      "with failure points support).",
+      new VectorParameter<StringParameter>(&_failurePoints));
+#endif
 }
 
 void ShellFeature::validateOptions(
@@ -92,10 +99,6 @@ void ShellFeature::validateOptions(
   ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
 
   if (client.endpoint() == "none") {
-    client.disable();
-  }
-
-  if (!_jslint.empty()) {
     client.disable();
   }
 
@@ -127,17 +130,17 @@ void ShellFeature::validateOptions(
     ++n;
   }
 
-  if (!_jslint.empty()) {
-    console.setQuiet(true);
-    _runMode = RunMode::JSLINT;
-    ++n;
-  }
-
   if (1 < n) {
     LOG_TOPIC("80a8c", ERR, arangodb::Logger::FIXME)
         << "you cannot specify more than one type ("
-        << "jslint, execute, execute-string, check-syntax, unit-tests)";
+        << "execute, execute-string, check-syntax, unit-tests)";
   }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  for (auto const& it : _failurePoints) {
+    TRI_AddFailurePointDebugging(it);
+  }
+#endif
 }
 
 void ShellFeature::start() {
@@ -146,14 +149,22 @@ void ShellFeature::start() {
   V8ShellFeature& shell = server().getFeature<V8ShellFeature>();
 
   bool ok = false;
-
   try {
     switch (_runMode) {
       case RunMode::INTERACTIVE:
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+        startTelemetrics();
+#endif
         ok = (shell.runShell(_positionals) == TRI_ERROR_NO_ERROR);
         break;
 
       case RunMode::EXECUTE_SCRIPT:
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+        startTelemetrics();
+#endif
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+        TRI_IF_FAILURE("startTelemetricsForTest") { startTelemetrics(); }
+#endif
         ok = shell.runScript(_executeScripts, _positionals, true,
                              _scriptParameters, _runMain);
         break;
@@ -170,10 +181,6 @@ void ShellFeature::start() {
       case RunMode::UNIT_TESTS:
         ok = shell.runUnitTests(_unitTests, _positionals, _unitTestFilter);
         break;
-
-      case RunMode::JSLINT:
-        ok = shell.jslint(_jslint);
-        break;
     }
   } catch (std::exception const& ex) {
     LOG_TOPIC("98f7d", ERR, arangodb::Logger::FIXME)
@@ -188,6 +195,51 @@ void ShellFeature::start() {
   if (*_result == EXIT_SUCCESS && !ok) {
     *_result = EXIT_FAILURE;
   }
+}
+
+void ShellFeature::beginShutdown() {
+  if (_telemetricsHandler != nullptr) {
+    _telemetricsHandler->beginShutdown();
+  }
+}
+
+void ShellFeature::stop() {
+  if (_telemetricsHandler != nullptr) {
+    _telemetricsHandler->joinThread();
+  }
+}
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+
+void ShellFeature::getTelemetricsInfo(VPackBuilder& builder) {
+  if (_telemetricsHandler != nullptr) {
+    _telemetricsHandler->getTelemetricsInfo(builder);
+  }
+}
+VPackBuilder ShellFeature::sendTelemetricsToEndpoint(std::string const& url) {
+  if (_telemetricsHandler != nullptr) {
+    return _telemetricsHandler->sendTelemetricsToEndpoint(url);
+  }
+  return VPackBuilder();
+}
+#endif
+
+void ShellFeature::startTelemetrics() {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  _telemetricsHandler = std::make_unique<TelemetricsHandler>(
+      server(), _automaticallySendTelemetricsToEndpoint);
+#else
+  _telemetricsHandler = std::make_unique<TelemetricsHandler>(server(), true);
+#endif
+  _telemetricsHandler->runTelemetrics();
+}
+
+void ShellFeature::restartTelemetrics() {
+  if (_telemetricsHandler != nullptr) {
+    _telemetricsHandler->beginShutdown();
+    _telemetricsHandler.reset();
+  }
+  startTelemetrics();
 }
 
 }  // namespace arangodb

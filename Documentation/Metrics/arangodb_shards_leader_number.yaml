@@ -23,8 +23,8 @@ troubleshoot: |
   If you have few databases in a one-shard deployment, then an uneven
   distribution of leader shards is natural.
   
-  You can either move shards manually, use the "Rebalance shards" button
-  in the UI, or use the
+  You can either move shards manually, use the **Rebalance shards** button
+  in the ArangoDB web interface, or use the
   [cluster maintenance tools](https://github.com/arangodb/cluster-maintenance)
   (`create-move-plan` and `execute-move-plan` specifically). In the latter
   case, contact ArangoDB customer support.

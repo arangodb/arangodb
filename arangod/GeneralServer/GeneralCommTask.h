@@ -38,7 +38,7 @@ class GeneralCommTask : public CommTask {
 
  public:
   GeneralCommTask(GeneralServer& server, ConnectionInfo,
-                  std::unique_ptr<AsioSocket<T>>);
+                  std::shared_ptr<AsioSocket<T>>);
 
   virtual ~GeneralCommTask() = default;
 
@@ -62,12 +62,22 @@ class GeneralCommTask : public CommTask {
   static constexpr size_t ReadBlockSize = 1024 * 32;
   static constexpr double WriteTimeout = 300.0;
 
-  std::unique_ptr<AsioSocket<T>> _protocol;
+  std::shared_ptr<AsioSocket<T>> _protocol;
 
   GeneralServerFeature& _generalServerFeature;
 
   bool _reading;
   bool _writing;
+
+  void logRequestHeaders(
+      std::string_view protocol,
+      std::unordered_map<std::string, std::string> const& headers) const;
+  void logRequestBody(std::string_view protocol,
+                      arangodb::rest::ContentType contentType,
+                      std::string_view body, bool isResponse = false) const;
+  void logResponseHeaders(
+      std::string_view protocol,
+      std::unordered_map<std::string, std::string> const& headers) const;
 
  private:
   std::atomic<bool> _stopped;

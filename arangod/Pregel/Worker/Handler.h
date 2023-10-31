@@ -22,75 +22,150 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <chrono>
 #include <memory>
+#include "Actor/ActorPID.h"
 #include "Actor/HandlerBase.h"
+#include "Logger/LogMacros.h"
+#include "Pregel/GraphStore/GraphLoader.h"
+#include "Pregel/GraphStore/GraphStorer.h"
+#include "Pregel/GraphStore/GraphVPackBuilderStorer.h"
+#include "Pregel/StatusMessages.h"
+#include "Pregel/VertexComputation.h"
 #include "Pregel/Worker/Messages.h"
 #include "Pregel/Worker/State.h"
 #include "Pregel/Conductor/Messages.h"
+#include "Pregel/ResultMessages.h"
+#include "Pregel/SpawnMessages.h"
+#include "Pregel/StatusMessages.h"
+#include "Pregel/MetricsMessages.h"
+#include "Pregel/Worker/VertexProcessor.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "Pregel/Worker/ExecutionStates/State.h"
+#include "Pregel/Worker/ExecutionStates/CleanedUpState.h"
+#include "Pregel/Worker/ExecutionStates/FatalErrorState.h"
 
 namespace arangodb::pregel::worker {
 
+struct VerticesProcessed {
+  std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor;
+  size_t activeCount;
+};
+
 template<typename V, typename E, typename M, typename Runtime>
 struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
+  DispatchStatus const& dispatchStatus =
+      [this](pregel::message::StatusMessages message) -> void {
+    this->template dispatch<pregel::message::StatusMessages>(
+        this->state->statusActor, message);
+  };
+  DispatchMetrics const& dispatchMetrics =
+      [this](metrics::message::MetricsMessages message) -> void {
+    this->template dispatch<metrics::message::MetricsMessages>(
+        this->state->metricsActor, message);
+  };
+  DispatchConductor const& dispatchConductor =
+      [this](conductor::message::ConductorMessages message) -> void {
+    this->template dispatch<conductor::message::ConductorMessages>(
+        this->state->conductor, message);
+  };
+  DispatchSelf const& dispatchSelf =
+      [this](message::WorkerMessages message) -> void {
+    this->template dispatch<message::WorkerMessages>(this->self, message);
+  };
+  DispatchOther const& dispatchOther =
+      [this](actor::ActorPID other, message::WorkerMessages message) -> void {
+    this->template dispatch<message::WorkerMessages>(other, message);
+  };
+  DispatchResult const& dispatchResult =
+      [this](pregel::message::ResultMessages message) -> void {
+    this->template dispatch<pregel::message::ResultMessages>(
+        this->state->resultActor, message);
+  };
+  DispatchSpawn const& dispatchSpawn =
+      [this](pregel::message::SpawnMessages message) -> void {
+    this->template dispatch<pregel::message::SpawnMessages>(
+        this->state->spawnActor, message);
+  };
+
+  Dispatcher dispatcher{.dispatchStatus = dispatchStatus,
+                        .dispatchMetrics = dispatchMetrics,
+                        .dispatchConductor = dispatchConductor,
+                        .dispatchSelf = dispatchSelf,
+                        .dispatchOther = dispatchOther,
+                        .dispatchResult = dispatchResult,
+                        .dispatchSpawn = dispatchSpawn};
+
   auto operator()(message::WorkerStart start)
       -> std::unique_ptr<WorkerState<V, E, M>> {
-    LOG_TOPIC("cd696", INFO, Logger::PREGEL) << fmt::format(
-        "Worker Actor {} started with state {}", this->self, *this->state);
-    // TODO GORDO-1556
-    // _feature.metrics()->pregelWorkersNumber->fetch_add(1);
-    this->template dispatch<conductor::message::ConductorMessages>(
-        this->state->conductor, ResultT<conductor::message::WorkerCreated>{});
+    auto newState = this->state->executionState->receive(
+        this->sender, this->self, start, dispatcher);
+    changeState(std::move(newState));
+
     return std::move(this->state);
   }
 
-  auto operator()(message::LoadGraph start)
+  auto operator()(message::LoadGraph message)
       -> std::unique_ptr<WorkerState<V, E, M>> {
-    LOG_TOPIC("cd69c", INFO, Logger::PREGEL)
-        << fmt::format("Worker Actor {} is loading", this->self);
-    std::function<void()> statusUpdateCallback =
-        [/*self = shared_from_this(),*/ this] {
-          // TODO
-          this->template dispatch<conductor::message::ConductorMessages>(
-              this->state->conductor,
-              conductor::message::StatusUpdate{
-                  .executionNumber =
-                      this->state->executionSpecifications.executionNumber,
-                  .status = this->state->observeStatus()});
-        };
+    auto newState = this->state->executionState->receive(
+        this->sender, this->self, message, dispatcher);
+    changeState(std::move(newState));
 
-    // TODO GORDO-1510
-    // _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
+    return std::move(this->state);
+  }
 
-    auto graphLoaded = [/*self = shared_from_this(),*/ this]()
-        -> ResultT<conductor::message::GraphLoaded> {
-      try {
-        // TODO GORDO-1546
-        // add graph store to state
-        // this->state->graphStore->loadShards(&_config, statusUpdateCallback,
-        // []() {});
-        return {conductor::message::GraphLoaded{
-            .executionNumber =
-                this->state->executionSpecifications.executionNumber,
-            .vertexCount = 0,  // TODO GORDO-1546
-                               // this->state->graphStore->localVertexCount(),
-            .edgeCount = 0,    // TODO GORDO-1546
-                               // this->state->_graphStore->localEdgeCount()
-        }};
-        LOG_TOPIC("5206c", WARN, Logger::PREGEL)
-            << fmt::format("Worker {} has finished loading.", this->self);
-      } catch (std::exception const& ex) {
-        return Result{
-            TRI_ERROR_INTERNAL,
-            fmt::format("caught exception in loadShards: {}", ex.what())};
-      } catch (...) {
-        return Result{TRI_ERROR_INTERNAL,
-                      "caught unknown exception exception in loadShards"};
-      }
-    };
-    this->template dispatch<conductor::message::ConductorMessages>(
-        this->state->conductor, graphLoaded());
-    // TODO GORDO-1510
-    // _feature.metrics()->pregelWorkersLoadingNumber->fetch_sub(1);
+  // ----- computing -----
+  auto operator()(message::RunGlobalSuperStep message)
+      -> std::unique_ptr<WorkerState<V, E, M>> {
+    auto newState = this->state->executionState->receive(
+        this->sender, this->self, message, dispatcher);
+    changeState(std::move(newState));
+
+    return std::move(this->state);
+  }
+
+  auto operator()(message::PregelMessage message)
+      -> std::unique_ptr<WorkerState<V, E, M>> {
+    auto newState = this->state->executionState->receive(
+        this->sender, this->self, message, dispatcher);
+    changeState(std::move(newState));
+
+    return std::move(this->state);
+  }
+
+  // ------ end computing ----
+
+  auto operator()([[maybe_unused]] message::Store message)
+      -> std::unique_ptr<WorkerState<V, E, M>> {
+    auto newState = this->state->executionState->receive(
+        this->sender, this->self, message, dispatcher);
+    changeState(std::move(newState));
+
+    return std::move(this->state);
+  }
+
+  auto operator()(message::ProduceResults message)
+      -> std::unique_ptr<WorkerState<V, E, M>> {
+    auto newState = this->state->executionState->receive(
+        this->sender, this->self, message, dispatcher);
+    changeState(std::move(newState));
+
+    return std::move(this->state);
+  }
+
+  auto operator()([[maybe_unused]] message::Cleanup message)
+      -> std::unique_ptr<WorkerState<V, E, M>> {
+    this->finish();
+
+    LOG_TOPIC("664f5", INFO, Logger::PREGEL)
+        << fmt::format("Worker Actor {} is cleaned", this->self);
+
+    dispatchSpawn(pregel::message::SpawnCleanup{});
+    dispatchConductor(pregel::conductor::message::CleanupFinished{});
+    dispatchMetrics(arangodb::pregel::metrics::message::WorkerFinished{});
+
+    changeState(std::make_unique<CleanedUp>());
+
     return std::move(this->state);
   }
 
@@ -119,6 +194,22 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     LOG_TOPIC("8b81a", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor: Got unhandled message: {}", rest);
     return std::move(this->state);
+  }
+
+  auto changeState(std::unique_ptr<ExecutionState> newState) -> void {
+    if (newState != nullptr) {
+      this->state->executionState = std::move(newState);
+      LOG_TOPIC("b11f4", INFO, Logger::PREGEL)
+          << fmt::format("Worker Actor: Execution state changed to {}",
+                         this->state->executionState->name());
+
+      if (dynamic_cast<FatalError*>(this->state->executionState.get()) !=
+          nullptr) {
+        dispatchConductor(ResultT<conductor::message::WorkerFailed>{Result{
+            TRI_ERROR_INTERNAL,
+            fmt::format("Worker {} has entered fatal state.", this->self)}});
+      }
+    }
   }
 };
 

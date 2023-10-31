@@ -34,14 +34,14 @@ using namespace arangodb;
 
 TEST(HttpRequestTest, testMessageId) {
   ConnectionInfo ci;
-  HttpRequest request(ci, 43, true);
+  HttpRequest request(ci, 43);
 
   EXPECT_EQ(43, request.messageId());
 }
 
 TEST(HttpRequestTest, testEmptyUrl) {
   ConnectionInfo ci;
-  HttpRequest request(ci, 1, true);
+  HttpRequest request(ci, 1);
 
   std::string_view url("/");
 
@@ -53,7 +53,7 @@ TEST(HttpRequestTest, testEmptyUrl) {
 
 TEST(HttpRequestTest, testPathOnlyUrl) {
   ConnectionInfo ci;
-  HttpRequest request(ci, 1, true);
+  HttpRequest request(ci, 1);
 
   std::string_view url("/a/foo/bar");
 
@@ -65,7 +65,7 @@ TEST(HttpRequestTest, testPathOnlyUrl) {
 
 TEST(HttpRequestTest, testDuplicateForwardSlashesInUrl) {
   ConnectionInfo ci;
-  HttpRequest request(ci, 1, true);
+  HttpRequest request(ci, 1);
 
   std::string_view url("//a//foo//bar");
 
@@ -77,7 +77,7 @@ TEST(HttpRequestTest, testDuplicateForwardSlashesInUrl) {
 
 TEST(HttpRequestTest, testUrlParameters) {
   ConnectionInfo ci;
-  HttpRequest request(ci, 1, true);
+  HttpRequest request(ci, 1);
 
   std::string_view url("/foo/bar/baz?a=1&b=23&c=d&e=foobar&f=baz&bark=quxxxx");
 
@@ -93,7 +93,7 @@ TEST(HttpRequestTest, testUrlParameters) {
 
 TEST(HttpRequestTest, testEmptyUrlParameters) {
   ConnectionInfo ci;
-  HttpRequest request(ci, 1, true);
+  HttpRequest request(ci, 1);
 
   std::string_view url("/?a=&b=&c=d&e=foobar&f=");
 
@@ -108,7 +108,7 @@ TEST(HttpRequestTest, testEmptyUrlParameters) {
 
 TEST(HttpRequestTest, testUrlEncoding) {
   ConnectionInfo ci;
-  HttpRequest request(ci, 1, true);
+  HttpRequest request(ci, 1);
 
   std::string_view url(
       "/foo/bar/"
@@ -125,7 +125,7 @@ TEST(HttpRequestTest, testUrlEncoding) {
 
 TEST(HttpRequestTest, testWrongUrlEncoding) {
   ConnectionInfo ci;
-  HttpRequest request(ci, 1, true);
+  HttpRequest request(ci, 1);
 
   std::string_view url("/foo/?a=%fg");
 

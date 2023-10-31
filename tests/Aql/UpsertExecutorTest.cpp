@@ -27,6 +27,7 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Basics/StringUtils.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

@@ -24,20 +24,26 @@
 #pragma once
 
 #include "Basics/Identifier.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ReadWriteSpinLock.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
 #include "Cluster/CallbackGuard.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/Fwd.h"
 #include "Transaction/ManagedContext.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
+#include <absl/hash/hash.h>
+
 #include <atomic>
 #include <functional>
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
@@ -51,8 +57,12 @@ class Slice;
 
 namespace transaction {
 class Context;
+class CounterGuard;
 class ManagerFeature;
 class Hints;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+class History;
+#endif
 struct Options;
 
 struct IManager {
@@ -61,11 +71,12 @@ struct IManager {
                                  std::string const& database) = 0;
 };
 
-/// @brief Tracks TransasctionState instances
+/// @brief Tracks TransactionState instances
 class Manager final : public IManager {
+  friend class CounterGuard;
+
   static constexpr size_t numBuckets = 16;
-  static constexpr double tombstoneTTL = 10.0 * 60.0;              // 10 minutes
-  static constexpr size_t maxTransactionSize = 128 * 1024 * 1024;  // 128 MiB
+  static constexpr double tombstoneTTL = 10.0 * 60.0;  // 10 minutes
 
   enum class MetaType : uint8_t {
     Managed = 1,        /// global single shard db transaction
@@ -116,22 +127,18 @@ class Manager final : public IManager {
   Manager& operator=(Manager const&) = delete;
 
   explicit Manager(ManagerFeature& feature);
+  ~Manager();
 
   static constexpr double idleTTLDBServer = 5 * 60.0;  //  5 minutes
 
   // register a transaction
-  void registerTransaction(TransactionId transactionId,
-                           bool isReadOnlyTransaction,
-                           bool isFollowerTransaction);
-
-  // unregister a transaction
-  void unregisterTransaction(TransactionId transactionId,
-                             bool isReadOnlyTransaction,
-                             bool isFollowerTransaction);
+  std::shared_ptr<CounterGuard> registerTransaction(TransactionId transactionId,
+                                                    bool isReadOnlyTransaction,
+                                                    bool isFollowerTransaction);
 
   uint64_t getActiveTransactionCount();
 
-  void disallowInserts() {
+  void disallowInserts() noexcept {
     _disallowInserts.store(true, std::memory_order_release);
   }
 
@@ -145,19 +152,14 @@ class Manager final : public IManager {
   /// @brief create managed transaction, also generate a tranactionId
   ResultT<TransactionId> createManagedTrx(TRI_vocbase_t& vocbase,
                                           velocypack::Slice trxOpts,
+                                          OperationOrigin operationOrigin,
                                           bool allowDirtyReads);
-
-  /// @brief create managed transaction, also generate a tranactionId
-  ResultT<TransactionId> createManagedTrx(
-      TRI_vocbase_t& vocbase, std::vector<std::string> const& readCollections,
-      std::vector<std::string> const& writeCollections,
-      std::vector<std::string> const& exclusiveCollections,
-      transaction::Options options, double ttl = 0.0);
 
   /// @brief ensure managed transaction, either use the one on the given tid
   ///        or create a new one with the given tid
   Result ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
                           velocypack::Slice trxOpts,
+                          OperationOrigin operationOrigin,
                           bool isFollowerTransaction);
 
   /// @brief ensure managed transaction, either use the one on the given tid
@@ -166,7 +168,8 @@ class Manager final : public IManager {
                           std::vector<std::string> const& readCollections,
                           std::vector<std::string> const& writeCollections,
                           std::vector<std::string> const& exclusiveCollections,
-                          transaction::Options options, double ttl = 0.0);
+                          Options options, OperationOrigin operationOrigin,
+                          double ttl);
 
   Result beginTransaction(transaction::Hints hints,
                           std::shared_ptr<TransactionState>& state);
@@ -177,7 +180,7 @@ class Manager final : public IManager {
                                                         bool isSideUser);
   void returnManagedTrx(TransactionId, bool isSideUser) noexcept;
 
-  /// @brief get the meta transasction state
+  /// @brief get the meta transaction state
   transaction::Status getManagedTrxStatus(TransactionId,
                                           std::string const& database) const;
 
@@ -202,23 +205,30 @@ class Manager final : public IManager {
                     std::string const& database, std::string const& username,
                     bool fanout) const;
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  /// @brief a history of currently ongoing and recently finished
+  /// transactions. currently only used for testing. NOT AVAILABLE
+  /// IN PRODUCTION!
+  History& history() noexcept;
+#endif
+
   // ---------------------------------------------------------------------------
   // Hotbackup Stuff
   // ---------------------------------------------------------------------------
 
-  // temporarily block all new transactions
+  // temporarily block all transactions from committing
   template<typename TimeOutType>
   bool holdTransactions(TimeOutType timeout) {
     bool ret = false;
-    std::unique_lock<std::mutex> guard(_mutex);
-    if (!_writeLockHeld) {
+    std::unique_lock<std::mutex> guard(_hotbackupMutex);
+    if (!_hotbackupCommitLockHeld) {
       LOG_TOPIC("eedda", TRACE, Logger::TRANSACTIONS)
           << "Trying to get write lock to hold transactions...";
-      ret = _rwLock.lockWrite(timeout);
+      ret = _hotbackupCommitLock.tryLockWriteFor(timeout);
       if (ret) {
         LOG_TOPIC("eeddb", TRACE, Logger::TRANSACTIONS)
             << "Got write lock to hold transactions.";
-        _writeLockHeld = true;
+        _hotbackupCommitLockHeld = true;
       } else {
         LOG_TOPIC("eeddc", TRACE, Logger::TRANSACTIONS)
             << "Did not get write lock to hold transactions.";
@@ -228,21 +238,24 @@ class Manager final : public IManager {
   }
 
   // remove the block
-  void releaseTransactions() noexcept {
-    std::unique_lock<std::mutex> guard(_mutex);
-    if (_writeLockHeld) {
-      LOG_TOPIC("eeddd", TRACE, Logger::TRANSACTIONS)
-          << "Releasing write lock to hold transactions.";
-      _rwLock.unlockWrite();
-      _writeLockHeld = false;
-    }
-  }
+  void releaseTransactions() noexcept;
+
+  using TransactionCommitGuard = basics::ReadLocker<basics::ReadWriteLock>;
+
+  TransactionCommitGuard getTransactionCommitGuard();
 
   void initiateSoftShutdown() {
     _softShutdownOngoing.store(true, std::memory_order_relaxed);
   }
 
  private:
+  /// @brief create managed transaction, also generate a tranactionId
+  ResultT<TransactionId> createManagedTrx(
+      TRI_vocbase_t& vocbase, std::vector<std::string> const& readCollections,
+      std::vector<std::string> const& writeCollections,
+      std::vector<std::string> const& exclusiveCollections, Options options,
+      OperationOrigin operationOrigin);
+
   Result prepareOptions(transaction::Options& options);
   bool isFollowerTransactionOnDBServer(
       transaction::Options const& options) const;
@@ -259,7 +272,7 @@ class Manager final : public IManager {
 
   /// @brief hashes the transaction id into a bucket
   inline size_t getBucket(TransactionId tid) const noexcept {
-    return std::hash<TransactionId>()(tid) % numBuckets;
+    return absl::Hash<uint64_t>()(tid.id()) % numBuckets;
   }
 
   std::shared_ptr<ManagedContext> buildManagedContextUnderLock(
@@ -295,19 +308,41 @@ class Manager final : public IManager {
 
   /// Nr of running transactions
   std::atomic<uint64_t> _nrRunning;
-  std::atomic<uint64_t> _nrReadLocked;
 
   std::atomic<bool> _disallowInserts;
 
-  std::mutex _mutex;  // Makes sure that we only ever get or release the
-                      // write lock and adjust _writeLockHeld at the same
-                      // time.
-  basics::ReadWriteLock _rwLock;
-  bool _writeLockHeld;
+  std::mutex _hotbackupMutex;  // Makes sure that we only ever get or release
+                               // the write lock and adjust _writeLockHeld at
+                               // the same time.
+  basics::ReadWriteLock _hotbackupCommitLock;
+  bool _hotbackupCommitLockHeld;
 
   double _streamingLockTimeout;
 
   std::atomic<bool> _softShutdownOngoing;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  /// @brief a history of currently ongoing and recently finished
+  /// transactions. currently only used for testing. NOT AVAILABLE
+  /// IN PRODUCTION!
+  std::unique_ptr<History> _history;
+#endif
 };
+
+// this RAII object is responsible for increasing and decreasing the
+// number of running transactions in the manager safely, so that it can't
+// be forgotten.
+class CounterGuard {
+  CounterGuard(CounterGuard const&) = delete;
+  CounterGuard& operator=(CounterGuard const&) = delete;
+
+ public:
+  explicit CounterGuard(Manager& manager);
+  ~CounterGuard();
+
+ private:
+  Manager& _manager;
+};
+
 }  // namespace transaction
 }  // namespace arangodb

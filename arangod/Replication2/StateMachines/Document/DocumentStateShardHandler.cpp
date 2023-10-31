@@ -23,78 +23,218 @@
 
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 
-#include "Cluster/ActionDescription.h"
-#include "Cluster/CreateCollection.h"
-#include "Cluster/Maintenance.h"
-#include "Cluster/ServerState.h"
-#include "Cluster/DropCollection.h"
-#include "Logger/LogMacros.h"
+#include "Replication2/StateMachines/Document/MaintenanceActionExecutor.h"
+#include "VocBase/vocbase.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/VocBaseLogManager.h"
+#include "Transaction/Methods.h"
+#include "Transaction/StandaloneContext.h"
+#ifdef USE_V8
+#include "Transaction/V8Context.h"
+#endif
+#include "Utils/SingleCollectionTransaction.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
 DocumentStateShardHandler::DocumentStateShardHandler(
-    GlobalLogIdentifier gid, MaintenanceFeature& maintenanceFeature)
-    : _gid(std::move(gid)), _maintenanceFeature(maintenanceFeature) {}
+    TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
+    std::shared_ptr<IMaintenanceActionExecutor> maintenance)
+    : _gid(std::move(gid)),
+      _maintenance(std::move(maintenance)),
+      _vocbase(vocbase) {
+  auto manager = vocbase._logManager;
+  // TODO this is more like a hack than an actual solution
+  //  but for now its good enough
 
-auto DocumentStateShardHandler::stateIdToShardId(LogId logId) -> std::string {
-  return fmt::format("s{}", logId);
+  auto [from, to] = manager->_initCollections.equal_range(_gid.id);
+  for (auto iter = from; iter != to; ++iter) {
+    auto const& coll = iter->second;
+    auto properties = std::make_shared<VPackBuilder>();
+    coll->properties(*properties, LogicalDataSource::Serialization::Properties);
+    _shardMap.shards.emplace(
+        coll->name(),
+        ShardProperties{std::to_string(coll->planId().id()), properties});
+  }
+  manager->_initCollections.erase(from, to);
 }
 
-auto DocumentStateShardHandler::createLocalShard(
-    std::string const& collectionId,
-    std::shared_ptr<velocypack::Builder> const& properties)
-    -> ResultT<std::string> {
-  auto shardId = stateIdToShardId(_gid.id);
-  auto serverId = ServerState::instance()->getId();
-
-  maintenance::ActionDescription actionDescription(
-      std::map<std::string, std::string>{
-          {maintenance::NAME, maintenance::CREATE_COLLECTION},
-          {maintenance::COLLECTION, collectionId},
-          {maintenance::SHARD, shardId},
-          {maintenance::DATABASE, _gid.database},
-          {maintenance::SERVER_ID, std::move(serverId)},
-          {maintenance::THE_LEADER, "replication2"},
-      },
-      maintenance::HIGHER_PRIORITY, false, properties);
-
-  maintenance::CreateCollection collectionCreator(_maintenanceFeature,
-                                                  actionDescription);
-  bool work = collectionCreator.first();
-  if (work) {
-    return ResultT<std::string>::error(
-        TRI_ERROR_INTERNAL, fmt::format("Cannot create shard ID {}", shardId));
+auto DocumentStateShardHandler::ensureShard(
+    ShardID shard, CollectionID collection,
+    std::shared_ptr<VPackBuilder> properties) -> ResultT<bool> {
+  std::unique_lock lock(_shardMap.mutex);
+  if (_shardMap.shards.contains(shard)) {
+    return false;
   }
 
-  return ResultT<std::string>::success(std::move(shardId));
+  if (auto res = _maintenance->executeCreateCollectionAction(shard, collection,
+                                                             properties);
+      res.fail()) {
+    return res;
+  }
+
+  _shardMap.shards.emplace(
+      std::move(shard),
+      ShardProperties{std::move(collection), std::move(properties)});
+  lock.unlock();
+
+  _maintenance->addDirty();
+  return true;
 }
 
-Result DocumentStateShardHandler::dropLocalShard(
-    const std::string& collectionId) {
-  auto shardId = stateIdToShardId(_gid.id);
-  auto serverId = ServerState::instance()->getId();
+auto DocumentStateShardHandler::modifyShard(ShardID shard,
+                                            CollectionID collection,
+                                            velocypack::SharedSlice properties)
+    -> Result {
+  // The shard map is not updated with the new properties.
+  // We are in progress of reworking the snapshot transfer to accomodate such
+  // changes. I am not even sure whether this map is still needed at all, we'll
+  // figure it out in an upcoming PR.
+  std::shared_lock lock(_shardMap.mutex);
+  if (!_shardMap.shards.contains(shard)) {
+    LOG_TOPIC("5de59", TRACE, arangodb::Logger::REPLICATED_STATE)
+        << "Shard " << shard << " not found in database " << _vocbase.name()
+        << " while trying to modifying it";
 
-  maintenance::ActionDescription actionDescription(
-      std::map<std::string, std::string>{
-          {maintenance::NAME, maintenance::DROP_COLLECTION},
-          {maintenance::COLLECTION, collectionId},
-          {maintenance::SHARD, shardId},
-          {maintenance::DATABASE, _gid.database},
-          {maintenance::SERVER_ID, std::move(serverId)},
-          {maintenance::THE_LEADER, "replication2"},
-      },
-      maintenance::HIGHER_PRIORITY, false);
-
-  maintenance::DropCollection collectionDropper(_maintenanceFeature,
-                                                actionDescription);
-  bool work = collectionDropper.first();
-  if (work) {
-    return {TRI_ERROR_INTERNAL,
-            fmt::format("Cannot drop shard ID {}", shardId)};
+    // Don't fail if the shard is not found.
+    return {};
   }
 
-  _maintenanceFeature.addDirty(_gid.database);
+  if (auto res = _maintenance->executeModifyCollectionAction(
+          std::move(shard), std::move(collection), std::move(properties));
+      res.fail()) {
+    return res;
+  }
+  lock.unlock();
+
+  _maintenance->addDirty();
   return {};
+}
+
+auto DocumentStateShardHandler::dropShard(ShardID const& shard)
+    -> ResultT<bool> {
+  std::unique_lock lock(_shardMap.mutex);
+  auto it = _shardMap.shards.find(shard);
+  if (it == std::end(_shardMap.shards)) {
+    return false;
+  }
+
+  if (auto res = _maintenance->executeDropCollectionAction(
+          shard, it->second.collection);
+      res.fail()) {
+    return res;
+  }
+  _shardMap.shards.erase(shard);
+  lock.unlock();
+
+  _maintenance->addDirty();
+  return true;
+}
+
+auto DocumentStateShardHandler::dropAllShards() -> Result {
+  std::unique_lock lock(_shardMap.mutex);
+  for (auto const& [shard, properties] : _shardMap.shards) {
+    if (auto res = _maintenance->executeDropCollectionAction(
+            shard, properties.collection);
+        res.fail()) {
+      return Result{res.errorNumber(),
+                    fmt::format("Failed to drop shard {}: {}", shard,
+                                res.errorMessage())};
+    }
+  }
+  _shardMap.shards.clear();
+  lock.unlock();
+
+  _maintenance->addDirty();
+  return {};
+}
+
+auto DocumentStateShardHandler::isShardAvailable(const ShardID& shard) -> bool {
+  std::shared_lock lock(_shardMap.mutex);
+  return _shardMap.shards.contains(shard);
+}
+
+auto DocumentStateShardHandler::getShardMap() -> ShardMap {
+  std::shared_lock lock(_shardMap.mutex);
+  return _shardMap.shards;
+}
+
+auto DocumentStateShardHandler::ensureIndex(
+    ShardID shard, std::shared_ptr<VPackBuilder> const& properties,
+    std::shared_ptr<methods::Indexes::ProgressTracker> progress) -> Result {
+  auto res = basics::catchToResult(
+      [this, &properties, shard = shard,
+       progress = std::move(progress)]() mutable -> Result {
+        return _maintenance->executeCreateIndex(shard, properties,
+                                                std::move(progress));
+      });
+
+  if (res.ok()) {
+    _maintenance->addDirty();
+  } else {
+    res = Result{res.errorNumber(),
+                 fmt::format("Error: {}! Failed to ensure index on shard {}! "
+                             "Index: {}",
+                             res.errorMessage(), std::move(shard),
+                             properties->toJson())};
+  }
+  return res;
+}
+
+auto DocumentStateShardHandler::dropIndex(ShardID shard,
+                                          velocypack::SharedSlice index)
+    -> Result {
+  auto indexId = index.toString();
+  auto res = basics::catchToResult(
+      [this, shard, index = std::move(index)]() mutable -> Result {
+        return _maintenance->executeDropIndex(std::move(shard),
+                                              std::move(index));
+      });
+
+  if (res.ok()) {
+    _maintenance->addDirty();
+  } else {
+    res = Result{
+        res.errorNumber(),
+        fmt::format("Error {}! Failed to drop index on shard {}! Index: {}",
+                    res.errorMessage(), std::move(shard), std::move(indexId))};
+  }
+  return res;
+}
+
+auto DocumentStateShardHandler::lockShard(ShardID const& shard,
+                                          AccessMode::Type accessType,
+                                          transaction::OperationOrigin origin)
+    -> ResultT<std::unique_ptr<transaction::Methods>> {
+  auto col = _vocbase.lookupCollection(shard);
+  if (col == nullptr) {
+    return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                  fmt::format("Failed to lookup shard {} in database {} while "
+                              "locking it for operation {}",
+                              shard, _vocbase.name(), origin.description)};
+  }
+
+#ifdef USE_V8
+  auto ctx =
+      transaction::V8Context::createWhenRequired(_vocbase, origin, false);
+#else
+  auto ctx = transaction::StandaloneContext::create(_vocbase, origin);
+#endif
+
+  // Not replicating this transaction
+  transaction::Options options;
+  options.requiresReplication = false;
+
+  auto trx = std::make_unique<SingleCollectionTransaction>(std::move(ctx), *col,
+                                                           accessType, options);
+  Result res = trx->begin();
+  if (res.fail()) {
+    return Result{res.errorNumber(),
+                  fmt::format("Failed to lock shard {} in database "
+                              "{} for operation {}. Error: {}",
+                              shard, _vocbase.name(), origin.description,
+                              res.errorMessage())};
+  }
+  return trx;
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

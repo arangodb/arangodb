@@ -52,16 +52,12 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-// This is only to get a split-type. The Type is independent of actual template
-// parameters
-using HashedCollectTestHelper = ExecutorTestHelper<1, 1>;
-using HashedCollectSplitType = HashedCollectTestHelper::SplitType;
-using HashedCollectInputParam = std::tuple<HashedCollectSplitType, bool>;
+using HashedCollectInputParam = std::tuple<SplitType, bool>;
 
 class HashedCollectExecutorTest
     : public AqlExecutorTestCaseWithParam<HashedCollectInputParam> {
  protected:
-  auto getSplit() -> HashedCollectSplitType {
+  auto getSplit() -> SplitType {
     auto [split, empty] = GetParam();
     return split;
   }
@@ -130,10 +126,9 @@ class HashedCollectExecutorTest
 };
 
 template<size_t... vs>
-const HashedCollectSplitType splitIntoBlocks =
-    HashedCollectSplitType{std::vector<std::size_t>{vs...}};
+const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
 template<size_t step>
-const HashedCollectSplitType splitStep = HashedCollectSplitType{step};
+const SplitType splitStep = SplitType{step};
 
 INSTANTIATE_TEST_CASE_P(
     HashedCollect, HashedCollectExecutorTest,
@@ -547,13 +542,12 @@ std::ostream& operator<<(std::ostream& out, AggregateInput const& agg) {
   return out;
 }
 
-using HashedCollectAggregateInputParam =
-    std::tuple<HashedCollectSplitType, AggregateInput>;
+using HashedCollectAggregateInputParam = std::tuple<SplitType, AggregateInput>;
 
 class HashedCollectExecutorTestAggregate
     : public AqlExecutorTestCaseWithParam<HashedCollectAggregateInputParam> {
  protected:
-  auto getSplit() -> HashedCollectSplitType {
+  auto getSplit() -> SplitType {
     auto [split, unused] = GetParam();
     return split;
   }

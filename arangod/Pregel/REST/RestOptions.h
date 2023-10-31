@@ -36,6 +36,9 @@ struct RestGeneralOptions {
   VPackBuilder userParameters;
   std::unordered_map<std::string, std::vector<std::string>>
       edgeCollectionRestrictions;
+  // A switch between running pregel with or without actors
+  // Can be deleted if we finished refactoring to use only actors
+  bool useActors;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, RestGeneralOptions& x) {
@@ -45,7 +48,8 @@ auto inspect(Inspector& f, RestGeneralOptions& x) {
           .fallback(VPackSlice::emptyObjectSlice()),
       f.field("edgeCollectionRestrictions", x.edgeCollectionRestrictions)
           .fallback(
-              std::unordered_map<std::string, std::vector<std::string>>{}));
+              std::unordered_map<std::string, std::vector<std::string>>{}),
+      f.field("actors", x.useActors).fallback(false));
 }
 
 struct RestCollectionSettings {

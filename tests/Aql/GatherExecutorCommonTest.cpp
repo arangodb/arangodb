@@ -609,7 +609,7 @@ class CommonGatherExecutorTest
         old += (*val)++;
         AqlValue v{AqlValueHintInt(old)};
         AqlValueGuard guard(v, true);
-        output.moveValueInto(0, input, guard);
+        output.moveValueInto(0, input, &guard);
         output.advanceRow();
 
         if (*val == numDataRows) {
@@ -689,6 +689,10 @@ class CommonGatherExecutorTest
   std::vector<std::unique_ptr<ExecutionBlock>> _blockLake;
   // Activate result logging
   bool _useLogging{false};
+
+  // Monitors for resource usage
+  arangodb::GlobalResourceMonitor _globalResourceMonitor{};
+  arangodb::ResourceMonitor _resMonitor{_globalResourceMonitor};
 
   // We need to retain the memory of this SortElement. Otherwise we have invalid
   // memory access, for sorting nodes.

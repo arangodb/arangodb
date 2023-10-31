@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogThread.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/debugging.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
@@ -74,9 +73,8 @@ void LogThread::flush() noexcept {
 }
 
 void LogThread::wakeup() noexcept {
-  // cppcheck-suppress redundantPointerOp
-  CONDITION_LOCKER(guard, _condition);
-  guard.signal();
+  std::lock_guard guard{_condition.mutex};
+  _condition.cv.notify_one();
 }
 
 bool LogThread::hasMessages() const noexcept { return !_messages.empty(); }
@@ -95,9 +93,8 @@ void LogThread::run() {
       waitTime = std::min(maxWaitTime, waitTime);
     }
 
-    // cppcheck-suppress redundantPointerOp
-    CONDITION_LOCKER(guard, _condition);
-    guard.wait(waitTime);
+    std::unique_lock guard{_condition.mutex};
+    _condition.cv.wait_for(guard, std::chrono::microseconds{waitTime});
   }
 
   processPendingMessages();

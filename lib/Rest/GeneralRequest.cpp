@@ -24,21 +24,59 @@
 
 #include "GeneralRequest.h"
 
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "Rest/RequestContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 
 namespace {
-// intentionally empty
-std::string const empty{};
+rest::RequestType translateMethodHelper(std::string_view method) noexcept {
+  if (method == "DELETE") {
+    return RequestType::DELETE_REQ;
+  } else if (method == "GET") {
+    return RequestType::GET;
+  } else if (method == "HEAD") {
+    return RequestType::HEAD;
+  } else if (method == "OPTIONS") {
+    return RequestType::OPTIONS;
+  } else if (method == "PATCH") {
+    return RequestType::PATCH;
+  } else if (method == "POST") {
+    return RequestType::POST;
+  } else if (method == "PUT") {
+    return RequestType::PUT;
+  }
+  return RequestType::ILLEGAL;
+}
+
 }  // namespace
+
+GeneralRequest::GeneralRequest(ConnectionInfo const& connectionInfo,
+                               uint64_t mid)
+    : _connectionInfo(connectionInfo),
+      _messageId(mid),
+      _requestContext(nullptr),
+      _tokenExpiry(0.0),
+      _memoryUsage(0),
+      _authenticationMethod(rest::AuthenticationMethod::NONE),
+      _type(RequestType::ILLEGAL),
+      _contentType(ContentType::UNSET),
+      _contentTypeResponse(ContentType::UNSET),
+      _acceptEncoding(EncodingType::UNSET),
+      _isRequestContextOwner(false),
+      _authenticated(false) {}
+
+GeneralRequest::~GeneralRequest() {
+  // only delete if we are the owner of the context
+  if (_requestContext != nullptr && _isRequestContextOwner) {
+    delete _requestContext;
+  }
+}
 
 std::string_view GeneralRequest::translateMethod(RequestType method) {
   switch (method) {
@@ -72,27 +110,6 @@ std::string_view GeneralRequest::translateMethod(RequestType method) {
 
   return {"UNKNOWN"};  // in order to please MSVC
 }
-
-namespace {
-rest::RequestType translateMethodHelper(std::string_view method) {
-  if (method == "DELETE") {
-    return RequestType::DELETE_REQ;
-  } else if (method == "GET") {
-    return RequestType::GET;
-  } else if (method == "HEAD") {
-    return RequestType::HEAD;
-  } else if (method == "OPTIONS") {
-    return RequestType::OPTIONS;
-  } else if (method == "PATCH") {
-    return RequestType::PATCH;
-  } else if (method == "POST") {
-    return RequestType::POST;
-  } else if (method == "PUT") {
-    return RequestType::PUT;
-  }
-  return RequestType::ILLEGAL;
-}
-}  // namespace
 
 rest::RequestType GeneralRequest::translateMethod(std::string_view method) {
   auto ret = ::translateMethodHelper(method);
@@ -150,13 +167,6 @@ rest::RequestType GeneralRequest::findRequestType(char const* ptr,
   return RequestType::ILLEGAL;
 }
 
-GeneralRequest::~GeneralRequest() {
-  // only delete if we are the owner of the context
-  if (_requestContext != nullptr && _isRequestContextOwner) {
-    delete _requestContext;
-  }
-}
-
 void GeneralRequest::setRequestContext(RequestContext* requestContext,
                                        bool isRequestContextOwner) {
   TRI_ASSERT(requestContext != nullptr);
@@ -174,9 +184,42 @@ void GeneralRequest::setRequestContext(RequestContext* requestContext,
   _isRequestContextOwner = isRequestContextOwner;
 }
 
+void GeneralRequest::setPayload(velocypack::Buffer<uint8_t> buffer) {
+  auto old = _payload.size();
+  _payload = std::move(buffer);
+  _memoryUsage += _payload.size();
+  TRI_ASSERT(_memoryUsage >= old);
+  _memoryUsage -= old;
+}
+
+void GeneralRequest::setFullUrl(std::string fullUrl) {
+  setStringValue(_fullUrl, std::move(fullUrl));
+  if (_fullUrl.empty()) {
+    _fullUrl.push_back('/');
+    _memoryUsage += 1;
+  }
+}
+
+void GeneralRequest::setRequestPath(std::string path) {
+  setStringValue(_requestPath, std::move(path));
+}
+
+void GeneralRequest::setDatabaseName(std::string databaseName) {
+  setStringValue(_databaseName, std::move(databaseName));
+}
+
+void GeneralRequest::setUser(std::string user) {
+  setStringValue(_user, std::move(user));
+}
+
+void GeneralRequest::setPrefix(std::string prefix) {
+  setStringValue(_prefix, std::move(prefix));
+}
+
 void GeneralRequest::addSuffix(std::string part) {
   // part will not be URL-decoded here!
   _suffixes.emplace_back(std::move(part));
+  _memoryUsage += _suffixes.back().size();
 }
 
 std::vector<std::string> GeneralRequest::decodedSuffixes() const {
@@ -194,7 +237,7 @@ std::string const& GeneralRequest::header(std::string const& key,
   auto it = _headers.find(key);
   if (it == _headers.end()) {
     found = false;
-    return ::empty;
+    return StaticStrings::Empty;
   }
 
   found = true;
@@ -204,6 +247,24 @@ std::string const& GeneralRequest::header(std::string const& key,
 std::string const& GeneralRequest::header(std::string const& key) const {
   bool unused = true;
   return header(key, unused);
+}
+
+void GeneralRequest::removeHeader(std::string const& key) {
+  auto it = _headers.find(key);
+  if (it != _headers.end()) {
+    auto old = (*it).first.size() + (*it).second.size();
+    _headers.erase(it);
+    TRI_ASSERT(_memoryUsage >= old);
+    _memoryUsage -= old;
+  }
+}
+
+void GeneralRequest::addHeader(std::string key, std::string value) {
+  auto memoryUsage = key.size() + value.size();
+  auto it = _headers.try_emplace(std::move(key), std::move(value));
+  if (it.second) {
+    _memoryUsage += memoryUsage;
+  }
 }
 
 std::string const& GeneralRequest::value(std::string const& key,
@@ -218,12 +279,34 @@ std::string const& GeneralRequest::value(std::string const& key,
   }
 
   found = false;
-  return ::empty;
+  return StaticStrings::Empty;
 }
 
 std::string const& GeneralRequest::value(std::string const& key) const {
   bool unused = true;
   return value(key, unused);
+}
+
+void GeneralRequest::setValue(std::string key, std::string value) {
+  auto memoryUsage = key.size() + value.size();
+  auto it = _values.try_emplace(std::move(key), std::move(value));
+  if (!it.second) {
+    auto old = it.first->first.size() + it.first->second.size();
+    // cppcheck-suppress accessMoved
+    _values[std::move(key)] = std::move(value);
+    _memoryUsage -= old;
+  }
+  _memoryUsage += memoryUsage;
+}
+
+void GeneralRequest::setArrayValue(std::string key, std::string value) {
+  auto memoryUsage = value.size();
+  auto it = _arrayValues.find(key);
+  if (it == _arrayValues.end()) {
+    memoryUsage += key.size();
+  }
+  _arrayValues[std::move(key)].emplace_back(std::move(value));
+  _memoryUsage += memoryUsage;
 }
 
 std::map<std::string, std::string> GeneralRequest::parameters() const {
@@ -232,6 +315,14 @@ std::map<std::string, std::string> GeneralRequest::parameters() const {
     parameters.try_emplace(paramPair.first, paramPair.second);
   }
   return parameters;
+}
+
+void GeneralRequest::setStringValue(std::string& target, std::string&& value) {
+  auto old = target.size();
+  target = std::move(value);
+  _memoryUsage += target.size();
+  TRI_ASSERT(_memoryUsage >= old);
+  _memoryUsage -= old;
 }
 
 // needs to be here because of a gcc bug with templates and namespaces
@@ -304,7 +395,7 @@ template auto GeneralRequest::parsedValue<double>(std::string const&, double)
 /// @brief get VelocyPack options for validation. effectively turns off
 /// validation if strictValidation is false. This optimization can be used for
 /// internal requests
-arangodb::velocypack::Options const* GeneralRequest::validationOptions(
+velocypack::Options const* GeneralRequest::validationOptions(
     bool strictValidation) {
   if (strictValidation) {
     return &basics::VelocyPackHelper::strictRequestValidationOptions;

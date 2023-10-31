@@ -23,9 +23,15 @@
 
 #pragma once
 
+#include "Aql/QueryContext.h"
+#include "Containers/SmallVector.h"
+#include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 
+#include <cstdint>
+
 namespace arangodb {
+struct ResourceMonitor;
 
 struct IRocksDBTransactionCallback {
   virtual ~IRocksDBTransactionCallback() = default;
@@ -43,7 +49,7 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
 
   ~RocksDBTrxBaseMethods() override;
 
-  virtual bool isIndexingDisabled() const final override {
+  bool isIndexingDisabled() const noexcept final override {
     return _indexingDisabled;
   }
 
@@ -85,11 +91,15 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   /// @brief add an operation for a transaction
   Result addOperation(TRI_voc_document_operation_e opType) override;
 
-  rocksdb::Status GetFromSnapshot(rocksdb::ColumnFamilyHandle* family,
-                                  rocksdb::Slice const& slice,
-                                  rocksdb::PinnableSlice* pinnable,
-                                  ReadOwnWrites rw,
-                                  rocksdb::Snapshot const* snapshot) override;
+  rocksdb::Status SingleGet(rocksdb::Snapshot const* snapshot,
+                            rocksdb::ColumnFamilyHandle& family,
+                            rocksdb::Slice const& key,
+                            rocksdb::PinnableSlice& value) final;
+  void MultiGet(rocksdb::Snapshot const* snapshot,
+                rocksdb::ColumnFamilyHandle& family, size_t count,
+                rocksdb::Slice const* keys, rocksdb::PinnableSlice* values,
+                rocksdb::Status* statuses) final;
+
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
                       rocksdb::PinnableSlice*, ReadOwnWrites) override;
   rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,
@@ -112,6 +122,10 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   rocksdb::Status RollbackToWriteBatchSavePoint() final override;
   void PopSavePoint() final override;
 
+  virtual void beginQuery(ResourceMonitor* resourceMonitor,
+                          bool isModificationQuery);
+  virtual void endQuery(bool isModificationQuery) noexcept;
+
  protected:
   virtual void cleanupTransaction();
 
@@ -120,6 +134,10 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
 
   Result doCommit();
   Result doCommitImpl();
+
+  /// @brief returns the payload size of the transaction's WriteBatch. this
+  /// excludes locks and any potential indexes (i.e. WriteBatchWithIndex).
+  size_t currentWriteBatchSize() const noexcept;
 
   IRocksDBTransactionCallback& _callback;
 
@@ -132,24 +150,25 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   rocksdb::Transaction* _rocksTransaction{nullptr};
 
   /// store the number of log entries in WAL
-  uint64_t _numLogdata{0};
+  std::uint64_t _numLogdata{0};
 
   /// @brief number of commits, including intermediate commits
-  uint64_t _numCommits{0};
+  std::uint64_t _numCommits{0};
   /// @brief number of intermediate commits
-  uint64_t _numIntermediateCommits{0};
-  // if a transaction gets bigger than these values then an automatic
-  // intermediate commit will be done
-  uint64_t _numInserts{0};
-  uint64_t _numUpdates{0};
-  uint64_t _numRemoves{0};
+  std::uint64_t _numIntermediateCommits{0};
+  std::uint64_t _numInserts{0};
+  std::uint64_t _numUpdates{0};
+  std::uint64_t _numRemoves{0};
 
   /// @brief number of rollbacks performed in current transaction. not
   /// resetted on intermediate commit
-  uint64_t _numRollbacks{0};
+  std::uint64_t _numRollbacks{0};
 
   /// @brief tick of last added & written operation
   TRI_voc_tick_t _lastWrittenOperationTick{0};
+
+  /// @brief object used for tracking memory usage
+  RocksDBMethodsMemoryTracker _memoryTracker;
 
   bool _indexingDisabled{false};
 };

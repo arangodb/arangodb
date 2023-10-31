@@ -1146,6 +1146,10 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
     TRI_ASSERT(variable != nullptr);
     builder.add("name", VPackValue(variable->name));
     builder.add("id", VPackValue(variable->id));
+    if (type == NODE_TYPE_REFERENCE) {
+      builder.add("subqueryReference",
+                  VPackValue(hasFlag(FLAG_SUBQUERY_REFERENCE)));
+    }
   }
 
   if (type == NODE_TYPE_EXPANSION) {
@@ -2691,7 +2695,7 @@ bool AstNode::stringEquals(std::string const& other) const {
           memcmp(other.c_str(), getStringValue(), getStringLength()) == 0);
 }
 
-void* AstNode::getData() const { return value.value._data; }
+void* AstNode::getData() const noexcept { return value.value._data; }
 
 void AstNode::setData(void* v) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));

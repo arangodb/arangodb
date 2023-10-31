@@ -26,9 +26,12 @@
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Basics/ErrorCode.h"
+#include "Basics/ResultT.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/CallbackGuard.h"
+#include "Futures/Promise.h"
 
+#include <deque>
 #include <unordered_map>
 
 namespace arangodb {
@@ -46,6 +49,8 @@ class QueryRegistry {
 
  public:
   enum class EngineType : uint8_t { Execution = 1, Graph = 2 };
+
+  using EngineCallback = std::function<void()>;
 
   /// @brief insert, this inserts the query <query> for the vocbase <vocbase>
   /// and the id <id> into the registry. It is in error if there is already
@@ -70,16 +75,18 @@ class QueryRegistry {
   /// Note that an open query will not expire, so users should please
   /// protect against leaks. If an already open query is found, an exception
   /// is thrown.
-  void* openEngine(EngineId eid, EngineType type);
-  ExecutionEngine* openExecutionEngine(EngineId eid) {
-    return static_cast<ExecutionEngine*>(
-        openEngine(eid, EngineType::Execution));
+  ResultT<void*> openEngine(EngineId eid, EngineType type,
+                            EngineCallback callback);
+  ResultT<ExecutionEngine*> openExecutionEngine(EngineId eid,
+                                                EngineCallback callback) {
+    auto res = openEngine(eid, EngineType::Execution, std::move(callback));
+    if (res.fail()) {
+      return std::move(res).result();
+    }
+    return static_cast<ExecutionEngine*>(res.get());
   }
 
-  traverser::BaseEngine* openGraphEngine(EngineId eid) {
-    return static_cast<traverser::BaseEngine*>(
-        openEngine(eid, EngineType::Graph));
-  }
+  traverser::BaseEngine* openGraphEngine(EngineId eid);
 
   /// @brief close, return a query to the registry, if the query is not found,
   /// an exception is thrown. If the ttl is negative (the default is), the
@@ -96,8 +103,10 @@ class QueryRegistry {
   /// and removed regardless if it is in use by anything else. this is only
   /// safe to call if the current thread is currently using the query itself
   // cppcheck-suppress virtualCallInConstructor
-  std::shared_ptr<ClusterQuery> destroyQuery(std::string const& vocbase,
-                                             QueryId id, ErrorCode errorCode);
+  void destroyQuery(QueryId id, ErrorCode errorCode);
+
+  futures::Future<std::shared_ptr<ClusterQuery>> finishQuery(
+      QueryId id, ErrorCode errorCode);
 
   /// used for a legacy shutdown
   bool destroyEngine(EngineId engineId, ErrorCode errorCode);
@@ -126,7 +135,7 @@ class QueryRegistry {
   TEST_VIRTUAL double defaultTTL() const { return _defaultTTL; }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  bool queryIsRegistered(std::string const& dbName, QueryId id);
+  bool queryIsRegistered(QueryId id);
 #endif
 
  private:
@@ -142,13 +151,18 @@ class QueryRegistry {
 
     std::shared_ptr<ClusterQuery> _query;  // the actual query pointer
 
-    const double _timeToLive;  // in seconds
+    /// @brief promise to finish a query that was still active when we
+    /// received the finish request
+    futures::Promise<std::shared_ptr<ClusterQuery>> _promise;
+
+    double const _timeToLive;  // in seconds
     double _expires;           // UNIX UTC timestamp of expiration
     size_t _numEngines;        // used for legacy shutdown
     size_t _numOpen;
 
     ErrorCode _errorCode;
     bool const _isTombstone;
+    bool _finished = false;
 
     cluster::CallbackGuard _rebootTrackerCallbackGuard;
   };
@@ -175,17 +189,29 @@ class QueryRegistry {
           _type(EngineType::Graph),
           _isOpen(false) {}
 
+    ~EngineInfo();
+
+    void scheduleCallback();
+
     void* _engine;
     QueryInfo* _queryInfo;
     const EngineType _type;
     bool _isOpen;
+
+    // list of callbacks from handlers that are waiting for the engine to become
+    // available
+    std::deque<EngineCallback> _waitingCallbacks;
   };
+
+  using QueryInfoMap = std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>;
+
+  auto lookupQueryForFinalization(QueryId id, ErrorCode errorCode)
+      -> QueryInfoMap::iterator;
+  void deleteQuery(QueryInfoMap::iterator queryMapIt);
 
   /// @brief _queries, the actual map of maps for the registry
   /// maps from vocbase name to list queries
-  std::unordered_map<std::string,
-                     std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>>
-      _queries;
+  QueryInfoMap _queries;
 
   std::unordered_map<EngineId, EngineInfo> _engines;
 

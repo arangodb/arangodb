@@ -38,6 +38,7 @@ const setup = require(base);
 (function () {
   setup.cleanup();
   setup.createEmpty();
+  setup.createExtendedName();
   setup.createAutoIncKeyGen();
   setup.createUsers();
   setup.createMany();

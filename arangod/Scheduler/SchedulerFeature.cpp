@@ -29,6 +29,7 @@
 #include "SchedulerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/asio_ns.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/application-exit.h"
 #include "Basics/signals.h"
@@ -44,7 +45,9 @@
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SupervisedScheduler.h"
+#ifdef USE_V8
 #include "VocBase/Methods/Tasks.h"
+#endif
 
 #ifdef _WIN32
 #include <stdio.h>
@@ -85,10 +88,17 @@ std::atomic<pid_t> processIdRequestingLogRotate{processIdUnspecified};
 
 namespace arangodb {
 
-SupervisedScheduler* SchedulerFeature::SCHEDULER = nullptr;
+Scheduler* SchedulerFeature::SCHEDULER = nullptr;
+
+struct SchedulerFeature::AsioHandler {
+  std::shared_ptr<asio_ns::signal_set> _exitSignals;
+  std::shared_ptr<asio_ns::signal_set> _hangupSignals;
+};
 
 SchedulerFeature::SchedulerFeature(Server& server)
-    : ArangodFeature{server, *this}, _scheduler(nullptr) {
+    : ArangodFeature{server, *this},
+      _scheduler(nullptr),
+      _asioHandler(std::make_unique<AsioHandler>()) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
   if constexpr (Server::contains<FileDescriptorsFeature>()) {
@@ -201,8 +211,6 @@ requests.)");
           "0 = disable)",
           new DoubleParameter(&_unavailabilityQueueFillGrade, /*base*/ 1.0,
                               /*minValue*/ 0.0, /*maxValue*/ 1.0))
-      .setIntroducedIn(30610)
-      .setIntroducedIn(30706)
       .setLongDescription(R"(You can use this option to set a high-watermark
 for the scheduler's queue fill grade, from which onwards the server starts
 reporting unavailability via its availability API.
@@ -353,7 +361,9 @@ void SchedulerFeature::start() {
 
 void SchedulerFeature::stop() {
   // shutdown user jobs again, in case new ones appear
+#ifdef USE_V8
   arangodb::Task::shutdownTasks();
+#endif
   signalStuffDeinit();
   _scheduler->shutdown();
 }
@@ -397,16 +407,16 @@ void SchedulerFeature::signalStuffInit() {
 
 void SchedulerFeature::signalStuffDeinit() {
   // cancel signals
-  if (_exitSignals != nullptr) {
-    auto exitSignals = _exitSignals;
-    _exitSignals.reset();
+  if (_asioHandler->_exitSignals != nullptr) {
+    auto exitSignals = _asioHandler->_exitSignals;
+    _asioHandler->_exitSignals.reset();
     exitSignals->cancel();
   }
 
 #ifndef _WIN32
-  if (_hangupSignals != nullptr) {
-    _hangupSignals->cancel();
-    _hangupSignals.reset();
+  if (_asioHandler->_hangupSignals != nullptr) {
+    _asioHandler->_hangupSignals->cancel();
+    _asioHandler->_hangupSignals.reset();
   }
 #endif
 }

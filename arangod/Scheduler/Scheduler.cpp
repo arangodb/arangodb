@@ -29,10 +29,9 @@
 #include <thread>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/MutexLocker.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
-#include "Basics/cpu-relax.h"
 #include "GeneralServer/Acceptor.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/LogMacros.h"
@@ -40,6 +39,7 @@
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralResponse.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Statistics/RequestStatistics.h"
 
 using namespace arangodb;
@@ -81,8 +81,14 @@ Scheduler::Scheduler(ArangodServer& server)
 Scheduler::~Scheduler() = default;
 
 bool Scheduler::start() {
-  _cronThread.reset(new SchedulerCronThread(_server, *this));
+  _cronThread = std::make_unique<SchedulerCronThread>(_server, *this);
   return _cronThread->start();
+}
+
+void Scheduler::schedulerJobMemoryAccounting(std::int64_t x) noexcept {
+  if (SchedulerFeature::SCHEDULER) {
+    SchedulerFeature::SCHEDULER->trackQueueItemSize(x);
+  }
 }
 
 void Scheduler::shutdown() {
@@ -154,29 +160,42 @@ void Scheduler::runCronThread() {
 
 Scheduler::WorkHandle Scheduler::queueDelayed(
     std::string_view name, RequestLane lane, clock::duration delay,
-    fu2::unique_function<void(bool cancelled)> handler) noexcept {
-  TRI_ASSERT(!isStopping());
+    fu2::unique_function<void(bool cancelled)> handler) noexcept try {
+  std::shared_ptr<DelayedWorkItem> item;
 
-  if (delay < std::chrono::milliseconds(1)) {
-    // execute directly
-    queue(lane, [handler = std::move(handler)]() mutable { handler(false); });
+  try {
+    TRI_IF_FAILURE("Scheduler::queueDelayedFail1") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    item =
+        std::make_shared<DelayedWorkItem>(name, std::move(handler), lane, this);
+  } catch (...) {
     return nullptr;
   }
 
-  auto item =
-      std::make_shared<DelayedWorkItem>(name, std::move(handler), lane, this);
   {
-    std::unique_lock<std::mutex> guard(_cronQueueMutex);
-    _cronQueue.emplace(clock::now() + delay, item);
+    try {
+      TRI_IF_FAILURE("Scheduler::queueDelayedFail2") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+      std::unique_lock<std::mutex> guard(_cronQueueMutex);
+      _cronQueue.emplace(clock::now() + delay, item);
+    } catch (...) {
+      // if emplacing throws, we can cancel the item directly
+      item->cancel();
+      return nullptr;
+    }
 
     if (delay < std::chrono::milliseconds(50)) {
-      guard.unlock();
       // wakeup thread
       _croncv.notify_one();
     }
   }
 
   return item;
+} catch (...) {
+  return nullptr;
 }
 
 /*

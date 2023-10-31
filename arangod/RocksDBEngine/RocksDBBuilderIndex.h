@@ -28,10 +28,12 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
+#include "Transaction/OperationOrigin.h"
 
 #include <atomic>
 
 namespace arangodb {
+class RocksDBBatchedBaseMethods;
 
 namespace trx {
 struct BuilderTrx : public transaction::Methods {
@@ -42,7 +44,6 @@ struct BuilderTrx : public transaction::Methods {
         _cid(collection.id()) {
     // add the (sole) data-source
     addCollection(collection.id(), collection.name(), type);
-    addHint(transaction::Hints::Hint::NO_DLD);
   }
 
   /// @brief get the underlying transaction collection
@@ -55,17 +56,21 @@ struct BuilderTrx : public transaction::Methods {
 };
 }  // namespace trx
 
-Result partiallyCommitInsertions(rocksdb::WriteBatchBase& batch,
+Result partiallyCommitInsertions(RocksDBBatchedBaseMethods& batched,
+                                 rocksdb::WriteBatchBase& batch,
                                  rocksdb::DB* rootDB,
                                  RocksDBTransactionCollection* trxColl,
                                  std::atomic<uint64_t>& docsProcessed,
                                  RocksDBIndex& ridx, bool isForeground);
 
 Result fillIndexSingleThreaded(
-    bool foreground, RocksDBMethods& batched, rocksdb::Options const& dbOptions,
-    rocksdb::WriteBatchBase& batch, std::atomic<std::uint64_t>& docsProcessed,
-    trx::BuilderTrx& trx, RocksDBIndex& ridx, rocksdb::Snapshot const* snap,
-    rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator> it);
+    bool foreground, RocksDBBatchedBaseMethods& batched,
+    rocksdb::Options const& dbOptions, rocksdb::WriteBatchBase& batch,
+    std::atomic<std::uint64_t>& docsProcessed, trx::BuilderTrx& trx,
+    RocksDBIndex& ridx, rocksdb::Snapshot const* snap, rocksdb::DB* rootDB,
+    std::unique_ptr<rocksdb::Iterator> it,
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress =
+        nullptr);
 
 class RocksDBCollection;
 
@@ -106,8 +111,9 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
 
   Result drop() override { return _wrapped->drop(); }
 
-  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) override {
-    _wrapped->afterTruncate(tick, trx);
+  void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
+                      transaction::Methods* trx) final {
+    _wrapped->truncateCommit(std::move(guard), tick, trx);
   }
 
   void load() override { _wrapped->load(); }
@@ -119,13 +125,13 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
 
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods*,
-                LocalDocumentId const& documentId, velocypack::Slice slice,
+                LocalDocumentId documentId, velocypack::Slice slice,
                 OperationOptions const& options,
                 bool /*performChecks*/) override;
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods*,
-                LocalDocumentId const& documentId, velocypack::Slice slice,
+                LocalDocumentId documentId, velocypack::Slice slice,
                 OperationOptions const& /*options*/) override;
 
   /// @brief get index estimator, optional
@@ -138,7 +144,8 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
   void recalculateEstimates() override { _wrapped->recalculateEstimates(); }
 
   /// @brief assumes an exclusive lock on the collection
-  Result fillIndexForeground();
+  Result fillIndexForeground(
+      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr);
 
   struct Locker {
     explicit Locker(RocksDBCollection* c) : _collection(c), _locked(false) {}
@@ -154,7 +161,9 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
 
   /// @brief fill the index, assume already locked exclusively
   /// @param locker locks and unlocks the collection
-  Result fillIndexBackground(Locker& locker);
+  Result fillIndexBackground(
+      Locker& locker,
+      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr);
 
  private:
   static constexpr uint64_t kThreadBatchSize = 100000;

@@ -112,7 +112,7 @@ class ExecContext : public RequestContext {
 
   /// @brief returns auth level for user
   auth::Level collectionAuthLevel(std::string const& dbname,
-                                  std::string const& collection) const;
+                                  std::string_view collection) const;
 
   /// @brief returns true if auth levels is above or equal `requested`
   bool canUseCollection(std::string const& collection,

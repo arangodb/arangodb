@@ -26,7 +26,6 @@
 #include "Agency/AgencyCommon.h"
 #include "Agency/Store.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 #include "Cluster/ClusterTypes.h"
 
@@ -34,6 +33,7 @@
 
 #include <chrono>
 #include <functional>
+#include <mutex>
 #include <string>
 #include <string_view>
 #include <unordered_set>
@@ -42,6 +42,9 @@
 namespace arangodb {
 namespace velocypack {
 class Slice;
+}
+namespace replication2::replicated_log {
+struct ParticipantsHealth;
 }
 
 namespace consensus {
@@ -133,7 +136,7 @@ class Supervision : public arangodb::Thread {
   }
 
   static std::string serverHealthFunctional(Node const& snapshot,
-                                            std::string const&);
+                                            std::string_view);
 
   static bool verifyServerRebootID(Node const& snapshot,
                                    std::string const& serverID,
@@ -224,14 +227,14 @@ class Supervision : public arangodb::Thread {
   /// @brief Check replicated logs
   void checkReplicatedLogs();
 
+  /// @brief Check collection groups
+  void checkCollectionGroups();
+
   /// @brief Clean up replicated logs
   void cleanupReplicatedLogs();
 
-  /// @brief Clean up replicated states
-  void cleanupReplicatedStates();
-
   struct ResourceCreatorLostEvent {
-    std::shared_ptr<Node> const& resource;
+    std::shared_ptr<Node const> const& resource;
     std::string const& coordinatorId;
     uint64_t coordinatorRebootId;
     bool coordinatorFound;
@@ -240,12 +243,12 @@ class Supervision : public arangodb::Thread {
   // @brief Checks if a resource (database or collection). Action is called if
   // resource should be deleted
   void ifResourceCreatorLost(
-      std::shared_ptr<Node> const& resource,
+      std::shared_ptr<Node const> const& resource,
       std::function<void(ResourceCreatorLostEvent const&)> const& action);
 
   // @brief Action is called if resource should be deleted
   void resourceCreatorLost(
-      std::shared_ptr<Node> const& resource,
+      std::shared_ptr<Node const> const& resource,
       std::function<void(ResourceCreatorLostEvent const&)> const& action);
 
   /// @brief Check for inconsistencies in replication factor vs dbs entries
@@ -288,6 +291,9 @@ class Supervision : public arangodb::Thread {
 
   void updateDBServerMaintenance();
 
+  replication2::replicated_log::ParticipantsHealth collectParticipantsHealth()
+      const;
+
   void handleJobs();
 
   void restoreBrokenAnalyzersRevision(
@@ -296,14 +302,10 @@ class Supervision : public arangodb::Thread {
       std::string const& coordinatorID, uint64_t rebootID,
       bool coordinatorFound);
 
-  /// @brief Migrate chains of distributeShardsLike to depth 1
-  void fixPrototypeChain(VPackBuilder&);
-
-  Mutex _lock;   // guards snapshot, _jobId, jobIdMax, _selfShutdown
-  Agent* _agent; /**< @brief My agent */
-  Store _spearhead;
-  mutable Node const* _snapshot;
-  Node _transient;
+  std::mutex _lock;  // guards snapshot, _jobId, jobIdMax, _selfShutdown
+  Agent* _agent;     /**< @brief My agent */
+  mutable std::shared_ptr<Node const> _snapshot;
+  std::shared_ptr<Node const> _transient;
 
   arangodb::basics::ConditionVariable _cv; /**< @brief Control if thread
                                               should run */
@@ -324,7 +326,7 @@ class Supervision : public arangodb::Thread {
   std::atomic<bool> _upgraded;
   std::chrono::system_clock::time_point _nextServerCleanup;
 
-  std::string serverHealth(std::string const&);
+  std::string serverHealth(std::string_view) const;
 
   static std::string _agencyPrefix;  // initialized in AgencyFeature
 

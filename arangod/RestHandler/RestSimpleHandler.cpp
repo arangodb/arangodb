@@ -24,9 +24,9 @@
 #include "RestSimpleHandler.h"
 #include "Aql/BindParameters.h"
 #include "Basics/Exceptions.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
@@ -80,10 +80,6 @@ RestStatus RestSimpleHandler::execute() {
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock RestRemoveByKeys
-////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
   TRI_ASSERT(slice.isObject());
@@ -160,7 +156,8 @@ RestStatus RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
   data.close();  // bindVars
   data.close();
 
-  return registerQueryOrCursor(data.slice());
+  return registerQueryOrCursor(data.slice(), transaction::OperationOriginREST{
+                                                 "removing documents by keys"});
 }
 
 RestStatus RestSimpleHandler::handleQueryResult() {
@@ -249,10 +246,6 @@ void RestSimpleHandler::handleQueryResultLookupByKeys() {
                  _queryResult.context);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock RestLookupByKeys
-////////////////////////////////////////////////////////////////////////////////
-
 RestStatus RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
   if (response() == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response");
@@ -304,5 +297,7 @@ RestStatus RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
   data.close();  // bindVars
   data.close();
 
-  return registerQueryOrCursor(data.slice());
+  return registerQueryOrCursor(
+      data.slice(),
+      transaction::OperationOriginREST{"looking up documents by keys"});
 }

@@ -40,6 +40,7 @@
 #include "Aql/Variable.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tryEmplaceHelper.h"
+#include "Cluster/ServerState.h"
 #include "Graph/Graph.h"
 #include "Graph/BaseOptions.h"
 #include "Graph/Providers/BaseProviderOptions.h"
@@ -47,13 +48,14 @@
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/TraverserOptions.h"
 #include "Graph/Types/UniquenessLevel.h"
+#include "Graph/algorithm-aliases.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/ticks.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Iterator.h>
 
-#include <Graph/algorithm-aliases.h>
 #include <memory>
 #include <utility>
 
@@ -66,12 +68,14 @@ using namespace arangodb::traverser;
 TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
     TraversalNode const* tn)
     : EdgeConditionBuilder(tn->_plan->getAst()->createNodeNaryOperator(
-          NODE_TYPE_OPERATOR_NARY_AND)),
+                               NODE_TYPE_OPERATOR_NARY_AND),
+                           tn->_plan->getAst()->query().resourceMonitor()),
       _tn(tn) {}
 
 TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
     TraversalNode const* tn, arangodb::velocypack::Slice const& condition)
-    : EdgeConditionBuilder(tn->_plan->getAst()->createNode(condition)),
+    : EdgeConditionBuilder(tn->_plan->getAst()->createNode(condition),
+                           tn->_plan->getAst()->query().resourceMonitor()),
       _tn(tn) {}
 
 TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
@@ -161,6 +165,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, ExecutionNodeId id,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   checkConditionsDefined();
 #endif
+  validateCollections();
 }
 
 /// @brief Internal constructor to clone the node.
@@ -177,7 +182,9 @@ TraversalNode::TraversalNode(
       _inVariable(inVariable),
       _vertexId(std::move(vertexId)),
       _fromCondition(nullptr),
-      _toCondition(nullptr) {}
+      _toCondition(nullptr) {
+  validateCollections();
+}
 
 TraversalNode::TraversalNode(ExecutionPlan* plan,
                              arangodb::velocypack::Slice const& base)
@@ -295,6 +302,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   checkConditionsDefined();
 #endif
+  validateCollections();
 }
 
 // This constructor is only used from LocalTraversalNode, and GraphNode
@@ -311,6 +319,7 @@ TraversalNode::TraversalNode(ExecutionPlan& plan, TraversalNode const& other,
     TRI_ASSERT(!other._optionsBuilt);
   }
   other.traversalCloneHelper(plan, *this, false);
+  validateCollections();
 }
 
 TraversalNode::~TraversalNode() = default;
@@ -343,6 +352,8 @@ void TraversalNode::replaceVariables(
   // this is an important assertion: if options are already built,
   // we would need to carry out the replacements in several other
   // places as well
+  // we are explicitly not trying to replace inside the _options
+  // LookupInfos
   TRI_ASSERT(!_optionsBuilt);
 
   _inVariable = Variable::replace(_inVariable, replacements);
@@ -352,17 +363,38 @@ void TraversalNode::replaceVariables(
     VarSet variables;
     _pruneExpression->variables(variables);
     for (auto const& it : variables) {
-      if (replacements.find(it->id) != replacements.end()) {
+      if (replacements.contains(it->id)) {
         _pruneExpression->replaceVariables(replacements);
 
         // and need to recalculate the set of variables used
         // by the prune expression
         variables.clear();
         _pruneExpression->variables(variables);
-        _pruneVariables = variables;
+        _pruneVariables = std::move(variables);
         break;
       }
     }
+  }
+}
+
+void TraversalNode::replaceAttributeAccess(
+    ExecutionNode const* self, Variable const* searchVariable,
+    std::span<std::string_view> attribute, Variable const* replaceVariable) {
+  // this is an important assertion: if options are already built,
+  // we would need to carry out the replacements in several other
+  // places as well
+  // we are explicitly not trying to replace inside the _options
+  // LookupInfos
+  TRI_ASSERT(!_optionsBuilt);
+
+  if (_inVariable != nullptr && searchVariable == _inVariable &&
+      attribute.size() == 1 && attribute[0] == StaticStrings::IdString) {
+    _inVariable = replaceVariable;
+  }
+
+  if (_pruneExpression != nullptr) {
+    _pruneExpression->replaceAttributeAccess(searchVariable, attribute,
+                                             replaceVariable);
   }
 }
 
@@ -378,6 +410,13 @@ void TraversalNode::getVariablesUsedHere(VarSet& result) const {
     if (pruneVar != vertexOutVariable() && pruneVar != edgeOutVariable() &&
         pruneVar != pathOutVariable()) {
       result.emplace(pruneVar);
+    }
+  }
+
+  for (auto const& postVar : _postFilterVariables) {
+    if (postVar != vertexOutVariable() && postVar != edgeOutVariable() &&
+        postVar != pathOutVariable()) {
+      result.emplace(postVar);
     }
   }
 
@@ -721,7 +760,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
                                                   // SingleServer, Cluster...
         outputRegisterMapping, getStartVertex(), inputRegister,
         plan()->getAst(), opts->uniqueVertices, opts->uniqueEdges, opts->mode,
-        opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
+        opts->defaultWeight, opts->weightAttribute, opts->query(),
         std::move(validatorOptions), std::move(options),
         std::move(clusterBaseProviderOptions), isSmart);
 
@@ -735,7 +774,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
                                                   // SingleServer, Cluster...
         outputRegisterMapping, getStartVertex(), inputRegister,
         plan()->getAst(), opts->uniqueVertices, opts->uniqueEdges, opts->mode,
-        opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
+        opts->defaultWeight, opts->weightAttribute, opts->query(),
         std::move(validatorOptions), std::move(options),
         std::move(singleServerBaseProviderOptions), isSmart);
 
@@ -786,8 +825,7 @@ TraversalNode::getSingleServerBaseProviderOptions(
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   auto inputRegisters = RegIdSet{};
@@ -954,7 +992,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     /*
      * SmartGraph Traverser
      */
-    waitForSatelliteIfRequired(&engine);
     if (isSmart() && !isDisjoint()) {
       // Note: Using refactored smart graph cluster engine.
       return createBlock(engine, std::move(filterConditionVariables),
@@ -1206,7 +1243,7 @@ void TraversalNode::prepareOptions() {
     for (auto const& it : _globalVertexConditions) {
       cond->addMember(it);
     }
-    opts->_baseVertexExpression.reset(new Expression(ast, cond));
+    opts->_baseVertexExpression = std::make_unique<Expression>(ast, cond);
   }
   // If we use the path output the cache should activate document
   // caching otherwise it is not worth it.
@@ -1382,5 +1419,65 @@ void TraversalNode::checkConditionsDefined() const {
   TRI_ASSERT(_toCondition != nullptr);
   TRI_ASSERT(_toCondition->type == NODE_TYPE_OPERATOR_BINARY_EQ);
 }
-
 #endif
+
+void TraversalNode::validateCollections() const {
+  if (!ServerState::instance()->isSingleServerOrCoordinator()) {
+    // validation must happen on single/coordinator.
+    // DB servers only see shard names here
+    return;
+  }
+  auto* g = graph();
+  if (g == nullptr) {
+    // list of edge collections
+    for (auto const& it : options()->edgeCollections) {
+      if (_edgeAliases.contains(it)) {
+        // SmartGraph edge collection. its real name is contained
+        // in the aliases list
+        continue;
+      }
+      if (std::find_if(_edgeColls.begin(), _edgeColls.end(),
+                       [&it](aql::Collection const* c) {
+                         return c->name() == it;
+                       }) == _edgeColls.end()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST,
+            absl::StrCat(
+                "edge collection '", it,
+                "' used in 'edgeCollections' option is not part of the "
+                "specified edge collection list"));
+      }
+    }
+  } else {
+    // named graph
+    {
+      auto colls = g->vertexCollections();
+      for (auto const& it : options()->vertexCollections) {
+        if (!colls.contains(it)) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST,
+              absl::StrCat(
+                  "vertex collection '", it,
+                  "' used in 'vertexCollections' option is not part of "
+                  "the specified graph"));
+        }
+      }
+    }
+
+    {
+      auto colls = g->edgeCollections();
+      for (auto const& it : options()->edgeCollections) {
+        if (!colls.contains(it)) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST,
+              absl::StrCat(
+                  "edge collection '", it,
+                  "' used in 'edgeCollections' option is not part of the "
+                  "specified graph"));
+        }
+      }
+    }
+  }
+}
+
+size_t TraversalNode::getMemoryUsedBytes() const { return sizeof(*this); }

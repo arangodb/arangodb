@@ -32,7 +32,7 @@ struct TestAttribute : public irs::attribute {
   }
 };
 
-class TestAnalyzer : public irs::analysis::analyzer {
+class TestAnalyzer final : public irs::analysis::TypedAnalyzer<TestAnalyzer> {
  public:
   static constexpr std::string_view type_name() noexcept {
     return "TestAnalyzer";
@@ -40,15 +40,15 @@ class TestAnalyzer : public irs::analysis::analyzer {
 
   TestAnalyzer();
 
-  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override;
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final;
 
   static ptr make(std::string_view args);
 
   static bool normalize(std::string_view args, std::string& definition);
 
-  bool next() override;
+  bool next() final;
 
-  bool reset(std::string_view data) override;
+  bool reset(std::string_view data) final;
 
  private:
   irs::bytes_view _data;

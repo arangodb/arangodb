@@ -205,7 +205,7 @@ Result getInitialColors(ColorPropagationValue& senders,
 void ColorPropagationGraphFormat::copyVertexData(
     arangodb::velocypack::Options const&, std::string const& documentId,
     arangodb::velocypack::Slice document, ColorPropagationValue& senders,
-    uint64_t& vertexIdRange) const {
+    uint64_t vertexId) const {
   senders.equivalenceClass =
       getEquivalenceClass(document, equivalenceClassFieldName);
 

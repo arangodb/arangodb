@@ -46,6 +46,7 @@ struct Vertex {
 
   size_t addEdge(Edge<E>&& edge) noexcept {
     // must only be called during initial vertex creation
+    // cppcheck-suppress ignoredReturnValue
     TRI_ASSERT(active());
     _edges.emplace_back(std::move(edge));
     return _edges.size();

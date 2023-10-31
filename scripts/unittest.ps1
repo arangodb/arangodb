@@ -38,10 +38,10 @@ if ($null -eq $env:ARANGOSH) {
 }
 
 $arguments = @(
-  "-c etc/relative/arangosh.conf",
+  "-c etc/testing/arangosh.conf",
   "--log.level warning",
   "--server.endpoint none",
-  "--javascript.execute js/client/modules/@arangodb/unittest.js"
+  "--javascript.execute js/client/modules/@arangodb/testutils/unittest.js"
 )
 
 Start-Process `

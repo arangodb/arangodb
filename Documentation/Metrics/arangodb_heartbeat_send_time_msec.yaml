@@ -13,7 +13,8 @@ exposedBy:
 description: |
   Histogram of times required to send heartbeats. For every heartbeat
   sent the time is measured and an event is put into the histogram.
-  In the single server, this counter is only used in active failover mode.
+  In the single server, this counter is only used in the Active Failover
+  deployment mode.
 threshold: |
   It is a bad sign for health if heartbeat transmissions are not fast.
   If there are heartbeats which frequently take longer than a few hundred

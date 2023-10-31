@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global require, assertEqual, assertTrue */
+/*global assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the AQL statement results encoding

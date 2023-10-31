@@ -70,8 +70,7 @@ void SubqueryStartNode::doToVelocyPack(VPackBuilder& nodes,
 }
 
 std::unique_ptr<ExecutionBlock> SubqueryStartNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
@@ -82,7 +81,7 @@ std::unique_ptr<ExecutionBlock> SubqueryStartNode::createBlock(
 
   // On purpose exclude the _subqueryOutVariable
   return std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(
-      &engine, this, registerInfos, RegisterInfos{registerInfos});
+      &engine, this, registerInfos, registerInfos);
 }
 
 ExecutionNode* SubqueryStartNode::clone(ExecutionPlan* plan,
@@ -100,6 +99,8 @@ bool SubqueryStartNode::isEqualTo(ExecutionNode const& other) const {
   }
   return ExecutionNode::isEqualTo(other);
 }
+
+size_t SubqueryStartNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 }  // namespace aql
 }  // namespace arangodb

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 5000 */
-/*global assertTrue, assertFalse, assertEqual, assertNotEqual, fail, Buffer */
+/*global assertTrue, assertFalse, assertEqual, assertNotEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test filesystem functions

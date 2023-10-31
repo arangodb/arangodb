@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global assertTrue, assertFalse, assertEqual, arango, require*/
+/* global assertTrue, assertFalse, assertEqual, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -75,7 +75,8 @@ function headersClusterSuite () {
 
         let result = arango.GET_RAW("/_api/version");
         assertTrue(result.hasOwnProperty("headers"), "no headers found");
-        assertFalse(result.headers.hasOwnProperty("server"), "server header found");
+        assertTrue(result.headers.hasOwnProperty("server"), "server header not found");
+        assertEqual("ArangoDB", result.headers["server"]);
       });
     },
     

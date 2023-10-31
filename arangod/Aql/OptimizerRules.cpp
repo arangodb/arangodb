@@ -42,6 +42,8 @@
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IndexNode.h"
+#include "Aql/JoinNode.h"
+#include "Aql/IndexStreamIterator.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerUtils.h"
@@ -75,7 +77,9 @@
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/Methods/Collections.h"
+#include "Logger/LogMacros.h"
 
+#include <span>
 #include <tuple>
 
 #include <absl/strings/str_cat.h>
@@ -945,16 +949,30 @@ bool applyGraphProjections(arangodb::aql::TraversalNode* traversal) {
         !traversal->isUsedAsSatellite()) {
       // On cluster community variant we will also need the ID value on the
       // coordinator to uniquely identify edges
-      attributes.emplace(arangodb::StaticStrings::IdString);
+      arangodb::aql::AttributeNamePath idElement = {
+          arangodb::StaticStrings::IdString,
+          traversal->plan()->getAst()->query().resourceMonitor()};
+      attributes.emplace(std::move(idElement));
       // Also the community variant needs to transport weight, as the
       // coordinator will do the searching.
       if (traversal->options()->mode ==
           arangodb::traverser::TraverserOptions::Order::WEIGHTED) {
-        attributes.emplace(traversal->options()->weightAttribute);
+        arangodb::aql::AttributeNamePath weightElement = {
+            traversal->options()->weightAttribute,
+            traversal->plan()->getAst()->query().resourceMonitor()};
+        attributes.emplace(std::move(weightElement));
       }
     }
-    attributes.emplace(arangodb::StaticStrings::FromString);
-    attributes.emplace(arangodb::StaticStrings::ToString);
+
+    arangodb::aql::AttributeNamePath fromElement = {
+        arangodb::StaticStrings::FromString,
+        traversal->plan()->getAst()->query().resourceMonitor()};
+    attributes.emplace(std::move(fromElement));
+
+    arangodb::aql::AttributeNamePath toElement = {
+        arangodb::StaticStrings::ToString,
+        traversal->plan()->getAst()->query().resourceMonitor()};
+    attributes.emplace(std::move(toElement));
 
     if (attributes.size() <= maxProjections) {
       traversal->setEdgeProjections(
@@ -1023,7 +1041,8 @@ bool optimizeTraversalPathVariable(
               ExecutionNode::castTo<CalculationNode*>(current)->expression();
           AstNode const* node = exp->node();
           if (!Ast::getReferencedAttributesRecursive(
-                  node, variable, /*expectedAttribute*/ "", attributes)) {
+                  node, variable, /*expectedAttribute*/ "", attributes,
+                  current->plan()->getAst()->query().resourceMonitor())) {
             // full path variable is used, or accessed in a way that we don't
             // understand, e.g. "p" or "p[0]" or "p[*]..."
             return false;
@@ -1051,16 +1070,16 @@ bool optimizeTraversalPathVariable(
   bool producePathsWeights = false;
 
   for (auto const& it : attributes) {
-    TRI_ASSERT(!it.path.empty());
+    TRI_ASSERT(!it.empty());
     if (!producePathsVertices &&
-        it.path[0] == StaticStrings::GraphQueryVertices) {
+        it[0] == std::string_view{StaticStrings::GraphQueryVertices}) {
       producePathsVertices = true;
     } else if (!producePathsEdges &&
-               it.path[0] == StaticStrings::GraphQueryEdges) {
+               it[0] == std::string_view{StaticStrings::GraphQueryEdges}) {
       producePathsEdges = true;
     } else if (!producePathsWeights &&
                options->mode == traverser::TraverserOptions::Order::WEIGHTED &&
-               it.path[0] == StaticStrings::GraphQueryWeights) {
+               it[0] == std::string_view{StaticStrings::GraphQueryWeights}) {
       producePathsWeights = true;
     }
   }
@@ -1276,9 +1295,8 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
 
     auto outVar = ast->variables()->createTemporaryVariable();
     auto expression = std::make_unique<Expression>(ast, sorted);
-    ExecutionNode* calculationNode = new CalculationNode(
+    ExecutionNode* calculationNode = plan->createNode<CalculationNode>(
         plan.get(), plan->nextId(), std::move(expression), outVar);
-    plan->registerNode(calculationNode);
 
     // make the new node a parent of the original calculation node
     TRI_ASSERT(setter != nullptr);
@@ -2185,9 +2203,8 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
             sortElements.emplace_back(v.outVar, true);
           }
 
-          auto sortNode =
-              new SortNode(plan.get(), plan->nextId(), sortElements, false);
-          plan->registerNode(sortNode);
+          auto sortNode = plan->createNode<SortNode>(plan.get(), plan->nextId(),
+                                                     sortElements, false);
 
           TRI_ASSERT(collectNode->hasParent());
           auto parent = collectNode->getFirstParent();
@@ -2223,9 +2240,8 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
           sortElements.emplace_back(v.outVar, true);
         }
 
-        auto sortNode =
-            new SortNode(newPlan.get(), newPlan->nextId(), sortElements, false);
-        newPlan->registerNode(sortNode);
+        auto sortNode = newPlan->createNode<SortNode>(
+            newPlan.get(), newPlan->nextId(), sortElements, false);
 
         TRI_ASSERT(newCollectNode->hasParent());
         auto parent = newCollectNode->getFirstParent();
@@ -2271,9 +2287,8 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
         sortElements.emplace_back(v.inVar, true);
       }
 
-      auto sortNode =
-          new SortNode(plan.get(), plan->nextId(), sortElements, true);
-      plan->registerNode(sortNode);
+      auto sortNode = plan->createNode<SortNode>(plan.get(), plan->nextId(),
+                                                 sortElements, true);
 
       TRI_ASSERT(collectNode->hasDependency());
       auto dep = collectNode->getFirstDependency();
@@ -2403,8 +2418,9 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
   }
 
   auto p = plan.get();
+  bool changed = false;
 
-  auto visitor = [p](AstNode* node) {
+  auto visitor = [&changed, p](AstNode* node) {
     again:
       if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
         auto const* accessed = node->getMemberUnchecked(0);
@@ -2457,6 +2473,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
 
           // attribute not found
           if (!isDynamic) {
+            changed = true;
             return p->getAst()->createNodeValueNull();
           }
         }
@@ -2530,6 +2547,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
 
           // attribute not found
           if (!isDynamic) {
+            changed = true;
             return p->getAst()->createNodeValueNull();
           }
         } else if (accessed->type == NODE_TYPE_ARRAY) {
@@ -2543,6 +2561,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
                 valid);
             if (!valid) {
               // invalid index
+              changed = true;
               return p->getAst()->createNodeValueNull();
             }
           } else {
@@ -2569,6 +2588,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
           }
 
           // index out of bounds
+          changed = true;
           return p->getAst()->createNodeValueNull();
         }
       }
@@ -2591,8 +2611,12 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
     AstNode* root = nn->expression()->nodeForModification();
 
     if (root != nullptr) {
+      // the changed variable is captured by reference by the lambda that
+      // traverses the Ast and may modify it. if it performs a modification,
+      // it will set changed=true
+      changed = false;
       AstNode* simplified = plan->getAst()->traverseAndModify(root, visitor);
-      if (simplified != root) {
+      if (simplified != root || changed) {
         nn->expression()->replaceNode(simplified);
         nn->expression()->invalidateAfterReplacements();
         modified = true;
@@ -2825,8 +2849,10 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
 
   ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
 
+  bool modified = false;
+
   for (auto const& n : nodes) {
-    arangodb::aql::Variable const* outVariable = nullptr;
+    Variable const* outVariable = nullptr;
 
     if (n->getType() == EN::CALCULATION) {
       auto nn = ExecutionNode::castTo<CalculationNode*>(n);
@@ -3006,16 +3032,17 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
   if (!toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
     TRI_ASSERT(nodes.size() >= toUnlink.size());
+    modified = true;
     if (nodes.size() - toUnlink.size() > 0) {
       // need to rerun the rule because removing calculations may unlock
       // removal of further calculations
-      opt->addPlanAndRerun(std::move(plan), rule, true);
+      opt->addPlanAndRerun(std::move(plan), rule, modified);
     } else {
       // no need to rerun the rule
-      opt->addPlan(std::move(plan), rule, true);
+      opt->addPlan(std::move(plan), rule, modified);
     }
   } else {
-    opt->addPlan(std::move(plan), rule, false);
+    opt->addPlan(std::move(plan), rule, modified);
   }
 }
 
@@ -3230,18 +3257,16 @@ struct SortToIndexNode final
         IndexIteratorOptions opts;
         opts.ascending = sortCondition.isAscending();
         opts.useCache = false;
-        auto newNode = std::make_unique<IndexNode>(
+        auto n = _plan->createNode<IndexNode>(
             _plan, _plan->nextId(), enumerateCollectionNode->collection(),
             outVariable, usedIndexes,
             false,  // here we could always assume false as there is no lookup
                     // condition here
             std::move(condition), opts);
 
-        auto n = newNode.release();
         enumerateCollectionNode->CollectionAccessingNode::cloneInto(*n);
         enumerateCollectionNode->DocumentProducingNode::cloneInto(_plan, *n);
 
-        _plan->registerNode(n);
         _plan->replaceNode(enumerateCollectionNode, n);
         _modified = true;
 
@@ -3801,12 +3826,11 @@ auto extractVocbaseFromNode(ExecutionNode* at) -> TRI_vocbase_t* {
   } else if (at->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
     // Really? Yes, the & below is correct.
     return &ExecutionNode::castTo<IResearchViewNode const*>(at)->vocbase();
-  } else {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "Cannot determine vocbase for execution node.");
-    return nullptr;
   }
+
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL, "Cannot determine vocbase for execution node.");
 }
 
 // Sets up a Gather node for scatterInClusterRule.
@@ -3876,7 +3900,7 @@ auto insertGatherNode(
         gatherNode->elements(elements);
       }
       return gatherNode;
-    } break;
+    }
     case ExecutionNode::INSERT:
     case ExecutionNode::UPDATE:
     case ExecutionNode::REPLACE:
@@ -3900,12 +3924,14 @@ auto insertGatherNode(
 
       gatherNode = plan.createNode<GatherNode>(&plan, plan.nextId(), sortMode,
                                                parallelism);
-    } break;
+      break;
+    }
     default: {
       gatherNode = plan.createNode<GatherNode>(&plan, plan.nextId(),
                                                GatherNode::SortMode::Default);
 
-    } break;
+      break;
+    }
   }
 
   auto it = subqueries.find(node);
@@ -4180,7 +4206,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan,
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
           "Cannot distribute " + node->getTypeString() + ".");
-    } break;
+    }
   }
 
   TRI_ASSERT(collection != nullptr);
@@ -4631,13 +4657,11 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
             aggregateVariables.emplace_back(AggregateVarInfo{
                 outVariable, collectNode->aggregateVariables()[0].inVar,
                 "LENGTH"});
-            auto dbCollectNode = new CollectNode(
+            auto dbCollectNode = plan->createNode<CollectNode>(
                 plan.get(), plan->nextId(), collectNode->getOptions(),
                 collectNode->groupVariables(), aggregateVariables, nullptr,
                 nullptr, std::vector<Variable const*>(),
                 collectNode->variableMap(), false);
-
-            plan->registerNode(dbCollectNode);
 
             dbCollectNode->addDependency(previous);
             target->replaceDependency(previous, dbCollectNode);
@@ -4667,13 +4691,11 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
             std::vector<GroupVarInfo> const groupVariables{
                 GroupVarInfo{out, groupVars[0].inVar}};
 
-            auto dbCollectNode = new CollectNode(
+            auto dbCollectNode = plan->createNode<CollectNode>(
                 plan.get(), plan->nextId(), collectNode->getOptions(),
                 groupVariables, collectNode->aggregateVariables(), nullptr,
                 nullptr, std::vector<Variable const*>(),
                 collectNode->variableMap(), true);
-
-            plan->registerNode(dbCollectNode);
 
             dbCollectNode->addDependency(previous);
             target->replaceDependency(previous, dbCollectNode);
@@ -4728,13 +4750,11 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
               outVars.emplace_back(GroupVarInfo{out, it.inVar});
             }
 
-            auto dbCollectNode = new CollectNode(
+            auto dbCollectNode = plan->createNode<CollectNode>(
                 plan.get(), plan->nextId(), collectNode->getOptions(), outVars,
                 dbServerAggVars, nullptr, nullptr,
                 std::vector<Variable const*>(), collectNode->variableMap(),
                 false);
-
-            plan->registerNode(dbCollectNode);
 
             dbCollectNode->addDependency(previous);
             target->replaceDependency(previous, dbCollectNode);
@@ -4986,10 +5006,12 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::REMOTE:
         case EN::LIMIT:
         case EN::INDEX:
+        case EN::JOIN:
         case EN::TRAVERSAL:
         case EN::ENUMERATE_PATHS:
         case EN::SHORTEST_PATH:
         case EN::REMOTESINGLE:
+        case EN::REMOTE_MULTIPLE:
         case EN::ENUMERATE_IRESEARCH_VIEW:
         case EN::WINDOW:
         case EN::OFFSET_INFO_MATERIALIZE:
@@ -5373,8 +5395,18 @@ class RemoveToEnumCollFinder final
           toRemove =
               ExecutionNode::castTo<ReplaceNode const*>(en)->inKeyVariable();
         } else if (en->getType() == EN::UPDATE) {
+          // first try if we have the pattern UPDATE <key> WITH <doc> IN
+          // collection. if so, then toRemove will contain <key>.
           toRemove =
               ExecutionNode::castTo<UpdateNode const*>(en)->inKeyVariable();
+
+          if (toRemove == nullptr) {
+            // if we don't have that pattern, we can if instead have
+            // UPDATE <doc> IN collection.
+            // in this case toRemove will contain <doc>.
+            toRemove =
+                ExecutionNode::castTo<UpdateNode const*>(en)->inDocVariable();
+          }
         } else if (en->getType() == EN::REMOVE) {
           toRemove = ExecutionNode::castTo<RemoveNode const*>(en)->inVariable();
         } else {
@@ -5430,8 +5462,8 @@ class RemoveToEnumCollFinder final
             for (auto const& it : shardKeys) {
               toFind.emplace(it);
             }
-            // for REMOVE, we must also know the _key value, otherwise
-            // REMOVE will not work
+            // for UPDATE/REPLACE/REMOVE, we must also know the _key value,
+            // otherwise they will not work.
             toFind.emplace(arangodb::StaticStrings::KeyString);
 
             // go through the input object attribute by attribute
@@ -5446,14 +5478,17 @@ class RemoveToEnumCollFinder final
                 continue;
               }
 
-              auto it = toFind.find(sub->getString());
+              std::string attributeName = sub->getString();
+              auto it = toFind.find(attributeName);
 
               if (it != toFind.end()) {
                 // we found one of the shard keys!
                 // remove the attribute from our to-do list
                 auto value = sub->getMember(0);
 
-                if (value->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+                // check if we have something like: { key: source.key }
+                if (value->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
+                    value->getStringView() == attributeName) {
                   // check if all values for the shard keys are referring to
                   // the same FOR loop variable
                   auto var = value->getMember(0);
@@ -5945,10 +5980,9 @@ void arangodb::aql::replaceOrWithInRule(Optimizer* opt,
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 
-      ExecutionNode* newNode = new CalculationNode(plan.get(), plan->nextId(),
-                                                   std::move(expr), outVar);
+      ExecutionNode* newNode = plan->createNode<CalculationNode>(
+          plan.get(), plan->nextId(), std::move(expr), outVar);
 
-      plan->registerNode(newNode);
       plan->replaceNode(cn, newNode);
       modified = true;
     }
@@ -6119,9 +6153,8 @@ void arangodb::aql::removeRedundantOrRule(Optimizer* opt,
       auto astNode = remover.createReplacementNode(plan->getAst());
 
       auto expr = std::make_unique<Expression>(plan->getAst(), astNode);
-      ExecutionNode* newNode = new CalculationNode(plan.get(), plan->nextId(),
-                                                   std::move(expr), outVar);
-      plan->registerNode(newNode);
+      ExecutionNode* newNode = plan->createNode<CalculationNode>(
+          plan.get(), plan->nextId(), std::move(expr), outVar);
       plan->replaceNode(cn, newNode);
       modified = true;
     }
@@ -6354,6 +6387,9 @@ void arangodb::aql::optimizePathsRule(Optimizer* opt,
     bool canOptimize = true;
 
     ExecutionNode* current = ksp->getFirstParent();
+    arangodb::ResourceMonitor& resMonitor =
+        plan->getAst()->query().resourceMonitor();
+
     while (current != nullptr && canOptimize) {
       switch (current->getType()) {
         case EN::CALCULATION: {
@@ -6365,7 +6401,8 @@ void arangodb::aql::optimizePathsRule(Optimizer* opt,
                 ExecutionNode::castTo<CalculationNode*>(current)->expression();
             AstNode const* node = exp->node();
             if (!Ast::getReferencedAttributesRecursive(
-                    node, variable, /*expectedAttributes*/ "", attributes)) {
+                    node, variable, /*expectedAttributes*/ "", attributes,
+                    resMonitor)) {
               // full path variable is used, or accessed in a way that we don't
               // understand, e.g. "p" or "p[0]" or "p[*]..."
               canOptimize = false;
@@ -6389,7 +6426,7 @@ void arangodb::aql::optimizePathsRule(Optimizer* opt,
 
     if (canOptimize) {
       bool produceVertices =
-          attributes.contains(StaticStrings::GraphQueryVertices);
+          attributes.contains({StaticStrings::GraphQueryVertices, resMonitor});
 
       if (!produceVertices) {
         auto* options = ksp->options();
@@ -7149,23 +7186,19 @@ bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node,
         return true;
       }
       return false;
-      break;
     // only DISTANCE is allowed with <=, <, >=, >
     case NODE_TYPE_OPERATOR_BINARY_LE:
       TRI_ASSERT(node->numMembers() == 2);
       return eval(node->getMember(0), node->getMember(1), true);
-      break;
     case NODE_TYPE_OPERATOR_BINARY_LT:
       TRI_ASSERT(node->numMembers() == 2);
       return eval(node->getMember(0), node->getMember(1), false);
-      break;
     case NODE_TYPE_OPERATOR_BINARY_GE:
       TRI_ASSERT(node->numMembers() == 2);
       return eval(node->getMember(1), node->getMember(0), true);
     case NODE_TYPE_OPERATOR_BINARY_GT:
       TRI_ASSERT(node->numMembers() == 2);
       return eval(node->getMember(1), node->getMember(0), false);
-      break;
     default:
       return false;
   }
@@ -7380,14 +7413,13 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
   opts.limit = limit;
   opts.evaluateFCalls = false;  // workaround to avoid evaluating "doc.geo"
   std::unique_ptr<Condition> condition(buildGeoCondition(plan, info));
-  auto inode = new IndexNode(plan, plan->nextId(), info.collection,
-                             info.collectionNodeOutVar,
-                             std::vector<transaction::Methods::IndexHandle>{
-                                 transaction::Methods::IndexHandle{info.index}},
-                             false,  // here we are not using inverted index so
-                                     // for sure no "whole" coverage
-                             std::move(condition), opts);
-  plan->registerNode(inode);
+  auto inode = plan->createNode<IndexNode>(
+      plan, plan->nextId(), info.collection, info.collectionNodeOutVar,
+      std::vector<transaction::Methods::IndexHandle>{
+          transaction::Methods::IndexHandle{info.index}},
+      false,  // here we are not using inverted index so
+              // for sure no "whole" coverage
+      std::move(condition), opts);
   plan->replaceNode(info.collectionNodeToReplace, inode);
 
   // remove expressions covered by our index
@@ -7556,6 +7588,7 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::UPSERT:
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::INDEX:
+    case ExecutionNode::JOIN:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::ENUMERATE_PATHS:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
@@ -7563,6 +7596,7 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::DISTRIBUTE:
     case ExecutionNode::SCATTER:
     case ExecutionNode::REMOTESINGLE:
+    case ExecutionNode::REMOTE_MULTIPLE:
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_START:
     case ExecutionNode::SUBQUERY_END:
@@ -7839,9 +7873,8 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
         auto expr =
             std::make_unique<Expression>(ast, ast->createNodeValueBool(true));
         Variable* outVariable = ast->variables()->createTemporaryVariable();
-        auto calcNode = new CalculationNode(plan.get(), plan->nextId(),
-                                            std::move(expr), outVariable);
-        plan->registerNode(calcNode);
+        auto calcNode = plan->createNode<CalculationNode>(
+            plan.get(), plan->nextId(), std::move(expr), outVariable);
         plan->insertAfter(f, calcNode);
         // change the result value of the existing Return node
         TRI_ASSERT(root->getType() == EN::RETURN);
@@ -7856,8 +7889,8 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
         continue;
       }
 
-      auto limitNode = new LimitNode(plan.get(), plan->nextId(), 0, limitValue);
-      plan->registerNode(limitNode);
+      auto limitNode = plan->createNode<LimitNode>(plan.get(), plan->nextId(),
+                                                   0, limitValue);
       plan->insertAfter(f, limitNode);
       modified = true;
     }
@@ -7999,11 +8032,8 @@ namespace {
 /// @brief is the node parallelizable?
 struct ParallelizableFinder final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
-  bool const _parallelizeWrites;
-  bool _isParallelizable;
-
-  explicit ParallelizableFinder(bool parallelizeWrites)
-      : _parallelizeWrites(parallelizeWrites), _isParallelizable(true) {}
+  bool _isParallelizable = true;
+  bool _hasParallelTraversal = false;
 
   ~ParallelizableFinder() = default;
 
@@ -8012,9 +8042,12 @@ struct ParallelizableFinder final
   }
 
   bool before(ExecutionNode* node) override final {
-    if (node->getType() == ExecutionNode::SCATTER ||
-        node->getType() == ExecutionNode::GATHER ||
-        node->getType() == ExecutionNode::DISTRIBUTE) {
+    if ((node->getType() == ExecutionNode::SCATTER ||
+         node->getType() == ExecutionNode::DISTRIBUTE) &&
+        _hasParallelTraversal) {
+      // we cannot parallelize the gather if we have a parallel traversal which
+      // itself depends again on a scatter/distribute node, because we are
+      // currently lacking synchronization for that scatter/distribute node.
       _isParallelizable = false;
       return true;  // true to abort the whole walking process
     }
@@ -8023,21 +8056,11 @@ struct ParallelizableFinder final
         node->getType() == ExecutionNode::SHORTEST_PATH ||
         node->getType() == ExecutionNode::ENUMERATE_PATHS) {
       auto* gn = ExecutionNode::castTo<GraphNode*>(node);
+      _hasParallelTraversal |= gn->options()->parallelism() > 1;
       if (!gn->isLocalGraphNode()) {
         _isParallelizable = false;
         return true;  // true to abort the whole walking process
       }
-    }
-
-    // write operations of type REMOVE, REPLACE and UPDATE
-    // can be parallelized, provided the rest of the plan
-    // does not prohibit this
-    if (node->isModificationNode() &&
-        (!_parallelizeWrites || (node->getType() != ExecutionNode::REMOVE &&
-                                 node->getType() != ExecutionNode::REPLACE &&
-                                 node->getType() != ExecutionNode::UPDATE))) {
-      _isParallelizable = false;
-      return true;  // true to abort the whole walking process
     }
 
     // continue inspecting
@@ -8046,13 +8069,13 @@ struct ParallelizableFinder final
 };
 
 /// no modification nodes, ScatterNodes etc
-bool isParallelizable(GatherNode* node, bool parallelizeWrites) {
+bool isParallelizable(GatherNode* node) {
   if (node->parallelism() == GatherNode::Parallelism::Serial) {
     // node already defined to be serial
     return false;
   }
 
-  ParallelizableFinder finder(parallelizeWrites);
+  ParallelizableFinder finder;
   for (ExecutionNode* e : node->getDependencies()) {
     e->walk(finder);
     if (!finder._isParallelizable) {
@@ -8358,61 +8381,21 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
 
   bool modified = false;
 
-  // find all GatherNodes in the main query, starting from the query's root node
-  // (the node most south when looking at the query execution plan).
-  //
-  // for now, we effectively stop right after the first GatherNode we found,
-  // regardless of whether we can make that node use parallelism or not. the
-  // reason we have to stop here is that if we have multiple query snippets on a
-  // server they will use the same underlying transaction object. however,
-  // transactions are not thread-safe right now, so we must avoid any
-  // parallelism when there can be another snippet with the same transaction on
-  // the same server.
-  //
-  // for example consider the following query, joining the shards of two
-  // collections on 2 database servers:
-  //
-  //   (4)      DBS1                            DBS2               database
-  //        users, shard 1                 users, shard 2          servers
-  //       --------------------------------------------------------
-  //   (3)                      Gather                             coordinator
-  //       --------------------------------------------------------
-  //   (2)      DBS1            Scatter         DBS2               database
-  //       orders, shard 1                orders, shard 2          servers
-  //       --------------------------------------------------------
-  //   (1)                      Gather                             coordinator
-  //
-  // the query starts with a GatherNode (1). if we make that parallel, then it
-  // will ask the shards of `orders` on the database servers in parallel (2). So
-  // there can be 2 threads in (2), on different servers. all is fine until
-  // here. however, if the thread for DBS1 fetches upstream data from the
-  // coordinator (3), then the coordinator may reach out to DBS2 to get more
-  // data from the `users` collection (4). so one thread will be on DBS2 and
-  // using the transaction. at the very same time we already have another thread
-  // working on the same server on (2). they are using the same transaction
-  // object, which currently is not thread-safe. we need to avoid any such
-  // situation, and thus we cannot make any of the GatherNodes thread-safe here.
-  // the only case in which we currently can employ parallelization is when
-  // there is only a single GatherNode. all other restrictions for
-  // parallelization (e.g. no DistributeNodes around) still apply.
   containers::SmallVector<ExecutionNode*, 8> nodes;
+  containers::SmallVector<ExecutionNode*, 8> graphNodes;
   plan->findNodesOfType(nodes, EN::GATHER, true);
 
-  if (nodes.size() == 1 && !plan->contains(EN::DISTRIBUTE) &&
-      !plan->contains(EN::SCATTER)) {
-    TRI_vocbase_t& vocbase = plan->getAst()->query().vocbase();
-    bool parallelizeWrites = vocbase.server()
-                                 .getFeature<OptimizerRulesFeature>()
-                                 .parallelizeGatherWrites();
-    GatherNode* gn = ExecutionNode::castTo<GatherNode*>(nodes[0]);
+  for (auto node : nodes) {
+    GatherNode* gn = ExecutionNode::castTo<GatherNode*>(node);
 
-    if (!gn->isInSubquery() && isParallelizable(gn, parallelizeWrites)) {
+    if (!gn->isInSubquery() && isParallelizable(gn)) {
       // find all graph nodes and make sure that they all are using satellite
-      nodes.clear();
+      graphNodes.clear();
       plan->findNodesOfType(
-          nodes, {EN::TRAVERSAL, EN::SHORTEST_PATH, EN::ENUMERATE_PATHS}, true);
+          graphNodes, {EN::TRAVERSAL, EN::SHORTEST_PATH, EN::ENUMERATE_PATHS},
+          true);
       bool const allSatellite =
-          std::all_of(nodes.begin(), nodes.end(), [](auto n) {
+          std::all_of(graphNodes.begin(), graphNodes.end(), [](auto n) {
             GraphNode* graphNode = ExecutionNode::castTo<GraphNode*>(n);
             return graphNode->isLocalGraphNode();
           });
@@ -8432,44 +8415,90 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
 void arangodb::aql::asyncPrefetchRule(Optimizer* opt,
                                       std::unique_ptr<ExecutionPlan> plan,
                                       OptimizerRule const& rule) {
-  // at the moment we only allow async prefetching for read-only queries,
-  // ie., the query must not contain any modification nodes
-  struct ModificationNodeChecker : WalkerWorkerBase<ExecutionNode> {
+  struct AsyncPrefetchChecker : WalkerWorkerBase<ExecutionNode> {
     bool before(ExecutionNode* n) override {
-      if (n->isModificationNode()) {
-        containsModificationNode = true;
-        return true;  // found a modification node -> abort
+      auto eligibility = n->canUseAsyncPrefetching();
+      if (eligibility == AsyncPrefetchEligibility::kDisableGlobally) {
+        // found a node that we can't support -> abort
+        eligible = false;
+        return true;
       }
       return false;
     }
-    bool containsModificationNode{false};
+
+    bool eligible{true};
   };
-  ModificationNodeChecker checker;
-  plan->root()->walk(checker);
 
-  if (!checker.containsModificationNode) {
-    // here we only set a flag that this plan should use async prefetching.
-    // The actual prefetching is performed on node level and therefore also
-    // enbabled/disabled on the nodes. However, this is not done here but in
-    // a post-processing step so we can operate on the finalized query (e.g.,
-    // after subquery-splicing)
-    plan->enableAsyncPrefetching();
-  }
-  opt->addPlan(std::move(plan), rule, !checker.containsModificationNode);
-}
-
-void arangodb::aql::enableAsyncPrefetching(ExecutionPlan& plan) {
-  // TODO at the moment we enable prefetching on all nodes - this should be made
-  // configurable
   struct AsyncPrefetchEnabler : WalkerWorkerBase<ExecutionNode> {
+    AsyncPrefetchEnabler() { stack.emplace_back(0); }
+
     bool before(ExecutionNode* n) override {
-      TRI_ASSERT(!n->isModificationNode());
-      n->setIsAsyncPrefetchEnabled(true);
+      auto eligibility = n->canUseAsyncPrefetching();
+      if (eligibility == AsyncPrefetchEligibility::kDisableGlobally) {
+        // found a node that we can't support -> abort
+        TRI_ASSERT(!modified);
+        return true;
+      }
+      if (eligibility ==
+          AsyncPrefetchEligibility::kDisableForNodeAndDependencies) {
+        TRI_ASSERT(!stack.empty());
+        ++stack.back();
+      }
       return false;
     }
+
+    void after(ExecutionNode* n) override {
+      TRI_ASSERT(!stack.empty());
+      if (n->getType() == EN::REMOTE) {
+        ++stack.back();
+      }
+      auto eligibility = n->canUseAsyncPrefetching();
+      if (stack.back() == 0 &&
+          eligibility == AsyncPrefetchEligibility::kEnableForNode) {
+        // we are currently excluding any node inside a subquery.
+        // TODO: lift this restriction.
+        n->setIsAsyncPrefetchEnabled(true);
+        modified = true;
+      }
+      if (eligibility ==
+          AsyncPrefetchEligibility::kDisableForNodeAndDependencies) {
+        TRI_ASSERT(stack.back() > 0);
+        --stack.back();
+      }
+    }
+
+    bool enterSubquery(ExecutionNode*, ExecutionNode*) override {
+      // this will disable the optimization for subqueries right now
+      stack.push_back(1);
+      return true;
+    }
+
+    void leaveSubquery(ExecutionNode*, ExecutionNode*) override {
+      TRI_ASSERT(!stack.empty());
+      stack.pop_back();
+    }
+
+    // per query-level (main query, subqueries) stack of eligibilities
+    containers::SmallVector<uint32_t, 4> stack;
+    bool modified{false};
   };
-  AsyncPrefetchEnabler walker{};
-  plan.root()->walk(walker);
+
+  bool modified = false;
+  // first check if the query satisfies all constraints we have for
+  // async prefetching
+  AsyncPrefetchChecker checker;
+  plan->root()->walk(checker);
+
+  if (checker.eligible) {
+    // only if it does, start modifying nodes in the query
+    AsyncPrefetchEnabler enabler;
+    plan->root()->walk(enabler);
+    modified = enabler.modified;
+    if (modified) {
+      plan->getAst()->setContainsAsyncPrefetch();
+    }
+  }
+  opt->addPlan(std::move(plan), rule, modified);
 }
 
 void arangodb::aql::activateCallstackSplit(ExecutionPlan& plan) {
@@ -8910,13 +8939,14 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
         setDistributeVariable = [shortestPathNode](Variable* var) {
           shortestPathNode->setDistributeVariable(var);
         };
-      } break;
+        break;
+      }
       default: {
         TRI_ASSERT(false);
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_INTERNAL,
             "Cannot distribute " + targetNode->getTypeString() + ".");
-      } break;
+      }
     }
     TRI_ASSERT(inputVariable != nullptr);
     TRI_ASSERT(collection != nullptr);
@@ -9060,4 +9090,369 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
     plan.clearVarUsageComputed();
     plan.findVarUsage();
   }
+}
+
+#define LOG_INDEX_OPTIMIZER_RULE LOG_DEVEL_IF(false)
+
+void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
+                                       std::unique_ptr<ExecutionPlan> plan,
+                                       OptimizerRule const& rule) {
+  containers::SmallVector<ExecutionNode*, 8> nodes;
+  plan->findNodesOfType(nodes, EN::INDEX, true);
+
+  LOG_INDEX_OPTIMIZER_RULE << "Checking if we can join index nodes";
+
+  bool modified = false;
+  if (nodes.size() >= 2) {
+    // not yet supported:
+    // - IndexIteratorOptions: sorted, ascending, evalFCalls, useCache,
+    // waitForSync, limit, lookahead
+    // - reverse iteration
+    // - support from GatherNodes
+    auto nodeQualifies = [](IndexNode const& indexNode) {
+      LOG_INDEX_OPTIMIZER_RULE << "Index node id: " << indexNode.id();
+      if (indexNode.condition() == nullptr) {
+        // IndexNode does not have an index lookup condition
+        LOG_INDEX_OPTIMIZER_RULE << "IndexNode does not have an index lookup "
+                                    "condition, so we cannot join it";
+        return false;
+      }
+
+      if (!indexNode.options().ascending) {
+        // reverse sort not yet supported
+        LOG_INDEX_OPTIMIZER_RULE << "IndexNode is not sorted ascending, so we "
+                                    "cannot join it";
+        return false;
+      }
+
+      auto const& indexes = indexNode.getIndexes();
+      if (indexes.size() != 1) {
+        // must use exactly one index (otherwise this would be an OR condition)
+        LOG_INDEX_OPTIMIZER_RULE << "IndexNode uses more than one index, so we "
+                                    "cannot join it";
+        return false;
+      }
+
+      auto const& index = indexes[0];
+      if (!index->isSorted()) {
+        // must be a sorted index
+        LOG_INDEX_OPTIMIZER_RULE << "IndexNode uses an unsorted index, so we "
+                                    "cannot join it";
+        return false;
+      }
+
+      if (index->fields().empty()) {
+        // index on more than one attribute
+        LOG_INDEX_OPTIMIZER_RULE << "IndexNode uses an index on more than one "
+                                    "attribute, so we cannot join it";
+        return false;
+      }
+
+      if (index->hasExpansion()) {
+        // index uses expansion ([*]) operator
+        LOG_INDEX_OPTIMIZER_RULE << "IndexNode uses an index with expansion, "
+                                    "so we cannot join it";
+        return false;
+      }
+
+      LOG_INDEX_OPTIMIZER_RULE << "IndexNode qualifies for joining";
+      return true;
+    };
+
+    // IndexNodes we already handled
+    containers::FlatHashSet<ExecutionNode const*> handled;
+
+    // for each IndexNode we found in the found, iterate over a potential
+    // chain of IndexNodes, from top to bottom
+    for (auto* n : nodes) {
+      auto* startNode = ExecutionNode::castTo<IndexNode*>(n);
+      // go to the first IndexNode in the chain, so we can start at the
+      // top.
+      while (true) {
+        auto* dep = startNode->getFirstDependency();
+        if (dep == nullptr || dep->getType() != EN::INDEX) {
+          break;
+        }
+        startNode = ExecutionNode::castTo<IndexNode*>(dep);
+      }
+
+      while (true) {
+        containers::SmallVector<IndexNode*, 8> candidates;
+        IndexNode* indexNode = startNode;
+
+        containers::SmallVector<CalculationNode*, 8> calculations;
+
+        while (true) {
+          if (handled.contains(indexNode) || !nodeQualifies(*indexNode)) {
+            break;
+          }
+          candidates.emplace_back(indexNode);
+          auto* parent = indexNode->getFirstParent();
+          while (true) {
+            if (parent == nullptr) {
+              goto endOfIndexNodeSearch;
+            } else if (parent->getType() == EN::CALCULATION) {
+              // store this calculation and check later if and index depends on
+              // it
+              auto calc = ExecutionNode::castTo<CalculationNode*>(parent);
+              calculations.push_back(calc);
+              parent = parent->getFirstParent();
+              continue;
+            } else if (parent->getType() == EN::INDEX) {
+              // check that this index node does not depend on previous
+              // calculations
+
+              indexNode = ExecutionNode::castTo<IndexNode*>(parent);
+              VarSet usedVariables;
+              indexNode->getVariablesUsedHere(usedVariables);
+              for (auto* calc : calculations) {
+                if (calc->setsVariable(usedVariables)) {
+                  // can not join past this calculation
+                  goto endOfIndexNodeSearch;
+                }
+              }
+              break;
+            } else {
+              goto endOfIndexNodeSearch;
+            }
+          }
+        }
+      endOfIndexNodeSearch:
+
+        if (candidates.size() >= 2) {
+          LOG_INDEX_OPTIMIZER_RULE << "Found " << candidates.size()
+                                   << " index nodes that qualify for joining";
+          bool eligible = true;
+          size_t i = 0;
+          for (auto* c : candidates) {
+            if (i == 0) {
+              // first FOR loop. we expect it to not have any lookup condition
+              if (c->condition()->root() != nullptr) {
+                eligible = false;
+                break;
+              }
+            } else {
+              // follow-up FOR loop. we expect it to have a lookup condition
+              if (c->condition()->root() == nullptr) {
+                eligible = false;
+                break;
+              }
+              auto const* root = c->condition()->root();
+              if (root == nullptr || root->type != NODE_TYPE_OPERATOR_NARY_OR ||
+                  root->numMembers() != 1) {
+                eligible = false;
+                break;
+              }
+              root = root->getMember(0);
+              if (root == nullptr ||
+                  root->type != NODE_TYPE_OPERATOR_NARY_AND ||
+                  root->numMembers() != 1) {
+                eligible = false;
+                break;
+              }
+              root = root->getMember(0);
+              if (root == nullptr ||
+                  root->type != NODE_TYPE_OPERATOR_BINARY_EQ ||
+                  root->numMembers() != 2) {
+                eligible = false;
+                break;
+              }
+              auto* lhs = root->getMember(0);
+              auto* rhs = root->getMember(1);
+
+              auto matches = [](AstNode const* lhs, AstNode const* rhs,
+                                IndexNode const* i1, IndexNode const* i2) {
+                std::pair<Variable const*,
+                          std::vector<arangodb::basics::AttributeName>>
+                    usedVar;
+
+                if (!lhs->isAttributeAccessForVariable(
+                        usedVar, /*allowIndexedAccess*/ false)) {
+                  // lhs is not an attribute access
+                  return false;
+                }
+                if (usedVar.first != i1->outVariable() ||
+                    usedVar.second != i1->getIndexes()[0]->fields()[0]) {
+                  // lhs doesn't match i1's FOR loop index field
+                  return false;
+                }
+                // lhs matches i1's FOR loop index field
+                if (!rhs->isAttributeAccessForVariable(
+                        usedVar, /*allowIndexedAccess*/ false)) {
+                  // rhs is not an attribute access
+                  return false;
+                }
+                if (usedVar.first != i2->outVariable() ||
+                    usedVar.second != i2->getIndexes()[0]->fields()[0]) {
+                  // rhs doesn't match i2's FOR loop index field
+                  return false;
+                }
+                // rhs matches i2's FOR loop index field
+                return true;
+              };
+
+              if (!matches(lhs, rhs, c, candidates[i - 1]) &&
+                  !matches(lhs, rhs, candidates[i - 1], c)) {
+                LOG_INDEX_OPTIMIZER_RULE
+                    << "IndexNode's lookup condition does not match";
+                eligible = false;
+                break;
+              }
+            }
+
+            // if there is a post filter, make sure it only accesses variables
+            // that are available before all index nodes
+            if (c->hasFilter()) {
+              VarSet vars;
+              c->filter()->variables(vars);
+
+              for (auto* other : candidates) {
+                if (other != c && other->setsVariable(vars)) {
+                  LOG_INDEX_OPTIMIZER_RULE << "IndexNode's post filter "
+                                              "accesses variables that are "
+                                              "not available before all "
+                                              "index nodes";
+                  eligible = false;
+                }
+              }
+            }
+
+            // check if filter supports streaming interface
+            {
+              IndexStreamOptions opts;
+              opts.usedKeyFields = {0};  // for now only 0 is supported
+              if (c->projections().usesCoveringIndex()) {
+                opts.projectedFields.reserve(c->projections().size());
+                auto& proj = c->projections().projections();
+                std::transform(
+                    proj.begin(), proj.end(),
+                    std::back_inserter(opts.projectedFields),
+                    [](auto const& p) { return p.coveringIndexPosition; });
+              }
+              if (!c->getIndexes()[0]->supportsStreamInterface(opts)) {
+                LOG_INDEX_OPTIMIZER_RULE << "IndexNode's index does not "
+                                            "support streaming interface";
+                LOG_INDEX_OPTIMIZER_RULE
+                    << "-> Index name: " << c->getIndexes()[0]->name()
+                    << ", id: " << c->getIndexes()[0]->id();
+                eligible = false;
+              }
+            }
+
+            if (!eligible) {
+              break;
+            }
+            ++i;
+          }
+
+          if (eligible) {
+            LOG_INDEX_OPTIMIZER_RULE << "Should be eligible for index join";
+            std::vector<JoinNode::IndexInfo> indexInfos;
+            indexInfos.reserve(candidates.size());
+            for (auto* c : candidates) {
+              indexInfos.emplace_back(JoinNode::IndexInfo{
+                  .collection = c->collection(),
+                  .outVariable = c->outVariable(),
+                  .condition = c->condition()->clone(),
+                  .filter = c->hasFilter() ? c->filter()->clone(plan->getAst())
+                                           : nullptr,
+                  .index = c->getIndexes()[0],
+                  .projections = c->projections(),
+                  .filterProjections = c->filterProjections(),
+                  .usedAsSatellite = c->isUsedAsSatellite()});
+              handled.emplace(c);
+            }
+            JoinNode* jn = plan->createNode<JoinNode>(
+                plan.get(), plan->nextId(), std::move(indexInfos),
+                IndexIteratorOptions{});
+            // Nodes we jumped over (like calculations) are left in place
+            // and are now below the Join Node
+            plan->replaceNode(candidates[0], jn);
+            for (size_t i = 1; i < candidates.size(); ++i) {
+              plan->unlinkNode(candidates[i]);
+            }
+            modified = true;
+          } else {
+            LOG_INDEX_OPTIMIZER_RULE << "Not eligible for index join";
+          }
+        } else {
+          LOG_INDEX_OPTIMIZER_RULE << "Not enough index nodes to join, size: "
+                                   << candidates.size();
+        }
+
+        // try starting from next start node
+        auto* parent = startNode->getFirstParent();
+        if (parent == nullptr || parent->getType() != EN::INDEX) {
+          break;
+        }
+        startNode = ExecutionNode::castTo<IndexNode*>(parent);
+      }
+    }
+  }
+
+  opt->addPlan(std::move(plan), rule, modified);
+}
+
+class AttributeAccessReplacer final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
+ public:
+  AttributeAccessReplacer(ExecutionNode const* self,
+                          Variable const* searchVariable,
+                          std::span<std::string_view> attribute,
+                          Variable const* replaceVariable)
+      : _self(self),
+        _searchVariable(searchVariable),
+        _attribute(attribute),
+        _replaceVariable(replaceVariable) {
+    TRI_ASSERT(_searchVariable != nullptr);
+    TRI_ASSERT(!_attribute.empty());
+    TRI_ASSERT(_replaceVariable != nullptr);
+  }
+
+  bool before(ExecutionNode* en) override final {
+    en->replaceAttributeAccess(_self, _searchVariable, _attribute,
+                               _replaceVariable);
+
+    // always continue
+    return false;
+  }
+
+ private:
+  ExecutionNode const* _self;
+  Variable const* _searchVariable;
+  std::span<std::string_view> _attribute;
+  Variable const* _replaceVariable;
+};
+
+void arangodb::aql::optimizeProjections(Optimizer* opt,
+                                        std::unique_ptr<ExecutionPlan> plan,
+                                        OptimizerRule const& rule) {
+  containers::SmallVector<ExecutionNode*, 8> nodes;
+  plan->findNodesOfType(nodes, {EN::INDEX, EN::ENUMERATE_COLLECTION}, true);
+
+  bool modified = false;
+  for (auto* n : nodes) {
+    auto* documentNode = ExecutionNode::castTo<DocumentProducingNode*>(n);
+    modified |= documentNode->recalculateProjections(plan.get());
+
+    if (n->getType() != EN::ENUMERATE_COLLECTION) {
+      continue;
+    }
+    auto& p = documentNode->projections();
+    std::vector<std::string_view> path;
+    for (size_t i = 0; i < p.size(); ++i) {
+      TRI_ASSERT(p[i].variable == nullptr);
+      p[i].variable = plan->getAst()->variables()->createTemporaryVariable();
+      path.clear();
+      for (auto const& it : p[i].path.get()) {
+        path.emplace_back(it);
+      }
+
+      AttributeAccessReplacer replacer(n, documentNode->outVariable(),
+                                       std::span(path), p[i].variable);
+      plan->root()->walk(replacer);
+      modified = true;
+    }
+  }
+  opt->addPlan(std::move(plan), rule, modified);
 }

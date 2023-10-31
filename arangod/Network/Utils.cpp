@@ -75,8 +75,7 @@ ErrorCode resolveDestination(ClusterInfo& ci, DestinationId const& dest,
   if (dest.starts_with("shard:")) {
     spec.shardId = dest.substr(6);
     {
-      std::shared_ptr<std::vector<ServerID> const> resp =
-          ci.getResponsibleServer(spec.shardId);
+      auto resp = ci.getResponsibleServer(spec.shardId);
       if (!resp->empty()) {
         spec.serverId = (*resp)[0];
       } else {
@@ -275,15 +274,17 @@ ErrorCode fuerteToArangoErrorCode(network::Response const& res) {
   LOG_TOPIC_IF("abcde", ERR, Logger::COMMUNICATION,
                res.error != fuerte::Error::NoError)
       << "communication error: '" << fuerte::to_string(res.error)
-      << "' from destination '" << res.destination << "'"
-      << [](network::Response const& res) {
-           if (res.hasRequest()) {
-             return std::string(", url: ") +
-                    to_string(res.request().header.restVerb) + " " +
-                    res.request().header.path;
-           }
-           return std::string();
-         }(res);
+      << "' from destination '" << res.destination << "'" <<
+      [](network::Response const& res) {
+        if (res.hasRequest()) {
+          return std::string(", url: ") +
+                 to_string(res.request().header.restVerb) + " " +
+                 res.request().header.path;
+        }
+        return std::string();
+      }(res)
+      << ", request ptr: "
+      << (res.hasRequest() ? (void*)(&res.request()) : nullptr);
   return toArangoErrorCodeInternal(res.error);
 }
 

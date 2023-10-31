@@ -30,9 +30,11 @@
 #include "Aql/Projections.h"
 #include "Aql/VarInfoMap.h"
 #include "Basics/Common.h"
+#include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Transaction/Methods.h"
 
 #include <memory>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -73,6 +75,7 @@ class TraverserCache;
  *          - K_Shortest_Paths
  *          - K_Paths
  */
+
 struct BaseOptions {
  public:
   struct LookupInfo {
@@ -190,8 +193,7 @@ struct BaseOptions {
       bool enableDocumentCache,
       std::unordered_map<ServerID, aql::EngineId> const* engines);
 
-  std::unordered_map<std::string, std::vector<std::string>> const&
-  collectionToShard() const {
+  MonitoredCollectionToShardMap const& collectionToShard() const {
     return _collectionToShard;
   }
 
@@ -252,8 +254,6 @@ struct BaseOptions {
                               aql::AstNode* condition, bool onlyEdgeIndexes,
                               TRI_edge_direction_e direction);
 
-  void injectTestCache(std::unique_ptr<TraverserCache>&& cache);
-
   void toVelocyPackBase(VPackBuilder& builder) const;
 
   void parseShardIndependentFlags(arangodb::velocypack::Slice info);
@@ -292,10 +292,11 @@ struct BaseOptions {
   /// @brief the traverser cache
   /// This basically caches strings, and items we want to reference multiple
   /// times.
+  /// (monitored: non-dynamic and dynamic memory)
   std::unique_ptr<TraverserCache> _cache;
 
-  // @brief - translations for one-shard-databases
-  std::unordered_map<std::string, std::vector<std::string>> _collectionToShard;
+  // @brief - translations for one-shard-databases (monitored)
+  MonitoredCollectionToShardMap _collectionToShard;
 
   /// Section for Options the user has given in the AQL query
 
@@ -318,10 +319,10 @@ struct BaseOptions {
 
   size_t _maxProjections{aql::DocumentProducingNode::kMaxProjections};
 
-  /// @brief Projections used on vertex data
+  /// @brief Projections used on vertex data (monitored)
   aql::Projections _vertexProjections;
 
-  /// @brief Projections used on edge data
+  /// @brief Projections used on edge data (monitored)
   aql::Projections _edgeProjections;
 };
 

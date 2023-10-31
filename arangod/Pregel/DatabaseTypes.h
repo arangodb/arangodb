@@ -28,3 +28,7 @@
 // for this ClusterInfo should be broken into several files
 using ShardID = std::string;
 using CollectionID = std::string;
+// WARNING: there is a difference between CollectionID and
+// CollectionName
+using CollectionName = std::string;
+using ServerID = std::string;

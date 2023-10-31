@@ -23,9 +23,8 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedLog/LogEntries.h"
+#include "Replication2/ReplicatedLog/LogEntryView.h"
 #include "Replication2/Streams/Streams.h"
-#include "Inspection/VPack.h"
 
 namespace arangodb::replication2 {
 
@@ -44,7 +43,6 @@ struct LazyDeserializingIterator
       auto slice = current->logPayload();
       auto value = std::invoke(
           Deserializer{}, streams::serializer_tag<std::decay_t<To>>, slice);
-      //_current.emplace(velocypack::deserialize<To>(current->logPayload()));
       _current.emplace(std::move(value));
       return {{current->logIndex(), std::cref(*_current)}};
     } else {

@@ -42,8 +42,8 @@ else
   SE_BASE=$(( PORT_OFFSET + 8530 + NRCOORDINATORS + NRDBSERVERS + NRAGENTS ))
 fi
 
-LOCALHOST="[::1]"
-ANY="[::]"
+LOCALHOST="localhost"
+ANY="localhost"
 
 if [ "$TRANSPORT" == "ssl" ]; then
   CURL="curl -skfX"
@@ -61,21 +61,11 @@ else
   AUTHORIZATION_HEADER="Authorization: bearer $(jwtgen -a HS256 -s $JWT_SECRET -c 'iss=arangodb' -c 'server_id=setup')"
 fi
 
-echo $JWT_SECRET
-
 shutdown() {
   PORT=$1
   echo -n "$PORT "
   $CURL DELETE $PROT://$LOCALHOST:$PORT/_admin/shutdown  -H "$AUTHORIZATION_HEADER" >/dev/null 2>/dev/null
 }
-
-if [ "$SECONDARIES" == "1" ]; then
-  echo Shutting down secondaries...
-  PORTHISE=$(expr $SE_BASE + $NRDBSERVERS - 1)
-  for p in $(seq $SE_BASE $PORTHISE) ; do
-    shutdown $PORT
-  done
-fi
 
 echo -n "  Shutting down Coordinators... "
 PORTHICO=$(expr $CO_BASE + $NRCOORDINATORS - 1)

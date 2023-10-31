@@ -33,6 +33,7 @@
 #include "Basics/encoding.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "Metrics/MetricsFeature.h"
@@ -42,7 +43,9 @@
 #include "RocksDBEngine/RocksDBRecoveryHelper.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
+#endif
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
@@ -82,9 +85,11 @@ class FlushFeatureTest
     selector.setEngineTesting(&engine);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
                           false);  // required for TRI_vocbase_t
+#ifdef USE_V8
     features.emplace_back(
         server.addFeature<arangodb::V8DealerFeature>(),
         false);  // required for DatabaseFeature::createDatabase(...)
+#endif
 
 #if USE_ENTERPRISE
     features.emplace_back(
@@ -148,9 +153,9 @@ TEST_F(FlushFeatureTest, test_subscription_retention) {
     feature.registerFlushSubscription(subscription);
 
     auto const subscriptionTick = engine.currentTick();
-    auto const currentTick = TRI_NewTickServer();
-    ASSERT_EQ(currentTick, engine.currentTick());
-    ASSERT_LT(subscriptionTick, engine.currentTick());
+    engine.incrementTick(1);
+    auto const currentTick = engine.currentTick();
+    ASSERT_LT(subscriptionTick, currentTick);
     subscription->_tick = subscriptionTick;
 
     {
@@ -161,9 +166,9 @@ TEST_F(FlushFeatureTest, test_subscription_retention) {
     }
 
     auto const newSubscriptionTick = currentTick;
-    auto const newCurrentTick = TRI_NewTickServer();
-    ASSERT_EQ(newCurrentTick, engine.currentTick());
-    ASSERT_LT(subscriptionTick, engine.currentTick());
+    engine.incrementTick(1);
+    auto const newCurrentTick = engine.currentTick();
+    ASSERT_LT(subscriptionTick, newCurrentTick);
     subscription->_tick = newSubscriptionTick;
 
     {

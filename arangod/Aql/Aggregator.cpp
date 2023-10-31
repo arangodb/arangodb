@@ -617,7 +617,7 @@ struct AggregatorUnique : public Aggregator {
   void reduce(AqlValue const& cmpValue) override {
     AqlValueMaterializer materializer(_vpackOptions);
 
-    VPackSlice s = materializer.slice(cmpValue, true);
+    VPackSlice s = materializer.slice(cmpValue);
 
     if (seen.contains(s)) {
       // already saw the same value
@@ -660,7 +660,7 @@ struct AggregatorUniqueStep2 final : public AggregatorUnique {
   void reduce(AqlValue const& cmpValue) override final {
     AqlValueMaterializer materializer(_vpackOptions);
 
-    VPackSlice s = materializer.slice(cmpValue, true);
+    VPackSlice s = materializer.slice(cmpValue);
 
     if (!s.isArray()) {
       return;
@@ -700,7 +700,7 @@ struct AggregatorSortedUnique : public Aggregator {
   void reduce(AqlValue const& cmpValue) override {
     AqlValueMaterializer materializer(_vpackOptions);
 
-    VPackSlice s = materializer.slice(cmpValue, true);
+    VPackSlice s = materializer.slice(cmpValue);
 
     if (seen.find(s) != seen.end()) {
       // already saw the same value
@@ -735,7 +735,7 @@ struct AggregatorSortedUniqueStep2 final : public AggregatorSortedUnique {
   void reduce(AqlValue const& cmpValue) override final {
     AqlValueMaterializer materializer(_vpackOptions);
 
-    VPackSlice s = materializer.slice(cmpValue, true);
+    VPackSlice s = materializer.slice(cmpValue);
 
     if (!s.isArray()) {
       return;
@@ -771,7 +771,7 @@ struct AggregatorCountDistinct : public Aggregator {
   void reduce(AqlValue const& cmpValue) override {
     AqlValueMaterializer materializer(_vpackOptions);
 
-    VPackSlice s = materializer.slice(cmpValue, true);
+    VPackSlice s = materializer.slice(cmpValue);
 
     if (seen.contains(s)) {
       // already saw the same value
@@ -832,7 +832,7 @@ struct AggregatorCountDistinctStep2 final : public AggregatorCountDistinct {
   void reduce(AqlValue const& cmpValue) override {
     AqlValueMaterializer materializer(_vpackOptions);
 
-    VPackSlice s = materializer.slice(cmpValue, true);
+    VPackSlice s = materializer.slice(cmpValue);
 
     if (!s.isArray()) {
       return;

@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include "Agency/Node.h"
 #include "Basics/Result.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/MaintenanceFeature.h"
@@ -40,11 +39,13 @@ class StorageEngine;
 
 namespace replication2 {
 namespace replicated_log {
-struct QuickLogStatus;
 enum class ParticipantRole;
 }  // namespace replicated_log
 namespace replicated_state {
 struct StateStatus;
+}
+namespace maintenance {
+struct LogStatus;
 }
 }  // namespace replication2
 
@@ -71,10 +72,10 @@ constexpr int SLOW_OP_PRIORITY = 0;
 // maintenance thread which does not execute SLOW_OP_PRIORITY jobs.
 
 using Transactions = std::vector<std::pair<VPackBuilder, VPackBuilder>>;
-// database -> LogId -> QuickLogStatus
+// database -> LogId -> LogStatus
 using ReplicatedLogStatusMap =
     std::unordered_map<arangodb::replication2::LogId,
-                       arangodb::replication2::replicated_log::QuickLogStatus>;
+                       arangodb::replication2::maintenance::LogStatus>;
 using ReplicatedLogStatusMapByDatabase =
     std::unordered_map<DatabaseID, ReplicatedLogStatusMap>;
 using ReplicatedLogSpecMap =

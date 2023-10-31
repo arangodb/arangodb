@@ -30,14 +30,17 @@
 
 #include <velocypack/Slice.h>
 
-#include "Basics/Common.h"
-#include "Basics/debugging.h"
-#include "Replication2/ReplicatedLog/LogEntries.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/Identifiers/RevisionId.h"
 
 namespace arangodb {
+
+namespace replication2 {
+struct LogTerm;
+struct LogPayload;
+class LogEntry;
+}  // namespace replication2
 
 class RocksDBValue {
  public:
@@ -50,21 +53,21 @@ class RocksDBValue {
   static RocksDBValue Database(VPackSlice data);
   static RocksDBValue Collection(VPackSlice data);
   static RocksDBValue ReplicatedState(VPackSlice data);
-  static RocksDBValue PrimaryIndexValue(LocalDocumentId const& docId,
+  static RocksDBValue PrimaryIndexValue(LocalDocumentId docId,
                                         RevisionId revision);
   static RocksDBValue EdgeIndexValue(std::string_view vertexId);
   static RocksDBValue VPackIndexValue();
   static RocksDBValue VPackIndexValue(VPackSlice data);
   static RocksDBValue ZkdIndexValue();
-  static RocksDBValue UniqueZkdIndexValue(LocalDocumentId const& docId);
-  static RocksDBValue UniqueVPackIndexValue(LocalDocumentId const& docId);
-  static RocksDBValue UniqueVPackIndexValue(LocalDocumentId const& docId,
+  static RocksDBValue UniqueZkdIndexValue(LocalDocumentId docId);
+  static RocksDBValue UniqueVPackIndexValue(LocalDocumentId docId);
+  static RocksDBValue UniqueVPackIndexValue(LocalDocumentId docId,
                                             VPackSlice data);
   static RocksDBValue View(VPackSlice data);
   static RocksDBValue ReplicationApplierConfig(VPackSlice data);
   static RocksDBValue KeyGeneratorValue(VPackSlice data);
   static RocksDBValue S2Value(S2Point const& c);
-  static RocksDBValue LogEntry(replication2::PersistingLogEntry const& entry);
+  static RocksDBValue LogEntry(replication2::LogEntry const& entry);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Used to construct an empty value of the given type for retrieval
@@ -157,13 +160,12 @@ class RocksDBValue {
 
  private:
   explicit RocksDBValue(RocksDBEntryType type);
-  RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
+  RocksDBValue(RocksDBEntryType type, LocalDocumentId docId,
                RevisionId revision);
-  RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
-               VPackSlice data);
+  RocksDBValue(RocksDBEntryType type, LocalDocumentId docId, VPackSlice data);
   RocksDBValue(RocksDBEntryType type, VPackSlice data);
   RocksDBValue(RocksDBEntryType type, std::string_view data);
-  RocksDBValue(RocksDBEntryType type, replication2::PersistingLogEntry const&);
+  RocksDBValue(RocksDBEntryType type, replication2::LogEntry const&);
   explicit RocksDBValue(S2Point const&);
 
   static RocksDBEntryType type(char const* data, size_t size);

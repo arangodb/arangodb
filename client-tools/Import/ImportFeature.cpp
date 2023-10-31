@@ -40,6 +40,8 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "Utils/ClientManager.h"
+
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
@@ -84,17 +86,17 @@ ImportFeature::ImportFeature(Server& server, int* result)
                           static_cast<uint32_t>(NumberOfCores::getValue()));
 }
 
+ImportFeature::~ImportFeature() = default;
+
 void ImportFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addOption("--file", "The file to import (\"-\" for stdin).",
                      new StringParameter(&_filename));
 
-  options
-      ->addOption("--auto-rate-limit",
-                  "Adjust the data loading rate automatically, starting at "
-                  "`--batch-size` bytes per thread per second.",
-                  new BooleanParameter(&_autoChunkSize))
-      .setIntroducedIn(30711);
+  options->addOption("--auto-rate-limit",
+                     "Adjust the data loading rate automatically, starting at "
+                     "`--batch-size` bytes per thread per second.",
+                     new BooleanParameter(&_autoChunkSize));
 
   options->addOption("--backslash-escape",
                      "Use backslash as the escape character for quotes. Used "
@@ -243,11 +245,9 @@ void ImportFeature::collectOptions(
       "Show 10 second latency statistics (values in microseconds).",
       new BooleanParameter(&_latencyStats));
 
-  options
-      ->addOption("--skip-validation",
-                  "Skip document schema validation during import.",
-                  new BooleanParameter(&_skipValidation))
-      .setIntroducedIn(30700);
+  options->addOption("--skip-validation",
+                     "Skip document schema validation during import.",
+                     new BooleanParameter(&_skipValidation));
 }
 
 void ImportFeature::validateOptions(
@@ -394,11 +394,6 @@ void ImportFeature::start() {
         << "cannot create server connection, giving up!";
     FATAL_ERROR_EXIT();
   }
-
-  _httpClient->params().setLocationRewriter(static_cast<void*>(&client),
-                                            &rewriteLocation);
-  _httpClient->params().setUserNamePassword("/", client.username(),
-                                            client.password());
 
   // must stay here in order to establish the connection
 
@@ -677,7 +672,7 @@ ErrorCode ImportFeature::tryCreateDatabase(ClientFeature& client,
                                            std::string const& name) {
   VPackBuilder builder;
   builder.openObject();
-  builder.add("name", VPackValue(normalizeUtf8ToNFC(name)));
+  builder.add("name", VPackValue(name));
   builder.add("users", VPackValue(VPackValueType::Array));
   builder.openObject();
   builder.add("username", VPackValue(client.username()));
@@ -705,14 +700,15 @@ ErrorCode ImportFeature::tryCreateDatabase(ClientFeature& client,
   if (returnCode == static_cast<int>(rest::ResponseCode::UNAUTHORIZED) ||
       returnCode == static_cast<int>(rest::ResponseCode::FORBIDDEN)) {
     // invalid authorization
-    _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr),
-                                 false);
+    _httpClient->setErrorMessage(
+        ClientManager::getHttpErrorMessage(response.get()).errorMessage(),
+        false);
     return TRI_ERROR_FORBIDDEN;
   }
 
   // any other error
-  _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr),
-                               false);
+  _httpClient->setErrorMessage(
+      ClientManager::getHttpErrorMessage(response.get()).errorMessage(), false);
   return TRI_ERROR_INTERNAL;
 }
 

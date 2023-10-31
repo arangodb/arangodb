@@ -29,6 +29,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Agency/Node.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Cluster/ServerState.h"
@@ -48,7 +49,8 @@ namespace arangodb::metrics {
 MetricsFeature::MetricsFeature(Server& server)
     : ArangodFeature{server, *this},
       _export{true},
-      _exportReadWriteMetrics{false} {
+      _exportReadWriteMetrics{false},
+      _ensureWhitespace{true} {
   setOptional(false);
   startsAfter<LoggerFeature>();
   startsBefore<application_features::GreetingsFeaturePhase>();
@@ -59,21 +61,30 @@ void MetricsFeature::collectOptions(
   _serverStatistics =
       std::make_unique<ServerStatistics>(*this, StatisticsFeature::time());
 
-  options
-      ->addOption("--server.export-metrics-api",
-                  "Whether to enable the metrics API.",
-                  new options::BooleanParameter(&_export),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30600);
+  options->addOption(
+      "--server.export-metrics-api", "Whether to enable the metrics API.",
+      new options::BooleanParameter(&_export),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+
+  options->addOption(
+      "--server.export-read-write-metrics",
+      "Whether to enable metrics for document reads and writes.",
+      new options::BooleanParameter(&_exportReadWriteMetrics),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
-      ->addOption("--server.export-read-write-metrics",
-                  "Whether to enable metrics for document reads and writes.",
-                  new options::BooleanParameter(&_exportReadWriteMetrics),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30707);
+      ->addOption(
+          "--server.ensure-whitespace-metrics-format",
+          "Set to `true` to ensure whitespace between the exported metric "
+          "value and the preceding token (metric name or labels) in the "
+          "metrics output.",
+          new options::BooleanParameter(&_ensureWhitespace),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31006)
+      .setLongDescription(R"(Using the whitespace characters in the output may
+be required to make the metrics output compatible with some processing tools,
+although Prometheus itself doesn't need it.)");
 }
 
 std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder) {
@@ -81,15 +92,14 @@ std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder) {
   MetricKeyView key{metric->name(), metric->labels()};
   std::lock_guard lock{_mutex};
   if (!_registry.try_emplace(key, metric).second) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   std::string{builder.type()} + " " +
-                                       std::string{builder.name()} +
-                                       " already exists");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        absl::StrCat(builder.type(), " ", builder.name(), " already exists"));
   }
   return metric;
 }
 
-Metric* MetricsFeature::get(MetricKeyView const& key) {
+Metric* MetricsFeature::get(MetricKeyView const& key) const {
   std::shared_lock lock{_mutex};
   auto it = _registry.find(key);
   if (it == _registry.end()) {
@@ -104,7 +114,11 @@ bool MetricsFeature::remove(Builder const& builder) {
   return _registry.erase(key) != 0;
 }
 
-bool MetricsFeature::exportAPI() const { return _export; }
+bool MetricsFeature::exportAPI() const noexcept { return _export; }
+
+bool MetricsFeature::ensureWhitespace() const noexcept {
+  return _ensureWhitespace;
+}
 
 void MetricsFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
   if (_exportReadWriteMetrics) {
@@ -114,7 +128,7 @@ void MetricsFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
 
 void MetricsFeature::toPrometheus(std::string& result, CollectMode mode) const {
   // minimize reallocs
-  result.reserve(32768);
+  result.reserve(64 * 1024);
 
   // QueryRegistryFeature
   auto& q = server().getFeature<QueryRegistryFeature>();
@@ -132,26 +146,27 @@ void MetricsFeature::toPrometheus(std::string& result, CollectMode mode) const {
         last = curr;
         Metric::addInfo(result, curr, i.second->help(), i.second->type());
       }
-      i.second->toPrometheus(result, _globals);
+      i.second->toPrometheus(result, _globals, _ensureWhitespace);
     }
     for (auto const& [_, batch] : _batch) {
       TRI_ASSERT(batch);
       // TODO(MBkkt) merge vector::reserve's between IBatch::toPrometheus
-      batch->toPrometheus(result, _globals);
+      batch->toPrometheus(result, _globals, _ensureWhitespace);
     }
   }
   auto& sf = server().getFeature<StatisticsFeature>();
   auto time = std::chrono::duration<double, std::milli>(
       std::chrono::system_clock::now().time_since_epoch());
-  sf.toPrometheus(result, time.count());
+  sf.toPrometheus(result, time.count(), _globals, _ensureWhitespace);
   auto& es = server().getFeature<EngineSelectorFeature>().engine();
   if (es.typeName() == RocksDBEngine::kEngineName) {
-    es.getStatistics(result);
+    es.toPrometheus(result, _globals, _ensureWhitespace);
   }
   auto& cm = server().getFeature<ClusterMetricsFeature>();
   if (hasGlobals && cm.isEnabled() && mode != CollectMode::Local) {
-    cm.toPrometheus(result, _globals);
+    cm.toPrometheus(result, _globals, _ensureWhitespace);
   }
+  consensus::Node::toPrometheus(result, _globals, _ensureWhitespace);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -208,15 +223,15 @@ std::shared_lock<std::shared_mutex> MetricsFeature::initGlobalLabels() const {
     // isn't yet known. This check here is to prevent that the label is
     // permanently empty if metrics are requested too early.
     if (auto shortname = instance->getShortName(); !shortname.empty()) {
-      auto label = "shortname=\"" + shortname + "\"";
-      _globals = label + (_globals.empty() ? "" : "," + _globals);
+      _globals = absl::StrCat("shortname=\"", shortname, "\"",
+                              (_globals.empty() ? "" : ","), _globals);
       hasShortname = true;
     }
   }
   if (!hasRole) {
     if (auto role = instance->getRole(); role != ServerState::ROLE_UNDEFINED) {
-      auto label = "role=\"" + ServerState::roleToString(role) + "\"";
-      _globals += (_globals.empty() ? "" : ",") + label;
+      absl::StrAppend(&_globals, (_globals.empty() ? "" : ","), "role=\"",
+                      ServerState::roleToString(role), "\"");
       hasRole = true;
     }
   }

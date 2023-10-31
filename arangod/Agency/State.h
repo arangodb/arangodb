@@ -33,6 +33,7 @@
 #include <deque>
 #include <functional>
 #include <map>
+#include <mutex>
 
 struct TRI_vocbase_t;
 
@@ -84,10 +85,15 @@ class State {
   std::vector<log_t> get(
       index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
 
+  /// Get log entries from indices "start" to "end", into the builder as an
+  /// array
+  index_t toVelocyPack(velocypack::Builder& result, index_t start,
+                       index_t end) const;
+
   /// @brief load a compacted snapshot, returns the number of entries read.
   uint64_t toVelocyPack(index_t lastIndex, VPackBuilder& builder) const;
 
-  /// @brief dump the entire in-memory state to velocypacj
+  /// @brief dump the entire in-memory state to velocypack
   /// should be used for testing only
   void toVelocyPack(velocypack::Builder& builder) const;
 
@@ -98,6 +104,12 @@ class State {
 
   /// @brief non-locking version of at
   log_t atNoLock(index_t) const;
+
+  /// @brief determine safe bounds for the log, ideally from start to end,
+  /// but taking into account the actual boundary values.
+  /// _logLock must be held when this method is called
+  std::pair<index_t, index_t> determineLogBounds(index_t start,
+                                                 index_t end) const noexcept;
 
   /**
    * @brief Erase element range from _log
@@ -281,7 +293,7 @@ class State {
   /**< @brief Mutex for modifying
      _log & _cur
   */
-  mutable arangodb::Mutex _logLock;
+  mutable std::mutex _logLock;
   std::deque<log_t> _log; /**< @brief  State entries */
   // Invariant: This has at least one entry at all times!
   bool _collectionsLoaded;
@@ -299,7 +311,7 @@ class State {
   arangodb::OperationOptions _options;
 
   /// @brief Protect writing into configuration collection
-  arangodb::Mutex _configurationWriteLock;
+  std::mutex _configurationWriteLock;
 
   /// @brief Current state deque size in bytes
   metrics::Gauge<uint64_t>& _log_size;

@@ -30,9 +30,11 @@ const _ = require('lodash');
 const jsunity = require('jsunity');
 const internal = require('internal');
 const arangodb = require('@arangodb');
+const analyzers = require("@arangodb/analyzers");
 const request = require("@arangodb/request");
 const db = arangodb.db;
 const {
+  clearAllFailurePoints,
   debugSetFailAt,
   debugClearFailAt,
   deriveTestSuite,
@@ -59,13 +61,18 @@ const fetchRevisionTree = (serverUrl, shardId) => {
   return JSON.parse(result.body);
 };
 
+const compareTree = function (left, right) {
+  const attributes = ["version", "maxDepth", "count", "hash", "initialRangeMin"];
+  return _.every(attributes, (attr) => left[attr] === right[attr]);
+};
+
 const checkCollectionConsistency = (cn) => {
   const c = db._collection(cn);
   const servers = getDBServers();
   const shardInfo = c.shards(true);
   
   let failed = false;
-  const getServerUrl = (serverId) => servers.filter((server) => server.id === serverId)[0].url;
+  const getServerUrl = (serverId) => servers.filter((server) => server.id === serverId)[0].url + '/_db/' + encodeURIComponent(db._name());
   let tries = 0;
   do {
     failed = false;
@@ -90,7 +97,7 @@ const checkCollectionConsistency = (cn) => {
           failed = true;
         }
 
-        if (!_.isEqual(leaderTree, followerTree)) {
+        if (!compareTree(leaderTree.computed, followerTree.computed)) {
           console.error(`Leader and follower have different trees for shard ${shard}`);
           console.error("Leader: ", leaderTree);
           console.error("Follower: ", followerTree);
@@ -115,7 +122,7 @@ const viewName = (name, isSearchAlias) => {
   }
 };
 
-const checkViewConsistency = (cn, isSearchAlias, isMaterialize) => {
+const checkViewConsistency = (cn, isSearchAlias, isMaterialize, viewCounts) => {
   let runQuery = (query) => {
     return db._query(query).toArray();
   };
@@ -133,14 +140,7 @@ const checkViewConsistency = (cn, isSearchAlias, isMaterialize) => {
     } else {
       result = runQuery("FOR d IN " + vn + " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length")[0];
     }
-    if (expected !== result) {
-      if (expected + 1 !== result) {
-        assertEqual(expected, result);
-      } else {
-        // TODO(MBkkt) Fix it
-        print("ArangoSearch inconsistent with RocksDB");
-      }
-    }
+    viewCounts.push({viewName:vn, viewCount:result, collectionName:cn, collectionCount:expected, isMaterialize: isMaterialize});
   };
 
   vn = viewName(cn + "_view", isSearchAlias);
@@ -156,27 +156,18 @@ const checkViewConsistency = (cn, isSearchAlias, isMaterialize) => {
   checkView(isMaterialize);
 };
 
-const clearAllFailurePoints = () => {
-  for (const server of getDBServers()) {
-    debugClearFailAt(getEndpointById(server.id));
-  }
-  for (const server of getCoordinators()) {
-    debugClearFailAt(getEndpointById(server.id));
-  }
-};
-
 function BaseChaosSuite(testOpts) {
+  const dbname = "test";
   // generate a random collection name
   const cn = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
   const coordination_cn = cn + "_coord";
 
   const createAnalyzers = () => {
-    let a = require("@arangodb/analyzers");
     try {
-      a.remove("testAnalyzer", true);
+      analyzers.remove("testAnalyzer", true);
     } catch (e) {
     }
-    a.save("testAnalyzer", "delimiter", { delimiter: "/" });
+    analyzers.save("testAnalyzer", "delimiter", { delimiter: "/" });
   };
 
   const removeViews = (isSearchAlias) => {
@@ -278,13 +269,21 @@ function BaseChaosSuite(testOpts) {
 
   return {
     setUp: function () {
-      createAnalyzers();
+      if (testOpts.withOneShard) {
+        db._createDatabase(dbname,  {sharding:"single"});
+      } else {
+        db._createDatabase(dbname);
+      }
+      db._useDatabase(dbname);
+
+      if (testOpts.withViews) {
+        createAnalyzers();
+      }
       db._drop(cn);
       db._drop(coordination_cn);
-      let rf = Math.max(2, getDBServers().length);
-      db._create(cn, {numberOfShards: rf * 2, replicationFactor: rf});
-      // TODO when we fix intermediate commit needs to remove this and add checkView option to matrix
-      testOpts.withViews = true;
+      const replicationFactor = Math.max(2, getDBServers().length);
+      const numberOfShards = (testOpts.withOneShard ? 1 : replicationFactor * 2);
+      db._create(cn, {numberOfShards, replicationFactor});
       if (testOpts.withViews) {
         createViews(false);
         createViews(true);
@@ -329,28 +328,58 @@ function BaseChaosSuite(testOpts) {
     },
 
     tearDown: function () {
-      print(Date() + " tearDown: flushing failurepoints");
-      clearAllFailurePoints();
-      if (testOpts.withViews) {
-        removeViews(false);
-        removeViews(true);
-      }
-      print(Date() + " tearDown: dropping " + cn);
-      db._drop(cn);
+      db._useDatabase(dbname);
+      try {
+        print(Date() + " tearDown: flushing failurepoints");
+        clearAllFailurePoints();
+        if (testOpts.withViews) {
+          removeViews(false);
+          removeViews(true);
+        }
+        print(Date() + " tearDown: dropping " + cn);
+        db._drop(cn);
 
-      const shells = db[coordination_cn].all();
-      if (shells.length > 0) {
-        print("Found remaining docs in coordination collection:");
-        print(shells);
+        const shells = db[coordination_cn].all();
+        if (shells.length > 0) {
+          print("Found remaining docs in coordination collection:");
+          print(shells);
+        }
+        print(Date() + " tearDown: dropping " + coordination_cn);
+        db._drop(coordination_cn);
+        print(Date() + " tearDown: done.");
+        if (testOpts.withViews) {
+          analyzers.remove('testAnalyzer');
+        }
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbname);
       }
-      print(Date() + " tearDown: dropping " + coordination_cn);
-      db._drop(coordination_cn);
-      print(Date() + " tearDown: done.");
     },
     
-    testWorkInParallel: function () {
+    testRunChaos: function () {
       let code = (testOpts) => {
         const pid = require("internal").getPid();
+        
+        const generateAttributes = (n) => {
+          let attrs = "";
+          // start letter
+          let s = 65 + Math.floor(Math.random() * 20);
+          for (let i = 0; i < n; ++i) {
+            if (attrs !== "") {
+              attrs += ", ";
+            }
+            attrs += String.fromCharCode(s + i) + ": ";
+            if (Math.random() > 0.66) {
+              attrs += Math.random().toFixed(8);
+            } else if (Math.random() >= 0.33) {
+              attrs += '"' + require('internal').genRandomAlphaNumbers(Math.floor(Math.random() * 100) + 1) + '"';
+            } else {
+              attrs += "null";
+            }
+          }
+          // returns "a: null, b: 24.534, c: "abhtr"
+          return attrs;
+        };
         // The idea here is to use the birthday paradox and have a certain amount of collisions.
         // The babies API is supposed to go through and report individual collisions. Same with
         // removes,so we intentionally try to remove lots of documents which are not actually there.
@@ -370,7 +399,7 @@ function BaseChaosSuite(testOpts) {
         };
 
         let c = db._collection(testOpts.collection);
-        const opts = (length) => {
+        const opts = (length, keepNull = false) => {
           let result = {};
           if (testOpts.withIntermediateCommits) {
             if (Math.random() <= 0.5) {
@@ -390,6 +419,10 @@ function BaseChaosSuite(testOpts) {
             } else if (r >= 0.25) {
               result.overwriteMode = "ignore";
             } 
+          }
+
+          if (keepNull && Math.random() >= 0.5) {
+            result.keepNull = true;
           }
           return result;
         };
@@ -432,11 +465,18 @@ function BaseChaosSuite(testOpts) {
               let o = opts(limit);
               log(`RUNNING AQL REMOVE WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(o)}`);
               query("FOR doc IN " + c.name() + " LIMIT @limit REMOVE doc IN " + c.name(), {limit}, o);
-            } else if (d >= 0.7) {
+            } else if (d >= 0.75) {
               const limit = Math.floor(Math.random() * 2000);
               let o = opts(limit);
               log(`RUNNING AQL REPLACE WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(o)}`);
-              query("FOR doc IN " + c.name() + " LIMIT @limit REPLACE doc WITH { pfihg: 434, fjgjg: 555 } IN " + c.name(), {limit}, o);
+              // generate random attribute values for random attribures
+              query("FOR doc IN " + c.name() + " LIMIT @limit REPLACE doc WITH { pfihg: 434, fjgjg: RAND(), " + generateAttributes(3) + " } IN " + c.name(), {limit}, o);
+            } else if (d >= 0.70) {
+              const limit = Math.floor(Math.random() * 2000);
+              let o = opts(limit, /*keepNull*/ true);
+              log(`RUNNING AQL UPDATE WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(o)}`);
+              // generate random attribute values for random attribures
+              query("FOR doc IN " + c.name() + " LIMIT @limit UPDATE doc WITH { pfihg: RAND(), " + generateAttributes(3) + " } IN " + c.name(), {limit}, o);
             } else if (d >= 0.68) {
               const limit = Math.floor(Math.random() * 10) + 1;
               log(`RUNNING DOCUMENT SINGLE LOOKUP QUERY WITH LIMIT=${limit}`);
@@ -469,6 +509,22 @@ function BaseChaosSuite(testOpts) {
               let o = opts(limit);
               log(`RUNNING DOCUMENT LOOKUP AND WRITE QUERY WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(0)}`);
               query("FOR doc IN " + c.name() + " LIMIT @limit LET d = DOCUMENT(doc._id) INSERT UNSET(doc, '_key') INTO " + c.name(), {limit}, o);
+            } else if (d >= 0.60) {
+              const limit = Math.floor(Math.random() * 100) + 1;
+              let keys = [];
+              for (let i = 0; i < keys; ++i) {
+                keys.push(key());
+              }
+              log(`RUNNING DOCUMENT BATCH LOOKUP.`);
+              c.document(keys);
+            } else if (d >= 0.55) {
+              const limit = Math.floor(Math.random() * 100) + 1;
+              let keys = [];
+              for (let i = 0; i < keys; ++i) {
+                keys.push(key());
+              }
+              log(`RUNNING DOCUMENT AQL LOOKUP.`);
+              query("FOR doc IN " + c.name() + " FILTER doc._key IN @keys RETURN doc", {keys});
             } else if (d >= 0.25) {
               let d = docs();
               let o = opts(d.length);
@@ -484,13 +540,27 @@ function BaseChaosSuite(testOpts) {
           } catch (err) {}
         }
         
-        if (trx) {
-          if (Math.random() < 0.2) {
-            log(`ABORTING`);
-            trx.abort();
-          } else {
-            log(`COMMITING`);
-            trx.commit();
+        let willAbort = Math.random() < 0.2;
+        while (trx) {
+          try {
+            if (willAbort) {
+              log(`ABORTING`);
+              trx.abort();
+            } else {
+              log(`COMMITING`);
+              trx.commit();
+            }
+            trx = null;
+          } catch (e) {
+            if (require("@arangodb").errors.ERROR_TRANSACTION_NOT_FOUND.code === e.errorNum) {
+              break;
+            }
+            // due to contention we could have a lock timeout here
+            if (require("@arangodb").errors.ERROR_LOCKED.code !== e.errorNum) {
+              throw e;
+            }
+            log("unable to " + (willAbort ? "abort" : "commit") + " transaction: " + String(e));
+            require('internal').sleep(1);
           }
         }
       };
@@ -498,53 +568,95 @@ function BaseChaosSuite(testOpts) {
       testOpts.collection = cn;
       code = `(${code.toString()})(${JSON.stringify(testOpts)});`;
       
+      const concurrency = 3;
       let tests = [];
-      for (let i = 0; i < 3; ++i) {
+      for (let i = 0; i < concurrency; ++i) {
         tests.push(["p" + i, code]);
       }
 
-      // run the suite for 3 minutes
-      let client_ret = runParallelArangoshTests(tests, 3 * 60, coordination_cn);
+      const old = db._name();
+      db._useDatabase(dbname);
 
-      print(Date() + " Finished load test; Clearing failurepoints");
-      clearAllFailurePoints();
-      print(Date() + " Waiting for shards to get in sync");
-      waitForShardsInSync(cn);
-      print(Date() + " checking consistency");
-      checkCollectionConsistency(cn);
-      if (testOpts.withViews) {
-        print(Date() + " checking view 1 consistency");
-        checkViewConsistency(cn, false, false);
-        print(Date() + " checking view 2 consistency");
-        checkViewConsistency(cn, true, false);
-        print(Date() + " checking view 3 consistency");
-        checkViewConsistency(cn, false, true);
-        print(Date() + " checking view 4 consistency");
-        checkViewConsistency(cn, true, true);
+      try {
+        // run the suite for a few minutes
+        const minutes = 3;
+        let client_ret = runParallelArangoshTests(tests, minutes * 60, coordination_cn);
+
+        print(Date() + " Finished load test; Clearing failurepoints");
+        clearAllFailurePoints();
+        print(Date() + " Waiting for shards to get in sync");
+        waitForShardsInSync(cn, 300, db[cn].properties().replicationFactor - 1);
+        print(Date() + " checking consistency");
+        checkCollectionConsistency(cn);
+        let viewCounts = [];
+        if (testOpts.withViews) {
+          print(Date() + " checking view 1 consistency");
+          checkViewConsistency(cn, false, false, viewCounts);
+          print(Date() + " checking view 2 consistency");
+          checkViewConsistency(cn, true, false, viewCounts);
+          print(Date() + " checking view 3 consistency");
+          checkViewConsistency(cn, false, true, viewCounts);
+          print(Date() + " checking view 4 consistency");
+          checkViewConsistency(cn, true, true, viewCounts);
+        }
+        print(Date() + " checking consistency done.");
+        let failedViews = "";
+        for (const c of viewCounts) {
+          if (c.viewCount !== c.collectionCount) {
+            print(viewCounts);
+            failedViews = " and views count mismatch";
+            break;
+          }
+        }
+        client_ret.forEach(client => { if (client.failed) { throw new Error("clients did not finish successfully " + failedViews); }});
+        assertEqual(failedViews, "");
+      } finally {
+        // always change back into original database
+        db._useDatabase(old);
       }
-      print(Date() + " checking consistency done.");
-      client_ret.forEach(client => { if (client.failed) { throw new Error("clients did not finish successfully"); }});
     }
   };
 }
 
-const params = ["IntermediateCommits", "FailurePoints", "Delays", "StreamingTransactions"];
+const params = ["IntermediateCommits", "FailurePoints", "Delays", "StreamingTransactions", "OneShard"];
+const fixedParams = ["Truncate", "VaryingOverwriteMode", "Views"]; // these parameters are always enabled
 
-const fixedParams = ["Truncate", "VaryingOverwriteMode"]; // these parameters are always enabled
+// these aliases are used to shorten the names of test cases and filenames.
+// if we use the full-length names, we would create filenames which are too 
+// long on some filesystems.
+const aliases = {
+  "IntermediateCommits": "IntermComm",
+  "FailurePoints": "Failures",
+  "StreamingTransactions": "StreamTrx",
+  "OneShard": "1Shard",
+  "VaryingOverwriteMode": "OverwrMode",
+};
 
 const makeConfig = (paramValues) => {
   let suffix = "";
-  let opts = {};
+  let options = {};
+
+  const build = (name, value) => {
+    suffix += value ? "_with" : "_no";
+    if (aliases.hasOwnProperty(name)) {
+      // use alias to shorten filename
+      suffix += aliases[name];
+    } else {
+      suffix += name;
+    }
+    // use full-length name for options
+    options["with" + name] = value;
+  };
+
+  // variable parameters
   for (let j = 0; j < params.length; ++j) {
-    suffix += paramValues[j] ? "_with_" : "_no_";
-    suffix += params[j];
-    opts["with" + params[j]] = paramValues[j];
+    build(params[j], paramValues[j]);
   }
+  // fixed parameters
   for (const p of fixedParams) {
-    suffix += "_with_" + p;
-    opts["with" + p] = true;
+    build(p, true);
   }
-  return { suffix: suffix, options: opts };
+  return { suffix, options };
 };
 
 const run = () => {

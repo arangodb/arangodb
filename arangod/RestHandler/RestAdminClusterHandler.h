@@ -66,7 +66,6 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   static std::string const RebalanceShards;
   static std::string const Rebalance;
   static std::string const ShardStatistics;
-  static std::string const FailureOracle;
 
   RestStatus handleHealth();
   RestStatus handleNumberOfServers();
@@ -108,8 +107,6 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleRebalanceExecute();
   RestStatus handleRebalancePlan();
 
-  RestStatus handleFailureOracle();
-
  private:
   struct MoveShardContext {
     std::string database;
@@ -144,9 +141,6 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleCreateSingleServerJob(std::string const& job,
                                          std::string const& server,
                                          VPackSlice body);
-
-  RestStatus handleFailureOracleStatus();
-  RestStatus handleFailureOracleFlush();
 
   typedef std::chrono::steady_clock clock;
   typedef futures::Future<futures::Unit> FutureVoid;

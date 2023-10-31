@@ -79,11 +79,10 @@ struct SingleRemoteModificationExecutor {
     static constexpr bool preservesOrder = true;
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Disable;
-    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Infos = SingleRemoteModificationInfos;
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Stats = SingleRemoteModificationStats;
+  using Stats = CoordinatorModificationStats;
   using Modification = Modifier;
 
   SingleRemoteModificationExecutor(Fetcher&, Infos&);

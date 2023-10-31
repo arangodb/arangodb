@@ -31,6 +31,7 @@
 #include "VocBase/voc-types.h"
 #include "Zkd/ZkdHelper.h"
 
+#include <iosfwd>
 #include <string>
 #include <string_view>
 
@@ -63,9 +64,8 @@ class RocksDBKey {
   RocksDBKey& operator=(RocksDBKey const& other) = delete;
   RocksDBKey& operator=(RocksDBKey&& other) = delete;
 
- public:
   /// @brief verify that a key actually contains the given local document id
-  bool containsLocalDocumentId(LocalDocumentId const& id) const;
+  bool containsLocalDocumentId(LocalDocumentId id) const;
 
   /// @brief construct a RocksDB key from another, already filled buffer
   void constructFromBuffer(std::string_view buffer);
@@ -191,7 +191,6 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   void constructLogEntry(uint64_t objectId, replication2::LogIndex idx);
 
- public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the type from a key
   ///
@@ -309,7 +308,6 @@ class RocksDBKey {
   /// size of internal objectID
   static constexpr size_t objectIdSize() { return sizeof(uint64_t); }
 
- public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a reference to the full, constructed key
   //////////////////////////////////////////////////////////////////////////////

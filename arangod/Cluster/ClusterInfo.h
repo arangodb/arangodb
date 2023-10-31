@@ -35,16 +35,18 @@
 #include <unordered_map>
 
 #include "Agency/AgencyComm.h"
-#include "Basics/Mutex.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/CallbackGuard.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
-#include "Network/types.h"
 #include "Metrics/Fwd.h"
+#include "Metrics/MetricsResourceMonitor.h"
+#include "Network/types.h"
 #include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/Version.h"
+
+#include "Basics/ResourceUsage.h"
 
 struct TRI_vocbase_t;
 
@@ -137,7 +139,7 @@ class AnalyzerModificationTransaction {
   // pending operation sount. Positive number means some operations are ongoing
   // zero means system idle
   // negative value means recovery is ongoing
-  static std::atomic<int32_t> _pendingAnalyzerOperationsCount;
+  static inline std::atomic_int32_t _pendingAnalyzerOperationsCount{0};
 };
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -151,21 +153,88 @@ class ClusterInfo final {
     uint64_t hash;
     std::shared_ptr<LogicalCollection> collection;
   };
-  using DatabaseCollections =
-      containers::FlatHashMap<CollectionID, CollectionWithHash>;
-  using AllCollections =
-      containers::FlatHashMap<DatabaseID, std::shared_ptr<DatabaseCollections>>;
-  using DatabaseCollectionsCurrent =
-      containers::FlatHashMap<CollectionID,
-                              std::shared_ptr<CollectionInfoCurrent>>;
-  using AllCollectionsCurrent =
-      containers::FlatHashMap<DatabaseID, DatabaseCollectionsCurrent>;
 
-  using DatabaseViews =
-      containers::FlatHashMap<ViewID, std::shared_ptr<LogicalView>>;
-  using AllViews = containers::FlatHashMap<DatabaseID, DatabaseViews>;
+  struct Hasher {
+    using is_transparent = void;
+    template<typename T>
+    size_t operator()(
+        std::basic_string<char, std::char_traits<char>, T> const& str) const {
+      return absl::Hash<std::string_view>{}(str);
+    }
+    template<typename T>
+    size_t operator()(T const& v) const {
+      return absl::Hash<T>{}(v);
+    }
+  };
+  struct KeyEqual {
+    using is_transparent = void;
+    // special stunt for strings with different allocators.
+    template<typename T, typename V>
+    bool operator()(
+        std::basic_string<char, std::char_traits<char>, T> const& lhs,
+        std::basic_string<char, std::char_traits<char>, V> const& rhs) const {
+      return std::string_view{lhs} == rhs;
+    }
+    template<typename T, typename V>
+    bool operator()(T const& lhs, V const& rhs) const {
+      return lhs == rhs;
+    }
+  };
+
+  using ClusterInfoResourceMonitor =
+      metrics::GaugeResourceMonitor<metrics::Gauge<std::uint64_t>>;
+
+  template<typename T>
+  using ClusterInfoResourceAllocator =
+      ResourceUsageAllocator<T, ClusterInfoResourceMonitor>;
+
+  struct pmr {
+    using ManagedString = std::basic_string<char, std::char_traits<char>,
+                                            ClusterInfoResourceAllocator<char>>;
+    using ServerID = ManagedString;         // ID of a server
+    using DatabaseID = ManagedString;       // ID/name of a database
+    using CollectionID = ManagedString;     // ID of a collection
+    using ViewID = ManagedString;           // ID of a view
+    using ShardID = ManagedString;          // ID of a shard
+    using ServerShortName = ManagedString;  // Short name of a server
+  };
+
+  template<typename K, typename V>
+  using FlatMap = containers::FlatHashMap<
+      K, V, Hasher, KeyEqual,
+      ClusterInfoResourceAllocator<std::pair<K const, V>>>;
+  template<typename K, typename V>
+  using FlatMapShared = containers::FlatHashMap<
+      K, std::shared_ptr<V>, Hasher, KeyEqual,
+      ClusterInfoResourceAllocator<std::pair<K const, std::shared_ptr<V>>>>;
+  template<typename K, typename V>
+  using AssocMultiMap =
+      std::multimap<K, V, KeyEqual,
+                    ClusterInfoResourceAllocator<std::pair<K const, V>>>;
+
+  template<typename T>
+  using ManagedVector = std::vector<T, ClusterInfoResourceAllocator<T>>;
+
+  using DatabaseCollections = FlatMap<pmr::CollectionID, CollectionWithHash>;
+  using AllCollections =
+      FlatMapShared<pmr::DatabaseID, DatabaseCollections const>;
+
+  using DatabaseCollectionsCurrent =
+      FlatMapShared<pmr::CollectionID, CollectionInfoCurrent>;
+
+  using DatabaseViews = FlatMapShared<pmr::ViewID, LogicalView>;
+  // TODO(MBkkt) Now on every loadPlan all DatabaseViews
+  //  copied for every database, we can avoid it.
+  using AllViews = FlatMap<pmr::DatabaseID, DatabaseViews>;
 
   class SyncerThread;
+
+  template<typename T, typename... Args>
+  auto allocateShared(Args&&... args) {
+    return std::allocate_shared<T>(
+        ClusterInfoResourceAllocator<T>{_resourceMonitor},
+        std::forward<Args>(args)...);
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initializes library
@@ -176,28 +245,6 @@ class ClusterInfo final {
  public:
   ClusterInfo(ClusterInfo const&) = delete;             // not implemented
   ClusterInfo& operator=(ClusterInfo const&) = delete;  // not implemented
-
-  class ServersKnown {
-   public:
-    ServersKnown() = default;
-    ServersKnown(VPackSlice serversKnownSlice,
-                 containers::FlatHashSet<ServerID> const& servers);
-
-    class KnownServer {
-     public:
-      explicit constexpr KnownServer(RebootId rebootId) : _rebootId(rebootId) {}
-
-      [[nodiscard]] RebootId rebootId() const { return _rebootId; }
-
-     private:
-      RebootId _rebootId;
-    };
-
-    [[nodiscard]] containers::FlatHashMap<ServerID, RebootId> rebootIds() const;
-
-   private:
-    containers::FlatHashMap<ServerID, KnownServer> _serversKnown;
-  };
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates library
@@ -295,6 +342,9 @@ class ClusterInfo final {
   [[nodiscard]] futures::Future<Result> fetchAndWaitForPlanVersion(
       network::Timeout timeout) const;
 
+  [[nodiscard]] futures::Future<Result> fetchAndWaitForCurrentVersion(
+      network::Timeout timeout) const;
+
   /**
    * @brief Wait for Current cache to be at the given Raft index
    * @param raftIndex Raft index to wait for
@@ -370,6 +420,16 @@ class ClusterInfo final {
       std::string_view databaseID);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Generate Collection Stubs during Database buiding
+  /// These stubs are no real collection, use this API with care
+  /// and only if the database is in building state.
+  //////////////////////////////////////////////////////////////////////////////
+
+  [[nodiscard]] std::unordered_map<std::string,
+                                   std::shared_ptr<LogicalCollection>>
+  generateCollectionStubs(TRI_vocbase_t& database);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a view
   /// If it is not found in the cache, the cache is reloaded once. The second
   /// argument can be a collection ID or a view name (both cluster-wide).
@@ -403,20 +463,19 @@ class ClusterInfo final {
 
   /// @brief return shard statistics for the specified database,
   /// optionally restricted to anything on the specified server
-  Result getShardStatisticsForDatabase(
-      std::string const& databaseID, std::string_view restrictServer,
-      arangodb::velocypack::Builder& builder) const;
+  Result getShardStatisticsForDatabase(std::string const& databaseID,
+                                       std::string_view restrictServer,
+                                       velocypack::Builder& builder) const;
 
   /// @brief return shard statistics for all databases, totals,
   /// optionally restricted to anything on the specified server
   Result getShardStatisticsGlobal(std::string const& restrictServer,
-                                  arangodb::velocypack::Builder& builder) const;
+                                  velocypack::Builder& builder) const;
 
   /// @brief return shard statistics, separate for each database,
   /// optionally restricted to anything on the specified server
-  Result getShardStatisticsGlobalDetailed(
-      std::string const& restrictServer,
-      arangodb::velocypack::Builder& builder) const;
+  Result getShardStatisticsGlobalDetailed(std::string const& restrictServer,
+                                          velocypack::Builder& builder) const;
 
   /// @brief get shard statistics for all databases, split by servers.
   Result getShardStatisticsGlobalByServer(VPackBuilder& builder) const;
@@ -436,6 +495,14 @@ class ClusterInfo final {
 
   cluster::RebootTracker& rebootTracker() noexcept;
   cluster::RebootTracker const& rebootTracker() const noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Test if all names (Collection & Views) are available  in the given
+  /// database and return the planVersion this can be guaranteed on.
+  //////////////////////////////////////////////////////////////////////////////
+
+  ResultT<uint64_t> checkDataSourceNamesAvailable(
+      std::string_view databaseName, std::vector<std::string> const& names);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create database in coordinator
@@ -466,6 +533,36 @@ class ClusterInfo final {
       double timeout               // request timeout
   );
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  /***
+   * This section of methods is only required for our C++ UnitTests
+   * They have been using very low level APIs and cannot be trivially
+   * moved to new higher level APIs.
+   */
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns a future which can be used to wait for the successful
+  /// creation of replicated states
+  //////////////////////////////////////////////////////////////////////////////
+  auto waitForReplicatedStatesCreation(
+      std::string const& databaseName,
+      std::vector<replication2::agency::LogTarget> const& replicatedStates)
+      -> futures::Future<Result>;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief deletes replicated states corresponding to shards
+  //////////////////////////////////////////////////////////////////////////////
+  auto deleteReplicatedStates(
+      std::string const& databaseName,
+      std::vector<replication2::LogId> const& replicatedStatesIds)
+      -> futures::Future<Result>;
+
+  /// @brief this method does an atomic check of the preconditions for the
+  /// collections to be created, using the currently loaded plan.
+  Result checkCollectionPreconditions(
+      std::string const& databaseName,
+      std::vector<ClusterCollectionCreationInfo> const& infos);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
@@ -473,17 +570,11 @@ class ClusterInfo final {
       std::string const& databaseName,  // database name
       std::string const& collectionID, uint64_t numberOfShards,
       uint64_t replicationFactor, uint64_t writeConcern,
-      bool waitForReplication, arangodb::velocypack::Slice json,
+      bool waitForReplication, velocypack::Slice json,
       double timeout,  // request timeout
       bool isNewDatabase,
       std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
       replication::Version replicationVersion);
-
-  /// @brief this method does an atomic check of the preconditions for the
-  /// collections to be created, using the currently loaded plan.
-  Result checkCollectionPreconditions(
-      std::string const& databaseName,
-      std::vector<ClusterCollectionCreationInfo> const& infos);
 
   /// @brief create multiple collections in coordinator
   ///        If any one of these collections fails, all creations will be
@@ -494,8 +585,10 @@ class ClusterInfo final {
       std::string const& databaseName,
       std::vector<ClusterCollectionCreationInfo>&, double endTime,
       bool isNewDatabase,
-      std::shared_ptr<const LogicalCollection> const& colToDistributeShardsLike,
+      std::shared_ptr<LogicalCollection const> const& colToDistributeShardsLike,
       replication::Version replicationVersion);
+
+#endif
 
   /// @brief drop collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
@@ -504,14 +597,6 @@ class ClusterInfo final {
       std::string const& collectionID,  // collection identifier
       double timeout                    // request timeout
   );
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief set collection properties in coordinator
-  //////////////////////////////////////////////////////////////////////////////
-
-  Result setCollectionPropertiesCoordinator(std::string const& databaseName,
-                                            std::string const& collectionID,
-                                            LogicalCollection const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create view in coordinator
@@ -606,24 +691,6 @@ class ClusterInfo final {
   AnalyzerModificationTransaction::Ptr createAnalyzersCleanupTrans();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief ensure an index in coordinator.
-  //////////////////////////////////////////////////////////////////////////////
-  Result ensureIndexCoordinator(  // create index
-      LogicalCollection const& collection, arangodb::velocypack::Slice slice,
-      bool create, arangodb::velocypack::Builder& resultBuilder,
-      double timeout);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief drop an index in coordinator.
-  //////////////////////////////////////////////////////////////////////////////
-  Result dropIndexCoordinator(          // drop index
-      std::string const& databaseName,  // database name
-      std::string const& collectionID,  // collection identifier
-      IndexId iid,                      // index identifier
-      double timeout                    // request timeout
-  );
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about servers from the agency
   /// Usually one does not have to call this directly.
   //////////////////////////////////////////////////////////////////////////////
@@ -690,14 +757,12 @@ class ClusterInfo final {
   /// an error.
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<std::vector<ServerID> const> getResponsibleServer(
+  std::shared_ptr<ManagedVector<pmr::ServerID> const> getResponsibleServer(
       std::string_view shardID);
 
-  std::shared_ptr<std::vector<ServerID> const> getResponsibleServerReplication1(
-      std::string_view shardID);
-
-  std::shared_ptr<std::vector<ServerID> const> getResponsibleServerReplication2(
-      std::string_view shardID);
+  enum class ShardLeadership { kLeader, kFollower, kUnclear };
+  ShardLeadership getShardLeadership(ServerID const& server,
+                                     ShardID const& shard) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief atomically find all servers who are responsible for the given
@@ -710,14 +775,6 @@ class ClusterInfo final {
 
   containers::FlatHashMap<ShardID, ServerID> getResponsibleServers(
       containers::FlatHashSet<ShardID> const&);
-
-  void getResponsibleServersReplication1(
-      containers::FlatHashSet<ShardID> const& shardIds,
-      containers::FlatHashMap<ShardID, ServerID>& result);
-
-  bool getResponsibleServersReplication2(
-      containers::FlatHashSet<ShardID> const& shardIds,
-      containers::FlatHashMap<ShardID, ServerID>& result);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief atomically find all servers who are responsible for the given
@@ -745,8 +802,16 @@ class ClusterInfo final {
   /// @brief find the shard list of a collection, sorted numerically
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<std::vector<ShardID>> getShardList(
+  std::shared_ptr<std::vector<ShardID> const> getShardList(
       std::string_view collectionID);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get the current list of (in-sync, for replication 1) servers of a
+  /// shard
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<ManagedVector<pmr::ServerID> const> getCurrentServersForShard(
+      std::string_view shardId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the list of coordinator server names
@@ -797,9 +862,9 @@ class ClusterInfo final {
   void setShardGroups(
       containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ShardID>>>);
 
-  void setShardIds(
-      containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ServerID>>>
-          shardIds);
+  void setShardIds(containers::FlatHashMap<
+                   ShardID, std::shared_ptr<std::vector<ServerID> const>>
+                       shardIds);
 #endif
 
   bool serverExists(std::string_view serverID) const noexcept;
@@ -811,7 +876,7 @@ class ClusterInfo final {
   TEST_VIRTUAL containers::FlatHashMap<ServerID, std::string>
   getServerAliases();
 
-  containers::FlatHashMap<ServerID, RebootId> rebootIds() const;
+  ServersKnown rebootIds() const;
 
   uint64_t getPlanVersion() const {
     READ_LOCKER(guard, _planProt.lock);
@@ -846,6 +911,10 @@ class ClusterInfo final {
       -> ResultT<
           std::unordered_map<replication2::LogId, std::vector<std::string>>>;
 
+  auto getCollectionGroupById(replication2::agency::CollectionGroupId)
+      -> std::shared_ptr<
+          replication2::agency::CollectionGroupPlanSpecification const>;
+
   /**
    * @brief Lock agency's hot backup with TTL 60 seconds
    *
@@ -877,18 +946,21 @@ class ClusterInfo final {
 
   ArangodServer& server() const;
 
- private:
-  /// @brief worker function for dropIndexCoordinator
-  Result dropIndexCoordinatorInner(std::string const& databaseName,
-                                   std::string const& collectionID, IndexId iid,
-                                   double endTime);
+  AgencyCallbackRegistry& agencyCallbackRegistry() const;
 
-  /// @brief create a new collecion object from the data, using the cache if
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get the poll interval
+  //////////////////////////////////////////////////////////////////////////////
+
+  static double getPollInterval() { return 5.0; }
+
+ private:
+  /// @brief create a new collection object from the data, using the cache if
   /// possible
   CollectionWithHash buildCollection(
       bool isBuilding, AllCollections::const_iterator existingCollections,
-      std::string_view collectionId, arangodb::velocypack::Slice data,
-      TRI_vocbase_t& vocbase, uint64_t planVersion) const;
+      std::string_view collectionId, velocypack::Slice data,
+      TRI_vocbase_t& vocbase, uint64_t planVersion, bool cleanupLinks) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about our plan
@@ -912,17 +984,9 @@ class ClusterInfo final {
 
   Result waitForDatabaseInCurrent(CreateDatabaseInfo const& database,
                                   AgencyWriteTransaction const& trx);
-  void loadClusterId();
 
-  void triggerWaiting(
-      std::multimap<uint64_t, futures::Promise<arangodb::Result>>& mm,
-      uint64_t commitIndex);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get the poll interval
-  //////////////////////////////////////////////////////////////////////////////
-
-  static double getPollInterval() { return 5.0; }
+  void triggerWaiting(AssocMultiMap<uint64_t, futures::Promise<Result>>& mm,
+                      uint64_t commitIndex);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the timeout for reloading the server list
@@ -931,46 +995,9 @@ class ClusterInfo final {
   static double getReloadServerListTimeout() { return 60.0; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief ensure an index in coordinator.
-  //////////////////////////////////////////////////////////////////////////////
-  Result ensureIndexCoordinatorInner(  // create index
-      LogicalCollection const& collection, std::string_view idString,
-      arangodb::velocypack::Slice slice, bool create,
-      arangodb::velocypack::Builder& resultBuilder,
-      double timeout  // request timeout
-  );
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief triggers a new background thread to obtain the next batch of ids
   //////////////////////////////////////////////////////////////////////////////
   void triggerBackgroundGetIds();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief a replicated state is created for each shard, only when using
-  /// Replication2
-  //////////////////////////////////////////////////////////////////////////////
-  static auto createDocumentStateSpec(std::string const& shardId,
-                                      std::vector<std::string> const& serverIds,
-                                      ClusterCollectionCreationInfo const& info,
-                                      std::string const& databaseName)
-      -> replication2::agency::LogTarget;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns a future which can be used to wait for the successful
-  /// creation of replicated states
-  //////////////////////////////////////////////////////////////////////////////
-  auto waitForReplicatedStatesCreation(
-      std::string const& databaseName,
-      std::vector<replication2::agency::LogTarget> const& replicatedStates)
-      -> futures::Future<Result>;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief deletes replicated states corresponding to shards
-  //////////////////////////////////////////////////////////////////////////////
-  auto deleteReplicatedStates(
-      std::string const& databaseName,
-      std::vector<replication2::LogId> const& replicatedStatesIds)
-      -> futures::Future<Result>;
 
   /// underlying application server
   ArangodServer& _server;
@@ -1001,10 +1028,10 @@ class ClusterInfo final {
 
   struct ProtectionData {
     std::atomic<bool> isValid;
-    mutable Mutex mutex;
+    mutable std::mutex mutex;
     std::atomic<uint64_t> wantedVersion;
     std::atomic<uint64_t> doneVersion;
-    mutable arangodb::basics::ReadWriteLock lock;
+    mutable basics::ReadWriteLock lock;
 
     ProtectionData() : isValid(false), wantedVersion(0), doneVersion(0) {}
   };
@@ -1016,57 +1043,70 @@ class ClusterInfo final {
   /// overridden during testing
   ErrorCode const _syncerShutdownCode;
 
+  metrics::Gauge<std::uint64_t>& _memoryUsage;
+  ClusterInfoResourceMonitor _resourceMonitor;
+
   // The servers, first all, we only need Current here:
-  containers::FlatHashMap<ServerID, std::string>
+  FlatMap<pmr::ServerID, pmr::ManagedString>
       _servers;  // from Current/ServersRegistered
-  containers::FlatHashMap<ServerID, std::string>
+  FlatMap<pmr::ServerID, pmr::ManagedString>
       _serverAliases;  // from Current/ServersRegistered
-  containers::FlatHashMap<ServerID, std::string>
+  FlatMap<pmr::ServerID, pmr::ManagedString>
       _serverAdvertisedEndpoints;  // from Current/ServersRegistered
-  containers::FlatHashMap<ServerID, std::string>
+  FlatMap<pmr::ServerID, pmr::ManagedString>
       _serverTimestamps;  // from Current/ServersRegistered
   ProtectionData _serversProt;
 
+  // TODO: Looks like this is used only in rebootIds() call
+  // and set only together with rebootTracker (the same data).
+  // So should we consider removing this member and use only rebootTracker?
   // Current/ServersKnown:
   ServersKnown _serversKnown;
 
+  // Accounting drops of dangling links. We do not want to pollute
+  // scheduler with drop requests. So we put only one per link at time.
+  // And only if that request fails, we will try again.
+  containers::FlatHashSet<std::uint64_t> _pendingCleanups;
+  mutable containers::FlatHashSet<std::uint64_t> _currentCleanups;
+
   // The DBServers, also from Current:
   // from Current/DBServers
-  containers::FlatHashMap<ServerID, ServerID> _dbServers;
+  FlatMap<pmr::ServerID, pmr::ServerID> _dbServers;
   ProtectionData _dbServersProt;
 
   // The Coordinators, also from Current:
-  containers::FlatHashMap<ServerID, ServerID>
+  FlatMap<pmr::ServerID, pmr::ServerID>
       _coordinators;  // from Current/Coordinators
   ProtectionData _coordinatorsProt;
 
   // Mappings between short names/IDs and full server IDs
-  containers::FlatHashMap<ServerShortID, ServerID> _coordinatorIdMap;
+  FlatMap<ServerShortID, pmr::ServerID> _coordinatorIdMap;
   ProtectionData _mappingsProt;
 
-  containers::FlatHashMap<DatabaseID, std::shared_ptr<VPackBuilder>> _plan;
-  containers::FlatHashMap<DatabaseID, std::shared_ptr<VPackBuilder>> _current;
+  FlatMapShared<pmr::DatabaseID, VPackBuilder> _plan;
+  FlatMapShared<pmr::DatabaseID, VPackBuilder> _current;
 
-  std::string _clusterId;
-
-  containers::FlatHashMap<DatabaseID, VPackSlice>
+  FlatMap<pmr::DatabaseID, VPackSlice>
       _plannedDatabases;  // from Plan/Databases
 
   ProtectionData _planProt;
 
-  uint64_t _planVersion;     // This is the version in the Plan which underlies
-                             // the data in _plannedCollections and _shards
-  uint64_t _planIndex;       // This is the Raft index, which corresponds to the
-                             // above plan version
+  uint64_t _planVersion;  // This is the version in the Plan which underlies
+                          // the data in _plannedCollections and _shards
+  uint64_t _planIndex;    // This is the Raft index, which corresponds to the
+                          // above plan version
+  uint64_t _planMemoryUsage;  // memory usage of VPack objects inside _plan
+
+  FlatMapShared<pmr::DatabaseID, FlatMap<pmr::ServerID, VPackSlice> const>
+      _currentDatabases;  // from Current/Databases
+  ProtectionData _currentProt;
   uint64_t _currentVersion;  // This is the version in Current which underlies
                              // the data in _currentDatabases,
                              // _currentCollections and _shardsIds
   uint64_t _currentIndex;    // This is the Raft index, which corresponds to the
                              // above current version
-  containers::FlatHashMap<DatabaseID,
-                          containers::FlatHashMap<ServerID, VPackSlice>>
-      _currentDatabases;  // from Current/Databases
-  ProtectionData _currentProt;
+  uint64_t
+      _currentMemoryUsage;  // memory usage of VPack objects inside _current
 
   // We need information about collections, again we have
   // data from Plan and from Current.
@@ -1079,14 +1119,15 @@ class ClusterInfo final {
   // The Plan state:
   AllCollections _plannedCollections;     // from Plan/Collections/
   AllCollections _newPlannedCollections;  // TODO
-  containers::FlatHashMap<CollectionID,
-                          std::shared_ptr<std::vector<std::string>>>
+  // TODO is it ok to don't account value for _shards?
+  FlatMapShared<pmr::CollectionID, std::vector<std::string> const>
       _shards;  // from Plan/Collections/
                 // (may later come from Current/Collections/ )
   // planned shard => servers map
-  containers::FlatHashMap<ShardID, std::vector<ServerID>> _shardServers;
+  FlatMapShared<pmr::ShardID, ManagedVector<pmr::ServerID> const>
+      _shardsToPlanServers;
   // planned shard ID => collection name
-  containers::FlatHashMap<ShardID, CollectionID> _shardToName;
+  FlatMap<pmr::ShardID, pmr::CollectionID> _shardToName;
 
   // planned shard ID => shard ID of shard group leader
   // This deserves an explanation. If collection B has `distributeShardsLike`
@@ -1120,40 +1161,41 @@ class ClusterInfo final {
   // Note however, that a follower for a shard group can be in sync with
   // its leader for some of the shards in the group and not for others!
   // Note that shard group leaders themselves do not appear in this map:
-  containers::FlatHashMap<ShardID, ShardID> _shardToShardGroupLeader;
+  FlatMap<pmr::ShardID, pmr::ShardID> _shardToShardGroupLeader;
   // In the following map we store for each shard group leader the list
   // of shards in the group, including the leader.
-  containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ShardID>>>
-      _shardGroups;
+  FlatMapShared<pmr::ShardID, ManagedVector<pmr::ShardID>> _shardGroups;
 
   AllViews _plannedViews;     // from Plan/Views/
   AllViews _newPlannedViews;  // views that have been created during `loadPlan`
                               // execution
 
   // database ID => analyzers revision
-  containers::FlatHashMap<DatabaseID, AnalyzersRevision::Ptr>
+  FlatMapShared<pmr::DatabaseID, AnalyzersRevision const>
       _dbAnalyzersRevision;  // from Plan/Analyzers
 
   std::atomic<std::thread::id> _planLoader;  // thread id that is loading plan
 
   // The Current state:
-  AllCollectionsCurrent _currentCollections;  // from Current/Collections/
-  containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ServerID>>>
-      _shardIds;  // from Current/Collections/
+  FlatMapShared<pmr::DatabaseID, DatabaseCollectionsCurrent const>
+      _currentCollections;  // from Current/Collections/
+  FlatMapShared<pmr::ShardID, ManagedVector<pmr::ServerID> const>
+      _shardsToCurrentServers;  // from Current/Collections/
 
   struct NewStuffByDatabase;
-  containers::FlatHashMap<DatabaseID, std::shared_ptr<NewStuffByDatabase>>
-      _newStuffByDatabase;
+  FlatMapShared<pmr::DatabaseID, NewStuffByDatabase const> _newStuffByDatabase;
 
-  using ReplicatedLogsMap = containers::FlatHashMap<
-      replication2::LogId,
-      std::shared_ptr<replication2::agency::LogPlanSpecification const>>;
+  using ReplicatedLogsMap =
+      FlatMapShared<replication2::LogId,
+                    replication2::agency::LogPlanSpecification const>;
   // note: protected by _planProt!
   ReplicatedLogsMap _replicatedLogs;
 
-  using CollectionGroupMap = containers::FlatHashMap<
+  using CollectionGroupMap = FlatMapShared<
       replication2::agency::CollectionGroupId,
-      std::shared_ptr<replication2::agency::CollectionGroup const>>;
+      replication2::agency::CollectionGroupPlanSpecification const>;
+  // note: protected by _planProt
+  CollectionGroupMap _collectionGroups;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief uniqid sequence
@@ -1171,7 +1213,7 @@ class ClusterInfo final {
   /// @brief lock for uniqid sequence
   //////////////////////////////////////////////////////////////////////////////
 
-  Mutex _idLock;
+  std::mutex _idLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief how big a batch is for unique ids
@@ -1186,7 +1228,12 @@ class ClusterInfo final {
   static constexpr double checkAnalyzersPreconditionTimeout = 10.0;
 
   mutable std::mutex _failedServersMutex;
-  containers::FlatHashSet<ServerID> _failedServers;
+  template<typename K>
+  using HashSet =
+      containers::FlatHashSet<K, typename containers::FlatHashSet<K>::hasher,
+                              typename containers::FlatHashSet<K>::key_equal,
+                              ClusterInfoResourceAllocator<K>>;
+  HashSet<pmr::ServerID> _failedServers;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief plan and current update threads
@@ -1195,14 +1242,13 @@ class ClusterInfo final {
   std::unique_ptr<SyncerThread> _curSyncer;
 
   mutable std::mutex _waitPlanLock;
-  std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitPlan;
+  AssocMultiMap<uint64_t, futures::Promise<Result>> _waitPlan;
   mutable std::mutex _waitPlanVersionLock;
-  std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitPlanVersion;
+  AssocMultiMap<uint64_t, futures::Promise<Result>> _waitPlanVersion;
   mutable std::mutex _waitCurrentLock;
-  std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitCurrent;
+  AssocMultiMap<uint64_t, futures::Promise<Result>> _waitCurrent;
   mutable std::mutex _waitCurrentVersionLock;
-  std::multimap<uint64_t, futures::Promise<arangodb::Result>>
-      _waitCurrentVersion;
+  AssocMultiMap<uint64_t, futures::Promise<Result>> _waitCurrentVersion;
 
   /// @brief histogram for loadPlan runtime
   metrics::Histogram<metrics::LogScale<float>>& _lpTimer;
@@ -1219,5 +1265,4 @@ futures::Future<ResultT<uint64_t>> fetchCurrentVersion(
     network::Timeout timeout);
 
 }  // namespace cluster
-
-}  // end namespace arangodb
+}  // namespace arangodb

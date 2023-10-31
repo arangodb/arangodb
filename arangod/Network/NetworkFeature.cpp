@@ -26,8 +26,11 @@
 #include <fuerte/connection.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/EncodingUtils.h"
 #include "Basics/FunctionUtils.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -77,6 +80,18 @@ struct NetworkFeatureScale {
   }
 };
 
+struct NetworkFeatureSendScaleSmall {
+  static metrics::FixScale<double> scale() {
+    return {0.0, 10.0, {0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0}};
+  }
+};
+
+struct NetworkFeatureSendScaleLarge {
+  static metrics::FixScale<double> scale() {
+    return {0.0, 10000.0, {0.01, 0.1, 1.0, 10.0, 100.0, 1000.0}};
+  }
+};
+
 DECLARE_COUNTER(arangodb_network_forwarded_requests_total,
                 "Number of requests forwarded to another coordinator");
 DECLARE_COUNTER(arangodb_network_request_timeouts_total,
@@ -85,6 +100,16 @@ DECLARE_HISTOGRAM(
     arangodb_network_request_duration_as_percentage_of_timeout,
     NetworkFeatureScale,
     "Internal request round-trip time as a percentage of timeout [%]");
+DECLARE_COUNTER(arangodb_network_unfinished_sends_total,
+                "Number of times the sending of a request remained unfinished");
+DECLARE_HISTOGRAM(
+    arangodb_network_dequeue_duration, NetworkFeatureSendScaleSmall,
+    "Time to dequeue a queued network request in fuerte in seconds");
+DECLARE_HISTOGRAM(arangodb_network_send_duration, NetworkFeatureSendScaleLarge,
+                  "Time to send out internal requests in seconds");
+DECLARE_HISTOGRAM(
+    arangodb_network_response_duration, NetworkFeatureSendScaleLarge,
+    "Time to wait for network response after it was sent out in seconds");
 DECLARE_GAUGE(arangodb_network_requests_in_flight, uint64_t,
               "Number of outgoing internal requests in flight");
 
@@ -105,7 +130,15 @@ NetworkFeature::NetworkFeature(Server& server,
       _requestTimeouts(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_network_request_timeouts_total{})),
       _requestDurations(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_network_request_duration_as_percentage_of_timeout{})) {
+          arangodb_network_request_duration_as_percentage_of_timeout{})),
+      _unfinishedSends(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_network_unfinished_sends_total{})),
+      _dequeueDurations(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_network_dequeue_duration{})),
+      _sendDurations(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_network_send_duration{})),
+      _responseDurations(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_network_response_duration{})) {
   setOptional(true);
   startsAfter<ClusterFeature>();
   startsAfter<SchedulerFeature>();
@@ -117,30 +150,23 @@ void NetworkFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("network", "cluster-internal networking");
 
-  options
-      ->addOption("--network.io-threads",
-                  "The number of network I/O threads for cluster-internal "
-                  "communication.",
-                  new UInt32Parameter(&_numIOThreads))
-      .setIntroducedIn(30600);
-  options
-      ->addOption("--network.max-open-connections",
-                  "The maximum number of open TCP connections for "
-                  "cluster-internal communication per endpoint",
-                  new UInt64Parameter(&_maxOpenConnections))
-      .setIntroducedIn(30600);
-  options
-      ->addOption("--network.idle-connection-ttl",
-                  "The default time-to-live of idle connections for "
-                  "cluster-internal communication (in milliseconds).",
-                  new UInt64Parameter(&_idleTtlMilli))
-      .setIntroducedIn(30600);
-  options
-      ->addOption("--network.verify-hosts",
-                  "Verify peer certificates when using TLS in cluster-internal "
-                  "communication.",
-                  new BooleanParameter(&_verifyHosts))
-      .setIntroducedIn(30600);
+  options->addOption("--network.io-threads",
+                     "The number of network I/O threads for cluster-internal "
+                     "communication.",
+                     new UInt32Parameter(&_numIOThreads));
+  options->addOption("--network.max-open-connections",
+                     "The maximum number of open TCP connections for "
+                     "cluster-internal communication per endpoint",
+                     new UInt64Parameter(&_maxOpenConnections));
+  options->addOption("--network.idle-connection-ttl",
+                     "The default time-to-live of idle connections for "
+                     "cluster-internal communication (in milliseconds).",
+                     new UInt64Parameter(&_idleTtlMilli));
+  options->addOption(
+      "--network.verify-hosts",
+      "Verify peer certificates when using TLS in cluster-internal "
+      "communication.",
+      new BooleanParameter(&_verifyHosts));
 
   std::unordered_set<std::string> protos = {"", "http", "http2", "h2", "vst"};
 
@@ -152,7 +178,6 @@ void NetworkFeature::collectOptions(
           "The network protocol to use for cluster-internal communication.",
           new DiscreteValuesParameter<StringParameter>(&_protocol, protos),
           options::makeDefaultFlags(options::Flags::Uncommon))
-      .setIntroducedIn(30700)
       .setDeprecatedIn(30900);
 
   options
@@ -193,6 +218,7 @@ void NetworkFeature::prepare() {
   ClusterInfo* ci = nullptr;
   if (server().hasFeature<ClusterFeature>() &&
       server().isEnabled<ClusterFeature>()) {
+    // in unit tests the ClusterInfo may not be enabled.
     ci = &server().getFeature<ClusterFeature>().clusterInfo();
   }
 
@@ -259,7 +285,7 @@ void NetworkFeature::prepare() {
 
 void NetworkFeature::start() {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  if (scheduler != nullptr) {  // is nullptr in catch tests
+  if (scheduler != nullptr) {  // is nullptr in unit tests
     auto off = std::chrono::seconds(1);
     ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
   }
@@ -269,6 +295,11 @@ void NetworkFeature::beginShutdown() {
   {
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
+    for (auto const& [req, item] : _retryRequests) {
+      TRI_ASSERT(item != nullptr);
+      item->cancel();
+    }
+    _retryRequests.clear();
   }
   _poolPtr.store(nullptr, std::memory_order_relaxed);
   if (_pool) {  // first cancel all connections
@@ -281,6 +312,11 @@ void NetworkFeature::stop() {
     // we might have posted another workItem during shutdown.
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
+    for (auto const& [req, item] : _retryRequests) {
+      TRI_ASSERT(item != nullptr);
+      item->cancel();
+    }
+    _retryRequests.clear();
   }
   if (_pool) {
     _pool->shutdownConnections();
@@ -293,29 +329,29 @@ void NetworkFeature::unprepare() {
   }
 }
 
-arangodb::network::ConnectionPool* NetworkFeature::pool() const {
+network::ConnectionPool* NetworkFeature::pool() const noexcept {
   return _poolPtr.load(std::memory_order_relaxed);
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-void NetworkFeature::setPoolTesting(arangodb::network::ConnectionPool* pool) {
+void NetworkFeature::setPoolTesting(network::ConnectionPool* pool) {
   _poolPtr.store(pool, std::memory_order_release);
 }
 #endif
 
-bool NetworkFeature::prepared() const { return _prepared; }
+bool NetworkFeature::prepared() const noexcept { return _prepared; }
 
-void NetworkFeature::trackForwardedRequest() { ++_forwardedRequests; }
+void NetworkFeature::trackForwardedRequest() noexcept { ++_forwardedRequests; }
 
-std::size_t NetworkFeature::requestsInFlight() const {
+std::size_t NetworkFeature::requestsInFlight() const noexcept {
   return _requestsInFlight.load();
 }
 
-bool NetworkFeature::isCongested() const {
+bool NetworkFeature::isCongested() const noexcept {
   return _requestsInFlight.load() >= (_maxInFlight * ::CongestionRatio);
 }
 
-bool NetworkFeature::isSaturated() const {
+bool NetworkFeature::isSaturated() const noexcept {
   return _requestsInFlight.load() >= _maxInFlight;
 }
 
@@ -327,16 +363,111 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
   TRI_ASSERT(req != nullptr);
   prepareRequest(pool, req);
   bool isFromPool = false;
+  auto now = std::chrono::steady_clock::now();
   auto conn = pool.leaseConnection(endpoint, isFromPool);
-  conn->sendRequest(std::move(req),
-                    [this, &pool, isFromPool, cb = std::move(cb)](
-                        fuerte::Error err, std::unique_ptr<fuerte::Request> req,
-                        std::unique_ptr<fuerte::Response> res) {
-                      TRI_ASSERT(req != nullptr);
-                      finishRequest(pool, err, req, res);
-                      TRI_ASSERT(req != nullptr);
-                      cb(err, std::move(req), std::move(res), isFromPool);
-                    });
+  auto dur = std::chrono::steady_clock::now() - now;
+  if (dur > std::chrono::seconds(1)) {
+    LOG_TOPIC("52418", WARN, Logger::COMMUNICATION)
+        << "have leased connection to '" << endpoint
+        << "' came from pool: " << isFromPool << " leasing took "
+        << std::chrono::duration_cast<std::chrono::duration<double>>(dur)
+               .count()
+        << " seconds, url: " << to_string(req->header.restVerb) << " "
+        << req->header.path << ", request ptr: " << (void*)req.get();
+  } else {
+    LOG_TOPIC("52417", TRACE, Logger::COMMUNICATION)
+        << "have leased connection to '" << endpoint
+        << "' came from pool: " << isFromPool
+        << ", url: " << to_string(req->header.restVerb) << " "
+        << req->header.path << ", request ptr: " << (void*)req.get();
+  }
+  conn->sendRequest(
+      std::move(req),
+      [this, &pool, isFromPool,
+       handleContentEncoding = options.handleContentEncoding,
+       cb = std::move(cb), endpoint = std::move(endpoint)](
+          fuerte::Error err, std::unique_ptr<fuerte::Request> req,
+          std::unique_ptr<fuerte::Response> res) {
+        if (req->timeQueued().time_since_epoch().count() != 0 &&
+            req->timeAsyncWrite().time_since_epoch().count() != 0) {
+          // In the 0 cases fuerte did not even accept or start to send
+          // the request, so there is nothing to report.
+          auto dur = std::chrono::duration_cast<std::chrono::duration<double>>(
+              req->timeAsyncWrite() - req->timeQueued());
+          _dequeueDurations.count(dur.count());
+          if (req->timeSent().time_since_epoch().count() == 0) {
+            // The request sending was never finished. This could be a timeout
+            // during the sending phase.
+            LOG_TOPIC("effc3", DEBUG, Logger::COMMUNICATION)
+                << "Time to dequeue request to " << endpoint << ": "
+                << dur.count()
+                << " seconds, however, the sending has not yet finished so far"
+                << ", endpoint: " << endpoint
+                << ", request ptr: " << (void*)req.get()
+                << ", response ptr: " << (void*)res.get()
+                << ", error: " << uint16_t(err);
+            _unfinishedSends.count();
+          } else {
+            // The request was fully sent off, we have received the callback
+            // from asio.
+            dur = std::chrono::duration_cast<std::chrono::duration<double>>(
+                req->timeSent() - req->timeAsyncWrite());
+            _sendDurations.count(dur.count());
+            // If you suspect network delays in your infrastructure, you
+            // can use the following log message to track them down and
+            // to associate them with particular requests:
+            LOG_TOPIC_IF("effc4", DEBUG, Logger::COMMUNICATION,
+                         dur > std::chrono::seconds(3))
+                << "Time to send request to " << endpoint << ": " << dur.count()
+                << " seconds, endpoint: " << endpoint
+                << ", request ptr: " << (void*)req.get()
+                << ", response ptr: " << (void*)res.get()
+                << ", error: " << uint16_t(err);
+
+            dur = std::chrono::duration_cast<std::chrono::duration<double>>(
+                std::chrono::steady_clock::now() - req->timeSent());
+            // If you suspect network delays in your infrastructure, you
+            // can use the following log message to track them down and
+            // to associate them with particular requests:
+            LOG_TOPIC_IF("effc5", DEBUG, Logger::COMMUNICATION,
+                         dur > std::chrono::seconds(61))
+                << "Time since request was sent out to " << endpoint
+                << " until now was " << dur.count()
+                << " seconds, endpoint: " << endpoint
+                << ", request ptr: " << (void*)req.get()
+                << ", response ptr: " << (void*)res.get()
+                << ", error: " << uint16_t(err);
+            _responseDurations.count(dur.count());
+          }
+        }
+        TRI_ASSERT(req != nullptr);
+        finishRequest(pool, err, req, res);
+        if (res != nullptr && handleContentEncoding) {
+          // transparently handle decompression
+          auto const& encoding =
+              res->header.metaByKey(StaticStrings::ContentEncoding);
+          if (encoding == StaticStrings::EncodingGzip) {
+            velocypack::Buffer<uint8_t> uncompressed;
+            auto r = encoding::gzipUncompress(
+                reinterpret_cast<uint8_t const*>(res->payload().data()),
+                res->payload().size(), uncompressed);
+            if (r != TRI_ERROR_NO_ERROR) {
+              THROW_ARANGO_EXCEPTION(r);
+            }
+            res->setPayload(std::move(uncompressed), 0);
+          } else if (encoding == StaticStrings::EncodingDeflate) {
+            velocypack::Buffer<uint8_t> uncompressed;
+            auto r = encoding::gzipInflate(
+                reinterpret_cast<uint8_t const*>(res->payload().data()),
+                res->payload().size(), uncompressed);
+            if (r != TRI_ERROR_NO_ERROR) {
+              THROW_ARANGO_EXCEPTION(r);
+            }
+            res->setPayload(std::move(uncompressed), 0);
+          }
+        }
+        cb(err, std::move(req), std::move(res), isFromPool);
+      });
 }
 
 void NetworkFeature::prepareRequest(network::ConnectionPool const& pool,
@@ -346,6 +477,7 @@ void NetworkFeature::prepareRequest(network::ConnectionPool const& pool,
     req->timestamp(std::chrono::steady_clock::now());
   }
 }
+
 void NetworkFeature::finishRequest(network::ConnectionPool const& pool,
                                    fuerte::Error err,
                                    std::unique_ptr<fuerte::Request> const& req,
@@ -378,6 +510,59 @@ void NetworkFeature::finishRequest(network::ConnectionPool const& pool,
           << req->header.path;
     }
   }
+}
+
+void NetworkFeature::retryRequest(
+    std::shared_ptr<network::RetryableRequest> req, RequestLane lane,
+    std::chrono::steady_clock::duration duration) {
+  auto cb = [this, weak = std::weak_ptr(req)](bool cancelled) {
+    std::unique_lock guard(_workItemMutex);
+    if (auto self = weak.lock(); self) {
+      _retryRequests.erase(self);
+      guard.unlock();  // resuming the request does not access _retryRequests
+      if (cancelled) {
+        self->cancel();
+      } else {
+        self->retry();
+      }
+    }
+  };
+
+  // we need the mutex during `queueDelayed` because the lambda might be
+  // executed faster than we can add the work item to the _retryRequests map.
+  std::unique_lock guard(_workItemMutex);
+
+  // this will automatically cancel the request when we leave this
+  // method, unless we are canceling this scopeGuard explicitly.
+  auto cancelGuard = scopeGuard([req]() noexcept {
+    if (req) {
+      req->cancel();
+    }
+  });
+
+  if (server().isStopping()) {
+    // with trigger cancelGuard - cancels request
+    return;
+  }
+
+  auto item = SchedulerFeature::SCHEDULER->queueDelayed(
+      "retry-requests", lane, duration, std::move(cb));
+
+  if (item != nullptr) {
+    try {
+      TRI_IF_FAILURE("NetworkFeature::retryRequestFail") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
+      _retryRequests.emplace(std::move(req), std::move(item));
+      // the request successfully made it into _retryRequests.
+      // now abandon the automatic cancelation.
+      cancelGuard.cancel();
+    } catch (...) {
+    }
+  }
+  // if we get here and haven't canceled cancelGuard,
+  // the request will be automatically canceled
 }
 
 }  // namespace arangodb

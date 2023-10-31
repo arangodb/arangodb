@@ -328,10 +328,6 @@ var sortEdgeDefinitionInplace = function (edgeDefinition) {
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief create a new graph
 // //////////////////////////////////////////////////////////////////////////////
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_how_to_create
-// //////////////////////////////////////////////////////////////////////////////
-
 var createHiddenProperty = function (obj, name, value) {
   Object.defineProperty(obj, name, {
     enumerable: false,
@@ -733,10 +729,6 @@ class AbstractGraph {
     return result;
   }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_edges
-// //////////////////////////////////////////////////////////////////////////////
-
   _edges (vertexExample, options) {
     var bindVars = {};
     options = options || {};
@@ -748,10 +740,6 @@ class AbstractGraph {
       RETURN DISTINCT ${options.includeData === true ? 'e' : 'e._id'}`;
     return db._query(query, bindVars).toArray();
   }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_vertices
-// //////////////////////////////////////////////////////////////////////////////
 
   _vertices (vertexExample, options) {
     options = options || {};
@@ -766,10 +754,6 @@ class AbstractGraph {
     RETURN DISTINCT start`;
     return db._query(query, bindVars).toArray();
   }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_fromVertex
-// //////////////////////////////////////////////////////////////////////////////
 
   _fromVertex (edgeId) {
     if (typeof edgeId !== 'string' ||
@@ -787,10 +771,6 @@ class AbstractGraph {
       return vertexCollection.document(vertexId);
     }
   }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_toVertex
-// //////////////////////////////////////////////////////////////////////////////
 
   _toVertex (edgeId) {
     if (typeof edgeId !== 'string' ||
@@ -837,10 +817,6 @@ class AbstractGraph {
     throw err;
   }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_neighbors
-// //////////////////////////////////////////////////////////////////////////////
-
   _neighbors (vertexExample, options) {
     options = options || {};
     if (options.vertexCollectionRestriction) {
@@ -862,10 +838,6 @@ class AbstractGraph {
       RETURN DISTINCT ${options.includeData === true ? 'v' : 'v._id'}`;
     return db._query(query, bindVars).toArray();
   }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_common_neighbors
-// //////////////////////////////////////////////////////////////////////////////
 
   _commonNeighbors (vertex1Example, vertex2Example, optionsVertex1, optionsVertex2) {
     var bindVars = {};
@@ -906,10 +878,6 @@ class AbstractGraph {
     return db._query(query, bindVars).toArray();
   }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_count_common_neighbors
-// //////////////////////////////////////////////////////////////////////////////
-
   _countCommonNeighbors (vertex1Example, vertex2Example, optionsVertex1, optionsVertex2) {
     let result = this._commonNeighbors(vertex1Example, vertex2Example, optionsVertex1, optionsVertex2);
     let tmp = {};
@@ -930,10 +898,6 @@ class AbstractGraph {
     });
     return returnHash;
   }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_common_properties
-// //////////////////////////////////////////////////////////////////////////////
 
   _commonProperties (vertex1Example, vertex2Example, options) {
     options = options || {};
@@ -960,10 +924,6 @@ class AbstractGraph {
     return db._query(query, bindVars).toArray();
   }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_count_common_properties
-// //////////////////////////////////////////////////////////////////////////////
-
   _countCommonProperties (vertex1Example, vertex2Example, options) {
     options = options || {};
     if (options.hasOwnProperty('ignoreProperties')) {
@@ -989,10 +949,6 @@ class AbstractGraph {
     return db._query(query, bindVars).toArray();
   }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_paths
-// //////////////////////////////////////////////////////////////////////////////
-
   _paths (options) {
     options = options || {};
 
@@ -1012,10 +968,6 @@ class AbstractGraph {
     };
     return db._query(query, bindVars).toArray();
   }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_shortest_path
-// //////////////////////////////////////////////////////////////////////////////
 
   _shortestPath (startVertexExample, endVertexExample, options) {
     var bindVars = {};
@@ -1063,10 +1015,6 @@ class AbstractGraph {
     return db._query(query, bindVars).toArray();
   }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_distance_to
-// //////////////////////////////////////////////////////////////////////////////
-
   _distanceTo (startVertexExample, endVertexExample, options) {
     var bindVars = {};
     options = options || {};
@@ -1104,10 +1052,6 @@ class AbstractGraph {
     bindVars.graphName = this.__name;
     return db._query(query, bindVars).toArray();
   }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_absolute_eccentricity
-// //////////////////////////////////////////////////////////////////////////////
 
   _absoluteEccentricity (vertexExample, options) {
     var bindVars = {};
@@ -1147,10 +1091,6 @@ class AbstractGraph {
     }
     return result;
   }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_absolute_closeness
-// //////////////////////////////////////////////////////////////////////////////
 
   _farness (vertexExample, options) {
     return this._absoluteCloseness(vertexExample, options);
@@ -1195,10 +1135,6 @@ class AbstractGraph {
     return result;
   }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_eccentricity
-// //////////////////////////////////////////////////////////////////////////////
-
   _eccentricity (options) {
     let result = this._absoluteEccentricity({}, options);
     let min = Number.POSITIVE_INFINITY;
@@ -1214,10 +1150,6 @@ class AbstractGraph {
     }
     return result;
   }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_closeness
-// //////////////////////////////////////////////////////////////////////////////
 
   _closeness (options) {
     var farness = this._farness({}, options);
@@ -1235,10 +1167,6 @@ class AbstractGraph {
     }
     return farness;
   }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_absolute_betweenness
-// //////////////////////////////////////////////////////////////////////////////
   _absoluteBetweenness (example, options) {
     var bindVars = {};
     options = options || {};
@@ -1292,10 +1220,6 @@ class AbstractGraph {
     return result;
   }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_betweenness
-// //////////////////////////////////////////////////////////////////////////////
-
   _betweenness (options) {
     let result = this._absoluteBetweenness({}, options);
     let max = 0;
@@ -1311,10 +1235,6 @@ class AbstractGraph {
     }
     return result;
   }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_radius
-// //////////////////////////////////////////////////////////////////////////////
 
   _radius (options) {
     var vcs = Object.keys(this.__vertexCollections);
@@ -1360,10 +1280,6 @@ class AbstractGraph {
     }
     return res;
   }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_diameter
-// //////////////////////////////////////////////////////////////////////////////
   _diameter (options) {
     var vcs = Object.keys(this.__vertexCollections);
     var query;
@@ -1402,17 +1318,9 @@ class AbstractGraph {
     return result;
   }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph__orphanCollections
-// //////////////////////////////////////////////////////////////////////////////
-
   _orphanCollections () {
     return this.__orphanCollections;
   }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_connectingEdges
-// //////////////////////////////////////////////////////////////////////////////
 
   _getConnectingEdges (vertexExample1, vertexExample2, options) {
     options = options || {};
@@ -1475,10 +1383,6 @@ class AbstractGraph {
   */
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_relation
-// //////////////////////////////////////////////////////////////////////////////
-
 exports._relation = function (relationName, fromVertexCollections, toVertexCollections) {
   if (arguments.length < 3) {
     let err = new ArangoError();
@@ -1517,10 +1421,6 @@ exports._relation = function (relationName, fromVertexCollections, toVertexColle
   };
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_edge_definitions
-// //////////////////////////////////////////////////////////////////////////////
-
 exports._edgeDefinitions = function () {
   let res = [];
   let args = arguments;
@@ -1530,10 +1430,6 @@ exports._edgeDefinitions = function () {
 
   return res;
 };
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_extend_edge_definitions
-// //////////////////////////////////////////////////////////////////////////////
 
 exports._extendEdgeDefinitions = function (edgeDefinition) {
   let args = arguments;
@@ -1559,103 +1455,8 @@ exports._exists = function (graphId) {
   return gCol.exists(graphId);
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_list
-// //////////////////////////////////////////////////////////////////////////////
-
 exports._listObjects = function () {
   return db._query(`FOR x IN _graphs RETURN x`).toArray();
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Compatibility functions for 2.8
-// /        This function registeres user-defined functions that follow the
-// /        same API as the former GRAPH_* functions did.
-// /        Most of these AQL functions can be simply replaced by calls to these.
-// //////////////////////////////////////////////////////////////////////////////
-
-exports._registerCompatibilityFunctions = function () {
-  const aqlfunctions = require('@arangodb/aql/functions');
-  aqlfunctions.register('arangodb::GRAPH_EDGES', function (graphName, vertexExample, options) {
-    var gm = require('@arangodb/general-graph');
-    var g = gm._graph(graphName);
-    return g._edges(vertexExample, options);
-  }, false);
-  aqlfunctions.register('arangodb::GRAPH_VERTICES', function (graphName, vertexExample, options) {
-    var gm = require('@arangodb/general-graph');
-    var g = gm._graph(graphName);
-    return g._vertices(vertexExample, options);
-  }, false);
-  aqlfunctions.register('arangodb::GRAPH_NEIGHBORS', function (graphName, vertexExample, options) {
-    var gm = require('@arangodb/general-graph');
-    var g = gm._graph(graphName);
-    return g._neighbors(vertexExample, options);
-  }, false);
-  aqlfunctions.register('arangodb::GRAPH_COMMON_NEIGHBORS', function (graphName, vertex1Example, vertex2Example, options1, options2) {
-    var gm = require('@arangodb/general-graph');
-    var g = gm._graph(graphName);
-    return g._commonNeighbors(vertex1Example, vertex2Example, options1, options2);
-  }, false);
-  aqlfunctions.register('arangodb::GRAPH_COMMON_PROPERTIES', function (graphName, vertex1Example, vertex2Example, options) {
-    var gm = require('@arangodb/general-graph');
-    var g = gm._graph(graphName);
-    return g._commonProperties(vertex1Example, vertex2Example, options);
-  }, false);
-  aqlfunctions.register('arangodb::GRAPH_PATHS', function (graphName, options) {
-    var gm = require('@arangodb/general-graph');
-    var g = gm._graph(graphName);
-    return g._paths(options);
-  }, false);
-  aqlfunctions.register('arangodb::GRAPH_SHORTEST_PATH', function (graphName, startVertexExample, edgeVertexExample, options) {
-    var gm = require('@arangodb/general-graph');
-    var g = gm._graph(graphName);
-    return g._shortestPath(startVertexExample, edgeVertexExample, options);
-  }, false);
-  aqlfunctions.register('arangodb::GRAPH_DISTANCE_TO', function (graphName, startVertexExample, edgeVertexExample, options) {
-    var gm = require('@arangodb/general-graph');
-    var g = gm._graph(graphName);
-    return g._distanceTo(startVertexExample, edgeVertexExample, options);
-  }, false);
-  aqlfunctions.register('arangodb::GRAPH_ABSOLUTE_ECCENTRICITY', function (graphName, vertexExample, options) {
-    var gm = require('@arangodb/general-graph');
-    var g = gm._graph(graphName);
-    return g._absoluteEccentricity(vertexExample, options);
-  }, false);
-  aqlfunctions.register('arangodb::GRAPH_ECCENTRICITY', function (graphName, options) {
-    var gm = require('@arangodb/general-graph');
-    var g = gm._graph(graphName);
-    return g._eccentricity(options);
-  }, false);
-  aqlfunctions.register('arangodb::GRAPH_ABSOLUTE_CLOSENESS', function (graphName, vertexExample, options) {
-    var gm = require('@arangodb/general-graph');
-    var g = gm._graph(graphName);
-    return g._farness(vertexExample, options);
-  }, false);
-  aqlfunctions.register('arangodb::GRAPH_CLOSENESS', function (graphName, options) {
-    var gm = require('@arangodb/general-graph');
-    var g = gm._graph(graphName);
-    return g._closeness(options);
-  }, false);
-  aqlfunctions.register('arangodb::GRAPH_ABSOLUTE_BETWEENNESS', function (graphName, vertexExample, options) {
-    var gm = require('@arangodb/general-graph');
-    var g = gm._graph(graphName);
-    return g._absoluteBetweenness(vertexExample, options);
-  }, false);
-  aqlfunctions.register('arangodb::GRAPH_BETWEENNESS', function (graphName, options) {
-    var gm = require('@arangodb/general-graph');
-    var g = gm._graph(graphName);
-    return g._betweenness(options);
-  }, false);
-  aqlfunctions.register('arangodb::GRAPH_RADIUS', function (graphName, options) {
-    var gm = require('@arangodb/general-graph');
-    var g = gm._graph(graphName);
-    return g._radius(options);
-  }, false);
-  aqlfunctions.register('arangodb::GRAPH_DIAMETER', function (graphName, options) {
-    var gm = require('@arangodb/general-graph');
-    var g = gm._graph(graphName);
-    return g._diameter(options);
-  }, false);
 };
 
 exports.__GraphClass = AbstractGraph;

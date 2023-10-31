@@ -313,11 +313,14 @@ Result IResearchView::appendVPackImpl(velocypack::Builder& build,
     transaction::Options options;  // use default lock timeout
     options.waitForSync = false;
     options.allowImplicitCollectionsForRead = false;
-    transaction::Methods trx(transaction::StandaloneContext::Create(vocbase()),
-                             collections,  // readCollections
-                             EMPTY,        // writeCollections
-                             EMPTY,        // exclusiveCollections
-                             options);
+    auto operationOrigin =
+        transaction::OperationOriginInternal{"generating view definition"};
+    transaction::Methods trx(
+        transaction::StandaloneContext::create(vocbase(), operationOrigin),
+        collections,  // readCollections
+        EMPTY,        // writeCollections
+        EMPTY,        // exclusiveCollections
+        options);
     auto r = trx.begin();
     if (!r.ok()) {
       return r;
@@ -477,6 +480,7 @@ arangodb::ViewFactory const& IResearchView::factory() {
 }
 
 Result IResearchView::link(AsyncLinkPtr const& link) {
+  TRI_IF_FAILURE("IResearchLink::alwaysDangling") { return {}; }
   if (!link) {
     return {TRI_ERROR_BAD_PARAMETER,
             absl::StrCat("invalid link parameter while emplacing collection "
@@ -543,9 +547,8 @@ Result IResearchView::properties(velocypack::Slice slice, bool isUserRequest,
 }
 
 Result IResearchView::renameImpl(std::string const& oldName) {
-  return ServerState::instance()->isSingleServer()
-             ? storage_helper::rename(*this, oldName)
-             : Result{TRI_ERROR_CLUSTER_UNSUPPORTED};
+  TRI_ASSERT(ServerState::instance()->isSingleServer());
+  return storage_helper::rename(*this, oldName);
 }
 
 Result IResearchView::unlink(DataSourceId cid) noexcept {

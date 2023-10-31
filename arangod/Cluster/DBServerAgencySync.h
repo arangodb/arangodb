@@ -33,8 +33,8 @@
 namespace arangodb {
 
 namespace replication2 {
-namespace replicated_log {
-struct QuickLogStatus;
+namespace maintenance {
+struct LogStatus;
 }
 namespace replicated_state {
 struct StateStatus;
@@ -68,23 +68,24 @@ class DBServerAgencySync {
   explicit DBServerAgencySync(ArangodServer& server,
                               HeartbeatThread* heartbeat);
 
- public:
   void work();
 
   using LocalLogsMap = std::unordered_map<
-      std::string, std::unordered_map<
-                       arangodb::replication2::LogId,
-                       arangodb::replication2::replicated_log::QuickLogStatus>>;
+      std::string,
+      std::unordered_map<arangodb::replication2::LogId,
+                         arangodb::replication2::maintenance::LogStatus>>;
 
   /**
    * @brief Get copy of current local state
    * @param  collections  Builder to fill to
    */
-  arangodb::Result getLocalCollections(
+  Result getLocalCollections(
       containers::FlatHashSet<std::string> const& dirty,
       containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>>&
           collections,
       LocalLogsMap& replLogs);
+
+  double requestTimeout() const noexcept;
 
  private:
   DBServerAgencySyncResult execute();
@@ -92,5 +93,6 @@ class DBServerAgencySync {
  private:
   ArangodServer& _server;
   HeartbeatThread* _heartbeat;
+  double _requestTimeout;
 };
 }  // namespace arangodb

@@ -1,6 +1,7 @@
 #!/bin/env python3
 """ read test definition, and generate the output for the specified target """
 import argparse
+import os
 import sys
 import traceback
 import yaml
@@ -11,6 +12,7 @@ if sys.version_info[0] != 3:
     sys.exit()
 
 # pylint: disable=line-too-long disable=broad-except disable=chained-comparison
+IS_COVERAGE = 'COVERAGE' in os.environ and os.environ['COVERAGE'] == 'On'
 
 known_flags = {
     "cluster": "this test requires a cluster",
@@ -24,6 +26,7 @@ known_flags = {
     "!windows": "test is excluded from ps1 output",
     "!mac": "test is excluded when launched on MacOS",
     "!arm": "test is excluded when launched on Arm Linux/MacOS hosts",
+    "!coverage": "test is excluded when coverage scenario are ran",
     "no_report": "disable reporting",
 }
 
@@ -184,7 +187,7 @@ def read_definitions(filename):
     return tests
 
 
-def filter_tests(args, tests):
+def filter_tests(args, tests, enterprise):
     """filter testcase by operations target Single/Cluster/full"""
     if args.all:
         return tests
@@ -205,17 +208,33 @@ def filter_tests(args, tests):
     #else:
     #   filters.append(lambda test: "gtest" != test["name"])
 
-    filters.append(lambda test: "enterprise" not in test["flags"])
+    if not enterprise:
+        filters.append(lambda test: "enterprise" not in test["flags"])
 
     # if IS_ARM:
     #     filters.append(lambda test: "!arm" not in test["flags"])
+
+    if IS_COVERAGE:
+        filters.append(lambda test: "!coverage" not in test["flags"])
 
     for one_filter in filters:
         tests = filter(one_filter, tests)
     return list(tests)
 
+def get_size(size, arch):
+    aarch64_sizes = {
+        "small": "arm.medium",
+        "medium": "arm.medium",
+        "medium+": "arm.large",
+        "large": "arm.large",
+        "xlarge": "arm.xlarge"
+    }
+    if arch == "aarch64":
+        return aarch64_sizes[size]
+    return size
 
-def create_test_job(test, cluster):
+
+def create_test_job(test, cluster, edition, arch):
     """creates the test job definition to be put into the config yaml"""
     params = test["params"]
     suite_name = test["name"]
@@ -227,13 +246,12 @@ def create_test_job(test, cluster):
         raise Exception("Invalid resource class size " + test["size"])
 
     result = {
-        "name": f"test-ce-{'cluster' if cluster else 'single'}-{suite_name}",
-        "testDefinitionLine": test["lineNumber"],
+        "name": f"test-{edition}-{'cluster' if cluster else 'single'}-{suite_name}-{arch}",
         "suiteName": suite_name,
         "suites": test["suites"],
-        "size": test["size"],
+        "size": get_size(test["size"], arch),
         "cluster": cluster,
-        "requires": ["build-community-pr"],
+        "requires": [f"build-{edition}-{arch}"],
     }
 
     extra_args = test["args"]
@@ -247,22 +265,43 @@ def create_test_job(test, cluster):
     return result
 
 
-def generate_output(args, tests):
+def add_test_jobs_to_workflow(config, tests, workflow, edition, arch):
+    jobs = config["workflows"][workflow]["jobs"]
+    for test in tests:
+        print(f"test: {test}")
+        if "cluster" in test["flags"]:
+            jobs.append({"run-tests": create_test_job(test, True, edition, arch)})
+        elif "single" in test["flags"]:
+            jobs.append({"run-tests": create_test_job(test, False, edition, arch)})
+        else:
+            jobs.append({"run-tests": create_test_job(test, True, edition, arch)})
+            jobs.append({"run-tests": create_test_job(test, False, edition, arch)})
+
+
+def get_arch(workflow):
+    if workflow.startswith("aarch64") :
+        return "aarch64"
+    if workflow.startswith("x64") :
+        return "x64"
+    raise Exception(f"Cannot extract architecture from workflow {workflow}")
+
+
+def generate_output(config, tests, enterprise):
     """generate output"""
-    with open(args.base_config, "r", encoding="utf-8") as instream:
-        with open(args.output, "w", encoding="utf-8") as outstream:
-            config = yaml.safe_load(instream)
-            jobs = config["workflows"]["community-pr"]["jobs"]
-            for test in tests:
-                print(f"test: {test}")
-                if "cluster" in test["flags"]:
-                    jobs.append({"run-tests": create_test_job(test, True)})
-                elif "single" in test["flags"]:
-                    jobs.append({"run-tests": create_test_job(test, False)})
-                else:
-                    jobs.append({"run-tests": create_test_job(test, True)})
-                    jobs.append({"run-tests": create_test_job(test, False)})
-            yaml.dump(config, outstream)
+    workflows = config["workflows"]
+    edition = "ee" if enterprise else "ce"
+    for workflow, jobs in workflows.items():
+        if ("windows" in workflow):
+            continue # ATM we don't generate tests for windows
+        if (enterprise and "enterprise" in workflow) or (not enterprise and "community" in workflow):
+            arch = get_arch(workflow)
+            add_test_jobs_to_workflow(config, tests, workflow, edition, arch)
+
+
+def generate_jobs(config, args, tests, enterprise):
+    """generate job definitions"""
+    tests = filter_tests(args, tests, enterprise)
+    generate_output(config, tests, enterprise)
 
 
 def main():
@@ -273,8 +312,12 @@ def main():
         # if args.validate_only:
         #    return  # nothing left to do
         print("args", args)
-        tests = filter_tests(args, tests)
-        generate_output(args, tests)
+        with open(args.base_config, "r", encoding="utf-8") as instream:
+            with open(args.output, "w", encoding="utf-8") as outstream:
+                config = yaml.safe_load(instream)
+                generate_jobs(config, args, tests, False) # community
+                generate_jobs(config, args, tests, True) # enterprise
+                yaml.dump(config, outstream)
     except Exception as exc:
         traceback.print_exc(exc, file=sys.stderr)
         sys.exit(1)

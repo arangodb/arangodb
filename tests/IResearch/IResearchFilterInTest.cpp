@@ -50,6 +50,8 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Query.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/AqlHelper.h"
@@ -57,6 +59,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchFilterContext.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchViewMeta.h"
@@ -70,7 +73,9 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
+#endif
 #include "VocBase/Methods/Collections.h"
 
 #if USE_ENTERPRISE
@@ -90,6 +95,8 @@ class IResearchFilterInTest
                                             arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
 
  private:
   TRI_vocbase_t* _vocbase;
@@ -145,8 +152,8 @@ class IResearchFilterInTest
         unused);
     analyzers.emplace(
         result, "testVocbase::test_analyzer", "TestAnalyzer",
-        arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\"}")
-            ->slice());  // cache analyzer
+        arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\"}")->slice(),
+        arangodb::transaction::OperationOriginTestCase{});  // cache analyzer
   }
 
   TRI_vocbase_t& vocbase() { return *_vocbase; }
@@ -767,7 +774,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
   // reference in array
   {
-    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false,
+                                resourceMonitor);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -995,7 +1003,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -1048,8 +1057,9 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     // iteratorForCondition
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
@@ -1072,7 +1082,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
       {
         EXPECT_EQ(1U, actual.size());
-        auto& root = dynamic_cast<irs::Or&>(*actual.begin());
+        auto& root = dynamic_cast<irs::Or&>(**actual.begin());
         EXPECT_EQ(irs::type<irs::Or>::id(), root.type());
         EXPECT_EQ(3, root.size());
         auto begin = root.begin();
@@ -1083,17 +1093,17 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("1"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         // 2nd filter
         {
           ++begin;
           EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                    begin->type());
-          EXPECT_TRUE(
-              nullptr !=
-              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+                    (*begin)->type());
+          EXPECT_TRUE(nullptr !=
+                      dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                          begin->get()));
         }
 
         // 3rd filter
@@ -1103,7 +1113,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("3"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         EXPECT_EQ(root.end(), ++begin);
@@ -1120,7 +1130,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -1173,8 +1184,9 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     // iteratorForCondition
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
@@ -1197,7 +1209,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
       {
         EXPECT_EQ(1, actual.size());
-        auto& root = dynamic_cast<irs::Or&>(*actual.begin());
+        auto& root = dynamic_cast<irs::Or&>(**actual.begin());
         EXPECT_EQ(irs::type<irs::Or>::id(), root.type());
         EXPECT_EQ(3, root.size());
         auto begin = root.begin();
@@ -1208,17 +1220,17 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("1"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         // 2nd filter
         {
           ++begin;
           EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                    begin->type());
-          EXPECT_TRUE(
-              nullptr !=
-              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+                    (*begin)->type());
+          EXPECT_TRUE(nullptr !=
+                      dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                          begin->get()));
         }
 
         // 3rd filter
@@ -1228,7 +1240,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("3"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         EXPECT_EQ(root.end(), ++begin);
@@ -1246,7 +1258,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -1299,8 +1312,9 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     // iteratorForCondition
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
@@ -1323,7 +1337,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
       {
         EXPECT_EQ(1, actual.size());
-        auto& root = dynamic_cast<irs::Or&>(*actual.begin());
+        auto& root = dynamic_cast<irs::Or&>(**actual.begin());
         EXPECT_EQ(irs::type<irs::Or>::id(), root.type());
         EXPECT_EQ(3, root.size());
         auto begin = root.begin();
@@ -1334,27 +1348,27 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("1"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         // 2nd filter
         {
           ++begin;
           EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                    begin->type());
-          EXPECT_TRUE(
-              nullptr !=
-              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+                    (*begin)->type());
+          EXPECT_TRUE(nullptr !=
+                      dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                          begin->get()));
         }
 
         // 3rd filter
         {
           ++begin;
           EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                    begin->type());
-          EXPECT_TRUE(
-              nullptr !=
-              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+                    (*begin)->type());
+          EXPECT_TRUE(nullptr !=
+                      dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                          begin->get()));
         }
 
         EXPECT_EQ(root.end(), ++begin);
@@ -1372,7 +1386,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -1425,8 +1440,9 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     // iteratorForCondition
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
@@ -1449,7 +1465,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
       {
         EXPECT_EQ(1, actual.size());
-        auto& root = dynamic_cast<irs::Or&>(*actual.begin());
+        auto& root = dynamic_cast<irs::Or&>(**actual.begin());
         EXPECT_EQ(irs::type<irs::Or>::id(), root.type());
         EXPECT_EQ(3, root.size());
         auto begin = root.begin();
@@ -1460,17 +1476,17 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("1"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         // 2nd filter
         {
           ++begin;
           EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                    begin->type());
-          EXPECT_TRUE(
-              nullptr !=
-              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+                    (*begin)->type());
+          EXPECT_TRUE(nullptr !=
+                      dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                          begin->get()));
         }
 
         // 3rd filter
@@ -1480,7 +1496,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("3"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         EXPECT_EQ(root.end(), ++begin);
@@ -1498,7 +1514,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -1551,8 +1568,9 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     // iteratorForCondition
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
@@ -1575,26 +1593,26 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
       {
         EXPECT_EQ(1, actual.size());
-        auto& root = dynamic_cast<irs::Or&>(*actual.begin());
+        auto& root = dynamic_cast<irs::Or&>(**actual.begin());
         EXPECT_EQ(irs::type<irs::Or>::id(), root.type());
         EXPECT_EQ(3, root.size());
         auto begin = root.begin();
 
         // 1st filter
-        { EXPECT_EQ(irs::empty(), *begin); }
+        { EXPECT_EQ(irs::empty(), **begin); }
 
         // 2nd filter
         {
           ++begin;
           EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                    begin->type());
-          EXPECT_TRUE(
-              nullptr !=
-              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+                    (*begin)->type());
+          EXPECT_TRUE(nullptr !=
+                      dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                          begin->get()));
         }
 
         // 3rd filter
-        { EXPECT_EQ(irs::all(), *++begin); }
+        EXPECT_EQ(irs::all(), **++begin);
 
         EXPECT_EQ(root.end(), ++begin);
       }
@@ -1610,7 +1628,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -1663,8 +1682,9 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     // iteratorForCondition
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
@@ -1687,13 +1707,13 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
       {
         EXPECT_EQ(1, actual.size());
-        auto& root = dynamic_cast<irs::Or&>(*actual.begin());
+        auto& root = dynamic_cast<irs::Or&>(**actual.begin());
         EXPECT_EQ(irs::type<irs::Or>::id(), root.type());
         EXPECT_EQ(3, root.size());
         auto begin = root.begin();
 
         // 1st filter
-        { EXPECT_EQ(irs::empty(), *begin); }
+        { EXPECT_EQ(irs::empty(), **begin); }
 
         // 2nd filter
         {
@@ -1705,11 +1725,11 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           irs::by_term expected;
           *expected.mutable_field() = mangleNumeric("b.a");
           expected.mutable_options()->term = term->value;
-          EXPECT_EQ(expected, *++begin);
+          EXPECT_EQ(expected, **++begin);
         }
 
         // 3rd filter
-        { EXPECT_EQ(irs::all(), *++begin); }
+        { EXPECT_EQ(irs::all(), **++begin); }
 
         EXPECT_EQ(root.end(), ++begin);
       }
@@ -2205,7 +2225,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
   // numeric expression in range
   {
-    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false,
+                                resourceMonitor);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -2240,7 +2261,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
   // numeric expression in range, boost
   {
-    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false,
+                                resourceMonitor);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -2519,7 +2541,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
   // string expression in range
   {
-    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false,
+                                resourceMonitor);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -2750,7 +2773,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
   // boolean expression in range
   {
-    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false,
+                                resourceMonitor);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -2940,7 +2964,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
   // null expression in range
   {
-    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false,
+                                resourceMonitor);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintNull{});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -2974,7 +2999,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
   // null expression in range
   {
-    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false,
+                                resourceMonitor);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintNull{});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -3991,7 +4017,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
   // reference in array
   {
-    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false,
+                                resourceMonitor);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -4035,7 +4062,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
   // reference in array, analyzer
   {
-    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false,
+                                resourceMonitor);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -4079,7 +4107,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
   // reference in array, analyzer, boost
   {
-    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false,
+                                resourceMonitor);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -4139,7 +4168,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -4192,8 +4222,9 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     // iteratorForCondition
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
@@ -4217,8 +4248,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       {
         EXPECT_EQ(1, actual.size());
 
-        auto& andNode = dynamic_cast<irs::And&>(*actual.begin());
-        auto& notNode = dynamic_cast<irs::Not&>(*andNode.begin());
+        auto& andNode = dynamic_cast<irs::And&>(**actual.begin());
+        auto& notNode = dynamic_cast<irs::Not&>(**andNode.begin());
         EXPECT_EQ(irs::type<irs::Not>::id(), notNode.type());
 
         auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
@@ -4234,17 +4265,17 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("1"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         // 2nd filter
         {
           ++begin;
           EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                    begin->type());
-          EXPECT_TRUE(
-              nullptr !=
-              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+                    (*begin)->type());
+          EXPECT_TRUE(nullptr !=
+                      dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                          begin->get()));
         }
 
         // 3rd filter
@@ -4254,7 +4285,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("3"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         EXPECT_EQ(orNode->end(), ++begin);
@@ -4272,7 +4303,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -4325,8 +4357,9 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     // iteratorForCondition
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
@@ -4350,8 +4383,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       {
         EXPECT_EQ(1, actual.size());
 
-        auto& andNode = dynamic_cast<irs::And&>(*actual.begin());
-        auto& notNode = dynamic_cast<irs::Not&>(*andNode.begin());
+        auto& andNode = dynamic_cast<irs::And&>(**actual.begin());
+        auto& notNode = dynamic_cast<irs::Not&>(**andNode.begin());
         EXPECT_EQ(irs::type<irs::Not>::id(), notNode.type());
 
         auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
@@ -4367,17 +4400,17 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("1"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         // 2nd filter
         {
           ++begin;
           EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                    begin->type());
-          EXPECT_TRUE(
-              nullptr !=
-              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+                    (*begin)->type());
+          EXPECT_TRUE(nullptr !=
+                      dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                          begin->get()));
         }
 
         // 3rd filter
@@ -4387,7 +4420,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("3"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         EXPECT_EQ(orNode->end(), ++begin);
@@ -4405,7 +4438,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -4458,8 +4492,9 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     // iteratorForCondition
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
@@ -4483,8 +4518,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       {
         EXPECT_EQ(1, actual.size());
 
-        auto& andNode = dynamic_cast<irs::And&>(*actual.begin());
-        auto& notNode = dynamic_cast<irs::Not&>(*andNode.begin());
+        auto& andNode = dynamic_cast<irs::And&>(**actual.begin());
+        auto& notNode = dynamic_cast<irs::Not&>(**andNode.begin());
         EXPECT_EQ(irs::type<irs::Not>::id(), notNode.type());
 
         auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
@@ -4500,17 +4535,17 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("1"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         // 2nd filter
         {
           ++begin;
           EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                    begin->type());
-          EXPECT_TRUE(
-              nullptr !=
-              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+                    (*begin)->type());
+          EXPECT_TRUE(nullptr !=
+                      dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                          begin->get()));
         }
 
         // 3rd filter
@@ -4520,7 +4555,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("3"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         EXPECT_EQ(orNode->end(), ++begin);
@@ -4538,7 +4573,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -4591,8 +4627,9 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     // iteratorForCondition
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
@@ -4616,8 +4653,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       {
         EXPECT_EQ(1, actual.size());
 
-        auto& andNode = dynamic_cast<irs::And&>(*actual.begin());
-        auto& notNode = dynamic_cast<irs::Not&>(*andNode.begin());
+        auto& andNode = dynamic_cast<irs::And&>(**actual.begin());
+        auto& notNode = dynamic_cast<irs::Not&>(**andNode.begin());
         EXPECT_EQ(irs::type<irs::Not>::id(), notNode.type());
 
         auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
@@ -4634,17 +4671,17 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("1"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         // 2nd filter
         {
           ++begin;
           EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                    begin->type());
-          EXPECT_TRUE(
-              nullptr !=
-              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+                    (*begin)->type());
+          EXPECT_TRUE(nullptr !=
+                      dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                          begin->get()));
         }
 
         // 3rd filter
@@ -4654,7 +4691,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("3"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         EXPECT_EQ(orNode->end(), ++begin);
@@ -4672,7 +4709,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -4725,8 +4763,9 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     // iteratorForCondition
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
@@ -4750,8 +4789,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       {
         EXPECT_EQ(1, actual.size());
 
-        auto& andNode = dynamic_cast<irs::And&>(*actual.begin());
-        auto& notNode = dynamic_cast<irs::Not&>(*andNode.begin());
+        auto& andNode = dynamic_cast<irs::And&>(**actual.begin());
+        auto& notNode = dynamic_cast<irs::Not&>(**andNode.begin());
         EXPECT_EQ(irs::type<irs::Not>::id(), notNode.type());
 
         auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
@@ -4767,27 +4806,27 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("1"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         // 2nd filter
         {
           ++begin;
           EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                    begin->type());
-          EXPECT_TRUE(
-              nullptr !=
-              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+                    (*begin)->type());
+          EXPECT_TRUE(nullptr !=
+                      dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                          begin->get()));
         }
 
         // 3rd filter
         {
           ++begin;
           EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                    begin->type());
-          EXPECT_TRUE(
-              nullptr !=
-              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+                    (*begin)->type());
+          EXPECT_TRUE(nullptr !=
+                      dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                          begin->get()));
         }
 
         EXPECT_EQ(orNode->end(), ++begin);
@@ -4805,7 +4844,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -4858,8 +4898,9 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     // iteratorForCondition
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
@@ -4882,8 +4923,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
       {
         EXPECT_EQ(1, actual.size());
-        auto& andNode = dynamic_cast<irs::And&>(*actual.begin());
-        auto& notNode = dynamic_cast<irs::Not&>(*andNode.begin());
+        auto& andNode = dynamic_cast<irs::And&>(**actual.begin());
+        auto& notNode = dynamic_cast<irs::Not&>(**andNode.begin());
         EXPECT_EQ(irs::type<irs::Not>::id(), notNode.type());
         auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
         EXPECT_TRUE(orNode);
@@ -4892,20 +4933,20 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         auto begin = orNode->begin();
 
         // 1st filter
-        { EXPECT_EQ(irs::empty(), *begin); }
+        { EXPECT_EQ(irs::empty(), **begin); }
 
         // 2nd filter
         {
           ++begin;
           EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                    begin->type());
-          EXPECT_TRUE(
-              nullptr !=
-              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+                    (*begin)->type());
+          EXPECT_TRUE(nullptr !=
+                      dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                          begin->get()));
         }
 
         // 3rd filter
-        { EXPECT_EQ(irs::all(), *++begin); }
+        { EXPECT_EQ(irs::all(), **++begin); }
 
         EXPECT_EQ(orNode->end(), ++begin);
       }
@@ -4921,7 +4962,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -4974,8 +5016,9 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     // iteratorForCondition
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
@@ -4999,8 +5042,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       {
         EXPECT_EQ(1, actual.size());
 
-        auto& andNode = dynamic_cast<irs::And&>(*actual.begin());
-        auto& notNode = dynamic_cast<irs::Not&>(*andNode.begin());
+        auto& andNode = dynamic_cast<irs::And&>(**actual.begin());
+        auto& notNode = dynamic_cast<irs::Not&>(**andNode.begin());
         EXPECT_EQ(irs::type<irs::Not>::id(), notNode.type());
 
         auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
@@ -5011,7 +5054,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         auto begin = orNode->begin();
 
         // 1st filter
-        { EXPECT_EQ(irs::empty(), *begin); }
+        { EXPECT_EQ(irs::empty(), **begin); }
 
         // 2nd filter
         {
@@ -5023,11 +5066,11 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           irs::by_term expected;
           *expected.mutable_field() = mangleNumeric("b.a");
           expected.mutable_options()->term = term->value;
-          EXPECT_EQ(expected, *++begin);
+          EXPECT_EQ(expected, **++begin);
         }
 
         // 3rd filter
-        { EXPECT_EQ(irs::all(), *++begin); }
+        { EXPECT_EQ(irs::all(), **++begin); }
 
         EXPECT_EQ(orNode->end(), ++begin);
       }
@@ -5489,7 +5532,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
   // numeric expression in range
   {
-    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false,
+                                resourceMonitor);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -5727,7 +5771,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
   // string expression in range
   {
-    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false,
+                                resourceMonitor);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -5928,7 +5973,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
   // boolean expression in range
   {
-    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false,
+                                resourceMonitor);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -6129,7 +6175,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
   // null expression in range
   {
-    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false,
+                                resourceMonitor);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintNull{});
     arangodb::aql::AqlValueGuard guard(value, true);
 

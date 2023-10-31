@@ -27,12 +27,13 @@
 #include <cstring>
 #include <ctime>
 #include <memory>
+#include <mutex>
 #include <string_view>
+
+#include <absl/strings/escaping.h>
 
 #include "Nonce.h"
 
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
@@ -45,7 +46,7 @@ using namespace arangodb::basics;
 
 namespace {
 // protects access to nonces
-Mutex mutex;
+std::mutex mutex;
 
 std::unique_ptr<uint32_t[]> nonces;
 }  // namespace
@@ -67,8 +68,8 @@ std::string createNonce() {
   memcpy(buffer + 4, &rand1, 4);
   memcpy(buffer + 8, &rand2, 4);
 
-  return StringUtils::encodeBase64U(
-      std::string_view(reinterpret_cast<char const*>(&buffer[0]), 12));
+  return absl::WebSafeBase64Escape(
+      std::string_view{reinterpret_cast<char const*>(&buffer[0]), 12});
 }
 
 bool checkAndMark(std::string const& nonce) {
@@ -91,7 +92,7 @@ bool checkAndMark(std::string const& nonce) {
 }
 
 bool checkAndMark(uint32_t timestamp, uint64_t random) {
-  MUTEX_LOCKER(mutexLocker, ::mutex);
+  std::lock_guard mutexLocker{::mutex};
 
   // allocate nonces buffer lazily upon first access
   if (::nonces == nullptr) {

@@ -66,8 +66,7 @@ TraversalExecutorInfos::TraversalExecutorInfos(
     traverser::TraverserOptions::UniquenessLevel vertexUniqueness,
     traverser::TraverserOptions::UniquenessLevel edgeUniqueness,
     traverser::TraverserOptions::Order order, double defaultWeight,
-    std::string weightAttribute, transaction::Methods* trx,
-    arangodb::aql::QueryContext& query,
+    std::string weightAttribute, arangodb::aql::QueryContext& query,
     arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
     arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
     ClusterBaseProviderOptions&& clusterBaseProviderOptions, bool isSmart)
@@ -79,8 +78,8 @@ TraversalExecutorInfos::TraversalExecutorInfos(
       _order(order),
       _defaultWeight(defaultWeight),
       _weightAttribute(std::move(weightAttribute)),
-      _trx(trx),
-      _query(query) {
+      _query(query),
+      _trx(query.newTrxContext()) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
   // _fixedSource XOR _inputRegister
@@ -112,8 +111,7 @@ TraversalExecutorInfos::TraversalExecutorInfos(
     traverser::TraverserOptions::UniquenessLevel vertexUniqueness,
     traverser::TraverserOptions::UniquenessLevel edgeUniqueness,
     traverser::TraverserOptions::Order order, double defaultWeight,
-    std::string weightAttribute, transaction::Methods* trx,
-    arangodb::aql::QueryContext& query,
+    std::string weightAttribute, arangodb::aql::QueryContext& query,
     arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
     arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
     graph::SingleServerBaseProviderOptions&& singleServerBaseProviderOptions,
@@ -126,8 +124,8 @@ TraversalExecutorInfos::TraversalExecutorInfos(
       _order(order),
       _defaultWeight(defaultWeight),
       _weightAttribute(std::move(weightAttribute)),
-      _trx(trx),
-      _query(query) {
+      _query(query),
+      _trx(_query.newTrxContext()) {
   // _fixedSource XOR _inputRegister
   // note: _fixedSource can be the empty string here
   TRI_ASSERT(_fixedSource.empty() ||
@@ -245,7 +243,7 @@ TraverserOptions::Order TraversalExecutorInfos::getOrder() const {
   return _order;
 }
 
-transaction::Methods* TraversalExecutorInfos::getTrx() { return _trx; }
+transaction::Methods* TraversalExecutorInfos::getTrx() { return &_trx; }
 
 arangodb::aql::QueryContext& TraversalExecutorInfos::getQuery() {
   return _query;
@@ -274,11 +272,11 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorSingleServer(
           });
     } else {
       baseProviderOptions.setWeightEdgeCallback(
-          [weightAttribute = weightAttribute, defaultWeight](
-              double previousWeight, VPackSlice edge) -> double {
+          [wa = weightAttribute, defaultWeight](double previousWeight,
+                                                VPackSlice edge) -> double {
             auto const weight =
-                arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-                    edge, weightAttribute, defaultWeight);
+                basics::VelocyPackHelper::getNumericValue<double>(
+                    edge, wa, defaultWeight);
             if (weight < 0.) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
             }
@@ -322,11 +320,11 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorCluster(
           });
     } else {
       baseProviderOptions.setWeightEdgeCallback(
-          [weightAttribute = weightAttribute, defaultWeight](
-              double previousWeight, VPackSlice edge) -> double {
+          [wa = weightAttribute, defaultWeight](double previousWeight,
+                                                VPackSlice edge) -> double {
             auto const weight =
-                arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-                    edge, weightAttribute, defaultWeight);
+                basics::VelocyPackHelper::getNumericValue<double>(
+                    edge, wa, defaultWeight);
             if (weight < 0.) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
             }
@@ -400,7 +398,7 @@ auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
       currentPath->lastVertexToVelocyPack(*tmp.builder());
       AqlValue path{tmp->slice()};
       AqlValueGuard guard{path, true};
-      output.moveValueInto(_infos.vertexRegister(), _inputRow, guard);
+      output.moveValueInto(_infos.vertexRegister(), _inputRow, &guard);
     }
 
     // Edge variable (e)
@@ -409,7 +407,7 @@ auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
       currentPath->lastEdgeToVelocyPack(*tmp.builder());
       AqlValue path{tmp->slice()};
       AqlValueGuard guard{path, true};
-      output.moveValueInto(_infos.edgeRegister(), _inputRow, guard);
+      output.moveValueInto(_infos.edgeRegister(), _inputRow, &guard);
     }
 
     // Path variable (p)
@@ -418,7 +416,7 @@ auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
       currentPath->toVelocyPack(*tmp.builder());
       AqlValue path{tmp->slice()};
       AqlValueGuard guard{path, true};
-      output.moveValueInto(_infos.pathRegister(), _inputRow, guard);
+      output.moveValueInto(_infos.pathRegister(), _inputRow, &guard);
     }
 
     // No output is requested from the register plan. We still need
@@ -458,7 +456,7 @@ auto TraversalExecutor::skipRowsRange(AqlItemBlockInputRange& input,
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   auto skipped = size_t{0};
 
-  while (call.shouldSkip()) {
+  while (call.needSkipMore()) {
     if (traversalEnumerator()->isDone()) {
       if (!initTraverser(input)) {
         TRI_ASSERT(!input.hasDataRow());

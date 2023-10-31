@@ -31,13 +31,17 @@
 #include "Aql/QueryContext.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryResult.h"
+#ifdef USE_V8
 #include "Aql/QueryResultV8.h"
+#endif
 #include "Aql/QueryString.h"
-#include "Aql/SharedQueryState.h"
 #include "Basics/Common.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/system-functions.h"
+#include "Scheduler/SchedulerFeature.h"
+#ifdef USE_V8
 #include "V8Server/V8Context.h"
+#endif
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -52,7 +56,7 @@ struct TRI_vocbase_t;
 namespace arangodb {
 
 class CollectionNameResolver;
-class LogicalDataSource;  // forward declaration
+class LogicalDataSource;
 
 namespace transaction {
 
@@ -68,7 +72,7 @@ class ExecutionEngine;
 struct ExecutionStats;
 struct QueryCacheResultEntry;
 struct QueryProfile;
-enum class SerializationFormat;
+class SharedQueryState;
 
 /// @brief an AQL query
 class Query : public QueryContext, public std::enable_shared_from_this<Query> {
@@ -85,7 +89,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// method
   Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
         std::shared_ptr<velocypack::Builder> bindParameters,
-        QueryOptions options);
+        QueryOptions options, Scheduler* scheduler);
 
   ~Query() override;
 
@@ -100,7 +104,8 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   static std::shared_ptr<Query> create(
       std::shared_ptr<transaction::Context> ctx, QueryString queryString,
       std::shared_ptr<velocypack::Builder> bindParameters,
-      QueryOptions options = {});
+      QueryOptions options = {},
+      Scheduler* scheduler = SchedulerFeature::SCHEDULER);
 
   constexpr static uint64_t DontCache = 0;
 
@@ -131,7 +136,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// every following call will be ignored.
   void ensureExecutionTime() noexcept;
 
-  void prepareQuery(SerializationFormat format);
+  void prepareQuery();
 
   /// @brief execute an AQL query
   ExecutionState execute(QueryResult& res);
@@ -140,9 +145,11 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   ///        need to wait.
   QueryResult executeSync();
 
+#ifdef USE_V8
   /// @brief execute an AQL query
   /// may only be called with an active V8 handle scope
   QueryResultV8 executeV8(v8::Isolate* isolate);
+#endif
 
   /// @brief Enter finalization phase and do cleanup.
   /// Sets `warnings`, `stats`, `profile`, timings and does the cleanup.
@@ -168,7 +175,11 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief check if the query has a V8 context ready for use
   bool hasEnteredV8Context() const final {
+#ifdef USE_V8
     return (_contextOwnedByExterior || _v8Context != nullptr);
+#else
+    return false;
+#endif
   }
 
   /// @brief return the final query result status code (0 = no error,
@@ -250,11 +261,12 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief prepare an AQL query, this is a preparation for execute, but
   /// execute calls it internally. The purpose of this separate method is
-  /// to be able to only prepare a query from VelocyPack and then store it in
-  /// the QueryRegistry.
+  /// to be able to only prepare a query from VelocyPack and then store it
+  /// in the QueryRegistry.
   std::unique_ptr<ExecutionPlan> preparePlan();
 
-  /// @brief calculate a hash value for the query string and bind parameters
+  /// @brief calculate a hash value for the query string and bind
+  /// parameters
   uint64_t calculateHash() const;
 
   /// @brief whether or not the query cache can be used for the query
@@ -273,8 +285,9 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   // @brief injects vertex collections into all types of graph nodes:
   // ExecutionNode::TRAVERSAL, ExecutionNode::SHORTEST_PATH and
-  // ExecutionNode::ENUMERATE_PATHS - in case the GraphNode does not contain
-  // a vertex collection yet. This can happen e.g. during anonymous traversal.
+  // ExecutionNode::ENUMERATE_PATHS - in case the GraphNode does not
+  // contain a vertex collection yet. This can happen e.g. during
+  // anonymous traversal.
   void injectVertexCollectionIntoGraphNodes(ExecutionPlan& plan);
 
   // log the start of a query (trace mode only)
@@ -300,8 +313,10 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief shared query state
   std::shared_ptr<SharedQueryState> _sharedState;
 
+#ifdef USE_V8
   /// @brief the currently used V8 context
   V8Context* _v8Context;
+#endif
 
   /// @brief bind parameters for the query
   BindParameters _bindParameters;
@@ -361,11 +376,13 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief user that started the query
   std::string _user;
 
+#ifdef USE_V8
   /// @brief whether or not someone else has acquired a V8 context for us
   bool const _contextOwnedByExterior;
 
   /// @brief set if we are inside a JS transaction
   bool const _embeddedQuery;
+#endif
 
   /// @brief whether or not the transaction context was registered
   /// in a v8 context

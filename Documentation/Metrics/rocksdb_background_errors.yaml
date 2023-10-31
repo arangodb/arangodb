@@ -11,5 +11,5 @@ exposedBy:
   - agent
   - single
 description: |
-  This metric exhibits the RocksDB metric "background-errors". It shows
+  This metric exhibits the RocksDB metric `background-errors`. It shows
   the accumulated number of background errors.

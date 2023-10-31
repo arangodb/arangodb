@@ -136,6 +136,15 @@ if (!figuresData.figures) {
         </tr>
       <% } %>
 
+      <tr>
+        <th class="collectionInfoTh2">Number of documents:</th>
+        <th class="collectionInfoTh">
+          <div class="modal-text"><%= figuresData.count %></div>
+        </th>
+        <th class="tooltipInfoTh">
+        </th>
+      </tr>
+
       <% if (figuresData.figures.hasOwnProperty('indexes')) { %>
 
         <% if (figuresData.figures.indexes.hasOwnProperty('count')) { %>

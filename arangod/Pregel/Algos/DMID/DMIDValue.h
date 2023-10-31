@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <map>
+
 #include "Pregel/GraphStore/VertexID.h"
 
 namespace arangodb::pregel::algos {

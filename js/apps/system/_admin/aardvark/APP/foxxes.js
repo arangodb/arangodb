@@ -25,6 +25,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
+const arangodb = require('@arangodb');
 const fs = require('fs');
 const joi = require('joi');
 const dd = require('dedent');
@@ -32,10 +33,13 @@ const crypto = require('@arangodb/crypto');
 const errors = require('@arangodb').errors;
 const FoxxManager = require('@arangodb/foxx/manager');
 const store = require('@arangodb/foxx/store');
+const cluster = require('@arangodb/cluster');
+const request = require('@arangodb/request');
 const FoxxGenerator = require('./generator');
 const fmu = require('@arangodb/foxx/manager-utils');
 const createRouter = require('@arangodb/foxx/router');
 const joinPath = require('path').join;
+const ArangoError = arangodb.ArangoError;
 
 const DEFAULT_THUMBNAIL = module.context.fileName('default-thumbnail.png');
 
@@ -90,13 +94,32 @@ installer.use(function (req, res, next) {
   options.setup = req.queryParams.setup;
   options.teardown = req.queryParams.teardown;
   let service;
+
+  let continueFoxxOperation = true;
+  const thisCoordinatorId = FoxxManager._getMyCoordinatorId();
+  if (thisCoordinatorId) {
+    if (req.body.coordinatorId) {
+      if (thisCoordinatorId !== req.body.coordinatorId) {
+        // In case our original received request does not match the provided
+        // coordinatorId (if available), we don't want to upgrade/replace or install
+        // the foxx application on this coordinator, as another coordinator will
+        // perform the actual operation.
+        continueFoxxOperation = false;
+      }
+    }
+  }
+
   try {
-    if (upgrade) {
-      service = FoxxManager.upgrade(appInfo, mount, options);
-    } else if (replace) {
-      service = FoxxManager.replace(appInfo, mount, options);
+    if (!continueFoxxOperation) {
+      service = FoxxManager.lookupService(mount);
     } else {
-      service = FoxxManager.install(appInfo, mount, options);
+      if (upgrade) {
+        service = FoxxManager.upgrade(appInfo, mount, options);
+      } else if (replace) {
+        service = FoxxManager.replace(appInfo, mount, options);
+      } else {
+        service = FoxxManager.install(appInfo, mount, options);
+      }
     }
   } catch (e) {
     if (e.isArangoError && [
@@ -120,6 +143,7 @@ installer.use(function (req, res, next) {
     }
     throw e;
   }
+
   const configuration = service.getConfiguration();
   res.json(Object.assign({
     error: false,
@@ -188,6 +212,55 @@ installer.put('/generate', (req, res) => {
 `);
 
 installer.put('/zip', function (req) {
+  // This PUT API endpoint installs a ZIP file which has been already uploaded.
+  // In case of a SingleServer - no special treatment is required.
+  // In case of a Cluster - special treatment is required in case a LoadBalancer is being used.
+  // Therefore, this route now is able to read a "coordinatorId" if set in the request and will
+  // forward the request to the correct Coordinator which has the file upload available.
+
+  const thisCoordinatorId = FoxxManager._getMyCoordinatorId();
+  if (thisCoordinatorId) {
+    // If we end up here, we're in a clustered environment.
+    // We need to check if this Coordinator is the same as the requested Coordinator (coordinatorId).
+    if (req.body.coordinatorId) {
+      // Only do the forward if a coordinatorId is set, but differs to our local coordinatorId
+      if (thisCoordinatorId !== req.body.coordinatorId) {
+        const mount = decodeURIComponent(req.queryParams.mount);
+        const database = decodeURIComponent(req.database);
+
+        // CoordinatorId's differ - we need to forward this request to the proper coordinator.
+        let coordinatorToEndpointMap = {};
+        const coordinators = global.ArangoClusterInfo.getCoordinators();
+        coordinators.forEach((coordinatorId) => {
+          const endpoint = global.ArangoClusterInfo.getServerEndpoint(coordinatorId);
+          coordinatorToEndpointMap[coordinatorId] = cluster.endpointToURL(endpoint);
+        });
+
+        const endpointToUse = coordinatorToEndpointMap[req.body.coordinatorId];
+        if (!endpointToUse) {
+          // if we could not map the supplied coordinatorId to a real coordinatorId, it must be invalid.
+          throw new ArangoError({
+            errorNum: errors.ERROR_ARANGO_ILLEGAL_NAME.code,
+            errorMessage: 'Supplied wrong coordinatorId'
+          });
+        }
+        const forwardUrl = `${endpointToUse}/_db/${database}/_admin/aardvark/foxxes/zip?mount=${encodeURIComponent(mount)}`;
+
+        // Response body will be handled in the "installer.use" section and simply be listed instead of the actual
+        // upgrade / install / replace operation.
+        request.put({
+          url: forwardUrl,
+          json: true,
+          body: req.body,
+          headers: {
+            'Authorization': req.headers.authorization
+          }
+        });
+        return;
+      }
+    }
+  }
+
   const tempFile = joinPath(fs.getTempPath(), req.body.zipFile);
   req.body = fs.readFileSync(tempFile);
   try {
@@ -197,7 +270,8 @@ installer.put('/zip', function (req) {
   }
 })
 .body(joi.object({
-  zipFile: joi.string().required()
+  zipFile: joi.string().required(),
+  coordinatorId: joi.string().optional()
 }).required(), 'A zip file path.')
 .summary('Install a Foxx from temporary zip file')
 .description(dd`

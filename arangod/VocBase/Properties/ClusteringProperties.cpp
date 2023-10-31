@@ -43,6 +43,7 @@ ClusteringProperties::applyDefaultsAndValidateDatabaseConfiguration(
 
   // Validate that necessary values are now filled
   TRI_ASSERT(replicationFactor.has_value());
+  TRI_ASSERT(writeConcern.has_value());
   TRI_ASSERT(numberOfShards.has_value());
 
   // Make sure we do not violate conditions anymore

@@ -46,7 +46,6 @@ Collection* addCollectionToQuery(QueryContext& query, std::string const& cname,
 
 void insertDistributeInputCalculation(ExecutionPlan& plan);
 
-void enableAsyncPrefetching(ExecutionPlan& plan);
 void activateCallstackSplit(ExecutionPlan& plan);
 
 /// @brief adds a SORT operation for IN right-hand side operands
@@ -142,6 +141,10 @@ void interchangeAdjacentEnumerationsRule(Optimizer*,
 
 /// @brief replace single document operations in cluster by special handling
 void substituteClusterSingleDocumentOperationsRule(
+    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const&);
+
+/// @brief replace multiple document operations in cluster by special handling
+void substituteClusterMultipleDocumentOperationsRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const&);
 
 #ifdef USE_ENTERPRISE
@@ -380,6 +383,12 @@ GatherNode* createGatherNodeFor(ExecutionPlan& plan, DistributeNode* node);
 DistributeNode* insertDistributeGatherSnippet(ExecutionPlan& plan,
                                               ExecutionNode* at,
                                               SubqueryNode* snode);
+
+void joinIndexNodesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                        OptimizerRule const&);
+
+void optimizeProjections(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                         OptimizerRule const&);
 
 }  // namespace aql
 }  // namespace arangodb

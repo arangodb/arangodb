@@ -25,7 +25,6 @@
 #pragma once
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Containers/MerkleTree.h"
 #include "Indexes/IndexIterator.h"
 #include "Replication/SyncerId.h"
@@ -50,6 +49,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <mutex>
 
 namespace rocksdb {
 class Comparator;
@@ -202,14 +202,14 @@ class RocksDBReplicationContext {
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection
   DumpResult dumpJson(TRI_vocbase_t& vocbase, std::string const& cname,
-                      basics::StringBuffer&, uint64_t chunkSize,
-                      bool useEnvelope);
+                      basics::StringBuffer&, size_t docsPerBatch,
+                      uint64_t chunkSize, bool useEnvelope);
 
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection
   DumpResult dumpVPack(TRI_vocbase_t& vocbase, std::string const& cname,
-                       velocypack::Buffer<uint8_t>& buffer, uint64_t chunkSize,
-                       bool useEnvelope, bool singleArray);
+                       velocypack::Buffer<uint8_t>& buffer, size_t docsPerBatch,
+                       uint64_t chunkSize, bool useEnvelope, bool singleArray);
 
   // ==================== Incremental Sync ===========================
 
@@ -270,7 +270,7 @@ class RocksDBReplicationContext {
 
   RocksDBEngine& _engine;
   TRI_voc_tick_t const _id;  // batch id
-  mutable Mutex _contextLock;
+  mutable std::mutex _contextLock;
   SyncerId const _syncerId;
   ServerId const _clientId;
   std::string const _clientInfo;

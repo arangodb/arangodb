@@ -28,8 +28,10 @@
 
 #include "Geo/GeoJson.h"
 #include "Geo/ShapeContainer.h"
+#include "IResearch/IResearchView.h"
 #include "IResearch/MakeViewSnapshot.h"
 #include "IResearchQueryCommon.h"
+#include "VocBase/LogicalCollection.h"
 
 namespace arangodb::tests {
 namespace {
@@ -45,22 +47,25 @@ class QueryGeoInRange : public QueryTest {
     {
       auto json = VPackParser::fromJson(
           absl::Substitute(R"({$0 "type": "shape"})", params));
-      auto r = analyzers.emplace(result, _vocbase.name() + "::mygeojson",
-                                 analyzer, json->slice(), {});
+      auto r = analyzers.emplace(
+          result, _vocbase.name() + "::mygeojson", analyzer, json->slice(),
+          arangodb::transaction::OperationOriginTestCase{});
       ASSERT_TRUE(r.ok()) << r.errorMessage();
     }
     {
       auto json = VPackParser::fromJson(
           absl::Substitute(R"({$0 "type": "centroid"})", params));
-      auto r = analyzers.emplace(result, _vocbase.name() + "::mygeocentroid",
-                                 analyzer, json->slice(), {});
+      auto r = analyzers.emplace(
+          result, _vocbase.name() + "::mygeocentroid", analyzer, json->slice(),
+          arangodb::transaction::OperationOriginTestCase{});
       ASSERT_TRUE(r.ok()) << r.errorMessage();
     }
     {
       auto json = VPackParser::fromJson(
           absl::Substitute(R"({$0 "type": "point"})", params));
-      auto r = analyzers.emplace(result, _vocbase.name() + "::mygeopoint",
-                                 analyzer, json->slice(), {});
+      auto r = analyzers.emplace(
+          result, _vocbase.name() + "::mygeopoint", analyzer, json->slice(),
+          arangodb::transaction::OperationOriginTestCase{});
       ASSERT_TRUE(r.ok()) << r.errorMessage();
     }
   }
@@ -72,7 +77,8 @@ class QueryGeoInRange : public QueryTest {
     auto json = VPackParser::fromJson(R"({})");
     ASSERT_TRUE(analyzers
                     .emplace(result, _vocbase.name() + "::mygeopoint",
-                             "geopoint", json->slice(), {})
+                             "geopoint", json->slice(),
+                             arangodb::transaction::OperationOriginTestCase{})
                     .ok());
   }
 
@@ -86,7 +92,8 @@ class QueryGeoInRange : public QueryTest {
     })");
     ASSERT_TRUE(analyzers
                     .emplace(result, _vocbase.name() + "::mygeopoint",
-                             "geopoint", json->slice(), {})
+                             "geopoint", json->slice(),
+                             arangodb::transaction::OperationOriginTestCase{})
                     .ok());
   }
 
@@ -135,8 +142,9 @@ class QueryGeoInRange : public QueryTest {
       OperationOptions options;
       options.returnNew = true;
       SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::WRITE);
+          transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          *collection, AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto doc : VPackArrayIterator(docs->slice())) {
@@ -227,8 +235,9 @@ class QueryGeoInRange : public QueryTest {
         return impl.getLinks(nullptr);
       };
       SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::READ);
+          transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          *collection, AccessMode::Type::READ);
       ASSERT_TRUE(trx.begin().ok());
       ASSERT_TRUE(trx.state());
       auto* snapshot =
@@ -451,8 +460,9 @@ class QueryGeoInRange : public QueryTest {
       OperationOptions options;
       options.returnNew = true;
       SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::WRITE);
+          transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          *collection, AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto doc : VPackArrayIterator(docs->slice())) {
@@ -483,8 +493,9 @@ class QueryGeoInRange : public QueryTest {
     // ensure presence of special a column for geo indices
     {
       SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::READ);
+          transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          *collection, AccessMode::Type::READ);
       ASSERT_TRUE(trx.begin().ok());
       ASSERT_TRUE(trx.state());
       auto* snapshot =
@@ -754,8 +765,9 @@ class QueryGeoInRange : public QueryTest {
       OperationOptions options;
       options.returnNew = true;
       SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::WRITE);
+          transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          *collection, AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto doc : VPackArrayIterator(docs->slice())) {
@@ -786,8 +798,9 @@ class QueryGeoInRange : public QueryTest {
     // ensure presence of special a column for geo indices
     {
       SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::READ);
+          transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          *collection, AccessMode::Type::READ);
       ASSERT_TRUE(trx.begin().ok());
       ASSERT_TRUE(trx.state());
       auto* snapshot =

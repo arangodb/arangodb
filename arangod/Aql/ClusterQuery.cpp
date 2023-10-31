@@ -30,14 +30,16 @@
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/QueryProfile.h"
+#include "Aql/SharedQueryState.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/TraverserEngine.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "Cluster/TraverserEngine.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
 
@@ -118,7 +120,6 @@ void ClusterQuery::prepareClusterQuery(
 
   enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
 
-  // FIXME change this format to take the raw one?
   ExecutionPlan::getCollectionsFromVelocyPack(_collections, collections);
   _ast->variables()->fromVelocyPack(variables);
   // creating the plan may have produced some collections
@@ -133,10 +134,15 @@ void ClusterQuery::prepareClusterQuery(
   }
 #endif
 
+#ifdef USE_ENTERPRISE
+  waitForSatellites();
+#endif
+
   _trx = AqlTransaction::create(_transactionContext, _collections,
                                 _queryOptions.transactionOptions,
                                 std::move(inaccessibleCollections));
-  // create the transaction object, but do not start it yet
+
+  // create the transaction object, but do not start the transaction yet
   _trx->addHint(
       transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
   if (_trx->state()->isDBServer()) {
@@ -157,8 +163,6 @@ void ClusterQuery::prepareClusterQuery(
 
   enterState(QueryExecutionState::ValueType::PARSING);
 
-  SerializationFormat format = SerializationFormat::SHADOWROWS;
-
   bool const planRegisters = !_queryString.empty();
   auto instantiateSnippet = [&](VPackSlice snippet) {
     auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet);
@@ -166,7 +170,7 @@ void ClusterQuery::prepareClusterQuery(
 
     plan->findVarUsage();  // I think this is a no-op
 
-    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters, format);
+    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
     _plans.push_back(std::move(plan));
   };
 

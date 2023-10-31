@@ -26,18 +26,16 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryContext.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
+#include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Transaction/Helpers.h"
-
-#include "Basics/ScopeGuard.h"
-#include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
-
-#include "Logger/LogMacros.h"
 
 #include <utility>
 #include <vector>
@@ -148,6 +146,8 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
         leased->add(VPackValuePair(vertexId.data(), vertexId.size(),
                                    VPackValueType::String));
         mustSend = true;
+        LOG_TOPIC("9e0f4", TRACE, Logger::GRAPHS)
+            << "<ClusterProvider> Fetching vertex " << vertexId;
       }
     }
     leased->close();  // 'keys' Array
@@ -299,7 +299,8 @@ void ClusterProvider<StepImpl>::destroyEngines() {
 template<class StepImpl>
 Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   TRI_ASSERT(step != nullptr);
-
+  LOG_TOPIC("fa7dc", TRACE, Logger::GRAPHS)
+      << "<ClusterProvider> Expanding " << step->getVertex().getID();
   auto const* engines = _opts.engines();
   transaction::BuilderLeaser leased(trx());
   leased->openObject(true);
@@ -391,6 +392,9 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
             << "got invalid edge id type: " << id.typeName();
         continue;
       }
+      LOG_TOPIC("f4b3b", TRACE, Logger::GRAPHS)
+          << "<ClusterProvider> Neighbor of " << step->getVertex().getID()
+          << " -> " << id.toJson();
 
       auto [edge, needToCache] = _opts.getCache()->persistEdgeData(e);
       if (needToCache) {
@@ -526,12 +530,6 @@ auto ClusterProvider<StepImpl>::addEdgeToBuilder(
     typename Step::Edge const& edge, arangodb::velocypack::Builder& builder)
     -> void {
   builder.add(_opts.getCache()->getCachedEdge(edge.getID()));
-}
-
-template<class StepImpl>
-auto ClusterProvider<StepImpl>::getEdgeDocumentToken(
-    typename Step::Edge const& edge) -> EdgeDocumentToken {
-  return EdgeDocumentToken{_opts.getCache()->getCachedEdge(edge.getID())};
 }
 
 template<class StepImpl>

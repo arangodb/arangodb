@@ -188,6 +188,7 @@ class Logger {
   static LogTopic REPLICATION;
   static LogTopic REPLICATION2;
   static LogTopic REPLICATED_STATE;
+  static LogTopic REPLICATED_WAL;
   static LogTopic REQUESTS;
   static LogTopic RESTORE;
   static LogTopic ROCKSDB;
@@ -203,6 +204,7 @@ class Logger {
   static LogTopic VALIDATION;
   static LogTopic V8;
   static LogTopic VIEWS;
+  static LogTopic DEPRECATION;
 
  public:
   struct FIXED {

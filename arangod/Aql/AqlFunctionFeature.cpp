@@ -28,6 +28,7 @@
 #include "Aql/Function.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -41,7 +42,11 @@ using FF = Function::Flags;
 AqlFunctionFeature::AqlFunctionFeature(Server& server)
     : ArangodFeature{server, *this} {
   setOptional(false);
+#ifdef USE_V8
   startsAfter<V8FeaturePhase>();
+#else
+  startsAfter<application_features::ClusterFeaturePhase>();
+#endif
   startsAfter<AqlFeature>();
 }
 
@@ -170,7 +175,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"LOWER", ".", flags, &functions::Lower});
   add({"UPPER", ".", flags, &functions::Upper});
   add({"SUBSTRING", ".,.|.", flags, &functions::Substring});
-  add({"SUBSTRING_BYTES", ".,.|.", flags, &functions::SubstringBytes});
+  add({"SUBSTRING_BYTES", ".,.|.,.,.", flags, &functions::SubstringBytes});
   add({"CONTAINS", ".,.|.", flags, &functions::Contains});
   add({"LIKE", ".,.|.", flags, &functions::Like});
   add({"REGEX_MATCHES", ".,.|.", flags, &functions::RegexMatches});
@@ -497,8 +502,10 @@ void AqlFunctionFeature::addMiscFunctions() {
        &functions::ShardId});
 
   // only function without a C++ implementation. not usable in analyzers
+#ifdef USE_V8
   add({"V8", ".", Function::makeFlags(FF::Deterministic, FF::Cacheable),
        nullptr});
+#endif
 
   // the following functions are not eligible to run on DB servers and not
   // in analyzers

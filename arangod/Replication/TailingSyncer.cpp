@@ -312,7 +312,8 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
   if (name.empty() || (name[0] >= '0' && name[0] <= '9')) {
     LOG_TOPIC("e9bdc", ERR, Logger::REPLICATION)
         << "invalid database name in log";
-    return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
+    return {TRI_ERROR_ARANGO_ILLEGAL_NAME,
+            "illegal name: database named invalid"};
   }
 
   if (!_state.applier._server.hasFeature<arangodb::SystemDatabaseFeature>()) {
@@ -332,11 +333,9 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
     TRI_ASSERT(
         basics::VelocyPackHelper::equal(data.get("name"), nameSlice, false));
 
-    TRI_vocbase_t* vocbase =
-        sysDbFeature.server().getFeature<DatabaseFeature>().lookupDatabase(
-            name);
-
-    if (vocbase != nullptr && name != StaticStrings::SystemDatabase) {
+    if (name != StaticStrings::SystemDatabase &&
+        sysDbFeature.server().getFeature<DatabaseFeature>().existsDatabase(
+            name)) {
       LOG_TOPIC("0a3a4", WARN, Logger::REPLICATION)
           << "seeing database creation marker "
           << "for an already existing db. Dropping db...";
@@ -359,18 +358,15 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
 
     return res;
   } else if (type == REPLICATION_DATABASE_DROP) {
-    TRI_vocbase_t* vocbase =
-        sysDbFeature.server().getFeature<DatabaseFeature>().lookupDatabase(
-            name);
-
-    if (vocbase != nullptr && name != StaticStrings::SystemDatabase) {
+    if (name != StaticStrings::SystemDatabase &&
+        sysDbFeature.server().getFeature<DatabaseFeature>().existsDatabase(
+            name)) {
       // abort all ongoing transactions for the database to be dropped
       abortOngoingTransactions(name);
 
       auto system = sysDbFeature.use();
       TRI_ASSERT(system.get());
-      // delete from cache by id and name
-      _state.vocbases.erase(std::to_string(vocbase->id()));
+      // delete from cache by name
       _state.vocbases.erase(name);
 
       auto res =
@@ -520,10 +516,13 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
       conflictDocumentKey.clear();
     }
 
+    auto operationOrigin =
+        transaction::OperationOriginInternal{"applying replication change"};
+
     // update the apply tick for all standalone operations
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(*vocbase), *coll,
-        AccessMode::Type::EXCLUSIVE);
+        transaction::StandaloneContext::create(*vocbase, operationOrigin),
+        *coll, AccessMode::Type::EXCLUSIVE);
 
     // we will always check if the target document already exists and then
     // either carry out an insert or a replace. so we will be carrying out
@@ -582,9 +581,12 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
 
 Result TailingSyncer::removeSingleDocument(LogicalCollection* coll,
                                            std::string const& key) {
+  auto operationOrigin =
+      transaction::OperationOriginInternal{"applying replication change"};
+
   SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(coll->vocbase()), *coll,
-      AccessMode::Type::EXCLUSIVE);
+      transaction::StandaloneContext::create(coll->vocbase(), operationOrigin),
+      *coll, AccessMode::Type::EXCLUSIVE);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -649,7 +651,9 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
   TRI_ASSERT(countOngoingTransactions(slice) == 0);
 #endif
 
-  auto trx = std::make_unique<ReplicationTransaction>(*vocbase);
+  auto trx = std::make_unique<ReplicationTransaction>(
+      *vocbase,
+      transaction::OperationOriginInternal{"replication transaction"});
   Result res = trx->begin();
 
   if (res.ok()) {
@@ -864,8 +868,10 @@ Result TailingSyncer::truncateCollection(
   uint64_t count = 0;
   Result res;
   {
+    auto operationOrigin = transaction::OperationOriginInternal{
+        "truncating collection for replication"};
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(*vocbase), *col,
+        transaction::StandaloneContext::create(*vocbase, operationOrigin), *col,
         AccessMode::Type::EXCLUSIVE);
     trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
     trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
@@ -1134,7 +1140,9 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response,
           // because single server has no revisions
           // and never reloads cache from db by itself
           // so new analyzers will be not usable on follower
-          analyzersFeature.invalidate(*vocbase);
+          analyzersFeature.invalidate(
+              *vocbase,
+              transaction::OperationOriginInternal{"invalidating analyzers"});
         }
       }
       _analyzersModified.clear();
@@ -1970,7 +1978,14 @@ Result TailingSyncer::processLeaderLog(
     lastAppliedTick = _applier->_state._lastAppliedContinuousTick;
 
     TRI_ASSERT(_applier->_state._lastAvailableContinuousTick >=
-               _applier->_state._lastAppliedContinuousTick);
+               _applier->_state._lastAppliedContinuousTick)
+        << ", lastAvailable: " << _applier->_state._lastAvailableContinuousTick
+        << ", lastContinuous: " << _applier->_state._lastAppliedContinuousTick
+        << ", checkMore: " << checkMore
+        << ", lastIncludedTick: " << lastIncludedTick
+        << ", fetchTick: " << fetchTick
+        << ", lastScannedTick: " << lastScannedTick
+        << ", bumpTick: " << bumpTick;
 
     _applier->_state._totalFetchTime += sharedStatus->time();
     _applier->_state._totalFetchInstances++;

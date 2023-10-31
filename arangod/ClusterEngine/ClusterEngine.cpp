@@ -34,11 +34,13 @@
 #include "ClusterEngine/ClusterIndexFactory.h"
 #include "ClusterEngine/ClusterRestHandlers.h"
 #include "ClusterEngine/ClusterTransactionState.h"
+#ifdef USE_V8
 #include "ClusterEngine/ClusterV8Functions.h"
+#endif
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "Transaction/Context.h"
@@ -120,8 +122,10 @@ std::unique_ptr<transaction::Manager> ClusterEngine::createTransactionManager(
 
 std::shared_ptr<TransactionState> ClusterEngine::createTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
-    transaction::Options const& options) {
-  return std::make_shared<ClusterTransactionState>(vocbase, tid, options);
+    transaction::Options const& options,
+    transaction::OperationOrigin operationOrigin) {
+  return std::make_shared<ClusterTransactionState>(vocbase, tid, options,
+                                                   operationOrigin);
 }
 
 void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder,
@@ -271,18 +275,19 @@ void ClusterEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
   }
 }
 
+#ifdef USE_V8
 /// @brief Add engine-specific V8 functions
 void ClusterEngine::addV8Functions() {
   ClusterV8Functions::registerResources();
 }
+#endif
 
 /// @brief Add engine-specific REST handlers
 void ClusterEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {
   ClusterRestHandlers::registerResources(&handlerFactory);
 }
 
-void ClusterEngine::waitForEstimatorSync(
-    std::chrono::milliseconds maxWaitTime) {
+void ClusterEngine::waitForEstimatorSync() {
   // fixes tests by allowing us to reload the cluster selectivity estimates
   // If test `shell-cluster-collection-selectivity.js` fails consider increasing
   // timeout
@@ -290,17 +295,15 @@ void ClusterEngine::waitForEstimatorSync(
 }
 Result ClusterEngine::dropReplicatedState(
     TRI_vocbase_t& vocbase,
-    std::unique_ptr<replication2::replicated_state::IStorageEngineMethods>&
-        ptr) {
+    std::unique_ptr<replication2::storage::IStorageEngineMethods>& ptr) {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
-ResultT<std::unique_ptr<replication2::replicated_state::IStorageEngineMethods>>
+ResultT<std::unique_ptr<replication2::storage::IStorageEngineMethods>>
 ClusterEngine::createReplicatedState(
     TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
-    replication2::replicated_state::PersistedStateInfo const& info) {
-  return ResultT<
-      std::unique_ptr<replication2::replicated_state::IStorageEngineMethods>>{
+    replication2::storage::PersistedStateInfo const& info) {
+  return ResultT<std::unique_ptr<replication2::storage::IStorageEngineMethods>>{
       TRI_ERROR_NOT_IMPLEMENTED};
 }
 

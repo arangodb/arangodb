@@ -1,0 +1,13 @@
+diff --git a/node_modules/jsoneditor-react/es/index.js b/node_modules/jsoneditor-react/es/index.js
+index cc2168b..dd37bbb 100644
+--- a/node_modules/jsoneditor-react/es/index.js
++++ b/node_modules/jsoneditor-react/es/index.js
+@@ -280,7 +280,7 @@ function (_Component) {
+           }));
+         } else {
+           if (schema !== this.props.schema || schemaRefs !== this.props.schemaRefs) {
+-            this.jsonEditor.setSchema(schema, schemaRefs);
++            this.jsonEditor.setSchema(this.props.schema, this.props.schemaRefs);
+           }
+ 
+           if (name !== this.jsonEditor.getName()) {

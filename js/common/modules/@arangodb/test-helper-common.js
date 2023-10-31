@@ -102,7 +102,7 @@ exports.truncateFailure = function (collection) {
     collection.truncate();
     return 1;
   } catch (ex) {
-    if (!ex instanceof arangodb.ArangoError ||
+    if (!(ex instanceof arangodb.ArangoError) ||
       ex.errorNum !== internal.errors.ERROR_DEBUG.code) {
       throw ex;
     }
@@ -407,17 +407,17 @@ exports.endpointToURL = (endpoint) => {
 };
 
 exports.checkIndexMetrics = (checkFunction) => {
-  var isMetricsArrived = false;
+  var isMetricArrived = false;
   var timeToWait = 100;
-  while (!isMetricsArrived) {
+  while (!isMetricArrived) {
     try {
       checkFunction();
-      isMetricsArrived = true;
+      isMetricArrived = true;
     } catch (err) {
-      isMetricsArrived = false;
+      isMetricArrived = false;
       if (timeToWait > 0) {
-        require("internal").sleep(2);
-        timeToWait = timeToWait - 2;
+        require("internal").sleep(1);
+        timeToWait = timeToWait - 1;
       } else {
         throw err;
       }

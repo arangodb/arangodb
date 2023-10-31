@@ -33,7 +33,6 @@ let { getEndpointsByType,
       debugCanUseFailAt,
       debugClearFailAt,
       debugSetFailAt,
-      waitForShardsInSync
     } = require('@arangodb/test-helper');
 const ERRORS = arangodb.errors;
       

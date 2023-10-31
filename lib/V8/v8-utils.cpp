@@ -23,6 +23,10 @@
 
 #include "v8-utils.h"
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include "Basics/Common.h"
 #include "Basics/operating-system.h"
 
@@ -49,6 +53,7 @@
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <string>
 #include <string_view>
@@ -116,7 +121,10 @@
 #include <unistd.h>
 #endif
 
+#include <velocypack/Builder.h>
 #include <velocypack/Validator.h>
+
+#include <absl/strings/escaping.h>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -133,8 +141,8 @@ static UniformCharacter JSSaltGenerator(
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*(){}"
     "[]:;<>,.?/|");
 
-arangodb::Result doSleep(
-    double n, arangodb::application_features::ApplicationServer& server) {
+Result doSleep(double n,
+               arangodb::application_features::ApplicationServer& server) {
   double until = TRI_microtime() + n;
 
   while (true) {
@@ -153,6 +161,17 @@ arangodb::Result doSleep(
     std::this_thread::sleep_for(std::chrono::microseconds(duration));
   }
 }
+
+// the following is a local, in-memory replacement for what used to be the
+// _fishbowl collection. instead of creating the collection _fishbowl, we
+// now will simply store the Foxx apps information in memory. there are
+// functions FISHBOWL_SET and FISHBOWL_GET to access the contents. these
+// functions are supposed to be used only internally
+
+// lock for protecting access to fishbowlData
+std::mutex fishbowlLock;
+// contents of _fishbowl
+std::shared_ptr<velocypack::Builder> fishbowlData;
 
 }  // namespace
 
@@ -366,7 +385,8 @@ static void JS_Base64Decode(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   try {
     std::string const value = TRI_ObjectToString(isolate, args[0]);
-    std::string const base64 = StringUtils::decodeBase64(value);
+    std::string base64;
+    absl::Base64Unescape(value, &base64);
 
     TRI_V8_RETURN_STD_STRING(base64);
   } catch (...) {
@@ -394,8 +414,8 @@ static void JS_Base64Encode(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   try {
-    std::string const&& value = TRI_ObjectToString(isolate, args[0]);
-    std::string const&& base64 = StringUtils::encodeBase64(value);
+    auto value = TRI_ObjectToString(isolate, args[0]);
+    auto base64 = absl::Base64Escape(value);
 
     TRI_V8_RETURN_STD_STRING(base64);
   } catch (...) {
@@ -583,76 +603,8 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helper function for internal.download()
-////////////////////////////////////////////////////////////////////////////////
-
-static std::string GetEndpointFromUrl(std::string const& url) {
-  char const* p = url.c_str();
-  char const* e = p + url.size();
-  size_t slashes = 0;
-
-  while (p < e) {
-    if (*p == '?') {
-      // http(s)://example.com?foo=bar
-      return url.substr(0, p - url.c_str());
-    } else if (*p == '/') {
-      if (++slashes == 3) {
-        return url.substr(0, p - url.c_str());
-      }
-    }
-    ++p;
-  }
-
-  return url;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief downloads data from a URL
-///
-/// @FUN{internal.download(@FA{url}, @FA{body}, @FA{options}, @FA{outfile})}
-///
-/// Downloads the data from the URL specified by @FA{url} and saves the
-/// response body to @FA{outfile}. The following @FA{options} are supported:
-///
-/// - @LIT{method}: the HTTP method to be used. The supported HTTP methods are
-///   @LIT{DELETE}, @LIT{GET}, @LIT{HEAD}, @LIT{POST}, @LIT{PUT}, @LIT{PATCH}
-///
-/// - @LIT{timeout}: a timeout value for the connection
-///
-/// - @LIT{followRedirects}: whether or not to follow redirects
-///
-/// - @LIT{maxRedirects}: maximum number of redirects to follow, only useful
-///   if @LIT{followRedirects} is *true*.
-///
-/// - @LIT{returnBodyOnError}: whether or not to return / save body on HTTP
-///   error
-///
-/// - @LIT{returnBodyAsBuffer}: whether or not to return the result body in
-///   a Buffer object (default is false, body will be returned in a String)
-///
-/// - @LIT{headers}: an optional array of headers to be sent for the first
-///   (non-redirect) request.
-///
-/// Up to 5 redirects will be followed. Any user-defined headers will only be
-/// sent for the first request. If no timeout is given, a default timeout will
-/// be used.
-///
-/// If @FA{outfile} is specified, the result body will be saved in a file
-/// specified by @FA{outfile}. If @FA{outfile} already exists, an error will
-/// be thrown.
-///
-/// If @FA{outfile} is not specified, the result body will be returned in the
-/// @LIT{body} attribute of the result object.
-///
-/// `process-utils.js` depends on simple http client error messages.
-///   this needs to be adjusted if this is ever changed!
-////////////////////////////////////////////////////////////////////////////////
-namespace {
-
-auto getEndpoint(v8::Isolate* isolate,
-                 std::vector<std::string> const& endpoints, std::string& url,
-                 std::string& lastEndpoint)
+auto getEndpoint(std::vector<std::string> const& endpoints, std::string& url,
+                 std::string const& lastEndpoint)
     -> std::tuple<std::string, std::string, std::string> {
   // returns endpoint, relative, error
   std::string relative;
@@ -664,7 +616,8 @@ auto getEndpoint(v8::Isolate* isolate,
     if (!url.starts_with(prefix)) {
       return false;
     }
-    endpoint = GetEndpointFromUrl(url).substr(prefix.size());
+    endpoint =
+        basics::StringUtils::getEndpointFromUrl(url).substr(prefix.size());
     relative = url.substr(prefix.size() + endpoint.size());
 
     if (relative.empty() || relative[0] != '/') {
@@ -731,7 +684,48 @@ auto getEndpoint(v8::Isolate* isolate,
   }
   return {std::move(endpoint), std::move(relative), ""};
 }
-}  // namespace
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief downloads data from a URL
+///
+/// @FUN{internal.download(@FA{url}, @FA{body}, @FA{options}, @FA{outfile})}
+///
+/// Downloads the data from the URL specified by @FA{url} and saves the
+/// response body to @FA{outfile}. The following @FA{options} are supported:
+///
+/// - @LIT{method}: the HTTP method to be used. The supported HTTP methods are
+///   @LIT{DELETE}, @LIT{GET}, @LIT{HEAD}, @LIT{POST}, @LIT{PUT}, @LIT{PATCH}
+///
+/// - @LIT{timeout}: a timeout value for the connection
+///
+/// - @LIT{followRedirects}: whether or not to follow redirects
+///
+/// - @LIT{maxRedirects}: maximum number of redirects to follow, only useful
+///   if @LIT{followRedirects} is *true*.
+///
+/// - @LIT{returnBodyOnError}: whether or not to return / save body on HTTP
+///   error
+///
+/// - @LIT{returnBodyAsBuffer}: whether or not to return the result body in
+///   a Buffer object (default is false, body will be returned in a String)
+///
+/// - @LIT{headers}: an optional array of headers to be sent for the first
+///   (non-redirect) request.
+///
+/// Up to 5 redirects will be followed. Any user-defined headers will only be
+/// sent for the first request. If no timeout is given, a default timeout will
+/// be used.
+///
+/// If @FA{outfile} is specified, the result body will be saved in a file
+/// specified by @FA{outfile}. If @FA{outfile} already exists, an error will
+/// be thrown.
+///
+/// If @FA{outfile} is not specified, the result body will be returned in the
+/// @LIT{body} attribute of the result object.
+///
+/// `process-utils.js` depends on simple http client error messages.
+///   this needs to be adjusted if this is ever changed!
+////////////////////////////////////////////////////////////////////////////////
 
 void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -789,7 +783,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  std::string lastEndpoint = GetEndpointFromUrl(url);
+  std::string lastEndpoint = basics::StringUtils::getEndpointFromUrl(url);
 
   std::string body;
   if (args.Length() > 1) {
@@ -979,7 +973,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   while (numRedirects < maxRedirects) {
     auto [endpoint, relative, error] =
-        getEndpoint(isolate, endpoints, url, lastEndpoint);
+        getEndpoint(endpoints, url, lastEndpoint);
     if (!error.empty()) {
       TRI_V8_THROW_SYNTAX_ERROR(error.c_str());
     }
@@ -1073,7 +1067,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
           isLocalUrl = true;
         }
         if (url.starts_with("http:") || url.starts_with("https:")) {
-          lastEndpoint = GetEndpointFromUrl(url);
+          lastEndpoint = basics::StringUtils::getEndpointFromUrl(url);
         }
         continue;
       }
@@ -1340,10 +1334,6 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_Exists
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_Exists(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1375,10 +1365,6 @@ static void JS_Exists(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_Chmod
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ChMod(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1443,10 +1429,6 @@ static void JS_ChMod(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_Size
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_SizeFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1508,10 +1490,6 @@ static void JS_Getline(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_GetTempPath
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_GetTempPath(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1535,10 +1513,6 @@ static void JS_GetTempPath(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_GetTempFile
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_GetTempFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1593,10 +1567,6 @@ static void JS_GetTempFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_IsDirectory
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_IsDirectory(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1630,10 +1600,6 @@ static void JS_IsDirectory(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_IsFile
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_IsFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1666,10 +1632,6 @@ static void JS_IsFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_MakeAbsolute
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1712,10 +1674,6 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_List
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1756,10 +1714,6 @@ static void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_ListTree
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_ListTree(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1797,10 +1751,6 @@ static void JS_ListTree(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_MakeDirectory
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_MakeDirectory(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1840,10 +1790,6 @@ static void JS_MakeDirectory(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_MakeDirectoryRecursive
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_MakeDirectoryRecursive(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1882,10 +1828,6 @@ static void JS_MakeDirectoryRecursive(
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_Unzip
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_UnzipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1946,10 +1888,6 @@ static void JS_UnzipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_THROW_EXCEPTION_MESSAGE(res, errMsg);
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_Zip
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -2513,7 +2451,8 @@ static void JS_MarkNonce(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("expecting 16-Byte base64url-encoded nonce");
   }
 
-  std::string raw = StringUtils::decodeBase64U(*base64u);
+  std::string raw;
+  absl::Base64Unescape(*base64u, &raw);
 
   if (raw.size() != 12) {
     TRI_V8_THROW_TYPE_ERROR("expecting 12-Byte nonce");
@@ -2525,10 +2464,6 @@ static void JS_MarkNonce(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN_FALSE();
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_MTime
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_MTime(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -2561,10 +2496,6 @@ static void JS_MTime(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(v8::Number::New(isolate, static_cast<double>(mtime)));
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_MoveFile
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_MoveFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -2626,10 +2557,6 @@ static void JS_MoveFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_CopyDirectoryRecursive
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CopyRecursive(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -2703,10 +2630,6 @@ static void JS_CopyRecursive(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_CopyFile
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_CopyFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -2766,10 +2689,6 @@ static void JS_CopyFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_CopyFile
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_LinkFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -2932,9 +2851,7 @@ static void JS_Output(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ///
 /// - virtualSize: Virtual memory size in bytes.
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{internalStatistics}
-///   require("internal").processStat();
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @example require("internal").processStat();
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessStatisticsToV8(
@@ -3092,10 +3009,6 @@ static void JS_Rand(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_Read
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_Read(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
@@ -3137,10 +3050,6 @@ static void JS_Read(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_Read
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_ReadPipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
@@ -3177,10 +3086,6 @@ static void JS_ReadPipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_Read
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_WritePipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
@@ -3249,10 +3154,6 @@ static void JS_ClosePipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_ReadBuffer
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_ReadBuffer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
@@ -3289,10 +3190,6 @@ static void JS_ReadBuffer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(v8::Local<v8::Object>::New(isolate, buffer->_handle));
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_ReadGzip
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ReadGzip(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
@@ -3333,10 +3230,6 @@ static void JS_ReadGzip(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 #ifdef USE_ENTERPRISE
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_ReadGzip
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_ReadDecrypt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
@@ -3391,10 +3284,6 @@ static void JS_ReadDecrypt(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_Read64
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_Read64(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
@@ -3422,7 +3311,7 @@ static void JS_Read64(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   try {
     std::string content = FileUtils::slurp(*name);
-    base64 = StringUtils::encodeBase64(content);
+    base64 = absl::Base64Escape(content);
   } catch (...) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), TRI_last_error());
   }
@@ -3617,10 +3506,6 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_Remove
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -3654,10 +3539,6 @@ static void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_RemoveDirectory
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RemoveDirectory(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -3701,10 +3582,6 @@ static void JS_RemoveDirectory(
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_RemoveDirectoryRecursive
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RemoveRecursiveDirectory(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -4092,7 +3969,7 @@ static void JS_RsaPrivSign(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto res = SslInterface::rsaPrivSign(key, message, sign, error);
 
   if (res == 0) {
-    sign = StringUtils::encodeBase64(sign);
+    sign = absl::Base64Escape(sign);
   } else {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, error);
   }
@@ -4130,7 +4007,7 @@ static void JS_Sleep(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_GLOBALS();
   Result res = ::doSleep(n, v8g->_server);
   if (res.fail()) {
-    TRI_V8_THROW_EXCEPTION(res.errorNumber());
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -4192,7 +4069,7 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_GLOBALS();
   Result res = ::doSleep(n, v8g->_server);
   if (res.fail()) {
-    TRI_V8_THROW_EXCEPTION(res.errorNumber());
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -4551,6 +4428,8 @@ static void JS_GetExternalSpawned(
         "not allowed to execute or modify state of external processes");
   }
 
+  std::lock_guard guard{ExternalProcessesLock};
+
   v8::Handle<v8::Array> spawnedProcesses =
       v8::Array::New(isolate, static_cast<int>(ExternalProcesses.size()));
 
@@ -4724,9 +4603,10 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (isExecutionDeadlineReached(isolate)) {
     return;
   }
-  ExternalId pid;
 
+  ExternalId pid;
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
+
   bool wait = false;
   if (args.Length() >= 2) {
     wait = TRI_ObjectToBoolean(isolate, args[1]);
@@ -4738,8 +4618,15 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   timeoutms = correctTimeoutToExecutionDeadline(timeoutms);
 
-  ExternalProcessStatus external =
-      TRI_CheckExternalProcess(pid, wait, timeoutms);
+  ExternalProcessStatus external;
+  auto historicStatus = getHistoricStatus(pid._pid, v8g->_server);
+  if (historicStatus.has_value()) {
+    external = *historicStatus;
+  } else {
+    external = TRI_CheckExternalProcess(pid, wait, timeoutms, [&]() {
+      return isExecutionDeadlineReached(isolate);
+    });
+  }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   auto context = TRI_IGETC;
@@ -4763,7 +4650,7 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                static_cast<int32_t>(external._exitStatus)))
         .FromMaybe(false);
   }
-  if (external._errorMessage.length() > 0) {
+  if (!external._errorMessage.empty()) {
     result
         ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
               TRI_V8_STD_STRING(isolate, external._errorMessage))
@@ -4771,6 +4658,50 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   // return the result
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the scheduler priority of an external process
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_SetPriority(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract the arguments
+  if (args.Length() != 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "setPriorityExternal(<external-identifier>, <priority>)");
+  }
+
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_v8security;
+
+  if (!v8security.isAllowedToControlProcesses(isolate)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        "not allowed to execute or modify state of external processes");
+  }
+
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+
+  ExternalId pid;
+  pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
+
+  uint32_t priority =
+      static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[1], true));
+
+  auto ret = TRI_SetPriority(pid, priority);
+
+  if (ret.length() != 0) {
+    TRI_V8_THROW_ERROR(ret);
+  }
+
+  // return the result
+  TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
 
@@ -4904,7 +4835,9 @@ static void JS_ExecuteExternalAndWait(
   ExternalId pid;
   pid._pid = external._pid;
 
-  auto external_status = TRI_CheckExternalProcess(pid, true, timeoutms);
+  auto external_status = TRI_CheckExternalProcess(pid, true, timeoutms, [&]() {
+    return isExecutionDeadlineReached(isolate);
+  });
 
   convertStatusToV8(args, result, external_status, external);
 
@@ -5004,6 +4937,10 @@ static void JS_SuspendExternal(
 #else
   pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(isolate, args[0], true));
 #endif
+  if (pid._pid == 0) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN, "not allowed to suspend the invoking process!");
+  }
 
   // return the result
   if (TRI_SuspendExternalProcess(pid)) {
@@ -5134,12 +5071,59 @@ static void JS_termsize(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("termsize()");
   }
 
-  TRI_TerminalSize s = TRI_DefaultTerminalSize();
+  auto s = terminal_utils::defaultTerminalSize();
   v8::Handle<v8::Array> list = v8::Array::New(isolate, 2);
   list->Set(context, 0, v8::Integer::New(isolate, s.rows)).FromMaybe(false);
   list->Set(context, 1, v8::Integer::New(isolate, s.columns)).FromMaybe(false);
 
   TRI_V8_RETURN(list);
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_FishbowlSet(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract the arguments
+  if (args.Length() != 1 || !args[0]->IsArray()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("FISHBOWL_SET(<value>)");
+  }
+
+  ISOLATE;
+  auto builder = std::make_shared<VPackBuilder>();
+  TRI_V8ToVPack(isolate, *builder, args[0], false);
+
+  std::lock_guard<std::mutex> guard(::fishbowlLock);
+  ::fishbowlData = std::move(builder);
+
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_FishbowlGet(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract the arguments
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("FISHBOWL_GET()");
+  }
+
+  std::shared_ptr<VPackBuilder> builder;
+  {
+    std::lock_guard<std::mutex> guard(::fishbowlLock);
+    builder = ::fishbowlData;
+  }
+
+  ISOLATE;
+  v8::Handle<v8::Value> result;
+  if (builder == nullptr) {
+    result = v8::Array::New(isolate);
+  } else {
+    result = TRI_VPackToV8(isolate, builder->slice());
+  }
+
+  TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -5854,8 +5838,9 @@ static void JS_IsAllowedDatabaseName(
 
   auto databaseName = TRI_ObjectToString(isolate, args[0]);
   bool isExtendedName = TRI_ObjectToBoolean(isolate, args[1]);
-  bool result = arangodb::DatabaseNameValidator::isAllowedName(
-      true, isExtendedName, databaseName);
+  bool result = arangodb::DatabaseNameValidator::validateName(
+                    true, isExtendedName, databaseName)
+                    .ok();
 
   TRI_V8_RETURN_BOOL(result);
   TRI_V8_TRY_CATCH_END
@@ -6036,6 +6021,9 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_STATUS_EXTERNAL"),
       JS_StatusExternal);
   TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_SET_PRIORITY_EXTERNAL"),
+      JS_SetPriority);
+  TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_LOAD"), JS_Load);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_LOG"),
                                JS_Log);
@@ -6115,6 +6103,13 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_IS_STOPPING"), JS_IsStopping);
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_TERMINAL_SIZE"), JS_termsize);
+
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "FISHBOWL_GET"),
+                               JS_FishbowlGet, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "FISHBOWL_SET"),
+                               JS_FishbowlSet, true);
 
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "V8_TO_VPACK"), JS_V8ToVPack);

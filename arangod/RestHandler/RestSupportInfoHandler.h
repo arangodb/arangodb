@@ -38,8 +38,5 @@ class RestSupportInfoHandler : public arangodb::RestBaseHandler {
   char const* name() const override final { return "RestSupportInfoHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
-
- private:
-  void buildHostInfo(arangodb::velocypack::Builder& result);
 };
 }  // namespace arangodb

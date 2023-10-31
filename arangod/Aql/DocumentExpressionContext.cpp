@@ -53,7 +53,7 @@ AqlValue SimpleDocumentExpressionContext::getVariableValue(
   TRI_ASSERT(variable != nullptr);
   return QueryExpressionContext::getVariableValue(
       variable, doCopy, mustDestroy,
-      [this](Variable const* variable, bool doCopy, bool& mustDestroy) {
+      [this](Variable const* /*variable*/, bool doCopy, bool& mustDestroy) {
         mustDestroy = doCopy;
         // return current document
         if (doCopy) {
@@ -85,15 +85,17 @@ AqlValue GenericDocumentExpressionContext::getVariableValue(
           }
           return AqlValue(AqlValueHintSliceNoCopy(_document));
         }
-        for (auto const& [id, regId] : _filterVarsToRegister) {
+        auto regId = registerForVariable(variable->id);
+        TRI_ASSERT(regId != RegisterId::maxRegisterId)
+            << "variable " << variable->name << " (" << variable->id
+            << ") not found";
+        if (regId != RegisterId::maxRegisterId) {
           // we can only get here in a post-filter expression
-          if (variable->id == id) {
-            TRI_ASSERT(regId < _inputRow.getNumRegisters());
-            if (doCopy) {
-              return _inputRow.getValue(regId).clone();
-            }
-            return _inputRow.getValue(regId);
+          TRI_ASSERT(regId < _inputRow.getNumRegisters());
+          if (doCopy) {
+            return _inputRow.getValue(regId).clone();
           }
+          return _inputRow.getValue(regId);
         }
 
         // referred-to variable not found. should never happen

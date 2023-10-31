@@ -28,8 +28,8 @@
 #include "Pregel/PregelFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SoftShutdownFeature.h"
+#include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Scheduler/SupervisedScheduler.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Utils/CursorRepository.h"
@@ -58,8 +58,12 @@ SoftShutdownFeature::SoftShutdownFeature(Server& server)
   setOptional(true);
   startsAfter<application_features::AgencyFeaturePhase>();
   startsAfter<ShutdownFeature>();
+#ifdef USE_V8
   startsAfter<ConsoleFeature>();
   startsAfter<ScriptFeature>();
+#else
+  startsAfter<AgencyFeaturePhase>();
+#endif
 
   // We do not yet know if we are a coordinator, so just in case,
   // create a SoftShutdownTracker, it will not hurt if it is not used:

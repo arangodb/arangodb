@@ -659,15 +659,30 @@ std::unique_ptr<Condition> Condition::clone() const {
   return copy;
 }
 
+/// @brief replace variables in the condition with other variables
+void Condition::replaceVariables(
+    std::unordered_map<VariableId, Variable const*> const& replacements) {
+  if (_root == nullptr) {
+    return;
+  }
+
+  _root = Ast::replaceVariables(_root, replacements, true);
+}
+
+void Condition::replaceAttributeAccess(Variable const* searchVariable,
+                                       std::span<std::string_view> attribute,
+                                       Variable const* replaceVariable) {
+  if (_root == nullptr) {
+    return;
+  }
+
+  _root = Ast::replaceAttributeAccess(_ast, _root, searchVariable, attribute,
+                                      replaceVariable);
+}
+
 /// @brief add a sub-condition to the condition
 /// the sub-condition will be AND-combined with the existing condition(s)
 void Condition::andCombine(AstNode const* node) {
-  if (_isNormalized) {
-    // already normalized
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "cannot and-combine normalized condition");
-  }
-
   if (_root == nullptr) {
     // condition was empty before
     _root = _ast->clone(node);
@@ -678,6 +693,12 @@ void Condition::andCombine(AstNode const* node) {
   }
 
   TRI_ASSERT(_root != nullptr);
+
+  // note: it seems that andCombine() is sometimes called even for
+  // conditions that have been normalized already. in this case, we
+  // clear the normalization flag again after we have modified the
+  // condition.
+  _isNormalized = false;
 }
 
 /// @brief locate indexes for each condition
@@ -1093,7 +1114,8 @@ AstNode* Condition::removeCondition(ExecutionPlan const* plan,
 }
 
 /// @brief remove (now) invalid variables from the condition
-bool Condition::removeInvalidVariables(VarSet const& validVars) {
+bool Condition::removeInvalidVariables(VarSet const& validVars,
+                                       bool& noRemoves) {
   if (_root == nullptr) {
     return false;
   }
@@ -1134,6 +1156,7 @@ bool Condition::removeInvalidVariables(VarSet const& validVars) {
       }
 
       if (invalid) {
+        noRemoves = false;
         andNode->removeMemberUncheckedUnordered(j);
         // repeat with some member index
         TRI_ASSERT(nAnd > 0);

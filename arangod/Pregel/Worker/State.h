@@ -22,62 +22,80 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <chrono>
+#include <utility>
+#include <memory>
+
 #include "Actor/ActorPID.h"
 #include "Pregel/Algorithm.h"
-#include "Basics/Guarded.h"
 #include "Pregel/CollectionSpecifications.h"
+#include "Pregel/GraphStore/Magazine.h"
+#include "Pregel/GraphStore/Quiver.h"
+#include "Pregel/IncomingCache.h"
+#include "Pregel/OutgoingCache.h"
 #include "Pregel/PregelOptions.h"
+#include "Pregel/Worker/Messages.h"
+#include "Pregel/WorkerContext.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/vocbase.h"
 #include "Pregel/Status/Status.h"
+#include "Pregel/GraphStore/Magazine.h"
+#include "Pregel/Worker/ExecutionStates/InitialState.h"
 
 namespace arangodb::pregel::worker {
 
 template<typename V, typename E, typename M>
 struct WorkerState {
-  WorkerState(actor::ActorPID conductor,
-              ExecutionSpecifications executionSpecifications,
-              CollectionSpecifications collectionSpecifications,
+  WorkerState(std::unique_ptr<WorkerContext> workerContext,
+              actor::ActorPID conductor,
+              const worker::message::CreateWorker& specifications,
+              std::chrono::seconds messageTimeout,
+              std::unique_ptr<MessageFormat<M>> newMessageFormat,
+              std::unique_ptr<MessageCombiner<M>> newMessageCombiner,
               std::unique_ptr<Algorithm<V, E, M>> algorithm,
-              TRI_vocbase_t& vocbase)
-      : conductor{std::move(conductor)},
-        executionSpecifications{std::move(executionSpecifications)},
-        collectionSpecifications{std::move(collectionSpecifications)},
+              TRI_vocbase_t& vocbase, actor::ActorPID spawnActor,
+              actor::ActorPID resultActor, actor::ActorPID statusActor,
+              actor::ActorPID metricsActor)
+      : config{std::make_shared<WorkerConfig>(&vocbase)},
+        workerContext{std::move(workerContext)},
+        messageTimeout{messageTimeout},
+        messageFormat{std::move(newMessageFormat)},
+        messageCombiner{std::move(newMessageCombiner)},
+        conductor{std::move(conductor)},
         algorithm{std::move(algorithm)},
-        vocbaseGuard{vocbase} {};
-
-  auto observeStatus() -> Status const {
-    auto currentGss = currentGssObservables.observe();
-    auto fullGssStatus = allGssStatus.copy();
-
-    if (!currentGss.isDefault()) {
-      fullGssStatus.gss.emplace_back(currentGss);
-    }
-    return Status{
-        .graphStoreStatus =
-            GraphStoreStatus{},  // TODO GORDO-1546 graphStore->status(),
-        .allGssStatus = fullGssStatus.gss.size() > 0
-                            ? std::optional{fullGssStatus}
-                            : std::nullopt};
+        vocbaseGuard{vocbase},
+        spawnActor(std::move(spawnActor)),
+        resultActor(std::move(resultActor)),
+        statusActor(std::move(statusActor)),
+        metricsActor(std::move(metricsActor)) {
+    executionState = std::make_unique<Initial<V, E, M>>(*this);
+    config->updateConfig(specifications);
   }
 
-  actor::ActorPID conductor;
-  const ExecutionSpecifications executionSpecifications;
-  const CollectionSpecifications collectionSpecifications;
+  std::shared_ptr<WorkerConfig> config;
+
+  // only needed in computing state
+  std::unique_ptr<WorkerContext> workerContext;
+  std::chrono::seconds messageTimeout;
+  std::unique_ptr<MessageFormat<M>> messageFormat;
+  std::unique_ptr<MessageCombiner<M>> messageCombiner;
+  std::unordered_map<ShardID, actor::ActorPID> responsibleActorPerShard;
+
+  std::unique_ptr<ExecutionState> executionState;
+  const actor::ActorPID conductor;
   std::unique_ptr<Algorithm<V, E, M>> algorithm;
   const DatabaseGuard vocbaseGuard;
-  // TODO GOROD-1546
-  // GraphStore graphStore;
-  GssObservables currentGssObservables;
-  Guarded<AllGssStatus> allGssStatus;
+  const actor::ActorPID spawnActor;
+  const actor::ActorPID resultActor;
+  const actor::ActorPID statusActor;
+  const actor::ActorPID metricsActor;
+  Magazine<V, E> magazine;
+  MessageStats messageStats;
 };
 template<typename V, typename E, typename M, typename Inspector>
 auto inspect(Inspector& f, WorkerState<V, E, M>& x) {
-  return f.object(x).fields(
-      f.field("conductor", x.conductor),
-      f.field("executionSpecifications", x.executionSpecifications),
-      f.field("collectionSpecifications", x.collectionSpecifications),
-      f.field("algorithm", x.algorithm->name()));
+  return f.object(x).fields(f.field("conductor", x.conductor),
+                            f.field("algorithm", x.algorithm->name()));
 }
 
 }  // namespace arangodb::pregel::worker

@@ -82,6 +82,8 @@ class PhysicalCollection {
 
   void drop();
 
+  virtual void freeMemory() noexcept;
+
   /// recalculate counts for collection in case of failure, blocking
   virtual uint64_t recalculateCounts();
 
@@ -144,8 +146,9 @@ class PhysicalCollection {
 
   /// @brief create or restore an index
   /// @param restore utilize specified ID, assume index has to be created
-  virtual std::shared_ptr<Index> createIndex(velocypack::Slice info,
-                                             bool restore, bool& created) = 0;
+  virtual std::shared_ptr<Index> createIndex(
+      velocypack::Slice info, bool restore, bool& created,
+      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr) = 0;
 
   virtual Result dropIndex(IndexId iid);
 
@@ -189,28 +192,20 @@ class PhysicalCollection {
       transaction::Methods*, std::string_view,
       std::pair<LocalDocumentId, RevisionId>&) const = 0;
 
-  virtual Result read(transaction::Methods*, std::string_view key,
-                      IndexIterator::DocumentCallback const& cb,
-                      ReadOwnWrites readOwnWrites) const = 0;
+  struct LookupOptions {
+    bool readCache = true;
+    bool fillCache = true;
+    bool readOwnWrites = false;
+  };
 
-  virtual Result readFromSnapshot(transaction::Methods* trx,
-                                  LocalDocumentId const& token,
-                                  IndexIterator::DocumentCallback const& cb,
-                                  ReadOwnWrites readOwnWrites,
-                                  StorageSnapshot const& snapshot) const {
-    TRI_ASSERT(false);
-    return {TRI_ERROR_NOT_IMPLEMENTED};
-  }
+  virtual Result lookup(transaction::Methods* trx, std::string_view key,
+                        IndexIterator::DocumentCallback const& cb,
+                        LookupOptions options) const = 0;
 
-  virtual Result read(transaction::Methods* trx, LocalDocumentId const& token,
-                      IndexIterator::DocumentCallback const& cb,
-                      ReadOwnWrites readOwnWrites) const = 0;
-
-  virtual Result lookupDocument(transaction::Methods& trx,
-                                LocalDocumentId token,
-                                velocypack::Builder& builder, bool readCache,
-                                bool fillCache,
-                                ReadOwnWrites readOwnWrites) const = 0;
+  virtual Result lookup(transaction::Methods* trx, LocalDocumentId token,
+                        IndexIterator::DocumentCallback const& cb,
+                        LookupOptions options,
+                        StorageSnapshot const* snapshot = nullptr) const = 0;
 
   virtual Result insert(transaction::Methods& trx,
                         IndexesSnapshot const& indexesSnapshot,

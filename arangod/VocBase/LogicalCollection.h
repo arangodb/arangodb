@@ -25,11 +25,11 @@
 #pragma once
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Containers/FlatHashMap.h"
 #include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -37,6 +37,8 @@
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/Validators.h"
 #include "VocBase/voc-types.h"
+
+#include <mutex>
 
 namespace arangodb {
 
@@ -68,7 +70,6 @@ namespace replication {
 enum class Version;
 }
 namespace replication2 {
-class LogId;
 namespace replicated_state {
 template<typename S>
 struct ReplicatedState;
@@ -78,6 +79,9 @@ struct DocumentLeaderState;
 struct DocumentFollowerState;
 }  // namespace document
 }  // namespace replicated_state
+namespace agency {
+struct CollectionGroupId;
+}
 }  // namespace replication2
 
 /// please note that coordinator-based logical collections are frequently
@@ -117,7 +121,7 @@ class LogicalCollection : public LogicalDataSource {
    * add a new value make sure it is the next free 2^n value.
    * For Backwards Compatibility a value can never be reused.
    */
-  enum InternalValidatorType {
+  enum InternalValidatorType : std::uint64_t {
     None = 0,
     LogicalSmartEdge = 1,
     LocalSmartEdge = 2,
@@ -158,8 +162,6 @@ class LogicalCollection : public LogicalDataSource {
   RevisionId newRevisionId() const;
 
   void executeWhileStatusWriteLocked(std::function<void()> const& callback);
-
-  uint64_t numberDocuments(transaction::Methods*, transaction::CountType type);
 
   // SECTION: Properties
   RevisionId revision(transaction::Methods*) const;
@@ -222,16 +224,36 @@ class LogicalCollection : public LogicalDataSource {
   size_t replicationFactor() const noexcept;
   size_t writeConcern() const noexcept;
   replication::Version replicationVersion() const noexcept;
-  std::string const& distributeShardsLike() const noexcept;
-  std::vector<std::string> const& avoidServers() const noexcept;
+  std::string distributeShardsLike() const noexcept;
   bool isSatellite() const noexcept;
   bool usesDefaultShardKeys() const noexcept;
   std::vector<std::string> const& shardKeys() const noexcept;
-  TEST_VIRTUAL std::shared_ptr<ShardMap> shardIds() const;
+
+  virtual std::shared_ptr<ShardMap> shardIds() const;
+
+  // @brief will write the full ShardMap into the builder, containing
+  // all ShardIDs including their server distribution (ServerIDs) as an Object.
+  // Example:
+  //  {
+  //    ...
+  //    "s123456": ["PRMR-a41b97a0-e4d3-482b-925a-ff8efc9e0198", ...]
+  //    ...
+  //  }
+  void shardMapToVelocyPack(arangodb::velocypack::Builder& result) const;
+
+  // @brief will iterate over the whole ShardMap and will write only the
+  // ShardIDs into the builder as an Array. The ShardIDs are sorted and returned
+  // alphabetically.
+  // Example:
+  //  [
+  //    ...
+  //    "s123456",
+  //    ...
+  //  ]
+  void shardIDsToVelocyPack(arangodb::velocypack::Builder& result) const;
 
   // mutation options for sharding
   void setShardMap(std::shared_ptr<ShardMap> map) noexcept;
-  void distributeShardsLike(std::string const& cid, ShardingInfo const* other);
 
   // query shard for a given document
   ErrorCode getResponsibleShard(velocypack::Slice slice, bool docComplete,
@@ -305,7 +327,9 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: Indexes
 
   /// @brief Create a new Index based on VelocyPack description
-  virtual std::shared_ptr<Index> createIndex(velocypack::Slice, bool&);
+  virtual std::shared_ptr<Index> createIndex(
+      velocypack::Slice, bool&,
+      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr);
 
   /// @brief Find index by definition
   std::shared_ptr<Index> lookupIndex(velocypack::Slice) const;
@@ -386,6 +410,10 @@ class LogicalCollection : public LogicalDataSource {
                                             VPackSlice collectionProperties);
 #endif
 
+  auto groupID() const noexcept
+      -> arangodb::replication2::agency::CollectionGroupId;
+  auto replicatedStateId() const noexcept -> arangodb::replication2::LogId;
+
  private:
   void initializeSmartAttributesBefore(velocypack::Slice info);
   void initializeSmartAttributesAfter(velocypack::Slice info);
@@ -447,7 +475,7 @@ class LogicalCollection : public LogicalDataSource {
   std::atomic<bool> _syncByRevision;
 
 #ifdef USE_ENTERPRISE
-  mutable Mutex
+  mutable std::mutex
       _smartGraphAttributeLock;  // lock protecting the smartGraphAttribute
   std::string _smartGraphAttribute;
 
@@ -461,7 +489,7 @@ class LogicalCollection : public LogicalDataSource {
 
   std::unique_ptr<PhysicalCollection> _physical;
 
-  mutable Mutex _infoLock;  // lock protecting the info
+  mutable std::mutex _infoLock;  // lock protecting the info
 
   // the following contains in the cluster/DBserver case the information
   // which other servers are in sync with this shard. It is unset in all
@@ -483,6 +511,12 @@ class LogicalCollection : public LogicalDataSource {
   uint64_t _internalValidatorTypes;
 
   std::vector<std::unique_ptr<ValidatorBase>> _internalValidators;
+
+  // Temporarily here, used for shards, only on DBServers
+  std::optional<arangodb::replication2::LogId> _replicatedStateId;
+
+  // TODO: Only quickly added
+  std::optional<uint64_t> _groupId;
 };
 
 }  // namespace arangodb
