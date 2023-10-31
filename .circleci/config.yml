@@ -59,11 +59,14 @@ jobs:
       - run:
           name: Determine enterprise branch
           command: |
-            CNT=`grep xgithub.com .ssh/known_hosts|wc -l`
-            if [ $CNT -eq 0 ]; then  
+            declare -i CNT
+            CNT=`grep github.com .ssh/known_hosts|wc -l`
+            if [ $CNT -eq 0 ]; then
               ssh-keyscan github.com >> ~/.ssh/known_hosts
-            fi  
-            if ["<< pipeline.parameters.enterprise-branch >>" == ""]; then
+            else
+              echo "Github known_host entry already exists"
+            fi
+            if ["" == ""]; then
               set +e
               git ls-remote --exit-code --heads git@github.com:arangodb/enterprise.git "$CIRCLE_BRANCH"
               if [ "$?" == "0" ] ; then
@@ -73,7 +76,7 @@ jobs:
               fi
               set -e
             else
-              ENTERPRISE_BRANCH=<< pipeline.parameters.enterprise-branch >>
+              ENTERPRISE_BRANCH=
             fi
             ENTERPRISE_COMMIT=`git ls-remote --heads git@github.com:arangodb/enterprise.git $ENTERPRISE_BRANCH | cut -f1`
             echo "Using enterprise branch $ENTERPRISE_BRANCH (sha $ENTERPRISE_COMMIT)"
