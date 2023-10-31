@@ -207,6 +207,74 @@ TEST(ReadWriteLockTest, testTryLockWriteForParallelLowTimeout) {
   ASSERT_EQ(iterations * n, counter);
 }
 
+TEST(ReadWriteLockTest, testTryLockWriteForWakeUpReaders) {
+  ReadWriteLock lock;
+
+  std::vector<std::thread> threads;
+  threads.reserve(3);
+
+  auto guard = arangodb::scopeGuard([&]() noexcept {
+    for (auto& t : threads) {
+      t.join();
+    }
+  });
+
+  Synchronizer s;
+
+  // The main thread will hold the read lock for the duration of the test
+  auto gotLock = lock.tryLockRead();
+  ASSERT_TRUE(gotLock) << "Failed to get the read lock without concurrency";
+  bool writeLockThreadCompleted = false;
+  bool readLockThreadCompleted = false;
+
+  // First thread tries to get the writeLock with a timeout
+  threads.emplace_back(
+      [&]() {
+        s.waitForStart();
+        auto timeout = std::chrono::microseconds(100);
+        auto gotLock = lock.tryLockWriteFor(timeout);
+        EXPECT_FALSE(gotLock)
+            << "We got a write lock although the read lock was held";
+        writeLockThreadCompleted = true;
+      });
+
+  // Second thread tries to get the readLock, while the first thread is waiting
+  // for the writeLock
+  threads.emplace_back([&]() {
+    s.waitForStart();
+    // This is still a race with the write locker
+    // It may happen that we try to lock read before write => we pass here.
+    // If we cannot get the readlock in an instant, we know the write locker is
+    // in queue.
+    size_t retryCounter = 100;
+    while (lock.tryLockRead()) {
+      lock.unlock();
+      std::this_thread::sleep_for(std::chrono::microseconds(1));
+      retryCounter--;
+      if (retryCounter == 0) {
+        ASSERT_FALSE(true) << "A queued write lock did not block the reader "
+                              "from getting the lock";
+        return;
+      }
+    }
+    // NOTE: This time out is twice as high as the WRITE timeout.
+    // So we need to be woken up if the Writer is released.
+    auto timeout = std::chrono::microseconds(200);
+    auto gotLock = lock.tryLockReadFor(timeout);
+    EXPECT_TRUE(gotLock)
+        << "We did not get the read lock after the write lock got into timeout";
+    lock.unlock();
+    readLockThreadCompleted = true;
+  });
+  s.start();
+
+  guard.fire();
+  EXPECT_TRUE(readLockThreadCompleted)
+      << "Did not complete the read lock thread";
+  EXPECT_TRUE(writeLockThreadCompleted)
+      << "Did not complete the write lock thread";
+}
+
 TEST(ReadWriteLockTest, testLockWriteLockReadParallel) {
   ReadWriteLock lock;
 
