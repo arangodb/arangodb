@@ -29,7 +29,6 @@
 #include "Basics/Guarded.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogContextKeys.h"
-#include "Replication2/coro-helper.h"
 #include "Replication2/IScheduler.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"

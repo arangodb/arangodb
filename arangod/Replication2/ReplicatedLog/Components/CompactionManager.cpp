@@ -26,7 +26,6 @@
 #include "Futures/Future.h"
 #include "Replication2/ReplicatedLog/Components/StorageManager.h"
 #include "Logger/LogContextKeys.h"
-#include "Replication2/coro-helper.h"
 #include "Basics/ScopeGuard.h"
 
 using namespace arangodb::replication2::replicated_log::comp;

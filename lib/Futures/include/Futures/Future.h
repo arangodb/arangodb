@@ -531,3 +531,6 @@ class Future {
 
 }  // namespace futures
 }  // namespace arangodb
+
+// make this available for convenience
+#include "Futures/coro-helper.h"
