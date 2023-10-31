@@ -54,11 +54,11 @@ function optimizerRuleTestSuite () {
     testClusterPlans : function () {
       let queries = [
         [ "FOR i IN 1..100 LET b = i * 2 RETURN b", [ ["SingletonNode", false], ["CalculationNode", true], ["EnumerateListNode", true], ["CalculationNode", true], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " FILTER doc.value > 3 RETURN doc.a", [ ["SingletonNode", false], ["EnumerateCollectionNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " SORT doc.value1 RETURN doc.value2", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["SortNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
+        [ "FOR doc IN " + cn + " FILTER doc.value > 3 RETURN doc.a", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
+        [ "FOR doc IN " + cn + " SORT doc.value1 RETURN doc.value2", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["SortNode", true], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
         [ "FOR i IN 1..100 SORT i RETURN i", [ ["SingletonNode", false], ["CalculationNode", true], ["EnumerateListNode", true], ["SortNode", true], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " COLLECT v = doc.value % 2 RETURN v", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["CalculationNode", true], ["CollectNode", false], ["RemoteNode", false], ["GatherNode", false], ["CollectNode", false], ["SortNode", false], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " RETURN DISTINCT doc.value", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["CollectNode", false], ["RemoteNode", false], ["GatherNode", false], ["CollectNode", false], ["ReturnNode", false] ] ],
+        [ "FOR doc IN " + cn + " COLLECT v = doc.value % 2 RETURN v", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["CalculationNode", true], ["CollectNode", true], ["RemoteNode", false], ["GatherNode", false], ["CollectNode", false], ["SortNode", false], ["ReturnNode", false] ] ],
+        [ "FOR doc IN " + cn + " RETURN DISTINCT doc.value", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["CollectNode", true], ["RemoteNode", false], ["GatherNode", false], ["CollectNode", false], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + cn + " FILTER doc.value > 3 LIMIT 10 RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", false], ["RemoteNode", false],["GatherNode", false], ["LimitNode", false], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + vn + " FILTER doc.value > 3 RETURN doc", [ ["SingletonNode", false], ["EnumerateViewNode", true], ["CalculationNode", true], ["FilterNode", true], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + vn + " FILTER doc.value > 3 LIMIT 3 RETURN doc", [ ["SingletonNode", false], ["EnumerateViewNode", false], ["CalculationNode", false], ["FilterNode", false], ["LimitNode", false], ["ReturnNode", false] ] ],
@@ -66,25 +66,25 @@ function optimizerRuleTestSuite () {
         [ "FOR doc IN " + cn + " REMOVE doc IN " + cn, [ ["SingletonNode", false], ["IndexNode", false], ["RemoveNode", false], ["RemoteNode", false], ["GatherNode", false] ] ],
         [ "FOR doc IN " + cn + " UPDATE doc WITH {} IN " + cn, [ ["SingletonNode", false], ["CalculationNode", false], ["IndexNode", false], ["UpdateNode", false], ["RemoteNode", false], ["GatherNode", false] ] ],
         [ "FOR doc IN " + cn + " REPLACE doc WITH {} IN " + cn, [ ["SingletonNode", false], ["CalculationNode", false], ["IndexNode", false], ["ReplaceNode", false], ["RemoteNode", false], ["GatherNode", false] ] ],
-        [ "FOR doc IN " + cn + " FILTER doc.a == '123' RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " FILTER doc.a == V8('123') RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", false], ["RemoteNode", false], ["GatherNode", false], ["CalculationNode", false], ["FilterNode", false], ["ReturnNode", false] ] ],
+        [ "FOR doc IN " + cn + " FILTER doc.a == '123' RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
+        [ "FOR doc IN " + cn + " FILTER doc.a == V8('123') RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["RemoteNode", false], ["GatherNode", false], ["CalculationNode", false], ["FilterNode", false], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + cn + " FILTER doc._key == '123' RETURN doc", [ ["SingletonNode", false], ["SingleRemoteOperationNode", false], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + cn + " FILTER doc._key == '123' LIMIT 3 RETURN doc", [ ["SingletonNode", false], ["IndexNode", false], ["RemoteNode", false], ["GatherNode", false], ["LimitNode", false], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + cn + " FILTER doc._key == V8('123') LIMIT 3 RETURN doc", [ ["SingletonNode", false], ["IndexNode", false], ["RemoteNode", false], ["GatherNode", false], ["LimitNode", false], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " FILTER doc._key == 'fuchs' FILTER doc.a == V8('123') RETURN doc", [ ["SingletonNode", false], ["IndexNode", false], ["RemoteNode", false], ["GatherNode", false], ["CalculationNode", false], ["FilterNode", false], ["ReturnNode", false] ] ],
-        [ "FOR doc1 IN " + cn + " SORT doc1.indexed FOR doc2 IN " + cn + " FILTER doc2.indexed == doc1.indexed RETURN [doc1, doc2]", [ ["SingletonNode", false], ["IndexNode", false], ["RemoteNode", false], ["GatherNode", false], ["ScatterNode", false], ["RemoteNode", false], ["IndexNode", false], ["CalculationNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
+        [ "FOR doc IN " + cn + " FILTER doc._key == 'fuchs' FILTER doc.a == V8('123') RETURN doc", [ ["SingletonNode", false], ["IndexNode", true], ["RemoteNode", false], ["GatherNode", false], ["CalculationNode", false], ["FilterNode", false], ["ReturnNode", false] ] ],
+        [ "FOR doc1 IN " + cn + " SORT doc1.indexed FOR doc2 IN " + cn + " FILTER doc2.indexed == doc1.indexed RETURN [doc1, doc2]", [ ["SingletonNode", false], ["IndexNode", true], ["RemoteNode", false], ["GatherNode", false], ["ScatterNode", false], ["RemoteNode", false], ["IndexNode", false], ["CalculationNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
       ];
 
       if (isEnterprise) {
         // CE does not have "local" graph nodes
         queries = queries.concat([
           // traversal
-          [ "FOR v, e, p IN 1..3 OUTBOUND '" + cn + "/test' " + en + " FILTER v.value == 1 RETURN p", [ ["SingletonNode", false], ["TraversalNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
-          [ "FOR v, e, p IN 1..3 OUTBOUND '" + cn + "/test' " + en + " FILTER NOOPT(v.value == 1) SORT e.value RETURN p", [ ["SingletonNode", false], ["TraversalNode", true], ["CalculationNode", false], ["FilterNode", true], ["CalculationNode", true], ["SortNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
+          [ "FOR v, e, p IN 1..3 OUTBOUND '" + cn + "/test' " + en + " FILTER v.value == 1 RETURN p", [ ["SingletonNode", false], ["TraversalNode", true], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
+          [ "FOR v, e, p IN 1..3 OUTBOUND '" + cn + "/test' " + en + " FILTER NOOPT(v.value == 1) SORT e.value RETURN p", [ ["SingletonNode", false], ["TraversalNode", true], ["CalculationNode", false], ["FilterNode", true], ["CalculationNode", true], ["SortNode", true], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
           // path queries
-          [ "FOR r IN OUTBOUND SHORTEST_PATH '" + cn + "/test1' TO '" + cn + "/test2' " + en + " FILTER LENGTH(r) > 10 RETURN r", [ ["SingletonNode", false], ["ShortestPathNode", true], ["CalculationNode", true], ["FilterNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
-          [ "FOR r IN OUTBOUND K_SHORTEST_PATHS '" + cn + "/test1' TO '" + cn + "/test2' " + en + " FILTER LENGTH(r) > 10 RETURN r", [ ["SingletonNode", false], ["EnumeratePathsNode", true], ["CalculationNode", true], ["FilterNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
-          [ "FOR r IN 1..3 OUTBOUND K_PATHS '" + cn + "/test1' TO '" + cn + "/test2' " + en + " FILTER LENGTH(r) > 10 RETURN r", [ ["SingletonNode", false], ["EnumeratePathsNode", true], ["CalculationNode", true], ["FilterNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
+          [ "FOR r IN OUTBOUND SHORTEST_PATH '" + cn + "/test1' TO '" + cn + "/test2' " + en + " FILTER LENGTH(r) > 10 RETURN r", [ ["SingletonNode", false], ["ShortestPathNode", true], ["CalculationNode", true], ["FilterNode", true], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
+          [ "FOR r IN OUTBOUND K_SHORTEST_PATHS '" + cn + "/test1' TO '" + cn + "/test2' " + en + " FILTER LENGTH(r) > 10 RETURN r", [ ["SingletonNode", false], ["EnumeratePathsNode", true], ["CalculationNode", true], ["FilterNode", true], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
+          [ "FOR r IN 1..3 OUTBOUND K_PATHS '" + cn + "/test1' TO '" + cn + "/test2' " + en + " FILTER LENGTH(r) > 10 RETURN r", [ ["SingletonNode", false], ["EnumeratePathsNode", true], ["CalculationNode", true], ["FilterNode", true], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
         ]);
       }
 
@@ -135,11 +135,11 @@ function oneShardTestSuite () {
     testOneShardPlans : function () {
       let queries = [
         [ "FOR i IN 1..100 LET b = i * 2 RETURN b", [ ["SingletonNode", false], ["CalculationNode", true], ["EnumerateListNode", true], ["CalculationNode", true], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " FILTER doc.value > 3 RETURN doc.a", [ ["SingletonNode", false], ["EnumerateCollectionNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " SORT doc.value1 RETURN doc.value2", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["SortNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
+        [ "FOR doc IN " + cn + " FILTER doc.value > 3 RETURN doc.a", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
+        [ "FOR doc IN " + cn + " SORT doc.value1 RETURN doc.value2", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["SortNode", true], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
         [ "FOR i IN 1..100 SORT i RETURN i", [ ["SingletonNode", false], ["CalculationNode", true], ["EnumerateListNode", true], ["SortNode", true], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " COLLECT v = doc.value % 2 RETURN v", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["CalculationNode", true], ["CollectNode", true], ["SortNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " RETURN DISTINCT doc.value", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["CollectNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
+        [ "FOR doc IN " + cn + " COLLECT v = doc.value % 2 RETURN v", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["CalculationNode", true], ["CollectNode", true], ["SortNode", true], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
+        [ "FOR doc IN " + cn + " RETURN DISTINCT doc.value", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["CollectNode", true], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + cn + " FILTER doc.value > 3 LIMIT 10 RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", false], ["LimitNode", false], ["RemoteNode", false],["GatherNode", false], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + vn + " FILTER doc.value > 3 RETURN doc", [ ["SingletonNode", false], ["EnumerateViewNode", true], ["CalculationNode", true], ["FilterNode", true], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + vn + " FILTER doc.value > 3 LIMIT 3 RETURN doc", [ ["SingletonNode", false], ["EnumerateViewNode", false], ["CalculationNode", false], ["FilterNode", false], ["LimitNode", false], ["ReturnNode", false] ] ],
@@ -147,20 +147,20 @@ function oneShardTestSuite () {
         [ "FOR doc IN " + cn + " REMOVE doc IN " + cn, [ ["SingletonNode", false], ["IndexNode", false], ["RemoveNode", false], ["RemoteNode", false], ["GatherNode", false] ] ],
         [ "FOR doc IN " + cn + " UPDATE doc WITH {} IN " + cn, [ ["SingletonNode", false], ["CalculationNode", false], ["IndexNode", false], ["UpdateNode", false], ["RemoteNode", false], ["GatherNode", false] ] ],
         [ "FOR doc IN " + cn + " REPLACE doc WITH {} IN " + cn, [ ["SingletonNode", false], ["CalculationNode", false], ["IndexNode", false], ["ReplaceNode", false], ["RemoteNode", false], ["GatherNode", false] ] ],
-        [ "FOR doc IN " + cn + " FILTER doc.a == '123' RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " FILTER doc.a == V8('123') RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", false], ["RemoteNode", false], ["GatherNode", false], ["CalculationNode", false], ["FilterNode", false], ["ReturnNode", false] ] ],
+        [ "FOR doc IN " + cn + " FILTER doc.a == '123' RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
+        [ "FOR doc IN " + cn + " FILTER doc.a == V8('123') RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["RemoteNode", false], ["GatherNode", false], ["CalculationNode", false], ["FilterNode", false], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + cn + " FILTER doc._key == '123' RETURN doc", [ ["SingletonNode", false], ["SingleRemoteOperationNode", false], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + cn + " FILTER doc._key == '123' LIMIT 3 RETURN doc", [ ["SingletonNode", false], ["IndexNode", false], ["LimitNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + cn + " FILTER doc._key == V8('123') LIMIT 3 RETURN doc", [ ["SingletonNode", false], ["IndexNode", false], ["LimitNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " FILTER doc._key == 'fuchs' FILTER doc.a == V8('123') RETURN doc", [ ["SingletonNode", false], ["IndexNode", false], ["RemoteNode", false], ["GatherNode", false], ["CalculationNode", false], ["FilterNode", false], ["ReturnNode", false] ] ],
-        [ "FOR doc1 IN " + cn + " SORT doc1.indexed FOR doc2 IN " + cn + " FILTER doc2.indexed == doc1.indexed RETURN [doc1, doc2]", [ ["SingletonNode", false], ["JoinNode", true], ["CalculationNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
+        [ "FOR doc IN " + cn + " FILTER doc._key == 'fuchs' FILTER doc.a == V8('123') RETURN doc", [ ["SingletonNode", false], ["IndexNode", true], ["RemoteNode", false], ["GatherNode", false], ["CalculationNode", false], ["FilterNode", false], ["ReturnNode", false] ] ],
+        [ "FOR doc1 IN " + cn + " SORT doc1.indexed FOR doc2 IN " + cn + " FILTER doc2.indexed == doc1.indexed RETURN [doc1, doc2]", [ ["SingletonNode", false], ["JoinNode", true], ["CalculationNode", true], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
         // traversal
-        [ "FOR v, e, p IN 1..3 OUTBOUND '" + cn + "/test' " + en + " FILTER v.value == 1 RETURN p", [ ["SingletonNode", false], ["TraversalNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
-        [ "FOR v, e, p IN 1..3 OUTBOUND '" + cn + "/test' " + en + " FILTER NOOPT(v.value == 1) SORT e.value RETURN p", [ ["SingletonNode", false], ["TraversalNode", true], ["CalculationNode", false], ["FilterNode", true], ["CalculationNode", true], ["SortNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
+        [ "FOR v, e, p IN 1..3 OUTBOUND '" + cn + "/test' " + en + " FILTER v.value == 1 RETURN p", [ ["SingletonNode", false], ["TraversalNode", true], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
+        [ "FOR v, e, p IN 1..3 OUTBOUND '" + cn + "/test' " + en + " FILTER NOOPT(v.value == 1) SORT e.value RETURN p", [ ["SingletonNode", false], ["TraversalNode", true], ["CalculationNode", false], ["FilterNode", true], ["CalculationNode", true], ["SortNode", true], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
         // path queries
-        [ "FOR r IN OUTBOUND SHORTEST_PATH '" + cn + "/test1' TO '" + cn + "/test2' " + en + " FILTER LENGTH(r) > 10 RETURN r", [ ["SingletonNode", false], ["ShortestPathNode", true], ["CalculationNode", true], ["FilterNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
-        [ "FOR r IN OUTBOUND K_SHORTEST_PATHS '" + cn + "/test1' TO '" + cn + "/test2' " + en + " FILTER LENGTH(r) > 10 RETURN r", [ ["SingletonNode", false], ["EnumeratePathsNode", true], ["CalculationNode", true], ["FilterNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
-        [ "FOR r IN 1..3 OUTBOUND K_PATHS '" + cn + "/test1' TO '" + cn + "/test2' " + en + " FILTER LENGTH(r) > 10 RETURN r", [ ["SingletonNode", false], ["EnumeratePathsNode", true], ["CalculationNode", true], ["FilterNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
+        [ "FOR r IN OUTBOUND SHORTEST_PATH '" + cn + "/test1' TO '" + cn + "/test2' " + en + " FILTER LENGTH(r) > 10 RETURN r", [ ["SingletonNode", false], ["ShortestPathNode", true], ["CalculationNode", true], ["FilterNode", true], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
+        [ "FOR r IN OUTBOUND K_SHORTEST_PATHS '" + cn + "/test1' TO '" + cn + "/test2' " + en + " FILTER LENGTH(r) > 10 RETURN r", [ ["SingletonNode", false], ["EnumeratePathsNode", true], ["CalculationNode", true], ["FilterNode", true], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
+        [ "FOR r IN 1..3 OUTBOUND K_PATHS '" + cn + "/test1' TO '" + cn + "/test2' " + en + " FILTER LENGTH(r) > 10 RETURN r", [ ["SingletonNode", false], ["EnumeratePathsNode", true], ["CalculationNode", true], ["FilterNode", true], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
       ];
 
       queries.forEach(function(query) {
