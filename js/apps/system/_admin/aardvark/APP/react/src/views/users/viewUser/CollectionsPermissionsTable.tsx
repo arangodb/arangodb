@@ -1,4 +1,4 @@
-import { Tag } from "@chakra-ui/react";
+import { Box, Tag } from "@chakra-ui/react";
 import { CellContext, createColumnHelper, Row } from "@tanstack/react-table";
 import React from "react";
 import { ReactTable } from "../../../components/table/ReactTable";
@@ -97,14 +97,6 @@ const collectionPermissionColumns = [
   )
 ];
 const COLLECTION_COLUMNS = [
-  {
-    id: "expander",
-    size: 8,
-    header: () => null,
-    cell: () => {
-      return <></>;
-    }
-  },
   collectionColumnHelper.accessor("collectionName", {
     header: "Collections",
     id: "collectionName",
@@ -126,7 +118,7 @@ const COLLECTION_COLUMNS = [
       filterType: "text"
     },
     size: 150,
-    maxSize: 200
+    maxSize: 150
   }),
   ...collectionPermissionColumns
 ];
@@ -177,8 +169,8 @@ export const CollectionsPermissionsTable = ({
   });
 
   return (
-    <td colSpan={6}>
-      <ReactTable<CollectionType> table={tableInstance} />
-    </td>
+    <Box as="td" colSpan={6} paddingY="4">
+      <ReactTable<CollectionType> tableWidth="auto" layout="fixed"  backgroundColor="gray.50" table={tableInstance} />
+    </Box>
   );
 };

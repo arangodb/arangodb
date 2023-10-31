@@ -229,12 +229,15 @@ export const UserPermissionsTable = () => {
         table={tableInstance}
       />
       <ReactTable<DatabaseTableType>
+        tableWidth="auto"
         table={tableInstance}
+        layout="fixed"
         emptyStateMessage="No database permissions found"
         getCellProps={cell => {
-          if (cell.column.id === "expander") {
+          if (cell.column.id === "databaseName") {
             return {
-              padding: "0"
+              padding: "0",
+              height: "1px" // hack to make div take full height
             };
           }
         }}

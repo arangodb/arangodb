@@ -30,6 +30,8 @@ type ReactTableProps<Data extends object> = {
   renderSubComponent?: (row: Row<Data>) => React.ReactNode;
   layout?: "fixed" | "auto";
   getCellProps?: (cell: Cell<Data, unknown>) => any;
+  backgroundColor?: string;
+  tableWidth?: string;
 };
 
 export function ReactTable<Data extends object>({
@@ -40,7 +42,9 @@ export function ReactTable<Data extends object>({
   renderSubComponent,
   layout,
   onCellClick,
-  getCellProps
+  getCellProps,
+  tableWidth,
+  backgroundColor = "white"
 }: ReactTableProps<Data>) {
   const rows = table.getRowModel().rows;
 
@@ -50,7 +54,7 @@ export function ReactTable<Data extends object>({
       <TableContainer
         borderY="1px solid"
         borderColor="gray.200"
-        backgroundColor="white"
+        backgroundColor={backgroundColor}
       >
         <Table
           whiteSpace="normal"
@@ -59,6 +63,7 @@ export function ReactTable<Data extends object>({
           css={{
             tableLayout: layout
           }}
+          width={tableWidth}
         >
           <Thead>
             {table.getHeaderGroups().map(headerGroup => (
@@ -105,7 +110,6 @@ const SortableTh = <Data extends object>({
   const canSort = header.column.getCanSort();
   return (
     <Th
-      left={header.getStart()}
       width={header.getSize()}
       onClick={header.column.getToggleSortingHandler()}
       _hover={
