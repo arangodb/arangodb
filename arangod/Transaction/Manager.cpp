@@ -1617,19 +1617,22 @@ std::shared_ptr<ManagedContext> Manager::buildManagedContextUnderLock(
     // release lock in case something went wrong
     mtrx.rwlock.unlock();
     throw;
-    Manager::TransactionCommitGuard Manager::getTransactionCommitGuard() {
-      READ_LOCKER(guard, _hotbackupCommitLock);
-      return guard;
-    }
+  }
+}
 
-    CounterGuard::CounterGuard(Manager & manager) : _manager(manager) {
-      _manager._nrRunning.fetch_add(1, std::memory_order_relaxed);
-    }
+Manager::TransactionCommitGuard Manager::getTransactionCommitGuard() {
+  READ_LOCKER(guard, _hotbackupCommitLock);
+  return guard;
+}
 
-    CounterGuard::~CounterGuard() {
-      [[maybe_unused]] uint64_t r =
-          _manager._nrRunning.fetch_sub(1, std::memory_order_relaxed);
-      TRI_ASSERT(r > 0);
-    }
+CounterGuard::CounterGuard(Manager& manager) : _manager(manager) {
+  _manager._nrRunning.fetch_add(1, std::memory_order_relaxed);
+}
 
-  }  // namespace arangodb::transaction
+CounterGuard::~CounterGuard() {
+  [[maybe_unused]] uint64_t r =
+      _manager._nrRunning.fetch_sub(1, std::memory_order_relaxed);
+  TRI_ASSERT(r > 0);
+}
+
+}  // namespace arangodb::transaction
