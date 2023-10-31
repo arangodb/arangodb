@@ -169,6 +169,7 @@ const IndexPrimaryJoinTestSuite = function () {
           SORT doc1.x
           FOR doc2 IN B
               FILTER doc1.x == doc2._key
+              SORT doc2._key
               RETURN [doc1, doc2]
       `);
 
@@ -195,6 +196,7 @@ const IndexPrimaryJoinTestSuite = function () {
           SORT doc1.x
           FOR doc2 IN B
               FILTER doc1.x == doc2._key
+              SORT doc2._key
               RETURN doc2._key
       `);
       assertEqual(result.length, documentsB.length);
@@ -227,4 +229,3 @@ if (isCluster && !isEnterprise) {
 }
 
 return jsunity.done();
-
