@@ -674,6 +674,12 @@ class IResearchViewExecutor
   using ReadContext = typename Base::ReadContext;
 
   struct SegmentReader {
+    void finalize() {
+      itr.reset();
+      doc = nullptr;
+      currentSegmentPos = 0;
+    }
+
     // current primary key reader
     ColumnIterator pkReader;
     irs::doc_iterator::ptr itr;

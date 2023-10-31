@@ -1446,15 +1446,10 @@ template<bool parallel>
 bool IResearchViewExecutor<ExecutionTraits>::readSegment(
     SegmentReader& reader, std::atomic<size_t>& bufferIdx) {
   bool gotData = false;
-  auto reset = [&] {
-    reader.currentSegmentPos = 0;
-    reader.itr.reset();
-    reader.doc = nullptr;
-  };
   while (reader.atMost) {
     if (!reader.itr) {
       if (!resetIterator(reader)) {
-        reset();
+        reader.finalize();
         return gotData;
       }
 
@@ -1476,7 +1471,7 @@ bool IResearchViewExecutor<ExecutionTraits>::readSegment(
     if (iteratorExhausted) {
       // The iterator is exhausted, we need to continue with the next
       // reader.
-      reset();
+      reader.finalize();
       return gotData;
     }
     if constexpr (Base::isMaterialized) {
@@ -1545,7 +1540,7 @@ bool IResearchViewExecutor<ExecutionTraits>::readSegment(
 
     if (iteratorExhausted) {
       // The iterator is exhausted, we need to continue with the next reader.
-      reset();
+      reader.finalize();
 
       // Here we have at least one document in _indexReadBuffer, so we may not
       // add documents from a new reader.
@@ -1633,8 +1628,7 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
     size_t i = 0;
     size_t selfExecute{std::numeric_limits<size_t>::max()};
     auto toFetch = atMost - bufferIdx.load();
-    while (toFetch && results.size() < (parallelism - 1) &&
-           i < _segmentReaders.size()) {
+    while (toFetch && i < _segmentReaders.size()) {
       auto& reader = _segmentReaders[i];
       if (!reader.itr) {
         if (_segmentOffset >= count) {
@@ -1645,6 +1639,7 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
         reader.readerOffset = _segmentOffset++;
       }
       reader.atMost = std::min(atMostInitial, toFetch);
+      TRI_ASSERT(reader.atMost);
       toFetch -= reader.atMost;
       if (selfExecute < parallelism) {
         futures::Promise<bool> promise;
@@ -1666,6 +1661,9 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
         results.push_back(std::move(future));
       } else {
         selfExecute = i;
+      }
+      if (results.size() == (parallelism - 1)) {
+        break;
       }
       ++i;
     }
@@ -1756,10 +1754,8 @@ void IResearchViewExecutor<ExecutionTraits>::reset(
 
   // reset iterator state
   for (auto& r : _segmentReaders) {
-    r.itr.reset();
-    r.doc = nullptr;
+    r.finalize();
     r.readerOffset = 0;
-    r.currentSegmentPos = 0;
     r.totalPos = 0;
   }
   _segmentOffset = 0;
@@ -1795,8 +1791,7 @@ size_t IResearchViewExecutor<ExecutionTraits>::skip(size_t limit,
     if (!limit) {
       break;  // do not change iterator if already reached limit
     }
-    reader.itr.reset();
-    reader.doc = nullptr;
+    reader.finalize();
   }
   if constexpr (Base::isMaterialized) {
     reader.segment = &this->_reader->segment(reader.readerOffset);
