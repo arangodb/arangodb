@@ -727,11 +727,11 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::materialize() {
   auto it = pkReadingOrder.begin();
   auto end = pkReadingOrder.end();
   iresearch::ViewSegment const* segment{};
-  constexpr bool haveMultiSnapshots =
-      std::is_same_v<ExecutorValue, typename Traits::IndexBufferValueType> ||
-      std::is_same_v<HeapSortExecutorValue,
-                     typename Traits::IndexBufferValueType>;
-  if constexpr (haveMultiSnapshots) {
+  // TODO: This could be always true if we enable
+  // always filling all buffer for simple executor with parallelism = 1
+  bool const haveMultipleSnapshots =
+      this->_infos.parallelism() > 1 || Impl::kSorted;
+  if (haveMultipleSnapshots) {
     std::sort(it, end, [&](size_t lhs, size_t rhs) {
       auto const& lhs_val = _indexReadBuffer.getValue(lhs);
       auto const& rhs_val = _indexReadBuffer.getValue(rhs);
@@ -739,6 +739,10 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::materialize() {
       auto const* rhs_segment = rhs_val.segment();
       return lhs_segment->snapshot < rhs_segment->snapshot;
     });
+  } else {
+    TRI_ASSERT(!pkReadingOrder.empty());
+    _context.snapshot =
+        _indexReadBuffer.getValue(pkReadingOrder.front()).segment()->snapshot;
   }
   StorageSnapshot const* lastSnapshot{};
   auto fillKeys = [&] {
@@ -746,7 +750,7 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::materialize() {
       return MultiGetState::kLast;
     }
     auto& doc = _indexReadBuffer.getValue(*it);
-    if constexpr (haveMultiSnapshots) {
+    if (haveMultipleSnapshots) {
       segment = doc.segment();
       auto const* snapshot = segment->snapshot;
       if (lastSnapshot != snapshot) {
@@ -948,7 +952,7 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRowImpl(
     writeSearchDoc(ctx, _indexReadBuffer.getSearchDoc(idx), reg);
   }
   if constexpr (isMaterialized) {
-    auto& r = _context.values[value.result];
+    auto& r = _context.values[value.value().result];
     if (ADB_UNLIKELY(!r)) {
       return false;
     }
@@ -997,14 +1001,13 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRowImpl(
 template<typename Impl, typename ExecutionTraits>
 template<bool parallel>
 void IResearchViewExecutorBase<Impl, ExecutionTraits>::readStoredValues(
-    irs::document const& doc, size_t index,
-    [[maybe_unused]] size_t bufferIndex) {
+    irs::doc_id_t docId, size_t index, [[maybe_unused]] size_t bufferIndex) {
   TRI_ASSERT(index < _storedValuesReaders.size());
   auto const& reader = _storedValuesReaders[index];
   TRI_ASSERT(reader.itr);
   TRI_ASSERT(reader.value);
   auto const& payload = reader.value->value;
-  bool const found = (doc.value == reader.itr->seek(doc.value));
+  bool const found = (docId == reader.itr->seek(docId));
   if (found && !payload.empty()) {
     if constexpr (parallel) {
       _indexReadBuffer.setStoredValue(bufferIndex, payload);
@@ -1023,7 +1026,7 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::readStoredValues(
 template<typename Impl, typename ExecutionTraits>
 template<bool parallel>
 void IResearchViewExecutorBase<Impl, ExecutionTraits>::pushStoredValues(
-    irs::document const& doc, size_t storedValuesIndex /*= 0*/,
+    irs::doc_id_t docId, size_t storedValuesIndex /*= 0*/,
     size_t bufferIndex /* = 0 */) {
   auto const& columnsFieldsRegs = _infos.getOutNonMaterializedViewRegs();
   TRI_ASSERT(!columnsFieldsRegs.empty());
@@ -1032,9 +1035,9 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::pushStoredValues(
   for (auto it = columnsFieldsRegs.cbegin(); it != columnsFieldsRegs.cend();
        ++it) {
     if constexpr (parallel) {
-      readStoredValues<parallel>(doc, index++, storedIndex++);
+      readStoredValues<parallel>(docId, index++, storedIndex++);
     } else {
-      readStoredValues<parallel>(doc, index++, bufferIndex);
+      readStoredValues<parallel>(docId, index++, storedIndex);
     }
   }
 }
@@ -1243,7 +1246,7 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::writeRow(ReadContext& ctx,
   static_assert(!Base::isLateMaterialized,
                 "HeapSort superseeds LateMaterialization");
   auto const& value = this->_indexReadBuffer.getValue(idx);
-  return Base::writeRowImpl(ctx, idx, value.value());
+  return Base::writeRowImpl(ctx, idx, value);
 }
 
 template<typename ExecutionTraits>
@@ -1429,7 +1432,7 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
 
     if constexpr (ExecutionTraits::EmitSearchDoc) {
       TRI_ASSERT(this->infos().searchDocIdRegId().isValid());
-      this->_indexReadBuffer.pushSearchDoc(docId, *segment);
+      this->_indexReadBuffer.pushSearchDoc(*segment, docId);
     }
 
     this->_indexReadBuffer.assertSizeCoherence();
@@ -1485,10 +1488,9 @@ bool IResearchViewExecutor<ExecutionTraits>::readSegment(
         continue;
       }
     }
-    auto current = bufferIdx.load(std::memory_order_relaxed);
+    size_t current{0};
     if constexpr (parallel) {
-      while (!bufferIdx.compare_exchange_weak(current, current + 1)) {
-      }
+      current = bufferIdx.fetch_add(1);
     }
     auto& viewSegment = this->_reader->segment(reader.readerOffset);
     if constexpr (Base::isLateMaterialized) {
@@ -1514,7 +1516,7 @@ bool IResearchViewExecutor<ExecutionTraits>::readSegment(
         this->_indexReadBuffer.setSearchDoc(current, viewSegment,
                                             reader.doc->value);
       } else {
-        this->_indexReadBuffer.pushSearchDoc(reader.doc->value, viewSegment);
+        this->_indexReadBuffer.pushSearchDoc(viewSegment, reader.doc->value);
       }
     }
 
@@ -1533,7 +1535,8 @@ bool IResearchViewExecutor<ExecutionTraits>::readSegment(
       TRI_ASSERT(std::distance(_segmentReaders.data(), &reader) <
                  static_cast<ptrdiff_t>(_segmentReaders.size()));
       this->template pushStoredValues<parallel>(
-          *reader.doc, std::distance(_segmentReaders.data(), &reader), current);
+          reader.doc->value, std::distance(_segmentReaders.data(), &reader),
+          current);
     }
     if constexpr (!parallel) {
       // doc and scores are both pushed, sizes must now be coherent
@@ -1590,8 +1593,8 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
   bool const isUnlimited = limit == aql::AqlCall::Infinity{};
   TRI_ASSERT(isUnlimited || std::holds_alternative<std::size_t>(limit));
   if (!isUnlimited) {
-    parallelism = std::min(parallelism,
-                           (std::get<std::size_t>(limit) / atMostInitial) + 1);
+    parallelism = std::clamp(std::get<std::size_t>(limit) / atMostInitial,
+                             (size_t)1, parallelism);
   }
   // let's be greedy as it is more likely that we are
   // asked to read some "tail" documents to fill the block
@@ -1775,7 +1778,7 @@ size_t IResearchViewExecutor<ExecutionTraits>::skip(size_t limit,
     TRI_ASSERT(r.totalPos == 0);
     TRI_ASSERT(r.itr == nullptr);
   }
-#endif  //  ARANGODB_ENABLE_MAINTAINER_MODE
+#endif
   auto& reader = _segmentReaders.front();
   for (size_t count = this->_reader->size(); _segmentOffset < count;) {
     reader.readerOffset = _segmentOffset++;
@@ -1807,14 +1810,21 @@ template<typename ExecutionTraits>
 size_t IResearchViewExecutor<ExecutionTraits>::skipAll(IResearchViewStats&) {
   TRI_ASSERT(this->_filter);
   size_t skipped = 0;
+
+  auto reset = [](SegmentReader& reader) {
+    reader.itr.reset();
+    reader.doc = nullptr;
+    reader.currentSegmentPos = 0;
+  };
+
   auto const count = this->_reader->size();
   if (_segmentOffset > count) {
     return skipped;
   }
-  auto seal = irs::Finally([&]() noexcept {
+  irs::Finally seal = [&]() noexcept {
     _segmentOffset = count + 1;
     this->_indexReadBuffer.clear();
-  });
+  };
   if (this->infos().filterConditionIsEmpty()) {
     skipped = this->_reader->live_docs_count();
     size_t totalPos = std::accumulate(
@@ -1830,9 +1840,7 @@ size_t IResearchViewExecutor<ExecutionTraits>::skipAll(IResearchViewStats&) {
       if (r.itr) {
         skipped += calculateSkipAllCount(approximate, r.currentSegmentPos,
                                          r.itr.get());
-        r.itr.reset();
-        r.doc = nullptr;
-        r.currentSegmentPos = 0;
+        reset(r);
       }
     }
     auto& reader = _segmentReaders.front();
@@ -1842,9 +1850,7 @@ size_t IResearchViewExecutor<ExecutionTraits>::skipAll(IResearchViewStats&) {
         continue;
       }
       skipped += calculateSkipAllCount(approximate, 0, reader.itr.get());
-      reader.itr.reset();
-      reader.doc = nullptr;
-      reader.currentSegmentPos = 0;
+      reset(reader);
     }
   }
   return skipped;
@@ -1854,11 +1860,7 @@ template<typename ExecutionTraits>
 bool IResearchViewExecutor<ExecutionTraits>::writeRow(ReadContext& ctx,
                                                       size_t idx) {
   auto const& value = this->_indexReadBuffer.getValue(idx);
-  if constexpr (Base::isLateMaterialized) {
-    return Base::writeRowImpl(ctx, idx, value);
-  } else {
-    return Base::writeRowImpl(ctx, idx, value.value());
-  }
+  return Base::writeRowImpl(ctx, idx, value);
 }
 
 template<typename ExecutionTraits>
@@ -2070,14 +2072,14 @@ bool IResearchViewMergeExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
 
     if constexpr (Base::usesStoredValues) {
       TRI_ASSERT(segment.doc);
-      this->template pushStoredValues<false>(*segment.doc,
+      this->template pushStoredValues<false>(segment.doc->value,
                                              segment.segmentIndex);
     }
 
     if constexpr (ExecutionTraits::EmitSearchDoc) {
       TRI_ASSERT(this->infos().searchDocIdRegId().isValid() ==
                  ExecutionTraits::EmitSearchDoc);
-      this->_indexReadBuffer.pushSearchDoc(segment.doc->value, viewSegment);
+      this->_indexReadBuffer.pushSearchDoc(viewSegment, segment.doc->value);
     }
 
     // doc and scores are both pushed, sizes must now be coherent
@@ -2151,11 +2153,7 @@ template<typename ExecutionTraits>
 bool IResearchViewMergeExecutor<ExecutionTraits>::writeRow(ReadContext& ctx,
                                                            size_t idx) {
   auto const& value = this->_indexReadBuffer.getValue(idx);
-  if constexpr (Base::isLateMaterialized) {
-    return Base::writeRowImpl(ctx, idx, value);
-  } else {
-    return Base::writeRowImpl(ctx, idx, value.value());
-  }
+  return Base::writeRowImpl(ctx, idx, value);
 }
 
 }  // namespace arangodb::aql

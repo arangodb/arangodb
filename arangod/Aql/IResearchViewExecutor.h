@@ -319,8 +319,8 @@ class IndexReadBuffer {
     _keyBuffer[idx] = ValueType(segment, std::forward<Args>(args)...);
   }
 
-  void pushSearchDoc(irs::doc_id_t docId,
-                     iresearch::ViewSegment const& segment) {
+  void pushSearchDoc(iresearch::ViewSegment const& segment,
+                     irs::doc_id_t docId) {
     _searchDocs.emplace_back(segment, docId);
   }
 
@@ -614,11 +614,11 @@ class IResearchViewExecutorBase {
                         FieldRegisters const& fieldsRegs);
 
   template<bool parallel>
-  void readStoredValues(irs::document const& doc, size_t index,
+  void readStoredValues(irs::doc_id_t docId, size_t index,
                         size_t bufferIndex = 0);
 
   template<bool parallel>
-  void pushStoredValues(irs::document const& doc, size_t storedValuesIndex = 0,
+  void pushStoredValues(irs::doc_id_t docId, size_t storedValuesIndex = 0,
                         size_t bufferIndex = 0);
 
   bool getStoredValuesReaders(irs::SubReader const& segmentReader,
