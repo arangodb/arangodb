@@ -234,6 +234,8 @@ start() {
       --log.file cluster/$PORT.log 
       --log.level $LOG_LEVEL 
       --log.thread true
+      --log.level=threads=trace
+      --server.ongoing-low-priority-multiplier=1000
       --javascript.startup-directory $SRC_DIR/js 
       --javascript.module-directory $SRC_DIR/enterprise/js 
       --javascript.app-path cluster/apps$PORT 

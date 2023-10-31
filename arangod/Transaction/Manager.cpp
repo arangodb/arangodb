@@ -795,6 +795,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
   if (_streamingLockTimeout >= 1.0) {
     detachTime = now + std::chrono::milliseconds(1000);
   }
+  bool alreadyDetached = false;
   // always serialize access on coordinator,
   // TransactionState::_knownServers is modified even for READ
   if (ServerState::isCoordinator(role)) {
@@ -904,11 +905,13 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
                !ServerState::instance()->isDBServer());
 
     auto now = std::chrono::steady_clock::now();
-    if (detachTime.time_since_epoch().count() != 0 && now > detachTime) {
+    if (!alreadyDetached && detachTime.time_since_epoch().count() != 0 &&
+        now > detachTime) {
+      alreadyDetached = true;
       LOG_TOPIC("dd234", INFO, Logger::THREADS)
           << "Did not get lock within 1 seconds, detaching scheduler thread.";
       auto res = SchedulerFeature::SCHEDULER->detachThread();
-      if (res.fail() && res.is(TRI_ERROR_TOO_MANY_DETACHED_THREADS)) {
+      if (res.is(TRI_ERROR_TOO_MANY_DETACHED_THREADS)) {
         LOG_TOPIC("dd233", WARN, Logger::THREADS)
             << "Could not detach scheduler thread, will continue to acquire "
                "lock in scheduler thread, this can potentially lead to "

@@ -1715,14 +1715,14 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
   auto timeout_us = std::chrono::duration_cast<std::chrono::microseconds>(
       std::chrono::duration<double>(timeout));
 
+  constexpr auto detachThreshold = std::chrono::microseconds(1000000);
+
   bool gotLock = false;
-  if (timeout_us > std::chrono::microseconds(1000000)) {
+  if (timeout_us > detachThreshold) {
     if (mode == AccessMode::Type::WRITE) {
-      gotLock =
-          _exclusiveLock.tryLockWriteFor(std::chrono::microseconds(1000000));
+      gotLock = _exclusiveLock.tryLockWriteFor(detachThreshold);
     } else {
-      gotLock =
-          _exclusiveLock.tryLockReadFor(std::chrono::microseconds(1000000));
+      gotLock = _exclusiveLock.tryLockReadFor(detachThreshold);
     }
     if (gotLock) {
       // keep the lock and exit
@@ -1731,7 +1731,7 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
     LOG_TOPIC("dd231", INFO, Logger::THREADS)
         << "Did not get lock within 1 seconds, detaching scheduler thread.";
     Result r = arangodb::SchedulerFeature::SCHEDULER->detachThread();
-    if (r.fail() && r.is(TRI_ERROR_TOO_MANY_DETACHED_THREADS)) {
+    if (r.is(TRI_ERROR_TOO_MANY_DETACHED_THREADS)) {
       LOG_TOPIC("dd232", WARN, Logger::THREADS)
           << "Could not detach scheduler thread, will continue to acquire "
              "lock in scheduler thread, this can potentially lead to "
@@ -1739,7 +1739,7 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
     }
   }
 
-  timeout_us -= std::chrono::microseconds(1000000);
+  timeout_us -= detachThreshold;
 
   if (mode == AccessMode::Type::WRITE) {
     gotLock = _exclusiveLock.tryLockWriteFor(timeout_us);

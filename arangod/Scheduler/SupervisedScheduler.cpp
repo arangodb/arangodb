@@ -223,6 +223,7 @@ SupervisedScheduler::SupervisedScheduler(
       _unavailabilityQueueFillGrade(unavailabilityQueueFillGrade),
       _numWorking(0),
       _numAwake(0),
+      _numDetached(0),
       _metricsQueueLength(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_scheduler_queue_length{})),
       _metricsJobsDoneTotal(server.getFeature<metrics::MetricsFeature>().add(
@@ -527,7 +528,7 @@ Result SupervisedScheduler::detachThread() {
     return Result(TRI_ERROR_INTERNAL,
                   "scheduler thread for detaching not found");
   }
-  std::shared_ptr<WorkerState> state = *it;
+  std::shared_ptr<WorkerState> state = std::move(*it);
   _workerStates.erase(it);
   // Since the thread is effectively taken out of the pool, decrease the
   // number of workers.
@@ -539,8 +540,16 @@ Result SupervisedScheduler::detachThread() {
                           // have to wake the thread.
   }
   ++_metricsThreadsStopped;
-  _detachedWorkerStates.push_back(std::move(state));
-  ++_numDetached;
+  try {
+    _detachedWorkerStates.push_back(std::move(state));
+    ++_numDetached;
+  } catch (std::exception const&) {
+    // Ignore error here, the thread itself still holds a copy of the
+    // shared_ptr, so cleanup is guaranteed.
+    // But we do not want to throw here.
+    // Note that we do not count the detached thread in `_numDetached` in
+    // this case! This is intentional!
+  }
   return {};
 }
 
