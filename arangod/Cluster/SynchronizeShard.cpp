@@ -911,10 +911,8 @@ bool SynchronizeShard::first() {
 
   TRI_IF_FAILURE("SynchronizeShard::beginning") {
     std::string shortName = ServerState::instance()->getShortName();
-    waitForGlobalEvent("SynchronizeShard::beginning",
-                       absl::StrCat(shortName, ":", shard));
-    waitForGlobalEvent("SynchronizeShard::beginning2",
-                       absl::StrCat(shortName, ":", shard));
+    waitForGlobalEvent("SynchronizeShard::beginning", shortName + ":" + shard);
+    waitForGlobalEvent("SynchronizeShard::beginning2", shortName + ":" + shard);
   }
 
   auto& clusterInfo =
@@ -1163,7 +1161,7 @@ bool SynchronizeShard::first() {
       TRI_IF_FAILURE("SynchronizeShard::beforeSetTheLeader") {
         std::string shortName = ServerState::instance()->getShortName();
         waitForGlobalEvent("SynchronizeShard::beforeSetTheLeader",
-                           absl::StrCat(shortName, ":", shard));
+                           shortName + ":" + shard);
       }
       // Configure the shard to follow the leader without any following
       // term id, this is necessary, such that no replication requests

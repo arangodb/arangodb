@@ -225,7 +225,7 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
     TRI_IF_FAILURE("HandleLeadership::before") {
       std::string shortName = ServerState::instance()->getShortName();
       waitForGlobalEvent("HandleLeadership::before",
-                         absl::StrCat(shortName, ":", collection.name()));
+                         shortName + ":" + collection.name());
     }
 
     if (!currentServers.empty()) {
@@ -253,7 +253,7 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
     TRI_IF_FAILURE("HandleLeadership::after") {
       std::string shortName = ServerState::instance()->getShortName();
       waitForGlobalEvent("HandleLeadership::after",
-                         absl::StrCat(shortName, ":", collection.name()));
+                         shortName + ":" + collection.name());
     }
   }
 }

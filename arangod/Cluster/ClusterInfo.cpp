@@ -2180,14 +2180,15 @@ void ClusterInfo::loadCurrent() {
             collectionDataCurrent->servers(shardID)  // args
         );
 
+        // We do not expect the list of servers to be empty, but who knows???
+        std::string newLeader = servers->empty() ? "" : servers->front();
         newShardsToCurrentServers.insert_or_assign(std::move(shardID),
                                                    std::move(servers));
         TRI_IF_FAILURE("ClusterInfo::loadCurrentSeesLeader") {
-          if (!xx.empty()) {  // just in case
+          if (!newLeader.empty()) {
             std::string myShortName = ServerState::instance()->getShortName();
-            observeGlobalEvent(
-                "ClusterInfo::loadCurrentSeesLeader",
-                absl::StrCat(myShortName, ":", shardID, ":", xx[0]));
+            observeGlobalEvent("ClusterInfo::loadCurrentSeesLeader",
+                               myShortName + ":" + shardID + ":" + newLeader);
           }
         }
       }
