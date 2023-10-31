@@ -60,7 +60,7 @@ commands:
           command: |
             mkdir -p << parameters.destination >>
             cd << parameters.destination >>
-            git clone git@github.com:arangodb/enterprise.git .
+            GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no" git clone git@github.com:arangodb/enterprise.git .
             git reset --hard << pipeline.parameters.enterprise-commit >>
 
 jobs:

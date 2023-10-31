@@ -59,13 +59,7 @@ jobs:
       - run:
           name: Determine enterprise branch
           command: |
-            declare -i CNT
-            CNT=`grep github.com .ssh/known_hosts|wc -l`
-            if [ $CNT -eq 0 ]; then
-              ssh-keyscan github.com >> ~/.ssh/known_hosts
-            else
-              echo "Github known_host entry already exists"
-            fi
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
             if ["" == ""]; then
               set +e
               git ls-remote --exit-code --heads git@github.com:arangodb/enterprise.git "$CIRCLE_BRANCH"
