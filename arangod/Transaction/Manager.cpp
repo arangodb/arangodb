@@ -1001,9 +1001,6 @@ transaction::Status Manager::getManagedTrxStatus(
   READ_LOCKER(writeLocker, _transactions[bucket]._lock);
 
   auto it = _transactions[bucket]._managed.find(tid);
-  READ_LOCKER(writeLocker, _transactions[bucket]._lock);
-
-  auto it = _transactions[bucket]._managed.find(tid);
   if (it == _transactions[bucket]._managed.end() ||
       !::authorized(it->second.user) || it->second.db != database) {
     return transaction::Status::UNDEFINED;
