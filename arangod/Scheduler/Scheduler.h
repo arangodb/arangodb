@@ -63,7 +63,8 @@ class Scheduler {
   // ---------------------------------------------------------------------------
   // Scheduling and Task Queuing - the relevant stuff
   // ---------------------------------------------------------------------------
-  virtual Result detachThread();
+  virtual Result detachThread(uint64_t* detachedThreads,
+                              uint64_t* maximumDetachedThreads);
 
   class DelayedWorkItem;
   typedef std::chrono::steady_clock clock;

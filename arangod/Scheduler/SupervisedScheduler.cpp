@@ -507,8 +507,15 @@ void SupervisedScheduler::shutdown() {
   }
 }
 
-Result SupervisedScheduler::detachThread() {
+Result SupervisedScheduler::detachThread(uint64_t* detachedThreads,
+                                         uint64_t* maximumDetachedThreads) {
   std::lock_guard<std::mutex> guard(_mutex);
+  if (detachedThreads != nullptr) {
+    *detachedThreads = _numDetached;
+  }
+  if (maximumDetachedThreads != nullptr) {
+    *maximumDetachedThreads = _maxNumberDetachedThreads;
+  }
   // First see if we have already reached the limit:
   if (_numDetached >= _maxNumberDetachedThreads) {
     return Result(TRI_ERROR_TOO_MANY_DETACHED_THREADS);

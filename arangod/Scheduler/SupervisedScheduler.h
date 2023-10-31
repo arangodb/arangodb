@@ -61,7 +61,8 @@ class SupervisedScheduler final : public Scheduler {
   /// out instead of starting its long running task. Note that his also
   /// happens if a configurable total number of detached threads has been
   /// reached.
-  Result detachThread() override;
+  Result detachThread(uint64_t* detachedThreads,
+                      uint64_t* maximumDetachedThreads) override;
 
   void toVelocyPack(velocypack::Builder&) const override;
   Scheduler::QueueStatistics queueStatistics() const override;

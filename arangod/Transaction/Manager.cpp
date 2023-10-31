@@ -910,10 +910,16 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
       alreadyDetached = true;
       LOG_TOPIC("dd234", INFO, Logger::THREADS)
           << "Did not get lock within 1 seconds, detaching scheduler thread.";
-      auto res = SchedulerFeature::SCHEDULER->detachThread();
+      uint64_t currentNumberDetached = 0;
+      uint64_t maximumNumberDetached = 0;
+      auto res = SchedulerFeature::SCHEDULER->detachThread(
+          &currentNumberDetached, &maximumNumberDetached);
       if (res.is(TRI_ERROR_TOO_MANY_DETACHED_THREADS)) {
         LOG_TOPIC("dd233", WARN, Logger::THREADS)
-            << "Could not detach scheduler thread, will continue to acquire "
+            << "Could not detach scheduler thread (currently detached threads: "
+            << currentNumberDetached
+            << ", maximal number of detached threads: " << maximumNumberDetached
+            << "), will continue to acquire "
                "lock in scheduler thread, this can potentially lead to "
                "blockages!";
       }
@@ -992,6 +998,9 @@ void Manager::returnManagedTrx(TransactionId tid, bool isSideUser) noexcept {
 transaction::Status Manager::getManagedTrxStatus(
     TransactionId tid, std::string const& database) const {
   size_t bucket = getBucket(tid);
+  READ_LOCKER(writeLocker, _transactions[bucket]._lock);
+
+  auto it = _transactions[bucket]._managed.find(tid);
   READ_LOCKER(writeLocker, _transactions[bucket]._lock);
 
   auto it = _transactions[bucket]._managed.find(tid);
@@ -1611,22 +1620,19 @@ std::shared_ptr<ManagedContext> Manager::buildManagedContextUnderLock(
     // release lock in case something went wrong
     mtrx.rwlock.unlock();
     throw;
-  }
-}
+    Manager::TransactionCommitGuard Manager::getTransactionCommitGuard() {
+      READ_LOCKER(guard, _hotbackupCommitLock);
+      return guard;
+    }
 
-Manager::TransactionCommitGuard Manager::getTransactionCommitGuard() {
-  READ_LOCKER(guard, _hotbackupCommitLock);
-  return guard;
-}
+    CounterGuard::CounterGuard(Manager & manager) : _manager(manager) {
+      _manager._nrRunning.fetch_add(1, std::memory_order_relaxed);
+    }
 
-CounterGuard::CounterGuard(Manager& manager) : _manager(manager) {
-  _manager._nrRunning.fetch_add(1, std::memory_order_relaxed);
-}
+    CounterGuard::~CounterGuard() {
+      [[maybe_unused]] uint64_t r =
+          _manager._nrRunning.fetch_sub(1, std::memory_order_relaxed);
+      TRI_ASSERT(r > 0);
+    }
 
-CounterGuard::~CounterGuard() {
-  [[maybe_unused]] uint64_t r =
-      _manager._nrRunning.fetch_sub(1, std::memory_order_relaxed);
-  TRI_ASSERT(r > 0);
-}
-
-}  // namespace arangodb::transaction
+  }  // namespace arangodb::transaction
