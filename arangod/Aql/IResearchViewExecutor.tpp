@@ -1037,7 +1037,7 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::pushStoredValues(
     if constexpr (parallel) {
       readStoredValues<parallel>(docId, index++, storedIndex++);
     } else {
-      readStoredValues<parallel>(docId, index++, storedIndex);
+      readStoredValues<parallel>(docId, index++, bufferIndex);
     }
   }
 }
