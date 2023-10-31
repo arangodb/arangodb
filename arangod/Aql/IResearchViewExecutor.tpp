@@ -741,8 +741,8 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::materialize() {
     });
   } else {
     TRI_ASSERT(!pkReadingOrder.empty());
-    _context.snapshot =
-        _indexReadBuffer.getValue(pkReadingOrder.front()).segment()->snapshot;
+    segment = _indexReadBuffer.getValue(pkReadingOrder.front()).segment();
+    _context.snapshot = segment->snapshot;
   }
   StorageSnapshot const* lastSnapshot{};
   auto fillKeys = [&] {
