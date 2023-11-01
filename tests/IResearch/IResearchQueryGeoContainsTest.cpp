@@ -381,6 +381,7 @@ class QueryGeoContains : public QueryTest {
         SEARCH ANALYZER(GEO_CONTAINS(box, d.geometry), 'mygeojson')
         OPTIONS {parallelism:)",
           i, R"(}
+        SORT d.id ASC
         RETURN d)");
       EXPECT_TRUE(runQuery(q, all));
     }
