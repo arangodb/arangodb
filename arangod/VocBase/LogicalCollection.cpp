@@ -1346,6 +1346,7 @@ auto LogicalCollection::groupID() const noexcept
 auto LogicalCollection::replicatedStateId() const noexcept
     -> arangodb::replication2::LogId {
   ADB_PROD_ASSERT(replicationVersion() == replication::Version::TWO &&
-                  _replicatedStateId.has_value());
+                  _replicatedStateId.has_value())
+      << "collection " << name() << " has no replicated state";
   return _replicatedStateId.value();
 }

@@ -105,7 +105,7 @@ bool DropCollection::first() {
 
       error << "failed to lookup local collection " << database << "/" << shard;
       LOG_TOPIC("02722", ERR, Logger::MAINTENANCE)
-          << "DropCollection: " << error.str();
+          << "DropCollection: " << error.str() << " found " << found;
       result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, error.str());
 
       return false;

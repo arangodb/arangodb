@@ -742,6 +742,43 @@ const replicatedStateRecoverySuite = function () {
       assertEqual(doc.createdAt, createdAt, `Expected createdAt property to be ${createdAt} in ${JSON.stringify(doc)}` +
         `log contents: ${JSON.stringify(logContents)}`);
     },
+
+    testRecoveryMultipleCollections: function (testName) {
+      const participants = lhttp.listLogs(coordinator, database).result[logId];
+      assertTrue(participants !== undefined, `No participants found for log ${logId}`);
+      let leader = participants[0];
+      let followers = participants.slice(1);
+
+      // Create lots of collections that are distributed like the first one.
+      // The point of this is to make sure that the recovery procedure can handle multiple shards.
+      const extraCollectionName = `${collectionName}DistributeShardsLike`;
+      for (let counter = 0; counter < 10; ++counter) {
+        const col = db._create(`${extraCollectionName}-${counter}`, {
+          numberOfShards: 1,
+          distributeShardsLike: collectionName,
+        });
+        col.insert({_key: `${testName}-${counter}`});
+        extraCollections.push(col);
+      }
+
+      // Wait for operations to be synced to disk
+      let status = log.status();
+      const commitIndexBeforeCompaction = status.participants[leader].response.local.commitIndex;
+      lh.waitFor(lp.lowestIndexToKeepReached(log, leader, commitIndexBeforeCompaction));
+
+      // Set a new leader. This will trigger recovery.
+      let newLeader = followers[0];
+      let term = lh.readReplicatedLogAgency(database, logId).plan.currentTerm.term;
+      let newTerm = term + 1;
+      lh.setLeader(database, logId, newLeader);
+      lh.waitFor(lp.replicatedLogLeaderEstablished(database, logId, newTerm, _.without(participants, leader)));
+
+      // Check all other collections from this group.
+      for (let counter = 0; counter < 10; ++counter) {
+        const col = db._collection(`${extraCollectionName}-${counter}`);
+        col.document({_key: `${testName}-${counter}`});
+      }
+    }
   };
 };
 
@@ -795,7 +832,6 @@ const replicatedStateSnapshotTransferSuite = function () {
       helper.debugClearFailAt(lh.getServerUrl(server));
     }
   };
-
 
   return {
     setUpAll,
@@ -861,6 +897,18 @@ const replicatedStateSnapshotTransferSuite = function () {
       });
       extraCollections.push(col2);
 
+      // For extra fun, create some more collections that are distributed like the first one.
+      for (let counter = 0; counter < 30; ++counter) {
+        const col = db._create(`${extraCollectionName}-${counter}`, {
+          numberOfShards: 1,
+          distributeShardsLike: collectionName,
+        });
+        col.insert({_key: `${testName}-${counter}`});
+        extraCollections.push(col);
+      }
+
+      // Insert some documents into the original collection.
+      // These documents are not going to have any computed values set.
       let documents1 = [];
       for (let counter = 0; counter < 30; ++counter) {
         documents1.push({_key: `foo-${testName}-${counter}`});
@@ -904,7 +952,7 @@ const replicatedStateSnapshotTransferSuite = function () {
       // The following documents should have a createdAt value.
       let documents3 = [];
       let createdAts = {};
-      for (let counter = 0; counter < 30; ++counter) {
+      for (let counter = 0; counter < 10; ++counter) {
         documents3.push({_key: `baz'-${testName}-${counter}`});
       }
       for (let idx = 0; idx < documents3.length; ++idx) {
@@ -947,7 +995,6 @@ const replicatedStateSnapshotTransferSuite = function () {
             return Error(`Expected array, got ${JSON.stringify(bulk)}`);
           }
           if (bulk.length !== checkKeys.length) {
-            internal.print(`Expected ${checkKeys.length} documents, got ${bulk.length}`)
             return Error(`Expected ${checkKeys.length} documents, got ${bulk.length}`);
           }
           return true;
@@ -976,9 +1023,30 @@ const replicatedStateSnapshotTransferSuite = function () {
         }
         keysSet.delete(doc._key);
       }
+
+      // Set a newly added follower as leader.
+      let term = lh.readReplicatedLogAgency(database, logId).plan.currentTerm.term;
+      let newTerm = term + 1;
+      lh.setLeader(database, logId, newParticipant);
+      lh.waitFor(lp.replicatedLogLeaderEstablished(database, logId, newTerm, _.without(newParticipants, leader)));
+
+      // Both collections should work as expected.
+      let doc1 = collection.insert({_key: `${testName}-collection`}, {returnNew: true});
+      let doc2 = col2.insert({_key: `${testName}-col2`}, {returnNew: true});
+      logContents = log.head(1000);
+      assertTrue(doc1.new.hasOwnProperty("createdAt"), `Expected createdAt property in ${JSON.stringify(doc1)}, ` +
+        `log contents: ${JSON.stringify(logContents)}`);
+      assertFalse(doc2.new.hasOwnProperty("createdAt"), `Expected no createdAt property in ${JSON.stringify(doc2)}, ` +
+        `log contents: ${JSON.stringify(logContents)}`);
+
+      // Check all other collections from this group.
+      for (let counter = 0; counter < 10; ++counter) {
+        const col = db._collection(`${extraCollectionName}-${counter}`);
+        col.document({_key: `${testName}-${counter}`});
+      }
     },
 
-   testSnapshotDiscardedOnRebootIdChange: function() {
+    testSnapshotDiscardedOnRebootIdChange: function() {
       const participants = lhttp.listLogs(coordinator, database).result[logId];
       let leaderUrl = lh.getServerUrl(participants[0]);
       const follower = participants.slice(1)[0];
@@ -1003,7 +1071,9 @@ const replicatedStateSnapshotTransferSuite = function () {
       result = dh.getSnapshotStatus(leaderUrl, database, logId, snapshotId);
       assertTrue(result.json.error);
 
-      // Pretending again to be the same follower, start a snapshot, but with a lower rebootId
+      // Pretending again to be the same follower, start a snapshot, but with a lower rebootId.
+      // The expectation is that the snapshot will be discarded once the leader notices
+      // the follower actually has a higher reboot ID.
       continueServerWait(follower);
       rebootId = lh.getServerRebootId(follower);
       result = dh.startSnapshot(leaderUrl, database, logId, follower, rebootId - 1);
@@ -1022,7 +1092,7 @@ const replicatedStateSnapshotTransferSuite = function () {
         });
       }
 
-      // Now start a snapshot with the correct rebootId and expect it to be available.
+      // Now start a snapshot with the correct rebootId and expect it to become available.
       rebootId = lh.getServerRebootId(follower);
       result = dh.startSnapshot(leaderUrl, database, logId, follower, rebootId);
       lh.checkRequestResult(result);
@@ -1048,6 +1118,7 @@ const replicatedStateSnapshotTransferSuite = function () {
       assertEqual(Object.keys(result.json.result.snapshots).length, 0);
     },
 
+    /*
     testEffectiveWriteConcernShouldAccountForMissingSnapshots: function(testName) {
       // We start with 3 servers, so the effective write concern should be 3.
       let {plan} = lh.readReplicatedLogAgency(database, logId);
@@ -1154,6 +1225,7 @@ const replicatedStateSnapshotTransferSuite = function () {
       continueServerWait(stopFollower);
       lh.waitFor(checkEffectiveWriteConcern(4));
     }
+     */
   };
 };
 

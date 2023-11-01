@@ -75,6 +75,10 @@ class DBServerAgencySync {
       std::unordered_map<arangodb::replication2::LogId,
                          arangodb::replication2::maintenance::LogStatus>>;
 
+  using LocalShardsToLogsMap = std::unordered_map<
+      std::string,
+      std::unordered_map<std::string, arangodb::replication2::LogId>>;
+
   /**
    * @brief Get copy of current local state
    * @param  collections  Builder to fill to
@@ -83,7 +87,7 @@ class DBServerAgencySync {
       containers::FlatHashSet<std::string> const& dirty,
       containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>>&
           collections,
-      LocalLogsMap& replLogs);
+      LocalLogsMap& replLogs, LocalShardsToLogsMap& shardIdToLogId);
 
   double requestTimeout() const noexcept;
 
