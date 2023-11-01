@@ -2117,8 +2117,14 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     return createNoResultsExecutor(engine);
   }
 
-  auto [materializeType, executorInfos, registerInfos] =
-      buildExecutorInfo(engine, std::move(reader));
+  // auto [materializeType, executorInfos, registerInfos] =
+  //    buildExecutorInfo(engine, std::move(reader));
+  // Workaround for using clang15 during asan build.
+  // FIXME: remove it as soon as we switch to clang16 or higher
+  auto infosTuple = buildExecutorInfo(engine, std::move(reader));
+  auto& materializeType = std::get<0>(infosTuple);
+  auto& executorInfos = std::get<1>(infosTuple);
+  auto& registerInfos = std::get<2>(infosTuple);
   // guaranteed by optimizer rule
   TRI_ASSERT(_sort == nullptr || !_sort->empty());
   bool const ordered = !_scorers.empty();
