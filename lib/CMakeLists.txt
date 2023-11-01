@@ -167,6 +167,7 @@ add_library(arango STATIC
   Basics/FeatureFlags.cpp
   Basics/FunctionUtils.cpp
   Basics/GlobalResourceMonitor.cpp
+  Basics/GlobalSerialization.cpp
   Basics/HybridLogicalClock.cpp
   Basics/IndexIter.h
   Basics/LdapUrlParser.cpp
