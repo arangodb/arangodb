@@ -992,7 +992,7 @@ class QueryLevenhsteinMatchSearch : public QueryLevenhsteinMatch {
       auto collection =
           _vocbase.lookupCollection(absl::Substitute("testCollection$0", name));
       ASSERT_TRUE(collection);
-      collection->createIndex(createJson->slice(), created);
+      collection->createIndex(createJson->slice(), created).get();
       ASSERT_TRUE(created);
     };
     createIndex(1);

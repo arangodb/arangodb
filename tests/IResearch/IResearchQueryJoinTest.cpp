@@ -1771,7 +1771,7 @@ class QueryJoinSearch : public QueryJoin {
           version(), name));
       auto collection = _vocbase.lookupCollection(name);
       EXPECT_TRUE(collection);
-      collection->createIndex(createJson->slice(), created);
+      collection->createIndex(createJson->slice(), created).get();
       ASSERT_TRUE(created);
     };
     auto createSearchName = [&](std::string_view name) {

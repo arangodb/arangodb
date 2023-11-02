@@ -213,7 +213,7 @@ TEST_F(DocumentStateLeaderTest,
   EXPECT_CALL(*transactionMock, commit).Times(1);
   EXPECT_CALL(*transactionMock, abort).Times(1);
 
-  leaderState->recoverEntries(std::move(entryIterator));
+  std::ignore = leaderState->recoverEntries(std::move(entryIterator));
 
   Mock::VerifyAndClearExpectations(&transactionManagerMock);
   Mock::VerifyAndClearExpectations(transactionMock.get());
@@ -247,7 +247,7 @@ TEST_F(DocumentStateLeaderTest,
 
   EXPECT_CALL(*stream, insert).Times(1);
   EXPECT_CALL(*transactionMock, abort).Times(3);
-  leaderState->recoverEntries(std::move(entryIterator));
+  std::ignore = leaderState->recoverEntries(std::move(entryIterator));
   Mock::VerifyAndClearExpectations(transactionMock.get());
 }
 
@@ -273,8 +273,8 @@ TEST_F(DocumentStateLeaderTest,
   leaderState->setStream(stream);
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
 
-  ASSERT_DEATH_CORE_FREE(leaderState->recoverEntries(std::move(entryIterator)),
-                         "");
+  ASSERT_DEATH_CORE_FREE(
+      std::ignore = leaderState->recoverEntries(std::move(entryIterator)), "");
 }
 
 TEST_F(DocumentStateLeaderTest,
@@ -324,7 +324,7 @@ TEST_F(DocumentStateLeaderTest,
   EXPECT_CALL(*stream, release).Times(1);
   EXPECT_CALL(*shardHandlerMock, isShardAvailable(shardId)).Times(1);
   EXPECT_CALL(*transactionMock, apply(entries[0].getInnerOperation())).Times(0);
-  leaderState->recoverEntries(std::move(entryIterator));
+  std::ignore = leaderState->recoverEntries(std::move(entryIterator));
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());
   Mock::VerifyAndClearExpectations(transactionMock.get());
   Mock::VerifyAndClearExpectations(stream.get());
@@ -340,7 +340,7 @@ TEST_F(DocumentStateLeaderTest,
   EXPECT_CALL(*stream, release).Times(1);
   EXPECT_CALL(*shardHandlerMock, isShardAvailable(shardId)).Times(0);
   EXPECT_CALL(*transactionMock, commit()).Times(0);
-  leaderState->recoverEntries(std::move(entryIterator));
+  std::ignore = leaderState->recoverEntries(std::move(entryIterator));
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());
   Mock::VerifyAndClearExpectations(transactionMock.get());
   Mock::VerifyAndClearExpectations(stream.get());
@@ -354,7 +354,7 @@ TEST_F(DocumentStateLeaderTest,
   EXPECT_CALL(transactionManagerMock, abortManagedTrx(_, _)).Times(1);
   EXPECT_CALL(*shardHandlerMock, isShardAvailable(shardId)).Times(1);
   EXPECT_CALL(*transactionMock, apply(entries[0].getInnerOperation())).Times(1);
-  leaderState->recoverEntries(std::move(entryIterator));
+  std::ignore = leaderState->recoverEntries(std::move(entryIterator));
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());
   Mock::VerifyAndClearExpectations(transactionMock.get());
   Mock::VerifyAndClearExpectations(stream.get());
@@ -449,5 +449,5 @@ TEST_F(DocumentStateLeaderTest, leader_create_modify_and_drop_shard) {
 
   EXPECT_CALL(*shardHandlerMock, dropShard(shardId)).Times(1);
 
-  leaderState->dropShard(shardId, collectionId);
+  std::ignore = leaderState->dropShard(shardId, collectionId);
 }
