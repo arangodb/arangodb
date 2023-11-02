@@ -84,8 +84,9 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
     return res;
   }
 
+  auto tid = id().asFollowerTransactionId();
   auto operation = replication2::replicated_state::document::
-      ReplicatedOperation::buildCommitOperation(id());
+      ReplicatedOperation::buildCommitOperation(tid);
   auto options = replication2::replicated_state::document::ReplicationOptions{
       .waitForCommit = true};
   std::vector<futures::Future<Result>> commits;
@@ -130,7 +131,7 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
                 }
                 return res;
               })
-              .thenValue([leader, tid = id()](auto&& res) -> Result {
+              .thenValue([leader, tid](auto&& res) -> Result {
                 if (res.fail()) {
                   return res.result();
                 }
@@ -191,8 +192,9 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
     return res;
   }
 
+  auto tid = id().asFollowerTransactionId();
   auto operation = replication2::replicated_state::document::
-      ReplicatedOperation::buildAbortOperation(id());
+      ReplicatedOperation::buildAbortOperation(tid);
   auto options = replication2::replicated_state::document::ReplicationOptions{};
 
   // The following code has been simplified based on this assertion.
@@ -220,7 +222,7 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
       if (auto r = rtc.abortTransaction(); r.fail()) {
         return r;
       }
-      if (auto releaseRes = leader->release(id(), res.get());
+      if (auto releaseRes = leader->release(tid, res.get());
           releaseRes.fail()) {
         LOG_CTX("0279d", ERR, leader->loggerContext)
             << "Failed to call release: " << releaseRes;

@@ -179,6 +179,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
                 .fail()) {
           LOG_CTX("cbc5b", FATAL, self->loggerContext)
               << "failed to apply entry " << doc << " during recovery: " << res;
+          TRI_ASSERT(false) << res;
           FATAL_ERROR_EXIT();
         }
       }
@@ -189,13 +190,14 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
         self->replicateOperation(abortAll, ReplicationOptions{});
     // Should finish immediately, because we are not waiting the operation to be
     // committed in the replicated log
-    TRI_ASSERT(abortAllReplicationFut.isReady());
+    TRI_ASSERT(abortAllReplicationFut.isReady()) << self->gid;
     auto abortAllReplicationStatus = abortAllReplicationFut.get();
     if (abortAllReplicationStatus.fail()) {
       LOG_CTX("b4217", FATAL, self->loggerContext)
           << "failed to replicate AbortAllOngoingTrx operation during "
              "recovery: "
           << abortAllReplicationStatus.result();
+      TRI_ASSERT(false) << abortAllReplicationStatus.result();
       FATAL_ERROR_EXIT();
     }
 
@@ -242,7 +244,7 @@ auto DocumentLeaderState::needsReplication(ReplicatedOperation const& op)
       overload{
           [&](FinishesUserTransactionOrIntermediate auto const& op) -> bool {
             // An empty transaction is not active, therefore we can ignore it.
-            // We are not replication commit or abort operations for empty
+            // We are not replicating commit or abort operations for empty
             // transactions.
             return _activeTransactions.getLockedGuard()
                 ->getTransactions()
@@ -258,16 +260,7 @@ auto DocumentLeaderState::replicateOperation(ReplicatedOperation op,
     -> futures::Future<ResultT<LogIndex>> {
   auto const& stream = getStream();
 
-  // We have to use follower IDs when replicating transactions
   auto entry = DocumentLogEntry(std::move(op));
-  std::visit(
-      [&](auto& arg) {
-        using T = std::decay_t<decltype(arg)>;
-        if constexpr (UserTransaction<T>) {
-          arg.tid = arg.tid.asFollowerTransactionId();
-        }
-      },
-      entry.getInnerOperation());
 
   // Insert and emplace must happen atomically. The idx is strictly increasing,
   // which is required by markAsActive. Keeping the stream insertion and the
@@ -279,6 +272,13 @@ auto DocumentLeaderState::replicateOperation(ReplicatedOperation op,
 
       std::visit(overload{
                      [&](UserTransaction auto& op) {
+                       // We have to use follower IDs when replicating
+                       // transactions
+                       TRI_ASSERT(op.tid.isFollowerTransactionId())
+                           << op.tid
+                           << " must only be replicated using a follower "
+                              "transaction id "
+                           << op;
                        activeTransactions.markAsActive(op.tid, idx);
                      },
                      [&](auto&&) { activeTransactions.markAsActive(idx); },
@@ -464,6 +464,7 @@ auto DocumentLeaderState::createShard(ShardID shard,
                 << "CreateShard operation failed on the leader, after being "
                    "replicated to followers: "
                 << applyEntryRes;
+            TRI_ASSERT(false) << applyEntryRes;
             FATAL_ERROR_EXIT();
           }
 
@@ -538,6 +539,7 @@ auto DocumentLeaderState::modifyShard(ShardID shard, CollectionID collectionId,
                 << "ModifyShard operation failed on the leader, after being "
                    "replicated to followers: "
                 << applyEntryRes;
+            TRI_ASSERT(false) << applyEntryRes;
             FATAL_ERROR_EXIT();
           }
 
@@ -598,6 +600,7 @@ auto DocumentLeaderState::dropShard(ShardID shard) -> futures::Future<Result> {
                 << "DropShard operation failed on the leader, after being "
                    "replicated to followers: "
                 << applyEntryRes;
+            TRI_ASSERT(false) << applyEntryRes;
             FATAL_ERROR_EXIT();
           }
 
@@ -660,6 +663,7 @@ auto DocumentLeaderState::createIndex(
                   << "CreateIndex operation was applied locally, but the "
                      "leader failed to replicate it: "
                   << result.result();
+              TRI_ASSERT(false) << result.result();
               FATAL_ERROR_EXIT();
             }
             return result.result();
@@ -714,6 +718,7 @@ auto DocumentLeaderState::createIndex(
                 << "CreateIndex operation failed on the leader, after being "
                    "replicated to followers: "
                 << localIndexCreation;
+            TRI_ASSERT(false) << localIndexCreation;
             FATAL_ERROR_EXIT();
           }
 
@@ -769,6 +774,7 @@ auto DocumentLeaderState::dropIndex(ShardID shard,
                     << "DropIndex operation failed on the leader, after being "
                        "replicated to followers: "
                     << localIndexRemoval;
+                TRI_ASSERT(false) << localIndexRemoval;
                 FATAL_ERROR_EXIT();
               }
 
