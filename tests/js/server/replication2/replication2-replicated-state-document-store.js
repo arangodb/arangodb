@@ -1249,6 +1249,8 @@ const replicatedStateSnapshotTransferSuite = function () {
  * This test suite checks the correctness of a DocumentState shard-related operations.
  */
 const replicatedStateDocumentShardsSuite = function () {
+  const coordinator = lh.coordinators[0];
+
   const {setUpAll, tearDownAll, setUpAnd, tearDownAnd, stopServerWait} =
       lh.testHelperFunctions(database, {replicationVersion: "2"});
 
@@ -1477,6 +1479,96 @@ const replicatedStateDocumentShardsSuite = function () {
       }
     },
 
+    testDoubleCreateDropIndex: function (testName) {
+      let collection = db._create(collectionName, {numberOfShards: 1, writeConcern: 3, replicationFactor: 3});
+      let {shards, shardsToLogs, logs} = dh.getCollectionShardsAndLogs(db, collection);
+      const logId = shardsToLogs[shards[0]];
+      let log = logs[0];
+
+      // Prepare the grounds for replacing a follower.
+      const participants = lhttp.listLogs(coordinator, database).result[logId];
+      const leader = participants[0];
+      const followers = participants.slice(1);
+      const oldParticipant = _.sample(followers);
+      const nonParticipants = _.without(lh.dbservers, ...participants);
+      assertTrue(nonParticipants.length > 0, "Not enough DBServers to run this test");
+      const newParticipant = _.sample(nonParticipants);
+      const newParticipants = _.union(_.without(participants, oldParticipant), [newParticipant]).sort();
+
+      // Create an index.
+      let katze = collection.ensureIndex({
+        name: "katze",
+        type: "persistent",
+        fields: ["foo"],
+        unique: false,
+        inBackground: false
+      });
+      assertEqual(katze.name, "katze");
+      assertEqual(katze.isNewlyCreated, true);
+
+      // Inserting docs into the collection, so there's something for the snapshot.
+      for (let idx = 0; idx < 10; ++idx) {
+        collection.insert({_key: `${testName}-${idx}`});
+      }
+
+      // Wait for operations to be synced to disk
+      let status = log.status();
+      const commitIndexBeforeCompaction = status.participants[leader].response.local.commitIndex;
+      lh.waitFor(lp.lowestIndexToKeepReached(log, leader, commitIndexBeforeCompaction));
+
+      let logContents = log.head(1000);
+
+      // Trigger compaction intentionally.
+      let compactionResult = log.compact();
+      for (const [pid, value] of Object.entries(compactionResult)) {
+        assertEqual(value.result, "ok", `Compaction failed for participant ${pid}, result: ${JSON.stringify(value)}, ` +
+          `log contents: ${JSON.stringify(logContents)}`);
+      }
+
+      // Create another index.
+      // This index will be part of the shard, but it's CreateIndex operation will also be replayed.
+      let hund = collection.ensureIndex({
+        name: "hund",
+        type: "persistent",
+        fields: ["bar"],
+        unique: false,
+        inBackground: false
+      });
+      assertEqual(hund.name, "hund");
+      assertEqual(hund.isNewlyCreated, true);
+
+      // Drop the first index.
+      // The snapshot transfer will not contain the index, but it will contain the DropIndex operation though.
+      assertTrue(collection.dropIndex(katze));
+
+      // Wait for the index to removed from Current. This is how we know that the leader dropped the index.
+      const indexId = katze.id.split('/')[1];
+      lh.waitFor(() => {
+        if (dh.isIndexInCurrent(database, collection._id, indexId)) {
+          return Error(`Index ${indexId} still in Current`);
+        }
+        return true;
+      });
+
+      // Replace the follower.
+      // This will trigger a snapshot transfer, such that the new follower executes CreateIndex and DropIndex.
+      const result = lh.replaceParticipant(database, logId, oldParticipant, newParticipant);
+      assertEqual({}, result, `Old participant ${oldParticipant} was not replaced with ${newParticipant}, log id ${logId}`);
+
+      // Wait for replicated state to be available on the new follower.
+      lh.waitFor(() => {
+        const {current} = lh.readReplicatedLogAgency(database, logId);
+        if (current.leader.hasOwnProperty("committedParticipantsConfig")) {
+          return lh.sortedArrayEqualOrError(
+            newParticipants,
+            Object.keys(current.leader.committedParticipantsConfig.participants).sort());
+        } else {
+          return Error(`committedParticipantsConfig not found in ` +
+            JSON.stringify(current.leader));
+        }
+      });
+    },
+
     testCreateDropIndex: indexTestHelper(false, false),
     testCreateDropIndexInBackground: indexTestHelper(false, true),
     testCreateDropUniqueIndex: indexTestHelper(true, false),
@@ -1496,8 +1588,6 @@ jsunity.run(replicatedStateFollowerSuiteV1);
 jsunity.run(replicatedStateFollowerSuiteV2);
 jsunity.run(replicatedStateRecoverySuite);
 jsunity.run(replicatedStateSnapshotTransferSuite);
-/*
 jsunity.run(replicatedStateDocumentShardsSuite);
- */
 
 return jsunity.done();
