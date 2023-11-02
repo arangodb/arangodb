@@ -36,6 +36,31 @@ using namespace arangodb::aql;
 
 #define LOG_JOIN LOG_DEVEL_IF(false)
 
+RegisterId JoinExecutorInfos::registerForVariable(
+    VariableId id) const noexcept {
+  auto it = varsToRegister.find(id);
+  if (it != varsToRegister.end()) {
+    return it->second;
+  }
+  return RegisterId::maxRegisterId;
+}
+
+void JoinExecutorInfos::determineProjectionsForRegisters() {
+  if (!projectionsInitialized) {
+    for (auto& it : indexes) {
+      bool found = false;
+      for (size_t i = 0; i < it.projections.size(); ++i) {
+        if (it.projections[i].variable != nullptr) {
+          found = true;
+          break;
+        }
+      }
+      it.hasProjectionsForRegisters = found;
+    }
+    projectionsInitialized = true;
+  }
+}
+
 JoinExecutor::~JoinExecutor() = default;
 
 JoinExecutor::JoinExecutor(Fetcher& fetcher, Infos& infos)
@@ -107,6 +132,8 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   AqlCall upstreamCall{};
   upstreamCall.fullCount = output.getClientCall().fullCount;
 
+  _infos.determineProjectionsForRegisters();
+
   bool hasMore = false;
   while (inputRange.hasDataRow() && !output.isFull()) {
     if (!_currentRow) {
@@ -114,7 +141,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       _strategy->reset();
     }
 
-    std::size_t rowCount = 0;
+    [[maybe_unused]] std::size_t rowCount = 0;
     hasMore = _strategy->next([&](std::span<LocalDocumentId> docIds,
                                   std::span<VPackSlice> projections) -> bool {
       LOG_JOIN << "BEGIN OF ROW " << rowCount++;
@@ -152,18 +179,37 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
       std::size_t projectionsOffset = 0;
 
-      auto buildProjections = [&](size_t k, aql::Projections& proj) {
+      auto buildProjections = [&](size_t k, aql::Projections const& proj,
+                                  bool hasProjectionsForRegisters) {
         // build the document from projections
         std::span<VPackSlice> projectionRange = {
             projections.begin() + projectionsOffset,
             projections.begin() + projectionsOffset + proj.size()};
 
         auto data = SpanCoveringData{projectionRange};
-        _projectionsBuilder.clear();
-        _projectionsBuilder.openObject(true);
-        proj.toVelocyPackFromIndexCompactArray(_projectionsBuilder, data,
-                                               &_trx);
-        _projectionsBuilder.close();
+        if (!hasProjectionsForRegisters) {
+          // write all projections combined into the global output register
+          // recycle our Builder object
+          _projectionsBuilder.clear();
+          _projectionsBuilder.openObject(true);
+          proj.toVelocyPackFromIndexCompactArray(_projectionsBuilder, data,
+                                                 &_trx);
+          _projectionsBuilder.close();
+        } else {
+          // write projections into individual output registers
+          // TODO: call produceFromIndexCompactArray
+          proj.produceFromIndex(
+              _projectionsBuilder, data, &_trx,
+              [&](Variable const* variable, velocypack::Slice slice) {
+                if (slice.isNone()) {
+                  slice = VPackSlice::nullSlice();
+                }
+                RegisterId registerId =
+                    _infos.registerForVariable(variable->id);
+                TRI_ASSERT(registerId != RegisterId::maxRegisterId);
+                output.moveValueInto(registerId, _currentRow, slice);
+              });
+        }
       };
 
       for (std::size_t k = 0; k < docIds.size(); k++) {
@@ -269,6 +315,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
           } else {
             _projectionsBuilder.clear();
             _projectionsBuilder.openObject(true);
+            // TODO: add register projections
             idx.projections.toVelocyPackFromDocument(_projectionsBuilder, doc,
                                                      &_trx);
             _projectionsBuilder.close();
@@ -283,7 +330,8 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
           docProduceCallback.operator()<std::unique_ptr<std::string>&>(docPtr);
         } else {
           if (idx.projections.usesCoveringIndex(idx.index)) {
-            buildProjections(k, idx.projections);
+            buildProjections(k, idx.projections,
+                             idx.hasProjectionsForRegisters);
             output.moveValueInto(_infos.indexes[k].documentOutputRegister,
                                  _currentRow, _projectionsBuilder.slice());
 

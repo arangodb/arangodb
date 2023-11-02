@@ -92,8 +92,8 @@ void DocumentProducingNode::cloneInto(ExecutionPlan* plan,
     c.setFilter(
         std::unique_ptr<Expression>(_filter->clone(plan->getAst(), true)));
   }
-  c.setProjections(_projections);
-  c.setFilterProjections(_filterProjections);
+  c._projections = _projections;
+  c._filterProjections = _filterProjections;
   c.copyCountFlag(this);
   c.setCanReadOwnWrites(canReadOwnWrites());
   c.setMaxProjections(maxProjections());

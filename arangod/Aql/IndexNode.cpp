@@ -191,6 +191,7 @@ IndexNode::IndexNode(ExecutionPlan* plan,
     }
   }
   _options.forLateMaterialization = isLateMaterialized();
+
   updateProjectionsIndexInfo();
 }
 
@@ -213,6 +214,8 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
   // add collection information
   CollectionAccessingNode::toVelocyPack(builder, flags);
 
+  // "strategy" is not read back by the C++ code, but it is exposed for
+  // convenience and testing
   builder.add("strategy", VPackValue(strategyName(strategy())));
   builder.add("needsGatherNodeSort", VPackValue(_needsGatherNodeSort));
 
@@ -449,7 +452,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
     writableOutputRegisters.emplace(outRegister);
   } else {
     // projections. no need to produce the full document.
-    // instead create one register per projection.
+    // create one register per projection.
     for (size_t i = 0; i < p.size(); ++i) {
       Variable const* var = p[i].variable;
       if (var == nullptr) {
@@ -465,6 +468,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
         filterCoveringVars.emplace(var, p[i].coveringIndexPosition);
       }
     }
+
     // in case we do not have any output registers for the projections,
     // we must write them to the main output register, in a velocypack
     // object
@@ -634,13 +638,18 @@ AsyncPrefetchEligibility IndexNode::canUseAsyncPrefetching() const noexcept {
 
 /// @brief getVariablesUsedHere, modifying the set in-place
 void IndexNode::getVariablesUsedHere(VarSet& vars) const {
+  TRI_ASSERT(_condition != nullptr);
+  // lookup condition
   Ast::getReferencedVariables(_condition->root(), vars);
   if (hasFilter()) {
+    // post-filter
     Ast::getReferencedVariables(filter()->node(), vars);
   }
   for (auto const& it : _outNonMaterializedIndVars.second) {
     vars.erase(it.first);
   }
+  // projection output variables.
+  // TODO: validate
   for (size_t i = 0; i < _projections.size(); ++i) {
     if (_projections[i].variable != nullptr) {
       vars.erase(_projections[i].variable);
@@ -680,6 +689,7 @@ std::vector<Variable const*> IndexNode::getVariablesSetHere() const {
                  std::back_inserter(vars),
                  [](auto const& indVar) { return indVar.first; });
 
+  // projection output variables
   // TODO: validate
   for (size_t i = 0; i < _projections.size(); ++i) {
     // output registers are not necessarily set yet
