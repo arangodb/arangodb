@@ -259,7 +259,7 @@ auto DocumentLeaderState::replicateOperation(ReplicatedOperation op,
   auto const& stream = getStream();
 
   // We have to use follower IDs when replicating transactions
-  auto entry = DocumentLogEntry{op};
+  auto entry = DocumentLogEntry(std::move(op));
   std::visit(
       [&](auto& arg) {
         using T = std::decay_t<decltype(arg)>;
@@ -283,7 +283,7 @@ auto DocumentLeaderState::replicateOperation(ReplicatedOperation op,
                      },
                      [&](auto&&) { activeTransactions.markAsActive(idx); },
                  },
-                 op.operation);
+                 entry.getInnerOperation());
 
       return idx;
     });
