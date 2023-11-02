@@ -91,6 +91,13 @@ bool Projections::isSingle(std::string_view attribute) const noexcept {
   return _projections.size() == 1 && _projections[0].path[0] == attribute;
 }
 
+/// @brief returns true if any of the projections will write into an
+/// output variable/register
+bool Projections::hasOutputRegisters() const noexcept {
+  return std::any_of(_projections.begin(), _projections.end(),
+                     [](Projection const& p) { return p.variable != nullptr; });
+}
+
 // return the covering index position for a specific attribute type.
 // will throw if the index does not cover!
 uint16_t Projections::coveringIndexPosition(

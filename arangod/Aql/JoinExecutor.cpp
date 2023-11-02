@@ -48,14 +48,7 @@ RegisterId JoinExecutorInfos::registerForVariable(
 void JoinExecutorInfos::determineProjectionsForRegisters() {
   if (!projectionsInitialized) {
     for (auto& it : indexes) {
-      bool found = false;
-      for (size_t i = 0; i < it.projections.size(); ++i) {
-        if (it.projections[i].variable != nullptr) {
-          found = true;
-          break;
-        }
-      }
-      it.hasProjectionsForRegisters = found;
+      it.hasProjectionsForRegisters = it.projections.hasOutputRegisters();
     }
     projectionsInitialized = true;
   }

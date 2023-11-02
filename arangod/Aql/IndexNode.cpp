@@ -430,22 +430,12 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
       static_cast<aql::RegisterCount>(_outNonMaterializedIndVars.second.size());
   TRI_ASSERT(0 == numIndVarsRegisters || isLateMaterialized());
 
-  // We could be asked to produce only document id for later materialization
-  // or full document body at once
-#if 0
-  aql::RegisterCount numDocumentRegs = 1;
-#endif
-
   // if late materialized
   // We have one additional output register for each index variable which is
   // used later, before the output register for document id. These must of
   // course fit in the available registers. There may be unused registers
   // reserved for later blocks.
   RegIdSet writableOutputRegisters;
-#if 0
-  writableOutputRegisters.reserve(numDocumentRegs + numIndVarsRegisters);
-  writableOutputRegisters.emplace(outRegister);
-#endif
   auto const& p = projections();
   if (p.empty()) {
     // no projections. we produce the full document in outputRegister
@@ -457,7 +447,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
       Variable const* var = p[i].variable;
       if (var == nullptr) {
         // the output register can be a nullptr if the "optimize-projections"
-        // rule was not executed (potentially because it was disabled).
+        // rule was not (yet) executed.
         continue;
       }
       TRI_ASSERT(var != nullptr);
@@ -495,10 +485,6 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
                    return std::make_pair(indVar.second, regId);
                  });
 
-#if 0
-  TRI_ASSERT(writableOutputRegisters.size() ==
-             numDocumentRegs + numIndVarsRegisters);
-#endif
   auto registerInfos =
       createRegisterInfos({}, std::move(writableOutputRegisters));
 
@@ -800,23 +786,18 @@ bool IndexNode::isProduceResult() const {
     return true;
   }
   auto const& p = projections();
-  if (p.empty()) {
-    return isVarUsedLater(_outVariable);
-  }
-  // check output registers of projections
-  size_t found = 0;
+  // check individual output registers of projections
   for (size_t i = 0; i < p.size(); ++i) {
     Variable const* var = p[i].variable;
     // the output register can be a nullptr if the "optimize-projections"
-    // rule was not executed (potentially because it was disabled).
-    if (var != nullptr) {
-      ++found;
-      if (isVarUsedLater(var)) {
-        return true;
-      }
+    // rule was not (yet) executed
+    if (var != nullptr && isVarUsedLater(var)) {
+      return true;
     }
   }
-  if (found == 0) {
+  if (!p.hasOutputRegisters()) {
+    // projections do not use output registers. now check
+    // if the full document output variable will be used later.
     return isVarUsedLater(_outVariable);
   }
   return false;
