@@ -448,7 +448,7 @@ auto JoinExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
     }
   }
 
-  return {inputRange.upstreamState(), Stats{}, clientCall.getSkipCount(),
+  return {inputRange.upstreamState(), stats, clientCall.getSkipCount(),
           AqlCall{}};
 }
 
