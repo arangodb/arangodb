@@ -391,6 +391,7 @@ auto DocumentFollowerState::applyEntries(
               LOG_CTX("0aa2e", FATAL, self->loggerContext)
                   << "failed to apply entry " << doc
                   << " on follower: " << currentReleaseIndex.result();
+              TRI_ASSERT(false) << currentReleaseIndex.result();
               FATAL_ERROR_EXIT();
             }
             if (currentReleaseIndex->has_value()) {

@@ -149,7 +149,7 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       }
 
       // Update single document
-      const documents = [...nums].map(i => ({_key: `test${i}`}));
+      const documents = [...nums].map(i => ({_key: `test${i}`, value: i}));
       let docHandles = [];
       documents.forEach(doc => {
         let docUpdate = {_key: doc._key, name: `updatedTest${doc.value}`};
