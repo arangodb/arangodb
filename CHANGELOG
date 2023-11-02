@@ -1,6 +1,13 @@
 devel
 -----
 
+* Fixed a race in controlled leader change which could lead to a situation 
+  in which a shard follower is dropped when the first write operation
+  happens. This fixes BTS-1647.
+
+* Fixed an unnecessary follower drop in controlled leader change, which will
+  speed up leader changes. This fixes BTS-1658.
+
 * Fixed BTS-1669 Transaction Manager returns Error if we Abort an Expired
   Transaction.
   There was a small time window of around 2 seconds in which aborting expired
