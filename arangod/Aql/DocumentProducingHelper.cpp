@@ -38,9 +38,6 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
-#define DO_LOG 0
-#include "Logger/LogMacros.h"
-
 #include <function2.hpp>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -63,11 +60,6 @@ IndexIterator::DocumentCallback aql::getCallback(
       }
     }
 
-#if DO_LOG
-    LOG_DEVEL << "GETCALLBACK - WITH PROJECTIONS NOT COVERED BY INDEX "
-              << slice.toJson();
-#endif
-
     context.incrScanned();
 
     if (context.hasFilter() && !context.checkFilter(slice)) {
@@ -84,9 +76,6 @@ IndexIterator::DocumentCallback aql::getCallback(
     TRI_ASSERT(!output.isFull());
 
     if (context.getProjectionsForRegisters().empty()) {
-#if DO_LOG
-      LOG_DEVEL << "GET CALLBACK - NO REGISTERS";
-#endif
       // write all projections combined into the global output register
       // recycle our Builder object
       VPackBuilder& objectBuilder = context.getBuilder();
@@ -100,9 +89,6 @@ IndexIterator::DocumentCallback aql::getCallback(
       RegisterId registerId = context.getOutputRegister();
       output.moveValueInto(registerId, input, s);
     } else {
-#if DO_LOG
-      LOG_DEVEL << "GET CALLBACK - WITH REGISTERS";
-#endif
       // write projections into individual output registers
       context.getProjectionsForRegisters().produceFromDocument(
           context.getBuilder(), slice, context.getTrxPtr(),
@@ -135,10 +121,6 @@ IndexIterator::DocumentCallback aql::getCallback(
       }
     }
 
-#if DO_LOG
-    LOG_DEVEL << "GETCALLBACK - DOCUMENTCOPY";
-#endif
-
     context.incrScanned();
 
     if (context.hasFilter() && !context.checkFilter(s)) {
@@ -150,9 +132,6 @@ IndexIterator::DocumentCallback aql::getCallback(
       return true;
     }
 
-#if DO_LOG
-    LOG_DEVEL << "FULL COPY";
-#endif
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
     RegisterId registerId = context.getOutputRegister();
@@ -200,10 +179,6 @@ IndexIterator::LocalDocumentIdCallback aql::getNullCallback(
         return false;
       }
     }
-
-#if DO_LOG
-    LOG_DEVEL << "GETNULLCALLBACK";
-#endif
 
     context.incrScanned();
 
@@ -554,10 +529,6 @@ IndexIterator::CoveringCallback aql::getCallback(
       }
     }
 
-#if DO_LOG
-    LOG_DEVEL << "GETCALLBACK - WITHPROJECTIONSCOVEREDBYINDEX";
-#endif
-
     context.incrScanned();
 
     if (context.hasFilter() && !context.checkFilter(&covering)) {
@@ -570,9 +541,6 @@ IndexIterator::CoveringCallback aql::getCallback(
       InputAqlItemRow const& input = context.getInputRow();
 
       if (context.getProjectionsForRegisters().empty()) {
-#if DO_LOG
-        LOG_DEVEL << "PROJECTIONS COVERED BY INDEX - NO REGS";
-#endif
         // write all projections combined into the global output register
         // recycle our Builder object
         VPackBuilder& objectBuilder = context.getBuilder();
@@ -590,9 +558,6 @@ IndexIterator::CoveringCallback aql::getCallback(
         VPackSlice s = objectBuilder.slice();
         output.moveValueInto(registerId, input, s);
       } else {
-#if DO_LOG
-        LOG_DEVEL << "PROJECTIONS COVERED BY INDEX - WITH REGS";
-#endif
         // write projections into individual output registers
         context.getProjectionsForRegisters().produceFromIndex(
             context.getBuilder(), covering, context.getTrxPtr(),
@@ -629,10 +594,6 @@ IndexIterator::CoveringCallback aql::getCallback(
       }
     }
 
-#if DO_LOG
-    LOG_DEVEL << "GETCALLBACK - WITHFILTERCOVEREDBYINDEX";
-#endif
-
     context.incrScanned();
 
     if (!context.checkFilter(&covering)) {
@@ -659,9 +620,6 @@ IndexIterator::CoveringCallback aql::getCallback(
           }
         } else {
           if (context.getProjectionsForRegisters().empty()) {
-#if DO_LOG
-            LOG_DEVEL << "FILTER COVERED BY INDEX - NO REGS";
-#endif
             // write all projections combined into the global output register
             // recycle our Builder object
             VPackBuilder& objectBuilder = context.getBuilder();
@@ -677,9 +635,6 @@ IndexIterator::CoveringCallback aql::getCallback(
             VPackSlice projectedSlice = objectBuilder.slice();
             output.moveValueInto(registerId, input, projectedSlice);
           } else {
-#if DO_LOG
-            LOG_DEVEL << "FILTER COVERED BY INDEX - WITH REGS";
-#endif
             // write projections into individual output registers
             context.getProjectionsForRegisters().produceFromDocument(
                 context.getBuilder(), s, context.getTrxPtr(),

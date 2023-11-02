@@ -360,7 +360,6 @@ void JoinNode::replaceAttributeAccess(ExecutionNode const* self,
                                            replaceVariable);
     }
     if (it.filter && self != this) {
-      // TODO: validate
       it.filter->replaceAttributeAccess(searchVariable, attribute,
                                         replaceVariable);
     }
@@ -430,6 +429,12 @@ void JoinNode::getVariablesUsedHere(VarSet& vars) const {
   }
   for (auto const& it : _indexInfos) {
     vars.erase(it.outVariable);
+    // projection output variables.
+    for (size_t i = 0; i < it.projections.size(); ++i) {
+      if (it.projections[i].variable != nullptr) {
+        vars.erase(it.projections[i].variable);
+      }
+    }
   }
 }
 

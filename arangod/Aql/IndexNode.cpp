@@ -570,7 +570,6 @@ void IndexNode::replaceAttributeAccess(ExecutionNode const* self,
                                        replaceVariable);
   }
   if (hasFilter() && self != this) {
-    // TODO: validate
     _filter->replaceAttributeAccess(searchVariable, attribute, replaceVariable);
   }
 }
@@ -649,7 +648,6 @@ void IndexNode::getVariablesUsedHere(VarSet& vars) const {
     vars.erase(it.first);
   }
   // projection output variables.
-  // TODO: validate
   for (size_t i = 0; i < _projections.size(); ++i) {
     if (_projections[i].variable != nullptr) {
       vars.erase(_projections[i].variable);
@@ -690,7 +688,6 @@ std::vector<Variable const*> IndexNode::getVariablesSetHere() const {
                  [](auto const& indVar) { return indVar.first; });
 
   // projection output variables
-  // TODO: validate
   for (size_t i = 0; i < _projections.size(); ++i) {
     // output registers are not necessarily set yet
     if (_projections[i].variable != nullptr) {
@@ -748,7 +745,6 @@ bool IndexNode::recalculateProjections(ExecutionPlan* plan) {
   }
 
   if (isLateMaterialized()) {
-    // TODO: validate
     _projections.clear();
     return false;
   }
