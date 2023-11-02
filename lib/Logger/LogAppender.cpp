@@ -158,8 +158,8 @@ std::shared_ptr<LogAppender> LogAppender::buildAppender(
   } else if (output == "-") {
     result = std::make_shared<LogAppenderStdout>();
   } else if (output.starts_with(::filePrefix)) {
-    result =
-        std::make_shared<LogAppenderFile>(output.substr(::filePrefix.size()));
+    result = LogAppenderFileFactory::getFileAppender(
+        output.substr(::filePrefix.size()));
   }
 
   return result;
@@ -219,7 +219,7 @@ void LogAppender::shutdown() {
 #ifdef ARANGODB_ENABLE_SYSLOG
   LogAppenderSyslog::close();
 #endif
-  LogAppenderFile::closeAll();
+  LogAppenderFileFactory::closeAll();
 
   for (std::size_t i = 0; i < LogGroup::Count; ++i) {
     _globalAppenders[i].clear();
@@ -231,7 +231,7 @@ void LogAppender::shutdown() {
 void LogAppender::reopen() {
   WRITE_LOCKER(guard, _appendersLock);
 
-  LogAppenderFile::reopenAll();
+  LogAppenderFileFactory::reopenAll();
 }
 
 void LogAppender::logMessageGuarded(LogMessage const& message) {

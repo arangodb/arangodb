@@ -155,7 +155,7 @@ class Logger {
   friend class LoggerStream;
   friend class LogThread;
   friend class LogAppenderStream;
-  friend class LogAppenderFile;
+  friend struct LogAppenderFileFactory;
 
  public:
   static LogTopic AGENCY;

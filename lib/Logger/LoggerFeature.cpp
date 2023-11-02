@@ -621,7 +621,7 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (!_fileMode.empty()) {
     try {
       int result = std::stoi(_fileMode, nullptr, 8);
-      LogAppenderFile::setFileMode(result);
+      LogAppenderFileFactory::setFileMode(result);
     } catch (...) {
       LOG_TOPIC("797c2", FATAL, arangodb::Logger::FIXME)
           << "expecting an octal number for log.file-mode, got '" << _fileMode
@@ -666,7 +666,7 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 #endif
     }
 
-    LogAppenderFile::setFileGroup(gidNumber);
+    LogAppenderFileFactory::setFileGroup(gidNumber);
   }
 #endif
 
