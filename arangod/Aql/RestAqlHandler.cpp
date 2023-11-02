@@ -834,7 +834,7 @@ RequestLane RestAqlHandler::lane() const {
   if (ServerState::instance()->isDBServer()) {
     bool isPartOfTransaction = false;
     // We do not care for the real value, enough if it is there.
-    std::ignore = _request->value(
+    std::ignore = _request->header(
         StaticStrings::TransactionId, isPartOfTransaction);
     if (isPartOfTransaction) {
       // If we are part of a transaction we already have all CollectionLocks
