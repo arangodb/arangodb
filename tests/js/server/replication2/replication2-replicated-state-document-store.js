@@ -838,7 +838,7 @@ const replicatedStateSnapshotTransferSuite = function () {
     tearDownAll,
     setUp: setUpAnd(() => {
       collection = db._create(collectionName,
-        {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3/*, "waitForSync": true*/});
+        {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3});
       ({shards, shardsToLogs, logs} = dh.getCollectionShardsAndLogs(db, collection));
       shardId = shards[0];
       logId = shardsToLogs[shardId];
@@ -1118,7 +1118,6 @@ const replicatedStateSnapshotTransferSuite = function () {
       assertEqual(Object.keys(result.json.result.snapshots).length, 0);
     },
 
-    /*
     testEffectiveWriteConcernShouldAccountForMissingSnapshots: function(testName) {
       // We start with 3 servers, so the effective write concern should be 3.
       let {plan} = lh.readReplicatedLogAgency(database, logId);
@@ -1141,10 +1140,27 @@ const replicatedStateSnapshotTransferSuite = function () {
 
       // Insert a couple of documents, so there's something for the snapshot,
       // then compact the log in order to trigger a snapshot transfer next time a server is added.
-      for (let i = 0; i < 10; ++i) {
-        collection.insert({_key: `${testName}_${i}`});
+      try {
+        for (let i = 0; i < 10; ++i) {
+          collection.insert({_key: `${testName}_${i}`});
+        }
+      } catch (e) {
+        throw new Error(`Failed to insert documents, error: ${e}, logId: ${logId}, log contents: ${JSON.stringify(log.head(1000))}`);
       }
-      log.compact();
+
+      // Wait for operations to be synced to disk
+      let status = log.status();
+      const commitIndexBeforeCompaction = status.participants[leader].response.local.commitIndex;
+      lh.waitFor(lp.lowestIndexToKeepReached(log, leader, commitIndexBeforeCompaction));
+
+      let logContents = log.head(1000);
+
+      // Trigger compaction intentionally.
+      let compactionResult = log.compact();
+      for (const [pid, value] of Object.entries(compactionResult)) {
+        assertEqual(value.result, "ok", `Compaction failed for participant ${pid}, result: ${JSON.stringify(value)}, ` +
+          `log contents: ${JSON.stringify(logContents)}`);
+      }
 
       // Leader will keep sending empty batches, so the snapshot never finishes.
       helper.debugSetFailAt(lh.getServerUrl(leader), "DocumentStateSnapshot::infiniteSnapshot");
@@ -1224,8 +1240,8 @@ const replicatedStateSnapshotTransferSuite = function () {
       // Resuming the follower should raise the effective write concern to 4.
       continueServerWait(stopFollower);
       lh.waitFor(checkEffectiveWriteConcern(4));
+      collection.insert({_key: `${testName}_kuh`});
     }
-     */
   };
 };
 
