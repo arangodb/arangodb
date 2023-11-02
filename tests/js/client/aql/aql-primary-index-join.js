@@ -102,9 +102,9 @@ const IndexPrimaryJoinTestSuite = function () {
     },
     maxNumberOfPlans: 1
   };
-  
-  const executeBothJoinStrategies = (query) => {
-    let defaultResult = runAndCheckQuery(query);
+
+  const executeBothJoinStrategies = (query, expectedStats = null) => {
+    let defaultResult = runAndCheckQuery(query, null, expectedStats);
     let genericResult = runAndCheckQuery(query, "generic");
 
     assertEqual(defaultResult, genericResult, "Results do not match, but they should! Result of default execution: " +
@@ -113,7 +113,7 @@ const IndexPrimaryJoinTestSuite = function () {
     return defaultResult;
   };
 
-  const runAndCheckQuery = function (query, joinStrategyType = null) {
+  const runAndCheckQuery = function (query, joinStrategyType = null, expectedStats = null) {
     let qOptions = {...queryOptions};
     if (joinStrategyType === "generic") {
       qOptions.joinStrategyType = joinStrategyType;
@@ -136,6 +136,14 @@ const IndexPrimaryJoinTestSuite = function () {
     assertNotEqual(planNodes.indexOf("JoinNode"), -1);
 
     const result = db._createStatement({query: query, bindVars: null, options: qOptions}).execute();
+
+    if (expectedStats) {
+      const qStats = result.getExtra().stats;
+      for (const statName in expectedStats) {
+        assertEqual(expectedStats[statName], qStats[statName]);
+      }
+    }
+
     return result.toArray();
   };
 
@@ -164,6 +172,10 @@ const IndexPrimaryJoinTestSuite = function () {
       const A = fillCollectionWith("A", properties, ["x"]);
       A.ensureIndex({type: "persistent", fields: ["x"], unique: true});
 
+      let expectedStats = {
+        scannedIndex: 10,
+        filtered: 0
+      };
       const result = executeBothJoinStrategies(`
         FOR doc1 IN A
           SORT doc1.x
@@ -171,9 +183,41 @@ const IndexPrimaryJoinTestSuite = function () {
               FILTER doc1.x == doc2._key
               SORT doc2._key
               RETURN [doc1, doc2]
-      `);
+      `, expectedStats);
 
       assertEqual(result.length, 5);
+      for (const [a, b] of result) {
+        assertEqual(a.x, b._key);
+      }
+    },
+
+    testAllMatchWithAdditionalFilterPrimaryIndex: function () {
+      const B = fillCollection("B", singleAttributeGenerator(5, "x", x => 2 * x), ["_key"]);
+      // No additional index on B, we want to make use of the default (rocksdb) primary index
+      const documentsB = B.all().toArray();
+      let properties = [];
+      documentsB.forEach((doc) => {
+        properties.push({"x": doc._key});
+      });
+
+      const A = fillCollectionWith("A", properties, ["x"]);
+      A.ensureIndex({type: "persistent", fields: ["x"], unique: true});
+
+      let expectedStats = {
+        scannedIndex: 4,
+        filtered: 3
+      };
+      const result = executeBothJoinStrategies(`
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2._key
+              FILTER doc1.x % 4 == 0
+              SORT doc2._key
+              RETURN [doc1, doc2]
+      `, expectedStats);
+
+      assertEqual(result.length, 2);
       for (const [a, b] of result) {
         assertEqual(a.x, b._key);
       }
@@ -191,6 +235,10 @@ const IndexPrimaryJoinTestSuite = function () {
       const A = fillCollectionWith("A", properties, ["x"]);
       A.ensureIndex({type: "persistent", fields: ["x"], unique: true});
 
+      let expectedStats = {
+        scannedIndex: 0,
+        filtered: 0
+      };
       const result = executeBothJoinStrategies(`
         FOR doc1 IN A
           SORT doc1.x
@@ -198,7 +246,7 @@ const IndexPrimaryJoinTestSuite = function () {
               FILTER doc1.x == doc2._key
               SORT doc2._key
               RETURN doc2._key
-      `);
+      `, expectedStats);
       assertEqual(result.length, documentsB.length);
       assertEqual(result.length, 5);
 
