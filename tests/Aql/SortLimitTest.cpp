@@ -203,7 +203,7 @@ class SortLimitTest
         arangodb::transaction::StandaloneContext::create(
             *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         *collection, arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE(trx.begin().ok());
+    EXPECT_TRUE(trx.beginSync().ok());
 
     for (auto& entry : docs) {
       auto res = trx.insert(collection->name(), entry->slice(), options);

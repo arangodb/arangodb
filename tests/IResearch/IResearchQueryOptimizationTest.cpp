@@ -337,7 +337,7 @@ class QueryOptimization : public QueryTestMulti {
               vocbase(), arangodb::transaction::OperationOriginTestCase{}),
           EMPTY, {logicalCollection1->name()}, EMPTY,
           arangodb::transaction::Options());
-      EXPECT_TRUE(trx.begin().ok());
+      EXPECT_TRUE(trx.beginSync().ok());
 
       // insert into collection
       auto builder =

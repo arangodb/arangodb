@@ -296,7 +296,7 @@ void StorageManager::triggerQueueWorker(GuardType guard) noexcept {
       }
     }
 
-    co_return futures::unit;
+    co_return;
   };
 
   // check if a thread is working on the queue

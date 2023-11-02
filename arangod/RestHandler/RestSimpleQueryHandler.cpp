@@ -148,8 +148,10 @@ RestStatus RestSimpleQueryHandler::allDocuments() {
   data.close();
 
   // now run the actual query and handle the result
-  return registerQueryOrCursor(
-      data.slice(), transaction::OperationOriginREST{"fetching all documents"});
+  registerQueryOrCursor(
+      data.slice(), transaction::OperationOriginREST{"fetching all documents"})
+      .get();
+  return RestStatus::DONE;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -216,8 +218,11 @@ RestStatus RestSimpleQueryHandler::allDocumentKeys() {
   data.close();  // bindVars
   data.close();
 
-  return registerQueryOrCursor(data.slice(), transaction::OperationOriginREST{
-                                                 "fetching all document keys"});
+  registerQueryOrCursor(
+      data.slice(),
+      transaction::OperationOriginREST{"fetching all document keys"})
+      .get();
+  return RestStatus::DONE;
 }
 
 static void buildExampleQuery(VPackBuilder& result, std::string const& cname,
@@ -314,6 +319,8 @@ RestStatus RestSimpleQueryHandler::byExample() {
   data.add("count", VPackSlice::trueSlice());
   data.close();
 
-  return registerQueryOrCursor(
-      data.slice(), transaction::OperationOriginREST{"querying by example"});
+  registerQueryOrCursor(data.slice(),
+                        transaction::OperationOriginREST{"querying by example"})
+      .get();
+  return RestStatus::DONE;
 }

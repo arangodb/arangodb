@@ -77,7 +77,7 @@ Result removeKeysOutsideRange(
   RocksDBCollection* physical =
       static_cast<RocksDBCollection*>(coll->getPhysical());
 
-  Result res = trx.begin();
+  Result res = trx.begin().get();
 
   if (!res.ok()) {
     return Result(res.errorNumber(),
@@ -793,7 +793,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
           transaction::StandaloneContext::create(syncer.vocbase(), origin),
           *col, AccessMode::Type::EXCLUSIVE);
       trx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
-      return trx->begin();
+      return trx->begin().get();
     };
 
     Result res = startTrx();

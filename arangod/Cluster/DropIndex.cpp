@@ -103,7 +103,7 @@ bool DropIndex::first() {
       if (vocbase->replicationVersion() == replication::Version::TWO) {
         return dropIndexReplication2(vocbase, *col, index.sharedSlice());
       }
-      return Indexes::drop(*col, index.slice());
+      return Indexes::drop(*col, index.slice()).get();
     });
     result(res);
 

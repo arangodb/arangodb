@@ -376,7 +376,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   // inside write transaction
   // .............................................................................
 
-  Result res = trx.begin();
+  Result res = trx.beginSync();
 
   if (res.fail()) {
     generateTransactionError(collectionName, OperationResult(res, opOptions),
@@ -581,7 +581,7 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
   // inside write transaction
   // .............................................................................
 
-  Result res = trx.begin();
+  Result res = trx.beginSync();
 
   if (res.fail()) {
     generateTransactionError(collectionName, OperationResult(res, opOptions),
@@ -779,7 +779,7 @@ bool RestImportHandler::createFromKeyValueList() {
   // inside write transaction
   // .............................................................................
 
-  Result res = trx.begin();
+  Result res = trx.beginSync();
 
   if (res.fail()) {
     generateTransactionError(collectionName, OperationResult(res, opOptions),

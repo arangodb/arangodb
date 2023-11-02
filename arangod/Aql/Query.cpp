@@ -458,7 +458,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
 
-  Result res = _trx->begin();
+  Result res = _trx->beginSync();
 
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -1025,7 +1025,7 @@ QueryResult Query::explain() {
     _trx = AqlTransaction::create(_transactionContext, _collections,
                                   _queryOptions.transactionOptions);
 
-    Result res = _trx->begin();
+    Result res = _trx->beginSync();
 
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
@@ -1561,7 +1561,7 @@ void Query::initTrxForTests() {
   // create the transaction object, but do not start it yet
   _trx->addHint(
       transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
-  auto res = _trx->begin();
+  auto res = _trx->beginSync();
   TRI_ASSERT(res.ok());
 }
 #endif

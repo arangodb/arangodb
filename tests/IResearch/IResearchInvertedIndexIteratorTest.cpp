@@ -135,7 +135,7 @@ class IResearchInvertedIndexIteratorTestBase
                                                    &storedFields, &sortedFields,
                                                    "unique_name");
     bool created = false;
-    _inverted = _collection->createIndex(builder.slice(), created);
+    _inverted = _collection->createIndex(builder.slice(), created).get();
     EXPECT_TRUE(created);
     EXPECT_TRUE(_inverted);
     _index = dynamic_cast<arangodb::iresearch::IResearchInvertedIndex*>(
@@ -150,7 +150,7 @@ class IResearchInvertedIndexIteratorTestBase
           arangodb::transaction::StandaloneContext::create(
               vocbase(), arangodb::transaction::OperationOriginTestCase{}),
           EMPTY, collections, EMPTY, arangodb::transaction::Options());
-      trx.begin();
+      trx.beginSync();
       for (size_t i = 0; i < _docs.size() / 2; ++i) {
         // MSVC fails to compile if EXPECT_TRUE  is called directly
         auto res = _index
@@ -171,7 +171,7 @@ class IResearchInvertedIndexIteratorTestBase
         arangodb::transaction::StandaloneContext::create(
             vocbase(), arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, collections, EMPTY, arangodb::transaction::Options());
-    trx.begin();
+    trx.beginSync();
     while (doc != _docs.end()) {
       // MSVC fails to compile if EXPECT_TRUE  is called directly
       auto res = _index

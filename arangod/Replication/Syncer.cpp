@@ -728,7 +728,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase, velocypack::Slice slice,
           *col, AccessMode::Type::WRITE);
       trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
       trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
-      Result res = trx.begin();
+      Result res = trx.begin().get();
 
       if (!res.ok()) {
         return res;
@@ -916,7 +916,7 @@ void Syncer::createIndexInternal(velocypack::Slice idxDef,
 
   if (idx == nullptr) {
     bool created = false;
-    idx = physical->createIndex(idxDef, /*restore*/ true, created);
+    idx = physical->createIndex(idxDef, /*restore*/ true, created).get();
   }
   TRI_ASSERT(idx != nullptr);
 }

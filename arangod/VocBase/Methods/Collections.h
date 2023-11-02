@@ -60,7 +60,8 @@ struct Collections {
 
     ~Context();
 
-    transaction::Methods* trx(AccessMode::Type const& type, bool embeddable);
+    futures::Future<transaction::Methods*> trx(AccessMode::Type const& type,
+                                               bool embeddable);
 
     std::shared_ptr<LogicalCollection> coll() const;
 
@@ -125,10 +126,11 @@ struct Collections {
       CreateCollectionBody& col, TRI_vocbase_t const& vocbase,
       DatabaseConfiguration const& config, bool isLegacyDatabase);
 
-  static Result properties(Context& ctxt, velocypack::Builder&);
-  static Result updateProperties(LogicalCollection& collection,
-                                 velocypack::Slice props,
-                                 OperationOptions const& options);
+  static futures::Future<Result> properties(Context& ctxt,
+                                            velocypack::Builder&);
+  static futures::Future<Result> updateProperties(
+      LogicalCollection& collection, velocypack::Slice props,
+      OperationOptions const& options);
 
   static Result rename(LogicalCollection& collection,
                        std::string const& newName, bool doOverride);
@@ -146,9 +148,10 @@ struct Collections {
   static futures::Future<OperationResult> revisionId(
       Context& ctxt, OperationOptions const& options);
 
-  static arangodb::Result checksum(LogicalCollection& collection,
-                                   bool withRevisions, bool withData,
-                                   uint64_t& checksum, RevisionId& revId);
+  static futures::Future<Result> checksum(LogicalCollection& collection,
+                                          bool withRevisions, bool withData,
+                                          uint64_t& checksum,
+                                          RevisionId& revId);
 
   /// @brief filters properties for collection creation
   static arangodb::velocypack::Builder filterInput(

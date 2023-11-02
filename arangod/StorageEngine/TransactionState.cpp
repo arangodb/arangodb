@@ -143,9 +143,9 @@ std::shared_ptr<transaction::CounterGuard> TransactionState::counterGuard() {
 }
 
 /// @brief add a collection to a transaction
-Result TransactionState::addCollection(DataSourceId cid, std::string_view cname,
-                                       AccessMode::Type accessType,
-                                       bool lockUsage) {
+futures::Future<Result> TransactionState::addCollection(
+    DataSourceId cid, std::string_view cname, AccessMode::Type accessType,
+    bool lockUsage) {
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE) && \
     defined(ARANGODB_ENABLE_FAILURE_TESTS)
   TRI_IF_FAILURE("WaitOnLock::" + std::string{cname}) {
@@ -178,7 +178,8 @@ Result TransactionState::addCollection(DataSourceId cid, std::string_view cname,
   }
 #endif
 
-  Result res = addCollectionInternal(cid, cname, accessType, lockUsage);
+  Result res =
+      co_await addCollectionInternal(cid, cname, accessType, lockUsage);
 
   if (res.ok()) {
     // upgrade transaction type if required
@@ -204,13 +205,12 @@ Result TransactionState::addCollection(DataSourceId cid, std::string_view cname,
     }
   }
 
-  return res;
+  co_return res;
 }
 
-Result TransactionState::addCollectionInternal(DataSourceId cid,
-                                               std::string_view cname,
-                                               AccessMode::Type accessType,
-                                               bool lockUsage) {
+futures::Future<Result> TransactionState::addCollectionInternal(
+    DataSourceId cid, std::string_view cname, AccessMode::Type accessType,
+    bool lockUsage) {
   Result res;
 
   RECURSIVE_WRITE_LOCKER(_collectionsLock, _collectionsLockOwner);
@@ -227,11 +227,11 @@ Result TransactionState::addCollectionInternal(DataSourceId cid,
       res.reset(checkCollectionPermission(cid, cname, accessType));
 
       if (res.fail()) {
-        return res;
+        co_return res;
       }
     }
     // collection is already contained in vector
-    return res.reset(trxColl->updateUsage(accessType));
+    co_return res.reset(trxColl->updateUsage(accessType));
   }
   TRI_ASSERT(std::holds_alternative<CollectionNotFound>(colOrPos));
   auto const position = std::get<CollectionNotFound>(colOrPos).lowerBound;
@@ -245,27 +245,27 @@ Result TransactionState::addCollectionInternal(DataSourceId cid,
       !_options.allowImplicitCollectionsForWrite) {
     // trying to write access a collection that was not declared at start.
     // this is only supported internally for replication transactions.
-    return res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-                     std::string(TRI_errno_string(
-                         TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
-                         ": " + std::string{cname} + " [" +
-                         AccessMode::typeString(accessType) + "]");
+    co_return res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+                        std::string(TRI_errno_string(
+                            TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
+                            ": " + std::string{cname} + " [" +
+                            AccessMode::typeString(accessType) + "]");
   }
 
   if (!AccessMode::isWriteOrExclusive(accessType) &&
       (isRunning() && !_options.allowImplicitCollectionsForRead)) {
-    return res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-                     std::string(TRI_errno_string(
-                         TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
-                         ": " + std::string{cname} + " [" +
-                         AccessMode::typeString(accessType) + "]");
+    co_return res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+                        std::string(TRI_errno_string(
+                            TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
+                            ": " + std::string{cname} + " [" +
+                            AccessMode::typeString(accessType) + "]");
   }
 
   // now check the permissions
   res = checkCollectionPermission(cid, cname, accessType);
 
   if (res.fail()) {
-    return res;
+    co_return res;
   }
 
   // collection was not contained. now create and insert it
@@ -279,31 +279,31 @@ Result TransactionState::addCollectionInternal(DataSourceId cid,
     _collections.insert(_collections.begin() + position, trxColl);
   } catch (...) {
     delete trxColl;
-    return res.reset(TRI_ERROR_OUT_OF_MEMORY);
+    co_return res.reset(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   if (lockUsage) {
     TRI_ASSERT(!isRunning() || !AccessMode::isWriteOrExclusive(accessType) ||
                _options.allowImplicitCollectionsForWrite);
-    res = trxColl->lockUsage();
+    res = co_await trxColl->lockUsage();
   }
 
-  return res;
+  co_return res;
 }
 
 /// @brief use all participating collections of a transaction
-Result TransactionState::useCollections() {
+futures::Future<Result> TransactionState::useCollections() {
   RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   Result res;
   // process collections in forward order
   for (TransactionCollection* trxCollection : _collections) {
-    res = trxCollection->lockUsage();
+    res = co_await trxCollection->lockUsage();
 
     if (!res.ok()) {
       break;
     }
   }
-  return res;
+  co_return res;
 }
 
 /// @brief find a collection in the transaction's list of collections

@@ -965,7 +965,8 @@ PhysicalCollectionMock::PhysicalCollectionMock(
     arangodb::LogicalCollection& collection)
     : PhysicalCollection(collection), _lastDocumentId{0} {}
 
-std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
+arangodb::futures::Future<std::shared_ptr<arangodb::Index>>
+PhysicalCollectionMock::createIndex(
     arangodb::velocypack::Slice info, bool restore, bool& created,
     std::shared_ptr<std::function<arangodb::Result(double)>>) {
   before();
@@ -1014,7 +1015,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
   }
 
   if (!index) {
-    return nullptr;
+    return std::shared_ptr<arangodb::Index>{nullptr};
   }
 
   TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
@@ -1023,7 +1024,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
           vocbase, arangodb::transaction::OperationOriginTestCase{}),
       _logicalCollection, arangodb::AccessMode::Type::WRITE);
 
-  auto res = trx.begin();
+  auto res = trx.beginSync();
   TRI_ASSERT(res.ok());
 
   if (index->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {

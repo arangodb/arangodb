@@ -228,7 +228,7 @@ static Result getReadLockId(network::ConnectionPool* pool,
 Result collectionReCount(LogicalCollection& collection, uint64_t& c) {
   Result res;
   try {
-    c = collection.getPhysical()->recalculateCounts();
+    c = collection.getPhysical()->recalculateCounts().get();
   } catch (basics::Exception const& e) {
     res.reset(e.code(), e.message());
   }
@@ -311,7 +311,7 @@ static Result addShardFollower(network::ConnectionPool* pool,
         SingleCollectionTransaction trx(context, *collection,
                                         AccessMode::Type::READ);
 
-        auto res = trx.begin();
+        auto res = trx.beginSync();
         if (res.ok()) {
           auto tree = collection->getPhysical()->revisionTree(trx);
           body.add("treeHash", VPackValue(std::to_string(tree->rootValue())));
@@ -766,7 +766,8 @@ bool SynchronizeShard::first() {
       ++_feature.server().getFeature<ClusterFeature>().syncTreeRebuildCounter();
 
       Result res = static_cast<RocksDBCollection*>(collection->getPhysical())
-                       ->rebuildRevisionTree();
+                       ->rebuildRevisionTree()
+                       .get();
 
       if (res.ok()) {
         LOG_TOPIC("02969", INFO, Logger::MAINTENANCE)

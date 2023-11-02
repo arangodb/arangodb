@@ -1499,7 +1499,7 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(
         ctx, arangodb::StaticStrings::AnalyzersCollection,
         AccessMode::Type::EXCLUSIVE);
 
-    auto res = trx.begin();
+    auto res = trx.begin().get();
     if (res.fail()) {
       return res;
     }
@@ -1529,7 +1529,7 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(
           AccessMode::Type::EXCLUSIVE);
       trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
-      auto res = trx.begin();
+      auto res = trx.begin().get();
       if (res.fail()) {
         return res;
       }
@@ -1555,7 +1555,7 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(
           ctx, arangodb::StaticStrings::AnalyzersCollection,
           AccessMode::Type::EXCLUSIVE);
 
-      auto res = truncateTrx.begin();
+      auto res = truncateTrx.begin().get();
 
       if (res.ok()) {
         OperationOptions options;
@@ -2004,7 +2004,7 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
         ctx, arangodb::StaticStrings::AnalyzersCollection,
         AccessMode::Type::WRITE);
     trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
-    trx.begin();
+    trx.begin().get();
 
     auto queryDelete = aql::Query::create(ctx, queryDeleteString, bindBuilder);
 
@@ -2511,7 +2511,7 @@ Result IResearchAnalyzerFeature::removeFromCollection(
   SingleCollectionTransaction trx(
       transaction::StandaloneContext::create(*voc, operationOrigin),
       arangodb::StaticStrings::AnalyzersCollection, AccessMode::Type::WRITE);
-  auto res = trx.begin();
+  auto res = trx.begin().get();
 
   if (!res.ok()) {
     return res;
@@ -2688,7 +2688,7 @@ Result IResearchAnalyzerFeature::remove(
           transaction::StandaloneContext::create(*vocbase, operationOrigin),
           arangodb::StaticStrings::AnalyzersCollection,
           AccessMode::Type::WRITE);
-      auto res = trx.begin();
+      auto res = trx.begin().get();
 
       if (!res.ok()) {
         return res;
@@ -2854,7 +2854,7 @@ Result IResearchAnalyzerFeature::storeAnalyzer(
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::create(*vocbase, operationOrigin),
         arangodb::StaticStrings::AnalyzersCollection, AccessMode::Type::WRITE);
-    auto res = trx.begin();
+    auto res = trx.begin().get();
 
     if (!res.ok()) {
       return res;

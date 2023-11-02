@@ -102,7 +102,7 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
   transaction::Methods trx{
       ctx, {}, std::vector<std::string>{cname}, {}, trxOpts};
 
-  Result res = trx.begin();
+  Result res = trx.beginSync();
   ASSERT_TRUE(res.ok());
 
   auto docs = arangodb::velocypack::Parser::fromJson(

@@ -199,7 +199,7 @@ void QueryTest::createCollections() {
             _vocbase, arangodb::transaction::OperationOriginTestCase{}),
         *collection, AccessMode::Type::WRITE};
     {
-      auto r = trx.begin();
+      auto r = trx.beginSync();
       EXPECT_TRUE(r.ok()) << r.errorMessage();
     }
     for (auto& entry : docs) {
@@ -233,7 +233,7 @@ void QueryTest::createCollections() {
             _vocbase, arangodb::transaction::OperationOriginTestCase{}),
         *collection, AccessMode::Type::WRITE};
     {
-      auto r = trx.begin();
+      auto r = trx.beginSync();
       EXPECT_TRUE(r.ok()) << r.errorMessage();
     }
     for (velocypack::ArrayIterator it{slice}; it.valid(); ++it) {

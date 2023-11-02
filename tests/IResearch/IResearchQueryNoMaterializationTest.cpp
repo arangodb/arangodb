@@ -368,7 +368,7 @@ class QueryNoMaterialization : public QueryTestMulti {
               vocbase(), arangodb::transaction::OperationOriginTestCase{}),
           EMPTY, {logicalCollection1->name(), logicalCollection2->name()},
           EMPTY, arangodb::transaction::Options());
-      EXPECT_TRUE(trx.begin().ok());
+      EXPECT_TRUE(trx.beginSync().ok());
 
       // insert into collection_1
       {
@@ -687,7 +687,7 @@ TEST_P(QueryNoMaterialization, testStoredValuesRecord) {
             vocbase(), arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, {logicalCollection->name()}, EMPTY,
         arangodb::transaction::Options());
-    EXPECT_TRUE(trx.begin().ok());
+    EXPECT_TRUE(trx.beginSync().ok());
     auto const res = trx.insert(logicalCollection->name(), doc->slice(), opt);
     EXPECT_TRUE(res.ok());
 
@@ -703,7 +703,7 @@ TEST_P(QueryNoMaterialization, testStoredValuesRecord) {
         arangodb::transaction::StandaloneContext::create(
             vocbase(), arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
-    EXPECT_TRUE(trx.begin().ok());
+    EXPECT_TRUE(trx.beginSync().ok());
     auto link = arangodb::iresearch::IResearchLinkHelper::find(
         *logicalCollection, *view);
     ASSERT_TRUE(link);
@@ -851,7 +851,7 @@ TEST_P(QueryNoMaterialization, testStoredValuesRecordWithCompression) {
             vocbase(), arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, {logicalCollection->name()}, EMPTY,
         arangodb::transaction::Options());
-    EXPECT_TRUE(trx.begin().ok());
+    EXPECT_TRUE(trx.beginSync().ok());
     auto const res = trx.insert(logicalCollection->name(), doc->slice(), opt);
     EXPECT_TRUE(res.ok());
 
@@ -867,7 +867,7 @@ TEST_P(QueryNoMaterialization, testStoredValuesRecordWithCompression) {
         arangodb::transaction::StandaloneContext::create(
             vocbase(), arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
-    EXPECT_TRUE(trx.begin().ok());
+    EXPECT_TRUE(trx.beginSync().ok());
     auto link = arangodb::iresearch::IResearchLinkHelper::find(
         *logicalCollection, *view);
     ASSERT_TRUE(link);

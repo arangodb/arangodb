@@ -82,7 +82,7 @@ class QuerySelectAll : public QueryTest {
             _vocbase, arangodb::transaction::OperationOriginTestCase{}),
         kEmpty, {logicalCollection1->name()}, kEmpty,
         arangodb::transaction::Options());
-    EXPECT_TRUE(trx.begin().ok());
+    EXPECT_TRUE(trx.beginSync().ok());
 
     size_t i = 0;
 

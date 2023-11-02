@@ -111,7 +111,7 @@ bool GraphManager::renameGraphCollection(std::string const& oldName,
 
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
                                   AccessMode::Type::WRITE);
-  res = trx.begin();
+  res = trx.beginSync();
 
   if (!res.ok()) {
     return false;
@@ -286,7 +286,7 @@ bool GraphManager::graphExists(std::string const& graphName) const {
                                   AccessMode::Type::READ);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-  Result res = trx.begin();
+  Result res = trx.beginSync();
 
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -303,7 +303,7 @@ ResultT<std::unique_ptr<Graph>> GraphManager::lookupGraphByName(
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
                                   AccessMode::Type::READ);
 
-  Result res = trx.begin();
+  Result res = trx.beginSync();
 
   if (res.fail()) {
     std::stringstream ss;
@@ -407,7 +407,7 @@ OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
 
   OperationOptions options(ExecContext::current());
   options.waitForSync = waitForSync;
-  Result res = trx.begin();
+  Result res = trx.beginSync();
   if (res.fail()) {
     return OperationResult{std::move(res), options};
   }
@@ -939,7 +939,7 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
     SingleCollectionTransaction trx{ctx(), StaticStrings::GraphCollection,
                                     AccessMode::Type::WRITE};
 
-    Result res = trx.begin();
+    Result res = trx.beginSync();
     if (res.fail()) {
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, options);
     }

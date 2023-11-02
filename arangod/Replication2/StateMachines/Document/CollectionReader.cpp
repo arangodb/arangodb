@@ -57,7 +57,7 @@ DatabaseSnapshot::DatabaseSnapshot(TRI_vocbase_t& vocbase)
               "snapshotting collection for replication"})),
       _trx(std::make_unique<SnapshotTransaction>(_ctx)) {
   // We call begin here so that rocksMethods are initialized
-  if (auto res = _trx->begin(); res.fail()) {
+  if (auto res = _trx->begin().get(); res.fail()) {
     LOG_TOPIC("b4e74", ERR, Logger::REPLICATION2)
         << "Failed to begin transaction: " << res.errorMessage();
     THROW_ARANGO_EXCEPTION(res);
@@ -81,7 +81,7 @@ auto DatabaseSnapshot::resetTransaction() -> Result {
       _vocbase, transaction::OperationOriginInternal{
                     "snapshotting collection for replication"});
   _trx = std::make_unique<SnapshotTransaction>(_ctx);
-  return _trx->begin();
+  return _trx->begin().get();
 }
 
 CollectionReader::CollectionReader(

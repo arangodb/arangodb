@@ -128,7 +128,7 @@ auto GraphStorer<V, E>::storeQuiver(std::shared_ptr<Quiver<V, E>> quiver)
           ctx, shard, AccessMode::Type::WRITE);
       trx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 
-      res = trx->begin();
+      res = trx->begin().get();
       if (!res.ok()) {
         THROW_ARANGO_EXCEPTION(res);
       }

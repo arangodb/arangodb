@@ -95,7 +95,8 @@ auto MaintenanceActionExecutor::executeModifyCollectionAction(
       [col = std::move(col.get()), properties = std::move(properties)]() {
         OperationOptions options(ExecContext::current());
         return methods::Collections::updateProperties(
-            *col.get(), properties.slice(), options);
+                   *col.get(), properties.slice(), options)
+            .get();
       });
 
   if (res.fail()) {
@@ -120,7 +121,8 @@ auto MaintenanceActionExecutor::executeCreateIndex(
 
   VPackBuilder output;
   auto res = methods::Indexes::ensureIndex(*col.get(), properties->slice(),
-                                           true, output, std::move(progress));
+                                           true, output, std::move(progress))
+                 .get();
   if (res.ok()) {
     arangodb::maintenance::EnsureIndex::indexCreationLogging(output.slice());
   }
@@ -136,7 +138,7 @@ auto MaintenanceActionExecutor::executeDropIndex(ShardID shard,
             fmt::format("Error while dropping index: {}", col.errorMessage())};
   }
 
-  auto res = methods::Indexes::drop(*col.get(), index.slice());
+  auto res = methods::Indexes::drop(*col.get(), index.slice()).get();
   LOG_TOPIC("e155f", DEBUG, Logger::MAINTENANCE)
       << "Dropping local index " << index.toJson() << " of shard " << shard
       << " in database " << _vocbase.name() << " result: " << res;

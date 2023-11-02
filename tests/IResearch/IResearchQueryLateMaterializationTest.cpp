@@ -81,7 +81,7 @@ class QueryLateMaterialization : public QueryTest {
               vocbase(), arangodb::transaction::OperationOriginTestCase{}),
           kEmpty, {logicalCollection1->name(), logicalCollection2->name()},
           kEmpty, transaction::Options());
-      EXPECT_TRUE(trx.begin().ok());
+      EXPECT_TRUE(trx.beginSync().ok());
       // insert into collection_1
       {
         auto builder = VPackParser::fromJson(

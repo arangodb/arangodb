@@ -137,7 +137,7 @@ bool State::persist(index_t index, term_t term, uint64_t millis,
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-  Result res = trx.begin();
+  Result res = trx.beginSync();
 
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -225,7 +225,7 @@ bool State::persistConf(index_t index, term_t term, uint64_t millis,
                            {}, {"log", "configuration"}, {},
                            transaction::Options());
 
-  Result res = trx.begin();
+  Result res = trx.beginSync();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -1150,7 +1150,7 @@ bool State::loadOrPersistConfiguration() {
         std::shared_ptr<transaction::Context>(
             std::shared_ptr<transaction::Context>(), &ctx),
         "configuration", AccessMode::Type::WRITE);
-    Result res = trx.begin();
+    Result res = trx.beginSync();
 
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
@@ -1521,7 +1521,7 @@ bool State::persistCompactionSnapshot(index_t cind,
             std::shared_ptr<transaction::Context>(), &ctx),
         "compact", AccessMode::Type::WRITE);
 
-    Result res = trx.begin();
+    Result res = trx.beginSync();
 
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
@@ -1628,7 +1628,7 @@ void State::persistActiveAgents(query_t const& active, query_t const& pool) {
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &ctx),
       "configuration", AccessMode::Type::WRITE);
-  Result res = trx.begin();
+  Result res = trx.beginSync();
 
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);

@@ -91,6 +91,13 @@ auto asTry(Future<T>&& f) noexcept {
       [](futures::Try<T>&& res) noexcept { return std::move(res); }};
 }
 
+static inline auto asResult(Future<Unit>&& f) noexcept {
+  return FutureTransformAwaitable{
+      std::move(f), [](futures::Try<Unit>&& res) noexcept -> Result {
+        return basics::catchVoidToResult([&] { return res.get(); });
+      }};
+}
+
 static inline auto asResult(Future<Result>&& f) noexcept {
   return FutureTransformAwaitable{
       std::move(f), [](futures::Try<Result>&& res) noexcept -> Result {
@@ -130,6 +137,28 @@ struct std_coro::coroutine_traits<arangodb::futures::Future<T>, Args...> {
       static_assert(std::is_move_constructible_v<T>);
       promise.setValue(std::move(t));
     }
+
+    auto unhandled_exception() noexcept {
+      promise.setException(std::current_exception());
+    }
+  };
+};
+
+template<typename... Args>
+struct std_coro::coroutine_traits<
+    arangodb::futures::Future<arangodb::futures::Unit>, Args...> {
+  struct promise_type {
+    arangodb::futures::Promise<arangodb::futures::Unit> promise;
+
+    auto initial_suspend() noexcept { return std_coro::suspend_never{}; }
+    auto final_suspend() noexcept { return std_coro::suspend_never{}; }
+
+    auto get_return_object()
+        -> arangodb::futures::Future<arangodb::futures::Unit> {
+      return promise.getFuture();
+    }
+
+    auto return_void() noexcept { promise.setValue(); }
 
     auto unhandled_exception() noexcept {
       promise.setException(std::current_exception());

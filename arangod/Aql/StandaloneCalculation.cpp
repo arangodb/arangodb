@@ -72,9 +72,9 @@ class CalculationTransactionState final : public arangodb::TransactionState {
   [[nodiscard]] bool ensureSnapshot() override { return false; }
 
   /// @brief begin a transaction
-  [[nodiscard]] arangodb::Result beginTransaction(
+  [[nodiscard]] futures::Future<Result> beginTransaction(
       arangodb::transaction::Hints) override {
-    return {};
+    return Result{};
   }
 
   /// @brief commit a transaction
@@ -188,7 +188,7 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
     _trx->addHint(arangodb::transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
     _trx->addHint(arangodb::transaction::Hints::Hint::
                       SINGLE_OPERATION);  // to avoid taking db snapshot
-    _trx->begin();
+    _trx->begin().get();
   }
 
   arangodb::aql::QueryOptions const& queryOptions() const override {

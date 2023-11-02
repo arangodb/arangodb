@@ -117,7 +117,7 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t& vocbase,
 
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-    res = trx.begin();
+    res = trx.begin().get();
 
     if (res.ok()) {
       OperationResult result = trx.remove(StaticStrings::AqlFunctionsCollection,
@@ -328,7 +328,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase,
                                     StaticStrings::AqlFunctionsCollection,
                                     AccessMode::Type::WRITE);
 
-    res = trx.begin();
+    res = trx.begin().get();
     if (res.fail()) {
       return res;
     }

@@ -55,7 +55,7 @@ class QueryInRange : public QueryTest {
           transaction::StandaloneContext::create(
               _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, AccessMode::Type::WRITE);
-      EXPECT_TRUE(trx.begin().ok());
+      EXPECT_TRUE(trx.beginSync().ok());
 
       for (auto& entry : docs) {
         auto r = trx.insert(collection->name(), entry->slice(), options);
@@ -86,7 +86,7 @@ class QueryInRange : public QueryTest {
           transaction::StandaloneContext::create(
               _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, AccessMode::Type::WRITE);
-      EXPECT_TRUE(trx.begin().ok());
+      EXPECT_TRUE(trx.beginSync().ok());
 
       for (velocypack::ArrayIterator it{slice}; it.valid(); ++it) {
         auto r = trx.insert(collection->name(), it.value(), options);

@@ -122,7 +122,7 @@ class QueryGeoDistance : public QueryTest {
           transaction::StandaloneContext::create(
               _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, AccessMode::Type::WRITE);
-      EXPECT_TRUE(trx.begin().ok());
+      EXPECT_TRUE(trx.beginSync().ok());
 
       for (auto doc : VPackArrayIterator(docs->slice())) {
         auto res = trx.insert(collection->name(), doc, options);
@@ -213,7 +213,7 @@ class QueryGeoDistance : public QueryTest {
           transaction::StandaloneContext::create(
               _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, AccessMode::Type::READ);
-      ASSERT_TRUE(trx.begin().ok());
+      ASSERT_TRUE(trx.beginSync().ok());
       ASSERT_TRUE(trx.state());
       auto* snapshot =
           makeViewSnapshot(trx, iresearch::ViewSnapshotMode::FindOrCreate,

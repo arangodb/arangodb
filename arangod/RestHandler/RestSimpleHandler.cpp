@@ -156,8 +156,11 @@ RestStatus RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
   data.close();  // bindVars
   data.close();
 
-  return registerQueryOrCursor(data.slice(), transaction::OperationOriginREST{
-                                                 "removing documents by keys"});
+  registerQueryOrCursor(
+      data.slice(),
+      transaction::OperationOriginREST{"removing documents by keys"})
+      .get();
+  return RestStatus::DONE;
 }
 
 RestStatus RestSimpleHandler::handleQueryResult() {
@@ -297,7 +300,9 @@ RestStatus RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
   data.close();  // bindVars
   data.close();
 
-  return registerQueryOrCursor(
+  registerQueryOrCursor(
       data.slice(),
-      transaction::OperationOriginREST{"looking up documents by keys"});
+      transaction::OperationOriginREST{"looking up documents by keys"})
+      .get();
+  return RestStatus::DONE;
 }

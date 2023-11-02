@@ -149,7 +149,7 @@ void ClusterQuery::prepareClusterQuery(
     _trx->state()->acceptAnalyzersRevision(analyzersRevision);
   }
 
-  Result res = _trx->begin();
+  Result res = _trx->beginSync();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }

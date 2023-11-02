@@ -175,7 +175,7 @@ void CompactionManager::triggerAsyncCompaction(
       guard = self->guarded.getLockedGuard();
     }
 
-    co_return futures::Unit{};
+    co_return;
   };
 
   guard->_fullCompactionNextRound |= ignoreThreshold;

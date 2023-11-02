@@ -230,7 +230,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
         arangodb::transaction::Options());
-    EXPECT_TRUE(trx.begin().ok());
+    EXPECT_TRUE(trx.beginSync().ok());
 
     // insert into collections
     {
@@ -536,7 +536,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
         arangodb::transaction::Options());
-    EXPECT_TRUE(trx.begin().ok());
+    EXPECT_TRUE(trx.beginSync().ok());
 
     // insert into collections
     {

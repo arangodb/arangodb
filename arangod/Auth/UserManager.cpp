@@ -303,7 +303,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry,
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-  Result res = trx.begin();
+  Result res = trx.beginSync();
 
   if (res.ok()) {
     OperationOptions opts;
@@ -689,7 +689,7 @@ static Result RemoveUserInternal(ArangodServer& server,
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-  Result res = trx.begin();
+  Result res = trx.beginSync();
 
   if (res.ok()) {
     OperationResult result = trx.remove(StaticStrings::UsersCollection,

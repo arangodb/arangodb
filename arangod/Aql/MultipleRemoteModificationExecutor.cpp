@@ -135,7 +135,7 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteOperations(
         "'update' or 'replace'");
   }
 
-  auto res = _trx.begin();
+  auto res = _trx.beginSync();
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }

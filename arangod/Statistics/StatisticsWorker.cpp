@@ -192,7 +192,7 @@ void StatisticsWorker::collectGarbage(std::string const& name,
   SingleCollectionTransaction trx(std::move(ctx), name,
                                   AccessMode::Type::WRITE);
 
-  Result res = trx.begin();
+  Result res = trx.beginSync();
 
   if (!res.ok()) {
     return;
@@ -1099,7 +1099,7 @@ void StatisticsWorker::saveSlice(VPackSlice slice,
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-  Result res = trx.begin();
+  Result res = trx.beginSync();
 
   if (!res.ok()) {
     if (!res.is(TRI_ERROR_SHUTTING_DOWN)) {
