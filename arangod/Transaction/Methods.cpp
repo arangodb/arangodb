@@ -3205,6 +3205,13 @@ Future<Result> Methods::replicateOperations(
   network::RequestOptions reqOpts;
   reqOpts.database = vocbase().name();
   reqOpts.param(StaticStrings::IsRestoreString, "true");
+  static_assert(PriorityRequestLane(RequestLane::SERVER_SYNCHRONOUS_REPLICATION) ==
+                    RequestPriority::HIGH,
+                "invalid request lane priority");
+  // We need to make sure we continue on HIGH lane on replicated operations.
+  // Otherwise we may block on "leaseTransaction" for this transaction on all MED
+  // threads.
+  reqOpts.continuationLane = RequestLane::SERVER_SYNCHRONOUS_REPLICATION;
 
   // index cache refilling...
   if (options.refillIndexCaches == RefillIndexCaches::kDontRefill) {

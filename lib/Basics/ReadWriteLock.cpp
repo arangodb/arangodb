@@ -92,18 +92,21 @@ bool ReadWriteLock::tryLockWriteFor(std::chrono::microseconds timeout) {
   auto state = _state.fetch_sub(QUEUED_WRITER_INC, std::memory_order_relaxed) -
                QUEUED_WRITER_INC;
 
-  if (state == 0) {
-    // no queued writers and no locks acquired
-    // no more writers -> wake up any waiting readings
-    { std::lock_guard<std::mutex> guard(_reader_mutex); }
-    _readers_bell.notify_all();
-  } else if ((state & QUEUED_WRITER_MASK) != 0 && (state & WRITE_LOCK) == 0) {
-    // there are other writers waiting and the lock is not acquired -> wake up
-    // one of them
-    { std::lock_guard<std::mutex> guard(_writer_mutex); }
-    _writers_bell.notify_one();
+  if ((state & WRITE_LOCK) == 0) {
+    // No one was quick enough to already get the write lock.
+    // So we need to wake up someone.
+    if ((state & QUEUED_WRITER_MASK) != 0) {
+      // there are other writers waiting and the lock is not acquired -> wake up
+      // one of them
+      { std::lock_guard<std::mutex> guard(_writer_mutex); }
+      _writers_bell.notify_one();
+    } else {
+      // no queued writers and no locks acquired
+      // no more writers -> wake up any waiting readings
+      { std::lock_guard<std::mutex> guard(_reader_mutex); }
+      _readers_bell.notify_all();
+    }
   }
-
   return false;
 }
 
