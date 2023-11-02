@@ -92,7 +92,6 @@ struct FutureSharedLock {
   FutureType asyncLockShared() {
     auto* node = new Node(*this, SharedTag{});
     auto* pred = _tail.exchange(node);
-    node->prev = pred;
     if (pred == nullptr) {
       node->state.store(State::kSharedActiveLeader);
       return {SharedLockGuard(node)};
@@ -147,7 +146,6 @@ struct FutureSharedLock {
   FutureType asyncLockExclusive() {
     auto* node = new Node(*this, ExclusiveTag{});
     auto* pred = _tail.exchange(node);
-    node->prev = pred;
     if (pred == nullptr) {
       node->state.store(State::kExclusiveLeader);
       return {SharedLockGuard(node)};
@@ -193,7 +191,6 @@ struct FutureSharedLock {
   }
 
   void removeNode(std::unique_ptr<Node> node) {
-    _oldHead = node.get();
     auto myState = node->state.load();
     TRI_ASSERT(myState == State::kExclusiveLeader ||
                myState == State::kSharedActiveLeader)
@@ -204,7 +201,6 @@ struct FutureSharedLock {
     auto next = node->next.load();
     if (next == nullptr) {
       auto expected = node.get();
-      _head.store(nullptr);
       if (_tail.compare_exchange_strong(expected, nullptr)) {
         // no other nodes queued and we just reset tail to nullptr, so the
         // lock is now free again
@@ -228,7 +224,6 @@ struct FutureSharedLock {
     if (isSharedLeader) {
       // we are the leader of a group of shared locks
       if (nextState == State::kSharedActiveFollower) {
-        _head.store(next);
         // we have an active follower, so let's try to make it the new leader
         nextState = next->state.exchange(State::kSharedActiveLeader);
         if (nextState == State::kSharedActiveFollower) {
@@ -248,7 +243,6 @@ struct FutureSharedLock {
 
     node.reset();
 
-    _head.store(next);
     TRI_ASSERT(nextState == State::kExclusiveBlocked ||
                nextState == State::kSharedBlocked);
     if (nextState == State::kExclusiveBlocked) {
@@ -275,7 +269,6 @@ struct FutureSharedLock {
     // traverse the list
     leader->state.store(State::kSharedActiveLeader);
     auto next = leader->next.load();
-    auto last = next;
     while (next) {
       auto state = next->state.load();
       // we need to wait until the next node has established its state
@@ -290,10 +283,8 @@ struct FutureSharedLock {
       if (state == State::kSharedBlocked) {
         next->state.store(State::kSharedActiveFollower);
         scheduleNode(next);
-        last = next;
         next = next->next.load();
       } else {
-        leader->stopState = state;
         // if the next node is an active follower or finished, all later shared
         // nodes will also be active/finished, so we can stop here
         TRI_ASSERT(state == State::kExclusiveBlocked ||
@@ -303,7 +294,6 @@ struct FutureSharedLock {
       }
     }
 
-    leader->last = last;
     scheduleNode(leader);
   }
 
@@ -316,30 +306,16 @@ struct FutureSharedLock {
   struct ExclusiveTag {};
   struct SharedTag {};
 
-  static std::atomic<unsigned> _numNodes;
-
   struct Node : SharedLock {
     Node(FutureSharedLock& lock, ExclusiveTag)
-        : lock(lock), state(State::kExclusiveBlocked) {
-      TRI_ASSERT(++_numNodes < 1000);
-    }
+        : lock(lock), state(State::kExclusiveBlocked) {}
     Node(FutureSharedLock& lock, SharedTag)
-        : lock(lock), state(State::kSharedInitializing) {
-      TRI_ASSERT(++_numNodes < 1000);
-    }
-    ~Node() {
-      prev = nullptr;
-      TRI_ASSERT(_numNodes > 0);
-      --_numNodes;
-    }
+        : lock(lock), state(State::kSharedInitializing) {}
 
     FutureSharedLock& lock;
     Promise<SharedLockGuard> promise;
     std::atomic<Node*> next{nullptr};
-    Node* prev{nullptr};
     std::atomic<State> state;
-    Node* last{nullptr};
-    std::optional<State> stopState{};
 
     void unlock() noexcept override {
       auto s = state.load();
@@ -362,11 +338,6 @@ struct FutureSharedLock {
 
   Scheduler& _scheduler;
   std::atomic<Node*> _tail;
-  std::atomic<Node*> _head;
-  std::atomic<Node*> _oldHead;
 };
-
-template<class Scheduler>
-std::atomic<unsigned> FutureSharedLock<Scheduler>::_numNodes{0};
 
 }  // namespace arangodb::futures
