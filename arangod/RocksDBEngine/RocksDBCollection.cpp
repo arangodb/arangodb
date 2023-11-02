@@ -609,7 +609,7 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     }
 
     // always (re-)lock to avoid inconsistencies
-    locker.lock();
+    co_await locker.lock();
 
     syncIndexOnCreate(*newIdx);
 

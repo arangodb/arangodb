@@ -303,7 +303,7 @@ void StorageManager::triggerQueueWorker(GuardType guard) noexcept {
   if (not guard->workerActive) {
     // otherwise start a worker
     guard->workerActive = true;
-    worker(std::move(guard), shared_from_this());
+    std::ignore = worker(std::move(guard), shared_from_this());
   }
 }
 

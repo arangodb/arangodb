@@ -321,7 +321,7 @@ Result IResearchView::appendVPackImpl(velocypack::Builder& build,
         EMPTY,        // writeCollections
         EMPTY,        // exclusiveCollections
         options);
-    auto r = trx.begin().get();
+    auto r = trx.beginSync();
     if (!r.ok()) {
       return r;
     }

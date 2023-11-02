@@ -999,7 +999,7 @@ Result RocksDBEdgeIndex::warmup() {
   auto ctx =
       transaction::StandaloneContext::create(_collection.vocbase(), origin);
   SingleCollectionTransaction trx(ctx, _collection, AccessMode::Type::READ);
-  Result res = trx.begin().get();
+  Result res = trx.beginSync();
 
   if (res.fail()) {
     return res;

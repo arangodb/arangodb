@@ -94,7 +94,7 @@ auto DocumentStateHandlersFactory::createTransaction(
   // TODO Why is GLOBAL_MANAGED necessary?
   methods->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
-  auto res = methods->begin().get();
+  auto res = methods->beginSync();
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }

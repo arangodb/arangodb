@@ -148,7 +148,7 @@ void RocksDBIndexCacheRefillThread::refill(TRI_vocbase_t& vocbase,
   auto ctx = transaction::StandaloneContext::create(vocbase, origin);
   SingleCollectionTransaction trx(ctx, std::to_string(cid.id()),
                                   AccessMode::Type::READ);
-  Result res = trx.begin().get();
+  Result res = trx.beginSync();
 
   if (!res.ok()) {
     return;

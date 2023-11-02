@@ -90,7 +90,7 @@ auto CollectionStatusWriter::createResult(velocypack::Slice data)
   OperationOptions options(ExecContext::current());
   options.waitForSync = false;
 
-  Result transactionResult = trx.begin().get();
+  Result transactionResult = trx.beginSync();
   if (transactionResult.fail()) {
     return OperationResult{std::move(transactionResult), options};
   }
@@ -207,7 +207,7 @@ auto CollectionStatusWriter::updateResult(velocypack::Slice data)
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   OperationOptions options(ExecContext::current());
 
-  Result transactionResult = trx.begin().get();
+  Result transactionResult = trx.beginSync();
   if (transactionResult.fail()) {
     return OperationResult{std::move(transactionResult), options};
   }
@@ -231,7 +231,7 @@ auto CollectionStatusWriter::deleteResult() -> OperationResult {
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   OperationOptions options(ExecContext::current());
 
-  Result transactionResult = trx.begin().get();
+  Result transactionResult = trx.beginSync();
   if (transactionResult.fail()) {
     return OperationResult{std::move(transactionResult), options};
   }
@@ -250,7 +250,7 @@ auto CollectionStatusWriter::deleteAllResults() -> OperationResult {
   trx.addHint(transaction::Hints::Hint::NONE);
   OperationOptions options(ExecContext::current());
 
-  Result transactionResult = trx.begin().get();
+  Result transactionResult = trx.beginSync();
   if (transactionResult.fail()) {
     return OperationResult{std::move(transactionResult), options};
   }

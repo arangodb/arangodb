@@ -1212,7 +1212,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(LogicalCollection* coll,
     // do not index the operations in our own transaction
     trx.addHint(transaction::Hints::Hint::NO_INDEXING);
 
-    res = trx.begin().get();
+    res = trx.beginSync();
 
     if (!res.ok()) {
       return Result(
@@ -1546,7 +1546,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
         *coll, AccessMode::Type::EXCLUSIVE);
     trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
     trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
-    Result res = trx.begin().get();
+    Result res = trx.beginSync();
 
     if (!res.ok()) {
       return Result(
@@ -1752,7 +1752,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
           *coll, AccessMode::Type::EXCLUSIVE);
       trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
       trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
-      Result res = trx.begin().get();
+      Result res = trx.beginSync();
 
       if (!res.ok()) {
         return Result(
@@ -1829,7 +1829,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
   // turn on intermediate commits as the number of keys to delete can be huge
   // here
   trx->addHint(Hints::Hint::INTERMEDIATE_COMMITS);
-  Result res = trx->begin().get();
+  Result res = trx->beginSync();
   if (!res.ok()) {
     return Result(
         res.errorNumber(),
@@ -2385,7 +2385,7 @@ Result DatabaseInitialSyncer::handleCollection(velocypack::Slice parameters,
                 *col, AccessMode::Type::EXCLUSIVE);
             trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
             trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
-            Result res = trx.begin().get();
+            Result res = trx.beginSync();
 
             if (!res.ok()) {
               return Result(res.errorNumber(),

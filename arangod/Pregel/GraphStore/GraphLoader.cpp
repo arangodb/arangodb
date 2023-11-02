@@ -174,7 +174,7 @@ auto GraphLoader<V, E>::loadVertices(LoadableVertexShard loadableVertexShard)
   auto origin = transaction::OperationOriginREST{"loading Pregel vertices"};
   auto ctx = transaction::StandaloneContext::create(*config->vocbase(), origin);
   transaction::Methods trx(ctx, {}, {}, {}, trxOpts);
-  Result res = trx.begin().get();
+  Result res = trx.beginSync();
 
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);

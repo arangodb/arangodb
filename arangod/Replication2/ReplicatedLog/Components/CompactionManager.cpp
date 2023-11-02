@@ -180,7 +180,7 @@ void CompactionManager::triggerAsyncCompaction(
 
   guard->_fullCompactionNextRound |= ignoreThreshold;
   if (not guard->_compactionInProgress) {
-    worker(std::move(guard), shared_from_this());
+    std::ignore = worker(std::move(guard), shared_from_this());
   } else {
     LOG_CTX("b6135", TRACE, loggerContext)
         << "another compaction is still in progress";

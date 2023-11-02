@@ -728,7 +728,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase, velocypack::Slice slice,
           *col, AccessMode::Type::WRITE);
       trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
       trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
-      Result res = trx.begin().get();
+      Result res = trx.beginSync();
 
       if (!res.ok()) {
         return res;

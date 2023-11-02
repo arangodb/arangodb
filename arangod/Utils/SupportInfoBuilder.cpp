@@ -644,7 +644,7 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
           SingleCollectionTransaction trx(std::move(ctx), collName,
                                           AccessMode::Type::READ);
 
-          Result res = trx.begin().get();
+          Result res = trx.beginSync();
 
           if (res.ok()) {
             OperationOptions options(ExecContext::current());

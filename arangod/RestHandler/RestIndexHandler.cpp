@@ -278,7 +278,7 @@ futures::Future<futures::Unit> RestIndexHandler::getSelectivityEstimates() {
 
   TRI_ASSERT(trx != nullptr);
 
-  Result res = trx->begin().get();
+  Result res = trx->beginSync();
   if (res.fail()) {
     generateError(res);
     co_return;

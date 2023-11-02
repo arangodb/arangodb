@@ -714,7 +714,7 @@ void RestCollectionHandler::collectionRepresentation(
     FiguresType showFigures, CountType showCount) {
   if (showProperties || showCount != CountType::None) {
     // Here we need a transaction
-    initializeTransaction(*coll);
+    initializeTransaction(*coll).get();
     methods::Collections::Context ctxt(coll, _activeTrx.get());
 
     collectionRepresentation(ctxt, showProperties, showFigures, showCount);

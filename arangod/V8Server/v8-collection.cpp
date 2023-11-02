@@ -449,7 +449,7 @@ static void ExistsVocbaseVPack(
       collectionName, AccessMode::Type::READ);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-  res = trx.begin().get();
+  res = trx.beginSync();
 
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -561,7 +561,7 @@ static void DocumentVocbaseCol(
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
-  Result res = trx.begin().get();
+  Result res = trx.beginSync();
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -638,7 +638,7 @@ static void DocumentVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
       collectionName, AccessMode::Type::READ);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-  Result res = trx.begin().get();
+  Result res = trx.beginSync();
 
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -751,7 +751,7 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   ::addTransactionHints(*col, trx, payloadIsArray, false);
 
-  Result res = trx.begin().get();
+  Result res = trx.beginSync();
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -847,7 +847,7 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
       collectionName, AccessMode::Type::WRITE, trxOpts);
   ::addTransactionHints(*collection, trx, false, false);
 
-  Result res = trx.begin().get();
+  Result res = trx.beginSync();
 
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -937,7 +937,7 @@ static void JS_BinaryDocumentVocbaseCol(
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-  Result res = trx.begin().get();
+  Result res = trx.beginSync();
 
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -1081,7 +1081,7 @@ static void JS_FiguresVocbaseCol(
   SingleCollectionTransaction trx(
       transaction::V8Context::create(collection->vocbase(), origin, true),
       *collection, AccessMode::Type::READ);
-  Result res = trx.begin().get();
+  Result res = trx.beginSync();
 
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -1537,7 +1537,7 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
 
   addTransactionHints(*col, trx, payloadIsArray, false);
 
-  Result res = trx.begin().get();
+  Result res = trx.beginSync();
 
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -1656,7 +1656,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
       collectionName, AccessMode::Type::WRITE, trxOpts);
   addTransactionHints(*collection, trx, false, false);
 
-  Result res = trx.begin().get();
+  Result res = trx.beginSync();
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -1954,7 +1954,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
   addTransactionHints(*collection, trx, payloadIsArray,
                       options.isOverwriteModeUpdateReplace());
 
-  Result res = trx.begin().get();
+  Result res = trx.beginSync();
 
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -2106,7 +2106,7 @@ static void JS_TruncateVocbaseCol(
                                     AccessMode::Type::EXCLUSIVE);
     trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
     trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
-    Result res = trx.begin().get();
+    Result res = trx.beginSync();
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -2453,7 +2453,7 @@ static void JS_CountVocbaseCol(
       transaction::V8Context::create(col->vocbase(), origin, true),
       collectionName, AccessMode::Type::READ);
 
-  Result res = trx.begin().get();
+  Result res = trx.beginSync();
 
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
