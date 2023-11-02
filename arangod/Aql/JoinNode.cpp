@@ -245,9 +245,6 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
   infos.query = &engine.getQuery();
   infos.indexes.reserve(_indexInfos.size());
   for (auto const& idx : _indexInfos) {
-    auto documentOutputRegister = variableToRegisterId(idx.outVariable);
-    writableOutputRegisters.emplace(documentOutputRegister);
-
     auto const& p = idx.projections;
     // create one register per projection.
     for (size_t i = 0; i < p.size(); ++i) {
@@ -261,6 +258,12 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
       auto regId = variableToRegisterId(var);
       varsToRegs.emplace(var->id, regId);
       writableOutputRegisters.emplace(regId);
+    }
+
+    RegisterId documentOutputRegister = RegisterId::maxRegisterId;
+    if (!p.hasOutputRegisters()) {
+      documentOutputRegister = variableToRegisterId(idx.outVariable);
+      writableOutputRegisters.emplace(documentOutputRegister);
     }
 
     // TODO probably those data structures can become one
@@ -353,16 +356,19 @@ void JoinNode::replaceVariables(
 void JoinNode::replaceAttributeAccess(ExecutionNode const* self,
                                       Variable const* searchVariable,
                                       std::span<std::string_view> attribute,
-                                      Variable const* replaceVariable) {
+                                      Variable const* replaceVariable,
+                                      size_t index) {
+  size_t i = 0;
   for (auto& it : _indexInfos) {
-    if (it.condition && self != this) {
+    if (it.condition && (self != this || i > index)) {
       it.condition->replaceAttributeAccess(searchVariable, attribute,
                                            replaceVariable);
     }
-    if (it.filter && self != this) {
+    if (it.filter && (self != this || i > index)) {
       it.filter->replaceAttributeAccess(searchVariable, attribute,
                                         replaceVariable);
     }
+    ++i;
   }
 }
 
@@ -449,16 +455,14 @@ std::vector<Variable const*> JoinNode::getVariablesSetHere() const {
   vars.reserve(_indexInfos.size());
 
   for (auto const& it : _indexInfos) {
-    size_t found = 0;
     // projection output variables
     for (size_t i = 0; i < it.projections.size(); ++i) {
       // output registers are not necessarily set yet
       if (it.projections[i].variable != nullptr) {
         vars.push_back(it.projections[i].variable);
-        ++found;
       }
     }
-    if (found == 0) {
+    if (!it.projections.hasOutputRegisters() || it.filter != nullptr) {
       vars.emplace_back(it.outVariable);
     }
   }
@@ -472,6 +476,19 @@ std::vector<JoinNode::IndexInfo> const& JoinNode::getIndexInfos() const {
 
 std::vector<JoinNode::IndexInfo>& JoinNode::getIndexInfos() {
   return _indexInfos;
+}
+
+bool JoinNode::isDeterministic() {
+  for (auto const& it : _indexInfos) {
+    if (it.condition != nullptr && it.condition->root() != nullptr &&
+        !it.condition->root()->isDeterministic()) {
+      return false;
+    }
+    if (it.filter != nullptr && !it.filter->isDeterministic()) {
+      return false;
+    }
+  }
+  return false;
 }
 
 Index::FilterCosts JoinNode::costsForIndexInfo(

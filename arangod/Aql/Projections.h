@@ -151,6 +151,12 @@ class Projections {
       fu2::unique_function<void(Variable const*, velocypack::Slice)
                                const> const& cb) const;
 
+  void produceFromIndexCompactArray(
+      velocypack::Builder& b, IndexIteratorCoveringData& covering,
+      transaction::Methods const* trxPtr,
+      fu2::unique_function<void(Variable const*, velocypack::Slice)
+                               const> const& cb) const;
+
   /// @brief extract projections from a full document
   void toVelocyPackFromDocument(velocypack::Builder& b, velocypack::Slice slice,
                                 transaction::Methods const* trxPtr) const;

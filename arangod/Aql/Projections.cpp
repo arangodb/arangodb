@@ -235,6 +235,48 @@ void Projections::produceFromIndex(
   }
 }
 
+/// @brief projections from a covering index
+void Projections::produceFromIndexCompactArray(
+    velocypack::Builder& b, IndexIteratorCoveringData& covering,
+    transaction::Methods const* trxPtr,
+    fu2::unique_function<void(Variable const*, velocypack::Slice) const> const&
+        cb) const {
+  TRI_ASSERT(_index != nullptr);
+  TRI_ASSERT(covering.isArray());
+
+  for (size_t k = 0; k < _projections.size(); k++) {
+    auto const& it = _projections[k];
+    // we will get a Slice with an array of index values. now we need
+    // to look up the array values from the correct positions to
+    // populate the result with the projection values. this case will
+    // be triggered for indexes that can be set up on any number of
+    // attributes (persistent/hash/skiplist)
+    VPackSlice found = covering.at(k);
+
+    // _id cannot be part of a user-defined index, but can be used
+    // from within stored values
+    if (it.type == AttributeNamePath::Type::IdAttribute) {
+      // _id attribute
+      b.clear();
+      b.add(VPackValue(transaction::helpers::makeIdFromParts(
+          trxPtr->resolver(), _datasourceId, found)));
+      cb(it.variable, b.slice());
+    } else {
+      auto const& path = it.path.get();
+      if (it.coveringIndexCutoff < path.size()) {
+        for (size_t i = it.coveringIndexCutoff; i < path.size(); ++i) {
+          if (!found.isObject()) {
+            found = VPackSlice::nullSlice();
+          } else {
+            found = found.get(path[i]);
+          }
+        }
+      }
+      cb(it.variable, found);
+    }
+  }
+}
+
 void Projections::toVelocyPackFromDocument(
     velocypack::Builder& b, velocypack::Slice slice,
     transaction::Methods const* trxPtr) const {

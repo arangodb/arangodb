@@ -737,7 +737,7 @@ void ExecutionNode::replaceVariables(
 void ExecutionNode::replaceAttributeAccess(
     ExecutionNode const* /*self*/, Variable const* /*searchVariable*/,
     std::span<std::string_view> /*attribute*/,
-    Variable const* /*replaceVariable*/) {
+    Variable const* /*replaceVariable*/, size_t /*index*/) {
   // default implementation does nothing
 }
 
@@ -1856,7 +1856,8 @@ void EnumerateCollectionNode::replaceVariables(
 
 void EnumerateCollectionNode::replaceAttributeAccess(
     ExecutionNode const* self, Variable const* searchVariable,
-    std::span<std::string_view> attribute, Variable const* replaceVariable) {
+    std::span<std::string_view> attribute, Variable const* replaceVariable,
+    size_t /*index*/) {
   DocumentProducingNode::replaceAttributeAccess(self, searchVariable, attribute,
                                                 replaceVariable);
 }
@@ -2374,7 +2375,8 @@ void CalculationNode::replaceVariables(
 
 void CalculationNode::replaceAttributeAccess(
     ExecutionNode const* self, Variable const* searchVariable,
-    std::span<std::string_view> attribute, Variable const* replaceVariable) {
+    std::span<std::string_view> attribute, Variable const* replaceVariable,
+    size_t /*index*/) {
   expression()->replaceAttributeAccess(searchVariable, attribute,
                                        replaceVariable);
 }

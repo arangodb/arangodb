@@ -190,8 +190,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
           _projectionsBuilder.close();
         } else {
           // write projections into individual output registers
-          // TODO: call produceFromIndexCompactArray
-          proj.produceFromIndex(
+          proj.produceFromIndexCompactArray(
               _projectionsBuilder, data, &_trx,
               [&](Variable const* variable, velocypack::Slice slice) {
                 if (slice.isNone()) {
@@ -306,14 +305,28 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                   _infos.indexes[k].documentOutputRegister,
                                   _currentRow, docPtr);
           } else {
-            _projectionsBuilder.clear();
-            _projectionsBuilder.openObject(true);
-            // TODO: add register projections
-            idx.projections.toVelocyPackFromDocument(_projectionsBuilder, doc,
-                                                     &_trx);
-            _projectionsBuilder.close();
-            output.moveValueInto(_infos.indexes[k].documentOutputRegister,
-                                 _currentRow, _projectionsBuilder.slice());
+            if (!idx.hasProjectionsForRegisters) {
+              _projectionsBuilder.clear();
+              _projectionsBuilder.openObject(true);
+              idx.projections.toVelocyPackFromDocument(_projectionsBuilder, doc,
+                                                       &_trx);
+              _projectionsBuilder.close();
+
+              output.moveValueInto(_infos.indexes[k].documentOutputRegister,
+                                   _currentRow, _projectionsBuilder.slice());
+            } else {
+              idx.projections.produceFromDocument(
+                  _projectionsBuilder, doc, &_trx,
+                  [&](Variable const* variable, velocypack::Slice slice) {
+                    if (slice.isNone()) {
+                      slice = VPackSlice::nullSlice();
+                    }
+                    RegisterId registerId =
+                        _infos.registerForVariable(variable->id);
+                    TRI_ASSERT(registerId != RegisterId::maxRegisterId);
+                    output.moveValueInto(registerId, _currentRow, slice);
+                  });
+            }
           }
         };
 
@@ -325,8 +338,10 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
           if (idx.projections.usesCoveringIndex(idx.index)) {
             buildProjections(k, idx.projections,
                              idx.hasProjectionsForRegisters);
-            output.moveValueInto(_infos.indexes[k].documentOutputRegister,
-                                 _currentRow, _projectionsBuilder.slice());
+            if (!idx.hasProjectionsForRegisters) {
+              output.moveValueInto(_infos.indexes[k].documentOutputRegister,
+                                   _currentRow, _projectionsBuilder.slice());
+            }
 
             projectionsOffset += idx.projections.size();
           } else {

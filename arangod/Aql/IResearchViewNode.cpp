@@ -1825,8 +1825,8 @@ void IResearchViewNode::replaceVariables(
 
 void IResearchViewNode::replaceAttributeAccess(
     aql::ExecutionNode const* self, aql::Variable const* searchVariable,
-    std::span<std::string_view> attribute,
-    aql::Variable const* replaceVariable) {
+    std::span<std::string_view> attribute, aql::Variable const* replaceVariable,
+    size_t /*index*/) {
   Ast* ast = plan()->getAst();
   // replace in filter condition
   aql::AstNode const& search = filterCondition();

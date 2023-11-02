@@ -9469,11 +9469,12 @@ class AttributeAccessReplacer final
   AttributeAccessReplacer(ExecutionNode const* self,
                           Variable const* searchVariable,
                           std::span<std::string_view> attribute,
-                          Variable const* replaceVariable)
+                          Variable const* replaceVariable, size_t index)
       : _self(self),
         _searchVariable(searchVariable),
         _attribute(attribute),
-        _replaceVariable(replaceVariable) {
+        _replaceVariable(replaceVariable),
+        _index(index) {
     TRI_ASSERT(_searchVariable != nullptr);
     TRI_ASSERT(!_attribute.empty());
     TRI_ASSERT(_replaceVariable != nullptr);
@@ -9481,7 +9482,7 @@ class AttributeAccessReplacer final
 
   bool before(ExecutionNode* en) override final {
     en->replaceAttributeAccess(_self, _searchVariable, _attribute,
-                               _replaceVariable);
+                               _replaceVariable, _index);
 
     // always continue
     return false;
@@ -9492,20 +9493,19 @@ class AttributeAccessReplacer final
   Variable const* _searchVariable;
   std::span<std::string_view> _attribute;
   Variable const* _replaceVariable;
+  size_t _index;
 };
 
 void arangodb::aql::optimizeProjections(Optimizer* opt,
                                         std::unique_ptr<ExecutionPlan> plan,
                                         OptimizerRule const& rule) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
-  plan->findNodesOfType(nodes, {EN::INDEX, EN::ENUMERATE_COLLECTION}, true);
+  plan->findNodesOfType(nodes, {EN::INDEX, EN::ENUMERATE_COLLECTION, EN::JOIN},
+                        true);
 
-  bool modified = false;
-  for (auto* n : nodes) {
-    auto* documentNode = ExecutionNode::castTo<DocumentProducingNode*>(n);
-    modified |= documentNode->recalculateProjections(plan.get());
-
-    auto& p = documentNode->projections();
+  auto replace = [&plan](ExecutionNode* self, Projections& p,
+                         Variable const* searchVariable, size_t index) {
+    bool modified = false;
     std::vector<std::string_view> path;
     for (size_t i = 0; i < p.size(); ++i) {
       TRI_ASSERT(p[i].variable == nullptr);
@@ -9515,10 +9515,32 @@ void arangodb::aql::optimizeProjections(Optimizer* opt,
         path.emplace_back(it);
       }
 
-      AttributeAccessReplacer replacer(n, documentNode->outVariable(),
-                                       std::span(path), p[i].variable);
+      AttributeAccessReplacer replacer(self, searchVariable, std::span(path),
+                                       p[i].variable, index);
       plan->root()->walk(replacer);
       modified = true;
+    }
+    return modified;
+  };
+
+  bool modified = false;
+  for (auto* n : nodes) {
+    if (n->getType() == EN::JOIN) {
+      // JoinNode. optimize projections in all parts
+      auto* joinNode = ExecutionNode::castTo<JoinNode*>(n);
+      size_t index = 0;
+      for (auto& it : joinNode->getIndexInfos()) {
+        modified |= replace(n, it.projections, it.outVariable, index++);
+      }
+    } else {
+      // IndexNode or EnumerateCollectionNode.
+      TRI_ASSERT(n->getType() == EN::ENUMERATE_COLLECTION ||
+                 n->getType() == EN::INDEX);
+
+      auto* documentNode = ExecutionNode::castTo<DocumentProducingNode*>(n);
+      modified |= documentNode->recalculateProjections(plan.get());
+      modified |= replace(n, documentNode->projections(),
+                          documentNode->outVariable(), /*index*/ 0);
     }
   }
   opt->addPlan(std::move(plan), rule, modified);

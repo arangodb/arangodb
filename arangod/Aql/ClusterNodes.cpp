@@ -649,7 +649,8 @@ void GatherNode::replaceVariables(
 void GatherNode::replaceAttributeAccess(ExecutionNode const* self,
                                         Variable const* searchVariable,
                                         std::span<std::string_view> attribute,
-                                        Variable const* replaceVariable) {
+                                        Variable const* replaceVariable,
+                                        size_t /*index*/) {
   auto equal = [](auto const& v1, auto const& v2) {
     size_t n = v1.size();
     if (n != v2.size()) {

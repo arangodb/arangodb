@@ -548,7 +548,8 @@ void IndexNode::replaceVariables(
 void IndexNode::replaceAttributeAccess(ExecutionNode const* self,
                                        Variable const* searchVariable,
                                        std::span<std::string_view> attribute,
-                                       Variable const* replaceVariable) {
+                                       Variable const* replaceVariable,
+                                       size_t /*index*/) {
   DocumentProducingNode::replaceAttributeAccess(self, searchVariable, attribute,
                                                 replaceVariable);
   if (_condition && self != this) {

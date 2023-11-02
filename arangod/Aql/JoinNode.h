@@ -100,7 +100,8 @@ class JoinNode : public ExecutionNode {
   void replaceAttributeAccess(ExecutionNode const* self,
                               Variable const* searchVariable,
                               std::span<std::string_view> attribute,
-                              Variable const* replaceVariable) override;
+                              Variable const* replaceVariable,
+                              size_t index) override;
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;
@@ -118,8 +119,7 @@ class JoinNode : public ExecutionNode {
   std::vector<IndexInfo> const& getIndexInfos() const;
   std::vector<IndexInfo>& getIndexInfos();
 
-  /// TODO: check if this is adequate
-  bool isDeterministic() override final { return true; }
+  bool isDeterministic() override final;
 
  protected:
   /// @brief export to VelocyPack
