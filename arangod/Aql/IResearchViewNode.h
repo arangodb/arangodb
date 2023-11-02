@@ -114,6 +114,9 @@ class IResearchViewNode final : public aql::ExecutionNode,
     // iresearch filters optimization level
     FilterOptimization filterOptimization{FilterOptimization::MAX};
 
+    // max number of threads to process segments in parallel.
+    size_t parallelism{1};
+
     // Use the list of sources to restrict a query.
     bool restrictSources{false};
 

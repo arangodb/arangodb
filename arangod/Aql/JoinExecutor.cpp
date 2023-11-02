@@ -539,6 +539,7 @@ void JoinExecutor::constructStrategy() {
   // TODO actually we want to have different strategies, like hash join and
   // special implementations for n = 2, 3, ...
   // TODO maybe make this an template parameter
-  _strategy =
-      IndexJoinStrategyFactory{}.createStrategy(std::move(indexDescription), 1);
+  _strategy = IndexJoinStrategyFactory{}.createStrategy(
+      std::move(indexDescription), 1,
+      _infos.query->queryOptions().desiredJoinStrategy);
 }
