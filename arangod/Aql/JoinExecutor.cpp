@@ -239,7 +239,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
               projections.begin() + projectionsOffset,
               projections.begin() + projectionsOffset +
                   idx.filter->projections.size()};
-          LOG_JOIN << "INDEX " << k << " unsing filter projections";
+          LOG_JOIN << "INDEX " << k << " using filter projections";
           filterWithProjectionsCallback(projectionRange);
           projectionsOffset += idx.filter->projections.size();
         } else {
