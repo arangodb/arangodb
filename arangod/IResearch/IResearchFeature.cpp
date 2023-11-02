@@ -166,6 +166,8 @@ std::string const FAIL_ON_OUT_OF_SYNC(
 std::string const SKIP_RECOVERY("--arangosearch.skip-recovery");
 std::string const CACHE_LIMIT("--arangosearch.columns-cache-limit");
 std::string const CACHE_ONLY_LEADER("--arangosearch.columns-cache-only-leader");
+std::string const SEARCH_THREADS_LIMIT(
+    "--arangosearch.execution-threads-limit");
 
 aql::AqlValue dummyFunc(aql::ExpressionContext*, aql::AstNode const& node,
                         std::span<aql::AqlValue const>) {
@@ -810,7 +812,7 @@ class AssertionCallbackSetter {
 ////////////////////////////////////////////////////////////////////////////////
 class IResearchAsync {
  public:
-  using ThreadPool = irs::async_utils::thread_pool;
+  using ThreadPool = irs::async_utils::thread_pool<>;
 
   ~IResearchAsync() { stop(); }
 
@@ -875,20 +877,19 @@ IResearchFeature::IResearchFeature(Server& server)
       _async(std::make_unique<IResearchAsync>()),
       _running(false),
       _failQueriesOnOutOfSync(false),
+      _outOfSyncLinks(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_search_num_out_of_sync_links{})),
+#ifdef USE_ENTERPRISE
+      _columnsCacheMemoryUsed(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_search_columns_cache_size{})),
+#endif
       _consolidationThreads(0),
       _consolidationThreadsIdle(0),
       _commitThreads(0),
       _commitThreadsIdle(0),
       _threads(0),
       _threadsLimit(0),
-      _outOfSyncLinks(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_search_num_out_of_sync_links{}))
-#ifdef USE_ENTERPRISE
-      ,
-      _columnsCacheMemoryUsed(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_search_columns_cache_size{}))
-#endif
-{
+      _searchExecutionThreadsLimit(0) {
   setOptional(true);
   startsAfter<application_features::V8FeaturePhase>();
   startsAfter<IResearchAnalyzerFeature>();
@@ -1042,6 +1043,14 @@ but the returned data may be incomplete.)");
                                             options::Flags::Enterprise))
       .setIntroducedIn(3'10'06);
 #endif
+  options->addOption(
+      SEARCH_THREADS_LIMIT,
+      "Max number of threads that could be used to process ArangoSearch "
+      "indexes during SEARCH operation",
+      new options::UInt32Parameter(&_searchExecutionThreadsLimit),
+      options::makeDefaultFlags(options::Flags::DefaultNoComponents,
+                                options::Flags::OnDBServer,
+                                options::Flags::OnSingle));
 }
 
 void IResearchFeature::validateOptions(
@@ -1105,6 +1114,11 @@ void IResearchFeature::validateOptions(
           ? computeIdleThreadsCount(_consolidationThreadsIdle,
                                     _consolidationThreads)
           : _consolidationThreads;
+
+  if (!args.touched(SEARCH_THREADS_LIMIT)) {
+    _searchExecutionThreadsLimit =
+        static_cast<uint32_t>(2 * NumberOfCores::getValue());
+  }
 
   _running.store(false);
 }
@@ -1221,12 +1235,17 @@ void IResearchFeature::start() {
     _startState = nullptr;
   }
 
+  _searchExecutionPool.setLimit(_searchExecutionThreadsLimit);
+  LOG_TOPIC("71efd", INFO, arangodb::iresearch::TOPIC)
+      << "ArangoSearch execution parallel threads limit: "
+      << _searchExecutionThreadsLimit;
   _running.store(true);
 }
 
 void IResearchFeature::stop() {
   TRI_ASSERT(isEnabled());
   _async->stop();
+  _searchExecutionPool.stop();
   _running.store(false);
 }
 
@@ -1258,7 +1277,7 @@ void cleanupDatabase(TRI_vocbase_t& database) {
 
 bool IResearchFeature::queue(ThreadGroup id,
                              std::chrono::steady_clock::duration delay,
-                             std::function<void()>&& fn) {
+                             fu2::unique_function<void()>&& fn) {
   try {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
     TRI_IF_FAILURE("IResearchFeature::queue") {

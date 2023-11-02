@@ -29,6 +29,9 @@
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
+#include "resource_manager.hpp"
+#include "function2.hpp"
+#include "utils/async_utils.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -54,6 +57,55 @@ class IResearchAsync;
 class IResearchLink;
 class ResourceMutex;
 class IResearchRocksDBRecoveryHelper;
+
+class ArangoSearchPool {
+ public:
+  void setLimit(int newLimit) noexcept {
+    // should not be called during execution of queries!
+    TRI_ASSERT(_allocatedThreads.load() == 0);
+    _limit = newLimit;
+  }
+
+  void stop() {
+    TRI_ASSERT(_allocatedThreads.load() == 0);
+    _pool.stop(true);
+  }
+
+  int allocateThreads(int n) {
+    auto curr = _allocatedThreads.load(std::memory_order_relaxed);
+    int newval;
+    do {
+      newval = std::min(curr + n, _limit);
+    } while (!_allocatedThreads.compare_exchange_weak(curr, newval));
+    int add = newval - curr;
+    TRI_ASSERT(add >= 0);
+    if (add > 0) {
+      // TODO: add a single call to thread_pool to change both
+      _pool.max_idle_delta(add);
+      _pool.max_threads_delta(add);
+    }
+    return add;
+  }
+
+  void releaseThreads(int n) {
+    TRI_ASSERT(n > 0);
+    TRI_ASSERT(_allocatedThreads.load() >= n);
+    _pool.max_idle_delta(-n);
+    _pool.max_threads_delta(-n);
+    _allocatedThreads.fetch_sub(n);
+  }
+
+  using Pool = irs::async_utils::thread_pool<false>;
+
+  bool run(Pool::func_t&& fn) {
+    return _pool.run(std::forward<Pool::func_t>(fn));
+  }
+
+ private:
+  Pool _pool{0, 0, IR_NATIVE_STRING("ARS-2")};
+  std::atomic<int> _allocatedThreads{0};
+  int _limit{0};
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @enum ThreadGroup
@@ -114,6 +166,7 @@ class IResearchFeature final : public ArangodFeature {
   void unprepare() final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
 
+  auto& getSearchPool() noexcept { return _searchExecutionPool; }
   //////////////////////////////////////////////////////////////////////////////
   /// @brief schedule an asynchronous task for execution
   /// @param id thread group to handle the execution
@@ -121,7 +174,7 @@ class IResearchFeature final : public ArangodFeature {
   /// @param delay how log to sleep before the execution
   //////////////////////////////////////////////////////////////////////////////
   bool queue(ThreadGroup id, std::chrono::steady_clock::duration delay,
-             std::function<void()>&& fn);
+             fu2::unique_function<void()>&& fn);
 
   std::tuple<size_t, size_t, size_t> stats(ThreadGroup id) const;
   std::pair<size_t, size_t> limits(ThreadGroup id) const;
@@ -180,6 +233,7 @@ class IResearchFeature final : public ArangodFeature {
   uint32_t _commitThreadsIdle;
   uint32_t _threads;
   uint32_t _threadsLimit;
+  uint32_t _searchExecutionThreadsLimit;
 
   std::shared_ptr<IndexTypeFactory> _clusterFactory;
   std::shared_ptr<IndexTypeFactory> _rocksDBFactory;
@@ -195,6 +249,8 @@ class IResearchFeature final : public ArangodFeature {
 
   // helper object, only useful during WAL recovery
   std::shared_ptr<IResearchRocksDBRecoveryHelper> _recoveryHelper;
+
+  ArangoSearchPool _searchExecutionPool;
 };
 
 }  // namespace iresearch
