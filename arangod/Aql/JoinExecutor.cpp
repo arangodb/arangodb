@@ -103,6 +103,7 @@ struct DocumentCallbackOverload : F {
 auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
+  JoinStats stats{};
   AqlCall upstreamCall{};
   upstreamCall.fullCount = output.getClientCall().fullCount;
 
@@ -144,6 +145,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                   " for collection ", _infos.indexes[index].collection->name(),
                   ": ", result.errorMessage()));
         }
+        stats.incrScannedIndex(1);
       };
 
       // first do all the filtering and only if all indexes produced a
@@ -249,6 +251,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
           // forget about this row
           LOG_JOIN << "INDEX " << k << " eliminated pair";
           LOG_JOIN << "FILTERED ROW " << (rowCount - 1);
+          stats.incrFiltered(1);
           return true;
         }
       }
@@ -307,13 +310,15 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     }
   }
 
-  return {inputRange.upstreamState(), Stats{}, upstreamCall};
+  return {inputRange.upstreamState(), stats, upstreamCall};
 }
 
 auto JoinExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
                                  AqlCall& clientCall)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   bool hasMore = false;
+  JoinStats stats{};
+
   while (inputRange.hasDataRow() && clientCall.needSkipMore()) {
     if (!_currentRow) {
       std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
@@ -343,6 +348,7 @@ auto JoinExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
                   " for collection ", _infos.indexes[index].collection->name(),
                   ": ", result.errorMessage()));
         }
+        stats.incrScannedIndex(1);
       };
 
       // first do all the filtering and only if all indexes produced a
@@ -416,7 +422,7 @@ auto JoinExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
               projections.begin() + projectionsOffset,
               projections.begin() + projectionsOffset +
                   idx.filter->projections.size()};
-          LOG_JOIN << "INDEX " << k << " unsing filter projections";
+          LOG_JOIN << "INDEX " << k << " using filter projections";
           filterWithProjectionsCallback(projectionRange);
           projectionsOffset += idx.filter->projections.size();
         } else {
@@ -427,6 +433,7 @@ auto JoinExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
         if (filtered) {
           // forget about this row
           LOG_JOIN << "INDEX " << k << " eliminated pair";
+          stats.incrFiltered(1);
           return clientCall.needSkipMore();
         }
       }

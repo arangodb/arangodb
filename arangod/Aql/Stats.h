@@ -117,6 +117,38 @@ inline ExecutionStats& operator+=(
   return executionStats;
 }
 
+class JoinStats {
+ public:
+  JoinStats() noexcept : _scannedIndex(0), _filtered(0) {}
+
+  void incrScannedIndex(std::uint64_t value = 1) noexcept {
+    _scannedIndex += value;
+  }
+  void incrFiltered(std::uint64_t value = 1) noexcept { _filtered += value; }
+
+  [[nodiscard]] std::uint64_t getScannedIndex() const noexcept {
+    return _scannedIndex;
+  }
+  [[nodiscard]] std::uint64_t getFiltered() const noexcept { return _filtered; }
+
+  void operator+=(JoinStats const& stats) noexcept {
+    _scannedIndex += stats._scannedIndex;
+    _filtered += stats._filtered;
+  }
+
+ private:
+  std::uint64_t _scannedIndex = 0;
+  std::uint64_t _filtered = 0;
+};
+
+inline ExecutionStats& operator+=(
+    ExecutionStats& executionStats,
+    JoinStats const& enumerateCollectionStats) noexcept {
+  executionStats.scannedIndex += enumerateCollectionStats.getScannedIndex();
+  executionStats.filtered += enumerateCollectionStats.getFiltered();
+  return executionStats;
+}
+
 class IndexStats {
  public:
   IndexStats() noexcept

@@ -108,7 +108,7 @@ class JoinExecutor {
 
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = JoinExecutorInfos;
-  using Stats = NoStats;
+  using Stats = JoinStats;
 
   JoinExecutor() = delete;
   JoinExecutor(JoinExecutor&&) = delete;
@@ -126,7 +126,7 @@ class JoinExecutor {
   void constructStrategy();
 
   aql::AqlFunctionsInternalCache _functionsCache;
-  Fetcher& _fetcher;
+  [[maybe_unused]] Fetcher& _fetcher;
   Infos& _infos;
   std::unique_ptr<AqlIndexJoinStrategy> _strategy;
 
