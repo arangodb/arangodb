@@ -24,6 +24,7 @@
 #include <memory>
 
 #include "Aql/IndexStreamIterator.h"
+#include "Aql/QueryOptions.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -65,7 +66,8 @@ struct IndexJoinStrategyFactory {
   using Descriptor = IndexDescriptor<velocypack::Slice, LocalDocumentId>;
 
   std::unique_ptr<AqlIndexJoinStrategy> createStrategy(
-      std::vector<Descriptor>, std::size_t numKeyComponents);
+      std::vector<Descriptor>, std::size_t numKeyComponents,
+      aql::QueryOptions::JoinStrategyType desiredJoinStrategy);
 };
 
 }  // namespace aql

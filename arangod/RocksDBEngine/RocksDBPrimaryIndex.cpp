@@ -1398,13 +1398,16 @@ struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
             std::span<VPackSlice> projections) override {
     _iterator->Next();
 
-    auto hasMore = position(key);
-
-    if (hasMore) {
-      docId = load(projections);
+    if (!_iterator->Valid()) {
+      return false;
     }
+    auto keySlice = RocksDBKey::primaryKey(_iterator->key());
+    _builder.clear();
+    _builder.add(VPackValue(std::string{keySlice.begin(), keySlice.end()}));
+    key[0] = _builder.slice();
+    docId = load(projections);
 
-    return hasMore;
+    return true;
   }
 
   void cacheCurrentKey(std::span<VPackSlice> cache) override {
