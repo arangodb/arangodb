@@ -338,10 +338,6 @@ struct OptimizerRule {
     // parallelizes execution in coordinator-sided GatherNodes
     parallelizeGatherRule,
 
-    // allows execution nodes to asynchronously prefetch the next batch from
-    // their upstream node.
-    asyncPrefetch,
-
     // reduce a sorted gather to an unsorted gather if only a single shard is
     // affected
     decayUnnecessarySortedGatherRule,
@@ -366,12 +362,20 @@ struct OptimizerRule {
     lateMaterialiationOffsetInfoRule,
 #endif
 
-    // remove unnecessary projections
-    removeUnnecessaryProjections,
+    // remove unnecessary projections & store projection attributes in
+    // individual registers
+    optimizeProjections,
 
     // replace adjacent index nodes with a join node if the indexes qualify
     // for it.
     joinIndexNodesRule,
+
+    // final cleanup, after projections
+    removeUnnecessaryCalculationsRule4,
+
+    // allows execution nodes to asynchronously prefetch the next batch from
+    // their upstream node.
+    asyncPrefetch,
 
     // splice subquery into the place of a subquery node
     // enclosed by a SubqueryStartNode and a SubqueryEndNode

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global fail, assertEqual, assertTrue, assertFalse, AQL_EXPLAIN */
+/*global fail, assertEqual, assertTrue, assertFalse */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
 ///
@@ -218,7 +218,7 @@ function explainSuite () {
       assertTrue(Array.isArray(nodes));
 
       nodes.forEach(function(node) {
-        assertTrue(node.hasOwnProperty("isCallstackSplitEnabled"));
+        assertTrue(node.isCallstackSplitEnabled || !node.hasOwnProperty("isCallstackSplitEnabled"));
         assertTrue(node.isCallstackSplitEnabled ^ (node.type === "RemoteNode"));
       });
       

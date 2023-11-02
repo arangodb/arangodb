@@ -383,12 +383,11 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
         // engine is still in use, but we have enqueued a callback to be woken
         // up once it is free again
         return RestStatus::WAITING;
-      } else {
-        TRI_ASSERT(res.is(TRI_ERROR_QUERY_NOT_FOUND));
-        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND,
-                      "query ID " + idString + " not found");
-        return RestStatus::DONE;
       }
+      TRI_ASSERT(res.is(TRI_ERROR_QUERY_NOT_FOUND));
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND,
+                    absl::StrCat("query ID ", idString, " not found"));
+      return RestStatus::DONE;
     }
     std::shared_ptr<SharedQueryState> ss = _engine->sharedState();
     ss->setWakeupHandler(withLogContext(
@@ -423,6 +422,7 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                   "an unknown exception occurred");
   }
+
   return RestStatus::DONE;
 }
 
@@ -513,6 +513,7 @@ RestStatus RestAqlHandler::continueExecute() {
   if (type == rest::RequestType::DELETE_REQ && suffixes[0] == "finish") {
     return RestStatus::DONE;  // uses futures
   }
+
   generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                 "continued non-continuable method for /_api/aql");
 
@@ -777,8 +778,10 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
     return RestStatus::DONE;
   }
 
-  auto errorCode = basics::VelocyPackHelper::getNumericValue<ErrorCode>(
-      querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
+  auto errorCode =
+      basics::VelocyPackHelper::getNumericValue<ErrorCode,
+                                                ErrorCode::ValueType>(
+          querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
 
   auto f =
       _queryRegistry->finishQuery(qid, errorCode)

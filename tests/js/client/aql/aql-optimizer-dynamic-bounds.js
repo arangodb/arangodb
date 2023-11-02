@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE, AQL_EXECUTEJSON, arango */
+/*global assertEqual, assertNotEqual, assertTrue, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -34,16 +34,7 @@ var isEqual = helper.isEqual;
 var db = require("@arangodb").db;
 var _ = require("lodash");
 
-function execute_json(plans, query) {
-  plans.forEach(function(plan) {
-    let command = `
-      let plan = ${JSON.stringify(plan)};
-      return AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}});
-    `;
-    var result = arango.POST("/_admin/execute", command).json;
-    assertEqual(query[1], result, query[0]);
-  });
-};
+const executeAllJson = require("@arangodb/aql-helper").executeAllJson;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -125,7 +116,7 @@ function singleAttributeTestSuite () {
         assertTrue(isEqual(query[1], resultEnabled), query[0]);
 
         var plans = db._createStatement({query: query[0], bindVars: { }, options: opts}).explain().plans;
-        execute_json(plans, query);
+        executeAllJson(plans, query[1], query[0]);
       });
     }
 
@@ -205,7 +196,7 @@ function nonIndexedAttributeTestSuite () {
         assertTrue(isEqual(query[1], resultEnabled), query[0]);
 
         var plans = db._createStatement({query: query[0], bindVars: { }, options: opts}).explain().plans;
-        execute_json(plans, query);
+        executeAllJson(plans, query[1], query[0]);
       });
     }
 
@@ -290,7 +281,7 @@ function nestedAttributeTestSuite () {
         assertTrue(isEqual(query[1], resultEnabled), query[0]);
 
         var plans = db._createStatement({query: query[0], bindVars: { }, options: opts}).explain().plans;
-        execute_json(plans, query);
+        executeAllJson(plans, query[1], query[0]);
       });
     }
 

@@ -33,6 +33,8 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+#define LOG_JOIN LOG_DEVEL_IF(false)
+
 JoinExecutor::~JoinExecutor() = default;
 
 JoinExecutor::JoinExecutor(Fetcher& fetcher, Infos& infos)
@@ -111,8 +113,16 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       _strategy->reset();
     }
 
+    std::size_t rowCount = 0;
     hasMore = _strategy->next([&](std::span<LocalDocumentId> docIds,
                                   std::span<VPackSlice> projections) -> bool {
+      LOG_JOIN << "BEGIN OF ROW " << rowCount++;
+
+      LOG_JOIN << "PROJECTIONS: ";
+      for (auto p : projections) {
+        LOG_JOIN << p.toJson();
+      }
+
       auto lookupDocument = [&](std::size_t index, LocalDocumentId id,
                                 auto cb) {
         auto result =
@@ -138,7 +148,6 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
       // first do all the filtering and only if all indexes produced a
       // value write it into the aql output block
-      // TODO make a member
 
       std::size_t projectionsOffset = 0;
 
@@ -158,7 +167,9 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
       for (std::size_t k = 0; k < docIds.size(); k++) {
         auto& idx = _infos.indexes[k];
-        projectionsOffset += idx.projections.size();
+        if (idx.projections.usesCoveringIndex(idx.index)) {
+          projectionsOffset += idx.projections.size();
+        }
         // evaluate filter conditions
         if (!idx.filter.has_value()) {
           continue;
@@ -170,6 +181,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
         auto filterCallback = [&](auto docPtr) {
           auto doc = extractSlice(docPtr);
+          LOG_JOIN << "INDEX " << k << " read document " << doc.toJson();
           GenericDocumentExpressionContext ctx{_trx,
                                                *_infos.query,
                                                _functionsCache,
@@ -181,6 +193,8 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
           AqlValue result = idx.filter->expression->execute(&ctx, mustDestroy);
           AqlValueGuard guard(result, mustDestroy);
           filtered = !result.toBoolean();
+          LOG_JOIN << "INDEX " << k << " filter = " << std::boolalpha
+                   << filtered;
 
           if (!filtered && !useFilterProjections) {
             // add document to the list
@@ -202,6 +216,10 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
               TRI_ASSERT(idx.filter->projections.size() == projections.size());
               for (size_t j = 0; j < projections.size(); j++) {
+                TRI_ASSERT(projections[j].start() != nullptr);
+                LOG_JOIN << "INDEX " << k << " set "
+                         << idx.filter->filterProjectionVars[j]->id << " = "
+                         << projections[j].toJson();
                 ctx.setVariable(idx.filter->filterProjectionVars[j],
                                 projections[j]);
               }
@@ -214,18 +232,23 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
             };
 
         if (useFilterProjections) {
+          LOG_JOIN << "projectionsOffset = " << projectionsOffset;
           std::span<VPackSlice> projectionRange = {
               projections.begin() + projectionsOffset,
               projections.begin() + projectionsOffset +
                   idx.filter->projections.size()};
+          LOG_JOIN << "INDEX " << k << " unsing filter projections";
           filterWithProjectionsCallback(projectionRange);
           projectionsOffset += idx.filter->projections.size();
         } else {
+          LOG_JOIN << "INDEX " << k << " looking up document " << docIds[k];
           lookupDocument(k, docIds[k], filterCallback);
         }
 
         if (filtered) {
           // forget about this row
+          LOG_JOIN << "INDEX " << k << " eliminated pair";
+          LOG_JOIN << "FILTERED ROW " << (rowCount - 1);
           return true;
         }
       }
@@ -253,6 +276,8 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
         };
 
         if (auto& docPtr = _documents[k]; docPtr) {
+          TRI_ASSERT(idx.filter.has_value() &&
+                     !idx.filter->projections.usesCoveringIndex());
           docProduceCallback.operator()<std::unique_ptr<std::string>&>(docPtr);
         } else {
           if (idx.projections.usesCoveringIndex(idx.index)) {
@@ -272,6 +297,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       }
 
       output.advanceRow();
+      LOG_JOIN << "OUTPUT ROW " << (rowCount - 1);
       return !output.isFull();
     });
 
@@ -296,9 +322,113 @@ auto JoinExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
 
     hasMore = _strategy->next([&](std::span<LocalDocumentId> docIds,
                                   std::span<VPackSlice> projections) -> bool {
-      // TODO post filtering based on projections
+      auto lookupDocument = [&](std::size_t index, LocalDocumentId id,
+                                auto cb) {
+        auto result =
+            _infos.indexes[index]
+                .collection->getCollection()
+                ->getPhysical()
+                ->lookup(&_trx, id,
+                         {DocumentCallbackOverload{
+                             [&](LocalDocumentId token, auto docPtr) {
+                               cb.template operator()<decltype(docPtr)>(docPtr);
+                               return true;
+                             }}},
+                         {});
+        if (result.fail()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              result.errorNumber(),
+              basics::StringUtils::concatT(
+                  "failed to lookup indexed document ", id.id(),
+                  " for collection ", _infos.indexes[index].collection->name(),
+                  ": ", result.errorMessage()));
+        }
+      };
+
+      // first do all the filtering and only if all indexes produced a
+      // value write it into the aql output block
+
+      std::size_t projectionsOffset = 0;
+
       for (std::size_t k = 0; k < docIds.size(); k++) {
-        // TODO post filter based on document value
+        auto& idx = _infos.indexes[k];
+        if (idx.projections.usesCoveringIndex(idx.index)) {
+          projectionsOffset += idx.projections.size();
+        }
+        // evaluate filter conditions
+        if (!idx.filter.has_value()) {
+          continue;
+        }
+
+        bool const useFilterProjections =
+            idx.filter->projections.usesCoveringIndex();
+        bool filtered = false;
+
+        auto filterCallback = [&](auto docPtr) {
+          auto doc = extractSlice(docPtr);
+          LOG_JOIN << "INDEX " << k << " read document " << doc.toJson();
+          GenericDocumentExpressionContext ctx{_trx,
+                                               *_infos.query,
+                                               _functionsCache,
+                                               idx.filter->filterVarsToRegs,
+                                               _currentRow,
+                                               idx.filter->documentVariable};
+          ctx.setCurrentDocument(doc);
+          bool mustDestroy;
+          AqlValue result = idx.filter->expression->execute(&ctx, mustDestroy);
+          AqlValueGuard guard(result, mustDestroy);
+          filtered = !result.toBoolean();
+          LOG_JOIN << "INDEX " << k << " filter = " << std::boolalpha
+                   << filtered;
+        };
+
+        auto filterWithProjectionsCallback =
+            [&](std::span<VPackSlice> projections) {
+              GenericDocumentExpressionContext ctx{
+                  _trx,
+                  *_infos.query,
+                  _functionsCache,
+                  idx.filter->filterVarsToRegs,
+                  _currentRow,
+                  idx.filter->documentVariable};
+              ctx.setCurrentDocument(VPackSlice::noneSlice());
+
+              TRI_ASSERT(idx.filter->projections.size() == projections.size());
+              for (size_t j = 0; j < projections.size(); j++) {
+                TRI_ASSERT(projections[j].start() != nullptr);
+                LOG_JOIN << "INDEX " << k << " set "
+                         << idx.filter->filterProjectionVars[j]->id << " = "
+                         << projections[j].toJson();
+                ctx.setVariable(idx.filter->filterProjectionVars[j],
+                                projections[j]);
+              }
+
+              bool mustDestroy;
+              AqlValue result =
+                  idx.filter->expression->execute(&ctx, mustDestroy);
+              AqlValueGuard guard(result, mustDestroy);
+              filtered = !result.toBoolean();
+            };
+
+        if (useFilterProjections) {
+          LOG_JOIN << "projectionsOffset = " << projectionsOffset;
+          std::span<VPackSlice> projectionRange = {
+              projections.begin() + projectionsOffset,
+              projections.begin() + projectionsOffset +
+                  idx.filter->projections.size()};
+          LOG_JOIN << "INDEX " << k << " unsing filter projections";
+          filterWithProjectionsCallback(projectionRange);
+          projectionsOffset += idx.filter->projections.size();
+        } else {
+          LOG_JOIN << "INDEX " << k << " looking up document " << docIds[k];
+          lookupDocument(k, docIds[k], filterCallback);
+        }
+
+        if (filtered) {
+          // forget about this row
+          LOG_JOIN << "INDEX " << k << " eliminated pair";
+          return clientCall.needSkipMore();
+        }
       }
 
       clientCall.didSkip(1);
@@ -307,9 +437,8 @@ auto JoinExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
 
     if (!hasMore) {
       _currentRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+      inputRange.advanceDataRow();
     }
-
-    inputRange.advanceDataRow();
   }
 
   return {inputRange.upstreamState(), Stats{}, clientCall.getSkipCount(),
@@ -318,7 +447,6 @@ auto JoinExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
 
 void JoinExecutor::constructStrategy() {
   std::vector<IndexJoinStrategyFactory::Descriptor> indexDescription;
-
   for (auto const& idx : _infos.indexes) {
     IndexStreamOptions options;
     // TODO right now we only support the first indexed field
@@ -329,6 +457,9 @@ void JoinExecutor::constructStrategy() {
     desc.numProjections = 0;
 
     if (idx.projections.usesCoveringIndex()) {
+      TRI_ASSERT(!idx.filter.has_value() ||
+                 idx.filter->projections.usesCoveringIndex());
+      LOG_JOIN << "USING DOCUMENT PROJECTIONS";
       std::transform(idx.projections.projections().begin(),
                      idx.projections.projections().end(),
                      std::back_inserter(options.projectedFields),
@@ -339,6 +470,7 @@ void JoinExecutor::constructStrategy() {
       desc.numProjections += idx.projections.size();
     }
     if (idx.filter && idx.filter->projections.usesCoveringIndex()) {
+      LOG_JOIN << "USING FILTER PROJECTIONS";
       std::transform(idx.filter->projections.projections().begin(),
                      idx.filter->projections.projections().end(),
                      std::back_inserter(options.projectedFields),
@@ -348,7 +480,7 @@ void JoinExecutor::constructStrategy() {
 
       desc.numProjections += idx.filter->projections.size();
     }
-
+    LOG_JOIN << "PROJECTIONS FOR INDEX " << options.projectedFields;
     auto stream = idx.index->streamForCondition(&_trx, options);
     TRI_ASSERT(stream != nullptr);
     desc.iter = std::move(stream);

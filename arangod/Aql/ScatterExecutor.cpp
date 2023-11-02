@@ -38,7 +38,7 @@ ScatterExecutorInfos::ScatterExecutorInfos(std::vector<std::string> clientIds)
 ScatterExecutor::ClientBlockData::ClientBlockData(
     ExecutionEngine& engine, ExecutionNode const* node,
     RegisterInfos const& registerInfos)
-    : _queue{}, _executor(nullptr), _executorHasMore{false} {
+    : _executorHasMore{false} {
   // We only get shared ptrs to const data. so we need to copy here...
   IdExecutorInfos executorInfos(false, RegisterId(0), "", false);
   auto idExecutorRegisterInfos =

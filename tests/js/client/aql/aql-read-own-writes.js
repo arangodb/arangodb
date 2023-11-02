@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, sub: true, maxlen: 500 */
-/*global assertEqual, assertFalse, assertTrue, AQL_EXPLAIN */
+/*global assertEqual, assertFalse, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for read own writes
@@ -56,7 +56,8 @@ function readOwnWritesSuite () {
     
     testNestedForLoops : function () {
       const query = `FOR doc1 IN ${cn} FOR doc2 IN ${cn} FILTER doc2._key == doc1._key RETURN doc1`;
-      const nodes = db._createStatement(query).explain().plan.nodes;
+      const queryOptions = {optimizer: {rules: ["-join-index-nodes"]}};
+      const nodes = db._createStatement({query: query, bindVars: null, options: queryOptions}).explain().plan.nodes;
       const fors = getForLoops(nodes);
       assertEqual(2, fors.length);
       assertEqual("IndexNode", fors[0].type);

@@ -106,12 +106,20 @@ class JoinNode : public ExecutionNode {
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
+
   /// @brief getIndexesInfos, hand out the index infos
   std::vector<IndexInfo> const& getIndexInfos() const;
   std::vector<IndexInfo>& getIndexInfos();
 
   /// TODO: check if this is adequate
   bool isDeterministic() override final { return true; }
+
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable) override;
 
  protected:
   /// @brief export to VelocyPack

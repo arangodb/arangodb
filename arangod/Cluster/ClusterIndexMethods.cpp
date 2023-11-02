@@ -1103,8 +1103,9 @@ Result ensureIndexCoordinatorInner(LogicalCollection const& collection,
                 // error otherwise
                 auto errNum =
                     arangodb::basics::VelocyPackHelper::getNumericValue<
-                        ErrorCode>(v, StaticStrings::ErrorNum,
-                                   TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
+                        ErrorCode, ErrorCode::ValueType>(
+                        v, StaticStrings::ErrorNum,
+                        TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
                 dbServerResult->store(errNum, std::memory_order_release);
                 return true;
               }

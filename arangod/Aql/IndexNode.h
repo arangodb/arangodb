@@ -24,6 +24,7 @@
 #pragma once
 
 #include <memory>
+#include <string_view>
 #include <vector>
 
 #include "Aql/CollectionAccessingNode.h"
@@ -60,6 +61,33 @@ class IndexNode : public ExecutionNode,
   friend class ExecutionBlock;
 
  public:
+  enum class Strategy {
+    // no need to produce any result. we can scan over the index
+    // but do not have to look into its values
+    kNoResult,
+
+    // index covers all projections of the query. we can get
+    // away with reading data from the index only
+    kCovering,
+
+    // index covers the IndexNode's filter condition only,
+    // but not the rest of the query. that means we can use the
+    // index data to evaluate the IndexNode's post-filter condition,
+    // but for any entries that pass the filter, we will need to
+    // read the full documents in addition
+    kCoveringFilterOnly,
+
+    // index does not cover the required data. we will need to
+    // read the full documents for all index entries
+    kDocument,
+
+    // late materialization
+    kLateMaterialized,
+
+    // we only need to count the number of index entries
+    kCount
+  };
+
   IndexNode(ExecutionPlan* plan, ExecutionNodeId id,
             aql::Collection const* collection, Variable const* outVariable,
             std::vector<transaction::Methods::IndexHandle> const& indexes,
@@ -81,6 +109,9 @@ class IndexNode : public ExecutionNode,
 
   /// @brief whether or not all indexes are accessed in reverse order
   IndexIteratorOptions options() const;
+
+  /// @brief return name for strategy
+  static std::string_view strategyName(Strategy strategy) noexcept;
 
   /// @brief set reverse mode
   void setAscending(bool value);
@@ -118,6 +149,9 @@ class IndexNode : public ExecutionNode,
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
+
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
 
   /// @brief getIndexes, hand out the indexes used
   std::vector<transaction::Methods::IndexHandle> const& getIndexes() const;
@@ -177,6 +211,9 @@ class IndexNode : public ExecutionNode,
                       unsigned flags) const override final;
 
  private:
+  /// @brief determine the IndexNode strategy
+  Strategy strategy() const;
+
   NonConstExpressionContainer buildNonConstExpressions() const;
 
   /// @brief adds a UNIQUE() to a dynamic IN condition

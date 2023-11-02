@@ -118,6 +118,8 @@ AttributeNamePath::Type AttributeNamePath::type() const noexcept {
     TRI_ASSERT(size() > 1);
     type = Type::MultiAttribute;
   }
+
+  TRI_ASSERT(size() == 1 || type == Type::MultiAttribute);
   return type;
 }
 

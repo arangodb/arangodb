@@ -128,15 +128,25 @@ Result FileDescriptors::adjustTo(FileDescriptors::ValueType value) {
   // first try to raise file descriptors to at least the recommended minimum
   // value. as the recommended minimum value is pretty low, there is a high
   // chance that this actually succeeds and does not violate any hard limits
-  if (Result res = doAdjust(std::max(value, recommendedMinimum()));
-      res.fail()) {
+  auto newValue = std::max(value, recommendedMinimum());
+  if (Result res = doAdjust(newValue); res.fail()) {
     return res;
   }
 
   // still, we are not satisfied and will now try to raise the file descriptors
   // limit even further. if that fails, then it is at least likely that the
   // small raise in step 1 has worked.
-  return doAdjust(65535);
+  if (newValue < 65535) {
+    // we only get here if the minimum _required_ value is lower than 64k.
+    // if the user specified a higher value, we will not attempt to lower
+    // file descriptors again.
+    // if the increase to 65535 fails, we will still return success, because
+    // we have already successfully increased the number of file descriptors
+    // in the step before.
+    doAdjust(65535);
+  }
+
+  return {};
 }
 
 FileDescriptors::ValueType FileDescriptors::recommendedMinimum() {

@@ -185,6 +185,10 @@ CostEstimate RemoteNode::estimateCost() const {
 size_t RemoteNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 /// @brief construct a scatter node
+ScatterNode::ScatterNode(ExecutionPlan* plan, ExecutionNodeId id,
+                         ScatterType type)
+    : ExecutionNode(plan, id), _type(type) {}
+
 ScatterNode::ScatterNode(ExecutionPlan* plan,
                          arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base) {
@@ -202,6 +206,14 @@ std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
 
   return std::make_unique<ExecutionBlockImpl<ScatterExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
+}
+
+/// @brief clone ExecutionNode recursively
+ExecutionNode* ScatterNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                  bool withProperties) const {
+  auto c = std::make_unique<ScatterNode>(plan, _id, getScatterType());
+  c->copyClients(clients());
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 /// @brief doToVelocyPack, for ScatterNode
@@ -269,6 +281,7 @@ DistributeNode::DistributeNode(ExecutionPlan* plan, ExecutionNodeId id,
     : ScatterNode(plan, id, type),
       CollectionAccessingNode(collection),
       _variable(variable),
+      _attribute(determineProjectionAttribute()),
       _targetNodeId(targetNodeId) {}
 
 /// @brief construct a distribute node
@@ -277,8 +290,7 @@ DistributeNode::DistributeNode(ExecutionPlan* plan,
     : ScatterNode(plan, base),
       CollectionAccessingNode(plan, base),
       _variable(Variable::varFromVPack(plan->getAst(), base, "variable")) {
-  auto sats = base.get("satelliteCollections");
-  if (sats.isArray()) {
+  if (auto sats = base.get("satelliteCollections"); sats.isArray()) {
     auto& queryCols = plan->getAst()->query().collections();
     _satellites.reserve(sats.length());
 
@@ -288,6 +300,12 @@ DistributeNode::DistributeNode(ExecutionPlan* plan,
       auto c = queryCols.add(v, AccessMode::Type::READ,
                              aql::Collection::Hint::Collection);
       addSatellite(c);
+    }
+  }
+
+  if (auto attr = base.get("attribute"); attr.isArray()) {
+    for (VPackSlice it : VPackArrayIterator(attr)) {
+      _attribute.push_back(it.copyString());
     }
   }
 }
@@ -314,6 +332,7 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
 
   // get the variable to inspect . . .
+  TRI_ASSERT(_variable != nullptr);
   VariableId varId = _variable->id;
 
   // get the register id of the variable to inspect . . .
@@ -324,12 +343,43 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
   TRI_ASSERT(regId.isValid());
 
   auto inRegs = RegIdSet{regId};
-  auto registerInfos = createRegisterInfos(inRegs, {});
-  auto infos = DistributeExecutorInfos(clients(), collection(), regId,
-                                       getScatterType(), getSatellites());
+  auto registerInfos = createRegisterInfos(std::move(inRegs), {});
+  auto infos =
+      DistributeExecutorInfos(clients(), collection(), regId, _attribute,
+                              getScatterType(), getSatellites());
 
   return std::make_unique<ExecutionBlockImpl<DistributeExecutor>>(
       &engine, this, std::move(registerInfos), std::move(infos));
+}
+
+void DistributeNode::setVariable(Variable const* var) {
+  _variable = var;
+  determineProjectionAttribute();
+}
+
+std::vector<std::string> DistributeNode::determineProjectionAttribute() const {
+  std::vector<std::string> attribute;
+  // check where input variable of DISTRIBUTE comes from.
+  // if it is from a projection, we also look up the projection's
+  // attribute name
+  TRI_ASSERT(_variable != nullptr);
+  auto setter = plan()->getVarSetBy(_variable->id);
+  if (setter != nullptr &&
+      (setter->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
+       setter->getType() == ExecutionNode::INDEX)) {
+    DocumentProducingNode const* document =
+        dynamic_cast<DocumentProducingNode const*>(setter);
+    auto const& p = document->projections();
+    for (size_t i = 0; i < p.size(); ++i) {
+      if (p[i].variable == _variable) {
+        // found the DISTRIBUTE input variable in a projection
+        attribute = p[i].path.get();
+        break;
+      }
+    }
+  }
+
+  return attribute;
 }
 
 /// @brief doToVelocyPack, for DistributeNode
@@ -342,6 +392,12 @@ void DistributeNode::doToVelocyPack(VPackBuilder& builder,
 
   builder.add(VPackValue("variable"));
   _variable->toVelocyPack(builder);
+
+  builder.add("attribute", VPackValue(VPackValueType::Array));
+  for (auto const& it : _attribute) {
+    builder.add(VPackValue(it));
+  }
+  builder.close();  // "attribute"
 
   if (!_satellites.empty()) {
     builder.add(VPackValue("satelliteCollections"));
@@ -360,6 +416,7 @@ void DistributeNode::doToVelocyPack(VPackBuilder& builder,
 void DistributeNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
   _variable = Variable::replace(_variable, replacements);
+  _attribute = determineProjectionAttribute();
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place
@@ -761,6 +818,11 @@ void SingleRemoteOperationNode::doToVelocyPack(VPackBuilder& nodes,
 CostEstimate SingleRemoteOperationNode::estimateCost() const {
   CostEstimate estimate = _dependencies[0]->getCost();
   return estimate;
+}
+
+AsyncPrefetchEligibility SingleRemoteOperationNode::canUseAsyncPrefetching()
+    const noexcept {
+  return AsyncPrefetchEligibility::kDisableGlobally;
 }
 
 std::vector<Variable const*> SingleRemoteOperationNode::getVariablesSetHere()

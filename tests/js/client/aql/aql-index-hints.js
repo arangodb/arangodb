@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global fail, assertEqual, assertNotEqual, assertTrue, AQL_EXPLAIN */
+/*global fail, assertEqual, assertNotEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -976,7 +976,7 @@ function indexHintDisableIndexSuite () {
         ];
 
         queries.forEach((query) => {
-          let plan = db._createStatement(query[0], null, {optimizer: {rules: ["-optimize-cluster-single-document-operations"]}}).explain().plan;
+          let plan = db._createStatement({ query: query[0], bindVars: null, options: {optimizer: {rules: ["-optimize-cluster-single-document-operations"]}}}).explain().plan;
           let nodes = plan.nodes;
 
           let node;

@@ -168,6 +168,43 @@ uint64_t getReplicationFactor(arangodb::RestoreFeature::Options const& options,
   return result;
 }
 
+/// @brief return the target replication factor for the specified collection
+uint64_t getWriteConcern(arangodb::RestoreFeature::Options const& options,
+                         arangodb::velocypack::Slice const& slice) {
+  uint64_t result = 1;
+
+  arangodb::velocypack::Slice s =
+      slice.get(arangodb::StaticStrings::WriteConcern);
+  if (s.isInteger()) {
+    result = s.getNumericValue<uint64_t>();
+  }
+
+  s = slice.get("name");
+  if (!s.isString()) {
+    // should not happen, but anyway, let's be safe here
+    return result;
+  }
+
+  if (!options.writeConcern.empty()) {
+    std::string const name = s.copyString();
+
+    for (auto const& it : options.writeConcern) {
+      auto parts = arangodb::basics::StringUtils::split(it, '=');
+      if (parts.size() == 1) {
+        result = arangodb::basics::StringUtils::uint64(parts[0]);
+      }
+      if (parts.size() != 2 || parts[0] != name) {
+        // somehow invalid or different collection
+        continue;
+      }
+      result = arangodb::basics::StringUtils::uint64(parts[1]);
+      break;
+    }
+  }
+
+  return result;
+}
+
 /// @brief return the target number of shards for the specified collection
 uint64_t getNumberOfShards(arangodb::RestoreFeature::Options const& options,
                            arangodb::velocypack::Slice const& slice) {
@@ -450,6 +487,8 @@ arangodb::Result sendRestoreCollection(
   }
   newOptions.add(arangodb::StaticStrings::NumberOfShards,
                  VPackValue(getNumberOfShards(options, parameters)));
+  newOptions.add(arangodb::StaticStrings::WriteConcern,
+                 VPackValue(getWriteConcern(options, parameters)));
 
   // enable revision trees for the collection if the parameters are not set
   // (likely a collection from the pre-3.8 era)
@@ -1978,6 +2017,14 @@ avoiding repeated memory allocations for building new in-memory buffers.)");
       "multiple times, e.g. --replication-factor 2 "
       "--replication-factor myCollection=3).",
       new VectorParameter<StringParameter>(&_options.replicationFactor));
+
+  options
+      ->addOption("--write-concern",
+                  "Override the `writeConcern` value (can be specified "
+                  "multiple times, e.g. --write-concern 2 "
+                  "--write-concern myCollection=3).",
+                  new VectorParameter<StringParameter>(&_options.writeConcern))
+      .setIntroducedIn(31200);
 
   options->addOption(
       "--ignore-distribute-shards-like-errors",

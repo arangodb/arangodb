@@ -32,6 +32,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/GlobalResourceMonitor.h"
+#include "Basics/GlobalSerialization.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/Result.h"
@@ -673,12 +674,6 @@ bool ClusterInfo::doesDatabaseExist(std::string_view databaseID) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<DatabaseID> ClusterInfo::databases() {
-  std::vector<DatabaseID> result;
-
-  if (_clusterId.empty()) {
-    loadClusterId();
-  }
-
   if (!_planProt.isValid) {
     Result r = waitForPlan(1).get();
     if (r.fail()) {
@@ -706,6 +701,7 @@ std::vector<DatabaseID> ClusterInfo::databases() {
     expectedSize = _dbServers.size();
   }
 
+  std::vector<DatabaseID> result;
   {
     READ_LOCKER(readLockerPlanned, _planProt.lock);
     READ_LOCKER(readLockerCurrent, _currentProt.lock);
@@ -723,20 +719,6 @@ std::vector<DatabaseID> ClusterInfo::databases() {
   }
 
   return result;
-}
-
-/// @brief Load cluster ID
-void ClusterInfo::loadClusterId() {
-  // Contact agency for /<prefix>/Cluster
-
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [acb, index] = agencyCache.get("Cluster");
-
-  // Parse
-  VPackSlice slice = acb->slice();
-  if (slice.isString()) {
-    _clusterId = slice.copyString();
-  }
 }
 
 /// @brief create a new collecion object from the data, using the cache if
@@ -2006,6 +1988,14 @@ void ClusterInfo::loadCurrent() {
         servers->assign(xx.begin(), xx.end());
         newShardsToCurrentServers.insert_or_assign(std::move(shardID),
                                                    std::move(servers));
+        TRI_IF_FAILURE("ClusterInfo::loadCurrentSeesLeader") {
+          if (!xx.empty()) {  // just in case
+            std::string myShortName = ServerState::instance()->getShortName();
+            observeGlobalEvent(
+                "ClusterInfo::loadCurrentSeesLeader",
+                absl::StrCat(myShortName, ":", shardID, ":", xx[0]));
+          }
+        }
       }
 
       databaseCollections->try_emplace(std::move(collectionName),
@@ -2068,6 +2058,11 @@ void ClusterInfo::loadCurrent() {
 
   auto diff = duration<float, std::milli>(clock::now() - start).count();
   _lcTimer.count(diff);
+
+  TRI_IF_FAILURE("ClusterInfo::loadCurrentDone") {
+    observeGlobalEvent("ClusterInfo::loadCurrentDone",
+                       ServerState::instance()->getShortName());
+  }
 }
 
 /// @brief ask about a collection

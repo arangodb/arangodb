@@ -35,14 +35,6 @@ var getParseResults = helper.getParseResults;
 var assertParseError = helper.assertParseError;
 const db = require('internal').db;
 
-function aql_parse(query) {
-  let command = `
-    let query = ${JSON.stringify(query)};
-    return AQL_PARSE(query);
-  `;
-  return arango.POST("/_admin/execute", command);
-}
-
 function ahuacatlParseTestSuite () {
   const errors = internal.errors;
 
@@ -453,7 +445,7 @@ function ahuacatlParseTestSuite () {
     },
 
     testPrecedenceOfNotIn : function() {
-      let result = aql_parse("RETURN 3..4 NOT IN 1..2").ast;
+      let result = db._parse("RETURN 3..4 NOT IN 1..2").ast;
 
       assertEqual("root", result[0].type);
       result = result[0].subNodes;
@@ -476,7 +468,7 @@ function ahuacatlParseTestSuite () {
       assertEqual(2, sub[1].subNodes[1].value);
      
 
-      result = aql_parse("RETURN 3..(4 NOT IN 1)..2").ast;
+      result = db._parse("RETURN 3..(4 NOT IN 1)..2").ast;
 
       assertEqual("root", result[0].type);
       result = result[0].subNodes;
@@ -500,7 +492,7 @@ function ahuacatlParseTestSuite () {
     },
     
     testPrecedenceOfNestedNotIn : function() {
-      let result = aql_parse("RETURN 3..4 NOT IN 1..2 NOT IN 7..8").ast;
+      let result = db._parse("RETURN 3..4 NOT IN 1..2 NOT IN 7..8").ast;
 
       assertEqual("root", result[0].type);
       result = result[0].subNodes;
@@ -530,7 +522,7 @@ function ahuacatlParseTestSuite () {
     },
 
     testNotInAmbiguity : function() {
-      let result = aql_parse("LET in_time = 1 RETURN NOT in_time").ast;
+      let result = db._parse("LET in_time = 1 RETURN NOT in_time").ast;
 
       assertEqual("root", result[0].type);
       result = result[0].subNodes;
@@ -551,7 +543,7 @@ function ahuacatlParseTestSuite () {
       assertEqual("in_time", sub[0].name);
 
 
-      result = aql_parse("RETURN 3 NOT IN[1,2]").ast;
+      result = db._parse("RETURN 3 NOT IN[1,2]").ast;
 
       assertEqual("root", result[0].type);
       result = result[0].subNodes;
@@ -571,7 +563,7 @@ function ahuacatlParseTestSuite () {
     },
 
     testNotLike : function() {
-      let result = aql_parse("RETURN 'a' NOT LIKE 'b'").ast;
+      let result = db._parse("RETURN 'a' NOT LIKE 'b'").ast;
 
       assertEqual("root", result[0].type);
       result = result[0].subNodes;
@@ -587,7 +579,7 @@ function ahuacatlParseTestSuite () {
     },
 
     testNotMatches : function() {
-      let result = aql_parse("RETURN 'a' NOT =~ 'b'").ast;
+      let result = db._parse("RETURN 'a' NOT =~ 'b'").ast;
 
       assertEqual("root", result[0].type);
       result = result[0].subNodes;
@@ -603,7 +595,7 @@ function ahuacatlParseTestSuite () {
     },
 
     testNotNotMatches : function() {
-      let result = aql_parse("RETURN 'a' NOT !~ 'b'").ast;
+      let result = db._parse("RETURN 'a' NOT !~ 'b'").ast;
 
       assertEqual("root", result[0].type);
       result = result[0].subNodes;
