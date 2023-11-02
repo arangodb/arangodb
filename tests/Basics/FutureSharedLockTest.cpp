@@ -21,9 +21,9 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Futures/FutureSharedLock.h"
-
 #include "gtest/gtest.h"
+
+#include "Basics/FutureSharedLock.h"
 
 #include <memory>
 #include <random>
@@ -52,15 +52,15 @@ struct MockScheduler {
   std::vector<std::function<void()>> funcs;
 };
 
-struct FuturesSharedLockTest : public ::testing::Test {
-  FuturesSharedLockTest() : lock(scheduler) {}
+struct FutureSharedLockTest : public ::testing::Test {
+  FutureSharedLockTest() : lock(scheduler) {}
   void TearDown() override { ASSERT_EQ(0, scheduler.funcs.size()); }
 
   MockScheduler scheduler;
   FutureSharedLock lock;
 };
 
-TEST_F(FuturesSharedLockTest,
+TEST_F(FutureSharedLockTest,
        asyncLockExclusive_should_return_resolved_future_when_unlocked) {
   int called = 0;
   lock.asyncLockExclusive().then([&](auto) { ++called; });
@@ -70,7 +70,7 @@ TEST_F(FuturesSharedLockTest,
   EXPECT_EQ(2, called);
 }
 
-TEST_F(FuturesSharedLockTest,
+TEST_F(FutureSharedLockTest,
        asyncLockExclusive_should_return_unresolved_future_when_locked) {
   lock.asyncLockExclusive().then([&](auto) {
     // try to lock again while we hold the exclusive lock
@@ -81,7 +81,7 @@ TEST_F(FuturesSharedLockTest,
   scheduler.executeScheduled();  // cleanup
 }
 
-TEST_F(FuturesSharedLockTest,
+TEST_F(FutureSharedLockTest,
        unlock_should_post_the_next_owner_on_the_scheduler) {
   int called = 0;
   lock.asyncLockExclusive().then([&](auto) {
@@ -104,7 +104,7 @@ TEST_F(FuturesSharedLockTest,
   EXPECT_EQ(3, called);
 }
 
-TEST_F(FuturesSharedLockTest,
+TEST_F(FutureSharedLockTest,
        asyncLockShared_should_return_resolved_future_when_unlocked) {
   int called = 0;
   lock.asyncLockShared().then([&](auto) { ++called; });
@@ -115,7 +115,7 @@ TEST_F(FuturesSharedLockTest,
 }
 
 TEST_F(
-    FuturesSharedLockTest,
+    FutureSharedLockTest,
     asyncLockShared_should_return_resolved_future_when_predecessor_has_shared_lock_and_is_active_or_finished) {
   lock.asyncLockShared().then([&](auto) {
     // try to lock again while we hold the shared lock
@@ -135,7 +135,7 @@ TEST_F(
 }
 
 TEST_F(
-    FuturesSharedLockTest,
+    FutureSharedLockTest,
     asyncLockExclusive_should_return_unresolved_future_when_predecessor_has_shared_lock) {
   lock.asyncLockShared().then([&](auto) {
     // try to acquire exclusive lock while we hold the shared lock
@@ -147,7 +147,7 @@ TEST_F(
 }
 
 TEST_F(
-    FuturesSharedLockTest,
+    FutureSharedLockTest,
     asyncLockShared_should_return_unresolved_future_when_predecessor_has_exclusive_lock) {
   lock.asyncLockExclusive().then([&](auto) {
     // try to acquire shared lock while we hold the exclusive lock
@@ -158,7 +158,7 @@ TEST_F(
   scheduler.executeScheduled();  // cleanup
 }
 
-TEST_F(FuturesSharedLockTest,
+TEST_F(FutureSharedLockTest,
        unlock_shared_should_post_the_next_exclusive_owner_on_the_scheduler) {
   int called = 0;
   lock.asyncLockShared().then([&](auto) {
@@ -181,7 +181,7 @@ TEST_F(FuturesSharedLockTest,
   EXPECT_EQ(3, called);
 }
 
-TEST_F(FuturesSharedLockTest,
+TEST_F(FutureSharedLockTest,
        unlock_exclusive_should_post_all_next_shared_requests_on_the_scheduler) {
   int called = 0;
   lock.asyncLockExclusive().then([&](auto) {
@@ -207,7 +207,7 @@ TEST_F(FuturesSharedLockTest,
   EXPECT_EQ(4, called);
 }
 
-TEST_F(FuturesSharedLockTest,
+TEST_F(FutureSharedLockTest,
        unlock_shared_should_post_next_exclusive_on_the_scheduler) {
   int called = 0;
 
@@ -232,7 +232,7 @@ TEST_F(FuturesSharedLockTest,
   EXPECT_EQ(4, called);
 }
 
-TEST_F(FuturesSharedLockTest,
+TEST_F(FutureSharedLockTest,
        unlock_shared_should_hand_over_ownership_to_next_active_shared) {
   int called = 0;
   arangodb::futures::SharedLockGuard lockGuard;
@@ -264,35 +264,6 @@ TEST_F(FuturesSharedLockTest,
   EXPECT_EQ(4, called);
 }
 
-TEST_F(FuturesSharedLockTest, simulate_blocked_shared_follower) {
-  arangodb::futures::SharedLockGuard lockGuard;
-  lock.asyncLockShared().thenValue([&](auto guard) {  //
-    lockGuard = std::move(guard);
-  });
-
-  auto* tail = lock.tail();
-  EXPECT_EQ(FutureSharedLock::State::kSharedActiveLeader, tail->state.load());
-  EXPECT_EQ(nullptr, tail->next.load());
-
-  lock.asyncLockShared().then([](auto) {});
-
-  auto* next = tail->next.load();
-  ASSERT_NE(nullptr, next);
-  EXPECT_EQ(FutureSharedLock::State::kSharedFinished, next->state.load());
-
-  // simulate that our next request has observer its predecessor as blocked and
-  // therefore
-  int called = 0;
-  next->promise = decltype(next->promise){};
-  next->promise.getFuture().then([&](auto) { ++called; });
-  next->state.store(FutureSharedLock::State::kSharedBlocked);
-
-  lockGuard.unlock();
-  EXPECT_EQ(1, scheduler.funcs.size());
-  scheduler.executeScheduled();
-  EXPECT_EQ(1, called);
-}
-
 struct StressScheduler {
   struct Func {
     std::function<void()> func;
@@ -316,60 +287,66 @@ struct StressScheduler {
   boost::lockfree::queue<Func*> scheduled;
 };
 
-TEST(FuturesSharedLockStressTest, parallel) {
+TEST(FutureSharedLockStressTest, parallel) {
   using FutureSharedLock = arangodb::futures::FutureSharedLock<StressScheduler>;
   StressScheduler scheduler;
   FutureSharedLock lock(scheduler);
 
   std::unordered_map<int, int> sharedData;
 
-  constexpr int numThreads = 1;
-  constexpr int numOpsPerThread = 400000;
+  constexpr int numThreads = 16;
+  constexpr int numOpsPerThread = 4000000;
 
   std::vector<std::thread> threads;
   std::atomic<size_t> totalFound{0};
+  std::atomic<unsigned> numTasks{0};
   threads.reserve(numThreads);
   for (int i = 0; i < numThreads; ++i) {
-    threads.push_back(
-        std::thread([&scheduler, &lock, &sharedData, &totalFound, id = i]() {
-          std::mt19937 rnd(id);
-          size_t found = 0;
-          for (int j = 0; j < numOpsPerThread; ++j) {
-            auto val = rnd();
-            if ((val & 3) > 0) {
-              scheduler.executeScheduled();
-            }
-            val >>= 2;
+    threads.push_back(std::thread([&scheduler, &lock, &sharedData, &totalFound,
+                                   &numTasks, id = i]() {
+      std::mt19937 rnd(id);
+      for (int j = 0; j < numOpsPerThread; ++j) {
+        auto val = rnd();
 
-            // perform some random write/read operations
-            if (val & 1) {
-              lock.asyncLockExclusive().then([&](auto) {
+        if ((val & 3) > 0 || numTasks > numThreads * 10) {
+          scheduler.executeScheduled();
+          continue;
+        }
+        numTasks++;
+        val >>= 2;
+        // perform some random write/read operations
+        if (val & 1) {
+          lock.asyncLockExclusive().then(
+              [val, id, &sharedData, rnd, &numTasks](auto) mutable {
+                --numTasks;
                 val = (val >> 1) & 63;
                 for (decltype(val) k = 0; k < val; ++k) {
                   sharedData[rnd() & 1023] = id;
                 }
               });
-            } else {
-              lock.asyncLockShared().then([&](auto) {
-                val = (val >> 1) & 63;
-                for (decltype(val) k = 0; k < val; ++k) {
-                  auto it = sharedData.find(rnd() & 1023);
-                  if (it != sharedData.end() && it->second == id) {
-                    ++found;
-                  }
-                }
-              });
+        } else {
+          lock.asyncLockShared().then([val, id, &sharedData, rnd, &totalFound,
+                                       &numTasks](auto) mutable {
+            --numTasks;
+            val = (val >> 1) & 63;
+            for (decltype(val) k = 0; k < val; ++k) {
+              auto it = sharedData.find(rnd() & 1023);
+              if (it != sharedData.end() && it->second == id) {
+                ++totalFound;
+              }
             }
-          }
+          });
+        }
+      }
 
-          scheduler.executeScheduled();
-          totalFound += found;
-        }));
+      scheduler.executeScheduled();
+    }));
   }
 
   for (auto& t : threads) {
     t.join();
   }
+  EXPECT_EQ(0, numTasks.load());
   std::cout << "Found total " << totalFound.load() << std::endl;
 }
 

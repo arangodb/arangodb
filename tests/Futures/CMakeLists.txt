@@ -1,5 +1,4 @@
 add_library(arango_tests_futures OBJECT
-  FutureSharedLockTest.cpp
   FutureTest.cpp
   PromiseTest.cpp
   TryTest.cpp)
