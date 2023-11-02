@@ -193,12 +193,22 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
     TRI_ASSERT(abortAllReplicationFut.isReady()) << self->gid;
     auto abortAllReplicationStatus = abortAllReplicationFut.get();
     if (abortAllReplicationStatus.fail()) {
-      LOG_CTX("b4217", FATAL, self->loggerContext)
-          << "failed to replicate AbortAllOngoingTrx operation during "
-             "recovery: "
-          << abortAllReplicationStatus.result();
-      TRI_ASSERT(false) << abortAllReplicationStatus.result();
-      FATAL_ERROR_EXIT();
+      // The replicatedOperation call from above may fail if the leader has
+      // resigned from the perspective of the framework. We should not panic, as
+      // this is a harmless situation.
+      if (!abortAllReplicationStatus.is(
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED)) {
+        LOG_CTX("b4217", FATAL, self->loggerContext)
+            << "failed to replicate AbortAllOngoingTrx operation during "
+               "recovery: "
+            << abortAllReplicationStatus.result();
+        TRI_ASSERT(false) << abortAllReplicationStatus.result();
+        FATAL_ERROR_EXIT();
+      } else {
+        LOG_CTX("9dd38", DEBUG, self->loggerContext)
+            << "Failed to replicate AbortAllOngoingTrx operation during "
+               "recovery because the leader is resigned already";
+      }
     }
 
     for (auto& [tid, trx] :
