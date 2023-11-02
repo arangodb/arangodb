@@ -304,12 +304,8 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(
       _lastRange{MainQueryState::HASMORE},
       _upstreamRequest{},
       _clientRequest{},
-      _stackBeforeWaiting{AqlCallList{AqlCall{}}},
+      _stackBeforeWaiting{AqlCallStack::Empty{}},
       _hasUsedDataRangeBlock{false} {
-  // Break the stack before waiting.
-  // We should not use this here.
-  _stackBeforeWaiting.popCall();
-
   if (_exeNode->isCallstackSplitEnabled()) {
     _callstackSplit = std::make_unique<CallstackSplit>(*this);
   }

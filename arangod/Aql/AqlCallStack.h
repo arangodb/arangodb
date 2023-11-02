@@ -50,7 +50,10 @@ namespace aql {
  */
 class AqlCallStack {
  public:
+  struct Empty {};
+
   // Initial
+  explicit AqlCallStack(Empty);
   explicit AqlCallStack(AqlCallList call);
   // Used in subquery
   AqlCallStack(AqlCallStack const& other, AqlCallList call);
