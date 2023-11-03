@@ -1161,7 +1161,7 @@ void immutableSearchCondition(Optimizer* opt,
         condition = condition->getMemberUnchecked(0);
         continue;
       }
-      const_cast<AstNode*>(condition)->partitionBy([&](AstNode* member) {
+      const_cast<AstNode*>(condition)->partitionMembers([&](AstNode* member) {
         bool used = Ast::isVarsUsed(member, mutableVars);
         count += !used;
         return !used;
