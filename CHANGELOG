@@ -12,6 +12,9 @@ devel
   threads is limited by a configurable option. Currently, only threads
   waiting for more than 1 second on a collection lock will detach themselves.
  
+* Silence TSAN for shutdown for access to the SchedulerFeature::SCHEDULER
+  pointer using atomic references.
+
 * Fixed a race in controlled leader change which could lead to a situation 
   in which a shard follower is dropped when the first write operation
   happens. This fixes BTS-1647.
