@@ -71,9 +71,9 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
   futures::Future<futures::Unit> initializeTransaction(LogicalCollection&);
 
  private:
-  RestStatus handleCommandGet();
+  futures::Future<RestStatus> handleCommandGet();
   void handleCommandPost();
-  RestStatus handleCommandPut();
+  futures::Future<RestStatus> handleCommandPut();
   void handleCommandDelete();
 
  private:

@@ -678,6 +678,7 @@ RestStatus RestHandler::waitForFuture(futures::Future<RestStatus>&& f) {
       [self = shared_from_this()](futures::Try<RestStatus>&& t) -> void {
         if (t.hasException()) {
           self->handleExceptionPtr(std::move(t).exception());
+          self->_followupRestStatus = RestStatus::DONE;
         } else {
           self->_followupRestStatus = t.get();
           if (t.get() == RestStatus::WAITING) {
