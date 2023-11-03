@@ -306,7 +306,8 @@ class Logger {
                                    : topic.level());
   }
 
-  static void initialize(application_features::ApplicationServer&, bool);
+  static void initialize(application_features::ApplicationServer&, bool,
+                         size_t maxQueuedLogMessages);
   static void shutdown();
   static void flush() noexcept;
 

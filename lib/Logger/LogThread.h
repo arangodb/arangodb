@@ -47,7 +47,7 @@ class LogThread final : public Thread {
 
  public:
   explicit LogThread(application_features::ApplicationServer& server,
-                     std::string const& name);
+                     std::string const& name, uint32_t maxQueuedLogMessages);
   ~LogThread();
 
  public:
@@ -72,5 +72,6 @@ class LogThread final : public Thread {
   arangodb::basics::ConditionVariable _condition;
   boost::lockfree::queue<MessageEnvelope> _messages;
   std::atomic<size_t> _pendingMessages{0};
+  uint32_t _maxQueuedLogMessages{10000};
 };
 }  // namespace arangodb

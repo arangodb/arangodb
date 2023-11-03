@@ -9,7 +9,8 @@ devel
 * Introduced an upper bound of queued async log messages. If we would log
   more messages then the background logger thread can actually process, we
   start to write log messages synchronously. This is to prevent the queue
-  to grow indefinitely.
+  to grow indefinitely. The upper bound is configurable via the startup
+  option `--log.max-queued-entries`. The default value is 10000.
 
 * Fixed a race in controlled leader change which could lead to a situation 
   in which a shard follower is dropped when the first write operation

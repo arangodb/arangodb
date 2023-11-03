@@ -30,13 +30,14 @@
 // directly log all following messages. This is to prevent the queue from
 // growing indefinitely if the log thread is not able to keep up with the
 // incoming messages.
-static constexpr size_t MAX_QUEUED_MESSAGES = 10000;
 
 using namespace arangodb;
 
 LogThread::LogThread(application_features::ApplicationServer& server,
-                     std::string const& name)
-    : Thread(server, name), _messages(64) {}
+                     std::string const& name, uint32_t maxQueuedLogMessages)
+    : Thread(server, name),
+      _messages(64),
+      _maxQueuedLogMessages(maxQueuedLogMessages) {}
 
 LogThread::~LogThread() {
   Logger::_active = false;
@@ -56,10 +57,11 @@ bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
       (message->_level == LogLevel::FATAL || message->_level == LogLevel::ERR ||
        message->_level == LogLevel::WARN);
 
-  auto numMessages = _pendingMessages.fetch_add(1, std::memory_order_relaxed) + 1;
-  if (numMessages >= MAX_QUEUED_MESSAGES ||
+  auto numMessages =
+      _pendingMessages.fetch_add(1, std::memory_order_relaxed) + 1;
+  if (numMessages >= _maxQueuedLogMessages ||
       !_messages.push({&group, message.get()})) {
-      /* roll back the update */
+    /* roll back the update */
     _pendingMessages.fetch_sub(1, std::memory_order_relaxed);
     return false;
   }
