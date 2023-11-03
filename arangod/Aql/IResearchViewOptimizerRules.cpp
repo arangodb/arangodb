@@ -1137,39 +1137,14 @@ void immutableSearchCondition(Optimizer* opt,
     auto& view = *ExecutionNode::castTo<IResearchViewNode*>(node);
     auto const* condition = &view.filterCondition();
     if (isFilterConditionEmpty(condition) || !view.scorers().empty() ||
-        !isInInnerLoopOrSubquery(view)) {
+        view.options().parallelism != 1 || !isInInnerLoopOrSubquery(view)) {
       continue;
     }
-    vars.clear();
-    Ast::getReferencedVariables(condition, vars);
-    vars.erase(&view.outVariable());
-    for (auto* var : vars) {
-      auto* setter = plan->getVarSetBy(var->id);
-      if (!setter) {  // unable to find setter
-        continue;
-      }
-      switch (setter->getType()) {
-        case ExecutionNode::ENUMERATE_COLLECTION:
-        case ExecutionNode::ENUMERATE_LIST:
-        case ExecutionNode::SUBQUERY:
-        case ExecutionNode::SUBQUERY_END:
-        case ExecutionNode::COLLECT:
-        case ExecutionNode::TRAVERSAL:
-        case ExecutionNode::INDEX:
-        case ExecutionNode::JOIN:
-        case ExecutionNode::SHORTEST_PATH:
-        case ExecutionNode::ENUMERATE_PATHS:
-        case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
-          // we're in the loop with dependent context
-          mutableVars.emplace(var);
-          break;
-        default:
-          if (!setter->isDeterministic() || setter->getLoop() != nullptr) {
-            mutableVars.emplace(var);
-          }
-          break;
-      }
-    }
+    hasDependencies(*plan, *condition, view.outVariable(), vars,
+                    [&](Variable const* var) {
+                      mutableVars.emplace(var);
+                      return false;
+                    });
     if (mutableVars.empty()) {
       view.setImmutableParts(std::numeric_limits<uint32_t>::max());
       continue;
@@ -1182,17 +1157,16 @@ void immutableSearchCondition(Optimizer* opt,
       }
       auto const numMembers = condition->numMembers();
       if (numMembers <= 1) {
+        TRI_ASSERT(numMembers == 1);
         condition = condition->getMemberUnchecked(0);
         continue;
       }
       const_cast<AstNode*>(condition)->partitionBy([&](AstNode* member) {
-        bool intersects = Ast::intersectsWith(member, mutableVars);
-        count += !intersects;
-        return !intersects;
+        bool used = Ast::isVarsUsed(member, mutableVars);
+        count += !used;
+        return !used;
       });
-      if (count == numMembers) {
-        count = std::numeric_limits<uint32_t>::max();
-      }
+      TRI_ASSERT(count != numMembers);
       break;
     }
     view.setImmutableParts(count);

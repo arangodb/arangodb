@@ -501,42 +501,6 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view,
   return true;
 }
 
-// in loop or non-deterministic
-bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
-                     aql::Variable const& ref, aql::VarSet& vars) {
-  vars.clear();
-  aql::Ast::getReferencedVariables(&node, vars);
-  vars.erase(&ref);  // remove "our" variable
-  for (auto const* var : vars) {
-    auto* setter = plan.getVarSetBy(var->id);
-    if (!setter) {
-      // unable to find setter
-      continue;
-    }
-    switch (setter->getType()) {
-      case aql::ExecutionNode::ENUMERATE_COLLECTION:
-      case aql::ExecutionNode::ENUMERATE_LIST:
-      case aql::ExecutionNode::SUBQUERY:
-      case aql::ExecutionNode::SUBQUERY_END:
-      case aql::ExecutionNode::COLLECT:
-      case aql::ExecutionNode::TRAVERSAL:
-      case aql::ExecutionNode::INDEX:
-      case aql::ExecutionNode::JOIN:
-      case aql::ExecutionNode::SHORTEST_PATH:
-      case aql::ExecutionNode::ENUMERATE_PATHS:
-      case aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
-        // we're in the loop with dependent context
-        return true;
-      default:
-        break;
-    }
-    if (!setter->isDeterministic() || setter->getLoop() != nullptr) {
-      return true;
-    }
-  }
-  return false;
-}
-
 /// negative value - value is dirty
 /// _volatilityMask & 1 == volatile filter
 /// _volatilityMask & 2 == volatile sort
@@ -549,7 +513,8 @@ int evaluateVolatility(IResearchViewNode const& node) {
   // evaluate filter condition volatility
   auto& filterCondition = node.filterCondition();
   if (!isFilterConditionEmpty(&filterCondition) && inDependentScope) {
-    irs::set_bit<0>(hasDependencies(plan, filterCondition, outVariable, vars),
+    irs::set_bit<0>(hasDependencies(plan, filterCondition, outVariable, vars,
+                                    [](Variable const*) { return true; }),
                     mask);
   }
   // evaluate sort condition volatility
@@ -557,7 +522,8 @@ int evaluateVolatility(IResearchViewNode const& node) {
   if (!scorers.empty() && inDependentScope) {
     vars.clear();
     for (auto const& scorer : scorers) {
-      if (hasDependencies(plan, *scorer.node, outVariable, vars)) {
+      if (hasDependencies(plan, *scorer.node, outVariable, vars,
+                          [](Variable const*) { return true; })) {
         irs::set_bit<1>(mask);
         break;
       }
@@ -810,6 +776,7 @@ char const* kNodeViewMetaStored = "metaStored";
 #ifdef USE_ENTERPRISE
 char const* kNodeViewMetaTopK = "metaTopK";
 #endif
+// it serialization optimized for transfer 0 and uint32_t::max
 char const* kNodeViewImmutableParts = "immutableParts";
 
 void toVelocyPack(velocypack::Builder& node, SearchMeta const& meta,
@@ -1128,6 +1095,46 @@ bool isInInnerLoopOrSubquery(aql::ExecutionNode const& node) {
   // SINGLETON nodes in subqueries have id != 1
   return cur->getType() == aql::ExecutionNode::SINGLETON &&
          cur->id() != aql::ExecutionNodeId{1};
+}
+
+bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
+                     aql::Variable const& ref, aql::VarSet& vars,
+                     fu2::function_view<bool(aql::Variable const*)> callback) {
+  vars.clear();
+  aql::Ast::getReferencedVariables(&node, vars);
+  vars.erase(&ref);  // remove "our" variable
+  for (auto const* var : vars) {
+    auto* setter = plan.getVarSetBy(var->id);
+    if (!setter) {
+      // unable to find setter
+      continue;
+    }
+    switch (setter->getType()) {
+      case aql::ExecutionNode::ENUMERATE_COLLECTION:
+      case aql::ExecutionNode::ENUMERATE_LIST:
+      case aql::ExecutionNode::SUBQUERY:
+      case aql::ExecutionNode::SUBQUERY_END:
+      case aql::ExecutionNode::COLLECT:
+      case aql::ExecutionNode::TRAVERSAL:
+      case aql::ExecutionNode::INDEX:
+      case aql::ExecutionNode::JOIN:
+      case aql::ExecutionNode::SHORTEST_PATH:
+      case aql::ExecutionNode::ENUMERATE_PATHS:
+      case aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+        // we're in the loop with dependent context
+        if (callback(var)) {
+          return true;
+        }
+        break;
+      default:
+        if ((!setter->isDeterministic() || setter->getLoop() != nullptr) &&
+            callback(var)) {
+          return true;
+        }
+        break;
+    }
+  }
+  return false;
 }
 
 IResearchViewNode* IResearchViewNode::getByVar(

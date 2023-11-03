@@ -2736,7 +2736,7 @@ void Ast::getReferencedVariables(AstNode const* node, VarSet& result) {
   traverseReadOnly(node, preVisitor, visitor);
 }
 
-bool Ast::intersectsWith(AstNode const* node, VarSet const& result) {
+bool Ast::isVarsUsed(AstNode const* node, VarSet const& result) {
   bool intersects = false;
   auto visitor = [&](AstNode const* node) {
     if (intersects || node->isConstant()) {

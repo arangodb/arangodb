@@ -782,7 +782,7 @@ avoid unnecessary reads.)");
       "immutable-search-condition", iresearch::immutableSearchCondition,
       OptimizerRule::immutableSearchConditionRule,
       OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
-      R"(Optimize immutable search condition for nested loops, we don't need make real search few times, we can cache results in bitset)");
+      R"(Optimize immutable search condition for nested loops, we don't need to make real search many times, if we can cache results in bitset)");
 
   // remove calculations that are never necessary
   registerRule("remove-unnecessary-calculations-4",
