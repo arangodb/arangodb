@@ -146,7 +146,7 @@ class RebootTrackerTest
       : mockApplicationServer(),
         scheduler(std::make_unique<SupervisedScheduler>(
             mockApplicationServer.server(), 2, 64, 128, 1024 * 1024, 4096, 4096,
-            128, 0.0)) {}
+            128, 0.0, 42)) {}
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif
