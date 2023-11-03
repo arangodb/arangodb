@@ -21,6 +21,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <atomic>
+
 #include "Methods.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
