@@ -301,32 +301,34 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
         auto docProduceCallback = [&](auto docPtr) {
           auto doc = extractSlice(docPtr);
           if (idx.projections.empty()) {
+            // no projections
             moveValueIntoRegister(output,
                                   _infos.indexes[k].documentOutputRegister,
                                   _currentRow, docPtr);
-          } else {
-            if (!idx.hasProjectionsForRegisters) {
-              _projectionsBuilder.clear();
-              _projectionsBuilder.openObject(true);
-              idx.projections.toVelocyPackFromDocument(_projectionsBuilder, doc,
-                                                       &_trx);
-              _projectionsBuilder.close();
+          } else if (!idx.hasProjectionsForRegisters) {
+            // write all projections combined into the global output register
+            // recycle our Builder object
+            _projectionsBuilder.clear();
+            _projectionsBuilder.openObject(true);
+            idx.projections.toVelocyPackFromDocument(_projectionsBuilder, doc,
+                                                     &_trx);
+            _projectionsBuilder.close();
 
-              output.moveValueInto(_infos.indexes[k].documentOutputRegister,
-                                   _currentRow, _projectionsBuilder.slice());
-            } else {
-              idx.projections.produceFromDocument(
-                  _projectionsBuilder, doc, &_trx,
-                  [&](Variable const* variable, velocypack::Slice slice) {
-                    if (slice.isNone()) {
-                      slice = VPackSlice::nullSlice();
-                    }
-                    RegisterId registerId =
-                        _infos.registerForVariable(variable->id);
-                    TRI_ASSERT(registerId != RegisterId::maxRegisterId);
-                    output.moveValueInto(registerId, _currentRow, slice);
-                  });
-            }
+            output.moveValueInto(_infos.indexes[k].documentOutputRegister,
+                                 _currentRow, _projectionsBuilder.slice());
+          } else {
+            // write projections into individual output registers
+            idx.projections.produceFromDocument(
+                _projectionsBuilder, doc, &_trx,
+                [&](Variable const* variable, velocypack::Slice slice) {
+                  if (slice.isNone()) {
+                    slice = VPackSlice::nullSlice();
+                  }
+                  RegisterId registerId =
+                      _infos.registerForVariable(variable->id);
+                  TRI_ASSERT(registerId != RegisterId::maxRegisterId);
+                  output.moveValueInto(registerId, _currentRow, slice);
+                });
           }
         };
 
