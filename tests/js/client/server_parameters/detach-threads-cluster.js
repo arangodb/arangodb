@@ -41,13 +41,13 @@
 if (getOptions === true) {
   return {
     'transaction.streaming-lock-timeout' : '600',
+    'transaction.streaming-idle-timeout' : '120',
     'server.maximal-threads' : '30',
     'server.minimal-threads' : '30'
   };
 }
 
 const _ = require('lodash');
-const console = require('console');
 let jsunity = require('jsunity');
 let internal = require('internal');
 let arangodb = require('@arangodb');
@@ -136,9 +136,7 @@ function detachSchedulerThreadsSuite2() {
         // Then perform simple reads to the collection. They should soon be
         // unblocked, because of detached threads.
         let startTime = new Date();
-        console.error("Seeking document!");
         let guck = c.document("K1");
-        console.error("Got document!");
 
         // Unblock everything:
         debugSetFailAt(followerEndpoint, "synchronousReplication::unblockReplication");
@@ -149,7 +147,7 @@ function detachSchedulerThreadsSuite2() {
           while(true) {
             let r = arango.PUT_RAW(`/_api/job/${id}`, "");
             if (r.code !== 204) {
-              console.error("Finished job", id, JSON.stringify(r.parsedBody));
+              assertTrue(!r.parsedBody.hasOwnProperty("error"));
               return r;
             }
             if (++count >= 600) {
