@@ -368,7 +368,7 @@ void SchedulerFeature::unprepare() {
   // synchronization and complains about reads that have happened before
   // this write here, but are not officially inter-thread synchronized.
   // We use the atomic reference here and in these places to silence TSAN.
-  std::atomic_ref<Scheduler*> schedulerRef{SCHEDULER};
+  std::atomic_ref<SupervisedScheduler*> schedulerRef{SCHEDULER};
   schedulerRef.store(nullptr, std::memory_order_relaxed);
   _scheduler.reset();
 }
