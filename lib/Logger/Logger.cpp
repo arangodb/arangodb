@@ -887,7 +887,7 @@ void Logger::append(LogGroup& group, std::unique_ptr<LogMessage> msg,
 ////////////////////////////////////////////////////////////////////////////////
 
 void Logger::initialize(application_features::ApplicationServer& server,
-                        bool threaded, uint64_t maxQueuedLogMessages) {
+                        bool threaded, uint32_t maxQueuedLogMessages) {
   if (_active.exchange(true, std::memory_order_acquire)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "Logger already initialized");

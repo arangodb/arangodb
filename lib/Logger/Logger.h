@@ -307,7 +307,7 @@ class Logger {
   }
 
   static void initialize(application_features::ApplicationServer&, bool,
-                         uint64_t maxQueuedLogMessages);
+                         uint32_t maxQueuedLogMessages);
   static void shutdown();
   static void flush() noexcept;
 
