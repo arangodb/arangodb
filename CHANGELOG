@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed a problem in ReadWriteLock which could prevent waiting readers
+  from being woken up, when a write lock acquire timed out.
+
 * Allow a scheduler thread to detach itself from the scheduler if it sees 
   that it has to perform a potentially long running task like waiting for
   a lock. This allows a new scheduler thread to be started and avoids
