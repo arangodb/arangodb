@@ -251,6 +251,13 @@ class ScoreIterator {
   size_t _numScores;
 };
 
+union HeapSortValue {
+  irs::score_t score;
+  velocypack::Slice slice;
+};
+
+struct PushTag {};
+
 // Holds and encapsulates the data read from the iresearch index.
 template<typename ValueType, bool copyStored>
 class IndexReadBuffer {
@@ -285,23 +292,23 @@ class IndexReadBuffer {
 
   irs::score_t* pushNoneScores(size_t count);
 
-  template<typename... Args>
-  void pushValue(StorageSnapshot const& snapshot, Args&&... args);
-
-  template<typename... Args>
-  void setValue(size_t idx, iresearch::ViewSegment const& segment,
-                Args&&... args) noexcept {
-    _keyBuffer[idx] = ValueType(segment, std::forward<Args>(args)...);
+  template<typename T, typename Id>
+  void makeValue(T idx, iresearch::ViewSegment const& segment, Id id) {
+    if constexpr (std::is_same_v<T, PushTag>) {
+      _keyBuffer.emplace_back(segment, id);
+    } else {
+      _keyBuffer[idx] = ValueType{segment, id};
+    }
   }
 
-  void pushSearchDoc(iresearch::ViewSegment const& segment,
+  template<typename T>
+  void makeSearchDoc(T idx, iresearch::ViewSegment const& segment,
                      irs::doc_id_t docId) {
-    _searchDocs.emplace_back(segment, docId);
-  }
-
-  void setSearchDoc(size_t idx, iresearch::ViewSegment const& segment,
-                    irs::doc_id_t docId) noexcept {
-    _searchDocs[idx] = iresearch::SearchDoc{segment, docId};
+    if constexpr (std::is_same_v<T, PushTag>) {
+      _searchDocs.emplace_back(segment, docId);
+    } else {
+      _searchDocs[idx] = iresearch::SearchDoc{segment, docId};
+    }
   }
 
   template<typename ColumnReaderProvider>
@@ -384,14 +391,15 @@ class IndexReadBuffer {
     return std::vector<size_t>{_rows.begin() + start, _rows.end()};
   }
 
-  void setStoredValue(size_t idx, irs::bytes_view value) {
-    TRI_ASSERT(idx < _storedValuesBuffer.size());
-    _storedValuesBuffer[idx] = value;
-  }
-
-  void pushStoredValue(irs::bytes_view value) {
-    TRI_ASSERT(_storedValuesBuffer.size() < _storedValuesBuffer.capacity());
-    _storedValuesBuffer.emplace_back(value.data(), value.size());
+  template<typename T>
+  void makeStoredValue(T idx, irs::bytes_view value) {
+    if constexpr (std::is_same_v<T, PushTag>) {
+      TRI_ASSERT(_storedValuesBuffer.size() < _storedValuesBuffer.capacity());
+      _storedValuesBuffer.emplace_back(value.data(), value.size());
+    } else {
+      TRI_ASSERT(idx < _storedValuesBuffer.size());
+      _storedValuesBuffer[idx] = value;
+    }
   }
 
   using StoredValuesContainer =
@@ -590,16 +598,11 @@ class IResearchViewExecutorBase {
   bool writeStoredValue(ReadContext& ctx, irs::bytes_view storedValue,
                         std::map<size_t, RegisterId> const& fieldsRegs);
 
-  template<bool parallel>
-  void readStoredValues(irs::doc_id_t docId, size_t index,
-                        size_t bufferIndex = 0);
-
-  template<bool parallel>
-  void pushStoredValues(irs::doc_id_t docId, size_t storedValuesIndex = 0,
-                        size_t bufferIndex = 0);
+  template<typename T>
+  void makeStoredValues(T idx, irs::doc_id_t docId, size_t readerIndex);
 
   bool getStoredValuesReaders(irs::SubReader const& segmentReader,
-                              size_t storedValuesIndex = 0);
+                              size_t readerIndex);
 
  private:
   bool next(ReadContext& ctx, IResearchViewStats& stats);
@@ -673,7 +676,7 @@ class IResearchViewExecutor
   bool fillBuffer(ReadContext& ctx);
 
   template<bool parallel>
-  bool readSegment(SegmentReader& reader, std::atomic<size_t>& bufferIdxGlobal);
+  bool readSegment(SegmentReader& reader, std::atomic_size_t& bufferIdxGlobal);
 
   bool writeRow(ReadContext& ctx, size_t idx);
 
@@ -692,29 +695,65 @@ class IResearchViewExecutor
   size_t _allocatedThreads{0};
 };
 
-struct DocumentValue {
-  explicit DocumentValue(LocalDocumentId id) noexcept : id{id} {}
-  union {
-    LocalDocumentId id;
-    size_t result;
-  };
+union DocumentValue {
+  irs::doc_id_t docId;
+  LocalDocumentId id{};
+  size_t result;
 };
 
 struct ExecutorValue {
-  ExecutorValue() : _value{LocalDocumentId::none()}, _segment{nullptr} {}
+  ExecutorValue() = default;
 
   explicit ExecutorValue(iresearch::ViewSegment const& segment,
-                         LocalDocumentId id) noexcept
-      : _value{id}, _segment{&segment} {}
+                         LocalDocumentId id) noexcept {
+    translate(segment, id);
+  }
 
-  auto const& value() const noexcept { return _value; }
-  auto const* segment() const noexcept { return _segment; }
+  void translate(iresearch::ViewSegment const& segment,
+                 LocalDocumentId id) noexcept {
+    _value.id = id;
+    _reader.segment = &segment;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(_state == State::IResearch);
+    _state = State::RocksDB;
+#endif
+  }
 
-  void translate(size_t i) noexcept { _value.result = i; }
+  void translate(size_t i) noexcept {
+    _value.result = i;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(_state == State::RocksDB);
+    _state = State::Executor;
+#endif
+  }
 
- private:
+  [[nodiscard]] iresearch::ViewSegment const* segment() const noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(_state != State::IResearch);
+#endif
+    return _reader.segment;
+  }
+
+  [[nodiscard]] auto const& value() const noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(_state != State::IResearch);
+#endif
+    return _value;
+  }
+
+ protected:
   DocumentValue _value;
-  iresearch::ViewSegment const* _segment{};
+  union {
+    size_t offset;
+    iresearch::ViewSegment const* segment;
+  } _reader;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  enum class State {
+    IResearch = 0,
+    RocksDB,
+    Executor,
+  } _state{};
+#endif
 };
 
 template<typename ExecutionTraits>
@@ -867,66 +906,30 @@ class IResearchViewHeapSortExecutor
   bool _bufferFilled{false};
 };
 
-union UnitedDocumentId {
-  irs::doc_id_t irsId;
-  typename LocalDocumentId::BaseType adbId;
-};
+struct HeapSortExecutorValue : ExecutorValue {
+  using ExecutorValue::ExecutorValue;
 
-union UnitedSourceId {
-  size_t readerOffset;
-  LogicalCollection const* collection;
-};
-
-struct HeapSortExecutorValue {
-  HeapSortExecutorValue(irs::doc_id_t doc, size_t readerOffset) {
-    documentKey.irsId = doc;
-    collection.readerOffset = readerOffset;
-  }
-
-  void decode(LocalDocumentId docId, LogicalCollection const* col) noexcept {
+  explicit HeapSortExecutorValue(size_t offset, irs::doc_id_t docId) noexcept {
+    _value.docId = docId;
+    _reader.offset = offset;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(!decoded);
-    decoded = true;
+    _state = State::IResearch;
 #endif
-
-    documentKey.adbId = docId.id();
-    collection.collection = col;
-  }
-
-  [[nodiscard]] irs::doc_id_t irsDocId() const noexcept {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(!decoded);
-#endif
-    return documentKey.irsId;
   }
 
   [[nodiscard]] size_t readerOffset() const noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(!decoded);
+    TRI_ASSERT(_state == State::IResearch);
 #endif
-    return collection.readerOffset;
+    return _reader.offset;
   }
 
-  [[nodiscard]] LocalDocumentId documentId() const noexcept {
+  [[nodiscard]] irs::doc_id_t docId() const noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(decoded);
+    TRI_ASSERT(_state == State::IResearch);
 #endif
-    return LocalDocumentId(documentKey.adbId);
+    return _value.docId;
   }
-
-  [[nodiscard]] LogicalCollection const* collectionPtr() const noexcept {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(decoded);
-#endif
-    return collection.collection;
-  }
-
- private:
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  bool decoded{false};
-#endif
-  UnitedDocumentId documentKey;
-  UnitedSourceId collection;
 };
 
 #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
