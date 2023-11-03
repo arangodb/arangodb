@@ -63,6 +63,9 @@ namespace iresearch {
 
 bool isFilterConditionEmpty(aql::AstNode const* filterCondition) noexcept;
 
+/// @returns true if a given node is located inside a loop or subquery
+bool isInInnerLoopOrSubquery(aql::ExecutionNode const& node);
+
 enum class MaterializeType {
   Undefined = 0,        // an undefined initial value
   NotMaterialize = 1,   // do not materialize a document
@@ -294,6 +297,8 @@ class IResearchViewNode final : public aql::ExecutionNode,
 
   void setNoMaterialization() noexcept { _noMaterialization = true; }
 
+  void setImmutableParts(uint32_t count) noexcept { _immutableParts = count; }
+
   static constexpr ptrdiff_t kSortColumnNumber{-1};
 
   // A variable with a field number in a column
@@ -423,6 +428,8 @@ class IResearchViewNode final : public aql::ExecutionNode,
 
   // Volatility mask
   mutable int _volatilityMask{-1};
+
+  uint32_t _immutableParts{0};
 
   // Whether "no materialization" rule should be applied
   bool _noMaterialization{false};

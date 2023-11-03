@@ -473,6 +473,11 @@ struct AstNode {
   void sortMembers(
       std::function<bool(AstNode const*, AstNode const*)> const& func);
 
+  template<typename Func>
+  void partitionBy(Func&& func) {
+    std::partition(members.begin(), members.end(), std::forward<Func>(func));
+  }
+
   /// @brief reduces the number of members of the node
   void reduceMembers(size_t i);
 

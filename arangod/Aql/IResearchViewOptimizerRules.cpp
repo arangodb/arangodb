@@ -1094,8 +1094,8 @@ void handleConstrainedSortInView(Optimizer* opt,
   plan->findNodesOfType(viewNodes, ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
                         true);
   for (auto* node : viewNodes) {
-    TRI_ASSERT(node &&
-               ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node->getType());
+    TRI_ASSERT(node);
+    TRI_ASSERT(ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node->getType());
     auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(node);
     if (viewNode.sort().first) {
       // this view already has PrimarySort - no sort for us.
@@ -1108,6 +1108,94 @@ void handleConstrainedSortInView(Optimizer* opt,
       // another loop
       modified |= optimizeScoreSort(viewNode, plan.get());
     }
+  }
+}
+
+void immutableSearchCondition(Optimizer* opt,
+                              std::unique_ptr<ExecutionPlan> plan,
+                              OptimizerRule const& rule) {
+  TRI_ASSERT(plan && plan->getAst());
+
+  // ensure 'Optimizer::addPlan' will be called
+  bool modified = false;
+  irs::Finally addPlan = [opt, &plan, &rule, &modified]() noexcept {
+    opt->addPlan(std::move(plan), rule, modified);
+  };
+
+  if (!plan->contains(ExecutionNode::ENUMERATE_IRESEARCH_VIEW)) {
+    return;
+  }
+
+  containers::SmallVector<ExecutionNode*, 8> viewNodes;
+  plan->findNodesOfType(viewNodes, ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
+                        true);
+  VarSet vars;
+  VarSet mutableVars;
+  for (auto* node : viewNodes) {
+    TRI_ASSERT(node);
+    TRI_ASSERT(ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node->getType());
+    auto& view = *ExecutionNode::castTo<IResearchViewNode*>(node);
+    auto const* condition = &view.filterCondition();
+    if (isFilterConditionEmpty(condition) || !view.scorers().empty() ||
+        !isInInnerLoopOrSubquery(view)) {
+      continue;
+    }
+    vars.clear();
+    Ast::getReferencedVariables(condition, vars);
+    vars.erase(&view.outVariable());
+    for (auto* var : vars) {
+      auto* setter = plan->getVarSetBy(var->id);
+      if (!setter) {  // unable to find setter
+        continue;
+      }
+      switch (setter->getType()) {
+        case ExecutionNode::ENUMERATE_COLLECTION:
+        case ExecutionNode::ENUMERATE_LIST:
+        case ExecutionNode::SUBQUERY:
+        case ExecutionNode::SUBQUERY_END:
+        case ExecutionNode::COLLECT:
+        case ExecutionNode::TRAVERSAL:
+        case ExecutionNode::INDEX:
+        case ExecutionNode::JOIN:
+        case ExecutionNode::SHORTEST_PATH:
+        case ExecutionNode::ENUMERATE_PATHS:
+        case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+          // we're in the loop with dependent context
+          mutableVars.emplace(var);
+          break;
+        default:
+          if (!setter->isDeterministic() || setter->getLoop() != nullptr) {
+            mutableVars.emplace(var);
+          }
+          break;
+      }
+    }
+    if (mutableVars.empty()) {
+      view.setImmutableParts(std::numeric_limits<uint32_t>::max());
+      continue;
+    }
+    uint32_t count = 0;
+    while (true) {
+      auto const type = condition->type;
+      if (!Ast::IsOrOperatorType(type) && !Ast::IsAndOperatorType(type)) {
+        break;
+      }
+      auto const numMembers = condition->numMembers();
+      if (numMembers <= 1) {
+        condition = condition->getMemberUnchecked(0);
+        continue;
+      }
+      const_cast<AstNode*>(condition)->partitionBy([&](AstNode* member) {
+        bool intersects = Ast::intersectsWith(member, mutableVars);
+        count += !intersects;
+        return !intersects;
+      });
+      if (count == numMembers) {
+        count = std::numeric_limits<uint32_t>::max();
+      }
+      break;
+    }
+    view.setImmutableParts(count);
   }
 }
 

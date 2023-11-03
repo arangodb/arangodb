@@ -537,36 +537,6 @@ bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
   return false;
 }
 
-/// @returns true if a given node is located inside a loop or subquery
-bool isInInnerLoopOrSubquery(aql::ExecutionNode const& node) {
-  auto* cur = &node;
-  while (true) {
-    auto const* dep = cur->getFirstDependency();
-    if (!dep) {
-      break;
-    }
-    switch (dep->getType()) {
-      case aql::ExecutionNode::ENUMERATE_COLLECTION:
-      case aql::ExecutionNode::INDEX:
-      case aql::ExecutionNode::JOIN:
-      case aql::ExecutionNode::TRAVERSAL:
-      case aql::ExecutionNode::ENUMERATE_LIST:
-      case aql::ExecutionNode::SHORTEST_PATH:
-      case aql::ExecutionNode::ENUMERATE_PATHS:
-      case aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
-        // we're in a loop
-        return true;
-      default:
-        break;
-    }
-    cur = dep;
-  }
-  TRI_ASSERT(cur);
-  // SINGLETON nodes in subqueries have id != 1
-  return cur->getType() == aql::ExecutionNode::SINGLETON &&
-         cur->id() != aql::ExecutionNodeId{1};
-}
-
 /// negative value - value is dirty
 /// _volatilityMask & 1 == volatile filter
 /// _volatilityMask & 2 == volatile sort
@@ -840,6 +810,7 @@ char const* kNodeViewMetaStored = "metaStored";
 #ifdef USE_ENTERPRISE
 char const* kNodeViewMetaTopK = "metaTopK";
 #endif
+char const* kNodeViewImmutableParts = "immutableParts";
 
 void toVelocyPack(velocypack::Builder& node, SearchMeta const& meta,
                   bool needSort, [[maybe_unused]] bool needHeapSort) {
@@ -1130,6 +1101,35 @@ bool isFilterConditionEmpty(aql::AstNode const* filterCondition) noexcept {
   return filterCondition == &kAll;
 }
 
+bool isInInnerLoopOrSubquery(aql::ExecutionNode const& node) {
+  auto* cur = &node;
+  while (true) {
+    auto const* dep = cur->getFirstDependency();
+    if (!dep) {
+      break;
+    }
+    switch (dep->getType()) {
+      case aql::ExecutionNode::ENUMERATE_COLLECTION:
+      case aql::ExecutionNode::INDEX:
+      case aql::ExecutionNode::JOIN:
+      case aql::ExecutionNode::TRAVERSAL:
+      case aql::ExecutionNode::ENUMERATE_LIST:
+      case aql::ExecutionNode::SHORTEST_PATH:
+      case aql::ExecutionNode::ENUMERATE_PATHS:
+      case aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+        // we're in a loop
+        return true;
+      default:
+        break;
+    }
+    cur = dep;
+  }
+  TRI_ASSERT(cur);
+  // SINGLETON nodes in subqueries have id != 1
+  return cur->getType() == aql::ExecutionNode::SINGLETON &&
+         cur->id() != aql::ExecutionNodeId{1};
+}
+
 IResearchViewNode* IResearchViewNode::getByVar(
     aql::ExecutionPlan const& plan, aql::Variable const& var) noexcept {
   auto* varOwner = plan.getVarSetBy(var.id);
@@ -1292,6 +1292,12 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
   if (volatilityMaskSlice.isNumber()) {
     _volatilityMask = volatilityMaskSlice.getNumber<int>();
   }
+
+  auto const immutablePartsSlice = base.get(kNodeViewImmutableParts);
+  if (immutablePartsSlice.isInteger()) {
+    _immutableParts = immutablePartsSlice.getNumber<uint32_t>() - 1U;
+  }
+
   // parse sort buckets and set them and sort
   auto const sortBucketsSlice = base.get(kNodePrimarySortBucketsParam);
   if (!sortBucketsSlice.isNone()) {
@@ -1653,6 +1659,10 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
   // volatility mask
   nodes.add(kNodeVolatilityParam, VPackValue(_volatilityMask));
 
+  if (_immutableParts != 0) {
+    nodes.add(kNodeViewImmutableParts, VPackValue{_immutableParts + 1U});
+  }
+
   // primary sort buckets
   bool const needSort = _sort && !_sort->empty();
   if (needSort) {
@@ -1722,6 +1732,7 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
   node->_shards = _shards;
   node->_options = _options;
   node->_volatilityMask = _volatilityMask;
+  node->_immutableParts = _immutableParts;
   node->_sort = _sort;
   node->_optState = _optState;
   if (outSearchDocId != nullptr) {
@@ -2093,6 +2104,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         outVariable(),
         filterCondition(),
         volatility(),
+        _immutableParts,
         getRegisterPlan()->varInfo,  // ??? do we need this?
         getDepth(),
         std::move(outNonMaterializedViewRegs),

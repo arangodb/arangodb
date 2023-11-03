@@ -370,6 +370,9 @@ struct OptimizerRule {
     // for it.
     joinIndexNodesRule,
 
+    // Should be last search rule!
+    immutableSearchConditionRule,
+
     // final cleanup, after projections
     removeUnnecessaryCalculationsRule4,
 
@@ -382,6 +385,8 @@ struct OptimizerRule {
     // Must run last.
     spliceSubqueriesRule
   };
+
+  static_assert(handleArangoSearchViewsRule < immutableSearchConditionRule);
 
 #ifdef USE_ENTERPRISE
   static_assert(clusterOneShardRule < distributeInClusterRule);

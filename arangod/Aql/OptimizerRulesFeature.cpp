@@ -778,6 +778,12 @@ involved attributes are covered by regular indexes.)");
 avoid unnecessary reads.)");
 #endif
 
+  registerRule(
+      "immutable-search-condition", iresearch::immutableSearchCondition,
+      OptimizerRule::immutableSearchConditionRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Optimize immutable search condition for nested loops, we don't need make real search few times, we can cache results in bitset)");
+
   // remove calculations that are never necessary
   registerRule("remove-unnecessary-calculations-4",
                removeUnnecessaryCalculationsRule,
