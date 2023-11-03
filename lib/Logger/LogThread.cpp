@@ -56,11 +56,13 @@ bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
       (message->_level == LogLevel::FATAL || message->_level == LogLevel::ERR ||
        message->_level == LogLevel::WARN);
 
-  if (_pendingMessages.load() >= MAX_QUEUED_MESSAGES ||
+  auto numMessages = _pendingMessages.fetch_add(1, std::memory_order_relaxed) + 1;
+  if (numMessages >= MAX_QUEUED_MESSAGES ||
       !_messages.push({&group, message.get()})) {
+      /* roll back the update */
+    _pendingMessages.fetch_sub(1, std::memory_order_relaxed);
     return false;
   }
-  _pendingMessages.fetch_add(1);
 
   // only release message if adding to the queue succeeded
   // otherwise we would leak here
