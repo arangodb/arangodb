@@ -71,7 +71,8 @@ bool isInInnerLoopOrSubquery(aql::ExecutionNode const& node);
 // in loop or non-deterministic
 bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
                      aql::Variable const& ref, aql::VarSet& vars,
-                     fu2::function_view<bool(aql::Variable const*)> callback);
+                     // TODO(MBkkt) fu2::function_view
+                     std::function<bool(aql::Variable const*)> callback);
 
 enum class MaterializeType {
   Undefined = 0,        // an undefined initial value

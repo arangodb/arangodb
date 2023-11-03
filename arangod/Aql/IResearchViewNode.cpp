@@ -1099,7 +1099,7 @@ bool isInInnerLoopOrSubquery(aql::ExecutionNode const& node) {
 
 bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
                      aql::Variable const& ref, aql::VarSet& vars,
-                     fu2::function_view<bool(aql::Variable const*)> callback) {
+                     std::function<bool(aql::Variable const*)> callback) {
   vars.clear();
   aql::Ast::getReferencedVariables(&node, vars);
   vars.erase(&ref);  // remove "our" variable
