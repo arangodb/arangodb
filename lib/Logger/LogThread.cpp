@@ -115,7 +115,7 @@ bool LogThread::processPendingMessages() {
   MessageEnvelope env{nullptr, nullptr};
 
   while (_messages.pop(env)) {
-    _pendingMessages.fetch_sub(1);
+    _pendingMessages.fetch_sub(1, std::memory_order_relaxed);
     worked = true;
     TRI_ASSERT(env.group != nullptr);
     TRI_ASSERT(env.msg != nullptr);
