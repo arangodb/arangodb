@@ -283,6 +283,12 @@ class IResearchViewNode final : public aql::ExecutionNode,
 
   aql::RegIdSet calcInputRegs() const;
 
+  bool hasOffsetInfo() const noexcept {
+    // TODO(MBkkt) should be different if we use same register for late
+    // materialization and offset info
+    return _outSearchDocId != nullptr;
+  }
+
   aql::Variable const* searchDocIdVar() const noexcept {
     return _outSearchDocId;
   }

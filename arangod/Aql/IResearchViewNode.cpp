@@ -1889,7 +1889,7 @@ std::vector<aql::Variable const*> IResearchViewNode::getVariablesSetHere()
   } else if (!isNoMaterialization()) {
     ++reserve;
   }
-  if (searchDocIdVar()) {
+  if (_outSearchDocId != nullptr) {
     ++reserve;
   }
   vars.reserve(reserve);
@@ -1908,7 +1908,7 @@ std::vector<aql::Variable const*> IResearchViewNode::getVariablesSetHere()
   } else {
     vars.emplace_back(_outVariable);
   }
-  if (searchDocIdVar()) {
+  if (_outSearchDocId != nullptr) {
     vars.emplace_back(_outSearchDocId);
   }
   return vars;

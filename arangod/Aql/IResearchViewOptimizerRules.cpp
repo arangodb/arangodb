@@ -1137,7 +1137,8 @@ void immutableSearchCondition(Optimizer* opt,
     auto& view = *ExecutionNode::castTo<IResearchViewNode*>(node);
     auto const* condition = &view.filterCondition();
     if (isFilterConditionEmpty(condition) || !view.scorers().empty() ||
-        view.options().parallelism != 1 || !isInInnerLoopOrSubquery(view)) {
+        view.options().parallelism != 1 || view.hasOffsetInfo() ||
+        !isInInnerLoopOrSubquery(view)) {
       continue;
     }
     hasDependencies(*plan, *condition, view.outVariable(), vars,
