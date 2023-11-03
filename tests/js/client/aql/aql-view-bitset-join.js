@@ -61,7 +61,7 @@ const ViewBitsetJoin = function () {
 
       let c1 = db._create(collectionName1);
       let a = [];
-      for (let i = 0; i != 1000; ++i) {
+      for (let i = 0; i !== 1000; ++i) {
         a.push({
           "id": i * 3,
         });
@@ -76,7 +76,7 @@ const ViewBitsetJoin = function () {
       });
 
       let c2 = db._create(collectionName2);
-      for (let i = 0; i != 1000; ++i) {
+      for (let i = 0; i !== 1000; ++i) {
         a.push({
           "id": i * 2,
           "term": i,
