@@ -119,9 +119,26 @@ template<typename T, typename... Args>
 struct std_coro::coroutine_traits<arangodb::futures::Future<T>, Args...> {
   struct promise_type {
     arangodb::futures::Promise<T> promise;
+    arangodb::futures::Try<T> result;
 
     auto initial_suspend() noexcept { return std_coro::suspend_never{}; }
-    auto final_suspend() noexcept { return std_coro::suspend_never{}; }
+    auto final_suspend() noexcept {
+      // TODO use symmetric transfer here
+      struct awaitable {
+        bool await_ready() noexcept { return false; }
+        void await_suspend(std::coroutine_handle<promise_type> self) noexcept {
+          // we have to destroy the coroutine frame before
+          // we resolve the promise
+          auto res = std::move(self.promise().result);
+          auto p = std::move(self.promise().promise);
+          self.destroy();
+          p.setTry(std::move(res));
+        }
+        void await_resume() noexcept {}
+      };
+
+      return awaitable{};
+    }
 
     auto get_return_object() -> arangodb::futures::Future<T> {
       return promise.getFuture();
@@ -130,16 +147,16 @@ struct std_coro::coroutine_traits<arangodb::futures::Future<T>, Args...> {
     auto return_value(T const& t) noexcept(
         std::is_nothrow_copy_constructible_v<T>) {
       static_assert(std::is_copy_constructible_v<T>);
-      promise.setValue(t);
+      result.emplace(t);
     }
 
     auto return_value(T&& t) noexcept(std::is_nothrow_move_constructible_v<T>) {
       static_assert(std::is_move_constructible_v<T>);
-      promise.setValue(std::move(t));
+      result.emplace(std::move(t));
     }
 
     auto unhandled_exception() noexcept {
-      promise.setException(std::current_exception());
+      result.set_exception(std::current_exception());
     }
   };
 };
@@ -149,19 +166,34 @@ struct std_coro::coroutine_traits<
     arangodb::futures::Future<arangodb::futures::Unit>, Args...> {
   struct promise_type {
     arangodb::futures::Promise<arangodb::futures::Unit> promise;
+    arangodb::futures::Try<arangodb::futures::Unit> result;
 
     auto initial_suspend() noexcept { return std_coro::suspend_never{}; }
-    auto final_suspend() noexcept { return std_coro::suspend_never{}; }
+    auto final_suspend() noexcept {
+      // TODO use symmetric transfer here
+      struct awaitable {
+        bool await_ready() noexcept { return false; }
+        void await_suspend(std::coroutine_handle<promise_type> self) noexcept {
+          auto res = std::move(self.promise().result);
+          auto p = std::move(self.promise().promise);
+          self.destroy();
+          p.setTry(std::move(res));
+        }
+        void await_resume() noexcept {}
+      };
+
+      return awaitable{};
+    }
 
     auto get_return_object()
         -> arangodb::futures::Future<arangodb::futures::Unit> {
       return promise.getFuture();
     }
 
-    auto return_void() noexcept { promise.setValue(); }
+    auto return_void() noexcept { result.emplace(); }
 
     auto unhandled_exception() noexcept {
-      promise.setException(std::current_exception());
+      result.set_exception(std::current_exception());
     }
   };
 };

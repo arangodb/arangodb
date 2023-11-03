@@ -158,7 +158,7 @@ class Try {
   /// Set an exception value into this Try object.
   /// Destroys any previous value prior to constructing the new value.
   /// Leaves *this empty if throws
-  void set_exception(std::exception_ptr e) {
+  void set_exception(std::exception_ptr const& e) {
     this->destroy();
     new (&_exception) std::exception_ptr(e);
     _content = Content::Exception;
