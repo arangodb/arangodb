@@ -2755,7 +2755,7 @@ bool Ast::isVarsUsed(AstNode const* node, VarSet const& result) {
     }
     return !intersects;
   };
-  traverseReadOnly(node, visitor, {});
+  traverseReadOnly(node, visitor, [](AstNode const*) {});
   return intersects;
 }
 
