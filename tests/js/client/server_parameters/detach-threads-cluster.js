@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertEqual, assertTrue, assertFalse, arango */
+/* global fail, getOptions, assertEqual, assertTrue, assertFalse, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Test detaching threads in scheduler which wait for locks.
