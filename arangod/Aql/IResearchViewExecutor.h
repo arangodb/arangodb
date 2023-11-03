@@ -34,6 +34,7 @@
 #include "Containers/FlatHashSet.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchFilterFactory.h"
+#include "IResearch/IResearchExecutionPool.h"
 #include "IResearch/IResearchExpressionContext.h"
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchView.h"
@@ -95,7 +96,8 @@ class IResearchViewExecutorInfos {
       iresearch::CountApproximate, iresearch::FilterOptimization,
       std::vector<iresearch::HeapSortElement> const& heapSort,
       size_t heapSortLimit, iresearch::SearchMeta const* meta,
-      size_t parallelism, iresearch::ArangoSearchPool& parallelExecutionPool);
+      size_t parallelism,
+      iresearch::IResearchExecutionPool& parallelExecutionPool);
 
   auto getDocumentRegister() const noexcept { return _documentOutReg; }
 
@@ -183,7 +185,7 @@ class IResearchViewExecutorInfos {
   size_t _heapSortLimit;
   size_t _parallelism;
   iresearch::SearchMeta const* _meta;
-  iresearch::ArangoSearchPool& _parallelExecutionPool;
+  iresearch::IResearchExecutionPool& _parallelExecutionPool;
   int const _depth;
   bool _filterConditionIsEmpty;
   bool const _volatileSort;
@@ -717,7 +719,7 @@ class IResearchViewExecutor
 
   std::vector<SegmentReader> _segmentReaders;
   size_t _segmentOffset;
-  size_t _allocatedThreads{0};
+  uint64_t _allocatedThreads{0};
 };
 
 struct DocumentValue {

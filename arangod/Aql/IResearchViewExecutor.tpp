@@ -217,7 +217,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     iresearch::FilterOptimization filterOptimization,
     std::vector<iresearch::HeapSortElement> const& heapSort,
     size_t heapSortLimit, iresearch::SearchMeta const* meta, size_t parallelism,
-    iresearch::ArangoSearchPool& parallelExecutionPool)
+    iresearch::IResearchExecutionPool& parallelExecutionPool)
     : _searchDocOutReg{searchDocRegister},
       _documentOutReg{outRegister},
       _scoreRegisters{std::move(scoreRegisters)},
@@ -1112,8 +1112,7 @@ IResearchViewExecutor<ExecutionTraits>::IResearchViewExecutor(Fetcher& fetcher,
 template<typename ExecutionTraits>
 IResearchViewExecutor<ExecutionTraits>::~IResearchViewExecutor() {
   if (_allocatedThreads) {
-    this->_infos.parallelExecutionPool().releaseThreads(
-        static_cast<int>(_allocatedThreads));
+    this->_infos.parallelExecutionPool().releaseThreads(_allocatedThreads);
   }
 }
 

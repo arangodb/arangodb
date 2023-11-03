@@ -64,6 +64,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "IResearch/Containers.h"
 #include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchExecutionPool.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
@@ -98,10 +99,15 @@ class Query;
 }  // namespace arangodb::aql
 
 namespace arangodb::iresearch {
+
 namespace {
 
 DECLARE_GAUGE(arangodb_search_num_out_of_sync_links, uint64_t,
               "Number of arangosearch links/indexes currently out of sync");
+
+DECLARE_GAUGE(
+    arangodb_search_execution_threads_active, IResearchExecutionPool,
+    "Number of arangosearch parallels execution threads currently in use.");
 
 #ifdef USE_ENTERPRISE
 
@@ -891,7 +897,9 @@ IResearchFeature::IResearchFeature(Server& server)
       _commitThreadsIdle(0),
       _threads(0),
       _threadsLimit(0),
-      _searchExecutionThreadsLimit(0) {
+      _searchExecutionThreadsLimit(0),
+      _searchExecutionPool(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_search_execution_threads_active{})) {
   setOptional(true);
 #ifdef USE_V8
   startsAfter<application_features::V8FeaturePhase>();
