@@ -23,8 +23,9 @@
 
 #include "FileWriterImpl.h"
 
-#include <fcntl.h>
 #include <cstring>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "Assertions/ProdAssert.h"
 #include "Basics/Exceptions.h"
