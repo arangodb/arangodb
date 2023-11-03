@@ -44,12 +44,21 @@ struct Synchronizer {
   std::mutex mutex;
   std::condition_variable cv;
   bool ready = false;
+  int waiting{0};
 
   void waitForStart() {
     std::unique_lock lock(mutex);
+    ++waiting;
     cv.wait(lock, [&] { return ready; });
   }
-  void start() {
+  void start(int nr) {
+    while (true) {
+      std::unique_lock lock(mutex);
+      if (waiting >= nr) {
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
     {
       std::unique_lock lock(mutex);
       ready = true;
@@ -90,7 +99,7 @@ TEST(ReadWriteLockTest, testLockWriteParallel) {
     });
   }
 
-  s.start();
+  s.start(n);
 
   guard.fire();
   ASSERT_EQ(iterations * n, counter);
@@ -126,7 +135,7 @@ TEST(ReadWriteLockTest, testTryLockWriteParallel) {
     });
   }
 
-  s.start();
+  s.start(n);
 
   guard.fire();
   ASSERT_EQ(iterations * n, counter);
@@ -164,7 +173,7 @@ TEST(ReadWriteLockTest, testTryLockWriteForParallel) {
     });
   }
 
-  s.start();
+  s.start(n);
 
   guard.fire();
   ASSERT_EQ(iterations * n, counter);
@@ -201,7 +210,7 @@ TEST(ReadWriteLockTest, testTryLockWriteForParallelLowTimeout) {
     });
   }
 
-  s.start();
+  s.start(n);
 
   guard.fire();
   ASSERT_EQ(iterations * n, counter);
@@ -266,7 +275,7 @@ TEST(ReadWriteLockTest, testTryLockWriteForWakeUpReaders) {
     lock.unlock();
     readLockThreadCompleted = true;
   });
-  s.start();
+  s.start(2);
 
   guard.fire();
   EXPECT_TRUE(readLockThreadCompleted)
@@ -317,7 +326,7 @@ TEST(ReadWriteLockTest, testLockWriteLockReadParallel) {
     }
   }
 
-  s.start();
+  s.start(n);
 
   guard.fire();
   ASSERT_EQ(iterations * (n / 2), counter);
@@ -386,7 +395,7 @@ TEST(ReadWriteLockTest, testMixedParallel) {
     }
   }
 
-  s.start();
+  s.start(n);
 
   guard.fire();
   ASSERT_EQ(iterations * 6, counter);
@@ -467,7 +476,7 @@ TEST(ReadWriteLockTest, testRandomMixedParallel) {
     });
   }
 
-  s.start();
+  s.start(n);
 
   guard.fire();
   ASSERT_EQ(total, counter);
