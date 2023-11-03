@@ -133,7 +133,6 @@ function detachSchedulerThreadsSuite2() {
           l.push(r.headers["x-arango-async-id"]);
         }
 
-        console.error(l);
         // Then perform simple reads to the collection. They should soon be
         // unblocked, because of detached threads.
         let startTime = new Date();
@@ -162,14 +161,12 @@ function detachSchedulerThreadsSuite2() {
         for (let j of l) {
           waitForJob(j);
         }
-        console.error("Habakuk");
-        waitForJob(blocked);
 
         // And abort transaction:
         let res = arango.DELETE_RAW(`/_api/transaction/${trx}`);
         assertEqual(200, res.code);
       } finally {
-        //debugClearFailAt(followerEndpoint);
+        debugClearFailAt(followerEndpoint);
       }
     }
   };
