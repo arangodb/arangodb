@@ -153,18 +153,18 @@ void RestCursorHandler::cancel() {
 ///
 /// return If true, we need to continue processing,
 ///        If false we are done (error or stream)
-futures::Future<futures::Unit> RestCursorHandler::registerQueryOrCursor(
+futures::Future<RestStatus> RestCursorHandler::registerQueryOrCursor(
     velocypack::Slice slice, transaction::OperationOrigin operationOrigin) {
   TRI_ASSERT(_query == nullptr);
 
   if (!slice.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
-    co_return;
+    co_return RestStatus::DONE;
   }
   VPackSlice querySlice = slice.get("query");
   if (!querySlice.isString() || querySlice.getStringLength() == 0) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
-    co_return;
+    co_return RestStatus::DONE;
   }
 
   VPackSlice bindVars = slice.get("bindVars");
@@ -172,7 +172,7 @@ futures::Future<futures::Unit> RestCursorHandler::registerQueryOrCursor(
     if (!bindVars.isObject() && !bindVars.isNull()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting object for <bindVars>");
-      co_return;
+      co_return RestStatus::DONE;
     }
   }
 
@@ -210,7 +210,7 @@ futures::Future<futures::Unit> RestCursorHandler::registerQueryOrCursor(
     if (count) {
       generateError(Result(TRI_ERROR_BAD_PARAMETER,
                            "cannot use 'count' option for a streaming query"));
-      co_return;
+      co_return RestStatus::DONE;
     }
 
     CursorRepository* cursors = _vocbase.cursorRepository();
@@ -221,8 +221,7 @@ futures::Future<futures::Unit> RestCursorHandler::registerQueryOrCursor(
     _cursor->setWakeupHandler(withLogContext(
         [self = shared_from_this()]() { return self->wakeupHandler(); }));
 
-    generateCursorResult(rest::ResponseCode::CREATED);
-    co_return;
+    co_return generateCursorResult(rest::ResponseCode::CREATED);
   }
 
   // non-stream case. Execute query, then build a cursor
@@ -232,7 +231,7 @@ futures::Future<futures::Unit> RestCursorHandler::registerQueryOrCursor(
     TRI_ASSERT(ss != nullptr);
     if (ss == nullptr) {
       generateError(Result(TRI_ERROR_INTERNAL, "invalid query state"));
-      co_return;
+      co_return RestStatus::DONE;
     }
 
     ss->setWakeupHandler(withLogContext(
@@ -240,8 +239,7 @@ futures::Future<futures::Unit> RestCursorHandler::registerQueryOrCursor(
   }
 
   registerQuery(std::move(query));
-  processQuery();
-  co_return;
+  co_return processQuery();
 }
 
 /// @brief Process the query registered in _query.
