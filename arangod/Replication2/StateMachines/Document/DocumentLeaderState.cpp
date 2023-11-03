@@ -94,12 +94,17 @@ auto DocumentLeaderState::resign() && noexcept
   // on the guarded data.
   auto activeTransactions = _activeTransactions.copy().getTransactions();
   for (auto const& trx : activeTransactions) {
-    try {
-      _transactionManager.abortManagedTrx(trx.first, gid.database);
-    } catch (...) {
-      LOG_CTX("7341f", WARN, loggerContext)
-          << "failed to abort active transaction " << trx.first
-          << " during resign";
+    auto tid = trx.first.asLeaderTransactionId();
+    if (auto abortRes = basics::catchToResult([&]() {
+          return _transactionManager.abortManagedTrx(tid, gid.database);
+        });
+        abortRes.fail()) {
+      LOG_CTX("1b665", WARN, loggerContext)
+          << "Failed to register tombstone for " << tid
+          << " during resign: " << abortRes;
+    } else {
+      LOG_CTX("fb6d1", TRACE, loggerContext)
+          << "Registered tombstone for " << tid << " during resign";
     }
   }
 
@@ -136,11 +141,14 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
                 return trxResult;
               },
               [&](FinishesUserTransactionOrIntermediate auto& op) -> Result {
-                // There are two cases where we can end up here:
+                // There are three cases where we can end up here:
                 // 1. After recovery, we did not get the beginning of the
                 // transaction.
                 // 2. We ignored all other operations for this transaction
                 // because the shard was dropped.
+                // 3. The transaction applies to multiple shards, which all had
+                // the same leader, thus multiple commits were replicated for
+                // the same transaction.
                 if (activeTransactions.erase(op.tid) == 0) {
                   return Result{};
                 }
@@ -207,25 +215,28 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
       } else {
         LOG_CTX("9dd38", DEBUG, self->loggerContext)
             << "Failed to replicate AbortAllOngoingTrx operation during "
-               "recovery because the leader is resigned already";
+               "recovery because the leader has resigned already";
       }
     }
 
-    for (auto& [tid, trx] :
+    for (auto& [trxId, trx] :
          data.transactionHandler->getUnfinishedTransactions()) {
-      try {
-        // the log entries contain follower ids, which is fine since during
-        // recovery we apply the entries like a follower, but we have to
-        // register tombstones in the trx managers for the leader trx id.
-        self->_transactionManager.abortManagedTrx(tid.asLeaderTransactionId(),
-                                                  self->gid.database);
-      } catch (...) {
-        LOG_CTX("894f1", WARN, self->loggerContext)
-            << "failed to abort active transaction " << tid
-            << " during recovery";
+      // The log entries contain follower ids, which is fine since during
+      // recovery we apply the entries like a follower, but we have to
+      // register tombstones in the trx managers for the leader trx id.
+      auto tid = trxId.asLeaderTransactionId();
+      if (auto abortRes = basics::catchToResult([&]() {
+            return self->_transactionManager.abortManagedTrx(
+                tid, self->gid.database);
+          });
+          abortRes.fail()) {
+        LOG_CTX("462a9", DEBUG, self->loggerContext)
+            << "Failed to register tombstone for " << tid
+            << " during recovery: " << abortRes;
       }
     }
 
+    // All unfinished transactions will be aborted
     auto abortAllTrxStatus = data.transactionHandler->applyEntry(abortAll);
     TRI_ASSERT(abortAllTrxStatus.ok()) << abortAllTrxStatus;
     if (abortAllTrxStatus.fail()) {
@@ -298,10 +309,17 @@ auto DocumentLeaderState::replicateOperation(ReplicatedOperation op,
       return idx;
     });
   });
+
   if (insertionRes.fail()) {
-    LOG_CTX("ffe2f", ERR, loggerContext)
-        << "replicateOperation failed to insert into the stream: "
-        << insertionRes.result();
+    if (insertionRes.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED)) {
+      LOG_CTX("c8977", WARN, loggerContext)
+          << "Will not insert operation into the stream because the leader "
+             "resigned. During a failover, this might not be a problem.";
+    } else {
+      LOG_CTX("ffe2f", ERR, loggerContext)
+          << "replicateOperation failed to insert into the stream: "
+          << insertionRes.result();
+    }
     return insertionRes.result();
   }
   auto idx = insertionRes.get();

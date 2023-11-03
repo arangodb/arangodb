@@ -207,7 +207,9 @@ auto DocumentStateTransactionHandler::applyEntry(
   });
   if (res.fail()) {
     LOG_CTX("01202", DEBUG, _loggerContext)
-        << "Error occurred while applying operation " << operation;
+        << "Error occurred while applying operation " << operation << " " << res
+        << ". This is not necessarily a problem. Some errors are expected to "
+           "occur during leader or follower recovery.";
   }
   return res;
 }

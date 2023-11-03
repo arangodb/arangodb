@@ -59,7 +59,9 @@ function transactionReplication2ReplicateOperationSuite() {
     setUpAll,
     tearDownAll,
     setUp: setUpAnd(() => {
-      c = db._create(cn, {"numberOfShards": 4, "writeConcern": rc, "replicationFactor": rc});
+      // We are using waitForSync true, because the purpose of these tests is to check the contents of the log.
+      // If waitForSync is false, we have to do all kinds of waitFor tricks to make sure the log is fully written.
+      c = db._create(cn, {numberOfShards: 4, writeConcern: rc, replicationFactor: rc, waitForSync: true});
     }),
     tearDown: tearDownAnd(() => {
       if (c !== null) {
@@ -69,6 +71,7 @@ function transactionReplication2ReplicateOperationSuite() {
     }),
 
     testTransactionAbortLogEntry: function () {
+      // Create and abort a transaction
       let trx = db._createTransaction({
         collections: {write: c.name()}
       });
@@ -76,10 +79,9 @@ function transactionReplication2ReplicateOperationSuite() {
       tc.insert({_key: 'test2', value: 2});
       trx.abort();
 
-      let shards = c.shards();
-      const shardsToLogs = lh.getShardsToLogsMapping(dbn, c._id);
-      let logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
+      let {logs} = dh.getCollectionShardsAndLogs(db, c);
 
+      // Expect to get one abort operation in the log
       let allEntries = {};
       let abortCount = 0;
       for (const log of logs) {
@@ -103,7 +105,8 @@ function transactionReplication2ReplicateOperationSuite() {
         }
       };
 
-      let trx;
+      // Create and commit a transaction
+      let trx = null;
       try {
         trx = db._createTransaction(obj);
         let tc = trx.collection(cn);
@@ -119,11 +122,9 @@ function transactionReplication2ReplicateOperationSuite() {
         }
       }
 
-      let shards = c.shards();
+      let {shards, logs} = dh.getCollectionShardsAndLogs(db, c);
       let servers = Object.assign({}, ...lh.dbservers.map(
         (serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
-      const shardsToLogs = lh.getShardsToLogsMapping(dbn, c._id);
-      let logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
 
       for (let idx = 0; idx < logs.size; ++idx) {
         let log = logs[idx];
@@ -198,6 +199,7 @@ function transactionReplication2ReplicateOperationSuite() {
       tc.save({_key: 'foo'});
       tc.save({_key: 'bar'});
 
+      // Trigger leader recovery
       lh.bumpTermOfLogsAndWaitForConfirmation(dbn, c);
 
       let committed = false;
@@ -211,9 +213,7 @@ function transactionReplication2ReplicateOperationSuite() {
       }
       assertFalse(committed, "Transaction should not have been committed!");
 
-      const shards = c.shards();
-      const shardsToLogs = lh.getShardsToLogsMapping(dbn, c._id);
-      let logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
+      let {logs} = dh.getCollectionShardsAndLogs(db, c);
 
       const logsWithCommit = logs.filter(log => log.head(1000).some(entry => dh.getOperationType(entry) === 'Commit'));
       if (logsWithCommit.length > 0) {
@@ -393,8 +393,8 @@ jsunity.run(transactionReplicationOnFollowersSuiteV1);
 
 if (isReplication2Enabled) {
   let suites = [
-    //transactionReplication2ReplicateOperationSuite,
-    //transactionReplicationOnFollowersSuiteV2,
+    transactionReplication2ReplicateOperationSuite,
+    transactionReplicationOnFollowersSuiteV2,
   ];
 
   for (const suite of suites) {
