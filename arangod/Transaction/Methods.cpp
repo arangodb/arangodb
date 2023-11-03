@@ -2355,17 +2355,14 @@ Result transaction::Methods::determineReplication1TypeAndFollowers(
       TRI_IF_FAILURE("synchronousReplication::blockReplication") {
         // Block here until the second failure point is switched on, too:
         bool leave = false;
-        LOG_DEVEL << "blocking replication";
         while (true) {
           TRI_IF_FAILURE("synchronousReplication::unblockReplication") {
             leave = true;
           }
           if (leave) {
-            LOG_DEVEL << "unblocked replication";
             break;
           }
           std::this_thread::sleep_for(std::chrono::milliseconds(300));
-          LOG_DEVEL << "still blocking replication";
         }
       }
 
