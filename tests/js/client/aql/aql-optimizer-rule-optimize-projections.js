@@ -26,8 +26,9 @@
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
+const isEnterprise = require("internal").isEnterprise();
+const isCluster = require("internal").isCluster();
 const normalize = require("@arangodb/aql-helper").normalizeProjections;
-
 const ruleName = "optimize-projections";
 
 function optimizerRuleTestSuite () {
@@ -85,7 +86,7 @@ function optimizerRuleTestSuite () {
       const inn = "IndexNode";
       const jnn = "JoinNode";
 
-      const queries = [
+      let queries = [
         // EnumerateCollectionNode
         // note: must use disableIndex: true here, so that the optimizer does not turn the full
         // scan into an index scan
@@ -108,12 +109,16 @@ function optimizerRuleTestSuite () {
         ["FOR doc IN @@cn FILTER doc.indexed1 == 1 FILTER doc.indexed2 == 2 RETURN doc._id", inn, ["_id"], 0 ],
         ["FOR doc IN @@cn SORT doc.indexed2 FILTER doc.indexed3 == 2 RETURN doc.indexed2", inn, ["indexed2"], 0 ],
         ["FOR doc IN @@cn SORT doc.indexed2 FILTER doc.indexed3 == 2 RETURN doc._id", inn, ["_id"], 0 ],
-        
-        // JoinNode
-        ["FOR doc1 IN @@cn SORT doc1.indexed1 FOR doc2 IN @@cn FILTER doc1.indexed1 == doc2.indexed1 RETURN doc1._key", jnn, [["_key", "indexed1"], []], 0 ],
-        ["FOR doc1 IN @@cn SORT doc1.indexed1 FOR doc2 IN @@cn FILTER doc1.indexed1 == doc2.indexed1 RETURN [doc1._key, doc2.indexed1]", jnn, [["_key", "indexed1"], ["indexed1"]], 1 ],
-        ["FOR doc1 IN @@cn SORT doc1.indexed1 FOR doc2 IN @@cn FILTER doc1.indexed1 == doc2.indexed1 RETURN [doc1._key, doc2._key, doc2.foo]", jnn, [["_key", "indexed1"], ["_key", "foo"]], 1 ],
       ];
+
+      if (!isCluster || isEnterprise) {
+        queries = queries.concat([
+          // JoinNode
+          ["FOR doc1 IN @@cn SORT doc1.indexed1 FOR doc2 IN @@cn FILTER doc1.indexed1 == doc2.indexed1 RETURN doc1._key", jnn, [["_key", "indexed1"], []], 0 ],
+          ["FOR doc1 IN @@cn SORT doc1.indexed1 FOR doc2 IN @@cn FILTER doc1.indexed1 == doc2.indexed1 RETURN [doc1._key, doc2.indexed1]", jnn, [["_key", "indexed1"], ["indexed1"]], 1 ],
+          ["FOR doc1 IN @@cn SORT doc1.indexed1 FOR doc2 IN @@cn FILTER doc1.indexed1 == doc2.indexed1 RETURN [doc1._key, doc2._key, doc2.foo]", jnn, [["_key", "indexed1"], ["_key", "foo"]], 1 ],
+        ]);
+      }
 
       queries.forEach(function(query) {
         let result = db._createStatement({query: query[0], bindVars: { "@cn" : cn }, options: {optimizer: { rules: ["-interchange-adjacent-enumerations"] }}}).explain();
