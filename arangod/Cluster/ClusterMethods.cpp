@@ -3356,7 +3356,7 @@ arangodb::Result controlMaintenanceFeature(
           network::fuerteToArangoErrorCode(r),
           std::string("Communication error while executing " + command +
                       " maintenance on ") +
-              r.destination);
+              r.destination + ": " + r.combinedResult().errorMessage());
     }
 
     VPackSlice resSlice = r.slice();
@@ -3420,7 +3420,8 @@ arangodb::Result restoreOnDBServers(network::ConnectionPool* pool,
       // oh-oh cluster is in a bad state
       return arangodb::Result(
           network::fuerteToArangoErrorCode(r),
-          std::string("Communication error list backups on ") + r.destination);
+          std::string("Communication error list backups on ") + r.destination +
+              ": " + r.combinedResult().errorMessage());
     }
 
     VPackSlice resSlice = r.slice();
@@ -3714,7 +3715,7 @@ std::vector<std::string> lockPath =
 arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
                                       std::string const& backupId,
                                       std::vector<ServerID> const& servers,
-                                      double const& lockWait,
+                                      double lockWait,
                                       std::vector<ServerID>& lockedServers) {
   using namespace std::chrono;
 
@@ -3728,7 +3729,8 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
     VPackObjectBuilder o(&lock);
     lock.add("id", VPackValue(backupId));
     lock.add("timeout", VPackValue(lockWait));
-    lock.add("unlockTimeout", VPackValue(5.0 + lockWait));
+    // unlock timeout for commit lock on coordinator
+    lock.add("unlockTimeout", VPackValue(30.0 + lockWait));
   }
 
   LOG_TOPIC("707ed", DEBUG, Logger::BACKUP)
@@ -3742,10 +3744,9 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
   std::vector<Future<network::Response>> futures;
   futures.reserve(servers.size());
 
-  for (auto const& dbServer : servers) {
-    futures.emplace_back(network::sendRequestRetry(pool, "server:" + dbServer,
-                                                   fuerte::RestVerb::Post, url,
-                                                   body, reqOpts));
+  for (auto const& server : servers) {
+    futures.emplace_back(network::sendRequestRetry(
+        pool, "server:" + server, fuerte::RestVerb::Post, url, body, reqOpts));
   }
 
   // Now listen to the results and report the aggregated final result:
@@ -3770,7 +3771,7 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
     if (r.fail()) {
       reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
                   std::string("Communication error locking transactions on ") +
-                      r.destination);
+                      r.destination + ": " + r.combinedResult().errorMessage());
       continue;
     }
     VPackSlice slc = r.slice();
@@ -4091,9 +4092,9 @@ arangodb::Result removeLocalBackups(network::ConnectionPool* pool,
 std::vector<std::string> const versionPath =
     std::vector<std::string>{"arango", "Plan", "Version"};
 
-arangodb::Result hotbackupAsyncLockDBServersTransactions(
+arangodb::Result hotbackupAsyncLockCoordinatorsTransactions(
     network::ConnectionPool* pool, std::string const& backupId,
-    std::vector<ServerID> const& dbServers, double const& lockWait,
+    std::vector<ServerID> const& coordinators, double const& lockWait,
     std::unordered_map<std::string, std::string>& serverLockIds) {
   std::string const url = apiStr + "lock";
 
@@ -4115,14 +4116,14 @@ arangodb::Result hotbackupAsyncLockDBServersTransactions(
   reqOpts.timeout = network::Timeout(lockWait + 5.0);
 
   std::vector<Future<network::Response>> futures;
-  futures.reserve(dbServers.size());
+  futures.reserve(coordinators.size());
 
-  for (auto const& dbServer : dbServers) {
+  for (auto const& coordinator : coordinators) {
     network::Headers headers;
     headers.emplace(StaticStrings::Async, "store");
     futures.emplace_back(network::sendRequestRetry(
-        pool, "server:" + dbServer, fuerte::RestVerb::Post, url, body, reqOpts,
-        std::move(headers)));
+        pool, "server:" + coordinator, fuerte::RestVerb::Post, url, body,
+        reqOpts, std::move(headers)));
   }
 
   // Perform the requests
@@ -4133,7 +4134,7 @@ arangodb::Result hotbackupAsyncLockDBServersTransactions(
       return arangodb::Result(
           TRI_ERROR_LOCAL_LOCK_FAILED,
           std::string("Communication error locking transactions on ") +
-              r.destination);
+              r.destination + ": " + r.combinedResult().errorMessage());
     }
 
     if (r.statusCode() != 202) {
@@ -4159,7 +4160,7 @@ arangodb::Result hotbackupAsyncLockDBServersTransactions(
   return arangodb::Result();
 }
 
-arangodb::Result hotbackupWaitForLockDBServersTransactions(
+arangodb::Result hotbackupWaitForLockCoordinatorsTransactions(
     network::ConnectionPool* pool, std::string const& backupId,
     std::unordered_map<std::string, std::string>& serverLockIds,
     std::vector<ServerID>& lockedServers, double const& lockWait) {
@@ -4187,7 +4188,7 @@ arangodb::Result hotbackupWaitForLockDBServersTransactions(
       return arangodb::Result(
           TRI_ERROR_LOCAL_LOCK_FAILED,
           std::string("Communication error locking transactions on ") +
-              r.destination);
+              r.destination + ": " + r.combinedResult().errorMessage());
     }
     // continue on 204 No Content
     if (r.statusCode() == 204) {
@@ -4423,6 +4424,9 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
         unlockServersTrxCommit(pool, backupId, lockedServers);
         lockedServers.clear();
         if (result.is(TRI_ERROR_LOCAL_LOCK_FAILED)) {  // Unrecoverable
+          LOG_TOPIC("99dbe", WARN, Logger::BACKUP)
+              << "unable to lock servers for hot backup: "
+              << result.errorMessage();
           // release the lock
           releaseAgencyLock.fire();
           events::CreateHotbackup(timeStamp + "_" + backupId,
@@ -4438,9 +4442,11 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
       std::this_thread::sleep_for(milliseconds(300));
     }
 
+    // TODO: the force attribute is still present and offered by arangobackup,
+    // but it can likely be removed nowadays.
     if (!result.ok() && force) {
       // About this code:
-      // it first creates async requests to lock all dbservers.
+      // it first creates async requests to lock all coordinators.
       //    the corresponding lock ids are stored int the map lockJobIds.
       // Then we continously abort all trx while checking all the above jobs
       //    for completion.
@@ -4469,8 +4475,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
             milliseconds(static_cast<uint64_t>(1000 * timeout));
 
       // send the locks
-      result = hotbackupAsyncLockDBServersTransactions(
-          pool, backupId, dbServers, lockWait, lockJobIds);
+      result = hotbackupAsyncLockCoordinatorsTransactions(
+          pool, backupId, serversToBeLocked, lockWait, lockJobIds);
       if (result.fail()) {
         events::CreateHotbackup(timeStamp + "_" + backupId,
                                 result.errorNumber());
@@ -4495,9 +4501,12 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
         }
 
         // wait for locks, servers that got the lock are removed from lockJobIds
-        result = hotbackupWaitForLockDBServersTransactions(
+        result = hotbackupWaitForLockCoordinatorsTransactions(
             pool, backupId, lockJobIds, lockedServers, lockWait);
         if (result.fail()) {
+          LOG_TOPIC("b6496", WARN, Logger::BACKUP)
+              << "Waiting for hot backup server locks failed: "
+              << result.errorMessage();
           events::CreateHotbackup(timeStamp + "_" + backupId,
                                   result.errorNumber());
           return result;
@@ -4520,7 +4529,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
       result.reset(
           TRI_ERROR_HOT_BACKUP_INTERNAL,
           StringUtils::concatT(
-              "failed to acquire global transaction lock on all db servers: ",
+              "failed to acquire global transaction lock on all coordinators: ",
               result.errorMessage()));
       LOG_TOPIC("b7d09", ERR, Logger::BACKUP) << result.errorMessage();
       events::CreateHotbackup(timeStamp + "_" + backupId, result.errorNumber());
@@ -4540,7 +4549,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
       releaseAgencyLock.fire();
       result.reset(
           TRI_ERROR_HOT_BACKUP_INTERNAL,
-          StringUtils::concatT("failed to hot backup on all db servers: ",
+          StringUtils::concatT("failed to hot backup on all coordinators: ",
                                result.errorMessage()));
       LOG_TOPIC("6b333", ERR, Logger::BACKUP) << result.errorMessage();
       removeLocalBackups(pool, backupId, dbServers, dummy);

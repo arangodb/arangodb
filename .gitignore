@@ -109,6 +109,7 @@ js/apps/system/_admin/aardvark/APP/react/node_modules/*
 js/node/**/node_modules/.bin/
 js/node/node_modules/**/*.md
 !js/node/node_modules/**/LICENSE.md
+js/node/node_modules/**/test/
 js/node/node_modules/**/*.ts
 js/node/node_modules/**/*.yml
 js/node/node_modules/**/.babelrc
@@ -129,7 +130,6 @@ npm-debug.log
 /log-*
 data-*
 databases
-!/Documentation/DocuBlocks/Rest/Databases
 cluster-init
 
 datafile-*.db
@@ -143,3 +143,9 @@ callgrind*
 
 cmake-build*/
 .cache/
+
+js/node/**/*.map
+
+swagger-ui-es-bundle*
+swagger-ui.js
+swagger-ui.js.map

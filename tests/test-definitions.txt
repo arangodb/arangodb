@@ -1,6 +1,6 @@
 # test_suite [flags ...] -- [additional-params...]
 # for possible flags and params see
-# scripts/generateJenkinsScripts.py --help-flags
+# https://github.com/arangodb/oskar#testing
 
 
 # Single Server only Tests
@@ -63,6 +63,9 @@ gtest priority=1000 parallelity=3 single
 # Fuerte tests are executed in single env
 fuerte priority=500 single
 
+rta_makedata single
+rta_makedata single suffix=afo -- --activeFailover true
+
 
 # Cluster Tests
 
@@ -88,6 +91,8 @@ shell_server_aql priority=1000 cluster buckets=16 -- --dumpAgencyOnError true
 shell_client priority=500 cluster buckets=5 -- --dumpAgencyOnError true
 shell_client_transaction priority=500 cluster parallelity=5 buckets=4 -- --dumpAgencyOnError true
 shell_server priority=500 cluster buckets=5 -- --dumpAgencyOnError true
+
+rta_makedata cluster
 
 # Common Tests
 

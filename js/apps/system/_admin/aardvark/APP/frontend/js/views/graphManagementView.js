@@ -14,7 +14,7 @@
     enterpriseGraphName: "EnterpriseGraph",
     currentGraphCreationType: (frontendConfig.isEnterprise ? 'enterprise' : 'community'),
     currentGraphEditType: null,
-
+    searchOptions: {},
     dropdownVisible: false,
 
     initialize: function (options) {
@@ -25,7 +25,8 @@
       'click #deleteGraph': 'deleteGraph',
       'click .icon_arangodb_settings2.editGraph': 'editGraph',
       'click #createGraph': 'addNewGraph',
-      'keyup #graphManagementSearchInput': 'search',
+      'keydown #graphManagementSearchInput': 'searchKeyDown',
+      'change #graphManagementSearchInput': 'search',
       'click #graphManagementSearchSubmit': 'search',
       'click .tile-graph': 'redirectToGraphViewer',
       'click #graphManagementToggle': 'toggleGraphDropdown',
@@ -840,13 +841,31 @@
       var index = str.lastIndexOf(substr);
       return str.substring(0, index);
     },
+    searchKeyDown: function (event) {
+      if (window.searchHelper.skipEvent(event)) {
+        return;
+      }
+      this.resetSearch();
+      var self = this;
+      self.searchTimeout = setTimeout(function () {
+        self.search();
+      }, 200);
+    },
+    resetSearch: function () {
+      if (this.searchTimeout) {
+        clearTimeout(this.searchTimeout);
+        this.searchTimeout = null;
+      }
 
+      var searchOptions = this.searchOptions;
+      searchOptions.searchPhrase = null;
+    },
     search: function () {
       var searchInput,
-        searchString,
-        strLength,
-        reducedCollection;
-
+      searchString,
+      strLength,
+      reducedCollection;
+      
       searchInput = $('#graphManagementSearchInput');
       searchString = arangoHelper.escapeHtml($('#graphManagementSearchInput').val());
       reducedCollection = this.collection.filter(
@@ -1252,6 +1271,8 @@
 
         // create graph section
         title = 'Create Graph';
+        var graphNameValidations = 
+          window.arangoValidationHelper.getGraphNameValidations();
 
         tableContent.push(
           window.modalView.createTextEntry(
@@ -1260,7 +1281,8 @@
             '',
             rowDescription.graphName.description,
             rowDescription.graphName.placeholder,
-            true
+            true,
+            graphNameValidations
           )
         );
 

@@ -92,6 +92,7 @@ let optionsDocumentation = [
   '   - `forceJson`: don\'t use vpack - for better debugability',
   '   - `vst`: attempt to connect to the SUT via vst',
   '   - `http2`: attempt to connect to the SUT via http2',
+  '   - `bindBroadcast`: whether to work with loopback or 0.0.0.0',
   '   - `dbServers`: number of DB-Servers to use',
   '   - `coordinators`: number coordinators to use',
   '   - `agency`: if set to true agency tests are done',
@@ -99,6 +100,7 @@ let optionsDocumentation = [
   '   - `agencySupervision`: run supervision in agency',
   '   - `oneTestTimeout`: how long a single js testsuite  should run',
   '   - `isSan`: doubles oneTestTimeot value if set to true (for ASAN-related builds)',
+  '   - `memory`: amount of Host memory to distribute amongst the arangods',
   '   - `memprof`: take snapshots (requries memprof enabled build)',
   '   - `test`: path to single test to execute for "single" test target, ',
   '             or pattern to filter for other suites',
@@ -118,6 +120,8 @@ let optionsDocumentation = [
   '   - `buildType`: Windows build type (Debug, Release), leave empty on linux',
   '   - `configDir`: the directory containing the config files, defaults to',
   '                  etc/testing',
+  '   - `rtasource`: source directory of rta-makedata if not 3rdparty.',
+  '   - `rtaNegFilter`: inverse logic to --test.',
   '   - `writeXmlReport`:  Write junit xml report files',
   '   - `dumpAgencyOnError`: if we should create an agency dump if an error occurs',
   '   - `prefix`:    prefix for the tests in the xml reports',
@@ -176,6 +180,7 @@ const optionsDefaults = {
   'agencySize': 3,
   'agencyWaitForSync': false,
   'agencySupervision': true,
+  'bindBroadcast': false,
   'build': '',
   'buildType': (platform.substr(0, 3) === 'win') ? 'RelWithDebInfo':'',
   'cleanup': true,
@@ -200,12 +205,15 @@ const optionsDefaults = {
   'loopSleepWhen': 1,
   'minPort': 1024,
   'maxPort': 32768,
+  'memory': undefined,
   'memprof': false,
   'onlyNightly': false,
   'password': '',
   'protocol': 'tcp',
   'replication': false,
   'rr': false,
+  'rtasource': fs.makeAbsolute(fs.join('.', '3rdParty', 'rta-makedata')),
+  'rtaNegFilter': '',
   'exceptionFilter': null,
   'exceptionCount': 1,
   'sanitizer': isSan,
@@ -452,7 +460,7 @@ function loadTestSuites () {
   testFuncs['auto'] = autoTest;
 }
 
-function translateTestList(cases) {
+function translateTestList(cases, options) {
   let caselist = [];
   const expandWildcard = ( name ) => {
     if (!name.endsWith('*')) {
@@ -470,6 +478,10 @@ function translateTestList(cases) {
       if (testFuncs.hasOwnProperty(which)) {
         caselist.push(which);
       } else {
+        if (fs.exists(which)) {
+          options.test = which;
+          return translateTestList(['auto'], options);
+        }
         print('Unknown test "' + which + '"\nKnown tests are: ' + Object.keys(testFuncs).sort().join(', '));
         throw new Error("USAGE ERROR");
       }
@@ -511,7 +523,7 @@ function iterateTests(cases, options) {
     // we are applying the failed filter -> only consider cases with failed tests
     cases = _.filter(cases, c => options.failed.hasOwnProperty(c));
   }
-  caselist = translateTestList(cases);
+  caselist = translateTestList(cases, options);
   let optionsList = [];
   if (options.optionsJson != null) {
     optionsList = JSON.parse(options.optionsJson);

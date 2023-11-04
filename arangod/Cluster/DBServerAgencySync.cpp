@@ -24,6 +24,7 @@
 #include "DBServerAgencySync.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/GlobalSerialization.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
@@ -282,6 +283,11 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     // locked *now*. Then `getLocalCollections`.
     currentShardLocks = mfeature.getShardLocks();
 
+    TRI_IF_FAILURE("Maintenance::BeforePhaseTwo") {
+      observeGlobalEvent("Maintenance::BeforePhaseTwo",
+                         ServerState::instance()->getShortName());
+    }
+
     local.clear();
     glc = getLocalCollections(dirty, local);
     // We intentionally refetch local collections here, such that phase 2
@@ -302,6 +308,11 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     tmp = arangodb::maintenance::phaseTwo(plan, current, currentIndex, dirty,
                                           local, serverId, mfeature, rb,
                                           currentShardLocks);
+
+    TRI_IF_FAILURE("Maintenance::AfterPhaseTwo") {
+      observeGlobalEvent("Maintenance::AfterPhaseTwo",
+                         ServerState::instance()->getShortName());
+    }
 
     LOG_TOPIC("dfc54", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo done";

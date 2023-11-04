@@ -32,6 +32,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
+#include "Basics/GlobalSerialization.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/RecursiveLocker.h"
@@ -1665,6 +1666,23 @@ void ClusterInfo::loadPlan() {
             systemDB->setShardingPrototype(ShardingPrototype::Graphs);
           }
         }
+
+        // The systemDB does initially set the sharding attribute. Therefore,
+        // we need to set it here.
+        if (newPlan.contains(StaticStrings::SystemDatabase)) {
+          auto planSlice = newPlan[StaticStrings::SystemDatabase]->slice();
+          if (planSlice.isArray() && planSlice.length() == 1) {
+            if (planSlice.at(0).isObject()) {
+              auto entrySlice = planSlice.at(0);
+              auto path = std::vector<std::string>{
+                  "arango", "Plan", "Databases", StaticStrings::SystemDatabase,
+                  StaticStrings::Sharding};
+              if (entrySlice.hasKey(path) && entrySlice.get(path).isString()) {
+                systemDB->setSharding(entrySlice.get(path).copyString());
+              }
+            }
+          }
+        }
       }
     }
   }
@@ -1923,7 +1941,18 @@ void ClusterInfo::loadCurrent() {
             collectionDataCurrent->servers(shardID)  // args
         );
 
+        // We do not expect the list of servers to be empty, but who knows???
+        std::string newLeader = servers->empty() ? "" : servers->front();
+
         newShardIds.insert_or_assign(std::move(shardID), std::move(servers));
+
+        TRI_IF_FAILURE("ClusterInfo::loadCurrentSeesLeader") {
+          if (!newLeader.empty()) {
+            std::string myShortName = ServerState::instance()->getShortName();
+            observeGlobalEvent("ClusterInfo::loadCurrentSeesLeader",
+                               myShortName + ":" + shardID + ":" + newLeader);
+          }
+        }
       }
 
       databaseCollections.try_emplace(std::move(collectionName),
@@ -1977,6 +2006,11 @@ void ClusterInfo::loadCurrent() {
 
   auto diff = duration<float, std::milli>(clock::now() - start).count();
   _lcTimer.count(diff);
+
+  TRI_IF_FAILURE("ClusterInfo::loadCurrentDone") {
+    observeGlobalEvent("ClusterInfo::loadCurrentDone",
+                       ServerState::instance()->getShortName());
+  }
 }
 
 /// @brief ask about a collection

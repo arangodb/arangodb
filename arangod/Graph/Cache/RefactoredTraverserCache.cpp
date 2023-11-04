@@ -175,7 +175,6 @@ bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
                   } else {
                     result = aql::AqlValue(edge);
                   }
-                  result = aql::AqlValue(edge);
                 } else if constexpr (std::is_same_v<ResultType,
                                                     velocypack::Builder>) {
                   if (!_edgeProjections.empty()) {

@@ -66,7 +66,7 @@ auto LimitExecutor::calculateUpstreamCall(AqlCall const& clientCall) const
   // our limit, and take the minimum of this and the downstream limit.
   auto const localLimitMinusDownstreamOffset =
       remainingLimit() - limitedClientOffset;
-  auto const limit = std::min<AqlCall::Limit>(clientCall.getLimit(),
+  auto const limit = std::min<AqlCall::Limit>(clientCall.getUnclampedLimit(),
                                               localLimitMinusDownstreamOffset);
 
   // Generally, we create a hard limit. However, if we get a soft limit from
