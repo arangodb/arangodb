@@ -641,7 +641,6 @@ void GatherNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
   for (auto& it : _elements) {
     it.var = Variable::replace(it.var, replacements);
-    it.var = v;
     it.attributePath.clear();
   }
 }
