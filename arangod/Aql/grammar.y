@@ -524,6 +524,7 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %type <node> numeric_value;
 %type <intval> update_or_replace;
 %type <node> quantifier;
+%type <node> upsert_input;
 
 
 /* define start token of language */
@@ -1389,13 +1390,95 @@ update_or_replace:
     }
   ;
 
+upsert_input:
+    object {
+      $$ = $1;
+    }
+  | bind_parameter {
+      $$ = $1;
+    }
+  ;
+
 upsert_statement:
-    T_UPSERT {
+    T_UPSERT variable_name {
       // reserve a variable named "$OLD", we might need it in the update expression
       // and in a later return thing
-      parser->pushStack(parser->ast()->createNodeVariable(Variable::NAME_OLD, true));
-    } expression {
+      AstNode* variableNode = parser->ast()->createNodeVariable(Variable::NAME_OLD, true);
+      parser->pushStack(variableNode);
+
+      auto scopes = parser->ast()->scopes();
+
+      scopes->start(arangodb::aql::AQL_SCOPE_SUBQUERY);
+      parser->ast()->startSubQuery();
+
+      scopes->start(arangodb::aql::AQL_SCOPE_FOR);
+      std::string_view variableName($2.value, $2.length);
+//      AstNode* variableNode = parser->ast()->createNodeVariable(variableName, true);
+      auto forNode = parser->ast()->createNodeForUpsert(variableName.data(), variableName.size(), parser->ast()->createNodeArray(), false);
+      parser->ast()->addOperation(forNode);
+      parser->pushStack(forNode);
+    } T_FILTER expression {
+      AstNode* forNode = static_cast<AstNode*>(parser->popStack());
       AstNode* variableNode = static_cast<AstNode*>(parser->popStack());
+      auto filterNode = parser->ast()->createNodeFilter($5);
+      parser->ast()->addOperation(filterNode);
+
+      auto offsetValue = parser->ast()->createNodeValueInt(0);
+      auto limitValue = parser->ast()->createNodeValueInt(1);
+      auto limitNode = parser->ast()->createNodeLimit(offsetValue, limitValue);
+      parser->ast()->addOperation(limitNode);
+
+      auto refNode = parser->ast()->createNodeReference(static_cast<Variable const*>(forNode->getMember(0)->getData()));
+      auto returnNode = parser->ast()->createNodeReturn(refNode);
+      parser->ast()->addOperation(returnNode);
+      auto scopes = parser->ast()->scopes();
+      scopes->endNested();
+
+      AstNode* subqueryNode = parser->ast()->endSubQuery();
+      scopes->endCurrent();
+
+      std::string const subqueryName = parser->ast()->variables()->nextName();
+      auto subQuery = parser->ast()->createNodeLet(subqueryName.data(), subqueryName.size(), subqueryNode, false);
+      parser->ast()->addOperation(subQuery);
+
+      auto index = parser->ast()->createNodeValueInt(0);
+      auto firstDoc = parser->ast()->createNodeLet(variableNode, parser->ast()->createNodeIndexedAccess(parser->ast()->createNodeReference(subqueryName), index));
+      parser->ast()->addOperation(firstDoc);
+
+      parser->pushStack(forNode);
+    } T_INSERT expression update_or_replace expression in_or_into_collection options {
+      AstNode* forNode = static_cast<AstNode*>(parser->popStack());
+      forNode->changeMember(1, $11);
+      auto* forOptionsNode = parser->ast()->createNodeObject();
+      auto* upsertOptionsNode = parser->ast()->createNodeObject();
+      if ($12 != nullptr && $12->type == NODE_TYPE_OBJECT) {
+        for (size_t i = 0; i < $12->numMembers(); ++i) {
+          auto nodeMember = $12->getMember(i);
+          if (nodeMember->type == NODE_TYPE_OBJECT_ELEMENT) {
+            std::string_view nodeMemberName = nodeMember->getStringView();
+            if (nodeMemberName == arangodb::StaticStrings::IndexHintOption || 
+                nodeMemberName == arangodb::StaticStrings::IndexHintOptionForce ||
+                nodeMemberName == arangodb::StaticStrings::IndexHintDisableIndex ||
+                nodeMemberName == arangodb::StaticStrings::UseCache) {
+              forOptionsNode->addMember(nodeMember);
+            } else {
+              upsertOptionsNode->addMember(nodeMember);
+            }
+          }
+        }
+        forNode->changeMember(2, forOptionsNode);
+      }
+      if (!parser->configureWriteQuery($11, $12)) {
+        YYABORT;
+      }
+
+      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($9), parser->ast()->createNodeReference(Variable::NAME_OLD), $8, $10, $11, upsertOptionsNode);
+      parser->ast()->addOperation(node);
+    }
+  | T_UPSERT upsert_input {
+      // reserve a variable named "$OLD", we might need it in the update expression
+      // and in a later return thing
+      AstNode* variableNode = parser->ast()->createNodeVariable(Variable::NAME_OLD, true);
 
       auto scopes = parser->ast()->scopes();
 
@@ -1407,7 +1490,7 @@ upsert_statement:
       auto forNode = parser->ast()->createNodeForUpsert(variableName.c_str(), variableName.size(), parser->ast()->createNodeArray(), false);
       parser->ast()->addOperation(forNode);
 
-      auto filterNode = parser->ast()->createNodeUpsertFilter(parser->ast()->createNodeReference(variableName), $3);
+      auto filterNode = parser->ast()->createNodeUpsertFilter(parser->ast()->createNodeReference(variableName), $2);
       parser->ast()->addOperation(filterNode);
 
       auto offsetValue = parser->ast()->createNodeValueInt(0);
@@ -1434,12 +1517,12 @@ upsert_statement:
       parser->pushStack(forNode);
     } T_INSERT expression update_or_replace expression in_or_into_collection options {
       AstNode* forNode = static_cast<AstNode*>(parser->popStack());
-      forNode->changeMember(1, $9);
+      forNode->changeMember(1, $8);
       auto* forOptionsNode = parser->ast()->createNodeObject();
       auto* upsertOptionsNode = parser->ast()->createNodeObject();
-      if ($10 != nullptr && $10->type == NODE_TYPE_OBJECT) {
-        for (size_t i = 0; i < $10->numMembers(); ++i) {
-          auto nodeMember = $10->getMember(i);
+      if ($9 != nullptr && $9->type == NODE_TYPE_OBJECT) {
+        for (size_t i = 0; i < $9->numMembers(); ++i) {
+          auto nodeMember = $9->getMember(i);
           if (nodeMember->type == NODE_TYPE_OBJECT_ELEMENT) {
             std::string_view nodeMemberName = nodeMember->getStringView();
             if (nodeMemberName == arangodb::StaticStrings::IndexHintOption || 
@@ -1454,11 +1537,11 @@ upsert_statement:
         }
         forNode->changeMember(2, forOptionsNode);
       }
-      if (!parser->configureWriteQuery($9, $10)) {
+      if (!parser->configureWriteQuery($8, $9)) {
         YYABORT;
       }
 
-      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($7), parser->ast()->createNodeReference(Variable::NAME_OLD), $6, $8, $9, upsertOptionsNode);
+      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($6), parser->ast()->createNodeReference(Variable::NAME_OLD), $5, $7, $8, upsertOptionsNode);
       parser->ast()->addOperation(node);
     }
   ;

@@ -1,6 +1,17 @@
 devel
 -----
 
+* Support alternative syntax for UPSERT queries, so that arbitrary filter
+  conditions can be used. The alternative syntax is:
+
+      UPSERT <output-variable> 
+      FILTER <expression> 
+      UPDATE|REPLACE ...
+
+  The key change here is that <output-variable> will populate a variable
+  with the to-be-found document, and this same variable can be used in the
+  following filter condition to filter out the document.
+
 * Silence TSAN for shutdown for access to the SchedulerFeature::SCHEDULER
   pointer using atomic references.
 
