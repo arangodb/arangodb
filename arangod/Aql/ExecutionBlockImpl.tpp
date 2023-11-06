@@ -304,12 +304,8 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(
       _lastRange{MainQueryState::HASMORE},
       _upstreamRequest{},
       _clientRequest{},
-      _stackBeforeWaiting{AqlCallList{AqlCall{}}},
+      _stackBeforeWaiting{AqlCallStack::Empty{}},
       _hasUsedDataRangeBlock{false} {
-  // Break the stack before waiting.
-  // We should not use this here.
-  _stackBeforeWaiting.popCall();
-
   if (_exeNode->isCallstackSplitEnabled()) {
     _callstackSplit = std::make_unique<CallstackSplit>(*this);
   }
@@ -938,11 +934,6 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
     if (SchedulerFeature::SCHEDULER != nullptr &&
         std::get<ExecutionState>(result) == ExecutionState::HASMORE &&
         _exeNode->isAsyncPrefetchEnabled() && !ctx.clientCall.hasLimit()) {
-      // the only node types that use a limit are the LimitNode (and its
-      // dependencies in the plan) and EnumerateViewNode.
-      TRI_ASSERT(!ctx.clientCall.hasLimit() ||
-                 getPlanNode()->getType() ==
-                     ExecutionNode::ENUMERATE_IRESEARCH_VIEW);
       // Async prefetching.
       // we can only use async prefetching if the call does not use a limit.
       // this is because otherwise the prefetching could lead to an overfetching

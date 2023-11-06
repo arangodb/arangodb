@@ -48,10 +48,6 @@ function ahuacatlRefAccessAttributeTestSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
     setUpAll : function () {
       internal.db._drop("UnitTestsAhuacatlRefAccess");
       collection = internal.db._create("UnitTestsAhuacatlRefAccess");
@@ -65,10 +61,6 @@ function ahuacatlRefAccessAttributeTestSuite () {
       collection.ensureIndex({ type: "persistent", fields: ["val"] });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
     tearDownAll : function () {
       internal.db._drop("UnitTestsAhuacatlRefAccess");
     },
@@ -78,7 +70,7 @@ function ahuacatlRefAccessAttributeTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRefEq : function () {
-      var expected = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ];
+      const expected = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ];
 
       assertEqual(expected, runQuery("(i.val == j.val)"));
       assertEqual(expected, runQuery("(j.val == i.val)"));
@@ -89,7 +81,7 @@ function ahuacatlRefAccessAttributeTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRefGt : function () {
-      var expected = [ 2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10 ];
+      const expected = [ 2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10 ];
 
       assertEqual(expected, runQuery("(i.val > j.val)"));
       assertEqual(expected, runQuery("(j.val < i.val)")); 
@@ -100,7 +92,7 @@ function ahuacatlRefAccessAttributeTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRefGe : function () {
-      var expected = [ 1, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 ];
+      const expected = [ 1, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 ];
 
       assertEqual(expected, runQuery("(i.val >= j.val)"));
       assertEqual(expected, runQuery("(j.val <= i.val)"));
@@ -111,7 +103,7 @@ function ahuacatlRefAccessAttributeTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRefLt : function () {
-      var expected = [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 8, 8, 9 ];
+      const expected = [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 8, 8, 9 ];
 
       assertEqual(expected, runQuery("(i.val < j.val)"));
       assertEqual(expected, runQuery("(j.val > i.val)"));
@@ -122,7 +114,7 @@ function ahuacatlRefAccessAttributeTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRefLe : function () {
-      var expected = [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 9, 9, 10 ];
+      const expected = [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 9, 9, 10 ];
 
       assertEqual(expected, runQuery("(i.val <= j.val)"));
       assertEqual(expected, runQuery("(j.val >= i.val)"));
@@ -133,7 +125,7 @@ function ahuacatlRefAccessAttributeTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRefMergeAnd1 : function () {
-      var expected = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ];
+      const expected = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ];
 
       assertEqual(expected, runQuery("(i.val == j.val && i.val >= j.val)"));
       assertEqual(expected, runQuery("(j.val == i.val && j.val <= i.val)"));
@@ -159,7 +151,7 @@ function ahuacatlRefAccessAttributeTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRefMergeAnd2 : function () {
-      var expected = [ 2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10 ];
+      const expected = [ 2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10 ];
 
       assertEqual(expected, runQuery("(i.val > j.val && i.val >= j.val)"));
       assertEqual(expected, runQuery("(j.val < i.val && j.val <= i.val)"));
@@ -172,7 +164,7 @@ function ahuacatlRefAccessAttributeTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRefMergeAnd3 : function () {
-      var expected = [ 1, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 ];
+      const expected = [ 1, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 ];
 
       assertEqual(expected, runQuery("(i.val >= j.val && i.val >= j.val)"));
       assertEqual(expected, runQuery("(j.val <= i.val && j.val <= i.val)"));
@@ -183,7 +175,7 @@ function ahuacatlRefAccessAttributeTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRefMergeAnd4 : function () {
-      var expected = [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 8, 8, 9 ];
+      const expected = [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 8, 8, 9 ];
 
       assertEqual(expected, runQuery("(i.val < j.val && i.val <= j.val)"));
       assertEqual(expected, runQuery("(j.val > i.val && j.val >= i.val)"));
@@ -196,7 +188,7 @@ function ahuacatlRefAccessAttributeTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRefMergeAnd5 : function () {
-      var expected = [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 9, 9, 10 ];
+      const expected = [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 9, 9, 10 ];
 
       assertEqual(expected, runQuery("(i.val <= j.val && i.val <= j.val)"));
       assertEqual(expected, runQuery("(j.val >= i.val && j.val >= i.val)"));
@@ -207,7 +199,7 @@ function ahuacatlRefAccessAttributeTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRefMergeAnd6 : function () {
-      var expected = [ ];
+      const expected = [ ];
 
       assertEqual(expected, runQuery("(i.val > j.val && i.val < j.val)"));
       assertEqual(expected, runQuery("(j.val < i.val && j.val > i.val)"));

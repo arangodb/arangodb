@@ -22,18 +22,37 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/JoinExecutor.h"
-#include "Aql/OutputAqlItemRow.h"
+#include "JoinExecutor.h"
 #include "Aql/Collection.h"
+#include "Aql/DocumentExpressionContext.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/QueryContext.h"
-#include "VocBase/LogicalCollection.h"
+#include "Basics/system-compiler.h"
 #include "Logger/LogMacros.h"
-#include "DocumentExpressionContext.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
 #define LOG_JOIN LOG_DEVEL_IF(false)
+
+RegisterId JoinExecutorInfos::registerForVariable(
+    VariableId id) const noexcept {
+  auto it = varsToRegister.find(id);
+  if (it != varsToRegister.end()) {
+    return it->second;
+  }
+  return RegisterId::maxRegisterId;
+}
+
+void JoinExecutorInfos::determineProjectionsForRegisters() {
+  if (!projectionsInitialized) {
+    for (auto& it : indexes) {
+      it.hasProjectionsForRegisters = it.projections.hasOutputRegisters();
+    }
+    projectionsInitialized = true;
+  }
+}
 
 JoinExecutor::~JoinExecutor() = default;
 
@@ -106,6 +125,8 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   AqlCall upstreamCall{};
   upstreamCall.fullCount = output.getClientCall().fullCount;
 
+  _infos.determineProjectionsForRegisters();
+
   bool hasMore = false;
   while (inputRange.hasDataRow() && !output.isFull()) {
     if (!_currentRow) {
@@ -113,7 +134,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       _strategy->reset();
     }
 
-    std::size_t rowCount = 0;
+    [[maybe_unused]] std::size_t rowCount = 0;
     hasMore = _strategy->next([&](std::span<LocalDocumentId> docIds,
                                   std::span<VPackSlice> projections) -> bool {
       LOG_JOIN << "BEGIN OF ROW " << rowCount++;
@@ -136,7 +157,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                return true;
                              }}},
                          {});
-        if (result.fail()) {
+        if (ADB_UNLIKELY(result.fail())) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               result.errorNumber(),
               basics::StringUtils::concatT(
@@ -151,18 +172,36 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
       std::size_t projectionsOffset = 0;
 
-      auto buildProjections = [&](size_t k, aql::Projections& proj) {
+      auto buildProjections = [&](size_t k, aql::Projections const& proj,
+                                  bool hasProjectionsForRegisters) {
         // build the document from projections
         std::span<VPackSlice> projectionRange = {
             projections.begin() + projectionsOffset,
             projections.begin() + projectionsOffset + proj.size()};
 
         auto data = SpanCoveringData{projectionRange};
-        _projectionsBuilder.clear();
-        _projectionsBuilder.openObject(true);
-        proj.toVelocyPackFromIndexCompactArray(_projectionsBuilder, data,
-                                               &_trx);
-        _projectionsBuilder.close();
+        if (!hasProjectionsForRegisters) {
+          // write all projections combined into the global output register
+          // recycle our Builder object
+          _projectionsBuilder.clear();
+          _projectionsBuilder.openObject(true);
+          proj.toVelocyPackFromIndexCompactArray(_projectionsBuilder, data,
+                                                 &_trx);
+          _projectionsBuilder.close();
+        } else {
+          // write projections into individual output registers
+          proj.produceFromIndexCompactArray(
+              _projectionsBuilder, data, &_trx,
+              [&](Variable const* variable, velocypack::Slice slice) {
+                if (slice.isNone()) {
+                  slice = VPackSlice::nullSlice();
+                }
+                RegisterId registerId =
+                    _infos.registerForVariable(variable->id);
+                TRI_ASSERT(registerId != RegisterId::maxRegisterId);
+                output.moveValueInto(registerId, _currentRow, slice);
+              });
+        }
       };
 
       for (std::size_t k = 0; k < docIds.size(); k++) {
@@ -180,6 +219,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
         bool filtered = false;
 
         auto filterCallback = [&](auto docPtr) {
+          TRI_ASSERT(!useFilterProjections);
           auto doc = extractSlice(docPtr);
           LOG_JOIN << "INDEX " << k << " read document " << doc.toJson();
           GenericDocumentExpressionContext ctx{_trx,
@@ -196,7 +236,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
           LOG_JOIN << "INDEX " << k << " filter = " << std::boolalpha
                    << filtered;
 
-          if (!filtered && !useFilterProjections) {
+          if (!filtered) {
             // add document to the list
             _documents[k] = std::make_unique<std::string>(
                 doc.template startAs<char>(), doc.byteSize());
@@ -261,17 +301,34 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
         auto docProduceCallback = [&](auto docPtr) {
           auto doc = extractSlice(docPtr);
           if (idx.projections.empty()) {
+            // no projections
             moveValueIntoRegister(output,
                                   _infos.indexes[k].documentOutputRegister,
                                   _currentRow, docPtr);
-          } else {
+          } else if (!idx.hasProjectionsForRegisters) {
+            // write all projections combined into the global output register
+            // recycle our Builder object
             _projectionsBuilder.clear();
             _projectionsBuilder.openObject(true);
             idx.projections.toVelocyPackFromDocument(_projectionsBuilder, doc,
                                                      &_trx);
             _projectionsBuilder.close();
+
             output.moveValueInto(_infos.indexes[k].documentOutputRegister,
                                  _currentRow, _projectionsBuilder.slice());
+          } else {
+            // write projections into individual output registers
+            idx.projections.produceFromDocument(
+                _projectionsBuilder, doc, &_trx,
+                [&](Variable const* variable, velocypack::Slice slice) {
+                  if (slice.isNone()) {
+                    slice = VPackSlice::nullSlice();
+                  }
+                  RegisterId registerId =
+                      _infos.registerForVariable(variable->id);
+                  TRI_ASSERT(registerId != RegisterId::maxRegisterId);
+                  output.moveValueInto(registerId, _currentRow, slice);
+                });
           }
         };
 
@@ -281,9 +338,12 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
           docProduceCallback.operator()<std::unique_ptr<std::string>&>(docPtr);
         } else {
           if (idx.projections.usesCoveringIndex(idx.index)) {
-            buildProjections(k, idx.projections);
-            output.moveValueInto(_infos.indexes[k].documentOutputRegister,
-                                 _currentRow, _projectionsBuilder.slice());
+            buildProjections(k, idx.projections,
+                             idx.hasProjectionsForRegisters);
+            if (!idx.hasProjectionsForRegisters) {
+              output.moveValueInto(_infos.indexes[k].documentOutputRegister,
+                                   _currentRow, _projectionsBuilder.slice());
+            }
 
             projectionsOffset += idx.projections.size();
           } else {
@@ -489,6 +549,7 @@ void JoinExecutor::constructStrategy() {
   // TODO actually we want to have different strategies, like hash join and
   // special implementations for n = 2, 3, ...
   // TODO maybe make this an template parameter
-  _strategy =
-      IndexJoinStrategyFactory{}.createStrategy(std::move(indexDescription), 1);
+  _strategy = IndexJoinStrategyFactory{}.createStrategy(
+      std::move(indexDescription), 1,
+      _infos.query->queryOptions().desiredJoinStrategy);
 }

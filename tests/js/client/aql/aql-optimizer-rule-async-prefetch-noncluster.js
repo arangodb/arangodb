@@ -101,8 +101,12 @@ function optimizerRuleTestSuite () {
         // subquery
         [ "FOR i IN 1..100 LET sub = (FOR doc IN " + cn + " SORT doc.value RETURN doc.value) FILTER LENGTH(sub) > 0 RETURN sub[0]", [ ["SingletonNode", false], ["SubqueryStartNode", false], ["EnumerateCollectionNode", false], ["SortNode", false], ["SubqueryEndNode", false], ["CalculationNode", true], ["FilterNode", true], ["CalculationNode", true], ["CalculationNode", true], ["EnumerateListNode", true], ["ReturnNode", false] ] ],
         // traversal
-        [ "FOR v, e, p IN 1..3 OUTBOUND '" + cn + "/test' " + en + " FILTER v.value == 1 RETURN p", [ ["SingletonNode", false], ["TraversalNode", false], ["ReturnNode", false] ] ],
-        [ "FOR v, e, p IN 1..3 OUTBOUND '" + cn + "/test' " + en + " FILTER NOOPT(v.value == 1) SORT e.value RETURN p", [ ["SingletonNode", false], ["TraversalNode", false], ["CalculationNode", false], ["FilterNode", false], ["CalculationNode", false], ["SortNode", false], ["ReturnNode", false] ] ],
+        [ "FOR v, e, p IN 1..3 OUTBOUND '" + cn + "/test' " + en + " FILTER v.value == 1 RETURN p", [ ["SingletonNode", false], ["TraversalNode", true], ["ReturnNode", false] ] ],
+        [ "FOR v, e, p IN 1..3 OUTBOUND '" + cn + "/test' " + en + " FILTER NOOPT(v.value == 1) SORT e.value RETURN p", [ ["SingletonNode", false], ["TraversalNode", true], ["CalculationNode", false], ["FilterNode", true], ["CalculationNode", true], ["SortNode", true], ["ReturnNode", false] ] ],
+        // path queries
+        [ "FOR r IN OUTBOUND SHORTEST_PATH '" + cn + "/test1' TO '" + cn + "/test2' " + en + " FILTER LENGTH(r) > 10 RETURN r", [ ["SingletonNode", false], ["ShortestPathNode", true], ["CalculationNode", true], ["FilterNode", true], ["ReturnNode", false] ] ],
+        [ "FOR r IN OUTBOUND K_SHORTEST_PATHS '" + cn + "/test1' TO '" + cn + "/test2' " + en + " FILTER LENGTH(r) > 10 RETURN r", [ ["SingletonNode", false], ["EnumeratePathsNode", true], ["CalculationNode", true], ["FilterNode", true], ["ReturnNode", false] ] ],
+        [ "FOR r IN 1..3 OUTBOUND K_PATHS '" + cn + "/test1' TO '" + cn + "/test2' " + en + " FILTER LENGTH(r) > 10 RETURN r", [ ["SingletonNode", false], ["EnumeratePathsNode", true], ["CalculationNode", true], ["FilterNode", true], ["ReturnNode", false] ] ],
       ];
 
       queries.forEach(function(query) {
