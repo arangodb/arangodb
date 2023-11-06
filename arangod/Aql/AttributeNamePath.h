@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <functional>
 #include <iosfwd>
 #include <string>
