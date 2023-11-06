@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global fail, assertEqual, assertNotEqual, assertTrue, AQL_EXECUTE, AQL_EXPLAIN */
+/*global fail, assertEqual, assertNotEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -166,7 +166,7 @@ const generateTestFunction = function (config) {
   return function () {
     const query = buildQuery(config);
 
-    const plan = db._createStatement({query: query, options: queryOptions}).explain().plan;
+    const plan = db._createStatement({query, options: queryOptions}).explain().plan;
     const nodes = plan.nodes.map(x => x.type);
     if (nodes.indexOf("JoinNode") === -1) {
       db._explain(query, null, queryOptions);
