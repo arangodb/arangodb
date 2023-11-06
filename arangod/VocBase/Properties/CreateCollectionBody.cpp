@@ -834,7 +834,7 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromRestoreAPIBody(
     if (res.fail() && res.is(TRI_ERROR_ONLY_ENTERPRISE)) {
       // This API always returns BAD_PARAMETER for community, so we need to
       // rewrite the message
-      return Result{TRI_ERROR_BAD_PARAMETER, std::move(res.errorMessage())};
+      return Result{TRI_ERROR_BAD_PARAMETER, res.errorMessage()};
     }
     return res;
   }
