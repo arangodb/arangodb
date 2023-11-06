@@ -488,7 +488,7 @@ bool JoinNode::isDeterministic() {
       return false;
     }
   }
-  return false;
+  return true;
 }
 
 Index::FilterCosts JoinNode::costsForIndexInfo(
