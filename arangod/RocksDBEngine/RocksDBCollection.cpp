@@ -542,7 +542,7 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
 
   // until here we have been completely read only.
   // modifications start now...
-  Result res = co_await asResult([&]() -> futures::Future<Result> {
+  auto lambda = [&]() -> futures::Future<Result> {
     Result res;
 
     // Step 3. add index to collection entry (for removal after a crash)
@@ -646,7 +646,8 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     }
 
     co_return res;
-  }());
+  };
+  Result res = co_await asResult(lambda());
 
   if (res.ok()) {
     created = true;
