@@ -104,7 +104,7 @@ function CollectionSuite() {
 
       // Test Selectivity Estimates
       {
-        internal.waitForEstimatorSync(); // make sure estimates are consistent
+        arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");  // make sure estimates are consistent
         let indexes = c.getIndexes(true);
         for (let i of indexes) {
           switch (i.type) {

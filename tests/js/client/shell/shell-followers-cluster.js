@@ -51,7 +51,7 @@ function FollowersSuite () {
     testNoReplication : function () {
       let c = db._create(cn, { numberOfShards: 5, replicationFactor: 1 });
 
-      let result = require("@arangodb/cluster").shardDistribution().results[cn];
+      let result = arango.GET("/_admin/cluster/shardDistribution").results[cn];
 
       // validate Plan
       assertTrue(result.hasOwnProperty("Plan"));
@@ -80,7 +80,7 @@ function FollowersSuite () {
     testWithReplication : function () {
       let c = db._create(cn, { numberOfShards: 5, replicationFactor: 2 });
 
-      let result = require("@arangodb/cluster").shardDistribution().results[cn];
+      let result = arango.GET("/_admin/cluster/shardDistribution").results[cn];
 
       // validate Plan
       assertTrue(result.hasOwnProperty("Plan"));
@@ -124,7 +124,7 @@ function FollowersSuite () {
         }
 
         internal.wait(0.5, false);
-        result = require("@arangodb/cluster").shardDistribution().results[cn];
+        result = arango.GET("/_admin/cluster/shardDistribution").results[cn];
       }
 
       assertEqual(shards.length, found);
@@ -142,7 +142,7 @@ function FollowersSuite () {
       // sync.
       db._create(cn, { numberOfShards: 5, replicationFactor: 2 }, { waitForSyncReplication: false });
 
-      let result = require("@arangodb/cluster").shardDistribution().results[cn];
+      let result = arango.GET("/_admin/cluster/shardDistribution").results[cn];
 
       // validate Plan
       assertTrue(result.hasOwnProperty("Plan"));
@@ -175,7 +175,7 @@ function FollowersSuite () {
         });
 
         internal.wait(0.5, false);
-        result = require("@arangodb/cluster").shardDistribution().results[cn];
+        result = arango.GET("/_admin/cluster/shardDistribution").results[cn];
       }
     }
 

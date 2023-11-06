@@ -165,6 +165,7 @@ function DatabaseSuite () {
         c.count();
         fail();
       } catch (err) {
+        print(err)
         assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
       }
       
