@@ -42,9 +42,15 @@ template<typename T>
 struct FutureAwaitable {
   [[nodiscard]] auto await_ready() const noexcept -> bool { return false; }
   void await_suspend(std_coro::coroutine_handle<> coro) noexcept {
+    if (coro == nullptr) {
+      abort();
+    }
     std::move(_future).thenFinal(
         [coro, this](futures::Try<T>&& result) mutable noexcept {
           _result = std::move(result);
+          if (coro == nullptr) {
+            abort();
+          }
           coro.resume();
         });
   }

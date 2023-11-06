@@ -399,7 +399,7 @@ futures::Future<arangodb::Result> Indexes::getAll(
 static futures::Future<Result> EnsureIndexLocal(
     arangodb::LogicalCollection& collection, VPackSlice definition, bool create,
     VPackBuilder& output, std::shared_ptr<Indexes::ProgressTracker> progress) {
-  co_return co_await asResult([&]() -> futures::Future<futures::Unit> {
+  auto lambda = [&]() -> futures::Future<futures::Unit> {
     bool created = false;
     std::shared_ptr<arangodb::Index> idx;
 
@@ -427,7 +427,8 @@ static futures::Future<Result> EnsureIndexLocal(
           VPackValue(collection.name() + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
     b.close();
     output = VPackCollection::merge(tmp.slice(), b.slice(), false);
-  }());
+  };
+  co_return co_await asResult(lambda());
 }
 
 Result Indexes::ensureIndexCoordinator(
