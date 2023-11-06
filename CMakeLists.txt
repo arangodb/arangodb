@@ -973,6 +973,12 @@ else () # NOT MSVC
     if (CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL "11.1.0")
       set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=nonnull")
     endif()
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "13.0.0")
+      # the following 2 warning types need to be suppressed with newer
+      # versions of g++, as they produce a lot of false positives.
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=overloaded-virtual")
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=stringop-overflow")
+    endif()
   elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
     set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
