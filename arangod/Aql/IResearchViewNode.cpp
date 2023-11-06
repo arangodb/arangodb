@@ -501,72 +501,6 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view,
   return true;
 }
 
-// in loop or non-deterministic
-bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
-                     aql::Variable const& ref, aql::VarSet& vars) {
-  vars.clear();
-  aql::Ast::getReferencedVariables(&node, vars);
-  vars.erase(&ref);  // remove "our" variable
-  for (auto const* var : vars) {
-    auto* setter = plan.getVarSetBy(var->id);
-    if (!setter) {
-      // unable to find setter
-      continue;
-    }
-    switch (setter->getType()) {
-      case aql::ExecutionNode::ENUMERATE_COLLECTION:
-      case aql::ExecutionNode::ENUMERATE_LIST:
-      case aql::ExecutionNode::SUBQUERY:
-      case aql::ExecutionNode::SUBQUERY_END:
-      case aql::ExecutionNode::COLLECT:
-      case aql::ExecutionNode::TRAVERSAL:
-      case aql::ExecutionNode::INDEX:
-      case aql::ExecutionNode::JOIN:
-      case aql::ExecutionNode::SHORTEST_PATH:
-      case aql::ExecutionNode::ENUMERATE_PATHS:
-      case aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
-        // we're in the loop with dependent context
-        return true;
-      default:
-        break;
-    }
-    if (!setter->isDeterministic() || setter->getLoop() != nullptr) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/// @returns true if a given node is located inside a loop or subquery
-bool isInInnerLoopOrSubquery(aql::ExecutionNode const& node) {
-  auto* cur = &node;
-  while (true) {
-    auto const* dep = cur->getFirstDependency();
-    if (!dep) {
-      break;
-    }
-    switch (dep->getType()) {
-      case aql::ExecutionNode::ENUMERATE_COLLECTION:
-      case aql::ExecutionNode::INDEX:
-      case aql::ExecutionNode::JOIN:
-      case aql::ExecutionNode::TRAVERSAL:
-      case aql::ExecutionNode::ENUMERATE_LIST:
-      case aql::ExecutionNode::SHORTEST_PATH:
-      case aql::ExecutionNode::ENUMERATE_PATHS:
-      case aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
-        // we're in a loop
-        return true;
-      default:
-        break;
-    }
-    cur = dep;
-  }
-  TRI_ASSERT(cur);
-  // SINGLETON nodes in subqueries have id != 1
-  return cur->getType() == aql::ExecutionNode::SINGLETON &&
-         cur->id() != aql::ExecutionNodeId{1};
-}
-
 /// negative value - value is dirty
 /// _volatilityMask & 1 == volatile filter
 /// _volatilityMask & 2 == volatile sort
@@ -579,7 +513,8 @@ int evaluateVolatility(IResearchViewNode const& node) {
   // evaluate filter condition volatility
   auto& filterCondition = node.filterCondition();
   if (!isFilterConditionEmpty(&filterCondition) && inDependentScope) {
-    irs::set_bit<0>(hasDependencies(plan, filterCondition, outVariable, vars),
+    irs::set_bit<0>(hasDependencies(plan, filterCondition, outVariable, vars,
+                                    [](Variable const*) { return true; }),
                     mask);
   }
   // evaluate sort condition volatility
@@ -587,7 +522,8 @@ int evaluateVolatility(IResearchViewNode const& node) {
   if (!scorers.empty() && inDependentScope) {
     vars.clear();
     for (auto const& scorer : scorers) {
-      if (hasDependencies(plan, *scorer.node, outVariable, vars)) {
+      if (hasDependencies(plan, *scorer.node, outVariable, vars,
+                          [](Variable const*) { return true; })) {
         irs::set_bit<1>(mask);
         break;
       }
@@ -840,6 +776,8 @@ char const* kNodeViewMetaStored = "metaStored";
 #ifdef USE_ENTERPRISE
 char const* kNodeViewMetaTopK = "metaTopK";
 #endif
+// it serialization optimized for transfer 0 and uint32_t::max
+char const* kNodeViewImmutableParts = "immutableParts";
 
 void toVelocyPack(velocypack::Builder& node, SearchMeta const& meta,
                   bool needSort, [[maybe_unused]] bool needHeapSort) {
@@ -1130,6 +1068,75 @@ bool isFilterConditionEmpty(aql::AstNode const* filterCondition) noexcept {
   return filterCondition == &kAll;
 }
 
+bool isInInnerLoopOrSubquery(aql::ExecutionNode const& node) {
+  auto* cur = &node;
+  while (true) {
+    auto const* dep = cur->getFirstDependency();
+    if (!dep) {
+      break;
+    }
+    switch (dep->getType()) {
+      case aql::ExecutionNode::ENUMERATE_COLLECTION:
+      case aql::ExecutionNode::INDEX:
+      case aql::ExecutionNode::JOIN:
+      case aql::ExecutionNode::TRAVERSAL:
+      case aql::ExecutionNode::ENUMERATE_LIST:
+      case aql::ExecutionNode::SHORTEST_PATH:
+      case aql::ExecutionNode::ENUMERATE_PATHS:
+      case aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+        // we're in a loop
+        return true;
+      default:
+        break;
+    }
+    cur = dep;
+  }
+  TRI_ASSERT(cur);
+  // SINGLETON nodes in subqueries have id != 1
+  return cur->getType() == aql::ExecutionNode::SINGLETON &&
+         cur->id() != aql::ExecutionNodeId{1};
+}
+
+bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
+                     aql::Variable const& ref, aql::VarSet& vars,
+                     std::function<bool(aql::Variable const*)> callback) {
+  vars.clear();
+  aql::Ast::getReferencedVariables(&node, vars);
+  vars.erase(&ref);  // remove "our" variable
+  for (auto const* var : vars) {
+    auto* setter = plan.getVarSetBy(var->id);
+    if (!setter) {
+      // unable to find setter
+      continue;
+    }
+    switch (setter->getType()) {
+      case aql::ExecutionNode::ENUMERATE_COLLECTION:
+      case aql::ExecutionNode::ENUMERATE_LIST:
+      case aql::ExecutionNode::SUBQUERY:
+      case aql::ExecutionNode::SUBQUERY_END:
+      case aql::ExecutionNode::COLLECT:
+      case aql::ExecutionNode::TRAVERSAL:
+      case aql::ExecutionNode::INDEX:
+      case aql::ExecutionNode::JOIN:
+      case aql::ExecutionNode::SHORTEST_PATH:
+      case aql::ExecutionNode::ENUMERATE_PATHS:
+      case aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+        // we're in the loop with dependent context
+        if (callback(var)) {
+          return true;
+        }
+        break;
+      default:
+        if ((!setter->isDeterministic() || setter->getLoop() != nullptr) &&
+            callback(var)) {
+          return true;
+        }
+        break;
+    }
+  }
+  return false;
+}
+
 IResearchViewNode* IResearchViewNode::getByVar(
     aql::ExecutionPlan const& plan, aql::Variable const& var) noexcept {
   auto* varOwner = plan.getVarSetBy(var.id);
@@ -1292,6 +1299,12 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
   if (volatilityMaskSlice.isNumber()) {
     _volatilityMask = volatilityMaskSlice.getNumber<int>();
   }
+
+  auto const immutablePartsSlice = base.get(kNodeViewImmutableParts);
+  if (immutablePartsSlice.isInteger()) {
+    _immutableParts = immutablePartsSlice.getNumber<uint32_t>() - 1U;
+  }
+
   // parse sort buckets and set them and sort
   auto const sortBucketsSlice = base.get(kNodePrimarySortBucketsParam);
   if (!sortBucketsSlice.isNone()) {
@@ -1653,6 +1666,10 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
   // volatility mask
   nodes.add(kNodeVolatilityParam, VPackValue(_volatilityMask));
 
+  if (_immutableParts != 0) {
+    nodes.add(kNodeViewImmutableParts, VPackValue{_immutableParts + 1U});
+  }
+
   // primary sort buckets
   bool const needSort = _sort && !_sort->empty();
   if (needSort) {
@@ -1722,6 +1739,7 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
   node->_shards = _shards;
   node->_options = _options;
   node->_volatilityMask = _volatilityMask;
+  node->_immutableParts = _immutableParts;
   node->_sort = _sort;
   node->_optState = _optState;
   if (outSearchDocId != nullptr) {
@@ -1871,7 +1889,7 @@ std::vector<aql::Variable const*> IResearchViewNode::getVariablesSetHere()
   } else if (!isNoMaterialization()) {
     ++reserve;
   }
-  if (searchDocIdVar()) {
+  if (_outSearchDocId != nullptr) {
     ++reserve;
   }
   vars.reserve(reserve);
@@ -1890,7 +1908,7 @@ std::vector<aql::Variable const*> IResearchViewNode::getVariablesSetHere()
   } else {
     vars.emplace_back(_outVariable);
   }
-  if (searchDocIdVar()) {
+  if (_outSearchDocId != nullptr) {
     vars.emplace_back(_outSearchDocId);
   }
   return vars;
@@ -2093,6 +2111,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         outVariable(),
         filterCondition(),
         volatility(),
+        _immutableParts,
         getRegisterPlan()->varInfo,  // ??? do we need this?
         getDepth(),
         std::move(outNonMaterializedViewRegs),

@@ -89,7 +89,7 @@ class IResearchViewExecutorInfos {
       iresearch::IResearchViewStoredValues const& storedValues,
       ExecutionPlan const& plan, Variable const& outVariable,
       AstNode const& filterCondition, std::pair<bool, bool> volatility,
-      VarInfoMap const& varInfoMap, int depth,
+      uint32_t immutableParts, VarInfoMap const& varInfoMap, int depth,
       iresearch::IResearchViewNode::ViewValuesRegisters&&
           outNonMaterializedViewRegs,
       iresearch::CountApproximate, iresearch::FilterOptimization,
@@ -126,6 +126,8 @@ class IResearchViewExecutorInfos {
   auto const& varInfoMap() const noexcept { return _varInfoMap; }
 
   int getDepth() const noexcept { return _depth; }
+
+  uint32_t immutableParts() const noexcept { return _immutableParts; }
 
   bool volatileSort() const noexcept { return _volatileSort; }
 
@@ -185,6 +187,7 @@ class IResearchViewExecutorInfos {
   iresearch::SearchMeta const* _meta;
   iresearch::ArangoSearchPool& _parallelExecutionPool;
   int const _depth;
+  uint32_t _immutableParts;
   bool _filterConditionIsEmpty;
   bool const _volatileSort;
   bool const _volatileFilter;
