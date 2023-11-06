@@ -353,7 +353,6 @@ function ahuacatlProfilerTestSuite() {
           {type: CalculationBlock, calls: 1, items: 1, filtered: 0},
           {type: EnumerateListBlock, calls: batches, items: rows, filtered: 0},
           {type: IndexBlock, calls: indexBatches, items: rows, filtered: 0},
-          {type: CalculationBlock, calls: indexBatches, items: rows, filtered: 0},
           {type: ReturnBlock, calls: indexBatches, items: rows, filtered: 0}
         ];
       };
@@ -427,7 +426,6 @@ function ahuacatlProfilerTestSuite() {
           {type: CalculationBlock, calls: 1, items: 1, filtered: 0},
           {type: EnumerateListBlock, calls: enumBatches, items: enumRows, filtered: 0},
           {type: IndexBlock, calls: indexBatches, items: indexRows, filtered: 0},
-          {type: CalculationBlock, calls: indexBatches, items: indexRows, filtered: 0},
           {type: ReturnBlock, calls: indexBatches, items: indexRows, filtered: 0}
         ];
       };
@@ -478,7 +476,6 @@ function ahuacatlProfilerTestSuite() {
         return [
           {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
           {type: IndexBlock, calls: batches, items: rows, filtered: 0},
-          {type: CalculationBlock, calls: batches, items: rows, filtered: 0},
           {type: ReturnBlock, calls: batches, items: rows, filtered: 0}
         ];
       };

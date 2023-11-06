@@ -381,10 +381,6 @@ class Try<void> {
 
   /// Set an exception value into this Try object.
   /// This has the effect of clearing any existing exception stored
-  void set_exception(std::exception_ptr e) noexcept { _exception = e; }
-
-  /// Set an exception value into this Try object.
-  /// This has the effect of clearing any existing exception stored
   void set_exception(std::exception_ptr const& e) noexcept { _exception = e; }
 
   /// Set an exception value into this Try object.

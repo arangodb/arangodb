@@ -79,7 +79,7 @@ class ViewSnapshotCookie final : public ViewSnapshot,
     return _segments[i];
   }
 
-  [[nodiscard]] ImmutablePartCache& immutablePartCache() noexcept final {
+  [[nodiscard]] ImmutablePartCache& immutablePartCache() const noexcept final {
     return _immutablePartCache;
   }
 
@@ -87,7 +87,7 @@ class ViewSnapshotCookie final : public ViewSnapshot,
   Links _links;  // should be first
   std::vector<IResearchDataStore::DataSnapshotPtr> _readers;
   Segments _segments;
-  ImmutablePartCache _immutablePartCache;
+  mutable ImmutablePartCache _immutablePartCache;
 };
 
 ViewSnapshotCookie::ViewSnapshotCookie(Links&& links) noexcept

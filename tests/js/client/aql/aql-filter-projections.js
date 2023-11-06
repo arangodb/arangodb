@@ -8,8 +8,7 @@ const ruleName = "reduce-extraction-to-projection";
 const cn = "UnitTestsOptimizer";
 
 function query_explain(query, bindVars = null, options = {}) {
-  let stmt = db._createStatement({query, bindVars: bindVars, options: options});
-  return stmt.explain();
+  return db._createStatement({query, bindVars, options}).explain();
 };
 
 function filterProjectionsPlansTestSuite () {

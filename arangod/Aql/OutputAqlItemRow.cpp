@@ -114,7 +114,7 @@ void OutputAqlItemRow::cloneValueInto(RegisterId registerId,
 template<class ItemRowType, class ValueType>
 void OutputAqlItemRow::moveValueWithoutRowCopy(RegisterId registerId,
                                                ValueType value) {
-  TRI_ASSERT(isOutputRegister(registerId));
+  TRI_ASSERT(isOutputRegister(registerId)) << registerId.value();
   // This is already implicitly asserted by isOutputRegister:
   TRI_ASSERT(registerId.isRegularRegister());
   TRI_ASSERT(registerId < getNumRegisters());

@@ -42,6 +42,8 @@
 
 #include "utils/bit_utils.hpp"
 
+#include <function2.hpp>
+
 #include <span>
 #include <string_view>
 #include <unordered_map>
@@ -62,6 +64,15 @@ using FieldRegisters = std::map<size_t, RegisterId>;
 namespace iresearch {
 
 bool isFilterConditionEmpty(aql::AstNode const* filterCondition) noexcept;
+
+/// @returns true if a given node is located inside a loop or subquery
+bool isInInnerLoopOrSubquery(aql::ExecutionNode const& node);
+
+// in loop or non-deterministic
+bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
+                     aql::Variable const& ref, aql::VarSet& vars,
+                     // TODO(MBkkt) fu2::function_view
+                     std::function<bool(aql::Variable const*)> callback);
 
 enum class MaterializeType {
   Undefined = 0,        // an undefined initial value
@@ -180,7 +191,8 @@ class IResearchViewNode final : public aql::ExecutionNode,
   void replaceAttributeAccess(aql::ExecutionNode const* self,
                               aql::Variable const* searchVariable,
                               std::span<std::string_view> attribute,
-                              aql::Variable const* replaceVariable) override;
+                              aql::Variable const* replaceVariable,
+                              size_t index) override;
 
   std::vector<aql::Variable const*> getVariablesSetHere() const final;
 
@@ -272,6 +284,12 @@ class IResearchViewNode final : public aql::ExecutionNode,
 
   aql::RegIdSet calcInputRegs() const;
 
+  bool hasOffsetInfo() const noexcept {
+    // TODO(MBkkt) should be different if we use same register for late
+    // materialization and offset info
+    return _outSearchDocId != nullptr;
+  }
+
   aql::Variable const* searchDocIdVar() const noexcept {
     return _outSearchDocId;
   }
@@ -293,6 +311,8 @@ class IResearchViewNode final : public aql::ExecutionNode,
   bool isNoMaterialization() const noexcept { return _noMaterialization; }
 
   void setNoMaterialization() noexcept { _noMaterialization = true; }
+
+  void setImmutableParts(uint32_t count) noexcept { _immutableParts = count; }
 
   static constexpr ptrdiff_t kSortColumnNumber{-1};
 
@@ -423,6 +443,8 @@ class IResearchViewNode final : public aql::ExecutionNode,
 
   // Volatility mask
   mutable int _volatilityMask{-1};
+
+  uint32_t _immutableParts{0};
 
   // Whether "no materialization" rule should be applied
   bool _noMaterialization{false};

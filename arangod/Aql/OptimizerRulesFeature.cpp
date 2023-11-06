@@ -453,7 +453,7 @@ pulled into the traversal, significantly reducing overhead.)");
 
   registerRule(
       "optimize-projections", optimizeProjections,
-      OptimizerRule::optimizeProjections,
+      OptimizerRule::optimizeProjectionsRule,
       OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
       R"(Remove projections that are no longer used and store projection
 results in separate output registers.)");
@@ -778,6 +778,12 @@ involved attributes are covered by regular indexes.)");
 avoid unnecessary reads.)");
 #endif
 
+  registerRule(
+      "immutable-search-condition", iresearch::immutableSearchCondition,
+      OptimizerRule::immutableSearchConditionRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Optimize immutable search condition for nested loops, we don't need to make real search many times, if we can cache results in bitset)");
+
   // remove calculations that are never necessary
   registerRule("remove-unnecessary-calculations-4",
                removeUnnecessaryCalculationsRule,
@@ -827,7 +833,7 @@ in case the indexes qualify for it.)");
   // current batch. this effectively allows parts of the query to run in
   // parallel. this is only supported by certain types of nodes and queries.
   registerRule("async-prefetch", asyncPrefetchRule,
-               OptimizerRule::asyncPrefetch,
+               OptimizerRule::asyncPrefetchRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
                R"(Allow query execution nodes to asynchronously prefetch the
 next batch while processing the current batch, allowing parts of the query to

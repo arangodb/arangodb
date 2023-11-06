@@ -121,6 +121,10 @@ class Projections {
   /// @brief checks if we have a single attribute projection on the attribute
   bool isSingle(std::string_view attribute) const noexcept;
 
+  /// @brief returns true if any of the projections will write into an
+  /// output variable/register
+  bool hasOutputRegisters() const noexcept;
+
   // return the covering index position for a specific attribute type.
   // will throw if the index does not cover!
   uint16_t coveringIndexPosition(aql::AttributeNamePath::Type type) const;
@@ -142,6 +146,12 @@ class Projections {
   /// @brief extract projections from a covering index, calling a callback for
   /// each projection value
   void produceFromIndex(
+      velocypack::Builder& b, IndexIteratorCoveringData& covering,
+      transaction::Methods const* trxPtr,
+      fu2::unique_function<void(Variable const*, velocypack::Slice)
+                               const> const& cb) const;
+
+  void produceFromIndexCompactArray(
       velocypack::Builder& b, IndexIteratorCoveringData& covering,
       transaction::Methods const* trxPtr,
       fu2::unique_function<void(Variable const*, velocypack::Slice)

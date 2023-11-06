@@ -139,7 +139,8 @@ class IndexNode : public ExecutionNode,
   void replaceAttributeAccess(ExecutionNode const* self,
                               Variable const* searchVariable,
                               std::span<std::string_view> attribute,
-                              Variable const* replaceVariable) override;
+                              Variable const* replaceVariable,
+                              size_t index) override;
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;
@@ -211,6 +212,8 @@ class IndexNode : public ExecutionNode,
                       unsigned flags) const override final;
 
  private:
+  void updateProjectionsIndexInfo();
+
   /// @brief determine the IndexNode strategy
   Strategy strategy() const;
 

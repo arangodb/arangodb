@@ -358,11 +358,6 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         plan, current, currentIndex, dirty, local, serverId, mfeature, rb,
         currentShardLocks, localLogs, shardIdToLogId);
 
-    TRI_IF_FAILURE("Maintenance::AfterPhaseTwo") {
-      observeGlobalEvent("Maintenance::AfterPhaseTwo",
-                         ServerState::instance()->getShortName());
-    }
-
     LOG_TOPIC("dfc54", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo done";
 
