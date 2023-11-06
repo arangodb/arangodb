@@ -26,3 +26,5 @@
 [submodule "scripts/toolbox/feed"]
 	path = scripts/toolbox/feed
 	url = https://github.com/arangodb/feed.git
+[submodule "3rdParty/fmt/"]
+	url = https://github.com:arangodb/fmtlib.git
