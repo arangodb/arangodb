@@ -743,8 +743,9 @@ TEST_F(TransactionManagerTest, expired_transaction) {
   // sets TTL for transaction to a very low value
   TRI_AddFailurePointDebugging("transaction::Manager::shortTTL");
   Result res = mgr->ensureManagedTrx(
-      vocbase, tid, json->slice(),
-      transaction::OperationOriginInternal{"some test"}, false);
+                      vocbase, tid, json->slice(),
+                      transaction::OperationOriginInternal{"some test"}, false)
+                   .get();
   ASSERT_TRUE(res.ok());
 
   // wait until trx is expired
@@ -781,8 +782,9 @@ TEST_F(TransactionManagerTest, lock_usage_of_expired_transaction) {
   // sets TTL for transaction to a very low value
   TRI_AddFailurePointDebugging("transaction::Manager::shortTTL");
   Result res = mgr->ensureManagedTrx(
-      vocbase, tid, json1->slice(),
-      transaction::OperationOriginInternal{"some test"}, false);
+                      vocbase, tid, json1->slice(),
+                      transaction::OperationOriginInternal{"some test"}, false)
+                   .get();
   ASSERT_TRUE(res.ok());
 
   // wait until trx is expired
@@ -799,7 +801,8 @@ TEST_F(TransactionManagerTest, lock_usage_of_expired_transaction) {
       "{ \"collections\":{\"write\": [\"testCollection\"]}}");
   res = mgr->ensureManagedTrx(vocbase, tid2, json2->slice(),
                               transaction::OperationOriginInternal{"some test"},
-                              false);
+                              false)
+            .get();
   ASSERT_TRUE(res.ok());
 
   // aborting trx1 is still fine, even though it is expired
