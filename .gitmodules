@@ -23,3 +23,7 @@
 [submodule "scripts/toolbox/feed"]
 	path = scripts/toolbox/feed
 	url = https://github.com/arangodb/feed.git
+[submodule "3rdParty/arango-fmt"]
+	path = 3rdParty/fmt
+	url = https://github.com/arangodb/fmt.git
+	branch = bug-fix/support-gcc-13
