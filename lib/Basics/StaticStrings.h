@@ -167,6 +167,7 @@ class StaticStrings {
   static std::string const UseCache;
   static std::string const Parallelism;
   static std::string const ForceOneShardAttributeValue;
+  static std::string const JoinStrategyType;
 
   // HTTP headers
   static std::string const Accept;

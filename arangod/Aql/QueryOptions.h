@@ -48,6 +48,8 @@ struct QueryOptions {
   QueryOptions(QueryOptions const&) = default;
   TEST_VIRTUAL ~QueryOptions() = default;
 
+  enum JoinStrategyType { DEFAULT, GENERIC };
+
   void fromVelocyPack(velocypack::Slice slice);
   void toVelocyPack(velocypack::Builder& builder,
                     bool disableOptimizerRules) const;
@@ -97,6 +99,9 @@ struct QueryOptions {
   /// @brief shard key attribute value used to push a query down
   /// to a single server
   std::string forceOneShardAttributeValue;
+
+  /// @brief desired join strategy used by the JoinNode (if available)
+  JoinStrategyType desiredJoinStrategy = JoinStrategyType::DEFAULT;
 
   /// @brief optimizer rules to turn off/on manually
   std::vector<std::string> optimizerRules;

@@ -25,7 +25,7 @@
 
 #include "Aql/SharedQueryState.h"
 #include "Basics/ScopeGuard.h"
-#include "Aql/SharedQueryState.h"
+#include "Basics/debugging.h"
 #include "Cluster/ServerState.h"
 #include "Rest/GeneralResponse.h"
 #include "StorageEngine/TransactionState.h"
@@ -702,3 +702,91 @@ TEST_F(TransactionManagerTest, transaction_origin) {
   res = mgr->abortManagedTrx(tid, vocbase.name());
   ASSERT_TRUE(res.ok());
 }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+TEST_F(TransactionManagerTest, expired_transaction) {
+  auto guard = scopeGuard([]() noexcept { TRI_ClearFailurePointsDebugging(); });
+
+  std::shared_ptr<LogicalCollection> coll;
+  {
+    auto json = VPackParser::fromJson("{ \"name\": \"testCollection\" }");
+    coll = vocbase.createCollection(json->slice());
+  }
+  ASSERT_NE(coll, nullptr);
+
+  auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \"collections\":{\"write\": [\"testCollection\"]}}");
+
+  // disables garbage-collection
+  TRI_AddFailurePointDebugging("transaction::Manager::noGC");
+  // sets TTL for transaction to a very low value
+  TRI_AddFailurePointDebugging("transaction::Manager::shortTTL");
+  Result res = mgr->ensureManagedTrx(
+      vocbase, tid, json->slice(),
+      transaction::OperationOriginInternal{"some test"}, false);
+  ASSERT_TRUE(res.ok());
+
+  // wait until trx is expired
+  std::this_thread::sleep_for(std::chrono::milliseconds(150));
+
+  // we cannot use the transaction anymore
+  auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
+  ASSERT_EQ(ctx.get(), nullptr);
+
+  // aborting it is fine though
+  res = mgr->abortManagedTrx(tid, vocbase.name());
+  ASSERT_TRUE(res.ok());
+
+  res = mgr->commitManagedTrx(tid, vocbase.name());
+  ASSERT_FALSE(res.ok());
+  ASSERT_EQ(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION, res.errorNumber());
+}
+#endif
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+TEST_F(TransactionManagerTest, lock_usage_of_expired_transaction) {
+  auto guard = scopeGuard([]() noexcept { TRI_ClearFailurePointsDebugging(); });
+
+  std::shared_ptr<LogicalCollection> coll;
+  {
+    auto json = VPackParser::fromJson("{ \"name\": \"testCollection\" }");
+    coll = vocbase.createCollection(json->slice());
+  }
+  ASSERT_NE(coll, nullptr);
+
+  auto json1 = arangodb::velocypack::Parser::fromJson(
+      "{ \"collections\":{\"exclusive\": [\"testCollection\"]}}");
+
+  // sets TTL for transaction to a very low value
+  TRI_AddFailurePointDebugging("transaction::Manager::shortTTL");
+  Result res = mgr->ensureManagedTrx(
+      vocbase, tid, json1->slice(),
+      transaction::OperationOriginInternal{"some test"}, false);
+  ASSERT_TRUE(res.ok());
+
+  // wait until trx is expired
+  std::this_thread::sleep_for(std::chrono::milliseconds(150));
+
+  // we must now be able to open a second transaction on the
+  // underlying collection, at least after the garbage collection
+  mgr->garbageCollect(/*abortAll*/ false);
+
+  TRI_ClearFailurePointsDebugging();
+
+  TransactionId tid2 = TransactionId::createLeader();
+  auto json2 = arangodb::velocypack::Parser::fromJson(
+      "{ \"collections\":{\"write\": [\"testCollection\"]}}");
+  res = mgr->ensureManagedTrx(vocbase, tid2, json2->slice(),
+                              transaction::OperationOriginInternal{"some test"},
+                              false);
+  ASSERT_TRUE(res.ok());
+
+  // aborting trx1 is still fine, even though it is expired
+  res = mgr->abortManagedTrx(tid, vocbase.name());
+  ASSERT_TRUE(res.ok());
+
+  // committing trx2 must be ok
+  res = mgr->commitManagedTrx(tid2, vocbase.name());
+  ASSERT_TRUE(res.ok());
+}
+#endif
