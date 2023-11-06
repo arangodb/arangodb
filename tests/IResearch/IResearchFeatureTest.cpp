@@ -53,6 +53,7 @@
 #include "IResearch/Containers.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchExecutionPool.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
@@ -1785,23 +1786,37 @@ TEST_F(IResearchFeatureTest, test_execution_threads_limit) {
   iresearch.validateOptions(opts);
   iresearch.prepare();
   iresearch.start();
-
+  auto& metricsFeature = server.server().getFeature<metrics::MetricsFeature>();
+  metrics::MetricKeyView key{.name =
+                                 "arangodb_search_execution_threads_active"};
+  auto* metricValue = metricsFeature.get(key);
+  ASSERT_NE(nullptr, metricValue);
+  auto gauge = static_cast<metrics::Gauge<uint64_t>*>(metricValue);
+  ASSERT_EQ(0, gauge->load());
   auto& pool = iresearch.getSearchPool();
-  ASSERT_EQ(threadsLimit, pool.allocateThreads(10));
+  ASSERT_EQ(threadsLimit, pool.allocateThreads(threadsLimit));
   ASSERT_EQ(0, pool.allocateThreads(1));
-  pool.releaseThreads(threadsLimit);
-  ASSERT_EQ(5, pool.allocateThreads(5));
-  ASSERT_EQ(5, pool.allocateThreads(5));
-  ASSERT_EQ(0, pool.allocateThreads(1));
-  pool.releaseThreads(threadsLimit);
-  ASSERT_EQ(6, pool.allocateThreads(6));
-  ASSERT_EQ(4, pool.allocateThreads(6));
-  pool.releaseThreads(threadsLimit);
+  ASSERT_EQ(threadsLimit, gauge->load());
 
+  pool.releaseThreads(threadsLimit);
+  ASSERT_EQ(0, gauge->load());
+  ASSERT_EQ(5, pool.allocateThreads(5));
+  ASSERT_EQ(5, gauge->load());
+  ASSERT_EQ(5, pool.allocateThreads(5));
+  ASSERT_EQ(10, gauge->load());
+  ASSERT_EQ(0, pool.allocateThreads(1));
+  pool.releaseThreads(threadsLimit);
+  ASSERT_EQ(0, gauge->load());
+  ASSERT_EQ(6, pool.allocateThreads(6));
+  ASSERT_EQ(6, gauge->load());
+  ASSERT_EQ(4, pool.allocateThreads(6));
+  ASSERT_EQ(10, gauge->load());
+  pool.releaseThreads(threadsLimit);
+  ASSERT_EQ(0, gauge->load());
   constexpr size_t iterations = 10000;
   std::atomic<bool> exceeded{false};
   auto threadFunc1 = [&]() {
-    uint32_t allocated = 0;
+    uint64_t allocated = 0;
     for (size_t i = 0; i < iterations && !exceeded; ++i) {
       auto tmp = pool.allocateThreads(1);
       allocated += tmp;
@@ -1819,7 +1834,7 @@ TEST_F(IResearchFeatureTest, test_execution_threads_limit) {
   };
 
   auto threadFunc2 = [&]() {
-    uint32_t allocated = 0;
+    uint64_t allocated = 0;
     for (size_t i = 0; i < iterations && !exceeded; ++i) {
       auto tmp = pool.allocateThreads(threadsLimit / 3);
       allocated += tmp;

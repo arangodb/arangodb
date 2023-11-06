@@ -107,7 +107,7 @@ DECLARE_GAUGE(arangodb_search_num_out_of_sync_links, uint64_t,
 
 DECLARE_GAUGE(
     arangodb_search_execution_threads_active, IResearchExecutionPool,
-    "Number of arangosearch parallels execution threads currently in use.");
+    "Number of arangosearch parallel execution threads currently in use.");
 
 #ifdef USE_ENTERPRISE
 
