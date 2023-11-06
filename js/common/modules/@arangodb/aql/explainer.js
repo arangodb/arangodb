@@ -21,7 +21,7 @@ const isCoordinator = function () {
   } else {
     try {
       if (arango) {
-        var result = arango.GET('/_admin/server/role');
+        let result = arango.GET('/_admin/server/role');
         if (result.role === 'COORDINATOR') {
           isCoordinator = true;
         }
@@ -2100,6 +2100,18 @@ function processQuery(query, explain, planIndex) {
           accessString += projections(info, 'filterProjections', 'filter projections');
         }
         accessString = '   ' + annotation('/* ' + accessString + ' */');
+        if (info.projections) {
+          // produce LET nodes for each projection output register
+          let parts = [];
+          info.projections.forEach((p) => {
+            if (p.hasOwnProperty('variable')) {
+              parts.push(variableName(p.variable) + ' = ' + variableName(info.outVariable) + '.' + p.path.map((p) => attribute(p)).join('.'));
+            }
+          });
+          if (parts.length) {
+            accessString = '   ' + keyword('LET') + ' ' + parts.join(', ') + accessString;
+          }
+        }
         line += indent(level, false) + label + filter + accessString;
         stringBuilder.appendLine(line);
       });

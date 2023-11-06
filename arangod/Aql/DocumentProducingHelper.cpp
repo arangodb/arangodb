@@ -265,11 +265,7 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _filter(infos.getFilter()),
       _projections(infos.getProjections()),
       _filterProjections(infos.getFilterProjections()),
-#if 0
-      // TODO: IndexNodes currently don't write their projections
-      // into individual registers. this will be implemented soon.
       _projectionsForRegisters(_projections),  // do a full copy first
-#endif
       _resourceMonitor(infos.getResourceMonitor()),
       _numScanned(0),
       _numFiltered(0),
@@ -280,15 +276,9 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
                        infos.hasMultipleExpansions()),
       _allowCoveringIndexOptimization(false),  // can be updated later
       _isLastIndex(false) {
-#if 0
-      // TODO: IndexNodes currently don't write their projections
-      // into individual registers. this will be implemented soon.
   // now erase all projections for which there is no output register
-  _projectionsForRegisters.erase([](Projections::Projection& p) {
-    return p.variable == nullptr;
-  });
-#endif
-  TRI_ASSERT(_projectionsForRegisters.empty());
+  _projectionsForRegisters.erase(
+      [](Projections::Projection& p) { return p.variable == nullptr; });
 
   // build ExpressionContext for filtering if we need one
   if (hasFilter()) {
@@ -569,9 +559,6 @@ IndexIterator::CoveringCallback aql::getCallback(
         output.moveValueInto(registerId, input, s);
       } else {
         // write projections into individual output registers
-        // currently this code cannot be reached, because IndexNode do not
-        // yet support writing projections into individual registers
-        TRI_ASSERT(false);
         context.getProjectionsForRegisters().produceFromIndex(
             context.getBuilder(), covering, context.getTrxPtr(),
             [&](Variable const* variable, velocypack::Slice slice) {
@@ -649,9 +636,6 @@ IndexIterator::CoveringCallback aql::getCallback(
             output.moveValueInto(registerId, input, projectedSlice);
           } else {
             // write projections into individual output registers
-            // currently this code cannot be reached, because IndexNode do not
-            // yet support writing projections into individual registers
-            TRI_ASSERT(false);
             context.getProjectionsForRegisters().produceFromDocument(
                 context.getBuilder(), s, context.getTrxPtr(),
                 [&](Variable const* variable, velocypack::Slice slice) {
