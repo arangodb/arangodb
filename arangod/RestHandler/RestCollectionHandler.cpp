@@ -539,7 +539,7 @@ futures::Future<RestStatus> RestCollectionHandler::handleCommandPut() {
     // Will commit if no error occured.
     // or abort if an error occured.
     // result stays valid!
-    Result res = _activeTrx->finish(opres.result);
+    Result res = co_await _activeTrx->finishAsync(opres.result);
     if (opres.fail()) {
       generateTransactionError(coll->name(), opres);
       co_return RestStatus::DONE;
