@@ -79,7 +79,6 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
     : _engine(engine),
       _upstreamState(ExecutionState::HASMORE),
       _exeNode(ep),
-      _dependencies(),
       _dependencyPos(_dependencies.end()),
       _profileLevel(engine->getQuery().queryOptions().getProfileLevel()),
       _startOfExecution(-1.0),

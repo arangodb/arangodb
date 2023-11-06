@@ -32,6 +32,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/GlobalResourceMonitor.h"
+#include "Basics/GlobalSerialization.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/Result.h"
@@ -1987,6 +1988,14 @@ void ClusterInfo::loadCurrent() {
         servers->assign(xx.begin(), xx.end());
         newShardsToCurrentServers.insert_or_assign(std::move(shardID),
                                                    std::move(servers));
+        TRI_IF_FAILURE("ClusterInfo::loadCurrentSeesLeader") {
+          if (!xx.empty()) {  // just in case
+            std::string myShortName = ServerState::instance()->getShortName();
+            observeGlobalEvent(
+                "ClusterInfo::loadCurrentSeesLeader",
+                absl::StrCat(myShortName, ":", shardID, ":", xx[0]));
+          }
+        }
       }
 
       databaseCollections->try_emplace(std::move(collectionName),
@@ -2049,6 +2058,11 @@ void ClusterInfo::loadCurrent() {
 
   auto diff = duration<float, std::milli>(clock::now() - start).count();
   _lcTimer.count(diff);
+
+  TRI_IF_FAILURE("ClusterInfo::loadCurrentDone") {
+    observeGlobalEvent("ClusterInfo::loadCurrentDone",
+                       ServerState::instance()->getShortName());
+  }
 }
 
 /// @brief ask about a collection
