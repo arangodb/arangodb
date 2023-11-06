@@ -119,16 +119,22 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
 
       commits.emplace_back(
           leader->replicateOperation(operation, options)
-              .thenValue([&rtc](auto&& res) -> ResultT<replication2::LogIndex> {
+              .thenValue([&rtc, leader,
+                          tid](auto&& res) -> ResultT<replication2::LogIndex> {
                 if (res.fail()) {
-                  return Result{
-                      TRI_ERROR_REPLICATION_LEADER_ERROR,
-                      fmt::format("Failed to replicate operation: {} {}",
-                                  res.result().errorNumber().value(),
-                                  res.result().errorMessage())};
+                  LOG_CTX("e8dd4", WARN, leader->loggerContext)
+                      << "Failed to replicate commit of transaction (follower "
+                         "ID) "
+                      << tid << " on collection " << rtc.collectionName()
+                      << ": " << res.result();
+                  return res;
                 }
                 if (auto localCommitRes = rtc.commitTransaction();
                     localCommitRes.fail()) {
+                  LOG_CTX("e8dd4", ERR, leader->loggerContext)
+                      << "Failed to commit transaction (follower ID) " << tid
+                      << " locally on collection " << rtc.collectionName()
+                      << ": " << res.result();
                   return localCommitRes;
                 }
                 return res;
@@ -157,40 +163,41 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
 
   // We are capturing a shared pointer to this state so we prevent reclamation
   // while we are waiting for the commit operations.
-  return futures::collectAll(commits).thenValue(
-      [self = shared_from_this()](
-          std::vector<futures::Try<Result>>&& results) -> Result {
-        std::vector<Result> partialResults;
-        partialResults.reserve(results.size());
-        for (auto& res : results) {
-          partialResults.emplace_back(
-              basics::catchToResult([&]() { return res.get(); }));
-        }
+  return futures::collectAll(commits).thenValue([self = shared_from_this()](
+                                                    std::vector<
+                                                        futures::Try<Result>>&&
+                                                        results) -> Result {
+    std::vector<Result> partialResults;
+    partialResults.reserve(results.size());
+    for (auto& res : results) {
+      partialResults.emplace_back(
+          basics::catchToResult([&]() { return res.get(); }));
+    }
 
-        if (std::all_of(partialResults.begin(), partialResults.end(),
-                        [](auto const& r) {
-                          return r.ok() ||
-                                 r.is(TRI_ERROR_REPLICATION_LEADER_ERROR);
-                        })) {
-          if (partialResults.empty() || partialResults.front().ok()) {
-            return {};
-          }
-          LOG_TOPIC("6d1ce", ERR, Logger::REPLICATED_STATE)
-              << "The leader has resigned, so nothing has been replicated. "
-                 "However, if the transaction spans multiple collections, with "
-                 "different leaders, it might have been partially applied.";
-          TRI_ASSERT(false) << partialResults;
-          // There's no need to crash in production.
-          return partialResults.front();
-        }
+    if (std::all_of(
+            partialResults.begin(), partialResults.end(), [](auto const& r) {
+              return r.ok() ||
+                     r.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+            })) {
+      if (partialResults.empty() || partialResults.front().ok()) {
+        return {};
+      }
+      LOG_TOPIC("6d1ce", ERR, Logger::REPLICATED_STATE)
+          << "The leader has resigned, so nothing has been replicated. "
+             "However, if the transaction spans multiple collections, with "
+             "different leaders, it might have been partially applied.";
+      TRI_ASSERT(false) << partialResults;
+      // There's no need to crash in production.
+      return partialResults.front();
+    }
 
-        LOG_TOPIC("8ebc0", FATAL, Logger::REPLICATION2)
-            << "Failed to commit replicated transaction locally (partial "
-               "commits detected): "
-            << partialResults;
-        TRI_ASSERT(false) << partialResults;
-        FATAL_ERROR_EXIT();
-      });
+    LOG_TOPIC("8ebc0", FATAL, Logger::REPLICATED_STATE)
+        << "Failed to commit replicated transaction locally (partial "
+           "commits detected): "
+        << partialResults;
+    TRI_ASSERT(false) << partialResults;
+    FATAL_ERROR_EXIT();
+  });
 }
 
 std::lock_guard<std::mutex> ReplicatedRocksDBTransactionState::lockCommit() {
@@ -222,7 +229,10 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
   // The following code has been simplified based on this assertion.
   TRI_ASSERT(options.waitForCommit == false);
 
-  std::unordered_set<replication2::LogId> logs;
+  // Due to distributeShardsLike, multiple collections can have the same log
+  // leader. In this case, we are going to abort the same transaction multiple
+  // times in the same log. This is ok, because followers know how to handle
+  // this situation.
   RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   for (auto& col : _collections) {
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(*col);
@@ -230,13 +240,12 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
     if (rtc.accessType() != AccessMode::Type::READ) {
       auto leader = rtc.leaderState();
       auto needsReplication = leader->needsReplication(operation);
-      if (logs.contains(leader->gid.id) || !needsReplication) {
+      if (!needsReplication) {
         if (auto r = rtc.abortTransaction(); r.fail()) {
           return r;
         }
         continue;
       }
-      logs.emplace(leader->gid.id);
       auto res = leader->replicateOperation(operation, options).get();
       bool resigned = false;
       if (res.fail()) {

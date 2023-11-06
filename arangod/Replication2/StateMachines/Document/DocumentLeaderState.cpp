@@ -615,13 +615,10 @@ auto DocumentLeaderState::dropShard(ShardID shard) -> futures::Future<Result> {
           // is going to be dropped anyway.
           self->_snapshotHandler.getLockedGuard().get()->giveUpOnShard(shard);
 
-          self->_activeTransactions.doUnderLock([&](auto& activeTransactions) {
-            for (auto const& tid :
-                 data.transactionHandler->getTransactionsForShard(shard)) {
-              activeTransactions.markAsInactive(tid);
-            }
-          });
-
+          // Note that any active transactions will be aborted automatically by
+          // `TRI_vocbase_t::dropCollection`. This causes the leader to
+          // replicate abort operations and release the log indexes associated
+          // with these transactions.
           auto&& applyEntryRes = data.transactionHandler->applyEntry(op);
           if (applyEntryRes.fail()) {
             LOG_CTX("6865f", FATAL, self->loggerContext)

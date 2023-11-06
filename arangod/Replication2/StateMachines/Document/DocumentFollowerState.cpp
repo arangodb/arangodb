@@ -506,6 +506,10 @@ auto DocumentFollowerState::GuardedData::applyEntry(
     ReplicatedOperation::DropShard const& op, LogIndex index)
     -> ResultT<std::optional<LogIndex>> {
   // We first have to abort all transactions for this shard.
+  // This stunt may seem unnecessary, as the leader counterpart takes care of
+  // this by replicating the abort operations. However, because we're currently
+  // replicating the "DropShard" operation first, "Abort" operations come later.
+  // Hence, we need to abort transactions manually for now.
   for (auto const& tid :
        transactionHandler->getTransactionsForShard(op.shard)) {
     auto abortRes = transactionHandler->applyEntry(
