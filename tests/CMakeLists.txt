@@ -391,6 +391,7 @@ foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
   endif()
 endforeach()
 
+add_subdirectory(Actor)
 add_subdirectory(Pregel)
 add_subdirectory(sepp)
 add_subdirectory(VocBase/Properties)
