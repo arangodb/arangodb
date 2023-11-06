@@ -31,6 +31,7 @@
 
 #include <gtest/gtest.h>
 
+using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::conductor;
 

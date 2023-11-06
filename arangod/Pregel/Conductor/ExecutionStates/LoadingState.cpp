@@ -24,7 +24,7 @@ auto Loading::messages()
   return messages;
 }
 
-auto Loading::cancel(arangodb::pregel::actor::ActorPID sender,
+auto Loading::cancel(arangodb::actor::ActorPID sender,
                      message::ConductorMessages message)
     -> std::optional<StateChange> {
   auto newState = std::make_unique<Canceled>(conductor);

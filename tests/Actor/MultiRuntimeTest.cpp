@@ -34,8 +34,8 @@
 
 using namespace arangodb;
 
-using namespace arangodb::pregel::actor;
-using namespace arangodb::pregel::actor::test;
+using namespace arangodb::actor;
+using namespace arangodb::actor::test;
 
 struct MockScheduler {
   auto start(size_t number_of_threads) -> void{};
@@ -57,10 +57,8 @@ struct MockExternalDispatcher {
     if (receiving_runtime != std::end(runtimes)) {
       receiving_runtime->second->receive(sender, receiver, msg);
     } else {
-      auto error = pregel::actor::message::ActorError{
-          pregel::actor::message::NetworkError{
-              .message =
-                  fmt::format("Cannot find server {}", receiver.server)}};
+      auto error = actor::message::ActorError{actor::message::NetworkError{
+          .message = fmt::format("Cannot find server {}", receiver.server)}};
       auto payload = inspection::serializeWithErrorT(error);
       if (payload.ok()) {
         runtimes[sender.server]->dispatch(receiver, sender, payload.get());

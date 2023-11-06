@@ -27,7 +27,7 @@
 #include "Actor/ActorPID.h"
 #include "Actor/Message.h"
 
-namespace arangodb::pregel::actor {
+namespace arangodb::actor {
 
 struct ActorBase {
   virtual ~ActorBase() = default;
@@ -41,4 +41,4 @@ struct ActorBase {
   virtual auto isIdle() -> bool = 0;
 };
 
-}  // namespace arangodb::pregel::actor
+}  // namespace arangodb::actor

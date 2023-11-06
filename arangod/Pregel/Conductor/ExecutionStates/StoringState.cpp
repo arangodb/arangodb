@@ -42,7 +42,7 @@ auto Storing::messages()
   return out;
 }
 
-auto Storing::cancel(arangodb::pregel::actor::ActorPID sender,
+auto Storing::cancel(arangodb::actor::ActorPID sender,
                      message::ConductorMessages message)
     -> std::optional<StateChange> {
   auto newState = std::make_unique<Canceled>(conductor);

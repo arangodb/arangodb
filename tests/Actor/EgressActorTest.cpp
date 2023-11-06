@@ -27,8 +27,8 @@
 #include "Actors/EgressActor.h"
 #include "ThreadPoolScheduler.h"
 
-using namespace arangodb::pregel::actor;
-using namespace arangodb::pregel::actor::test;
+using namespace arangodb::actor;
+using namespace arangodb::actor::test;
 
 struct MockScheduler {
   auto start(size_t number_of_threads) -> void{};

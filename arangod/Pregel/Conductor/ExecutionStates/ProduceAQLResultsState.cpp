@@ -28,7 +28,7 @@
 #include "Pregel/Conductor/State.h"
 #include "CanceledState.h"
 
-using namespace arangodb::pregel::actor;
+using namespace arangodb::actor;
 using namespace arangodb::pregel::conductor;
 
 ProduceAQLResults::ProduceAQLResults(ConductorState& conductor)

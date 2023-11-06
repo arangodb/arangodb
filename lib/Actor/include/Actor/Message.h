@@ -32,7 +32,7 @@
 #include "ActorPID.h"
 #include "MPSCQueue.h"
 
-namespace arangodb::pregel::actor {
+namespace arangodb::actor {
 
 struct MessagePayloadBase {
   virtual ~MessagePayloadBase() = default;
@@ -110,17 +110,17 @@ struct MessageOrError : concatenator<typename T::variant, ActorError::variant> {
 };
 }  // namespace message
 
-}  // namespace arangodb::pregel::actor
+}  // namespace arangodb::actor
 
 template<typename Payload>
-struct fmt::formatter<arangodb::pregel::actor::MessagePayload<Payload>>
+struct fmt::formatter<arangodb::actor::MessagePayload<Payload>>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::pregel::actor::message::UnknownMessage>
+struct fmt::formatter<arangodb::actor::message::UnknownMessage>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::pregel::actor::message::ActorNotFound>
+struct fmt::formatter<arangodb::actor::message::ActorNotFound>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::pregel::actor::message::NetworkError>
+struct fmt::formatter<arangodb::actor::message::NetworkError>
     : arangodb::inspection::inspection_formatter {};

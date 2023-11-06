@@ -36,7 +36,7 @@
 #include "Actor/ActorPID.h"
 #include "Actor/Assert.h"
 
-namespace arangodb::pregel::actor {
+namespace arangodb::actor {
 
 template<typename S>
 concept Schedulable = requires(S s, std::chrono::seconds delay) {
@@ -215,10 +215,9 @@ auto inspect(Inspector& f, Runtime<Scheduler, ExternalDispatcher>& x) {
       f.field("actors", x.actors));
 }
 
-};  // namespace arangodb::pregel::actor
+};  // namespace arangodb::actor
 
-template<arangodb::pregel::actor::Schedulable Scheduler,
-         arangodb::pregel::actor::VPackDispatchable ExternalDispatcher>
-struct fmt::formatter<
-    arangodb::pregel::actor::Runtime<Scheduler, ExternalDispatcher>>
+template<arangodb::actor::Schedulable Scheduler,
+         arangodb::actor::VPackDispatchable ExternalDispatcher>
+struct fmt::formatter<arangodb::actor::Runtime<Scheduler, ExternalDispatcher>>
     : arangodb::inspection::inspection_formatter {};

@@ -32,7 +32,7 @@
 // https://www.1024cores.net/home/lock-free-algorithms/queues/intrusive-mpsc-node-based-queue
 //
 // under a Apache-2.0 license.
-namespace arangodb::pregel::mpscqueue {
+namespace arangodb::actor {
 
 template<typename T>
 struct MPSCQueue {
@@ -138,4 +138,4 @@ struct MPSCQueue {
   std::atomic<Node*> tail;  // popped from
 };
 
-}  // namespace arangodb::pregel::mpscqueue
+}  // namespace arangodb::actor

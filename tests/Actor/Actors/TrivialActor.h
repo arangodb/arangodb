@@ -31,7 +31,7 @@
 
 #include "Actor/Actor.h"
 
-namespace arangodb::pregel::actor::test {
+namespace arangodb::actor::test {
 
 struct TrivialState {
   TrivialState(std::string state, std::size_t called)
@@ -130,11 +130,11 @@ struct TrivialActor {
     return "TrivialActor";
   };
 };
-}  // namespace arangodb::pregel::actor::test
+}  // namespace arangodb::actor::test
 
 template<>
-struct fmt::formatter<arangodb::pregel::actor::test::TrivialState>
+struct fmt::formatter<arangodb::actor::test::TrivialState>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::pregel::actor::test::message::TrivialMessages>
+struct fmt::formatter<arangodb::actor::test::message::TrivialMessages>
     : arangodb::inspection::inspection_formatter {};

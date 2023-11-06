@@ -34,7 +34,7 @@
 #include "Actor/Message.h"
 #include "Actor/MPSCQueue.h"
 
-namespace arangodb::pregel::actor {
+namespace arangodb::actor {
 
 namespace {
 template<typename Runtime, typename A>
@@ -204,8 +204,7 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
     }
   }
 
-  struct InternalMessage
-      : arangodb::pregel::mpscqueue::MPSCQueue<InternalMessage>::Node {
+  struct InternalMessage : arangodb::actor::MPSCQueue<InternalMessage>::Node {
     InternalMessage(
         ActorPID sender,
         std::unique_ptr<message::MessageOrError<typename Config::Message>>&&
@@ -235,7 +234,7 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
   ActorPID pid;
   std::atomic<bool> idle{true};
   std::atomic<bool> finished{false};
-  arangodb::pregel::mpscqueue::MPSCQueue<InternalMessage> inbox;
+  arangodb::actor::MPSCQueue<InternalMessage> inbox;
   std::shared_ptr<Runtime> runtime;
   // tunable parameter: maximal number of processed messages per work() call
   std::size_t batchSize{16};
@@ -249,10 +248,10 @@ auto inspect(Inspector& f, Actor<Runtime, Config>& x) {
                             f.field("batchsize", x.batchSize));
 }
 
-}  // namespace arangodb::pregel::actor
+}  // namespace arangodb::actor
 
 template<typename Runtime, typename Config>
-requires arangodb::pregel::actor::Actorable<Runtime, Config>
-struct fmt::formatter<arangodb::pregel::actor::Actor<Runtime, Config>>
+requires arangodb::actor::Actorable<Runtime, Config>
+struct fmt::formatter<arangodb::actor::Actor<Runtime, Config>>
     : arangodb::inspection::inspection_formatter {
 };

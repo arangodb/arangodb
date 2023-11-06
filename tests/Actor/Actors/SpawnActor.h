@@ -33,7 +33,7 @@
 #include "Actor/Actor.h"
 #include "TrivialActor.h"
 
-namespace arangodb::pregel::actor::test {
+namespace arangodb::actor::test {
 
 struct SpawnState {
   std::size_t called{};
@@ -105,11 +105,11 @@ struct SpawnActor {
   using Handler = SpawnHandler<Runtime>;
   static constexpr auto typeName() -> std::string_view { return "SpawnActor"; };
 };
-}  // namespace arangodb::pregel::actor::test
+}  // namespace arangodb::actor::test
 
 template<>
-struct fmt::formatter<arangodb::pregel::actor::test::SpawnState>
+struct fmt::formatter<arangodb::actor::test::SpawnState>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::pregel::actor::test::message::SpawnMessage>
+struct fmt::formatter<arangodb::actor::test::message::SpawnMessage>
     : arangodb::inspection::inspection_formatter {};

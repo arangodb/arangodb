@@ -28,7 +28,7 @@
 #include "Actor/ActorPID.h"
 #include "Basics/Guarded.h"
 
-namespace arangodb::pregel::actor {
+namespace arangodb::actor {
 
 template<typename F>
 concept Predicate = requires(F fn, std::shared_ptr<ActorBase> const& actor) {
@@ -156,4 +156,4 @@ auto inspect(Inspector& f, ActorList const& x) {
   }
 }
 
-};  // namespace arangodb::pregel::actor
+};  // namespace arangodb::actor

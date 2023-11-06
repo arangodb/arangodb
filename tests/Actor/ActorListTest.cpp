@@ -26,7 +26,7 @@
 #include "Actor/ActorBase.h"
 #include "Actor/ActorList.h"
 
-using namespace arangodb::pregel::actor;
+using namespace arangodb::actor;
 
 struct ActorBaseMock : ActorBase {
   ActorBaseMock(std::string type) : type{std::move(type)} {};

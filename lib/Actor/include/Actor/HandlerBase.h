@@ -30,7 +30,7 @@
 #include "Message.h"
 #include "ActorPID.h"
 
-namespace arangodb::pregel::actor {
+namespace arangodb::actor {
 
 template<typename Runtime, typename State>
 struct HandlerBase {
@@ -67,4 +67,4 @@ struct HandlerBase {
   std::shared_ptr<Runtime> runtime;
 };
 
-}  // namespace arangodb::pregel::actor
+}  // namespace arangodb::actor
