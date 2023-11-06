@@ -135,8 +135,7 @@ function detachSchedulerThreadsSuite2() {
 
         // Then perform simple reads to the collection. They should soon be
         // unblocked, because of detached threads.
-        let startTime = new Date();
-        let guck = c.document("K1");
+        c.document("K1");
 
         // Unblock everything:
         debugSetFailAt(followerEndpoint, "synchronousReplication::unblockReplication");
