@@ -121,7 +121,7 @@ const ViewBitsetJoin = function () {
 
     testJoinTwoAnd: function () {
       const query = " SEARCH d2.term2 == 3 AND d1.id == d2.id AND d2.term1 == 3 RETURN [d1, d2]";
-      checkQueryPattern(query, 2);
+      checkQueryPattern(query, 3);
     },
 
     testJoinOneOr: function () {
@@ -131,7 +131,7 @@ const ViewBitsetJoin = function () {
 
     testJoinTwoOr: function () {
       const query = " SEARCH d2.term2 == 3 OR d1.id == d2.id OR d2.term1 == 3 RETURN [d1, d2]";
-      checkQueryPattern(query, 2);
+      checkQueryPattern(query, 3);
     },
 
     testJoinOne: function () {
@@ -139,12 +139,12 @@ const ViewBitsetJoin = function () {
       checkQueryPattern(query, 0);
     },
 
-    testJoinTwoAnd: function () {
+    testJoinTwoAndAll: function () {
       const query = " SEARCH d2.term1 == 3 AND d2.term2 == 3 RETURN [d1, d2]";
       checkQueryPattern(query, 0);
     },
 
-    testJoinTwoOr: function () {
+    testJoinTwoOrAll: function () {
       const query = " SEARCH d2.term1 == 3 OR d2.term2 == 3 RETURN [d1, d2]";
       checkQueryPattern(query, 0);
     },
