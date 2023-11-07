@@ -16,8 +16,11 @@ RUN apk --no-cache del perl
 COPY install-cppcheck.sh /tools/
 RUN if [ "$(apk --print-arch)" = "x86_64" ] ; then /tools/install-cppcheck.sh 2.11 2.11.0 ; fi
 
+# TODO: This is so horrible, maybe there's a better solution?
 RUN ln /usr/bin/sccache /usr/local/bin/gcc && \
     ln /usr/bin/sccache /usr/local/bin/g++ && \
+    ln /usr/lib/llvm15/bin/clang-15 /usr/bin/clang && \
+    ln /usr/lib/llvm15/bin/clang-15 /usr/bin/clang++ && \
     ln /usr/bin/sccache /usr/local/bin/clang && \
     ln /usr/bin/sccache /usr/local/bin/clang++
 
