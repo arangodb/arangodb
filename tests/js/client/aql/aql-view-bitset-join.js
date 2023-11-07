@@ -27,6 +27,8 @@
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
+const isEnterprise = require("internal").isEnterprise();
+const analyzers = require("@arangodb/analyzers");
 const _ = require('lodash');
 
 const ViewBitsetJoin = function () {
@@ -54,6 +56,17 @@ const ViewBitsetJoin = function () {
     assertEqual(result1.toArray(), result2.toArray());
   };
 
+  const checkQueryPattern = function (query, immutableParts) {
+    const query1 = "FOR d1 IN " + viewName1 + " FOR d2 IN " + viewName2 + query;
+    checkQuery(query1, immutableParts);
+    const query2 = "FOR d1 IN " + collectionName1 + " FOR d2 IN " + viewName2 + query;
+    checkQuery(query2, immutableParts);
+    const query3 = "FOR d1 IN " + viewName1 + " LET data = (FOR d2 IN " + viewName2 + query + ") RETURN data";
+    checkQuery(query3, immutableParts);
+    const query4 = "FOR d1 IN " + collectionName1 + " LET data = (FOR d2 IN " + viewName2 + query + ") RETURN data";
+    checkQuery(query4, immutableParts);    
+  };
+
   return {
     setUpAll: function () {
       db._createDatabase(databaseName);
@@ -70,24 +83,28 @@ const ViewBitsetJoin = function () {
       db._createView(viewName1, "arangosearch", {
         "links": {
           [collectionName1]: {
-            includeAllFields: true
-          }
+            includeAllFields: true,
+          },
         }
       });
+
+      analyzers.save("offsets", "delimiter", { delimiter: " " }, [ "frequency", "position", "offset"]);
 
       let c2 = db._create(collectionName2);
       for (let i = 0; i !== 1000; ++i) {
         a.push({
           "id": i * 2,
-          "term": i,
+          "term1": i,
+          "term2": i,
         });
       }
       c2.insert(a);
       db._createView(viewName2, "arangosearch", {
         "links": {
           [collectionName2]: {
-            includeAllFields: true
-          }
+            includeAllFields: true,
+            analyzers: ["identity", "offsets"],
+          },
         }
       });
     },
@@ -97,52 +114,61 @@ const ViewBitsetJoin = function () {
       db._dropDatabase(databaseName);
     },
 
-    testJoinViewAnd: function () {
-      const query = "FOR d1 IN " + viewName1 + " FOR d2 IN " + viewName2 + 
-        " SEARCH d1.id == d2.id AND d2.term == 3 RETURN [d1, d2]";
-      checkQuery(query, 2);
+    testJoinOneAnd: function () {
+      const query = " SEARCH d1.id == d2.id AND d2.term1 == 3 RETURN [d1, d2]";
+      checkQueryPattern(query, 2);
     },
 
-    testJoinCollectionAnd: function () {
-      const query = "FOR d1 IN " + collectionName1 + " FOR d2 IN " + viewName2 + 
-        " SEARCH d1.id == d2.id AND d2.term == 3 RETURN [d1, d2]";
-      checkQuery(query, 2);
+    testJoinTwoAnd: function () {
+      const query = " SEARCH d2.term2 == 3 AND d1.id == d2.id AND d2.term1 == 3 RETURN [d1, d2]";
+      checkQueryPattern(query, 3);
     },
 
-    testJoinViewOr: function () {
-      const query = "FOR d1 IN " + viewName1 + " FOR d2 IN " + viewName2 + 
-        " SEARCH d1.id == d2.id OR d2.term == 3 RETURN [d1, d2]";
-      checkQuery(query, 2);
+    testJoinOneOr: function () {
+      const query = " SEARCH d1.id == d2.id OR d2.term1 == 3 RETURN [d1, d2]";
+      checkQueryPattern(query, 2);
     },
 
-    testJoinCollectionOr: function () {
-      const query = "FOR d1 IN " + collectionName1 + " FOR d2 IN " + viewName2 + 
-        " SEARCH d1.id == d2.id OR d2.term == 3 RETURN [d1, d2]";
-      checkQuery(query, 2);
+    testJoinTwoOr: function () {
+      const query = " SEARCH d2.term2 == 3 OR d1.id == d2.id OR d2.term1 == 3 RETURN [d1, d2]";
+      checkQueryPattern(query, 3);
     },
 
-    testJoinViewAll: function () {
-      const query = "FOR d1 IN " + viewName1 + " FOR d2 IN " + viewName2 + 
-        " SEARCH d2.term == 3 RETURN [d1, d2]";
-      checkQuery(query, 0);
+    testJoinOne: function () {
+      const query = " SEARCH d2.term1 == 3 RETURN [d1, d2]";
+      checkQueryPattern(query, 0);
     },
 
-    testJoinCollectionAll: function () {
-      const query = "FOR d1 IN " + collectionName1 + " FOR d2 IN " + viewName2 + 
-        " SEARCH d2.term == 3 RETURN [d1, d2]";
-      checkQuery(query, 0);
+    testJoinTwoAndAll: function () {
+      const query = " SEARCH d2.term1 == 3 AND d2.term2 == 3 RETURN [d1, d2]";
+      checkQueryPattern(query, 0);
     },
 
-    testJoinViewNone: function () {
-      const query = "FOR d1 IN " + viewName1 + " FOR d2 IN " + viewName2 + 
-        " SEARCH d1.id == d2.id RETURN [d1, d2]";
-      checkQuery(query, undefined);
+    testJoinTwoOrAll: function () {
+      const query = " SEARCH d2.term1 == 3 OR d2.term2 == 3 RETURN [d1, d2]";
+      checkQueryPattern(query, 0);
     },
 
-    testJoinCollectionNone: function () {
-      const query = "FOR d1 IN " + collectionName1 + " FOR d2 IN " + viewName2 + 
-        " SEARCH d1.id == d2.id RETURN [d1, d2]";
-      checkQuery(query, undefined);
+    testJoinCondtionNone: function () {
+      const query = " SEARCH d1.id == d2.id RETURN [d1, d2]";
+      checkQueryPattern(query, undefined);
+    },
+
+    testJoinScoreNone: function () {
+      const query = " SEARCH d2.term1 == 3 RETURN [d1, d2, BM25(d2)]";
+      checkQueryPattern(query, undefined);
+    },
+
+    testJoinParallelismNone: function () {
+      const query = " SEARCH d2.term1 == 3 OPTIONS {parallelism: 2} RETURN [d1, d2]";
+      checkQueryPattern(query, undefined);
+    },
+
+    testJoinOffsetNone: function () {
+      if (isEnterprise) {
+        const query = " SEARCH ANALYZER(d2.term1 == 3, 'offsets') RETURN OFFSET_INFO(d2, 'term1')";
+        checkQueryPattern(query, undefined);  
+      }
     },
   };
 };
