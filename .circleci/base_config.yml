@@ -60,7 +60,6 @@ commands:
                 command: |
                   cat ./etc/testing/arangod-common.conf | sed -e "s/default-replication-version = 1/default-replication-version = 2/" > ./etc/testing/tmp-arangod-common.conf
                   mv ./etc/testing/tmp-arangod-common.conf ./etc/testing/arangod-common.conf
-                  cat ./etc/testing/arangod-common.conf | echo
 
   checkout-enterprise:
     description: "Checkout enterprise code"
