@@ -391,6 +391,37 @@ void spit(std::string const& filename, std::string const& content, bool sync) {
   spit(filename, content.data(), content.size(), sync);
 }
 
+void appendToFile(std::string const& filename, char const* ptr, size_t len,
+                  bool sync) {
+  int fd = TRI_OPEN(filename.c_str(), O_WRONLY | O_APPEND | TRI_O_CLOEXEC);
+
+  if (fd == -1) {
+    throwFileWriteError(filename);
+  }
+
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_CLOSE(fd); });
+
+  while (0 < len) {
+    auto n = TRI_WRITE(fd, ptr, static_cast<TRI_write_t>(len));
+
+    if (n < 0) {
+      throwFileWriteError(filename);
+    }
+
+    ptr += n;
+    len -= n;
+  }
+
+  if (sync) {
+    // intentionally ignore this error as there is nothing we can do about it
+    TRI_fsync(fd);
+  }
+}
+
+void appendToFile(std::string const& filename, std::string_view s, bool sync) {
+  appendToFile(filename, s.data(), s.size(), sync);
+}
+
 ErrorCode remove(std::string const& fileName) {
   auto const success = 0 == std::remove(fileName.c_str());
 
