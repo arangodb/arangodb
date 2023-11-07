@@ -823,77 +823,8 @@ auto ensureIndexCoordinatorReplication2Inner(
   VPackBuilder newIndexBuilder =
       ::buildIndexEntry(index, numberOfShards, idString, false);
 
-  auto report = std::make_shared<CurrentWatcher>();
-  {
-    // This callback waits on two things: First for the Index to appear in Plan,
-    // and Second for the IsBuilding Flag to be removed. This way the index
-    // creation is Completed
-    // TODO: We still need to report errors, only happy Path for now.
-    auto watcherCallback =
-        [report, id = std::string{idString}](VPackSlice slice) -> bool {
-      if (report->hasReported(id)) {
-        // This index has already reported
-        return true;
-      }
-      if (slice.isNone()) {
-        // TODO: Should this actual set an "error"? It indicates that the
-        // collection is dropped if i am not mistaken
-        return false;
-      }
-      auto collection = velocypack::deserialize<
-          replication2::agency::CollectionPlanSpecification>(slice);
-      auto const& indexes = collection.indexes.indexes;
-      for (auto const& index : indexes) {
-        auto indexSlice = index.slice();
-        if (indexSlice.hasKey(StaticStrings::IndexId) &&
-            indexSlice.get(StaticStrings::IndexId).isEqualString(id)) {
-          if (!indexSlice.hasKey(StaticStrings::IndexIsBuilding)) {
-            // TODO: We do not yet handle errors, e.g. on UniqueIndexes
-            report->addReport(id, TRI_ERROR_NO_ERROR);
-          }
-        }
-      }
-      return true;
-    };
-
-    report->addWatchPath(
-        pathCollectionInPlan(collection.vocbase().name(),
-                             std::to_string(collection.id().id()))
-            ->str(arangodb::cluster::paths::SkipComponents(1)),
-        std::string{idString}, watcherCallback);
-  }
   // Register Callbacks
   auto& clusterInfo = server.getFeature<ClusterFeature>().clusterInfo();
-  AgencyCallbackRegistry& callbackRegistry =
-      clusterInfo.agencyCallbackRegistry();
-
-  std::vector<std::pair<std::shared_ptr<AgencyCallback>, std::string>>
-      callbackList;
-  auto unregisterCallbacksGuard =
-      scopeGuard([&callbackList, &callbackRegistry]() noexcept {
-        try {
-          for (auto& [cb, _] : callbackList) {
-            callbackRegistry.unregisterCallback(cb);
-          }
-        } catch (std::exception const& ex) {
-          LOG_TOPIC("cc914", ERR, Logger::CLUSTER)
-              << "Failed to unregister agency callback: " << ex.what();
-        } catch (...) {
-          // Should never be thrown, we only throw exceptions
-        }
-      });
-
-  // First register all callbacks
-  for (auto const& [path, identifier, cb] : report->getCallbackInfos()) {
-    auto agencyCallback =
-        std::make_shared<AgencyCallback>(server, path, cb, true, false);
-    Result r = callbackRegistry.registerCallback(agencyCallback);
-    if (r.fail()) {
-      return r;
-    }
-    callbackList.emplace_back(std::move(agencyCallback), identifier);
-  }
-  report->clearCallbacks();
 
   auto targetPath = pathCollectionInTarget(
       collection.vocbase().name(), std::to_string(collection.id().id()));
@@ -910,16 +841,7 @@ auto ensureIndexCoordinatorReplication2Inner(
   AgencyWriteTransaction trx(newValue, oldValue);
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
 
-  if (result.successful()) {
-    if (VPackSlice resultsSlice = result.slice().get("results");
-        resultsSlice.length() > 0) {
-      Result r =
-          clusterInfo.waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
-      if (r.fail()) {
-        return r;
-      }
-    }
-  } else {
+  if (!result.successful()) {
     if (result.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
       // Retry loop is outside!
       return Result(TRI_ERROR_HTTP_PRECONDITION_FAILED);
@@ -932,61 +854,67 @@ auto ensureIndexCoordinatorReplication2Inner(
                       __FILE__, ":", __LINE__));
   }
 
-  auto pollInterval = getPollInterval();
-  // we have sent the transaction ot create the Index.
-  // Let's busy loop and wait until it shows up.
-  while (!server.isStopping()) {
-    auto maybeFinalResult = report->getResultIfAllReported();
-    if (maybeFinalResult.has_value()) {
-      // We have a final result. we are complete
-      auto const& finalResult = maybeFinalResult.value();
-      if (finalResult.fail()) {
-        // Oh noes, something bad has happened.
-        // Abort
-        return finalResult;
-      }
+  try {
+    AgencyCallbackRegistry& callbackRegistry =
+        clusterInfo.agencyCallbackRegistry();
+    // TODO: A unique index can actually fail here. Causing this loop to get
+    // stuck. We still need a proper implementation for this.
+    auto waitOnSuccess =
+        callbackRegistry
+            .waitFor(
+                pathCollectionInPlan(collection.vocbase().name(),
+                                     std::to_string(collection.id().id()))
+                    ->str(arangodb::cluster::paths::SkipComponents(1)),
+                [id = std::string{idString}](VPackSlice slice) {
+                  if (slice.isNone()) {
+                    // TODO: Should this actual set an "error"? It indicates
+                    // that the collection is dropped if i am not mistaken
+                    return false;
+                  }
+                  auto collection = velocypack::deserialize<
+                      replication2::agency::CollectionPlanSpecification>(slice);
+                  auto const& indexes = collection.indexes.indexes;
+                  for (auto const& index : indexes) {
+                    auto indexSlice = index.slice();
+                    if (indexSlice.hasKey(StaticStrings::IndexId) &&
+                        indexSlice.get(StaticStrings::IndexId)
+                            .isEqualString(id)) {
+                      if (!indexSlice.hasKey(StaticStrings::IndexIsBuilding)) {
+                        return true;
+                      }
+                    }
+                  }
+                  return false;
+                })
+            .thenValue([&clusterInfo](auto index) {
+              // Need to wait here, until ClusterInfo has updated to latest
+              // plan.
+              return clusterInfo.waitForPlan(index);
+            });
+    auto res = waitOnSuccess.get();
+    if (res.fail()) {
+      return res;
+    }
+    VPackBuilder resultBuilder;
+    {
+      VPackObjectBuilder guard(&resultBuilder);
+      // add all original values
+      resultBuilder.add(VPackObjectIterator(newIndexBuilder.slice()));
+      resultBuilder.add("isNewlyCreated", VPackValue(true));
+    }
 
-      VPackBuilder resultBuilder;
-      {
-        VPackObjectBuilder guard(&resultBuilder);
-        // add all original values
-        resultBuilder.add(VPackObjectIterator(newIndexBuilder.slice()));
-        resultBuilder.add("isNewlyCreated", VPackValue(true));
-      }
-      return resultBuilder;
-    }
-    // We do not have a final result. Let's wait for more input
-    // Wait for the next incomplete callback
-    for (auto& [cb, indexId] : callbackList) {
-      if (!report->hasReported(indexId)) {
-        // We do not have result for this collection, wait for it.
-        bool gotTimeout;
-        {
-          // This one has not responded, wait for it.
-          std::unique_lock guard(cb->_cv.mutex);
-          gotTimeout = cb->executeByCallbackOrTimeout(pollInterval);
-        }
-        if (gotTimeout) {
-          // We got woken up by waittime, not by  callback.
-          // Let us check if we skipped other callbacks as well
-          for (auto& [cb2, cid2] : callbackList) {
-            if (!report->hasReported(cid2)) {
-              // Only re check those where we have not yet found a
-              // result.
-              cb2->refetchAndUpdate(true, false);
-            }
-          }
-        }
-        // Break the callback loop,
-        // continue on the check if we completed loop
-        break;
-      }
-    }
+    return resultBuilder;
+    // TODO: Maybe we want to catch ArangoErrors specifically?
+    // Right now we can only have communications issues here.
+  } catch (std::exception const& e) {
+    return Result(TRI_ERROR_INTERNAL, fmt::format("Exception while waiting on "
+                                                  "index to be created: {}",
+                                                  e.what()));
+  } catch (...) {
+    return Result(TRI_ERROR_INTERNAL,
+                  "Unspecified exception while waiting on "
+                  "index to be created.");
   }
-  // If we get here we are not allowed to retry.
-  // The loop above does not contain a break
-  TRI_ASSERT(server.isStopping());
-  return Result{TRI_ERROR_SHUTTING_DOWN};
 }
 
 // The following function does the actual work of index creation: Create
