@@ -8,7 +8,7 @@ add_compile_warnings_flags()
 ## arangod executable
 ################################################################################
 
-if (MSVC) # AND NOT(SKIP_PACKAGING))
+if (MSVC AND NOT(SKIP_PACKAGING))
   generate_product_version(ProductVersionFiles
     NAME ${BIN_ARANGOD}
     FILE_DESCRIPTION ${ARANGODB_FRIENDLY_STRING}
