@@ -48,6 +48,15 @@ commands:
                   cd << parameters.destination >>
                   git submodule init
                   git submodule update --recursive --depth 1 --jobs 8
+      - when:
+          condition: << pipeline.parameters.replication-two >>
+          steps:
+            - run:
+                name: Setup Replication Version
+                command: |
+                  cat ./etc/testing/arangod-common.conf | sed -e "s/default-replication-version = 1/default-replication-version = 2/" > ./etc/testing/tmp-arangod-common.conf
+                  mv ./etc/testing/tmp-arangod-common.conf ./etc/testing/arangod-common.conf
+                  cat ./etc/testing/arangod-common.conf | echo
 
   checkout-enterprise:
     description: "Checkout enterprise code"

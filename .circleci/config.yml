@@ -56,15 +56,6 @@ jobs:
             # Unfortunately GitHub does not support the git-archive protocol, so we need to fetch the required files by hand.
             (mkdir .circleci && cd .circleci && curl https://api.github.com/repos/arangodb/arangodb/contents/.circleci?ref=$CIRCLE_SHA1 | jq ".[].download_url" | xargs wget)
             (mkdir tests && cd tests && wget https://raw.githubusercontent.com/arangodb/arangodb/$CIRCLE_SHA1/<< parameters.definitions >>)
-      - when:
-          condition: << pipeline.parameters.replication-two >>
-          steps:
-            - run:
-                name: Setup Replication Version
-                command: |
-                  cat ./etc/testing/arangod-common.conf | sed -e "s/default-replication-version = 1/default-replication-version = 2/" > ./etc/testing/tmp-arangod-common.conf
-                  mv ./etc/testing/tmp-arangod-common.conf ./etc/testing/arangod-common.conf
-                  cat ./etc/testing/arangod-common.conf | echo
       - run:
           name: Generate config
           command: |
