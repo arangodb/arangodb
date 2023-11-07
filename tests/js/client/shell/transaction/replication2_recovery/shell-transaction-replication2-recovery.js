@@ -335,7 +335,7 @@ function transactionReplication2Recovery() {
 }
 
 let suites = [
-  //transactionReplication2Recovery,
+  transactionReplication2Recovery,
 ];
 
 for (const suite of suites) {
