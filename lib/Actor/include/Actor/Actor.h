@@ -33,6 +33,7 @@
 #include "Actor/HandlerBase.h"
 #include "Actor/Message.h"
 #include "Actor/MPSCQueue.h"
+#include "Inspection/Format.h"
 
 namespace arangodb::actor {
 
@@ -50,7 +51,7 @@ concept HandlerInheritsFromBaseHandler =
     std::is_base_of_v < HandlerBase<Runtime, typename A::State>,
 typename A::template Handler<Runtime> > ;
 template<typename Runtime, typename A>
-concept MessageIsVariant = requires(ActorPID pid,
+concept MessageIsVariant = requires(typename Runtime::ActorPID pid,
                                     std::shared_ptr<Runtime> runtime,
                                     typename A::Message message) {
   {std::visit(
@@ -73,6 +74,7 @@ concept Actorable = IncludesAllActorRelevantTypes<Runtime, A> &&
 template<typename Runtime, typename Config>
 requires Actorable<Runtime, Config>
 struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
+  using ActorPID = typename Runtime::ActorPID;
   Actor(ActorPID pid, std::shared_ptr<Runtime> runtime,
         std::unique_ptr<typename Config::State> initialState)
       : pid(pid), runtime(runtime), state(std::move(initialState)) {}

@@ -35,7 +35,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-#include "Actor/ActorPID.h"
+#include "Actor/DistributedActorPID.h"
 #include "Pregel/ArangoExternalDispatcher.h"
 #include "Actor/Runtime.h"
 #include "Basics/Common.h"
@@ -84,11 +84,11 @@ struct PregelRunUser {
   std::string name;
 };
 struct PregelRunActors {
-  actor::ActorPID resultActor;
+  actor::DistributedActorPID resultActor;
   std::shared_ptr<PregelResult> results;
 
   // following members are only relevant on coordinator
-  std::optional<actor::ActorPID> conductor;
+  std::optional<actor::DistributedActorPID> conductor;
 };
 struct PregelRun {
   PregelRun(PregelRunUser user, PregelRunActors actors)
@@ -208,8 +208,7 @@ class PregelFeature final : public ArangodFeature {
   std::shared_ptr<PregelMetrics> _metrics;
 
  public:
-  std::shared_ptr<actor::Runtime<PregelScheduler, ArangoExternalDispatcher>>
-      _actorRuntime;
+  std::shared_ptr<actor::Runtime<PregelScheduler>> _actorRuntime;
   Guarded<std::unordered_map<ExecutionNumber, PregelRun>> _pregelRuns;
 };
 

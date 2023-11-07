@@ -25,7 +25,7 @@
 #pragma once
 
 #include "Actor/ActorBase.h"
-#include "Actor/ActorPID.h"
+#include "Actor/ActorID.h"
 #include "Basics/Guarded.h"
 
 namespace arangodb::actor {

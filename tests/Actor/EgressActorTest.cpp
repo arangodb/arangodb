@@ -38,11 +38,11 @@ struct MockScheduler {
     fn(true);
   }
 };
-struct EmptyExternalDispatcher {
-  auto operator()(ActorPID sender, ActorPID receiver,
-                  arangodb::velocypack::SharedSlice msg) -> void {}
+struct EmptyExternalDispatcher : IExternalDispatcher {
+  void dispatch(DistributedActorPID sender, DistributedActorPID receiver,
+                arangodb::velocypack::SharedSlice msg) override {}
 };
-using ActorTestRuntime = Runtime<MockScheduler, EmptyExternalDispatcher>;
+using ActorTestRuntime = Runtime<MockScheduler>;
 
 template<typename T>
 class EgressActorTest : public testing::Test {
@@ -60,7 +60,7 @@ TYPED_TEST_SUITE(EgressActorTest, SchedulerTypes);
 TYPED_TEST(EgressActorTest,
            outside_world_can_look_at_set_data_inside_egress_actor) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime = std::make_shared<Runtime<TypeParam, EmptyExternalDispatcher>>(
+  auto runtime = std::make_shared<Runtime<TypeParam>>(
       "A", "myID", this->scheduler, dispatcher);
 
   auto actorState = std::make_unique<EgressState>();
@@ -72,8 +72,8 @@ TYPED_TEST(EgressActorTest,
       "database", std::move(actorState), test::message::EgressStart{});
 
   runtime->dispatch(
-      ActorPID{.server = "A", .database = "database", .id = actor},
-      ActorPID{.server = "A", .database = "database", .id = actor},
+      DistributedActorPID{.server = "A", .database = "database", .id = actor},
+      DistributedActorPID{.server = "A", .database = "database", .id = actor},
       EgressActor::Message{test::message::EgressSet{.data = "Hallo"}});
 
   this->scheduler->stop();
@@ -84,7 +84,7 @@ TYPED_TEST(EgressActorTest,
 
 TYPED_TEST(EgressActorTest, egress_data_is_empty_when_not_set) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime = std::make_shared<Runtime<TypeParam, EmptyExternalDispatcher>>(
+  auto runtime = std::make_shared<Runtime<TypeParam>>(
       "A", "myID", this->scheduler, dispatcher);
 
   auto actorState = std::make_unique<EgressState>();

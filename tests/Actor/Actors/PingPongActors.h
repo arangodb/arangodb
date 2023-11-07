@@ -28,7 +28,6 @@
 #include <memory>
 #include <variant>
 
-#include "Actor/ActorPID.h"
 #include "Actor/HandlerBase.h"
 #include "Inspection/InspectorBase.h"
 
@@ -80,7 +79,7 @@ auto inspect(Inspector& f, PingState& x) {
 namespace message {
 
 struct Start {
-  ActorPID pongActor;
+  DistributedActorPID pongActor;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, Start& x) {

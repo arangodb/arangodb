@@ -31,7 +31,7 @@
 #include "Actor/MPSCQueue.h"
 #include "Actor/Runtime.h"
 #include "Actor/Actor.h"
-#include "Actor/ActorPID.h"
+#include "Actor/DistributedActorPID.h"
 
 #include "Actors/TrivialActor.h"
 #include "ThreadPoolScheduler.h"
@@ -47,11 +47,11 @@ struct MockScheduler {
     fn(true);
   }
 };
-struct EmptyExternalDispatcher {
-  auto operator()(ActorPID sender, ActorPID receiver,
-                  arangodb::velocypack::SharedSlice msg) -> void {}
+struct EmptyExternalDispatcher : IExternalDispatcher {
+  void dispatch(DistributedActorPID sender, DistributedActorPID receiver,
+                arangodb::velocypack::SharedSlice msg) override {}
 };
-using ActorTestRuntime = Runtime<MockScheduler, EmptyExternalDispatcher>;
+using ActorTestRuntime = Runtime<MockScheduler>;
 
 template<typename T>
 class ActorTest : public testing::Test {
@@ -72,7 +72,7 @@ TEST(ActorTest, has_a_type_name) {
   auto runtime =
       std::make_shared<ActorTestRuntime>("A", "myID", scheduler, dispatcher);
   auto actor = std::make_shared<Actor<ActorTestRuntime, TrivialActor>>(
-      ActorPID{}, runtime, std::make_unique<TrivialState>());
+      DistributedActorPID{}, runtime, std::make_unique<TrivialState>());
   ASSERT_EQ(actor->typeName(), "TrivialActor");
 }
 
@@ -82,8 +82,8 @@ TEST(ActorTest, formats_actor) {
   auto runtime =
       std::make_shared<ActorTestRuntime>("A", "myID", scheduler, dispatcher);
   auto actor = std::make_shared<Actor<ActorTestRuntime, TrivialActor>>(
-      ActorPID{.server = "A", .database = "database", .id = {1}}, runtime,
-      std::make_unique<TrivialState>());
+      DistributedActorPID{.server = "A", .database = "database", .id = {1}},
+      runtime, std::make_unique<TrivialState>());
   ASSERT_EQ(
       fmt::format("{}", *actor),
       R"({"pid":{"server":"A","database":"database","id":1},"state":{"state":"","called":0},"batchsize":16})");
@@ -95,14 +95,15 @@ TEST(ActorTest, changes_its_state_after_processing_a_message) {
   auto runtime =
       std::make_shared<ActorTestRuntime>("A", "myID", scheduler, dispatcher);
   auto actor = std::make_shared<Actor<ActorTestRuntime, TrivialActor>>(
-      ActorPID{.server = "A", .database = "database", .id = {1}}, runtime,
-      std::make_unique<TrivialState>());
+      DistributedActorPID{.server = "A", .database = "database", .id = {1}},
+      runtime, std::make_unique<TrivialState>());
   ASSERT_EQ(actor->getState(), (TrivialState("", 0)));
 
   auto message = MessagePayload<test::message::TrivialMessages>(
       test::message::TrivialMessage{"Hello"});
-  actor->process(ActorPID{.server = "A", .database = "database", .id = {5}},
-                 message);
+  actor->process(
+      DistributedActorPID{.server = "A", .database = "database", .id = {5}},
+      message);
   ASSERT_EQ(actor->getState(), (TrivialState("Hello", 1)));
 }
 
@@ -112,14 +113,15 @@ TEST(ActorTest, changes_its_state_after_processing_a_velocypack_message) {
   auto runtime =
       std::make_shared<ActorTestRuntime>("A", "myID", scheduler, dispatcher);
   auto actor = std::make_shared<Actor<ActorTestRuntime, TrivialActor>>(
-      ActorPID{.server = "A", .database = "database", .id = {1}}, runtime,
-      std::make_unique<TrivialState>());
+      DistributedActorPID{.server = "A", .database = "database", .id = {1}},
+      runtime, std::make_unique<TrivialState>());
   ASSERT_EQ(actor->getState(), (TrivialState("", 0)));
 
   auto message =
       test::message::TrivialMessages{test::message::TrivialMessage{"Hello"}};
-  actor->process(ActorPID{.server = "A", .database = "database", .id = {5}},
-                 arangodb::inspection::serializeWithErrorT(message).get());
+  actor->process(
+      DistributedActorPID{.server = "A", .database = "database", .id = {5}},
+      arangodb::inspection::serializeWithErrorT(message).get());
 
   ASSERT_EQ(actor->getState(), (TrivialState("Hello", 1)));
 }
@@ -130,8 +132,8 @@ TEST(ActorTest, sets_itself_to_finish) {
   auto runtime =
       std::make_shared<ActorTestRuntime>("A", "myID", scheduler, dispatcher);
   auto actor = std::make_shared<Actor<ActorTestRuntime, TrivialActor>>(
-      ActorPID{.server = "A", .database = "database", .id = {1}}, runtime,
-      std::make_unique<TrivialState>());
+      DistributedActorPID{.server = "A", .database = "database", .id = {1}},
+      runtime, std::make_unique<TrivialState>());
   ASSERT_FALSE(actor->isFinishedAndIdle());
 
   actor->finish();
@@ -141,19 +143,19 @@ TEST(ActorTest, sets_itself_to_finish) {
 
 TYPED_TEST(ActorTest, does_not_work_on_new_messages_after_actor_finished) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime = std::make_shared<Runtime<TypeParam, EmptyExternalDispatcher>>(
+  auto runtime = std::make_shared<Runtime<TypeParam>>(
       "A", "myID", this->scheduler, dispatcher);
-  auto actor = std::make_shared<
-      Actor<Runtime<TypeParam, EmptyExternalDispatcher>, TrivialActor>>(
-      ActorPID{.server = "A", .database = "database", .id = {1}}, runtime,
-      std::make_unique<TrivialState>());
+  auto actor = std::make_shared<Actor<Runtime<TypeParam>, TrivialActor>>(
+      DistributedActorPID{.server = "A", .database = "database", .id = {1}},
+      runtime, std::make_unique<TrivialState>());
   actor->finish();
 
   // send message to actor
   auto message =
       test::message::TrivialMessages{test::message::TrivialMessage{"Hello"}};
-  actor->process(ActorPID{.server = "A", .database = "database", .id = {5}},
-                 arangodb::inspection::serializeWithErrorT(message).get());
+  actor->process(
+      DistributedActorPID{.server = "A", .database = "database", .id = {5}},
+      arangodb::inspection::serializeWithErrorT(message).get());
 
   this->scheduler->stop();
   // actor did not receive message
@@ -167,7 +169,7 @@ TYPED_TEST(ActorTest, does_not_work_on_new_messages_after_actor_finished) {
 //   EmptyExternalDispatcher>>(
 //       "A", "myID", this->scheduler, dispatcher);
 //   auto actor = std::make_shared<
-//       Actor<Runtime<TypeParam, EmptyExternalDispatcher>, TrivialActor>>(
+//       Actor<Runtime<TypeParam>, TrivialActor>>(
 //       ActorPID{.server = "A", .database = "database", .id = {1}}, runtime,
 //       std::make_unique<TrivialState>());
 

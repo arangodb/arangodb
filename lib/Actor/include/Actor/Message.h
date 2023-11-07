@@ -29,7 +29,7 @@
 
 #include <velocypack/Builder.h>
 
-#include "ActorPID.h"
+#include "DistributedActorPID.h"
 #include "MPSCQueue.h"
 
 namespace arangodb::actor {
@@ -53,8 +53,8 @@ auto inspect(Inspector& f, MessagePayload<Payload>& x) {
 namespace message {
 
 struct UnknownMessage {
-  ActorPID sender;
-  ActorPID receiver;
+  DistributedActorPID sender;
+  DistributedActorPID receiver;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, UnknownMessage& x) {
@@ -63,7 +63,7 @@ auto inspect(Inspector& f, UnknownMessage& x) {
 }
 
 struct ActorNotFound {
-  ActorPID actor;
+  DistributedActorPID actor;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ActorNotFound& x) {

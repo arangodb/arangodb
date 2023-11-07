@@ -39,7 +39,7 @@ typedef std::function<void(pregel::metrics::message::MetricsMessages)>
 typedef std::function<void(pregel::conductor::message::ConductorMessages)>
     DispatchConductor;
 typedef std::function<void(message::WorkerMessages)> DispatchSelf;
-typedef std::function<void(actor::ActorPID, message::WorkerMessages)>
+typedef std::function<void(actor::DistributedActorPID, message::WorkerMessages)>
     DispatchOther;
 typedef std::function<void(pregel::message::ResultMessages)> DispatchResult;
 typedef std::function<void(pregel::message::SpawnMessages)> DispatchSpawn;
@@ -58,8 +58,8 @@ struct ExecutionState {
   virtual ~ExecutionState() = default;
 
   [[nodiscard]] virtual auto name() const -> std::string = 0;
-  virtual auto receive(actor::ActorPID const& sender,
-                       actor::ActorPID const& self,
+  virtual auto receive(actor::DistributedActorPID const& sender,
+                       actor::DistributedActorPID const& self,
                        worker::message::WorkerMessages const& message,
                        Dispatcher dispatcher)
       -> std::unique_ptr<ExecutionState> {

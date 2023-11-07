@@ -24,15 +24,16 @@
 
 #pragma once
 
-#include "Actor/ActorPID.h"
+#include "Actor/DistributedActorPID.h"
 #include "Actor/Message.h"
 
 namespace arangodb::actor {
 
 struct ActorBase {
   virtual ~ActorBase() = default;
-  virtual auto process(ActorPID sender, MessagePayloadBase& msg) -> void = 0;
-  virtual auto process(ActorPID sender, velocypack::SharedSlice msg)
+  virtual auto process(DistributedActorPID sender, MessagePayloadBase& msg)
+      -> void = 0;
+  virtual auto process(DistributedActorPID sender, velocypack::SharedSlice msg)
       -> void = 0;
   virtual auto typeName() -> std::string_view = 0;
   virtual auto serialize() -> velocypack::SharedSlice = 0;

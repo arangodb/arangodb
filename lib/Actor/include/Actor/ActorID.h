@@ -28,11 +28,13 @@
 #include "Inspection/Format.h"
 
 namespace arangodb::actor {
+
 struct ActorID {
   size_t id;
 
   auto operator<=>(ActorID const& other) const = default;
 };
+
 template<typename Inspector>
 auto inspect(Inspector& f, ActorID& x) {
   if constexpr (Inspector::isLoading) {
@@ -57,44 +59,6 @@ template<>
 struct hash<arangodb::actor::ActorID> {
   size_t operator()(arangodb::actor::ActorID const& x) const noexcept {
     return std::hash<size_t>()(x.id);
-  };
-};
-}  // namespace std
-
-namespace arangodb::actor {
-
-// TODO: at some point this needs to be ArangoDB's ServerID or compatible
-using ServerID = std::string;
-using DatabaseName = std::string;
-
-struct ActorPID {
-  ServerID server;
-  DatabaseName database;
-  ActorID id;
-  bool operator==(const ActorPID&) const = default;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, ActorPID& x) {
-  return f.object(x).fields(f.field("server", x.server),
-                            f.field("database", x.database),
-                            f.field("id", x.id));
-}
-
-}  // namespace arangodb::actor
-
-template<>
-struct fmt::formatter<arangodb::actor::ActorPID>
-    : arangodb::inspection::inspection_formatter {};
-
-namespace std {
-template<>
-struct hash<arangodb::actor::ActorPID> {
-  size_t operator()(arangodb::actor::ActorPID const& x) const noexcept {
-    size_t hash_id = std::hash<arangodb::actor::ActorID>()(x.id);
-    size_t hash_database = std::hash<std::string>()(x.database);
-    size_t hash_server = std::hash<std::string>()(x.server);
-    // TODO lookup if mixing hashings is appropriate
-    return (hash_id ^ (hash_database << 1)) ^ (hash_server << 1);
   };
 };
 }  // namespace std

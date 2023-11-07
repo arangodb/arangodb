@@ -28,12 +28,12 @@
 #include "Inspection/VPackWithErrorT.h"
 
 #include "Message.h"
-#include "ActorPID.h"
 
 namespace arangodb::actor {
 
 template<typename Runtime, typename State>
 struct HandlerBase {
+  using ActorPID = typename Runtime::ActorPID;
   HandlerBase(ActorPID self, ActorPID sender, std::unique_ptr<State> state,
               std::shared_ptr<Runtime> runtime)
       : self(self), sender(sender), state{std::move(state)}, runtime(runtime){};

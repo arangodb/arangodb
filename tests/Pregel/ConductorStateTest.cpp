@@ -20,7 +20,6 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Actor/ActorPID.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Conductor/State.h"
 #include "Pregel/MasterContext.h"
@@ -65,7 +64,7 @@ struct AlgorithmFake : IAlgorithm {
 
 TEST(ConductorStateTest,
      must_always_be_initialized_with_initial_execution_state) {
-  auto fakeActorPID = actor::ActorPID{
+  auto fakeActorPID = actor::DistributedActorPID{
       .server = "A", .database = "database", .id = actor::ActorID{4}};
 
   std::vector<std::string> emptyServers{};
@@ -76,7 +75,7 @@ TEST(ConductorStateTest,
 }
 
 TEST(CreateWorkersStateTest, creates_as_many_messages_as_required_servers) {
-  auto fakeActorPID = actor::ActorPID{
+  auto fakeActorPID = actor::DistributedActorPID{
       .server = "A", .database = "database", .id = actor::ActorID{4}};
 
   std::vector<std::vector<std::string>> amountOfServers = {
@@ -106,7 +105,7 @@ TEST(CreateWorkersStateTest, creates_as_many_messages_as_required_servers) {
 }
 
 TEST(CreateWorkersStateTest, creates_worker_pids_from_received_messages) {
-  auto fakeActorPID = actor::ActorPID{
+  auto fakeActorPID = actor::DistributedActorPID{
       .server = "A", .database = "database", .id = actor::ActorID{4}};
   std::vector<std::string> servers = {"ServerA", "ServerB", "ServerC"};
 
@@ -149,7 +148,7 @@ TEST(CreateWorkersStateTest, creates_worker_pids_from_received_messages) {
 
 TEST(CreateWorkersStateTest,
      reply_with_loading_state_as_soon_as_all_servers_replied) {
-  auto fakeActorPID = actor::ActorPID{
+  auto fakeActorPID = actor::DistributedActorPID{
       .server = "A", .database = "database", .id = actor::ActorID{4}};
 
   std::vector<std::string> servers = {"ServerA", "ServerB", "ServerC"};
@@ -171,21 +170,21 @@ TEST(CreateWorkersStateTest,
   ASSERT_EQ(msgs.size(), servers.size());
 
   {
-    actor::ActorPID actorPid{
+    actor::DistributedActorPID actorPid{
         .server = servers.at(0), .database = databaseName, .id = {0}};
     auto receiveResponse =
         createWorkers.receive(actorPid, conductor::message::WorkerCreated{});
     ASSERT_EQ(receiveResponse, std::nullopt);
   }
   {
-    actor::ActorPID actorPid{
+    actor::DistributedActorPID actorPid{
         .server = servers.at(1), .database = databaseName, .id = {1}};
     auto receiveResponse =
         createWorkers.receive(actorPid, conductor::message::WorkerCreated{});
     ASSERT_EQ(receiveResponse, std::nullopt);
   }
   {
-    actor::ActorPID actorPid{
+    actor::DistributedActorPID actorPid{
         .server = servers.at(2), .database = databaseName, .id = {2}};
     auto receiveResponse =
         createWorkers.receive(actorPid, conductor::message::WorkerCreated{});
@@ -195,7 +194,7 @@ TEST(CreateWorkersStateTest,
 }
 
 TEST(CreateWorkersStateTest, receive_invalid_message_type) {
-  auto fakeActorPID = actor::ActorPID{
+  auto fakeActorPID = actor::DistributedActorPID{
       .server = "A", .database = "database", .id = actor::ActorID{4}};
 
   std::vector<std::string> servers = {"ServerA"};
@@ -206,7 +205,7 @@ TEST(CreateWorkersStateTest, receive_invalid_message_type) {
   auto msgs = createWorkers.messagesToServers();
 
   {
-    actor::ActorPID actorPid{
+    actor::DistributedActorPID actorPid{
         .server = servers.at(0), .database = databaseName, .id = {0}};
     auto invalidMessage = conductor::message::ConductorStart{};
     auto receiveResponse = createWorkers.receive(actorPid, invalidMessage);
@@ -215,7 +214,7 @@ TEST(CreateWorkersStateTest, receive_invalid_message_type) {
 }
 
 TEST(CreateWorkersStateTest, receive_valid_message_from_unknown_server) {
-  auto fakeActorPID = actor::ActorPID{
+  auto fakeActorPID = actor::DistributedActorPID{
       .server = "A", .database = "database", .id = actor::ActorID{4}};
 
   std::vector<std::string> servers = {"ServerA"};
@@ -226,7 +225,7 @@ TEST(CreateWorkersStateTest, receive_valid_message_from_unknown_server) {
   auto msgs = createWorkers.messagesToServers();
 
   {
-    actor::ActorPID unknownActorPid{
+    actor::DistributedActorPID unknownActorPid{
         .server = "UnknownServerX", .database = databaseName, .id = {0}};
     auto receiveResponse = createWorkers.receive(
         unknownActorPid, conductor::message::WorkerCreated{});
@@ -235,7 +234,7 @@ TEST(CreateWorkersStateTest, receive_valid_message_from_unknown_server) {
 }
 
 TEST(CreateWorkersStateTest, receive_valid_error_message) {
-  auto fakeActorPID = actor::ActorPID{
+  auto fakeActorPID = actor::DistributedActorPID{
       .server = "A", .database = "database", .id = actor::ActorID{4}};
 
   std::vector<std::string> servers = {"ServerA"};
@@ -246,7 +245,7 @@ TEST(CreateWorkersStateTest, receive_valid_error_message) {
   auto msgs = createWorkers.messagesToServers();
 
   {
-    actor::ActorPID unknownActorPid{
+    actor::DistributedActorPID unknownActorPid{
         .server = servers.at(0), .database = databaseName, .id = {0}};
     auto errorMessage = arangodb::ResultT<conductor::message::WorkerCreated>(
         TRI_ERROR_ARANGO_ILLEGAL_NAME);

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,28 +18,31 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Aditya Mukhopadhyay
+/// @author Julia Volmer
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "State.h"
+#include <optional>
+#include <string>
+#include <cstdint>
+#include <memory>
+#include <vector>
+#include "Inspection/VPackWithErrorT.h"
 
-namespace arangodb::pregel::worker {
-template<typename V, typename E, typename M>
-struct WorkerState;
+#include "Actor/Actor.h"
+#include "Actor/ActorList.h"
+#include "Actor/ActorID.h"
+#include "Actor/Assert.h"
 
-template<typename V, typename E, typename M>
-struct Initial : ExecutionState {
-  explicit Initial(WorkerState<V, E, M>& worker);
-  ~Initial() override = default;
+namespace arangodb::actor {
 
-  [[nodiscard]] auto name() const -> std::string override { return "initial"; };
-  auto receive(actor::DistributedActorPID const& sender,
-               actor::DistributedActorPID const& self,
-               message::WorkerMessages const& message, Dispatcher dispatcher)
-      -> std::unique_ptr<ExecutionState> override;
-
-  WorkerState<V, E, M>& worker;
+struct IExternalDispatcher {
+  virtual ~IExternalDispatcher() = default;
+  virtual void dispatch(DistributedActorPID sender,
+                        DistributedActorPID receiver,
+                        arangodb::velocypack::SharedSlice msg) = 0;
 };
-}  // namespace arangodb::pregel::worker
+
+}  // namespace arangodb::actor

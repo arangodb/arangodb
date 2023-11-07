@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <chrono>
 #include <optional>
 #include <string>
 #include <cstdint>
@@ -33,8 +34,10 @@
 
 #include "Actor/Actor.h"
 #include "Actor/ActorList.h"
-#include "Actor/ActorPID.h"
+#include "Actor/ActorID.h"
 #include "Actor/Assert.h"
+#include "Actor/DistributedActorPID.h"
+#include "Actor/IExternalDispatcher.h"
 
 namespace arangodb::actor {
 
@@ -43,25 +46,21 @@ concept Schedulable = requires(S s, std::chrono::seconds delay) {
   {s([]() {})};
   {s.delay(delay, [](bool canceled) {})};
 };
-template<typename D>
-concept VPackDispatchable = requires(D d, ActorPID pid,
-                                     arangodb::velocypack::SharedSlice msg) {
-  {d(pid, pid, msg)};
-};
 
-template<Schedulable Scheduler, VPackDispatchable ExternalDispatcher>
-struct Runtime
-    : std::enable_shared_from_this<Runtime<Scheduler, ExternalDispatcher>> {
+template<Schedulable Scheduler>
+struct Runtime : std::enable_shared_from_this<Runtime<Scheduler>> {
   Runtime() = delete;
   Runtime(Runtime const&) = delete;
   Runtime(Runtime&&) = delete;
   Runtime(ServerID myServerID, std::string runtimeID,
           std::shared_ptr<Scheduler> scheduler,
-          std::shared_ptr<ExternalDispatcher> externalDispatcher)
+          std::shared_ptr<IExternalDispatcher> externalDispatcher)
       : myServerID(myServerID),
         runtimeID(runtimeID),
         scheduler(scheduler),
         externalDispatcher(externalDispatcher) {}
+
+  using ActorPID = DistributedActorPID;
 
   template<typename ActorConfig>
   auto spawn(DatabaseName const& database,
@@ -177,7 +176,7 @@ struct Runtime
   std::string const runtimeID;
 
   std::shared_ptr<Scheduler> scheduler;
-  std::shared_ptr<ExternalDispatcher> externalDispatcher;
+  std::shared_ptr<IExternalDispatcher> externalDispatcher;
 
   // actor id 0 is reserved for special messages
   std::atomic<size_t> uniqueActorIDCounter{1};
@@ -203,12 +202,11 @@ struct Runtime
                           ActorMessage const& message) -> void {
     auto payload = inspection::serializeWithErrorT(message);
     ACTOR_ASSERT(payload.ok());
-    (*externalDispatcher)(sender, receiver, payload.get());
+    externalDispatcher->dispatch(sender, receiver, payload.get());
   }
 };
-template<Schedulable Scheduler, VPackDispatchable ExternalDispatcher,
-         typename Inspector>
-auto inspect(Inspector& f, Runtime<Scheduler, ExternalDispatcher>& x) {
+template<Schedulable Scheduler, typename Inspector>
+auto inspect(Inspector& f, Runtime<Scheduler>& x) {
   return f.object(x).fields(
       f.field("myServerID", x.myServerID), f.field("runtimeID", x.runtimeID),
       f.field("uniqueActorIDCounter", x.uniqueActorIDCounter.load()),
@@ -216,8 +214,3 @@ auto inspect(Inspector& f, Runtime<Scheduler, ExternalDispatcher>& x) {
 }
 
 };  // namespace arangodb::actor
-
-template<arangodb::actor::Schedulable Scheduler,
-         arangodb::actor::VPackDispatchable ExternalDispatcher>
-struct fmt::formatter<arangodb::actor::Runtime<Scheduler, ExternalDispatcher>>
-    : arangodb::inspection::inspection_formatter {};

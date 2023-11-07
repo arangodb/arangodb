@@ -32,9 +32,10 @@ struct ActorBaseMock : ActorBase {
   ActorBaseMock(std::string type) : type{std::move(type)} {};
   ActorBaseMock() = default;
   ~ActorBaseMock() = default;
-  auto process(ActorPID sender, MessagePayloadBase& msg) -> void override{};
-  auto process(ActorPID sender, arangodb::velocypack::SharedSlice msg)
+  auto process(DistributedActorPID sender, MessagePayloadBase& msg)
       -> void override{};
+  auto process(DistributedActorPID sender,
+               arangodb::velocypack::SharedSlice msg) -> void override{};
   auto typeName() -> std::string_view override { return type; };
   auto serialize() -> arangodb::velocypack::SharedSlice override {
     return arangodb::velocypack::SharedSlice();
