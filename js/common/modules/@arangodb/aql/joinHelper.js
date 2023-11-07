@@ -62,6 +62,16 @@ const documentsB = Array.from({length: numDocuments})
     .map(function (v, idx) { return {x: idx, y: 2 * idx, z: 3 * idx}; });
 
 const buildQuery = function(config) {
+  const usageToString = function (varName, usage) {
+    if (usage === "projection") {
+      return `{z: ${varName}.${projectionAttribute}}`;
+    } else if (usage === "document") {
+      return `KEEP(${varName}, "x", "y", "z")`;
+    } else {
+      return 'NULL';
+    }
+  };
+
   return `
   FOR d1 IN ${collection1}
     SORT d1.${indexAttribute} 
@@ -72,8 +82,8 @@ const buildQuery = function(config) {
       ${config.sort ? "SORT d1.z" : "/* no sort */"}
       ${config.limit === false ? "/* no limit */" : `LIMIT ${config.limit[0]}, ${config.limit[1]}`}
       RETURN [
-        ${config.projection1 ? `{z: d1.${projectionAttribute}}` : 'KEEP(d1, "x", "y", "z")'},
-        ${config.projection2 ? `{z: d2.${projectionAttribute}}` : 'KEEP(d2, "x", "y", "z")'},
+        ${usageToString('d1', config.valueUsage1)},
+        ${usageToString('d2', config.valueUsage2)},
       ]
     `;
 };
@@ -116,7 +126,18 @@ const computeResult = function (config) {
     return (!config.filter1 || docA[filterAttribute] % 4 === 0) &&
         (!config.filter2 || docB[filterAttribute] % 4 === 0);
   }).map(function ([docA, docB]) {
-    return [config.projection1 ? {z: docA.z} : docA, config.projection2 ? {z: docB.z} : docB];
+
+    const handleDoc = function (doc, usage) {
+      if (usage === "projection") {
+        return {z: doc.z};
+      } else if(usage === "document") {
+        return doc;
+      } else {
+        return null;
+      }
+    };
+
+    return [handleDoc(docA, config.valueUsage1), handleDoc(docB, config.valueUsage2)];
   });
 
   if (config.limit === false) {
@@ -126,7 +147,7 @@ const computeResult = function (config) {
   }
 };
 
-const checkIndexInfos = function (infos, filter, filterAttr, projection, projectionAttr) {
+const checkIndexInfos = function (infos, filter, filterAttr, valueUsage, projectionAttr) {
   if (filter) {
     assertNotEqual(infos.filter, undefined);
     assertEqual(normalize(infos.filterProjections), normalize(["y"]));
@@ -135,7 +156,10 @@ const checkIndexInfos = function (infos, filter, filterAttr, projection, project
     assertEqual(infos.filter, undefined);
   }
 
-  if (projection) {
+  const documentUsedForFilter = filter && !infos.indexCoversFilterProjections;
+
+  if (valueUsage === "projection") {
+    assertEqual(infos.producesOutput, true);
     const proj = _.flatten(normalize(infos.projections));
     assertNotEqual(proj.indexOf("z"), -1);
     if (!filter || infos.indexCoversFilterProjections) {
@@ -143,8 +167,11 @@ const checkIndexInfos = function (infos, filter, filterAttr, projection, project
     } else {
       assertEqual(infos.indexCoversProjections, false);
     }
-  } else {
+  } else if (valueUsage === "document") {
+    assertEqual(infos.producesOutput, true);
     assertEqual(normalize(infos.projections), normalize([]));
+  } else {
+    assertEqual(infos.producesOutput, documentUsedForFilter, infos);
   }
 
   if (filter && !infos.indexCoversFilterProjections) {
@@ -178,9 +205,9 @@ const generateTestFunction = function (config) {
     // it can happen that the indexes are swap, so we have to find the correct index for collection A
 
     checkIndexInfos(getIndexForCollection(join.indexInfos, collection1), config.filter1, config.filterAttribute1,
-        config.projection1, config.projectedAttribute1);
+        config.valueUsage1, config.projectedAttribute1);
     checkIndexInfos(getIndexForCollection(join.indexInfos, collection2), config.filter2, config.filterAttribute2,
-        config.projection2, config.projectedAttribute2);
+        config.valueUsage2, config.projectedAttribute2);
 
     const expectedResult = computeResult(config);
     // sorting by x is required, because the query does not imply any sorting order
@@ -247,8 +274,10 @@ const indexJoinTestMultiSuite = function (parameters) {
 
   const configToString = function(config) {
     let str = "";
-    if (config.projection1) { str += "p1"; }
-    if (config.projection2) { str += "p2"; }
+    if (config.valueUsage1 === "projection") { str += "p1"; }
+    if (config.valueUsage1 === "document") { str += "d1"; }
+    if (config.valueUsage2 === "projection") { str += "p2"; }
+    if (config.valueUsage2 === "document") { str += "d2"; }
     if (config.filter1) { str += "f1"; }
     if (config.filter2) { str += "f2"; }
     if (config.sort) { str += "S"; }
@@ -274,8 +303,8 @@ const createIndexJoinTestMultiSuite = function (configs) {
 const createParameters = function (unique, sort) {
   // We group the tests by the same data definition and then run all possible queries at once.
   return _.groupBy(generateParameters({
-    projection1: [true, false],
-    projection2: [true, false],
+    valueUsage1: ["projection", "document"],
+    valueUsage2: ["projection", "document", "null"],
     filter1: [true, false],
     filter2: [true, false],
     filterAttribute1: ["indexed", "stored", "document"],
