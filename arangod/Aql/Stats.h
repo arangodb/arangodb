@@ -125,11 +125,29 @@ class JoinStats {
     _scannedIndex += value;
   }
   void incrFiltered(std::uint64_t value = 1) noexcept { _filtered += value; }
+  void incrDocumentLookups(std::uint64_t value = 1) noexcept {
+    _documentLookups += value;
+  }
+  void incrCacheHits(std::uint64_t value = 1) noexcept { _cacheHits += value; }
+  void incrCacheMisses(std::uint64_t value = 1) noexcept {
+    _cacheMisses += value;
+  }
+  void incrSeeks(std::uint64_t value = 1) noexcept { _seeks += value; }
 
   [[nodiscard]] std::uint64_t getScannedIndex() const noexcept {
     return _scannedIndex;
   }
   [[nodiscard]] std::uint64_t getFiltered() const noexcept { return _filtered; }
+  [[nodiscard]] std::uint64_t getDocumentLookups() const noexcept {
+    return _documentLookups;
+  }
+  [[nodiscard]] std::uint64_t getCacheHits() const noexcept {
+    return _cacheHits;
+  }
+  [[nodiscard]] std::uint64_t getCacheMisses() const noexcept {
+    return _cacheMisses;
+  }
+  [[nodiscard]] std::uint64_t getSeeks() const noexcept { return _seeks; }
 
   void operator+=(JoinStats const& stats) noexcept {
     _scannedIndex += stats._scannedIndex;
@@ -139,13 +157,16 @@ class JoinStats {
  private:
   std::uint64_t _scannedIndex = 0;
   std::uint64_t _filtered = 0;
+  std::uint64_t _documentLookups = 0;
+  std::uint64_t _cacheHits = 0;
+  std::uint64_t _cacheMisses = 0;
+  std::uint64_t _seeks = 0;
 };
 
-inline ExecutionStats& operator+=(
-    ExecutionStats& executionStats,
-    JoinStats const& enumerateCollectionStats) noexcept {
-  executionStats.scannedIndex += enumerateCollectionStats.getScannedIndex();
-  executionStats.filtered += enumerateCollectionStats.getFiltered();
+inline ExecutionStats& operator+=(ExecutionStats& executionStats,
+                                  JoinStats const& joinStats) noexcept {
+  executionStats.scannedIndex += joinStats.getScannedIndex();
+  executionStats.filtered += joinStats.getFiltered();
   return executionStats;
 }
 

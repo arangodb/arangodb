@@ -129,6 +129,7 @@ const IndexPrimaryJoinTestSuite = function () {
       return node.type;
     });
 
+      db._profileQuery(query, null, qOptions);
     if (planNodes.indexOf("JoinNode") === -1) {
       db._explain(query, null, qOptions);
     }
