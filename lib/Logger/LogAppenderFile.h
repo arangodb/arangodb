@@ -113,7 +113,7 @@ struct LogAppenderFileFactory {
 
  private:
   // Static class, never construct it.
-  LogAppenderFileFactory(){};
+  LogAppenderFileFactory() = delete;
 };
 
 class LogAppenderStdStream : public LogAppenderStream {
