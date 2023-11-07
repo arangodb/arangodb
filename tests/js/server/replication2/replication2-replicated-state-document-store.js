@@ -588,13 +588,21 @@ const replicatedStateRecoverySuite = function () {
     },
 
     testRecoveryAfterCompaction: function (testName) {
+      // Checks that inserted documents are still there after compaction is done.
+      // Various errors that could occur during recovery are triggered intentionally (e.g. unique constraint violation).
+      // Because after the leader election followers also replay the un-compacted part of the log, this test also covers
+      // error handling on followers.
       let documents = [];
       for (let counter = 0; counter < 100; ++counter) {
-        documents.push({_key: `${testName}-${counter}`});
+        documents.push({_key: `${testName}-${counter}`, value: counter, temporary: counter});
       }
       for (let idx = 0; idx < documents.length; ++idx) {
         collection.insert(documents[idx]);
       }
+
+      // The following operation will be used to trigger errors, which should be ignored during recovery.
+      const removedDoc = {_key: `${testName}-document-not-found`};
+      collection.insert(removedDoc);
 
       // Wait for operations to be synced
       let {leader} = lh.getReplicatedLogLeaderPlan(database, logId);
@@ -604,6 +612,39 @@ const replicatedStateRecoverySuite = function () {
 
       // Trigger compaction intentionally.
       log.compact();
+
+      // Should ignore document-not-found
+      collection.remove(removedDoc);
+
+      // Create a temporary unique index on temporary.
+      let uniqueIndex = collection.ensureIndex({name: "kuh", type: "persistent", fields: ["temporary"], unique: true});
+      assertEqual(uniqueIndex.name, "kuh");
+      // Drop the index
+      assertTrue(collection.dropIndex(uniqueIndex));
+      // Wait for the index to removed from Current. This is how we know that the leader dropped the index.
+      let indexId = uniqueIndex.id.split('/')[1];
+      lh.waitFor(() => {
+        if (dh.isIndexInCurrent(database, collection._id, indexId)) {
+          return Error(`Index ${indexId} still in Current`);
+        }
+        return true;
+      });
+
+      // Insert a doc that has the same temporary as an existing one.
+      // When the index creation is going to be replayed, it will fail, but the error should be ignored.
+      collection.insert({_key: `${testName}-temporary`, value: 1234567, temporary: 0})
+
+      // Insert two docs that have a common property
+      const commonDoc1 = {_key: `${testName}-common1`, value: 1234};
+      const commonDoc2 = {_key: `${testName}-common2`, value: 1234};
+      collection.insert(commonDoc1);
+      collection.insert(commonDoc2);
+      // Delete the first doc
+      collection.remove(commonDoc1);
+      // Create an unique index. When commonDoc1 insertions is replayed, it should trigger unique constraint violation.
+      // The error should be ignored during recovery.
+      uniqueIndex = collection.ensureIndex({name: "eule", type: "persistent", fields: ["value"], unique: true});
+      assertEqual(uniqueIndex.name, "eule");
 
       // Trigger leader recovery
       lh.bumpTermOfLogsAndWaitForConfirmation(database, collection);

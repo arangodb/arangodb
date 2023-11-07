@@ -80,6 +80,19 @@ auto DocumentStateErrorHandler::handleOpResult(
         << " failed because the shard was not found, ignoring: " << res;
     return TRI_ERROR_NO_ERROR;
   }
+  if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
+    // During follower applyEntries or leader recovery, we might run into a
+    // situation where replaying an index creation is impossible. For example,
+    // the index is created, then dropped, then duplicate documents are
+    // inserted.
+    LOG_CTX("a7289", DEBUG, _loggerContext)
+        << "Index creation " << op.properties.toJson() << " on shard "
+        << op.shard
+        << " failed because the collection no longer corresponds to its "
+           "constraints, ignoring: "
+        << res;
+    return TRI_ERROR_NO_ERROR;
+  }
   return res;
 }
 
@@ -143,8 +156,11 @@ auto DocumentStateErrorHandler::handleDocumentTransactionResult(
   if (res.fail() && !ignoreError(res.errorNumber())) {
     return makeResultFromOperationResult(res);
   } else {
-    LOG_CTX("f1be8", DEBUG, _loggerContext)
-        << "Ignoring document error: " << res.errorMessage();
+    if (res.fail()) {
+      LOG_CTX("f1be8", DEBUG, _loggerContext)
+          << "Ignoring document error: " << Result{res.errorNumber()} << " "
+          << res.errorMessage();
+    }
   }
 
   for (auto const& [code, cnt] : res.countErrorCodes) {
@@ -152,7 +168,7 @@ auto DocumentStateErrorHandler::handleDocumentTransactionResult(
       return makeResultFromOperationResult(res);
     } else {
       LOG_CTX("90219", DEBUG, _loggerContext)
-          << "Ignoring document error: " << code << " " << cnt;
+          << "Ignoring document error: " << Result{code} << " " << cnt;
     }
   }
 
