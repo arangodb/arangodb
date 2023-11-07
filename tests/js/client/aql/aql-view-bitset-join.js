@@ -65,7 +65,7 @@ const ViewBitsetJoin = function () {
     checkQuery(query3, immutableParts);
     const query4 = "FOR d1 IN " + collectionName1 + " LET data = (FOR d2 IN " + viewName2 + query + ") RETURN data";
     checkQuery(query4, immutableParts);    
-  }
+  };
 
   return {
     setUpAll: function () {
