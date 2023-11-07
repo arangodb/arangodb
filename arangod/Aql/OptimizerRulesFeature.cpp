@@ -453,7 +453,7 @@ pulled into the traversal, significantly reducing overhead.)");
 
   registerRule(
       "optimize-projections", optimizeProjections,
-      OptimizerRule::optimizeProjections,
+      OptimizerRule::optimizeProjectionsRule,
       OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
       R"(Remove projections that are no longer used and store projection
 results in separate output registers.)");
@@ -833,7 +833,7 @@ in case the indexes qualify for it.)");
   // current batch. this effectively allows parts of the query to run in
   // parallel. this is only supported by certain types of nodes and queries.
   registerRule("async-prefetch", asyncPrefetchRule,
-               OptimizerRule::asyncPrefetch,
+               OptimizerRule::asyncPrefetchRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
                R"(Allow query execution nodes to asynchronously prefetch the
 next batch while processing the current batch, allowing parts of the query to

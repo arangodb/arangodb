@@ -191,7 +191,8 @@ class IResearchViewNode final : public aql::ExecutionNode,
   void replaceAttributeAccess(aql::ExecutionNode const* self,
                               aql::Variable const* searchVariable,
                               std::span<std::string_view> attribute,
-                              aql::Variable const* replaceVariable) override;
+                              aql::Variable const* replaceVariable,
+                              size_t index) override;
 
   std::vector<aql::Variable const*> getVariablesSetHere() const final;
 
