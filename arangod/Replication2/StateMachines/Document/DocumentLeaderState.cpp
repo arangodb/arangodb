@@ -661,7 +661,7 @@ auto DocumentLeaderState::createIndex(
 
           localIndexCreation = data.transactionHandler->applyEntry(op);
           if (localIndexCreation.fail()) {
-            LOG_CTX("3ae6b", INFO, self->loggerContext)
+            LOG_CTX("3ae6b", WARN, self->loggerContext)
                 << "CreateIndex operation " << op
                 << " failed on the leader, before being "
                    "replicated: "

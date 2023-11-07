@@ -732,10 +732,25 @@ const replicatedStateRecoverySuite = function () {
       // Create and drop an indexes. During leader recovery, this will trigger index operations on a non-existing shard.
       let index = col2.ensureIndex({name: "eule", type: "persistent", fields: ["value"]});
       assertEqual(index.name, "eule");
+      let indexId = index.id.split('/')[1];
       assertTrue(col2.dropIndex(index), `Failed to drop index ${index.name}`);
-      index = col2.ensureIndex({name: "frosch", type: "persistent", fields: ["foo"], unique: true});
+      lh.waitFor(() => {
+        if (dh.isIndexInCurrent(database, collection._id, indexId)) {
+          return Error(`Index ${indexId} still in Current`);
+        }
+        return true;
+      });
+
+      index = col2.ensureIndex({name: "frosch", type: "persistent", fields: ["_key"], unique: true});
       assertEqual(index.name, "frosch");
+      indexId = index.id.split('/')[1];
       assertTrue(col2.dropIndex(index), `Failed to drop index ${index.name}`);
+      lh.waitFor(() => {
+        if (dh.isIndexInCurrent(database, collection._id, indexId)) {
+          return Error(`Index ${indexId} still in Current`);
+        }
+        return true;
+      });
 
       // Drop the additional collection. During leader recovery, this will trigger a DropShard on a non-existing shard.
       col2.drop();
