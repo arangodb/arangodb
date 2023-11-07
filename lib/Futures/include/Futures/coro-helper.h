@@ -41,23 +41,22 @@ class Future;
 template<typename T>
 struct FutureAwaitable {
   [[nodiscard]] auto await_ready() const noexcept -> bool { return false; }
-  void await_suspend(std_coro::coroutine_handle<> coro) noexcept {
-    if (coro == nullptr) {
-      abort();
-    }
+  bool await_suspend(std_coro::coroutine_handle<> coro) noexcept {
+    // returning false resumes `coro`
     std::move(_future).thenFinal(
         [coro, this](futures::Try<T>&& result) mutable noexcept {
           _result = std::move(result);
-          if (coro == nullptr) {
-            abort();
+          if (_counter.fetch_sub(1) == 1) {
+            coro.resume();
           }
-          coro.resume();
         });
+    return _counter.fetch_sub(1) != 1;
   }
   auto await_resume() -> T { return std::move(_result.value().get()); }
   explicit FutureAwaitable(Future<T> fut) : _future(std::move(fut)) {}
 
  private:
+  std::atomic_uint8_t _counter{2};
   Future<T> _future;
   std::optional<futures::Try<T>> _result;
 };
