@@ -556,7 +556,7 @@ off to an extra logging thread, which asynchronously writes the log messages.)")
               arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31200)
       .setLongDescription(
-          R"(If you are using the option log.force-direct (default)
+          R"(If you are using the option `--log.force-direct` (default)
 log entries are pushed on a queue for asynchronous writing. In case you
 are using a slow log output (e.g. syslog) the queue might grow and eventually overflow.
 This option allows to configure the upper bound. If the queue is full, log entries
