@@ -114,11 +114,12 @@ TEST_P(UniqueIndexMerger, no_results) {
   bool hasMore = true;
   std::size_t count = 0;
   while (hasMore) {
-    hasMore =
+    auto [hasMoreNext, amountOfSeeks] =
         merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
           count += 1;
           return doReadMore();
         });
+    hasMore = hasMoreNext;
   }
 
   ASSERT_EQ(count, 0);
@@ -144,13 +145,14 @@ TEST_P(UniqueIndexMerger, some_results_a) {
   std::size_t count = 0;
 
   while (hasMore) {
-    hasMore =
+    auto [hasMoreNext, amountOfSeeks] =
         merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
           EXPECT_EQ(docs[0], docs[1]);
 
           count += 1;
           return doReadMore();
         });
+    hasMore = hasMoreNext;
   }
 
   ASSERT_EQ(count, 1);
@@ -176,13 +178,14 @@ TEST_P(UniqueIndexMerger, some_results_b) {
   std::size_t count = 0;
 
   while (hasMore) {
-    hasMore =
+    auto [hasMoreNext, amountOfSeeks] =
         merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
           EXPECT_EQ(docs[0], docs[1]);
 
           count += 1;
           return doReadMore();
         });
+    hasMore = hasMoreNext;
   }
 
   ASSERT_EQ(count, 5);
@@ -205,12 +208,13 @@ TEST_P(UniqueIndexMerger, one_empty) {
   bool hasMore = true;
   std::size_t count = 0;
   while (hasMore) {
-    hasMore =
+    auto [hasMoreNext, amountOfSeeks] =
         merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
           EXPECT_EQ(docs[0], docs[1]);
           count += 1;
           return doReadMore();
         });
+    hasMore = hasMoreNext;
   }
 
   ASSERT_EQ(count, 0);
@@ -231,12 +235,13 @@ TEST_P(UniqueIndexMerger, both_empty) {
   bool hasMore = true;
   std::size_t count = 0;
   while (hasMore) {
-    hasMore =
+    auto [hasMoreNext, amountOfSeeks] =
         merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
           EXPECT_EQ(docs[0], docs[1]);
           count += 1;
           return doReadMore();
         });
+    hasMore = hasMoreNext;
   }
 
   ASSERT_EQ(count, 0);

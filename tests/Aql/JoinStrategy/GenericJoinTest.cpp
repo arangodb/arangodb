@@ -113,11 +113,12 @@ TEST_P(IndexMerger, no_results) {
   bool hasMore = true;
   std::size_t count = 0;
   while (hasMore) {
-    hasMore =
+    auto [hasMoreNext, amountOfSeeks] =
         merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
           count += 1;
           return doReadMore();
         });
+    hasMore = hasMoreNext;
   }
 
   ASSERT_EQ(count, 0);
@@ -142,12 +143,13 @@ TEST_P(IndexMerger, some_results) {
   bool hasMore = true;
   std::size_t count = 0;
   while (hasMore) {
-    hasMore =
+    auto [hasMoreNext, amountOfSeeks] =
         merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
           EXPECT_EQ(docs[0], docs[1]);
           count += 1;
           return doReadMore();
         });
+    hasMore = hasMoreNext;
   }
 
   ASSERT_EQ(count, 1);
@@ -170,12 +172,13 @@ TEST_P(IndexMerger, one_empty) {
   bool hasMore = true;
   std::size_t count = 0;
   while (hasMore) {
-    hasMore =
+    auto [hasMoreNext, amountOfSeeks] =
         merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
           EXPECT_EQ(docs[0], docs[1]);
           count += 1;
           return doReadMore();
         });
+    hasMore = hasMoreNext;
   }
 
   ASSERT_EQ(count, 0);
@@ -196,12 +199,13 @@ TEST_P(IndexMerger, both_empty) {
   bool hasMore = true;
   std::size_t count = 0;
   while (hasMore) {
-    hasMore =
+    auto [hasMoreNext, amountOfSeeks] =
         merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
           EXPECT_EQ(docs[0], docs[1]);
           count += 1;
           return doReadMore();
         });
+    hasMore = hasMoreNext;
   }
 
   ASSERT_EQ(count, 0);
@@ -221,12 +225,13 @@ TEST_P(IndexMerger, product_result) {
   bool hasMore = true;
   std::size_t count = 0;
   while (hasMore) {
-    hasMore =
+    auto [hasMoreNext, amountOfSeeks] =
         merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
           EXPECT_EQ(docs[0], docs[1]);
           count += 1;
           return doReadMore();
         });
+    hasMore = hasMoreNext;
   }
 
   ASSERT_EQ(count, 4);
@@ -247,12 +252,13 @@ TEST_P(IndexMerger, two_phase_product_result) {
   bool hasMore = true;
   std::size_t count = 0;
   while (hasMore) {
-    hasMore =
+    auto [hasMoreNext, amountOfSeeks] =
         merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
           EXPECT_EQ(docs[0], docs[1]);
           count += 1;
           return doReadMore();
         });
+    hasMore = hasMoreNext;
   }
 
   ASSERT_EQ(count, 5);
@@ -273,12 +279,13 @@ TEST_P(IndexMerger, two_phase_product_result_two_streaks) {
   bool hasMore = true;
   std::size_t count = 0;
   while (hasMore) {
-    hasMore =
+    auto [hasMoreNext, amountOfSeeks] =
         merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
           EXPECT_EQ(docs[0], docs[1]);
           count += 1;
           return doReadMore();
         });
+    hasMore = hasMoreNext;
   }
 
   ASSERT_EQ(count, 4 + 4);
@@ -300,12 +307,13 @@ TEST_P(IndexMerger, two_phase_product_result_two_streaks_x) {
   bool hasMore = true;
   std::size_t count = 0;
   while (hasMore) {
-    hasMore =
+    auto [hasMoreNext, amountOfSeeks] =
         merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
           EXPECT_EQ(docs[0], docs[1]);
           count += 1;
           return doReadMore();
         });
+    hasMore = hasMoreNext;
   }
 
   ASSERT_EQ(count, 4 + 4 + 1);
@@ -335,7 +343,7 @@ TEST_P(IndexMerger, three_iterators) {
   bool hasMore = true;
   std::size_t count = 0;
   while (hasMore) {
-    hasMore =
+    auto [hasMoreNext, amountOfSeeks] =
         merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
           EXPECT_EQ(docs.size(), 3);
           LOG_DEVEL << docs[0] << " - " << docs[1] << " - " << docs[2];
@@ -344,6 +352,7 @@ TEST_P(IndexMerger, three_iterators) {
           count += 1;
           return doReadMore();
         });
+    hasMore = hasMoreNext;
   }
 
   ASSERT_EQ(count, 3);
@@ -371,7 +380,7 @@ TEST_P(IndexMerger, three_iterators_2) {
   bool hasMore = true;
   std::size_t count = 0;
   while (hasMore) {
-    hasMore =
+    auto [hasMoreNext, amountOfSeeks] =
         merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
           EXPECT_EQ(docs.size(), 3);
           LOG_DEVEL << docs[0] << " - " << docs[1] << " - " << docs[2];
@@ -380,6 +389,7 @@ TEST_P(IndexMerger, three_iterators_2) {
           count += 1;
           return doReadMore();
         });
+    hasMore = hasMoreNext;
   }
 
   ASSERT_EQ(count, 2);
@@ -397,13 +407,14 @@ TEST_P(IndexMerger, one_iterator_corner_case) {
   bool hasMore = true;
   std::size_t count = 0;
   while (hasMore) {
-    hasMore =
+    auto [hasMoreNext, amountOfSeeks] =
         merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
           EXPECT_EQ(docs.size(), 1);
           EXPECT_EQ(docs[0], count);
           count += 1;
           return doReadMore();
         });
+    hasMore = hasMoreNext;
   }
 
   ASSERT_EQ(count, a.size());
