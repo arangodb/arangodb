@@ -852,7 +852,6 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
       .fieldAnalyzerProvider = fieldAnalyzerProvider,
   };
   auto* cond = &infos().filterCondition();
-  auto& cache = _reader->immutablePartCache();
   Result r;
   irs::And mutableAnd;
   irs::Or mutableOr;
@@ -870,31 +869,27 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
     }
     size_t i = 0;
     auto& proxy = append<irs::proxy_filter>(*root, filterCtx);
-    auto it = cache.find(cond);
-    if (it != cache.end()) {
-      proxy.set_cache(it->second);
+    if (_cache) {
+      proxy.set_cache(_cache);
       i = immutableParts;
     } else {
       // TODO(MBkkt) simplify via additional template parameter for set_filter
-      // TODO(MBkkt) think about how to account corresponding memory
-      //  One idea is account this for parent loop, but it's quite complicated
-      auto cached = [&]()
-          -> std::pair<irs::boolean_filter&, irs::proxy_filter::cache_ptr> {
-        if (root == &mutableOr) {
-          auto c = proxy.set_filter<irs::Or>(irs::IResourceManager::kNoop);
-          return {c.first, std::move(c.second)};
-        } else {
-          auto c = proxy.set_filter<irs::And>(irs::IResourceManager::kNoop);
-          return {c.first, std::move(c.second)};
-        }
-      }();
-      cache.emplace(cond, std::move(cached.second));
+      irs::boolean_filter* immutableRoot{};
+      if (root == &mutableOr) {
+        auto c = proxy.set_filter<irs::Or>(_memory);
+        immutableRoot = &c.first;
+        _cache = std::move(c.second);
+      } else {
+        auto c = proxy.set_filter<irs::And>(_memory);
+        immutableRoot = &c.first;
+        _cache = std::move(c.second);
+      }
       if (immutableParts == std::numeric_limits<uint32_t>::max()) {
-        r = iresearch::FilterFactory::filter(&cached.first, filterCtx, *cond);
+        r = iresearch::FilterFactory::filter(immutableRoot, filterCtx, *cond);
         i = immutableParts;
       } else {
         for (; i != immutableParts && r.ok(); ++i) {
-          auto& member = iresearch::append<irs::Or>(cached.first, filterCtx);
+          auto& member = iresearch::append<irs::Or>(*immutableRoot, filterCtx);
           r = iresearch::FilterFactory::filter(&member, filterCtx,
                                                *cond->getMemberUnchecked(i));
         }
