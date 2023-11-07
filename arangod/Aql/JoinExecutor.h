@@ -33,11 +33,18 @@
 #include "Aql/JoinNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/NonConstExpressionContainer.h"
+#include "Aql/RegisterId.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
+#include "Aql/Variable.h"
+#include "Containers/FlatHashMap.h"
 #include "Transaction/Methods.h"
 
+#include <velocypack/Builder.h>
+
 #include <memory>
+#include <optional>
+#include <vector>
 
 namespace arangodb {
 class IndexIterator;
@@ -73,6 +80,8 @@ struct JoinExecutorInfos {
     // Values used for projection
     Projections projections;
 
+    bool hasProjectionsForRegisters = false;
+
     struct FilterInformation {
       // post filter expression
       std::unique_ptr<Expression> expression;
@@ -91,8 +100,13 @@ struct JoinExecutorInfos {
     std::optional<FilterInformation> filter;
   };
 
+  RegisterId registerForVariable(VariableId id) const noexcept;
+  void determineProjectionsForRegisters();
+
   std::vector<IndexInfo> indexes;
   QueryContext* query;
+  containers::FlatHashMap<VariableId, RegisterId> varsToRegister;
+  bool projectionsInitialized = false;
 };
 
 /**

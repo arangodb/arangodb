@@ -291,7 +291,7 @@ function saveToJunitXML(options, results) {
   }
 
   const addOptionalDuration = (elem, test) => {
-    if (test.hasOwnProperty('duration')) {
+    if (test.hasOwnProperty('duration') && test.duration !== undefined) {
       // time is in seconds
       elem['time'] =  test.duration / 1000;
     }

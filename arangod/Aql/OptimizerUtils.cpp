@@ -1089,7 +1089,7 @@ bool findProjections(ExecutionNode* n, Variable const* v,
       vars.clear();
       current->getVariablesUsedHere(vars);
 
-      if (vars.find(v) != vars.end()) {
+      if (vars.contains(v)) {
         // original variable is still used here
         return false;
       }
