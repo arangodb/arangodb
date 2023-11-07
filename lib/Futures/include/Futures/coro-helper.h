@@ -131,18 +131,18 @@ struct std_coro::coroutine_traits<arangodb::futures::Future<T>, Args...> {
       // TODO use symmetric transfer here
       struct awaitable {
         bool await_ready() noexcept { return false; }
-        void await_suspend(std::coroutine_handle<promise_type> self) noexcept {
+        bool await_suspend(std::coroutine_handle<promise_type> self) noexcept {
           // we have to destroy the coroutine frame before
           // we resolve the promise
-          auto res = std::move(self.promise().result);
-          auto p = std::move(self.promise().promise);
-          self.destroy();
-          p.setTry(std::move(res));
+          _promise->promise.setTry(std::move(_promise->result));
+          return false;
         }
         void await_resume() noexcept {}
+
+        promise_type* _promise;
       };
 
-      return awaitable{};
+      return awaitable{this};
     }
 
     auto get_return_object() -> arangodb::futures::Future<T> {
@@ -178,16 +178,18 @@ struct std_coro::coroutine_traits<
       // TODO use symmetric transfer here
       struct awaitable {
         bool await_ready() noexcept { return false; }
-        void await_suspend(std::coroutine_handle<promise_type> self) noexcept {
-          auto res = std::move(self.promise().result);
-          auto p = std::move(self.promise().promise);
-          self.destroy();
-          p.setTry(std::move(res));
+        bool await_suspend(std::coroutine_handle<promise_type> self) noexcept {
+          // we have to destroy the coroutine frame before
+          // we resolve the promise
+          _promise->promise.setTry(std::move(_promise->result));
+          return false;
         }
         void await_resume() noexcept {}
+
+        promise_type* _promise;
       };
 
-      return awaitable{};
+      return awaitable{this};
     }
 
     auto get_return_object()
