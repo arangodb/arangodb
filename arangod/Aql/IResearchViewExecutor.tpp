@@ -885,7 +885,7 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
           auto c = proxy.set_filter<irs::And>(_memory);
           return {c.first, std::move(c.second)};
         }
-      };
+      }();
       cache.emplace(cond, std::move(cached.second));
       if (immutableParts == std::numeric_limits<uint32_t>::max()) {
         r = iresearch::FilterFactory::filter(&cached.first, filterCtx, *cond);
