@@ -129,7 +129,6 @@ const IndexPrimaryJoinTestSuite = function () {
       return node.type;
     });
 
-    // db._profileQuery(query, null, qOptions);
     if (planNodes.indexOf("JoinNode") === -1) {
       db._explain(query, null, qOptions);
     }
@@ -141,7 +140,7 @@ const IndexPrimaryJoinTestSuite = function () {
     if (expectedStats) {
       const qStats = result.getExtra().stats;
       for (const statName in expectedStats) {
-        assertEqual(expectedStats[statName], qStats[statName]);
+        assertEqual(expectedStats[statName], qStats[statName], `Wrong count for "${statName}"`);
       }
     }
 
@@ -174,7 +173,7 @@ const IndexPrimaryJoinTestSuite = function () {
       A.ensureIndex({type: "persistent", fields: ["x"], unique: true});
 
       let expectedStats = {
-        scannedIndex: 10,
+        documentLookups: 10,
         filtered: 0
       };
       const result = executeBothJoinStrategies(`
@@ -205,7 +204,7 @@ const IndexPrimaryJoinTestSuite = function () {
       A.ensureIndex({type: "persistent", fields: ["x"], unique: true});
 
       let expectedStats = {
-        scannedIndex: 4,
+        documentLookups: 4,
         filtered: 3
       };
       const result = executeBothJoinStrategies(`
@@ -237,7 +236,7 @@ const IndexPrimaryJoinTestSuite = function () {
       A.ensureIndex({type: "persistent", fields: ["x"], unique: true});
 
       let expectedStats = {
-        scannedIndex: 0,
+        documentLookups: 0,
         filtered: 0
       };
       const result = executeBothJoinStrategies(`

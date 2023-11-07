@@ -119,7 +119,13 @@ inline ExecutionStats& operator+=(
 
 class JoinStats {
  public:
-  JoinStats() noexcept : _scannedIndex(0), _filtered(0) {}
+  JoinStats() noexcept
+      : _scannedIndex(0),
+        _filtered(0),
+        _documentLookups(0),
+        _cacheHits(0),
+        _cacheMisses(0),
+        _seeks(0) {}
 
   void incrScannedIndex(std::uint64_t value = 1) noexcept {
     _scannedIndex += value;
@@ -152,14 +158,18 @@ class JoinStats {
   void operator+=(JoinStats const& stats) noexcept {
     _scannedIndex += stats._scannedIndex;
     _filtered += stats._filtered;
+    _documentLookups += stats._documentLookups;
+    _cacheHits += stats._cacheHits;
+    _cacheMisses += stats._cacheMisses;
+    _seeks += stats._seeks;
   }
 
  private:
-  std::uint64_t _scannedIndex = 0;
+  std::uint64_t _scannedIndex = 0;  // not populated yet
   std::uint64_t _filtered = 0;
   std::uint64_t _documentLookups = 0;
-  std::uint64_t _cacheHits = 0;
-  std::uint64_t _cacheMisses = 0;
+  std::uint64_t _cacheHits = 0;    // not populated yet
+  std::uint64_t _cacheMisses = 0;  // not populated yet
   std::uint64_t _seeks = 0;
 };
 
@@ -167,6 +177,11 @@ inline ExecutionStats& operator+=(ExecutionStats& executionStats,
                                   JoinStats const& joinStats) noexcept {
   executionStats.scannedIndex += joinStats.getScannedIndex();
   executionStats.filtered += joinStats.getFiltered();
+  executionStats.documentLookups += joinStats.getDocumentLookups();
+  executionStats.cacheHits += joinStats.getCacheHits();
+  executionStats.cacheMisses += joinStats.getCacheMisses();
+  // TODO: think about the naming here for seek (RocksDB iterator seek calls)
+  executionStats.seeks += joinStats.getSeeks();
   return executionStats;
 }
 
