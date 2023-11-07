@@ -53,13 +53,14 @@ DocumentLeaderState::DocumentLeaderState(
     transaction::IManager& transactionManager)
     : gid(core->gid),
       loggerContext(
-          core->loggerContext.with<logContextKeyStateComponent>("LeaderState")),
-      errorHandler(loggerContext),
+          handlersFactory->createLogger(gid).with<logContextKeyStateComponent>(
+              "LeaderState")),
       _handlersFactory(std::move(handlersFactory)),
       _shardHandler(
           _handlersFactory->createShardHandler(core->getVocbase(), gid)),
       _snapshotHandler(
           _handlersFactory->createSnapshotHandler(core->getVocbase(), gid)),
+      _errorHandler(_handlersFactory->createErrorHandler(gid)),
       _guardedData(std::move(core), _handlersFactory),
       _transactionManager(transactionManager) {}
 
@@ -170,12 +171,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
                     return abortRes;
                   }
                 }
-                return self->errorHandler.handleOpResult(
-                    op, data.transactionHandler->applyEntry(op));
-              },
-              [&](ReplicatedOperation::CreateShard& op) -> Result {
-                return self->errorHandler.handleOpResult(
-                    op, data.transactionHandler->applyEntry(op));
+                return data.transactionHandler->applyEntry(op);
               },
               [&](auto&& op) {
                 return data.transactionHandler->applyEntry(op);
@@ -183,7 +179,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
           doc.getInnerOperation());
 
       if (res.fail()) {
-        if (self->errorHandler.handleOpResult(doc.getInnerOperation(), res)
+        if (self->_errorHandler->handleOpResult(doc.getInnerOperation(), res)
                 .fail()) {
           LOG_CTX("cbc5b", FATAL, self->loggerContext)
               << "failed to apply entry " << doc << " during recovery: " << res;
@@ -486,7 +482,7 @@ auto DocumentLeaderState::createShard(ShardID shard,
             return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
           }
           auto&& applyEntryRes = data.transactionHandler->applyEntry(op);
-          if (self->errorHandler.handleOpResult(op.operation, applyEntryRes)
+          if (self->_errorHandler->handleOpResult(op.operation, applyEntryRes)
                   .fail()) {
             LOG_CTX("d11f0", FATAL, self->loggerContext)
                 << "CreateShard operation failed on the leader, after being "

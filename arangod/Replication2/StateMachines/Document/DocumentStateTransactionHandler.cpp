@@ -31,28 +31,6 @@
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
 #include "VocBase/AccessMode.h"
 
-namespace {
-auto makeResultFromOperationResult(arangodb::OperationResult const& res,
-                                   arangodb::TransactionId tid)
-    -> arangodb::Result {
-  ErrorCode e{res.result.errorNumber()};
-  std::stringstream msg;
-  if (!res.countErrorCodes.empty()) {
-    if (e == TRI_ERROR_NO_ERROR) {
-      e = TRI_ERROR_TRANSACTION_INTERNAL;
-    }
-    msg << "Transaction " << tid << " error codes: ";
-    for (auto const& it : res.countErrorCodes) {
-      msg << it.first << ' ';
-    }
-    if (res.hasSlice()) {
-      msg << "; Full result: " << res.slice().toJson();
-    }
-  }
-  return arangodb::Result{e, std::move(msg).str()};
-}
-}  // namespace
-
 namespace arangodb::replication2::replicated_state::document {
 
 DocumentStateTransactionHandler::DocumentStateTransactionHandler(
@@ -66,7 +44,7 @@ DocumentStateTransactionHandler::DocumentStateTransactionHandler(
                          .with<logContextKeyLogId>(_gid.id)),
       _factory(std::move(factory)),
       _shardHandler(std::move(shardHandler)),
-      _errorHandler(_loggerContext) {
+      _errorHandler(_factory->createErrorHandler(_gid)) {
 #ifndef ARANGODB_USE_GOOGLE_TESTS
   TRI_ASSERT(_vocbase != nullptr);
 #endif
@@ -84,7 +62,8 @@ auto DocumentStateTransactionHandler::getTrx(TransactionId tid)
 void DocumentStateTransactionHandler::setTrx(
     TransactionId tid, std::shared_ptr<IDocumentStateTransaction> trx) {
   auto [_, isInserted] = _transactions.emplace(tid, std::move(trx));
-  ADB_PROD_ASSERT(isInserted) << "Transaction " << tid << " already exists";
+  ADB_PROD_ASSERT(isInserted)
+      << "Transaction " << tid << " already exists (gid " << _gid << ")";
 }
 
 void DocumentStateTransactionHandler::removeTransaction(TransactionId tid) {
@@ -112,7 +91,8 @@ auto DocumentStateTransactionHandler::applyOp(
   TRI_ASSERT(op.tid.isFollowerTransactionId());
   auto trx = getTrx(op.tid);
   ADB_PROD_ASSERT(trx != nullptr)
-      << "Transaction " << op.tid << " not found for operation " << op;
+      << "Transaction " << op.tid << " not found for operation " << op
+      << " (gid " << _gid << ")";
 
   auto res = std::invoke(
       overload{
@@ -129,13 +109,14 @@ auto DocumentStateTransactionHandler::applyOp(
   TRI_ASSERT(op.tid.isFollowerTransactionId());
   auto trx = getTrx(op.tid);
   ADB_PROD_ASSERT(trx != nullptr)
-      << "Transaction " << op.tid << " not found for operation " << op;
+      << "Transaction " << op.tid << " not found for operation " << op
+      << " (gid " << _gid << ")";
   return trx->intermediateCommit();
 }
 
 auto DocumentStateTransactionHandler::applyOp(
     ModifiesUserTransaction auto const& op) -> Result {
-  TRI_ASSERT(op.tid.isFollowerTransactionId());
+  TRI_ASSERT(op.tid.isFollowerTransactionId()) << op << " " << _gid;
 
   auto trx = getTrx(op.tid);
   if (trx == nullptr) {
@@ -143,15 +124,13 @@ auto DocumentStateTransactionHandler::applyOp(
     auto accessType = std::is_same_v<T, ReplicatedOperation::Truncate>
                           ? AccessMode::Type::EXCLUSIVE
                           : AccessMode::Type::WRITE;
-    TRI_ASSERT(_vocbase != nullptr);
+    TRI_ASSERT(_vocbase != nullptr) << op << " " << _gid;
     trx = _factory->createTransaction(*_vocbase, op.tid, op.shard, accessType);
     setTrx(op.tid, trx);
   }
 
   auto opRes = trx->apply(op);
-  auto res = opRes.fail() ? opRes.result
-                          : makeResultFromOperationResult(opRes, op.tid);
-  return res;
+  return _errorHandler->handleDocumentTransactionResult(opRes, op.tid);
 }
 
 auto DocumentStateTransactionHandler::applyOp(

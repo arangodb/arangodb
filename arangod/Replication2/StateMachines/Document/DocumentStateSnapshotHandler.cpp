@@ -32,14 +32,12 @@
 namespace arangodb::replication2::replicated_state::document {
 DocumentStateSnapshotHandler::DocumentStateSnapshotHandler(
     std::unique_ptr<IDatabaseSnapshotFactory> databaseSnapshotFactory,
-    cluster::RebootTracker& rebootTracker, GlobalLogIdentifier gid)
+    cluster::RebootTracker& rebootTracker, GlobalLogIdentifier gid,
+    LoggerContext loggerContext)
     : _databaseSnapshotFactory(std::move(databaseSnapshotFactory)),
       _rebootTracker(rebootTracker),
       _gid(std::move(gid)),
-      _loggerContext(LoggerContext(Logger::REPLICATED_STATE)
-                         .with<logContextKeyStateImpl>(DocumentState::NAME)
-                         .with<logContextKeyDatabaseName>(_gid.database)
-                         .with<logContextKeyLogId>(_gid.id)) {}
+      _loggerContext(std::move(loggerContext)) {}
 
 auto DocumentStateSnapshotHandler::create(
     std::vector<std::shared_ptr<LogicalCollection>> shards,
@@ -50,8 +48,9 @@ auto DocumentStateSnapshotHandler::create(
     auto id = SnapshotId::create();
 
     SnapshotGuard guard{};
-    guard.snapshot = std::make_shared<Snapshot>(id, _gid, std::move(shards),
-                                                std::move(databaseSnapshot));
+    guard.snapshot =
+        std::make_shared<Snapshot>(id, _gid, std::move(shards),
+                                   std::move(databaseSnapshot), _loggerContext);
     auto emplacement = _snapshots.emplace(id, std::move(guard));
     TRI_ASSERT(emplacement.second)
         << _gid << " snapshot " << id << " already exists";

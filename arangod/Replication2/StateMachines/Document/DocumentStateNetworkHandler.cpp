@@ -36,10 +36,11 @@ namespace arangodb::replication2::replicated_state::document {
 
 DocumentStateLeaderInterface::DocumentStateLeaderInterface(
     ParticipantId participantId, GlobalLogIdentifier gid,
-    network::ConnectionPool* pool)
+    network::ConnectionPool* pool, LoggerContext loggerContext)
     : _participantId(std::move(participantId)),
       _gid(std::move(gid)),
-      _pool(pool) {}
+      _pool(pool),
+      _loggerContext(std::move(loggerContext)) {}
 
 auto DocumentStateLeaderInterface::startSnapshot()
     -> futures::Future<ResultT<SnapshotBatch>> {
@@ -82,7 +83,7 @@ auto DocumentStateLeaderInterface::finishSnapshot(SnapshotId id)
                      network::Response&& resp) -> futures::Future<Result> {
         // Only retry on network error
         if (resp.fail()) {
-          LOG_TOPIC("2e771", ERR, Logger::REPLICATION2)
+          LOG_CTX("2e771", ERR, self->_loggerContext)
               << "Failed to finish snapshot " << id << " on "
               << self->_participantId << ": " << resp.combinedResult()
               << " - retrying in 5 seconds";
@@ -119,14 +120,17 @@ auto DocumentStateLeaderInterface::postSnapshotRequest(
 }
 
 DocumentStateNetworkHandler::DocumentStateNetworkHandler(
-    GlobalLogIdentifier gid, network::ConnectionPool* pool)
-    : _gid(std::move(gid)), _pool(pool) {}
+    GlobalLogIdentifier gid, network::ConnectionPool* pool,
+    LoggerContext loggerContext)
+    : _gid(std::move(gid)),
+      _pool(pool),
+      _loggerContext(std::move(loggerContext)) {}
 
 auto DocumentStateNetworkHandler::getLeaderInterface(
     ParticipantId participantId) noexcept
     -> std::shared_ptr<IDocumentStateLeaderInterface> {
   return std::make_shared<DocumentStateLeaderInterface>(participantId, _gid,
-                                                        _pool);
+                                                        _pool, _loggerContext);
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

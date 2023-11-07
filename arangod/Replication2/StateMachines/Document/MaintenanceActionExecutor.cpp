@@ -36,11 +36,13 @@
 namespace arangodb::replication2::replicated_state::document {
 MaintenanceActionExecutor::MaintenanceActionExecutor(
     GlobalLogIdentifier gid, ServerID server,
-    MaintenanceFeature& maintenanceFeature, TRI_vocbase_t& vocbase)
+    MaintenanceFeature& maintenanceFeature, TRI_vocbase_t& vocbase,
+    LoggerContext const& loggerContext)
     : _gid(std::move(gid)),
       _maintenanceFeature(maintenanceFeature),
       _server(std::move(server)),
-      _vocbase(vocbase) {}
+      _vocbase(vocbase),
+      _loggerContext(loggerContext.withTopic(Logger::MAINTENANCE)) {}
 
 auto MaintenanceActionExecutor::executeCreateCollection(
     ShardID const& shard, TRI_col_type_e collectionType,
@@ -52,10 +54,9 @@ auto MaintenanceActionExecutor::executeCreateCollection(
         _vocbase, options, shard, collectionType, properties.slice(), col);
   });
 
-  LOG_TOPIC("ef1bc", DEBUG, Logger::MAINTENANCE)
+  LOG_CTX("ef1bc", DEBUG, _loggerContext)
       << "Local collection " << _vocbase.name() << "/" << shard << " "
-      << (col ? "successful" : "failed") << " upon creation (gid: " << _gid
-      << ") " << res;
+      << (col ? "successful" : "failed") << " upon creation: " << res;
   return res;
 }
 
@@ -64,9 +65,9 @@ auto MaintenanceActionExecutor::executeDropCollection(
   auto res = basics::catchToResult(
       [&]() { return methods::Collections::drop(*col, false); });
 
-  LOG_TOPIC("accd8", DEBUG, Logger::MAINTENANCE)
+  LOG_CTX("accd8", DEBUG, _loggerContext)
       << "Dropping local collection " << _vocbase.name() << "/" << col->name()
-      << " (gid: " << _gid << "): " << res;
+      << ": " << res;
 
   return res;
 }
@@ -87,16 +88,15 @@ auto MaintenanceActionExecutor::executeModifyCollection(
                                                      col->name(), _server, res);
         });
         storeErrorRes.fail()) {
-      LOG_TOPIC("d3f2a", DEBUG, Logger::MAINTENANCE)
-          << "Replicated log: " << _gid
-          << " failed storeShardError call on shard " << col->name() << ": "
+      LOG_CTX("d3f2a", DEBUG, _loggerContext)
+          << "Failed storeShardError call on shard " << col->name() << ": "
           << storeErrorRes;
     }
   }
 
-  LOG_TOPIC("bffdd", DEBUG, Logger::MAINTENANCE)
+  LOG_CTX("bffdd", DEBUG, _loggerContext)
       << "Modifying local collection " << _vocbase.name() << "/" << col->name()
-      << " (gid: " << _gid << "): " << res;
+      << ": " << res;
 
   return res;
 }
@@ -117,9 +117,9 @@ auto MaintenanceActionExecutor::executeCreateIndex(
     });
   }
 
-  LOG_TOPIC("eb458", DEBUG, Logger::MAINTENANCE)
-      << "Creating index for " << _vocbase.name() << "/" << col->name()
-      << " (gid: " << _gid << "): " << res;
+  LOG_CTX("eb458", DEBUG, _loggerContext)
+      << "Creating index for " << _vocbase.name() << "/" << col->name() << ": "
+      << res;
 
   return res;
 }
@@ -130,7 +130,7 @@ auto MaintenanceActionExecutor::executeDropIndex(
   auto res = basics::catchToResult(
       [&]() { return methods::Indexes::drop(*col, index.slice()); });
 
-  LOG_TOPIC("e155f", DEBUG, Logger::MAINTENANCE)
+  LOG_CTX("e155f", DEBUG, _loggerContext)
       << "Dropping local index " << index.toJson() << " of " << _vocbase.name()
       << "/" << col->name() << ": " << res;
   return res;
@@ -140,8 +140,7 @@ auto MaintenanceActionExecutor::addDirty() noexcept -> Result {
   auto res = basics::catchVoidToResult(
       [&]() { _maintenanceFeature.addDirty(_gid.database); });
   if (res.fail()) {
-    LOG_TOPIC("d3f2a", DEBUG, Logger::MAINTENANCE)
-        << "Replicated log: " << _gid << " failed addDirty call: " << res;
+    LOG_CTX("d3f2a", DEBUG, _loggerContext) << "Failed addDirty call: " << res;
   }
   return res;
 }

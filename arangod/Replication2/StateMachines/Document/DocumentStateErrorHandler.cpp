@@ -27,8 +27,8 @@
 
 namespace arangodb::replication2::replicated_state::document {
 auto DocumentStateErrorHandler::handleOpResult(
-    ReplicatedOperation::CreateShard const& op, Result const& res) const
-    -> Result {
+    ReplicatedOperation::CreateShard const& op,
+    Result const& res) const noexcept -> Result {
   if (res.is(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
     // During follower applyEntries or leader recovery, we might have already
     // created the shard.
@@ -41,7 +41,7 @@ auto DocumentStateErrorHandler::handleOpResult(
 }
 
 auto DocumentStateErrorHandler::handleOpResult(
-    ReplicatedOperation::DropShard const& op, Result const& res) const
+    ReplicatedOperation::DropShard const& op, Result const& res) const noexcept
     -> Result {
   if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
     // During follower applyEntries or leader recovery, we might have already
@@ -55,8 +55,8 @@ auto DocumentStateErrorHandler::handleOpResult(
 }
 
 auto DocumentStateErrorHandler::handleOpResult(
-    ReplicatedOperation::ModifyShard const& op, Result const& res) const
-    -> Result {
+    ReplicatedOperation::ModifyShard const& op,
+    Result const& res) const noexcept -> Result {
   if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
     // During follower applyEntries or leader recovery, we might have already
     // dropped the shard.
@@ -69,8 +69,8 @@ auto DocumentStateErrorHandler::handleOpResult(
 }
 
 auto DocumentStateErrorHandler::handleOpResult(
-    ReplicatedOperation::CreateIndex const& op, Result const& res) const
-    -> Result {
+    ReplicatedOperation::CreateIndex const& op,
+    Result const& res) const noexcept -> Result {
   if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
     // During follower applyEntries or leader recovery, we might have already
     // dropped the shard.
@@ -84,7 +84,7 @@ auto DocumentStateErrorHandler::handleOpResult(
 }
 
 auto DocumentStateErrorHandler::handleOpResult(
-    ReplicatedOperation::DropIndex const& op, Result const& res) const
+    ReplicatedOperation::DropIndex const& op, Result const& res) const noexcept
     -> Result {
   if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
     // During follower applyEntries or leader recovery, we might have already
@@ -105,8 +105,9 @@ auto DocumentStateErrorHandler::handleOpResult(
   return res;
 }
 
-auto DocumentStateErrorHandler::shouldIgnoreDocumentError(
-    arangodb::OperationResult const& res) noexcept -> bool {
+auto DocumentStateErrorHandler::handleDocumentTransactionResult(
+    arangodb::OperationResult const& res, TransactionId tid) const noexcept
+    -> Result {
   auto ignoreError = [](ErrorCode code) {
     /*
      * These errors are ignored because the snapshot can be more recent than
@@ -120,21 +121,41 @@ auto DocumentStateErrorHandler::shouldIgnoreDocumentError(
            code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   };
 
+  auto makeResultFromOperationResult =
+      [tid](arangodb::OperationResult const& res) -> arangodb::Result {
+    ErrorCode e{res.result.errorNumber()};
+    std::stringstream msg;
+    if (!res.countErrorCodes.empty()) {
+      if (e == TRI_ERROR_NO_ERROR) {
+        e = TRI_ERROR_TRANSACTION_INTERNAL;
+      }
+      msg << "Transaction " << tid << " error codes: ";
+      for (auto const& it : res.countErrorCodes) {
+        msg << it.first << ' ';
+      }
+      if (res.hasSlice()) {
+        msg << "; Full result: " << res.slice().toJson();
+      }
+    }
+    return arangodb::Result{e, std::move(msg).str()};
+  };
+
   if (res.fail() && !ignoreError(res.errorNumber())) {
-    return false;
+    return makeResultFromOperationResult(res);
   } else {
-    LOG_CTX("f1be8", TRACE, _loggerContext)
+    LOG_CTX("f1be8", DEBUG, _loggerContext)
         << "Ignoring document error: " << res.errorMessage();
   }
 
   for (auto const& [code, cnt] : res.countErrorCodes) {
     if (!ignoreError(code)) {
-      return false;
+      return makeResultFromOperationResult(res);
     } else {
-      LOG_CTX("90219", TRACE, _loggerContext)
+      LOG_CTX("90219", DEBUG, _loggerContext)
           << "Ignoring document error: " << code << " " << cnt;
     }
   }
-  return true;
+
+  return {};
 }
 }  // namespace arangodb::replication2::replicated_state::document

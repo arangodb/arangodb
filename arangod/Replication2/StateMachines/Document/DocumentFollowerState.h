@@ -83,10 +83,11 @@ struct DocumentFollowerState
     explicit GuardedData(
         std::unique_ptr<DocumentCore> core,
         std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
-        LoggerContext loggerContext);
+        LoggerContext const& loggerContext,
+        std::shared_ptr<IDocumentStateErrorHandler> errorHandler);
 
-    LoggerContext const loggerContext;
-    DocumentStateErrorHandler errorHandler;
+    LoggerContext const& loggerContext;
+    std::shared_ptr<IDocumentStateErrorHandler> errorHandler;
 
     [[nodiscard]] bool didResign() const noexcept { return core == nullptr; }
 
@@ -124,7 +125,7 @@ struct DocumentFollowerState
 
   std::shared_ptr<IDocumentStateNetworkHandler> _networkHandler;
   std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
-  DocumentStateErrorHandler _errorHandler;
+  std::shared_ptr<IDocumentStateErrorHandler> _errorHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
 
   std::atomic<bool> _resigning{false};  // Allows for a quicker shutdown of the

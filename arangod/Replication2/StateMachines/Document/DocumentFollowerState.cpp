@@ -40,9 +40,10 @@ namespace arangodb::replication2::replicated_state::document {
 DocumentFollowerState::GuardedData::GuardedData(
     std::unique_ptr<DocumentCore> core,
     std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
-    LoggerContext loggerContext)
-    : loggerContext(std::move(loggerContext)),
-      errorHandler(this->loggerContext),
+    LoggerContext const& loggerContext,
+    std::shared_ptr<IDocumentStateErrorHandler> errorHandler)
+    : loggerContext(loggerContext),
+      errorHandler(std::move(errorHandler)),
       core(std::move(core)),
       currentSnapshotVersion{0},
       shardHandler(handlersFactory->createShardHandler(this->core->getVocbase(),
@@ -54,13 +55,14 @@ DocumentFollowerState::DocumentFollowerState(
     std::unique_ptr<DocumentCore> core,
     std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory)
     : gid(core->gid),
-      loggerContext(core->loggerContext.with<logContextKeyStateComponent>(
-          "FollowerState")),
+      loggerContext(handlersFactory->createLogger(core->gid)
+                        .with<logContextKeyStateComponent>("FollowerState")),
       _networkHandler(handlersFactory->createNetworkHandler(core->gid)),
       _shardHandler(
           handlersFactory->createShardHandler(core->getVocbase(), core->gid)),
-      _errorHandler(loggerContext),
-      _guardedData(std::move(core), handlersFactory, loggerContext) {}
+      _errorHandler(handlersFactory->createErrorHandler(core->gid)),
+      _guardedData(std::move(core), handlersFactory, loggerContext,
+                   _errorHandler) {}
 
 DocumentFollowerState::~DocumentFollowerState() = default;
 
@@ -381,8 +383,8 @@ auto DocumentFollowerState::applyEntries(
 
             if (currentReleaseIndex.fail()) {
               TRI_ASSERT(self->_errorHandler
-                             .handleOpResult(doc.getInnerOperation(),
-                                             currentReleaseIndex.result())
+                             ->handleOpResult(doc.getInnerOperation(),
+                                              currentReleaseIndex.result())
                              .fail())
                   << currentReleaseIndex.result()
                   << " should have been already handled for operation "
@@ -432,7 +434,7 @@ auto DocumentFollowerState::GuardedData::applyAndRelease(
     std::optional<fu2::unique_function<void(Result&&)>> fun)
     -> ResultT<std::optional<LogIndex>> {
   auto originalRes = transactionHandler->applyEntry(op);
-  auto res = errorHandler.handleOpResult(op, originalRes);
+  auto res = errorHandler->handleOpResult(op, originalRes);
   if (res.fail()) {
     return res;
   }
@@ -466,7 +468,7 @@ auto DocumentFollowerState::GuardedData::applyEntry(
     ReplicatedOperation::IntermediateCommit const& op, LogIndex)
     -> ResultT<std::optional<LogIndex>> {
   if (!activeTransactions.getTransactions().contains(op.tid)) {
-    LOG_CTX("b41dc", INFO, core->loggerContext)
+    LOG_CTX("b41dc", INFO, loggerContext)
         << "will not apply intermediate commit for transaction " << op.tid
         << " because it is not active";
     return ResultT<std::optional<LogIndex>>{std::nullopt};
@@ -484,7 +486,7 @@ auto DocumentFollowerState::GuardedData::applyEntry(
     -> ResultT<std::optional<LogIndex>> {
   if (!activeTransactions.getTransactions().contains(op.tid)) {
     // Single commit/abort operations are possible.
-    LOG_CTX("cf7ea", INFO, core->loggerContext)
+    LOG_CTX("cf7ea", INFO, loggerContext)
         << "will not finish transaction " << op.tid
         << " because it is not active";
     return ResultT<std::optional<LogIndex>>{std::nullopt};
@@ -515,7 +517,7 @@ auto DocumentFollowerState::GuardedData::applyEntry(
     auto abortRes = transactionHandler->applyEntry(
         ReplicatedOperation::buildAbortOperation(tid));
     if (abortRes.fail()) {
-      LOG_CTX("aa36c", INFO, core->loggerContext)
+      LOG_CTX("aa36c", INFO, loggerContext)
           << "Failed to abort transaction " << tid << " for shard " << op.shard
           << " before dropping the shard: " << abortRes.errorMessage();
       return abortRes;
@@ -554,7 +556,7 @@ auto DocumentFollowerState::GuardedData::applyEntry(
   auto trxLock = shardHandler->lockShard(op.shard, AccessMode::Type::EXCLUSIVE,
                                          std::move(origin));
   if (trxLock.fail()) {
-    auto res = errorHandler.handleOpResult(op, trxLock.result());
+    auto res = errorHandler->handleOpResult(op, trxLock.result());
 
     // If the shard was not found, we can ignore this operation and release it.
     if (res.ok()) {

@@ -24,6 +24,7 @@
 
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/LoggerContext.h"
 #include "VocBase/Methods/Indexes.h"
 
 struct TRI_vocbase_t;
@@ -64,7 +65,8 @@ class MaintenanceActionExecutor : public IMaintenanceActionExecutor {
  public:
   MaintenanceActionExecutor(GlobalLogIdentifier _gid, ServerID server,
                             MaintenanceFeature& maintenanceFeature,
-                            TRI_vocbase_t& vocbase);
+                            TRI_vocbase_t& vocbase,
+                            LoggerContext const& loggerContext);
 
   auto executeCreateCollection(
       ShardID const& shard, TRI_col_type_e collectionType,
@@ -98,5 +100,7 @@ class MaintenanceActionExecutor : public IMaintenanceActionExecutor {
   // The vocbase reference remains valid for the lifetime of the executor.
   // Replicated logs are stopped before the vocbase is marked as dropped.
   TRI_vocbase_t& _vocbase;
+
+  LoggerContext const _loggerContext;
 };
 }  // namespace arangodb::replication2::replicated_state::document

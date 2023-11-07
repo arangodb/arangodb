@@ -183,7 +183,8 @@ class Snapshot {
 
   explicit Snapshot(SnapshotId id, GlobalLogIdentifier gid,
                     std::vector<std::shared_ptr<LogicalCollection>> shards,
-                    std::unique_ptr<IDatabaseSnapshot> databaseSnapshot);
+                    std::unique_ptr<IDatabaseSnapshot> databaseSnapshot,
+                    LoggerContext loggerContext);
 
   Snapshot(Snapshot const&) = delete;
   Snapshot(Snapshot&&) = delete;
@@ -231,6 +232,6 @@ class Snapshot {
   Guarded<GuardedData> _guardedData;
 
  public:
-  LoggerContext loggerContext;
+  LoggerContext const loggerContext;
 };
 }  // namespace arangodb::replication2::replicated_state::document

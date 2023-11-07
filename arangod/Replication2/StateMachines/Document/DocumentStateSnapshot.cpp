@@ -80,16 +80,13 @@ Snapshot::GuardedData::GuardedData(
 
 Snapshot::Snapshot(SnapshotId id, GlobalLogIdentifier gid,
                    std::vector<std::shared_ptr<LogicalCollection>> shards,
-                   std::unique_ptr<IDatabaseSnapshot> databaseSnapshot)
+                   std::unique_ptr<IDatabaseSnapshot> databaseSnapshot,
+                   LoggerContext loggerContext)
     : _id{id},
       _gid(std::move(gid)),
       _state(state::Ongoing{}),
       _guardedData(std::move(databaseSnapshot), std::move(shards)),
-      loggerContext(LoggerContext(Logger::REPLICATED_STATE)
-                        .with<logContextKeyStateImpl>(DocumentState::NAME)
-                        .with<logContextKeyDatabaseName>(_gid.database)
-                        .with<logContextKeyLogId>(_gid.id)
-                        .with<logContextKeySnapshotId>(getId())) {
+      loggerContext(loggerContext.with<logContextKeySnapshotId>(getId())) {
   LOG_CTX("d6c7f", DEBUG, loggerContext) << "Created snapshot with id " << _id;
 }
 

@@ -109,7 +109,6 @@ struct DocumentLeaderState
 
   GlobalLogIdentifier const gid;
   LoggerContext const loggerContext;
-  DocumentStateErrorHandler const errorHandler;
 
  private:
   struct GuardedData {
@@ -132,6 +131,7 @@ struct DocumentLeaderState
   Guarded<std::shared_ptr<IDocumentStateSnapshotHandler>,
           basics::UnshackledMutex>
       _snapshotHandler;
+  std::shared_ptr<IDocumentStateErrorHandler> _errorHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
   Guarded<ActiveTransactionsQueue, std::mutex> _activeTransactions;
   transaction::IManager& _transactionManager;

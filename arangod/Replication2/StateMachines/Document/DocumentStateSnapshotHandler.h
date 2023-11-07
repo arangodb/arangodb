@@ -68,7 +68,8 @@ class DocumentStateSnapshotHandler
  public:
   explicit DocumentStateSnapshotHandler(
       std::unique_ptr<IDatabaseSnapshotFactory> databaseSnapshotFactory,
-      cluster::RebootTracker& rebootTracker, GlobalLogIdentifier gid);
+      cluster::RebootTracker& rebootTracker, GlobalLogIdentifier gid,
+      LoggerContext loggerContext);
 
   auto create(std::vector<std::shared_ptr<LogicalCollection>> shards,
               SnapshotParams::Start const& params) noexcept
@@ -97,7 +98,7 @@ class DocumentStateSnapshotHandler
   std::unique_ptr<IDatabaseSnapshotFactory> _databaseSnapshotFactory;
   cluster::RebootTracker& _rebootTracker;
   GlobalLogIdentifier const _gid;
-  LoggerContext _loggerContext;
+  LoggerContext const _loggerContext;
 
  private:
   struct SnapshotGuard {

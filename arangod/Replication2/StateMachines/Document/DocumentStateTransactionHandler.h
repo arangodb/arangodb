@@ -107,8 +107,8 @@ class DocumentStateTransactionHandler
   LoggerContext _loggerContext;
   std::shared_ptr<IDocumentStateHandlersFactory> _factory;
   std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
+  std::shared_ptr<IDocumentStateErrorHandler> _errorHandler;
   TransactionMap _transactions;
-  DocumentStateErrorHandler _errorHandler;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document
