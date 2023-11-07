@@ -4,7 +4,6 @@ setup: true
 
 orbs:
   continuation: circleci/continuation@0.4.0
-  path-filtering: circleci/path-filtering@1.0.0
 
 parameters:
   enterprise-branch:
@@ -70,10 +69,6 @@ workflows:
       # we always create a workflow and let the build fail in check-build-trigger unless it has been triggered manually
       # or runs on the devel branch (see condition in check-build-trigger)
       - check-build-trigger
-      - path-filtering/filter:
-          base-revision: devel
-          mapping: |
-            scripts/docker/linux/* build-linux-docker true
       - generate-config:
           definitions: "tests/test-definitions.txt"
           requires:
