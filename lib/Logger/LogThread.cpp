@@ -26,11 +26,6 @@
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 
-// Hard-coded limit of delayed messages. If this limit is reached, we will
-// directly log all following messages. This is to prevent the queue from
-// growing indefinitely if the log thread is not able to keep up with the
-// incoming messages.
-
 using namespace arangodb;
 
 LogThread::LogThread(application_features::ApplicationServer& server,
