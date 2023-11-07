@@ -1123,9 +1123,14 @@ const replicatedStateSnapshotTransferSuite = function () {
 
       // The snapshot should no longer be available.
       let snapshotId = result.json.result.snapshotId;
-      lh.checkRequestResult(result);
-      result = dh.getSnapshotStatus(leaderUrl, database, logId, snapshotId);
-      assertTrue(result.json.error);
+      // We have to wait for the reboot tracker to kick in on the leader.
+      lh.waitFor(() => {
+        result = dh.getSnapshotStatus(leaderUrl, database, logId, snapshotId);
+        if (result.json.error) {
+          return true;
+        }
+        return Error(`Expected error, got ${JSON.stringify(result)}`);
+      });
 
       // Pretending again to be the same follower, start a snapshot, but with a lower rebootId.
       // The expectation is that the snapshot will be discarded once the leader notices
