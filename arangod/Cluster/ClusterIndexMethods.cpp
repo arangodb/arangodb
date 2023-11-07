@@ -867,8 +867,8 @@ auto ensureIndexCoordinatorReplication2Inner(
                     ->str(arangodb::cluster::paths::SkipComponents(1)),
                 [id = std::string{idString}](VPackSlice slice) {
                   if (slice.isNone()) {
-                    // TODO: Should this actual set an "error"? It indicates that
-                    // the collection is dropped if i am not mistaken
+                    // TODO: Should this actual set an "error"? It indicates
+                    // that the collection is dropped if i am not mistaken
                     return false;
                   }
                   auto collection = velocypack::deserialize<
