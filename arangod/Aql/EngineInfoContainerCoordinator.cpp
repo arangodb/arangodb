@@ -28,6 +28,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Query.h"
+#include "Aql/SharedQueryState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "VocBase/ticks.h"
@@ -56,17 +57,20 @@ void EngineInfoContainerCoordinator::EngineInfo::addNode(ExecutionNode* en) {
 }
 
 Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
-    Query& query, MapRemoteToSnippet const& dbServerQueryIds, bool isfirst,
+    Query& query, MapRemoteToSnippet const& dbServerQueryIds, bool isFirst,
     std::unique_ptr<ExecutionEngine>& engine) const {
   TRI_ASSERT(!_nodes.empty());
 
-  std::shared_ptr<SharedQueryState> sqs;
-  if (isfirst) {
-    sqs = query.sharedState();
+  if (isFirst) {
+    // use shared state of Query
+    engine = std::make_unique<ExecutionEngine>(
+        _id, query, query.itemBlockManager(), query.sharedState());
+  } else {
+    // create a separate shared state
+    engine = std::make_unique<ExecutionEngine>(
+        _id, query, query.itemBlockManager(),
+        std::make_shared<SharedQueryState>(query.vocbase().server()));
   }
-
-  engine = std::make_unique<ExecutionEngine>(_id, query,
-                                             query.itemBlockManager(), sqs);
 
   auto res = engine->createBlocks(_nodes, dbServerQueryIds);
   if (!res.ok()) {
@@ -92,7 +96,8 @@ EngineInfoContainerCoordinator::~EngineInfoContainerCoordinator() = default;
 
 void EngineInfoContainerCoordinator::addNode(ExecutionNode* node) {
   TRI_ASSERT(node->getType() != ExecutionNode::INDEX &&
-             node->getType() != ExecutionNode::ENUMERATE_COLLECTION);
+             node->getType() != ExecutionNode::ENUMERATE_COLLECTION &&
+             node->getType() != ExecutionNode::JOIN);
 
   TRI_ASSERT(!_engines.empty());
   TRI_ASSERT(!_engineStack.empty());

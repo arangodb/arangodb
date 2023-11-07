@@ -44,6 +44,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
     case EN::REMOTE:
     case EN::SUBQUERY:
     case EN::INDEX:
+    case EN::JOIN:
     case EN::RETURN:
     case EN::TRAVERSAL:
     case EN::ENUMERATE_PATHS:

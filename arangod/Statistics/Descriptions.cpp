@@ -33,7 +33,9 @@
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/ServerStatistics.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
+#endif
 
 #include <velocypack/Builder.h>
 
@@ -434,7 +436,9 @@ stats::Descriptions::Descriptions(ArangodServer& server)
 }
 
 void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
+#ifdef USE_V8
   auto& dealer = _server.getFeature<V8DealerFeature>();
+#endif
 
   ServerStatistics const& info =
       _server.getFeature<metrics::MetricsFeature>().serverStatistics();
@@ -456,6 +460,7 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
         VPackValue(info._transactionsStatistics._dirtyReadTransactions.load()));
   b.close();
 
+#ifdef USE_V8
   if (dealer.isEnabled()) {
     b.add("v8Context", VPackValue(VPackValueType::Object, true));
     auto v8Counters = dealer.getCurrentContextNumbers();
@@ -482,6 +487,7 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
     }
     b.close();
   }
+#endif
 
   b.add("threads", VPackValue(VPackValueType::Object, true));
   SchedulerFeature::SCHEDULER->toVelocyPack(b);

@@ -147,6 +147,8 @@ Agent::Agent(ArangodServer& server, config_t const& config)
                                    notifySupervision);
   _spearhead.registerPrefixTrigger("/arango/Plan/CollectionGroups",
                                    notifySupervision);
+  _spearhead.registerPrefixTrigger("/arango/Target/Collections",
+                                   notifySupervision);
   _spearhead.registerPrefixTrigger("/arango/Current/Collections",
                                    notifySupervision);
 }
@@ -1960,16 +1962,6 @@ void Agent::executeLockedRead(std::function<void()> const& cb) {
   READ_LOCKER(oLocker, _outputLock);
   cb();
 }
-
-#if 0
-// currently not called from anywhere
-void Agent::executeLockedWrite(std::function<void()> const& cb) {
-  std::lock_guard ioLocker{_ioLock};
-  WRITE_LOCKER(oLocker, _outputLock);
-  std::lock_guard guard{_waitForCV.mutex};
-  cb();
-}
-#endif
 
 void Agent::executeTransientLocked(std::function<void()> const& cb) {
   std::lock_guard transientLocker{_transientLock};

@@ -24,6 +24,7 @@
 #pragma once
 
 #include <memory>
+#include <string_view>
 #include <vector>
 
 #include "Aql/CollectionAccessingNode.h"
@@ -60,6 +61,33 @@ class IndexNode : public ExecutionNode,
   friend class ExecutionBlock;
 
  public:
+  enum class Strategy {
+    // no need to produce any result. we can scan over the index
+    // but do not have to look into its values
+    kNoResult,
+
+    // index covers all projections of the query. we can get
+    // away with reading data from the index only
+    kCovering,
+
+    // index covers the IndexNode's filter condition only,
+    // but not the rest of the query. that means we can use the
+    // index data to evaluate the IndexNode's post-filter condition,
+    // but for any entries that pass the filter, we will need to
+    // read the full documents in addition
+    kCoveringFilterOnly,
+
+    // index does not cover the required data. we will need to
+    // read the full documents for all index entries
+    kDocument,
+
+    // late materialization
+    kLateMaterialized,
+
+    // we only need to count the number of index entries
+    kCount
+  };
+
   IndexNode(ExecutionPlan* plan, ExecutionNodeId id,
             aql::Collection const* collection, Variable const* outVariable,
             std::vector<transaction::Methods::IndexHandle> const& indexes,
@@ -81,6 +109,9 @@ class IndexNode : public ExecutionNode,
 
   /// @brief whether or not all indexes are accessed in reverse order
   IndexIteratorOptions options() const;
+
+  /// @brief return name for strategy
+  static std::string_view strategyName(Strategy strategy) noexcept;
 
   /// @brief set reverse mode
   void setAscending(bool value);
@@ -105,6 +136,12 @@ class IndexNode : public ExecutionNode,
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
 
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable,
+                              size_t index) override;
+
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;
 
@@ -113,6 +150,9 @@ class IndexNode : public ExecutionNode,
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
+
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
 
   /// @brief getIndexes, hand out the indexes used
   std::vector<transaction::Methods::IndexHandle> const& getIndexes() const;
@@ -140,8 +180,8 @@ class IndexNode : public ExecutionNode,
     Variable const* var;
   };
 
-  using IndexValuesVars =
-      std::pair<IndexId, std::unordered_map<Variable const*, size_t>>;
+  using IndexFilterCoveringVars = std::unordered_map<Variable const*, size_t>;
+  using IndexValuesVars = std::pair<IndexId, IndexFilterCoveringVars>;
 
   using IndexValuesRegisters =
       std::pair<IndexId, std::unordered_map<size_t, RegisterId>>;
@@ -162,17 +202,22 @@ class IndexNode : public ExecutionNode,
   // prepare projections for usage with an index
   void prepareProjections();
 
+  bool recalculateProjections(ExecutionPlan*) override;
+
+  bool isProduceResult() const override;
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
                       unsigned flags) const override final;
 
  private:
-  NonConstExpressionContainer buildNonConstExpressions() const;
+  void updateProjectionsIndexInfo();
 
-  bool isProduceResult() const {
-    return (isVarUsedLater(_outVariable) || _filter != nullptr) && !doCount();
-  }
+  /// @brief determine the IndexNode strategy
+  Strategy strategy() const;
+
+  NonConstExpressionContainer buildNonConstExpressions() const;
 
   /// @brief adds a UNIQUE() to a dynamic IN condition
   arangodb::aql::AstNode* makeUnique(AstNode*) const;
@@ -193,9 +238,8 @@ class IndexNode : public ExecutionNode,
   /// @brief We have single index and this index covered whole condition
   bool _allCoveredByOneIndex;
 
-  /// @brief if the (post) filter condition is fully covered by the index
-  /// attributes
-  bool _indexCoversFilterCondition;
+  /// @brief if the projections are fully covered by the index attributes
+  std::optional<bool> _indexCoversProjections;
 
   /// @brief the index iterator options - same for all indexes
   IndexIteratorOptions _options;

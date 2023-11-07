@@ -25,6 +25,7 @@
 
 #include "Basics/ScopeGuard.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -469,9 +470,15 @@ struct AstNode {
   /// @brief return a member of the node
   AstNode* getMemberUnchecked(size_t i) const noexcept;
 
-  /// @brief sort members with a custom comparison function
-  void sortMembers(
-      std::function<bool(AstNode const*, AstNode const*)> const& func);
+  template<typename Func>
+  void sortMembers(Func&& func) {
+    std::sort(members.begin(), members.end(), std::forward<Func>(func));
+  }
+
+  template<typename Func>
+  void partitionMembers(Func&& func) {
+    std::partition(members.begin(), members.end(), std::forward<Func>(func));
+  }
 
   /// @brief reduces the number of members of the node
   void reduceMembers(size_t i);

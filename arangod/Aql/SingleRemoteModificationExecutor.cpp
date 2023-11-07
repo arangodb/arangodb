@@ -266,21 +266,21 @@ auto SingleRemoteModificationExecutor<
   if (_info._outputRegisterId.isValid()) {
     AqlValue value(outDocument);
     AqlValueGuard guard(value, true);
-    output.moveValueInto(_info._outputRegisterId, input, guard);
+    output.moveValueInto(_info._outputRegisterId, input, &guard);
   }
 
   if (_info._outputOldRegisterId.isValid()) {
     TRI_ASSERT(options.returnOld);
     AqlValue value(oldDocument);
     AqlValueGuard guard(value, true);
-    output.moveValueInto(_info._outputOldRegisterId, input, guard);
+    output.moveValueInto(_info._outputOldRegisterId, input, &guard);
   }
 
   if (_info._outputNewRegisterId.isValid()) {
     TRI_ASSERT(options.returnNew);
     AqlValue value(newDocument);
     AqlValueGuard guard(value, true);
-    output.moveValueInto(_info._outputNewRegisterId, input, guard);
+    output.moveValueInto(_info._outputNewRegisterId, input, &guard);
   }
 
   TRI_IF_FAILURE("SingleRemoteModificationOperationBlock::moreDocuments") {

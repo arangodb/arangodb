@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Aql/IndexStreamIterator.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/Result.h"
@@ -727,7 +728,7 @@ Result RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
 
 Result RocksDBPrimaryIndex::checkInsert(transaction::Methods& trx,
                                         RocksDBMethods* mthd,
-                                        LocalDocumentId const& /*documentId*/,
+                                        LocalDocumentId /*documentId*/,
                                         velocypack::Slice slice,
                                         OperationOptions const& options) {
   // this is already handled earlier - nothing to do here!
@@ -736,7 +737,7 @@ Result RocksDBPrimaryIndex::checkInsert(transaction::Methods& trx,
 
 Result RocksDBPrimaryIndex::checkReplace(transaction::Methods& trx,
                                          RocksDBMethods* mthd,
-                                         LocalDocumentId const& /*documentId*/,
+                                         LocalDocumentId /*documentId*/,
                                          velocypack::Slice slice,
                                          OperationOptions const& options) {
   // this is already handled earlier - nothing to do here!
@@ -745,7 +746,7 @@ Result RocksDBPrimaryIndex::checkReplace(transaction::Methods& trx,
 
 Result RocksDBPrimaryIndex::insert(transaction::Methods& trx,
                                    RocksDBMethods* mthd,
-                                   LocalDocumentId const& documentId,
+                                   LocalDocumentId documentId,
                                    velocypack::Slice slice,
                                    OperationOptions const& options,
                                    bool performChecks) {
@@ -781,8 +782,8 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx,
 
 Result RocksDBPrimaryIndex::update(
     transaction::Methods& trx, RocksDBMethods* mthd,
-    LocalDocumentId const& /*oldDocumentId*/, velocypack::Slice oldDoc,
-    LocalDocumentId const& newDocumentId, velocypack::Slice newDoc,
+    LocalDocumentId /*oldDocumentId*/, velocypack::Slice oldDoc,
+    LocalDocumentId newDocumentId, velocypack::Slice newDoc,
     OperationOptions const& /*options*/, bool /*performChecks*/) {
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(oldDoc);
   TRI_ASSERT(keySlice.binaryEquals(oldDoc.get(StaticStrings::KeyString)));
@@ -851,7 +852,7 @@ Result RocksDBPrimaryIndex::update(
 
 Result RocksDBPrimaryIndex::remove(transaction::Methods& trx,
                                    RocksDBMethods* /*mthd*/,
-                                   LocalDocumentId const& /*documentId*/,
+                                   LocalDocumentId /*documentId*/,
                                    velocypack::Slice slice,
                                    OperationOptions const& /*options*/) {
   Result res;
@@ -1309,4 +1310,151 @@ void RocksDBPrimaryIndex::handleValNode(transaction::Methods* trx,
                             valNode->getStringLength(),
                             VPackValueType::String));
   }
+}
+
+namespace {
+
+struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
+  RocksDBPrimaryIndex const* _index;
+  std::unique_ptr<rocksdb::Iterator> _iterator;
+
+  VPackBuilder _builder;
+  VPackString _cache;
+  RocksDBKeyBounds _bounds;
+  rocksdb::Slice _end;
+  RocksDBKey _rocksdbKey;
+
+  RocksDBPrimaryIndexStreamIterator(RocksDBPrimaryIndex const* index,
+                                    transaction::Methods* trx)
+      : _index(index),
+        _bounds(RocksDBKeyBounds::PrimaryIndex(
+            index->objectId(), KeyGeneratorHelper::lowestKey,
+            KeyGeneratorHelper::highestKey)) {
+    _end = _bounds.end();
+    RocksDBTransactionMethods* mthds =
+        RocksDBTransactionState::toMethods(trx, index->collection().id());
+    _iterator = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
+      TRI_ASSERT(opts.prefix_same_as_start);
+      opts.iterate_upper_bound = &_end;
+    });
+    seekInternal({});
+  }
+
+  bool position(std::span<VPackSlice> span) const override {
+    if (!_iterator->Valid()) {
+      return false;
+    }
+
+    TRI_ASSERT(span.size() == 1);
+    // store the actual key
+    span[0] = _builder.slice();
+    return true;
+  }
+
+  void seekInternal(std::string_view key) {
+    if (key.empty()) {
+      _iterator->Seek(_bounds.start());
+    } else {
+      _rocksdbKey.constructPrimaryIndexValue(_index->objectId(), key);
+      _iterator->Seek(_rocksdbKey.string());
+    }
+
+    if (_iterator->Valid()) {
+      auto keySlice = RocksDBKey::primaryKey(_iterator->key());
+      _builder.clear();
+      _builder.add(VPackValue(std::string{keySlice.begin(), keySlice.end()}));
+    }
+  }
+
+  bool seek(std::span<VPackSlice> span) override {
+    TRI_ASSERT(span.size() == 1 && span[0].isString());
+    seekInternal(span[0].stringView());
+
+    return position(span);
+  }
+
+  LocalDocumentId load(std::span<VPackSlice> projections) const override {
+    TRI_ASSERT(_iterator->Valid());
+
+    for (auto& slice : projections) {
+      slice = _builder.slice();
+    }
+
+    return RocksDBValue::documentId(_iterator->value());
+  }
+
+  bool next(std::span<VPackSlice> key, LocalDocumentId& docId,
+            std::span<VPackSlice> projections) override {
+    _iterator->Next();
+
+    if (!_iterator->Valid()) {
+      return false;
+    }
+    auto keySlice = RocksDBKey::primaryKey(_iterator->key());
+    _builder.clear();
+    _builder.add(VPackValue(std::string{keySlice.begin(), keySlice.end()}));
+    key[0] = _builder.slice();
+    docId = load(projections);
+
+    return true;
+  }
+
+  void cacheCurrentKey(std::span<VPackSlice> cache) override {
+    _cache = VPackString{_builder.slice()};
+    cache[0] = _cache;
+  }
+
+  bool reset(std::span<VPackSlice> span) override {
+    seekInternal({});
+    return position(span);
+  }
+};
+
+}  // namespace
+
+std::unique_ptr<AqlIndexStreamIterator> RocksDBPrimaryIndex::streamForCondition(
+    transaction::Methods* trx, IndexStreamOptions const& opts) {
+  if (!supportsStreamInterface(opts)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "RocksDBPrimaryIndex streamForCondition was "
+                                   "called with unsupported options.");
+  }
+
+  auto stream = [&]() -> std::unique_ptr<AqlIndexStreamIterator> {
+    TRI_ASSERT(isSorted());
+    return std::make_unique<RocksDBPrimaryIndexStreamIterator>(this, trx);
+  }();
+
+  return stream;
+}
+
+bool RocksDBPrimaryIndex::checkSupportsStreamInterface(
+    std::vector<std::vector<basics::AttributeName>> const& coveredFields,
+    IndexStreamOptions const& streamOpts) noexcept {
+  // we can only project values that are in range
+  TRI_ASSERT(coveredFields.size() == 2);
+  TRI_ASSERT(coveredFields[0][0].name == StaticStrings::KeyString &&
+             coveredFields[1][0].name == StaticStrings::IdString);
+
+  for (auto idx : streamOpts.projectedFields) {
+    if (idx != 0) {
+      return false;
+    }
+  }
+
+  // For the primary index, there is only one property set, which is "_key".
+  if (streamOpts.usedKeyFields.size() != 1) {
+    return false;
+  }
+
+  if (streamOpts.usedKeyFields[0] != 0) {
+    return false;
+  }
+
+  return true;
+}
+
+bool RocksDBPrimaryIndex::supportsStreamInterface(
+    IndexStreamOptions const& streamOpts) const noexcept {
+  return checkSupportsStreamInterface(_coveredFields, streamOpts);
 }

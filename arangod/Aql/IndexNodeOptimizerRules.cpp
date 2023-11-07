@@ -78,12 +78,12 @@ bool processCalculationNode(
           expression->nodeForModification(), var, node)) {
     // is not safe for optimization
     return false;
-  } else if (!node.attrs.empty()) {
+  }
+  if (!node.attrs.empty()) {
     if (!attributesMatch(index, node)) {
       return false;
-    } else {
-      nodesToChange.emplace_back(std::move(node));
     }
+    nodesToChange.emplace_back(std::move(node));
   }
   return true;
 }
@@ -141,7 +141,7 @@ void arangodb::aql::lateDocumentMaterializationRule(
         TRI_ASSERT(filter);
         VarSet currentUsedVars;
         Ast::getReferencedVariables(filter->node(), currentUsedVars);
-        if (currentUsedVars.find(var) != currentUsedVars.end() &&
+        if (currentUsedVars.contains(var) &&
             !processCalculationNode(var, index, nullptr, filter,
                                     nodesToChange)) {
           // IndexNode has an early pruning filter which references variables
@@ -205,7 +205,7 @@ void arangodb::aql::lateDocumentMaterializationRule(
         if (!stopSearch && valid && type != ExecutionNode::CALCULATION) {
           VarSet currentUsedVars;
           current->getVariablesUsedHere(currentUsedVars);
-          if (currentUsedVars.find(var) != currentUsedVars.end()) {
+          if (currentUsedVars.contains(var)) {
             valid = false;
             if (ExecutionNode::SUBQUERY == type) {
               auto& subqueryNode =
@@ -222,7 +222,7 @@ void arangodb::aql::lateDocumentMaterializationRule(
                              scn->getType() == ExecutionNode::CALCULATION);
                   currentUsedVars.clear();
                   scn->getVariablesUsedHere(currentUsedVars);
-                  if (currentUsedVars.find(var) != currentUsedVars.end()) {
+                  if (currentUsedVars.contains(var)) {
                     auto* calculationNode =
                         ExecutionNode::castTo<CalculationNode*>(scn);
                     TRI_ASSERT(calculationNode);
@@ -339,11 +339,10 @@ void arangodb::aql::lateDocumentMaterializationRule(
         // insert a materialize node
         auto makeMaterializer = [&]() -> std::unique_ptr<ExecutionNode> {
           if (index->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
-            return std::make_unique<materialize::MaterializeSingleNode<false>>(
-                plan.get(), plan->nextId(), indexNode->collection(),
-                *localDocIdTmp, *var);
+            return std::make_unique<materialize::MaterializeSearchNode>(
+                plan.get(), plan->nextId(), *localDocIdTmp, *var);
           }
-          return std::make_unique<materialize::MaterializeSingleNode<true>>(
+          return std::make_unique<materialize::MaterializeRocksDBNode>(
               plan.get(), plan->nextId(), indexNode->collection(),
               *localDocIdTmp, *var);
         };

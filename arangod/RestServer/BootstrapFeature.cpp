@@ -43,7 +43,9 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
+#endif
 #include "VocBase/Methods/Upgrade.h"
 #include "VocBase/vocbase.h"
 
@@ -69,8 +71,12 @@ BootstrapFeature::BootstrapFeature(Server& server)
 
   startsAfter<SystemDatabaseFeature>();
 
+#ifdef USE_V8
   // TODO: It is only in FoxxPhase because of:
   startsAfter<FoxxFeature>();
+#else
+  startsAfter<application_features::ServerFeaturePhase>();
+#endif
 
   // If this is Sorted out we can go down to ServerPhase
   // And activate the following dependencies:
@@ -212,6 +218,7 @@ void raceForClusterBootstrap(BootstrapFeature& feature) {
   }
 }
 
+#ifdef USE_V8
 /// Run the coordinator initialization script, will run on each
 /// coordinator, not just one.
 void runCoordinatorJS(TRI_vocbase_t* vocbase) {
@@ -254,6 +261,7 @@ void runCoordinatorJS(TRI_vocbase_t* vocbase) {
     }
   }
 }
+#endif
 
 // Try to become leader in active-failover setup
 void runActiveFailoverStart(BootstrapFeature& feature,
@@ -307,9 +315,11 @@ void BootstrapFeature::start() {
       server().hasFeature<arangodb::SystemDatabaseFeature>()
           ? server().getFeature<arangodb::SystemDatabaseFeature>().use()
           : nullptr;
+#ifdef USE_V8
   bool v8Enabled = server().hasFeature<V8DealerFeature>() &&
                    server().isEnabled<V8DealerFeature>() &&
                    server().getFeature<V8DealerFeature>().isEnabled();
+#endif
   TRI_ASSERT(vocbase.get() != nullptr);
 
   ServerState::RoleEnum role = ServerState::instance()->getRole();
@@ -328,9 +338,11 @@ void BootstrapFeature::start() {
       // both Plan and Current have been populated successfully
       waitForDatabases();
 
+#ifdef USE_V8
       if (v8Enabled && !databaseFeature.upgrade()) {
         ::runCoordinatorJS(vocbase.get());
       }
+#endif
     } else if (ServerState::isDBServer(role)) {
       // don't wait for databases in Current here, as we are a DB server and may
       // be the one responsible to create it. blocking here is thus no option!
@@ -360,6 +372,7 @@ void BootstrapFeature::start() {
           myId);  // could be empty, but set anyway
     }
 
+#ifdef USE_V8
     if (v8Enabled) {  // runs the single server bootstrap JS
       // will run foxx/manager.js::_startup() and more (start queues, load
       // routes, etc)
@@ -367,6 +380,7 @@ void BootstrapFeature::start() {
       server().getFeature<V8DealerFeature>().loadJavaScriptFileInAllContexts(
           vocbase.get(), "server/server.js", nullptr);
     }
+#endif
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
     if (um != nullptr) {
       // only creates root user if it does not exist, will be overwritten on

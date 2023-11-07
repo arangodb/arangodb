@@ -171,7 +171,6 @@ void SortedCollectExecutor::CollectGroup::addLine(
       // compute the expression
       input.getValue(infos.getExpressionRegister())
           .toVelocyPack(infos.getVPackOptions(), _builder,
-                        /*resolveExternals*/ false,
                         /*allowUnindexed*/ false);
     } else {
       // copy variables / keep variables into result register
@@ -181,7 +180,6 @@ void SortedCollectExecutor::CollectGroup::addLine(
         _builder.add(VPackValue(pair.first));
         input.getValue(pair.second)
             .toVelocyPack(infos.getVPackOptions(), _builder,
-                          /*resolveExternals*/ false,
                           /*allowUnindexed*/ false);
       }
       _builder.close();
@@ -230,7 +228,6 @@ void SortedCollectExecutor::CollectGroup::groupValuesToArray(
   builder.openArray();
   for (auto const& value : groupValues) {
     value.toVelocyPack(infos.getVPackOptions(), builder,
-                       /*resolveExternals*/ false,
                        /*allowUnindexed*/ false);
   }
 
@@ -251,7 +248,7 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
     AqlValue val = this->groupValues[i];
     AqlValueGuard guard{val, true};
 
-    output.moveValueInto(it.first, _lastInputRow, guard);
+    output.moveValueInto(it.first, _lastInputRow, &guard);
     // ownership of value is transferred into res
     this->groupValues[i].erase();
     ++i;
@@ -263,7 +260,7 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
     AqlValue val = it->stealValue();
     AqlValueGuard guard{val, true};
     output.moveValueInto(infos.getAggregatedRegisters()[j].first, _lastInputRow,
-                         guard);
+                         &guard);
     ++j;
   }
 
@@ -277,7 +274,7 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
     TRI_ASSERT(_buffer.size() == 0);
     _builder.clear();  // necessary
 
-    output.moveValueInto(infos.getCollectRegister(), _lastInputRow, guard);
+    output.moveValueInto(infos.getCollectRegister(), _lastInputRow, &guard);
   }
 
   output.advanceRow();

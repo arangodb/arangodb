@@ -55,7 +55,7 @@ std::string jwt::generateInternalToken(std::string_view secret,
   bodyBuilder.openObject();
   bodyBuilder.add("server_id", VPackValue(id));
   bodyBuilder.add("iss", VPackValue("arangodb"));
-  bodyBuilder.add("iat", VPackValue(iss.count()));
+  bodyBuilder.add("iat", VPackValue(static_cast<uint64_t>(iss.count())));
   // bodyBuilder.add("exp", VPackValue(exp.count()));
   bodyBuilder.close();
   return generateRawJwt(secret, bodyBuilder.slice());
@@ -74,9 +74,9 @@ std::string jwt::generateUserToken(std::string_view secret,
   bodyBuilder.openObject(/*unindexed*/ true);
   bodyBuilder.add("preferred_username", VPackValue(username));
   bodyBuilder.add("iss", VPackValue("arangodb"));
-  bodyBuilder.add("iat", VPackValue(iss.count()));
+  bodyBuilder.add("iat", VPackValue(static_cast<uint64_t>(iss.count())));
   if (validFor.count() > 0) {
-    bodyBuilder.add("exp", VPackValue((iss + validFor).count()));
+    bodyBuilder.add("exp", VPackValue(static_cast<uint64_t>((iss + validFor).count())));
   }
   bodyBuilder.close();
   return generateRawJwt(secret, bodyBuilder.slice());

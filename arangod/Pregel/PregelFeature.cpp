@@ -39,6 +39,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Graph/GraphManager.h"
 #include "Inspection/VPackWithErrorT.h"
@@ -318,7 +319,11 @@ PregelFeature::PregelFeature(Server& server)
 
   setOptional(true);
   startsAfter<DatabaseFeature>();
+#ifdef USE_V8
   startsAfter<application_features::V8FeaturePhase>();
+#else
+  startsAfter<application_features::ClusterFeaturePhase>();
+#endif
 }
 
 PregelFeature::~PregelFeature() {

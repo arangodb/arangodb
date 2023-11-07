@@ -196,6 +196,25 @@ if (STATIC_EXECUTABLES)
   endif ()
 endif()
 
+# enable V8/JavaScript in executables. 
+# note that V8 will always be built, regardless of the value of this option.
+# this is required because the V8 build step also builds ICU, which is needed
+# in all programs.
+# if set to OFF, V8 will not be linked to arangod and the client-tools, 
+# and V8 integration code for arangod will not be compiled. 
+# additionally, arangosh will not be built.
+# setting the option to OFF will further disable all JavaScript support in
+# arangod, rendering the web UI, JavaScript transactions, AQL user-defined
+# functions (UDFs), Foxx and some other smaller features unusable.
+# setting this option to OFF also renders many tests unusable as many tests
+# depend on JavaScript.
+# setting the option to OFF is highly experimental option and not well tested.
+# use at your own risk!
+option(USE_V8 "build with V8/JavaScript support" ON)
+if (USE_V8)
+  add_definitions("-DUSE_V8=1")
+endif ()
+
 # enable dtrace
 option(USE_DTRACE "enable dtrace probes" OFF)
 if (USE_DTRACE)
@@ -222,6 +241,7 @@ set(ARANGODB_URL_INFO_ABOUT  "https://www.arangodb.com")
 set(ARANGODB_HELP_LINK       "https://docs.arangodb.com/${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}/")
 set(ARANGODB_CONTACT         "hackers@arangodb.com")
 set(ARANGODB_FRIENDLY_STRING "ArangoDB - the native multi-model NoSQL database")
+set(ARANGODB_PACKAGE_COMPANY "ArangoDB GmbH")
 
 # MSVC
 set(ARANGO_BENCH_FRIENDLY_STRING   "arangobench - stress test tool")
@@ -1325,7 +1345,9 @@ add_dependencies(arangodump    zlibstatic)
 add_dependencies(arangoexport  zlibstatic)
 add_dependencies(arangoimport  zlibstatic)
 add_dependencies(arangorestore zlibstatic)
-add_dependencies(arangosh      zlibstatic)
+if (USE_V8)
+  add_dependencies(arangosh      zlibstatic)
+endif ()
 
 if (UNIX)
   add_dependencies(arangobench   man)
@@ -1337,7 +1359,9 @@ if (UNIX)
   add_dependencies(arangoexport  man)
   add_dependencies(arangoimport  man)
   add_dependencies(arangorestore man)
-  add_dependencies(arangosh      man)
+  if (USE_V8) 
+    add_dependencies(arangosh      man)
+  endif ()
 endif ()
 
 if (NOT USE_PRECOMPILED_V8)
@@ -1352,7 +1376,9 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangoexport  v8_build)
   add_dependencies(arangoimport  v8_build)
   add_dependencies(arangorestore v8_build)
-  add_dependencies(arangosh      v8_build)
+  if (USE_V8)
+    add_dependencies(arangosh      v8_build)
+  endif ()
   if (USE_GOOGLE_TESTS)
     add_dependencies(arangodbtests v8_build)
   endif ()
@@ -1382,6 +1408,6 @@ if (USE_ENTERPRISE)
 endif ()
 
 add_custom_target(arangodb
-   DEPENDS arangod arangotools)
+   DEPENDS arangod client-tools)
 
 add_subdirectory(utils/gdb-pretty-printers/immer/test)

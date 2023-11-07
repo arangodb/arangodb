@@ -28,8 +28,12 @@ add_library(arango_agency STATIC
   RestAgencyPrivHandler.cpp
   State.cpp
   Store.cpp
-  Supervision.cpp
-  v8-agency.cpp)
+  Supervision.cpp)
+
+if (USE_V8) 
+  target_sources(arango_agency PRIVATE
+    v8-agency.cpp)
+endif()
 
 target_link_libraries(arango_agency
   arango

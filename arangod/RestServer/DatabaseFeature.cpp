@@ -63,7 +63,9 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
+#endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -111,7 +113,9 @@ DatabaseManagerThread::~DatabaseManagerThread() { shutdown(); }
 
 void DatabaseManagerThread::run() {
   auto& feature = server().getFeature<DatabaseFeature>();
+#ifdef USE_V8
   auto& dealer = server().getFeature<V8DealerFeature>();
+#endif
   int cleanupCycles = 0;
 
   auto& engine = server().getFeature<EngineSelectorFeature>().engine();
@@ -155,7 +159,11 @@ void DatabaseManagerThread::run() {
         iresearch::cleanupDatabase(*database);
 
         auto* queryRegistry = QueryRegistryFeature::registry();
+#ifdef USE_V8
         if (dealer.isEnabled() || queryRegistry != nullptr) {
+#else
+        if (queryRegistry != nullptr) {
+#endif
           // TODO(MBkkt) Why shouldn't we remove database data
           //  if exists database with same name?
           std::lock_guard lockCreate{feature._databaseCreateLock};
@@ -163,9 +171,11 @@ void DatabaseManagerThread::run() {
           auto* same = feature.lookupDatabase(database->name());
           TRI_ASSERT(same == nullptr || same->id() != database->id());
           if (same == nullptr) {
+#ifdef USE_V8
             if (dealer.isEnabled()) {
               dealer.cleanupDatabase(*database);
             }
+#endif
             if (queryRegistry != nullptr) {
               queryRegistry->destroy(database->name());
             }
@@ -385,19 +395,12 @@ void DatabaseFeature::initCalculationVocbase(ArangodServer& server) {
 }
 
 void DatabaseFeature::start() {
-  if (_extendedNames) {
-    LOG_TOPIC("2c0c6", WARN, arangodb::Logger::FIXME)
-        << "Enabling extended names for databases, collections, view, and "
-           "indexes "
-        << " is an experimental feature which can "
-           "cause incompatibility issues with not-yet-prepared drivers and "
-           "applications - do not use in production!";
-  }
-
+#ifdef USE_V8
   auto& dealer = server().getFeature<V8DealerFeature>();
   if (dealer.isEnabled()) {
     dealer.verifyAppPaths();
   }
+#endif
 
   // scan all databases
   velocypack::Builder builder;
@@ -681,13 +684,6 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
   }
   result = nullptr;
 
-  bool extendedNames = this->extendedNames();
-  if (auto res = DatabaseNameValidator::validateName(/*allowSystem*/ false,
-                                                     extendedNames, name);
-      res.fail()) {
-    return res;
-  }
-
   std::unique_ptr<TRI_vocbase_t> vocbase;
 
   // create database in storage engine
@@ -738,6 +734,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
         return Result(TRI_ERROR_INTERNAL, std::move(msg));
       }
 
+#ifdef USE_V8
       auto& dealer = server().getFeature<V8DealerFeature>();
       if (dealer.isEnabled()) {
         auto r = dealer.createDatabase(name, std::to_string(dbId), true);
@@ -745,6 +742,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
           THROW_ARANGO_EXCEPTION(r);
         }
       }
+#endif
     }
 
     if (!engine.inRecovery()) {
@@ -1150,7 +1148,9 @@ void DatabaseFeature::closeOpenDatabases() {
 }
 
 ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
+#ifdef USE_V8
   auto& dealer = server().getFeature<V8DealerFeature>();
+#endif
 
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
 
@@ -1176,6 +1176,7 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
     }
 
     auto name = it.get("name").stringView();
+#ifdef USE_V8
     if (dealer.isEnabled()) {
       auto id = basics::VelocyPackHelper::getStringView(it.get("id"), {});
       r = dealer.createDatabase(name, id, false);
@@ -1183,6 +1184,7 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
         break;
       }
     }
+#endif
 
     // open the database and scan collections in it
 
@@ -1192,14 +1194,22 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
     // we don't want the server start to fail here in case some
     // invalid settings are present
     info.strictValidation(false);
+
+    // do not validate database names for existing databases.
+    // the rationale is that if a database was already created with
+    // an extended name, we should not declare it invalid and abort
+    // the startup once the extended names option is turned off.
+    info.validateNames(false);
+
     auto res = info.load(it, velocypack::Slice::emptyArraySlice());
 
     if (res.fail()) {
       std::string errorMsg;
       // note: TRI_ERROR_ARANGO_DATABASE_NAME_INVALID should not be
       // used anymore in 3.11 and higher.
-      if (res.is(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID) ||
-          res.is(TRI_ERROR_ARANGO_ILLEGAL_NAME)) {
+      bool isNameError = res.is(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID) ||
+                         res.is(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+      if (isNameError) {
         // special case: if we find an invalid database name during startup,
         // we will give the user some hint how to fix it
         absl::StrAppend(&errorMsg, res.errorMessage(), ": '", name, "'");
@@ -1219,8 +1229,15 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
                         "': ", res.errorMessage());
       }
 
-      res.reset(res.errorNumber(), std::move(errorMsg));
-      THROW_ARANGO_EXCEPTION(res);
+      if (!isNameError) {
+        // rethrow all errors but "illegal name" errors.
+        // the "illegal name" errors will be silenced during startup,
+        // so that it will be possible to start a database server
+        // with existing databases with extended database names even
+        // if the extended names feature was turned off later.
+        res.reset(res.errorNumber(), std::move(errorMsg));
+        THROW_ARANGO_EXCEPTION(res);
+      }
     }
 
     auto database = engine.openDatabase(std::move(info), _upgrade);

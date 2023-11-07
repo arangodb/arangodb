@@ -54,7 +54,9 @@
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
+#endif
 
 #include <absl/strings/str_cat.h>
 
@@ -178,9 +180,7 @@ bool translateNodeStackToAttributePath(
     }
 
     // now take off all projections from the stack
-    ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor> alloc = {
-        resourceMonitor};
-    MonitoredStringVector path{alloc};
+    std::vector<std::string> path;
     while (top->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       path.emplace_back(top->getString());
       state.seen.pop_back();
@@ -191,7 +191,7 @@ bool translateNodeStackToAttributePath(
     }
 
     TRI_ASSERT(!path.empty());
-    state.attributes.emplace(AttributeNamePath(std::move(path)));
+    state.attributes.emplace(std::move(path), resourceMonitor);
   }
 
   return true;
@@ -368,7 +368,9 @@ Ast::Ast(QueryContext& query,
       _containsTraversal(false),
       _containsBindParameters(false),
       _containsModificationNode(false),
+      _containsUpsertNode(false),
       _containsParallelNode(false),
+      _containsAsyncPrefetch(false),
       _willUseV8(false),
       _astFlags(flags) {
   startSubQuery();
@@ -1893,6 +1895,7 @@ AstNode* Ast::createNodeFunctionCall(std::string_view functionName,
       _functionsMayAccessDocuments = true;
     }
   } else {
+#ifdef USE_V8
     // user-defined function (UDF)
     if (_query.vocbase().server().hasFeature<V8DealerFeature>() &&
         !_query.vocbase()
@@ -1904,6 +1907,12 @@ AstNode* Ast::createNodeFunctionCall(std::string_view functionName,
                                      "usage of AQL user-defined functions "
                                      "(UDFs) is disallowed via configuration");
     }
+#else
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_PARSE,
+        "usage of AQL user-defined functions "
+        "(UDFs) is not possible in this build of ArangoDB");
+#endif
 
     node = createNode(NODE_TYPE_FCALL_USER);
     // register the function name
@@ -2214,9 +2223,10 @@ void Ast::injectBindParameters(BindParameters& parameters,
 }
 
 /// @brief replace an attribute access with just the variable
-AstNode* Ast::replaceAttributeAccess(
-    AstNode* node, Variable const* variable,
-    std::vector<std::string> const& attribute) {
+AstNode* Ast::replaceAttributeAccess(Ast* ast, AstNode* node,
+                                     Variable const* searchVariable,
+                                     std::span<std::string_view> attribute,
+                                     Variable const* replaceVariable) {
   TRI_ASSERT(!attribute.empty());
   if (attribute.empty()) {
     return node;
@@ -2246,7 +2256,7 @@ AstNode* Ast::replaceAttributeAccess(
       return origNode;
     }
     for (size_t i = 0; i < attribute.size(); ++i) {
-      if (attributePath[i] != attribute[i]) {
+      if (attributePath[i] != attribute[attribute.size() - i - 1]) {
         // different attribute
         return origNode;
       }
@@ -2255,9 +2265,11 @@ AstNode* Ast::replaceAttributeAccess(
 
     if (node->type == NODE_TYPE_REFERENCE) {
       auto v = static_cast<Variable*>(node->getData());
-      if (v != nullptr && v->id == variable->id) {
+      if (v != nullptr && v->id == searchVariable->id) {
         // our variable... now replace the attribute access with just the
         // variable
+        node = ast->createNode(NODE_TYPE_REFERENCE);
+        node->setData(replaceVariable);
         return node;
       }
     }
@@ -2722,6 +2734,29 @@ void Ast::getReferencedVariables(AstNode const* node, VarSet& result) {
   };
 
   traverseReadOnly(node, preVisitor, visitor);
+}
+
+bool Ast::isVarsUsed(AstNode const* node, VarSet const& result) {
+  bool intersects = false;
+  auto visitor = [&](AstNode const* node) {
+    if (intersects || node->isConstant()) {
+      return false;
+    }
+    if (node->type != NODE_TYPE_REFERENCE) {
+      return true;
+    }
+    auto const* variable = static_cast<Variable const*>(node->getData());
+    if (variable == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "invalid reference in AST");
+    }
+    if (variable->needsRegister()) {
+      intersects = result.contains(variable);
+    }
+    return !intersects;
+  };
+  traverseReadOnly(node, visitor, [](AstNode const*) {});
+  return intersects;
 }
 
 /// @brief count how many times a variable is referenced in an expression
@@ -3486,7 +3521,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(
 
   AqlValueMaterializer materializer(
       trx.transactionContextPtr()->getVPackOptions());
-  return nodeFromVPack(materializer.slice(a, false), true);
+  return nodeFromVPack(materializer.slice(a), true);
 }
 
 /// @brief optimizes the binary arithmetic operators +, -, *, / and %
@@ -3756,75 +3791,6 @@ AstNode* Ast::optimizeFunctionCall(
                                    args->getMemberUnchecked(0),
                                    createNodeValueNull()));
     }
-#if 0
-  } else if (func->name == "LIKE") {
-    // optimize a LIKE(x, y) into a plain x == y or a range scan in case the
-    // search is case-sensitive and the pattern is either a full match or a
-    // left-most prefix
-
-    // this is desirable in 99.999% of all cases, but would cause the following incompatibilities:
-    // - the AQL LIKE function will implicitly cast its operands to strings, whereas
-    //   operator == in AQL will not do this. So LIKE(1, '1') would behave differently
-    //   when executed via the AQL LIKE function or via 1 == '1'
-    // - for left-most prefix searches (e.g. LIKE(text, 'abc%')) we need to determine
-    //   the upper bound for the range scan. This is trivial for ASCII search patterns
-    //   (e.g. 'abc\0xff0xff0xff...' should be big enough to include everything).
-    //   But it is unclear how to achieve the upper bound for an arbitrary multi-byte
-    //   character and, more grave, when using an arbitrary ICU collation where
-    //   characters may be sorted differently
-    // thus turned off for now, and let for future optimizations
-
-    bool caseInsensitive = false; // this is the default behavior of LIKE
-    auto args = node->getMember(0);
-    if (args->numMembers() >= 3) {
-      caseInsensitive = true; // we have 3 arguments, set case-sensitive to false now
-      auto caseArg = args->getMember(2);
-      if (caseArg->isConstant()) {
-        // ok, we can figure out at compile time if the parameter is true or false
-        caseInsensitive = caseArg->isTrue();
-      }
-    }
-
-    auto patternArg = args->getMember(1);
-
-    if (!caseInsensitive && patternArg->isStringValue()) {
-      // optimization only possible for case-sensitive LIKE
-      std::string unescapedPattern;
-      bool wildcardFound;
-      bool wildcardIsLastChar;
-      std::tie(wildcardFound, wildcardIsLastChar) = AqlFunctionsInternalCache::inspectLikePattern(unescapedPattern, patternArg->getStringView());
-
-      if (!wildcardFound) {
-        TRI_ASSERT(!wildcardIsLastChar);
-
-        // can turn LIKE into ==
-        char const* p = _resources.registerString(unescapedPattern.data(), unescapedPattern.size());
-        AstNode* pattern = createNodeValueString(p, unescapedPattern.size());
-
-        return createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, args->getMember(0), pattern);
-      } else if (!unescapedPattern.empty()) {
-        // can turn LIKE into >= && <=
-        char const* p = _resources.registerString(unescapedPattern.data(), unescapedPattern.size());
-        AstNode* pattern = createNodeValueString(p, unescapedPattern.size());
-        AstNode* lhs = createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_GE, args->getMember(0), pattern);
-
-        // add a new end character that is expected to sort "higher" than anything else
-        char const* v = "\xef\xbf\xbf";
-        unescapedPattern.append(&v[0], 3);
-        p = _resources.registerString(unescapedPattern.data(), unescapedPattern.size());
-        pattern = createNodeValueString(p, unescapedPattern.size());
-        AstNode* rhs = createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_LE, args->getMember(0), pattern);
-
-        AstNode* op = createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, lhs, rhs);
-        if (wildcardIsLastChar) {
-          // replace LIKE with >= && <=
-          return op;
-        }
-        // add >= && <=, but keep LIKE in place
-        return createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, op, node);
-      }
-    }
-#endif
   }
 
   if (!func->hasFlag(Function::Flags::Deterministic)) {
@@ -3858,7 +3824,7 @@ AstNode* Ast::optimizeFunctionCall(
 
   AqlValueMaterializer materializer(
       trx.transactionContextPtr()->getVPackOptions());
-  return nodeFromVPack(materializer.slice(a, false), true);
+  return nodeFromVPack(materializer.slice(a), true);
 }
 
 /// @brief optimizes indexed access, e.g. a[0] or a['foo']
@@ -4419,6 +4385,12 @@ void Ast::setContainsParallelNode() noexcept {
   _containsParallelNode = true;
 #endif
 }
+
+bool Ast::containsAsyncPrefetch() const noexcept {
+  return _containsAsyncPrefetch;
+}
+
+void Ast::setContainsAsyncPrefetch() noexcept { _containsAsyncPrefetch = true; }
 
 AstNode const* Ast::getSubqueryForVariable(Variable const* variable) const {
   if (auto it = _subqueries.find(variable->id); it != _subqueries.end()) {

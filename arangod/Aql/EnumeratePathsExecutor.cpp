@@ -31,9 +31,8 @@
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
-#include "Transaction/Helpers.h"
-
 #include "Graph/algorithm-aliases.h"
+#include "Transaction/Helpers.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
@@ -250,7 +249,7 @@ auto EnumeratePathsExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output)
   if (_finder.getNextPath(*tmp.builder())) {
     AqlValue path{tmp->slice()};
     AqlValueGuard guard{path, true};
-    output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
+    output.moveValueInto(_infos.getOutputRegister(), _inputRow, &guard);
     output.advanceRow();
   }
 }

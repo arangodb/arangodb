@@ -3,6 +3,207 @@ devel
 
 * Upgraded bundled version of RocksDB to 8.8.
 
+* Silence TSAN for shutdown for access to the SchedulerFeature::SCHEDULER
+  pointer using atomic references.
+
+* Fixed a race in controlled leader change which could lead to a situation 
+  in which a shard follower is dropped when the first write operation
+  happens. This fixes BTS-1647.
+
+* Fixed an unnecessary follower drop in controlled leader change, which will
+  speed up leader changes. This fixes BTS-1658.
+
+* Fixed BTS-1669 Transaction Manager returns Error if we Abort an Expired
+  Transaction.
+  There was a small time window of around 2 seconds in which aborting expired
+  transactions would return "transaction aborted" instead of returning success.
+  The time window was between when a transaction expired (according to its
+  TTL value) and when the transaction manager's garbage collection aborted
+  the transaction. The issue only happened for transactions which outlived
+  their TTL value and for which an abort operation was attempted in that
+  time window.
+
+* Change default value of arangodump startup option `--use-parallel-dump` 
+  from `false` to `true`.
+  This enables the more parallel dump procedure by default, which allows
+  dumps to be produced more quickly.
+  The parallel dump protocol needs server-side support, and the first 
+  ArangoDB version that completely supports it is 3.12.
+  In order to use a 3.12 arangodump to create dumps from servers that run
+  an older version of arangod, the option should be set to `false` when
+  invoking arangodump.
+  The parallel dump option also allows the usage of the `--split-files` 
+  option in arangodump. When enabled, the data of each collection/shard
+  can be dumped into multiple independent files, which can be written in
+  parallel, and that can also be restored in parallel.
+  Please note that you will need an arangorestore from version 3.12 or
+  higher to be able to restore a dump that was taken with the 
+  `--split-files` option.
+
+* Added `--write-concern` parameter similar to `--replication-factor` to
+
+* MDS-1164: Added Publisher and Company to the Window binaries
+
+* BTS-1602: Added new flag `--ignore-collection` to the arangodump binary.
+  Collections can now be excluded by using this flag. This flag can be
+  specified multiple times to exclude multiple collections.
+
+* Added --write-concern parameter similar to --replication-factor to
+  arangodump. This enables the user to override the write concern for
+  one or multiple collections.
+
+* BTS-1259: Not all CRUD requests based on vertex and edge operations
+  using `_api/gharial` performed a check against the actual graph
+  definition. This behavior is now fixed. In case a collection is being
+  used but not known by the graph definition itself, this will now properly
+  be reported by either `ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED`,
+  in case of a vertex, or by `ERROR_GRAPH_EDGE_COLLECTION_NOT_USED`, in case
+  of an edge.
+    
+* Added metric `arangodb_aql_cursors_active` to show the number of active
+  AQL query cursors.
+
+* Add AQL optimizer rule "async-prefetch", which allows certain AQL query parts
+  to asynchronously prefetch data while other parts of the query are still
+  operating.
+  Several parts of the same AQL query operating concurrently can lead to query
+  performance improvements in case there is still reserve (scheduler) capacity.
+
+  The following parts of an AQL query can be executed in parallel to other
+  parts:
+
+  - CalculationNode
+  - CollectNode
+  - EnumerateCollectionNode
+  - EnumerateViewNode
+  - FilterNode
+  - IndexNode
+  - SortNode
+
+  Asynchronous prefetching is disabled for the following parts of an AQL query
+
+  - LimitNode: asynchronously prefetching data for a LimitNode must be disabled
+    because otherwise we may overfetch data and the LIMIT values could be
+    violated.
+  - NoResultsNode: the NoResultsNode produces an empty result, and is always
+    quick to execute. There is no need to make it fetch its dependent data
+    asynchronously.
+  - ReturnNode: the ReturnNode normally only passes through existing values and
+    should be quick to execute.
+  - SingletonNode: the SingletonNode only produces a single value and is always
+    quick to execute. It also doesn't have any dependencies.
+  - any nodes inside a subquery
+
+  If the following nodes occur inside an AQL query, asynchronous prefetching is
+  disabled for the entire query:
+
+  - InsertNode, UpdateNode, ReplaceNode, RemoveNode, UpsertNode: prefetching is
+    currently not compatible with these node types.
+  - EnumeratePathsNode, ShortestPathNode, TraversalNode: graph nodes currently
+    do not support prefetching in all cases, thus the functionality is turned
+    off.
+
+  AQL queries in which some nodes are eligible for asynchronous prefetching 
+  will be marked with the optimizer rule "async-prefetch" having been applied.
+
+  The explain output for queries is now extended with a new "Par" column, which
+  shows which nodes in the query are eligible for asynchronous prefetching.
+  All nodes denoted with "✓" will support asynchronous prefetching at runtime.
+
+  The profiling output for queries is now extended with a new "Par" column,
+  which shows the actual number of parallel calls during query execution. Note
+  that every call to a query node will be counted in "Calls" in addition. 
+  "Calls" contains the total number of calls made to the query node, and "Par"
+  contains the number of successful asynchronous prefetch calls.
+
+  Note that asynchronous prefetching is done on a best effort basis, but there 
+  is no guarantee that query parts actually execute concurrently. The reason
+  for this is that asynchronous prefetching tasks are posted to the server's
+  scheduler with normal priority, so they compete for scheduler threads in the
+  same way as other operations do. The more capacity the server's scheduler
+  still has, the more likely it is that query parts can actually run 
+  concurrently.
+
+* Updated OpenSSL to 3.1.3.
+
+* FE-385: fix web UI query import stuck on loading for faulty JSON.
+
+* FE-378: fix fields containing spaces during index creation on web UI.
+
+* FE-288: Improve collection index UI.
+
+* FE-321: add validation for query name in web UI.
+
+* Fixed BTS-1610: In certain situations with at least three levels of nested
+  subqueries, of which some of the outer iterations don't return any results,
+  results of later iterations could be lost.
+
+* Updated arangosync to v2.19.4.
+
+* Add cluster-internal connectivity checks.
+  This makes Coordinators and DB-Servers in a cluster periodically send check
+  requests to each other, in order to check if all servers can connect to
+  each other.
+  If a cluster-internal connection to another Coordinator or DB-Server cannot 
+  be established within 10 seconds, a warning will be logged. 
+
+  The new startup option `--cluster.connectivity-check-interval` can be used
+  to control the frequency of the connectivity check, in seconds.
+  If set to a value greater than zero, the initial connectivity check is
+  performed approximately 15 seconds after the instance start, and subsequent 
+  connectivity checks are executed with the specified frequency.
+  If set to a value of zero, connectivity checks are disabled.
+
+  This change also adds the metrics
+  `arangodb_network_connectivity_failures_coordinators` and
+  `arangodb_network_connectivity_failures_dbservers`, which can be monitored
+  for detecting temporary or permanent connectivity issues.
+
+* Change default value for `--database.extended-names` from `false` to `true`.
+  This will allow end users to use Unicode characters inside database names,
+  collection names, view names and index names by default, unless the
+  functionality is explicitly turned off.
+
+  Note: once a server in the deployment has been started with the flag set
+  to `true`, it will store that setting permanently. Switching the startup
+  option back to `false` will raise a warning about the option change at
+  startup, but not block the startup. Existing databases, collections, views
+  and indexes with extended names can still be used even with the option set
+  back to `false`, but no new database objects with extended names can be 
+  created with the option set back to `false`. So this state is only meant
+  to facilitate downgrading or reverting the option change. When the option
+  is supposed to be left at a value of `false`, all database objects with
+  extended names that were created in the meantime should be removed manually.
+
+* Allow the usage of the `_id` attribute in the stored values of persistent
+  indexes.
+
+* Updated arangosync to v2.19.4-preview-8.
+
+* Fix updating of collection properties (schema) when the collection has a
+  view on top.
+
+* Improve logging in case hot backup locks cannot be taken on coordinators.
+
+* Speed up incremental hotbackup upload by parallelization of
+  remote-to-remote copies. Tolerate deletion of old backups during
+  incremental upload.
+
+* Added the following metrics to improve observability of in-memory cache
+  subsystem:
+  - `rocksdb_cache_free_memory_tasks_total`: total number of `freeMemory`
+    tasks scheduled
+  - `rocksdb_cache_migrate_tasks_total`: total number of `migrate` tasks
+    scheduled
+  - `rocksdb_cache_free_memory_tasks_duration_total`: total time (microseconds)
+    spent in `freeMemory` tasks
+  - `rocksdb_cache_migrate_tasks_duration_total`: total time (microseconds)
+    spent in `migrate` tasks
+
+* Improve performance of AQL LimitExecutor for higher limit values.
+  The LimitExecutor now fast-forwards all input rows instead of working on the
+  individual input rows.
+
 * Remove special handling for backups taken with ArangoDB 3.5 in hot backup
   restore.
 
@@ -279,6 +480,13 @@ devel
 * Upgraded Swagger-UI to v5.4.1
 
 * FE-248: Improve collections list UI.
+
+* Updated JavaScript dependencies:
+
+  qs: 6.11.0 -> 6.11.2
+  semver: 7.3.8 -> 7.5.4
+
+  This addresses CVE-2022-25883 in the semver module.
 
 * BTS-1124: wait for license to be applied locally before responding to the request.
 

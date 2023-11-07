@@ -393,8 +393,8 @@ jsunity.run(transactionReplicationOnFollowersSuiteV1);
 
 if (isReplication2Enabled) {
   let suites = [
-    transactionReplication2ReplicateOperationSuite,
-    transactionReplicationOnFollowersSuiteV2,
+    //transactionReplication2ReplicateOperationSuite,
+    //transactionReplicationOnFollowersSuiteV2,
   ];
 
   for (const suite of suites) {

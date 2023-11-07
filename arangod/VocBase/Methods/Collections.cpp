@@ -52,13 +52,17 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
+#ifdef USE_V8
 #include "Transaction/V8Context.h"
+#endif
 #include "Utilities/NameValidator.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
+#ifdef USE_V8
 #include "V8Server/V8Context.h"
+#endif
 #include "VocBase/ComputedValues.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
@@ -398,8 +402,12 @@ transaction::Methods* Collections::Context::trx(AccessMode::Type const& type,
   if (_responsibleForTrx && _trx == nullptr) {
     auto origin = transaction::OperationOriginREST{::moduleName};
 
+#ifdef USE_V8
     auto ctx = transaction::V8Context::createWhenRequired(_coll->vocbase(),
                                                           origin, embeddable);
+#else
+    auto ctx = transaction::StandaloneContext::create(_coll->vocbase(), origin);
+#endif
     auto trx = std::make_unique<SingleCollectionTransaction>(std::move(ctx),
                                                              *_coll, type);
 
@@ -1091,8 +1099,13 @@ Result Collections::updateProperties(LogicalCollection& collection,
 
     auto origin =
         transaction::OperationOriginREST{"collection properties update"};
+#ifdef USE_V8
     auto ctx = transaction::V8Context::createWhenRequired(collection.vocbase(),
                                                           origin, false);
+#else
+    auto ctx =
+        transaction::StandaloneContext::create(collection.vocbase(), origin);
+#endif
 
     SingleCollectionTransaction trx(std::move(ctx), collection,
                                     AccessMode::Type::EXCLUSIVE);
@@ -1139,6 +1152,12 @@ Result Collections::rename(LogicalCollection& collection,
     return {TRI_ERROR_FORBIDDEN};
   }
 
+  std::string const oldName(collection.name());
+  if (oldName == newName) {
+    // no actual name change
+    return {};
+  }
+
   // check required to pass
   // shell-collection-rocksdb-noncluster.js::testSystemSpecial
   if (collection.system()) {
@@ -1146,7 +1165,7 @@ Result Collections::rename(LogicalCollection& collection,
   }
 
   if (!doOverride) {
-    bool const isSystem = NameValidator::isSystemName(collection.name());
+    bool const isSystem = NameValidator::isSystemName(oldName);
 
     if (isSystem != NameValidator::isSystemName(newName)) {
       // a system collection shall not be renamed to a non-system collection
@@ -1167,7 +1186,6 @@ Result Collections::rename(LogicalCollection& collection,
     }
   }
 
-  std::string const oldName(collection.name());
   auto res = collection.vocbase().renameCollection(collection.id(), newName);
 
   if (!res.ok()) {
@@ -1332,8 +1350,13 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
   ResourceMonitor monitor(GlobalResourceMonitor::instance());
 
   auto origin = transaction::OperationOriginREST{"checksumming collection"};
+#ifdef USE_V8
   auto ctx = transaction::V8Context::createWhenRequired(collection.vocbase(),
                                                         origin, true);
+#else
+  auto ctx =
+      transaction::StandaloneContext::create(collection.vocbase(), origin);
+#endif
   SingleCollectionTransaction trx(std::move(ctx), collection,
                                   AccessMode::Type::READ);
   Result res = trx.begin();
@@ -1350,7 +1373,7 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
       trx.indexScan(monitor, collection.name(),
                     transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
 
-  iterator->allDocuments([&](LocalDocumentId const& /*token*/,
+  iterator->allDocuments([&](LocalDocumentId, aql::DocumentData&&,
                              VPackSlice slice) {
     uint64_t localHash =
         transaction::helpers::extractKeyFromDocument(slice).hashString();

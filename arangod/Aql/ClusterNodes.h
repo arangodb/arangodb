@@ -129,8 +129,7 @@ class ScatterNode : public ExecutionNode {
   enum ScatterType { SERVER = 0, SHARD = 1 };
 
   /// @brief constructor with an id
-  ScatterNode(ExecutionPlan* plan, ExecutionNodeId id, ScatterType type)
-      : ExecutionNode(plan, id), _type(type) {}
+  ScatterNode(ExecutionPlan* plan, ExecutionNodeId id, ScatterType type);
 
   ScatterNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -146,11 +145,7 @@ class ScatterNode : public ExecutionNode {
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override {
-    auto c = std::make_unique<ScatterNode>(plan, _id, getScatterType());
-    c->copyClients(clients());
-    return cloneHelper(std::move(c), withDependencies, withProperties);
-  }
+                       bool withProperties) const override;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override;
@@ -232,7 +227,7 @@ class DistributeNode final : public ScatterNode,
 
   Variable const* getVariable() const noexcept { return _variable; }
 
-  void setVariable(Variable const* var) noexcept { _variable = var; }
+  void setVariable(Variable const* var);
 
   ExecutionNodeId getTargetNodeId() const noexcept { return _targetNodeId; }
 
@@ -248,8 +243,12 @@ class DistributeNode final : public ScatterNode,
                       unsigned flags) const override final;
 
  private:
+  std::vector<std::string> determineProjectionAttribute() const;
+
   /// @brief the variable we must inspect to know where to distribute
   Variable const* _variable;
+
+  std::vector<std::string> _attribute;
 
   /// @brief the id of the target ExecutionNode this DistributeNode belongs to.
   ExecutionNodeId _targetNodeId;
@@ -310,6 +309,14 @@ class GatherNode final : public ExecutionNode {
 
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
+
+  /// @brief replaces an attribute access in the internals of the execution
+  /// node with a simple variable access
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable,
+                              size_t index) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
@@ -410,6 +417,9 @@ class SingleRemoteOperationNode final : public ExecutionNode,
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
+
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
 
   std::string const& key() const { return _key; }
 

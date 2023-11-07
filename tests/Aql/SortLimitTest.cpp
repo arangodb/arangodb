@@ -36,6 +36,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
+#include "Aql/SharedQueryState.h"
 #include "Basics/VelocyPackHelper.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Logger/LogTopic.h"
@@ -170,8 +171,9 @@ class SortLimitTest
     }
     auto actualFullCount =
         arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
-            result.extra->slice(),
-            std::vector<std::string>{"stats", "fullCount"}, 0);
+            result.extra->slice().get(
+                std::vector<std::string_view>{"stats", "fullCount"}),
+            0);
     if (doFullCount()) {
       EXPECT_EQ(actualFullCount, fullCount);
     } else {

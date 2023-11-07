@@ -32,6 +32,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/GlobalResourceMonitor.h"
+#include "Basics/GlobalSerialization.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/Result.h"
@@ -88,6 +89,8 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/Methods/Indexes.h"
+
+#include <absl/strings/str_cat.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -671,12 +674,6 @@ bool ClusterInfo::doesDatabaseExist(std::string_view databaseID) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<DatabaseID> ClusterInfo::databases() {
-  std::vector<DatabaseID> result;
-
-  if (_clusterId.empty()) {
-    loadClusterId();
-  }
-
   if (!_planProt.isValid) {
     Result r = waitForPlan(1).get();
     if (r.fail()) {
@@ -704,6 +701,7 @@ std::vector<DatabaseID> ClusterInfo::databases() {
     expectedSize = _dbServers.size();
   }
 
+  std::vector<DatabaseID> result;
   {
     READ_LOCKER(readLockerPlanned, _planProt.lock);
     READ_LOCKER(readLockerCurrent, _currentProt.lock);
@@ -721,20 +719,6 @@ std::vector<DatabaseID> ClusterInfo::databases() {
   }
 
   return result;
-}
-
-/// @brief Load cluster ID
-void ClusterInfo::loadClusterId() {
-  // Contact agency for /<prefix>/Cluster
-
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [acb, index] = agencyCache.get("Cluster");
-
-  // Parse
-  VPackSlice slice = acb->slice();
-  if (slice.isString()) {
-    _clusterId = slice.copyString();
-  }
 }
 
 /// @brief create a new collecion object from the data, using the cache if
@@ -1047,6 +1031,12 @@ void ClusterInfo::loadPlan() {
       // to all sorts of problems later on if _new_ servers join the cluster
       // that validate _existing_ databases. this must not fail.
       info.strictValidation(false);
+
+      // do not validate database names for existing databases.
+      // the rationale is that if a database was already created with
+      // an extended name, we should not declare it invalid and abort
+      // the startup once the extended names option is turned off.
+      info.validateNames(false);
 
       Result res = info.load(dbSlice, VPackSlice::emptyArraySlice());
 
@@ -1998,6 +1988,14 @@ void ClusterInfo::loadCurrent() {
         servers->assign(xx.begin(), xx.end());
         newShardsToCurrentServers.insert_or_assign(std::move(shardID),
                                                    std::move(servers));
+        TRI_IF_FAILURE("ClusterInfo::loadCurrentSeesLeader") {
+          if (!xx.empty()) {  // just in case
+            std::string myShortName = ServerState::instance()->getShortName();
+            observeGlobalEvent(
+                "ClusterInfo::loadCurrentSeesLeader",
+                absl::StrCat(myShortName, ":", shardID, ":", xx[0]));
+          }
+        }
       }
 
       databaseCollections->try_emplace(std::move(collectionName),
@@ -2060,6 +2058,11 @@ void ClusterInfo::loadCurrent() {
 
   auto diff = duration<float, std::milli>(clock::now() - start).count();
   _lcTimer.count(diff);
+
+  TRI_IF_FAILURE("ClusterInfo::loadCurrentDone") {
+    observeGlobalEvent("ClusterInfo::loadCurrentDone",
+                       ServerState::instance()->getShortName());
+  }
 }
 
 /// @brief ask about a collection
@@ -5342,7 +5345,7 @@ void ClusterInfo::startSyncers() {
 
   if (!_planSyncer->start() || !_curSyncer->start()) {
     LOG_TOPIC("b4fa6", FATAL, Logger::CLUSTER)
-        << "unable to start PlanSyncer/CurrentSYncer";
+        << "unable to start PlanSyncer/CurrentSyncer";
     FATAL_ERROR_EXIT();
   }
 }

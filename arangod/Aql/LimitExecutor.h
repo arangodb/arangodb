@@ -112,7 +112,7 @@ class LimitExecutor {
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
  private:
-  Infos const& infos() const noexcept { return _infos; };
+  Infos const& infos() const noexcept { return _infos; }
 
   auto remainingOffset() const noexcept -> size_t {
     auto const offset = infos().getOffset();
