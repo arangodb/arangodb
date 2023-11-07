@@ -19,6 +19,10 @@ parameters:
   v8-build-targets:
     type: string
     default: "arangosh"
+  replication-two:
+    type: boolean
+    # We use replication1 as default.
+    default: false
 
 commands:
   checkout-arangodb:
