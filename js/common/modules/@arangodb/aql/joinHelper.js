@@ -228,7 +228,13 @@ const generateTestFunction = function (config) {
       // The result is actually undefined, we can only check for internal correctness, i.e. the entries actually
       // match the join condition
       for (const [docA, docB] of actualResult) {
-        assertEqual(docA.z, docB.z + 1);
+        if (config.valueUsage2 === "null") {
+          assertEqual(docB, null);
+          assertNotEqual(docA, null);
+          assertNotEqual(docA.z, undefined);
+        } else {
+          assertEqual(docA.z, docB.z + 1);
+        }
       }
     }
   };
