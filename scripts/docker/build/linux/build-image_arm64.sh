@@ -3,7 +3,7 @@ set -ex
 arch=arm64
 
 image=arangodb/build-alpine
-docker build --platform linux/$arch -t $image:latest-$arch --file arangodb-build.Dockerfile .
+docker build --load --platform linux/$arch -t $image:latest-$arch --file arangodb-build.Dockerfile .
 
 CLANG_VERSION=$(docker run --rm -it $image:latest-$arch clang++ "--version" | grep -Po " \K\d+\.\d+\.\d+")
 
