@@ -128,7 +128,7 @@ struct DocumentLeaderState
 
   std::shared_ptr<IDocumentStateHandlersFactory> _handlersFactory;
   std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
-  Guarded<std::shared_ptr<IDocumentStateSnapshotHandler>,
+  Guarded<std::unique_ptr<IDocumentStateSnapshotHandler>,
           basics::UnshackledMutex>
       _snapshotHandler;
   std::shared_ptr<IDocumentStateErrorHandler> _errorHandler;
