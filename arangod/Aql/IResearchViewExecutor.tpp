@@ -876,13 +876,15 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
       i = immutableParts;
     } else {
       // TODO(MBkkt) simplify via additional template parameter for set_filter
+      // TODO(MBkkt) think about how to account corresponding memory
+      //  One idea is account this for parent loop, but it's quite complicated
       auto cached = [&]()
           -> std::pair<irs::boolean_filter&, irs::proxy_filter::cache_ptr> {
         if (root == &mutableOr) {
-          auto c = proxy.set_filter<irs::Or>(_memory);
+          auto c = proxy.set_filter<irs::Or>(irs::IResourceManager::kNoop);
           return {c.first, std::move(c.second)};
         } else {
-          auto c = proxy.set_filter<irs::And>(_memory);
+          auto c = proxy.set_filter<irs::And>(irs::IResourceManager::kNoop);
           return {c.first, std::move(c.second)};
         }
       }();
