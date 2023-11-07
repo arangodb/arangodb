@@ -159,6 +159,11 @@ const ViewBitsetJoin = function () {
       checkQueryPattern(query, undefined);
     },
 
+    testJoinParallelismNone: function () {
+      const query = " SEARCH d2.term1 == 3 OPTIONS {parallelism: 2} RETURN [d1, d2]";
+      checkQueryPattern(query, undefined);
+    },
+
     testJoinOffsetNone: function () {
       if (isEnterprise) {
         const query = " SEARCH ANALYZER(d2.term1 == 3, 'offsets') RETURN OFFSET_INFO(d2, 'term1')";
