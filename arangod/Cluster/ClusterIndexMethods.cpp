@@ -887,6 +887,8 @@ auto ensureIndexCoordinatorReplication2Inner(
                   return false;
                 })
             .thenValue([&clusterInfo](auto index) {
+              // Need to wait here, until ClusterInfo has updated to latest
+              // plan.
               return clusterInfo.waitForPlan(index);
             });
     auto res = waitOnSuccess.get();
@@ -900,7 +902,6 @@ auto ensureIndexCoordinatorReplication2Inner(
       resultBuilder.add(VPackObjectIterator(newIndexBuilder.slice()));
       resultBuilder.add("isNewlyCreated", VPackValue(true));
     }
-    // Need to wait here, until ClusterInfo has updated to latest plan.
 
     return resultBuilder;
     // TODO: Maybe we want to catch ArangoErrors specifically?
