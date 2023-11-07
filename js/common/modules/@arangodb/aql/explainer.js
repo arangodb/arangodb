@@ -352,7 +352,7 @@ function printStats(stats, isCoord) {
   let maxMemLen = 'Peak Mem [b]'.length;
   let maxETLen = 'Exec Time [s]'.length;
   stats.executionTime = stats.executionTime.toFixed(5);
-  stringBuilder.appendLine(' ' + header('Writes Exec') + spc + header('Writes Ign') + spc + header('Scan Full') + spc +
+  stringBuilder.appendLine(' ' + header('Writes Exec') + spc + header('Writes Ign') + spc + header('Doc. Lookups') + spc + header('Scan Full') + spc +
     header('Scan Index') + spc + header('Cache Hits/Misses') + spc + header('Filtered') + spc + (isCoord ? header('Requests') + spc : '') +
     header('Peak Mem [b]') + spc + header('Exec Time [s]'));
 
