@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,22 +18,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Actor/DistributedActorPID.h"
-#include "velocypack/SharedSlice.h"
+#include "Actor/IScheduler.h"
 
-namespace arangodb::actor {
-
-struct IExternalDispatcher {
-  virtual ~IExternalDispatcher() = default;
-  virtual void dispatch(DistributedActorPID sender,
-                        DistributedActorPID receiver,
-                        arangodb::velocypack::SharedSlice msg) = 0;
+namespace arangodb::actor::test {
+struct MockScheduler : IScheduler {
+  auto start(size_t number_of_threads) -> void{};
+  auto stop() -> void{};
+  void queue(ActorWorker&& worker) override { worker(); }
+  void delay(std::chrono::seconds delay,
+             std::function<void(bool)>&& fn) override {
+    fn(true);
+  }
 };
 
-}  // namespace arangodb::actor
+}  // namespace arangodb::actor::test

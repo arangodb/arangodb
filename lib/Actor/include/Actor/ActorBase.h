@@ -29,7 +29,7 @@
 
 namespace arangodb::actor {
 
-struct ActorBase {
+struct ActorBase : std::enable_shared_from_this<ActorBase> {
   virtual ~ActorBase() = default;
   virtual auto process(DistributedActorPID sender, MessagePayloadBase& msg)
       -> void = 0;
@@ -40,6 +40,8 @@ struct ActorBase {
   virtual auto finish() -> void = 0;
   virtual auto isFinishedAndIdle() -> bool = 0;
   virtual auto isIdle() -> bool = 0;
+
+  virtual void work() = 0;
 };
 
 }  // namespace arangodb::actor

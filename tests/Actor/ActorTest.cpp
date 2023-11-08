@@ -34,24 +34,17 @@
 #include "Actor/MPSCQueue.h"
 
 #include "Actors/TrivialActor.h"
+#include "MockScheduler.h"
 #include "ThreadPoolScheduler.h"
 
 using namespace arangodb::actor;
 using namespace arangodb::actor::test;
 
-struct MockScheduler {
-  auto start(size_t number_of_threads) -> void{};
-  auto stop() -> void{};
-  auto operator()(auto fn) { fn(); }
-  auto delay(std::chrono::seconds delay, std::function<void(bool)>&& fn) {
-    fn(true);
-  }
-};
 struct EmptyExternalDispatcher : IExternalDispatcher {
   void dispatch(DistributedActorPID sender, DistributedActorPID receiver,
                 arangodb::velocypack::SharedSlice msg) override {}
 };
-using ActorTestRuntime = DistributedRuntime<MockScheduler>;
+using ActorTestRuntime = DistributedRuntime;
 
 template<typename T>
 class ActorTest : public testing::Test {
@@ -143,12 +136,11 @@ TEST(ActorTest, sets_itself_to_finish) {
 
 TYPED_TEST(ActorTest, does_not_work_on_new_messages_after_actor_finished) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime = std::make_shared<DistributedRuntime<TypeParam>>(
+  auto runtime = std::make_shared<DistributedRuntime>(
       "A", "myID", this->scheduler, dispatcher);
-  auto actor =
-      std::make_shared<Actor<DistributedRuntime<TypeParam>, TrivialActor>>(
-          DistributedActorPID{.server = "A", .database = "database", .id = {1}},
-          runtime, std::make_unique<TrivialState>());
+  auto actor = std::make_shared<Actor<DistributedRuntime, TrivialActor>>(
+      DistributedActorPID{.server = "A", .database = "database", .id = {1}},
+      runtime, std::make_unique<TrivialState>());
   actor->finish();
 
   // send message to actor

@@ -117,6 +117,20 @@ network::Headers buildHeaders() {
 
 }  // namespace
 
+PregelScheduler::PregelScheduler(Scheduler* scheduler) : _scheduler{scheduler} {
+  TRI_ASSERT(_scheduler != nullptr);
+}
+
+void PregelScheduler::queue(actor::ActorWorker&& worker) {
+  _scheduler->queue(RequestLane::INTERNAL_LOW, std::move(worker));
+}
+
+void PregelScheduler::delay(std::chrono::seconds delay,
+                            std::function<void(bool)>&& fn) {
+  std::ignore = _scheduler->queueDelayed("pregel-actors",
+                                         RequestLane::INTERNAL_LOW, delay, fn);
+}
+
 auto PregelRunUser::authorized(ExecContext const& userContext) const -> bool {
   if (userContext.isSuperuser()) {
     return true;
@@ -514,9 +528,9 @@ void PregelFeature::start() {
 
   // TODO needs to go here for now because server feature has not startd in
   // pregel feature constructor
-  _actorRuntime = std::make_shared<actor::DistributedRuntime<PregelScheduler>>(
+  _actorRuntime = std::make_shared<actor::DistributedRuntime>(
       ServerState::instance()->getId(), "PregelFeature",
-      std::make_shared<PregelScheduler>(),
+      std::make_shared<PregelScheduler>(SchedulerFeature::SCHEDULER),
       std::make_shared<ArangoExternalDispatcher>(
           "/_api/pregel/actor", server().getFeature<NetworkFeature>().pool(),
           network::Timeout{5.0 * 60}));

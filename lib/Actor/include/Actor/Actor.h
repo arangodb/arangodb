@@ -31,6 +31,7 @@
 #include "Actor/ActorBase.h"
 #include "Actor/Assert.h"
 #include "Actor/HandlerBase.h"
+#include "Actor/IScheduler.h"
 #include "Actor/Message.h"
 #include "Actor/MPSCQueue.h"
 #include "Inspection/Format.h"
@@ -73,7 +74,7 @@ concept Actorable = IncludesAllActorRelevantTypes<Runtime, A> &&
 
 template<typename Runtime, typename Config>
 requires Actorable<Runtime, Config>
-struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
+struct Actor : ActorBase {
   using ActorPID = typename Runtime::ActorPID;
   Actor(ActorPID pid, std::shared_ptr<Runtime> runtime,
         std::unique_ptr<typename Config::State> initialState)
@@ -164,20 +165,10 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
 
   void kick() {
     // Make sure that *someone* works here
-
-    // capture 'this' as weak ptr: this way, actor can be destroyed although
-    // this callback is still waiting in the scheduler. When this callback is
-    // executed in the queue after actor was destroyed, the weak ptr will
-    // be empty and work will just not be executed
-    (*runtime->scheduler)([self = this->weak_from_this()]() {
-      auto me = self.lock();
-      if (me != nullptr) {
-        me->work();
-      }
-    });
+    runtime->scheduler->queue(ActorWorker{this});
   }
 
-  void work() {
+  void work() override {
     auto i = batchSize;
 
     while (auto msg = inbox.pop()) {

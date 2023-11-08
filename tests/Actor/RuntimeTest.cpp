@@ -35,19 +35,11 @@
 #include "Actors/SpawnActor.h"
 #include "Actors/TrivialActor.h"
 #include "Actors/PingPongActors.h"
+#include "MockScheduler.h"
 #include "ThreadPoolScheduler.h"
 
 using namespace arangodb::actor;
 using namespace arangodb::actor::test;
-
-struct MockScheduler {
-  auto start(size_t number_of_threads) -> void{};
-  auto stop() -> void{};
-  auto operator()(auto fn) { fn(); }
-  auto delay(std::chrono::seconds delay, std::function<void(bool)>&& fn) {
-    fn(true);
-  }
-};
 
 struct EmptyExternalDispatcher : IExternalDispatcher {
   void dispatch(DistributedActorPID sender, DistributedActorPID receiver,
@@ -69,7 +61,7 @@ TYPED_TEST_SUITE(ActorRuntimeTest, SchedulerTypes);
 
 TYPED_TEST(ActorRuntimeTest, formats_runtime_and_actor_state) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime = std::make_shared<DistributedRuntime<TypeParam>>(
+  auto runtime = std::make_shared<DistributedRuntime>(
       ServerID{"PRMR-1234"}, "RuntimeTest", this->scheduler, dispatcher);
   auto actorID = runtime->template spawn<pong_actor::Actor>(
       "database", std::make_unique<pong_actor::PongState>(),
@@ -89,7 +81,7 @@ TYPED_TEST(ActorRuntimeTest, formats_runtime_and_actor_state) {
 
 TYPED_TEST(ActorRuntimeTest, serializes_an_actor_including_its_actor_state) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime = std::make_shared<DistributedRuntime<TypeParam>>(
+  auto runtime = std::make_shared<DistributedRuntime>(
       ServerID{"PRMR-1234"}, "RuntimeTest", this->scheduler, dispatcher);
   auto actor = runtime->template spawn<TrivialActor>(
       "database", std::make_unique<TrivialState>("foo"),
@@ -106,7 +98,7 @@ TYPED_TEST(ActorRuntimeTest, serializes_an_actor_including_its_actor_state) {
 
 TYPED_TEST(ActorRuntimeTest, spawns_actor) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime = std::make_shared<DistributedRuntime<TypeParam>>(
+  auto runtime = std::make_shared<DistributedRuntime>(
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
 
   auto actor = runtime->template spawn<TrivialActor>(
@@ -121,7 +113,7 @@ TYPED_TEST(ActorRuntimeTest, spawns_actor) {
 
 TYPED_TEST(ActorRuntimeTest, sends_initial_message_when_spawning_actor) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime = std::make_shared<DistributedRuntime<TypeParam>>(
+  auto runtime = std::make_shared<DistributedRuntime>(
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
 
   auto actor = runtime->template spawn<TrivialActor>(
@@ -136,7 +128,7 @@ TYPED_TEST(ActorRuntimeTest, sends_initial_message_when_spawning_actor) {
 
 TYPED_TEST(ActorRuntimeTest, gives_all_existing_actor_ids) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime = std::make_shared<DistributedRuntime<TypeParam>>(
+  auto runtime = std::make_shared<DistributedRuntime>(
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
 
   ASSERT_TRUE(runtime->getActorIDs().empty());
@@ -159,7 +151,7 @@ TYPED_TEST(ActorRuntimeTest, gives_all_existing_actor_ids) {
 
 TYPED_TEST(ActorRuntimeTest, sends_message_to_an_actor) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime = std::make_shared<DistributedRuntime<TypeParam>>(
+  auto runtime = std::make_shared<DistributedRuntime>(
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
   auto actor = runtime->template spawn<TrivialActor>(
       "database", std::make_unique<TrivialState>("foo"),
@@ -195,7 +187,7 @@ TYPED_TEST(
     ActorRuntimeTest,
     actor_receiving_wrong_message_type_sends_back_unknown_error_message) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime = std::make_shared<DistributedRuntime<TypeParam>>(
+  auto runtime = std::make_shared<DistributedRuntime>(
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
   auto actor_id = runtime->template spawn<TrivialActor>(
       "database", std::make_unique<TrivialState>("foo"),
@@ -216,7 +208,7 @@ TYPED_TEST(
     ActorRuntimeTest,
     actor_receives_actor_not_found_message_after_trying_to_send_message_to_non_existent_actor) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime = std::make_shared<DistributedRuntime<TypeParam>>(
+  auto runtime = std::make_shared<DistributedRuntime>(
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
   auto actor_id = runtime->template spawn<TrivialActor>(
       "database", std::make_unique<TrivialState>("foo"),
@@ -241,7 +233,7 @@ TYPED_TEST(
 TYPED_TEST(ActorRuntimeTest, ping_pong_game) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime = std::make_shared<DistributedRuntime<TypeParam>>(
+  auto runtime = std::make_shared<DistributedRuntime>(
       serverID, "RuntimeTest", this->scheduler, dispatcher);
 
   auto pong_actor = runtime->template spawn<pong_actor::Actor>(
@@ -267,7 +259,7 @@ TYPED_TEST(ActorRuntimeTest, ping_pong_game) {
 TYPED_TEST(ActorRuntimeTest, spawn_game) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime = std::make_shared<DistributedRuntime<TypeParam>>(
+  auto runtime = std::make_shared<DistributedRuntime>(
       serverID, "RuntimeTest", this->scheduler, dispatcher);
 
   auto spawn_actor = runtime->template spawn<SpawnActor>(
@@ -291,7 +283,7 @@ TYPED_TEST(ActorRuntimeTest, spawn_game) {
 TYPED_TEST(ActorRuntimeTest, finishes_actor_when_actor_says_so) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime = std::make_shared<DistributedRuntime<TypeParam>>(
+  auto runtime = std::make_shared<DistributedRuntime>(
       serverID, "RuntimeTest", this->scheduler, dispatcher);
 
   auto finishing_actor = runtime->template spawn<FinishingActor>(
@@ -314,7 +306,7 @@ TYPED_TEST(ActorRuntimeTest, finishes_actor_when_actor_says_so) {
 TYPED_TEST(ActorRuntimeTest, garbage_collects_finished_actor) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime = std::make_shared<DistributedRuntime<TypeParam>>(
+  auto runtime = std::make_shared<DistributedRuntime>(
       serverID, "RuntimeTest", this->scheduler, dispatcher);
   auto finishing_actor = runtime->template spawn<FinishingActor>(
       "database", std::make_unique<FinishingState>(),
@@ -340,7 +332,7 @@ TYPED_TEST(ActorRuntimeTest, garbage_collects_finished_actor) {
 TYPED_TEST(ActorRuntimeTest, garbage_collects_all_finished_actors) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime = std::make_shared<DistributedRuntime<TypeParam>>(
+  auto runtime = std::make_shared<DistributedRuntime>(
       serverID, "RuntimeTest", this->scheduler, dispatcher);
 
   auto actor_to_be_finished = runtime->template spawn<FinishingActor>(
@@ -393,7 +385,7 @@ TYPED_TEST(ActorRuntimeTest,
            finishes_and_garbage_collects_all_actors_when_shutting_down) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime = std::make_shared<DistributedRuntime<TypeParam>>(
+  auto runtime = std::make_shared<DistributedRuntime>(
       serverID, "RuntimeTest", this->scheduler, dispatcher);
   runtime->template spawn<TrivialActor>("database",
                                         std::make_unique<TrivialState>(),
@@ -423,8 +415,8 @@ TEST(ActorRuntimeTest, sends_messages_between_lots_of_actors) {
   auto serverID = ServerID{"PRMR-1234"};
   auto scheduler = std::make_shared<ThreadPoolScheduler>();
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime = std::make_shared<DistributedRuntime<ThreadPoolScheduler>>(
-      serverID, "RuntimeTest", scheduler, dispatcher);
+  auto runtime = std::make_shared<DistributedRuntime>(serverID, "RuntimeTest",
+                                                      scheduler, dispatcher);
   scheduler->start(128);
   size_t actor_count = 128;
 

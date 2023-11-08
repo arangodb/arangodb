@@ -29,21 +29,12 @@
 
 #include "Actors/TrivialActor.h"
 #include "Actors/PingPongActors.h"
+#include "MockScheduler.h"
 #include "ThreadPoolScheduler.h"
 
 using namespace arangodb;
-
 using namespace arangodb::actor;
 using namespace arangodb::actor::test;
-
-struct MockScheduler {
-  auto start(size_t number_of_threads) -> void{};
-  auto stop() -> void{};
-  auto operator()(auto fn) { fn(); }
-  auto delay(std::chrono::seconds delay, std::function<void(bool)>&& fn) {
-    fn(true);
-  }
-};
 
 template<typename Runtime>
 struct MockExternalDispatcher : IExternalDispatcher {
@@ -77,8 +68,8 @@ class ActorMultiRuntimeTest : public testing::Test {
   ActorMultiRuntimeTest() : scheduler{std::make_shared<T>()} {
     scheduler->start(number_of_threads);
   }
-  struct MockRuntime : DistributedRuntime<T> {
-    using DistributedRuntime<T>::DistributedRuntime;
+  struct MockRuntime : DistributedRuntime {
+    using DistributedRuntime::DistributedRuntime;
   };
 
   std::shared_ptr<T> scheduler;

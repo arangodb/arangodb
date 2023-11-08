@@ -38,23 +38,16 @@
 #include "Actor/Assert.h"
 #include "Actor/DistributedActorPID.h"
 #include "Actor/IExternalDispatcher.h"
+#include "Actor/IScheduler.h"
 
 namespace arangodb::actor {
 
-template<typename S>
-concept Schedulable = requires(S s, std::chrono::seconds delay) {
-  {s([]() {})};
-  {s.delay(delay, [](bool canceled) {})};
-};
-
-template<Schedulable Scheduler>
-struct DistributedRuntime
-    : std::enable_shared_from_this<DistributedRuntime<Scheduler>> {
+struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
   DistributedRuntime() = delete;
   DistributedRuntime(DistributedRuntime const&) = delete;
   DistributedRuntime(DistributedRuntime&&) = delete;
   DistributedRuntime(ServerID myServerID, std::string runtimeID,
-                     std::shared_ptr<Scheduler> scheduler,
+                     std::shared_ptr<IScheduler> scheduler,
                      std::shared_ptr<IExternalDispatcher> externalDispatcher)
       : myServerID(myServerID),
         runtimeID(runtimeID),
@@ -176,7 +169,7 @@ struct DistributedRuntime
   ServerID myServerID;
   std::string const runtimeID;
 
-  std::shared_ptr<Scheduler> scheduler;
+  std::shared_ptr<IScheduler> scheduler;
   std::shared_ptr<IExternalDispatcher> externalDispatcher;
 
   // actor id 0 is reserved for special messages
@@ -206,8 +199,8 @@ struct DistributedRuntime
     externalDispatcher->dispatch(sender, receiver, payload.get());
   }
 };
-template<Schedulable Scheduler, typename Inspector>
-auto inspect(Inspector& f, DistributedRuntime<Scheduler>& x) {
+template<typename Inspector>
+auto inspect(Inspector& f, DistributedRuntime& x) {
   return f.object(x).fields(
       f.field("myServerID", x.myServerID), f.field("runtimeID", x.runtimeID),
       f.field("uniqueActorIDCounter", x.uniqueActorIDCounter.load()),

@@ -37,6 +37,7 @@
 
 #include "Actor/DistributedActorPID.h"
 #include "Actor/DistributedRuntime.h"
+#include "Actor/IScheduler.h"
 #include "Basics/Common.h"
 #include "Pregel/ArangoExternalDispatcher.h"
 #include "Pregel/ExecutionNumber.h"
@@ -47,12 +48,11 @@
 #include "Pregel/StatusActor.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class Scheduler;
 struct OperationResult;
 class ExecContext;
 namespace rest {
@@ -62,18 +62,14 @@ enum class RequestType;
 
 namespace arangodb::pregel {
 
-struct PregelScheduler {
-  auto operator()(auto fn) {
-    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-    Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    scheduler->queue(RequestLane::INTERNAL_LOW, fn);
-  }
-  auto delay(std::chrono::seconds delay, std::function<void(bool)>&& fn) {
-    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-    Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    std::ignore = scheduler->queueDelayed("pregel-actors",
-                                          RequestLane::INTERNAL_LOW, delay, fn);
-  }
+struct PregelScheduler : actor::IScheduler {
+  explicit PregelScheduler(Scheduler* scheduler);
+  void queue(actor::ActorWorker&& worker) override;
+  void delay(std::chrono::seconds delay,
+             std::function<void(bool)>&& fn) override;
+
+ private:
+  Scheduler* _scheduler;
 };
 
 struct PregelRunUser {
@@ -208,7 +204,7 @@ class PregelFeature final : public ArangodFeature {
   std::shared_ptr<PregelMetrics> _metrics;
 
  public:
-  std::shared_ptr<actor::DistributedRuntime<PregelScheduler>> _actorRuntime;
+  std::shared_ptr<actor::DistributedRuntime> _actorRuntime;
   Guarded<std::unordered_map<ExecutionNumber, PregelRun>> _pregelRuns;
 };
 
