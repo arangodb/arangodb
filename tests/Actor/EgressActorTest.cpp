@@ -23,7 +23,7 @@
 
 #include <gtest/gtest.h>
 
-#include "Actor/Runtime.h"
+#include "Actor/DistributedRuntime.h"
 #include "Actors/EgressActor.h"
 #include "ThreadPoolScheduler.h"
 
@@ -42,7 +42,7 @@ struct EmptyExternalDispatcher : IExternalDispatcher {
   void dispatch(DistributedActorPID sender, DistributedActorPID receiver,
                 arangodb::velocypack::SharedSlice msg) override {}
 };
-using ActorTestRuntime = Runtime<MockScheduler>;
+using ActorTestRuntime = DistributedRuntime<MockScheduler>;
 
 template<typename T>
 class EgressActorTest : public testing::Test {
@@ -60,7 +60,7 @@ TYPED_TEST_SUITE(EgressActorTest, SchedulerTypes);
 TYPED_TEST(EgressActorTest,
            outside_world_can_look_at_set_data_inside_egress_actor) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime = std::make_shared<Runtime<TypeParam>>(
+  auto runtime = std::make_shared<DistributedRuntime<TypeParam>>(
       "A", "myID", this->scheduler, dispatcher);
 
   auto actorState = std::make_unique<EgressState>();
@@ -84,7 +84,7 @@ TYPED_TEST(EgressActorTest,
 
 TYPED_TEST(EgressActorTest, egress_data_is_empty_when_not_set) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime = std::make_shared<Runtime<TypeParam>>(
+  auto runtime = std::make_shared<DistributedRuntime<TypeParam>>(
       "A", "myID", this->scheduler, dispatcher);
 
   auto actorState = std::make_unique<EgressState>();

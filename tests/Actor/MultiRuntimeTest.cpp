@@ -25,7 +25,7 @@
 #include <gtest/gtest.h>
 #include <unordered_set>
 
-#include "Actor/Runtime.h"
+#include "Actor/DistributedRuntime.h"
 
 #include "Actors/TrivialActor.h"
 #include "Actors/PingPongActors.h"
@@ -77,8 +77,8 @@ class ActorMultiRuntimeTest : public testing::Test {
   ActorMultiRuntimeTest() : scheduler{std::make_shared<T>()} {
     scheduler->start(number_of_threads);
   }
-  struct MockRuntime : Runtime<T> {
-    using Runtime<T>::Runtime;
+  struct MockRuntime : DistributedRuntime<T> {
+    using DistributedRuntime<T>::DistributedRuntime;
   };
 
   std::shared_ptr<T> scheduler;

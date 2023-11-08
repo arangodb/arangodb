@@ -36,19 +36,19 @@
 #include <velocypack/Slice.h>
 
 #include "Actor/DistributedActorPID.h"
-#include "Pregel/ArangoExternalDispatcher.h"
-#include "Actor/Runtime.h"
+#include "Actor/DistributedRuntime.h"
 #include "Basics/Common.h"
+#include "Pregel/ArangoExternalDispatcher.h"
 #include "Pregel/ExecutionNumber.h"
+#include "Pregel/PregelMetrics.h"
+#include "Pregel/PregelOptions.h"
 #include "Pregel/ResultActor.h"
 #include "Pregel/SpawnMessages.h"
-#include "Pregel/PregelOptions.h"
 #include "Pregel/StatusActor.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Pregel/PregelMetrics.h"
 
 struct TRI_vocbase_t;
 
@@ -208,7 +208,7 @@ class PregelFeature final : public ArangodFeature {
   std::shared_ptr<PregelMetrics> _metrics;
 
  public:
-  std::shared_ptr<actor::Runtime<PregelScheduler>> _actorRuntime;
+  std::shared_ptr<actor::DistributedRuntime<PregelScheduler>> _actorRuntime;
   Guarded<std::unordered_map<ExecutionNumber, PregelRun>> _pregelRuns;
 };
 

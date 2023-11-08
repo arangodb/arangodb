@@ -48,13 +48,14 @@ concept Schedulable = requires(S s, std::chrono::seconds delay) {
 };
 
 template<Schedulable Scheduler>
-struct Runtime : std::enable_shared_from_this<Runtime<Scheduler>> {
-  Runtime() = delete;
-  Runtime(Runtime const&) = delete;
-  Runtime(Runtime&&) = delete;
-  Runtime(ServerID myServerID, std::string runtimeID,
-          std::shared_ptr<Scheduler> scheduler,
-          std::shared_ptr<IExternalDispatcher> externalDispatcher)
+struct DistributedRuntime
+    : std::enable_shared_from_this<DistributedRuntime<Scheduler>> {
+  DistributedRuntime() = delete;
+  DistributedRuntime(DistributedRuntime const&) = delete;
+  DistributedRuntime(DistributedRuntime&&) = delete;
+  DistributedRuntime(ServerID myServerID, std::string runtimeID,
+                     std::shared_ptr<Scheduler> scheduler,
+                     std::shared_ptr<IExternalDispatcher> externalDispatcher)
       : myServerID(myServerID),
         runtimeID(runtimeID),
         scheduler(scheduler),
@@ -71,7 +72,7 @@ struct Runtime : std::enable_shared_from_this<Runtime<Scheduler>> {
     auto address =
         ActorPID{.server = myServerID, .database = database, .id = newId};
 
-    auto newActor = std::make_shared<Actor<Runtime, ActorConfig>>(
+    auto newActor = std::make_shared<Actor<DistributedRuntime, ActorConfig>>(
         address, this->shared_from_this(), std::move(initialState));
     actors.add(newId, std::move(newActor));
 
@@ -90,8 +91,8 @@ struct Runtime : std::enable_shared_from_this<Runtime<Scheduler>> {
       -> std::optional<typename ActorConfig::State> {
     auto actorBase = actors.find(id);
     if (actorBase.has_value()) {
-      auto* actor =
-          dynamic_cast<Actor<Runtime, ActorConfig>*>(actorBase->get());
+      auto* actor = dynamic_cast<Actor<DistributedRuntime, ActorConfig>*>(
+          actorBase->get());
       if (actor != nullptr) {
         return actor->getState();
       }
@@ -206,7 +207,7 @@ struct Runtime : std::enable_shared_from_this<Runtime<Scheduler>> {
   }
 };
 template<Schedulable Scheduler, typename Inspector>
-auto inspect(Inspector& f, Runtime<Scheduler>& x) {
+auto inspect(Inspector& f, DistributedRuntime<Scheduler>& x) {
   return f.object(x).fields(
       f.field("myServerID", x.myServerID), f.field("runtimeID", x.runtimeID),
       f.field("uniqueActorIDCounter", x.uniqueActorIDCounter.load()),

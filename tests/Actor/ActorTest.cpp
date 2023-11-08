@@ -27,11 +27,11 @@
 #include "velocypack/SharedSlice.h"
 #include "Inspection/VPackWithErrorT.h"
 
-#include "Actor/Message.h"
-#include "Actor/MPSCQueue.h"
-#include "Actor/Runtime.h"
 #include "Actor/Actor.h"
 #include "Actor/DistributedActorPID.h"
+#include "Actor/DistributedRuntime.h"
+#include "Actor/Message.h"
+#include "Actor/MPSCQueue.h"
 
 #include "Actors/TrivialActor.h"
 #include "ThreadPoolScheduler.h"
@@ -51,7 +51,7 @@ struct EmptyExternalDispatcher : IExternalDispatcher {
   void dispatch(DistributedActorPID sender, DistributedActorPID receiver,
                 arangodb::velocypack::SharedSlice msg) override {}
 };
-using ActorTestRuntime = Runtime<MockScheduler>;
+using ActorTestRuntime = DistributedRuntime<MockScheduler>;
 
 template<typename T>
 class ActorTest : public testing::Test {
@@ -143,11 +143,12 @@ TEST(ActorTest, sets_itself_to_finish) {
 
 TYPED_TEST(ActorTest, does_not_work_on_new_messages_after_actor_finished) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime = std::make_shared<Runtime<TypeParam>>(
+  auto runtime = std::make_shared<DistributedRuntime<TypeParam>>(
       "A", "myID", this->scheduler, dispatcher);
-  auto actor = std::make_shared<Actor<Runtime<TypeParam>, TrivialActor>>(
-      DistributedActorPID{.server = "A", .database = "database", .id = {1}},
-      runtime, std::make_unique<TrivialState>());
+  auto actor =
+      std::make_shared<Actor<DistributedRuntime<TypeParam>, TrivialActor>>(
+          DistributedActorPID{.server = "A", .database = "database", .id = {1}},
+          runtime, std::make_unique<TrivialState>());
   actor->finish();
 
   // send message to actor

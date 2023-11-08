@@ -514,7 +514,7 @@ void PregelFeature::start() {
 
   // TODO needs to go here for now because server feature has not startd in
   // pregel feature constructor
-  _actorRuntime = std::make_shared<actor::Runtime<PregelScheduler>>(
+  _actorRuntime = std::make_shared<actor::DistributedRuntime<PregelScheduler>>(
       ServerState::instance()->getId(), "PregelFeature",
       std::make_shared<PregelScheduler>(),
       std::make_shared<ArangoExternalDispatcher>(
