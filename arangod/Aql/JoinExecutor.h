@@ -140,7 +140,7 @@ class JoinExecutor {
   void constructStrategy();
 
   aql::AqlFunctionsInternalCache _functionsCache;
-  [[maybe_unused]] Fetcher& _fetcher;
+  Fetcher& _fetcher;
   Infos& _infos;
   std::unique_ptr<AqlIndexJoinStrategy> _strategy;
 
