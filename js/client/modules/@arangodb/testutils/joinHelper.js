@@ -79,7 +79,6 @@ const buildQuery = function(config) {
 };
 
 const buildIndex = function (collection, projected, filtered, unique) {
-
   const fields = ["x"];
   const storedValues = [];
 
@@ -271,9 +270,9 @@ const createIndexJoinTestMultiSuite = function (configs) {
   return indexJoinTestMultiSuite(configs);
 };
 
-const createParameters = function (unique, sort) {
+const createParameters = function (unique, sort, bucket, buckets) {
   // We group the tests by the same data definition and then run all possible queries at once.
-  return _.groupBy(generateParameters({
+  let tests = _.groupBy(generateParameters({
     projection1: [true, false],
     projection2: [true, false],
     filter1: [true, false],
@@ -292,6 +291,25 @@ const createParameters = function (unique, sort) {
     ],
     unique: [unique],
   }), (c) => ["filterAttribute1", "filterAttribute2", "projectedAttribute1", "projectedAttribute2", "unique"].map(k => c[k]).join(""));
+
+  if (bucket >= buckets || buckets < 1) {
+    throw "invalid number of buckets: " + bucket + " / " + buckets;
+  }
+
+  if (buckets !== 1) {
+    // partition tests into buckets
+    let keys = Object.keys(tests);
+    const lower = Math.floor(bucket * (keys.length / buckets)); 
+    const upper = Math.floor((bucket + 1) * (keys.length / buckets)); 
+    keys = keys.slice(lower, upper);
+    let bucketized = {};
+    keys.forEach((k) => {
+      bucketized[k] = tests[k];
+    });
+    tests = bucketized;
+  }
+
+  return tests;
 };
 
 exports.createIndexJoinTestMultiSuite = createIndexJoinTestMultiSuite;
