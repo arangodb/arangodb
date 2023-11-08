@@ -563,7 +563,7 @@ off to an extra logging thread, which asynchronously writes the log messages.)")
           new UInt32Parameter(&_maxQueuedLogMessages),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31200)
+      .setIntroducedIn(31105)
       .setLongDescription(
           R"(If you are using the option `--log.force-direct` (default)
 log entries are pushed on a queue for asynchronous writing. In case you
