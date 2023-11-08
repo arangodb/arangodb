@@ -499,7 +499,7 @@ RestStatus RestReplicationHandler::execute() {
       if (ServerState::instance()->isCoordinator()) {
         handleUnforwardedTrampolineCoordinator();
       } else {
-        waitForFuture(handleCommandBatch());
+        return waitForFuture(handleCommandBatch());
       }
     } else if (command == Inventory) {
       // get overview of collections and indexes followed by some extra data
@@ -549,7 +549,7 @@ RestStatus RestReplicationHandler::execute() {
         // { "id": <context id - int>,
         //   "count": <number of documents in collection - int>
         // }
-        waitForFuture(handleCommandCreateKeys());
+        return waitForFuture(handleCommandCreateKeys());
       } else if (type == rest::RequestType::GET) {
         // curl --dump -
         // 'http://localhost:5555/_db/_system/_api/replication/keys/123?collection=_users'
