@@ -134,6 +134,7 @@ TEST_F(EnumerateCollectionExecutorTest, the_produce_datarange_empty) {
                           registerInfos.registersToClear());
 
   auto const [state, stats, call] = testee.produceRows(inputRange, output);
+  ASSERT_EQ(stats.getDocumentLookups(), 0);
   ASSERT_EQ(state, ExecutorState::DONE);
   ASSERT_FALSE(output.produced());
 }
@@ -157,6 +158,7 @@ TEST_F(EnumerateCollectionExecutorTest, the_skip_datarange_empty) {
       testee.skipRowsRange(inputRange, skipCall);
   ASSERT_EQ(state, ExecutorState::DONE);
   ASSERT_EQ(skipped, 0);
+  ASSERT_EQ(stats.getDocumentLookups(), 0);
   ASSERT_FALSE(output.produced());
 }
 
@@ -200,6 +202,7 @@ TEST_F(EnumerateCollectionExecutorTest, the_produce_datarange) {
   ASSERT_EQ(state, ExecutorState::DONE);
   ASSERT_EQ(stats.getFiltered(), 0);
   ASSERT_EQ(stats.getScanned(), 3);
+  ASSERT_EQ(stats.getDocumentLookups(), 0);
   ASSERT_FALSE(output.produced());
 }
 
@@ -245,6 +248,7 @@ TEST_F(EnumerateCollectionExecutorTest, the_skip_datarange) {
       testee.skipRowsRange(inputRange, skipCall);
   ASSERT_EQ(state, ExecutorState::DONE);
   ASSERT_EQ(skipped, 3);
+  ASSERT_EQ(stats.getDocumentLookups(), 0);
   ASSERT_FALSE(output.produced());
 }
 

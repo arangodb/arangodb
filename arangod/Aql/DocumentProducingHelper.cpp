@@ -70,6 +70,7 @@ IndexIterator::DocumentCallback aql::getCallback(
     if constexpr (skip) {
       return true;
     }
+    context.incrLookups();
 
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
@@ -131,6 +132,7 @@ IndexIterator::DocumentCallback aql::getCallback(
     if constexpr (skip) {
       return true;
     }
+    context.incrLookups();
 
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
@@ -210,6 +212,7 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _resourceMonitor(infos.getResourceMonitor()),
       _numScanned(0),
       _numFiltered(0),
+      _numLookups(0),
       _outputVariable(infos.getOutVariable()),
       _outputRegister(infos.getOutputRegisterId()),
       _readOwnWrites(infos.canReadOwnWrites()),
@@ -269,6 +272,7 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _resourceMonitor(infos.getResourceMonitor()),
       _numScanned(0),
       _numFiltered(0),
+      _numLookups(0),
       _outputVariable(infos.getOutVariable()),
       _outputRegister(infos.getOutputRegisterId()),
       _readOwnWrites(infos.canReadOwnWrites()),
@@ -394,12 +398,18 @@ void DocumentProducingFunctionContext::incrFiltered() noexcept {
   ++_numFiltered;
 }
 
+void DocumentProducingFunctionContext::incrLookups() noexcept { ++_numLookups; }
+
 uint64_t DocumentProducingFunctionContext::getAndResetNumScanned() noexcept {
   return std::exchange(_numScanned, 0);
 }
 
 uint64_t DocumentProducingFunctionContext::getAndResetNumFiltered() noexcept {
   return std::exchange(_numFiltered, 0);
+}
+
+uint64_t DocumentProducingFunctionContext::getAndResetNumLookups() noexcept {
+  return std::exchange(_numLookups, 0);
 }
 
 InputAqlItemRow const& DocumentProducingFunctionContext::getInputRow()
@@ -537,6 +547,7 @@ IndexIterator::CoveringCallback aql::getCallback(
     }
 
     if constexpr (!skip) {
+      context.incrLookups();
       OutputAqlItemRow& output = context.getOutputRow();
       InputAqlItemRow const& input = context.getInputRow();
 

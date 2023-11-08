@@ -103,9 +103,13 @@ struct DocumentProducingFunctionContext {
 
   void incrFiltered() noexcept;
 
+  void incrLookups() noexcept;
+
   [[nodiscard]] uint64_t getAndResetNumScanned() noexcept;
 
   [[nodiscard]] uint64_t getAndResetNumFiltered() noexcept;
+
+  [[nodiscard]] uint64_t getAndResetNumLookups() noexcept;
 
   InputAqlItemRow const& getInputRow() const noexcept;
 
@@ -154,6 +158,7 @@ struct DocumentProducingFunctionContext {
 
   uint64_t _numScanned;
   uint64_t _numFiltered;
+  uint64_t _numLookups;
 
   std::unique_ptr<DocumentProducingExpressionContext> _expressionContext;
 
