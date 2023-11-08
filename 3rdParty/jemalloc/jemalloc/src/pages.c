@@ -37,7 +37,7 @@ size_t	os_page;
 
 #ifndef _WIN32
 #  define PAGES_PROT_COMMIT (PROT_READ | PROT_WRITE)
-#  define PAGES_PROT_DECOMMIT (PROT_NONE)
+#  define PAGES_PROT_DECOMMIT (PROT_READ | PROT_WRITE)
 static int	mmap_flags;
 #endif
 static bool	os_overcommits;
