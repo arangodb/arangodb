@@ -280,6 +280,7 @@ EnumerateCollectionExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumFiltered() == 0);
+  TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumLookups() == 0);
   _documentProducingFunctionContext.setOutputRow(&output);
 
   // validate that the output pointer in documentProducingFunctionContext is the
