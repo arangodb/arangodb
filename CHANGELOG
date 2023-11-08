@@ -4,6 +4,9 @@ v3.11.5 (XXXX-XX-XX)
 
 * MDS-1164: Added Publisher and Company to the Windows binaries.
 
+* Silence TSAN for shutdown for access to the SchedulerFeature::SCHEDULER
+  pointer using atomic references.
+
 * Fixed a race in controlled leader change which could lead to a situation in
   which a shard follower is dropped when the first write operation happens. This
   fixes BTS-1647.
