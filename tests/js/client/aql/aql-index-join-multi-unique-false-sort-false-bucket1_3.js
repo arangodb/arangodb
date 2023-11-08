@@ -22,12 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
-const joinHelper = require("@arangodb/aql/joinHelper.js");
+const joinHelper = require("@arangodb/testutils/joinHelper.js");
 
-const unique = true;
-const sort = true;
+const unique = false;
+const sort = false;
 
-const parameters = joinHelper.createParameters(unique, sort);
+const parameters = joinHelper.createParameters(unique, sort, 1, 3);
 
 for (const configs of Object.values(parameters)) {
   jsunity.run(function () {
