@@ -1,6 +1,9 @@
 v3.11.5 (XXXX-XX-XX)
 --------------------
 
+
+* MDS-1164: Added Publisher and Company to the Windows binaries.
+
 * Silence TSAN for shutdown for access to the SchedulerFeature::SCHEDULER
   pointer using atomic references.
 
