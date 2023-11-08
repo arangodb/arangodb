@@ -1,6 +1,17 @@
 devel
 -----
 
+* Make arangodump exclude the following cluster collection properties when
+  writing collection parameters files in a single server dump:
+  - replicationFactor
+  - writeConcern
+  - numberOfShards
+  - minReplicationFactor
+  - shardKeys
+  - shards
+  It is not really useful to write these attributes out when taking single 
+  server dumps, because they don't have useful values.
+
 * Fixed BTS-1273: While queueing an async server log message, we could be
   blocked by IO on the log-writer thread. This could slow down the main
   path. In case the log-writer is configured to use slow device
