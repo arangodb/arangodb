@@ -770,48 +770,41 @@ RestCollectionHandler::collectionRepresentationAsync(
     figures = coll->figures(showFigures == FiguresType::Detailed, options);
   }
 
-  co_await std::move(figures)
-      .thenValue([=, this, &ctxt](OperationResult&& figures)
-                     -> futures::Future<OperationResult> {
-        if (figures.fail()) {
-          THROW_ARANGO_EXCEPTION(figures.result);
-        }
-        if (figures.buffer) {
-          _builder.add("figures", figures.slice());
-        }
+  auto figuresRes = co_await std::move(figures);
+  if (figuresRes.fail()) {
+    THROW_ARANGO_EXCEPTION(figuresRes.result);
+  }
+  if (figuresRes.buffer) {
+    _builder.add("figures", figuresRes.slice());
+  }
 
-        if (showCount != CountType::None) {
-          auto trx = co_await ctxt.trx(AccessMode::Type::READ, true);
-          TRI_ASSERT(trx != nullptr);
-          co_return co_await trx->countAsync(
-              coll->name(),
-              showCount == CountType::Detailed
-                  ? transaction::CountType::Detailed
-                  : transaction::CountType::Normal,
-              options);
-        }
-        co_return OperationResult(Result(), options);
-      })
-      .thenValue(
-          [=, this,
-           &ctxt](OperationResult&& opRes) -> futures::Future<futures::Unit> {
-            if (opRes.fail()) {
-              if (showCount != CountType::None) {
-                auto trx = co_await ctxt.trx(AccessMode::Type::READ, true);
-                TRI_ASSERT(trx != nullptr);
-                std::ignore = trx->finish(opRes.result);
-              }
-              THROW_ARANGO_EXCEPTION(opRes.result);
-            }
+  auto opRes = OperationResult(Result(), options);
+  if (showCount != CountType::None) {
+    auto trx = co_await ctxt.trx(AccessMode::Type::READ, true);
+    TRI_ASSERT(trx != nullptr);
+    opRes = co_await trx->countAsync(coll->name(),
+                                     showCount == CountType::Detailed
+                                         ? transaction::CountType::Detailed
+                                         : transaction::CountType::Normal,
+                                     options);
+  }
 
-            if (showCount != CountType::None) {
-              _builder.add("count", opRes.slice());
-            }
+  if (opRes.fail()) {
+    if (showCount != CountType::None) {
+      auto trx = co_await ctxt.trx(AccessMode::Type::READ, true);
+      TRI_ASSERT(trx != nullptr);
+      std::ignore = trx->finish(opRes.result);
+    }
+    THROW_ARANGO_EXCEPTION(opRes.result);
+  }
 
-            if (!wasOpen) {
-              _builder.close();
-            }
-          });
+  if (showCount != CountType::None) {
+    _builder.add("count", opRes.slice());
+  }
+
+  if (!wasOpen) {
+    _builder.close();
+  }
 }
 
 RestStatus RestCollectionHandler::standardResponse() {
