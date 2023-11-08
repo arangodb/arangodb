@@ -1185,7 +1185,7 @@
       );
 
       recalculateButton.click(() => {
-        this.collection.recalculateCount((error, data)=>{
+        this.collection.recalculateCount((error, data) => {
           if(!error){
             this.collection.setTotal(data.count);
             this.rerender();
@@ -1193,7 +1193,7 @@
           }
 
           arangoHelper.arangoError('Error', 'Could not recalculate count');
-        })
+        });
       });
 
       var total = $("#totalDocuments");
