@@ -276,7 +276,8 @@ void InsertNode::replaceVariables(
 void InsertNode::replaceAttributeAccess(ExecutionNode const* self,
                                         Variable const* searchVariable,
                                         std::span<std::string_view> attribute,
-                                        Variable const* replaceVariable) {
+                                        Variable const* replaceVariable,
+                                        size_t /*index*/) {
   if (_inVariable != nullptr && searchVariable == _inVariable &&
       attribute.size() == 1 && attribute[0] == StaticStrings::KeyString) {
     _inVariable = replaceVariable;
@@ -329,7 +330,8 @@ void UpdateReplaceNode::replaceVariables(
 
 void UpdateReplaceNode::replaceAttributeAccess(
     ExecutionNode const* self, Variable const* searchVariable,
-    std::span<std::string_view> attribute, Variable const* replaceVariable) {
+    std::span<std::string_view> attribute, Variable const* replaceVariable,
+    size_t /*index*/) {
   auto replace = [&](Variable const*& variable) {
     if (variable != nullptr && searchVariable == variable &&
         attribute.size() == 1 && attribute[0] == StaticStrings::KeyString) {
@@ -400,7 +402,8 @@ void RemoveNode::replaceVariables(
 void RemoveNode::replaceAttributeAccess(ExecutionNode const* self,
                                         Variable const* searchVariable,
                                         std::span<std::string_view> attribute,
-                                        Variable const* replaceVariable) {
+                                        Variable const* replaceVariable,
+                                        size_t /*index*/) {
   if (_inVariable != nullptr && searchVariable == _inVariable &&
       attribute.size() == 1 && attribute[0] == StaticStrings::KeyString) {
     // replace the following patterns:
@@ -650,7 +653,8 @@ void UpsertNode::replaceVariables(
 void UpsertNode::replaceAttributeAccess(ExecutionNode const* self,
                                         Variable const* searchVariable,
                                         std::span<std::string_view> attribute,
-                                        Variable const* replaceVariable) {
+                                        Variable const* replaceVariable,
+                                        size_t /*index*/) {
   auto replace = [&](Variable const*& variable) {
     if (variable != nullptr && searchVariable == variable &&
         attribute.size() == 1 && attribute[0] == StaticStrings::KeyString) {

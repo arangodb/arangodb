@@ -31,6 +31,7 @@
 
 #include "Basics/operating-system.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/RecursiveLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/voc-errors.h"
@@ -157,21 +158,21 @@ std::shared_ptr<LogAppender> LogAppender::buildAppender(
   } else if (output == "-") {
     result = std::make_shared<LogAppenderStdout>();
   } else if (output.starts_with(::filePrefix)) {
-    result =
-        std::make_shared<LogAppenderFile>(output.substr(::filePrefix.size()));
+    result = LogAppenderFileFactory::getFileAppender(
+        output.substr(::filePrefix.size()));
   }
 
   return result;
 }
 
 void LogAppender::logGlobal(LogGroup const& group, LogMessage const& message) {
-  WRITE_LOCKER(guard, _appendersLock);
+  READ_LOCKER(guard, _appendersLock);
 
   auto& appenders = _globalAppenders[group.id()];
 
   // append to global appenders first
   for (auto const& appender : appenders) {
-    appender->logMessage(message);
+    appender->logMessageGuarded(message);
   }
 }
 
@@ -187,7 +188,7 @@ void LogAppender::log(LogGroup const& group, LogMessage const& message) {
       auto const& appenders = it->second;
 
       for (auto const& appender : appenders) {
-        appender->logMessage(message);
+        appender->logMessageGuarded(message);
       }
       shown = true;
     }
@@ -200,7 +201,7 @@ void LogAppender::log(LogGroup const& group, LogMessage const& message) {
   // try to find a topic-specific appender
   size_t topicId = message._topicId;
 
-  WRITE_LOCKER(guard, _appendersLock);
+  READ_LOCKER(guard, _appendersLock);
 
   if (topicId < LogTopic::MAX_LOG_TOPICS) {
     shown = output(group, message, topicId);
@@ -218,7 +219,7 @@ void LogAppender::shutdown() {
 #ifdef ARANGODB_ENABLE_SYSLOG
   LogAppenderSyslog::close();
 #endif
-  LogAppenderFile::closeAll();
+  LogAppenderFileFactory::closeAll();
 
   for (std::size_t i = 0; i < LogGroup::Count; ++i) {
     _globalAppenders[i].clear();
@@ -230,7 +231,16 @@ void LogAppender::shutdown() {
 void LogAppender::reopen() {
   WRITE_LOCKER(guard, _appendersLock);
 
-  LogAppenderFile::reopenAll();
+  LogAppenderFileFactory::reopenAll();
+}
+
+void LogAppender::logMessageGuarded(LogMessage const& message) {
+  // Only one thread is allowed to actually write logs to the file.
+  // We use a recusive lock here, just in case writing the log message
+  // causes a crash, in this case we may trigger another force-direct
+  // log. This is not very likely, but it is better to be safe than sorry.
+  RECURSIVE_WRITE_LOCKER(_logOutputMutex, _logOutputMutexOwner);
+  logMessage(message);
 }
 
 Result LogAppender::parseDefinition(std::string const& definition,

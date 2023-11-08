@@ -2397,6 +2397,10 @@ Result transaction::Methods::determineReplication2TypeAndFollowers(
     replicationType = ReplicationType::NONE;
     return {};
   }
+  // API compatibility: Let us always refuse a Replication request
+  if (!options.isSynchronousReplicationFrom.empty()) {
+    return {TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION};
+  }
 
   // The context type is a good indicator of the replication type.
   // A transaction created on a follower always has a ReplicatedContext, whereas
