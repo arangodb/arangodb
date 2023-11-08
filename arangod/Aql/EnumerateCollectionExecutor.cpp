@@ -37,7 +37,6 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
-#include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "Transaction/Methods.h"
@@ -215,6 +214,7 @@ EnumerateCollectionExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
            * TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned()
            * == skipped);
            */
+          // TODO: CHECK
           std::ignore =
               _documentProducingFunctionContext.getAndResetNumScanned();
         } else {

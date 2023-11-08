@@ -26,7 +26,6 @@
 #include "Aql/AqlValue.h"
 #include "Aql/DocumentExpressionContext.h"
 #include "Aql/EnumerateCollectionExecutor.h"
-#include "Aql/Expression.h"
 #include "Aql/IndexExecutor.h"
 #include "Aql/LateMaterializedExpressionContext.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -38,7 +37,6 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
-#include <function2.hpp>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
@@ -539,15 +537,12 @@ IndexIterator::CoveringCallback aql::getCallback(
       }
     }
 
-    context.incrScanned();
-
     if (context.hasFilter() && !context.checkFilter(&covering)) {
       context.incrFiltered();
       return false;
     }
 
     if constexpr (!skip) {
-      context.incrLookups();
       OutputAqlItemRow& output = context.getOutputRow();
       InputAqlItemRow const& input = context.getInputRow();
 
