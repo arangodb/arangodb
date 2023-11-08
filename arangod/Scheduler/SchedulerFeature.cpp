@@ -370,7 +370,17 @@ void SchedulerFeature::stop() {
 }
 
 void SchedulerFeature::unprepare() {
-  SCHEDULER = nullptr;
+  // SCHEDULER = nullptr;
+  // This is to please the TSAN sanitizer: On shutdown, we set this global
+  // pointer to nullptr. Other threads read the pointer, but the logic of
+  // ApplicationFeatures should ensure that nobody will read the pointer
+  // out after the SchedulerFeature has run its unprepare method.
+  // Sometimes the TSAN sanitizer cannot recognize this indirect
+  // synchronization and complains about reads that have happened before
+  // this write here, but are not officially inter-thread synchronized.
+  // We use the atomic reference here and in these places to silence TSAN.
+  std::atomic_ref<SupervisedScheduler*> schedulerRef{SCHEDULER};
+  schedulerRef.store(nullptr, std::memory_order_relaxed);
   _scheduler.reset();
 }
 

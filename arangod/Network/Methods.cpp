@@ -259,7 +259,15 @@ void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
           return;
         }
 
-        auto* sch = SchedulerFeature::SCHEDULER;
+        // We access the global SCHEDULER pointer here via an atomic
+        // reference. This is to silence TSAN, which often detects a data
+        // race on this pointer, since this read access here can occasionally
+        // happen before the write in SchedulerFeature::unprepare, which
+        // invalidates the pointer. But even if the read here would happen
+        // later, we check for nullptr below, so all would be good.
+        std::atomic_ref<SupervisedScheduler*> schedulerRef{
+            SchedulerFeature::SCHEDULER};
+        auto* sch = schedulerRef.load(std::memory_order_relaxed);
         // cppcheck-suppress accessMoved
         if (p->skipScheduler || sch == nullptr) {
           p->promise.setValue(network::Response{
