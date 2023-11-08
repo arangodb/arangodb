@@ -51,7 +51,7 @@ devel
 
 * Added `--write-concern` parameter similar to `--replication-factor` to
 
-* MDS-1164: Added Publisher and Company to the Window binaries
+* MDS-1164: Added Publisher and Company to the Windows binaries
 
 * BTS-1602: Added new flag `--ignore-collection` to the arangodump binary.
   Collections can now be excluded by using this flag. This flag can be
