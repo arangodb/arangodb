@@ -84,6 +84,11 @@ bool Scheduler::start() {
   return _cronThread->start();
 }
 
+Result Scheduler::detachThread(uint64_t* detachedThreads,
+                               uint64_t* maximumDetachedThreads) {
+  return {};
+}
+
 void Scheduler::shutdown() {
   TRI_ASSERT(isStopping());
 

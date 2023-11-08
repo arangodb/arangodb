@@ -483,6 +483,7 @@ ERROR_SUPERVISION_GENERAL_FAILURE,20501,"general supervision failure","General s
 
 ERROR_QUEUE_FULL,21003,"queue is full","Will be returned if the scheduler queue is full."
 ERROR_QUEUE_TIME_REQUIREMENT_VIOLATED,21004,"queue time violated","Will be returned if a request with a queue time requirement is set and it cannot be fulfilled."
+ERROR_TOO_MANY_DETACHED_THREADS,21005,"too many detached scheduler threads","Will be returned if a scheduler thread tries to detach itself but there are already too many detached scheduler threads."
 
 ################################################################################
 ## Maintenance errors
