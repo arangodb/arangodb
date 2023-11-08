@@ -437,6 +437,20 @@ void RestVocbaseBaseHandler::generateTransactionError(
     std::string_view key, RevisionId rev) {
   auto const code = result.errorNumber();
   switch (static_cast<int>(code)) {
+    case static_cast<int>(
+        TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE): {
+      // Can only show up in Replication2. But uncritical if ever changed.
+      TRI_ASSERT(_vocbase.replicationVersion() == replication::Version::TWO);
+      auto const& res = result.result;
+      auto const& opOptions = result.options;
+      // The Not_Acceptable response is just for compatibility.
+      // In Replication2 we do never send the isSynchronousReplication header.
+      auto respCode = opOptions.isSynchronousReplicationFrom.empty()
+                          ? ResponseCode::MISDIRECTED_REQUEST
+                          : ResponseCode::NOT_ACCEPTABLE;
+      generateError(respCode, res.errorNumber(), res.errorMessage());
+      return;
+    }
     case static_cast<int>(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND):
       if (collectionName.empty()) {
         // no collection name specified
