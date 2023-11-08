@@ -124,6 +124,37 @@ TEST_P(IndexMerger, no_results) {
   ASSERT_EQ(count, 0);
 }
 
+TEST_P(IndexMerger, small_result_test_seeks) {
+  bool isUnique = false;
+  std::vector<MyKeyValue> a = {
+      1,
+      2,
+  };
+
+  std::vector<MyKeyValue> b = {2};
+
+  std::vector<Desc> iters;
+  iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0, isUnique);
+  iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0, isUnique);
+
+  Strategy merger{std::move(iters), 1};
+
+  bool hasMore = true;
+  std::size_t count = 0;
+  while (hasMore) {
+    auto [hasMoreNext, amountOfSeeks] =
+        merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
+          EXPECT_EQ(docs[0], docs[1]);
+          count += 1;
+          return doReadMore();
+        });
+    ASSERT_EQ(amountOfSeeks, 1);
+    hasMore = hasMoreNext;
+  }
+
+  ASSERT_EQ(count, 1);
+}
+
 TEST_P(IndexMerger, some_results) {
   bool isUnique = false;
   std::vector<MyKeyValue> a = {
@@ -149,6 +180,7 @@ TEST_P(IndexMerger, some_results) {
           count += 1;
           return doReadMore();
         });
+    ASSERT_TRUE(amountOfSeeks >= 1);
     hasMore = hasMoreNext;
   }
 
