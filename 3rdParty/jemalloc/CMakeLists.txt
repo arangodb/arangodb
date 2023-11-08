@@ -64,6 +64,7 @@ if (LINUX OR DARWIN)
         CPPFLAGS=${JEMALLOC_CPPFLAGS}
         --prefix=${CMAKE_CURRENT_BINARY_DIR}
         --with-malloc-conf=${JEMALLOC_CONFIG}
+        --with-version=5.3.0-147-ge4817c8d89a2a413e835c4adeab5c5c4412f9235
         ${JEMALLOC_PROF}
     BUILD_COMMAND
       $(MAKE) build_lib_static
