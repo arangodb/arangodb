@@ -671,10 +671,10 @@ Result DumpFeature::DumpCollectionJob::run(
                          VPackSlice::nullSlice());
           subObject->add(StaticStrings::ReplicationFactor,
                          VPackSlice::nullSlice());
-          subObject->add(StaticStrings::ShardKeys, VPackSlice::nullSlice());
-          subObject->add(StaticStrings::Sharding, VPackSlice::nullSlice());
-          subObject->add("shards", VPackSlice::nullSlice());
           subObject->add(StaticStrings::WriteConcern, VPackSlice::nullSlice());
+          // note: we cannot exclude shardKeys and sharding, because they
+          // can be used even in single-server SmartGraphs.
+          subObject->add("shards", VPackSlice::nullSlice());
         }
       }
     }
