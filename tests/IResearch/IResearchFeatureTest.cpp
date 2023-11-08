@@ -190,6 +190,11 @@ TEST_F(IResearchFeatureTest, test_options_default) {
   ASSERT_NE(nullptr, executeThreadsLimit);
   ASSERT_EQ(0, *executeThreadsLimit->ptr);
 
+  auto* defaultParallelism =
+      opts->get<UInt32Parameter>("--arangosearch.default-parallelism");
+  ASSERT_NE(nullptr, defaultParallelism);
+  ASSERT_EQ(1, *defaultParallelism->ptr);
+
   uint32_t const expectedNumThreads =
       std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
   uint32_t const expectedNumExecuteThreads =
@@ -290,6 +295,12 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_default_set) {
   *executeThreadsLimit->ptr = 0;
   opts->processingResult().touch("arangosearch.execution-threads-limit");
 
+  auto* defaultParallelism =
+      opts->get<UInt32Parameter>("--arangosearch.default-parallelism");
+  ASSERT_NE(nullptr, defaultParallelism);
+  *defaultParallelism->ptr = 5;
+  opts->processingResult().touch("arangosearch.default-parallelism");
+
   feature.validateOptions(opts);
   ASSERT_EQ(0, *threads->ptr);
   ASSERT_EQ(0, *threadsLimit->ptr);
@@ -310,6 +321,7 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_default_set) {
             feature.stats(ThreadGroup::_1));
 
   feature.start();
+  ASSERT_EQ(5, feature.defaultParallelism());
   ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
                            size_t(*commitThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_0));

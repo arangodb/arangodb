@@ -155,6 +155,12 @@ class IResearchFeature final : public ArangodFeature {
 #endif
 #endif
 
+  uint32_t defaultParallelism() const noexcept { return _defaultParallelism; }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  void setDefaultParallelism(uint32_t v) noexcept { _defaultParallelism = v; }
+#endif
+
  private:
   void registerRecoveryHelper();
   void registerIndexFactory();
@@ -194,6 +200,7 @@ class IResearchFeature final : public ArangodFeature {
   uint32_t _threads;
   uint32_t _threadsLimit;
   uint32_t _searchExecutionThreadsLimit;
+  uint32_t _defaultParallelism;
 
   std::shared_ptr<IndexTypeFactory> _clusterFactory;
   std::shared_ptr<IndexTypeFactory> _rocksDBFactory;

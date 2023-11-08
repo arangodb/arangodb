@@ -176,6 +176,8 @@ std::string const CACHE_LIMIT("--arangosearch.columns-cache-limit");
 std::string const CACHE_ONLY_LEADER("--arangosearch.columns-cache-only-leader");
 std::string const SEARCH_THREADS_LIMIT(
     "--arangosearch.execution-threads-limit");
+std::string const SEARCH_DEFAULT_PARALLELISM(
+    "--arangosearch.default-parallelism");
 
 aql::AqlValue dummyFunc(aql::ExpressionContext*, aql::AstNode const& node,
                         std::span<aql::AqlValue const>) {
@@ -898,6 +900,7 @@ IResearchFeature::IResearchFeature(Server& server)
       _threads(0),
       _threadsLimit(0),
       _searchExecutionThreadsLimit(0),
+      _defaultParallelism(1),
       _searchExecutionPool(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_search_execution_threads_demand{})) {
   setOptional(true);
@@ -1054,14 +1057,24 @@ but the returned data may be incomplete.)");
                                             options::Flags::Enterprise))
       .setIntroducedIn(3'10'06);
 #endif
-  options->addOption(
-      SEARCH_THREADS_LIMIT,
-      "Max number of threads that could be used to process ArangoSearch "
-      "indexes during SEARCH operation",
-      new options::UInt32Parameter(&_searchExecutionThreadsLimit),
-      options::makeDefaultFlags(options::Flags::DefaultNoComponents,
-                                options::Flags::OnDBServer,
-                                options::Flags::OnSingle));
+  options
+      ->addOption(
+          SEARCH_THREADS_LIMIT,
+          "Max number of threads that could be used to process ArangoSearch "
+          "indexes during SEARCH operation",
+          new options::UInt32Parameter(&_searchExecutionThreadsLimit),
+          options::makeDefaultFlags(options::Flags::DefaultNoComponents,
+                                    options::Flags::OnDBServer,
+                                    options::Flags::OnSingle))
+      .setIntroducedIn(3'12'00);
+  options
+      ->addOption(SEARCH_DEFAULT_PARALLELISM,
+                  "Default parallelism for ArangoSearch queries",
+                  new options::UInt32Parameter(&_defaultParallelism),
+                  options::makeDefaultFlags(options::Flags::DefaultNoComponents,
+                                            options::Flags::OnDBServer,
+                                            options::Flags::OnSingle))
+      .setIntroducedIn(3'12'00);
 }
 
 void IResearchFeature::validateOptions(
