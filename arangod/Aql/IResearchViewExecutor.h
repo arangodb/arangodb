@@ -636,6 +636,7 @@ class IResearchViewExecutorBase {
   iresearch::ViewExpressionContext _ctx;
   FilterCtx _filterCtx;
   iresearch::ViewSnapshotPtr _reader;
+  irs::proxy_filter::cache_ptr _cache;
   irs::filter::prepared::ptr _filter;
   irs::filter::prepared const** _filterCookie{};
   containers::SmallVector<irs::Scorer::ptr, 2> _scorersContainer;

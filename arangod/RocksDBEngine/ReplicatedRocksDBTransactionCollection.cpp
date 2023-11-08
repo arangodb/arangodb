@@ -211,7 +211,13 @@ auto ReplicatedRocksDBTransactionCollection::ensureCollection() -> Result {
       // index creation is read-only, but might still use an exclusive lock
       !_transaction->hasHint(transaction::Hints::Hint::INDEX_CREATION) &&
       _leaderState == nullptr) {
-    _leaderState = _collection->getDocumentStateLeader();
+    try {
+      _leaderState = _collection->getDocumentStateLeader();
+    } catch (basics::Exception const& ex) {
+      return {ex.code(), std::move(ex.message())};
+    } catch (...) {
+      throw;
+    }
     ADB_PROD_ASSERT(_leaderState != nullptr);
   }
 
