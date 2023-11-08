@@ -167,7 +167,7 @@ IndexIterator::DocumentCallback aql::buildDocumentCallback(
       DocumentProducingCallbackVariant::DocumentCopy{}, context);
 }
 
-template<bool checkUniqueness>
+template<bool checkUniqueness, bool produceResult>
 IndexIterator::LocalDocumentIdCallback aql::getNullCallback(
     DocumentProducingFunctionContext& context) {
   TRI_ASSERT(!context.hasFilter());
@@ -184,11 +184,15 @@ IndexIterator::LocalDocumentIdCallback aql::getNullCallback(
 
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
-    RegisterId registerId = context.getOutputRegister();
-    // TODO: optimize this within the register planning mechanism?
-    TRI_ASSERT(!output.isFull());
-    output.cloneValueInto(registerId, input, AqlValue(AqlValueHintNull()));
-    TRI_ASSERT(output.produced());
+    if constexpr (produceResult) {
+      RegisterId registerId = context.getOutputRegister();
+      // TODO: optimize this within the register planning mechanism?
+      TRI_ASSERT(!output.isFull());
+      output.cloneValueInto(registerId, input, AqlValue(AqlValueHintNull()));
+      TRI_ASSERT(output.produced());
+    } else {
+      output.handleEmptyRow(input);
+    }
     output.advanceRow();
 
     return true;
@@ -579,7 +583,7 @@ IndexIterator::CoveringCallback aql::getCallback(
   };
 }
 
-template<bool checkUniqueness, bool skip>
+template<bool checkUniqueness, bool skip, bool produceResult>
 IndexIterator::CoveringCallback aql::getCallback(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context) {
@@ -594,6 +598,11 @@ IndexIterator::CoveringCallback aql::getCallback(
       }
     }
 
+    // skip and produceResult cannot be true at the same time
+    if constexpr (skip) {
+      static_assert(!produceResult);
+    }
+
     context.incrScanned();
 
     if (!context.checkFilter(&covering)) {
@@ -602,24 +611,24 @@ IndexIterator::CoveringCallback aql::getCallback(
     }
 
     if constexpr (!skip) {
-      // read the full document from the storage engine only now,
-      // after checking the filter condition
-      auto cb = [&](LocalDocumentId token, aql::DocumentData&& v,
-                    VPackSlice s) {
-        OutputAqlItemRow& output = context.getOutputRow();
-        TRI_ASSERT(!output.isFull());
+      if constexpr (produceResult) {
+        // read the full document from the storage engine only now,
+        // after checking the filter condition
+        auto cb = [&](LocalDocumentId token, aql::DocumentData&& v,
+                      VPackSlice s) {
+          OutputAqlItemRow& output = context.getOutputRow();
+          TRI_ASSERT(!output.isFull());
 
-        RegisterId registerId = context.getOutputRegister();
-        InputAqlItemRow const& input = context.getInputRow();
+          RegisterId registerId = context.getOutputRegister();
+          InputAqlItemRow const& input = context.getInputRow();
 
-        if (context.getProjections().empty()) {
-          if (v) {
-            output.moveValueInto(registerId, input, &v);
-          } else {
-            output.moveValueInto(registerId, input, s);
-          }
-        } else {
-          if (context.getProjectionsForRegisters().empty()) {
+          if (context.getProjections().empty()) {
+            if (v) {
+              output.moveValueInto(registerId, input, &v);
+            } else {
+              output.moveValueInto(registerId, input, s);
+            }
+          } else if (context.getProjectionsForRegisters().empty()) {
             // write all projections combined into the global output register
             // recycle our Builder object
             VPackBuilder& objectBuilder = context.getBuilder();
@@ -648,15 +657,22 @@ IndexIterator::CoveringCallback aql::getCallback(
                   output.moveValueInto(registerId, input, slice);
                 });
           }
-        }
 
+          TRI_ASSERT(output.produced());
+          output.advanceRow();
+
+          return false;
+        };
+        context.getPhysical().lookup(
+            context.getTrxPtr(), token, cb,
+            {.readOwnWrites = static_cast<bool>(context.getReadOwnWrites())});
+      } else {
+        OutputAqlItemRow& output = context.getOutputRow();
+        InputAqlItemRow const& input = context.getInputRow();
+        output.handleEmptyRow(input);
         TRI_ASSERT(output.produced());
         output.advanceRow();
-        return false;
-      };
-      context.getPhysical().lookup(
-          context.getTrxPtr(), token, cb,
-          {.readOwnWrites = static_cast<bool>(context.getReadOwnWrites())});
+      }
     }
 
     return true;
@@ -676,16 +692,24 @@ template IndexIterator::CoveringCallback aql::getCallback<true, true>(
     DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
     DocumentProducingFunctionContext& context);
 
-template IndexIterator::CoveringCallback aql::getCallback<false, false>(
+// there are only six valid instantiations for WithFilterCoveredByIndex,
+// because if skip = true, then we can't have produceResult = true.
+template IndexIterator::CoveringCallback aql::getCallback<false, false, false>(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context);
-template IndexIterator::CoveringCallback aql::getCallback<true, false>(
+template IndexIterator::CoveringCallback aql::getCallback<true, false, false>(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context);
-template IndexIterator::CoveringCallback aql::getCallback<false, true>(
+template IndexIterator::CoveringCallback aql::getCallback<false, true, false>(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context);
-template IndexIterator::CoveringCallback aql::getCallback<true, true>(
+template IndexIterator::CoveringCallback aql::getCallback<true, true, false>(
+    DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
+    DocumentProducingFunctionContext& context);
+template IndexIterator::CoveringCallback aql::getCallback<false, false, true>(
+    DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
+    DocumentProducingFunctionContext& context);
+template IndexIterator::CoveringCallback aql::getCallback<true, false, true>(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context);
 
@@ -715,10 +739,14 @@ template IndexIterator::DocumentCallback aql::getCallback<true, true>(
     DocumentProducingCallbackVariant::DocumentCopy,
     DocumentProducingFunctionContext& context);
 
-template IndexIterator::LocalDocumentIdCallback aql::getNullCallback<false>(
-    DocumentProducingFunctionContext& context);
-template IndexIterator::LocalDocumentIdCallback aql::getNullCallback<true>(
-    DocumentProducingFunctionContext& context);
+template IndexIterator::LocalDocumentIdCallback
+aql::getNullCallback<false, false>(DocumentProducingFunctionContext& context);
+template IndexIterator::LocalDocumentIdCallback
+aql::getNullCallback<true, false>(DocumentProducingFunctionContext& context);
+template IndexIterator::LocalDocumentIdCallback
+aql::getNullCallback<false, true>(DocumentProducingFunctionContext& context);
+template IndexIterator::LocalDocumentIdCallback
+aql::getNullCallback<true, true>(DocumentProducingFunctionContext& context);
 
 template IndexIterator::DocumentCallback aql::buildDocumentCallback<
     false, false>(DocumentProducingFunctionContext& context);
