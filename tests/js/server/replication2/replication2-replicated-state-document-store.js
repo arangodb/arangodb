@@ -933,6 +933,42 @@ const replicatedStateSnapshotTransferSuite = function () {
       collection = null;
     },
 
+    testDropCollectionOngoingTransferDistributeShardsLike: function(testName) {
+      // Create another collection that is distributed like the first one.
+      let extraCollectionName = `${collectionName}-${testName}-DistributeShardsLike1`;
+      const col1 = db._create(extraCollectionName, {
+        distributeShardsLike: collectionName,
+      });
+      extraCollections.push(col1);
+
+      extraCollectionName = `${collectionName}-${testName}-DistributeShardsLike2`;
+      const col2 = db._create(extraCollectionName, {
+        distributeShardsLike: collectionName,
+      });
+      extraCollections.push(col2);
+
+      // Insert a document into each collection, so the shards are not empty.
+      collection.insert({_key: testName});
+      col1.insert({_key: testName});
+      col2.insert({_key: testName});
+
+      const participants = lhttp.listLogs(coordinator, database).result[logId];
+      let leaderUrl = lh.getServerUrl(participants[0]);
+      const follower = participants.slice(1)[0];
+      const rebootId = lh.getServerRebootId(follower);
+
+      // This will cause the leader to hold an ongoing transaction on the shard.
+      helper.debugSetFailAt(leaderUrl, "DocumentStateSnapshot::foreverReadingFromSameShard");
+
+      let result = dh.startSnapshot(leaderUrl, database, logId, follower, rebootId);
+      lh.checkRequestResult(result);
+
+      // We should be able to drop collections regardless of the ongoing snapshot transfer.
+      col1.drop();
+      col2.drop();
+      extraCollections = [];
+    },
+
     testFollowerSnapshotTransfer: function(testName) {
       // Prepare the grounds for replacing a follower.
       const participants = lhttp.listLogs(coordinator, database).result[logId];

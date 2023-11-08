@@ -195,7 +195,7 @@ auto Snapshot::giveUpOnShard(ShardID const& shardId) -> Result {
                                });
         it != std::end(data.shards)) {
       // Give up the shared pointer to the logical collection
-      it->first = nullptr;
+      it->first.reset();
     }
 
     LOG_CTX("89271", DEBUG, loggerContext) << "Gave up on shard: " << shardId;
