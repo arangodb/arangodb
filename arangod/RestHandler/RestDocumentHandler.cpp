@@ -399,35 +399,31 @@ futures::Future<futures::Unit> RestDocumentHandler::readSingleDocument(
     setOutgoingDirtyReadsHeader(true);
   }
 
-  co_await _activeTrx->documentAsync(collection, search, options)
-      .thenValue([=, this, buffer(std::move(buffer))](OperationResult opRes) {
-        return _activeTrx->finishAsync(opRes.result)
-            .thenValue([=, this, opRes(std::move(opRes))](Result&& res) {
-              if (!opRes.ok()) {
-                generateTransactionError(collection, opRes, key, ifRid);
-                return;
-              }
+  OperationResult opRes =
+      co_await _activeTrx->documentAsync(collection, search, options);
+  res = co_await _activeTrx->finishAsync(opRes.result);
+  if (!opRes.ok()) {
+    generateTransactionError(collection, opRes, key, ifRid);
+    co_return;
+  }
 
-              if (!res.ok()) {
-                generateTransactionError(
-                    collection, OperationResult(res, options), key, ifRid);
-                return;
-              }
+  if (!res.ok()) {
+    generateTransactionError(collection, OperationResult(res, options), key,
+                             ifRid);
+    co_return;
+  }
 
-              if (ifNoneRid.isSet()) {
-                RevisionId const rid = RevisionId::fromSlice(opRes.slice());
-                if (ifNoneRid == rid) {
-                  generateNotModified(rid);
-                  return;
-                }
-              }
+  if (ifNoneRid.isSet()) {
+    RevisionId const rid = RevisionId::fromSlice(opRes.slice());
+    if (ifNoneRid == rid) {
+      generateNotModified(rid);
+      co_return;
+    }
+  }
 
-              // use default options
-              generateDocument(
-                  opRes.slice(), generateBody,
-                  _activeTrx->transactionContextPtr()->getVPackOptions());
-            });
-      });
+  // use default options
+  generateDocument(opRes.slice(), generateBody,
+                   _activeTrx->transactionContextPtr()->getVPackOptions());
 }
 
 RestStatus RestDocumentHandler::checkDocument() {
@@ -632,31 +628,22 @@ futures::Future<futures::Unit> RestDocumentHandler::modifyDocument(
     f = _activeTrx->replaceAsync(cname, body, opOptions);
   }
 
-  co_await std::move(f).thenValue([=, this, silent(opOptions.silent),
-                                   buffer(std::move(buffer))](
-                                      OperationResult opRes) {
-    return _activeTrx->finishAsync(opRes.result)
-        .thenValue([=, this, opRes(std::move(opRes))](Result&& res) {
-          // ...........................................................................
-          // outside write transaction
-          // ...........................................................................
+  OperationResult opRes = co_await std::move(f);
+  res = co_await _activeTrx->finishAsync(opRes.result);
+  if (opRes.fail()) {
+    generateTransactionError(cname, opRes, key, headerRev);
+    co_return;
+  }
 
-          if (opRes.fail()) {
-            generateTransactionError(cname, opRes, key, headerRev);
-            return;
-          }
+  if (!res.ok()) {
+    generateTransactionError(cname, OperationResult(res, opOptions), key,
+                             headerRev);
+    co_return;
+  }
 
-          if (!res.ok()) {
-            generateTransactionError(cname, OperationResult(res, opOptions),
-                                     key, headerRev);
-            return;
-          }
-
-          generate20x(opRes, cname, _activeTrx->getCollectionType(cname),
-                      _activeTrx->transactionContextPtr()->getVPackOptions(),
-                      isArrayCase, silent, rest::ResponseCode::CREATED);
-        });
-  });
+  generate20x(opRes, cname, _activeTrx->getCollectionType(cname),
+              _activeTrx->transactionContextPtr()->getVPackOptions(),
+              isArrayCase, opOptions.silent, rest::ResponseCode::CREATED);
 }
 
 futures::Future<futures::Unit> RestDocumentHandler::removeDocument() {
@@ -777,32 +764,22 @@ futures::Future<futures::Unit> RestDocumentHandler::removeDocument() {
             "' with the required access mode.");
   }
 
-  co_await _activeTrx->removeAsync(cname, search, opOptions)
-      .thenValue([=, this, silent(opOptions.silent),
-                  buffer(std::move(buffer))](OperationResult opRes) {
-        return _activeTrx->finishAsync(opRes.result)
-            .thenValue([=, this, opRes(std::move(opRes))](Result&& res) {
-              // ...........................................................................
-              // outside write transaction
-              // ...........................................................................
+  OperationResult opRes =
+      co_await _activeTrx->removeAsync(cname, search, opOptions);
+  res = co_await _activeTrx->finishAsync(opRes.result);
+  if (opRes.fail()) {
+    generateTransactionError(cname, opRes, key, revision);
+    co_return;
+  }
 
-              if (opRes.fail()) {
-                generateTransactionError(cname, opRes, key, revision);
-                return;
-              }
+  if (!res.ok()) {
+    generateTransactionError(cname, OperationResult(res, opOptions), key);
+    co_return;
+  }
 
-              if (!res.ok()) {
-                generateTransactionError(cname, OperationResult(res, opOptions),
-                                         key);
-                return;
-              }
-
-              generate20x(
-                  opRes, cname, _activeTrx->getCollectionType(cname),
-                  _activeTrx->transactionContextPtr()->getVPackOptions(),
-                  isMultiple, silent, rest::ResponseCode::OK);
-            });
-      });
+  generate20x(opRes, cname, _activeTrx->getCollectionType(cname),
+              _activeTrx->transactionContextPtr()->getVPackOptions(),
+              isMultiple, opOptions.silent, rest::ResponseCode::OK);
 }
 
 futures::Future<futures::Unit> RestDocumentHandler::readManyDocuments() {
@@ -858,26 +835,22 @@ futures::Future<futures::Unit> RestDocumentHandler::readManyDocuments() {
     setOutgoingDirtyReadsHeader(true);
   }
 
-  co_await _activeTrx->documentAsync(cname, search, opOptions)
-      .thenValue([=, this](OperationResult opRes) {
-        return _activeTrx->finishAsync(opRes.result)
-            .thenValue([=, this, opRes(std::move(opRes))](Result&& res) {
-              if (opRes.fail()) {
-                generateTransactionError(cname, opRes);
-                return;
-              }
+  OperationResult opRes =
+      co_await _activeTrx->documentAsync(cname, search, opOptions);
+  res = co_await _activeTrx->finishAsync(opRes.result);
 
-              if (!res.ok()) {
-                generateTransactionError(cname, OperationResult(res, opOptions),
-                                         "");
-                return;
-              }
+  if (opRes.fail()) {
+    generateTransactionError(cname, opRes);
+    co_return;
+  }
 
-              generateDocument(
-                  opRes.slice(), true,
-                  _activeTrx->transactionContextPtr()->getVPackOptions());
-            });
-      });
+  if (!res.ok()) {
+    generateTransactionError(cname, OperationResult(res, opOptions), "");
+    co_return;
+  }
+
+  generateDocument(opRes.slice(), true,
+                   _activeTrx->transactionContextPtr()->getVPackOptions());
 }
 
 void RestDocumentHandler::handleFillIndexCachesValue(

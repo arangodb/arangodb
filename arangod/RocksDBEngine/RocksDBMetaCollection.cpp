@@ -900,11 +900,11 @@ futures::Future<Result> RocksDBMetaCollection::rebuildRevisionTree() {
     co_return {};
   }
 
-  co_return co_await asResult([this]() -> futures::Future<Result> {
+  auto const lambda = [this]() -> futures::Future<Result> {
     auto lockGuard = scopeGuard([this]() noexcept { unlockWrite(); });
     // get the exclusive lock on the collection, so that no new write
     // transactions can start for this collection
-    auto res = lockWrite(/*timeout*/ 180.0).get();
+    auto res = co_await lockWrite(/*timeout*/ 180.0);
     if (res != TRI_ERROR_NO_ERROR) {
       lockGuard.cancel();
       THROW_ARANGO_EXCEPTION(res);
@@ -1069,7 +1069,8 @@ futures::Future<Result> RocksDBMetaCollection::rebuildRevisionTree() {
       removeBufferedUpdatesUpTo(beginSeq);
       co_return {};
     }
-  }());
+  };
+  co_return co_await asResult(lambda());
 }
 
 void RocksDBMetaCollection::rebuildRevisionTree(
