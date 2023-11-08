@@ -42,9 +42,9 @@ struct IResearchExecutionPool final : public metrics::Gauge<uint64_t> {
     _pool.stop(true);
   }
 
-  uint64_t allocateThreads(uint64_t n);
+  uint64_t allocateThreads(uint64_t deltaActive, uint64_t deltaDemand);
 
-  void releaseThreads(uint64_t n);
+  void releaseThreads(uint64_t active, uint64_t demand);
 
   using Pool = irs::async_utils::thread_pool<false>;
 
@@ -54,6 +54,7 @@ struct IResearchExecutionPool final : public metrics::Gauge<uint64_t> {
 
  private:
   Pool _pool{0, 0, IR_NATIVE_STRING("ARS-2")};
+  std::atomic<uint64_t> _active;
   uint64_t _limit{0};
 };
 }  // namespace arangodb::iresearch

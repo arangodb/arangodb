@@ -719,6 +719,7 @@ class IResearchViewExecutor
   std::vector<SegmentReader> _segmentReaders;
   size_t _segmentOffset;
   uint64_t _allocatedThreads{0};
+  uint64_t _demandedThreads{0};
 };
 
 union DocumentValue {

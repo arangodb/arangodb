@@ -1150,8 +1150,9 @@ IResearchViewExecutor<ExecutionTraits>::IResearchViewExecutor(Fetcher& fetcher,
 
 template<typename ExecutionTraits>
 IResearchViewExecutor<ExecutionTraits>::~IResearchViewExecutor() {
-  if (_allocatedThreads) {
-    this->_infos.parallelExecutionPool().releaseThreads(_allocatedThreads);
+  if (_allocatedThreads || _demandedThreads) {
+    this->_infos.parallelExecutionPool().releaseThreads(_allocatedThreads,
+                                                        _demandedThreads);
   }
 }
 
@@ -1623,8 +1624,14 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
   // and next time we would need all our parallelism again.
   auto& readersPool = this->infos().parallelExecutionPool();
   if (parallelism > (this->_allocatedThreads + 1)) {
+    uint64_t deltaDemanded{0};
+    if ((parallelism - 1) > _demandedThreads) {
+      deltaDemanded = parallelism - 1 - _demandedThreads;
+      _demandedThreads += deltaDemanded;
+    }
     this->_allocatedThreads += readersPool.allocateThreads(
-        static_cast<int>(parallelism - this->_allocatedThreads - 1));
+        static_cast<int>(parallelism - this->_allocatedThreads - 1),
+        deltaDemanded);
     parallelism = this->_allocatedThreads + 1;
   }
   atMost = atMostInitial * parallelism;

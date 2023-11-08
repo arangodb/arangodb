@@ -106,8 +106,8 @@ DECLARE_GAUGE(arangodb_search_num_out_of_sync_links, uint64_t,
               "Number of arangosearch links/indexes currently out of sync");
 
 DECLARE_GAUGE(
-    arangodb_search_execution_threads_active, IResearchExecutionPool,
-    "Number of arangosearch parallel execution threads currently in use.");
+    arangodb_search_execution_threads_demand, IResearchExecutionPool,
+    "Number of Arangosearch parallel execution threads requested by queries.");
 
 #ifdef USE_ENTERPRISE
 
@@ -899,7 +899,7 @@ IResearchFeature::IResearchFeature(Server& server)
       _threadsLimit(0),
       _searchExecutionThreadsLimit(0),
       _searchExecutionPool(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_search_execution_threads_active{})) {
+          arangodb_search_execution_threads_demand{})) {
   setOptional(true);
 #ifdef USE_V8
   startsAfter<application_features::V8FeaturePhase>();
