@@ -141,7 +141,7 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher,
           _documentProducingFunctionContext);
     } else {
       _documentNonProducer =
-          getNullCallback<false>(_documentProducingFunctionContext);
+          getNullCallback<false, false>(_documentProducingFunctionContext);
     }
   }
 
