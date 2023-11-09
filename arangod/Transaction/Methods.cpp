@@ -2696,7 +2696,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(
         replication2::replicated_state::document::ReplicationOptions{
             .waitForSync = options.waitForSync});
     TRI_ASSERT(replicationFut.isReady());
-    auto replicationRes = replicationFut.get();
+    auto replicationRes = co_await std::move(replicationFut);
     co_return OperationResult{replicationRes.result(), options};
   }
 
@@ -2752,7 +2752,8 @@ Future<OperationResult> transaction::Methods::truncateLocal(
         futures.emplace_back(std::move(future));
       }
 
-      auto responses = co_await futures::collectAll(futures);
+      auto allResponsesFut = futures::collectAll(futures);
+      auto responses = co_await std::move(allResponsesFut);
       // we drop all followers that were not successful:
       for (size_t i = 0; i < followers->size(); ++i) {
         bool replicationWorked =
