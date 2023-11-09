@@ -1048,8 +1048,8 @@ but the returned data may be incomplete.)");
 #endif
   options->addOption(
       SEARCH_THREADS_LIMIT,
-      "Max number of threads that could be used to process ArangoSearch "
-      "indexes during SEARCH operation",
+      "The maximum number of threads that can be used to process ArangoSearch "
+      "indexes during a SEARCH operation of a query",
       new options::UInt32Parameter(&_searchExecutionThreadsLimit),
       options::makeDefaultFlags(options::Flags::DefaultNoComponents,
                                 options::Flags::OnDBServer,
