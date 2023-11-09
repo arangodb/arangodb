@@ -977,6 +977,7 @@ else () # NOT MSVC
       # versions of g++, as they produce a lot of false positives.
       # if the no-error directives are removed, a lot 3rdParty libraries
       # such as date, fmt, and immer cannot be compiled anymore.
+      # https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=__open__&content=stringop-overread&no_redirect=1&product=gcc
       set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=array-bounds")
       set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=overloaded-virtual")
       set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=stringop-overflow")
