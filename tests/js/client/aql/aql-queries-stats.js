@@ -30,8 +30,8 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
+const db = require("@arangodb").db;
 var helper = require("@arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -147,7 +147,7 @@ function queryStatisticsSuite() {
       assertEqual(qStats.documentLookups, 0);
       assertEqual(qArray.length, 10);
     },
-  }
+  };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
