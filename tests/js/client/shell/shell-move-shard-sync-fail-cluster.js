@@ -139,7 +139,6 @@ function moveShardSynchronizeShardFailureSuite() {
           `HandleLeadership::before ${collInfo.follower}:${collInfo.shard} HandleLeadershipBefore`,
           `HandleLeadership::after ${collInfo.follower}:${collInfo.shard} HandleLeadershipAfter`,
           `Maintenance::BeforePhaseTwo ${collInfo.follower} LeaderSendsCurrent`,
-          `Maintenance::AfterPhaseTwo ${collInfo.follower} LeaderSentCurrent`,
           `ClusterInfo::loadCurrentSeesLeader ${collInfo.leader}:${collInfo.shard}:${followerId} FollowerUpdatesCurrent`,
           `ClusterInfo::loadCurrentDone ${collInfo.leader} FollowerHasUpdatedCurrent`,
           `SynchronizeShard::beginning2 ${collInfo.leader}:${collInfo.shard} SynchronizeShardStartedContinuing`,
@@ -156,7 +155,6 @@ function moveShardSynchronizeShardFailureSuite() {
         debugSetFailAt(followerEndpoint, "HandleLeadership::before");
         debugSetFailAt(followerEndpoint, "HandleLeadership::after");
         debugSetFailAt(followerEndpoint, "Maintenance::BeforePhaseTwo");
-        debugSetFailAt(followerEndpoint, "Maintenance::AfterPhaseTwo");
         debugSetFailAt(leaderEndpoint, "SynchronizeShard::beginning");
         debugSetFailAt(leaderEndpoint, "SynchronizeShard::beforeSetTheLeader");
         debugSetFailAt(leaderEndpoint, "ClusterInfo::loadCurrentSeesLeader");

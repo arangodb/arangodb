@@ -1,10 +1,36 @@
 v3.11.5 (XXXX-XX-XX)
 --------------------
 
+* Fixed a problem in ReadWriteLock which could prevent waiting readers
+  from being woken up, when a write lock acquire timed out.
+
+* Allow a scheduler thread to detach itself from the scheduler if it sees 
+  that it has to perform a potentially long running task like waiting for
+  a lock. This allows a new scheduler thread to be started and avoids
+  that it can happen that all threads are blocked waiting for a lock,
+  which has in the past led to deadlock situations. The number of detached
+  threads is limited by a configurable option. Currently, only threads
+  waiting for more than 1 second on a collection lock will detach themselves.
+ 
+* MDS-1164: Added Publisher and Company to the Windows binaries.
+
+* Silence TSAN for shutdown for access to the SchedulerFeature::SCHEDULER
+  pointer using atomic references.
+
 * Fixed a race in controlled leader change which could lead to a situation in
   which a shard follower is dropped when the first write operation happens. This
   fixes BTS-1647.
 
+* Fixed BTS-1273: While queueing an async server log message, we could be
+  blocked by IO on the log-writer thread. This could slow down the main
+  path. In case the log-writer is configured to use slow device
+  (e.g. using syslog) this could have significant impact.
+
+* Introduced an upper bound of queued async log messages. If we would log
+  more messages then the background logger thread can actually process, we
+  start to write log messages synchronously. This is to prevent the queue
+  to grow indefinitely. The upper bound is configurable via the startup
+  option `--log.max-queued-entries`. The default value is 10000.
 * Fixed an unnecessary follower drop in controlled leader change, which will
   speed up leader changes. This fixes BTS-1658.
 
