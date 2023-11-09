@@ -141,7 +141,7 @@ TEST_F(ShardHandlerTest, dropShard_all_cases) {
   }
 
   {
-    // Shard should be able to delete a non-existent shard.
+    // Should not be able to delete a non-existent shard.
     EXPECT_CALL(*maintenance, executeDropCollection(_)).Times(0);
     EXPECT_CALL(*maintenance, addDirty()).Times(0);
     auto res = shardHandler->dropShard(shardId + "abcd");
