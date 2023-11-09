@@ -198,8 +198,8 @@ futures::Future<RestStatus> RestCollectionHandler::handleCommandGet() {
         *_ctxt,
         /*showProperties*/ true,
         details ? FiguresType::Detailed : FiguresType::Standard,
-        CountType::Standard)
-        .thenValue([this](futures::Unit&&) { standardResponse(); });
+        CountType::Standard);
+    standardResponse();
     co_return RestStatus::DONE;
   } else if (sub == "count") {
     // /_api/collection/<identifier>/count
@@ -263,25 +263,23 @@ futures::Future<RestStatus> RestCollectionHandler::handleCommandGet() {
 
     _ctxt = std::make_unique<methods::Collections::Context>(coll);
     OperationOptions options(_context);
-    co_await methods::Collections::revisionId(*_ctxt, options)
-        .thenValue([this, coll](OperationResult&& res) {
-          if (res.fail()) {
-            generateTransactionError(coll->name(), res);
-            return;
-          }
+    auto res = co_await methods::Collections::revisionId(*_ctxt, options);
+    if (res.fail()) {
+      generateTransactionError(coll->name(), res);
+      co_return RestStatus::DONE;
+    }
 
-          RevisionId rid = RevisionId::fromSlice(res.slice());
-          {
-            VPackObjectBuilder obj(&_builder, true);
-            obj->add("revision", VPackValue(rid.toString()));
+    RevisionId rid = RevisionId::fromSlice(res.slice());
+    {
+      VPackObjectBuilder obj(&_builder, true);
+      obj->add("revision", VPackValue(rid.toString()));
 
-            // no need to use async variant
-            collectionRepresentation(*_ctxt, /*showProperties*/ true,
-                                     FiguresType::None, CountType::None);
-          }
+      // no need to use async variant
+      collectionRepresentation(*_ctxt, /*showProperties*/ true,
+                               FiguresType::None, CountType::None);
+    }
 
-          standardResponse();
-        });
+    standardResponse();
     co_return RestStatus::DONE;
   } else if (sub == "shards") {
     // /_api/collection/<identifier>/shards
@@ -614,37 +612,31 @@ futures::Future<RestStatus> RestCollectionHandler::handleCommandPut() {
 
   } else if (sub == "loadIndexesIntoMemory") {
     OperationOptions options(_context);
-    co_await methods::Collections::warmup(_vocbase, *coll)
-        .thenValue([this, coll, options](Result&& res) {
-          if (res.fail()) {
-            generateTransactionError(coll->name(),
-                                     OperationResult(res, options), "");
-            return;
-          }
+    auto res = co_await methods::Collections::warmup(_vocbase, *coll);
+    if (res.fail()) {
+      generateTransactionError(coll->name(), OperationResult(res, options), "");
+      co_return RestStatus::DONE;
+    }
 
-          {
-            VPackObjectBuilder obj(&_builder, true);
-            obj->add("result", VPackValue(res.ok()));
-          }
+    {
+      VPackObjectBuilder obj(&_builder, true);
+      obj->add("result", VPackValue(res.ok()));
+    }
 
-          standardResponse();
-        });
+    standardResponse();
     co_return RestStatus::DONE;
   } else {
-    co_await handleExtraCommandPut(coll, sub, _builder)
-        .thenValue([&](Result&& res) {
-          if (res.is(TRI_ERROR_NOT_IMPLEMENTED)) {
-            res.reset(
-                TRI_ERROR_HTTP_NOT_FOUND,
+    auto res = co_await handleExtraCommandPut(coll, sub, _builder);
+    if (res.is(TRI_ERROR_NOT_IMPLEMENTED)) {
+      res.reset(TRI_ERROR_HTTP_NOT_FOUND,
                 "expecting one of the actions 'load', 'unload', 'truncate',"
                 " 'properties', 'compact', 'rename', 'loadIndexesIntoMemory'");
-            generateError(res);
-          } else if (res.fail()) {
-            generateError(res);
-          } else {
-            standardResponse();
-          }
-        });
+      generateError(res);
+    } else if (res.fail()) {
+      generateError(res);
+    } else {
+      standardResponse();
+    }
     co_return RestStatus::DONE;
   }
 }
