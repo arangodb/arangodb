@@ -38,7 +38,29 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
+#include <absl/strings/str_cat.h>
+
 using namespace arangodb;
+
+namespace {
+
+Result writeConcernError(std::size_t replicationFactor,
+                         std::size_t writeConcern) {
+  std::string msg;
+  if (replicationFactor < writeConcern) {
+    msg =
+        absl::StrCat("replicationFactor cannot be smaller than writeConcern (",
+                     replicationFactor, " < ", writeConcern, ")");
+  } else if (replicationFactor > writeConcern) {
+    msg = absl::StrCat("replicationFactor cannot be higher than writeConcern (",
+                       replicationFactor, " > ", writeConcern, ")");
+  } else {
+    TRI_ASSERT(false);
+  }
+  return {TRI_ERROR_BAD_PARAMETER, std::move(msg)};
+}
+
+}  // namespace
 
 ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
                            LogicalCollection* collection)
@@ -109,12 +131,14 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
     if (!writeConcernSlice.isNone()) {
       if (writeConcernSlice.isNumber()) {
         _writeConcern = writeConcernSlice.getNumber<size_t>();
-        if (!isSatellite() && _writeConcern > _replicationFactor) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_BAD_PARAMETER,
-              "writeConcern cannot be larger than replicationFactor (" +
-                  basics::StringUtils::itoa(_writeConcern) + " > " +
-                  basics::StringUtils::itoa(_replicationFactor) + ")");
+        if (!isSatellite() && _writeConcern > _replicationFactor &&
+            ServerState::instance()->isCoordinator()) {
+          res = writeConcernError(
+              _replicationFactor.load(std::memory_order_relaxed),
+              _writeConcern.load(std::memory_order_relaxed));
+          if (res.fail()) {
+            THROW_ARANGO_EXCEPTION(res);
+          }
         }
         if (!isSatellite() && _writeConcern == 0) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -371,45 +395,48 @@ std::string const& ShardingInfo::distributeShardsLike() const noexcept {
 }
 
 size_t ShardingInfo::replicationFactor() const noexcept {
-  TRI_ASSERT(isSatellite() || _writeConcern <= _replicationFactor);
+  TRI_ASSERT(isSatellite() || !ServerState::instance()->isCoordinator() ||
+             _writeConcern <= _replicationFactor);
   return _replicationFactor;
 }
 
 void ShardingInfo::replicationFactor(size_t replicationFactor) {
-  if (!isSatellite() && replicationFactor < _writeConcern) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "replicationFactor cannot be smaller than writeConcern (" +
-            basics::StringUtils::itoa(_replicationFactor) + " < " +
-            basics::StringUtils::itoa(_writeConcern) + ")");
+  if (ServerState::instance()->isCoordinator()) {
+    auto wc = _writeConcern.load(std::memory_order_relaxed);
+    if (!isSatellite() && replicationFactor < wc) {
+      auto res = writeConcernError(replicationFactor, wc);
+      TRI_ASSERT(res.fail());
+      THROW_ARANGO_EXCEPTION(res);
+    }
   }
   _replicationFactor = replicationFactor;
 }
 
 size_t ShardingInfo::writeConcern() const noexcept {
-  TRI_ASSERT(isSatellite() || _writeConcern <= _replicationFactor);
+  TRI_ASSERT(isSatellite() || !ServerState::instance()->isCoordinator() ||
+             _writeConcern <= _replicationFactor);
   return _writeConcern;
 }
 
 void ShardingInfo::writeConcern(size_t writeConcern) {
-  if (!isSatellite() && writeConcern > _replicationFactor) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "writeConcern cannot be larger than replicationFactor (" +
-            basics::StringUtils::itoa(_writeConcern) + " > " +
-            basics::StringUtils::itoa(_replicationFactor) + ")");
+  if (ServerState::instance()->isCoordinator()) {
+    auto rf = _replicationFactor.load(std::memory_order_relaxed);
+    if (!isSatellite() && writeConcern > rf) {
+      auto res = writeConcernError(rf, writeConcern);
+      TRI_ASSERT(res.fail());
+      THROW_ARANGO_EXCEPTION(res);
+    }
   }
   _writeConcern = writeConcern;
 }
 
 void ShardingInfo::setWriteConcernAndReplicationFactor(
     size_t writeConcern, size_t replicationFactor) {
-  if (writeConcern > replicationFactor) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "writeConcern cannot be larger than replicationFactor (" +
-            basics::StringUtils::itoa(writeConcern) + " > " +
-            basics::StringUtils::itoa(replicationFactor) + ")");
+  if (ServerState::instance()->isCoordinator() &&
+      writeConcern > replicationFactor) {
+    auto res = writeConcernError(replicationFactor, writeConcern);
+    TRI_ASSERT(res.fail());
+    THROW_ARANGO_EXCEPTION(res);
   }
   _writeConcern = writeConcern;
   _replicationFactor = replicationFactor;
@@ -499,10 +526,9 @@ Result ShardingInfo::validateShardsAndReplicationFactor(
       uint32_t const maxNumberOfShards = cl.maxNumberOfShards();
       uint32_t numberOfShards = numberOfShardsSlice.getNumber<uint32_t>();
       if (maxNumberOfShards > 0 && numberOfShards > maxNumberOfShards) {
-        return Result(
-            TRI_ERROR_CLUSTER_TOO_MANY_SHARDS,
-            std::string("too many shards. maximum number of shards is ") +
-                std::to_string(maxNumberOfShards));
+        return {TRI_ERROR_CLUSTER_TOO_MANY_SHARDS,
+                absl::StrCat("too many shards. maximum number of shards is ",
+                             maxNumberOfShards)};
       }
 
       TRI_ASSERT((cl.forceOneShard() && numberOfShards <= 1) ||
@@ -517,9 +543,9 @@ Result ShardingInfo::validateShardsAndReplicationFactor(
       // both attributes set. now check if they have different values
       if (basics::VelocyPackHelper::compare(
               writeConcernSlice, minReplicationFactorSlice, false) != 0) {
-        return Result(
+        return {
             TRI_ERROR_BAD_PARAMETER,
-            "got ambiguous values for writeConcern and minReplicationFactor");
+            "got ambiguous values for writeConcern and minReplicationFactor"};
       }
     }
 
@@ -534,11 +560,11 @@ Result ShardingInfo::validateShardsAndReplicationFactor(
           if (replicationFactorProbe == 0) {
             // TODO: Which configuration for satellites are valid regarding
             // minRepl and writeConcern valid for creating a SatelliteCollection
-            return Result();
+            return {};
           }
           if (replicationFactorProbe < 0) {
-            return Result(TRI_ERROR_BAD_PARAMETER,
-                          "invalid value for replicationFactor");
+            return {TRI_ERROR_BAD_PARAMETER,
+                    "invalid value for replicationFactor"};
           }
 
           uint32_t const minReplicationFactor = cl.minReplicationFactor();
@@ -550,18 +576,16 @@ Result ShardingInfo::validateShardsAndReplicationFactor(
           // and max values
           if (replicationFactor > maxReplicationFactor &&
               maxReplicationFactor > 0) {
-            return Result(
-                TRI_ERROR_BAD_PARAMETER,
-                std::string("replicationFactor must not be higher than "
-                            "maximum allowed replicationFactor (") +
-                    std::to_string(maxReplicationFactor) + ")");
+            return {TRI_ERROR_BAD_PARAMETER,
+                    absl::StrCat("replicationFactor must not be higher than "
+                                 "maximum allowed replicationFactor (",
+                                 maxReplicationFactor, ")")};
           } else if (replicationFactor < minReplicationFactor &&
                      minReplicationFactor > 0) {
-            return Result(
-                TRI_ERROR_BAD_PARAMETER,
-                std::string("replicationFactor must not be lower than "
-                            "minimum allowed replicationFactor (") +
-                    std::to_string(minReplicationFactor) + ")");
+            return {TRI_ERROR_BAD_PARAMETER,
+                    absl::StrCat("replicationFactor must not be lower than "
+                                 "minimum allowed replicationFactor (",
+                                 minReplicationFactor, ")")};
           }
 
           // make sure we have enough servers available for the replication
@@ -582,20 +606,21 @@ Result ShardingInfo::validateShardsAndReplicationFactor(
           if (writeConcernSlice.isNumber()) {
             int64_t writeConcern = writeConcernSlice.getNumber<int64_t>();
             if (writeConcern <= 0) {
-              return Result(TRI_ERROR_BAD_PARAMETER,
-                            "invalid value for writeConcern");
+              return {TRI_ERROR_BAD_PARAMETER,
+                      "invalid value for writeConcern"};
             }
             if (ServerState::instance()->isCoordinator() &&
                 static_cast<size_t>(writeConcern) >
                     cl.clusterInfo().getCurrentDBServers().size()) {
-              return Result(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
+              return {TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS};
             }
 
             if (replicationFactorSlice.isNumber() &&
                 writeConcern > replicationFactorSlice.getNumber<int64_t>()) {
-              return Result(
-                  TRI_ERROR_BAD_PARAMETER,
-                  "writeConcern must not be higher than replicationFactor");
+              auto res = writeConcernError(
+                  replicationFactorSlice.getNumber<int64_t>(), writeConcern);
+              TRI_ASSERT(res.fail());
+              return res;
             }
           }
         }
@@ -603,7 +628,7 @@ Result ShardingInfo::validateShardsAndReplicationFactor(
     }
   }
 
-  return Result();
+  return {};
 }
 
 template<typename T>
