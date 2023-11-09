@@ -508,7 +508,7 @@ futures::Future<RestStatus> RestCollectionHandler::handleCommandPut() {
     _activeTrx->addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
     res = co_await _activeTrx->begin();
     if (res.fail()) {
-      generateError(res);
+      generateTransactionError(coll->name(), OperationResult(res, opts), "");
       _activeTrx.reset();
       co_return RestStatus::DONE;
     }

@@ -9261,13 +9261,48 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
               auto* lhs = root->getMember(0);
               auto* rhs = root->getMember(1);
 
-              auto matches = [](AstNode const* lhs, AstNode const* rhs,
-                                IndexNode const* i1, IndexNode const* i2) {
+              auto matches = [&plan](AstNode const* lhs, AstNode const* rhs,
+                                     IndexNode const* i1, IndexNode const* i2) {
                 std::pair<Variable const*,
                           std::vector<arangodb::basics::AttributeName>>
                     usedVar;
+                LOG_INDEX_OPTIMIZER_RULE
+                    << "called with i1: " << i1->outVariable()->name
+                    << ", i2: " << i2->outVariable()->name
+                    << ", lhs: " << lhs->getTypeString()
+                    << ", rhs: " << rhs->getTypeString();
+                if (lhs->type == NODE_TYPE_REFERENCE) {
+                  Variable const* other =
+                      static_cast<Variable const*>(lhs->getData());
+                  LOG_INDEX_OPTIMIZER_RULE << "lhs is a reference to "
+                                           << other->name << ". looking for "
+                                           << i1->outVariable()->name;
+                  auto setter = plan->getVarSetBy(other->id);
+                  if (setter != nullptr &&
+                      (setter->getType() == EN::INDEX ||
+                       setter->getType() == EN::ENUMERATE_COLLECTION)) {
+                    LOG_INDEX_OPTIMIZER_RULE << "lhs is set by index|enum";
+                    auto* documentNode =
+                        ExecutionNode::castTo<DocumentProducingNode*>(setter);
+                    auto const& p = documentNode->projections();
+                    for (size_t i = 0; i < p.size(); ++i) {
+                      if (p[i].path.get()[0] ==
+                          i1->getIndexes()[0]->fields()[0][0].name) {
+                        usedVar.first = documentNode->outVariable();
+                        for (auto const& it : p[i].path.get()) {
+                          usedVar.second.emplace_back(it);
+                        }
+                        LOG_INDEX_OPTIMIZER_RULE << "lhs matched outvariable "
+                                                 << usedVar.first->name << ", "
+                                                 << p[i].path.get();
+                        break;
+                      }
+                    }
+                  }
+                }
 
-                if (!lhs->isAttributeAccessForVariable(
+                if (usedVar.first == nullptr &&
+                    !lhs->isAttributeAccessForVariable(
                         usedVar, /*allowIndexedAccess*/ false)) {
                   // lhs is not an attribute access
                   return false;
@@ -9278,7 +9313,42 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                   return false;
                 }
                 // lhs matches i1's FOR loop index field
-                if (!rhs->isAttributeAccessForVariable(
+
+                usedVar.first = nullptr;
+                usedVar.second.clear();
+
+                if (rhs->type == NODE_TYPE_REFERENCE) {
+                  Variable const* other =
+                      static_cast<Variable const*>(rhs->getData());
+                  LOG_INDEX_OPTIMIZER_RULE << "rhs is a reference to "
+                                           << other->name << ". looking for "
+                                           << i2->outVariable()->name;
+                  auto setter = plan->getVarSetBy(other->id);
+                  if (setter != nullptr &&
+                      (setter->getType() == EN::INDEX ||
+                       setter->getType() == EN::ENUMERATE_COLLECTION)) {
+                    LOG_INDEX_OPTIMIZER_RULE << "rhs is set by index|enum";
+                    auto* documentNode =
+                        ExecutionNode::castTo<DocumentProducingNode*>(setter);
+                    auto const& p = documentNode->projections();
+                    for (size_t i = 0; i < p.size(); ++i) {
+                      if (p[i].path.get()[0] ==
+                          i2->getIndexes()[0]->fields()[0][0].name) {
+                        usedVar.first = documentNode->outVariable();
+                        for (auto const& it : p[i].path.get()) {
+                          usedVar.second.emplace_back(it);
+                        }
+                        LOG_INDEX_OPTIMIZER_RULE << "rhs matched outvariable "
+                                                 << usedVar.first->name << ", "
+                                                 << p[i].path.get();
+                        break;
+                      }
+                    }
+                  }
+                }
+
+                if (usedVar.first == nullptr &&
+                    !rhs->isAttributeAccessForVariable(
                         usedVar, /*allowIndexedAccess*/ false)) {
                   // rhs is not an attribute access
                   return false;
@@ -9400,11 +9470,12 @@ class AttributeAccessReplacer final
   AttributeAccessReplacer(ExecutionNode const* self,
                           Variable const* searchVariable,
                           std::span<std::string_view> attribute,
-                          Variable const* replaceVariable)
+                          Variable const* replaceVariable, size_t index)
       : _self(self),
         _searchVariable(searchVariable),
         _attribute(attribute),
-        _replaceVariable(replaceVariable) {
+        _replaceVariable(replaceVariable),
+        _index(index) {
     TRI_ASSERT(_searchVariable != nullptr);
     TRI_ASSERT(!_attribute.empty());
     TRI_ASSERT(_replaceVariable != nullptr);
@@ -9412,7 +9483,7 @@ class AttributeAccessReplacer final
 
   bool before(ExecutionNode* en) override final {
     en->replaceAttributeAccess(_self, _searchVariable, _attribute,
-                               _replaceVariable);
+                               _replaceVariable, _index);
 
     // always continue
     return false;
@@ -9423,23 +9494,19 @@ class AttributeAccessReplacer final
   Variable const* _searchVariable;
   std::span<std::string_view> _attribute;
   Variable const* _replaceVariable;
+  size_t _index;
 };
 
 void arangodb::aql::optimizeProjections(Optimizer* opt,
                                         std::unique_ptr<ExecutionPlan> plan,
                                         OptimizerRule const& rule) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
-  plan->findNodesOfType(nodes, {EN::INDEX, EN::ENUMERATE_COLLECTION}, true);
+  plan->findNodesOfType(nodes, {EN::INDEX, EN::ENUMERATE_COLLECTION, EN::JOIN},
+                        true);
 
-  bool modified = false;
-  for (auto* n : nodes) {
-    auto* documentNode = ExecutionNode::castTo<DocumentProducingNode*>(n);
-    modified |= documentNode->recalculateProjections(plan.get());
-
-    if (n->getType() != EN::ENUMERATE_COLLECTION) {
-      continue;
-    }
-    auto& p = documentNode->projections();
+  auto replace = [&plan](ExecutionNode* self, Projections& p,
+                         Variable const* searchVariable, size_t index) {
+    bool modified = false;
     std::vector<std::string_view> path;
     for (size_t i = 0; i < p.size(); ++i) {
       TRI_ASSERT(p[i].variable == nullptr);
@@ -9449,10 +9516,32 @@ void arangodb::aql::optimizeProjections(Optimizer* opt,
         path.emplace_back(it);
       }
 
-      AttributeAccessReplacer replacer(n, documentNode->outVariable(),
-                                       std::span(path), p[i].variable);
+      AttributeAccessReplacer replacer(self, searchVariable, std::span(path),
+                                       p[i].variable, index);
       plan->root()->walk(replacer);
       modified = true;
+    }
+    return modified;
+  };
+
+  bool modified = false;
+  for (auto* n : nodes) {
+    if (n->getType() == EN::JOIN) {
+      // JoinNode. optimize projections in all parts
+      auto* joinNode = ExecutionNode::castTo<JoinNode*>(n);
+      size_t index = 0;
+      for (auto& it : joinNode->getIndexInfos()) {
+        modified |= replace(n, it.projections, it.outVariable, index++);
+      }
+    } else {
+      // IndexNode or EnumerateCollectionNode.
+      TRI_ASSERT(n->getType() == EN::ENUMERATE_COLLECTION ||
+                 n->getType() == EN::INDEX);
+
+      auto* documentNode = ExecutionNode::castTo<DocumentProducingNode*>(n);
+      modified |= documentNode->recalculateProjections(plan.get());
+      modified |= replace(n, documentNode->projections(),
+                          documentNode->outVariable(), /*index*/ 0);
     }
   }
   opt->addPlan(std::move(plan), rule, modified);

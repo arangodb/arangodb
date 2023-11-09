@@ -1073,10 +1073,6 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(
 }
 
 std::shared_ptr<Index> LogicalCollection::lookupIndex(VPackSlice info) const {
-  if (!info.isObject()) {
-    // Compatibility with old v8-vocindex.
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
   return getPhysical()->lookupIndex(info);
 }
 

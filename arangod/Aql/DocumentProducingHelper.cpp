@@ -167,7 +167,7 @@ IndexIterator::DocumentCallback aql::buildDocumentCallback(
       DocumentProducingCallbackVariant::DocumentCopy{}, context);
 }
 
-template<bool checkUniqueness>
+template<bool checkUniqueness, bool produceResult>
 IndexIterator::LocalDocumentIdCallback aql::getNullCallback(
     DocumentProducingFunctionContext& context) {
   TRI_ASSERT(!context.hasFilter());
@@ -184,11 +184,15 @@ IndexIterator::LocalDocumentIdCallback aql::getNullCallback(
 
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
-    RegisterId registerId = context.getOutputRegister();
-    // TODO: optimize this within the register planning mechanism?
-    TRI_ASSERT(!output.isFull());
-    output.cloneValueInto(registerId, input, AqlValue(AqlValueHintNull()));
-    TRI_ASSERT(output.produced());
+    if constexpr (produceResult) {
+      RegisterId registerId = context.getOutputRegister();
+      // TODO: optimize this within the register planning mechanism?
+      TRI_ASSERT(!output.isFull());
+      output.cloneValueInto(registerId, input, AqlValue(AqlValueHintNull()));
+      TRI_ASSERT(output.produced());
+    } else {
+      output.handleEmptyRow(input);
+    }
     output.advanceRow();
 
     return true;
@@ -265,11 +269,7 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _filter(infos.getFilter()),
       _projections(infos.getProjections()),
       _filterProjections(infos.getFilterProjections()),
-#if 0
-      // TODO: IndexNodes currently don't write their projections
-      // into individual registers. this will be implemented soon.
       _projectionsForRegisters(_projections),  // do a full copy first
-#endif
       _resourceMonitor(infos.getResourceMonitor()),
       _numScanned(0),
       _numFiltered(0),
@@ -280,15 +280,9 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
                        infos.hasMultipleExpansions()),
       _allowCoveringIndexOptimization(false),  // can be updated later
       _isLastIndex(false) {
-#if 0
-      // TODO: IndexNodes currently don't write their projections
-      // into individual registers. this will be implemented soon.
   // now erase all projections for which there is no output register
-  _projectionsForRegisters.erase([](Projections::Projection& p) {
-    return p.variable == nullptr;
-  });
-#endif
-  TRI_ASSERT(_projectionsForRegisters.empty());
+  _projectionsForRegisters.erase(
+      [](Projections::Projection& p) { return p.variable == nullptr; });
 
   // build ExpressionContext for filtering if we need one
   if (hasFilter()) {
@@ -569,9 +563,6 @@ IndexIterator::CoveringCallback aql::getCallback(
         output.moveValueInto(registerId, input, s);
       } else {
         // write projections into individual output registers
-        // currently this code cannot be reached, because IndexNode do not
-        // yet support writing projections into individual registers
-        TRI_ASSERT(false);
         context.getProjectionsForRegisters().produceFromIndex(
             context.getBuilder(), covering, context.getTrxPtr(),
             [&](Variable const* variable, velocypack::Slice slice) {
@@ -592,7 +583,7 @@ IndexIterator::CoveringCallback aql::getCallback(
   };
 }
 
-template<bool checkUniqueness, bool skip>
+template<bool checkUniqueness, bool skip, bool produceResult>
 IndexIterator::CoveringCallback aql::getCallback(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context) {
@@ -607,6 +598,11 @@ IndexIterator::CoveringCallback aql::getCallback(
       }
     }
 
+    // skip and produceResult cannot be true at the same time
+    if constexpr (skip) {
+      static_assert(!produceResult);
+    }
+
     context.incrScanned();
 
     if (!context.checkFilter(&covering)) {
@@ -615,24 +611,24 @@ IndexIterator::CoveringCallback aql::getCallback(
     }
 
     if constexpr (!skip) {
-      // read the full document from the storage engine only now,
-      // after checking the filter condition
-      auto cb = [&](LocalDocumentId token, aql::DocumentData&& v,
-                    VPackSlice s) {
-        OutputAqlItemRow& output = context.getOutputRow();
-        TRI_ASSERT(!output.isFull());
+      if constexpr (produceResult) {
+        // read the full document from the storage engine only now,
+        // after checking the filter condition
+        auto cb = [&](LocalDocumentId token, aql::DocumentData&& v,
+                      VPackSlice s) {
+          OutputAqlItemRow& output = context.getOutputRow();
+          TRI_ASSERT(!output.isFull());
 
-        RegisterId registerId = context.getOutputRegister();
-        InputAqlItemRow const& input = context.getInputRow();
+          RegisterId registerId = context.getOutputRegister();
+          InputAqlItemRow const& input = context.getInputRow();
 
-        if (context.getProjections().empty()) {
-          if (v) {
-            output.moveValueInto(registerId, input, &v);
-          } else {
-            output.moveValueInto(registerId, input, s);
-          }
-        } else {
-          if (context.getProjectionsForRegisters().empty()) {
+          if (context.getProjections().empty()) {
+            if (v) {
+              output.moveValueInto(registerId, input, &v);
+            } else {
+              output.moveValueInto(registerId, input, s);
+            }
+          } else if (context.getProjectionsForRegisters().empty()) {
             // write all projections combined into the global output register
             // recycle our Builder object
             VPackBuilder& objectBuilder = context.getBuilder();
@@ -649,9 +645,6 @@ IndexIterator::CoveringCallback aql::getCallback(
             output.moveValueInto(registerId, input, projectedSlice);
           } else {
             // write projections into individual output registers
-            // currently this code cannot be reached, because IndexNode do not
-            // yet support writing projections into individual registers
-            TRI_ASSERT(false);
             context.getProjectionsForRegisters().produceFromDocument(
                 context.getBuilder(), s, context.getTrxPtr(),
                 [&](Variable const* variable, velocypack::Slice slice) {
@@ -664,15 +657,22 @@ IndexIterator::CoveringCallback aql::getCallback(
                   output.moveValueInto(registerId, input, slice);
                 });
           }
-        }
 
+          TRI_ASSERT(output.produced());
+          output.advanceRow();
+
+          return false;
+        };
+        context.getPhysical().lookup(
+            context.getTrxPtr(), token, cb,
+            {.readOwnWrites = static_cast<bool>(context.getReadOwnWrites())});
+      } else {
+        OutputAqlItemRow& output = context.getOutputRow();
+        InputAqlItemRow const& input = context.getInputRow();
+        output.handleEmptyRow(input);
         TRI_ASSERT(output.produced());
         output.advanceRow();
-        return false;
-      };
-      context.getPhysical().lookup(
-          context.getTrxPtr(), token, cb,
-          {.readOwnWrites = static_cast<bool>(context.getReadOwnWrites())});
+      }
     }
 
     return true;
@@ -692,16 +692,24 @@ template IndexIterator::CoveringCallback aql::getCallback<true, true>(
     DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
     DocumentProducingFunctionContext& context);
 
-template IndexIterator::CoveringCallback aql::getCallback<false, false>(
+// there are only six valid instantiations for WithFilterCoveredByIndex,
+// because if skip = true, then we can't have produceResult = true.
+template IndexIterator::CoveringCallback aql::getCallback<false, false, false>(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context);
-template IndexIterator::CoveringCallback aql::getCallback<true, false>(
+template IndexIterator::CoveringCallback aql::getCallback<true, false, false>(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context);
-template IndexIterator::CoveringCallback aql::getCallback<false, true>(
+template IndexIterator::CoveringCallback aql::getCallback<false, true, false>(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context);
-template IndexIterator::CoveringCallback aql::getCallback<true, true>(
+template IndexIterator::CoveringCallback aql::getCallback<true, true, false>(
+    DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
+    DocumentProducingFunctionContext& context);
+template IndexIterator::CoveringCallback aql::getCallback<false, false, true>(
+    DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
+    DocumentProducingFunctionContext& context);
+template IndexIterator::CoveringCallback aql::getCallback<true, false, true>(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context);
 
@@ -731,10 +739,14 @@ template IndexIterator::DocumentCallback aql::getCallback<true, true>(
     DocumentProducingCallbackVariant::DocumentCopy,
     DocumentProducingFunctionContext& context);
 
-template IndexIterator::LocalDocumentIdCallback aql::getNullCallback<false>(
-    DocumentProducingFunctionContext& context);
-template IndexIterator::LocalDocumentIdCallback aql::getNullCallback<true>(
-    DocumentProducingFunctionContext& context);
+template IndexIterator::LocalDocumentIdCallback
+aql::getNullCallback<false, false>(DocumentProducingFunctionContext& context);
+template IndexIterator::LocalDocumentIdCallback
+aql::getNullCallback<true, false>(DocumentProducingFunctionContext& context);
+template IndexIterator::LocalDocumentIdCallback
+aql::getNullCallback<false, true>(DocumentProducingFunctionContext& context);
+template IndexIterator::LocalDocumentIdCallback
+aql::getNullCallback<true, true>(DocumentProducingFunctionContext& context);
 
 template IndexIterator::DocumentCallback aql::buildDocumentCallback<
     false, false>(DocumentProducingFunctionContext& context);
