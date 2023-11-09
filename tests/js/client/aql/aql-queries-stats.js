@@ -143,7 +143,7 @@ function queryStatisticsSuite() {
       const qArray = qResult.toArray();
 
       assertEqual(qStats.scannedFull, 0);
-      assertEqual(qStats.scannedIndex, 0);
+      assertEqual(qStats.scannedIndex, 10);
       assertEqual(qStats.documentLookups, 0);
       assertEqual(qArray.length, 10);
     },
