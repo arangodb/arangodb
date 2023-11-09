@@ -81,6 +81,7 @@ struct JoinExecutorInfos {
     Projections projections;
 
     bool hasProjectionsForRegisters = false;
+    bool producesOutput = true;
 
     struct FilterInformation {
       // post filter expression

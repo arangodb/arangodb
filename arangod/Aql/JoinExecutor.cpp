@@ -305,6 +305,11 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
           for (std::size_t k = 0; k < docIds.size(); k++) {
             auto& idx = _infos.indexes[k];
 
+            if (!idx.producesOutput) {
+              output.cloneValueInto(_infos.indexes[k].documentOutputRegister,
+                                    _currentRow, AqlValue(AqlValueHintNull()));
+              continue;
+            }
             auto docProduceCallback = [&](auto docPtr) {
               auto doc = extractSlice(docPtr);
               if (idx.projections.empty()) {

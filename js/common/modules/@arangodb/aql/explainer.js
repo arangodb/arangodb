@@ -2090,10 +2090,12 @@ function processQuery(query, explain, planIndex) {
           filter = '   ' + keyword('FILTER') + ' ' + buildExpression(info.filter);
         }
         let accessString = '';
-        if (!info.indexCoversProjections) {
+        if (!info.indexCoversProjections && info.producesOutput) {
           accessString += "index scan + document lookup";
-        } else {
+        } else if (info.indexCoversProjections) {
           accessString += "index scan";
+        } else {
+          accessString += "index scan only";
         }
         if (info.projections) {
           accessString += projections(info, "projections", "projections");

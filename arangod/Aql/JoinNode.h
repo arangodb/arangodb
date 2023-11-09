@@ -66,6 +66,7 @@ class JoinNode : public ExecutionNode {
     Projections projections;
     Projections filterProjections;
     bool usedAsSatellite;  // TODO maybe use CollectionAccess class
+    bool producesOutput;
   };
 
   JoinNode(ExecutionPlan* plan, ExecutionNodeId id,
