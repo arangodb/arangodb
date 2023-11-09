@@ -168,48 +168,65 @@ std::shared_ptr<LogAppender> LogAppender::buildAppender(
 void LogAppender::logGlobal(LogGroup const& group, LogMessage const& message) {
   READ_LOCKER(guard, _appendersLock);
 
-  auto& appenders = _globalAppenders[group.id()];
+  try {
+    auto& appenders = _globalAppenders.at(group.id());
 
-  // append to global appenders first
-  for (auto const& appender : appenders) {
-    appender->logMessageGuarded(message);
+    // append to global appenders first
+    for (auto const& appender : appenders) {
+      appender->logMessageGuarded(message);
+    }
+  } catch (std::out_of_range const&) {
+    // no global appender for this group
+    TRI_ASSERT(false) << "no global appender for group " << group.id();
+    // This should never happen, however if it does we should not crash
+    // but we also cannot log anything, as we are the logger.
+    return;
   }
 }
 
 void LogAppender::log(LogGroup const& group, LogMessage const& message) {
   // output to appenders
-  auto& topicsMap = _topics2appenders[group.id()];
-  auto output = [&topicsMap](LogGroup const& group, LogMessage const& message,
-                             size_t n) -> bool {
+  READ_LOCKER(guard, _appendersLock);
+  try {
+
+    auto& topicsMap = _topics2appenders.at(group.id());
+    auto output = [&topicsMap](LogGroup const& group, LogMessage const& message,
+                               size_t n) -> bool {
+      bool shown = false;
+
+      auto const& it = topicsMap.find(n);
+      if (it != topicsMap.end() && !it->second.empty()) {
+        auto const& appenders = it->second;
+
+        for (auto const& appender : appenders) {
+          appender->logMessageGuarded(message);
+        }
+        shown = true;
+      }
+
+      return shown;
+    };
+
     bool shown = false;
 
-    auto const& it = topicsMap.find(n);
-    if (it != topicsMap.end() && !it->second.empty()) {
-      auto const& appenders = it->second;
+    // try to find a topic-specific appender
+    size_t topicId = message._topicId;
 
-      for (auto const& appender : appenders) {
-        appender->logMessageGuarded(message);
-      }
-      shown = true;
+
+    if (topicId < LogTopic::MAX_LOG_TOPICS) {
+      shown = output(group, message, topicId);
     }
 
-    return shown;
-  };
-
-  bool shown = false;
-
-  // try to find a topic-specific appender
-  size_t topicId = message._topicId;
-
-  READ_LOCKER(guard, _appendersLock);
-
-  if (topicId < LogTopic::MAX_LOG_TOPICS) {
-    shown = output(group, message, topicId);
-  }
-
-  // otherwise use the general topic appender
-  if (!shown) {
-    output(group, message, LogTopic::MAX_LOG_TOPICS);
+    // otherwise use the general topic appender
+    if (!shown) {
+      output(group, message, LogTopic::MAX_LOG_TOPICS);
+    }
+  } catch (std::out_of_range const&) {
+    // no topic 2 appenders entry for this group.
+    TRI_ASSERT(false) << "no topic 2 appender match for group " << group.id();
+    // This should never happen, however if it does we should not crash
+    // but we also cannot log anything, as we are the logger.
+    return;
   }
 }
 
@@ -309,12 +326,20 @@ bool LogAppender::haveAppenders(LogGroup const& group, size_t topicId) {
   // possible. If this actually causes performance issues we have to think about
   // other solutions.
   READ_LOCKER(guard, _appendersLock);
-  auto const& appenders = _topics2appenders[group.id()];
-  auto haveTopicAppenders = [&appenders](size_t topicId) {
-    auto it = appenders.find(topicId);
-    return it != appenders.end() && !it->second.empty();
-  };
-  return haveTopicAppenders(topicId) ||
-         haveTopicAppenders(LogTopic::MAX_LOG_TOPICS) ||
-         !_globalAppenders[group.id()].empty();
+  try {
+    auto const& appenders = _topics2appenders[group.id()];
+    auto haveTopicAppenders = [&appenders](size_t topicId) {
+      auto it = appenders.find(topicId);
+      return it != appenders.end() && !it->second.empty();
+    };
+    return haveTopicAppenders(topicId) ||
+           haveTopicAppenders(LogTopic::MAX_LOG_TOPICS) ||
+           !_globalAppenders[group.id()].empty();
+  } catch (std::out_of_range const&) {
+    // no topic 2 appenders entry for this group.
+    TRI_ASSERT(false) << "no topic 2 appender match for group " << group.id();
+    // This should never happen, however if it does we should not crash
+    // but we also cannot log anything, as we are the logger.
+    return false;
+  }
 }
