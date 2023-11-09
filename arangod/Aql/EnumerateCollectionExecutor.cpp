@@ -189,7 +189,6 @@ EnumerateCollectionExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
 
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumFiltered() == 0);
-  TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumLookups() == 0);
   while ((inputRange.hasDataRow() || _cursorHasMore) && call.needSkipMore()) {
     uint64_t skipped = 0;
 
@@ -276,7 +275,6 @@ EnumerateCollectionExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumFiltered() == 0);
-  TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumLookups() == 0);
   _documentProducingFunctionContext.setOutputRow(&output);
 
   // validate that the output pointer in documentProducingFunctionContext is the
