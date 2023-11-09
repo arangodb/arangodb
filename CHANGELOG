@@ -1,4 +1,4 @@
-v3.11.5 (XXXX-XX-XX)
+v3.11.5 (2023-11-09)
 --------------------
 
 * Fixed a problem in ReadWriteLock which could prevent waiting readers from
