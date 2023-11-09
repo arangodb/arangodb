@@ -87,7 +87,8 @@ Snapshot::Snapshot(SnapshotId id, GlobalLogIdentifier gid,
       _state(state::Ongoing{}),
       _guardedData(std::move(databaseSnapshot), std::move(shards)),
       loggerContext(loggerContext.with<logContextKeySnapshotId>(getId())) {
-  LOG_CTX("d6c7f", DEBUG, loggerContext) << "Created snapshot with id " << _id;
+  LOG_CTX("d6c7f", DEBUG, this->loggerContext)
+      << "Created snapshot with id " << _id;
 }
 
 auto Snapshot::fetch() -> ResultT<SnapshotBatch> {
@@ -339,6 +340,11 @@ auto Snapshot::generateBatch(state::Ongoing const&) -> ResultT<SnapshotBatch> {
 
     ++data.statistics.batchesSent;
     data.statistics.bytesSent += payloadSize;
+
+    TRI_ASSERT(data.statistics.shards.contains(shardId))
+        << getId() << " " << shardId;
+    data.statistics.shards[shardId].docsSent += payloadLen;
+
     data.statistics.lastBatchSent = data.statistics.lastUpdated =
         std::chrono::system_clock::now();
 

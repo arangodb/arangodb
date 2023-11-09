@@ -35,7 +35,9 @@
 #include "Replication2/Mocks/DocumentStateMocks.h"
 #include "Replication2/Mocks/MockVocbase.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshotInspectors.h"
 #include "Transaction/Manager.h"
+#include "VocBase/LogicalCollection.h"
 
 #include "gmock/gmock.h"
 
@@ -254,5 +256,18 @@ struct DocumentStateMachineTest : testing::Test {
                                                                       0};
   const velocypack::SharedSlice coreParamsSlice = coreParams.toSharedSlice();
   const std::string leaderId = "leader";
+  const std::vector<std::shared_ptr<LogicalCollection>> logicalCollections{};
+  const LoggerContext loggerContext =
+      handlersFactoryMock->makeRealLoggerContext(globalId);
+
+  auto makeLogicalCollection(ShardID name)
+      -> std::shared_ptr<LogicalCollection> {
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add("name", std::move(name));
+    builder.close();
+    return std::make_shared<LogicalCollection>(vocbaseMock, builder.slice(),
+                                               true);
+  }
 };
 }  // namespace arangodb::replication2::tests

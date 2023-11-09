@@ -24,8 +24,11 @@
 
 #include <gmock/gmock.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/VocbaseInfo.h"
+#include "Mocks/StorageEngineMock.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 namespace arangodb::replication2::tests {
 
@@ -47,9 +50,16 @@ struct MockVocbase : TRI_vocbase_t {
   explicit MockVocbase(ArangodServer& server, std::string const& name,
                        std::uint64_t id)
       : TRI_vocbase_t(TRI_vocbase_t::mockConstruct,
-                      createDatabaseInfo(server, name, id)) {}
+                      createDatabaseInfo(server, name, id)),
+        storageEngine(server) {
+    server.addFeature<arangodb::EngineSelectorFeature>();
+    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
+        &storageEngine);
+  }
 
   virtual ~MockVocbase() = default;
+
+  StorageEngineMock storageEngine;
 };
 
 }  // namespace arangodb::replication2::tests
