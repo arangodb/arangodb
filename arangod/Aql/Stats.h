@@ -123,12 +123,7 @@ inline ExecutionStats& operator+=(
 class JoinStats {
  public:
   JoinStats() noexcept
-      : _scannedIndex(0),
-        _filtered(0),
-        _documentLookups(0),
-        _cacheHits(0),
-        _cacheMisses(0),
-        _seeks(0) {}
+      : _scannedIndex(0), _filtered(0), _documentLookups(0), _seeks(0) {}
 
   void incrScannedIndex(std::uint64_t value = 1) noexcept {
     _scannedIndex += value;
@@ -136,10 +131,6 @@ class JoinStats {
   void incrFiltered(std::uint64_t value = 1) noexcept { _filtered += value; }
   void incrDocumentLookups(std::uint64_t value = 1) noexcept {
     _documentLookups += value;
-  }
-  void incrCacheHits(std::uint64_t value = 1) noexcept { _cacheHits += value; }
-  void incrCacheMisses(std::uint64_t value = 1) noexcept {
-    _cacheMisses += value;
   }
   void incrSeeks(std::uint64_t value = 1) noexcept { _seeks += value; }
 
@@ -150,20 +141,12 @@ class JoinStats {
   [[nodiscard]] std::uint64_t getDocumentLookups() const noexcept {
     return _documentLookups;
   }
-  [[nodiscard]] std::uint64_t getCacheHits() const noexcept {
-    return _cacheHits;
-  }
-  [[nodiscard]] std::uint64_t getCacheMisses() const noexcept {
-    return _cacheMisses;
-  }
   [[nodiscard]] std::uint64_t getSeeks() const noexcept { return _seeks; }
 
   void operator+=(JoinStats const& stats) noexcept {
     _scannedIndex += stats._scannedIndex;
     _filtered += stats._filtered;
     _documentLookups += stats._documentLookups;
-    _cacheHits += stats._cacheHits;
-    _cacheMisses += stats._cacheMisses;
     _seeks += stats._seeks;
   }
 
@@ -181,8 +164,6 @@ inline ExecutionStats& operator+=(ExecutionStats& executionStats,
   executionStats.scannedIndex += joinStats.getScannedIndex();
   executionStats.filtered += joinStats.getFiltered();
   executionStats.documentLookups += joinStats.getDocumentLookups();
-  executionStats.cacheHits += joinStats.getCacheHits();
-  executionStats.cacheMisses += joinStats.getCacheMisses();
   // TODO: think about the naming here for seek (RocksDB iterator seek calls)
   executionStats.seeks += joinStats.getSeeks();
   return executionStats;
