@@ -240,7 +240,7 @@ TEST(ReadWriteLockTest, testTryLockWriteForWakeUpReaders) {
   threads.emplace_back(
       [&]() {
         s.waitForStart();
-        auto timeout = std::chrono::microseconds(100);
+        auto timeout = std::chrono::milliseconds(100);
         auto gotLock = lock.tryLockWriteFor(timeout);
         EXPECT_FALSE(gotLock)
             << "We got a write lock although the read lock was held";
@@ -266,9 +266,10 @@ TEST(ReadWriteLockTest, testTryLockWriteForWakeUpReaders) {
         return;
       }
     }
-    // NOTE: This time out is twice as high as the WRITE timeout.
-    // So we need to be woken up if the Writer is released.
-    auto timeout = std::chrono::microseconds(200);
+    // NOTE: This time out is **much larger** than the write timeout.
+    // So we need to be woken up if the Writer is released. If not
+    // (old buggy behaviour), we will still wait for 30 seconds:
+    auto timeout = std::chrono::seconds(30);
     auto gotLock = lock.tryLockReadFor(timeout);
     EXPECT_TRUE(gotLock)
         << "We did not get the read lock after the write lock got into timeout";
