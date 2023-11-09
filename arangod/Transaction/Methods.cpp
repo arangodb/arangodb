@@ -2637,7 +2637,7 @@ Future<OperationResult> transaction::Methods::truncateCoordinator(
 
 /// @brief remove all documents in a collection, local
 Future<OperationResult> transaction::Methods::truncateLocal(
-    std::string const& collectionName, OperationOptions& options) {
+    std::string collectionName, OperationOptions options) {
   DataSourceId cid =
       co_await addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
   TransactionCollection* trxColl = trxCollection(cid);

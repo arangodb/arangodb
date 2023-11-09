@@ -497,8 +497,8 @@ class Methods {
                                               OperationOptions& options,
                                               MethodsApi api);
 
-  Future<OperationResult> truncateLocal(std::string const& collectionName,
-                                        OperationOptions& options);
+  Future<OperationResult> truncateLocal(std::string collectionName,
+                                        OperationOptions options);
 
  protected:
   // The internal methods distinguish between the synchronous and asynchronous
