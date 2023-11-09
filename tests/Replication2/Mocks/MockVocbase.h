@@ -25,6 +25,7 @@
 #include <gmock/gmock.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/VocbaseInfo.h"
 #include "Mocks/StorageEngineMock.h"
@@ -36,7 +37,7 @@ struct MockCreateDatabaseInfo : CreateDatabaseInfo {
   MockCreateDatabaseInfo(ArangodServer& server, ExecContext const& execContext,
                          std::string const& name, std::uint64_t id)
       : CreateDatabaseInfo(CreateDatabaseInfo::mockConstruct, server,
-                           execContext, name, id) {}
+                           execContext, name, id, replication::Version::TWO) {}
 
   virtual ~MockCreateDatabaseInfo() = default;
 };
@@ -58,6 +59,19 @@ struct MockVocbase : TRI_vocbase_t {
   }
 
   virtual ~MockVocbase() = default;
+
+  auto registerLogicalCollection(std::string name, LogId logId) {
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add("name", std::move(name));
+    builder.add("groupId", 1234);
+    builder.add("replicatedStateId", logId);
+    builder.close();
+    auto col =
+        std::make_shared<LogicalCollection>(*this, builder.slice(), false);
+    storageEngine.registerCollection(*this, col);
+    return col;
+  }
 
   StorageEngineMock storageEngine;
 };

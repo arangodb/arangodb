@@ -262,6 +262,8 @@ struct DocumentStateMachineTest : testing::Test {
 
   auto makeLogicalCollection(ShardID name)
       -> std::shared_ptr<LogicalCollection> {
+    // Note that the collection is only created, not registered within the
+    // vocbase.
     VPackBuilder builder;
     builder.openObject();
     builder.add("name", std::move(name));
