@@ -338,7 +338,9 @@ IndexNode::Strategy IndexNode::strategy() const {
     return Strategy::kLateMaterialized;
   }
 
-  if (!isProduceResult() && !hasFilter()) {
+  bool produceResult = isProduceResult();
+
+  if (!produceResult && !hasFilter()) {
     return Strategy::kNoResult;
   }
 
@@ -349,7 +351,10 @@ IndexNode::Strategy IndexNode::strategy() const {
       return Strategy::kCovering;
     }
     if (filterProjections().usesCoveringIndex(_indexes[0])) {
-      return Strategy::kCoveringFilterOnly;
+      if (produceResult) {
+        return Strategy::kCoveringFilterOnly;
+      }
+      return Strategy::kCoveringFilterScanOnly;
     }
   }
 
@@ -364,6 +369,8 @@ std::string_view IndexNode::strategyName(
       return "no result";
     case Strategy::kCovering:
       return "covering";
+    case Strategy::kCoveringFilterScanOnly:
+      return "covering, filter only, scan only";
     case Strategy::kCoveringFilterOnly:
       return "covering, filter only";
     case Strategy::kDocument:
@@ -437,10 +444,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   // reserved for later blocks.
   RegIdSet writableOutputRegisters;
   auto const& p = projections();
-  if (p.empty()) {
-    // no projections. we produce the full document in outputRegister
-    writableOutputRegisters.emplace(outRegister);
-  } else {
+  if (!p.empty()) {
     // projections. no need to produce the full document.
     // create one register per projection.
     for (size_t i = 0; i < p.size(); ++i) {
@@ -461,12 +465,15 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
 
     // in case we do not have any output registers for the projections,
     // we must write them to the main output register, in a velocypack
-    // object
-    if (writableOutputRegisters.empty()) {
-      writableOutputRegisters.emplace(outRegister);
-    }
+    // object.
+    // this will be handled below by adding the main output register.
   }
-  TRI_ASSERT(!writableOutputRegisters.empty());
+  if (writableOutputRegisters.empty() && (doCount() || isProduceResult())) {
+    // counting also needs an output register.
+    writableOutputRegisters.emplace(outRegister);
+  }
+  TRI_ASSERT(!writableOutputRegisters.empty() ||
+             (!doCount() && !isProduceResult()));
 
   auto const& varInfos = getRegisterPlan()->varInfo;
   IndexValuesRegisters outNonMaterializedIndRegs;
