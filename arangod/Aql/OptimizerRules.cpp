@@ -9442,6 +9442,50 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
             for (size_t i = 1; i < candidates.size(); ++i) {
               plan->unlinkNode(candidates[i]);
             }
+            // clear up now-unused projections
+            // TODO: move out of here
+            {
+              plan->findVarUsage();
+              auto& indexInfos = jn->getIndexInfos();
+              for (size_t i = 0; i < indexInfos.size(); ++i) {
+                if (indexInfos[i].projections.empty()) {
+                  continue;
+                }
+                Variable const* outVariable = indexInfos[i].outVariable;
+                if (jn->isVarUsedLater(outVariable)) {
+                  continue;
+                }
+                indexInfos[i].projections.erase(
+                    [i, &indexInfos, plan = plan.get(),
+                     outVariable](Projections::Projection& p) -> bool {
+                      containers::FlatHashSet<AttributeNamePath> attributes;
+                      for (size_t j = i + 1; j < indexInfos.size(); ++j) {
+                        if (indexInfos[j].filter == nullptr) {
+                          continue;
+                        }
+                        if (!Ast::getReferencedAttributesRecursive(
+                                indexInfos[j].filter->node(), outVariable, "",
+                                attributes,
+                                plan->getAst()->query().resourceMonitor())) {
+                          // do not remove projection
+                          return false;
+                        }
+                        for (auto const& a : attributes) {
+                          if (a == p.path) {
+                            // projection is used in later filter condition
+                            return false;
+                          }
+                        }
+                      }
+                      // projection is not used later
+                      return true;
+                    });
+                if (indexInfos[i].projections.empty() &&
+                    indexInfos[i].producesOutput) {
+                  indexInfos[i].producesOutput = false;
+                }
+              }
+            }
             modified = true;
           } else {
             LOG_INDEX_OPTIMIZER_RULE << "Not eligible for index join";
