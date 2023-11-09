@@ -29,7 +29,7 @@ namespace arangodb::iresearch {
 uint64_t IResearchExecutionPool::allocateThreads(uint64_t deltaActive,
                                                  uint64_t deltaDemand) {
   TRI_ASSERT(deltaActive > 0);
-  TRI_ASSERT(deltaDemand >= 0 && deltaDemand <= deltaActive);
+  TRI_ASSERT(deltaDemand <= deltaActive);
   auto curr = _active.load(std::memory_order_relaxed);
   uint64_t newval;
   do {
