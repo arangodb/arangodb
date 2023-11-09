@@ -183,7 +183,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
                 .fail()) {
           LOG_CTX("cbc5b", FATAL, self->loggerContext)
               << "failed to apply entry " << doc << " during recovery: " << res;
-          TRI_ASSERT(false) << res;
+          TRI_ASSERT(false) << doc << " " << res;
           FATAL_ERROR_EXIT();
         }
       }
@@ -511,6 +511,15 @@ auto DocumentLeaderState::modifyShard(ShardID shard, CollectionID collectionId,
                                           std::move(origin));
   if (trxLock.fail()) {
     return trxLock.result();
+  } else if (trxLock.get() == nullptr) {
+    TRI_ASSERT(false) << "Locking shard " << shard
+                      << " for collection properties update returned nullptr";
+    return Result{
+        TRI_ERROR_INTERNAL,
+        fmt::format(
+            "Locking shard {} for collection properties update returned "
+            "nullptr",
+            shard)};
   }
   LOG_CTX("5a02d", DEBUG, loggerContext)
       << "Locked shard " << shard
