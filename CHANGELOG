@@ -3,6 +3,28 @@ devel
 
 * Fix propagation of collection `writeConcern` changes to DB servers.
 
+* Make arangodump exclude the following cluster collection properties when
+  writing collection parameters files in a single server dump:
+  - replicationFactor
+  - writeConcern
+  - numberOfShards
+  - minReplicationFactor
+  - shardKeys
+  - shards
+  It is not really useful to write these attributes out when taking single 
+  server dumps, because they don't have useful values.
+
+* Fixed BTS-1273: While queueing an async server log message, we could be
+  blocked by IO on the log-writer thread. This could slow down the main
+  path. In case the log-writer is configured to use slow device
+  (e.g. using syslog) this could have significant impact.
+
+* Introduced an upper bound of queued async log messages. If we would log
+  more messages then the background logger thread can actually process, we
+  start to write log messages synchronously. This is to prevent the queue
+  to grow indefinitely. The upper bound is configurable via the startup
+  option `--log.max-queued-entries`. The default value is 10000.
+
 * Silence TSAN for shutdown for access to the SchedulerFeature::SCHEDULER
   pointer using atomic references.
 
@@ -41,6 +63,8 @@ devel
   `--split-files` option.
 
 * MDS-1164: Added Publisher and Company to the Window binaries
+
+* Added `--write-concern` parameter similar to `--replication-factor` to
 
 * BTS-1602: Added new flag `--ignore-collection` to the arangodump binary.
   Collections can now be excluded by using this flag. This flag can be

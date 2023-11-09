@@ -508,7 +508,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
     _activeTrx->addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
     res = _activeTrx->begin();
     if (res.fail()) {
-      generateError(res);
+      generateTransactionError(coll->name(), OperationResult(res, opts), "");
       _activeTrx.reset();
       return RestStatus::DONE;
     }
