@@ -466,7 +466,7 @@ OperationResult handleCRUDShardResponsesSlow(
 
     int nrok = 0;
     auto commError = TRI_ERROR_NO_ERROR;
-    fuerte::StatusCode code;
+    fuerte::StatusCode code = fuerte::StatusUndefined;
     for (size_t i = 0; i < responses.size(); i++) {
       network::Response const& res = responses[i].get();
 
@@ -485,13 +485,17 @@ OperationResult handleCRUDShardResponsesSlow(
     }
 
     if (nrok == 0) {  // This can only happen, if a commError was encountered!
-      return OperationResult(commError, options);
+      return OperationResult(commError, std::move(options));
     }
     if (nrok > 1) {
       return OperationResult(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS,
-                             options);
+                             std::move(options));
     }
 
+    TRI_ASSERT(nrok == 1);
+    // whenever we get here, nrok must be == 1, and code must have been set
+    // to something other than StatusUndefined before
+    TRI_ASSERT(code != fuerte::StatusUndefined);
     return std::forward<F>(func)(code, std::move(buffer), std::move(options),
                                  {});
   }
@@ -505,7 +509,8 @@ OperationResult handleCRUDShardResponsesSlow(
   for (Try<network::Response> const& tryRes : responses) {
     network::Response const& res = tryRes.get();
     if (res.error != fuerte::Error::NoError) {
-      return OperationResult(network::fuerteToArangoErrorCode(res), options);
+      return OperationResult(network::fuerteToArangoErrorCode(res),
+                             std::move(options));
     }
 
     allResults.push_back(res.slice());

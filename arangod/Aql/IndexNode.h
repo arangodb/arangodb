@@ -73,6 +73,13 @@ class IndexNode : public ExecutionNode,
     // index covers the IndexNode's filter condition only,
     // but not the rest of the query. that means we can use the
     // index data to evaluate the IndexNode's post-filter condition,
+    // for any entries that pass the filter, we don't read the document
+    // from the storage engine
+    kCoveringFilterScanOnly,
+
+    // index covers the IndexNode's filter condition only,
+    // but not the rest of the query. that means we can use the
+    // index data to evaluate the IndexNode's post-filter condition,
     // but for any entries that pass the filter, we will need to
     // read the full documents in addition
     kCoveringFilterOnly,
@@ -139,7 +146,8 @@ class IndexNode : public ExecutionNode,
   void replaceAttributeAccess(ExecutionNode const* self,
                               Variable const* searchVariable,
                               std::span<std::string_view> attribute,
-                              Variable const* replaceVariable) override;
+                              Variable const* replaceVariable,
+                              size_t index) override;
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;
@@ -211,6 +219,8 @@ class IndexNode : public ExecutionNode,
                       unsigned flags) const override final;
 
  private:
+  void updateProjectionsIndexInfo();
+
   /// @brief determine the IndexNode strategy
   Strategy strategy() const;
 

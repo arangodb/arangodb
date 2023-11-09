@@ -134,6 +134,8 @@ uint64_t Manager::getActiveTransactionCount() {
 
 /*static*/ double Manager::ttlForType(ManagerFeature const& feature,
                                       Manager::MetaType type) {
+  TRI_IF_FAILURE("transaction::Manager::shortTTL") { return 0.1; }
+
   if (type == Manager::MetaType::Tombstone) {
     return tombstoneTTL;
   }
@@ -1144,7 +1146,7 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
 
     if (mtrx.expired()) {
       // we will update the expire time of the tombstone shortly afterwards,
-      // so we need to store the fact that this transaction originally expired
+      // but we need to store the fact that this transaction originally expired
       wasExpired = true;
       status = transaction::Status::ABORTED;
     }
@@ -1217,9 +1219,6 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
       // makes the leader drop us as a follower for all shards in the
       // transaction.
       res.reset(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED);
-    } else if (res.ok() && wasExpired) {
-      res.reset(TRI_ERROR_TRANSACTION_ABORTED,
-                "transaction was already expired");
     }
   }
   TRI_ASSERT(!trx.state()->isRunning());
@@ -1253,6 +1252,8 @@ bool Manager::garbageCollect(bool abortAll) {
     _history->garbageCollect();
   }
 #endif
+
+  TRI_IF_FAILURE("transaction::Manager::noGC") { return false; }
 
   bool didWork = false;
   containers::SmallVector<TransactionId, 8> toAbort;

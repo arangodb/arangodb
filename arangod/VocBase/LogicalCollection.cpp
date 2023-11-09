@@ -904,12 +904,20 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
 
       auto& cf = vocbase().server().getFeature<ClusterFeature>();
       replicationFactor = replicationFactorSlice.getNumber<size_t>();
-      if ((!isSatellite() && replicationFactor == 0) ||
-          (ServerState::instance()->isCoordinator() &&
-           (replicationFactor < cf.minReplicationFactor() ||
-            replicationFactor > cf.maxReplicationFactor()))) {
+      if (!isSatellite() && replicationFactor == 0) {
+        return Result(
+            TRI_ERROR_BAD_PARAMETER,
+            "bad value for replicationFactor. replicationFactor cannot be 0 "
+            "for collections other than SatelliteCollections.");
+      }
+      if (ServerState::instance()->isCoordinator() &&
+          (replicationFactor < cf.minReplicationFactor() ||
+           replicationFactor > cf.maxReplicationFactor())) {
         return Result(TRI_ERROR_BAD_PARAMETER,
-                      "bad value for replicationFactor");
+                      absl::StrCat("bad value for replicationFactor. "
+                                   "replicationFactor must be between ",
+                                   cf.minReplicationFactor(), " and ",
+                                   cf.maxReplicationFactor()));
       }
 
       if (ServerState::instance()->isCoordinator() &&
@@ -922,7 +930,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
         } else if (_type == TRI_COL_TYPE_EDGE && isSmart()) {
           return Result(TRI_ERROR_NOT_IMPLEMENTED,
                         "changing replicationFactor is "
-                        "not supported for smart edge collections");
+                        "not supported for SmartGraph edge collections");
         } else if (isSatellite()) {
           return Result(
               TRI_ERROR_FORBIDDEN,
@@ -932,8 +940,9 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
     } else if (replicationFactorSlice.isString()) {
       if (replicationFactorSlice.stringView() != StaticStrings::Satellite) {
         // only the string "satellite" is allowed here
-        return Result(TRI_ERROR_BAD_PARAMETER,
-                      "bad value for replicationFactor. expecting 'satellite'");
+        return Result(
+            TRI_ERROR_BAD_PARAMETER,
+            "bad string value for replicationFactor. expecting 'satellite'");
       }
       // we got the string "satellite"...
 #ifdef USE_ENTERPRISE
@@ -964,8 +973,11 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
       }
 
       writeConcern = writeConcernSlice.getNumber<size_t>();
-      if (writeConcern > replicationFactor) {
-        return Result(TRI_ERROR_BAD_PARAMETER, "bad value for writeConcern");
+      if (ServerState::instance()->isCoordinator() &&
+          writeConcern > replicationFactor) {
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "bad value for writeConcern. writeConcern cannot be "
+                      "higher than replicationFactor");
       }
 
       if ((ServerState::instance()->isCoordinator() ||
@@ -973,23 +985,31 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
             (isSatellite() || isSmart()))) &&
           writeConcern != _sharding->writeConcern()) {  // check if changed
         if (!_sharding->distributeShardsLike().empty()) {
-          return Result(TRI_ERROR_FORBIDDEN,
-                        "Cannot change writeConcern, please change " +
-                            _sharding->distributeShardsLike());
+          CollectionNameResolver resolver(vocbase());
+          std::string name = resolver.getCollectionNameCluster(DataSourceId{
+              basics::StringUtils::uint64(_sharding->distributeShardsLike())});
+          if (name.empty()) {
+            name = _sharding->distributeShardsLike();
+          }
+          return Result(
+              TRI_ERROR_FORBIDDEN,
+              absl::StrCat("Cannot change writeConcern, please change the "
+                           "writeConcern of the prototype collection '",
+                           name, "'"));
         } else if (_type == TRI_COL_TYPE_EDGE && isSmart()) {
           return Result(TRI_ERROR_NOT_IMPLEMENTED,
                         "Changing writeConcern "
-                        "not supported for smart edge collections");
+                        "not supported for SmartGraph edge collections");
         } else if (isSatellite()) {
           return Result(TRI_ERROR_FORBIDDEN,
-                        "SatelliteCollection, "
-                        "cannot change writeConcern");
+                        "cannot change writeConcern for SatelliteCollection");
         }
       }
     } else {
       return Result(TRI_ERROR_BAD_PARAMETER, "bad value for writeConcern");
     }
-    TRI_ASSERT((writeConcern <= replicationFactor && !isSatellite()) ||
+    TRI_ASSERT((!ServerState::instance()->isCoordinator() ||
+                (writeConcern <= replicationFactor && !isSatellite())) ||
                (writeConcern == 0 && isSatellite()));
   }
 
@@ -1073,10 +1093,6 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(
 }
 
 std::shared_ptr<Index> LogicalCollection::lookupIndex(VPackSlice info) const {
-  if (!info.isObject()) {
-    // Compatibility with old v8-vocindex.
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
   return getPhysical()->lookupIndex(info);
 }
 

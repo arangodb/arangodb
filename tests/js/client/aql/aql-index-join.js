@@ -706,9 +706,7 @@ const IndexJoinTestSuite = function () {
   };
 };
 
-if (isCluster && !isEnterprise) {
-  return jsunity.done();
-} else {
+if (!isCluster || isEnterprise) {
   jsunity.run(IndexJoinTestSuite);
 }
 return jsunity.done();

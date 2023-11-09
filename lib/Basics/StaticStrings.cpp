@@ -169,6 +169,7 @@ std::string const StaticStrings::UseCache("useCache");
 std::string const StaticStrings::Parallelism("parallelism");
 std::string const StaticStrings::ForceOneShardAttributeValue(
     "forceOneShardAttributeValue");
+std::string const StaticStrings::JoinStrategyType("joinStrategyType");
 
 // HTTP headers
 std::string const StaticStrings::Accept("accept");
