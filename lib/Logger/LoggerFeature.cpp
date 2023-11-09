@@ -550,7 +550,7 @@ off to an extra logging thread, which asynchronously writes the log messages.)")
   options
       ->addOption(
           "--log.max-queued-entries",
-          "Upper limit of log entries that are queued in background thread.",
+          "Upper limit of log entries that are queued in a background thread.",
           new UInt32Parameter(&_maxQueuedLogMessages),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
