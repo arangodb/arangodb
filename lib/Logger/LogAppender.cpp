@@ -188,7 +188,6 @@ void LogAppender::log(LogGroup const& group, LogMessage const& message) {
   // output to appenders
   READ_LOCKER(guard, _appendersLock);
   try {
-
     auto& topicsMap = _topics2appenders.at(group.id());
     auto output = [&topicsMap](LogGroup const& group, LogMessage const& message,
                                size_t n) -> bool {
@@ -211,7 +210,6 @@ void LogAppender::log(LogGroup const& group, LogMessage const& message) {
 
     // try to find a topic-specific appender
     size_t topicId = message._topicId;
-
 
     if (topicId < LogTopic::MAX_LOG_TOPICS) {
       shown = output(group, message, topicId);
