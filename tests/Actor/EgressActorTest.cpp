@@ -62,7 +62,7 @@ TYPED_TEST(EgressActorTest,
   auto outbox = actorState->data;
 
   auto actor = runtime->template spawn<EgressActor>(
-      "database", std::move(actorState), test::message::EgressStart{});
+      std::move(actorState), test::message::EgressStart{});
 
   runtime->dispatch(
       DistributedActorPID{.server = "A", .database = "database", .id = actor},
@@ -85,7 +85,7 @@ TYPED_TEST(EgressActorTest, egress_data_is_empty_when_not_set) {
   // keep a shared pointer to the outbox
   auto outbox = actorState->data;
 
-  runtime->template spawn<EgressActor>("database", std::move(actorState),
+  runtime->template spawn<EgressActor>(std::move(actorState),
                                        test::message::EgressStart{});
 
   this->scheduler->stop();

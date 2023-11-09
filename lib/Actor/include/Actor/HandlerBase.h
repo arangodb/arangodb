@@ -52,15 +52,15 @@ struct HandlerBase {
   template<typename ActorConfig>
   auto spawn(std::unique_ptr<typename ActorConfig::State> initialState,
              typename ActorConfig::Message initialMessage) -> ActorID {
-    return runtime->template spawn<ActorConfig>(
-        self.database, std::move(initialState), initialMessage);
+    return runtime->template spawn<ActorConfig>(std::move(initialState),
+                                                initialMessage);
   }
 
   auto finish() -> void { runtime->finish(self); }
 
  protected:
-  ActorPID self;
-  ActorPID sender;
+  ActorPID const self;
+  ActorPID const sender;
   std::unique_ptr<State> state;
 
  private:

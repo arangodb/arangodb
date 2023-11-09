@@ -252,13 +252,12 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
         .ttl = executionSpecifications.ttl,
         .parallelism = executionSpecifications.parallelism}};
     auto statusActorID = _actorRuntime->spawn<StatusActor>(
-        vocbase.name(), std::make_unique<StatusState>(vocbase),
-        std::move(statusStart));
+        std::make_unique<StatusState>(vocbase), std::move(statusStart));
     auto statusActorPID = actor::DistributedActorPID{
         .server = server, .database = vocbase.name(), .id = statusActorID};
 
     auto metricsActorID = _actorRuntime->spawn<MetricsActor>(
-        vocbase.name(), std::make_unique<MetricsState>(_metrics),
+        std::make_unique<MetricsState>(_metrics),
         metrics::message::MetricsStart{});
     auto metricsActorPID =
         actor::DistributedActorPID{.server = ServerState::instance()->getId(),
@@ -268,13 +267,13 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
     auto resultState = std::make_unique<ResultState>(ttl);
     auto resultData = resultState->data;
     auto resultActorID = _actorRuntime->spawn<ResultActor>(
-        vocbase.name(), std::move(resultState),
+        std::move(resultState),
         message::ResultMessages{message::ResultStart{}});
     auto resultActorPID = actor::DistributedActorPID{
         .server = server, .database = vocbase.name(), .id = resultActorID};
 
     auto spawnActorID = _actorRuntime->spawn<SpawnActor>(
-        vocbase.name(), std::make_unique<SpawnState>(vocbase, resultActorPID),
+        std::make_unique<SpawnState>(vocbase, resultActorPID),
         message::SpawnMessages{message::SpawnStart{}});
     auto spawnActor = actor::DistributedActorPID{
         .server = server, .database = vocbase.name(), .id = spawnActorID};
@@ -287,7 +286,6 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
                                 executionSpecifications.algorithm)};
     }
     auto conductorActorID = _actorRuntime->spawn<conductor::ConductorActor>(
-        vocbase.name(),
         std::make_unique<conductor::ConductorState>(
             std::move(algorithm.value()), executionSpecifications,
             std::move(spawnActor), std::move(resultActorPID),

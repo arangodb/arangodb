@@ -93,8 +93,7 @@ TYPED_TEST(ActorMultiRuntimeTest, sends_message_to_actor_in_another_runtime) {
           sending_server, "RuntimeTest-sending", this->scheduler, dispatcher));
   auto sending_actor_id =
       runtimes[sending_server]->template spawn<TrivialActor>(
-          "database", std::make_unique<TrivialState>("foo"),
-          test::message::TrivialStart{});
+          std::make_unique<TrivialState>("foo"), test::message::TrivialStart{});
   auto sending_actor = DistributedActorPID{
       .server = sending_server, .database = "database", .id = sending_actor_id};
 
@@ -106,8 +105,7 @@ TYPED_TEST(ActorMultiRuntimeTest, sends_message_to_actor_in_another_runtime) {
                        this->scheduler, dispatcher));
   auto receiving_actor_id =
       runtimes[receiving_server]->template spawn<TrivialActor>(
-          "database", std::make_unique<TrivialState>("foo"),
-          test::message::TrivialStart{});
+          std::make_unique<TrivialState>("foo"), test::message::TrivialStart{});
   auto receiving_actor = DistributedActorPID{.server = receiving_server,
                                              .database = "database",
                                              .id = receiving_actor_id};
@@ -163,8 +161,7 @@ TYPED_TEST(
           sending_server, "RuntimeTest-sending", this->scheduler, dispatcher));
   auto sending_actor_id =
       runtimes[sending_server]->template spawn<TrivialActor>(
-          "database", std::make_unique<TrivialState>("foo"),
-          test::message::TrivialStart{});
+          std::make_unique<TrivialState>("foo"), test::message::TrivialStart{});
   auto sending_actor = DistributedActorPID{
       .server = sending_server, .database = "database", .id = sending_actor_id};
 
@@ -176,8 +173,7 @@ TYPED_TEST(
                        this->scheduler, dispatcher));
   auto receiving_actor_id =
       runtimes[receiving_server]->template spawn<TrivialActor>(
-          "database", std::make_unique<TrivialState>("foo"),
-          test::message::TrivialStart{});
+          std::make_unique<TrivialState>("foo"), test::message::TrivialStart{});
   auto receiving_actor = DistributedActorPID{.server = receiving_server,
                                              .database = "database",
                                              .id = receiving_actor_id};
@@ -223,8 +219,7 @@ TYPED_TEST(
           sending_server, "RuntimeTest-sending", this->scheduler, dispatcher));
   auto sending_actor_id =
       runtimes[sending_server]->template spawn<TrivialActor>(
-          "database", std::make_unique<TrivialState>("foo"),
-          test::message::TrivialStart{});
+          std::make_unique<TrivialState>("foo"), test::message::TrivialStart{});
   auto sending_actor = DistributedActorPID{
       .server = sending_server, .database = "database", .id = sending_actor_id};
 
@@ -272,8 +267,7 @@ TYPED_TEST(
           sending_server, "RuntimeTest-sending", this->scheduler, dispatcher));
   auto sending_actor_id =
       runtimes[sending_server]->template spawn<TrivialActor>(
-          "database", std::make_unique<TrivialState>("foo"),
-          test::message::TrivialStart{});
+          std::make_unique<TrivialState>("foo"), test::message::TrivialStart{});
   auto sending_actor = DistributedActorPID{
       .server = sending_server, .database = "database", .id = sending_actor_id};
 
@@ -314,8 +308,7 @@ TYPED_TEST(ActorMultiRuntimeTest, ping_pong_game) {
       std::make_shared<typename TestFixture::MockRuntime>(
           pong_server, "RuntimeTest-A", this->scheduler, dispatcher));
   auto pong_actor = runtimes[pong_server]->template spawn<pong_actor::Actor>(
-      "database", std::make_unique<pong_actor::PongState>(),
-      pong_actor::message::Start{});
+      std::make_unique<pong_actor::PongState>(), pong_actor::message::Start{});
 
   // Ping Runtime
   auto ping_server = ServerID{"B"};
@@ -324,7 +317,7 @@ TYPED_TEST(ActorMultiRuntimeTest, ping_pong_game) {
       std::make_shared<typename TestFixture::MockRuntime>(
           ping_server, "RuntimeTest-B", this->scheduler, dispatcher));
   auto ping_actor = runtimes[ping_server]->template spawn<ping_actor::Actor>(
-      "database", std::make_unique<ping_actor::PingState>(),
+      std::make_unique<ping_actor::PingState>(),
       ping_actor::message::Start{.pongActor =
                                      DistributedActorPID{.server = pong_server,
                                                          .database = "database",

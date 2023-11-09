@@ -64,8 +64,7 @@ TYPED_TEST(ActorRuntimeTest, formats_runtime_and_actor_state) {
   auto runtime = std::make_shared<DistributedRuntime>(
       ServerID{"PRMR-1234"}, "RuntimeTest", this->scheduler, dispatcher);
   auto actorID = runtime->template spawn<pong_actor::Actor>(
-      "database", std::make_unique<pong_actor::PongState>(),
-      pong_actor::message::Start{});
+      std::make_unique<pong_actor::PongState>(), pong_actor::message::Start{});
 
   this->scheduler->stop();
   ASSERT_EQ(
@@ -84,8 +83,7 @@ TYPED_TEST(ActorRuntimeTest, serializes_an_actor_including_its_actor_state) {
   auto runtime = std::make_shared<DistributedRuntime>(
       ServerID{"PRMR-1234"}, "RuntimeTest", this->scheduler, dispatcher);
   auto actor = runtime->template spawn<TrivialActor>(
-      "database", std::make_unique<TrivialState>("foo"),
-      test::message::TrivialStart());
+      std::make_unique<TrivialState>("foo"), test::message::TrivialStart());
 
   this->scheduler->stop();
   using namespace arangodb::velocypack;
@@ -102,8 +100,7 @@ TYPED_TEST(ActorRuntimeTest, spawns_actor) {
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
 
   auto actor = runtime->template spawn<TrivialActor>(
-      "database", std::make_unique<TrivialState>("foo"),
-      test::message::TrivialStart());
+      std::make_unique<TrivialState>("foo"), test::message::TrivialStart());
 
   this->scheduler->stop();
   auto state = runtime->template getActorStateByID<TrivialActor>(actor);
@@ -117,7 +114,7 @@ TYPED_TEST(ActorRuntimeTest, sends_initial_message_when_spawning_actor) {
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
 
   auto actor = runtime->template spawn<TrivialActor>(
-      "database", std::make_unique<TrivialState>("foo"),
+      std::make_unique<TrivialState>("foo"),
       test::message::TrivialMessage("bar"));
 
   this->scheduler->stop();
@@ -134,11 +131,9 @@ TYPED_TEST(ActorRuntimeTest, gives_all_existing_actor_ids) {
   ASSERT_TRUE(runtime->getActorIDs().empty());
 
   auto actor_foo = runtime->template spawn<TrivialActor>(
-      "database", std::make_unique<TrivialState>("foo"),
-      test::message::TrivialStart());
+      std::make_unique<TrivialState>("foo"), test::message::TrivialStart());
   auto actor_bar = runtime->template spawn<TrivialActor>(
-      "database", std::make_unique<TrivialState>("bar"),
-      test::message::TrivialStart());
+      std::make_unique<TrivialState>("bar"), test::message::TrivialStart());
 
   this->scheduler->stop();
   auto allActorIDs = runtime->getActorIDs();
@@ -154,8 +149,7 @@ TYPED_TEST(ActorRuntimeTest, sends_message_to_an_actor) {
   auto runtime = std::make_shared<DistributedRuntime>(
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
   auto actor = runtime->template spawn<TrivialActor>(
-      "database", std::make_unique<TrivialState>("foo"),
-      test::message::TrivialStart{});
+      std::make_unique<TrivialState>("foo"), test::message::TrivialStart{});
 
   runtime->dispatch(
       DistributedActorPID{
@@ -190,8 +184,7 @@ TYPED_TEST(
   auto runtime = std::make_shared<DistributedRuntime>(
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
   auto actor_id = runtime->template spawn<TrivialActor>(
-      "database", std::make_unique<TrivialState>("foo"),
-      test::message::TrivialStart{});
+      std::make_unique<TrivialState>("foo"), test::message::TrivialStart{});
   auto actor = DistributedActorPID{
       .server = "PRMR-1234", .database = "database", .id = actor_id};
 
@@ -211,8 +204,7 @@ TYPED_TEST(
   auto runtime = std::make_shared<DistributedRuntime>(
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
   auto actor_id = runtime->template spawn<TrivialActor>(
-      "database", std::make_unique<TrivialState>("foo"),
-      test::message::TrivialStart{});
+      std::make_unique<TrivialState>("foo"), test::message::TrivialStart{});
   auto actor = DistributedActorPID{
       .server = "PRMR-1234", .database = "database", .id = actor_id};
 
@@ -237,10 +229,9 @@ TYPED_TEST(ActorRuntimeTest, ping_pong_game) {
       serverID, "RuntimeTest", this->scheduler, dispatcher);
 
   auto pong_actor = runtime->template spawn<pong_actor::Actor>(
-      "database", std::make_unique<pong_actor::PongState>(),
-      pong_actor::message::Start{});
+      std::make_unique<pong_actor::PongState>(), pong_actor::message::Start{});
   auto ping_actor = runtime->template spawn<ping_actor::Actor>(
-      "database", std::make_unique<ping_actor::PingState>(),
+      std::make_unique<ping_actor::PingState>(),
       ping_actor::message::Start{
           .pongActor = DistributedActorPID{
               .server = serverID, .database = "database", .id = pong_actor}});
@@ -263,8 +254,7 @@ TYPED_TEST(ActorRuntimeTest, spawn_game) {
       serverID, "RuntimeTest", this->scheduler, dispatcher);
 
   auto spawn_actor = runtime->template spawn<SpawnActor>(
-      "database", std::make_unique<SpawnState>(),
-      test::message::SpawnStartMessage{});
+      std::make_unique<SpawnState>(), test::message::SpawnStartMessage{});
 
   runtime->dispatch(
       DistributedActorPID{
@@ -287,8 +277,7 @@ TYPED_TEST(ActorRuntimeTest, finishes_actor_when_actor_says_so) {
       serverID, "RuntimeTest", this->scheduler, dispatcher);
 
   auto finishing_actor = runtime->template spawn<FinishingActor>(
-      "database", std::make_unique<FinishingState>(),
-      test::message::FinishingStart{});
+      std::make_unique<FinishingState>(), test::message::FinishingStart{});
 
   runtime->dispatch(
       DistributedActorPID{
@@ -309,8 +298,7 @@ TYPED_TEST(ActorRuntimeTest, garbage_collects_finished_actor) {
   auto runtime = std::make_shared<DistributedRuntime>(
       serverID, "RuntimeTest", this->scheduler, dispatcher);
   auto finishing_actor = runtime->template spawn<FinishingActor>(
-      "database", std::make_unique<FinishingState>(),
-      test::message::FinishingStart{});
+      std::make_unique<FinishingState>(), test::message::FinishingStart{});
 
   runtime->dispatch(
       DistributedActorPID{
@@ -336,19 +324,14 @@ TYPED_TEST(ActorRuntimeTest, garbage_collects_all_finished_actors) {
       serverID, "RuntimeTest", this->scheduler, dispatcher);
 
   auto actor_to_be_finished = runtime->template spawn<FinishingActor>(
-      "database", std::make_unique<FinishingState>(),
-      test::message::FinishingStart{});
-  runtime->template spawn<FinishingActor>("database",
-                                          std::make_unique<FinishingState>(),
+      std::make_unique<FinishingState>(), test::message::FinishingStart{});
+  runtime->template spawn<FinishingActor>(std::make_unique<FinishingState>(),
                                           test::message::FinishingStart{});
-  runtime->template spawn<FinishingActor>("database",
-                                          std::make_unique<FinishingState>(),
+  runtime->template spawn<FinishingActor>(std::make_unique<FinishingState>(),
                                           test::message::FinishingStart{});
   auto another_actor_to_be_finished = runtime->template spawn<FinishingActor>(
-      "database", std::make_unique<FinishingState>(),
-      test::message::FinishingStart{});
-  runtime->template spawn<FinishingActor>("database",
-                                          std::make_unique<FinishingState>(),
+      std::make_unique<FinishingState>(), test::message::FinishingStart{});
+  runtime->template spawn<FinishingActor>(std::make_unique<FinishingState>(),
                                           test::message::FinishingStart{});
 
   runtime->dispatch(DistributedActorPID{.server = serverID,
@@ -387,20 +370,15 @@ TYPED_TEST(ActorRuntimeTest,
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
       serverID, "RuntimeTest", this->scheduler, dispatcher);
-  runtime->template spawn<TrivialActor>("database",
-                                        std::make_unique<TrivialState>(),
+  runtime->template spawn<TrivialActor>(std::make_unique<TrivialState>(),
                                         test::message::TrivialStart{});
-  runtime->template spawn<TrivialActor>("database",
-                                        std::make_unique<TrivialState>(),
+  runtime->template spawn<TrivialActor>(std::make_unique<TrivialState>(),
                                         test::message::TrivialStart{});
-  runtime->template spawn<TrivialActor>("database",
-                                        std::make_unique<TrivialState>(),
+  runtime->template spawn<TrivialActor>(std::make_unique<TrivialState>(),
                                         test::message::TrivialStart{});
-  runtime->template spawn<TrivialActor>("database",
-                                        std::make_unique<TrivialState>(),
+  runtime->template spawn<TrivialActor>(std::make_unique<TrivialState>(),
                                         test::message::TrivialStart{});
-  runtime->template spawn<TrivialActor>("database",
-                                        std::make_unique<TrivialState>(),
+  runtime->template spawn<TrivialActor>(std::make_unique<TrivialState>(),
                                         test::message::TrivialStart{});
   ASSERT_EQ(runtime->actors.size(), 5);
   // wait for actor to work off all messages
@@ -421,8 +399,7 @@ TEST(ActorRuntimeTest, sends_messages_between_lots_of_actors) {
   size_t actor_count = 128;
 
   for (size_t i = 0; i < actor_count; i++) {
-    runtime->template spawn<TrivialActor>("database",
-                                          std::make_unique<TrivialState>(),
+    runtime->template spawn<TrivialActor>(std::make_unique<TrivialState>(),
                                           test::message::TrivialStart{});
   }
 

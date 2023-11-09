@@ -57,13 +57,15 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
   using ActorPID = DistributedActorPID;
 
   template<typename ActorConfig>
-  auto spawn(DatabaseName const& database,
-             std::unique_ptr<typename ActorConfig::State> initialState,
+  auto spawn(std::unique_ptr<typename ActorConfig::State> initialState,
              typename ActorConfig::Message initialMessage) -> ActorID {
     auto newId = ActorID{uniqueActorIDCounter++};
 
+    // TODO - we do not want to pass the database name as part of the spawn
+    // call. If we really need it as part of  the actor PID, we need to find a
+    // better way.
     auto address =
-        ActorPID{.server = myServerID, .database = database, .id = newId};
+        ActorPID{.server = myServerID, .database = "database", .id = newId};
 
     auto newActor = std::make_shared<Actor<DistributedRuntime, ActorConfig>>(
         address, this->shared_from_this(), std::move(initialState));
