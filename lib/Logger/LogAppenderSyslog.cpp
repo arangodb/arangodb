@@ -27,8 +27,9 @@ using namespace arangodb;
 
 #ifdef ARANGODB_ENABLE_SYSLOG
 
+#include "Logger/FindSyslogFacilityByName.h"
+
 // we need to define SYSLOG_NAMES for linux to get a list of names
-#define SYSLOG_NAMES
 #include <syslog.h>
 
 #ifdef ARANGODB_ENABLE_SYSLOG_STRINGS
@@ -59,16 +60,7 @@ LogAppenderSyslog::LogAppenderSyslog(std::string const& facility,
   if ('0' <= facility[0] && facility[0] <= '9') {
     value = StringUtils::int32(facility);
   } else {
-    CODE* ptr = reinterpret_cast<CODE*>(facilitynames);
-
-    while (ptr->c_name != nullptr) {
-      if (strcmp(ptr->c_name, facility.c_str()) == 0) {
-        value = ptr->c_val;
-        break;
-      }
-
-      ++ptr;
-    }
+    value = find_syslog_facility_by_name(facility.c_str());
   }
 
   // from man 3 syslog:
