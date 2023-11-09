@@ -545,6 +545,8 @@ IndexIterator::CoveringCallback aql::getCallback(
       }
     }
 
+    context.incrScanned();
+
     if (context.hasFilter() && !context.checkFilter(&covering)) {
       context.incrFiltered();
       return false;
