@@ -180,7 +180,6 @@ void LogAppender::logGlobal(LogGroup const& group, LogMessage const& message) {
     TRI_ASSERT(false) << "no global appender for group " << group.id();
     // This should never happen, however if it does we should not crash
     // but we also cannot log anything, as we are the logger.
-    return;
   }
 }
 
@@ -224,7 +223,6 @@ void LogAppender::log(LogGroup const& group, LogMessage const& message) {
     TRI_ASSERT(false) << "no topic 2 appender match for group " << group.id();
     // This should never happen, however if it does we should not crash
     // but we also cannot log anything, as we are the logger.
-    return;
   }
 }
 
