@@ -211,7 +211,6 @@ EnumerateCollectionExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
            * TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned()
            * == skipped);
            */
-          // TODO: CHECK
           std::ignore =
               _documentProducingFunctionContext.getAndResetNumScanned();
         } else {
