@@ -45,7 +45,8 @@ struct IDocumentStateShardHandler {
       -> Result = 0;
 
   virtual auto modifyShard(ShardID shard, CollectionID colId,
-                           velocypack::SharedSlice properties) -> Result = 0;
+                           velocypack::SharedSlice properties) noexcept
+      -> Result = 0;
 
   virtual auto dropShard(ShardID const& shard) noexcept -> Result = 0;
 
@@ -81,7 +82,8 @@ class DocumentStateShardHandler : public IDocumentStateShardHandler {
       -> Result override;
 
   auto modifyShard(ShardID shard, CollectionID colId,
-                   velocypack::SharedSlice properties) -> Result override;
+                   velocypack::SharedSlice properties) noexcept
+      -> Result override;
 
   auto dropShard(ShardID const& shard) noexcept -> Result override;
 

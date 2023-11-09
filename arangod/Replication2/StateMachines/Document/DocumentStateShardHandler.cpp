@@ -52,9 +52,9 @@ auto DocumentStateShardHandler::ensureShard(
   return res;
 }
 
-auto DocumentStateShardHandler::modifyShard(ShardID shard, CollectionID colId,
-                                            velocypack::SharedSlice properties)
-    -> Result {
+auto DocumentStateShardHandler::modifyShard(
+    ShardID shard, CollectionID colId,
+    velocypack::SharedSlice properties) noexcept -> Result {
   auto col = lookupShard(shard);
   if (col.fail()) {
     return {col.errorNumber(),
