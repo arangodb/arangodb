@@ -154,8 +154,6 @@ class JoinStats {
   std::uint64_t _scannedIndex = 0;  // not populated yet
   std::uint64_t _filtered = 0;
   std::uint64_t _documentLookups = 0;
-  std::uint64_t _cacheHits = 0;    // not populated yet
-  std::uint64_t _cacheMisses = 0;  // not populated yet
   std::uint64_t _seeks = 0;
 };
 
