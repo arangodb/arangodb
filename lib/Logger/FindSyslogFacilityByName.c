@@ -19,10 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <stdio.h>
-#include "Basics/operating-system.h"
-
-#if defined(ARANGODB_ENABLE_SYSLOG)
 //
 // This is C code to prevent clang from complaining about the
 // expansion of the facilitynames macro on musl libc yielding char *
@@ -45,4 +41,3 @@ int find_syslog_facility_by_name(const char* facility) {
   }
   return LOG_LOCAL0;
 }
-#endif

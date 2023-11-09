@@ -78,7 +78,6 @@ add_library(arango_lightweight STATIC
         Basics/tri-strings.cpp
         Containers/ImmerMemoryPolicy.h
         Logger/Escaper.cpp
-        Logger/FindSyslogFacilityByName.c
         Logger/LogAppender.cpp
         Logger/LogAppenderFile.cpp
         Logger/LogAppenderSyslog.cpp
@@ -109,6 +108,7 @@ else ()
   target_sources(arango_lightweight PRIVATE
           Basics/terminal-utils-posix.cpp
           Basics/threads-posix.cpp
+          Logger/FindSyslogFacilityByName.c
           )
 endif ()
 
