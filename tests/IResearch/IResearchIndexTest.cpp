@@ -314,8 +314,9 @@ TEST_F(IResearchIndexTest, test_analyzer) {
     //    ASSERT_TRUE(arangodb::methods::Indexes::ensureIndex(collection,
     //    nestedIndex->slice(), createdIndex, outputDefinition).ok());
 #else
-    ASSERT_THROW(collection0->createIndex(nestedIndex->slice(), createdIndex),
-                 arangodb::basics::Exception);
+    ASSERT_THROW(
+        collection0->createIndex(nestedIndex->slice(), createdIndex).get(),
+        arangodb::basics::Exception);
 #endif
   }
 
