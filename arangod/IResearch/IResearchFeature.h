@@ -58,54 +58,7 @@ class IResearchLink;
 class ResourceMutex;
 class IResearchRocksDBRecoveryHelper;
 
-class ArangoSearchPool {
- public:
-  void setLimit(int newLimit) noexcept {
-    // should not be called during execution of queries!
-    TRI_ASSERT(_allocatedThreads.load() == 0);
-    _limit = newLimit;
-  }
-
-  void stop() {
-    TRI_ASSERT(_allocatedThreads.load() == 0);
-    _pool.stop(true);
-  }
-
-  int allocateThreads(int n) {
-    auto curr = _allocatedThreads.load(std::memory_order_relaxed);
-    int newval;
-    do {
-      newval = std::min(curr + n, _limit);
-    } while (!_allocatedThreads.compare_exchange_weak(curr, newval));
-    int add = newval - curr;
-    TRI_ASSERT(add >= 0);
-    if (add > 0) {
-      // TODO: add a single call to thread_pool to change both
-      _pool.max_idle_delta(add);
-      _pool.max_threads_delta(add);
-    }
-    return add;
-  }
-
-  void releaseThreads(int n) {
-    TRI_ASSERT(n > 0);
-    TRI_ASSERT(_allocatedThreads.load() >= n);
-    _pool.max_idle_delta(-n);
-    _pool.max_threads_delta(-n);
-    _allocatedThreads.fetch_sub(n);
-  }
-
-  using Pool = irs::async_utils::thread_pool<false>;
-
-  bool run(Pool::func_t&& fn) {
-    return _pool.run(std::forward<Pool::func_t>(fn));
-  }
-
- private:
-  Pool _pool{0, 0, IR_NATIVE_STRING("ARS-2")};
-  std::atomic<int> _allocatedThreads{0};
-  int _limit{0};
-};
+struct IResearchExecutionPool;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @enum ThreadGroup
@@ -203,6 +156,12 @@ class IResearchFeature final : public ArangodFeature {
 #endif
 #endif
 
+  uint32_t defaultParallelism() const noexcept { return _defaultParallelism; }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  void setDefaultParallelism(uint32_t v) noexcept { _defaultParallelism = v; }
+#endif
+
  private:
   void registerRecoveryHelper();
   void registerIndexFactory();
@@ -234,6 +193,7 @@ class IResearchFeature final : public ArangodFeature {
   uint32_t _threads;
   uint32_t _threadsLimit;
   uint32_t _searchExecutionThreadsLimit;
+  uint32_t _defaultParallelism;
 
   std::shared_ptr<IndexTypeFactory> _clusterFactory;
   std::shared_ptr<IndexTypeFactory> _rocksDBFactory;
@@ -250,7 +210,7 @@ class IResearchFeature final : public ArangodFeature {
   // helper object, only useful during WAL recovery
   std::shared_ptr<IResearchRocksDBRecoveryHelper> _recoveryHelper;
 
-  ArangoSearchPool _searchExecutionPool;
+  IResearchExecutionPool& _searchExecutionPool;
 };
 
 }  // namespace iresearch

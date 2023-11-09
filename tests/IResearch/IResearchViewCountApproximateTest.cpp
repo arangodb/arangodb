@@ -30,6 +30,7 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
+#include "IResearch/IResearchExecutionPool.h"
 #include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchView.h"
@@ -58,7 +59,7 @@ static constexpr frozen::map<std::string_view,
 class IResearchViewCountApproximateTest : public IResearchQueryTest {
  protected:
   std::shared_ptr<arangodb::iresearch::IResearchView> _view;
-  arangodb::iresearch::ArangoSearchPool _pool;
+  arangodb::iresearch::IResearchExecutionPool _pool{0, "", "", ""};
   IResearchViewCountApproximateTest() {
     // add collection_1
     std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;

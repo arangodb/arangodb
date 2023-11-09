@@ -1126,6 +1126,11 @@ IResearchViewNode::IResearchViewNode(
   std::string error;
   TRI_ASSERT(_view);
   TRI_ASSERT(_meta || _view->type() != ViewType::kSearchAlias);
+  _options.parallelism = ast->query()
+                             .vocbase()
+                             .server()
+                             .getFeature<IResearchFeature>()
+                             .defaultParallelism();
   if (!parseOptions(ast->query(), *_view, options, _options, error)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
