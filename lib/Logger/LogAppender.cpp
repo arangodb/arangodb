@@ -93,9 +93,9 @@ void LogAppender::addAppender(LogGroup const& group,
 
   std::shared_ptr<LogAppender> appender;
 
-  auto& definitionsMap = _definition2appenders[group.id()];
-
   WRITE_LOCKER(guard, _appendersLock);
+
+  auto& definitionsMap = _definition2appenders[group.id()];
 
   auto it = definitionsMap.find(key);
 
@@ -327,14 +327,14 @@ bool LogAppender::haveAppenders(LogGroup const& group, size_t topicId) {
   // other solutions.
   READ_LOCKER(guard, _appendersLock);
   try {
-    auto const& appenders = _topics2appenders[group.id()];
+    auto const& appenders = _topics2appenders.at(group.id());
     auto haveTopicAppenders = [&appenders](size_t topicId) {
       auto it = appenders.find(topicId);
       return it != appenders.end() && !it->second.empty();
     };
     return haveTopicAppenders(topicId) ||
            haveTopicAppenders(LogTopic::MAX_LOG_TOPICS) ||
-           !_globalAppenders[group.id()].empty();
+           !_globalAppenders.at(group.id()).empty();
   } catch (std::out_of_range const&) {
     // no topic 2 appenders entry for this group.
     TRI_ASSERT(false) << "no topic 2 appender match for group " << group.id();
