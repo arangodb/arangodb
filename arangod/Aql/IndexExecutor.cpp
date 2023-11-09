@@ -393,7 +393,8 @@ IndexExecutor::CursorReader::CursorReader(
       _strategy(infos.strategy()),
       _checkUniqueness(checkUniqueness) {
   TRI_ASSERT(
-      _strategy != IndexNode::Strategy::kCoveringFilterOnly ||
+      (_strategy != IndexNode::Strategy::kCoveringFilterOnly &&
+       _strategy != IndexNode::Strategy::kCoveringFilterScanOnly) ||
       (infos.getFilter() != nullptr && !infos.getFilterProjections().empty()));
 
   // for the initial cursor created in the initializer list
@@ -401,8 +402,9 @@ IndexExecutor::CursorReader::CursorReader(
 
   switch (_strategy) {
     case IndexNode::Strategy::kNoResult: {
-      _documentNonProducer = checkUniqueness ? getNullCallback<true>(context)
-                                             : getNullCallback<false>(context);
+      _documentNonProducer = checkUniqueness
+                                 ? getNullCallback<true, false>(context)
+                                 : getNullCallback<false, false>(context);
       break;
     }
     case IndexNode::Strategy::kCovering: {
@@ -416,15 +418,29 @@ IndexExecutor::CursorReader::CursorReader(
                                             context);
       break;
     }
-    case IndexNode::Strategy::kCoveringFilterOnly: {
+    case IndexNode::Strategy::kCoveringFilterScanOnly: {
       _coveringProducer =
           checkUniqueness
-              ? ::getCallback<true, false>(DocumentProducingCallbackVariant::
-                                               WithFilterCoveredByIndex{},
-                                           context)
-              : ::getCallback<false, false>(DocumentProducingCallbackVariant::
-                                                WithFilterCoveredByIndex{},
-                                            context);
+              ? ::getCallback<true, false, /*produceResult*/ false>(
+                    DocumentProducingCallbackVariant::
+                        WithFilterCoveredByIndex{},
+                    context)
+              : ::getCallback<false, false, /*produceResult*/ false>(
+                    DocumentProducingCallbackVariant::
+                        WithFilterCoveredByIndex{},
+                    context);
+      break;
+    }
+    case IndexNode::Strategy::kCoveringFilterOnly: {
+      _coveringProducer =
+          checkUniqueness ? ::getCallback<true, false, /*produceResult*/ true>(
+                                DocumentProducingCallbackVariant::
+                                    WithFilterCoveredByIndex{},
+                                context)
+                          : ::getCallback<false, false, /*produceResult*/ true>(
+                                DocumentProducingCallbackVariant::
+                                    WithFilterCoveredByIndex{},
+                                context);
       break;
     }
     case IndexNode::Strategy::kLateMaterialized:
@@ -455,15 +471,17 @@ IndexExecutor::CursorReader::CursorReader(
               : ::getCallback<false, true>(DocumentProducingCallbackVariant::
                                                WithProjectionsCoveredByIndex{},
                                            context);
-    } else if (_strategy == IndexNode::Strategy::kCoveringFilterOnly) {
+    } else if (_strategy == IndexNode::Strategy::kCoveringFilterScanOnly ||
+               _strategy == IndexNode::Strategy::kCoveringFilterOnly) {
       _coveringSkipper =
-          checkUniqueness
-              ? ::getCallback<true, true>(DocumentProducingCallbackVariant::
-                                              WithFilterCoveredByIndex{},
-                                          context)
-              : ::getCallback<false, true>(DocumentProducingCallbackVariant::
-                                               WithFilterCoveredByIndex{},
-                                           context);
+          checkUniqueness ? ::getCallback<true, true, /*produceResult*/ false>(
+                                DocumentProducingCallbackVariant::
+                                    WithFilterCoveredByIndex{},
+                                context)
+                          : ::getCallback<false, true, /*produceResult*/ false>(
+                                DocumentProducingCallbackVariant::
+                                    WithFilterCoveredByIndex{},
+                                context);
     }
   } else {
     _documentSkipper = checkUniqueness
@@ -507,6 +525,7 @@ bool IndexExecutor::CursorReader::readIndex(
       TRI_ASSERT(_documentNonProducer != nullptr);
       return _cursor->next(_documentNonProducer, output.numRowsLeft());
     case IndexNode::Strategy::kCovering:
+    case IndexNode::Strategy::kCoveringFilterScanOnly:
     case IndexNode::Strategy::kCoveringFilterOnly:
     case IndexNode::Strategy::kLateMaterialized:
       TRI_ASSERT(_coveringProducer != nullptr);
@@ -555,6 +574,7 @@ size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {
     while (hasMore() && (skipped < toSkip)) {
       switch (_strategy) {
         case IndexNode::Strategy::kCovering:
+        case IndexNode::Strategy::kCoveringFilterScanOnly:
         case IndexNode::Strategy::kCoveringFilterOnly:
         case IndexNode::Strategy::kLateMaterialized:
           TRI_ASSERT(_coveringSkipper != nullptr);
@@ -582,6 +602,7 @@ size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {
 
 bool IndexExecutor::CursorReader::isCovering() const {
   return _strategy == IndexNode::Strategy::kCovering ||
+         _strategy == IndexNode::Strategy::kCoveringFilterScanOnly ||
          _strategy == IndexNode::Strategy::kCoveringFilterOnly;
 }
 
