@@ -62,12 +62,16 @@ IndexIterator::DocumentCallback aql::getCallback(
 
     if (context.hasFilter() && !context.checkFilter(slice)) {
       context.incrFiltered();
+      // required as we point lookup the document to check the filter condition
+      // as it is not covered by the index here.
+      context.incrLookups();
       return false;
     }
 
     if constexpr (skip) {
       return true;
     }
+
     context.incrLookups();
 
     InputAqlItemRow const& input = context.getInputRow();

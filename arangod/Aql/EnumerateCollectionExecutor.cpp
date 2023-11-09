@@ -169,12 +169,9 @@ uint64_t EnumerateCollectionExecutor::skipEntries(
         _documentProducingFunctionContext.getAndResetNumFiltered();
     uint64_t scanned =
         _documentProducingFunctionContext.getAndResetNumScanned();
-    uint64_t lookups =
-        _documentProducingFunctionContext.getAndResetNumLookups();
     TRI_ASSERT(scanned >= filtered);
     stats.incrFiltered(filtered);
     stats.incrScanned(scanned);
-    stats.incrDocumentLookups(lookups);
     actuallySkipped = scanned - filtered;
   }
   _cursorHasMore = _cursor->hasMore();
@@ -335,8 +332,6 @@ EnumerateCollectionExecutor::produceRows(AqlItemBlockInputRange& inputRange,
           _documentProducingFunctionContext.getAndResetNumScanned());
       stats.incrFiltered(
           _documentProducingFunctionContext.getAndResetNumFiltered());
-      stats.incrDocumentLookups(
-          _documentProducingFunctionContext.getAndResetNumLookups());
     }
 
     TRI_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {

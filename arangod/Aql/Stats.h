@@ -89,33 +89,27 @@ using MaterializeStats = FilterStats;
 
 class EnumerateCollectionStats {
  public:
-  EnumerateCollectionStats() noexcept
-      : _scannedFull(0), _filtered(0), _documentLookups(0) {}
+  EnumerateCollectionStats() noexcept : _scannedFull(0), _filtered(0) {}
 
   void incrScanned(std::uint64_t value = 1) noexcept { _scannedFull += value; }
   void incrFiltered(std::uint64_t value = 1) noexcept { _filtered += value; }
-  void incrDocumentLookups(std::uint64_t value = 1) noexcept {
-    _documentLookups += value;
-  }
 
   [[nodiscard]] std::uint64_t getScanned() const noexcept {
     return _scannedFull;
   }
   [[nodiscard]] std::uint64_t getFiltered() const noexcept { return _filtered; }
-  [[nodiscard]] std::uint64_t getDocumentLookups() const noexcept {
-    return _documentLookups;
-  }
 
   void operator+=(EnumerateCollectionStats const& stats) noexcept {
     _scannedFull += stats._scannedFull;
     _filtered += stats._filtered;
-    _documentLookups += stats._documentLookups;
   }
 
  private:
   std::uint64_t _scannedFull = 0;
   std::uint64_t _filtered = 0;
-  std::uint64_t _documentLookups = 0;
+  // Note: _documentLookup is explicitly not tracked here, because it's
+  // "lookups" are tracked inside the _scannedFull property. No additional
+  // document lookup happens here.
 };
 
 inline ExecutionStats& operator+=(
@@ -123,8 +117,6 @@ inline ExecutionStats& operator+=(
     EnumerateCollectionStats const& enumerateCollectionStats) noexcept {
   executionStats.scannedFull += enumerateCollectionStats.getScanned();
   executionStats.filtered += enumerateCollectionStats.getFiltered();
-  executionStats.documentLookups +=
-      enumerateCollectionStats.getDocumentLookups();
   return executionStats;
 }
 
