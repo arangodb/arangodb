@@ -19,26 +19,25 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <stdio.h>
+#include "Basics/operating-system.h"
+
+#if defined(ARANGODB_ENABLE_SYSLOG)
 //
 // This is C code to prevent clang from complaining about the
 // expansion of the facilitynames macro on musl libc yielding char *
 // to character constants (and hence failing to compile) when
 // compiling C++
 //
-#include <stddef.h>
 
+#include <stddef.h>
 // we need to define SYSLOG_NAMES for linux to get a list of names
 #define SYSLOG_NAMES
 #include <syslog.h>
 #include <string.h>
 
-#include "Basics/operating-system.h"
-
-#if defined(ARANGODB_ENABLE_SYSLOG)
-
 int find_syslog_facility_by_name(const char* facility) {
   CODE* ptr = facilitynames;
-
   while (ptr->c_name != NULL) {
     if (strcmp(ptr->c_name, facility) == 0) {
       return ptr->c_val;
