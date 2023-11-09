@@ -1,7 +1,7 @@
 FROM alpine:3.18
 MAINTAINER hackers@arangodb.com
 
-RUN apk --no-cache add bison flex make cmake g++ git linux-headers python3 curl clang15 lld15 bash gdb openssh sccache groff nodejs npm
+RUN apk --no-cache add bison flex make cmake g++ git linux-headers python3 curl clang16 lld bash gdb openssh sccache groff nodejs npm
 
 # we need only need perl for openssl installation and can later removed them again
 RUN apk --no-cache add perl
@@ -19,8 +19,6 @@ RUN if [ "$(apk --print-arch)" = "x86_64" ] ; then /tools/install-cppcheck.sh 2.
 # TODO: This is so horrible, maybe there's a better solution?
 RUN ln /usr/bin/sccache /usr/local/bin/gcc && \
     ln /usr/bin/sccache /usr/local/bin/g++ && \
-    ln /usr/lib/llvm15/bin/clang-15 /usr/bin/clang && \
-    ln /usr/lib/llvm15/bin/clang-15 /usr/bin/clang++ && \
     ln /usr/bin/sccache /usr/local/bin/clang && \
     ln /usr/bin/sccache /usr/local/bin/clang++
 
