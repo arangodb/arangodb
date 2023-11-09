@@ -51,15 +51,13 @@ RestGraphHandler::RestGraphHandler(ArangodServer& server,
       _graphManager(_vocbase, transaction::OperationOriginREST{::moduleName}) {}
 
 RestStatus RestGraphHandler::execute() {
-  return waitForFuture([&]() -> futures::Future<futures::Unit> {
-    Result res = co_await executeGharial();
+  auto f = executeGharial().thenValue([&](Result res) {
     if (res.fail()) {
       TRI_ASSERT(!_response->isResponseEmpty());
-      co_return;
     }
-    // The url is required to properly generate the result!
-    co_return;
-  }());
+  });
+
+  return waitForFuture(std::move(f));
 }
 
 Result RestGraphHandler::returnError(ErrorCode errorNumber) {
