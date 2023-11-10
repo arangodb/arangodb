@@ -23,4 +23,4 @@
 
 extern "C" {
 int find_syslog_facility_by_name(const char* facility);
-};
+}
