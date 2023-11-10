@@ -102,7 +102,8 @@ Result DBServerAgencySync::getLocalCollections(
                     "Failed to emplace new entry in local collection cache");
     }
 
-    {
+    if (vocbase.replicationVersion() == replication::Version::TWO) {
+      // Create a mapping from db to replicated logs
       auto [it, created] =
           replLogs.try_emplace(dbname, vocbase.getReplicatedLogsStatusMap());
       if (!created) {
@@ -114,10 +115,11 @@ Result DBServerAgencySync::getLocalCollections(
       }
     }
 
-    {
-      auto [it, created] = shardIdToLogId.try_emplace(
-          dbname, std::unordered_map<arangodb::ShardID,
-                                     arangodb::replication2::LogId>{});
+    if (vocbase.replicationVersion() == replication::Version::TWO) {
+      // Create a mapping from db to [shard -> log id]
+      // This will indicate the responsible logs for each shard on this system
+      auto [it, created] =
+          shardIdToLogId.try_emplace(dbname, maintenance::ShardIdToLogIdMap{});
       if (!created) {
         LOG_TOPIC("76d1a", WARN, Logger::MAINTENANCE)
             << "Failed to emplace new database entry in local ShardId-to-LogId "
@@ -268,7 +270,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   AgencyCache::databases_t local;
   LocalLogsMap localLogs;
-  maintenance::ShardIdToLogId shardIdToLogId;
+  maintenance::ShardIdToLogIdMapByDatabase shardIdToLogId;
   LOG_TOPIC("54261", TRACE, Logger::MAINTENANCE)
       << "Before getLocalCollections for phaseOne";
   Result glc = getLocalCollections(dirty, local, localLogs, shardIdToLogId);

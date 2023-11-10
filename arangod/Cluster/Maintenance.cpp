@@ -265,10 +265,9 @@ static std::string CreateLeaderString(std::string const& leaderId,
   return leaderId;
 }
 
-static bool isReplication2Leader(
-    std::string const& dbname, std::string const& shname,
-    ReplicatedLogStatusMap const& localLogs,
-    std::unordered_map<ShardID, replication2::LogId> const& shardsToLogs) {
+static bool isReplication2Leader(std::string const& shname,
+                                 ReplicatedLogStatusMap const& localLogs,
+                                 ShardIdToLogIdMap const& shardsToLogs) {
   auto it = shardsToLogs.find(shname);
   // If the shard is not found, then it has not been created yet.
   if (it != std::end(shardsToLogs)) {
@@ -296,8 +295,8 @@ static void handlePlanShard(
     std::vector<std::shared_ptr<ActionDescription>>& actions,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
     replication::Version replicationVersion,
-    ReplicatedLogStatusMap const& localLogs,
-    std::unordered_map<ShardID, replication2::LogId> const& shardsToLogs) {
+    std::optional<ReplicatedLogStatusMap> const& localLogs,
+    std::optional<ShardIdToLogIdMap> const& shardsToLogs) {
   // First check if the shard is locked:
   auto it = shardActionMap.find(shname);
   if (it != shardActionMap.end()) {
@@ -314,7 +313,7 @@ static void handlePlanShard(
   bool shouldBeLeading = serverId == leaderId;
   bool replication2Leader =
       replicationVersion == replication::Version::TWO &&
-      isReplication2Leader(dbname, shname, localLogs, shardsToLogs);
+      isReplication2Leader(shname, localLogs.value(), shardsToLogs.value());
 
   commonShrds.emplace(shname);
 
@@ -492,8 +491,8 @@ static void handleLocalShard(
     containers::FlatHashSet<DatabaseID>& makeDirty, bool& callNotify,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
     replication::Version replicationVersion,
-    ReplicatedLogStatusMap const& localLogs,
-    std::unordered_map<ShardID, replication2::LogId> const& shardsToLogs) {
+    std::optional<ReplicatedLogStatusMap> const& localLogs,
+    std::optional<ShardIdToLogIdMap> const& shardsToLogs) {
   // First check if the shard is locked:
   auto iter = shardActionMap.find(colname);
   if (iter != shardActionMap.end()) {
@@ -513,7 +512,7 @@ static void handleLocalShard(
   bool const isLeading = localLeader.empty();
   bool const replication2Leader =
       replicationVersion == replication::Version::TWO &&
-      isReplication2Leader(dbname, colname, localLogs, shardsToLogs);
+      isReplication2Leader(colname, localLogs.value(), shardsToLogs.value());
   if (it == commonShrds.end()) {
     if (replicationVersion != replication::Version::TWO || replication2Leader) {
       // This collection is not planned anymore, can drop it
@@ -733,7 +732,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     std::vector<std::shared_ptr<ActionDescription>>& actions,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
     ReplicatedLogStatusMapByDatabase const& localLogsByDatabase,
-    ShardIdToLogId const& shardIdToLogId) {
+    ShardIdToLogIdMapByDatabase const& shardIdToLogId) {
   // You are entering the functional sector.
   // Vous entrez dans le secteur fonctionel.
   // Sie betreten den funktionalen Sektor.
@@ -854,21 +853,66 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
                        callNotify, actions);
   }
 
+  // Obtain a shardID -> LogId map (for replication2 only)
+  auto getShardsToLogs =
+      [&](DatabaseID const& dbname) -> std::optional<ShardIdToLogIdMap> {
+    auto it = shardIdToLogId.find(dbname);
+    if (it != std::end(shardIdToLogId)) {
+      return it->second;
+    }
+    LOG_TOPIC("f9399", ERR, Logger::MAINTENANCE)
+        << "Could not get the shard to log mapping of replication2 database: "
+        << dbname;
+    return std::nullopt;
+  };
+
+  // Obtain a local log status map (for replication2 only)
+  auto getLocalLogsStatus =
+      [&](DatabaseID const& dbname) -> std::optional<ReplicatedLogStatusMap> {
+    auto it = localLogsByDatabase.find(dbname);
+    if (it != std::end(localLogsByDatabase)) {
+      return it->second;
+    }
+    LOG_TOPIC("701d8", ERR, Logger::MAINTENANCE)
+        << "Could not get the local logs status of replication2 database: "
+        << dbname;
+    return std::nullopt;
+  };
+
+  // Obtain the replication version
+  auto getReplicationVersion =
+      [&](DatabaseID const& dbname) -> replication::Version {
+    auto version = replicationVersion.find(dbname);
+    TRI_ASSERT(version != replicationVersion.end()) << dbname;
+    return version->second;
+  };
+
   // Create or modify if local collections are affected
   for (auto const& dbname : dirty) {  // each dirty database
     auto const lit = local.find(dbname);
     auto const pit = plan.find(dbname);
     if (pit != plan.end() && lit != local.end()) {
-      auto rv = replicationVersion.find(dbname);
-      TRI_ASSERT(rv != replicationVersion.end());
+      auto rv = getReplicationVersion(dbname);
 
-      auto shardsToLogs = shardIdToLogId.find(dbname);
-      TRI_ASSERT(shardsToLogs != std::end(shardIdToLogId))
-          << "dbname: " << dbname << "; map: " << shardIdToLogId;
+      auto shardsToLogs = rv == replication::Version::TWO
+                              ? getShardsToLogs(dbname)
+                              : std::nullopt;
+      if (rv == replication::Version::TWO && !shardsToLogs) {
+        TRI_ASSERT(false) << "dbname: " << dbname << "; map: " << shardIdToLogId
+                          << "; local: " << lit->second->toJson()
+                          << "; plan: " << pit->second->toJson();
+        continue;
+      }
 
-      auto localLogs = localLogsByDatabase.find(dbname);
-      TRI_ASSERT(localLogs != std::end(localLogsByDatabase))
-          << "dbname: " << dbname;
+      auto localLogs = rv == replication::Version::TWO
+                           ? getLocalLogsStatus(dbname)
+                           : std::nullopt;
+      if (rv == replication::Version::TWO && !localLogs) {
+        TRI_ASSERT(false) << "dbname: " << dbname << "; map: " << shardIdToLogId
+                          << "; local: " << lit->second->toJson()
+                          << "; plan: " << pit->second->toJson();
+        continue;
+      }
 
       auto pdb = pit->second->slice()[0];
       std::vector<std::string> ppath{AgencyCommHelper::path(), PLAN,
@@ -900,8 +944,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
                         engine, planIndex, cprops, ldb, dbname,
                         pcol.key.copyString(), shard.key.copyString(), serverId,
                         shard.value[0].copyString(), commonShrds, indis, errors,
-                        makeDirty, callNotify, actions, shardActionMap,
-                        rv->second, localLogs->second, shardsToLogs->second);
+                        makeDirty, callNotify, actions, shardActionMap, rv,
+                        localLogs, shardsToLogs);
                     break;
                   }
                 }
@@ -938,24 +982,37 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
         // return an empty object, which is fine for `handleLocalShard`, so we
         // do not have to check anything else here.
 
-        auto shardsToLogs = shardIdToLogId.find(dbname);
-        TRI_ASSERT(shardsToLogs != std::end(shardIdToLogId))
-            << "dbname: " << dbname << "; map: " << shardIdToLogId;
+        auto rv = getReplicationVersion(dbname);
 
-        auto localLogs = localLogsByDatabase.find(dbname);
-        TRI_ASSERT(localLogs != std::end(localLogsByDatabase))
-            << "dbname: " << dbname;
+        auto shardsToLogs = rv == replication::Version::TWO
+                                ? getShardsToLogs(dbname)
+                                : std::nullopt;
+        if (rv == replication::Version::TWO && !shardsToLogs) {
+          TRI_ASSERT(false)
+              << "dbname: " << dbname << "; map: " << shardIdToLogId
+              << "; local: " << lit->second->toJson()
+              << "; plan: " << pit->second->toJson();
+          continue;
+        }
+
+        auto localLogs = rv == replication::Version::TWO
+                             ? getLocalLogsStatus(dbname)
+                             : std::nullopt;
+        if (rv == replication::Version::TWO && !localLogs) {
+          TRI_ASSERT(false)
+              << "dbname: " << dbname << "; map: " << shardIdToLogId
+              << "; local: " << lit->second->toJson()
+              << "; plan: " << pit->second->toJson();
+          continue;
+        }
 
         for (auto const& lcol : VPackObjectIterator(ldbslice)) {
           auto const& colname = lcol.key.copyString();
           auto const shardMap = getShardMap(plan);  // plan shards -> servers
-          auto rv = replicationVersion.find(dbname);
-          TRI_ASSERT(rv != replicationVersion.end());
-
           handleLocalShard(ldbname, colname, lcol.value, shardMap.slice(),
                            commonShrds, indis, serverId, actions, makeDirty,
-                           callNotify, shardActionMap, rv->second,
-                           localLogs->second, shardsToLogs->second);
+                           callNotify, shardActionMap, rv, localLogs,
+                           shardsToLogs);
         }
       }
     }
@@ -1049,7 +1106,7 @@ arangodb::Result arangodb::maintenance::executePlan(
     VPackBuilder& report,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
     ReplicatedLogStatusMapByDatabase const& localLogs,
-    ShardIdToLogId const& shardIdToLogId) {
+    ShardIdToLogIdMapByDatabase const& shardIdToLogId) {
   // Errors from maintenance feature
   MaintenanceFeature::errors_t errors;
   arangodb::Result result = feature.copyAllErrors(errors);
@@ -1206,7 +1263,7 @@ arangodb::Result arangodb::maintenance::phaseOne(
     VPackBuilder& report,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
     ReplicatedLogStatusMapByDatabase const& localLogs,
-    ShardIdToLogId const& shardIdToLogId) {
+    ShardIdToLogIdMapByDatabase const& shardIdToLogId) {
   auto start = std::chrono::steady_clock::now();
 
   arangodb::Result result;
@@ -1799,7 +1856,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     MaintenanceFeature::errors_t const& allErrors, std::string const& serverId,
     VPackBuilder& report, ShardStatistics& shardStats,
     ReplicatedLogStatusMapByDatabase const& localLogs,
-    ShardIdToLogId const& shardIdToLogId) {
+    ShardIdToLogIdMapByDatabase const& shardIdToLogId) {
   for (auto const& dbName : dirty) {
     auto lit = local.find(dbName);
     VPackSlice ldb;
@@ -1876,12 +1933,34 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         }
       }
 
-      auto shardsToLogs = shardIdToLogId.find(dbName);
-      TRI_ASSERT(shardsToLogs != std::end(shardIdToLogId))
-          << "dbname: " << dbName << "; map: " << shardIdToLogId;
+      auto shardsToLogs = replicationVersion == replication::Version::TWO
+                              ? shardIdToLogId.find(dbName)
+                              : std::end(shardIdToLogId);
+      if (replicationVersion == replication::Version::TWO &&
+          shardsToLogs == std::end(shardIdToLogId)) {
+        LOG_TOPIC("4c3c9", ERR, Logger::MAINTENANCE)
+            << "Could not get the shard to log mapping of replication2 "
+               "database: "
+            << dbName;
+        TRI_ASSERT(false) << "dbname: " << dbName << "; map: " << shardIdToLogId
+                          << "; local: " << lit->second->toJson()
+                          << "; plan: " << pit->second->toJson();
+        continue;
+      }
 
-      auto logs = localLogs.find(dbName);
-      TRI_ASSERT(logs != std::end(localLogs)) << "dbName: " << dbName;
+      auto logs = replicationVersion == replication::Version::TWO
+                      ? localLogs.find(dbName)
+                      : std::end(localLogs);
+      if (replicationVersion == replication::Version::TWO &&
+          shardsToLogs == std::end(shardIdToLogId)) {
+        LOG_TOPIC("04470", ERR, Logger::MAINTENANCE)
+            << "Could not get the local logs status of replication2 database: "
+            << dbName;
+        TRI_ASSERT(false) << "dbname: " << dbName << "; map: " << shardIdToLogId
+                          << "; local: " << lit->second->toJson()
+                          << "; plan: " << pit->second->toJson();
+        continue;
+      }
 
       for (auto const& shard : VPackObjectIterator(ldb, true)) {
         auto const shName = shard.key.copyString();
@@ -1892,8 +1971,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         shardStats.numShards += 1;
 
         if (replicationVersion == replication::Version::TWO &&
-            !isReplication2Leader(dbName, shName, logs->second,
-                                  shardsToLogs->second)) {
+            !isReplication2Leader(shName, logs->second, shardsToLogs->second)) {
           // skip this shard if it is not the leader
           continue;
         }
@@ -2499,7 +2577,7 @@ arangodb::Result arangodb::maintenance::phaseTwo(
     VPackBuilder& report,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
     ReplicatedLogStatusMapByDatabase const& localLogs,
-    ShardIdToLogId const& shardIdToLogId) {
+    ShardIdToLogIdMapByDatabase const& shardIdToLogId) {
   auto start = std::chrono::steady_clock::now();
 
   MaintenanceFeature::errors_t allErrors;
