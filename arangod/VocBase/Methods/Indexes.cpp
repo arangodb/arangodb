@@ -274,7 +274,7 @@ futures::Future<arangodb::Result> Indexes::getAll(
           transaction::StandaloneContext::create(collection.vocbase(), origin),
           collection, AccessMode::Type::READ);
 
-      Result res = co_await trx->begin();
+      Result res = co_await trx->beginAsync();
       if (!res.ok()) {
         co_return res;
       }
@@ -770,7 +770,7 @@ futures::Future<arangodb::Result> Indexes::drop(LogicalCollection& collection,
         transaction::StandaloneContext::create(collection.vocbase(), origin),
         collection, AccessMode::Type::EXCLUSIVE, trxOpts);
 #endif
-    Result res = co_await trx.begin();
+    Result res = co_await trx.beginAsync();
 
     if (!res.ok()) {
       events::DropIndex(collection.vocbase().name(), collection.name(), "",

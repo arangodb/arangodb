@@ -1845,10 +1845,8 @@ std::string transaction::Methods::extractIdString(VPackSlice slice) {
   return transaction::helpers::extractIdString(resolver(), slice, VPackSlice());
 }
 
-futures::Future<Result> transaction::Methods::beginAsync() { return begin(); }
-
 /// @brief begin the transaction
-futures::Future<Result> transaction::Methods::begin() {
+futures::Future<Result> transaction::Methods::beginAsync() {
   if (_state == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid transaction state");
@@ -3836,7 +3834,7 @@ Result Methods::triggerIntermediateCommit() {
   return _state->triggerIntermediateCommit();
 }
 
-Result Methods::beginSync() { return begin().get(); }
+Result Methods::beginSync() { return beginAsync().get(); }
 
 #ifndef USE_ENTERPRISE
 ErrorCode Methods::validateSmartJoinAttribute(LogicalCollection const&,

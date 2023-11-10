@@ -181,7 +181,7 @@ auto handlingOfExistingCollection(TRI_vocbase_t& vocbase,
 
             trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
             trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
-            auto trxRes = co_await trx.begin();
+            auto trxRes = co_await trx.beginAsync();
 
             if (!trxRes.ok()) {
               co_return trxRes;
@@ -1299,7 +1299,7 @@ futures::Future<Result> RestReplicationHandler::processRestoreData(
   SingleCollectionTransaction trx(std::move(ctx), colName,
                                   AccessMode::Type::WRITE);
 
-  Result res = co_await trx.begin();
+  Result res = co_await trx.beginAsync();
 
   if (!res.ok()) {
     res.reset(res.errorNumber(),
@@ -1583,7 +1583,7 @@ futures::Future<Result> RestReplicationHandler::parseBatchForSystemCollection(
   SingleCollectionTransaction trx(std::move(ctx), collectionName,
                                   AccessMode::Type::READ);
 
-  Result res = co_await trx.begin();
+  Result res = co_await trx.beginAsync();
   if (res.ok()) {
     res = parseBatch(trx, collectionName, documentsToInsert, documentsToRemove);
   }
@@ -2378,7 +2378,7 @@ RestReplicationHandler::handleCommandAddFollower() {
     auto ctx = transaction::StandaloneContext::create(_vocbase, origin);
     SingleCollectionTransaction trx(std::move(ctx), *col,
                                     AccessMode::Type::EXCLUSIVE);
-    auto res = co_await trx.begin();
+    auto res = co_await trx.beginAsync();
 
     if (res.ok()) {
       OperationOptions options(_context);
@@ -2509,7 +2509,7 @@ RestReplicationHandler::handleCommandAddFollower() {
     auto context = transaction::StandaloneContext::create(_vocbase, origin);
     SingleCollectionTransaction trx(context, *col, AccessMode::Type::READ);
 
-    auto res = co_await trx.begin();
+    auto res = co_await trx.beginAsync();
     if (res.ok()) {
       auto tree = col->getPhysical()->revisionTree(trx);
       if (std::to_string(tree->rootValue()) !=

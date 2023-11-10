@@ -206,7 +206,6 @@ class Methods {
   TEST_VIRTUAL velocypack::Options const& vpackOptions() const;
 
   /// @brief begin the transaction
-  [[nodiscard]] futures::Future<Result> begin();
   [[nodiscard]] futures::Future<Result> beginAsync();
   Result beginSync();
 

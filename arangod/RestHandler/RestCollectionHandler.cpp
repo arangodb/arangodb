@@ -504,7 +504,7 @@ futures::Future<RestStatus> RestCollectionHandler::handleCommandPut() {
         transaction::OperationOriginREST{"truncating collection"});
     _activeTrx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
     _activeTrx->addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
-    res = co_await _activeTrx->begin();
+    res = co_await _activeTrx->beginAsync();
     if (res.fail()) {
       generateTransactionError(coll->name(), OperationResult(res, opts), "");
       _activeTrx.reset();
@@ -829,7 +829,7 @@ futures::Future<futures::Unit> RestCollectionHandler::initializeTransaction(
   }
 
   TRI_ASSERT(_activeTrx != nullptr);
-  Result res = co_await _activeTrx->begin();
+  Result res = co_await _activeTrx->beginAsync();
 
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);

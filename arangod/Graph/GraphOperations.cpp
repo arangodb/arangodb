@@ -126,7 +126,7 @@ futures::Future<OperationResult> GraphOperations::eraseEdgeDefinition(
                                   AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-  res = co_await trx.begin();
+  res = co_await trx.beginAsync();
 
   if (!res.ok()) {
     res = co_await trx.finishAsync(res);
@@ -276,7 +276,7 @@ futures::Future<OperationResult> GraphOperations::editEdgeDefinition(
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
                                   AccessMode::Type::WRITE);
 
-  res = co_await trx.begin();
+  res = co_await trx.beginAsync();
 
   if (!res.ok()) {
     co_return OperationResult(res, options);
@@ -399,7 +399,7 @@ futures::Future<OperationResult> GraphOperations::addOrphanCollection(
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
                                   AccessMode::Type::WRITE);
 
-  res = co_await trx.begin();
+  res = co_await trx.beginAsync();
 
   if (!res.ok()) {
     co_return OperationResult(res, options);
@@ -475,7 +475,7 @@ futures::Future<OperationResult> GraphOperations::eraseOrphanCollection(
                                     AccessMode::Type::WRITE);
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-    res = co_await trx.begin();
+    res = co_await trx.beginAsync();
 
     if (!res.ok()) {
       co_return OperationResult(res, options);
@@ -598,7 +598,7 @@ futures::Future<OperationResult> GraphOperations::getDocument(
                                   AccessMode::Type::READ);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-  Result res = co_await trx.begin();
+  Result res = co_await trx.beginAsync();
 
   if (!res.ok()) {
     co_return OperationResult(res, options);
@@ -786,7 +786,7 @@ GraphOperations::validateEdge(std::string const& definitionName,
       ctx(), readCollections, writeCollections, exclusiveCollections,
       trxOptions);
 
-  Result tRes = co_await trx->begin();
+  Result tRes = co_await trx->beginAsync();
 
   OperationOptions options(ExecContext::current());
 
@@ -945,7 +945,7 @@ futures::Future<OperationResult> GraphOperations::updateVertex(
   trxOptions.waitForSync = waitForSync;
   transaction::Methods trx(ctx(), {}, writeCollections, {}, trxOptions);
 
-  Result tRes = co_await trx.begin();
+  Result tRes = co_await trx.beginAsync();
 
   if (!tRes.ok()) {
     OperationOptions options(ExecContext::current());
@@ -974,7 +974,7 @@ futures::Future<OperationResult> GraphOperations::replaceVertex(
   trxOptions.waitForSync = waitForSync;
   transaction::Methods trx(ctx(), {}, writeCollections, {}, trxOptions);
 
-  Result tRes = co_await trx.begin();
+  Result tRes = co_await trx.beginAsync();
 
   if (!tRes.ok()) {
     OperationOptions options(ExecContext::current());
@@ -1001,7 +1001,7 @@ futures::Future<OperationResult> GraphOperations::createVertex(
   writeCollections.emplace_back(collectionName);
   transaction::Methods trx(ctx(), {}, writeCollections, {}, trxOptions);
 
-  Result res = co_await trx.begin();
+  Result res = co_await trx.beginAsync();
 
   if (!res.ok()) {
     OperationOptions options(ExecContext::current());
@@ -1064,7 +1064,7 @@ futures::Future<OperationResult> GraphOperations::removeEdgeOrVertex(
   transaction::Methods trx{ctx(), {}, trxCollections, {}, trxOptions};
   trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
-  res = co_await trx.begin();
+  res = co_await trx.beginAsync();
 
   if (!res.ok()) {
     co_return OperationResult(res, options);

@@ -388,7 +388,7 @@ futures::Future<futures::Unit> RestDocumentHandler::readSingleDocument(
   // inside read transaction
   // ...........................................................................
 
-  Result res = co_await _activeTrx->begin();
+  Result res = co_await _activeTrx->beginAsync();
 
   if (!res.ok()) {
     generateTransactionError(collection, OperationResult(res, options), "");
@@ -590,7 +590,7 @@ futures::Future<futures::Unit> RestDocumentHandler::modifyDocument(
   // inside write transaction
   // ...........................................................................
 
-  Result res = co_await _activeTrx->begin();
+  Result res = co_await _activeTrx->beginAsync();
 
   if (!res.ok()) {
     generateTransactionError(cname, OperationResult(res, opOptions), "");
@@ -738,7 +738,7 @@ futures::Future<futures::Unit> RestDocumentHandler::removeDocument() {
 
   addTransactionHints(cname, isMultiple, false);
 
-  Result res = co_await _activeTrx->begin();
+  Result res = co_await _activeTrx->beginAsync();
 
   if (!res.ok()) {
     generateTransactionError(cname, OperationResult(res, opOptions), "");
@@ -818,7 +818,7 @@ futures::Future<futures::Unit> RestDocumentHandler::readManyDocuments() {
   // inside read transaction
   // ...........................................................................
 
-  Result res = co_await _activeTrx->begin();
+  Result res = co_await _activeTrx->beginAsync();
 
   if (!res.ok()) {
     generateTransactionError(cname, OperationResult(res, opOptions), "");

@@ -805,7 +805,7 @@ RocksDBMetaCollection::revisionTreeFromCollection(bool checkForBlockers) {
   SingleCollectionTransaction trx(std::move(ctxt), _logicalCollection,
                                   AccessMode::Type::READ);
 
-  Result res = co_await trx.begin();
+  Result res = co_await trx.beginAsync();
   if (res.fail()) {
     LOG_TOPIC("d1e53", WARN, arangodb::Logger::ENGINES)
         << "failed to begin transaction to rebuild revision tree "

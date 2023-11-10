@@ -411,7 +411,7 @@ futures::Future<transaction::Methods*> Collections::Context::trx(
     auto trx = std::make_unique<SingleCollectionTransaction>(std::move(ctx),
                                                              *_coll, type);
 
-    Result res = co_await trx->begin();
+    Result res = co_await trx->beginAsync();
 
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
@@ -1110,7 +1110,7 @@ futures::Future<Result> Collections::updateProperties(
 
     SingleCollectionTransaction trx(std::move(ctx), collection,
                                     AccessMode::Type::EXCLUSIVE);
-    Result res = co_await trx.begin();
+    Result res = co_await trx.beginAsync();
     if (res.ok()) {
       co_return doUpdate();
     }
@@ -1361,7 +1361,7 @@ futures::Future<Result> Collections::checksum(LogicalCollection& collection,
 #endif
   SingleCollectionTransaction trx(std::move(ctx), collection,
                                   AccessMode::Type::READ);
-  Result res = co_await trx.begin();
+  Result res = co_await trx.beginAsync();
 
   if (res.fail()) {
     co_return res;
