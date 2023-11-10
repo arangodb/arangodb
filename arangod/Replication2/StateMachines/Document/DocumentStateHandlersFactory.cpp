@@ -109,20 +109,24 @@ auto DocumentStateHandlersFactory::createTransaction(
 
 auto DocumentStateHandlersFactory::createNetworkHandler(GlobalLogIdentifier gid)
     -> std::shared_ptr<IDocumentStateNetworkHandler> {
-  return std::make_shared<DocumentStateNetworkHandler>(gid, _connectionPool,
-                                                       createLogger(gid));
+  auto loggerContext = createLogger(gid);
+  return std::make_shared<DocumentStateNetworkHandler>(
+      std::move(gid), _connectionPool, std::move(loggerContext));
 }
 
 auto DocumentStateHandlersFactory::createMaintenanceActionExecutor(
     TRI_vocbase_t& vocbase, GlobalLogIdentifier gid, ServerID server)
     -> std::shared_ptr<IMaintenanceActionExecutor> {
+  auto loggerContext = createLogger(gid);
   return std::make_shared<MaintenanceActionExecutor>(
-      gid, std::move(server), _maintenanceFeature, vocbase, createLogger(gid));
+      std::move(gid), std::move(server), _maintenanceFeature, vocbase,
+      loggerContext);
 }
 
 auto DocumentStateHandlersFactory::createErrorHandler(GlobalLogIdentifier gid)
     -> std::shared_ptr<IDocumentStateErrorHandler> {
-  return std::make_shared<DocumentStateErrorHandler>(createLogger(gid));
+  return std::make_shared<DocumentStateErrorHandler>(
+      createLogger(std::move(gid)));
 }
 
 auto DocumentStateHandlersFactory::createLogger(GlobalLogIdentifier gid)
