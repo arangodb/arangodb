@@ -343,6 +343,7 @@ function printStats(stats, isCoord) {
   stringBuilder.appendLine(section('Query Statistics:'));
   let maxWELen = 'Writes Exec'.length;
   let maxWILen = 'Writes Ign'.length;
+  let maxDLLen = 'Doc. Lookups'.length;
   let maxSFLen = 'Scan Full'.length;
   let maxSILen = 'Scan Index'.length;
   let maxCHMLen = 'Cache Hits/Misses'.length;
@@ -351,12 +352,13 @@ function printStats(stats, isCoord) {
   let maxMemLen = 'Peak Mem [b]'.length;
   let maxETLen = 'Exec Time [s]'.length;
   stats.executionTime = stats.executionTime.toFixed(5);
-  stringBuilder.appendLine(' ' + header('Writes Exec') + spc + header('Writes Ign') + spc + header('Scan Full') + spc +
+  stringBuilder.appendLine(' ' + header('Writes Exec') + spc + header('Writes Ign') + spc + header('Doc. Lookups') + spc + header('Scan Full') + spc +
     header('Scan Index') + spc + header('Cache Hits/Misses') + spc + header('Filtered') + spc + (isCoord ? header('Requests') + spc : '') +
     header('Peak Mem [b]') + spc + header('Exec Time [s]'));
 
   stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + spc +
     pad(1 + maxWILen - String(stats.writesIgnored).length) + value(stats.writesIgnored) + spc +
+    pad(1 + maxDLLen - String(stats.documentLookups).length) + value(stats.documentLookups) + spc +
     pad(1 + maxSFLen - String(stats.scannedFull).length) + value(stats.scannedFull) + spc +
     pad(1 + maxSILen - String(stats.scannedIndex).length) + value(stats.scannedIndex) + spc +
     pad(1 + maxCHMLen - (String(stats.cacheHits || 0) + ' / ' + String(stats.cacheMisses || 0)).length) + value(stats.cacheHits || 0) + ' / ' + value(stats.cacheMisses || 0) + spc +

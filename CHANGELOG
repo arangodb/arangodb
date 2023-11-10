@@ -1,9 +1,18 @@
 devel
 -----
+
+* Added AQL statistics for additional document lookups. Also, the JoinNode
+  now exposes additional statistics:
+    - `scannedIndex`
+    - `filtered`
+    - `seeks`
+    - `documentLookups`
+
 * Updated jemalloc to the most recent available version of the code.
   There has not been a release in a while, and this code fixes
   compile problems using jemalloc with newer versions of clang in ArangoDB's
   release build environment.
+
 * Fix propagation of collection `writeConcern` changes to DB servers.
 
 * Make arangodump exclude the following cluster collection properties when
@@ -31,7 +40,7 @@ devel
 * Silence TSAN for shutdown for access to the SchedulerFeature::SCHEDULER
   pointer using atomic references.
 
-* Fixed a race in controlled leader change which could lead to a situation 
+* Fixed a race in controlled leader change which could lead to a situation
   in which a shard follower is dropped when the first write operation
   happens. This fixes BTS-1647.
 
