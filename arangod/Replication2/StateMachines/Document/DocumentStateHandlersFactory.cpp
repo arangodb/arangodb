@@ -64,9 +64,10 @@ auto DocumentStateHandlersFactory::createSnapshotHandler(
   // this should be improved, by using `DatabaseFeature::useDatabase()`
   // instead, which returns a managed pointer.
   auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+  auto logger = createLogger(gid);
   return std::make_shared<DocumentStateSnapshotHandler>(
       std::make_unique<DatabaseSnapshotFactory>(vocbase), ci.rebootTracker(),
-      gid, createLogger(gid));
+      std::move(gid), std::move(logger));
 }
 
 auto DocumentStateHandlersFactory::createTransactionHandler(
