@@ -1893,7 +1893,7 @@ TEST_F(IResearchAnalyzerFeatureTest,
           arangodb::transaction::StandaloneContext::create(
               *vocbase, arangodb::transaction::OperationOriginTestCase{}),
           collection, arangodb::AccessMode::Type::WRITE);
-      trx.beginSync();
+      trx.begin();
       trx.truncate(collection, options);
       trx.insert(collection, VPackParser::fromJson("{}")->slice(), options);
       trx.insert(collection,
@@ -1964,7 +1964,7 @@ TEST_F(IResearchAnalyzerFeatureTest,
           arangodb::transaction::StandaloneContext::create(
               *vocbase, arangodb::transaction::OperationOriginTestCase{}),
           collection, arangodb::AccessMode::Type::WRITE);
-      trx.beginSync();
+      trx.begin();
       trx.truncate(collection, options);
       trx.insert(collection,
                  VPackParser::fromJson(
@@ -2002,7 +2002,7 @@ TEST_F(IResearchAnalyzerFeatureTest,
           arangodb::transaction::StandaloneContext::create(
               *vocbase, arangodb::transaction::OperationOriginTestCase{}),
           collection, arangodb::AccessMode::Type::WRITE);
-      trx.beginSync();
+      trx.begin();
       trx.truncate(collection, options);
       trx.insert(collection,
                  VPackParser::fromJson(
@@ -2117,7 +2117,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_remove_existing_records) {
               *vocbase, arangodb::transaction::OperationOriginTestCase{}),
           collection, arangodb::AccessMode::Type::WRITE);
 
-      trx.beginSync();
+      trx.begin();
       trx.truncate(collection, options);
       trx.insert(collection,
                  VPackParser::fromJson("{\"name\": \"valid\", \"type\": "
@@ -2268,7 +2268,7 @@ TEST_F(IResearchAnalyzerFeatureTest,
           arangodb::transaction::StandaloneContext::create(
               *vocbase, arangodb::transaction::OperationOriginTestCase{}),
           collection, arangodb::AccessMode::Type::WRITE);
-      trx.beginSync();
+      trx.begin();
       trx.truncate(collection, options);
       auto res = trx.commit();
       EXPECT_TRUE(res.ok());
@@ -2298,7 +2298,7 @@ TEST_F(IResearchAnalyzerFeatureTest,
             *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::tests::AnalyzerCollectionName,
         arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE((trx.beginSync().ok()));
+    EXPECT_TRUE((trx.begin().ok()));
     auto queryResult =
         trx.all(arangodb::tests::AnalyzerCollectionName, 0, 2, options).get();
     EXPECT_TRUE((true == queryResult.ok()));
@@ -3969,7 +3969,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
             *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::tests::AnalyzerCollectionName,
         arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(
         (true ==
          trx.insert(arangodb::tests::AnalyzerCollectionName,
@@ -4071,7 +4071,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
             *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::tests::AnalyzerCollectionName,
         arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(
         (true ==
          trx.insert(arangodb::tests::AnalyzerCollectionName,
@@ -4132,7 +4132,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
         arangodb::transaction::StandaloneContext::create(
             *system, arangodb::transaction::OperationOriginTestCase{}),
         LEGACY_ANALYZER_COLLECTION_NAME, arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(
         (true ==
          trx.insert(LEGACY_ANALYZER_COLLECTION_NAME,
@@ -4192,7 +4192,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
             *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::tests::AnalyzerCollectionName,
         arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(
         (true ==
          trx.insert(arangodb::tests::AnalyzerCollectionName,

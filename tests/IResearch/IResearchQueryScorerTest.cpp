@@ -104,7 +104,7 @@ class QueryScorer : public QueryTest {
           {logicalCollection1->name(), logicalCollection2->name(),
            logicalCollection3->name()},
           kEmpty, arangodb::transaction::Options());
-      EXPECT_TRUE(trx.beginSync().ok());
+      EXPECT_TRUE(trx.begin().ok());
 
       // insert into collections
       {

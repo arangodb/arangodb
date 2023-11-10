@@ -4070,7 +4070,7 @@ class QueryPhrase : public QueryTest {
           arangodb::transaction::StandaloneContext::create(
               vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
-      EXPECT_TRUE(trx.beginSync().ok());
+      EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : docs) {
         auto res = trx.insert(collection->name(), entry->slice(), options);
@@ -4103,7 +4103,7 @@ class QueryPhrase : public QueryTest {
           arangodb::transaction::StandaloneContext::create(
               vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
-      EXPECT_TRUE(trx.beginSync().ok());
+      EXPECT_TRUE(trx.begin().ok());
 
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto res = trx.insert(collection->name(), itr.value(), options);
@@ -4144,7 +4144,7 @@ class QueryPhrase : public QueryTest {
           arangodb::transaction::StandaloneContext::create(
               _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
-      EXPECT_TRUE(trx.beginSync().ok());
+      EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : docs) {
         auto res = trx.insert(collection->name(), entry->slice(), options);
@@ -4177,7 +4177,7 @@ class QueryPhrase : public QueryTest {
           arangodb::transaction::StandaloneContext::create(
               _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
-      EXPECT_TRUE(trx.beginSync().ok());
+      EXPECT_TRUE(trx.begin().ok());
 
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto res = trx.insert(collection->name(), itr.value(), options);

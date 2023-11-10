@@ -315,7 +315,7 @@ static Result fillIndex(
   // The same is for background indexes.
   trx.addHint(transaction::Hints::Hint::INDEX_CREATION);
 
-  Result res = trx.beginSync();
+  Result res = trx.begin();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -645,7 +645,7 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx,
   // leaderState.
   // The same is for foreground indexes.
   trx.addHint(transaction::Hints::Hint::INDEX_CREATION);
-  Result res = trx.beginSync();
+  Result res = trx.begin();
   if (res.fail()) {
     return res;
   }

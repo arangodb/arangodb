@@ -3612,7 +3612,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, {collection0->name()}, EMPTY, arangodb::transaction::Options());
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
 
     auto json = arangodb::velocypack::Parser::fromJson("{}");
     auto res = trx.insert(collection0->name(), json->slice(), opt);
@@ -3906,7 +3906,7 @@ class IResearchViewVolatitlityTest
         std::vector<std::string>{collection0->name(), collection1->name()},
         EMPTY_VECTOR, arangodb::transaction::Options());
 
-    EXPECT_TRUE(trx->beginSync().ok());
+    EXPECT_TRUE(trx->begin().ok());
     // in collection only one alive doc
     {
       auto aliveDoc0 = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
@@ -4296,7 +4296,7 @@ class IResearchViewBlockTest
         EMPTY_VECTOR, std::vector<std::string>{collection0->name()},
         EMPTY_VECTOR, arangodb::transaction::Options());
 
-    EXPECT_TRUE(trx->beginSync().ok());
+    EXPECT_TRUE(trx->begin().ok());
     // Fill dummy data in index only (to simulate some documents where already
     // removed from collection)
     arangodb::iresearch::IResearchLinkMeta meta;

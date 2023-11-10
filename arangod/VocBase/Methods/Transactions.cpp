@@ -411,7 +411,7 @@ Result executeTransactionJS(v8::Isolate* isolate,
     trx.addHint(transaction::Hints::Hint::ALLOW_FAST_LOCK_ROUND_CLUSTER);
   }
 
-  rv = trx.beginSync();
+  rv = trx.begin();
 
   if (rv.fail()) {
     return rv;

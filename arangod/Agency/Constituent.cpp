@@ -128,7 +128,7 @@ void Constituent::termNoLock(term_t t, std::string const& votedFor) {
     auto ctx = transaction::StandaloneContext::create(*_vocbase, origin);
     SingleCollectionTransaction trx(std::move(ctx), "election",
                                     AccessMode::Type::WRITE);
-    Result res = trx.beginSync();
+    Result res = trx.begin();
 
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);

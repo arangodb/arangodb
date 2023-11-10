@@ -188,7 +188,7 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
     _trx->addHint(arangodb::transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
     _trx->addHint(arangodb::transaction::Hints::Hint::
                       SINGLE_OPERATION);  // to avoid taking db snapshot
-    _trx->beginSync();
+    _trx->begin();
   }
 
   arangodb::aql::QueryOptions const& queryOptions() const override {

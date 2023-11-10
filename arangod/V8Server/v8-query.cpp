@@ -225,7 +225,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   SingleCollectionTransaction trx(transactionContext, *collection,
                                   AccessMode::Type::READ);
 
-  Result res = trx.beginSync();
+  Result res = trx.begin();
 
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -313,7 +313,7 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   SingleCollectionTransaction trx(transactionContext, *col,
                                   AccessMode::Type::READ);
 
-  Result res = trx.beginSync();
+  Result res = trx.begin();
 
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);

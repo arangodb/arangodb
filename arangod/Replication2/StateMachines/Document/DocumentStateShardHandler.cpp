@@ -226,7 +226,7 @@ auto DocumentStateShardHandler::lockShard(ShardID const& shard,
 
   auto trx = std::make_unique<SingleCollectionTransaction>(std::move(ctx), *col,
                                                            accessType, options);
-  Result res = trx->beginSync();
+  Result res = trx->begin();
   if (res.fail()) {
     return Result{res.errorNumber(),
                   fmt::format("Failed to lock shard {} in database "

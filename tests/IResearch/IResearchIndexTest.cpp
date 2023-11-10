@@ -273,7 +273,7 @@ TEST_F(IResearchIndexTest, test_analyzer) {
         arangodb::transaction::StandaloneContext::create(
             vocbase(), arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, collections, EMPTY, arangodb::transaction::Options());
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
                     .ok());
@@ -589,7 +589,7 @@ TEST_F(IResearchIndexTest, test_async_index) {
               collection0->vocbase(),
               arangodb::transaction::OperationOriginTestCase{}),
           *collection0, arangodb::AccessMode::Type::WRITE);
-      resThread0 = trx.beginSync().ok();
+      resThread0 = trx.begin().ok();
       if (!resThread0) return;
 
       resThread0 = trx.insert(collection0->name(), doc->slice(),
@@ -632,7 +632,7 @@ TEST_F(IResearchIndexTest, test_async_index) {
               collection1->vocbase(),
               arangodb::transaction::OperationOriginTestCase{}),
           *collection1, arangodb::AccessMode::Type::WRITE);
-      resThread1 = trx.beginSync().ok();
+      resThread1 = trx.begin().ok();
       if (!resThread1) return;
 
       resThread1 = trx.insert(collection1->name(), doc->slice(),
@@ -909,7 +909,7 @@ TEST_F(IResearchIndexTest, test_fields) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, collections, EMPTY, arangodb::transaction::Options());
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
                     .ok());
@@ -1011,7 +1011,7 @@ TEST_F(IResearchIndexTest, test_pkCached) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, collections, EMPTY, arangodb::transaction::Options());
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
                     .ok());
@@ -1068,7 +1068,7 @@ TEST_F(IResearchIndexTest, test_pkCachedInverted) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, collections, EMPTY, arangodb::transaction::Options());
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
                     .ok());
@@ -1134,7 +1134,7 @@ TEST_F(IResearchIndexTest, test_pkCachedRestricted) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, collections, EMPTY, arangodb::transaction::Options());
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
                     .ok());
@@ -1204,7 +1204,7 @@ TEST_F(IResearchIndexTest, test_sortCached) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, collections, EMPTY, arangodb::transaction::Options());
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
                     .ok());
@@ -1261,7 +1261,7 @@ TEST_F(IResearchIndexTest, test_sortCachedInverted) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, collections, EMPTY, arangodb::transaction::Options());
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
                     .ok());
@@ -1329,7 +1329,7 @@ TEST_F(IResearchIndexTest, test_sortCachedRestricted) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, collections, EMPTY, arangodb::transaction::Options());
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
                     .ok());
@@ -1400,7 +1400,7 @@ TEST_F(IResearchIndexTest, test_geoCached) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, collections, EMPTY, arangodb::transaction::Options());
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
                     .ok());
@@ -1464,7 +1464,7 @@ TEST_F(IResearchIndexTest, test_geoCachedInverted) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, collections, EMPTY, arangodb::transaction::Options());
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
                     .ok());
@@ -1530,7 +1530,7 @@ TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, collections, EMPTY, arangodb::transaction::Options());
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
                     .ok());
@@ -1606,7 +1606,7 @@ TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted_InitialLeader) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, collections, EMPTY, arangodb::transaction::Options());
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
                     .ok());

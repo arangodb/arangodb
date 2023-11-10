@@ -80,7 +80,7 @@ class QueryTraversal : public QueryTest {
           arangodb::transaction::StandaloneContext::create(
               _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
-      EXPECT_TRUE(trx.beginSync().ok());
+      EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : docs) {
         auto res = trx.insert(collection->name(), entry->slice(), options);
@@ -112,7 +112,7 @@ class QueryTraversal : public QueryTest {
           arangodb::transaction::StandaloneContext::create(
               _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
-      EXPECT_TRUE(trx.beginSync().ok());
+      EXPECT_TRUE(trx.begin().ok());
 
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto res = trx.insert(collection->name(), itr.value(), options);
@@ -141,7 +141,7 @@ class QueryTraversal : public QueryTest {
           arangodb::transaction::StandaloneContext::create(
               _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
-      EXPECT_TRUE(trx.beginSync().ok());
+      EXPECT_TRUE(trx.begin().ok());
 
       std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
           arangodb::velocypack::Parser::fromJson(

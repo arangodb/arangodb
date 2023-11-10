@@ -473,7 +473,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
             *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options());
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
     auto const cid = logicalCollection->id();
     arangodb::iresearch::ViewSnapshot::Links links;
     {
@@ -526,7 +526,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
               *vocbase, arangodb::transaction::OperationOriginTestCase{}),
           EMPTY, std::vector<std::string>{logicalCollection->name()}, EMPTY,
           arangodb::transaction::Options());
-      EXPECT_TRUE(trx.beginSync().ok());
+      EXPECT_TRUE(trx.begin().ok());
 
       for (size_t i = 0; i < 12; ++i) {
         EXPECT_TRUE(
@@ -543,7 +543,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
             *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options());
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
     auto const cid = logicalCollection->id();
     arangodb::iresearch::ViewSnapshot::Links links;
     {
@@ -590,7 +590,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
           arangodb::transaction::StandaloneContext::create(
               *vocbase, arangodb::transaction::OperationOriginTestCase{}),
           EMPTY, collections, EMPTY, arangodb::transaction::Options());
-      EXPECT_TRUE(trx.beginSync().ok());
+      EXPECT_TRUE(trx.begin().ok());
 
       arangodb::OperationOptions options;
       for (size_t i = 1; i <= 12; ++i) {
@@ -609,7 +609,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
         arangodb::transaction::StandaloneContext::create(
             *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         collections, EMPTY, EMPTY, trxOptions);
-    EXPECT_TRUE(trx0.beginSync().ok());
+    EXPECT_TRUE(trx0.begin().ok());
     auto const cid0 = logicalCollection->id();
     arangodb::iresearch::ViewSnapshot::Links links01, links02, links03;
     {
@@ -639,7 +639,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
           arangodb::transaction::StandaloneContext::create(
               *vocbase, arangodb::transaction::OperationOriginTestCase{}),
           EMPTY, collections, EMPTY, arangodb::transaction::Options());
-      EXPECT_TRUE(trx.beginSync().ok());
+      EXPECT_TRUE(trx.begin().ok());
 
       arangodb::OperationOptions options;
       for (size_t i = 13; i <= 24; ++i) {
@@ -660,7 +660,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
         arangodb::transaction::StandaloneContext::create(
             *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         collections, EMPTY, EMPTY, trxOptions);
-    EXPECT_TRUE(trx1.beginSync().ok());
+    EXPECT_TRUE(trx1.begin().ok());
     auto const cid1 = logicalCollection->id();
     arangodb::iresearch::ViewSnapshot::Links links1;
     {
@@ -719,7 +719,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
             EMPTY, std::vector<std::string>{logicalCollection->name()}, EMPTY,
             options);
 
-        EXPECT_TRUE(trx.beginSync().ok());
+        EXPECT_TRUE(trx.begin().ok());
         EXPECT_TRUE((trx.insert(logicalCollection->name(), doc->slice(),
                                 arangodb::OperationOptions())
                          .ok()));
@@ -733,7 +733,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
                 *vocbase, arangodb::transaction::OperationOriginTestCase{}),
             std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
             arangodb::transaction::Options{});
-        EXPECT_TRUE(trx.beginSync().ok());
+        EXPECT_TRUE(trx.begin().ok());
         auto const cid = logicalCollection->id();
         arangodb::iresearch::ViewSnapshot::Links links;
         {
@@ -1059,7 +1059,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
             *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, std::vector<std::string>{logicalCollection->name()}, EMPTY,
         arangodb::transaction::Options());
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(
         (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
     EXPECT_TRUE(trx.commit().ok());
@@ -1072,7 +1072,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
             *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options());
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
     auto const cid = logicalCollection->id();
     arangodb::iresearch::ViewSnapshot::Links links;
     {
@@ -1093,7 +1093,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
             *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options());
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
     auto const cid = logicalCollection->id();
     arangodb::iresearch::ViewSnapshot::Links links1, links2;
     {
@@ -1122,7 +1122,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
             *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         opts);
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
     auto const cid = logicalCollection->id();
     arangodb::iresearch::ViewSnapshot::Links links;
     {
@@ -1144,7 +1144,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
             *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         opts);
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
     auto const cid = logicalCollection->id();
     arangodb::iresearch::ViewSnapshot::Links links1, links2, links3, links4;
     {

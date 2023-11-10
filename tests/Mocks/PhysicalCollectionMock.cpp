@@ -1024,7 +1024,7 @@ PhysicalCollectionMock::createIndex(
           vocbase, arangodb::transaction::OperationOriginTestCase{}),
       _logicalCollection, arangodb::AccessMode::Type::WRITE);
 
-  auto res = trx.beginSync();
+  auto res = trx.begin();
   TRI_ASSERT(res.ok());
 
   if (index->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {

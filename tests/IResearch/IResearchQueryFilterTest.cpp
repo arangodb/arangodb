@@ -67,7 +67,7 @@ class QueryFilter : public QueryTest {
               _vocbase, transaction::OperationOriginTestCase{}),
           EMPTY, {logicalCollection1->name(), logicalCollection2->name()},
           EMPTY, transaction::Options());
-      EXPECT_TRUE(trx.beginSync().ok());
+      EXPECT_TRUE(trx.begin().ok());
 
       // insert into collections
       {

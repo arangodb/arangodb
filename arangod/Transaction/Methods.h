@@ -207,7 +207,7 @@ class Methods {
 
   /// @brief begin the transaction
   [[nodiscard]] futures::Future<Result> beginAsync();
-  Result beginSync();
+  Result begin();
 
   /// @deprecated use async variant
   [[nodiscard, deprecated("use async variant")]] auto commit() noexcept

@@ -249,7 +249,7 @@ futures::Future<futures::Unit> RestDocumentHandler::insertDocument() {
   addTransactionHints(cname, isMultiple,
                       opOptions.isOverwriteModeUpdateReplace());
 
-  Result res = _activeTrx->beginSync();
+  Result res = _activeTrx->begin();
 
   if (!res.ok()) {
     generateTransactionError(cname, OperationResult(res, opOptions), "");

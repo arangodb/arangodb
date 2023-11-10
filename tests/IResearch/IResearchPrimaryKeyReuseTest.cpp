@@ -112,7 +112,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         *collection, arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
       auto res = trx.insert(collection->name(), entry->slice(), options);
@@ -132,7 +132,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
           arangodb::transaction::StandaloneContext::create(
               vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
-      EXPECT_TRUE(trx.beginSync().ok());
+      EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : insertedDocs) {
         auto res = trx.remove(collection->name(), entry.slice(), options);
@@ -158,7 +158,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
           arangodb::transaction::StandaloneContext::create(
               vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
-      EXPECT_TRUE(trx.beginSync().ok());
+      EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : insertedDocs) {
         auto res = trx.insert(collection->name(), entry.slice(), options);
@@ -242,7 +242,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         *collection, arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
       auto res = trx.insert(collection->name(), entry->slice(), options);
@@ -262,7 +262,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
           arangodb::transaction::StandaloneContext::create(
               vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
-      EXPECT_TRUE(trx.beginSync().ok());
+      EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : insertedDocs) {
         auto res = trx.remove(collection->name(), entry.slice(), options);
@@ -287,7 +287,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
           arangodb::transaction::StandaloneContext::create(
               vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
-      EXPECT_TRUE(trx.beginSync().ok());
+      EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : docs) {
         auto res = trx.insert(collection->name(), entry->slice(), options);
@@ -305,7 +305,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
           arangodb::transaction::StandaloneContext::create(
               vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
-      EXPECT_TRUE(trx.beginSync().ok());
+      EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : extraDocs) {
         auto res = trx.remove(collection->name(), entry.slice(), options);
@@ -325,7 +325,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
           arangodb::transaction::StandaloneContext::create(
               vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
-      EXPECT_TRUE(trx.beginSync().ok());
+      EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : insertedDocs) {
         auto res = trx.insert(collection->name(), entry.slice(), options);
@@ -406,7 +406,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_single_transaction) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         *collection, arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
       arangodb::OperationOptions options;

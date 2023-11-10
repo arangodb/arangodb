@@ -531,7 +531,7 @@ TEST_F(TransactionManagerTest, aql_standalone_transaction) {
         vocbase, arangodb::transaction::OperationOriginTestCase{});
     SingleCollectionTransaction trx(std::move(ctx), "testCollection",
                                     AccessMode::Type::WRITE);
-    ASSERT_TRUE(trx.beginSync().ok());
+    ASSERT_TRUE(trx.begin().ok());
 
     auto doc = arangodb::velocypack::Parser::fromJson("{ \"abc\": 1}");
     OperationOptions opts;

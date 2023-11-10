@@ -1868,7 +1868,7 @@ TEST_F(IResearchViewTest, test_cleanup) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
-    EXPECT_TRUE((trx.beginSync().ok()));
+    EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE(
         (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
     EXPECT_TRUE((trx.commit().ok()));
@@ -1884,7 +1884,7 @@ TEST_F(IResearchViewTest, test_cleanup) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
-    EXPECT_TRUE((trx.beginSync().ok()));
+    EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE((link->remove(trx, arangodb::LocalDocumentId(0)).ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE(link->commit().ok());
@@ -2144,7 +2144,7 @@ TEST_F(IResearchViewTest, test_drop_cid) {
           arangodb::transaction::StandaloneContext::create(
               vocbase, arangodb::transaction::OperationOriginTestCase{}),
           EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
-      EXPECT_TRUE((trx.beginSync().ok()));
+      EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
           (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
@@ -2226,7 +2226,7 @@ TEST_F(IResearchViewTest, test_drop_cid) {
           arangodb::transaction::StandaloneContext::create(
               vocbase, arangodb::transaction::OperationOriginTestCase{}),
           EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
-      EXPECT_TRUE((trx.beginSync().ok()));
+      EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
           (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
@@ -2309,7 +2309,7 @@ TEST_F(IResearchViewTest, test_drop_cid) {
           arangodb::transaction::StandaloneContext::create(
               vocbase, arangodb::transaction::OperationOriginTestCase{}),
           EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
-      EXPECT_TRUE((trx.beginSync().ok()));
+      EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
           (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
@@ -2417,7 +2417,7 @@ TEST_F(IResearchViewTest, test_drop_cid) {
           arangodb::transaction::StandaloneContext::create(
               vocbase, arangodb::transaction::OperationOriginTestCase{}),
           EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
-      EXPECT_TRUE((trx.beginSync().ok()));
+      EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
           (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
@@ -2517,7 +2517,7 @@ TEST_F(IResearchViewTest, test_drop_cid) {
           arangodb::transaction::StandaloneContext::create(
               vocbase, arangodb::transaction::OperationOriginTestCase{}),
           EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
-      EXPECT_TRUE((trx.beginSync().ok()));
+      EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
           (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
@@ -2713,7 +2713,7 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
           arangodb::transaction::StandaloneContext::create(
               vocbase, arangodb::transaction::OperationOriginTestCase{}),
           EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
-      EXPECT_TRUE((trx.beginSync().ok()));
+      EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
           (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
@@ -2796,7 +2796,7 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
           arangodb::transaction::StandaloneContext::create(
               vocbase, arangodb::transaction::OperationOriginTestCase{}),
           EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
-      EXPECT_TRUE((trx.beginSync().ok()));
+      EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
           (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
@@ -3454,7 +3454,7 @@ TEST_F(IResearchViewTest, test_insert) {
           EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
       linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.beginSync().ok()));
+      EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
           (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
                .ok()));
@@ -3514,7 +3514,7 @@ TEST_F(IResearchViewTest, test_insert) {
           EMPTY, EMPTY, EMPTY, options);
 
       linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.beginSync().ok()));
+      EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
           (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
                .ok()));
@@ -3574,7 +3574,7 @@ TEST_F(IResearchViewTest, test_insert) {
       trx.addHint(arangodb::transaction::Hints::Hint::SINGLE_OPERATION);
 
       linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.beginSync().ok()));
+      EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
           (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
                .ok()));
@@ -3627,7 +3627,7 @@ TEST_F(IResearchViewTest, test_insert) {
           };
 
       linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.beginSync().ok()));
+      EXPECT_TRUE((trx.begin().ok()));
       for (auto const& pair : batch) {
         link->insert(trx, pair.first, pair.second);
       }
@@ -3685,7 +3685,7 @@ TEST_F(IResearchViewTest, test_insert) {
           };
 
       linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.beginSync().ok()));
+      EXPECT_TRUE((trx.begin().ok()));
       for (auto const& pair : batch) {
         link->insert(trx, pair.first, pair.second);
       }
@@ -3746,7 +3746,7 @@ TEST_F(IResearchViewTest, test_remove_within_trx) {
         transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         empty, empty, empty, transaction::Options());
-    EXPECT_TRUE(trx.beginSync().ok());
+    EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(link->insert(trx, LocalDocumentId(0), doc0->slice()).ok());
     EXPECT_TRUE(link->remove(trx, LocalDocumentId(0)).ok());
     EXPECT_TRUE(link->insert(trx, LocalDocumentId(1), doc1->slice()).ok());
@@ -3992,7 +3992,7 @@ TEST_F(IResearchViewTest, test_remove) {
           EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
       linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.beginSync().ok()));
+      EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
           (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
                .ok()));
@@ -4052,7 +4052,7 @@ TEST_F(IResearchViewTest, test_remove) {
           EMPTY, EMPTY, EMPTY, options);
 
       linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.beginSync().ok()));
+      EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
           (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
                .ok()));
@@ -4112,7 +4112,7 @@ TEST_F(IResearchViewTest, test_remove) {
       trx.addHint(arangodb::transaction::Hints::Hint::SINGLE_OPERATION);
 
       linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.beginSync().ok()));
+      EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
           (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
                .ok()));
@@ -4165,7 +4165,7 @@ TEST_F(IResearchViewTest, test_remove) {
           };
 
       linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.beginSync().ok()));
+      EXPECT_TRUE((trx.begin().ok()));
       for (auto const& pair : batch) {
         link->insert(trx, pair.first, pair.second);
       }
@@ -4223,7 +4223,7 @@ TEST_F(IResearchViewTest, test_remove) {
           };
 
       linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.beginSync().ok()));
+      EXPECT_TRUE((trx.begin().ok()));
       for (auto const& pair : batch) {
         link->insert(trx, pair.first, pair.second);
       }
@@ -4333,7 +4333,7 @@ TEST_F(IResearchViewTest, test_query) {
           arangodb::transaction::StandaloneContext::create(
               vocbase, arangodb::transaction::OperationOriginTestCase{}),
           EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
-      EXPECT_TRUE((trx.beginSync().ok()));
+      EXPECT_TRUE((trx.begin().ok()));
 
       for (size_t i = 0; i < 12; ++i) {
         EXPECT_TRUE(
@@ -4389,7 +4389,7 @@ TEST_F(IResearchViewTest, test_query) {
           arangodb::transaction::StandaloneContext::create(
               vocbase, arangodb::transaction::OperationOriginTestCase{}),
           EMPTY, collections, EMPTY, arangodb::transaction::Options());
-      EXPECT_TRUE((trx.beginSync().ok()));
+      EXPECT_TRUE((trx.begin().ok()));
 
       arangodb::OperationOptions options;
       for (size_t i = 1; i <= 12; ++i) {
@@ -4419,7 +4419,7 @@ TEST_F(IResearchViewTest, test_query) {
           arangodb::transaction::StandaloneContext::create(
               vocbase, arangodb::transaction::OperationOriginTestCase{}),
           EMPTY, collections, EMPTY, arangodb::transaction::Options());
-      EXPECT_TRUE((trx.beginSync().ok()));
+      EXPECT_TRUE((trx.begin().ok()));
 
       arangodb::OperationOptions options;
       for (size_t i = 13; i <= 24; ++i) {
@@ -4485,7 +4485,7 @@ TEST_F(IResearchViewTest, test_query) {
             EMPTY, std::vector<std::string>{logicalCollection->name()}, EMPTY,
             options);
 
-        EXPECT_TRUE((trx.beginSync().ok()));
+        EXPECT_TRUE((trx.begin().ok()));
         EXPECT_TRUE((trx.insert(logicalCollection->name(), doc->slice(),
                                 arangodb::OperationOptions())
                          .ok()));
@@ -4876,7 +4876,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
           arangodb::transaction::StandaloneContext::create(
               vocbase, arangodb::transaction::OperationOriginTestCase{}),
           EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
-      EXPECT_TRUE((trx.beginSync().ok()));
+      EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
           (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
@@ -4998,7 +4998,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
           arangodb::transaction::StandaloneContext::create(
               vocbase, arangodb::transaction::OperationOriginTestCase{}),
           EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
-      EXPECT_TRUE((trx.beginSync().ok()));
+      EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
           (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
       EXPECT_TRUE((trx.commit().ok()));
@@ -5361,7 +5361,7 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
-    EXPECT_TRUE((trx.beginSync().ok()));
+    EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE(
         (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
     EXPECT_TRUE((trx.commit().ok()));
@@ -5635,7 +5635,7 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         *logicalView, arangodb::AccessMode::Type::READ);
-    EXPECT_TRUE((trx.beginSync().ok()));
+    EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE((2 == trx.state()->numCollections()));
     EXPECT_TRUE(
         (nullptr != trx.state()->findCollection(logicalCollection0->id())));
@@ -5664,7 +5664,7 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         logicalView->name(), arangodb::AccessMode::Type::READ);
-    EXPECT_TRUE((trx.beginSync().ok()));
+    EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE((2 == trx.state()->numCollections()));
     EXPECT_TRUE(
         (nullptr != trx.state()->findCollection(logicalCollection0->id())));
@@ -5693,7 +5693,7 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         *logicalView, arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE((trx.beginSync().ok()));
+    EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE((2 == trx.state()->numCollections()));
     EXPECT_TRUE(
         (nullptr != trx.state()->findCollection(logicalCollection0->id())));
@@ -5722,7 +5722,7 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         logicalView->name(), arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE((trx.beginSync().ok()));
+    EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE((2 == trx.state()->numCollections()));
     EXPECT_TRUE(
         (nullptr != trx.state()->findCollection(logicalCollection0->id())));
@@ -5751,7 +5751,7 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         *logicalView, arangodb::AccessMode::Type::READ);
-    EXPECT_TRUE((trx.beginSync().ok()));
+    EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE((2 == trx.state()->numCollections()));
     EXPECT_TRUE(
         (nullptr != trx.state()->findCollection(logicalCollection0->id())));
@@ -5780,7 +5780,7 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         logicalView->name(), arangodb::AccessMode::Type::READ);
-    EXPECT_TRUE((trx.beginSync().ok()));
+    EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE((2 == trx.state()->numCollections()));
     EXPECT_TRUE(
         (nullptr != trx.state()->findCollection(logicalCollection0->id())));
@@ -5813,7 +5813,7 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         *logicalView, arangodb::AccessMode::Type::READ);
-    EXPECT_TRUE((trx.beginSync().ok()));
+    EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE((1 == trx.state()->numCollections()));
     EXPECT_TRUE(
         (nullptr != trx.state()->findCollection(logicalCollection0->id())));
@@ -5839,7 +5839,7 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         logicalView->name(), arangodb::AccessMode::Type::READ);
-    EXPECT_TRUE((trx.beginSync().ok()));
+    EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE((1 == trx.state()->numCollections()));
     EXPECT_TRUE(
         (nullptr != trx.state()->findCollection(logicalCollection0->id())));
@@ -5865,7 +5865,7 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         *logicalView, arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE((trx.beginSync().ok()));
+    EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE((1 == trx.state()->numCollections()));
     EXPECT_TRUE(
         (nullptr != trx.state()->findCollection(logicalCollection0->id())));
@@ -5891,7 +5891,7 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         logicalView->name(), arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE((trx.beginSync().ok()));
+    EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE((1 == trx.state()->numCollections()));
     EXPECT_TRUE(
         (nullptr != trx.state()->findCollection(logicalCollection0->id())));
@@ -5917,7 +5917,7 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         *logicalView, arangodb::AccessMode::Type::READ);
-    EXPECT_TRUE((trx.beginSync().ok()));
+    EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE((1 == trx.state()->numCollections()));
     EXPECT_TRUE(
         (nullptr != trx.state()->findCollection(logicalCollection0->id())));
@@ -5943,7 +5943,7 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         logicalView->name(), arangodb::AccessMode::Type::READ);
-    EXPECT_TRUE((trx.beginSync().ok()));
+    EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE((1 == trx.state()->numCollections()));
     EXPECT_TRUE(
         (nullptr != trx.state()->findCollection(logicalCollection0->id())));
@@ -5997,7 +5997,7 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
-    EXPECT_TRUE((trx.beginSync().ok()));
+    EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE(
         (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
     EXPECT_TRUE((trx.commit().ok()));
@@ -6092,7 +6092,7 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
         arangodb::transaction::StandaloneContext::create(
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
-    EXPECT_TRUE((trx.beginSync().ok()));
+    EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE(
         (link->insert(trx, arangodb::LocalDocumentId(1), doc->slice()).ok()));
     EXPECT_TRUE((trx.commit().ok()));
@@ -6105,7 +6105,7 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE((true == viewImpl->apply(trx)));
-    EXPECT_TRUE((true == trx.beginSync().ok()));
+    EXPECT_TRUE((true == trx.begin().ok()));
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::Find,
         viewImpl->getLinks(nullptr), viewImpl, viewImpl->name());
@@ -6121,7 +6121,7 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
             vocbase, arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE((true == viewImpl->apply(trx)));
-    EXPECT_TRUE((true == trx.beginSync().ok()));
+    EXPECT_TRUE((true == trx.begin().ok()));
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
         viewImpl->getLinks(nullptr), viewImpl, viewImpl->name());
@@ -6148,7 +6148,7 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
     auto state = trx.state();
     ASSERT_TRUE(state);
     EXPECT_TRUE((true == viewImpl->apply(trx)));
-    EXPECT_TRUE((true == trx.beginSync().ok()));
+    EXPECT_TRUE((true == trx.begin().ok()));
     state->waitForSync(true);
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -6173,7 +6173,7 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
     auto state = trx.state();
     ASSERT_TRUE(state);
     EXPECT_TRUE((true == viewImpl->apply(trx)));
-    EXPECT_TRUE((true == trx.beginSync().ok()));
+    EXPECT_TRUE((true == trx.begin().ok()));
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
@@ -8706,7 +8706,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
           EMPTY, std::vector<std::string>{logicalCollection->name()}, EMPTY,
           arangodb::transaction::Options());
 
-      EXPECT_TRUE((trx.beginSync().ok()));
+      EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE((trx.insert(logicalCollection->name(), doc->slice(),
                               arangodb::OperationOptions())
                        .ok()));

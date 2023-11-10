@@ -3834,7 +3834,7 @@ Result Methods::triggerIntermediateCommit() {
   return _state->triggerIntermediateCommit();
 }
 
-Result Methods::beginSync() { return beginAsync().get(); }
+Result Methods::begin() { return beginAsync().get(); }
 
 #ifndef USE_ENTERPRISE
 ErrorCode Methods::validateSmartJoinAttribute(LogicalCollection const&,

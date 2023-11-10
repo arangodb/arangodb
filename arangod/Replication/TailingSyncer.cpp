@@ -531,7 +531,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     // single write operation.
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-    Result res = trx.beginSync();
+    Result res = trx.begin();
 
     // fix error handling here when function returns result
     if (!res.ok()) {
@@ -591,7 +591,7 @@ Result TailingSyncer::removeSingleDocument(LogicalCollection* coll,
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-  Result res = trx.beginSync();
+  Result res = trx.begin();
   if (res.fail()) {
     return res;
   }
@@ -655,7 +655,7 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
   auto trx = std::make_unique<ReplicationTransaction>(
       *vocbase,
       transaction::OperationOriginInternal{"replication transaction"});
-  Result res = trx->beginSync();
+  Result res = trx->begin();
 
   if (res.ok()) {
     _ongoingTransactions[tid] = std::move(trx);
@@ -876,7 +876,7 @@ Result TailingSyncer::truncateCollection(
         AccessMode::Type::EXCLUSIVE);
     trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
     trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
-    Result res = trx.beginSync();
+    Result res = trx.begin();
     if (!res.ok()) {
       return res;
     }

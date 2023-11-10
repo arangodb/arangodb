@@ -111,7 +111,7 @@ TEST_F(IndexNodeTest, objectQuery) {
       arangodb::transaction::StandaloneContext::create(
           vocbase, arangodb::transaction::OperationOriginTestCase{}),
       EMPTY, {collection->name()}, EMPTY, arangodb::transaction::Options());
-  EXPECT_TRUE(trx.beginSync().ok());
+  EXPECT_TRUE(trx.begin().ok());
 
   arangodb::OperationOptions opt;
   auto jsonDocument = arangodb::velocypack::Parser::fromJson(
@@ -192,7 +192,7 @@ TEST_F(IndexNodeTest, expansionQuery) {
       arangodb::transaction::StandaloneContext::create(
           vocbase, arangodb::transaction::OperationOriginTestCase{}),
       EMPTY, {collection->name()}, EMPTY, arangodb::transaction::Options());
-  EXPECT_TRUE(trx.beginSync().ok());
+  EXPECT_TRUE(trx.begin().ok());
 
   arangodb::OperationOptions opt;
   auto jsonDocument0 = arangodb::velocypack::Parser::fromJson(
@@ -247,7 +247,7 @@ TEST_F(IndexNodeTest, expansionIndexAndNotExpansionDocumentQuery) {
           vocbase, arangodb::transaction::OperationOriginTestCase{}),
       EMPTY, {collection->name()}, EMPTY, arangodb::transaction::Options());
 
-  EXPECT_TRUE(trx.beginSync().ok());
+  EXPECT_TRUE(trx.begin().ok());
 
   arangodb::OperationOptions opt;
   auto jsonDocument = arangodb::velocypack::Parser::fromJson(
@@ -288,7 +288,7 @@ TEST_F(IndexNodeTest, lastExpansionQuery) {
       arangodb::transaction::StandaloneContext::create(
           vocbase, arangodb::transaction::OperationOriginTestCase{}),
       EMPTY, {collection->name()}, EMPTY, arangodb::transaction::Options());
-  EXPECT_TRUE(trx.beginSync().ok());
+  EXPECT_TRUE(trx.begin().ok());
 
   arangodb::OperationOptions opt;
   auto jsonDocument = arangodb::velocypack::Parser::fromJson(

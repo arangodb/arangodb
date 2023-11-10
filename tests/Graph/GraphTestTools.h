@@ -116,7 +116,7 @@ struct MockGraphDatabase {
         arangodb::transaction::StandaloneContext::create(
             vocbase, transaction::OperationOriginTestCase{}),
         *vertices, arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE((trx.beginSync().ok()));
+    EXPECT_TRUE((trx.begin().ok()));
 
     std::vector<velocypack::Builder> insertedDocs;
     for (auto& entry : docs) {
@@ -171,7 +171,7 @@ struct MockGraphDatabase {
         arangodb::transaction::StandaloneContext::create(
             vocbase, transaction::OperationOriginTestCase{}),
         *edges, arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE((trx.beginSync().ok()));
+    EXPECT_TRUE((trx.begin().ok()));
 
     std::vector<velocypack::Builder> insertedDocs;
     for (auto& entry : docs) {

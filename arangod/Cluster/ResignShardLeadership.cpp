@@ -116,7 +116,7 @@ bool ResignShardLeadership::first() {
             std::shared_ptr<transaction::Context>(), &ctx),
         *col, AccessMode::Type::EXCLUSIVE};
 
-    Result res = trx.beginSync();
+    Result res = trx.begin();
 
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);

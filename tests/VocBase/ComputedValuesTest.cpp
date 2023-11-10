@@ -803,7 +803,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInsertOverwriteTrue) {
           vocbase, arangodb::transaction::OperationOriginTestCase{}),
       EMPTY, collections, EMPTY, transaction::Options());
 
-  EXPECT_TRUE(trx.beginSync().ok());
+  EXPECT_TRUE(trx.begin().ok());
   auto doc1 =
       velocypack::Parser::fromJson("{\"_key\":\"test1\", \"attr\":\"abc\"}");
   EXPECT_TRUE(trx.insert("test", doc1->slice(), OperationOptions()).ok());
@@ -848,7 +848,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInsertOverwriteFalse) {
           vocbase, arangodb::transaction::OperationOriginTestCase{}),
       EMPTY, collections, EMPTY, transaction::Options());
 
-  EXPECT_TRUE(trx.beginSync().ok());
+  EXPECT_TRUE(trx.begin().ok());
   auto doc1 =
       velocypack::Parser::fromJson("{\"_key\":\"test1\", \"attr\":\"abc\"}");
   EXPECT_TRUE(trx.insert("test", doc1->slice(), OperationOptions()).ok());
@@ -888,7 +888,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteTrue) {
           vocbase, arangodb::transaction::OperationOriginTestCase{}),
       EMPTY, collections, EMPTY, transaction::Options());
 
-  EXPECT_TRUE(trx.beginSync().ok());
+  EXPECT_TRUE(trx.begin().ok());
   auto doc1 =
       velocypack::Parser::fromJson("{\"_key\":\"test1\", \"attr\":\"abc\"}");
   EXPECT_TRUE(trx.insert("test", doc1->slice(), OperationOptions()).ok());
@@ -931,7 +931,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteFalse) {
           vocbase, arangodb::transaction::OperationOriginTestCase{}),
       EMPTY, collections, EMPTY, transaction::Options());
 
-  EXPECT_TRUE(trx.beginSync().ok());
+  EXPECT_TRUE(trx.begin().ok());
   auto doc1 =
       velocypack::Parser::fromJson("{\"_key\":\"test1\", \"attr\":\"abc\"}");
   EXPECT_TRUE(trx.insert("test", doc1->slice(), OperationOptions()).ok());
@@ -986,7 +986,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesFailOnWarningDynamic) {
           vocbase, arangodb::transaction::OperationOriginTestCase{}),
       EMPTY, collections, EMPTY, transaction::Options());
 
-  EXPECT_TRUE(trx.beginSync().ok());
+  EXPECT_TRUE(trx.begin().ok());
   auto doc = velocypack::Parser::fromJson("{\"value\":42}");
   EXPECT_THROW({ trx.insert("test", doc->slice(), OperationOptions()); },
                basics::Exception);
@@ -1008,7 +1008,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInvalidValuesDynamic) {
           vocbase, arangodb::transaction::OperationOriginTestCase{}),
       EMPTY, collections, EMPTY, transaction::Options());
 
-  EXPECT_TRUE(trx.beginSync().ok());
+  EXPECT_TRUE(trx.begin().ok());
   auto doc = velocypack::Parser::fromJson(
       "{\"_key\":\"test\", \"value1\":42, \"value2\":23}");
   EXPECT_TRUE(trx.insert("test", doc->slice(), OperationOptions()).ok());
@@ -1044,7 +1044,7 @@ TEST_F(ComputedValuesTest, insertKeepNullTrue) {
           vocbase, arangodb::transaction::OperationOriginTestCase{}),
       EMPTY, collections, EMPTY, transaction::Options());
 
-  EXPECT_TRUE(trx.beginSync().ok());
+  EXPECT_TRUE(trx.begin().ok());
   auto doc1 =
       velocypack::Parser::fromJson("{\"_key\":\"test1\", \"attr\":null}");
   EXPECT_TRUE(trx.insert("test", doc1->slice(), OperationOptions()).ok());

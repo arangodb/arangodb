@@ -313,7 +313,7 @@ static Result addShardFollower(network::ConnectionPool* pool,
         SingleCollectionTransaction trx(context, *collection,
                                         AccessMode::Type::READ);
 
-        auto res = trx.beginSync();
+        auto res = trx.begin();
         if (res.ok()) {
           auto tree = collection->getPhysical()->revisionTree(trx);
           body.add("treeHash", VPackValue(std::to_string(tree->rootValue())));

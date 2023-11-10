@@ -111,7 +111,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
               vocbase(), arangodb::transaction::OperationOriginTestCase{}),
           EMPTY, {logicalCollection1->name(), logicalCollection2->name()},
           EMPTY, arangodb::transaction::Options());
-      EXPECT_TRUE(trx.beginSync().ok());
+      EXPECT_TRUE(trx.begin().ok());
 
       // insert into collection_1
       {
@@ -174,7 +174,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
               vocbase(), arangodb::transaction::OperationOriginTestCase{}),
           EMPTY, {logicalCollection1->name(), logicalCollection2->name()},
           EMPTY, arangodb::transaction::Options());
-      EXPECT_TRUE(trx.beginSync().ok());
+      EXPECT_TRUE(trx.begin().ok());
 
       // insert into collection_1
       {

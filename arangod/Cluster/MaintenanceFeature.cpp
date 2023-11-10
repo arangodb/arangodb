@@ -130,7 +130,7 @@ arangodb::Result arangodb::maintenance::collectionCount(
           std::shared_ptr<transaction::Context>(), &ctx),
       collectionName, AccessMode::Type::READ);
 
-  Result res = trx.beginSync();
+  Result res = trx.begin();
   if (res.fail()) {
     LOG_TOPIC("5be16", WARN, Logger::MAINTENANCE)
         << "Failed to start count transaction: " << res;
