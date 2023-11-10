@@ -1,6 +1,7 @@
 import { Flex, Radio, Tag } from "@chakra-ui/react";
 import { CellContext } from "@tanstack/react-table";
 import React from "react";
+import { useUserPermissionsContext } from "./UserPermissionsContext";
 
 export const getIsDefaultRow = (info: CellContext<any, unknown>) => {
   return (
@@ -27,12 +28,12 @@ export const DatabasePermissionSwitch = ({
   const isDefaultForDatabase = getIsDefaultForDatabase(info);
   const isDefaultRow = getIsDefaultRow(info);
   const isUndefined = info.column.id === "undefined";
+  const { handleDatabaseCellClick } = useUserPermissionsContext();
   if (isDefaultRow && isUndefined) {
     return null;
   }
   const handleChange = () => {
-    const { handleCellClick } = info.table.options.meta as any;
-    handleCellClick?.({
+    handleDatabaseCellClick({
       info,
       permission: info.column.id
     });
