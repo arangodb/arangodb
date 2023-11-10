@@ -133,9 +133,9 @@ bool CreateCollection::first() {
 
     // Replication2 collection group
     auto group = getCollectionGroup(props);
-    if (vocbase.replicationVersion() == replication::Version::TWO) {
-      TRI_ASSERT(group != nullptr) << shard;
-    }
+    TRI_ASSERT(vocbase.replicationVersion() != replication::Version::TWO ||
+               group != nullptr)
+        << shard;
 
     // Replication2 log ID
     auto logId = std::invoke([&]() -> std::optional<replication2::LogId> {
