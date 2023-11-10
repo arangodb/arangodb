@@ -138,6 +138,10 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     auto [hasMore, amountOfSeeks] =
         _strategy->next([&](std::span<LocalDocumentId> docIds,
                             std::span<VPackSlice> projections) -> bool {
+          // increment scanned index value for every match. The amount of
+          // increment is equal to the amount of indices being used here.
+          stats.incrScannedIndex(_infos.indexes.size());
+
           LOG_JOIN << "BEGIN OF ROW " << rowCount++;
 
           LOG_JOIN << "PROJECTIONS: ";
@@ -400,6 +404,10 @@ auto JoinExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
     auto [hasMore, amountOfSeeks] =
         _strategy->next([&](std::span<LocalDocumentId> docIds,
                             std::span<VPackSlice> projections) -> bool {
+          // increment scanned index value for every match. The amount of
+          // increment is equal to the amount of indices being used here.
+          stats.incrScannedIndex(_infos.indexes.size());
+
           auto lookupDocument = [&](std::size_t index, LocalDocumentId id,
                                     auto cb) {
             auto result =

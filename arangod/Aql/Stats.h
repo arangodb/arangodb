@@ -122,9 +122,6 @@ inline ExecutionStats& operator+=(
 
 class JoinStats {
  public:
-  JoinStats() noexcept
-      : _scannedIndex(0), _filtered(0), _documentLookups(0), _seeks(0) {}
-
   void incrScannedIndex(std::uint64_t value = 1) noexcept {
     _scannedIndex += value;
   }
