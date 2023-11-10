@@ -9,7 +9,10 @@ import {
 import React from "react";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { getCurrentDB } from "../../../utils/arangoClient";
-import { DatabaseTableType } from "./CollectionsPermissionsTable";
+import {
+  CollectionType,
+  DatabaseTableType
+} from "./CollectionsPermissionsTable";
 import {
   DatabasePermissionSwitch,
   getIsDefaultRow
@@ -29,6 +32,15 @@ const UserPermissionsContext = React.createContext<{
   }: {
     info: CellContext<DatabaseTableType, unknown>;
     permission: string;
+  }) => void;
+  handleCollectionCellClick: ({
+    permission,
+    info,
+    databaseName
+  }: {
+    permission: string;
+    info: CellContext<CollectionType, unknown>;
+    databaseName: string;
   }) => void;
 }>({} as any);
 
@@ -226,6 +238,27 @@ export const UserPermissionsContextProvider = ({
     });
     refetchDatabasePermissions?.();
   };
+  const handleCollectionCellClick = async ({
+    permission,
+    info,
+    databaseName
+  }: {
+    permission: string;
+    info: CellContext<CollectionType, unknown>;
+    databaseName: string;
+  }) => {
+    const { collectionName } = info.row.original;
+    const currentDbRoute = getCurrentDB().route(
+      `_api/user/${username}/database/${databaseName}/${collectionName}`
+    );
+    if (permission === "undefined") {
+      await currentDbRoute.delete();
+      refetchDatabasePermissions?.();
+      return;
+    }
+    await currentDbRoute.put({ grant: permission });
+    refetchDatabasePermissions?.();
+  };
   const tableInstance = useSortableReactTable<DatabaseTableType>({
     data: databaseTable || [],
     columns: TABLE_COLUMNS,
@@ -249,6 +282,7 @@ export const UserPermissionsContextProvider = ({
         handleDatabaseCellClick,
         tableInstance,
         refetchDatabasePermissions,
+        handleCollectionCellClick,
         databaseTable
       }}
     >

@@ -1,7 +1,9 @@
 import { Flex, Radio, Tag } from "@chakra-ui/react";
 import { CellContext } from "@tanstack/react-table";
 import React from "react";
+import { DatabaseTableType } from "./CollectionsPermissionsTable";
 import { getIsDefaultRow } from "./DatabasePermissionSwitch";
+import { useUserPermissionsContext } from "./UserPermissionsContext";
 
 export const CollectionPermissionSwitch = ({
   checked,
@@ -10,7 +12,12 @@ export const CollectionPermissionSwitch = ({
   checked: boolean;
   info: CellContext<any, unknown>;
 }) => {
-  const maxLevel = info.row.original.collectionName && getMaxLevel(info);
+  const { databaseName } = (info.table.options.meta as any) || {};
+  const { handleCollectionCellClick } = useUserPermissionsContext();
+  const { databaseTable } = useUserPermissionsContext();
+  const maxLevel =
+    info.row.original.collectionName &&
+    getMaxLevel({ databaseTable, databaseName });
   const isDefaultRow = getIsDefaultRow(info);
   const isUndefined = info.column.id === "undefined";
   if (isDefaultRow && isUndefined) {
@@ -29,11 +36,12 @@ export const CollectionPermissionSwitch = ({
   ) {
     isDefaultForCollection = true;
   }
+
   const handleChange = () => {
-    const { handleCellClick } = info.table.options.meta as any;
-    handleCellClick?.({
+    handleCollectionCellClick?.({
       info,
-      permission: info.column.id
+      permission: info.column.id,
+      databaseName
     });
   };
   return (
@@ -43,10 +51,13 @@ export const CollectionPermissionSwitch = ({
     </Flex>
   );
 };
-const getMaxLevel = (info: CellContext<any, unknown>) => {
-  const { databaseTable, databaseName } = (info.table.options.meta as any) || {
-    databaseTable: []
-  };
+const getMaxLevel = ({
+  databaseTable,
+  databaseName
+}: {
+  databaseTable: DatabaseTableType[];
+  databaseName: string;
+}) => {
   const serverLevelDefaultPermission = databaseTable.find(
     (row: any) => row.databaseName === "*"
   )?.permission;

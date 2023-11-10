@@ -21,8 +21,7 @@ export const UserPermissionsTable = () => {
 };
 
 const UserPermissionsTableInner = () => {
-  const { tableInstance, databaseTable, refetchDatabasePermissions } =
-    useUserPermissionsContext();
+  const { tableInstance } = useUserPermissionsContext();
 
   return (
     <Stack padding="4">
@@ -44,13 +43,7 @@ const UserPermissionsTableInner = () => {
           }
         }}
         renderSubComponent={row => {
-          return (
-            <CollectionsPermissionsTable
-              refetchDatabasePermissions={refetchDatabasePermissions}
-              databaseTable={databaseTable}
-              row={row}
-            />
-          );
+          return <CollectionsPermissionsTable row={row} />;
         }}
       />
     </Stack>

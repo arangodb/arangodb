@@ -1,12 +1,11 @@
 import { Box, Tag } from "@chakra-ui/react";
-import { CellContext, createColumnHelper, Row } from "@tanstack/react-table";
+import { createColumnHelper, Row } from "@tanstack/react-table";
 import React from "react";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
-import { getCurrentDB } from "../../../utils/arangoClient";
 import { CollectionPermissionSwitch } from "./CollectionPermissionSwitch";
 import { getIsDefaultRow } from "./DatabasePermissionSwitch";
-import { PermissionType, useUsername } from "./useFetchDatabasePermissions";
+import { PermissionType } from "./useFetchDatabasePermissions";
 
 export type CollectionType = {
   collectionName: string;
@@ -123,35 +122,12 @@ const COLLECTION_COLUMNS = [
   ...collectionPermissionColumns
 ];
 export const CollectionsPermissionsTable = ({
-  row,
-  databaseTable,
-  refetchDatabasePermissions
+  row
 }: {
   row: Row<DatabaseTableType>;
-  databaseTable: DatabaseTableType[];
-  refetchDatabasePermissions: (() => void) | undefined;
 }) => {
   const { databaseName } = row.original;
-  const { username } = useUsername();
-  const handleCellClick = async ({
-    permission,
-    info
-  }: {
-    permission: string;
-    info: CellContext<CollectionType, unknown>;
-  }) => {
-    const { collectionName } = info.row.original;
-    const currentDbRoute = getCurrentDB().route(
-      `_api/user/${username}/database/${databaseName}/${collectionName}`
-    );
-    if (permission === "undefined") {
-      await currentDbRoute.delete();
-      refetchDatabasePermissions?.();
-      return;
-    }
-    await currentDbRoute.put({ grant: permission });
-    refetchDatabasePermissions?.();
-  };
+
   const tableInstance = useSortableReactTable<CollectionType>({
     data: row.original.collections || [],
     columns: COLLECTION_COLUMNS,
@@ -162,15 +138,18 @@ export const CollectionsPermissionsTable = ({
       }
     ],
     meta: {
-      databaseTable,
-      databaseName,
-      handleCellClick
+      databaseName
     }
   });
 
   return (
     <Box as="td" colSpan={6} paddingY="4">
-      <ReactTable<CollectionType> tableWidth="auto" layout="fixed"  backgroundColor="gray.50" table={tableInstance} />
+      <ReactTable<CollectionType>
+        tableWidth="auto"
+        layout="fixed"
+        backgroundColor="gray.50"
+        table={tableInstance}
+      />
     </Box>
   );
 };
