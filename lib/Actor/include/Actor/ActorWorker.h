@@ -23,17 +23,24 @@
 
 #pragma once
 
-#include <chrono>
-#include <functional>
-#include "Actor/ActorWorker.h"
+#include "Actor/ActorBase.h"
 
 namespace arangodb::actor {
 
-struct IScheduler {
-  virtual ~IScheduler() = default;
-  virtual void queue(ActorWorker&& worker) = 0;
-  virtual void delay(std::chrono::seconds delay,
-                     std::function<void(bool)>&& fn) = 0;
+struct ActorWorker {
+  // capture a weak_ptr to the actor: this way, the actor can be destroyed
+  // although this worker is still waiting in the scheduler. When this worker is
+  // executed in the queue after actor was destroyed, the weak_ptr will
+  // be empty and work will just not be executed
+  explicit ActorWorker(ActorBase* actor) : actor(actor->weak_from_this()) {}
+
+  void operator()() {
+    auto me = actor.lock();
+    if (me != nullptr) {
+      me->work();
+    }
+  }
+  std::weak_ptr<ActorBase> actor;
 };
 
 }  // namespace arangodb::actor
