@@ -99,9 +99,8 @@ LogAppenderSyslog::LogAppenderSyslog(std::string const& facility,
     value = findSyslogFacilityByName(name);
   }
 
-  // Since the return value of ::openlog below is not checked or acted
-  // upon, try to be safe(er)
-  if (value < 0 or value > LOG_NFACILITIES) {
+  // try to be safe(er) with what is passed to openlog
+  if (value < 0 or value >= LOG_NFACILITIES) {
     value = LOG_LOCAL0;
   }
 
