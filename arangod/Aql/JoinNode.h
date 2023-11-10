@@ -43,15 +43,9 @@ class ExecutionEngine;
 class ExecutionPlan;
 
 // not yet supported:
-// - post-filtering
 // - IndexIteratorOptions: sorted, ascending, evalFCalls, useCache, waitForSync,
 // limit, lookahead
 // - reverse iteration
-// - support from GatherNodes
-// - producesResult
-// - read own writes
-// - proper cost estimates
-// - profile output in explainer
 class JoinNode : public ExecutionNode {
   friend class ExecutionBlock;
 
@@ -66,6 +60,7 @@ class JoinNode : public ExecutionNode {
     Projections projections;
     Projections filterProjections;
     bool usedAsSatellite;  // TODO maybe use CollectionAccess class
+    bool producesOutput;
   };
 
   JoinNode(ExecutionPlan* plan, ExecutionNodeId id,

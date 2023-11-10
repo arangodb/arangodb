@@ -143,6 +143,7 @@ IndexIterator::CoveringCallback getCallback(
       context.incrFiltered();
       return false;
     }
+    context.incrLookups();
 
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
@@ -943,6 +944,8 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange,
         _documentProducingFunctionContext.getAndResetNumScanned());
     stats.incrFiltered(
         _documentProducingFunctionContext.getAndResetNumFiltered());
+    stats.incrDocumentLookups(
+        _documentProducingFunctionContext.getAndResetNumLookups());
   }
 
   // ok to update the stats at the end of the method
