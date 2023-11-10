@@ -42,19 +42,30 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 namespace {
+// The writable strings warning is suppressed to prevent clang from complaining
+// about pointing to a string constant using a char *, which happens in
+// particular because musl defines CODE to be a struct containing just a `char
+// *`, but requires using CODE * to iterate through facilitynames.
+//
+// Extra fun is to be had because facilitynames is a macro, which is why this
+// code just accesses facilitynames by indexing
+// findSyslogFacilityByName returns LOG_LOCAL0 as fallback; the other choice
+// given the code below would be to ASSERT in case the facilityname cannot be
+// found.
 #if defined(__clang__)
 #if __has_warning("-Wwritable-strings")
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wwritable-strings"
 #endif
 #endif
-auto findSyslogFacilityByName(std::string facility) -> int {
+auto findSyslogFacilityByName(std::string const& facility) -> int {
   for (auto i = size_t{0}; i < LOG_NFACILITIES; ++i) {
-    if (strcmp(facilitynames[i].c_name, facility.c_str()) == 0) {
-      return facilitynames[i].c_val;
-    }
     if (facilitynames[i].c_name == nullptr) {
       return -1;
+    }
+    if (strncmp(facilitynames[i].c_name, facility.c_str(), facility.size()) ==
+        0) {
+      return facilitynames[i].c_val;
     }
   }
   return -1;
@@ -86,6 +97,12 @@ LogAppenderSyslog::LogAppenderSyslog(std::string const& facility,
     value = StringUtils::int32(facility);
   } else {
     value = findSyslogFacilityByName(name);
+  }
+
+  // Since the return value of ::openlog below is not checked or acted
+  // upon, try to be safe(er)
+  if (value < 0 or value > LOG_NFACILITIES) {
+    value = LOG_LOCAL0;
   }
 
   // from man 3 syslog:
