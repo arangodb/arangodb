@@ -47,9 +47,12 @@ RegisterId JoinExecutorInfos::registerForVariable(
 
 void JoinExecutorInfos::determineProjectionsForRegisters() {
   if (!projectionsInitialized) {
+    bool producesOutput = false;
     for (auto& it : indexes) {
       it.hasProjectionsForRegisters = it.projections.hasOutputRegisters();
+      producesOutput |= it.producesOutput;
     }
+    producesAnyOutput = producesOutput;
     projectionsInitialized = true;
   }
 }
@@ -144,7 +147,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
           LOG_JOIN << "BEGIN OF ROW " << rowCount++;
 
-          LOG_JOIN << "PROJECTIONS: ";
+          LOG_JOIN << "PROJECTIONS:";
           for (auto p : projections) {
             LOG_JOIN << p.toJson();
           }
@@ -305,13 +308,12 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
           }
 
           // Now produce the documents
+          TRI_ASSERT(_infos.projectionsInitialized);
           projectionsOffset = 0;
           for (std::size_t k = 0; k < docIds.size(); k++) {
             auto& idx = _infos.indexes[k];
 
             if (!idx.producesOutput) {
-              output.cloneValueInto(_infos.indexes[k].documentOutputRegister,
-                                    _currentRow, AqlValue(AqlValueHintNull()));
               continue;
             }
             auto docProduceCallback = [&](auto docPtr) {
@@ -375,6 +377,11 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
             }
           }
 
+          if (!_infos.producesAnyOutput) {
+            output.handleEmptyRow(_currentRow);
+          }
+
+          TRI_ASSERT(output.produced());
           output.advanceRow();
           LOG_JOIN << "OUTPUT ROW " << (rowCount - 1);
           return !output.isFull();

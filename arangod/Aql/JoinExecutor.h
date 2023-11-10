@@ -108,6 +108,7 @@ struct JoinExecutorInfos {
   QueryContext* query;
   containers::FlatHashMap<VariableId, RegisterId> varsToRegister;
   bool projectionsInitialized = false;
+  bool producesAnyOutput = true;
 };
 
 /**
