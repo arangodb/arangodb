@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global fail, assertEqual, assertNotEqual, assertTrue */
+/*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -120,7 +120,7 @@ const IndexJoinTestSuite = function () {
   };
 
   const runAndCheckQuery = function (query) {
-    const plan = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).explain().plan;
+    const plan = db._createStatement({query, bindVars: null, options: queryOptions}).explain().plan;
     let planNodes = plan.nodes.map(function (node) {
       return node.type;
     });
@@ -130,7 +130,7 @@ const IndexJoinTestSuite = function () {
     }
     assertNotEqual(planNodes.indexOf("JoinNode"), -1);
 
-    const result = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).execute();
+    const result = db._createStatement({query, bindVars: null, options: queryOptions}).execute();
     return result.toArray();
   };
 
@@ -323,7 +323,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1.x, doc2.x]
       `;
 
-      const plan = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).explain().plan;
+      const plan = db._createStatement({query, bindVars: null, options: queryOptions}).explain().plan;
       const join = plan.nodes[1];
 
       assertEqual(join.type, "JoinNode");
@@ -353,7 +353,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1.x, doc2.x]
       `;
 
-      const plan = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).explain().plan;
+      const plan = db._createStatement({query, bindVars: null, options: queryOptions}).explain().plan;
       const join = plan.nodes[1];
 
       assertEqual(join.type, "JoinNode");
@@ -383,7 +383,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1.y, doc2.x]
       `;
 
-      const plan = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).explain().plan;
+      const plan = db._createStatement({query, bindVars: null, options: queryOptions}).explain().plan;
       const join = plan.nodes[1];
 
       assertEqual(join.type, "JoinNode");
@@ -413,7 +413,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1.y, doc2.x]
       `;
 
-      const plan = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).explain().plan;
+      const plan = db._createStatement({query, bindVars: null, options: queryOptions}).explain().plan;
       const join = plan.nodes[1];
 
       assertEqual(join.type, "JoinNode");
@@ -443,7 +443,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1.y, doc2.x]
       `;
 
-      const plan = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).explain().plan;
+      const plan = db._createStatement({query, bindVars: null, options: queryOptions}).explain().plan;
       const join = plan.nodes[1];
 
       assertEqual(join.type, "JoinNode");
@@ -473,7 +473,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1.y, doc2.x]
       `;
 
-      const plan = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).explain().plan;
+      const plan = db._createStatement({query, bindVars: null, options: queryOptions}).explain().plan;
       const join = plan.nodes[1];
 
       assertEqual(join.type, "JoinNode");
@@ -503,7 +503,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1.y, doc2.x]
       `;
 
-      const plan = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).explain().plan;
+      const plan = db._createStatement({query, bindVars: null, options: queryOptions}).explain().plan;
       const join = plan.nodes[1];
 
       assertEqual(join.type, "JoinNode");
@@ -516,6 +516,140 @@ const IndexJoinTestSuite = function () {
       assertEqual(result.length, 10);
       for (const [a, b] of result) {
         assertEqual(a, 2 * b);
+      }
+    },
+    
+    testProjectionsOptimizedAway: function () {
+      const A = fillCollection("A", singleAttributeGenerator(10, "x", x => x));
+      A.ensureIndex({type: "persistent", fields: ["x"]});
+      const B = fillCollection("B", singleAttributeGenerator(10, "x", x => x));
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+
+      const query = `
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2.x
+              RETURN 1
+      `;
+
+      const plan = db._createStatement({query, bindVars: null, options: queryOptions}).explain().plan;
+      const join = plan.nodes[2];
+
+      assertEqual(join.type, "JoinNode");
+
+      assertEqual(normalize(join.indexInfos[0].projections), normalize([]));
+      assertFalse(join.indexInfos[0].producesOutput);
+      assertEqual(normalize(join.indexInfos[1].projections), normalize([]));
+      assertFalse(join.indexInfos[1].producesOutput);
+
+      const result = runAndCheckQuery(query);
+
+      assertEqual(result.length, 10);
+      for (const x of result) {
+        assertEqual(1, x);
+      }
+    },
+    
+    testProjectionsFirstOptimizedAway: function () {
+      const A = fillCollection("A", singleAttributeGenerator(10, "x", x => x));
+      A.ensureIndex({type: "persistent", fields: ["x"]});
+      const B = fillCollection("B", attributeGenerator(10, {x: x => x, y: x => 2 * x}));
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+
+      const query = `
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2.x
+              RETURN doc2.y
+      `;
+
+      const plan = db._createStatement({query, bindVars: null, options: queryOptions}).explain().plan;
+      const join = plan.nodes[1];
+
+      assertEqual(join.type, "JoinNode");
+
+      assertEqual(normalize(join.indexInfos[0].projections), normalize([]));
+      assertEqual(normalize(join.indexInfos[0].filterProjections), normalize([]));
+      assertFalse(join.indexInfos[0].producesOutput);
+      assertEqual(normalize(join.indexInfos[1].projections), normalize(["y"]));
+      assertEqual(normalize(join.indexInfos[1].filterProjections), normalize([]));
+      assertTrue(join.indexInfos[1].producesOutput);
+
+      const result = runAndCheckQuery(query);
+
+      assertEqual(result.length, 10);
+      for (const x of result) {
+        assertEqual(x % 2, 0);
+      }
+    },
+    
+    testProjectionsNotOptimizedAway1: function () {
+      const A = fillCollection("A", attributeGenerator(10, {x: x => 2 * x, y: x => 2 * x}));
+      A.ensureIndex({type: "persistent", fields: ["x"]});
+      const B = fillCollection("B", attributeGenerator(10, {x: x => 2 * x, y: x => 2 * x}));
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+
+      const query = `
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2.x FILTER doc1.y >= 0
+              RETURN doc2.x
+      `;
+
+      const plan = db._createStatement({query, bindVars: null, options: queryOptions}).explain().plan;
+      const join = plan.nodes[1];
+
+      assertEqual(join.type, "JoinNode");
+
+      assertEqual(normalize(join.indexInfos[0].projections), normalize([]));
+      assertEqual(normalize(join.indexInfos[0].filterProjections), normalize(["y"]));
+      assertFalse(join.indexInfos[0].producesOutput);
+      assertEqual(normalize(join.indexInfos[1].projections), normalize(["x"]));
+      assertEqual(normalize(join.indexInfos[1].filterProjections), normalize([]));
+      assertTrue(join.indexInfos[1].producesOutput);
+
+      const result = runAndCheckQuery(query);
+
+      assertEqual(result.length, 10);
+      for (const x of result) {
+        assertEqual(x % 2, 0);
+      }
+    },
+    
+    testProjectionsNotOptimizedAway2: function () {
+      const A = fillCollection("A", attributeGenerator(10, {x: x => 2 * x, y: x => 2 * x}));
+      A.ensureIndex({type: "persistent", fields: ["x"]});
+      const B = fillCollection("B", attributeGenerator(10, {x: x => 2 * x, y: x => 2 * x}));
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+
+      const query = `
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2.x FILTER doc1.y >= 0 FILTER doc2.y >= 0
+              RETURN doc2.x
+      `;
+
+      const plan = db._createStatement({query, bindVars: null, options: queryOptions}).explain().plan;
+      const join = plan.nodes[1];
+
+      assertEqual(join.type, "JoinNode");
+
+      assertEqual(normalize(join.indexInfos[0].projections), normalize([]));
+      assertEqual(normalize(join.indexInfos[0].filterProjections), normalize(["y"]));
+      assertFalse(join.indexInfos[0].producesOutput);
+      assertEqual(normalize(join.indexInfos[1].projections), normalize(["x"]));
+      assertEqual(normalize(join.indexInfos[1].filterProjections), normalize(["y"]));
+      assertTrue(join.indexInfos[1].producesOutput);
+
+      const result = runAndCheckQuery(query);
+
+      assertEqual(result.length, 10);
+      for (const x of result) {
+        assertEqual(x % 2, 0);
       }
     },
 
@@ -534,7 +668,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1.x, doc1.y, doc2.x]
       `;
 
-      const plan = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).explain().plan;
+      const plan = db._createStatement({query, bindVars: null, options: queryOptions}).explain().plan;
       const join = plan.nodes[1];
 
       assertEqual(join.type, "JoinNode");
@@ -566,7 +700,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1, doc2.x]
       `;
 
-      const plan = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).explain().plan;
+      const plan = db._createStatement({query, bindVars: null, options: queryOptions}).explain().plan;
       const join = plan.nodes[1];
 
       assertEqual(join.type, "JoinNode");
@@ -598,7 +732,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1.x, doc2.x]
       `;
 
-      const plan = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).explain().plan;
+      const plan = db._createStatement({query, bindVars: null, options: queryOptions}).explain().plan;
       const join = plan.nodes[1];
 
       assertEqual(join.type, "JoinNode");
@@ -635,7 +769,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1, doc2.x]
       `;
 
-      const plan = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).explain().plan;
+      const plan = db._createStatement({query, bindVars: null, options: queryOptions}).explain().plan;
       const join = plan.nodes[1];
 
       assertEqual(join.type, "JoinNode");
@@ -706,9 +840,7 @@ const IndexJoinTestSuite = function () {
   };
 };
 
-if (isCluster && !isEnterprise) {
-  return jsunity.done();
-} else {
+if (!isCluster || isEnterprise) {
   jsunity.run(IndexJoinTestSuite);
 }
 return jsunity.done();

@@ -1788,10 +1788,7 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
   auto outputRegisters = RegIdSet{};
 
   auto const& p = projections();
-  if (p.empty()) {
-    // no projections. we produce the full document in outputRegister
-    outputRegisters.emplace(outputRegister);
-  } else {
+  if (!p.empty()) {
     // projections. no need to produce the full document.
     // instead create one register per projection.
     for (size_t i = 0; i < p.size(); ++i) {
@@ -1812,12 +1809,13 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
     TRI_ASSERT(outputRegisters.empty() || outputRegisters.size() == p.size());
     // in case we do not have any output registers for the projections,
     // we must write them to the main output register, in a velocypack
-    // object
-    if (outputRegisters.empty()) {
-      outputRegisters.emplace(outputRegister);
-    }
+    // object.
+    // this will be handled below by adding the main output register.
   }
-  TRI_ASSERT(!outputRegisters.empty());
+  if (outputRegisters.empty() && isProduceResult()) {
+    outputRegisters.emplace(outputRegister);
+  }
+  TRI_ASSERT(!outputRegisters.empty() || !isProduceResult());
 
   auto registerInfos = createRegisterInfos({}, std::move(outputRegisters));
   auto executorInfos = EnumerateCollectionExecutorInfos(

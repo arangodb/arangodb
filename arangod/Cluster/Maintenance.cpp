@@ -105,9 +105,10 @@ static std::shared_ptr<VPackBuilder> createProps(VPackSlice const& s) {
 
 static std::shared_ptr<VPackBuilder> compareRelevantProps(
     VPackSlice const& first, VPackSlice const& second) {
-  std::array<std::string_view, 6> const compareProperties{
+  std::array<std::string_view, 7> const compareProperties{
       StaticStrings::WaitForSyncString,
       StaticStrings::Schema,
+      StaticStrings::WriteConcern,
       StaticStrings::CacheEnabled,
       StaticStrings::InternalValidatorTypes,
       StaticStrings::ComputedValues,
