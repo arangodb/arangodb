@@ -324,7 +324,7 @@ std::shared_ptr<replication2::agency::CollectionGroupPlanSpecification const>
 CreateCollection::getCollectionGroup(VPackSlice props) const {
   auto gid = std::invoke(
       [props]() -> std::optional<replication2::agency::CollectionGroupId> {
-        if (auto gid = props.get("groupId"); gid.isNumber()) {
+        if (auto gid = props.get("groupId"); gid.isUInt()) {
           return replication2::agency::CollectionGroupId{gid.getUInt()};
         }
         return std::nullopt;
