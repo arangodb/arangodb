@@ -122,7 +122,7 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
               .thenValue([&rtc, leader,
                           tid](auto&& res) -> ResultT<replication2::LogIndex> {
                 if (res.fail()) {
-                  LOG_CTX("e8dd4", WARN, leader->loggerContext)
+                  LOG_CTX("57328", WARN, leader->loggerContext)
                       << "Failed to replicate commit of transaction (follower "
                          "ID) "
                       << tid << " on collection " << rtc.collectionName()

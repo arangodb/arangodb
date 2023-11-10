@@ -46,7 +46,7 @@ auto DocumentStateErrorHandler::handleOpResult(
   if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
     // During follower applyEntries or leader recovery, we might have already
     // dropped the shard.
-    LOG_CTX("098b9", DEBUG, _loggerContext)
+    LOG_CTX("ce21f", DEBUG, _loggerContext)
         << "Shard " << op.shard
         << " drop failed because it was not found, ignoring: " << res;
     return TRI_ERROR_NO_ERROR;
@@ -60,7 +60,7 @@ auto DocumentStateErrorHandler::handleOpResult(
   if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
     // During follower applyEntries or leader recovery, we might have already
     // dropped the shard.
-    LOG_CTX("098b9", DEBUG, _loggerContext)
+    LOG_CTX("2fec0", DEBUG, _loggerContext)
         << "Shard " << op.shard
         << " modification failed because it was not found, ignoring: " << res;
     return TRI_ERROR_NO_ERROR;

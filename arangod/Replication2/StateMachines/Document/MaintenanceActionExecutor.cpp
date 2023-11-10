@@ -88,7 +88,7 @@ auto MaintenanceActionExecutor::executeModifyCollection(
                                                      col->name(), _server, res);
         });
         storeErrorRes.fail()) {
-      LOG_CTX("d3f2a", DEBUG, _loggerContext)
+      LOG_CTX("d0295", DEBUG, _loggerContext)
           << "Failed storeShardError call on shard " << col->name() << ": "
           << storeErrorRes;
     }
