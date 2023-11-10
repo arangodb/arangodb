@@ -64,7 +64,7 @@ function transactionReplication2ReplicateOperationSuite() {
     }),
     tearDown: tearDownAnd(() => {
       if (c !== null) {
-        c.drop();
+        db._drop(c.name());
       }
       c = null;
     }),
@@ -247,12 +247,12 @@ function transactionReplicationOnFollowersSuite(dbParams) {
     }),
     tearDown: tearDownAnd(() => {
       for (let col of extraCollections) {
-        col.drop();
+        db._drop(col.name());
       }
       extraCollections = [];
 
       if (c !== null) {
-        c.drop();
+        db._drop(c.name());
       }
       c = null;
     }),
@@ -515,7 +515,7 @@ function transactionReplication2AbandonmentSuite() {
     }),
     tearDown: tearDownAnd(() => {
       for (let col of cols) {
-        col.drop();
+        db._drop(col.name());
       }
     }),
 
@@ -546,7 +546,7 @@ function transactionReplication2AbandonmentSuite() {
       }
 
       // Drop the collection while the transaction is still ongoing
-      col.drop();
+      db._drop(col.name());
       cols = [];
 
       // Transaction should be aborted
@@ -594,7 +594,7 @@ function transactionReplication2AbandonmentSuite() {
       }
 
       // Drop the shard while the transaction is still ongoing
-      distLike.drop();
+      db._drop(distLike.name());
       cols.pop();
 
       // Transaction should be aborted
@@ -651,7 +651,7 @@ function transactionReplication2AbnormalTransactionsSuite() {
     }),
     tearDown: tearDownAnd(() => {
       for (let col of cols) {
-        col.drop();
+        db._drop(col.name());
       }
     }),
 

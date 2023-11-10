@@ -68,7 +68,7 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
     }),
     tearDown: tearDownAnd(() => {
       if (collection !== null) {
-        collection.drop();
+        db._drop(collection.name());
       }
       collection = null;
     }),
@@ -259,7 +259,7 @@ const replicatedStateIntermediateCommitsSuite = function() {
     }),
     tearDown: tearDownAnd(() => {
       if (collection !== null) {
-        collection.drop();
+        db._drop(collection.name());
       }
       collection = null;
     }),
@@ -368,7 +368,7 @@ const replicatedStateFollowerSuite = function (dbParams) {
     }),
     tearDown: tearDownAnd(() => {
       if (collection !== null) {
-        collection.drop();
+        db._drop(collection.name());
       }
       collection = null;
     }),
@@ -519,12 +519,12 @@ const replicatedStateRecoverySuite = function () {
     }),
     tearDown: tearDownAnd(() => {
       for (let col of extraCollections) {
-        col.drop();
+        db._drop(col.name());
       }
       extraCollections = [];
 
       if (collection !== null) {
-        collection.drop();
+        db._drop(collection.name());
       }
       collection = null;
     }),
@@ -641,7 +641,7 @@ const replicatedStateRecoverySuite = function () {
       collection.insert(commonDoc2);
       // Delete the first doc
       collection.remove(commonDoc1);
-      // Create an unique index. When commonDoc1 insertions is replayed, it should trigger unique constraint violation.
+      // Create an unique index. When commonDoc1 insertion is replayed, it should trigger a unique constraint violation.
       // The error should be ignored during recovery.
       uniqueIndex = collection.ensureIndex({name: "eule", type: "persistent", fields: ["value"], unique: true});
       assertEqual(uniqueIndex.name, "eule");
@@ -753,7 +753,7 @@ const replicatedStateRecoverySuite = function () {
       });
 
       // Drop the additional collection. During leader recovery, this will trigger a DropShard on a non-existing shard.
-      col2.drop();
+      db._drop(col2.name());
       extraCollections = [];
 
       // Before switching to a new leader, insert some documents into the leader collection.
@@ -853,7 +853,7 @@ const replicatedStateDocumentStoreSuiteReplication1 = function () {
     setUp,
     tearDown: tearDownAnd(() => {
       if (collection !== null) {
-        collection.drop();
+        db._drop(collection.name());
       }
       collection = null;
     }),
@@ -904,12 +904,12 @@ const replicatedStateSnapshotTransferSuite = function () {
       clearAllFailurePoints();
 
       for (let col of extraCollections) {
-        col.drop();
+        db._drop(col.name());
       }
       extraCollections = [];
 
       if (collection !== null) {
-        collection.drop();
+        db._drop(collection.name());
       }
       collection = null;
     }),
@@ -929,7 +929,7 @@ const replicatedStateSnapshotTransferSuite = function () {
       lh.checkRequestResult(result);
 
       // We should be able to drop the collection regardless of the ongoing snapshot transfer.
-      collection.drop();
+      db._drop(collection.name());
       collection = null;
     },
 
@@ -964,8 +964,8 @@ const replicatedStateSnapshotTransferSuite = function () {
       lh.checkRequestResult(result);
 
       // We should be able to drop collections regardless of the ongoing snapshot transfer.
-      col1.drop();
-      col2.drop();
+      db._drop(col1.name());
+      db._drop(col2.name());
       extraCollections = [];
     },
 
