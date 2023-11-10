@@ -128,6 +128,9 @@ IndexIterator::DocumentCallback aql::getCallback(
 
     if (context.hasFilter() && !context.checkFilter(s)) {
       context.incrFiltered();
+      // required as we point lookup the document to check the filter condition
+      // as it is not covered by the index here.
+      context.incrLookups();
       return false;
     }
 
