@@ -41,6 +41,32 @@ using namespace arangodb;
 
 using namespace arangodb::basics;
 
+namespace {
+#if defined(__clang__)
+#if __has_warning("-Wwritable-strings")
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wwritable-strings"
+#endif
+#endif
+auto findSyslogFacilityByName(std::string facility) -> int {
+  for (auto i = size_t{0}; i < LOG_NFACILITIES; ++i) {
+    if (strcmp(facilitynames[i].c_name, facility.c_str()) == 0) {
+      return facilitynames[i].c_val;
+    }
+    if (facilitynames[i].c_name == nullptr) {
+      return -1;
+    }
+  }
+  return -1;
+}
+#if defined(__clang__)
+#if __has_warning("-Wwritable-strings")
+#pragma clang diagnostic pop
+#endif
+#endif
+
+}  // namespace
+
 bool LogAppenderSyslog::_opened(false);
 
 void LogAppenderSyslog::close() {
@@ -59,16 +85,7 @@ LogAppenderSyslog::LogAppenderSyslog(std::string const& facility,
   if ('0' <= facility[0] && facility[0] <= '9') {
     value = StringUtils::int32(facility);
   } else {
-    CODE* ptr = reinterpret_cast<CODE*>(facilitynames);
-
-    while (ptr->c_name != nullptr) {
-      if (strcmp(ptr->c_name, facility.c_str()) == 0) {
-        value = ptr->c_val;
-        break;
-      }
-
-      ++ptr;
-    }
+    value = findSyslogFacilityByName(name);
   }
 
   // from man 3 syslog:
