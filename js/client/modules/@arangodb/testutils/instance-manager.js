@@ -77,6 +77,7 @@ class instanceManager {
     this.addArgs = addArgs;
     this.tmpDir = tmpDir || fs.getTempPath();
     this.rootDir = fs.join(this.tmpDir, testname);
+    process.env['ARANGOTEST_ROOT_DIR'] = this.rootDir;
     this.options.agency = this.options.agency || this.options.cluster || this.options.activefailover;
     this.agencyConfig = new inst.agencyConfig(options, this);
     this.dumpedAgency = false;

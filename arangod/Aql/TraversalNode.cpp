@@ -379,7 +379,8 @@ void TraversalNode::replaceVariables(
 
 void TraversalNode::replaceAttributeAccess(
     ExecutionNode const* self, Variable const* searchVariable,
-    std::span<std::string_view> attribute, Variable const* replaceVariable) {
+    std::span<std::string_view> attribute, Variable const* replaceVariable,
+    size_t /*index*/) {
   // this is an important assertion: if options are already built,
   // we would need to carry out the replacements in several other
   // places as well
@@ -760,7 +761,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
                                                   // SingleServer, Cluster...
         outputRegisterMapping, getStartVertex(), inputRegister,
         plan()->getAst(), opts->uniqueVertices, opts->uniqueEdges, opts->mode,
-        opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
+        opts->defaultWeight, opts->weightAttribute, opts->query(),
         std::move(validatorOptions), std::move(options),
         std::move(clusterBaseProviderOptions), isSmart);
 
@@ -774,7 +775,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
                                                   // SingleServer, Cluster...
         outputRegisterMapping, getStartVertex(), inputRegister,
         plan()->getAst(), opts->uniqueVertices, opts->uniqueEdges, opts->mode,
-        opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
+        opts->defaultWeight, opts->weightAttribute, opts->query(),
         std::move(validatorOptions), std::move(options),
         std::move(singleServerBaseProviderOptions), isSmart);
 

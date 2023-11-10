@@ -21,11 +21,6 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <string_view>
-#include <type_traits>
-
-#include <velocypack/Iterator.h>
-
 #include "ClusterNodes.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -56,8 +51,12 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
-#include "Logger/LogMacros.h"
 #include "Transaction/Methods.h"
+
+#include <velocypack/Iterator.h>
+
+#include <string_view>
+#include <type_traits>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -641,10 +640,7 @@ GatherNode::Parallelism GatherNode::evaluateParallelism(
 void GatherNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
   for (auto& it : _elements) {
-    auto v = Variable::replace(it.var, replacements);
-    if (v != it.var) {
-      it.var = v;
-    }
+    it.var = Variable::replace(it.var, replacements);
     it.attributePath.clear();
   }
 }
@@ -652,8 +648,26 @@ void GatherNode::replaceVariables(
 void GatherNode::replaceAttributeAccess(ExecutionNode const* self,
                                         Variable const* searchVariable,
                                         std::span<std::string_view> attribute,
-                                        Variable const* replaceVariable) {
-  // TODO!!!
+                                        Variable const* replaceVariable,
+                                        size_t /*index*/) {
+  auto equal = [](auto const& v1, auto const& v2) {
+    size_t n = v1.size();
+    if (n != v2.size()) {
+      return false;
+    }
+    for (size_t i = 0; i < n; ++i) {
+      if (v1[i] != v2[i]) {
+        return false;
+      }
+    }
+    return true;
+  };
+  for (auto& it : _elements) {
+    if (it.var == searchVariable && equal(it.attributePath, attribute)) {
+      it.var = replaceVariable;
+      it.attributePath.clear();
+    }
+  }
 }
 
 void GatherNode::getVariablesUsedHere(VarSet& vars) const {

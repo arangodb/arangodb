@@ -245,7 +245,6 @@ set(ARANGODB_URL_INFO_ABOUT  "https://www.arangodb.com")
 set(ARANGODB_HELP_LINK       "https://docs.arangodb.com/${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}/")
 set(ARANGODB_CONTACT         "hackers@arangodb.com")
 set(ARANGODB_FRIENDLY_STRING "ArangoDB - the native multi-model NoSQL database")
-set(ARANGODB_PACKAGE_COMPANY "ArangoDB GmbH")
 
 # MSVC
 set(ARANGO_BENCH_FRIENDLY_STRING   "arangobench - stress test tool")
@@ -972,6 +971,17 @@ else () # NOT MSVC
     set(EXTRA_CXX_FLAGS "-Wsuggest-override -Wnon-virtual-dtor")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL "11.1.0")
       set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=nonnull")
+    endif()
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "13.0.0")
+      # the following warning types need to be suppressed with newer
+      # versions of g++, as they produce a lot of false positives.
+      # if the no-error directives are removed, a lot 3rdParty libraries
+      # such as date, fmt, and immer cannot be compiled anymore.
+      # https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=__open__&content=stringop-overread&no_redirect=1&product=gcc
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=array-bounds")
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=overloaded-virtual")
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=stringop-overflow")
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=stringop-overread")
     endif()
   elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")

@@ -8454,12 +8454,9 @@ void arangodb::aql::asyncPrefetchRule(Optimizer* opt,
       }
       auto eligibility = n->canUseAsyncPrefetching();
       if (stack.back() == 0 &&
-          eligibility == AsyncPrefetchEligibility::kEnableForNode &&
-          (!n->hasParent() || n->getFirstParent()->getType() != EN::REMOTE)) {
-        // we are currently excluding any node inside a subquery and all
-        // nodes that are direct dependencies of REMOTE nodes from the
-        // optimization, because of assertion failures.
-        // TODO: lift these restrictions.
+          eligibility == AsyncPrefetchEligibility::kEnableForNode) {
+        // we are currently excluding any node inside a subquery.
+        // TODO: lift this restriction.
         n->setIsAsyncPrefetchEnabled(true);
         modified = true;
       }
@@ -9263,13 +9260,48 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
               auto* lhs = root->getMember(0);
               auto* rhs = root->getMember(1);
 
-              auto matches = [](AstNode const* lhs, AstNode const* rhs,
-                                IndexNode const* i1, IndexNode const* i2) {
+              auto matches = [&plan](AstNode const* lhs, AstNode const* rhs,
+                                     IndexNode const* i1, IndexNode const* i2) {
                 std::pair<Variable const*,
                           std::vector<arangodb::basics::AttributeName>>
                     usedVar;
+                LOG_INDEX_OPTIMIZER_RULE
+                    << "called with i1: " << i1->outVariable()->name
+                    << ", i2: " << i2->outVariable()->name
+                    << ", lhs: " << lhs->getTypeString()
+                    << ", rhs: " << rhs->getTypeString();
+                if (lhs->type == NODE_TYPE_REFERENCE) {
+                  Variable const* other =
+                      static_cast<Variable const*>(lhs->getData());
+                  LOG_INDEX_OPTIMIZER_RULE << "lhs is a reference to "
+                                           << other->name << ". looking for "
+                                           << i1->outVariable()->name;
+                  auto setter = plan->getVarSetBy(other->id);
+                  if (setter != nullptr &&
+                      (setter->getType() == EN::INDEX ||
+                       setter->getType() == EN::ENUMERATE_COLLECTION)) {
+                    LOG_INDEX_OPTIMIZER_RULE << "lhs is set by index|enum";
+                    auto* documentNode =
+                        ExecutionNode::castTo<DocumentProducingNode*>(setter);
+                    auto const& p = documentNode->projections();
+                    for (size_t i = 0; i < p.size(); ++i) {
+                      if (p[i].path.get()[0] ==
+                          i1->getIndexes()[0]->fields()[0][0].name) {
+                        usedVar.first = documentNode->outVariable();
+                        for (auto const& it : p[i].path.get()) {
+                          usedVar.second.emplace_back(it);
+                        }
+                        LOG_INDEX_OPTIMIZER_RULE << "lhs matched outvariable "
+                                                 << usedVar.first->name << ", "
+                                                 << p[i].path.get();
+                        break;
+                      }
+                    }
+                  }
+                }
 
-                if (!lhs->isAttributeAccessForVariable(
+                if (usedVar.first == nullptr &&
+                    !lhs->isAttributeAccessForVariable(
                         usedVar, /*allowIndexedAccess*/ false)) {
                   // lhs is not an attribute access
                   return false;
@@ -9280,7 +9312,42 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                   return false;
                 }
                 // lhs matches i1's FOR loop index field
-                if (!rhs->isAttributeAccessForVariable(
+
+                usedVar.first = nullptr;
+                usedVar.second.clear();
+
+                if (rhs->type == NODE_TYPE_REFERENCE) {
+                  Variable const* other =
+                      static_cast<Variable const*>(rhs->getData());
+                  LOG_INDEX_OPTIMIZER_RULE << "rhs is a reference to "
+                                           << other->name << ". looking for "
+                                           << i2->outVariable()->name;
+                  auto setter = plan->getVarSetBy(other->id);
+                  if (setter != nullptr &&
+                      (setter->getType() == EN::INDEX ||
+                       setter->getType() == EN::ENUMERATE_COLLECTION)) {
+                    LOG_INDEX_OPTIMIZER_RULE << "rhs is set by index|enum";
+                    auto* documentNode =
+                        ExecutionNode::castTo<DocumentProducingNode*>(setter);
+                    auto const& p = documentNode->projections();
+                    for (size_t i = 0; i < p.size(); ++i) {
+                      if (p[i].path.get()[0] ==
+                          i2->getIndexes()[0]->fields()[0][0].name) {
+                        usedVar.first = documentNode->outVariable();
+                        for (auto const& it : p[i].path.get()) {
+                          usedVar.second.emplace_back(it);
+                        }
+                        LOG_INDEX_OPTIMIZER_RULE << "rhs matched outvariable "
+                                                 << usedVar.first->name << ", "
+                                                 << p[i].path.get();
+                        break;
+                      }
+                    }
+                  }
+                }
+
+                if (usedVar.first == nullptr &&
+                    !rhs->isAttributeAccessForVariable(
                         usedVar, /*allowIndexedAccess*/ false)) {
                   // rhs is not an attribute access
                   return false;
@@ -9349,6 +9416,8 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
           }
 
           if (eligible) {
+            // we will now replace all candidate IndexNodes with a JoinNode,
+            // and remove the previous IndexNodes from the plan
             LOG_INDEX_OPTIMIZER_RULE << "Should be eligible for index join";
             std::vector<JoinNode::IndexInfo> indexInfos;
             indexInfos.reserve(candidates.size());
@@ -9362,7 +9431,8 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                   .index = c->getIndexes()[0],
                   .projections = c->projections(),
                   .filterProjections = c->filterProjections(),
-                  .usedAsSatellite = c->isUsedAsSatellite()});
+                  .usedAsSatellite = c->isUsedAsSatellite(),
+                  .producesOutput = c->isProduceResult()});
               handled.emplace(c);
             }
             JoinNode* jn = plan->createNode<JoinNode>(
@@ -9374,6 +9444,101 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
             for (size_t i = 1; i < candidates.size(); ++i) {
               plan->unlinkNode(candidates[i]);
             }
+            // remove any now-unused projections from the JoinNode.
+            // these are projections that are not used after the JoinNode,
+            // and that are not used by any of the JoinNodes post-filters.
+            // we _can_ remove all projections that are only used inside
+            // the JoinNode and that are part of the JoinNode's join
+            // conditions.
+            [plan = plan.get(),
+             jn]() {
+              // we are executing the removal inside an IIFE for better
+              // scoping of variables.
+
+              // we need to refresh the variable usage in the execution
+              // plan first because we changed nodes around before.
+              plan->findVarUsage();
+              auto& indexInfos = jn->getIndexInfos();
+              // for every index in the JoinNode, check if it is has
+              // projections. if it has projections, check if the index
+              // out variable is used after the JoinNode. if it is,
+              // we do not attempt further optimizations.
+              // if the index out variable is only used inside the
+              // JoinNode itself, we check for every projection if the
+              // project is not used in the following index lookup's
+              // post-filter conditions. if it is not used there, it
+              // is safe to remove the projection completely.
+
+              // for every index in the JoinNode...
+              for (size_t i = 0; i < indexInfos.size(); ++i) {
+                // check if it has projections
+                if (indexInfos[i].projections.empty()) {
+                  // no projections => no projections to optimize away.
+                  // this check is important because further down we
+                  // rely on that projections have been present.
+                  continue;
+                }
+                Variable const* outVariable = indexInfos[i].outVariable;
+                if (jn->isVarUsedLater(outVariable)) {
+                  // output variable of index in JoinNode is used by
+                  // query parts following the JoinNode. we can not
+                  // remove anything safely.
+                  continue;
+                }
+                // output variable of current index in JoinNode is not
+                // used after the JoinNode itself. now check if the projection
+                // is used by any of the following indexes' filter conditions.
+                // in that case we need to keep the projection, otherwise
+                // we can remove it.
+
+                // remove all projections for which the lambda returns true:
+                TRI_ASSERT(!indexInfos[i].projections.empty());
+                indexInfos[i].projections.erase(
+                    [i, plan, outVariable,
+                     &indexInfos](Projections::Projection& p) -> bool {
+                      containers::FlatHashSet<AttributeNamePath> attributes;
+                      // look into all following indexes in the JoinNode
+                      // (i.e. south of us)
+                      for (size_t j = i + 1; j < indexInfos.size(); ++j) {
+                        if (indexInfos[j].filter == nullptr) {
+                          // following index does not have a post filter
+                          // condition, and thus cannot use a projection
+                          continue;
+                        }
+                        // collect all used attribute names in the index (j)
+                        // post filter condition that refer to our (i) output
+                        // variable:
+                        if (!Ast::getReferencedAttributesRecursive(
+                                indexInfos[j].filter->node(), outVariable, "",
+                                attributes,
+                                plan->getAst()->query().resourceMonitor())) {
+                          // unable to determine referenced attributes safely.
+                          // we better do not remove the projection.
+                          return false;
+                        }
+                        if (std::find(attributes.begin(), attributes.end(),
+                                      p.path) != attributes.end()) {
+                          // projection of index (i) is used in post filter
+                          // condition of index (j). we cannot remove it
+                          return false;
+                        }
+                      }
+                      // projection of index (i) is not used in any of the
+                      // following indexes (i + 1..n).
+                      // we return true so the superfluous projection will be
+                      // removed
+                      return true;
+                    });
+                if (indexInfos[i].projections.empty() &&
+                    indexInfos[i].producesOutput) {
+                  // if we had projections before and now removed all
+                  // projections, it means we removed all remaining projections
+                  // for the index. that means we also can make it not produce
+                  // any output.
+                  indexInfos[i].producesOutput = false;
+                }
+              }
+            }();
             modified = true;
           } else {
             LOG_INDEX_OPTIMIZER_RULE << "Not eligible for index join";
@@ -9402,11 +9567,12 @@ class AttributeAccessReplacer final
   AttributeAccessReplacer(ExecutionNode const* self,
                           Variable const* searchVariable,
                           std::span<std::string_view> attribute,
-                          Variable const* replaceVariable)
+                          Variable const* replaceVariable, size_t index)
       : _self(self),
         _searchVariable(searchVariable),
         _attribute(attribute),
-        _replaceVariable(replaceVariable) {
+        _replaceVariable(replaceVariable),
+        _index(index) {
     TRI_ASSERT(_searchVariable != nullptr);
     TRI_ASSERT(!_attribute.empty());
     TRI_ASSERT(_replaceVariable != nullptr);
@@ -9414,7 +9580,7 @@ class AttributeAccessReplacer final
 
   bool before(ExecutionNode* en) override final {
     en->replaceAttributeAccess(_self, _searchVariable, _attribute,
-                               _replaceVariable);
+                               _replaceVariable, _index);
 
     // always continue
     return false;
@@ -9425,23 +9591,19 @@ class AttributeAccessReplacer final
   Variable const* _searchVariable;
   std::span<std::string_view> _attribute;
   Variable const* _replaceVariable;
+  size_t _index;
 };
 
 void arangodb::aql::optimizeProjections(Optimizer* opt,
                                         std::unique_ptr<ExecutionPlan> plan,
                                         OptimizerRule const& rule) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
-  plan->findNodesOfType(nodes, {EN::INDEX, EN::ENUMERATE_COLLECTION}, true);
+  plan->findNodesOfType(nodes, {EN::INDEX, EN::ENUMERATE_COLLECTION, EN::JOIN},
+                        true);
 
-  bool modified = false;
-  for (auto* n : nodes) {
-    auto* documentNode = ExecutionNode::castTo<DocumentProducingNode*>(n);
-    modified |= documentNode->recalculateProjections(plan.get());
-
-    if (n->getType() != EN::ENUMERATE_COLLECTION) {
-      continue;
-    }
-    auto& p = documentNode->projections();
+  auto replace = [&plan](ExecutionNode* self, Projections& p,
+                         Variable const* searchVariable, size_t index) {
+    bool modified = false;
     std::vector<std::string_view> path;
     for (size_t i = 0; i < p.size(); ++i) {
       TRI_ASSERT(p[i].variable == nullptr);
@@ -9451,10 +9613,32 @@ void arangodb::aql::optimizeProjections(Optimizer* opt,
         path.emplace_back(it);
       }
 
-      AttributeAccessReplacer replacer(n, documentNode->outVariable(),
-                                       std::span(path), p[i].variable);
+      AttributeAccessReplacer replacer(self, searchVariable, std::span(path),
+                                       p[i].variable, index);
       plan->root()->walk(replacer);
       modified = true;
+    }
+    return modified;
+  };
+
+  bool modified = false;
+  for (auto* n : nodes) {
+    if (n->getType() == EN::JOIN) {
+      // JoinNode. optimize projections in all parts
+      auto* joinNode = ExecutionNode::castTo<JoinNode*>(n);
+      size_t index = 0;
+      for (auto& it : joinNode->getIndexInfos()) {
+        modified |= replace(n, it.projections, it.outVariable, index++);
+      }
+    } else {
+      // IndexNode or EnumerateCollectionNode.
+      TRI_ASSERT(n->getType() == EN::ENUMERATE_COLLECTION ||
+                 n->getType() == EN::INDEX);
+
+      auto* documentNode = ExecutionNode::castTo<DocumentProducingNode*>(n);
+      modified |= documentNode->recalculateProjections(plan.get());
+      modified |= replace(n, documentNode->projections(),
+                          documentNode->outVariable(), /*index*/ 0);
     }
   }
   opt->addPlan(std::move(plan), rule, modified);
