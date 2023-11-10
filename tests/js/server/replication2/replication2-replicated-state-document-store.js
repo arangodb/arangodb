@@ -632,7 +632,7 @@ const replicatedStateRecoverySuite = function () {
 
       // Insert a doc that has the same temporary as an existing one.
       // When the index creation is going to be replayed, it will fail, but the error should be ignored.
-      collection.insert({_key: `${testName}-temporary`, value: 1234567, temporary: 0})
+      collection.insert({_key: `${testName}-temporary`, value: 1234567, temporary: 0});
 
       // Insert two docs that have a common property
       const commonDoc1 = {_key: `${testName}-common1`, value: 1234};

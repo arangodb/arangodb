@@ -312,7 +312,7 @@ const computedValuesAppliedPredicate = function (collection, attribute) {
     }
     return true;
   };
-}
+};
 
 exports.getLocalValue = getLocalValue;
 exports.getLocalIndex = getLocalIndex;
