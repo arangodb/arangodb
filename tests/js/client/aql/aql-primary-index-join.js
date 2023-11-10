@@ -137,6 +137,7 @@ const IndexPrimaryJoinTestSuite = function () {
 
     const result = db._createStatement({query: query, bindVars: null, options: qOptions}).execute();
 
+
     if (expectedStats) {
       const qStats = result.getExtra().stats;
       for (const statName in expectedStats) {
@@ -196,28 +197,28 @@ const IndexPrimaryJoinTestSuite = function () {
       // No additional index on B, we want to make use of the default (rocksdb) primary index
       const documentsB = B.all().toArray();
       let properties = [];
-      documentsB.forEach((doc) => {
-        properties.push({"x": doc._key});
+      documentsB.forEach((doc, idx) => {
+        properties.push({"x": doc._key, "y": 2 * idx});
       });
 
       const A = fillCollectionWith("A", properties, ["x"]);
-      A.ensureIndex({type: "persistent", fields: ["x"], unique: true});
+      A.ensureIndex({type: "persistent", fields: ["x", "y"], unique: true});
 
       let expectedStats = {
-        documentLookups: 4,
-        filtered: 3
+        documentLookups: 6,
+        filtered: 2
       };
       const result = executeBothJoinStrategies(`
         FOR doc1 IN A
           SORT doc1.x
           FOR doc2 IN B
               FILTER doc1.x == doc2._key
-              FILTER doc1.x % 4 == 0
+              FILTER doc1.y % 4 == 0
               SORT doc2._key
               RETURN [doc1, doc2]
       `, expectedStats);
 
-      assertEqual(result.length, 2);
+      assertEqual(result.length, 3);
       for (const [a, b] of result) {
         assertEqual(a.x, b._key);
       }
