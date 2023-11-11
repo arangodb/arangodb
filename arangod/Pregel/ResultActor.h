@@ -24,7 +24,7 @@
 
 #include <chrono>
 #include <memory>
-#include "Actor/ActorPID.h"
+#include "Actor/DistributedActorPID.h"
 #include "Actor/HandlerBase.h"
 #include "Basics/ResultT.h"
 #include "Pregel/ResultMessages.h"
@@ -86,7 +86,7 @@ struct ResultState {
   ResultState() = default;
   ResultState(TTL ttl) : ttl{ttl} {};
   std::shared_ptr<PregelResult> data = std::make_shared<PregelResult>();
-  std::vector<actor::ActorPID> otherResultActors;
+  std::vector<actor::DistributedActorPID> otherResultActors;
   TTL ttl;
   std::chrono::system_clock::time_point expiration;
 };
@@ -155,22 +155,25 @@ struct ResultHandler : actor::HandlerBase<Runtime, ResultState> {
 
   auto operator()(actor::message::UnknownMessage unknown)
       -> std::unique_ptr<ResultState> {
-    LOG_TOPIC("eb602", INFO, Logger::PREGEL) << fmt::format(
-        "Result Actor: Error - sent unknown message to {}", unknown.receiver);
+    LOG_TOPIC("eb602", INFO, Logger::PREGEL)
+        << fmt::format("Result Actor: Error - sent unknown message to {}",
+                       inspection::json(unknown.receiver));
     return std::move(this->state);
   }
 
   auto operator()(actor::message::ActorNotFound notFound)
       -> std::unique_ptr<ResultState> {
-    LOG_TOPIC("e3156", INFO, Logger::PREGEL) << fmt::format(
-        "Result Actor: Error - receiving actor {} not found", notFound.actor);
+    LOG_TOPIC("e3156", INFO, Logger::PREGEL)
+        << fmt::format("Result Actor: Error - receiving actor {} not found",
+                       inspection::json(notFound.actor));
     return std::move(this->state);
   }
 
   auto operator()(actor::message::NetworkError notFound)
       -> std::unique_ptr<ResultState> {
-    LOG_TOPIC("e87b3", INFO, Logger::PREGEL) << fmt::format(
-        "Result Actor: Error - network error {}", notFound.message);
+    LOG_TOPIC("e87b3", INFO, Logger::PREGEL)
+        << fmt::format("Result Actor: Error - network error {}",
+                       inspection::json(notFound.message));
     return std::move(this->state);
   }
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,28 +18,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Aditya Mukhopadhyay
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "State.h"
+#include "Actor/IScheduler.h"
 
-namespace arangodb::pregel::worker {
-template<typename V, typename E, typename M>
-struct WorkerState;
-
-template<typename V, typename E, typename M>
-struct Initial : ExecutionState {
-  explicit Initial(WorkerState<V, E, M>& worker);
-  ~Initial() override = default;
-
-  [[nodiscard]] auto name() const -> std::string override { return "initial"; };
-  auto receive(actor::DistributedActorPID const& sender,
-               actor::DistributedActorPID const& self,
-               message::WorkerMessages const& message, Dispatcher dispatcher)
-      -> std::unique_ptr<ExecutionState> override;
-
-  WorkerState<V, E, M>& worker;
+namespace arangodb::actor::test {
+struct MockScheduler : IScheduler {
+  auto start(size_t number_of_threads) -> void{};
+  auto stop() -> void{};
+  void queue(ActorWorker&& worker) override { worker(); }
+  void delay(std::chrono::seconds delay,
+             std::function<void(bool)>&& fn) override {
+    fn(true);
+  }
 };
-}  // namespace arangodb::pregel::worker
+
+}  // namespace arangodb::actor::test

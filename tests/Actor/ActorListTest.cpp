@@ -26,22 +26,25 @@
 #include "Actor/ActorBase.h"
 #include "Actor/ActorList.h"
 
-using namespace arangodb::pregel::actor;
+using namespace arangodb::actor;
 
 struct ActorBaseMock : ActorBase {
-  ActorBaseMock(std::string type) : type{std::move(type)} {};
+  ActorBaseMock(std::string type) : type{std::move(type)} {}
   ActorBaseMock() = default;
   ~ActorBaseMock() = default;
-  auto process(ActorPID sender, MessagePayloadBase& msg) -> void override{};
-  auto process(ActorPID sender, arangodb::velocypack::SharedSlice msg)
-      -> void override{};
-  auto typeName() -> std::string_view override { return type; };
+  auto process(DistributedActorPID sender, MessagePayloadBase& msg)
+      -> void override {}
+  auto process(DistributedActorPID sender,
+               arangodb::velocypack::SharedSlice msg) -> void override {}
+  auto typeName() -> std::string_view override { return type; }
   auto serialize() -> arangodb::velocypack::SharedSlice override {
     return arangodb::velocypack::SharedSlice();
-  };
-  auto finish() -> void override { finished = true; };
-  auto isFinishedAndIdle() -> bool override { return finished; };
-  auto isIdle() -> bool override { return true; };
+  }
+  auto finish() -> void override { finished = true; }
+  auto isFinishedAndIdle() -> bool override { return finished; }
+  auto isIdle() -> bool override { return true; }
+
+  void work() override {}
 
   std::string type;
   bool finished = false;

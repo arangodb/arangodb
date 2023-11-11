@@ -27,12 +27,14 @@
 #include <string>
 #include "Inspection/Format.h"
 
-namespace arangodb::pregel::actor {
+namespace arangodb::actor {
+
 struct ActorID {
   size_t id;
 
   auto operator<=>(ActorID const& other) const = default;
 };
+
 template<typename Inspector>
 auto inspect(Inspector& f, ActorID& x) {
   if constexpr (Inspector::isLoading) {
@@ -46,55 +48,17 @@ auto inspect(Inspector& f, ActorID& x) {
     return f.apply(x.id);
   }
 }
-}  // namespace arangodb::pregel::actor
+}  // namespace arangodb::actor
 
 template<>
-struct fmt::formatter<arangodb::pregel::actor::ActorID>
+struct fmt::formatter<arangodb::actor::ActorID>
     : arangodb::inspection::inspection_formatter {};
 
 namespace std {
 template<>
-struct hash<arangodb::pregel::actor::ActorID> {
-  size_t operator()(arangodb::pregel::actor::ActorID const& x) const noexcept {
+struct hash<arangodb::actor::ActorID> {
+  size_t operator()(arangodb::actor::ActorID const& x) const noexcept {
     return std::hash<size_t>()(x.id);
-  };
-};
-}  // namespace std
-
-namespace arangodb::pregel::actor {
-
-// TODO: at some point this needs to be ArangoDB's ServerID or compatible
-using ServerID = std::string;
-using DatabaseName = std::string;
-
-struct ActorPID {
-  ServerID server;
-  DatabaseName database;
-  ActorID id;
-  bool operator==(const ActorPID&) const = default;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, ActorPID& x) {
-  return f.object(x).fields(f.field("server", x.server),
-                            f.field("database", x.database),
-                            f.field("id", x.id));
-}
-
-}  // namespace arangodb::pregel::actor
-
-template<>
-struct fmt::formatter<arangodb::pregel::actor::ActorPID>
-    : arangodb::inspection::inspection_formatter {};
-
-namespace std {
-template<>
-struct hash<arangodb::pregel::actor::ActorPID> {
-  size_t operator()(arangodb::pregel::actor::ActorPID const& x) const noexcept {
-    size_t hash_id = std::hash<arangodb::pregel::actor::ActorID>()(x.id);
-    size_t hash_database = std::hash<std::string>()(x.database);
-    size_t hash_server = std::hash<std::string>()(x.server);
-    // TODO lookup if mixing hashings is appropriate
-    return (hash_id ^ (hash_database << 1)) ^ (hash_server << 1);
   };
 };
 }  // namespace std

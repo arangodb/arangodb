@@ -28,11 +28,10 @@
 #include <memory>
 #include <variant>
 
-#include "Actor/ActorPID.h"
 #include "Actor/HandlerBase.h"
 #include "Inspection/InspectorBase.h"
 
-namespace arangodb::pregel::actor::test {
+namespace arangodb::actor::test {
 
 namespace pong_actor::message {
 
@@ -80,7 +79,7 @@ auto inspect(Inspector& f, PingState& x) {
 namespace message {
 
 struct Start {
-  ActorPID pongActor;
+  DistributedActorPID pongActor;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, Start& x) {
@@ -179,19 +178,17 @@ struct Actor {
 
 }  // namespace pong_actor
 
-}  // namespace arangodb::pregel::actor::test
+}  // namespace arangodb::actor::test
 
 template<>
-struct fmt::formatter<
-    arangodb::pregel::actor::test::pong_actor::message::PongMessage>
+struct fmt::formatter<arangodb::actor::test::pong_actor::message::PongMessage>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::pregel::actor::test::ping_actor::PingState>
+struct fmt::formatter<arangodb::actor::test::ping_actor::PingState>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<
-    arangodb::pregel::actor::test::ping_actor::message::PingMessage>
+struct fmt::formatter<arangodb::actor::test::ping_actor::message::PingMessage>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::pregel::actor::test::pong_actor::PongState>
+struct fmt::formatter<arangodb::actor::test::pong_actor::PongState>
     : arangodb::inspection::inspection_formatter {};

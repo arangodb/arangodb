@@ -33,7 +33,7 @@
 #include "fmt/core.h"
 
 using namespace arangodb;
-using namespace arangodb::pregel::mpscqueue;
+using namespace arangodb::actor;
 
 struct MPSCStringMessage : MPSCQueue<MPSCStringMessage>::Node {
   MPSCStringMessage(std::string content) : content(std::move(content)) {}

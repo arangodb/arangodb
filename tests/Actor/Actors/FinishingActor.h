@@ -33,7 +33,7 @@
 #include "Actor/Actor.h"
 #include "TrivialActor.h"
 
-namespace arangodb::pregel::actor::test {
+namespace arangodb::actor::test {
 
 struct FinishingState {
   bool operator==(const FinishingState&) const = default;
@@ -99,11 +99,11 @@ struct FinishingActor {
     return "FinishingActor";
   };
 };
-}  // namespace arangodb::pregel::actor::test
+}  // namespace arangodb::actor::test
 
 template<>
-struct fmt::formatter<arangodb::pregel::actor::test::FinishingState>
+struct fmt::formatter<arangodb::actor::test::FinishingState>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::pregel::actor::test::message::FinishingMessages>
+struct fmt::formatter<arangodb::actor::test::message::FinishingMessages>
     : arangodb::inspection::inspection_formatter {};

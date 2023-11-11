@@ -18,27 +18,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
 /// @author Julia Volmer
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Actor/ActorPID.h"
-#include "Actor/Message.h"
+#include "Actor/DistributedActorPID.h"
+#include "velocypack/SharedSlice.h"
 
-namespace arangodb::pregel::actor {
+namespace arangodb::actor {
 
-struct ActorBase {
-  virtual ~ActorBase() = default;
-  virtual auto process(ActorPID sender, MessagePayloadBase& msg) -> void = 0;
-  virtual auto process(ActorPID sender, velocypack::SharedSlice msg)
-      -> void = 0;
-  virtual auto typeName() -> std::string_view = 0;
-  virtual auto serialize() -> velocypack::SharedSlice = 0;
-  virtual auto finish() -> void = 0;
-  virtual auto isFinishedAndIdle() -> bool = 0;
-  virtual auto isIdle() -> bool = 0;
+struct IExternalDispatcher {
+  virtual ~IExternalDispatcher() = default;
+  virtual void dispatch(DistributedActorPID sender,
+                        DistributedActorPID receiver,
+                        arangodb::velocypack::SharedSlice msg) = 0;
 };
 
-}  // namespace arangodb::pregel::actor
+}  // namespace arangodb::actor
