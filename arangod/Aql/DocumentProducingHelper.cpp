@@ -26,7 +26,6 @@
 #include "Aql/AqlValue.h"
 #include "Aql/DocumentExpressionContext.h"
 #include "Aql/EnumerateCollectionExecutor.h"
-#include "Aql/Expression.h"
 #include "Aql/IndexExecutor.h"
 #include "Aql/LateMaterializedExpressionContext.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -38,7 +37,6 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
-#include <function2.hpp>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
@@ -64,12 +62,17 @@ IndexIterator::DocumentCallback aql::getCallback(
 
     if (context.hasFilter() && !context.checkFilter(slice)) {
       context.incrFiltered();
+      // required as we point lookup the document to check the filter condition
+      // as it is not covered by the index here.
+      context.incrLookups();
       return false;
     }
 
     if constexpr (skip) {
       return true;
     }
+
+    context.incrLookups();
 
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
@@ -125,12 +128,16 @@ IndexIterator::DocumentCallback aql::getCallback(
 
     if (context.hasFilter() && !context.checkFilter(s)) {
       context.incrFiltered();
+      // required as we point lookup the document to check the filter condition
+      // as it is not covered by the index here.
+      context.incrLookups();
       return false;
     }
 
     if constexpr (skip) {
       return true;
     }
+    context.incrLookups();
 
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
@@ -214,6 +221,7 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _resourceMonitor(infos.getResourceMonitor()),
       _numScanned(0),
       _numFiltered(0),
+      _numLookups(0),
       _outputVariable(infos.getOutVariable()),
       _outputRegister(infos.getOutputRegisterId()),
       _readOwnWrites(infos.canReadOwnWrites()),
@@ -273,6 +281,7 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _resourceMonitor(infos.getResourceMonitor()),
       _numScanned(0),
       _numFiltered(0),
+      _numLookups(0),
       _outputVariable(infos.getOutVariable()),
       _outputRegister(infos.getOutputRegisterId()),
       _readOwnWrites(infos.canReadOwnWrites()),
@@ -398,12 +407,18 @@ void DocumentProducingFunctionContext::incrFiltered() noexcept {
   ++_numFiltered;
 }
 
+void DocumentProducingFunctionContext::incrLookups() noexcept { ++_numLookups; }
+
 uint64_t DocumentProducingFunctionContext::getAndResetNumScanned() noexcept {
   return std::exchange(_numScanned, 0);
 }
 
 uint64_t DocumentProducingFunctionContext::getAndResetNumFiltered() noexcept {
   return std::exchange(_numFiltered, 0);
+}
+
+uint64_t DocumentProducingFunctionContext::getAndResetNumLookups() noexcept {
+  return std::exchange(_numLookups, 0);
 }
 
 InputAqlItemRow const& DocumentProducingFunctionContext::getInputRow()

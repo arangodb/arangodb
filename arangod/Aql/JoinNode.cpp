@@ -260,13 +260,17 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
       TRI_ASSERT(var != nullptr);
       auto regId = variableToRegisterId(var);
       varsToRegs.emplace(var->id, regId);
-      writableOutputRegisters.emplace(regId);
+      if (idx.producesOutput) {
+        writableOutputRegisters.emplace(regId);
+      }
     }
 
     RegisterId documentOutputRegister = RegisterId::maxRegisterId;
     if (!p.hasOutputRegisters()) {
       documentOutputRegister = variableToRegisterId(idx.outVariable);
-      writableOutputRegisters.emplace(documentOutputRegister);
+      if (idx.producesOutput) {
+        writableOutputRegisters.emplace(documentOutputRegister);
+      }
     }
 
     // TODO probably those data structures can become one
