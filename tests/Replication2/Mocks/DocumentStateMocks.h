@@ -39,6 +39,7 @@
 #include "Transaction/Manager.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/LogicalCollection.h"
 
 namespace arangodb::replication2::tests {
 struct MockDocumentStateTransactionHandler;
