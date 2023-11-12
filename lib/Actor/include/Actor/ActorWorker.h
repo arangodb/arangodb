@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,28 +18,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Aditya Mukhopadhyay
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "State.h"
+#include "Actor/ActorBase.h"
 
-namespace arangodb::pregel::worker {
-template<typename V, typename E, typename M>
-struct WorkerState;
+namespace arangodb::actor {
 
-template<typename V, typename E, typename M>
-struct Initial : ExecutionState {
-  explicit Initial(WorkerState<V, E, M>& worker);
-  ~Initial() override = default;
+struct ActorWorker {
+  // capture a weak_ptr to the actor: this way, the actor can be destroyed
+  // although this worker is still waiting in the scheduler. When this worker is
+  // executed in the queue after actor was destroyed, the weak_ptr will
+  // be empty and work will just not be executed
+  explicit ActorWorker(ActorBase* actor) : actor(actor->weak_from_this()) {}
 
-  [[nodiscard]] auto name() const -> std::string override { return "initial"; };
-  auto receive(actor::DistributedActorPID const& sender,
-               actor::DistributedActorPID const& self,
-               message::WorkerMessages const& message, Dispatcher dispatcher)
-      -> std::unique_ptr<ExecutionState> override;
-
-  WorkerState<V, E, M>& worker;
+  void operator()() {
+    auto me = actor.lock();
+    if (me != nullptr) {
+      me->work();
+    }
+  }
+  std::weak_ptr<ActorBase> actor;
 };
-}  // namespace arangodb::pregel::worker
+
+}  // namespace arangodb::actor

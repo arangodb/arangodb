@@ -24,7 +24,7 @@
 
 #include <chrono>
 #include <memory>
-#include "Actor/ActorPID.h"
+#include "Actor/DistributedActorPID.h"
 #include "Actor/HandlerBase.h"
 #include "Logger/LogMacros.h"
 #include "Pregel/GraphStore/GraphLoader.h"
@@ -48,7 +48,7 @@
 namespace arangodb::pregel::worker {
 
 struct VerticesProcessed {
-  std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor;
+  std::unordered_map<actor::DistributedActorPID, uint64_t> sendCountPerActor;
   size_t activeCount;
 };
 
@@ -74,7 +74,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     this->template dispatch<message::WorkerMessages>(this->self, message);
   };
   DispatchOther const& dispatchOther =
-      [this](actor::ActorPID other, message::WorkerMessages message) -> void {
+      [this](actor::DistributedActorPID other,
+             message::WorkerMessages message) -> void {
     this->template dispatch<message::WorkerMessages>(other, message);
   };
   DispatchResult const& dispatchResult =

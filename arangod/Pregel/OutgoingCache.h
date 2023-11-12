@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "Actor/ActorPID.h"
+#include "Actor/DistributedActorPID.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 #include "Containers/FlatHashMap.h"
@@ -93,16 +93,17 @@ class OutCache {
   }
 
   virtual void setDispatch(
-      std::function<void(actor::ActorPID receiver,
+      std::function<void(actor::DistributedActorPID receiver,
                          worker::message::PregelMessage message)>
           dispatch){};
   virtual void setResponsibleActorPerShard(
-      std::unordered_map<ShardID, actor::ActorPID> _responsibleActorPerShard){};
+      std::unordered_map<ShardID, actor::DistributedActorPID>
+          _responsibleActorPerShard){};
   virtual void appendMessage(PregelShard shard, std::string_view const& key,
                              M const& data) = 0;
   virtual void flushMessages() = 0;
   virtual auto sendCountPerActor() const
-      -> std::unordered_map<actor::ActorPID, uint64_t> {
+      -> std::unordered_map<actor::DistributedActorPID, uint64_t> {
     return {};
   }
 };
@@ -164,8 +165,9 @@ class CombiningOutCache : public OutCache<M> {
 
 template<typename M>
 class ArrayOutActorCache : public OutCache<M> {
-  std::unordered_map<ShardID, actor::ActorPID> _responsibleActorPerShard;
-  std::function<void(actor::ActorPID receiver,
+  std::unordered_map<ShardID, actor::DistributedActorPID>
+      _responsibleActorPerShard;
+  std::function<void(actor::DistributedActorPID receiver,
                      worker::message::PregelMessage message)>
       _dispatch;
 
@@ -173,7 +175,7 @@ class ArrayOutActorCache : public OutCache<M> {
   containers::NodeHashMap<PregelShard,
                           containers::NodeHashMap<std::string, std::vector<M>>>
       _shardMap;
-  std::unordered_map<actor::ActorPID, uint64_t> _sendCountPerActor;
+  std::unordered_map<actor::DistributedActorPID, uint64_t> _sendCountPerActor;
 
   void _removeContainedMessages() override;
 
@@ -191,20 +193,21 @@ class ArrayOutActorCache : public OutCache<M> {
       : OutCache<M>{std::move(state), std::move(localShards), format} {};
   ~ArrayOutActorCache() = default;
 
-  void setDispatch(std::function<void(actor::ActorPID receiver,
+  void setDispatch(std::function<void(actor::DistributedActorPID receiver,
                                       worker::message::PregelMessage message)>
                        dispatch) override {
     _dispatch = std::move(dispatch);
   }
-  void setResponsibleActorPerShard(std::unordered_map<ShardID, actor::ActorPID>
-                                       responsibleActorPerShard) override {
+  void setResponsibleActorPerShard(
+      std::unordered_map<ShardID, actor::DistributedActorPID>
+          responsibleActorPerShard) override {
     _responsibleActorPerShard = std::move(responsibleActorPerShard);
   }
   void appendMessage(PregelShard shard, std::string_view const& key,
                      M const& data) override;
   void flushMessages() override;
   auto sendCountPerActor() const
-      -> std::unordered_map<actor::ActorPID, uint64_t> override {
+      -> std::unordered_map<actor::DistributedActorPID, uint64_t> override {
     return _sendCountPerActor;
   }
 };
@@ -212,8 +215,9 @@ class ArrayOutActorCache : public OutCache<M> {
 template<typename M>
 class CombiningOutActorCache : public OutCache<M> {
   MessageCombiner<M> const* _combiner;
-  std::unordered_map<ShardID, actor::ActorPID> _responsibleActorPerShard;
-  std::function<void(actor::ActorPID receiver,
+  std::unordered_map<ShardID, actor::DistributedActorPID>
+      _responsibleActorPerShard;
+  std::function<void(actor::DistributedActorPID receiver,
                      worker::message::PregelMessage message)>
       _dispatch;
 
@@ -221,7 +225,7 @@ class CombiningOutActorCache : public OutCache<M> {
   containers::NodeHashMap<PregelShard,
                           containers::NodeHashMap<std::string_view, M>>
       _shardMap;
-  std::unordered_map<actor::ActorPID, uint64_t> _sendCountPerActor;
+  std::unordered_map<actor::DistributedActorPID, uint64_t> _sendCountPerActor;
 
   void _removeContainedMessages() override;
 
@@ -241,20 +245,21 @@ class CombiningOutActorCache : public OutCache<M> {
         _combiner(combiner){};
   ~CombiningOutActorCache();
 
-  void setDispatch(std::function<void(actor::ActorPID receiver,
+  void setDispatch(std::function<void(actor::DistributedActorPID receiver,
                                       worker::message::PregelMessage message)>
                        dispatch) override {
     _dispatch = std::move(dispatch);
   }
-  void setResponsibleActorPerShard(std::unordered_map<ShardID, actor::ActorPID>
-                                       responsibleActorPerShard) override {
+  void setResponsibleActorPerShard(
+      std::unordered_map<ShardID, actor::DistributedActorPID>
+          responsibleActorPerShard) override {
     _responsibleActorPerShard = std::move(responsibleActorPerShard);
   }
   void appendMessage(PregelShard shard, std::string_view const& key,
                      M const& data) override;
   void flushMessages() override;
   auto sendCountPerActor() const
-      -> std::unordered_map<actor::ActorPID, uint64_t> override {
+      -> std::unordered_map<actor::DistributedActorPID, uint64_t> override {
     return _sendCountPerActor;
   }
 };

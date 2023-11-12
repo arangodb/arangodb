@@ -23,26 +23,19 @@
 
 #include <gtest/gtest.h>
 
-#include "Actor/Runtime.h"
+#include "Actor/DistributedRuntime.h"
 #include "Actors/EgressActor.h"
+#include "MockScheduler.h"
 #include "ThreadPoolScheduler.h"
 
-using namespace arangodb::pregel::actor;
-using namespace arangodb::pregel::actor::test;
+using namespace arangodb::actor;
+using namespace arangodb::actor::test;
 
-struct MockScheduler {
-  auto start(size_t number_of_threads) -> void{};
-  auto stop() -> void{};
-  auto operator()(auto fn) { fn(); }
-  auto delay(std::chrono::seconds delay, std::function<void(bool)>&& fn) {
-    fn(true);
-  }
+struct EmptyExternalDispatcher : IExternalDispatcher {
+  void dispatch(DistributedActorPID sender, DistributedActorPID receiver,
+                arangodb::velocypack::SharedSlice msg) override {}
 };
-struct EmptyExternalDispatcher {
-  auto operator()(ActorPID sender, ActorPID receiver,
-                  arangodb::velocypack::SharedSlice msg) -> void {}
-};
-using ActorTestRuntime = Runtime<MockScheduler, EmptyExternalDispatcher>;
+using ActorTestRuntime = DistributedRuntime;
 
 template<typename T>
 class EgressActorTest : public testing::Test {
@@ -60,7 +53,7 @@ TYPED_TEST_SUITE(EgressActorTest, SchedulerTypes);
 TYPED_TEST(EgressActorTest,
            outside_world_can_look_at_set_data_inside_egress_actor) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime = std::make_shared<Runtime<TypeParam, EmptyExternalDispatcher>>(
+  auto runtime = std::make_shared<DistributedRuntime>(
       "A", "myID", this->scheduler, dispatcher);
 
   auto actorState = std::make_unique<EgressState>();
@@ -69,11 +62,11 @@ TYPED_TEST(EgressActorTest,
   auto outbox = actorState->data;
 
   auto actor = runtime->template spawn<EgressActor>(
-      "database", std::move(actorState), test::message::EgressStart{});
+      std::move(actorState), test::message::EgressStart{});
 
   runtime->dispatch(
-      ActorPID{.server = "A", .database = "database", .id = actor},
-      ActorPID{.server = "A", .database = "database", .id = actor},
+      DistributedActorPID{.server = "A", .database = "database", .id = actor},
+      DistributedActorPID{.server = "A", .database = "database", .id = actor},
       EgressActor::Message{test::message::EgressSet{.data = "Hallo"}});
 
   this->scheduler->stop();
@@ -84,7 +77,7 @@ TYPED_TEST(EgressActorTest,
 
 TYPED_TEST(EgressActorTest, egress_data_is_empty_when_not_set) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime = std::make_shared<Runtime<TypeParam, EmptyExternalDispatcher>>(
+  auto runtime = std::make_shared<DistributedRuntime>(
       "A", "myID", this->scheduler, dispatcher);
 
   auto actorState = std::make_unique<EgressState>();
@@ -92,7 +85,7 @@ TYPED_TEST(EgressActorTest, egress_data_is_empty_when_not_set) {
   // keep a shared pointer to the outbox
   auto outbox = actorState->data;
 
-  runtime->template spawn<EgressActor>("database", std::move(actorState),
+  runtime->template spawn<EgressActor>(std::move(actorState),
                                        test::message::EgressStart{});
 
   this->scheduler->stop();

@@ -31,10 +31,12 @@
 #include "Actor/ActorBase.h"
 #include "Actor/Assert.h"
 #include "Actor/HandlerBase.h"
+#include "Actor/IScheduler.h"
 #include "Actor/Message.h"
 #include "Actor/MPSCQueue.h"
+#include "Inspection/Format.h"
 
-namespace arangodb::pregel::actor {
+namespace arangodb::actor {
 
 namespace {
 template<typename Runtime, typename A>
@@ -50,7 +52,7 @@ concept HandlerInheritsFromBaseHandler =
     std::is_base_of_v < HandlerBase<Runtime, typename A::State>,
 typename A::template Handler<Runtime> > ;
 template<typename Runtime, typename A>
-concept MessageIsVariant = requires(ActorPID pid,
+concept MessageIsVariant = requires(typename Runtime::ActorPID pid,
                                     std::shared_ptr<Runtime> runtime,
                                     typename A::Message message) {
   {std::visit(
@@ -72,7 +74,8 @@ concept Actorable = IncludesAllActorRelevantTypes<Runtime, A> &&
 
 template<typename Runtime, typename Config>
 requires Actorable<Runtime, Config>
-struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
+struct Actor : ActorBase {
+  using ActorPID = typename Runtime::ActorPID;
   Actor(ActorPID pid, std::shared_ptr<Runtime> runtime,
         std::unique_ptr<typename Config::State> initialState)
       : pid(pid), runtime(runtime), state(std::move(initialState)) {}
@@ -162,20 +165,10 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
 
   void kick() {
     // Make sure that *someone* works here
-
-    // capture 'this' as weak ptr: this way, actor can be destroyed although
-    // this callback is still waiting in the scheduler. When this callback is
-    // executed in the queue after actor was destroyed, the weak ptr will
-    // be empty and work will just not be executed
-    (*runtime->scheduler)([self = this->weak_from_this()]() {
-      auto me = self.lock();
-      if (me != nullptr) {
-        me->work();
-      }
-    });
+    runtime->scheduler->queue(ActorWorker{this});
   }
 
-  void work() {
+  void work() override {
     auto i = batchSize;
 
     while (auto msg = inbox.pop()) {
@@ -204,8 +197,7 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
     }
   }
 
-  struct InternalMessage
-      : arangodb::pregel::mpscqueue::MPSCQueue<InternalMessage>::Node {
+  struct InternalMessage : arangodb::actor::MPSCQueue<InternalMessage>::Node {
     InternalMessage(
         ActorPID sender,
         std::unique_ptr<message::MessageOrError<typename Config::Message>>&&
@@ -235,7 +227,7 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
   ActorPID pid;
   std::atomic<bool> idle{true};
   std::atomic<bool> finished{false};
-  arangodb::pregel::mpscqueue::MPSCQueue<InternalMessage> inbox;
+  arangodb::actor::MPSCQueue<InternalMessage> inbox;
   std::shared_ptr<Runtime> runtime;
   // tunable parameter: maximal number of processed messages per work() call
   std::size_t batchSize{16};
@@ -249,10 +241,10 @@ auto inspect(Inspector& f, Actor<Runtime, Config>& x) {
                             f.field("batchsize", x.batchSize));
 }
 
-}  // namespace arangodb::pregel::actor
+}  // namespace arangodb::actor
 
 template<typename Runtime, typename Config>
-requires arangodb::pregel::actor::Actorable<Runtime, Config>
-struct fmt::formatter<arangodb::pregel::actor::Actor<Runtime, Config>>
+requires arangodb::actor::Actorable<Runtime, Config>
+struct fmt::formatter<arangodb::actor::Actor<Runtime, Config>>
     : arangodb::inspection::inspection_formatter {
 };

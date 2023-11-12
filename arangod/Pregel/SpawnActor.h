@@ -24,7 +24,7 @@
 
 #include <memory>
 #include <utility>
-#include "Actor/ActorPID.h"
+#include "Actor/DistributedActorPID.h"
 #include "Actor/HandlerBase.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Worker/Actor.h"
@@ -57,10 +57,10 @@
 namespace arangodb::pregel {
 
 struct SpawnState {
-  SpawnState(TRI_vocbase_t& vocbase, actor::ActorPID resultActor)
+  SpawnState(TRI_vocbase_t& vocbase, actor::DistributedActorPID resultActor)
       : vocbaseGuard{vocbase}, resultActor(std::move(resultActor)) {}
   const DatabaseGuard vocbaseGuard;
-  const actor::ActorPID resultActor;
+  const actor::DistributedActorPID resultActor;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, SpawnState& x) {
@@ -193,9 +193,9 @@ struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
       // ActorID 0 is a reserved ID that is used here to tell the RestHandler
       // that it needs to spawn a new actor instead of searching for an existing
       // actor
-      this->dispatch(actor::ActorPID{.server = msg.destinationServer,
-                                     .database = this->self.database,
-                                     .id = {0}},
+      this->dispatch(actor::DistributedActorPID{.server = msg.destinationServer,
+                                                .database = this->self.database,
+                                                .id = {0}},
                      message::SpawnMessages{msg});
     }
     return std::move(this->state);

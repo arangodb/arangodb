@@ -27,22 +27,22 @@
 #include <queue>
 #include <vector>
 #include <functional>
+#include "Actor/IScheduler.h"
 #include "Basics/ThreadGuard.h"
 
-struct ThreadPoolScheduler {
+struct ThreadPoolScheduler : arangodb::actor::IScheduler {
  private:
   arangodb::ThreadGuard threads;
-  std::queue<std::function<void()>> jobs;
+  std::queue<arangodb::actor::ActorWorker> jobs;
   std::mutex queue_mutex;
   std::condition_variable mutex_condition;
   bool should_terminate = false;
 
   auto loop() -> void {
     std::unique_lock lock(queue_mutex);
-    std::function<void()> job;
     while (true) {
       while (not jobs.empty()) {
-        job = std::move(jobs.front());
+        auto job = std::move(jobs.front());
         jobs.pop();
         lock.unlock();
         job();
@@ -72,7 +72,7 @@ struct ThreadPoolScheduler {
     threads.joinAll();
   }
 
-  auto operator()(std::function<void()> job) -> void {
+  void queue(arangodb::actor::ActorWorker&& job) override {
     {
       std::unique_lock lock(queue_mutex);
       jobs.push(std::move(job));
@@ -80,8 +80,8 @@ struct ThreadPoolScheduler {
     mutex_condition.notify_one();
   }
 
-  auto delay(std::chrono::seconds delay, std::function<void(bool)> job)
-      -> void {
+  void delay(std::chrono::seconds delay,
+             std::function<void(bool)>&& job) override {
     // not implemented
   }
 };

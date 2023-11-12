@@ -26,7 +26,7 @@
 
 #include "Actor/Actor.h"
 
-namespace arangodb::pregel::actor::test {
+namespace arangodb::actor::test {
 
 struct EgressData {
   auto set(std::string newContent) -> void {
@@ -107,4 +107,4 @@ struct EgressActor {
     return "EgressActor";
   };
 };
-}  // namespace arangodb::pregel::actor::test
+}  // namespace arangodb::actor::test
