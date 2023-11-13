@@ -1,2 +1,4 @@
 target_sources(arango_aql PRIVATE
-    EnumeratePathsRule.cpp)
+    EnumeratePathsFilterMatcher.cpp
+    EnumeratePathsRule.cpp
+    ExpressionMatcher.cpp)

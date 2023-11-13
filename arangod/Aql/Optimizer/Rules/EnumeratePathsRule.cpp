@@ -23,25 +23,14 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Optimizer.h"
-#include "Aql/TraversalNode.h"
+#include "Aql/EnumeratePathsNode.h"
 #include "Containers/SmallVector.h"
 
+#include "Aql/Optimizer/Rules/EnumeratePathsFilterMatcher.h"
+
+#include "Logger/LogMacros.h"
 using namespace arangodb;
 using namespace arangodb::aql;
-
-namespace {
-
-enum class PathAccessState {
-  // Search for access to any path variable
-  kSearchAccessPath,
-  // Check if we access edges or vertices on it
-  kAccessEdgesOrVertices,
-  // Check if we have an indexed access [x] (we find the x here)
-  kSpecificDepthAccessDepth,
-  // CHeck if we have an indexed access [x] (we find [ ] here)
-  kSpecificDepthAccessIndexedAccess,
-};
-}
 
 namespace arangodb::aql {
 
@@ -52,21 +41,21 @@ void optimizeEnumeratePathsRule(Optimizer* opt,
   plan->findNodesOfType(enumeratePathsNodes, ExecutionNode::ENUMERATE_PATHS,
                         true);
 
+  // Early exit in case the query does not contain any EnumeratePathsNodes
   if (enumeratePathsNodes.empty()) {
     opt->addPlan(std::move(plan), rule, false);
     return;
   }
-
   auto appliedAChange = false;
 
-  //  for (auto const& enumeratePathsNode : enumeratePathsNodes) {
-  //    auto pathOutputVariable = enumeratePathsNode->pathOutVariable();
-  // TRI_ASSERT(pathOutputVariable != nullptr);
+  // Leaf nodes
+  containers::SmallVector<ExecutionNode*, 8> leafNodes;
+  plan->findEndNodes(leafNodes, true);
 
-  // Find (simple) filter conditions on pathOutVariable of the form
-  // - pathOutVariable.vertices.[* RETURN ...]
-  // - pathOutVariable.edges.[* RETURN ...]
-  //}
+  for (auto& leaf : leafNodes) {
+    EnumeratePathsFilterMatcher f(plan.get());
+    leaf->walk(f);
+  }
 
   opt->addPlan(std::move(plan), rule, appliedAChange);
 }
