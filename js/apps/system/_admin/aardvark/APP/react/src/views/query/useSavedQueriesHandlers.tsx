@@ -123,6 +123,8 @@ const patchQueries = async ({
   onSuccess: () => void;
 }) => {
   const storageKey = getQueryStorageKey();
+  const currentUser = window.App.currentUser || "root";
+
   if (window.frontendConfig.ldapEnabled) {
     localStorage.setItem(storageKey, JSON.stringify(queries));
     onSuccess();
@@ -132,7 +134,7 @@ const patchQueries = async ({
   try {
     await currentDB.route().request({
       method: "PATCH",
-      path: `/_api/user/${encodeURIComponent(window.App.currentUser)}`,
+      path: `/_api/user/${encodeURIComponent(currentUser)}`,
       body: {
         extra: {
           queries
