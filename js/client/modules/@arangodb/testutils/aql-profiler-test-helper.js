@@ -256,6 +256,8 @@ function assertIsProfileStatsObject (stats, {level, fullCount}) {
   let statsKeys = [
     'writesExecuted',
     'writesIgnored',
+    'documentLookups',
+    'seeks',
     'scannedFull',
     'scannedIndex',
     'cursorsCreated',

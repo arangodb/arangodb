@@ -29,21 +29,24 @@ namespace arangodb::pregel::conductor {
 struct ConductorState;
 
 struct Loading : ExecutionState {
-  Loading(ConductorState& conductor,
-          std::unordered_map<ShardID, actor::ActorPID> actorForShard);
+  Loading(
+      ConductorState& conductor,
+      std::unordered_map<ShardID, actor::DistributedActorPID> actorForShard);
   ~Loading() override = default;
   auto name() const -> std::string override { return "loading"; };
   auto messages()
-      -> std::unordered_map<actor::ActorPID,
+      -> std::unordered_map<actor::DistributedActorPID,
                             worker::message::WorkerMessages> override;
-  auto receive(actor::ActorPID sender, message::ConductorMessages message)
+  auto receive(actor::DistributedActorPID sender,
+               message::ConductorMessages message)
       -> std::optional<StateChange> override;
-  auto cancel(actor::ActorPID sender, message::ConductorMessages message)
+  auto cancel(actor::DistributedActorPID sender,
+              message::ConductorMessages message)
       -> std::optional<StateChange> override;
 
   ConductorState& conductor;
-  std::unordered_map<ShardID, actor::ActorPID> actorForShard;
-  std::unordered_set<actor::ActorPID> respondedWorkers;
+  std::unordered_map<ShardID, actor::DistributedActorPID> actorForShard;
+  std::unordered_set<actor::DistributedActorPID> respondedWorkers;
   uint64_t totalVerticesCount = 0;
   uint64_t totalEdgesCount = 0;
 };

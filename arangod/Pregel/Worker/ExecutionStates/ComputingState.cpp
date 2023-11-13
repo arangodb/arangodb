@@ -70,8 +70,8 @@ Computing<V, E, M>::Computing(WorkerState<V, E, M>& worker) : worker{worker} {
 }
 
 template<typename V, typename E, typename M>
-auto Computing<V, E, M>::receive(actor::ActorPID const& sender,
-                                 actor::ActorPID const& self,
+auto Computing<V, E, M>::receive(actor::DistributedActorPID const& sender,
+                                 actor::DistributedActorPID const& self,
                                  worker::message::WorkerMessages const& message,
                                  Dispatcher dispatcher)
     -> std::unique_ptr<ExecutionState> {
@@ -79,8 +79,8 @@ auto Computing<V, E, M>::receive(actor::ActorPID const& sender,
     auto msg = std::get<worker::message::PregelMessage>(message);
 
     LOG_TOPIC("80709", INFO, Logger::PREGEL) << fmt::format(
-        "Worker Actor {} with gss {} received message for gss {}", self,
-        worker.config->globalSuperstep(), msg.gss);
+        "Worker Actor {} with gss {} received message for gss {}",
+        inspection::json(self), worker.config->globalSuperstep(), msg.gss);
 
     if (msg.gss == worker.config->globalSuperstep()) {
       writeCache->parseMessages(msg);
@@ -110,8 +110,9 @@ auto Computing<V, E, M>::receive(actor::ActorPID const& sender,
   if (std::holds_alternative<worker::message::RunGlobalSuperStep>(message)) {
     auto msg = std::get<worker::message::RunGlobalSuperStep>(message);
 
-    LOG_TOPIC("0f658", INFO, Logger::PREGEL) << fmt::format(
-        "Worker Actor {} starts computing gss {}", self, msg.gss);
+    LOG_TOPIC("0f658", INFO, Logger::PREGEL)
+        << fmt::format("Worker Actor {} starts computing gss {}",
+                       inspection::json(self), msg.gss);
 
     dispatcher.dispatchMetrics(
         arangodb::pregel::metrics::message::WorkerGssStarted{.threadsAdded =
@@ -226,7 +227,7 @@ auto Computing<V, E, M>::processVertices(Dispatcher const& dispatcher)
           auto processor = ActorVertexProcessor<V, E, M>(
               worker.config, worker.algorithm, worker.workerContext,
               worker.messageCombiner, worker.messageFormat,
-              [dispatcher](actor::ActorPID actor,
+              [dispatcher](actor::DistributedActorPID actor,
                            worker::message::PregelMessage message) -> void {
                 dispatcher.dispatchOther(actor, message);
               },
