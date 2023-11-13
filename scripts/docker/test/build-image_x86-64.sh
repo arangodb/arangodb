@@ -3,7 +3,7 @@ set -e
 arch=amd64
 
 image=arangodb/test-ubuntu
-docker build  --platform linux/$arch -t $image:latest-$arch --file arangodb-test.Dockerfile .
+docker build --platform linux/$arch --build-arg arch=$arch -t $image:latest-$arch --file arangodb-test.Dockerfile .
 
 OS_VERSION=$(docker run --rm -it $image:latest-$arch cat /etc/os-release | grep -Po "VERSION_ID=\"\K\d+\.\d+")
 
