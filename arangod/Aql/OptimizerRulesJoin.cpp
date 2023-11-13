@@ -73,7 +73,6 @@ bool indexNodeQualifies(IndexNode const& indexNode) {
   // - IndexIteratorOptions: sorted, ascending, evalFCalls, useCache,
   // waitForSync, limit, lookahead
   // - reverse iteration
-  // - support from GatherNodes
 
   LOG_JOIN_OPTIMIZER_RULE << "Index node id: " << indexNode.id();
   if (indexNode.condition() == nullptr) {
@@ -212,7 +211,189 @@ bool joinConditionMatches(ExecutionPlan& plan, AstNode const* lhs,
   }
   // rhs matches i2's FOR loop index field
   return true;
-};
+}
+
+void removeUnnecessaryProjections(ExecutionPlan& plan, JoinNode* jn) {
+  // remove any now-unused projections from the JoinNode.
+  // these are projections that are not used after the JoinNode,
+  // and that are not used by any of the JoinNodes post-filters.
+  // we _can_ remove all projections that are only used inside
+  // the JoinNode and that are part of the JoinNode's join
+  // conditions.
+
+  // we need to refresh the variable usage in the execution
+  // plan first because we changed nodes around before.
+  plan.findVarUsage();
+  auto& indexInfos = jn->getIndexInfos();
+  // for every index in the JoinNode, check if it is has
+  // projections. if it has projections, check if the index
+  // out variable is used after the JoinNode. if it is,
+  // we do not attempt further optimizations.
+  // if the index out variable is only used inside the
+  // JoinNode itself, we check for every projection if the
+  // project is not used in the following index lookup's
+  // post-filter conditions. if it is not used there, it
+  // is safe to remove the projection completely.
+
+  containers::FlatHashSet<AttributeNamePath> projectionsUsedLater;
+  // for every index in the JoinNode...
+  for (size_t i = 0; i < indexInfos.size(); ++i) {
+    // check if it has projections
+    if (indexInfos[i].projections.empty()) {
+      // no projections => no projections to optimize away.
+      // this check is important because further down we
+      // rely on that projections have been present.
+      continue;
+    }
+    Variable const* outVariable = indexInfos[i].outVariable;
+    // output variable of current index in JoinNode is not
+    // used after the JoinNode itself. now check if the projection
+    // is used by any of the following indexes' filter conditions.
+    // in that case we need to keep the projection, otherwise
+    // we can remove it.
+    projectionsUsedLater.clear();
+    utils::findProjections(jn->getFirstParent(), outVariable, "", false,
+                           projectionsUsedLater);
+
+    // remove all projections for which the lambda returns true:
+    TRI_ASSERT(!indexInfos[i].projections.empty());
+    indexInfos[i].projections.erase([&](Projections::Projection& p) -> bool {
+      containers::FlatHashSet<AttributeNamePath> attributes;
+      // look into all following indexes in the JoinNode
+      // (i.e. south of us)
+      for (size_t j = i + 1; j < indexInfos.size(); ++j) {
+        if (indexInfos[j].filter == nullptr) {
+          // following index does not have a post filter
+          // condition, and thus cannot use a projection
+          continue;
+        }
+        // collect all used attribute names in the index (j)
+        // post filter condition that refer to our (i) output
+        // variable:
+        if (!Ast::getReferencedAttributesRecursive(
+                indexInfos[j].filter->node(), outVariable, "", attributes,
+                plan.getAst()->query().resourceMonitor())) {
+          // unable to determine referenced attributes safely.
+          // we better do not remove the projection.
+          return false;
+        }
+        if (std::find(attributes.begin(), attributes.end(), p.path) !=
+            attributes.end()) {
+          // projection of index (i) is used in post filter
+          // condition of index (j). we cannot remove it
+          return false;
+        }
+      }
+      // projection of index (i) is not used in any of the
+      // following indexes (i + 1..n).
+      // now check if the projection is used later in the query
+      for (auto const& path : projectionsUsedLater) {
+        if (p.path.isPrefixOf(path)) {
+          return false;
+        }
+      }
+
+      // we return true so the superfluous projection will be
+      // removed
+      return true;
+    });
+    if (indexInfos[i].projections.empty() && indexInfos[i].producesOutput) {
+      // if we had projections before and now removed all
+      // projections, it means we removed all remaining projections
+      // for the index. that means we also can make it not produce
+      // any output.
+      indexInfos[i].producesOutput = false;
+    }
+  }
+}
+
+void optimizeJoinNode(ExecutionPlan& plan, JoinNode* jn) {
+  removeUnnecessaryProjections(plan, jn);
+}
+
+bool checkCandidatesEligible(
+    ExecutionPlan& plan,
+    containers::SmallVector<IndexNode*, 8> const& candidates) {
+  size_t i = 0;
+  for (auto* c : candidates) {
+    if (i == 0) {
+      // first FOR loop. we expect it to not have any lookup condition
+      if (c->condition()->root() != nullptr) {
+        return false;
+      }
+    } else {
+      // follow-up FOR loop. we expect it to have a lookup condition
+      if (c->condition()->root() == nullptr) {
+        return false;
+      }
+      auto const* root = c->condition()->root();
+      if (root == nullptr || root->type != NODE_TYPE_OPERATOR_NARY_OR ||
+          root->numMembers() != 1) {
+        return false;
+      }
+      root = root->getMember(0);
+      if (root == nullptr || root->type != NODE_TYPE_OPERATOR_NARY_AND ||
+          root->numMembers() != 1) {
+        return false;
+      }
+      root = root->getMember(0);
+      if (root == nullptr || root->type != NODE_TYPE_OPERATOR_BINARY_EQ ||
+          root->numMembers() != 2) {
+        return false;
+      }
+      auto* lhs = root->getMember(0);
+      auto* rhs = root->getMember(1);
+
+      if (!joinConditionMatches(plan, lhs, rhs, c, candidates[i - 1]) &&
+          !joinConditionMatches(plan, lhs, rhs, candidates[i - 1], c)) {
+        LOG_JOIN_OPTIMIZER_RULE
+            << "IndexNode's lookup condition does not match";
+        return false;
+      }
+    }
+
+    // if there is a post filter, make sure it only accesses variables
+    // that are available before all index nodes
+    if (c->hasFilter()) {
+      VarSet vars;
+      c->filter()->variables(vars);
+
+      for (auto* other : candidates) {
+        if (other != c && other->setsVariable(vars)) {
+          LOG_JOIN_OPTIMIZER_RULE << "IndexNode's post filter "
+                                     "accesses variables that are "
+                                     "not available before all "
+                                     "index nodes";
+          return false;
+        }
+      }
+    }
+
+    // check if filter supports streaming interface
+    {
+      IndexStreamOptions opts;
+      opts.usedKeyFields = {0};  // for now only 0 is supported
+      if (c->projections().usesCoveringIndex()) {
+        opts.projectedFields.reserve(c->projections().size());
+        auto& proj = c->projections().projections();
+        std::transform(proj.begin(), proj.end(),
+                       std::back_inserter(opts.projectedFields),
+                       [](auto const& p) { return p.coveringIndexPosition; });
+      }
+      if (!c->getIndexes()[0]->supportsStreamInterface(opts)) {
+        LOG_JOIN_OPTIMIZER_RULE << "IndexNode's index does not "
+                                   "support streaming interface";
+        LOG_JOIN_OPTIMIZER_RULE
+            << "-> Index name: " << c->getIndexes()[0]->name()
+            << ", id: " << c->getIndexes()[0]->id();
+        return false;
+      }
+    }
+    ++i;
+  }
+
+  return true;
+}
 
 }  // namespace
 
@@ -289,100 +470,7 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
         if (candidates.size() >= 2) {
           LOG_JOIN_OPTIMIZER_RULE << "Found " << candidates.size()
                                   << " index nodes that qualify for joining";
-          bool eligible = true;
-          size_t i = 0;
-          for (auto* c : candidates) {
-            if (i == 0) {
-              // first FOR loop. we expect it to not have any lookup condition
-              if (c->condition()->root() != nullptr) {
-                eligible = false;
-                break;
-              }
-            } else {
-              // follow-up FOR loop. we expect it to have a lookup condition
-              if (c->condition()->root() == nullptr) {
-                eligible = false;
-                break;
-              }
-              auto const* root = c->condition()->root();
-              if (root == nullptr || root->type != NODE_TYPE_OPERATOR_NARY_OR ||
-                  root->numMembers() != 1) {
-                eligible = false;
-                break;
-              }
-              root = root->getMember(0);
-              if (root == nullptr ||
-                  root->type != NODE_TYPE_OPERATOR_NARY_AND ||
-                  root->numMembers() != 1) {
-                eligible = false;
-                break;
-              }
-              root = root->getMember(0);
-              if (root == nullptr ||
-                  root->type != NODE_TYPE_OPERATOR_BINARY_EQ ||
-                  root->numMembers() != 2) {
-                eligible = false;
-                break;
-              }
-              auto* lhs = root->getMember(0);
-              auto* rhs = root->getMember(1);
-
-              if (!joinConditionMatches(*plan, lhs, rhs, c,
-                                        candidates[i - 1]) &&
-                  !joinConditionMatches(*plan, lhs, rhs, candidates[i - 1],
-                                        c)) {
-                LOG_JOIN_OPTIMIZER_RULE
-                    << "IndexNode's lookup condition does not match";
-                eligible = false;
-                break;
-              }
-            }
-
-            // if there is a post filter, make sure it only accesses variables
-            // that are available before all index nodes
-            if (c->hasFilter()) {
-              VarSet vars;
-              c->filter()->variables(vars);
-
-              for (auto* other : candidates) {
-                if (other != c && other->setsVariable(vars)) {
-                  LOG_JOIN_OPTIMIZER_RULE << "IndexNode's post filter "
-                                             "accesses variables that are "
-                                             "not available before all "
-                                             "index nodes";
-                  eligible = false;
-                }
-              }
-            }
-
-            // check if filter supports streaming interface
-            {
-              IndexStreamOptions opts;
-              opts.usedKeyFields = {0};  // for now only 0 is supported
-              if (c->projections().usesCoveringIndex()) {
-                opts.projectedFields.reserve(c->projections().size());
-                auto& proj = c->projections().projections();
-                std::transform(
-                    proj.begin(), proj.end(),
-                    std::back_inserter(opts.projectedFields),
-                    [](auto const& p) { return p.coveringIndexPosition; });
-              }
-              if (!c->getIndexes()[0]->supportsStreamInterface(opts)) {
-                LOG_JOIN_OPTIMIZER_RULE << "IndexNode's index does not "
-                                           "support streaming interface";
-                LOG_JOIN_OPTIMIZER_RULE
-                    << "-> Index name: " << c->getIndexes()[0]->name()
-                    << ", id: " << c->getIndexes()[0]->id();
-                eligible = false;
-              }
-            }
-
-            if (!eligible) {
-              break;
-            }
-            ++i;
-          }
-
+          bool const eligible = checkCandidatesEligible(*plan, candidates);
           if (eligible) {
             // we will now replace all candidate IndexNodes with a JoinNode,
             // and remove the previous IndexNodes from the plan
@@ -412,106 +500,9 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
             for (size_t i = 1; i < candidates.size(); ++i) {
               plan->unlinkNode(candidates[i]);
             }
-            // remove any now-unused projections from the JoinNode.
-            // these are projections that are not used after the JoinNode,
-            // and that are not used by any of the JoinNodes post-filters.
-            // we _can_ remove all projections that are only used inside
-            // the JoinNode and that are part of the JoinNode's join
-            // conditions.
-            [plan = plan.get(),
-             jn]() {
-              // we are executing the removal inside an IIFE for better
-              // scoping of variables.
 
-              // we need to refresh the variable usage in the execution
-              // plan first because we changed nodes around before.
-              plan->findVarUsage();
-              auto& indexInfos = jn->getIndexInfos();
-              // for every index in the JoinNode, check if it is has
-              // projections. if it has projections, check if the index
-              // out variable is used after the JoinNode. if it is,
-              // we do not attempt further optimizations.
-              // if the index out variable is only used inside the
-              // JoinNode itself, we check for every projection if the
-              // project is not used in the following index lookup's
-              // post-filter conditions. if it is not used there, it
-              // is safe to remove the projection completely.
-
-              containers::FlatHashSet<AttributeNamePath> projectionsUsedLater;
-              // for every index in the JoinNode...
-              for (size_t i = 0; i < indexInfos.size(); ++i) {
-                // check if it has projections
-                if (indexInfos[i].projections.empty()) {
-                  // no projections => no projections to optimize away.
-                  // this check is important because further down we
-                  // rely on that projections have been present.
-                  continue;
-                }
-                Variable const* outVariable = indexInfos[i].outVariable;
-                // output variable of current index in JoinNode is not
-                // used after the JoinNode itself. now check if the projection
-                // is used by any of the following indexes' filter conditions.
-                // in that case we need to keep the projection, otherwise
-                // we can remove it.
-                projectionsUsedLater.clear();
-                utils::findProjections(jn->getFirstParent(), outVariable, "",
-                                       false, projectionsUsedLater);
-
-                // remove all projections for which the lambda returns true:
-                TRI_ASSERT(!indexInfos[i].projections.empty());
-                indexInfos[i].projections.erase(
-                    [i, plan, outVariable, &indexInfos, &projectionsUsedLater](
-                        Projections::Projection& p) -> bool {
-                      containers::FlatHashSet<AttributeNamePath> attributes;
-                      // look into all following indexes in the JoinNode
-                      // (i.e. south of us)
-                      for (size_t j = i + 1; j < indexInfos.size(); ++j) {
-                        if (indexInfos[j].filter == nullptr) {
-                          // following index does not have a post filter
-                          // condition, and thus cannot use a projection
-                          continue;
-                        }
-                        // collect all used attribute names in the index (j)
-                        // post filter condition that refer to our (i) output
-                        // variable:
-                        if (!Ast::getReferencedAttributesRecursive(
-                                indexInfos[j].filter->node(), outVariable, "",
-                                attributes,
-                                plan->getAst()->query().resourceMonitor())) {
-                          // unable to determine referenced attributes safely.
-                          // we better do not remove the projection.
-                          return false;
-                        }
-                        if (std::find(attributes.begin(), attributes.end(),
-                                      p.path) != attributes.end()) {
-                          // projection of index (i) is used in post filter
-                          // condition of index (j). we cannot remove it
-                          return false;
-                        }
-                      }
-                      // projection of index (i) is not used in any of the
-                      // following indexes (i + 1..n).
-                      // now check if the projection is used later in the query
-                      for (auto const& path : projectionsUsedLater) {
-                        if (p.path.isPrefixOf(path)) {
-                          return false;
-                        }
-                      }
-
-                      // we return true so the superfluous projection will be
-                      // removed
-                      return true;
-                    });
-                if (indexInfos[i].projections.empty() &&
-                    indexInfos[i].producesOutput) {
-                  // if we had projections before and now removed all
-                  // projections, it means we removed all remaining projections
-                  // for the index. that means we also can make it not produce
-                  // any output.
-                  indexInfos[i].producesOutput = false;
-                }
-              }
-            }();
+            // do some post insertion optimizations
+            optimizeJoinNode(*plan, jn);
             modified = true;
           } else {
             LOG_JOIN_OPTIMIZER_RULE << "Not eligible for index join";
