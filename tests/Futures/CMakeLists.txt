@@ -6,6 +6,7 @@ target_link_libraries(arango_tests_futures
   PRIVATE
     arango_futures
     gtest
+    boost_boost
     velocypack
     fmt)
 
