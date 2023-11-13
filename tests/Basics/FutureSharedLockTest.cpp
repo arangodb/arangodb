@@ -46,7 +46,7 @@ using FutureSharedLock = arangodb::futures::FutureSharedLock<MockScheduler>;
 struct MockScheduler {
   template<class Fn>
   void queue(Fn func) {
-    funcs.push_back(std::move(func));
+    funcs.push_back({std::move(func)});
   }
 
   template<class Fn>
@@ -70,7 +70,7 @@ struct MockScheduler {
     delayedFuncs.pop_front();
     f.first();
   }
-  std::vector<std::function<void()>> funcs;
+  std::vector<fu2::unique_function<void()>> funcs;
   std::deque<std::pair<std::function<void()>, std::chrono::milliseconds>>
       delayedFuncs;
 };
@@ -496,7 +496,7 @@ TEST_F(FutureSharedLockTest,
 
 struct StressScheduler {
   struct Func {
-    std::function<void()> func;
+    fu2::unique_function<void()> func;
   };
 
   StressScheduler() : scheduled(64) {}

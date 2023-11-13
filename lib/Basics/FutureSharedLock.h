@@ -205,8 +205,9 @@ struct FutureSharedLock {
     void scheduleNode(std::shared_ptr<Node> node) {
       TRI_ASSERT(node != nullptr);
       node->scheduled = true;
-      _scheduler.queue(
-          [node, this]() { node->promise.setValue(LockGuard(this)); });
+      _scheduler.queue([promise = std::move(node->promise), this]() mutable {
+        promise.setValue(LockGuard(this));
+      });
     }
 
     void scheduleTimeout(
@@ -216,14 +217,15 @@ struct FutureSharedLock {
           [self = this->weak_from_this(),
            node = std::weak_ptr<Node>(*queueIterator),
            queueIterator]() mutable {
-            auto me = self.lock();
-            if (me) {
-              std::lock_guard lock(me->_mutex);
-              auto nodePtr = node.lock();
-              if (nodePtr != nullptr && !nodePtr->scheduled) {
-                // if we could lock the node, the iterator must still be valid!
-                me->removeNode(queueIterator);
-                TRI_ASSERT(nodePtr.get() != nullptr) << (void*)nodePtr.get();
+            if (auto me = self.lock(); me) {
+              if (auto nodePtr = node.lock(); nodePtr) {
+                std::lock_guard lock(me->_mutex);
+                if (nodePtr.use_count() != 1) {
+                  // if use_count == 1, this means that the promise has already
+                  // been scheduled and the node has been removed from the queue
+                  // otherwise the iterator must still be valid!
+                  me->removeNode(queueIterator);
+                }
               }
             }
           },
