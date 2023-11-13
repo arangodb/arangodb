@@ -123,7 +123,12 @@ const patchQueries = async ({
   onSuccess: () => void;
 }) => {
   const storageKey = getQueryStorageKey();
-  const currentUser = window.App.currentUser || "root";
+  let currentUser = window.App.currentUser;
+  const frontendConfig = window.frontendConfig;
+  
+  if (!frontendConfig.authenticationEnabled) {
+    currentUser = 'root';
+  }
 
   if (window.frontendConfig.ldapEnabled) {
     localStorage.setItem(storageKey, JSON.stringify(queries));
