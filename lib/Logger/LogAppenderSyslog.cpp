@@ -49,9 +49,9 @@ namespace {
 //
 // Extra fun is to be had because facilitynames is a macro, which is why this
 // code just accesses facilitynames by indexing
-// findSyslogFacilityByName returns LOG_LOCAL0 as fallback; the other choice
-// given the code below would be to ASSERT in case the facilityname cannot be
-// found.
+// findSyslogFacilityByName returns -1 as fallback; this is just dealt with
+// below by setting the facility to LOG_LOCAL0 as a last resort, as error
+// handling is not great with syslog
 #if defined(__clang__)
 #if __has_warning("-Wwritable-strings")
 #pragma clang diagnostic push
