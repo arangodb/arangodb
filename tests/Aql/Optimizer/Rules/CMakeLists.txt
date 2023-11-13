@@ -19,20 +19,10 @@ target_include_directories(arango_tests_optimizer_rules PUBLIC
         "${PROJECT_SOURCE_DIR}/tests"
         "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
-add_executable(arangodbtests_optimizer_rules EXCLUDE_FROM_ALL )
-#  main.cpp)
+add_executable(arangodbtests_optimizer_rules EXCLUDE_FROM_ALL)
 
 target_link_libraries(arangodbtests_optimizer_rules PRIVATE
   velocypack_utils
   arango_tests_basics
   arango_tests_optimizer_rules)
-
-add_library(rust_optimizer STATIC EXCLUDE_FROM_ALL
-  main.cpp)
-
-target_link_libraries(rust_optimizer PUBLIC
-  velocypack_utils
-  arango_tests_basics
-  arango_tests_optimizer_rules)
-
 
