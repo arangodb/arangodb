@@ -43,6 +43,7 @@ auto inspect(Inspector& f, MetricsState& x) {
 
 template<typename Runtime>
 struct MetricsHandler : actor::HandlerBase<Runtime, MetricsState> {
+  using ActorPID = typename Runtime::ActorPID;
   auto operator()(metrics::message::MetricsStart msg) {
     LOG_TOPIC("89eac", INFO, Logger::PREGEL)
         << fmt::format("Metric Actor {} started", this->self);
@@ -157,7 +158,7 @@ struct MetricsHandler : actor::HandlerBase<Runtime, MetricsState> {
     return std::move(this->state);
   }
 
-  auto operator()(actor::message::ActorNotFound notFound)
+  auto operator()(actor::message::ActorNotFound<ActorPID> notFound)
       -> std::unique_ptr<MetricsState> {
     LOG_TOPIC("c944d", INFO, Logger::PREGEL) << fmt::format(
         "Metrics Actor: Error - receiving actor {} not found", notFound.actor);

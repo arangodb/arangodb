@@ -112,8 +112,8 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
     if (actor.has_value()) {
       actor.value()->process(sender, msg);
     } else {
-      auto error =
-          message::ActorError{message::ActorNotFound{.actor = receiver}};
+      auto error = message::ActorError<ActorPID>{
+          message::ActorNotFound<ActorPID>{.actor = receiver}};
       auto payload = inspection::serializeWithErrorT(error);
       ACTOR_ASSERT(payload.ok());
       dispatch(receiver, sender, payload.get());
@@ -189,7 +189,8 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
       actor->get()->process(sender, payload);
     } else {
       dispatch(receiver, sender,
-               message::ActorError{message::ActorNotFound{.actor = receiver}});
+               message::ActorError<ActorPID>{
+                   message::ActorNotFound<ActorPID>{.actor = receiver}});
     }
   }
 

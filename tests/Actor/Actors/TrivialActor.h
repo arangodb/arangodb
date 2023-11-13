@@ -80,6 +80,7 @@ auto inspect(Inspector& f, TrivialMessages& x) {
 
 template<typename Runtime>
 struct TrivialHandler : HandlerBase<Runtime, TrivialState> {
+  using ActorPID = typename Runtime::ActorPID;
   auto operator()(message::TrivialStart msg) -> std::unique_ptr<TrivialState> {
     this->state->called++;
     return std::move(this->state);
@@ -100,7 +101,7 @@ struct TrivialHandler : HandlerBase<Runtime, TrivialState> {
     return std::move(this->state);
   }
 
-  auto operator()(actor::message::ActorNotFound notFound)
+  auto operator()(actor::message::ActorNotFound<ActorPID> notFound)
       -> std::unique_ptr<TrivialState> {
     this->state->called++;
     this->state->state =
