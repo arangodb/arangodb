@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Actor/ActorPID.h"
+#include "Actor/DistributedActorPID.h"
 #include "Inspection/Format.h"
 #include "Inspection/Types.h"
 #include "Pregel/CollectionSpecifications.h"
@@ -63,7 +63,8 @@ auto inspect(Inspector& f, WorkerStart& x) {
 }
 
 struct LoadGraph {
-  std::unordered_map<ShardID, actor::ActorPID> responsibleActorPerShard;
+  std::unordered_map<ShardID, actor::DistributedActorPID>
+      responsibleActorPerShard;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, LoadGraph& x) {

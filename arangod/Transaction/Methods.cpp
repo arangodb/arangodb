@@ -2352,6 +2352,20 @@ Result transaction::Methods::determineReplication1TypeAndFollowers(
                                     theLeader);
       }
 
+      TRI_IF_FAILURE("synchronousReplication::blockReplication") {
+        // Block here until the second failure point is switched on, too:
+        bool leave = false;
+        while (true) {
+          TRI_IF_FAILURE("synchronousReplication::unblockReplication") {
+            leave = true;
+          }
+          if (leave) {
+            break;
+          }
+          std::this_thread::sleep_for(std::chrono::milliseconds(300));
+        }
+      }
+
       // we are a valid follower. we do not need to send a proper result with
       // _key, _id, _rev back to the leader, because it will ignore all these
       // data anyway. it is sufficient to send headers and the proper error
@@ -2382,6 +2396,10 @@ Result transaction::Methods::determineReplication2TypeAndFollowers(
   if (!_state->isDBServer()) {
     replicationType = ReplicationType::NONE;
     return {};
+  }
+  // API compatibility: Let us always refuse a Replication request
+  if (!options.isSynchronousReplicationFrom.empty()) {
+    return {TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION};
   }
 
   // The context type is a good indicator of the replication type.

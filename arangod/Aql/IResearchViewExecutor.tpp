@@ -221,7 +221,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     iresearch::FilterOptimization filterOptimization,
     std::vector<iresearch::HeapSortElement> const& heapSort,
     size_t heapSortLimit, iresearch::SearchMeta const* meta, size_t parallelism,
-    iresearch::ArangoSearchPool& parallelExecutionPool)
+    iresearch::IResearchExecutionPool& parallelExecutionPool)
     : _searchDocOutReg{searchDocRegister},
       _documentOutReg{outRegister},
       _scoreRegisters{std::move(scoreRegisters)},
@@ -852,43 +852,51 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
       .fieldAnalyzerProvider = fieldAnalyzerProvider,
   };
   auto* cond = &infos().filterCondition();
-  auto& cache = _reader->immutablePartCache();
   Result r;
   irs::And mutableAnd;
   irs::Or mutableOr;
-  irs::filter* root = &mutableOr;
-  auto cacheNode = [&](auto* node) {
-    auto& proxy = append<irs::proxy_filter>(
-        static_cast<irs::boolean_filter&>(*root), filterCtx);
-    auto it = cache.find(node);
-    if (it != cache.end()) {
-      proxy.set_cache(it->second);
-    } else {
-      auto cached = proxy.set_filter<irs::Or>(_memory);
-      cache.emplace(node, std::move(cached.second));
-      r = iresearch::FilterFactory::filter(&cached.first, filterCtx, *node);
-    }
-    return &proxy;
-  };
+  irs::boolean_filter* root = &mutableOr;
   if (immutableParts == 0) {
-    r = iresearch::FilterFactory::filter(
-        static_cast<irs::boolean_filter*>(root), filterCtx, *cond);
-  } else if (immutableParts == std::numeric_limits<uint32_t>::max()) {
-    root = cacheNode(cond);
+    r = iresearch::FilterFactory::filter(root, filterCtx, *cond);
   } else {
-    while (cond->numMembers() == 1) {
-      cond = cond->getMemberUnchecked(0);
-    }
-    if (cond->type == NODE_TYPE_OPERATOR_NARY_AND) {
-      root = &mutableAnd;
+    if (immutableParts != std::numeric_limits<uint32_t>::max()) {
+      while (cond->numMembers() == 1) {
+        cond = cond->getMemberUnchecked(0);
+      }
+      if (cond->type == NODE_TYPE_OPERATOR_NARY_AND) {
+        root = &mutableAnd;
+      }
     }
     size_t i = 0;
-    for (; i != immutableParts && r.ok(); ++i) {
-      cacheNode(cond->getMemberUnchecked(i));
+    auto& proxy = append<irs::proxy_filter>(*root, filterCtx);
+    if (_cache) {
+      proxy.set_cache(_cache);
+      i = immutableParts;
+    } else {
+      // TODO(MBkkt) simplify via additional template parameter for set_filter
+      irs::boolean_filter* immutableRoot{};
+      if (root == &mutableOr) {
+        auto c = proxy.set_filter<irs::Or>(_memory);
+        immutableRoot = &c.first;
+        _cache = std::move(c.second);
+      } else {
+        auto c = proxy.set_filter<irs::And>(_memory);
+        immutableRoot = &c.first;
+        _cache = std::move(c.second);
+      }
+      if (immutableParts == std::numeric_limits<uint32_t>::max()) {
+        r = iresearch::FilterFactory::filter(immutableRoot, filterCtx, *cond);
+        i = immutableParts;
+      } else {
+        for (; i != immutableParts && r.ok(); ++i) {
+          auto& member = iresearch::append<irs::Or>(*immutableRoot, filterCtx);
+          r = iresearch::FilterFactory::filter(&member, filterCtx,
+                                               *cond->getMemberUnchecked(i));
+        }
+      }
     }
-    for (auto members = cond->numMembers(); i != members && r.ok(); ++i) {
-      auto& member = iresearch::append<irs::Or>(
-          static_cast<irs::boolean_filter&>(*root), filterCtx);
+    for (auto members = cond->numMembers(); i < members && r.ok(); ++i) {
+      auto& member = iresearch::append<irs::Or>(*root, filterCtx);
       r = iresearch::FilterFactory::filter(&member, filterCtx,
                                            *cond->getMemberUnchecked(i));
     }
@@ -1137,9 +1145,9 @@ IResearchViewExecutor<ExecutionTraits>::IResearchViewExecutor(Fetcher& fetcher,
 
 template<typename ExecutionTraits>
 IResearchViewExecutor<ExecutionTraits>::~IResearchViewExecutor() {
-  if (_allocatedThreads) {
-    this->_infos.parallelExecutionPool().releaseThreads(
-        static_cast<int>(_allocatedThreads));
+  if (_allocatedThreads || _demandedThreads) {
+    this->_infos.parallelExecutionPool().releaseThreads(_allocatedThreads,
+                                                        _demandedThreads);
   }
 }
 
@@ -1611,8 +1619,14 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
   // and next time we would need all our parallelism again.
   auto& readersPool = this->infos().parallelExecutionPool();
   if (parallelism > (this->_allocatedThreads + 1)) {
+    uint64_t deltaDemanded{0};
+    if ((parallelism - 1) > _demandedThreads) {
+      deltaDemanded = parallelism - 1 - _demandedThreads;
+      _demandedThreads += deltaDemanded;
+    }
     this->_allocatedThreads += readersPool.allocateThreads(
-        static_cast<int>(parallelism - this->_allocatedThreads - 1));
+        static_cast<int>(parallelism - this->_allocatedThreads - 1),
+        deltaDemanded);
     parallelism = this->_allocatedThreads + 1;
   }
   atMost = atMostInitial * parallelism;

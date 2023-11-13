@@ -83,7 +83,7 @@ struct ActorVertexProcessorResult {
   std::unique_ptr<AggregatorHandler> workerAggregator;
   MessageStats messageStats;
   size_t verticesProcessed;
-  std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor;
+  std::unordered_map<actor::DistributedActorPID, uint64_t> sendCountPerActor;
 };
 struct ActorVertexProcessorStatus {
   MessageStats messageStats;
@@ -98,10 +98,10 @@ struct ActorVertexProcessor {
       std::unique_ptr<WorkerContext>& workerContext,
       std::unique_ptr<MessageCombiner<M>>& messageCombiner,
       std::unique_ptr<MessageFormat<M>>& messageFormat,
-      std::function<void(actor::ActorPID receiver,
+      std::function<void(actor::DistributedActorPID receiver,
                          worker::message::PregelMessage message)>
           dispatch,
-      std::unordered_map<ShardID, actor::ActorPID> const&
+      std::unordered_map<ShardID, actor::DistributedActorPID> const&
           responsibleActorPerShard);
   ~ActorVertexProcessor();
 

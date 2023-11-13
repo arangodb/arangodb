@@ -103,9 +103,13 @@ struct DocumentProducingFunctionContext {
 
   void incrFiltered() noexcept;
 
+  void incrLookups() noexcept;
+
   [[nodiscard]] uint64_t getAndResetNumScanned() noexcept;
 
   [[nodiscard]] uint64_t getAndResetNumFiltered() noexcept;
+
+  [[nodiscard]] uint64_t getAndResetNumLookups() noexcept;
 
   InputAqlItemRow const& getInputRow() const noexcept;
 
@@ -154,6 +158,7 @@ struct DocumentProducingFunctionContext {
 
   uint64_t _numScanned;
   uint64_t _numFiltered;
+  uint64_t _numLookups;
 
   std::unique_ptr<DocumentProducingExpressionContext> _expressionContext;
 
@@ -192,7 +197,7 @@ IndexIterator::CoveringCallback getCallback(
     DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
     DocumentProducingFunctionContext& context);
 
-template<bool checkUniqueness, bool skip>
+template<bool checkUniqueness, bool skip, bool produceResult>
 IndexIterator::CoveringCallback getCallback(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context);
@@ -207,7 +212,7 @@ IndexIterator::DocumentCallback getCallback(
     DocumentProducingCallbackVariant::DocumentCopy,
     DocumentProducingFunctionContext& context);
 
-template<bool checkUniqueness>
+template<bool checkUniqueness, bool produceResult>
 IndexIterator::LocalDocumentIdCallback getNullCallback(
     DocumentProducingFunctionContext& context);
 

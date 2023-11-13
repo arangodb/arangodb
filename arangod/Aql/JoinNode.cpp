@@ -129,6 +129,7 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
                                     plan->getAst()->query().resourceMonitor());
 
     bool const usedAsSatellite = it.get("usedAsSatellite").isTrue();
+    bool const producesOutput = it.get("producesOutput").isTrue();
 
     std::unique_ptr<Expression> filter = nullptr;
     if (auto fs = it.get("filter"); !fs.isNone()) {
@@ -144,7 +145,8 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
                   .index = coll->indexByIdentifier(iid),
                   .projections = projections,
                   .filterProjections = filterProjections,
-                  .usedAsSatellite = usedAsSatellite});
+                  .usedAsSatellite = usedAsSatellite,
+                  .producesOutput = producesOutput});
 
     VPackSlice usedShard = it.get("usedShard");
     if (usedShard.isString()) {
@@ -189,6 +191,7 @@ void JoinNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
       builder.add("collection", VPackValue(it.collection->name()));
     }
 
+    builder.add("producesOutput", VPackValue(it.producesOutput));
     // out variable
     builder.add(VPackValue("outVariable"));
     it.outVariable->toVelocyPack(builder);
@@ -257,13 +260,17 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
       TRI_ASSERT(var != nullptr);
       auto regId = variableToRegisterId(var);
       varsToRegs.emplace(var->id, regId);
-      writableOutputRegisters.emplace(regId);
+      if (idx.producesOutput) {
+        writableOutputRegisters.emplace(regId);
+      }
     }
 
     RegisterId documentOutputRegister = RegisterId::maxRegisterId;
     if (!p.hasOutputRegisters()) {
       documentOutputRegister = variableToRegisterId(idx.outVariable);
-      writableOutputRegisters.emplace(documentOutputRegister);
+      if (idx.producesOutput) {
+        writableOutputRegisters.emplace(documentOutputRegister);
+      }
     }
 
     // TODO probably those data structures can become one
@@ -272,6 +279,7 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
     data.index = idx.index;
     data.collection = idx.collection;
     data.projections = idx.projections;
+    data.producesOutput = idx.producesOutput;
 
     if (idx.filter) {
       auto& filter = data.filter.emplace();
@@ -330,7 +338,8 @@ ExecutionNode* JoinNode::clone(ExecutionPlan* plan, bool withDependencies,
                                       .condition = it.condition->clone(),
                                       .index = it.index,
                                       .projections = it.projections,
-                                      .usedAsSatellite = it.usedAsSatellite});
+                                      .usedAsSatellite = it.usedAsSatellite,
+                                      .producesOutput = it.producesOutput});
   }
 
   auto c =

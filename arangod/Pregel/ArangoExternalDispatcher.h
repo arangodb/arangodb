@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Actor/ActorPID.h"
+#include "Actor/DistributedActorPID.h"
+#include "Actor/IExternalDispatcher.h"
 #include "Actor/Message.h"
 #include "CrashHandler/CrashHandler.h"
 #include "Assertions/ProdAssert.h"
@@ -18,8 +19,8 @@
 namespace arangodb::pregel {
 
 struct NetworkMessage {
-  actor::ActorPID sender;
-  actor::ActorPID receiver;
+  actor::DistributedActorPID sender;
+  actor::DistributedActorPID receiver;
   VPackBuilder payload;
 };
 template<typename Inspector>
@@ -29,7 +30,7 @@ auto inspect(Inspector& f, NetworkMessage& x) {
                             f.field("payload", x.payload));
 }
 
-struct ArangoExternalDispatcher {
+struct ArangoExternalDispatcher : actor::IExternalDispatcher {
   ArangoExternalDispatcher(std::string url,
                            network::ConnectionPool* connectionPool,
                            network::Timeout timeout)
@@ -37,8 +38,9 @@ struct ArangoExternalDispatcher {
         baseURL{std::move(url)},
         timeout{std::move(timeout)} {}
 
-  auto operator()(actor::ActorPID sender, actor::ActorPID receiver,
-                  arangodb::velocypack::SharedSlice msg) -> void {
+  void dispatch(actor::DistributedActorPID sender,
+                actor::DistributedActorPID receiver,
+                arangodb::velocypack::SharedSlice msg) override {
     send(sender, receiver, msg)
         .thenValue([sender, receiver, this](auto&& result) -> void {
           auto out = errorHandling(result);
@@ -64,7 +66,8 @@ struct ArangoExternalDispatcher {
   }
 
  private:
-  auto send(actor::ActorPID sender, actor::ActorPID receiver,
+  auto send(actor::DistributedActorPID sender,
+            actor::DistributedActorPID receiver,
             arangodb::velocypack::SharedSlice msg) -> network::FutureRes {
     auto networkMessage =
         NetworkMessage{.sender = sender,

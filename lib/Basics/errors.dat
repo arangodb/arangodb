@@ -211,7 +211,7 @@ ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN,1483,"could not drop index in plan","
 ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE,1484,"chain of distributeShardsLike references","Will be raised if one tries to create a collection with a distributeShardsLike attribute which points to another collection that also has one."
 ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE,1485,"must not drop collection while another has a distributeShardsLike attribute pointing to it","Will be raised if one tries to drop a collection to which another collection points with its distributeShardsLike attribute."
 ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,1486,"must not have a distributeShardsLike attribute pointing to an unknown collection","Will be raised if one tries to create a collection which points to an unknown collection in its distributeShardsLike attribute."
-ERROR_CLUSTER_INSUFFICIENT_DBSERVERS,1487,"the number of current dbservers is lower than the requested replicationFactor","Will be raised if one tries to create a collection with a replicationFactor greater than the available number of DB-Servers."
+ERROR_CLUSTER_INSUFFICIENT_DBSERVERS,1487,"the number of current DB-Servers is lower than the requested replicationFactor/writeConcern","Will be raised if one tries to create a collection with a replicationFactor or writeConcern value greater than the available number of DB-Servers."
 ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER,1488,"a follower could not be dropped in agency","Will be raised if a follower that ought to be dropped could not be dropped in the Agency (under Current)."
 ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION,1489,"a shard leader refuses to perform a replication operation","Will be raised if a replication operation is refused by a shard leader."
 ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION,1490,"a shard follower refuses to perform an operation","Will be raised if a replication operation is refused by a shard follower because it is coming from the wrong leader."
@@ -482,6 +482,7 @@ ERROR_SUPERVISION_GENERAL_FAILURE,20501,"general supervision failure","General s
 
 ERROR_QUEUE_FULL,21003,"queue is full","Will be returned if the scheduler queue is full."
 ERROR_QUEUE_TIME_REQUIREMENT_VIOLATED,21004,"queue time violated","Will be returned if a request with a queue time requirement is set and it cannot be fulfilled."
+ERROR_TOO_MANY_DETACHED_THREADS,21005,"too many detached scheduler threads","Will be returned if a scheduler thread tries to detach itself but there are already too many detached scheduler threads."
 
 ################################################################################
 ## Maintenance errors

@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "Basics/FileUtils.h"
+#include "Basics/Result.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/directories.h"
@@ -155,10 +156,11 @@ std::tuple<std::string, LanguageType> getOrSetPreviousLanguage(
     arangodb::ArangodServer& server, std::string_view collatorLang,
     LanguageType currLangType) {
   std::string prevLanguage;
-  LanguageType prevType;
+  LanguageType prevType = LanguageType::INVALID;
   arangodb::Result res = ::readLanguage(server, prevLanguage, prevType);
 
   if (res.ok()) {
+    TRI_ASSERT(prevType != LanguageType::INVALID);
     return {prevLanguage, prevType};
   }
 

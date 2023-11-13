@@ -23,7 +23,7 @@
 #pragma once
 
 #include <chrono>
-#include "Actor/ActorPID.h"
+#include "Actor/DistributedActorPID.h"
 #include "Actor/HandlerBase.h"
 #include "Basics/TimeString.h"
 #include "Inspection/Status.h"
@@ -501,15 +501,17 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
 
   auto operator()(actor::message::UnknownMessage unknown)
       -> std::unique_ptr<StatusState> {
-    LOG_TOPIC("eb6f2", INFO, Logger::PREGEL) << fmt::format(
-        "Status Actor: Error - sent unknown message to {}", unknown.receiver);
+    LOG_TOPIC("eb6f2", INFO, Logger::PREGEL)
+        << fmt::format("Status Actor: Error - sent unknown message to {}",
+                       inspection::json(unknown.receiver));
     return std::move(this->state);
   }
 
   auto operator()(actor::message::ActorNotFound notFound)
       -> std::unique_ptr<StatusState> {
-    LOG_TOPIC("e31f6", INFO, Logger::PREGEL) << fmt::format(
-        "Status Actor: Error - receiving actor {} not found", notFound.actor);
+    LOG_TOPIC("e31f6", INFO, Logger::PREGEL)
+        << fmt::format("Status Actor: Error - receiving actor {} not found",
+                       inspection::json(notFound.actor));
     return std::move(this->state);
   }
 

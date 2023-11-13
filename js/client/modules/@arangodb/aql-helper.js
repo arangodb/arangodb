@@ -465,6 +465,8 @@ function sanitizeStats (stats) {
   delete stats.fullCount;
   delete stats.peakMemoryUsage;
   delete stats.intermediateCommits;
+  delete stats.seeks;
+  delete stats.documentLookups;
   return stats;
 }
 
