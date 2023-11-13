@@ -19,7 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 #include "EnumeratePathsFilterMatcher.h"
-#include <src/common/globals.h>
 #include <optional>
 #include <variant>
 
