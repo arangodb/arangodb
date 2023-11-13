@@ -388,7 +388,7 @@ const IndexJoinTestSuite = function () {
 
       assertEqual(join.type, "JoinNode");
 
-      assertEqual(normalize(join.indexInfos[0].projections), normalize(["x", "y"]));
+      assertEqual(normalize(join.indexInfos[0].projections), normalize(["y"]));
       assertEqual(normalize(join.indexInfos[1].projections), normalize(["x"]));
 
       const result = runAndCheckQuery(query);
@@ -418,7 +418,7 @@ const IndexJoinTestSuite = function () {
 
       assertEqual(join.type, "JoinNode");
 
-      assertEqual(normalize(join.indexInfos[0].projections), normalize(["x", "y"]));
+      assertEqual(normalize(join.indexInfos[0].projections), normalize(["y"]));
       assertEqual(normalize(join.indexInfos[1].projections), normalize(["x"]));
 
       const result = runAndCheckQuery(query);
@@ -448,7 +448,7 @@ const IndexJoinTestSuite = function () {
 
       assertEqual(join.type, "JoinNode");
 
-      assertEqual(normalize(join.indexInfos[0].projections), normalize(["x", "y"]));
+      assertEqual(normalize(join.indexInfos[0].projections), normalize(["y"]));
       assertEqual(normalize(join.indexInfos[1].projections), normalize(["x"]));
 
       const result = runAndCheckQuery(query);
@@ -478,7 +478,7 @@ const IndexJoinTestSuite = function () {
 
       assertEqual(join.type, "JoinNode");
 
-      assertEqual(normalize(join.indexInfos[0].projections), normalize(["x", "y"]));
+      assertEqual(normalize(join.indexInfos[0].projections), normalize(["y"]));
       assertEqual(normalize(join.indexInfos[1].projections), normalize(["x"]));
 
       const result = runAndCheckQuery(query);
@@ -508,7 +508,7 @@ const IndexJoinTestSuite = function () {
 
       assertEqual(join.type, "JoinNode");
 
-      assertEqual(normalize(join.indexInfos[0].projections), normalize(["x", "y"]));
+      assertEqual(normalize(join.indexInfos[0].projections), normalize(["y"]));
       assertEqual(normalize(join.indexInfos[1].projections), normalize(["x"]));
 
       const result = runAndCheckQuery(query);
