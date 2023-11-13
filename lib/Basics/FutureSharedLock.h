@@ -200,7 +200,7 @@ struct FutureSharedLock {
     void scheduleNode(Node& node) {
       // TODO in theory `this` can die before execute callback
       //  so probably better to use `shared_from_this()`, but it's slower
-      _scheduler.queue([promise = std::move(node->promise), this]() mutable {
+      _scheduler.queue([promise = std::move(node.promise), this]() mutable {
         promise.setValue(LockGuard(this));
       });
     }
