@@ -1,0 +1,18 @@
+name: arangodb_scheduler_num_detached_threads
+introducedIn: "3.12.0"
+help: |
+  Current number of detached worker threads.
+unit: number
+type: gauge
+category: Scheduler
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  The number of worker threads currently started and detached from the 
+  scheduler. Worker threads which perform potentially long running
+  tasks like waiting for a lock can detach themselves from the scheduler 
+  to allow new scheduler threads to be started and avoid server blockage.

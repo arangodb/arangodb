@@ -64,6 +64,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "IResearch/Containers.h"
 #include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchExecutionPool.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
@@ -98,10 +99,15 @@ class Query;
 }  // namespace arangodb::aql
 
 namespace arangodb::iresearch {
+
 namespace {
 
 DECLARE_GAUGE(arangodb_search_num_out_of_sync_links, uint64_t,
               "Number of arangosearch links/indexes currently out of sync");
+
+DECLARE_GAUGE(
+    arangodb_search_execution_threads_demand, IResearchExecutionPool,
+    "Number of Arangosearch parallel execution threads requested by queries.");
 
 #ifdef USE_ENTERPRISE
 
@@ -170,6 +176,8 @@ std::string const CACHE_LIMIT("--arangosearch.columns-cache-limit");
 std::string const CACHE_ONLY_LEADER("--arangosearch.columns-cache-only-leader");
 std::string const SEARCH_THREADS_LIMIT(
     "--arangosearch.execution-threads-limit");
+std::string const SEARCH_DEFAULT_PARALLELISM(
+    "--arangosearch.default-parallelism");
 
 aql::AqlValue dummyFunc(aql::ExpressionContext*, aql::AstNode const& node,
                         std::span<aql::AqlValue const>) {
@@ -891,7 +899,10 @@ IResearchFeature::IResearchFeature(Server& server)
       _commitThreadsIdle(0),
       _threads(0),
       _threadsLimit(0),
-      _searchExecutionThreadsLimit(0) {
+      _searchExecutionThreadsLimit(0),
+      _defaultParallelism(1),
+      _searchExecutionPool(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_search_execution_threads_demand{})) {
   setOptional(true);
 #ifdef USE_V8
   startsAfter<application_features::V8FeaturePhase>();
@@ -1046,14 +1057,23 @@ but the returned data may be incomplete.)");
                                             options::Flags::Enterprise))
       .setIntroducedIn(3'10'06);
 #endif
-  options->addOption(
-      SEARCH_THREADS_LIMIT,
-      "Max number of threads that could be used to process ArangoSearch "
-      "indexes during SEARCH operation",
-      new options::UInt32Parameter(&_searchExecutionThreadsLimit),
-      options::makeDefaultFlags(options::Flags::DefaultNoComponents,
-                                options::Flags::OnDBServer,
-                                options::Flags::OnSingle));
+  options
+      ->addOption(SEARCH_THREADS_LIMIT,
+                  "The maximum number of threads that can be used to process "
+                  "ArangoSearch indexes during a SEARCH operation of a query.",
+                  new options::UInt32Parameter(&_searchExecutionThreadsLimit),
+                  options::makeDefaultFlags(options::Flags::DefaultNoComponents,
+                                            options::Flags::OnDBServer,
+                                            options::Flags::OnSingle))
+      .setIntroducedIn(3'12'00);
+  options
+      ->addOption(SEARCH_DEFAULT_PARALLELISM,
+                  "Default parallelism for ArangoSearch queries",
+                  new options::UInt32Parameter(&_defaultParallelism),
+                  options::makeDefaultFlags(options::Flags::DefaultNoComponents,
+                                            options::Flags::OnDBServer,
+                                            options::Flags::OnSingle))
+      .setIntroducedIn(3'12'00);
 }
 
 void IResearchFeature::validateOptions(

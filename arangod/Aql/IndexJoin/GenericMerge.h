@@ -43,8 +43,9 @@ struct GenericMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
 
   GenericMergeJoin(std::vector<Descriptor> descs, std::size_t numKeyComponents);
 
-  bool next(std::function<bool(std::span<DocIdType>,
-                               std::span<SliceType>)> const& cb) override;
+  std::pair<bool, size_t> next(
+      std::function<bool(std::span<DocIdType>, std::span<SliceType>)> const& cb)
+      override;
 
   void reset() override;
 
@@ -92,11 +93,12 @@ struct GenericMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
   IndexStreamData* maxIter = nullptr;
 
   void updateHeap();
-  bool advanceIndexes();
+  std::pair<bool, size_t> advanceIndexes();
 
   struct ProduceProductResult {
     bool readMore;  // user want to read more data
     bool hasMore;   // iterator has more data
+    size_t seeks;   // amount of seeks performed
   };
 
   ProduceProductResult produceCrossProduct(
@@ -104,7 +106,7 @@ struct GenericMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
           cb);
 
   void fillInitialMatch();
-  bool findCommonPosition();
+  std::pair<bool, size_t> findCommonPosition();
 };
 
 #define LOG_INDEX_MERGER LOG_DEVEL_IF(false)
@@ -228,24 +230,32 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::GenericMergeJoin(
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-bool GenericMergeJoin<SliceType, DocIdType, KeyCompare>::next(
+std::pair<bool, std::size_t>
+GenericMergeJoin<SliceType, DocIdType, KeyCompare>::next(
     const std::function<bool(std::span<DocIdType>, std::span<SliceType>)>& cb) {
+  size_t amountOfSeeks = 0;
   while (true) {
     if (positionAligned) {
       auto result = produceCrossProduct(cb);
+      if (result.seeks > 0) {
+        amountOfSeeks += result.seeks;
+      }
       if (!result.hasMore) {
         positionAligned = false;
         updateHeap();
         if (maxIter->exhausted) {
-          return false;
+          return {false, amountOfSeeks};
         }
       }
       if (!result.readMore) {
-        return true;  // potentially more data available
+        return {true, amountOfSeeks};  // potentially more data available
       }
     } else {
-      if (!findCommonPosition()) {
-        return false;
+      auto [hasMore, amountSeeksLocal] = findCommonPosition();
+      amountOfSeeks += amountSeeksLocal;
+
+      if (!hasMore) {
+        return {false, amountOfSeeks};
       }
       positionAligned = true;
       fillInitialMatch();
@@ -266,14 +276,16 @@ void GenericMergeJoin<SliceType, DocIdType, KeyCompare>::updateHeap() {
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-bool GenericMergeJoin<SliceType, DocIdType, KeyCompare>::advanceIndexes() {
+std::pair<bool, size_t>
+GenericMergeJoin<SliceType, DocIdType, KeyCompare>::advanceIndexes() {
   std::size_t where = 0;
+  std::size_t amountOfSeeks = 0;
 
   while (true) {
     if (where == indexes.size()) {
       // reached the end of this streak
       positionAligned = false;
-      return false;
+      return {false, amountOfSeeks};
     }
 
     auto& idx = indexes[where];
@@ -310,10 +322,11 @@ bool GenericMergeJoin<SliceType, DocIdType, KeyCompare>::advanceIndexes() {
       LOG_INDEX_MERGER << k;
     }
     idx.seekTo(currentKeySet);
+    amountOfSeeks++;
     documentIds[where] = idx._iter->load(idx._projections);
   }
 
-  return true;
+  return {true, amountOfSeeks};
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
@@ -322,17 +335,20 @@ auto GenericMergeJoin<SliceType, DocIdType, KeyCompare>::produceCrossProduct(
     -> ProduceProductResult {
   bool readMore = true;
   bool hasMore = true;
+  size_t amountOfSeeks = 0;
 
   while (readMore && hasMore) {
     // produce current position
     readMore = cb(documentIds, projectionsSpan);
-    hasMore = advanceIndexes();
+    auto [hasMoreLocal, amountOfSeeksLocal] = advanceIndexes();
+    hasMore = hasMoreLocal;
+    amountOfSeeks += amountOfSeeksLocal;
 
     LOG_INDEX_MERGER << std::boolalpha << "readMore = " << readMore
                      << " hasMore = " << hasMore;
   }
 
-  return {.readMore = readMore, .hasMore = hasMore};
+  return {.readMore = readMore, .hasMore = hasMore, .seeks = amountOfSeeks};
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
@@ -345,8 +361,11 @@ void GenericMergeJoin<SliceType, DocIdType, KeyCompare>::fillInitialMatch() {
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-bool GenericMergeJoin<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
+std::pair<bool, size_t>
+GenericMergeJoin<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
   LOG_INDEX_MERGER << "find common position";
+  size_t amountOfSeeks = 0;
+
   while (true) {
     // get the minimum
     auto minIndex = minHeap.top();
@@ -358,7 +377,7 @@ bool GenericMergeJoin<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
                      << minIndex->exhausted;
 
     if (maxIter->exhausted) {
-      return false;
+      return {false, amountOfSeeks};
     }
 
     // check if min == max
@@ -375,10 +394,11 @@ bool GenericMergeJoin<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
 
     LOG_INDEX_MERGER << "seeking to " << maxIter->_position[0];
     minIndex->seekTo(maxIter->_position);
+    amountOfSeeks++;
 
     if (minIndex->exhausted) {
       LOG_INDEX_MERGER << "iterator exhausted ";
-      return false;  // we are done
+      return {false, amountOfSeeks};  // we are done
     }
 
     LOG_INDEX_MERGER << "seeked to position " << minIndex->_position[0];
@@ -397,7 +417,8 @@ bool GenericMergeJoin<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
   for (auto const& idx : indexes) {
     LOG_INDEX_MERGER << idx._position[0];
   }
-  return true;
+
+  return {true, amountOfSeeks};
 }
 
 }  // namespace arangodb::aql

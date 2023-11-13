@@ -339,6 +339,7 @@
     "ERROR_SUPERVISION_GENERAL_FAILURE" : { "code" : 20501, "message" : "general supervision failure" },
     "ERROR_QUEUE_FULL"             : { "code" : 21003, "message" : "queue is full" },
     "ERROR_QUEUE_TIME_REQUIREMENT_VIOLATED" : { "code" : 21004, "message" : "queue time violated" },
+    "ERROR_TOO_MANY_DETACHED_THREADS" : { "code" : 21005, "message" : "too many detached scheduler threads" },
     "ERROR_ACTION_UNFINISHED"      : { "code" : 6003, "message" : "maintenance action still processing" },
     "ERROR_HOT_BACKUP_INTERNAL"    : { "code" : 7001, "message" : "internal hot backup error" },
     "ERROR_HOT_RESTORE_INTERNAL"   : { "code" : 7002, "message" : "internal hot restore error" },
