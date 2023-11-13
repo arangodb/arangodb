@@ -285,13 +285,17 @@ class StringBuffer {
   }
 
   /// @brief compress the buffer in place, using zlib-deflate
-  ErrorCode deflate();
+  ErrorCode zlibDeflate();
 
   /// @brief compress the buffer in place, using gzip compression
-  ErrorCode gzip();
+  ErrorCode gzipCompress();
 
   /// @brief uncompress the buffer into StringBuffer out, using zlib-inflate
-  ErrorCode inflate(arangodb::basics::StringBuffer& out, size_t skip = 0);
+  ErrorCode zlibInflate(arangodb::basics::StringBuffer& out, size_t skip = 0);
+
+  /// @brief uncompress the buffer into StringBuffer out, using gzip uncompress
+  ErrorCode gzipUncompress(arangodb::basics::StringBuffer& out,
+                           size_t skip = 0);
 
   /// @brief returns the low level buffer
   TRI_string_buffer_t* stringBuffer() { return &_buffer; }

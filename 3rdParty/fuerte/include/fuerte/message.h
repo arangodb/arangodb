@@ -225,6 +225,7 @@ class Request final : public Message {
   asio_ns::const_buffer payload() const override;
   std::size_t payloadSize() const override;
   velocypack::Buffer<uint8_t>&& moveBuffer() && { return std::move(_payload); }
+  velocypack::Buffer<uint8_t>& payloadForModification() { return _payload; }
 
   // get timeout, 0 means no timeout
   inline std::chrono::milliseconds timeout() const { return _timeout; }

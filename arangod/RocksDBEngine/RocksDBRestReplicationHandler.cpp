@@ -867,7 +867,8 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     }
   }
 
-  _response->setAllowCompression(true);
+  _response->setAllowCompression(
+      rest::ResponseCompressionType::kAllowCompression);
 }
 
 //////////////////////////////////////////////////////////////////////////////

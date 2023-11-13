@@ -24,18 +24,12 @@
 
 #include "V8ClientConnection.h"
 
-#include <boost/algorithm/string.hpp>
-#include <fuerte/connection.h>
-#include <fuerte/jwt.h>
-#include <fuerte/requests.h>
-#include <v8.h>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "V8/V8SecurityFeature.h"
 #include "Basics/FileUtils.h"
-#include "Basics/StringUtils.h"
 #include "Basics/EncodingUtils.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Import/ImportHelper.h"
@@ -60,6 +54,13 @@
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
 
+#include <absl/strings/str_cat.h>
+#include <boost/algorithm/string.hpp>
+#include <fuerte/connection.h>
+#include <fuerte/jwt.h>
+#include <fuerte/requests.h>
+#include <v8.h>
+
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
@@ -76,10 +77,10 @@ namespace {
 // return an identifier to a connection configuration, consisting of
 // endpoint, username, password, jwt, authentication and protocol type
 std::string connectionIdentifier(fuerte::ConnectionBuilder& builder) {
-  return builder.normalizedEndpoint() + "/" + builder.user() + "/" +
-         builder.password() + "/" + builder.jwtToken() + "/" +
-         to_string(builder.authenticationType()) + "/" +
-         to_string(builder.protocolType());
+  return absl::StrCat(builder.normalizedEndpoint(), "/", builder.user(), "/",
+                      builder.password(), "/", builder.jwtToken(), "/",
+                      to_string(builder.authenticationType()), "/",
+                      to_string(builder.protocolType()));
 }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -257,8 +258,9 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
           // major version of server is too low
           //_client->disconnect();
           shutdownConnection();
-          std::string msg("Server version number ('" + versionString +
-                          "') is too low. Expecting 3.0 or higher");
+          std::string msg =
+              absl::StrCat("Server version number ('", versionString,
+                           "') is too low. Expecting 3.0 or higher");
           setCustomError(500, msg);
           return newConnection;
         }
@@ -283,7 +285,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
 std::shared_ptr<fu::Connection> V8ClientConnection::acquireConnection() {
   std::lock_guard<std::recursive_mutex> guard(_lock);
 
-  _lastErrorMessage = "";
+  _lastErrorMessage.clear();
   _lastHttpReturnCode = 0;
 
   if (!_connection || (_connection->state() == fu::Connection::State::Closed)) {
@@ -674,7 +676,7 @@ static void ClientConnection_reconnect(
   if (!v8security.isAllowedToConnectToEndpoint(isolate, endpoint, endpoint)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
-        std::string("not allowed to connect to this endpoint") + endpoint);
+        absl::StrCat("not allowed to connect to this endpoint", endpoint));
   }
 
   if (args.Length() > 5 && !args[5]->IsUndefined()) {
@@ -694,10 +696,10 @@ static void ClientConnection_reconnect(
   try {
     v8connection->reconnect();
   } catch (std::string const& errorMessage) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER(errorMessage.c_str());
+    TRI_V8_THROW_EXCEPTION_PARAMETER(errorMessage);
   } catch (...) {
-    std::string errorMessage = "error in '" + endpoint + "'";
-    TRI_V8_THROW_EXCEPTION_PARAMETER(errorMessage.c_str());
+    std::string errorMessage = absl::StrCat("error in '", endpoint, "'");
+    TRI_V8_THROW_EXCEPTION_PARAMETER(errorMessage);
   }
 
   TRI_ExecuteJavaScriptString(
@@ -1628,6 +1630,9 @@ static void ClientConnection_importCsv(
   auto* client = static_cast<ClientFeature*>(wrap->Value());
 
   SimpleHttpClientParams params(client->requestTimeout(), client->getWarn());
+  params.setCompressRequestThreshold(
+      client->compressTransfer() ? client->compressRequestThreshold() : 0);
+
   ImportHelper ih(encryption, *client, v8connection->endpointSpecification(),
                   params, DefaultChunkSize, 1);
 
@@ -1722,6 +1727,9 @@ static void ClientConnection_importJson(
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
   SimpleHttpClientParams params(client->requestTimeout(), client->getWarn());
+  params.setCompressRequestThreshold(
+      client->compressTransfer() ? client->compressRequestThreshold() : 0);
+
   ImportHelper ih(encryption, *client, v8connection->endpointSpecification(),
                   params, DefaultChunkSize, 1);
 
@@ -2307,7 +2315,8 @@ void translateHeaders(
     fu::Request& request, fu::RestVerb const method, std::string_view location,
     std::string const& databaseName, bool forceJson,
     std::chrono::duration<double> const& requestTimeout,
-    std::unordered_map<std::string, std::string> const& headerFields) {
+    std::unordered_map<std::string, std::string> const& headerFields,
+    bool requestCompression) {
   request.header.restVerb = method;
   request.header.database = databaseName;
   request.header.parseArangoPath(location);
@@ -2317,12 +2326,17 @@ void translateHeaders(
     request.header.contentType(fu::ContentType::Json);
     request.header.acceptType(fu::ContentType::Json);
   }
-  for (auto& pair : headerFields) {
+  for (auto const& pair : headerFields) {
     request.header.addMeta(basics::StringUtils::tolower(pair.first),
                            pair.second);
   }
   if (request.header.acceptType() == fu::ContentType::Unset) {
     request.header.acceptType(fu::ContentType::VPack);
+  }
+  if (requestCompression &&
+      !request.header.meta().contains(StaticStrings::AcceptEncoding)) {
+    request.header.addMeta(StaticStrings::AcceptEncoding,
+                           StaticStrings::EncodingDeflate);
   }
 
   request.timeout(correctTimeoutToExecutionDeadline(
@@ -2333,12 +2347,49 @@ void translateHeaders(
 bool setPostBody(fu::Request& request, v8::Isolate* isolate,
                  v8::Local<v8::Value> const& body,
                  velocypack::Options const& vpackOptions, bool forceJson,
-                 bool isFile) {
+                 bool isFile, uint64_t compressRequestThreshold) {
+  auto compressIfEligible = [&](uint8_t const* body, size_t size) {
+    if (isFile) {
+      // we don't compress file bodies
+      return false;
+    }
+    if (compressRequestThreshold == 0) {
+      // opted out of compression (also used to opt out of compression for
+      // VST requests)
+      return false;
+    }
+    if (request.header.meta().contains(StaticStrings::ContentEncoding)) {
+      // we don't compress if there is already a Content-Encoding header
+      return false;
+    }
+    if (size < compressRequestThreshold) {
+      // body too small for compression
+      return false;
+    }
+    TRI_ASSERT(request.payloadForModification().empty());
+    if (encoding::zlibDeflate(body, size, request.payloadForModification()) !=
+        TRI_ERROR_NO_ERROR) {
+      TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "unable to compress request body");
+      return false;
+    }
+    // compression successful
+
+    // add "content-encoding: deflate" header
+    TRI_ASSERT(!isFile);
+    TRI_ASSERT(compressRequestThreshold > 0);
+    TRI_ASSERT(!request.header.meta().contains(StaticStrings::ContentEncoding));
+
+    request.header.addMeta(StaticStrings::ContentEncoding,
+                           StaticStrings::EncodingDeflate);
+    return true;
+  };
+
   if (isFile) {
     std::string const inFile = TRI_ObjectToString(isolate, body);
     if (!FileUtils::exists(inFile)) {
       std::string err =
-          std::string("file to load for body doesn't exist: ") + inFile;
+          absl::StrCat("file to load for body doesn't exist: ", inFile);
       TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, err);
       return false;
     }
@@ -2346,7 +2397,7 @@ bool setPostBody(fu::Request& request, v8::Isolate* isolate,
     try {
       contents = FileUtils::slurp(inFile);
     } catch (...) {
-      std::string err = std::string("could not read file") + inFile;
+      std::string err = absl::StrCat("could not read file", inFile);
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_errno(), err);
     }
     request.header.contentType(fu::ContentType::Custom);
@@ -2354,8 +2405,12 @@ bool setPostBody(fu::Request& request, v8::Isolate* isolate,
                       contents.length());
   } else if (body->IsString() || body->IsStringObject()) {  // assume JSON
     TRI_Utf8ValueNFC bodyString(isolate, body);
-    request.addBinary(reinterpret_cast<uint8_t const*>(*bodyString),
-                      bodyString.length());
+    if (!compressIfEligible(reinterpret_cast<uint8_t const*>(*bodyString),
+                            bodyString.length())) {
+      // add JSON body without compression
+      request.addBinary(reinterpret_cast<uint8_t const*>(*bodyString),
+                        bodyString.length());
+    }
     if (request.header.contentType() == fu::ContentType::Unset) {
       request.header.contentType(fu::ContentType::Json);
     }
@@ -2369,7 +2424,10 @@ bool setPostBody(fu::Request& request, v8::Isolate* isolate,
                                    "invalid <body> buffer value");
       return false;
     }
-    request.addBinary(reinterpret_cast<uint8_t const*>(data), size);
+    if (!compressIfEligible(reinterpret_cast<uint8_t const*>(data), size)) {
+      // add body from buffer without compression
+      request.addBinary(reinterpret_cast<uint8_t const*>(data), size);
+    }
   } else if (!body->IsNullOrUndefined()) {
     VPackBuffer<uint8_t> buffer;
     VPackBuilder builder(buffer, &vpackOptions);
@@ -2377,11 +2435,18 @@ bool setPostBody(fu::Request& request, v8::Isolate* isolate,
     if (forceJson) {
       auto resultJson = builder.slice().toJson();
       char const* resStr = resultJson.c_str();
-      request.addBinary(reinterpret_cast<uint8_t const*>(resStr),
-                        resultJson.length());
+      if (!compressIfEligible(reinterpret_cast<uint8_t const*>(resStr),
+                              resultJson.size())) {
+        // add body without compression
+        request.addBinary(reinterpret_cast<uint8_t const*>(resStr),
+                          resultJson.size());
+      }
       request.header.contentType(fu::ContentType::Json);
     } else {
-      request.addVPack(std::move(buffer));
+      if (!compressIfEligible(buffer.data(), buffer.size())) {
+        // add body without compression
+        request.addVPack(std::move(buffer));
+      }
       request.header.contentType(fu::ContentType::VPack);
     }
   } else {
@@ -2390,6 +2455,7 @@ bool setPostBody(fu::Request& request, v8::Isolate* isolate,
       request.header.contentType(fu::ContentType::Json);
     }
   }
+
   return true;
 }
 
@@ -2412,16 +2478,17 @@ v8::Local<v8::Value> parseReplyBodyToV8(fu::Response const& response,
       response.contentEncoding() == fuerte::ContentEncoding::Gzip) {
     // TODO: working with the stringbuffer adds another alloc / copy.
     // translateResultBodyToV8 will probably decode once more.
-    // this uses more resources than neccessary; a better solution
+    // this uses more resources than necessary; a better solution
     // would implement this inside fuerte.
     auto responseBody = response.payload();
     VPackBuffer<uint8_t> inflateBuf;
     ErrorCode code = TRI_ERROR_NO_ERROR;
     if (response.contentEncoding() == fuerte::ContentEncoding::Deflate) {
-      code = arangodb::encoding::gzipInflate(
+      code = arangodb::encoding::zlibInflate(
           reinterpret_cast<uint8_t const*>(responseBody.data()),
           responseBody.size(), inflateBuf);
     } else {
+      TRI_ASSERT(response.contentEncoding() == fuerte::ContentEncoding::Gzip);
       code = arangodb::encoding::gzipUncompress(
           reinterpret_cast<uint8_t const*>(responseBody.data()),
           responseBody.size(), inflateBuf);
@@ -2434,17 +2501,15 @@ v8::Local<v8::Value> parseReplyBodyToV8(fu::Response const& response,
     if (response.contentType() == fu::ContentType::VPack) {
       auto const& slices = VPackSlice(inflateBuf.data());
       return TRI_VPackToV8(isolate, slices);
-    } else {
-      try {
-        auto parsedBody =
-            VPackParser::fromJson(inflateBuf.data(), inflateBuf.size());
-        return TRI_VPackToV8(isolate, parsedBody->slice());
-      } catch (std::exception const& ex) {
-        std::string err("Error parsing the server JSON reply: ");
-        err += ex.what();
-        TRI_CreateErrorObject(isolate, TRI_ERROR_HTTP_CORRUPTED_JSON, err,
-                              true);
-      }
+    }
+    try {
+      auto parsedBody =
+          VPackParser::fromJson(inflateBuf.data(), inflateBuf.size());
+      return TRI_VPackToV8(isolate, parsedBody->slice());
+    } catch (std::exception const& ex) {
+      std::string err =
+          absl::StrCat("Error parsing the server JSON reply: ", ex.what());
+      TRI_CreateErrorObject(isolate, TRI_ERROR_HTTP_CORRUPTED_JSON, err, true);
     }
   } else {
     if (response.contentType() == fu::ContentType::VPack) {
@@ -2458,8 +2523,8 @@ v8::Local<v8::Value> parseReplyBodyToV8(fu::Response const& response,
             responseBody.size());
         return TRI_VPackToV8(isolate, parsedBody->slice());
       } catch (std::exception const& ex) {
-        std::string err("Error parsing the server JSON reply: ");
-        err += ex.what();
+        std::string err =
+            absl::StrCat("Error parsing the server JSON reply: ", ex.what());
         TRI_CreateErrorObject(isolate, TRI_ERROR_HTTP_CORRUPTED_JSON, err,
                               true);
       }
@@ -2482,10 +2547,11 @@ v8::Local<v8::Value> translateResultBodyToV8(fu::Response const& response,
       VPackBuffer<uint8_t> inflateBuf;
       ErrorCode code = TRI_ERROR_NO_ERROR;
       if (response.contentEncoding() == fuerte::ContentEncoding::Deflate) {
-        code = arangodb::encoding::gzipInflate(
+        code = arangodb::encoding::zlibInflate(
             reinterpret_cast<uint8_t const*>(responseBody.data()),
             responseBody.size(), inflateBuf);
       } else {
+        TRI_ASSERT(response.contentEncoding() == fuerte::ContentEncoding::Gzip);
         code = arangodb::encoding::gzipUncompress(
             reinterpret_cast<uint8_t const*>(responseBody.data()),
             responseBody.size(), inflateBuf);
@@ -2586,13 +2652,17 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     std::unordered_map<std::string, std::string> const& headerFields,
     bool isFile) {
   bool retry = true;
+  bool const isVst = _builder.protocolType() == fu::ProtocolType::Vst;
 
 again:
   auto req = std::make_unique<fu::Request>();
   translateHeaders(*req, method, location, _databaseName, _forceJson,
-                   _requestTimeout, headerFields);
+                   _requestTimeout, headerFields, _client.compressTransfer());
 
-  if (!setPostBody(*req, isolate, body, _vpackOptions, _forceJson, isFile)) {
+  if (!setPostBody(*req, isolate, body, _vpackOptions, _forceJson, isFile,
+                   _client.compressTransfer() && !isVst
+                       ? _client.compressRequestThreshold()
+                       : 0)) {
     return v8::Undefined(isolate);
   }
 
@@ -2661,14 +2731,18 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields) {
   bool retry = true;
+  bool const isVst = _builder.protocolType() == fu::ProtocolType::Vst;
 
 again:
   auto req = std::make_unique<fu::Request>();
   translateHeaders(*req, method, location, _databaseName, _forceJson,
-                   _requestTimeout, headerFields);
+                   _requestTimeout, headerFields, _client.compressTransfer());
 
   if (!setPostBody(*req, isolate, body, _vpackOptions, _forceJson,
-                   false)) {  // no file support
+                   /*isFile*/ false,
+                   _client.compressTransfer() && !isVst
+                       ? _client.compressRequestThreshold()
+                       : 0)) {
     return v8::Undefined(isolate);
   }
   std::shared_ptr<fu::Connection> connection = acquireConnection();
@@ -2739,8 +2813,7 @@ again:
         .FromMaybe(false);
   }
 
-  if ((_builder.protocolType() == fu::ProtocolType::Vst) &&
-      (method != fu::RestVerb::Head)) {
+  if (isVst && method != fu::RestVerb::Head) {
     // VST only adds a content-length header in case of head, since else its
     // part of the protocol.
     headers

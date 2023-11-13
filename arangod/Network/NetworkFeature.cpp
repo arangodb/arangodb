@@ -457,7 +457,7 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
             res->setPayload(std::move(uncompressed), 0);
           } else if (encoding == StaticStrings::EncodingDeflate) {
             velocypack::Buffer<uint8_t> uncompressed;
-            auto r = encoding::gzipInflate(
+            auto r = encoding::zlibInflate(
                 reinterpret_cast<uint8_t const*>(res->payload().data()),
                 res->payload().size(), uncompressed);
             if (r != TRI_ERROR_NO_ERROR) {

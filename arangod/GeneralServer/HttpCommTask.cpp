@@ -581,15 +581,16 @@ void HttpCommTask<T>::doProcessRequest() {
 
   // unzip / deflate
   if (!this->handleContentEncoding(*_request)) {
-    this->sendErrorResponse(rest::ResponseCode::BAD,
-                            _request->contentTypeResponse(), 1,
-                            TRI_ERROR_BAD_PARAMETER, "decoding error");
+    this->sendErrorResponse(
+        rest::ResponseCode::BAD, _request->contentTypeResponse(), 1,
+        TRI_ERROR_BAD_PARAMETER, "content-decoding error for incoming request");
     return;
   }
 
   // create a handler and execute
-  auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR,
-                                             1, nullptr);
+  auto resp = std::make_unique<HttpResponse>(
+      rest::ResponseCode::SERVER_ERROR, 1, nullptr,
+      rest::ResponseCompressionType::kUnset);
   resp->setContentType(_request->contentTypeResponse());
   this->executeRequest(std::move(_request), std::move(resp), mode);
 }
@@ -830,7 +831,8 @@ template<SocketType T>
 std::unique_ptr<GeneralResponse> HttpCommTask<T>::createResponse(
     rest::ResponseCode responseCode, uint64_t mid) {
   TRI_ASSERT(mid == 1);
-  return std::make_unique<HttpResponse>(responseCode, mid);
+  return std::make_unique<HttpResponse>(responseCode, mid, nullptr,
+                                        rest::ResponseCompressionType::kUnset);
 }
 
 template class arangodb::rest::HttpCommTask<SocketType::Tcp>;

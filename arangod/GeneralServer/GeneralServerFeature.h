@@ -65,6 +65,7 @@ class GeneralServerFeature final : public ArangodFeature {
   bool permanentRootRedirect() const noexcept;
   std::string redirectRootTo() const;
   std::string const& supportInfoApiPolicy() const noexcept;
+  uint64_t compressResponseThreshold() const noexcept;
 
   std::shared_ptr<rest::RestHandlerFactory> handlerFactory() const;
   rest::AsyncJobManager& jobManager();
@@ -114,6 +115,7 @@ class GeneralServerFeature final : public ArangodFeature {
   bool _proxyCheck;
   bool _returnQueueTimeHeader;
   bool _permanentRootRedirect;
+  uint64_t _compressResponseThreshold;
   std::vector<std::string> _trustedProxies;
   std::vector<std::string> _accessControlAllowOrigins;
   std::string _redirectRootTo;

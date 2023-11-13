@@ -1039,10 +1039,11 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req,
 /// decompress content
 bool CommTask::handleContentEncoding(GeneralRequest& req) {
   // TODO consider doing the decoding on the fly
-  auto decode = [&](std::string const& encoding) {
+  auto decode = [&](std::string const& header, std::string const& encoding) {
     std::string_view raw = req.rawPayload();
     uint8_t* src = reinterpret_cast<uint8_t*>(const_cast<char*>(raw.data()));
     size_t len = raw.size();
+
     if (encoding == StaticStrings::EncodingGzip) {
       VPackBuffer<uint8_t> dst;
       if (arangodb::encoding::gzipUncompress(src, len, dst) !=
@@ -1050,28 +1051,35 @@ bool CommTask::handleContentEncoding(GeneralRequest& req) {
         return false;
       }
       req.setPayload(std::move(dst));
+      // as we have decoded, remove the encoding header.
+      // this prevents duplicate decoding
+      req.removeHeader(header);
       return true;
     } else if (encoding == StaticStrings::EncodingDeflate) {
       VPackBuffer<uint8_t> dst;
-      if (arangodb::encoding::gzipInflate(src, len, dst) !=
+      if (arangodb::encoding::zlibInflate(src, len, dst) !=
           TRI_ERROR_NO_ERROR) {
         return false;
       }
       req.setPayload(std::move(dst));
+      // as we have decoded, remove the encoding header.
+      // this prevents duplicate decoding
+      req.removeHeader(header);
       return true;
     }
-    return false;
+    // unknown encoding. let it through without modifying the request body.
+    return true;
   };
 
   bool found;
   std::string const& val1 = req.header(StaticStrings::TransferEncoding, found);
   if (found) {
-    return decode(val1);
+    return decode(StaticStrings::TransferEncoding, val1);
   }
 
   std::string const& val2 = req.header(StaticStrings::ContentEncoding, found);
   if (found) {
-    return decode(val2);
+    return decode(StaticStrings::ContentEncoding, val2);
   }
   return true;
 }

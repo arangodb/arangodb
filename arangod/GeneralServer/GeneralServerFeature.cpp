@@ -181,6 +181,7 @@ GeneralServerFeature::GeneralServerFeature(Server& server)
       _proxyCheck(true),
       _returnQueueTimeHeader(true),
       _permanentRootRedirect(true),
+      _compressResponseThreshold(0),
       _redirectRootTo("/_admin/aardvark/index.html"),
       _supportInfoApiPolicy("admin"),
       _numIoThreads(0),
@@ -316,6 +317,17 @@ server automatically when the timeout is reached. A keep-alive-timeout value of
 current queueing/dequeuing time for requests in the scheduler (in seconds).
 Client applications and drivers can use this value to control the server load
 and also react on overload.)");
+
+  options
+      ->addOption("--http.compress-response-threshold",
+                  "The HTTP response body size from which on responses are "
+                  "transparently compressed in case the client asks for it.",
+                  new UInt64Parameter(&_compressResponseThreshold))
+      .setIntroducedIn(31200)
+      .setLongDescription(
+          R"(Automatically compress outgoing HTTP responses in case
+their uncompressed body size exceeds this threshold value.
+Using the value 0 disables the automatic response compression.")");
 
   options
       ->addOption("--server.early-connections",
@@ -537,6 +549,10 @@ std::string GeneralServerFeature::redirectRootTo() const {
 
 std::string const& GeneralServerFeature::supportInfoApiPolicy() const noexcept {
   return _supportInfoApiPolicy;
+}
+
+uint64_t GeneralServerFeature::compressResponseThreshold() const noexcept {
+  return _compressResponseThreshold;
 }
 
 std::shared_ptr<rest::RestHandlerFactory> GeneralServerFeature::handlerFactory()

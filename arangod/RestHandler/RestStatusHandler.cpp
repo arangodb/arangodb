@@ -309,7 +309,7 @@ RestStatus RestStatusHandler::executeOverview() {
     }
   }
 
-  auto const res = buffer.deflate();
+  auto const res = buffer.zlibDeflate();
 
   if (res != TRI_ERROR_NO_ERROR) {
     result.add("hash", VPackValue(buffer.c_str()));

@@ -113,6 +113,8 @@ class ClientFeature final : public HttpEndpointProvider {
   bool getWarn() const noexcept;
   void setWarnConnect(bool warnConnect) noexcept;
   bool getWarnConnect() const noexcept;
+  bool compressTransfer() const noexcept;
+  uint64_t compressRequestThreshold() const noexcept;
 
   std::unique_ptr<httpclient::GeneralClientConnection> createConnection(
       std::string const& definition);
@@ -130,9 +132,9 @@ class ClientFeature final : public HttpEndpointProvider {
   ApplicationServer& server() const noexcept;
 
   static std::string buildConnectedMessage(
-      std::string const& endpointSpecification, std::string const& version,
-      std::string const& role, std::string const& mode,
-      std::string const& databaseName, std::string const& user);
+      std::string_view endpointSpecification, std::string_view version,
+      std::string_view role, std::string_view mode,
+      std::string_view databaseName, std::string_view user);
 
   static int runMain(
       int argc, char* argv[],
@@ -166,6 +168,10 @@ class ClientFeature final : public HttpEndpointProvider {
   double _connectionTimeout;
   double _requestTimeout;
   uint64_t _maxPacketSize;
+  // if > 0, it means that request bodies >= this value will be
+  // sent our compressed.
+  // currently only set at startup.
+  uint64_t _compressRequestThreshold;
   // only set at startup
   uint64_t _sslProtocol;
   size_t _retries;
@@ -183,6 +189,11 @@ class ClientFeature final : public HttpEndpointProvider {
   bool _warnConnect;
   bool _haveServerPassword;
   bool _forceJson;
+  // if true, all requests sent out will add an extra
+  // HTTP header "Accept-Encoding: deflate" to advertise that
+  // the remote can compress the response body.
+  // currently only set at startup.
+  bool _compressTransfer;
 };
 
 }  // namespace arangodb

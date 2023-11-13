@@ -1,6 +1,53 @@
 devel
 -----
 
+* Added options `--compress-transfer` and `--compress-request-threshold` to 
+  all client tools.
+  These options can be used to enable transparent compression of the data
+  that is sent between the client tools and the ArangoDB server.
+
+  If the option `--compress-transfer` is set to `true`, the client-tools
+  will add an extra HTTP header `Accept-Encoding: deflate` to all requests
+  they make to the server. This allows the server to compress its responses
+  before sending them back to the client tools.
+
+  If the option is set to `true`, the client will also transparently compress
+  their own requests to the server if the size of the request body (in bytes)
+  is at least the value of the startup option `--compress-request-treshold`. 
+  The default value for this option is `0`, which disables compression of the
+  request bodies in the client tools. To opt in to sending compressed data,
+  the option must be set to a value greater than zero. 
+  Request body compression will be performed using the deflate compression
+  algorithm. The client tools will also add a `Content-Encoding: deflate`
+  header to the request when the request body was compressed.
+  As compression will use CPU cycles, it should be activated only in case the
+  network communication between the client tools and the server is slow and
+  there is enough CPU capacity left for the extra compression/decompression
+  work. Furthermore, requests should only be compressed when they exceed a
+  certain minimum size, e.g. 250 bytes. 
+  Too small requests are typically not compressible very well.
+
+* Added startup option `--http.compress-response-threshold` to the ArangoDB
+  server. The value of this specifies the threshold value (in bytes) from
+  which on response bodies will be sent out compressed by the server.
+
+  The default value for this option is `0`, which disables sending out
+  compressed response bodies. To enable compression, the option should be
+  set to a value greater than 0. The selected value should be large enough
+  to justify the compression overhead. Too small response bodies are typically
+  not well compressible.
+
+  Regardless of the value of this option, response body compression will only
+  happen in case the client advertised that it expects a compressed response
+  body by sending an `Accept-Encoding: gzip` or `Accept-Encoding: deflate`
+  header with its request. If that header is missing, no response compression
+  will be performed by the server.
+  As compression will use CPU cycles, it should be activated only in case the
+  network communication between the server and clients is slow and there is 
+  enough CPU capacity left for the extra compression/decompression work.
+  work. Furthermore, responses should only be compressed when they exceed a
+  certain minimum size, e.g. 250 bytes. 
+
 * Fixed a problem in ReadWriteLock which could prevent waiting readers
   from being woken up, when a write lock acquire timed out.
 

@@ -157,13 +157,13 @@ void VstResponse::addRawPayload(std::string_view payload) {
   _payload.append(payload.data(), payload.length());
 }
 
-ErrorCode VstResponse::deflate() {
+ErrorCode VstResponse::zlibDeflate() {
   // we should never get here
   TRI_ASSERT(false);
   return TRI_ERROR_INTERNAL;
 }
 
-ErrorCode VstResponse::gzip() {
+ErrorCode VstResponse::gzipCompress() {
   // we should never get here
   TRI_ASSERT(false);
   return TRI_ERROR_INTERNAL;

@@ -23,12 +23,8 @@
 
 #include "RestAgencyHandler.h"
 
-#include <thread>
-
-#include <velocypack/Builder.h>
-
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/Agent.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/Histogram.h"
@@ -36,6 +32,10 @@
 #include "Rest/Version.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
+
+#include <velocypack/Builder.h>
+
+#include <thread>
 
 using namespace arangodb;
 
@@ -779,7 +779,8 @@ RestStatus RestAgencyHandler::reportMethodNotAllowed() {
 }
 
 RestStatus RestAgencyHandler::execute() {
-  response()->setAllowCompression(true);
+  response()->setAllowCompression(
+      rest::ResponseCompressionType::kAllowCompression);
   try {
     auto const& suffixes = _request->suffixes();
     if (suffixes.empty()) {  // Empty request
