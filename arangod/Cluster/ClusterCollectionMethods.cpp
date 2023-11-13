@@ -71,6 +71,11 @@ inline auto pathDatabaseInTarget(std::string_view databaseName) {
   return paths::plan()->databases()->database(std::string{databaseName});
 }
 
+inline auto pathCollectionGroupInCurrent(std::string_view databaseName) {
+  return paths::current()->collectionGroups()->database(
+      std::string{databaseName});
+}
+
 auto reactToPreconditions(AsyncAgencyCommResult&& agencyRes)
     -> ResultT<uint64_t> {
   // We ordered the creation of collection, if this was not
@@ -868,6 +873,18 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
     // Increment the Group Version
     writes = std::move(writes).inc(groupBase->version()->str());
 
+    // First read set version (sorry we have to do this as the increment call to
+    // version does not give us the new value back)
+    VPackBuilder response;
+    agencyCache.get(response, groupBase->version()->str(
+                                  arangodb::cluster::paths::SkipComponents{1}));
+    uint64_t versionToWaitFor =
+        basics::VelocyPackHelper::getNumericValue(response.slice(), 0ull);
+    // This indicates that the Group does not exist anymore. If this happens the
+    // below preconditions will catch this.
+    TRI_ASSERT(versionToWaitFor > 0)
+        << "We have found a ReplicatedLog without a current version";
+
     // Preconditions: Database exists, Collection exists. Group exists.
     auto preconditions = std::move(writes).precs();
     preconditions = std::move(preconditions)
@@ -878,11 +895,39 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
 
     // Now data contains the transaction;
     using namespace std::chrono_literals;
-    auto future = aac.sendWriteTransaction(120s, std::move(data))
-                      .thenValue(::reactToPreconditions)
-                      .thenValue(waitForOperationRoundtrip(ci));
-    return future.get();
+    auto res = aac.sendWriteTransaction(120s, std::move(data))
+                   .thenValue(::reactToPreconditions)
+                   .get();
 
+    if (res.fail()) {
+      return res.result();
+    }
+    // Now wait for the change to be happening
+    AgencyCallbackRegistry& callbackRegistry = ci.agencyCallbackRegistry();
+    auto currentGroup = pathCollectionGroupInCurrent(databaseName)
+                            ->group(std::to_string(col.groupID().id()))
+                            ->supervision()
+                            ->str(arangodb::cluster::paths::SkipComponents(1));
+    auto waitForSuccess = callbackRegistry.waitFor(
+        currentGroup, [versionToWaitFor](VPackSlice slice) {
+          if (slice.isNone()) {
+            // TODO: Should this actual set an "error"? It indicates
+            // that the collection is dropped if i am not mistaken
+            return false;
+          }
+          auto groupSupervision = velocypack::deserialize<
+              replication2::agency::CollectionGroupCurrentSpecification::
+                  Supervision>(slice);
+          // We need to wait for a version that is greater than the one we
+          // started with
+          return groupSupervision.version.has_value() &&
+                 groupSupervision.version.value() > versionToWaitFor;
+        });
+    // WE do not really need the change to be appied.
+    // We just have to wait for DBServers to apply it.
+    std::ignore = waitForSuccess.get();
+    // Everything works as expected.
+    return TRI_ERROR_NO_ERROR;
   } else {
     AgencyPrecondition databaseExists("Plan/Databases/" + databaseName,
                                       AgencyPrecondition::Type::EMPTY, false);
