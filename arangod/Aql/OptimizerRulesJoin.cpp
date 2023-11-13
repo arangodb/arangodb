@@ -395,6 +395,48 @@ bool checkCandidatesEligible(
   return true;
 }
 
+void findCandidates(IndexNode* indexNode,
+                    containers::SmallVector<IndexNode*, 8>& candidates,
+                    containers::FlatHashSet<ExecutionNode const*>& handled) {
+  containers::SmallVector<CalculationNode*, 8> calculations;
+
+  while (true) {
+    if (handled.contains(indexNode) || !indexNodeQualifies(*indexNode)) {
+      break;
+    }
+    candidates.emplace_back(indexNode);
+    auto* parent = indexNode->getFirstParent();
+    while (true) {
+      if (parent == nullptr) {
+        return;
+      } else if (parent->getType() == EN::CALCULATION) {
+        // store this calculation and check later if and index depends on
+        // it
+        auto calc = ExecutionNode::castTo<CalculationNode*>(parent);
+        calculations.push_back(calc);
+        parent = parent->getFirstParent();
+        continue;
+      } else if (parent->getType() == EN::INDEX) {
+        // check that this index node does not depend on previous
+        // calculations
+
+        indexNode = ExecutionNode::castTo<IndexNode*>(parent);
+        VarSet usedVariables;
+        indexNode->getVariablesUsedHere(usedVariables);
+        for (auto* calc : calculations) {
+          if (calc->setsVariable(usedVariables)) {
+            // can not join past this calculation
+            return;
+          }
+        }
+        break;
+      } else {
+        return;
+      }
+    }
+  }
+}
+
 }  // namespace
 
 void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
@@ -426,46 +468,7 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
 
       while (true) {
         containers::SmallVector<IndexNode*, 8> candidates;
-        IndexNode* indexNode = startNode;
-
-        containers::SmallVector<CalculationNode*, 8> calculations;
-
-        while (true) {
-          if (handled.contains(indexNode) || !indexNodeQualifies(*indexNode)) {
-            break;
-          }
-          candidates.emplace_back(indexNode);
-          auto* parent = indexNode->getFirstParent();
-          while (true) {
-            if (parent == nullptr) {
-              goto endOfIndexNodeSearch;
-            } else if (parent->getType() == EN::CALCULATION) {
-              // store this calculation and check later if and index depends on
-              // it
-              auto calc = ExecutionNode::castTo<CalculationNode*>(parent);
-              calculations.push_back(calc);
-              parent = parent->getFirstParent();
-              continue;
-            } else if (parent->getType() == EN::INDEX) {
-              // check that this index node does not depend on previous
-              // calculations
-
-              indexNode = ExecutionNode::castTo<IndexNode*>(parent);
-              VarSet usedVariables;
-              indexNode->getVariablesUsedHere(usedVariables);
-              for (auto* calc : calculations) {
-                if (calc->setsVariable(usedVariables)) {
-                  // can not join past this calculation
-                  goto endOfIndexNodeSearch;
-                }
-              }
-              break;
-            } else {
-              goto endOfIndexNodeSearch;
-            }
-          }
-        }
-      endOfIndexNodeSearch:
+        findCandidates(startNode, candidates, handled);
 
         if (candidates.size() >= 2) {
           LOG_JOIN_OPTIMIZER_RULE << "Found " << candidates.size()
