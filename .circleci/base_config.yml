@@ -21,7 +21,7 @@ parameters:
     default: "arangosh"
   build-docker-tag:
     type: string
-    default: arangodb/build-alpine:3.16-gcc11.2-openssl3.1.3-4999848556c
+    default: arangodb/build-alpine:3.18-clang16.0.6-openssl3.1.3-407ca20c886
 
 commands:
   checkout-arangodb:
@@ -212,7 +212,7 @@ jobs:
       - run:
           name: Configure
           command: |
-            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib
+            CC=clang CXX=clang++ cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib
       - run:
           name: Build
           command: |
