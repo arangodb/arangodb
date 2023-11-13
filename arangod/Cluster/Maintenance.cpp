@@ -1953,7 +1953,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
                       ? localLogs.find(dbName)
                       : std::end(localLogs);
       if (replicationVersion == replication::Version::TWO &&
-          shardsToLogs == std::end(shardIdToLogId)) {
+          logs == std::end(localLogs)) {
         LOG_TOPIC("04470", ERR, Logger::MAINTENANCE)
             << "Could not get the local logs status of replication2 database: "
             << dbName;
@@ -2513,7 +2513,7 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
         TRI_ASSERT(lshard.isObject());
         bool needsResyncBecauseOfRestart = false;
         if (lshard.isObject()) {  // just in case
-          VPackSlice theLeader = lshard.get("theLeader");
+          VPackSlice theLeader = lshard.get(THE_LEADER);
           if (theLeader.isString() &&
               theLeader.stringView() ==
                   maintenance::ResignShardLeadership::LeaderNotYetKnownString) {

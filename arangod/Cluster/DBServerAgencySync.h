@@ -70,11 +70,13 @@ class DBServerAgencySync {
 
   void work();
 
+  // equivalent of ReplicatedLogStatusMapByDatabase
   using LocalLogsMap = std::unordered_map<
       std::string,
       std::unordered_map<arangodb::replication2::LogId,
                          arangodb::replication2::maintenance::LogStatus>>;
 
+  // equivalent of ShardIdToLogIdMapByDatabase
   using LocalShardsToLogsMap = std::unordered_map<
       std::string,
       std::unordered_map<std::string, arangodb::replication2::LogId>>;
