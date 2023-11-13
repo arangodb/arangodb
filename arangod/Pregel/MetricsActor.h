@@ -151,7 +151,7 @@ struct MetricsHandler : actor::HandlerBase<Runtime, MetricsState> {
     return std::move(this->state);
   }
 
-  auto operator()(actor::message::UnknownMessage unknown)
+  auto operator()(actor::message::UnknownMessage<ActorPID> unknown)
       -> std::unique_ptr<MetricsState> {
     LOG_TOPIC("edc16", INFO, Logger::PREGEL) << fmt::format(
         "Metrics Actor: Error - sent unknown message to {}", unknown.receiver);

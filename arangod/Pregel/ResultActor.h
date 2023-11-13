@@ -154,7 +154,7 @@ struct ResultHandler : actor::HandlerBase<Runtime, ResultState> {
     return std::move(this->state);
   }
 
-  auto operator()(actor::message::UnknownMessage unknown)
+  auto operator()(actor::message::UnknownMessage<ActorPID> unknown)
       -> std::unique_ptr<ResultState> {
     LOG_TOPIC("eb602", INFO, Logger::PREGEL)
         << fmt::format("Result Actor: Error - sent unknown message to {}",

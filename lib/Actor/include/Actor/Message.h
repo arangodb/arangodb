@@ -29,7 +29,6 @@
 
 #include <velocypack/Builder.h>
 
-#include "DistributedActorPID.h"
 #include "MPSCQueue.h"
 
 namespace arangodb::actor {
@@ -52,12 +51,13 @@ auto inspect(Inspector& f, MessagePayload<Payload>& x) {
 
 namespace message {
 
+template<class PID>
 struct UnknownMessage {
-  DistributedActorPID sender;
-  DistributedActorPID receiver;
+  PID sender;
+  PID receiver;
 };
-template<typename Inspector>
-auto inspect(Inspector& f, UnknownMessage& x) {
+template<typename Inspector, class PID>
+auto inspect(Inspector& f, UnknownMessage<PID>& x) {
   return f.object(x).fields(f.field("sender", x.sender),
                             f.field("receiver", x.receiver));
 }
@@ -81,13 +81,14 @@ auto inspect(Inspector& f, NetworkError& x) {
 
 template<class PID>
 struct ActorError
-    : std::variant<UnknownMessage, ActorNotFound<PID>, NetworkError> {
-  using std::variant<UnknownMessage, ActorNotFound<PID>, NetworkError>::variant;
+    : std::variant<UnknownMessage<PID>, ActorNotFound<PID>, NetworkError> {
+  using std::variant<UnknownMessage<PID>, ActorNotFound<PID>,
+                     NetworkError>::variant;
 };
 template<typename Inspector, class PID>
 auto inspect(Inspector& f, ActorError<PID>& x) {
   return f.variant(x).unqualified().alternatives(
-      arangodb::inspection::type<UnknownMessage>("UnknownMessage"),
+      arangodb::inspection::type<UnknownMessage<PID>>("UnknownMessage"),
       arangodb::inspection::type<ActorNotFound<PID>>("ActorNotFound"),
       arangodb::inspection::type<NetworkError>("NetworkError"));
 }
@@ -120,8 +121,8 @@ struct MessageOrError
 template<typename Payload>
 struct fmt::formatter<arangodb::actor::MessagePayload<Payload>>
     : arangodb::inspection::inspection_formatter {};
-template<>
-struct fmt::formatter<arangodb::actor::message::UnknownMessage>
+template<class PID>
+struct fmt::formatter<arangodb::actor::message::UnknownMessage<PID>>
     : arangodb::inspection::inspection_formatter {};
 template<class PID>
 struct fmt::formatter<arangodb::actor::message::ActorNotFound<PID>>

@@ -33,7 +33,7 @@
 struct ThreadPoolScheduler : arangodb::actor::IScheduler {
  private:
   arangodb::ThreadGuard threads;
-  std::queue<arangodb::actor::ActorWorker> jobs;
+  std::queue<arangodb::actor::LazyWorker> jobs;
   std::mutex queue_mutex;
   std::condition_variable mutex_condition;
   bool should_terminate = false;
@@ -72,7 +72,7 @@ struct ThreadPoolScheduler : arangodb::actor::IScheduler {
     threads.joinAll();
   }
 
-  void queue(arangodb::actor::ActorWorker&& job) override {
+  void queue(arangodb::actor::LazyWorker&& job) override {
     {
       std::unique_lock lock(queue_mutex);
       jobs.push(std::move(job));

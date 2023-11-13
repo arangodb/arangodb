@@ -93,7 +93,7 @@ struct TrivialHandler : HandlerBase<Runtime, TrivialState> {
     return std::move(this->state);
   }
 
-  auto operator()(actor::message::UnknownMessage unknown)
+  auto operator()(actor::message::UnknownMessage<ActorPID> unknown)
       -> std::unique_ptr<TrivialState> {
     this->state->called++;
     this->state->state =

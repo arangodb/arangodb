@@ -193,7 +193,7 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     return std::move(this->state);
   }
 
-  auto operator()(actor::message::UnknownMessage unknown)
+  auto operator()(actor::message::UnknownMessage<ActorPID> unknown)
       -> std::unique_ptr<ConductorState> {
     LOG_TOPIC("d1791", INFO, Logger::PREGEL)
         << fmt::format("Conductor Actor: Error - sent unknown message to {}",

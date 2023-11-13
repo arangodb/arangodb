@@ -501,7 +501,7 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     return std::move(this->state);
   }
 
-  auto operator()(actor::message::UnknownMessage unknown)
+  auto operator()(actor::message::UnknownMessage<ActorPID> unknown)
       -> std::unique_ptr<StatusState> {
     LOG_TOPIC("eb6f2", INFO, Logger::PREGEL)
         << fmt::format("Status Actor: Error - sent unknown message to {}",

@@ -171,7 +171,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     return std::move(this->state);
   }
 
-  auto operator()(actor::message::UnknownMessage unknown)
+  auto operator()(actor::message::UnknownMessage<ActorPID> unknown)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("7ee4d", INFO, Logger::PREGEL) << fmt::format(
         "Worker Actor: Error - sent unknown message to {}", unknown.receiver);

@@ -207,7 +207,7 @@ struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
     return std::move(this->state);
   }
 
-  auto operator()(actor::message::UnknownMessage unknown)
+  auto operator()(actor::message::UnknownMessage<ActorPID> unknown)
       -> std::unique_ptr<SpawnState> {
     LOG_TOPIC("7b602", INFO, Logger::PREGEL) << fmt::format(
         "Spawn Actor: Error - sent unknown message to {}", unknown.receiver);

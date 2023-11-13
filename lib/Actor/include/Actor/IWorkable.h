@@ -23,17 +23,13 @@
 
 #pragma once
 
-#include <chrono>
-#include <functional>
-#include "Actor/LazyWorker.h"
+#include <memory>
 
 namespace arangodb::actor {
 
-struct IScheduler {
-  virtual ~IScheduler() = default;
-  virtual void queue(LazyWorker&& worker) = 0;
-  virtual void delay(std::chrono::seconds delay,
-                     std::function<void(bool)>&& fn) = 0;
+struct IWorkable : std::enable_shared_from_this<IWorkable> {
+  virtual ~IWorkable() = default;
+  virtual void work() = 0;
 };
 
 }  // namespace arangodb::actor

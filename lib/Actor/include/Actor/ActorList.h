@@ -30,14 +30,17 @@
 
 namespace arangodb::actor {
 
-template<typename F>
-concept Predicate = requires(F fn, std::shared_ptr<ActorBase> const& actor) {
+template<typename F, class ActorPID>
+concept Predicate =
+    requires(F fn, std::shared_ptr<ActorBase<ActorPID>> const& actor) {
   { fn(actor) } -> std::same_as<bool>;
 };
 
+template<class ActorPID>
 struct ActorList {
  private:
-  struct ActorMap : std::unordered_map<ActorID, std::shared_ptr<ActorBase>> {};
+  struct ActorMap
+      : std::unordered_map<ActorID, std::shared_ptr<ActorBase<ActorPID>>> {};
   Guarded<ActorMap> actors;
   struct ActorInfo {
     ActorID id;
@@ -53,9 +56,11 @@ struct ActorList {
         [id](ActorMap const& map) -> bool { return map.contains(id); });
   }
 
-  auto find(ActorID id) const -> std::optional<std::shared_ptr<ActorBase>> {
+  auto find(ActorID id) const
+      -> std::optional<std::shared_ptr<ActorBase<ActorPID>>> {
     return actors.doUnderLock(
-        [id](ActorMap const& map) -> std::optional<std::shared_ptr<ActorBase>> {
+        [id](ActorMap const& map)
+            -> std::optional<std::shared_ptr<ActorBase<ActorPID>>> {
           auto a = map.find(id);
           if (a == std::end(map)) {
             return std::nullopt;
@@ -65,7 +70,7 @@ struct ActorList {
         });
   }
 
-  auto add(ActorID id, std::shared_ptr<ActorBase> actor) -> void {
+  auto add(ActorID id, std::shared_ptr<ActorBase<ActorPID>> actor) -> void {
     actors.doUnderLock(
         [&id, &actor](ActorMap& map) { map.emplace(id, std::move(actor)); });
   }
@@ -74,7 +79,7 @@ struct ActorList {
     actors.doUnderLock([id](ActorMap& map) { map.erase(id); });
   }
 
-  template<Predicate F>
+  template<Predicate<ActorPID> F>
   auto removeIf(F&& isDeletable) -> void {
     actors.doUnderLock([&isDeletable](ActorMap& map) {
       std::erase_if(map, [&isDeletable](const auto& item) {
@@ -85,7 +90,9 @@ struct ActorList {
   }
 
   template<typename F>
-  requires requires(F fn, std::shared_ptr<ActorBase>& actor) { {fn(actor)}; }
+  requires requires(F fn, std::shared_ptr<ActorBase<ActorPID>>& actor) {
+    {fn(actor)};
+  }
   auto apply(F&& fn) -> void {
     actors.doUnderLock([&fn](ActorMap& map) {
       for (auto&& [_, actor] : map) {
@@ -94,7 +101,7 @@ struct ActorList {
     });
   }
 
-  template<Predicate F>
+  template<Predicate<ActorPID> F>
   auto checkAll(F&& check) const -> bool {
     return actors.doUnderLock([&check](ActorMap const& map) {
       for (auto const& [_, actor] : map) {
@@ -122,38 +129,30 @@ struct ActorList {
   }
 
   template<typename Inspector>
-  friend auto inspect(Inspector& f, ActorInfo& x);
-  template<typename Inspector>
-  friend auto inspect(Inspector& f, ActorMap const& x);
-  template<typename Inspector>
-  friend auto inspect(Inspector& f, ActorList const& x);
-};
-template<typename Inspector>
-auto inspect(Inspector& f, ActorList::ActorInfo& x) {
-  return f.object(x).fields(f.field("id", x.id), f.field("type", x.type));
-}
-template<typename Inspector>
-auto inspect(Inspector& f, ActorList::ActorMap const& x) {
-  if constexpr (Inspector::isLoading) {
-    return inspection::Status{};
-  } else {
-    auto actorInfos = std::vector<ActorList::ActorInfo>{};
-    actorInfos.reserve(x.size());
-    for (auto const& [id, actor] : x) {
-      actorInfos.emplace_back(
-          ActorList::ActorInfo{.id = id, .type = actor->typeName()});
-    }
-    return f.apply(actorInfos);
-  }
-}
-template<typename Inspector>
-auto inspect(Inspector& f, ActorList const& x) {
-  if constexpr (Inspector::isLoading) {
-    return inspection::Status{};
-  } else {
+  friend inline auto inspect(Inspector& f, ActorList const& x) {
+    static_assert(not Inspector::isLoading);
     return x.actors.doUnderLock(
-        [&f](ActorList::ActorMap const& map) { return f.apply(map); });
+        [&f](typename ActorList::ActorMap const& map) { return f.apply(map); });
   }
-}
+
+  template<typename Inspector>
+  friend inline auto inspect(Inspector& f, ActorList::ActorInfo& x) {
+    return f.object(x).fields(f.field("id", x.id), f.field("type", x.type));
+  }
+  template<typename Inspector>
+  friend inline auto inspect(Inspector& f, ActorList::ActorMap const& x) {
+    if constexpr (Inspector::isLoading) {
+      return inspection::Status{};
+    } else {
+      auto actorInfos = std::vector<ActorList::ActorInfo>{};
+      actorInfos.reserve(x.size());
+      for (auto const& [id, actor] : x) {
+        actorInfos.emplace_back(
+            ActorList::ActorInfo{.id = id, .type = actor->typeName()});
+      }
+      return f.apply(actorInfos);
+    }
+  }
+};
 
 };  // namespace arangodb::actor
