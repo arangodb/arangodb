@@ -4,13 +4,13 @@ devel
 * Support alternative syntax for UPSERT queries, so that arbitrary filter
   conditions can be used. The alternative syntax is:
 
-      UPSERT <output-variable> 
-      FILTER <expression> 
+      UPSERT FILTER <expression> 
       UPDATE|REPLACE ...
 
-  The key change here is that <output-variable> will populate a variable
-  with the to-be-found document, and this same variable can be used in the
-  following filter condition to filter out the document.
+  The key change here is that the UPSERT will produce a new variable `$CURRENT`
+  with the to-be-found document. This variable can be used in the following 
+  filter condition to apply arbitrary filter conditions and not just equality
+  matches.
 
 * Fixed a problem in ReadWriteLock which could prevent waiting readers
   from being woken up, when a write lock acquire timed out.
