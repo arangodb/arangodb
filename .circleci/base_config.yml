@@ -555,19 +555,19 @@ workflows:
           name: eslint
           requires:
             - minimal-checkout
-  x64-linux-community-pr:
-    jobs:
-      - compile-linux:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          resource-class: xlarge
-          name: build-linux-ce-x64
-          preset: community-pr
-          enterprise: false
-      - run-cppcheck:
-          name: cppcheck
-          requires:
-            - build-linux-ce-x64
+  # x64-linux-community-pr:
+  #   jobs:
+  #     - compile-linux:
+  #         context:
+  #           - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+  #         resource-class: xlarge
+  #         name: build-linux-ce-x64
+  #         preset: community-pr
+  #         enterprise: false
+  #     - run-cppcheck:
+  #         name: cppcheck
+  #         requires:
+  #           - build-linux-ce-x64
   # x64-linux-enterprise-pr:
   #   jobs:
   #     - compile-linux:
@@ -664,11 +664,11 @@ workflows:
   #         preset: community-pr
   #         build-tests: false
   #         enterprise: false
-  # x64-enterprise-windows-pr:
-  #   jobs:
-  #     - compile-windows:
-  #         context:
-  #           - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-  #         name: build-windows-ee-x64
-  #         preset: enterprise-pr
-  #         build-tests: true
+  x64-enterprise-windows-pr:
+    jobs:
+      - compile-windows:
+          context:
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          name: build-windows-ee-x64
+          preset: enterprise-pr
+          build-tests: true
