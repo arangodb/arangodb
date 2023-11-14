@@ -66,6 +66,9 @@ struct DelayedExecutor : AsyncLogWriteBatcher::IAsyncExecutor,
 
  private:
   std::deque<Func> queue;
+
+ private:
+  void runOnceFromQueue(decltype(queue)& queue_) noexcept;
 };
 
 struct SyncExecutor : AsyncLogWriteBatcher::IAsyncExecutor {
