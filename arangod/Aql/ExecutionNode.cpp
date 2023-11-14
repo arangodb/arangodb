@@ -1331,6 +1331,7 @@ RegisterInfos ExecutionNode::createRegisterInfos(
 RegisterCount ExecutionNode::getNrInputRegisters() const {
   ExecutionNode const* previousNode = getFirstDependency();
   // in case of the SingletonNode, there are no input registers
+  TRI_ASSERT(previousNode != nullptr || getType() == ExecutionNode::SINGLETON);
   return previousNode == nullptr
              ? getNrOutputRegisters()
              : getRegisterPlan()->nrRegs[previousNode->getDepth()];
@@ -2778,7 +2779,7 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
     TRI_ASSERT(!returnInheritedResults());
     // TODO We should be able to remove this special case when the new
     //      register planning is ready.
-    // The Return Executor only writes to register 0.
+    // The ReturnExecutor only writes to register 0.
     constexpr auto outputRegister = RegisterId{0};
 
     auto registerInfos =
@@ -2792,10 +2793,7 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
 
 bool ReturnNode::returnInheritedResults() const {
   bool const isRoot = plan()->root() == this;
-
-  bool const isDBServer = ServerState::instance()->isDBServer();
-
-  return isRoot && !isDBServer;
+  return isRoot;
 }
 
 /// @brief clone ExecutionNode recursively
