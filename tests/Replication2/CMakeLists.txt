@@ -11,9 +11,6 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
   #Mocks/FakeReplicatedLog.cpp
   #Mocks/FakeReplicatedLog.h
   #Mocks/PersistedLog.cpp
-  #Mocks/PersistedLog.cpp
-  #Mocks/PersistedLog.h
-  #Mocks/PersistedLog.h
   #ReplicatedLog/TestHelper.cpp
   Helper/ReplicatedLogTestSetup.h
 
