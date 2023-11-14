@@ -51,22 +51,22 @@ auto inspect(Inspector& f, MessagePayload<Payload>& x) {
 
 namespace message {
 
-template<class PID>
+template<typename PID>
 struct UnknownMessage {
   PID sender;
   PID receiver;
 };
-template<typename Inspector, class PID>
+template<typename Inspector, typename PID>
 auto inspect(Inspector& f, UnknownMessage<PID>& x) {
   return f.object(x).fields(f.field("sender", x.sender),
                             f.field("receiver", x.receiver));
 }
 
-template<class PID>
+template<typename PID>
 struct ActorNotFound {
   PID actor;
 };
-template<typename Inspector, class PID>
+template<typename Inspector, typename PID>
 auto inspect(Inspector& f, ActorNotFound<PID>& x) {
   return f.object(x).fields(f.field("actor", x.actor));
 }
@@ -79,13 +79,13 @@ auto inspect(Inspector& f, NetworkError& x) {
   return f.object(x).fields(f.field("server", x.message));
 }
 
-template<class PID>
+template<typename PID>
 struct ActorError
     : std::variant<UnknownMessage<PID>, ActorNotFound<PID>, NetworkError> {
   using std::variant<UnknownMessage<PID>, ActorNotFound<PID>,
                      NetworkError>::variant;
 };
-template<typename Inspector, class PID>
+template<typename Inspector, typename PID>
 auto inspect(Inspector& f, ActorError<PID>& x) {
   return f.variant(x).unqualified().alternatives(
       arangodb::inspection::type<UnknownMessage<PID>>("UnknownMessage"),
@@ -108,7 +108,7 @@ struct concatenator<std::variant<Args0...>, std::variant<Args1...>> {
   }
 };
 
-template<typename T, class PID>
+template<typename T, typename PID>
 struct MessageOrError
     : concatenator<typename T::variant, typename ActorError<PID>::variant> {
   using concatenator<typename T::variant,
@@ -121,10 +121,10 @@ struct MessageOrError
 template<typename Payload>
 struct fmt::formatter<arangodb::actor::MessagePayload<Payload>>
     : arangodb::inspection::inspection_formatter {};
-template<class PID>
+template<typename PID>
 struct fmt::formatter<arangodb::actor::message::UnknownMessage<PID>>
     : arangodb::inspection::inspection_formatter {};
-template<class PID>
+template<typename PID>
 struct fmt::formatter<arangodb::actor::message::ActorNotFound<PID>>
     : arangodb::inspection::inspection_formatter {};
 template<>

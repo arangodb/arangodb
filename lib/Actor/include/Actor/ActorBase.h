@@ -30,7 +30,7 @@
 
 namespace arangodb::actor {
 
-template<class ActorPID>
+template<typename ActorPID>
 struct ActorBase : IWorkable {
   virtual ~ActorBase() = default;
   virtual auto process(ActorPID sender, MessagePayloadBase& msg) -> void = 0;
