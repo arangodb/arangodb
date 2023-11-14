@@ -378,9 +378,10 @@ jobs:
           condition: << parameters.publish-artifacts >>
           steps:
             - store_artifacts:
-                path: D:/CircleCI/project/build/bin/RelWithDebInfo/arango*
+                path: D:/CircleCI/project/build/bin/RelWithDebInfo/
+                destination: windows
             - persist_to_workspace:
-                root: .
+                root: D:/CircleCI/project/build/
                 paths:
                   - CMakePresets.json
                   - build/
