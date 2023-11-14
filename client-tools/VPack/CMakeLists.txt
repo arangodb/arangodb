@@ -24,6 +24,7 @@ target_link_libraries(${BIN_ARANGOVPACK}
   boost_system
   boost_boost
   arango_shell
+  clienttools_utils
 )
 
 install(
@@ -32,10 +33,10 @@ install(
 
 install_config(arangovpack)
 
+add_dependencies(arangovpack zlibstatic)
+
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangovpack zlibstatic v8_build) # v8_build includes ICU build
-else ()
-  add_dependencies(arangovpack zlibstatic) # v8_build includes ICU build
+  add_dependencies(arangovpack v8_build)
 endif ()
 
 if (USE_JEMALLOC)

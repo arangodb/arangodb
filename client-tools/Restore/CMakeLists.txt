@@ -42,10 +42,10 @@ install(
 
 install_config(arangorestore)
 
+add_dependencies(arangorestore zlibstatic)
+
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangorestore zlibstatic v8_build) # v8_build includes ICU build
-else ()
-  add_dependencies(arangorestore zlibstatic) # v8_build includes ICU build
+  add_dependencies(arangorestore v8_build) # v8_build includes ICU build
 endif ()
 
 if (USE_JEMALLOC)

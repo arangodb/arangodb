@@ -36,10 +36,10 @@ install(
 
 install_config(arangobench)
 
+add_dependencies(arangobench zlibstatic)
+
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangobench zlibstatic v8_build) # v8_build includes ICU build
-else ()
-  add_dependencies(arangobench zlibstatic)
+  add_dependencies(arangobench v8_build) # v8_build includes ICU build
 endif ()
 
 if (USE_JEMALLOC)

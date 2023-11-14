@@ -34,10 +34,10 @@ install(
 
 install_config(arangodump)
 
+add_dependencies(arangodump zlibstatic)
+
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangodump zlibstatic v8_build) # v8_build includes ICU build
-else ()
-  add_dependencies(arangodump zlibstatic)
+  add_dependencies(arangodump v8_build) # v8_build includes ICU build
 endif ()
 
 if (USE_JEMALLOC)

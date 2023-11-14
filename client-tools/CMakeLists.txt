@@ -20,6 +20,7 @@ if (USE_V8)
 endif ()
 
 add_subdirectory(Utils)
+add_subdirectory(VPack)
 
 add_custom_target(client-tools
     DEPENDS arangodump

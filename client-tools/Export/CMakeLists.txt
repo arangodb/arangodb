@@ -34,10 +34,10 @@ install(
 
 install_config(arangoexport)
 
+add_dependencies(arangoexport zlibstatic)
+
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangoexport zlibstatic v8_build) # v8_build includes ICU build
-else ()
-  add_dependencies(arangoexport zlibstatic) # v8_build includes ICU build
+  add_dependencies(arangoexport v8_build) # v8_build includes ICU build
 endif ()
 
 if (USE_JEMALLOC)

@@ -70,10 +70,10 @@ install(
 
 install_config(arangosh)
 
+add_dependencies(arangosh zlibstatic)
+
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangosh zlibstatic v8_build)
-else ()
-  add_dependencies(arangosh zlibstatic)
+  add_dependencies(arangosh v8_build)
 endif ()
 
 if (USE_JEMALLOC)

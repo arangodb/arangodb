@@ -38,10 +38,10 @@ if (USE_ENTERPRISE)
 
   install_config(arangobackup)
 
+  add_dependencies(arangobackup zlibstatic)
+
   if (NOT USE_PRECOMPILED_V8)
-    add_dependencies(arangobackup zlibstatic v8_build) # v8_build includes ICU build
-  else ()
-    add_dependencies(arangobackup zlibstatic)
+    add_dependencies(arangobackup v8_build) # v8_build includes ICU build
   endif ()
 
   if (USE_JEMALLOC)
