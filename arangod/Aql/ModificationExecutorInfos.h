@@ -32,8 +32,7 @@
 
 #include <velocypack/Slice.h>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 class ExecutionEngine;
 class QueryContext;
@@ -94,6 +93,7 @@ struct ModificationExecutorInfos {
   // bool _returnInheritedResults;
   IsReplace _isReplace;                            // needed for upsert
   IgnoreDocumentNotFound _ignoreDocumentNotFound;  // needed for update replace
+  bool _useBatching;                               // used only by upsert
 
   // insert (singleinput) - upsert (inDoc) - update replace (inDoc)
   RegisterId _input1RegisterId;
@@ -107,5 +107,4 @@ struct ModificationExecutorInfos {
   RegisterId _outputRegisterId;  // single remote
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

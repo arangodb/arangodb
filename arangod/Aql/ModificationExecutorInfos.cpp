@@ -52,6 +52,7 @@ ModificationExecutorInfos::ModificationExecutorInfos(
       _doCount(doCount),
       _isReplace(isReplace),
       _ignoreDocumentNotFound(ignoreDocumentNotFound),
+      _useBatching(true),  // used only by upsert
       _input1RegisterId(input1RegisterId),
       _input2RegisterId(input2RegisterId),
       _input3RegisterId(input3RegisterId),

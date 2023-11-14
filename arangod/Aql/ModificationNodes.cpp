@@ -549,7 +549,12 @@ UpsertNode::UpsertNode(ExecutionPlan* plan,
           Variable::varFromVPack(plan->getAst(), base, "insertVariable")),
       _updateVariable(
           Variable::varFromVPack(plan->getAst(), base, "updateVariable")),
-      _isReplace(base.get("isReplace").getBoolean()) {}
+      _isReplace(base.get("isReplace").isTrue()),
+      _canReadOwnWrites(true) {
+  if (auto s = base.get(StaticStrings::ReadOwnWrites); !s.isNone()) {
+    _canReadOwnWrites = s.isTrue();
+  }
+}
 
 /// @brief toVelocyPack
 void UpsertNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
@@ -562,6 +567,7 @@ void UpsertNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   nodes.add(VPackValue("updateVariable"));
   _updateVariable->toVelocyPack(nodes);
   nodes.add("isReplace", VPackValue(_isReplace));
+  nodes.add(StaticStrings::ReadOwnWrites, VPackValue(_canReadOwnWrites));
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -605,6 +611,10 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(_isReplace) /*(needed by upsert)*/,
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
+  // if we do not need to observe our own writes, we can turn on batching
+  // for the UpsertNode. otherwise, the Upsert will execute with a batch
+  // size of just 1.
+  executorInfos._useBatching = !_canReadOwnWrites;
   return std::make_unique<SingleRowUpsertExecutionBlock>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
@@ -631,7 +641,7 @@ ExecutionNode* UpsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   auto c = std::make_unique<UpsertNode>(
       plan, _id, collection(), _options, inDocVariable, insertVariable,
-      updateVariable, outVariableNew, _isReplace);
+      updateVariable, outVariableNew, _isReplace, _canReadOwnWrites);
   ModificationNode::cloneCommon(c.get());
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
