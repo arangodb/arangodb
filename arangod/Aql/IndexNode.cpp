@@ -191,7 +191,8 @@ IndexNode::IndexNode(ExecutionPlan* plan,
     }
   }
   _options.forLateMaterialization = isLateMaterialized();
-  prepareProjections();
+
+  updateProjectionsIndexInfo();
 }
 
 void IndexNode::setProjections(arangodb::aql::Projections projections) {
@@ -213,6 +214,9 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
   // add collection information
   CollectionAccessingNode::toVelocyPack(builder, flags);
 
+  // "strategy" is not read back by the C++ code, but it is exposed for
+  // convenience and testing
+  builder.add("strategy", VPackValue(strategyName(strategy())));
   builder.add("needsGatherNodeSort", VPackValue(_needsGatherNodeSort));
 
   // this attribute is never read back by arangod, but it is used a lot
@@ -323,6 +327,63 @@ NonConstExpressionContainer IndexNode::buildNonConstExpressions() const {
   return {};
 }
 
+/// @brief determine the IndexNode strategy
+IndexNode::Strategy IndexNode::strategy() const {
+  if (doCount()) {
+    TRI_ASSERT(_indexes.size() == 1);
+    return Strategy::kCount;
+  }
+
+  if (isLateMaterialized()) {
+    return Strategy::kLateMaterialized;
+  }
+
+  bool produceResult = isProduceResult();
+
+  if (!produceResult && !hasFilter()) {
+    return Strategy::kNoResult;
+  }
+
+  if (_indexes.size() == 1) {
+    if (projections().usesCoveringIndex(_indexes[0]) &&
+        (filterProjections().usesCoveringIndex(_indexes[0]) ||
+         filterProjections().empty())) {
+      return Strategy::kCovering;
+    }
+    if (filterProjections().usesCoveringIndex(_indexes[0])) {
+      if (produceResult) {
+        return Strategy::kCoveringFilterOnly;
+      }
+      return Strategy::kCoveringFilterScanOnly;
+    }
+  }
+
+  TRI_ASSERT(_indexes.size() >= 1);
+  return Strategy::kDocument;
+}
+
+std::string_view IndexNode::strategyName(
+    IndexNode::Strategy strategy) noexcept {
+  switch (strategy) {
+    case Strategy::kNoResult:
+      return "no result";
+    case Strategy::kCovering:
+      return "covering";
+    case Strategy::kCoveringFilterScanOnly:
+      return "covering, filter only, scan only";
+    case Strategy::kCoveringFilterOnly:
+      return "covering, filter only";
+    case Strategy::kDocument:
+      return "document";
+    case Strategy::kLateMaterialized:
+      return "late materialized";
+    case Strategy::kCount:
+      return "count";
+  }
+  TRI_ASSERT(false);
+  return "unknown";
+}
+
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
     ExecutionEngine& engine) const {
@@ -343,7 +404,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
 
     filterVarsToRegs.reserve(inVars.size());
 
-    for (auto& var : inVars) {
+    for (auto const& var : inVars) {
       TRI_ASSERT(var != nullptr);
       auto regId = variableToRegisterId(var);
       filterVarsToRegs.emplace_back(var->id, regId);
@@ -376,18 +437,43 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
       static_cast<aql::RegisterCount>(_outNonMaterializedIndVars.second.size());
   TRI_ASSERT(0 == numIndVarsRegisters || isLateMaterialized());
 
-  // We could be asked to produce only document id for later materialization
-  // or full document body at once
-  aql::RegisterCount numDocumentRegs = 1;
-
   // if late materialized
   // We have one additional output register for each index variable which is
-  // used later, before the output register for document id These must of
+  // used later, before the output register for document id. These must of
   // course fit in the available registers. There may be unused registers
   // reserved for later blocks.
   RegIdSet writableOutputRegisters;
-  writableOutputRegisters.reserve(numDocumentRegs + numIndVarsRegisters);
-  writableOutputRegisters.emplace(outRegister);
+  auto const& p = projections();
+  if (!p.empty()) {
+    // projections. no need to produce the full document.
+    // create one register per projection.
+    for (size_t i = 0; i < p.size(); ++i) {
+      Variable const* var = p[i].variable;
+      if (var == nullptr) {
+        // the output register can be a nullptr if the "optimize-projections"
+        // rule was not (yet) executed.
+        continue;
+      }
+      TRI_ASSERT(var != nullptr);
+      auto regId = variableToRegisterId(var);
+      filterVarsToRegs.emplace_back(var->id, regId);
+      writableOutputRegisters.emplace(regId);
+      if (hasFilter()) {
+        filterCoveringVars.emplace(var, p[i].coveringIndexPosition);
+      }
+    }
+
+    // in case we do not have any output registers for the projections,
+    // we must write them to the main output register, in a velocypack
+    // object.
+    // this will be handled below by adding the main output register.
+  }
+  if (writableOutputRegisters.empty() && (doCount() || isProduceResult())) {
+    // counting also needs an output register.
+    writableOutputRegisters.emplace(outRegister);
+  }
+  TRI_ASSERT(!writableOutputRegisters.empty() ||
+             (!doCount() && !isProduceResult()));
 
   auto const& varInfos = getRegisterPlan()->varInfo;
   IndexValuesRegisters outNonMaterializedIndRegs;
@@ -402,26 +488,20 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
                    auto it = varInfos.find(indVar.first->id);
                    TRI_ASSERT(it != varInfos.cend());
                    RegisterId regId = it->second.registerId;
-
                    writableOutputRegisters.emplace(regId);
                    return std::make_pair(indVar.second, regId);
                  });
-
-  TRI_ASSERT(writableOutputRegisters.size() ==
-             numDocumentRegs + numIndVarsRegisters);
 
   auto registerInfos =
       createRegisterInfos({}, std::move(writableOutputRegisters));
 
   auto executorInfos = IndexExecutorInfos(
-      outRegister, engine.getQuery(), this->collection(), _outVariable,
-      isProduceResult(), this->_filter.get(), this->projections(),
-      this->filterProjections(), std::move(filterVarsToRegs),
-      std::move(nonConstExpressions), doCount(), canReadOwnWrites(),
-      _condition->root(), _allCoveredByOneIndex, this->getIndexes(),
-      _plan->getAst(), this->options(), _outNonMaterializedIndVars,
-      std::move(outNonMaterializedIndRegs), std::move(filterCoveringVars));
-
+      strategy(), outRegister, engine.getQuery(), collection(), _outVariable,
+      filter(), projections(), filterProjections(), std::move(filterVarsToRegs),
+      std::move(nonConstExpressions), canReadOwnWrites(), _condition->root(),
+      _allCoveredByOneIndex, getIndexes(), _plan->getAst(), this->options(),
+      _outNonMaterializedIndVars, std::move(outNonMaterializedIndRegs),
+      std::move(filterCoveringVars));
   return std::make_unique<ExecutionBlockImpl<IndexExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
@@ -475,10 +555,16 @@ void IndexNode::replaceVariables(
 void IndexNode::replaceAttributeAccess(ExecutionNode const* self,
                                        Variable const* searchVariable,
                                        std::span<std::string_view> attribute,
-                                       Variable const* replaceVariable) {
-  if (_condition) {
+                                       Variable const* replaceVariable,
+                                       size_t /*index*/) {
+  DocumentProducingNode::replaceAttributeAccess(self, searchVariable, attribute,
+                                                replaceVariable);
+  if (_condition && self != this) {
     _condition->replaceAttributeAccess(searchVariable, attribute,
                                        replaceVariable);
+  }
+  if (hasFilter() && self != this) {
+    _filter->replaceAttributeAccess(searchVariable, attribute, replaceVariable);
   }
 }
 
@@ -545,12 +631,21 @@ AsyncPrefetchEligibility IndexNode::canUseAsyncPrefetching() const noexcept {
 
 /// @brief getVariablesUsedHere, modifying the set in-place
 void IndexNode::getVariablesUsedHere(VarSet& vars) const {
+  TRI_ASSERT(_condition != nullptr);
+  // lookup condition
   Ast::getReferencedVariables(_condition->root(), vars);
   if (hasFilter()) {
+    // post-filter
     Ast::getReferencedVariables(filter()->node(), vars);
   }
   for (auto const& it : _outNonMaterializedIndVars.second) {
     vars.erase(it.first);
+  }
+  // projection output variables.
+  for (size_t i = 0; i < _projections.size(); ++i) {
+    if (_projections[i].variable != nullptr) {
+      vars.erase(_projections[i].variable);
+    }
   }
   vars.erase(_outVariable);
 }
@@ -573,16 +668,26 @@ void IndexNode::needsGatherNodeSort(bool value) {
 
 std::vector<Variable const*> IndexNode::getVariablesSetHere() const {
   if (!isLateMaterialized()) {
-    return std::vector<Variable const*>{_outVariable};
+    return DocumentProducingNode::getVariablesSetHere();
   }
 
+  // add variables for late materialization
   std::vector<arangodb::aql::Variable const*> vars;
+
   vars.reserve(1 + _outNonMaterializedIndVars.second.size());
   vars.emplace_back(_outNonMaterializedDocId);
   std::transform(_outNonMaterializedIndVars.second.cbegin(),
                  _outNonMaterializedIndVars.second.cend(),
                  std::back_inserter(vars),
                  [](auto const& indVar) { return indVar.first; });
+
+  // projection output variables
+  for (size_t i = 0; i < _projections.size(); ++i) {
+    // output registers are not necessarily set yet
+    if (_projections[i].variable != nullptr) {
+      vars.push_back(_projections[i].variable);
+    }
+  }
 
   return vars;
 }
@@ -625,33 +730,47 @@ transaction::Methods::IndexHandle IndexNode::getSingleIndex() const {
 void IndexNode::prepareProjections() { recalculateProjections(plan()); }
 
 bool IndexNode::recalculateProjections(ExecutionPlan* plan) {
-  // by default, we do not use projections for the filter condition
-  _filterProjections.clear();
-
   auto idx = getSingleIndex();
   if (idx == nullptr) {
+    // by default, we do not use projections for the filter condition
+    _projections.clear();
+    _filterProjections.clear();
     return false;
   }
 
+  if (isLateMaterialized()) {
+    _projections.clear();
+    return false;
+  }
+
+  // this call will clear _projections and _filterProjections
   bool wasUpdated = DocumentProducingNode::recalculateProjections(plan);
 
-  if (hasFilter()) {
-    if (idx->covers(_filterProjections)) {
-      bool containsId = false;
-      for (auto const& p : _filterProjections.projections()) {
-        if (p.path.type() == AttributeNamePath::Type::IdAttribute) {
-          containsId = true;
-          break;
-        }
-      }
+  updateProjectionsIndexInfo();
 
-      if (!containsId) {
-        _filterProjections.setCoveringContext(collection()->id(), idx);
+  return wasUpdated;
+}
+
+void IndexNode::updateProjectionsIndexInfo() {
+  auto idx = getSingleIndex();
+  if (idx == nullptr) {
+    return;
+  }
+  if (hasFilter() && idx->covers(_filterProjections)) {
+    bool containsId = false;
+    for (auto const& p : _filterProjections.projections()) {
+      if (p.path.type() == AttributeNamePath::Type::IdAttribute) {
+        containsId = true;
+        break;
       }
+    }
+
+    if (!containsId) {
+      _filterProjections.setCoveringContext(collection()->id(), idx);
     }
   }
 
-  const bool filterCoveredByIndex =
+  bool filterCoveredByIndex =
       !hasFilter() || _filterProjections.usesCoveringIndex();
 
   if (filterCoveredByIndex && idx->covers(_projections)) {
@@ -663,11 +782,31 @@ bool IndexNode::recalculateProjections(ExecutionPlan* plan) {
   // document anyways.
   TRI_ASSERT(!_projections.usesCoveringIndex() || !hasFilter() ||
              _filterProjections.usesCoveringIndex());
-  return wasUpdated;
 }
 
 bool IndexNode::isProduceResult() const {
+  if (doCount()) {
+    return false;
+  }
   bool filterRequiresDocument =
-      _filter != nullptr && !_filterProjections.usesCoveringIndex();
-  return (isVarUsedLater(_outVariable) || filterRequiresDocument) && !doCount();
+      hasFilter() && !_filterProjections.usesCoveringIndex();
+  if (filterRequiresDocument) {
+    return true;
+  }
+  auto const& p = projections();
+  // check individual output registers of projections
+  for (size_t i = 0; i < p.size(); ++i) {
+    Variable const* var = p[i].variable;
+    // the output register can be a nullptr if the "optimize-projections"
+    // rule was not (yet) executed
+    if (var != nullptr && isVarUsedLater(var)) {
+      return true;
+    }
+  }
+  if (!p.hasOutputRegisters()) {
+    // projections do not use output registers. now check
+    // if the full document output variable will be used later.
+    return isVarUsedLater(_outVariable);
+  }
+  return false;
 }

@@ -24,7 +24,7 @@
 
 #include <map>
 
-#include "Actor/ActorPID.h"
+#include "Actor/DistributedActorPID.h"
 #include "Basics/ResultT.h"
 #include "Cluster/ClusterTypes.h"
 #include "Inspection/Format.h"
@@ -70,7 +70,7 @@ auto inspect(Inspector& f, GraphLoaded& x) {
 }
 
 struct SendCountPerActor {
-  actor::ActorPID receiver;
+  actor::DistributedActorPID receiver;
   uint64_t sendCount;
 };
 template<typename Inspector>

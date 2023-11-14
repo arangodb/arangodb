@@ -371,7 +371,8 @@ class ExecutionNode {
   virtual void replaceAttributeAccess(ExecutionNode const* self,
                                       Variable const* searchVariable,
                                       std::span<std::string_view> attribute,
-                                      Variable const* replaceVariable);
+                                      Variable const* replaceVariable,
+                                      size_t index);
 
   /// @brief check equality of ExecutionNodes
   virtual bool isEqualTo(ExecutionNode const& other) const;
@@ -706,7 +707,8 @@ class EnumerateCollectionNode : public ExecutionNode,
   void replaceAttributeAccess(ExecutionNode const* self,
                               Variable const* searchVariable,
                               std::span<std::string_view> attribute,
-                              Variable const* replaceVariable) override;
+                              Variable const* replaceVariable,
+                              size_t index) override;
 
   /// @brief the cost of an enumerate collection node is a multiple of the cost
   /// of its unique dependency
@@ -911,7 +913,8 @@ class CalculationNode : public ExecutionNode {
   void replaceAttributeAccess(ExecutionNode const* self,
                               Variable const* searchVariable,
                               std::span<std::string_view> attribute,
-                              Variable const* replaceVariable) override;
+                              Variable const* replaceVariable,
+                              size_t index) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;

@@ -1,6 +1,73 @@
 devel
 -----
 
+* Fixed a problem in ReadWriteLock which could prevent waiting readers
+  from being woken up, when a write lock acquire timed out.
+
+* Allow a scheduler thread to detach itself from the scheduler if it sees 
+  that it has to perform a potentially long running task like waiting for
+  a lock. This allows a new scheduler thread to be started and avoids
+  that it can happen that all threads are blocked waiting for a lock,
+  which has in the past led to deadlock situations. The number of detached
+  threads is limited by a configurable option. Currently, only threads
+  waiting for more than 1 second on a collection lock will detach themselves.
+ 
+* Added AQL statistics for additional document lookups. Also, the JoinNode
+  now exposes additional statistics:
+    - `scannedIndex`
+    - `filtered`
+    - `seeks`
+    - `documentLookups`
+
+* Updated jemalloc to the most recent available version of the code.
+  There has not been a release in a while, and this code fixes
+  compile problems using jemalloc with newer versions of clang in ArangoDB's
+  release build environment.
+
+* Fix propagation of collection `writeConcern` changes to DB servers.
+
+* Make arangodump exclude the following cluster collection properties when
+  writing collection parameters files in a single server dump:
+  - replicationFactor
+  - writeConcern
+  - numberOfShards
+  - minReplicationFactor
+  - shardKeys
+  - shards
+  It is not really useful to write these attributes out when taking single 
+  server dumps, because they don't have useful values.
+
+* Fixed BTS-1273: While queueing an async server log message, we could be
+  blocked by IO on the log-writer thread. This could slow down the main
+  path. In case the log-writer is configured to use slow device
+  (e.g. using syslog) this could have significant impact.
+
+* Introduced an upper bound of queued async log messages. If we would log
+  more messages then the background logger thread can actually process, we
+  start to write log messages synchronously. This is to prevent the queue
+  to grow indefinitely. The upper bound is configurable via the startup
+  option `--log.max-queued-entries`. The default value is 10000.
+
+* Silence TSAN for shutdown for access to the SchedulerFeature::SCHEDULER
+  pointer using atomic references.
+
+* Fixed a race in controlled leader change which could lead to a situation
+  in which a shard follower is dropped when the first write operation
+  happens. This fixes BTS-1647.
+
+* Fixed an unnecessary follower drop in controlled leader change, which will
+  speed up leader changes. This fixes BTS-1658.
+
+* Fixed BTS-1669 Transaction Manager returns Error if we Abort an Expired
+  Transaction.
+  There was a small time window of around 2 seconds in which aborting expired
+  transactions would return "transaction aborted" instead of returning success.
+  The time window was between when a transaction expired (according to its
+  TTL value) and when the transaction manager's garbage collection aborted
+  the transaction. The issue only happened for transactions which outlived
+  their TTL value and for which an abort operation was attempted in that
+  time window.
+
 * Change default value of arangodump startup option `--use-parallel-dump` 
   from `false` to `true`.
   This enables the more parallel dump procedure by default, which allows
@@ -18,15 +85,15 @@ devel
   higher to be able to restore a dump that was taken with the 
   `--split-files` option.
 
-* Added `--write-concern` parameter similar to `--replication-factor` to
-
 * MDS-1164: Added Publisher and Company to the Window binaries
+
+* Added `--write-concern` parameter similar to `--replication-factor` to
 
 * BTS-1602: Added new flag `--ignore-collection` to the arangodump binary.
   Collections can now be excluded by using this flag. This flag can be
   specified multiple times to exclude multiple collections.
 
-* Added --write-concern parameter similar to --replication-factor to
+* Added `--write-concern` parameter similar to `--replication-factor` to
   arangodump. This enables the user to override the write concern for
   one or multiple collections.
 

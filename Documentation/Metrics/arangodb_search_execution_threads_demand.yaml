@@ -1,0 +1,22 @@
+name: arangodb_search_execution_threads_demand
+introducedIn: "3.12.0"
+help: |
+  Number of ArangoSearch parallel execution threads requested by queries.
+unit: number
+type: gauge
+category: ArangoSearch
+complexity: advanced
+exposedBy:
+  - dbserver
+  - single
+description: |
+    The value of this metric represents the number of currently used execution
+    threads for `SEARCH` operations against Views.
+troubleshoot: |
+  If this metric contains a value lower than the configured
+  `--arangosearch.execution-threads-limit` (number of cores * 2 by default)
+  then there are enough threads for running queries with parallel execution.
+
+  If the value is greater than the limit, some queries can not get enough threads
+  to achieve the requested parallelism currently. In this state, queries are
+  less parallel up to single-threaded execution. Query performance might degrade.

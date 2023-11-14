@@ -20,10 +20,10 @@
 ///
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
-#include "RegisterInfos.h"
-#include "Logger/LogMacros.h"
 
+#include "RegisterInfos.h"
 #include "Basics/debugging.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb::aql;
 
@@ -82,10 +82,13 @@ RegisterInfos::RegisterInfos(RegIdSet readableInputRegisters,
                _registersToKeep.back().end());
   }
   TRI_ASSERT(!_registersToKeep.empty());
-  for (RegisterId const regToKeep : _registersToKeep.back()) {
-    TRI_ASSERT(regToKeep < nrInputRegisters);
-    TRI_ASSERT(regToKeep < nrOutputRegisters);
-    TRI_ASSERT(_registersToClear.find(regToKeep) == _registersToClear.end());
+  for (RegisterId regToKeep : _registersToKeep.back()) {
+    TRI_ASSERT(regToKeep < nrInputRegisters)
+        << "register: " << regToKeep.value();
+    TRI_ASSERT(regToKeep < nrOutputRegisters)
+        << "register: " << regToKeep.value();
+    TRI_ASSERT(_registersToClear.find(regToKeep) == _registersToClear.end())
+        << "register: " << regToKeep.value();
   }
 #endif
 }

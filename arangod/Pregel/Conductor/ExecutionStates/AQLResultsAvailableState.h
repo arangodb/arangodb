@@ -40,9 +40,10 @@ struct AQLResultsAvailable : ExecutionState {
   auto name() const -> std::string override { return "done"; }
   auto aqlResultsAvailable() const -> bool override { return true; }
   auto messages()
-      -> std::unordered_map<actor::ActorPID,
+      -> std::unordered_map<actor::DistributedActorPID,
                             worker::message::WorkerMessages> override;
-  auto receive(actor::ActorPID sender, message::ConductorMessages message)
+  auto receive(actor::DistributedActorPID sender,
+               message::ConductorMessages message)
       -> std::optional<StateChange> override;
 
   ConductorState& conductor;

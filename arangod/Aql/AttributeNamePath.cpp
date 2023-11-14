@@ -118,6 +118,8 @@ AttributeNamePath::Type AttributeNamePath::type() const noexcept {
     TRI_ASSERT(size() > 1);
     type = Type::MultiAttribute;
   }
+
+  TRI_ASSERT(size() == 1 || type == Type::MultiAttribute);
   return type;
 }
 
@@ -232,6 +234,11 @@ AttributeNamePath& AttributeNamePath::shortenTo(size_t length) {
     ++numEqual;
   }
   return numEqual;
+}
+
+bool AttributeNamePath::isPrefixOf(
+    const AttributeNamePath& other) const noexcept {
+  return commonPrefixLength(*this, other) == size();
 }
 
 std::ostream& operator<<(std::ostream& stream, AttributeNamePath const& path) {

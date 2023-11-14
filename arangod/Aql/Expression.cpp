@@ -139,7 +139,8 @@ void Expression::replaceVariables(
   _node = _ast->clone(_node);
   TRI_ASSERT(_node != nullptr);
 
-  _node = Ast::replaceVariables(const_cast<AstNode*>(_node), replacements);
+  _node = Ast::replaceVariables(const_cast<AstNode*>(_node), replacements,
+                                /*unlockNodes*/ false);
 
   if (_type == ATTRIBUTE_ACCESS && _accessor != nullptr) {
     _accessor->replaceVariable(replacements);
@@ -200,7 +201,7 @@ void Expression::freeInternals() noexcept {
 /// @brief reset internal attributes after variables in the expression were
 /// changed
 void Expression::invalidateAfterReplacements() {
-  if (_type == ATTRIBUTE_ACCESS || _type == SIMPLE) {
+  if (_type == ATTRIBUTE_ACCESS || _type == SIMPLE || _type == JSON) {
     freeInternals();
     _node->clearFlagsRecursive();  // recursively delete the node's flags
   }

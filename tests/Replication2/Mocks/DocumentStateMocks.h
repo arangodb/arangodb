@@ -25,6 +25,7 @@
 #include "Replication2/StateMachines/Document/CollectionReader.h"
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentStateErrorHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
@@ -32,13 +33,13 @@
 #include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
-#include "Replication2/StateMachines/Document/ShardProperties.h"
 #include "Replication2/StateMachines/Document/MaintenanceActionExecutor.h"
 
 #include "Cluster/ClusterTypes.h"
 #include "Transaction/Manager.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/LogicalCollection.h"
 
 namespace arangodb::replication2::tests {
 struct MockDocumentStateTransactionHandler;
@@ -67,8 +68,12 @@ struct MockCollectionReader : replicated_state::document::ICollectionReader {
 };
 
 /*
- * Only servers as a way to return a unique_ptr, allowing us to use the
+ * Only serves as a way to return a unique_ptr, allowing us to use the
  * shared mock.
+ * The IDatabaseSnapshot::createCollectionReader() method is supposed to return
+ * a unique_ptr. In our mocks, we'll make that return a
+ * unique_ptr<MockCollectionReaderDelegator>, which allows us to use the
+ * shared_ptr<MockCollectionReader> as a delegate.
  */
 struct MockCollectionReaderDelegator
     : replicated_state::document::ICollectionReader {
@@ -93,8 +98,8 @@ struct MockDatabaseSnapshot : replicated_state::document::IDatabaseSnapshot {
       std::shared_ptr<replicated_state::document::ICollectionReader> reader);
 
   MOCK_METHOD(std::unique_ptr<replicated_state::document::ICollectionReader>,
-              createCollectionReader, (std::string_view collectionName),
-              (override));
+              createCollectionReader,
+              (std::shared_ptr<LogicalCollection> shard), (override));
 
   MOCK_METHOD(Result, resetTransaction, (), (override));
 
@@ -102,6 +107,13 @@ struct MockDatabaseSnapshot : replicated_state::document::IDatabaseSnapshot {
   std::shared_ptr<replicated_state::document::ICollectionReader> _reader;
 };
 
+/*
+ * We need this delegator class because the
+ * IDatabaseSnapshotFactory::createSnapshot() return an unique_ptr, which we
+ * cannot control. We'll make it return a
+ * unique_ptr<MockDatabaseSnapshotDelegator>, which allows us to use the
+ * shared_ptr<MockDatabaseSnapshot> as a delegate.
+ */
 struct MockDatabaseSnapshotDelegator
     : replicated_state::document::IDatabaseSnapshot {
   explicit MockDatabaseSnapshotDelegator(
@@ -109,8 +121,8 @@ struct MockDatabaseSnapshotDelegator
       : _snapshot(std::move(snapshot)) {}
 
   std::unique_ptr<replicated_state::document::ICollectionReader>
-  createCollectionReader(std::string_view collectionName) override {
-    return _snapshot->createCollectionReader(collectionName);
+  createCollectionReader(std::shared_ptr<LogicalCollection> shard) override {
+    return _snapshot->createCollectionReader(shard);
   }
 
   auto resetTransaction() -> Result override {
@@ -127,6 +139,11 @@ struct MockDatabaseSnapshotFactory
               createSnapshot, (), (override));
 };
 
+/*
+ * We need this delegator because in order to construct a
+ * DocumentStateSnapshotHandler, we need to pass a
+ * unique_ptr<IDatabaseSnapshotFactory> to the constructor.
+ */
 struct MockDatabaseSnapshotFactoryDelegator
     : replicated_state::document::IDatabaseSnapshotFactory {
   explicit MockDatabaseSnapshotFactoryDelegator(
@@ -154,8 +171,8 @@ struct MockDocumentStateHandlersFactory
       createShardHandler, (TRI_vocbase_t&, GlobalLogIdentifier), (override));
   MOCK_METHOD(std::shared_ptr<
                   replicated_state::document::IDocumentStateSnapshotHandler>,
-              createSnapshotHandler,
-              (TRI_vocbase_t&, GlobalLogIdentifier const&), (override));
+              createSnapshotHandler, (TRI_vocbase_t&, GlobalLogIdentifier),
+              (override));
   MOCK_METHOD(
       std::unique_ptr<
           replicated_state::document::IDocumentStateTransactionHandler>,
@@ -175,6 +192,10 @@ struct MockDocumentStateHandlersFactory
       std::shared_ptr<replicated_state::document::IMaintenanceActionExecutor>,
       createMaintenanceActionExecutor,
       (TRI_vocbase_t&, GlobalLogIdentifier, ServerID), (override));
+  MOCK_METHOD(
+      std::shared_ptr<replicated_state::document::IDocumentStateErrorHandler>,
+      createErrorHandler, (GlobalLogIdentifier), (override));
+  MOCK_METHOD(LoggerContext, createLogger, (GlobalLogIdentifier), (override));
 
   auto makeUniqueDatabaseSnapshotFactory()
       -> std::unique_ptr<replicated_state::document::IDatabaseSnapshotFactory>;
@@ -184,6 +205,11 @@ struct MockDocumentStateHandlersFactory
       TRI_vocbase_t* vocbase, GlobalLogIdentifier const&,
       std::shared_ptr<replicated_state::document::IDocumentStateShardHandler>)
       -> std::shared_ptr<MockDocumentStateTransactionHandler>;
+  auto makeRealLoggerContext(GlobalLogIdentifier) -> LoggerContext;
+  auto makeRealErrorHandler(GlobalLogIdentifier) -> std::shared_ptr<
+      replicated_state::document::IDocumentStateErrorHandler>;
+
+  static auto constexpr kDbName = "documentStateMachineTestDb";
 
   std::shared_ptr<MockDatabaseSnapshotFactory> databaseSnapshotFactory;
 };
@@ -212,20 +238,17 @@ struct MockDocumentStateTransactionHandler
           real);
 
   MOCK_METHOD(Result, applyEntry,
-              (replicated_state::document::ReplicatedOperation), (override));
+              (replicated_state::document::ReplicatedOperation),
+              (noexcept, override));
   MOCK_METHOD(
       Result, applyEntry,
       (replicated_state::document::ReplicatedOperation::OperationType const&),
-      (override));
+      (noexcept, override));
   MOCK_METHOD(void, removeTransaction, (TransactionId tid), (override));
   MOCK_METHOD(std::vector<TransactionId>, getTransactionsForShard,
               (ShardID const&), (override));
   MOCK_METHOD(TransactionMap const&, getUnfinishedTransactions, (),
               (const, override));
-  MOCK_METHOD(
-      Result, validate,
-      (replicated_state::document::ReplicatedOperation::OperationType const&),
-      (const, override));
 
  private:
   std::shared_ptr<replicated_state::document::IDocumentStateTransactionHandler>
@@ -234,44 +257,45 @@ struct MockDocumentStateTransactionHandler
 
 struct MockMaintenanceActionExecutor
     : replicated_state::document::IMaintenanceActionExecutor {
-  MOCK_METHOD(Result, executeCreateCollectionAction,
-              (ShardID, CollectionID, std::shared_ptr<VPackBuilder>),
-              (override));
-  MOCK_METHOD(Result, executeModifyCollectionAction,
-              (ShardID shard, CollectionID collection,
-               velocypack::SharedSlice properties),
-              (override));
-  MOCK_METHOD(Result, executeDropCollectionAction, (ShardID, CollectionID),
-              (override));
+  MOCK_METHOD(Result, executeCreateCollection,
+              (ShardID const&, TRI_col_type_e, velocypack::SharedSlice const&),
+              (noexcept, override));
+  MOCK_METHOD(Result, executeDropCollection,
+              (std::shared_ptr<LogicalCollection>), (noexcept, override));
+  MOCK_METHOD(Result, executeModifyCollection,
+              (std::shared_ptr<LogicalCollection>, CollectionID,
+               velocypack::SharedSlice),
+              (noexcept, override));
   MOCK_METHOD(Result, executeCreateIndex,
-              (ShardID, std::shared_ptr<VPackBuilder> const&,
+              (std::shared_ptr<LogicalCollection>, velocypack::SharedSlice,
                std::shared_ptr<methods::Indexes::ProgressTracker>),
-              (override));
-  MOCK_METHOD(Result, executeDropIndex, (ShardID, velocypack::SharedSlice),
-              (override));
-  MOCK_METHOD(void, addDirty, (), (override));
+              (noexcept, override));
+  MOCK_METHOD(Result, executeDropIndex,
+              (std::shared_ptr<LogicalCollection>, velocypack::SharedSlice),
+              (noexcept, override));
+  MOCK_METHOD(Result, addDirty, (), (noexcept, override));
 };
 
 struct MockDocumentStateShardHandler
     : replicated_state::document::IDocumentStateShardHandler {
-  MOCK_METHOD(ResultT<bool>, ensureShard,
-              (ShardID, CollectionID, std::shared_ptr<VPackBuilder>),
-              (override));
+  MOCK_METHOD(Result, ensureShard,
+              (ShardID const&, TRI_col_type_e, velocypack::SharedSlice const&),
+              (noexcept, override));
   MOCK_METHOD(Result, modifyShard,
-              (ShardID shard, CollectionID collection,
-               velocypack::SharedSlice properties),
-              (override));
-  MOCK_METHOD(ResultT<bool>, dropShard, (ShardID const&), (override));
+              (ShardID, CollectionID, velocypack::SharedSlice),
+              (noexcept, override));
+  MOCK_METHOD(Result, dropShard, (ShardID const&), (noexcept, override));
   MOCK_METHOD(Result, ensureIndex,
-              (ShardID shard, std::shared_ptr<VPackBuilder> const& properties,
-               std::shared_ptr<methods::Indexes::ProgressTracker> progress),
-              (override));
+              (ShardID, velocypack::SharedSlice properties,
+               std::shared_ptr<methods::Indexes::ProgressTracker>),
+              (noexcept, override));
   MOCK_METHOD(Result, dropIndex, (ShardID, velocypack::SharedSlice),
-              (override));
-  MOCK_METHOD(Result, dropAllShards, (), (override));
-  MOCK_METHOD(bool, isShardAvailable, (ShardID const&), (override));
-  MOCK_METHOD(replicated_state::document::ShardMap, getShardMap, (),
-              (override));
+              (noexcept, override));
+  MOCK_METHOD(Result, dropAllShards, (), (noexcept, override));
+  MOCK_METHOD(std::vector<std::shared_ptr<LogicalCollection>>,
+              getAvailableShards, (), (noexcept, override));
+  MOCK_METHOD(ResultT<std::shared_ptr<LogicalCollection>>, lookupShard,
+              (ShardID const&), (noexcept, override));
   MOCK_METHOD(ResultT<std::unique_ptr<transaction::Methods>>, lockShard,
               (ShardID const&, AccessMode::Type, transaction::OperationOrigin),
               (override));
@@ -289,20 +313,20 @@ struct MockDocumentStateSnapshotHandler
 
   MOCK_METHOD(ResultT<std::weak_ptr<replicated_state::document::Snapshot>>,
               create,
-              (replicated_state::document::ShardMap,
-               replicated_state::document::SnapshotParams::Start const& params),
-              (override));
+              (std::vector<std::shared_ptr<LogicalCollection>>,
+               replicated_state::document::SnapshotParams::Start const&),
+              (noexcept, override));
   MOCK_METHOD(ResultT<std::weak_ptr<replicated_state::document::Snapshot>>,
               find, (replicated_state::document::SnapshotId const&),
-              (override, noexcept));
+              (noexcept, override));
   MOCK_METHOD(replicated_state::document::AllSnapshotsStatus, status, (),
               (const, override));
-  MOCK_METHOD(Result, abort, (replicated_state::document::SnapshotId const& id),
-              (override));
-  MOCK_METHOD(Result, finish,
-              (replicated_state::document::SnapshotId const& id), (override));
+  MOCK_METHOD(Result, abort, (replicated_state::document::SnapshotId const&),
+              (noexcept, override));
+  MOCK_METHOD(Result, finish, (replicated_state::document::SnapshotId const&),
+              (noexcept, override));
   MOCK_METHOD(void, clear, (), (override));
-  MOCK_METHOD(void, giveUpOnShard, (ShardID const& shardId), (override));
+  MOCK_METHOD(void, giveUpOnShard, (ShardID const&), (override));
 
   static cluster::RebootTracker rebootTracker;
 
@@ -314,7 +338,7 @@ struct MockDocumentStateSnapshotHandler
 struct MockDocumentStateLeaderInterface
     : replicated_state::document::IDocumentStateLeaderInterface {
   MOCK_METHOD(
-      futures::Future<ResultT<replicated_state::document::SnapshotConfig>>,
+      futures::Future<ResultT<replicated_state::document::SnapshotBatch>>,
       startSnapshot, (), (override));
   MOCK_METHOD(
       futures::Future<ResultT<replicated_state::document::SnapshotBatch>>,

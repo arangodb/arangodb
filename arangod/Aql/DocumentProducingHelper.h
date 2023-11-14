@@ -84,11 +84,11 @@ struct DocumentProducingFunctionContext {
 
   void setOutputRow(OutputAqlItemRow* outputRow);
 
-  bool getProduceResult() const noexcept;
-
   aql::Projections const& getProjections() const noexcept;
 
   aql::Projections const& getFilterProjections() const noexcept;
+
+  aql::Projections const& getProjectionsForRegisters() const noexcept;
 
   transaction::Methods* getTrxPtr() const noexcept;
 
@@ -103,9 +103,13 @@ struct DocumentProducingFunctionContext {
 
   void incrFiltered() noexcept;
 
+  void incrLookups() noexcept;
+
   [[nodiscard]] uint64_t getAndResetNumScanned() noexcept;
 
   [[nodiscard]] uint64_t getAndResetNumFiltered() noexcept;
+
+  [[nodiscard]] uint64_t getAndResetNumLookups() noexcept;
 
   InputAqlItemRow const& getInputRow() const noexcept;
 
@@ -149,10 +153,12 @@ struct DocumentProducingFunctionContext {
   Expression* _filter;
   aql::Projections const& _projections;
   aql::Projections const& _filterProjections;
+  aql::Projections _projectionsForRegisters;
   ResourceMonitor& _resourceMonitor;
 
   uint64_t _numScanned;
   uint64_t _numFiltered;
+  uint64_t _numLookups;
 
   std::unique_ptr<DocumentProducingExpressionContext> _expressionContext;
 
@@ -173,7 +179,6 @@ struct DocumentProducingFunctionContext {
   /// @brief Flag if we need to check for uniqueness
   bool const _checkUniqueness;
 
-  bool const _produceResult;
   bool _allowCoveringIndexOptimization;
   /// @brief Flag if the current index pointer is the last of the list.
   ///        Used in uniqueness checks.
@@ -192,7 +197,7 @@ IndexIterator::CoveringCallback getCallback(
     DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
     DocumentProducingFunctionContext& context);
 
-template<bool checkUniqueness, bool skip>
+template<bool checkUniqueness, bool skip, bool produceResult>
 IndexIterator::CoveringCallback getCallback(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context);
@@ -207,7 +212,7 @@ IndexIterator::DocumentCallback getCallback(
     DocumentProducingCallbackVariant::DocumentCopy,
     DocumentProducingFunctionContext& context);
 
-template<bool checkUniqueness>
+template<bool checkUniqueness, bool produceResult>
 IndexIterator::LocalDocumentIdCallback getNullCallback(
     DocumentProducingFunctionContext& context);
 

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertTrue, assertFalse, query_explain, AQL_EXECUTE */
+/*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertUndefined */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -436,7 +436,59 @@ function gatherBlockTestSuite () {
     },
 
     testMultipleShardsWithIndex : function () {
+      const opts = { optimizer: { rules: ["-optimize-projections"] } };
       idx = c1.ensureIndex({ type: "skiplist", fields: ["Hallo"] });
+      let query = "FOR doc IN " + cn1 + " SORT doc.Hallo RETURN doc.Hallo";
+      // check the return value
+      let result = db._query(query, null, opts).toArray();
+      let last = -1;
+      result.forEach(function(value) {
+        assertTrue(value >= last);
+        last = value;
+      });
+      
+      let nodes = query_explain(query, null, opts).plan.nodes;
+      let nodeTypes = nodes.map(function(node) { return node.type; });
+      // must have no sort but a gather node
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"));
+      let indexNode = nodes[nodeTypes.indexOf("IndexNode")];
+      assertTrue(indexNode.ascending);
+      assertEqual(-1, nodeTypes.indexOf("SortNode"));
+      assertNotEqual(-1, nodeTypes.indexOf("GatherNode"));
+      let gatherNode = nodes[nodeTypes.indexOf("GatherNode")];
+      assertEqual(1, gatherNode.elements.length); // must do sorting in GatherNode
+      assertEqual(["Hallo"], gatherNode.elements[0].path); 
+      assertTrue(gatherNode.elements[0].ascending);
+    },
+    
+    testMultipleShardsWithIndexDescending : function () {
+      const opts = { optimizer: { rules: ["-optimize-projections"] } };
+      idx = c1.ensureIndex({ type: "skiplist", fields: ["Hallo"] });
+      let query = "FOR doc IN " + cn1 + " SORT doc.Hallo DESC RETURN doc.Hallo";
+      // check the return value
+      let result = db._query(query, null, opts).toArray();
+      let last = 99999999999;
+      result.forEach(function(value) {
+        assertTrue(value <= last);
+        last = value;
+      });
+      
+      let nodes = query_explain(query, null, opts).plan.nodes;
+      let nodeTypes = nodes.map(function(node) { return node.type; });
+      // must have no sort but a gather node
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"));
+      let indexNode = nodes[nodeTypes.indexOf("IndexNode")];
+      assertFalse(indexNode.ascending);
+      assertEqual(-1, nodeTypes.indexOf("SortNode"));
+      assertNotEqual(-1, nodeTypes.indexOf("GatherNode"));
+      let gatherNode = nodes[nodeTypes.indexOf("GatherNode")];
+      assertEqual(1, gatherNode.elements.length); // must do sorting in GatherNode
+      assertEqual(["Hallo"], gatherNode.elements[0].path); 
+      assertFalse(gatherNode.elements[0].ascending);
+    },
+    
+    testMultipleShardsWithIndexAndProjection : function () {
+      idx = c1.ensureIndex({ type: "persistent", fields: ["Hallo"] });
       let query = "FOR doc IN " + cn1 + " SORT doc.Hallo RETURN doc.Hallo";
       // check the return value
       let result = db._query(query).toArray();
@@ -454,35 +506,14 @@ function gatherBlockTestSuite () {
       assertTrue(indexNode.ascending);
       assertEqual(-1, nodeTypes.indexOf("SortNode"));
       assertNotEqual(-1, nodeTypes.indexOf("GatherNode"));
+      assertEqual(1, indexNode.projections.length);
+      assertEqual(["Hallo"], indexNode.projections[0].path);
+      assertTrue(indexNode.projections[0].hasOwnProperty("variable"));
+      assertTrue(indexNode.projections[0].variable.hasOwnProperty("id"));
       let gatherNode = nodes[nodeTypes.indexOf("GatherNode")];
       assertEqual(1, gatherNode.elements.length); // must do sorting in GatherNode
-      assertEqual(["Hallo"], gatherNode.elements[0].path); 
+      assertUndefined(gatherNode.elements[0].path); 
       assertTrue(gatherNode.elements[0].ascending);
-    },
-    
-    testMultipleShardsWithIndexDescending : function () {
-      idx = c1.ensureIndex({ type: "skiplist", fields: ["Hallo"] });
-      let query = "FOR doc IN " + cn1 + " SORT doc.Hallo DESC RETURN doc.Hallo";
-      // check the return value
-      let result = db._query(query).toArray();
-      let last = 99999999999;
-      result.forEach(function(value) {
-        assertTrue(value <= last);
-        last = value;
-      });
-      
-      let nodes = query_explain(query).plan.nodes;
-      let nodeTypes = nodes.map(function(node) { return node.type; });
-      // must have no sort but a gather node
-      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"));
-      let indexNode = nodes[nodeTypes.indexOf("IndexNode")];
-      assertFalse(indexNode.ascending);
-      assertEqual(-1, nodeTypes.indexOf("SortNode"));
-      assertNotEqual(-1, nodeTypes.indexOf("GatherNode"));
-      let gatherNode = nodes[nodeTypes.indexOf("GatherNode")];
-      assertEqual(1, gatherNode.elements.length); // must do sorting in GatherNode
-      assertEqual(["Hallo"], gatherNode.elements[0].path); 
-      assertFalse(gatherNode.elements[0].ascending);
     },
     
     testMultipleShardsCollect : function () {

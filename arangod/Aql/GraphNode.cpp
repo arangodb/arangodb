@@ -31,6 +31,7 @@
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/OptimizerRule.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortCondition.h"
@@ -803,6 +804,26 @@ CostEstimate GraphNode::estimateCost() const {
 }
 
 AsyncPrefetchEligibility GraphNode::canUseAsyncPrefetching() const noexcept {
+  if (_options->parallelism() == 1) {
+    if (ServerState::instance()->isSingleServer()) {
+      // in single server mode, we allow async prefetching if the
+      // traversal itself does not use parallelism
+      return AsyncPrefetchEligibility::kEnableForNode;
+    } else if (ServerState::instance()->isCoordinator()) {
+#ifdef USE_ENTERPRISE
+      if (plan()->hasAppliedRule(OptimizerRule::clusterOneShardRule)) {
+        // we can also allow async prefetching when we already applied
+        // the "cluster-one-shard" rule. when this rule triggers, all
+        // traversals are on the DB server and we do not use any
+        // TraverserEngines.
+        return AsyncPrefetchEligibility::kEnableForNode;
+      }
+#endif
+      // fallthrough intentional
+    }
+  }
+  // in cluster mode, we have to disallow prefetching because we may
+  // have TraverserEngines.
   return AsyncPrefetchEligibility::kDisableGlobally;
 }
 

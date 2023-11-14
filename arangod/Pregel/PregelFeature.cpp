@@ -27,7 +27,7 @@
 #include <atomic>
 #include <unordered_set>
 
-#include "Actor/ActorPID.h"
+#include "Actor/DistributedActorPID.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
@@ -116,6 +116,20 @@ network::Headers buildHeaders() {
 }
 
 }  // namespace
+
+PregelScheduler::PregelScheduler(Scheduler* scheduler) : _scheduler{scheduler} {
+  TRI_ASSERT(_scheduler != nullptr);
+}
+
+void PregelScheduler::queue(actor::ActorWorker&& worker) {
+  _scheduler->queue(RequestLane::INTERNAL_LOW, std::move(worker));
+}
+
+void PregelScheduler::delay(std::chrono::seconds delay,
+                            std::function<void(bool)>&& fn) {
+  std::ignore = _scheduler->queueDelayed("pregel-actors",
+                                         RequestLane::INTERNAL_LOW, delay, fn);
+}
 
 auto PregelRunUser::authorized(ExecContext const& userContext) const -> bool {
   if (userContext.isSuperuser()) {
@@ -238,31 +252,30 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
         .ttl = executionSpecifications.ttl,
         .parallelism = executionSpecifications.parallelism}};
     auto statusActorID = _actorRuntime->spawn<StatusActor>(
-        vocbase.name(), std::make_unique<StatusState>(vocbase),
-        std::move(statusStart));
-    auto statusActorPID = actor::ActorPID{
+        std::make_unique<StatusState>(vocbase), std::move(statusStart));
+    auto statusActorPID = actor::DistributedActorPID{
         .server = server, .database = vocbase.name(), .id = statusActorID};
 
     auto metricsActorID = _actorRuntime->spawn<MetricsActor>(
-        vocbase.name(), std::make_unique<MetricsState>(_metrics),
+        std::make_unique<MetricsState>(_metrics),
         metrics::message::MetricsStart{});
     auto metricsActorPID =
-        actor::ActorPID{.server = ServerState::instance()->getId(),
-                        .database = vocbase.name(),
-                        .id = metricsActorID};
+        actor::DistributedActorPID{.server = ServerState::instance()->getId(),
+                                   .database = vocbase.name(),
+                                   .id = metricsActorID};
 
     auto resultState = std::make_unique<ResultState>(ttl);
     auto resultData = resultState->data;
     auto resultActorID = _actorRuntime->spawn<ResultActor>(
-        vocbase.name(), std::move(resultState),
+        std::move(resultState),
         message::ResultMessages{message::ResultStart{}});
-    auto resultActorPID = actor::ActorPID{
+    auto resultActorPID = actor::DistributedActorPID{
         .server = server, .database = vocbase.name(), .id = resultActorID};
 
     auto spawnActorID = _actorRuntime->spawn<SpawnActor>(
-        vocbase.name(), std::make_unique<SpawnState>(vocbase, resultActorPID),
+        std::make_unique<SpawnState>(vocbase, resultActorPID),
         message::SpawnMessages{message::SpawnStart{}});
-    auto spawnActor = actor::ActorPID{
+    auto spawnActor = actor::DistributedActorPID{
         .server = server, .database = vocbase.name(), .id = spawnActorID};
     auto algorithm = AlgoRegistry::createAlgorithmNew(
         executionSpecifications.algorithm,
@@ -273,13 +286,12 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
                                 executionSpecifications.algorithm)};
     }
     auto conductorActorID = _actorRuntime->spawn<conductor::ConductorActor>(
-        vocbase.name(),
         std::make_unique<conductor::ConductorState>(
             std::move(algorithm.value()), executionSpecifications,
             std::move(spawnActor), std::move(resultActorPID),
             std::move(statusActorPID), std::move(metricsActorPID)),
         conductor::message::ConductorStart{});
-    auto conductorActorPID = actor::ActorPID{
+    auto conductorActorPID = actor::DistributedActorPID{
         .server = server, .database = vocbase.name(), .id = conductorActorID};
 
     _pregelRuns.doUnderLock([&](auto& actors) {
@@ -514,10 +526,9 @@ void PregelFeature::start() {
 
   // TODO needs to go here for now because server feature has not startd in
   // pregel feature constructor
-  _actorRuntime = std::make_shared<
-      actor::Runtime<PregelScheduler, ArangoExternalDispatcher>>(
+  _actorRuntime = std::make_shared<actor::DistributedRuntime>(
       ServerState::instance()->getId(), "PregelFeature",
-      std::make_shared<PregelScheduler>(),
+      std::make_shared<PregelScheduler>(SchedulerFeature::SCHEDULER),
       std::make_shared<ArangoExternalDispatcher>(
           "/_api/pregel/actor", server().getFeature<NetworkFeature>().pool(),
           network::Timeout{5.0 * 60}));
