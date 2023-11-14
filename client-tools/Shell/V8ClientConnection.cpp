@@ -2496,80 +2496,13 @@ bool canParseResponse(fu::Response const& response) {
          response.payloadSize() > 0;
 }
 
-v8::Local<v8::Value> parseReplyBodyToV8(fu::Response const& response,
-                                        v8::Isolate* isolate) {
-  if ((response.contentType() != fu::ContentType::VPack) &&
-      (response.contentType() != fu::ContentType::Json)) {
-    return v8::Undefined(isolate);
-  }
-
-  if (response.contentEncoding() == fuerte::ContentEncoding::Deflate ||
-      response.contentEncoding() == fuerte::ContentEncoding::Gzip) {
-    // TODO: working with the stringbuffer adds another alloc / copy.
-    // translateResultBodyToV8 will probably decode once more.
-    // this uses more resources than necessary; a better solution
-    // would implement this inside fuerte.
-    auto responseBody = response.payload();
-    VPackBuffer<uint8_t> inflateBuf;
-    ErrorCode code = TRI_ERROR_NO_ERROR;
-    if (response.contentEncoding() == fuerte::ContentEncoding::Deflate) {
-      code = arangodb::encoding::zlibInflate(
-          reinterpret_cast<uint8_t const*>(responseBody.data()),
-          responseBody.size(), inflateBuf);
-    } else {
-      TRI_ASSERT(response.contentEncoding() == fuerte::ContentEncoding::Gzip);
-      code = arangodb::encoding::gzipUncompress(
-          reinterpret_cast<uint8_t const*>(responseBody.data()),
-          responseBody.size(), inflateBuf);
-    }
-    if (code != TRI_ERROR_NO_ERROR) {
-      std::string err("Error inflating compressed response body");
-      TRI_CreateErrorObject(isolate, code, err, true);
-      return v8::Undefined(isolate);
-    }
-    if (response.contentType() == fu::ContentType::VPack) {
-      auto const& slices = VPackSlice(inflateBuf.data());
-      return TRI_VPackToV8(isolate, slices);
-    }
-    try {
-      auto parsedBody =
-          VPackParser::fromJson(inflateBuf.data(), inflateBuf.size());
-      return TRI_VPackToV8(isolate, parsedBody->slice());
-    } catch (std::exception const& ex) {
-      std::string err =
-          absl::StrCat("Error parsing the server JSON reply: ", ex.what());
-      TRI_CreateErrorObject(isolate, TRI_ERROR_HTTP_CORRUPTED_JSON, err, true);
-    }
-  } else {
-    if (response.contentType() == fu::ContentType::VPack) {
-      std::vector<VPackSlice> const& slices = response.slices();
-      return TRI_VPackToV8(isolate, slices[0]);
-    } else {
-      auto responseBody = response.payload();
-      try {
-        auto parsedBody = VPackParser::fromJson(
-            reinterpret_cast<char const*>(responseBody.data()),
-            responseBody.size());
-        return TRI_VPackToV8(isolate, parsedBody->slice());
-      } catch (std::exception const& ex) {
-        std::string err =
-            absl::StrCat("Error parsing the server JSON reply: ", ex.what());
-        TRI_CreateErrorObject(isolate, TRI_ERROR_HTTP_CORRUPTED_JSON, err,
-                              true);
-      }
-    }
-  }
-  return v8::Undefined(isolate);
-}
-
-v8::Local<v8::Value> translateResultBodyToV8(fu::Response& response,
-                                             v8::Isolate* isolate) {
+ErrorCode uncompressResponse(fu::Response& response) {
+  ErrorCode code = TRI_ERROR_NO_ERROR;
   if (response.contentEncoding() == fuerte::ContentEncoding::Deflate ||
       response.contentEncoding() == fuerte::ContentEncoding::Gzip) {
     // transparently handling deflate/gzip encoded responses
     auto responseBody = response.payload();
     VPackBuffer<uint8_t> inflateBuf;
-    ErrorCode code = TRI_ERROR_NO_ERROR;
     if (response.contentEncoding() == fuerte::ContentEncoding::Deflate) {
       code = arangodb::encoding::zlibInflate(
           reinterpret_cast<uint8_t const*>(responseBody.data()),
@@ -2581,9 +2514,7 @@ v8::Local<v8::Value> translateResultBodyToV8(fu::Response& response,
           responseBody.size(), inflateBuf);
     }
     if (code != TRI_ERROR_NO_ERROR) {
-      std::string err("Error inflating compressed response body");
-      TRI_CreateErrorObject(isolate, code, err, true);
-      return v8::Undefined(isolate);
+      return code;
     }
     // replace response body with uncompressed value
     response.setPayload(std::move(inflateBuf), 0);
@@ -2592,9 +2523,53 @@ v8::Local<v8::Value> translateResultBodyToV8(fu::Response& response,
     response.header.contentEncoding(fu::ContentEncoding::Identity);
     response.header.removeMeta(StaticStrings::ContentEncoding);
   }
+  return code;
+}
+
+v8::Local<v8::Value> parseReplyBodyToV8(fu::Response& response,
+                                        v8::Isolate* isolate) {
+  if (response.contentType() != fu::ContentType::VPack &&
+      response.contentType() != fu::ContentType::Json) {
+    return v8::Undefined(isolate);
+  }
+
+  if (auto code = uncompressResponse(response); code != TRI_ERROR_NO_ERROR) {
+    std::string err("Error inflating compressed response body");
+    TRI_CreateErrorObject(isolate, code, err, true);
+    return v8::Undefined(isolate);
+  }
+
+  if (response.contentType() == fu::ContentType::VPack) {
+    auto const& slices = response.slices();
+    return TRI_VPackToV8(isolate, slices[0]);
+  }
+  TRI_ASSERT(response.contentType() == fu::ContentType::Json);
+  auto responseBody = response.payload();
+  try {
+    auto parsedBody = VPackParser::fromJson(
+        reinterpret_cast<char const*>(responseBody.data()),
+        responseBody.size());
+    return TRI_VPackToV8(isolate, parsedBody->slice());
+  } catch (std::exception const& ex) {
+    std::string err =
+        absl::StrCat("Error parsing the server JSON reply: ", ex.what());
+    TRI_CreateErrorObject(isolate, TRI_ERROR_HTTP_CORRUPTED_JSON, err, true);
+  }
+  return v8::Undefined(isolate);
+}
+
+v8::Local<v8::Value> translateResultBodyToV8(fu::Response& response,
+                                             v8::Isolate* isolate) {
+  if (auto code = uncompressResponse(response); code != TRI_ERROR_NO_ERROR) {
+    std::string err("Error inflating compressed response body");
+    TRI_CreateErrorObject(isolate, code, err, true);
+    return v8::Undefined(isolate);
+  }
 
   auto responseBody = response.payload();
-  if (response.contentEncoding() == fuerte::ContentEncoding::Identity) {
+  if (response.contentEncoding() == fuerte::ContentEncoding::Identity &&
+      (response.isContentTypeJSON() || response.isContentTypeText() ||
+       response.isContentTypeHtml())) {
     char const* bodyStr = reinterpret_cast<char const*>(responseBody.data());
     return TRI_V8_PAIR_STRING(isolate, bodyStr, responseBody.size());
   }
@@ -2627,7 +2602,7 @@ void setResultMessage(v8::Isolate* isolate, v8::Local<v8::Context> context,
                       v8::Local<v8::Object> result) {
   // create raw response
   result
-      ->Set(context, TRI_V8_ASCII_STRING(isolate, "code"),
+      ->Set(context, TRI_V8_ASCII_STD_STRING(isolate, StaticStrings::Code),
             v8::Integer::New(isolate, lastHttpReturnCode))
       .FromMaybe(false);
 
@@ -2728,9 +2703,8 @@ again:
     setResultMessage(isolate, context, true, errorNumber, _lastErrorMessage,
                      result);
     result
-        ->Set(context, TRI_V8_ASCII_STRING(isolate, "code"),
-              v8::Integer::New(
-                  isolate, static_cast<int>(rest::ResponseCode::SERVER_ERROR)))
+        ->Set(context, TRI_V8_ASCII_STD_STRING(isolate, StaticStrings::Code),
+              v8::Integer::New(isolate, _lastHttpReturnCode))
         .FromMaybe(false);
 
     return result;
@@ -2775,6 +2749,7 @@ again:
                        : 0)) {
     return v8::Undefined(isolate);
   }
+
   std::shared_ptr<fu::Connection> connection = acquireConnection();
   if (!connection || connection->state() == fu::Connection::State::Closed) {
     TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
