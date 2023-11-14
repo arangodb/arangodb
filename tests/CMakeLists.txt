@@ -369,6 +369,10 @@ if (USE_V8)
   target_link_libraries(arangodbtests v8_interface)
 endif ()
 
+if (NOT USE_PRECOMPILED_V8)
+  add_dependencies(arangodbtests v8_build)
+endif ()
+
 if (USE_JEMALLOC)
   add_dependencies(arangodbtests jemalloc_build)
 endif ()
