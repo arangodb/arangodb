@@ -344,8 +344,8 @@ bool checkCandidatesEligible(
       auto* lhs = root->getMember(0);
       auto* rhs = root->getMember(1);
 
-      if (!joinConditionMatches(plan, lhs, rhs, c, candidates[i - 1]) &&
-          !joinConditionMatches(plan, lhs, rhs, candidates[i - 1], c)) {
+      if (!joinConditionMatches(plan, lhs, rhs, c, candidates[0]) &&
+          !joinConditionMatches(plan, lhs, rhs, candidates[0], c)) {
         LOG_JOIN_OPTIMIZER_RULE
             << "IndexNode's lookup condition does not match";
         return false;
