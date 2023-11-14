@@ -30,13 +30,13 @@
 
 namespace arangodb::actor {
 
-template<typename F, class ActorPID>
+template<typename F, typename ActorPID>
 concept Predicate =
     requires(F fn, std::shared_ptr<ActorBase<ActorPID>> const& actor) {
   { fn(actor) } -> std::same_as<bool>;
 };
 
-template<class ActorPID>
+template<typename ActorPID>
 struct ActorList {
  private:
   struct ActorMap
