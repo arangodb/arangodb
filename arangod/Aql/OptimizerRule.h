@@ -338,10 +338,6 @@ struct OptimizerRule {
     // parallelizes execution in coordinator-sided GatherNodes
     parallelizeGatherRule,
 
-    // allows execution nodes to asynchronously prefetch the next batch from
-    // their upstream node.
-    asyncPrefetch,
-
     // reduce a sorted gather to an unsorted gather if only a single shard is
     // affected
     decayUnnecessarySortedGatherRule,
@@ -370,11 +366,31 @@ struct OptimizerRule {
     // for it.
     joinIndexNodesRule,
 
+    // remove unnecessary projections & store projection attributes in
+    // individual registers. must be executed after the joinIndexNodesRule,
+    // otherwise the projections handling of JoinNodes will be incorrect.
+    optimizeProjectionsRule,
+
+    // final cleanup, after projections
+    removeUnnecessaryCalculationsRule4,
+
+    // allows execution nodes to asynchronously prefetch the next batch from
+    // their upstream node.
+    asyncPrefetchRule,
+
+    // Better to be last, because it doesn't change plan and
+    // rely on no one will change search condition after this rule
+    immutableSearchConditionRule,
+
     // splice subquery into the place of a subquery node
     // enclosed by a SubqueryStartNode and a SubqueryEndNode
     // Must run last.
     spliceSubqueriesRule
   };
+
+  static_assert(lateDocumentMaterializationRule < optimizeProjectionsRule);
+  static_assert(joinIndexNodesRule < optimizeProjectionsRule);
+  static_assert(optimizeProjectionsRule < removeUnnecessaryCalculationsRule4);
 
 #ifdef USE_ENTERPRISE
   static_assert(clusterOneShardRule < distributeInClusterRule);

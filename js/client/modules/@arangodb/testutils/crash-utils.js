@@ -659,13 +659,27 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
       return;
     }
 
+    const knownPatterns = ["%s", "%d", "%e", "%E", "%g", "%h", "%i", "%I", "%s", "%t", "%u"];
+    const replaceKnownPatterns = (s) => {
+      for (let p in knownPatterns) {
+        s = s.replace(p, "*");
+      }
+      while (true) {
+        let oldLength = s.length;
+        s = s.replace("**", "*");
+        if (s.length === oldLength) { // no more replacements
+          break;
+        }
+      }
+      return s;
+    };
     if (matchSystemdCoredump.exec(cp) !== null) {
       options.coreDirectory = '/var/lib/systemd/coredump/*core*' + instanceInfo.pid + '*';
     } else if (matchVarTmp.exec(cp) !== null) {
-      options.coreDirectory = cp.replace('%e', '*').replace('%t', '*').replace('%p', instanceInfo.pid);
+      options.coreDirectory = replaceKnownPatterns(cp).replace('%p', instanceInfo.pid);
     } else {
       let found = false;
-      options.coreDirectory = cp.replace('%e', '.*').replace('%t', '.*').replace('%p', instanceInfo.pid).trim();
+      options.coreDirectory = replaceKnownPatterns(cp).replace('%p', instanceInfo.pid).trim();
       if (options.coreDirectory.search('/') < 0) {
         let rx = new RegExp(options.coreDirectory);
         fs.list('.').forEach((file) => {

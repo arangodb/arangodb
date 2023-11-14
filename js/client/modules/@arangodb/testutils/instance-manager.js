@@ -77,6 +77,7 @@ class instanceManager {
     this.addArgs = addArgs;
     this.tmpDir = tmpDir || fs.getTempPath();
     this.rootDir = fs.join(this.tmpDir, testname);
+    process.env['ARANGOTEST_ROOT_DIR'] = this.rootDir;
     this.options.agency = this.options.agency || this.options.cluster || this.options.activefailover;
     this.agencyConfig = new inst.agencyConfig(options, this);
     this.dumpedAgency = false;
@@ -187,10 +188,10 @@ class instanceManager {
   getMemLayout () {
     if (this.options.memory !== undefined) {
       if (this.options.cluster) {
-        // Distribute 10 % agency, 20% coordinator, 70% dbservers
-        this.memlayout[instanceRole.agent] = Math.round(this.options.memory * (10/100) / this.options.agencySize);
-        this.memlayout[instanceRole.dbServer] = Math.round(this.options.memory * (70/100) / this.options.dbServers);
-        this.memlayout[instanceRole.coordinator] = Math.round(this.options.memory * (20/100) / this.options.coordinators);
+        // Distribute 8 % agency, 23% coordinator, 69% dbservers
+        this.memlayout[instanceRole.agent] = Math.round(this.options.memory * (8/100) / this.options.agencySize);
+        this.memlayout[instanceRole.dbServer] = Math.round(this.options.memory * (69/100) / this.options.dbServers);
+        this.memlayout[instanceRole.coordinator] = Math.round(this.options.memory * (23/100) / this.options.coordinators);
       } else if (this.options.activefailover) {
         // Distribute 20% agency, 80% singles
         this.memlayout[instanceRole.agent] = Math.round(this.options.memory * (20/100) / this.options.agencySize);

@@ -23,6 +23,10 @@
 
 #pragma once
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include <v8.h>
 
 void TRI_InitV8UserFunctions(v8::Isolate* isolate, v8::Handle<v8::Context>);

@@ -24,9 +24,11 @@ add_subdirectory(BuildId)
 # Link directories
 # ----------------------------------------
 
-foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
-  link_directories("${LINK_DIR}")
-endforeach()
+if (USE_V8)
+  foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
+    link_directories("${LINK_DIR}")
+  endforeach()
+endif ()
 
 if (WINDOWS)
   set(RCFILE Maintenance/json.rc)
@@ -126,6 +128,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/InsertExecutorTest.cpp
   Aql/JaccardFunctionTest.cpp
   Aql/JoinStrategy/GenericJoinTest.cpp
+  Aql/JoinStrategy/TwoIndicesUniqueJoinTest.cpp
   Aql/LevenshteinMatchFunctionTest.cpp
   Aql/LimitExecutorTest.cpp
   Aql/MinHashFunctionsTest.cpp
@@ -146,6 +149,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/ReturnExecutorTest.cpp
   Aql/RowFetcherHelper.cpp
   Aql/ScatterExecutorTest.cpp
+  Aql/ShadowRowForwardingTest.cpp
   Aql/ShortestPathExecutorTest.cpp
   Aql/ShortestPathNodeTest.cpp
   Aql/SkipResultTest.cpp
@@ -245,9 +249,6 @@ set(ARANGODB_TESTS_SOURCES
   Utils/CollectionNameResolverTest.cpp
   Utils/NameValidatorTest.cpp
   Utils/QuickGen.cpp
-  V8Server/V8AnalyzersTest.cpp
-  V8Server/V8UsersTest.cpp
-  V8Server/V8ViewsTest.cpp
   VocBase/ComputedValuesTest.cpp
   VocBase/KeyGeneratorTest.cpp
   VocBase/LogicalDataSourceTest.cpp
@@ -255,6 +256,13 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/VersionTest.cpp
   VocBase/VocbaseTest.cpp
 )
+
+if (USE_V8)
+  set(ARANGODB_TESTS_SOURCES ${ARANGODB_TESTS_SOURCES}
+    V8Server/V8AnalyzersTest.cpp
+    V8Server/V8UsersTest.cpp
+    V8Server/V8ViewsTest.cpp)
+endif()
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
@@ -313,7 +321,6 @@ target_link_libraries(arangodbtests
   arango_agency
   arango_cluster_engine
   arango_rocksdb
-  arango_v8server
   arangoserver
   arango_restore
   fuerte
@@ -324,6 +331,10 @@ target_link_libraries(arangodbtests
   fmt
   velocypack_utils
 )
+
+if (USE_V8)
+  target_link_libraries(arangodbtests arango_v8server)
+endif ()
 
 if (USE_ENTERPRISE)
   target_link_libraries(arangodbtests arango_rclone)
@@ -346,11 +357,21 @@ target_include_directories(arangodbtests PRIVATE
 # add these includes as system includes because otherwise
 # the compiler will emit warnings for fakeit.hpp
 target_include_directories(arangodbtests SYSTEM PRIVATE
-  ${V8_INTERNAL_INCLUDE_DIR}
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
 )
 
-target_link_libraries(arangodbtests v8_interface)
+if (USE_V8)
+  target_include_directories(arangodbtests SYSTEM PRIVATE
+    ${V8_INTERNAL_INCLUDE_DIR})
+endif ()
+
+if (USE_V8)
+  target_link_libraries(arangodbtests v8_interface)
+endif ()
+
+if (NOT USE_PRECOMPILED_V8)
+  add_dependencies(arangodbtests v8_build)
+endif ()
 
 if (USE_JEMALLOC)
   add_dependencies(arangodbtests jemalloc_build)
@@ -374,6 +395,7 @@ foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
   endif()
 endforeach()
 
+add_subdirectory(Actor)
 add_subdirectory(Pregel)
 add_subdirectory(sepp)
 add_subdirectory(VocBase/Properties)

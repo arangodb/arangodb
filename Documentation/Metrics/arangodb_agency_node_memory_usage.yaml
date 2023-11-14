@@ -1,5 +1,5 @@
 name: arangodb_agency_node_memory_usage
-introducedIn: "3.12"
+introducedIn: "3.12.0"
 help: |
   Memory used by agency store/cache.
 unit: byte
@@ -12,10 +12,12 @@ exposedBy:
   - dbserver
   - agent
 description: |
-  Amount of memory used to represent the agency data structure. This measures memory usage on agents 
-  and also on Coordinators and DB servers, because these have a cached version of the agency's
-  `Plan` and `Current` sections. On agency followers this metric normally
-  remains at a low value because the agency key/value store is only built on
-  agency leaders.
-  This metric can be non-zero even on single servers because there is a small initial memory allocation
-  made at ArangoDB instance start.
+  Amount of memory used to represent the Agency data structure. This measures
+  memory usage on Agents, and also on Coordinators and DB-Servers because these
+  have a cached version of the Agency's `Plan` and `Current` sections.
+  
+  On Agency followers, this metric normally remains at a low value because the
+  Agency key/value store is only built on Agency leaders.
+
+  This metric can be non-zero even on single servers because there is a small
+  initial memory allocation made at ArangoDB instance start.

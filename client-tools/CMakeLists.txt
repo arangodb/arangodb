@@ -1,6 +1,8 @@
 # -*- mode: CMAKE; -*-
 
-include(InstallArangoDBJSClient)
+if (USE_V8)
+  include(InstallArangoDBJSClient)
+endif ()
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 
@@ -29,8 +31,11 @@ target_link_libraries(arango_shell
   boost_system
   boost_boost
   fuerte
-  v8_interface
 )
+
+if (USE_V8)
+  target_link_libraries(arango_shell v8_interface)
+endif()
 
 target_include_directories(arango_shell PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -43,6 +48,7 @@ if (MSVC AND NOT(SKIP_PACKAGING))
     NAME arangobench
     FILE_DESCRIPTION ${ARANGOBENCH_FRIENDLY_STRING}
     ICON ${ARANGO_ICON}
+    COMPANY_NAME ${ARANGODB_PACKAGE_VENDOR}
     VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
     VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
     VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
@@ -76,13 +82,16 @@ install(
 install_config(arangobench)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangobench zlibstatic v8_build) # v8_build includes ICU build
-else ()
-  add_dependencies(arangobench zlibstatic)
+  add_dependencies(${BIN_ARANGOBENCH} v8_build) # v8_build includes ICU build
 endif ()
+add_dependencies(${BIN_ARANGOBENCH} zlibstatic)
 
 if (USE_JEMALLOC)
-  add_dependencies(arangobench jemalloc_build)
+  add_dependencies(${BIN_ARANGOBENCH} jemalloc_build)
+endif ()
+  
+if (UNIX) 
+  add_dependencies(${BIN_ARANGOBENCH} man)
 endif ()
 
 ################################################################################
@@ -96,6 +105,7 @@ if (USE_ENTERPRISE)
       NAME arangobackup
       FILE_DESCRIPTION ${ARANGO_BACKUP_FRIENDLY_STRING}
       ICON ${ARANGO_ICON}
+      COMPANY_NAME ${ARANGODB_PACKAGE_VENDOR}
       VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
       VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
       VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
@@ -130,13 +140,16 @@ if (USE_ENTERPRISE)
   install_config(arangobackup)
 
   if (NOT USE_PRECOMPILED_V8)
-    add_dependencies(arangobackup zlibstatic v8_build) # v8_build includes ICU build
-  else ()
-    add_dependencies(arangobackup zlibstatic)
+    add_dependencies(${BIN_ARANGOBACKUP} v8_build) # v8_build includes ICU build
   endif ()
+  add_dependencies(${BIN_ARANGOBACKUP} zlibstatic)
 
   if (USE_JEMALLOC)
-    add_dependencies(arangobackup jemalloc_build)
+    add_dependencies(${BIN_ARANGOBACKUP} jemalloc_build)
+  endif ()
+
+  if (UNIX) 
+    add_dependencies(${BIN_ARANGOBENCH} man)
   endif ()
 
 endif () # USE_ENTERPRISE
@@ -150,6 +163,7 @@ if (MSVC AND NOT(SKIP_PACKAGING))
     NAME arangodump
     FILE_DESCRIPTION ${ARANGO_DUMP_FRIENDLY_STRING}
     ICON ${ARANGO_ICON}
+    COMPANY_NAME ${ARANGODB_PACKAGE_VENDOR}
     VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
     VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
     VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
@@ -181,13 +195,16 @@ install(
 install_config(arangodump)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangodump zlibstatic v8_build) # v8_build includes ICU build
-else ()
-  add_dependencies(arangodump zlibstatic)
+  add_dependencies(${BIN_ARANGODUMP} v8_build) # v8_build includes ICU build
 endif ()
+add_dependencies(${BIN_ARANGODUMP} zlibstatic)
 
 if (USE_JEMALLOC)
   add_dependencies(arangodump jemalloc_build)
+endif ()
+
+if (UNIX) 
+  add_dependencies(${BIN_ARANGODUMP} man)
 endif ()
 
 ################################################################################
@@ -199,6 +216,7 @@ if (MSVC AND NOT(SKIP_PACKAGING))
     NAME arangoexport
     FILE_DESCRIPTION ${ARANGO_EXPORT_FRIENDLY_STRING}
     ICON ${ARANGO_ICON}
+    COMPANY_NAME ${ARANGODB_PACKAGE_VENDOR}
     VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
     VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
     VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
@@ -230,13 +248,16 @@ install(
 install_config(arangoexport)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangoexport zlibstatic v8_build) # v8_build includes ICU build
-else ()
-  add_dependencies(arangoexport zlibstatic) # v8_build includes ICU build
+  add_dependencies(${BIN_ARANGOEXPORT} v8_build) # v8_build includes ICU build
 endif ()
+add_dependencies(${BIN_ARANGOEXPORT} zlibstatic)
 
 if (USE_JEMALLOC)
-  add_dependencies(arangoexport jemalloc_build)
+  add_dependencies(${BIN_ARANGOEXPORT} jemalloc_build)
+endif ()
+
+if (UNIX) 
+  add_dependencies(${BIN_ARANGOEXPORT} man)
 endif ()
 
 ################################################################################
@@ -248,6 +269,7 @@ if (MSVC AND NOT(SKIP_PACKAGING))
     NAME arangoimport
     FILE_DESCRIPTION ${ARANGO_IMPORT_FRIENDLY_STRING}
     ICON ${ARANGO_ICON}
+    COMPANY_NAME ${ARANGODB_PACKAGE_VENDOR}
     VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
     VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
     VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
@@ -276,23 +298,25 @@ target_link_libraries(${BIN_ARANGOIMPORT}
 )
 
 install(
-  TARGETS arangoimport
+  TARGETS ${BIN_ARANGOIMPORT}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 install_config(arangoimport)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangoimport zlibstatic v8_build) # v8_build includes ICU
-                                                     # build
-else ()
-  add_dependencies(arangoimport zlibstatic) # v8_build includes ICU build
+  add_dependencies(${BIN_ARANGOIMPORT} v8_build) # v8_build includes ICU build
 endif ()
+add_dependencies(${BIN_ARANGOIMPORT} zlibstatic)
 
 if (USE_JEMALLOC)
-  add_dependencies(arangoimport jemalloc_build)
+  add_dependencies(${BIN_ARANGOIMPORT} jemalloc_build)
 endif ()
 
-install_command_alias(arangoimport
+if (UNIX) 
+  add_dependencies(${BIN_ARANGOIMPORT} man)
+endif ()
+
+install_command_alias(${BIN_ARANGOIMPORT}
   ${CMAKE_INSTALL_BINDIR}
   arangoimp
 )
@@ -306,6 +330,7 @@ if (MSVC AND NOT(SKIP_PACKAGING))
     NAME arangorestore
     FILE_DESCRIPTION ${ARANGO_RESTORE_FRIENDLY_STRING}
     ICON ${ARANGO_ICON}
+    COMPANY_NAME ${ARANGODB_PACKAGE_VENDOR}
     VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
     VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
     VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
@@ -345,84 +370,94 @@ install(
 install_config(arangorestore)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangorestore zlibstatic v8_build) # v8_build includes ICU build
-else ()
-  add_dependencies(arangorestore zlibstatic) # v8_build includes ICU build
+  add_dependencies(${BIN_ARANGORESTORE} v8_build) # v8_build includes ICU build
 endif ()
+add_dependencies(${BIN_ARANGORESTORE} zlibstatic)
 
 if (USE_JEMALLOC)
-  add_dependencies(arangorestore jemalloc_build)
+  add_dependencies(${BIN_ARANGORESTORE} jemalloc_build)
+endif ()
+
+if (UNIX) 
+  add_dependencies(${BIN_ARANGORESTORE} man)
 endif ()
 
 ################################################################################
 ## arangosh
 ################################################################################
 
-if (MSVC AND NOT(SKIP_PACKAGING))
-  generate_product_version(ProductVersionFiles_arangosh
-    NAME arangosh
-    FILE_DESCRIPTION ${ARANGOSH_FRIENDLY_STRING}
-    ICON ${ARANGO_ICON}
-    VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
-    VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
-    VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
-    VERSION_REVISION ${BUILD_ID}
+if (USE_V8)
+  if (MSVC AND NOT(SKIP_PACKAGING))
+    generate_product_version(ProductVersionFiles_arangosh
+      NAME arangosh
+      FILE_DESCRIPTION ${ARANGOSH_FRIENDLY_STRING}
+      ICON ${ARANGO_ICON}
+      COMPANY_NAME ${ARANGODB_PACKAGE_VENDOR}
+      VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
+      VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
+      VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
+      VERSION_REVISION ${BUILD_ID}
+    )
+  endif ()
+
+  set(FUZZER "")
+  if (USE_FAILURE_TESTS)
+      set(FUZZER "Shell/RequestFuzzer.cpp")
+  endif()
+  add_executable(${BIN_ARANGOSH}
+    ${ProductVersionFiles_arangosh}
+    ../cmake/activeCodePage.manifest
+    Import/AutoTuneThread.cpp
+    Import/ImportHelper.cpp
+    Import/SenderThread.cpp
+    Shell/ShellFeature.cpp
+    Shell/TelemetricsHandler.cpp
+    Shell/V8ClientConnection.cpp
+    Shell/V8ShellFeature.cpp
+    Shell/ProcessMonitoringFeature.cpp
+    Shell/arangosh.cpp
+    Shell/v8-deadline.cpp
+    ${FUZZER}
   )
+
+  target_include_directories(${BIN_ARANGOSH} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
+
+  target_link_libraries(${BIN_ARANGOSH}
+    arango
+    arango_v8
+    ${V8_LIBS}
+    fuerte
+    ${MSVC_LIBS}
+    ${SYSTEM_LIBRARIES}
+    boost_system
+    boost_boost
+    arango_shell
+  )
+
+  install(
+    TARGETS ${BIN_ARANGOSH}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+  install_config(arangosh)
+
+  if (NOT USE_PRECOMPILED_V8)
+    add_dependencies(${BIN_ARANGOSH} v8_build)
+  endif ()
+  add_dependencies(${BIN_ARANGOSH} zlibstatic)
+
+  if (USE_JEMALLOC)
+    add_dependencies(${BIN_ARANGOSH} jemalloc_build)
+  endif ()
+
+  if (UNIX) 
+    add_dependencies(${BIN_ARANGOSH} man)
+  endif ()
+
 endif ()
-
-set(FUZZER "")
-if (USE_FAILURE_TESTS)
-    set(FUZZER "Shell/RequestFuzzer.cpp")
-endif()
-add_executable(${BIN_ARANGOSH}
-  ${ProductVersionFiles_arangosh}
-  ../cmake/activeCodePage.manifest
-  Import/AutoTuneThread.cpp
-  Import/ImportHelper.cpp
-  Import/SenderThread.cpp
-  Shell/ShellFeature.cpp
-  Shell/TelemetricsHandler.cpp
-  Shell/V8ClientConnection.cpp
-  Shell/V8ShellFeature.cpp
-  Shell/ProcessMonitoringFeature.cpp
-  Shell/arangosh.cpp
-  Shell/v8-deadline.cpp
-  ${FUZZER}
-)
-
-target_include_directories(${BIN_ARANGOSH} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
-
-target_link_libraries(${BIN_ARANGOSH}
-  arango
-  arango_v8
-  ${V8_LIBS}
-  fuerte
-  ${MSVC_LIBS}
-  ${SYSTEM_LIBRARIES}
-  boost_system
-  boost_boost
-  arango_shell
-)
-
+  
 install(FILES ${ICU_DT}
   DESTINATION "${INSTALL_ICU_DT_DEST}"
   RENAME ${ICU_DT_DEST})
-
-install(
-  TARGETS ${BIN_ARANGOSH}
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-
-install_config(arangosh)
-
-if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangosh zlibstatic v8_build)
-else ()
-  add_dependencies(arangosh zlibstatic)
-endif ()
-
-if (USE_JEMALLOC)
-  add_dependencies(arangosh jemalloc_build)
-endif ()
 
 ################################################################################
 ## arangovpack
@@ -433,6 +468,7 @@ if (MSVC AND NOT(SKIP_PACKAGING))
     NAME arangovpack
     FILE_DESCRIPTION ${ARANGO_VPACK_FRIENDLY_STRING}
     ICON ${ARANGO_ICON}
+    COMPANY_NAME ${ARANGODB_PACKAGE_VENDOR}
     VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
     VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
     VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
@@ -463,45 +499,50 @@ install(
 install_config(arangovpack)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangovpack zlibstatic v8_build) # v8_build includes ICU build
-else ()
-  add_dependencies(arangovpack zlibstatic) # v8_build includes ICU build
+  add_dependencies(${BIN_ARANGOVPACK} v8_build) # v8_build includes ICU build
 endif ()
+add_dependencies(${BIN_ARANGOVPACK} zlibstatic) 
 
 if (USE_JEMALLOC)
-  add_dependencies(arangovpack jemalloc_build)
+  add_dependencies(${BIN_ARANGOVPACK} jemalloc_build)
 endif ()
 
 ################################################################################
 ## foxx-manager
 ################################################################################
 
-install_command_alias(${BIN_ARANGOSH}
-  ${CMAKE_INSTALL_BINDIR}
-  foxx-manager)
+if (USE_V8)
+  install_command_alias(${BIN_ARANGOSH}
+    ${CMAKE_INSTALL_BINDIR}
+    foxx-manager)
 
-install_config(foxx-manager)
+  install_config(foxx-manager)
+endif ()
 
 ################################################################################
 ## arangoinspect
 ################################################################################
 
-install_command_alias(${BIN_ARANGOSH}
-  ${CMAKE_INSTALL_BINDIR}
-  arangoinspect)
+if (USE_V8)
+  install_command_alias(${BIN_ARANGOSH}
+    ${CMAKE_INSTALL_BINDIR}
+    arangoinspect)
 
-install_config(arangoinspect)
+  install_config(arangoinspect)
+endif ()
 
 add_custom_target(client-tools
-    DEPENDS arangosh
-            arangodump
+    DEPENDS arangodump
             arangoexport
             arangoimport
             arangorestore
             arangobench
             arangovpack)
 
+if (USE_V8)
+  add_dependencies(client-tools arangosh)
+endif ()
+
 if (USE_ENTERPRISE)
   add_dependencies(client-tools arangobackup)
 endif ()
-

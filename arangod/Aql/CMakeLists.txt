@@ -110,6 +110,7 @@ add_library(arango_aql STATIC
   OptimizerRulesCluster.cpp
   OptimizerRulesFeature.cpp
   OptimizerRulesReplaceFunctions.cpp
+  OptimizerRulesJoin.cpp
   OptimizerUtils.cpp
   OutputAqlItemRow.cpp
   ParallelUnsortedGatherExecutor.cpp
@@ -170,7 +171,6 @@ add_library(arango_aql STATIC
   UnsortedGatherExecutor.cpp
   UpdateReplaceModifier.cpp
   UpsertModifier.cpp
-  V8Executor.cpp
   VarUsageFinder.cpp
   Variable.cpp
   VariableGenerator.cpp
@@ -179,6 +179,11 @@ add_library(arango_aql STATIC
   grammar.cpp
   tokens.cpp
 )
+
+if (USE_V8) 
+  target_sources(arango_aql PRIVATE
+    V8Executor.cpp)
+endif()
 
 target_link_libraries(arango_aql
   arango_geo

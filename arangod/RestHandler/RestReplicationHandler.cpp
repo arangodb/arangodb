@@ -2650,6 +2650,12 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
       arangodb::maintenance::ResignShardLeadership::LeaderNotYetKnownString) {
     // We have resigned, check that we are the old leader
     currentLeader = ServerState::instance()->getId();
+  } else {
+    auto pos = currentLeader.find(
+        '_');  // this separates the FollowingTermId // from the actual leader
+    if (pos != std::string::npos) {
+      currentLeader = currentLeader.substr(0, pos);
+    }
   }
 
   if (leaderId != currentLeader) {
@@ -2659,6 +2665,9 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
     }
 
     if (!oldLeaderIdSlice.isEqualString(currentLeader)) {
+      LOG_TOPIC("aaee2", WARN, Logger::MAINTENANCE)
+          << "SetTheLeader: Old leader not as expected: oldLeaderIdSlice: "
+          << oldLeaderIdSlice.toJson() << ", currentLeader: " << currentLeader;
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                     "old leader not as expected");
       return;

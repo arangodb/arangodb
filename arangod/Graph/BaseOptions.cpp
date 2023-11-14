@@ -237,7 +237,7 @@ void BaseOptions::LookupInfo::calculateIndexExpressions(
     AqlValueGuard guard(a, mustDestroy);
 
     AqlValueMaterializer materializer(&(ctx.trx().vpackOptions()));
-    VPackSlice slice = materializer.slice(a, false);
+    VPackSlice slice = materializer.slice(a);
     AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
 
     AstNode* tmp = indexCondition;
@@ -702,8 +702,8 @@ void BaseOptions::parseShardIndependentFlags(arangodb::velocypack::Slice info) {
       _vertexProjections.clear();
     }
 
-    _vertexProjections = Projections::fromVelocyPack(info, "vertexProjections",
-                                                     resourceMonitor());
+    _vertexProjections = Projections::fromVelocyPack(
+        _query.ast(), info, "vertexProjections", resourceMonitor());
     try {
       resourceMonitor().increaseMemoryUsage(
           getVertexProjections().size() * sizeof(aql::Projections::Projection));
@@ -719,8 +719,8 @@ void BaseOptions::parseShardIndependentFlags(arangodb::velocypack::Slice info) {
           getEdgeProjections().size() * sizeof(aql::Projections::Projection));
       _edgeProjections.clear();
     }
-    _edgeProjections =
-        Projections::fromVelocyPack(info, "edgeProjections", resourceMonitor());
+    _edgeProjections = Projections::fromVelocyPack(
+        _query.ast(), info, "edgeProjections", resourceMonitor());
     try {
       resourceMonitor().increaseMemoryUsage(
           getEdgeProjections().size() * sizeof(aql::Projections::Projection));

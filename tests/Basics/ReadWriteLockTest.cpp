@@ -44,12 +44,21 @@ struct Synchronizer {
   std::mutex mutex;
   std::condition_variable cv;
   bool ready = false;
+  int waiting{0};
 
   void waitForStart() {
     std::unique_lock lock(mutex);
+    ++waiting;
     cv.wait(lock, [&] { return ready; });
   }
-  void start() {
+  void start(int nr) {
+    while (true) {
+      std::unique_lock lock(mutex);
+      if (waiting >= nr) {
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
     {
       std::unique_lock lock(mutex);
       ready = true;
@@ -90,7 +99,7 @@ TEST(ReadWriteLockTest, testLockWriteParallel) {
     });
   }
 
-  s.start();
+  s.start(n);
 
   guard.fire();
   ASSERT_EQ(iterations * n, counter);
@@ -126,7 +135,7 @@ TEST(ReadWriteLockTest, testTryLockWriteParallel) {
     });
   }
 
-  s.start();
+  s.start(n);
 
   guard.fire();
   ASSERT_EQ(iterations * n, counter);
@@ -164,7 +173,7 @@ TEST(ReadWriteLockTest, testTryLockWriteForParallel) {
     });
   }
 
-  s.start();
+  s.start(n);
 
   guard.fire();
   ASSERT_EQ(iterations * n, counter);
@@ -201,10 +210,79 @@ TEST(ReadWriteLockTest, testTryLockWriteForParallelLowTimeout) {
     });
   }
 
-  s.start();
+  s.start(n);
 
   guard.fire();
   ASSERT_EQ(iterations * n, counter);
+}
+
+TEST(ReadWriteLockTest, testTryLockWriteForWakeUpReaders) {
+  ReadWriteLock lock;
+
+  std::vector<std::thread> threads;
+  threads.reserve(3);
+
+  auto guard = arangodb::scopeGuard([&]() noexcept {
+    for (auto& t : threads) {
+      t.join();
+    }
+  });
+
+  Synchronizer s;
+
+  // The main thread will hold the read lock for the duration of the test
+  auto gotLock = lock.tryLockRead();
+  ASSERT_TRUE(gotLock) << "Failed to get the read lock without concurrency";
+  bool writeLockThreadCompleted = false;
+  bool readLockThreadCompleted = false;
+
+  // First thread tries to get the writeLock with a timeout
+  threads.emplace_back(
+      [&]() {
+        s.waitForStart();
+        auto timeout = std::chrono::milliseconds(100);
+        auto gotLock = lock.tryLockWriteFor(timeout);
+        EXPECT_FALSE(gotLock)
+            << "We got a write lock although the read lock was held";
+        writeLockThreadCompleted = true;
+      });
+
+  // Second thread tries to get the readLock, while the first thread is waiting
+  // for the writeLock
+  threads.emplace_back([&]() {
+    s.waitForStart();
+    // This is still a race with the write locker
+    // It may happen that we try to lock read before write => we pass here.
+    // If we cannot get the readlock in an instant, we know the write locker is
+    // in queue.
+    size_t retryCounter = 100;
+    while (lock.tryLockRead()) {
+      lock.unlock();
+      std::this_thread::sleep_for(std::chrono::microseconds(1));
+      retryCounter--;
+      if (retryCounter == 0) {
+        ASSERT_FALSE(true) << "A queued write lock did not block the reader "
+                              "from getting the lock";
+        return;
+      }
+    }
+    // NOTE: This time out is **much larger** than the write timeout.
+    // So we need to be woken up if the Writer is released. If not
+    // (old buggy behaviour), we will still wait for 30 seconds:
+    auto timeout = std::chrono::seconds(30);
+    auto gotLock = lock.tryLockReadFor(timeout);
+    EXPECT_TRUE(gotLock)
+        << "We did not get the read lock after the write lock got into timeout";
+    lock.unlock();
+    readLockThreadCompleted = true;
+  });
+  s.start(2);
+
+  guard.fire();
+  EXPECT_TRUE(readLockThreadCompleted)
+      << "Did not complete the read lock thread";
+  EXPECT_TRUE(writeLockThreadCompleted)
+      << "Did not complete the write lock thread";
 }
 
 TEST(ReadWriteLockTest, testLockWriteLockReadParallel) {
@@ -249,7 +327,7 @@ TEST(ReadWriteLockTest, testLockWriteLockReadParallel) {
     }
   }
 
-  s.start();
+  s.start(n);
 
   guard.fire();
   ASSERT_EQ(iterations * (n / 2), counter);
@@ -318,7 +396,7 @@ TEST(ReadWriteLockTest, testMixedParallel) {
     }
   }
 
-  s.start();
+  s.start(n);
 
   guard.fire();
   ASSERT_EQ(iterations * 6, counter);
@@ -399,7 +477,7 @@ TEST(ReadWriteLockTest, testRandomMixedParallel) {
     });
   }
 
-  s.start();
+  s.start(n);
 
   guard.fire();
   ASSERT_EQ(total, counter);

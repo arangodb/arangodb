@@ -180,8 +180,6 @@ void arangodb::rocksdbStartupVersionCheck(ArangodServer& server,
           << rocksutils::convertStatus(s).errorMessage();
       FATAL_ERROR_EXIT();
     }
-
-    TRI_ASSERT(s.ok());
   }
 
   // fetch stored values of startup options
@@ -206,26 +204,25 @@ void arangodb::rocksdbStartupVersionCheck(ArangodServer& server,
                                  std::string{optionName})) {
             // user is trying to switch back from extended names to traditional
             // names. this is unsupported
-            LOG_TOPIC("1d4f6", FATAL, Logger::ENGINES)
+            LOG_TOPIC("1d4f6", ERR, Logger::ENGINES)
                 << "It is unsupported to change the value of the startup "
                    "option `--"
                 << optionName << "`"
                 << " back to `false` after it was set to `true` before. "
-                << "Please remove the setting "
-                   "`--"
-                << optionName
-                << " false` from the startup "
-                   "options.";
-            FATAL_ERROR_EXIT();
+                << "Please remove the setting `--" << optionName
+                << " false` from the startup options.";
+            // still continue, so it is possible to downgrade the ArangoDB
+            // version later.
           }
         }
         // set flag for our local instance
-        cb(storedValue[0] == '1');
+        cb(localValue);
       } else if (!s.IsNotFound()) {
         // arbitrary error. we need to abort
         LOG_TOPIC("f3a71", FATAL, Logger::ENGINES)
             << "Error reading stored value for --" << optionName
-            << " from storage engine";
+            << " from storage engine: "
+            << rocksutils::convertStatus(s).errorMessage();
         FATAL_ERROR_EXIT();
       }
     }

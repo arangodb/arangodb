@@ -33,11 +33,18 @@
 #include "Aql/JoinNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/NonConstExpressionContainer.h"
+#include "Aql/RegisterId.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
+#include "Aql/Variable.h"
+#include "Containers/FlatHashMap.h"
 #include "Transaction/Methods.h"
 
+#include <velocypack/Builder.h>
+
 #include <memory>
+#include <optional>
+#include <vector>
 
 namespace arangodb {
 class IndexIterator;
@@ -72,10 +79,36 @@ struct JoinExecutorInfos {
 
     // Values used for projection
     Projections projections;
+
+    bool hasProjectionsForRegisters = false;
+    bool producesOutput = true;
+
+    struct FilterInformation {
+      // post filter expression
+      std::unique_ptr<Expression> expression;
+
+      // variable in the expression referring to the current document
+      Variable const* documentVariable;
+
+      // mapping of other variables to register in the input row
+      std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
+
+      // projections used for filtering
+      Projections projections;
+      std::vector<Variable const*> filterProjectionVars;
+    };
+
+    std::optional<FilterInformation> filter;
   };
+
+  RegisterId registerForVariable(VariableId id) const noexcept;
+  void determineProjectionsForRegisters();
 
   std::vector<IndexInfo> indexes;
   QueryContext* query;
+  containers::FlatHashMap<VariableId, RegisterId> varsToRegister;
+  bool projectionsInitialized = false;
+  bool producesAnyOutput = true;
 };
 
 /**
@@ -91,7 +124,7 @@ class JoinExecutor {
 
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = JoinExecutorInfos;
-  using Stats = NoStats;
+  using Stats = JoinStats;
 
   JoinExecutor() = delete;
   JoinExecutor(JoinExecutor&&) = delete;
@@ -108,6 +141,7 @@ class JoinExecutor {
  private:
   void constructStrategy();
 
+  aql::AqlFunctionsInternalCache _functionsCache;
   Fetcher& _fetcher;
   Infos& _infos;
   std::unique_ptr<AqlIndexJoinStrategy> _strategy;
@@ -117,6 +151,7 @@ class JoinExecutor {
   InputAqlItemRow _currentRow{CreateInvalidInputRowHint()};
   ExecutorState _currentRowState{ExecutorState::HASMORE};
   velocypack::Builder _projectionsBuilder;
+  std::vector<std::unique_ptr<std::string>> _documents;
 };
 
 }  // namespace aql

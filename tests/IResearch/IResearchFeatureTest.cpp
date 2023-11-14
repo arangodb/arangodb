@@ -53,6 +53,7 @@
 #include "IResearch/Containers.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchExecutionPool.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
@@ -184,8 +185,20 @@ TEST_F(IResearchFeatureTest, test_options_default) {
   ASSERT_NE(nullptr, commitThreadsIdle);
   ASSERT_EQ(0, *commitThreadsIdle->ptr);
 
+  auto* executeThreadsLimit =
+      opts->get<UInt32Parameter>("--arangosearch.execution-threads-limit");
+  ASSERT_NE(nullptr, executeThreadsLimit);
+  ASSERT_EQ(0, *executeThreadsLimit->ptr);
+
+  auto* defaultParallelism =
+      opts->get<UInt32Parameter>("--arangosearch.default-parallelism");
+  ASSERT_NE(nullptr, defaultParallelism);
+  ASSERT_EQ(1, *defaultParallelism->ptr);
+
   uint32_t const expectedNumThreads =
       std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
+  uint32_t const expectedNumExecuteThreads =
+      uint32_t(arangodb::NumberOfCores::getValue()) * 2;
   feature.validateOptions(opts);
   ASSERT_EQ(0, *threads->ptr);
   ASSERT_EQ(0, *threadsLimit->ptr);
@@ -193,7 +206,7 @@ TEST_F(IResearchFeatureTest, test_options_default) {
   ASSERT_EQ(expectedNumThreads, *consolidationThreadsIdle->ptr);
   ASSERT_EQ(expectedNumThreads, *commitThreads->ptr);
   ASSERT_EQ(expectedNumThreads, *commitThreadsIdle->ptr);
-
+  ASSERT_EQ(expectedNumExecuteThreads, *executeThreadsLimit->ptr);
   feature.prepare();
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
             feature.limits(ThreadGroup::_0));
@@ -275,6 +288,19 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_default_set) {
   opts->processingResult().touch("arangosearch.commit-threads");
   *commitThreads->ptr = 0;
 
+  auto* executeThreadsLimit =
+      opts->get<UInt32Parameter>("--arangosearch.execution-threads-limit");
+  ASSERT_NE(nullptr, executeThreadsLimit);
+  ASSERT_EQ(0, *executeThreadsLimit->ptr);
+  *executeThreadsLimit->ptr = 0;
+  opts->processingResult().touch("arangosearch.execution-threads-limit");
+
+  auto* defaultParallelism =
+      opts->get<UInt32Parameter>("--arangosearch.default-parallelism");
+  ASSERT_NE(nullptr, defaultParallelism);
+  *defaultParallelism->ptr = 5;
+  opts->processingResult().touch("arangosearch.default-parallelism");
+
   feature.validateOptions(opts);
   ASSERT_EQ(0, *threads->ptr);
   ASSERT_EQ(0, *threadsLimit->ptr);
@@ -282,6 +308,7 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_default_set) {
   ASSERT_EQ(expectedConsolidationThreads, *consolidationThreadsIdle->ptr);
   ASSERT_EQ(expectedCommitThreads, *commitThreads->ptr);
   ASSERT_EQ(expectedCommitThreads, *commitThreadsIdle->ptr);
+  ASSERT_EQ(0, *executeThreadsLimit->ptr);
 
   feature.prepare();
   ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
@@ -294,6 +321,7 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_default_set) {
             feature.stats(ThreadGroup::_1));
 
   feature.start();
+  ASSERT_EQ(5, feature.defaultParallelism());
   ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
                            size_t(*commitThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_0));
@@ -1753,6 +1781,108 @@ TEST_F(IResearchFeatureTest, test_options_threads_limit_max) {
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_1));
+}
+
+TEST_F(IResearchFeatureTest, test_execution_threads_limit) {
+  using namespace arangodb;
+  using namespace arangodb::iresearch;
+  using namespace arangodb::options;
+  constexpr uint32_t threadsLimit = 10;
+  IResearchFeature iresearch(server.server());
+  auto opts = std::make_shared<ProgramOptions>("", "", "", "");
+  iresearch.collectOptions(opts);
+  auto* executeThreadsLimit =
+      opts->get<UInt32Parameter>("--arangosearch.execution-threads-limit");
+  *executeThreadsLimit->ptr = threadsLimit;
+  opts->processingResult().touch("arangosearch.execution-threads-limit");
+  iresearch.validateOptions(opts);
+  iresearch.prepare();
+  iresearch.start();
+  auto& metricsFeature = server.server().getFeature<metrics::MetricsFeature>();
+  metrics::MetricKeyView key{.name =
+                                 "arangodb_search_execution_threads_demand"};
+  auto* metricValue = metricsFeature.get(key);
+  ASSERT_NE(nullptr, metricValue);
+  auto gauge = static_cast<metrics::Gauge<uint64_t>*>(metricValue);
+  ASSERT_EQ(0, gauge->load());
+  auto& pool = iresearch.getSearchPool();
+  ASSERT_EQ(threadsLimit, pool.allocateThreads(threadsLimit, threadsLimit));
+  ASSERT_EQ(0, pool.allocateThreads(1, 1));
+  ASSERT_EQ(threadsLimit + 1, gauge->load());
+  ASSERT_EQ(0, pool.allocateThreads(1, 0));
+  ASSERT_EQ(threadsLimit + 1, gauge->load());
+
+  pool.releaseThreads(threadsLimit, threadsLimit + 1);
+  ASSERT_EQ(0, gauge->load());
+  ASSERT_EQ(5, pool.allocateThreads(5, 5));
+  ASSERT_EQ(5, gauge->load());
+  ASSERT_EQ(5, pool.allocateThreads(5, 5));
+  ASSERT_EQ(10, gauge->load());
+  ASSERT_EQ(0, pool.allocateThreads(1, 0));
+  pool.releaseThreads(10, 10);
+  ASSERT_EQ(0, gauge->load());
+  ASSERT_EQ(6, pool.allocateThreads(6, 6));
+  ASSERT_EQ(6, gauge->load());
+  ASSERT_EQ(4, pool.allocateThreads(6, 6));
+  ASSERT_EQ(12, gauge->load());
+  pool.releaseThreads(10, 12);
+  ASSERT_EQ(0, gauge->load());
+  constexpr size_t iterations = 10000;
+  std::atomic<bool> exceeded{false};
+  auto threadFunc1 = [&]() {
+    uint64_t allocated = 0;
+    uint64_t demand = 0;
+    for (size_t i = 0; i < iterations && !exceeded; ++i) {
+      auto tmp = pool.allocateThreads(1, 1);
+      allocated += tmp;
+      ++demand;
+      if (allocated > threadsLimit) {
+        exceeded = true;
+      }
+      if (allocated && (allocated == threadsLimit || tmp == 0)) {
+        pool.releaseThreads(allocated, demand);
+        allocated = 0;
+        demand = 0;
+      }
+    }
+    if (allocated || demand) {
+      pool.releaseThreads(allocated, demand);
+    }
+  };
+
+  auto threadFunc2 = [&]() {
+    uint64_t allocated = 0;
+    uint64_t demand = 0;
+    for (size_t i = 0; i < iterations && !exceeded; ++i) {
+      auto tmp = pool.allocateThreads(threadsLimit / 3, threadsLimit / 3);
+      allocated += tmp;
+      demand += threadsLimit / 3;
+      if (allocated > threadsLimit) {
+        exceeded = true;
+        break;
+      }
+      if (allocated && (allocated == threadsLimit || tmp == 0)) {
+        pool.releaseThreads(allocated, demand);
+        allocated = 0;
+        demand = 0;
+      }
+    }
+    if (allocated || demand) {
+      pool.releaseThreads(allocated, demand);
+    }
+  };
+
+  std::thread t1(threadFunc1);
+  std::thread t2(threadFunc2);
+  std::thread t3(threadFunc1);
+  std::thread t4(threadFunc2);
+  t1.join();
+  t2.join();
+  t3.join();
+  t4.join();
+  iresearch.stop();
+  ASSERT_FALSE(exceeded.load());
+  ASSERT_EQ(0, pool.load());
 }
 
 TEST_F(IResearchFeatureTest, test_start) {

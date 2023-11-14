@@ -370,7 +370,7 @@ void RestCollectionHandler::handleCommandPost() {
 
   std::shared_ptr<LogicalCollection> coll;
   // backwards compatibility transformation:
-  Result res{TRI_ERROR_NO_ERROR};
+  Result res;
   if (result.fail()) {
     res = result.result();
   } else {
@@ -508,7 +508,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
     _activeTrx->addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
     res = _activeTrx->begin();
     if (res.fail()) {
-      generateError(res);
+      generateTransactionError(coll->name(), OperationResult(res, opts), "");
       _activeTrx.reset();
       return RestStatus::DONE;
     }

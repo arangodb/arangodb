@@ -27,6 +27,8 @@ add_library(arango_iresearch STATIC
   IResearchDocument.h
   IResearchExpressionContext.cpp
   IResearchExpressionContext.h
+  IResearchExecutionPool.cpp
+  IResearchExecutionPool.h
   IResearchFeature.cpp
   IResearchFeature.h
   IResearchFilterFactory.cpp

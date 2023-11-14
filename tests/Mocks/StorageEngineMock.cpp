@@ -226,7 +226,9 @@ void StorageEngineMock::addRestHandlers(
   TRI_ASSERT(false);
 }
 
+#ifdef USE_V8
 void StorageEngineMock::addV8Functions() { TRI_ASSERT(false); }
+#endif
 
 void StorageEngineMock::changeCollection(
     TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection) {

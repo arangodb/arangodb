@@ -46,14 +46,14 @@ template<typename V, typename E, typename M>
 Storing<V, E, M>::Storing(WorkerState<V, E, M>& worker) : worker{worker} {}
 
 template<typename V, typename E, typename M>
-auto Storing<V, E, M>::receive(actor::ActorPID const& sender,
-                               actor::ActorPID const& self,
+auto Storing<V, E, M>::receive(actor::DistributedActorPID const& sender,
+                               actor::DistributedActorPID const& self,
                                worker::message::WorkerMessages const& message,
                                Dispatcher dispatcher)
     -> std::unique_ptr<ExecutionState> {
   if (std::holds_alternative<worker::message::Store>(message)) {
     LOG_TOPIC("980d9", INFO, Logger::PREGEL)
-        << fmt::format("Worker Actor {} is storing", self);
+        << fmt::format("Worker Actor {} is storing", inspection::json(self));
 
     dispatcher.dispatchMetrics(
         arangodb::pregel::metrics::message::WorkerStoringStarted{});

@@ -196,6 +196,25 @@ if (STATIC_EXECUTABLES)
   endif ()
 endif()
 
+# enable V8/JavaScript in executables. 
+# note that V8 will always be built, regardless of the value of this option.
+# this is required because the V8 build step also builds ICU, which is needed
+# in all programs.
+# if set to OFF, V8 will not be linked to arangod and the client-tools, 
+# and V8 integration code for arangod will not be compiled. 
+# additionally, arangosh will not be built.
+# setting the option to OFF will further disable all JavaScript support in
+# arangod, rendering the web UI, JavaScript transactions, AQL user-defined
+# functions (UDFs), Foxx and some other smaller features unusable.
+# setting this option to OFF also renders many tests unusable as many tests
+# depend on JavaScript.
+# setting the option to OFF is highly experimental option and not well tested.
+# use at your own risk!
+option(USE_V8 "build with V8/JavaScript support" ON)
+if (USE_V8)
+  add_definitions("-DUSE_V8=1")
+endif ()
+
 # enable dtrace
 option(USE_DTRACE "enable dtrace probes" OFF)
 if (USE_DTRACE)
@@ -953,6 +972,17 @@ else () # NOT MSVC
     if (CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL "11.1.0")
       set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=nonnull")
     endif()
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "13.0.0")
+      # the following warning types need to be suppressed with newer
+      # versions of g++, as they produce a lot of false positives.
+      # if the no-error directives are removed, a lot 3rdParty libraries
+      # such as date, fmt, and immer cannot be compiled anymore.
+      # https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=__open__&content=stringop-overread&no_redirect=1&product=gcc
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=array-bounds")
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=overloaded-virtual")
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=stringop-overflow")
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=stringop-overread")
+    endif()
   elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
     set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
@@ -1318,48 +1348,6 @@ add_subdirectory(arangod)
 
 if (USE_GOOGLE_TESTS)
   add_subdirectory(tests)
-endif ()
-
-add_dependencies(arangobench   zlibstatic)
-if (USE_ENTERPRISE)
-  add_dependencies(arangobackup  zlibstatic)
-endif ()
-add_dependencies(arangod       zlibstatic)
-add_dependencies(arangodump    zlibstatic)
-add_dependencies(arangoexport  zlibstatic)
-add_dependencies(arangoimport  zlibstatic)
-add_dependencies(arangorestore zlibstatic)
-add_dependencies(arangosh      zlibstatic)
-
-if (UNIX)
-  add_dependencies(arangobench   man)
-  if (USE_ENTERPRISE)
-    add_dependencies(arangobackup  man)
-  endif ()
-  add_dependencies(arangod       man)
-  add_dependencies(arangodump    man)
-  add_dependencies(arangoexport  man)
-  add_dependencies(arangoimport  man)
-  add_dependencies(arangorestore man)
-  add_dependencies(arangosh      man)
-endif ()
-
-if (NOT USE_PRECOMPILED_V8)
-  # all binaries depend on v8_build because it contains ICU as well
-  add_dependencies(arangobench   v8_build)
-
-  if (USE_ENTERPRISE)
-    add_dependencies(arangobackup  v8_build)
-  endif ()
-  add_dependencies(arangod       v8_build)
-  add_dependencies(arangodump    v8_build)
-  add_dependencies(arangoexport  v8_build)
-  add_dependencies(arangoimport  v8_build)
-  add_dependencies(arangorestore v8_build)
-  add_dependencies(arangosh      v8_build)
-  if (USE_GOOGLE_TESTS)
-    add_dependencies(arangodbtests v8_build)
-  endif ()
 endif ()
 
 add_custom_target(packages

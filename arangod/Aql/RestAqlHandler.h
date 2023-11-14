@@ -40,7 +40,6 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   RestAqlHandler(ArangodServer&, GeneralRequest*, GeneralResponse*,
                  QueryRegistry*);
 
- public:
   char const* name() const override final { return "RestAqlHandler"; }
   RequestLane lane() const override final;
   RestStatus execute() override;

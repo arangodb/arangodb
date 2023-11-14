@@ -43,6 +43,7 @@
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IndexNode.h"
 #include "Aql/JoinNode.h"
+#include "Aql/IndexStreamIterator.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerUtils.h"
@@ -76,7 +77,9 @@
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/Methods/Collections.h"
+#include "Logger/LogMacros.h"
 
+#include <span>
 #include <tuple>
 
 #include <absl/strings/str_cat.h>
@@ -1067,18 +1070,16 @@ bool optimizeTraversalPathVariable(
   bool producePathsWeights = false;
 
   for (auto const& it : attributes) {
-    TRI_ASSERT(!it._path.empty());
+    TRI_ASSERT(!it.empty());
     if (!producePathsVertices &&
-        it._path[0] == std::string_view{StaticStrings::GraphQueryVertices}) {
+        it[0] == std::string_view{StaticStrings::GraphQueryVertices}) {
       producePathsVertices = true;
     } else if (!producePathsEdges &&
-               it._path[0] ==
-                   std::string_view{StaticStrings::GraphQueryEdges}) {
+               it[0] == std::string_view{StaticStrings::GraphQueryEdges}) {
       producePathsEdges = true;
     } else if (!producePathsWeights &&
                options->mode == traverser::TraverserOptions::Order::WEIGHTED &&
-               it._path[0] ==
-                   std::string_view{StaticStrings::GraphQueryWeights}) {
+               it[0] == std::string_view{StaticStrings::GraphQueryWeights}) {
       producePathsWeights = true;
     }
   }
@@ -2199,8 +2200,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
           // add the post-SORT
           SortElementVector sortElements;
           for (auto const& v : collectNode->groupVariables()) {
-            sortElements.emplace_back(SortElement{
-                v.outVar, true, plan->getAst()->query().resourceMonitor()});
+            sortElements.emplace_back(v.outVar, true);
           }
 
           auto sortNode = plan->createNode<SortNode>(plan.get(), plan->nextId(),
@@ -2237,8 +2237,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
         // add the post-SORT
         SortElementVector sortElements;
         for (auto const& v : newCollectNode->groupVariables()) {
-          sortElements.emplace_back(SortElement{
-              v.outVar, true, plan->getAst()->query().resourceMonitor()});
+          sortElements.emplace_back(v.outVar, true);
         }
 
         auto sortNode = newPlan->createNode<SortNode>(
@@ -2285,8 +2284,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
     if (!groupVariables.empty()) {
       SortElementVector sortElements;
       for (auto const& v : groupVariables) {
-        sortElements.emplace_back(SortElement{
-            v.inVar, true, plan->getAst()->query().resourceMonitor()});
+        sortElements.emplace_back(v.inVar, true);
       }
 
       auto sortNode = plan->createNode<SortNode>(plan.get(), plan->nextId(),
@@ -2851,8 +2849,10 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
 
   ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
 
+  bool modified = false;
+
   for (auto const& n : nodes) {
-    arangodb::aql::Variable const* outVariable = nullptr;
+    Variable const* outVariable = nullptr;
 
     if (n->getType() == EN::CALCULATION) {
       auto nn = ExecutionNode::castTo<CalculationNode*>(n);
@@ -3032,16 +3032,17 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
   if (!toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
     TRI_ASSERT(nodes.size() >= toUnlink.size());
+    modified = true;
     if (nodes.size() - toUnlink.size() > 0) {
       // need to rerun the rule because removing calculations may unlock
       // removal of further calculations
-      opt->addPlanAndRerun(std::move(plan), rule, true);
+      opt->addPlanAndRerun(std::move(plan), rule, modified);
     } else {
       // no need to rerun the rule
-      opt->addPlan(std::move(plan), rule, true);
+      opt->addPlan(std::move(plan), rule, modified);
     }
   } else {
-    opt->addPlan(std::move(plan), rule, false);
+    opt->addPlan(std::move(plan), rule, modified);
   }
 }
 
@@ -3878,11 +3879,8 @@ auto insertGatherNode(
       // also check if we actually need to bother about the sortedness of the
       // result, or if we use the index for filtering only
       if (first->isSorted() && idxNode->needsGatherNodeSort()) {
-        for (auto const& path : first->trackedFieldNames(
-                 plan.getAst()->query().resourceMonitor())) {
-          elements.emplace_back(
-              SortElement{sortVariable, isSortAscending, path,
-                          plan.getAst()->query().resourceMonitor()});
+        for (auto const& path : first->fieldNames()) {
+          elements.emplace_back(sortVariable, isSortAscending, path);
         }
         for (auto const& it : allIndexes) {
           if (first != it) {
@@ -8417,44 +8415,90 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
 void arangodb::aql::asyncPrefetchRule(Optimizer* opt,
                                       std::unique_ptr<ExecutionPlan> plan,
                                       OptimizerRule const& rule) {
-  // at the moment we only allow async prefetching for read-only queries,
-  // ie., the query must not contain any modification nodes
-  struct ModificationNodeChecker : WalkerWorkerBase<ExecutionNode> {
+  struct AsyncPrefetchChecker : WalkerWorkerBase<ExecutionNode> {
     bool before(ExecutionNode* n) override {
-      if (n->isModificationNode()) {
-        containsModificationNode = true;
-        return true;  // found a modification node -> abort
+      auto eligibility = n->canUseAsyncPrefetching();
+      if (eligibility == AsyncPrefetchEligibility::kDisableGlobally) {
+        // found a node that we can't support -> abort
+        eligible = false;
+        return true;
       }
       return false;
     }
-    bool containsModificationNode{false};
+
+    bool eligible{true};
   };
-  ModificationNodeChecker checker;
-  plan->root()->walk(checker);
 
-  if (!checker.containsModificationNode) {
-    // here we only set a flag that this plan should use async prefetching.
-    // The actual prefetching is performed on node level and therefore also
-    // enbabled/disabled on the nodes. However, this is not done here but in
-    // a post-processing step so we can operate on the finalized query (e.g.,
-    // after subquery-splicing)
-    plan->enableAsyncPrefetching();
-  }
-  opt->addPlan(std::move(plan), rule, !checker.containsModificationNode);
-}
-
-void arangodb::aql::enableAsyncPrefetching(ExecutionPlan& plan) {
-  // TODO at the moment we enable prefetching on all nodes - this should be made
-  // configurable
   struct AsyncPrefetchEnabler : WalkerWorkerBase<ExecutionNode> {
+    AsyncPrefetchEnabler() { stack.emplace_back(0); }
+
     bool before(ExecutionNode* n) override {
-      TRI_ASSERT(!n->isModificationNode());
-      n->setIsAsyncPrefetchEnabled(true);
+      auto eligibility = n->canUseAsyncPrefetching();
+      if (eligibility == AsyncPrefetchEligibility::kDisableGlobally) {
+        // found a node that we can't support -> abort
+        TRI_ASSERT(!modified);
+        return true;
+      }
+      if (eligibility ==
+          AsyncPrefetchEligibility::kDisableForNodeAndDependencies) {
+        TRI_ASSERT(!stack.empty());
+        ++stack.back();
+      }
       return false;
     }
+
+    void after(ExecutionNode* n) override {
+      TRI_ASSERT(!stack.empty());
+      if (n->getType() == EN::REMOTE) {
+        ++stack.back();
+      }
+      auto eligibility = n->canUseAsyncPrefetching();
+      if (stack.back() == 0 &&
+          eligibility == AsyncPrefetchEligibility::kEnableForNode) {
+        // we are currently excluding any node inside a subquery.
+        // TODO: lift this restriction.
+        n->setIsAsyncPrefetchEnabled(true);
+        modified = true;
+      }
+      if (eligibility ==
+          AsyncPrefetchEligibility::kDisableForNodeAndDependencies) {
+        TRI_ASSERT(stack.back() > 0);
+        --stack.back();
+      }
+    }
+
+    bool enterSubquery(ExecutionNode*, ExecutionNode*) override {
+      // this will disable the optimization for subqueries right now
+      stack.push_back(1);
+      return true;
+    }
+
+    void leaveSubquery(ExecutionNode*, ExecutionNode*) override {
+      TRI_ASSERT(!stack.empty());
+      stack.pop_back();
+    }
+
+    // per query-level (main query, subqueries) stack of eligibilities
+    containers::SmallVector<uint32_t, 4> stack;
+    bool modified{false};
   };
-  AsyncPrefetchEnabler walker{};
-  plan.root()->walk(walker);
+
+  bool modified = false;
+  // first check if the query satisfies all constraints we have for
+  // async prefetching
+  AsyncPrefetchChecker checker;
+  plan->root()->walk(checker);
+
+  if (checker.eligible) {
+    // only if it does, start modifying nodes in the query
+    AsyncPrefetchEnabler enabler;
+    plan->root()->walk(enabler);
+    modified = enabler.modified;
+    if (modified) {
+      plan->getAst()->setContainsAsyncPrefetch();
+    }
+  }
+  opt->addPlan(std::move(plan), rule, modified);
 }
 
 void arangodb::aql::activateCallstackSplit(ExecutionPlan& plan) {
@@ -9048,215 +9092,85 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
   }
 }
 
-void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
-                                       std::unique_ptr<ExecutionPlan> plan,
-                                       OptimizerRule const& rule) {
-  containers::SmallVector<ExecutionNode*, 8> nodes;
-  plan->findNodesOfType(nodes, EN::INDEX, true);
-
-  bool modified = false;
-  if (nodes.size() >= 2) {
-    // not yet supported:
-    // - projections
-    // - post-filtering
-    // - IndexIteratorOptions: sorted, ascending, evalFCalls, useCache,
-    // waitForSync, limit, lookahead
-    // - reverse iteration
-    // - support from GatherNodes
-    auto nodeQualifies = [](IndexNode const& indexNode) {
-      if (indexNode.filter() != nullptr) {
-        // IndexNode has post-filter condition
-        return false;
-      }
-
-      if (indexNode.condition() == nullptr) {
-        // IndexNode does not have an index lookup condition
-        return false;
-      }
-
-      if (!indexNode.options().ascending) {
-        // reverse sort not yet supported
-        return false;
-      }
-
-      auto const& indexes = indexNode.getIndexes();
-      if (indexes.size() != 1) {
-        // must use exactly one index (otherwise this would be an OR condition)
-        return false;
-      }
-
-      auto const& index = indexes[0];
-      if (!index->isSorted()) {
-        // must be a sorted index
-        return false;
-      }
-
-      if (index->fields().empty()) {
-        // index on more than one attribute
-        return false;
-      }
-
-      if (index->hasExpansion()) {
-        // index uses expansion ([*]) operator
-        return false;
-      }
-
-      if (index->type() != Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
-        // must be a persistent index. TODO: ask index if it supports join API.
-        return false;
-      }
-
-      return true;
-    };
-
-    // IndexNodes we already handled
-    containers::FlatHashSet<ExecutionNode const*> handled;
-
-    // for each IndexNode we found in the found, iterate over a potential
-    // chain of IndexNodes, from top to bottom
-    for (auto* n : nodes) {
-      auto* startNode = ExecutionNode::castTo<IndexNode*>(n);
-      // go to the first IndexNode in the chain, so we can start at the
-      // top.
-      while (true) {
-        auto* dep = startNode->getFirstDependency();
-        if (dep == nullptr || dep->getType() != EN::INDEX) {
-          break;
-        }
-        startNode = ExecutionNode::castTo<IndexNode*>(dep);
-      }
-
-      while (true) {
-        containers::SmallVector<IndexNode*, 8> candidates;
-        IndexNode* indexNode = startNode;
-
-        while (true) {
-          if (handled.contains(indexNode) || !nodeQualifies(*indexNode)) {
-            break;
-          }
-          candidates.emplace_back(indexNode);
-          auto* parent = indexNode->getFirstParent();
-          if (parent == nullptr || parent->getType() != EN::INDEX) {
-            break;
-          }
-          indexNode = ExecutionNode::castTo<IndexNode*>(parent);
-        }
-
-        if (candidates.size() >= 2) {
-          bool eligible = true;
-          size_t i = 0;
-          for (auto* c : candidates) {
-            if (i == 0) {
-              // first FOR loop. we expect it to not have any lookup condition
-              if (c->condition()->root() != nullptr) {
-                eligible = false;
-                break;
-              }
-            } else {
-              // follow-up FOR loop. we expect it to have a lookup condition
-              if (c->condition()->root() == nullptr) {
-                eligible = false;
-                break;
-              }
-              auto const* root = c->condition()->root();
-              if (root == nullptr || root->type != NODE_TYPE_OPERATOR_NARY_OR ||
-                  root->numMembers() != 1) {
-                eligible = false;
-                break;
-              }
-              root = root->getMember(0);
-              if (root == nullptr ||
-                  root->type != NODE_TYPE_OPERATOR_NARY_AND ||
-                  root->numMembers() != 1) {
-                eligible = false;
-                break;
-              }
-              root = root->getMember(0);
-              if (root == nullptr ||
-                  root->type != NODE_TYPE_OPERATOR_BINARY_EQ ||
-                  root->numMembers() != 2) {
-                eligible = false;
-                break;
-              }
-              auto* lhs = root->getMember(0);
-              auto* rhs = root->getMember(1);
-
-              auto matches = [](AstNode const* lhs, AstNode const* rhs,
-                                IndexNode const* i1, IndexNode const* i2) {
-                std::pair<Variable const*,
-                          std::vector<arangodb::basics::AttributeName>>
-                    usedVar;
-
-                if (!lhs->isAttributeAccessForVariable(
-                        usedVar, /*allowIndexedAccess*/ false)) {
-                  // lhs is not an attribute access
-                  return false;
-                }
-                if (usedVar.first != i1->outVariable() ||
-                    usedVar.second != i1->getIndexes()[0]->fields()[0]) {
-                  // lhs doesn't match i1's FOR loop index field
-                  return false;
-                }
-                // lhs matches i1's FOR loop index field
-                if (!rhs->isAttributeAccessForVariable(
-                        usedVar, /*allowIndexedAccess*/ false)) {
-                  // rhs is not an attribute access
-                  return false;
-                }
-                if (usedVar.first != i2->outVariable() ||
-                    usedVar.second != i2->getIndexes()[0]->fields()[0]) {
-                  // rhs doesn't match i2's FOR loop index field
-                  return false;
-                }
-                // rhs matches i2's FOR loop index field
-                return true;
-              };
-
-              if (!matches(lhs, rhs, c, candidates[i - 1]) &&
-                  !matches(lhs, rhs, candidates[i - 1], c)) {
-                eligible = false;
-                break;
-              }
-            }
-
-            if (!eligible) {
-              break;
-            }
-            ++i;
-          }
-
-          if (eligible) {
-            std::vector<JoinNode::IndexInfo> indexInfos;
-            indexInfos.reserve(candidates.size());
-            for (auto* c : candidates) {
-              indexInfos.emplace_back(
-                  JoinNode::IndexInfo{.collection = c->collection(),
-                                      .outVariable = c->outVariable(),
-                                      .condition = c->condition()->clone(),
-                                      .index = c->getIndexes()[0],
-                                      .projections = c->projections()});
-              handled.emplace(c);
-            }
-            JoinNode* jn = plan->createNode<JoinNode>(
-                plan.get(), plan->nextId(), std::move(indexInfos),
-                IndexIteratorOptions{});
-            plan->replaceNode(candidates[0], jn);
-            for (size_t i = 1; i < candidates.size(); ++i) {
-              plan->unlinkNode(candidates[i]);
-            }
-            modified = true;
-          }
-        }
-
-        // try starting from next start node
-        auto* parent = startNode->getFirstParent();
-        if (parent == nullptr || parent->getType() != EN::INDEX) {
-          break;
-        }
-        startNode = ExecutionNode::castTo<IndexNode*>(parent);
-      }
-    }
+class AttributeAccessReplacer final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
+ public:
+  AttributeAccessReplacer(ExecutionNode const* self,
+                          Variable const* searchVariable,
+                          std::span<std::string_view> attribute,
+                          Variable const* replaceVariable, size_t index)
+      : _self(self),
+        _searchVariable(searchVariable),
+        _attribute(attribute),
+        _replaceVariable(replaceVariable),
+        _index(index) {
+    TRI_ASSERT(_searchVariable != nullptr);
+    TRI_ASSERT(!_attribute.empty());
+    TRI_ASSERT(_replaceVariable != nullptr);
   }
 
+  bool before(ExecutionNode* en) override final {
+    en->replaceAttributeAccess(_self, _searchVariable, _attribute,
+                               _replaceVariable, _index);
+
+    // always continue
+    return false;
+  }
+
+ private:
+  ExecutionNode const* _self;
+  Variable const* _searchVariable;
+  std::span<std::string_view> _attribute;
+  Variable const* _replaceVariable;
+  size_t _index;
+};
+
+void arangodb::aql::optimizeProjections(Optimizer* opt,
+                                        std::unique_ptr<ExecutionPlan> plan,
+                                        OptimizerRule const& rule) {
+  containers::SmallVector<ExecutionNode*, 8> nodes;
+  plan->findNodesOfType(nodes, {EN::INDEX, EN::ENUMERATE_COLLECTION, EN::JOIN},
+                        true);
+
+  auto replace = [&plan](ExecutionNode* self, Projections& p,
+                         Variable const* searchVariable, size_t index) {
+    bool modified = false;
+    std::vector<std::string_view> path;
+    for (size_t i = 0; i < p.size(); ++i) {
+      TRI_ASSERT(p[i].variable == nullptr);
+      p[i].variable = plan->getAst()->variables()->createTemporaryVariable();
+      path.clear();
+      for (auto const& it : p[i].path.get()) {
+        path.emplace_back(it);
+      }
+
+      AttributeAccessReplacer replacer(self, searchVariable, std::span(path),
+                                       p[i].variable, index);
+      plan->root()->walk(replacer);
+      modified = true;
+    }
+    return modified;
+  };
+
+  bool modified = false;
+  for (auto* n : nodes) {
+    if (n->getType() == EN::JOIN) {
+      // JoinNode. optimize projections in all parts
+      auto* joinNode = ExecutionNode::castTo<JoinNode*>(n);
+      size_t index = 0;
+      for (auto& it : joinNode->getIndexInfos()) {
+        modified |= replace(n, it.projections, it.outVariable, index++);
+      }
+    } else {
+      // IndexNode or EnumerateCollectionNode.
+      TRI_ASSERT(n->getType() == EN::ENUMERATE_COLLECTION ||
+                 n->getType() == EN::INDEX);
+
+      auto* documentNode = ExecutionNode::castTo<DocumentProducingNode*>(n);
+      modified |= documentNode->recalculateProjections(plan.get());
+      modified |= replace(n, documentNode->projections(),
+                          documentNode->outVariable(), /*index*/ 0);
+    }
+  }
   opt->addPlan(std::move(plan), rule, modified);
 }

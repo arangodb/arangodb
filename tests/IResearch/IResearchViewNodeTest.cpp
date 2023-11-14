@@ -27,6 +27,7 @@
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
+#include "absl/cleanup/cleanup.h"
 
 #include "velocypack/Iterator.h"
 
@@ -78,7 +79,9 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
+#endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
@@ -1442,12 +1445,19 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
   // with options
   {
     auto json = arangodb::velocypack::Parser::fromJson(
-        "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
-        "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
-        "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
-        "true, \"collections\":[] }, \"viewId\": \"" +
-        std::to_string(logicalView->id().id()) + "\" }");
+        R"({ 
+        "id":42, "depth":0, "totalNrRegs":0, "varInfoList":[],
+        "nrRegs":[], "nrRegsHere":[], "regsToClear":[],
+        "varsUsedLaterStack":[[]], "varsValid":[],
+        "outVariable": {
+          "name":"variable", "id":0
+        },
+        "options": { 
+          "waitForSync" : true, 
+          "collections":[],
+          "parallelism": 2
+        }, "viewId": ")" +
+        std::to_string(logicalView->id().id()) + R"(" })");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
                                                 json->slice());
@@ -1484,6 +1494,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
     EXPECT_EQ(node.options().countApproximate,
               arangodb::iresearch::CountApproximate::Exact);
+    EXPECT_EQ(node.options().parallelism, 2);
   }
 
   // with options none condition optimization
@@ -2086,9 +2097,20 @@ TEST_F(IResearchViewNodeTest, clone) {
         arangodb::aql::NODE_TYPE_OBJECT_ELEMENT);
     attributeName.addMember(&attributeValue);
     attributeName.setStringValue("waitForSync", strlen("waitForSync"));
+
+    arangodb::aql::AstNode attributeValueParallelism(
+        arangodb::aql::NODE_TYPE_VALUE);
+    attributeValueParallelism.setValueType(arangodb::aql::VALUE_TYPE_INT);
+    attributeValueParallelism.setIntValue(5);
+    arangodb::aql::AstNode attributeNameParallelism(
+        arangodb::aql::NODE_TYPE_OBJECT_ELEMENT);
+    attributeNameParallelism.addMember(&attributeValueParallelism);
+    attributeNameParallelism.setStringValue("parallelism",
+                                            strlen("parallelism"));
+
     arangodb::aql::AstNode options(arangodb::aql::NODE_TYPE_OBJECT);
     options.addMember(&attributeName);
-
+    options.addMember(&attributeNameParallelism);
     arangodb::iresearch::IResearchViewNode node(
         *query.plan(), arangodb::aql::ExecutionNodeId{42},
         vocbase,      // database
@@ -2100,7 +2122,7 @@ TEST_F(IResearchViewNodeTest, clone) {
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
     EXPECT_TRUE(node.options().forceSync);
-
+    EXPECT_EQ(5, node.options().parallelism);
     // clone without properties into the same plan
     {
       auto const nextId = node.plan()->nextId();
@@ -2119,6 +2141,7 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.getCost(), cloned.getCost());
       EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
       EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
+      EXPECT_EQ(node.options().parallelism, cloned.options().parallelism);
     }
 
     // clone with properties into another plan
@@ -2149,6 +2172,7 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.getCost(), cloned.getCost());
       EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
       EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
+      EXPECT_EQ(node.options().parallelism, cloned.options().parallelism);
     }
 
     // clone without properties into another plan
@@ -2177,11 +2201,18 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.getCost(), cloned.getCost());
       EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
       EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
+      EXPECT_EQ(node.options().parallelism, cloned.options().parallelism);
     }
   }
 
   // no filter condition, no sort condition, with shards, no options
   {
+    auto& feature =
+        server.server().getFeature<arangodb::iresearch::IResearchFeature>();
+    feature.setDefaultParallelism(333);
+    absl::Cleanup cleanup = [&feature]() noexcept {
+      feature.setDefaultParallelism(1);
+    };
     arangodb::iresearch::IResearchViewNode node(
         *query.plan(), arangodb::aql::ExecutionNodeId{42},
         vocbase,      // database
@@ -2194,7 +2225,7 @@ TEST_F(IResearchViewNodeTest, clone) {
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
-
+    EXPECT_EQ(333, node.options().parallelism);
     node.shards().emplace("abc", arangodb::LogicalView::Indexes{});
     node.shards().emplace("def", arangodb::LogicalView::Indexes{});
 
@@ -2220,6 +2251,7 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.getCost(), cloned.getCost());
       EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
       EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
+      EXPECT_EQ(node.options().parallelism, cloned.options().parallelism);
     }
 
     // clone with properties into another plan
@@ -2253,6 +2285,7 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.getCost(), cloned.getCost());
       EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
       EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
+      EXPECT_EQ(node.options().parallelism, cloned.options().parallelism);
     }
 
     // clone without properties into another plan
@@ -2284,6 +2317,7 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.getCost(), cloned.getCost());
       EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
       EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
+      EXPECT_EQ(node.options().parallelism, cloned.options().parallelism);
     }
   }
 

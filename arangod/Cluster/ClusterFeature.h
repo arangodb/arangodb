@@ -33,6 +33,7 @@
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Metrics/Fwd.h"
+#include "Scheduler/Scheduler.h"
 
 namespace arangodb {
 namespace application_features {
@@ -205,6 +206,8 @@ class ClusterFeature : public ArangodFeature {
   ClusterFeature(Server& server, metrics::MetricsFeature& metrics,
                  DatabaseFeature& database, size_t registration);
   void reportRole(ServerState::RoleEnum);
+  void scheduleConnectivityCheck(std::uint32_t inSeconds);
+  void runConnectivityCheck();
 
   std::vector<std::string> _agencyEndpoints;
   std::string _agencyPrefix;
@@ -212,7 +215,8 @@ class ClusterFeature : public ArangodFeature {
   std::string _myEndpoint;
   std::string _myAdvertisedEndpoint;
   std::string _apiJwtPolicy;
-  std::uint32_t _writeConcern = 1;  // write concern
+  std::uint32_t _connectivityCheckInterval = 3600;  // seconds
+  std::uint32_t _writeConcern = 1;                  // write concern
   std::uint32_t _defaultReplicationFactor =
       0;  // a value of 0 means it will use the min replication factor
   std::uint32_t _systemReplicationFactor = 2;
@@ -264,6 +268,11 @@ class ClusterFeature : public ArangodFeature {
   mutable std::mutex _dirtyLock;
   /// @brief dirty databases, where a job could not be posted)
   containers::FlatHashSet<std::string> _dirtyDatabases;
+
+  std::mutex _connectivityCheckMutex;
+  Scheduler::WorkHandle _connectivityCheck;
+  metrics::Counter* _connectivityCheckFailsCoordinators = nullptr;
+  metrics::Counter* _connectivityCheckFailsDBServers = nullptr;
 };
 
 }  // namespace arangodb

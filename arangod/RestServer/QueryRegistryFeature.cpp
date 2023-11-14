@@ -34,6 +34,7 @@
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -162,6 +163,8 @@ DECLARE_COUNTER(arangodb_aql_global_query_memory_limit_reached_total,
                 "Number of global AQL query memory limit violations");
 DECLARE_COUNTER(arangodb_aql_local_query_memory_limit_reached_total,
                 "Number of local AQL query memory limit violations");
+DECLARE_GAUGE(arangodb_aql_cursors_active, uint64_t,
+              "Total amount of active AQL query results cursors");
 
 QueryRegistryFeature::QueryRegistryFeature(Server& server)
     : ArangodFeature{server, *this},
@@ -218,12 +221,18 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server)
               arangodb_aql_global_query_memory_limit_reached_total{})),
       _localQueryMemoryLimitReached(
           server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_aql_local_query_memory_limit_reached_total{})) {
+              arangodb_aql_local_query_memory_limit_reached_total{})),
+      _activeCursors(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_aql_cursors_active{})) {
   static_assert(
       Server::isCreatedAfter<QueryRegistryFeature, metrics::MetricsFeature>());
 
   setOptional(false);
+#ifdef USE_V8
   startsAfter<V8FeaturePhase>();
+#else
+  startsAfter<application_features::ClusterFeaturePhase>();
+#endif
 
   auto properties = arangodb::aql::QueryCache::instance()->properties();
   _queryCacheMaxResultsCount = properties.maxResultsCount;

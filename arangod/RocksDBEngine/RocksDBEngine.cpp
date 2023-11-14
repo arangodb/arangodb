@@ -51,6 +51,11 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/Metric.h"
+#include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationClients.h"
@@ -61,10 +66,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
-#include "Metrics/CounterBuilder.h"
-#include "Metrics/GaugeBuilder.h"
-#include "Metrics/HistogramBuilder.h"
-#include "Metrics/MetricsFeature.h"
 #include "RestServer/DumpLimitsFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
 #include "RestServer/ServerIdFeature.h"
@@ -150,7 +151,7 @@
 // correct sequence numbers for the files without gaps
 #undef USE_SST_INGESTION
 
-//#define USE_CUSTOM_WAL
+// #define USE_CUSTOM_WAL
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -2349,11 +2350,13 @@ void RocksDBEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
   RocksDBOptimizerRules::registerResources(feature);
 }
 
+#ifdef USE_V8
 /// @brief Add engine-specific V8 functions
 void RocksDBEngine::addV8Functions() {
   // there are no specific V8 functions here
   RocksDBV8Functions::registerResources(*this);
 }
+#endif
 
 /// @brief Add engine-specific REST handlers
 void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {
@@ -3126,6 +3129,21 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   // scan the database path for "arangosearch" views
   scanViews(iresearch::StaticStrings::ViewArangoSearchType);
 
+  // replicated states should be loaded before their respective shards
+  if (vocbase->replicationVersion() == replication::Version::TWO) {
+    try {
+      loadReplicatedStates(*vocbase);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("554c1", ERR, arangodb::Logger::ENGINES)
+          << "error while opening database: " << ex.what();
+      throw;
+    } catch (...) {
+      LOG_TOPIC("5f33d", ERR, arangodb::Logger::ENGINES)
+          << "error while opening database: unknown exception";
+      throw;
+    }
+  }
+
   // scan the database path for collections
   try {
     VPackBuilder builder;
@@ -3169,12 +3187,6 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       LOG_TOPIC("39404", DEBUG, arangodb::Logger::ENGINES)
           << "added collection '" << vocbase->name() << "/"
           << collection->name() << "'";
-
-      if (collection->replicationVersion() ==
-          arangodb::replication::Version::TWO) {
-        vocbase->_logManager->_initCollections.emplace(
-            collection->replicatedStateId(), collection);
-      }
     }
   } catch (std::exception const& ex) {
     LOG_TOPIC("8d427", ERR, arangodb::Logger::ENGINES)
@@ -3185,18 +3197,6 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     LOG_TOPIC("0268e", ERR, arangodb::Logger::ENGINES)
         << "error while opening database '" << vocbase->name()
         << "': unknown exception";
-    throw;
-  }
-
-  try {
-    loadReplicatedStates(*vocbase);
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("554c1", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: " << ex.what();
-    throw;
-  } catch (...) {
-    LOG_TOPIC("5f33d", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: unknown exception";
     throw;
   }
 
@@ -3426,7 +3426,8 @@ void RocksDBEngine::getCapabilities(velocypack::Builder& builder) const {
   VPackCollection::merge(builder, main.slice(), own.slice(), false);
 }
 
-void RocksDBEngine::getStatistics(std::string& result) const {
+void RocksDBEngine::toPrometheus(std::string& result, std::string_view globals,
+                                 bool ensureWhitespace) const {
   VPackBuffer<uint8_t> buffer;
   VPackBuilder stats(buffer);
   getStatistics(stats);
@@ -3442,17 +3443,12 @@ void RocksDBEngine::getStatistics(std::string& result) const {
         // prepend name with "rocksdb_"
         name = absl::StrCat(kEngineName, "_", name);
       }
-      if (name.ends_with("_total")) {
-        // counter
-        result += absl::StrCat("\n# HELP ", name, " ", name, "\n# TYPE ", name,
-                               " counter\n", name, " ",
-                               a.value.getNumber<uint64_t>(), "\n");
-      } else {
-        // gauge
-        result += absl::StrCat("\n# HELP ", name, " ", name, "\n# TYPE ", name,
-                               " gauge\n", name, " ",
-                               a.value.getNumber<uint64_t>(), "\n");
-      }
+
+      metrics::Metric::addInfo(result, name, /*help*/ name,
+                               name.ends_with("_total") ? "counter" : "gauge");
+      metrics::Metric::addMark(result, name, globals, "");
+      absl::StrAppend(&result, ensureWhitespace ? " " : "",
+                      a.value.getNumber<uint64_t>(), "\n");
     }
   }
 }
@@ -3618,31 +3614,35 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
         server().getFeature<CacheManagerFeature>().manager();
 
     std::pair<double, double> rates;
-    std::optional<cache::Manager::MemoryStats> stats;
+    cache::Manager::MemoryStats stats;
     if (manager != nullptr) {
       // cache turned on
       stats = manager->memoryStats(cache::Cache::triesFast);
       rates = manager->globalHitRates();
     }
-    if (!stats.has_value()) {
-      stats = cache::Manager::MemoryStats{};
-    }
-    TRI_ASSERT(stats.has_value());
 
-    builder.add("cache.limit", VPackValue(stats->globalLimit));
-    builder.add("cache.allocated", VPackValue(stats->globalAllocation));
-    builder.add("cache.peak-allocated",
-                VPackValue(stats->peakGlobalAllocation));
-    builder.add("cache.active-tables", VPackValue(stats->activeTables));
-    builder.add("cache.unused-memory", VPackValue(stats->spareAllocation));
-    builder.add("cache.unused-tables", VPackValue(stats->spareTables));
-    builder.add("cache.migrate-tasks-total", VPackValue(stats->migrateTasks));
+    builder.add("cache.limit", VPackValue(stats.globalLimit));
+    builder.add("cache.allocated", VPackValue(stats.globalAllocation));
+    builder.add("cache.peak-allocated", VPackValue(stats.peakGlobalAllocation));
+    builder.add("cache.active-tables", VPackValue(stats.activeTables));
+    builder.add("cache.unused-memory", VPackValue(stats.spareAllocation));
+    builder.add("cache.unused-tables", VPackValue(stats.spareTables));
+    builder.add("cache.migrate-tasks-total", VPackValue(stats.migrateTasks));
     builder.add("cache.free-memory-tasks-total",
-                VPackValue(stats->freeMemoryTasks));
+                VPackValue(stats.freeMemoryTasks));
     builder.add("cache.migrate-tasks-duration-total",
-                VPackValue(stats->migrateTasksDuration));
+                VPackValue(stats.migrateTasksDuration));
     builder.add("cache.free-memory-tasks-duration-total",
-                VPackValue(stats->freeMemoryTasksDuration));
+                VPackValue(stats.freeMemoryTasksDuration));
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // only here for debugging. the value is not exposed in non-maintainer
+    // mode builds. the reason for this is to make calls to the `table` function
+    // more lightweight, and because we would need to put a metrics
+    // description into Documentation/Metrics for an optional metric.
+
+    // builder.add("cache.table-calls", VPackValue(stats.tableCalls));
+    // builder.add("cache.term-calls", VPackValue(stats.termCalls));
+#endif
 
     // edge cache compression ratio
     double compressionRatio = 0.0;

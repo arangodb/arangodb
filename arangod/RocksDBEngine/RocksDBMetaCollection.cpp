@@ -44,6 +44,7 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
@@ -1714,7 +1715,38 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
   auto timeout_us = std::chrono::duration_cast<std::chrono::microseconds>(
       std::chrono::duration<double>(timeout));
 
+  constexpr auto detachThreshold = std::chrono::microseconds(1000000);
+
   bool gotLock = false;
+  if (timeout_us > detachThreshold) {
+    if (mode == AccessMode::Type::WRITE) {
+      gotLock = _exclusiveLock.tryLockWriteFor(detachThreshold);
+    } else {
+      gotLock = _exclusiveLock.tryLockReadFor(detachThreshold);
+    }
+    if (gotLock) {
+      // keep the lock and exit
+      return TRI_ERROR_NO_ERROR;
+    }
+    LOG_TOPIC("dd231", INFO, Logger::THREADS)
+        << "Did not get lock within 1 seconds, detaching scheduler thread.";
+    uint64_t currentNumberDetached = 0;
+    uint64_t maximumNumberDetached = 0;
+    Result r = arangodb::SchedulerFeature::SCHEDULER->detachThread(
+        &currentNumberDetached, &maximumNumberDetached);
+    if (r.is(TRI_ERROR_TOO_MANY_DETACHED_THREADS)) {
+      LOG_TOPIC("dd232", WARN, Logger::THREADS)
+          << "Could not detach scheduler thread (currently detached threads: "
+          << currentNumberDetached
+          << ", maximal number of detached threads: " << maximumNumberDetached
+          << "), will continue to acquire "
+             "lock in scheduler thread, this can potentially lead to "
+             "blockages!";
+    }
+  }
+
+  timeout_us -= detachThreshold;
+
   if (mode == AccessMode::Type::WRITE) {
     gotLock = _exclusiveLock.tryLockWriteFor(timeout_us);
   } else {

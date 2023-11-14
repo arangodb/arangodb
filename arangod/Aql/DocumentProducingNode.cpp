@@ -28,6 +28,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/OptimizerUtils.h"
 #include "Aql/QueryContext.h"
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"
@@ -52,10 +53,10 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
                                              arangodb::velocypack::Slice slice)
     : _outVariable(
           Variable::varFromVPack(plan->getAst(), slice, "outVariable")),
-      _projections(arangodb::aql::Projections::fromVelocyPack(
-          slice, plan->getAst()->query().resourceMonitor())),
-      _filterProjections(arangodb::aql::Projections::fromVelocyPack(
-          slice, "filterProjections",
+      _projections(aql::Projections::fromVelocyPack(
+          plan->getAst(), slice, plan->getAst()->query().resourceMonitor())),
+      _filterProjections(aql::Projections::fromVelocyPack(
+          plan->getAst(), slice, "filterProjections",
           plan->getAst()->query().resourceMonitor())),
       _count(false),
       _useCache(true),
@@ -87,10 +88,12 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
 
 void DocumentProducingNode::cloneInto(ExecutionPlan* plan,
                                       DocumentProducingNode& c) const {
-  if (_filter != nullptr) {
+  if (hasFilter()) {
     c.setFilter(
         std::unique_ptr<Expression>(_filter->clone(plan->getAst(), true)));
   }
+  c._projections = _projections;
+  c._filterProjections = _filterProjections;
   c.copyCountFlag(this);
   c.setCanReadOwnWrites(canReadOwnWrites());
   c.setMaxProjections(maxProjections());
@@ -100,7 +103,16 @@ void DocumentProducingNode::cloneInto(ExecutionPlan* plan,
 void DocumentProducingNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
   if (hasFilter()) {
-    _filter->replaceVariables(replacements);
+    filter()->replaceVariables(replacements);
+  }
+}
+
+void DocumentProducingNode::replaceAttributeAccess(
+    ExecutionNode const* self, Variable const* searchVariable,
+    std::span<std::string_view> attribute, Variable const* replaceVariable) {
+  if (hasFilter() && self != dynamic_cast<ExecutionNode const*>(this)) {
+    filter()->replaceAttributeAccess(searchVariable, attribute,
+                                     replaceVariable);
   }
 }
 
@@ -121,17 +133,13 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
     builder.close();
   }
 
-  // "producesResult" is read by AQL explainer. don't remove it!
   builder.add("count", VPackValue(doCount()));
+  // "producesResult" is read by AQL explainer. don't remove it!
   if (doCount()) {
     TRI_ASSERT(_filter == nullptr);
     builder.add(StaticStrings::ProducesResult, VPackValue(false));
   } else {
-    builder.add(
-        StaticStrings::ProducesResult,
-        VPackValue(_filter != nullptr ||
-                   dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(
-                       _outVariable)));
+    builder.add(StaticStrings::ProducesResult, VPackValue(isProduceResult()));
   }
   builder.add(StaticStrings::ReadOwnWrites,
               VPackValue(_readOwnWrites == ReadOwnWrites::yes));
@@ -144,30 +152,101 @@ Variable const* DocumentProducingNode::outVariable() const {
   return _outVariable;
 }
 
+std::vector<Variable const*> DocumentProducingNode::getVariablesSetHere()
+    const {
+  std::vector<Variable const*> result;
+  if (_projections.empty()) {
+    // no projections. simply produce outvariable
+    result.push_back(_outVariable);
+  } else {
+    // projections. add one output register per projection
+    result.reserve(_projections.size() + 1);
+    result.push_back(_outVariable);
+    for (size_t i = 0; i < _projections.size(); ++i) {
+      // output registers are not necessarily set yet
+      if (_projections[i].variable != nullptr) {
+        result.push_back(_projections[i].variable);
+      }
+    }
+  }
+  return result;
+}
+
 /// @brief remember the condition to execute for early filtering
 void DocumentProducingNode::setFilter(std::unique_ptr<Expression> filter) {
   _filter = std::move(filter);
 }
 
-arangodb::aql::Projections const& DocumentProducingNode::projections()
-    const noexcept {
+Projections const& DocumentProducingNode::projections() const noexcept {
   return _projections;
 }
 
-arangodb::aql::Projections& DocumentProducingNode::projections() noexcept {
+Projections& DocumentProducingNode::projections() noexcept {
   return _projections;
 }
 
-arangodb::aql::Projections const& DocumentProducingNode::filterProjections()
-    const noexcept {
+Projections const& DocumentProducingNode::filterProjections() const noexcept {
   return _filterProjections;
 }
 
-void DocumentProducingNode::setProjections(
-    arangodb::aql::Projections projections) {
+void DocumentProducingNode::setProjections(aql::Projections projections) {
   _projections = std::move(projections);
 }
 
+void DocumentProducingNode::setFilterProjections(aql::Projections projections) {
+  _filterProjections = std::move(projections);
+}
+
 bool DocumentProducingNode::doCount() const noexcept {
-  return _count && (_filter == nullptr);
+  return _count && !hasFilter();
+}
+
+AsyncPrefetchEligibility DocumentProducingNode::canUseAsyncPrefetching()
+    const noexcept {
+  // we cannot use prefetching if the filter employs V8, because the
+  // Query object only has a single V8 context, which it can enter and exit.
+  // with prefetching, multiple threads can execute calculations in the same
+  // Query instance concurrently, and when using V8, they could try to
+  // enter/exit the V8 context of the query concurrently. this is currently
+  // not thread-safe, so we don't use prefetching.
+  // the constraint for determinism is there because we could produce
+  // different query results when prefetching is enabled, at least in
+  // streaming queries.
+  return (!hasFilter() || (_filter->isDeterministic() && !_filter->willUseV8()))
+             ? AsyncPrefetchEligibility::kEnableForNode
+             : AsyncPrefetchEligibility::kDisableForNode;
+}
+
+bool DocumentProducingNode::recalculateProjections(ExecutionPlan* plan) {
+  auto filterProjectionsHash = _filterProjections.hash();
+  auto projectionsHash = _projections.hash();
+  TRI_ASSERT(!_projections.hasOutputRegisters());
+  TRI_ASSERT(!_filterProjections.hasOutputRegisters());
+  _filterProjections.clear();
+  _projections.clear();
+
+  containers::FlatHashSet<AttributeNamePath> attributes;
+  if (hasFilter()) {
+    if (Ast::getReferencedAttributesRecursive(
+            this->filter()->node(), this->outVariable(),
+            /*expectedAttribute*/ "", attributes,
+            plan->getAst()->query().resourceMonitor())) {
+      _filterProjections = aql::Projections{std::move(attributes)};
+    }
+  }
+
+  attributes.clear();
+  if (utils::findProjections(dynamic_cast<ExecutionNode*>(this), outVariable(),
+                             /*expectedAttribute*/ "",
+                             /*excludeStartNodeFilterCondition*/ true,
+                             attributes)) {
+    if (attributes.size() <= maxProjections()) {
+      _projections = Projections(std::move(attributes));
+    }
+  }
+
+  TRI_ASSERT(!_filterProjections.hasOutputRegisters());
+
+  return projectionsHash != _projections.hash() ||
+         filterProjectionsHash != _filterProjections.hash();
 }
