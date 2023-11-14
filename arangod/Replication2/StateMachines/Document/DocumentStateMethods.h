@@ -22,8 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <memory>
 #include "Cluster/ClusterTypes.h"
+
+#include <memory>
 
 struct TRI_vocbase_t;
 
