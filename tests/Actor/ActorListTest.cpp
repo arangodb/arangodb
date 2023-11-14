@@ -25,15 +25,20 @@
 #include <gtest/gtest.h>
 #include "Actor/ActorBase.h"
 #include "Actor/ActorList.h"
+#include "Actor/DistributedActorPID.h"
 
-using namespace arangodb::actor;
+using arangodb::actor::ActorID;
+using arangodb::actor::DistributedActorPID;
+
+using ActorList = arangodb::actor::ActorList<DistributedActorPID>;
+using ActorBase = arangodb::actor::ActorBase<DistributedActorPID>;
 
 struct ActorBaseMock : ActorBase {
   ActorBaseMock(std::string type) : type{std::move(type)} {}
   ActorBaseMock() = default;
   ~ActorBaseMock() = default;
-  auto process(DistributedActorPID sender, MessagePayloadBase& msg)
-      -> void override {}
+  auto process(DistributedActorPID sender,
+               arangodb::actor::MessagePayloadBase& msg) -> void override {}
   auto process(DistributedActorPID sender,
                arangodb::velocypack::SharedSlice msg) -> void override {}
   auto typeName() -> std::string_view override { return type; }

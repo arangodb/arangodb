@@ -64,7 +64,7 @@ namespace arangodb::pregel {
 
 struct PregelScheduler : actor::IScheduler {
   explicit PregelScheduler(Scheduler* scheduler);
-  void queue(actor::ActorWorker&& worker) override;
+  void queue(actor::LazyWorker&& worker) override;
   void delay(std::chrono::seconds delay,
              std::function<void(bool)>&& fn) override;
 

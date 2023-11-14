@@ -69,6 +69,7 @@ auto inspect(Inspector& f, SpawnState& x) {
 
 template<typename Runtime>
 struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
+  using ActorPID = typename Runtime::ActorPID;
   auto operator()(message::SpawnStart start) -> std::unique_ptr<SpawnState> {
     LOG_TOPIC("4a414", INFO, Logger::PREGEL)
         << fmt::format("Spawn Actor {} started", this->self);
@@ -206,14 +207,14 @@ struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
     return std::move(this->state);
   }
 
-  auto operator()(actor::message::UnknownMessage unknown)
+  auto operator()(actor::message::UnknownMessage<ActorPID> unknown)
       -> std::unique_ptr<SpawnState> {
     LOG_TOPIC("7b602", INFO, Logger::PREGEL) << fmt::format(
         "Spawn Actor: Error - sent unknown message to {}", unknown.receiver);
     return std::move(this->state);
   }
 
-  auto operator()(actor::message::ActorNotFound notFound)
+  auto operator()(actor::message::ActorNotFound<ActorPID> notFound)
       -> std::unique_ptr<SpawnState> {
     LOG_TOPIC("03156", INFO, Logger::PREGEL) << fmt::format(
         "Spawn Actor: Error - receiving actor {} not found", notFound.actor);
