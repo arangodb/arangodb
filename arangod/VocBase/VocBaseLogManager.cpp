@@ -65,7 +65,7 @@ auto VocBaseLogManager::getReplicatedStateById(replication2::LogId id)
       iter != guard->statesAndLogs.end()) {
     return {iter->second.state};
   } else {
-    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+    return Result(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND,
                   fmt::format("replicated state {} not found", id.id()));
   }
 }

@@ -33,11 +33,9 @@ const { partSuites } = require("./" + fs.join("tests", "js", "client", "shell", 
 for (let suite of partSuites[1]) {
   let derived = {};
   deriveTestSuite(suite({replicationVersion: "2"}), derived, "_V2");
-  /*
-    jsunity.run(function() {
-      return derived;
-    });
-   */
+  jsunity.run(function() {
+    return derived;
+  });
 }
 
 return jsunity.done();

@@ -41,14 +41,24 @@ struct IDatabaseSnapshotFactory;
  */
 struct IDocumentStateSnapshotHandler {
   virtual ~IDocumentStateSnapshotHandler() = default;
-  virtual auto create(ShardMap shards, SnapshotParams::Start const& params)
+
+  // Create a new snapshot
+  virtual auto create(std::vector<std::shared_ptr<LogicalCollection>> shards,
+                      SnapshotParams::Start const& params) noexcept
       -> ResultT<std::weak_ptr<Snapshot>> = 0;
+
+  // Find a snapshot by id
   virtual auto find(SnapshotId const& id) noexcept
       -> ResultT<std::weak_ptr<Snapshot>> = 0;
+
   virtual auto abort(SnapshotId const& id) -> Result = 0;
+
   virtual auto finish(SnapshotId const& id) -> Result = 0;
+
   [[nodiscard]] virtual auto status() const -> AllSnapshotsStatus = 0;
+
   virtual void clear() = 0;
+
   virtual void giveUpOnShard(ShardID const& shardId) = 0;
 };
 
@@ -58,40 +68,44 @@ class DocumentStateSnapshotHandler
  public:
   explicit DocumentStateSnapshotHandler(
       std::unique_ptr<IDatabaseSnapshotFactory> databaseSnapshotFactory,
-      cluster::RebootTracker& rebootTracker);
+      cluster::RebootTracker& rebootTracker, GlobalLogIdentifier gid,
+      LoggerContext loggerContext);
 
-  // Create a new snapshot
-  auto create(ShardMap shards, SnapshotParams::Start const& params)
+  auto create(std::vector<std::shared_ptr<LogicalCollection>> shards,
+              SnapshotParams::Start const& params) noexcept
       -> ResultT<std::weak_ptr<Snapshot>> override;
 
-  // Find a snapshot by id
   auto find(SnapshotId const& id) noexcept
       -> ResultT<std::weak_ptr<Snapshot>> override;
 
   // Abort a snapshot and remove it
-  auto abort(SnapshotId const& id) -> Result override;
+  auto abort(SnapshotId const& id) noexcept -> Result override;
 
   // Finish a snapshot and remove it
-  auto finish(SnapshotId const& id) -> Result override;
+  auto finish(SnapshotId const& id) noexcept -> Result override;
+
+  // Clear all snapshots
+  void clear() noexcept override;
 
   // Get the status of every snapshot
   auto status() const -> AllSnapshotsStatus override;
 
-  // Clear all snapshots
-  void clear() override;
-
-  // Aborts all snapshots containing a shard , so the shard is free to be
-  // dropped afterwards
+  // Aborts all snapshots containing a shard , so the shard can be dropped
+  // afterwards
   void giveUpOnShard(ShardID const& shardId) override;
 
  private:
   std::unique_ptr<IDatabaseSnapshotFactory> _databaseSnapshotFactory;
   cluster::RebootTracker& _rebootTracker;
+  GlobalLogIdentifier const _gid;
+  LoggerContext const _loggerContext;
 
  private:
   struct SnapshotGuard {
     explicit SnapshotGuard() = default;
+
     SnapshotGuard(SnapshotGuard&&) = default;
+
     ~SnapshotGuard();
 
     std::shared_ptr<Snapshot> snapshot;
@@ -104,6 +118,9 @@ class DocumentStateSnapshotHandler
       return snapshot;
     }
   };
+
+  // We don't need a lock on the snapshots, because the entire
+  // DocumentStateSnapshotHandler is guarded by the leader.
   std::unordered_map<SnapshotId, SnapshotGuard> _snapshots;
 };
 }  // namespace arangodb::replication2::replicated_state::document
