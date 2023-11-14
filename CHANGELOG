@@ -48,6 +48,17 @@ devel
   work. Furthermore, responses should only be compressed when they exceed a
   certain minimum size, e.g. 250 bytes. 
 
+* Support alternative syntax for UPSERT queries, so that arbitrary filter
+  conditions can be used. The alternative syntax is:
+
+      UPSERT FILTER <expression> 
+      UPDATE|REPLACE ...
+
+  The key change here is that the UPSERT will produce a new variable `$CURRENT`
+  with the to-be-found document. This variable can be used in the following 
+  filter condition to apply arbitrary filter conditions and not just equality
+  matches.
+
 * Fixed a problem in ReadWriteLock which could prevent waiting readers
   from being woken up, when a write lock acquire timed out.
 
