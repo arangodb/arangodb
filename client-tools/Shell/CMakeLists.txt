@@ -1,15 +1,3 @@
-if (MSVC AND NOT(SKIP_PACKAGING))
-  generate_product_version(ProductVersionFiles_arangosh
-    NAME arangosh
-    FILE_DESCRIPTION ${ARANGOSH_FRIENDLY_STRING}
-    ICON ${ARANGO_ICON}
-    VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
-    VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
-    VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
-    VERSION_REVISION ${BUILD_ID}
-  )
-endif ()
-
 add_library(arango_shell STATIC
   ClientFeature.cpp
   ShellConsoleFeature.cpp
@@ -23,9 +11,28 @@ target_link_libraries(arango_shell
   boost_system
   boost_boost
   fuerte
-  v8_interface
 )
+  
+if (USE_V8)
+  target_link_libraries(arango_shell v8_interface)
+endif ()
+
 target_include_directories(arango_shell PRIVATE ${CMAKE_SOURCE_DIR}/client-tools)
+
+if (USE_V8)
+
+if (MSVC AND NOT(SKIP_PACKAGING))
+  generate_product_version(ProductVersionFiles_arangosh
+    NAME arangosh
+    FILE_DESCRIPTION ${ARANGOSH_FRIENDLY_STRING}
+    ICON ${ARANGO_ICON}
+    VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
+    VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
+    VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
+    VERSION_REVISION ${BUILD_ID}
+  )
+endif ()
+
 
 add_executable(${BIN_ARANGOSH}
   ${ProductVersionFiles_arangosh}
@@ -98,4 +105,4 @@ install_command_alias(${BIN_ARANGOSH}
 
 install_config(arangoinspect)
 
-
+endif ()

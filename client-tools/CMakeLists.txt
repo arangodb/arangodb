@@ -14,11 +14,7 @@ add_subdirectory(Dump)
 add_subdirectory(Export)
 add_subdirectory(Import)
 add_subdirectory(Restore)
-
-if (USE_V8)
-  add_subdirectory(Shell)
-endif ()
-
+add_subdirectory(Shell)
 add_subdirectory(Utils)
 add_subdirectory(VPack)
 
