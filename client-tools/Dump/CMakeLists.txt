@@ -32,15 +32,15 @@ install(
   TARGETS ${BIN_ARANGODUMP}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install_config(arangodump)
+install_config(${BIN_ARANGODUMP})
 
-add_dependencies(arangodump zlibstatic)
+add_dependencies(${BIN_ARANGODUMP} zlibstatic)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangodump v8_build) # v8_build includes ICU build
+  add_dependencies(${BIN_ARANGODUMP} v8_build) # v8_build includes ICU build
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangodump jemalloc_build)
+  add_dependencies(${BIN_ARANGODUMP} jemalloc_build)
 endif ()
 

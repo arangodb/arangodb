@@ -34,15 +34,15 @@ install(
   TARGETS ${BIN_ARANGOBENCH}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install_config(arangobench)
+install_config(${BIN_ARANGOBENCH})
 
-add_dependencies(arangobench zlibstatic)
+add_dependencies(${BIN_ARANGOBENCH} zlibstatic)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangobench v8_build) # v8_build includes ICU build
+  add_dependencies(${BIN_ARANGOBENCH} v8_build) # v8_build includes ICU build
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangobench jemalloc_build)
+  add_dependencies(${BIN_ARANGOBENCH} jemalloc_build)
 endif ()
 

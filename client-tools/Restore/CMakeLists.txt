@@ -40,15 +40,15 @@ install(
   TARGETS ${BIN_ARANGORESTORE}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install_config(arangorestore)
+install_config(${BIN_ARANGORESTORE})
 
-add_dependencies(arangorestore zlibstatic)
+add_dependencies(${BIN_ARANGORESTORE} zlibstatic)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangorestore v8_build) # v8_build includes ICU build
+  add_dependencies(${BIN_ARANGORESTORE} v8_build) # v8_build includes ICU build
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangorestore jemalloc_build)
+  add_dependencies(${BIN_ARANGORESTORE} jemalloc_build)
 endif ()
 

@@ -75,16 +75,16 @@ install(
   TARGETS ${BIN_ARANGOSH}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install_config(arangosh)
+install_config(${BIN_ARANGOSH})
 
-add_dependencies(arangosh zlibstatic)
+add_dependencies(${BIN_ARANGOSH} zlibstatic)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangosh v8_build)
+  add_dependencies(${BIN_ARANGOSH} v8_build)
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangosh jemalloc_build)
+  add_dependencies(${BIN_ARANGOSH} jemalloc_build)
 endif ()
 
 ################################################################################

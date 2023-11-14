@@ -36,16 +36,16 @@ if (USE_ENTERPRISE)
     TARGETS ${BIN_ARANGOBACKUP}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-  install_config(arangobackup)
+  install_config(${BIN_ARANGOBACKUP})
 
-  add_dependencies(arangobackup zlibstatic)
+  add_dependencies(${BIN_ARANGOBACKUP} zlibstatic)
 
   if (NOT USE_PRECOMPILED_V8)
-    add_dependencies(arangobackup v8_build) # v8_build includes ICU build
+    add_dependencies(${BIN_ARANGOBACKUP} v8_build) # v8_build includes ICU build
   endif ()
 
   if (USE_JEMALLOC)
-    add_dependencies(arangobackup jemalloc_build)
+    add_dependencies(${BIN_ARANGOBACKUP} jemalloc_build)
   endif ()
 
 endif () # USE_ENTERPRISE

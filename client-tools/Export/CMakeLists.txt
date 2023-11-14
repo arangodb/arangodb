@@ -32,15 +32,15 @@ install(
   TARGETS ${BIN_ARANGOEXPORT}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install_config(arangoexport)
+install_config(${BIN_ARANGOEXPORT})
 
-add_dependencies(arangoexport zlibstatic)
+add_dependencies(${BIN_ARANGOEXPORT} zlibstatic)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangoexport v8_build) # v8_build includes ICU build
+  add_dependencies(${BIN_ARANGOEXPORT} v8_build) # v8_build includes ICU build
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangoexport jemalloc_build)
+  add_dependencies(${BIN_ARANGOEXPORT} jemalloc_build)
 endif ()
 

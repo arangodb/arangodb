@@ -31,14 +31,14 @@ install(
   TARGETS ${BIN_ARANGOVPACK}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install_config(arangovpack)
+install_config(${BIN_ARANGOVPACK})
 
-add_dependencies(arangovpack zlibstatic)
+add_dependencies(${BIN_ARANGOVPACK} zlibstatic)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangovpack v8_build)
+  add_dependencies(${BIN_ARANGOVPACK} v8_build)
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangovpack jemalloc_build)
+  add_dependencies(${BIN_ARANGOVPACK} jemalloc_build)
 endif ()
