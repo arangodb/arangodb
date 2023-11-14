@@ -467,7 +467,6 @@ void DatabaseFeature::beginShutdown() {
 
     // throw away all open cursors in order to speed up shutdown
     vocbase->cursorRepository()->garbageCollect(true);
-    vocbase->shutdownReplicatedLogs();
   }
 }
 
@@ -524,6 +523,8 @@ void DatabaseFeature::stop() {
         << ", cursors: " << currentCursorCount
         << ", queries: " << currentQueriesCount;
 #endif
+
+    // Replicated logs are being processed in the stop() method
     vocbase->stop();
 
     vocbase->processCollectionsOnShutdown([](LogicalCollection* collection) {

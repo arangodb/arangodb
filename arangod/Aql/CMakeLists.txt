@@ -110,6 +110,7 @@ add_library(arango_aql STATIC
   OptimizerRulesCluster.cpp
   OptimizerRulesFeature.cpp
   OptimizerRulesReplaceFunctions.cpp
+  OptimizerRulesJoin.cpp
   OptimizerUtils.cpp
   OutputAqlItemRow.cpp
   ParallelUnsortedGatherExecutor.cpp

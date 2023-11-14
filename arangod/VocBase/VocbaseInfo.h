@@ -143,7 +143,7 @@ class CreateDatabaseInfo {
   } constexpr static mockConstruct = {};
   CreateDatabaseInfo(MockConstruct, ArangodServer& server,
                      ExecContext const& execContext, std::string const& name,
-                     std::uint64_t id);
+                     std::uint64_t id, replication::Version version);
 #endif
 
  private:
