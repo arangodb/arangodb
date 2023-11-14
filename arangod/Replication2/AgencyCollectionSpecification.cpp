@@ -28,21 +28,6 @@
 using namespace arangodb::replication2::agency;
 using namespace arangodb::basics;
 
-bool CollectionGroup::Attributes::MutableAttributes::operator==(
-    const CollectionGroup::Attributes::MutableAttributes& other)
-    const noexcept {
-  if (waitForSync != other.waitForSync) {
-    return false;
-  }
-  if (replicationFactor != other.replicationFactor) {
-    return false;
-  }
-  if (writeConcern != other.writeConcern) {
-    return false;
-  }
-  return true;
-}
-
 bool Collection::MutableProperties::operator==(
     MutableProperties const& other) const noexcept {
   if (schema.has_value() != other.schema.has_value()) {

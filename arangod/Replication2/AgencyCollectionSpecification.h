@@ -58,7 +58,7 @@ struct CollectionGroup {
       std::size_t replicationFactor{};
       bool waitForSync{};
 
-      bool operator==(MutableAttributes const& other) const noexcept;
+      bool operator==(MutableAttributes const& other) const noexcept = default;
     };
 
     MutableAttributes mutableAttributes;

@@ -484,7 +484,6 @@ TEST_F(CollectionGroupsSupervisionTest, modify_wait_for_sync) {
   group.target.attributes.mutableAttributes.waitForSync = false;
 
   auto result = checkCollectionGroup(database, group, uniqid, health);
-  // Cannot do anything right now
   ASSERT_TRUE(std::holds_alternative<UpdateCollectionGroupInPlan>(result))
       << result.index();
 

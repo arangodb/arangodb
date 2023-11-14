@@ -880,10 +880,9 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
                                   arangodb::cluster::paths::SkipComponents{1}));
     uint64_t versionToWaitFor =
         basics::VelocyPackHelper::getNumericValue(response.slice(), 0ull);
+    // We may get 0 here if the Target Group Entry does not exist anymore.
     // This indicates that the Group does not exist anymore. If this happens the
     // below preconditions will catch this.
-    TRI_ASSERT(versionToWaitFor > 0)
-        << "We have found a ReplicatedLog without a current version";
 
     // Preconditions: Database exists, Collection exists. Group exists.
     auto preconditions = std::move(writes).precs();
@@ -910,6 +909,8 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
                             ->str(arangodb::cluster::paths::SkipComponents(1));
     auto waitForSuccess = callbackRegistry.waitFor(
         currentGroup, [versionToWaitFor](VPackSlice slice) {
+          TRI_ASSERT(versionToWaitFor > 0)
+              << "We have found a CollectionGroup without a current version";
           if (slice.isNone()) {
             // TODO: Should this actual set an "error"? It indicates
             // that the collection is dropped if i am not mistaken
