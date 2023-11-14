@@ -1961,6 +1961,35 @@ static void ClientConnection_timeout(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "compressTransfer"
+////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_compressTransfer(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
+  ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
+
+  if (client == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "compressTransfer() unable to get client instance");
+  }
+
+  if (args.Length() == 0) {
+    TRI_V8_RETURN(v8::Boolean::New(isolate, client->compressTransfer()));
+  } else {
+    bool value = TRI_ObjectToBoolean(isolate, args[0]);
+    client->setCompressTransfer(value);
+
+    TRI_V8_RETURN_UNDEFINED();
+  }
+
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method "toString"
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2978,6 +3007,11 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
   connection_proto->Set(
       isolate, "timeout",
       v8::FunctionTemplate::New(isolate, ClientConnection_timeout, v8client));
+
+  connection_proto->Set(
+      isolate, "compressTransfer",
+      v8::FunctionTemplate::New(isolate, ClientConnection_compressTransfer,
+                                v8client));
 
   connection_proto->Set(
       isolate, "toString",

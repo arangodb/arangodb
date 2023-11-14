@@ -618,6 +618,11 @@ bool ClientFeature::compressTransfer() const noexcept {
   return _compressTransfer;
 }
 
+void ClientFeature::setCompressTransfer(bool value) noexcept {
+  WRITE_LOCKER(locker, _settingsLock);
+  _compressTransfer = value;
+}
+
 uint64_t ClientFeature::compressRequestThreshold() const noexcept {
   READ_LOCKER(locker, _settingsLock);
   return _compressRequestThreshold;

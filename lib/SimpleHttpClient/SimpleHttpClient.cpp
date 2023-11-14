@@ -909,8 +909,8 @@ void SimpleHttpClient::processBody() {
     // _result->getContentLength() <= _readBuffer.length()-_readBufferOffset
     _result->getBody().appendText(_readBuffer.c_str() + _readBufferOffset,
                                   _result->getContentLength());
-    _result->getBody().ensureNullTerminated();
   }
+  _result->getBody().ensureNullTerminated();
 
   _readBufferOffset += _result->getContentLength();
   TRI_ASSERT(_readBufferOffset <= _readBuffer.length());

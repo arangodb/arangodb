@@ -113,6 +113,7 @@ class ClientFeature final : public HttpEndpointProvider {
   bool getWarn() const noexcept;
   void setWarnConnect(bool warnConnect) noexcept;
   bool getWarnConnect() const noexcept;
+  void setCompressTransfer(bool value) noexcept;
   bool compressTransfer() const noexcept;
   uint64_t compressRequestThreshold() const noexcept;
 
@@ -170,7 +171,6 @@ class ClientFeature final : public HttpEndpointProvider {
   uint64_t _maxPacketSize;
   // if > 0, it means that request bodies >= this value will be
   // sent our compressed.
-  // currently only set at startup.
   uint64_t _compressRequestThreshold;
   // only set at startup
   uint64_t _sslProtocol;
@@ -192,7 +192,6 @@ class ClientFeature final : public HttpEndpointProvider {
   // if true, all requests sent out will add an extra
   // HTTP header "Accept-Encoding: deflate" to advertise that
   // the remote can compress the response body.
-  // currently only set at startup.
   bool _compressTransfer;
 };
 
