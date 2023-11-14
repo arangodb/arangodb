@@ -540,6 +540,24 @@ size_t ReplaceNode::getMemoryUsedBytes() const { return sizeof(*this); }
 using SingleRowUpsertExecutionBlock = ExecutionBlockImpl<ModificationExecutor<
     SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;
 
+UpsertNode::UpsertNode(
+    ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
+    ModificationOptions const& options, Variable const* inDocVariable,
+    Variable const* insertVariable, Variable const* updateVariable,
+    Variable const* outVariableNew, bool isReplace, bool canReadOwnWrites)
+    : ModificationNode(plan, id, collection, options, nullptr, outVariableNew),
+      _inDocVariable(inDocVariable),
+      _insertVariable(insertVariable),
+      _updateVariable(updateVariable),
+      _isReplace(isReplace),
+      _canReadOwnWrites(canReadOwnWrites) {
+  TRI_ASSERT(_inDocVariable != nullptr);
+  TRI_ASSERT(_insertVariable != nullptr);
+  TRI_ASSERT(_updateVariable != nullptr);
+
+  TRI_ASSERT(_outVariableOld == nullptr);
+}
+
 UpsertNode::UpsertNode(ExecutionPlan* plan,
                        arangodb::velocypack::Slice const& base)
     : ModificationNode(plan, base),
@@ -552,6 +570,9 @@ UpsertNode::UpsertNode(ExecutionPlan* plan,
       _isReplace(base.get("isReplace").isTrue()),
       _canReadOwnWrites(true) {
   if (auto s = base.get(StaticStrings::ReadOwnWrites); !s.isNone()) {
+    // "readOwnWrites" attribute was introduced in 3.12.
+    // older coordinators will not send it. thus we make it default
+    // to true.
     _canReadOwnWrites = s.isTrue();
   }
 }

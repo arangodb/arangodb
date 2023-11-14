@@ -32,7 +32,6 @@
 #include "Basics/Common.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/application-exit.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
