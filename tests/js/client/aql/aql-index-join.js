@@ -861,16 +861,15 @@ const IndexJoinTestSuite = function () {
     },
 
     testTripleIndexJoin: function () {
-      // TODO fix estimates to make, otherwise with data, join node will be estimated worse.
       const A = createCollection("A", ["x"]);
       A.ensureIndex({type: "persistent", fields: ["x"]});
-      // fillCollection("A", singleAttributeGenerator(20, "x", x => `${x}`));
+      fillCollection("A", singleAttributeGenerator(20, "x", x => `${x}`));
       const B = createCollection("B", ["x"]);
-      // fillCollection("B", singleAttributeGenerator(20, "x", x => `${x}`));
       B.ensureIndex({type: "persistent", fields: ["x"]});
+      fillCollection("B", singleAttributeGenerator(20, "x", x => `${x}`));
       const C = createCollection("C", ["x"]);
-      // fillCollection("C", singleAttributeGenerator(20, "x", x => `${x}`));
       C.ensureIndex({type: "persistent", fields: ["x"]});
+      fillCollection("C", singleAttributeGenerator(20, "x", x => `${x}`));
 
       const query = `
         FOR doc1 IN A
@@ -880,18 +879,25 @@ const IndexJoinTestSuite = function () {
               FILTER doc1.x == doc3.x
               RETURN [doc1.x, doc2.x, doc3.x]
       `;
+
       const plan = db._createStatement(query).explain().plan;
       const nodes = plan.nodes.map(x => x.type);
 
       assertEqual(nodes.indexOf("JoinNode"), 1);
       const join = plan.nodes[1];
-
       assertEqual(join.type, "JoinNode");
 
       assertEqual(join.indexInfos.length, 3);
       assertEqual(normalize(join.indexInfos[0].projections), [["x"]]);
       assertEqual(normalize(join.indexInfos[1].projections), [["x"]]);
       assertEqual(normalize(join.indexInfos[2].projections), [["x"]]);
+
+      const result = db._createStatement(query).execute().toArray();
+      assertEqual(result.length, 20);
+      for (const [a, b, c] of result) {
+        assertEqual(a, b);
+        assertEqual(a, c);
+      }
     },
 
   };
