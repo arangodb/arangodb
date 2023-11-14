@@ -559,7 +559,7 @@ function checking_a_documentSuite () {
 
       // get document;
       cmd = location;
-      doc = arango.GET_RAW(cmd);
+      doc = arango.GET_RAW(cmd, { 'accept-encoding': 'identity' });
 
       assertEqual(doc.code, 200);
       assertEqual(doc.headers['content-type'], contentType);
@@ -567,7 +567,7 @@ function checking_a_documentSuite () {
       let content_length = doc.headers['content-length'];
 
       // get the document head;
-      doc = arango.HEAD_RAW(cmd);
+      doc = arango.HEAD_RAW(cmd, { 'accept-encoding': 'identity' });
 
       assertEqual(doc.code, 200);
       assertEqual(doc.headers['content-type'], contentType);
