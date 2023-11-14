@@ -34,7 +34,7 @@ const {db} = arangodb;
 
 const database = 'ReplLogsMaintenanceTest';
 
-const {setUpAll, tearDownAll, setUp, tearDown} = lh.testHelperFunctions(database);
+const {setUpAll, tearDownAll, setUp, tearDown} = lh.testHelperFunctions(database, {replicationVersion: "2"});
 
 const replicationFactor = 3;
 const planConfig = {

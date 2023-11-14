@@ -63,7 +63,7 @@ const {setUpAll, tearDownAll} = (function () {
     setUpAll: function () {
       previousDatabase = db._name();
       if (!_.includes(db._databases(), database)) {
-        db._createDatabase(database);
+        db._createDatabase(database, {replicationVersion: "2"});
         databaseExisted = false;
       }
       db._useDatabase(database);

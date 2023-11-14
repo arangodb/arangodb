@@ -50,8 +50,9 @@ class EnsureIndex : public ActionBase {
 
  private:
   static auto ensureIndexReplication2(
-      TRI_vocbase_t* vocbase, LogicalCollection& col, VPackSlice indexInfo,
-      std::shared_ptr<methods::Indexes::ProgressTracker> progress) -> Result;
+      std::shared_ptr<LogicalCollection> coll, VPackSlice indexInfo,
+      std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
+      -> Result;
 };
 
 }  // namespace maintenance

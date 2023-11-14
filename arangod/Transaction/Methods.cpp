@@ -2700,9 +2700,9 @@ Future<OperationResult> transaction::Methods::truncateLocal(
       VPackObjectBuilder ob(&body);
       body.add("collection", collectionName);
     }
-    auto operation =
-        replication2::replicated_state::document::ReplicatedOperation::
-            buildTruncateOperation(state()->id(), trxColl->collectionName());
+    auto operation = replication2::replicated_state::document::
+        ReplicatedOperation::buildTruncateOperation(
+            state()->id().asFollowerTransactionId(), trxColl->collectionName());
     // Should finish immediately, because we are not waiting the operation to be
     // committed in the replicated log
     auto replicationFut = leaderState->replicateOperation(
@@ -3199,8 +3199,8 @@ Future<Result> Methods::replicateOperations(
     auto leaderState = rtc.leaderState();
     auto replicatedOp = replication2::replicated_state::document::
         ReplicatedOperation::buildDocumentOperation(
-            operation, state()->id(), rtc.collectionName(),
-            replicationData.sharedSlice());
+            operation, state()->id().asFollowerTransactionId(),
+            rtc.collectionName(), replicationData.sharedSlice());
     // Should finish immediately
     auto replicationFut = leaderState->replicateOperation(
         std::move(replicatedOp),

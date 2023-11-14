@@ -114,7 +114,6 @@ struct FutureSharedLock {
 
     Promise<LockGuard> promise;
     bool exclusive;
-    bool scheduled{false};
   };
 
   struct SharedState : std::enable_shared_from_this<SharedState> {
@@ -157,7 +156,7 @@ struct FutureSharedLock {
         auto& node = _queue.back();
         _lockCount = 1;
         _exclusive = node->exclusive;
-        scheduleNode(node);
+        scheduleNode(*node);
         _queue.pop_back();
 
         // if we are in shared mode, we can schedule all following shared
@@ -165,7 +164,7 @@ struct FutureSharedLock {
         if (!_exclusive) {
           while (!_queue.empty() && !_queue.back()->exclusive) {
             ++_lockCount;
-            scheduleNode(_queue.back());
+            scheduleNode(*_queue.back());
             _queue.pop_back();
           }
         }
@@ -188,7 +187,7 @@ struct FutureSharedLock {
         if (!_exclusive) {
           while (!_queue.empty() && !_queue.back()->exclusive) {
             ++_lockCount;
-            scheduleNode(_queue.back());
+            scheduleNode(*_queue.back());
             _queue.pop_back();
           }
         }
@@ -198,14 +197,10 @@ struct FutureSharedLock {
       }
     }
 
-    void scheduleExclusive(Node* node) { scheduleNode(node); }
-
-    void scheduleShared(Node* leader) { scheduleNode(leader); }
-
-    void scheduleNode(std::shared_ptr<Node> node) {
-      TRI_ASSERT(node != nullptr);
-      node->scheduled = true;
-      _scheduler.queue([promise = std::move(node->promise), this]() mutable {
+    void scheduleNode(Node& node) {
+      // TODO in theory `this` can die before execute callback
+      //  so probably better to use `shared_from_this()`, but it's slower
+      _scheduler.queue([promise = std::move(node.promise), this]() mutable {
         promise.setValue(LockGuard(this));
       });
     }
