@@ -21,8 +21,6 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
-#include "Basics/DownCast.h"
-
 #include "IResearchViewNode.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -40,6 +38,7 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/SortCondition.h"
 #include "Aql/types.h"
+#include "Basics/DownCast.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
@@ -51,6 +50,7 @@
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchInvertedIndex.h"
 #include "IResearch/IResearchViewCoordinator.h"
+#include "IResearch/IResearchFeature.h"
 #include "IResearch/Search.h"
 #include "IResearch/ViewSnapshot.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -61,6 +61,7 @@
 #include "types.h"
 
 #include <absl/strings/str_cat.h>
+#include "utils/misc.hpp"
 #include <frozen/map.h>
 #include <velocypack/Iterator.h>
 
@@ -183,6 +184,10 @@ void toVelocyPack(velocypack::Builder& builder,
     builder.add("filterOptimization",
                 VPackValue(static_cast<int64_t>(options.filterOptimization)));
   }
+
+  if (options.parallelism != 1) {
+    builder.add("parallelism", VPackValue(options.parallelism));
+  }
 }
 
 bool fromVelocyPack(velocypack::Slice optionsSlice,
@@ -272,6 +277,15 @@ bool fromVelocyPack(velocypack::Slice optionsSlice,
       }
       options.filterOptimization = static_cast<iresearch::FilterOptimization>(
           filterOptimizationSlice.getNumber<int>());
+    }
+  }
+  {  // parallelism
+    auto const parallelismSlice = optionsSlice.get("parallelism");
+    if (!parallelismSlice.isNone()) {
+      if (!parallelismSlice.isNumber<size_t>()) {
+        return false;
+      }
+      options.parallelism = parallelismSlice.getNumber<size_t>();
     }
   }
   return true;
@@ -424,6 +438,22 @@ constexpr auto kHandlers = frozen::make_map<std::string_view, OptionHandler>(
         options.filterOptimization =
             static_cast<iresearch::FilterOptimization>(value.getIntValue());
         return true;
+      }},
+     {"parallelism",
+      [](aql::QueryContext& /*query*/, LogicalView const& /*view*/,
+         aql::AstNode const& value, IResearchViewNode::Options& options,
+         std::string& error) {
+        if (!value.isValueType(aql::VALUE_TYPE_INT)) {
+          error = "int value expected for option 'parallelism'";
+          return false;
+        }
+        auto intValue = value.getIntValue();
+        if (intValue <= 0) {
+          error = "positive value expected for option 'parallelism'";
+          return false;
+        }
+        options.parallelism = static_cast<size_t>(intValue);
+        return true;
       }}});
 
 bool parseOptions(aql::QueryContext& query, LogicalView const& view,
@@ -471,72 +501,6 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view,
   return true;
 }
 
-// in loop or non-deterministic
-bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
-                     aql::Variable const& ref, aql::VarSet& vars) {
-  vars.clear();
-  aql::Ast::getReferencedVariables(&node, vars);
-  vars.erase(&ref);  // remove "our" variable
-  for (auto const* var : vars) {
-    auto* setter = plan.getVarSetBy(var->id);
-    if (!setter) {
-      // unable to find setter
-      continue;
-    }
-    switch (setter->getType()) {
-      case aql::ExecutionNode::ENUMERATE_COLLECTION:
-      case aql::ExecutionNode::ENUMERATE_LIST:
-      case aql::ExecutionNode::SUBQUERY:
-      case aql::ExecutionNode::SUBQUERY_END:
-      case aql::ExecutionNode::COLLECT:
-      case aql::ExecutionNode::TRAVERSAL:
-      case aql::ExecutionNode::INDEX:
-      case aql::ExecutionNode::JOIN:
-      case aql::ExecutionNode::SHORTEST_PATH:
-      case aql::ExecutionNode::ENUMERATE_PATHS:
-      case aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
-        // we're in the loop with dependent context
-        return true;
-      default:
-        break;
-    }
-    if (!setter->isDeterministic() || setter->getLoop() != nullptr) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/// @returns true if a given node is located inside a loop or subquery
-bool isInInnerLoopOrSubquery(aql::ExecutionNode const& node) {
-  auto* cur = &node;
-  while (true) {
-    auto const* dep = cur->getFirstDependency();
-    if (!dep) {
-      break;
-    }
-    switch (dep->getType()) {
-      case aql::ExecutionNode::ENUMERATE_COLLECTION:
-      case aql::ExecutionNode::INDEX:
-      case aql::ExecutionNode::JOIN:
-      case aql::ExecutionNode::TRAVERSAL:
-      case aql::ExecutionNode::ENUMERATE_LIST:
-      case aql::ExecutionNode::SHORTEST_PATH:
-      case aql::ExecutionNode::ENUMERATE_PATHS:
-      case aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
-        // we're in a loop
-        return true;
-      default:
-        break;
-    }
-    cur = dep;
-  }
-  TRI_ASSERT(cur);
-  // SINGLETON nodes in subqueries have id != 1
-  return cur->getType() == aql::ExecutionNode::SINGLETON &&
-         cur->id() != aql::ExecutionNodeId{1};
-}
-
 /// negative value - value is dirty
 /// _volatilityMask & 1 == volatile filter
 /// _volatilityMask & 2 == volatile sort
@@ -549,7 +513,8 @@ int evaluateVolatility(IResearchViewNode const& node) {
   // evaluate filter condition volatility
   auto& filterCondition = node.filterCondition();
   if (!isFilterConditionEmpty(&filterCondition) && inDependentScope) {
-    irs::set_bit<0>(hasDependencies(plan, filterCondition, outVariable, vars),
+    irs::set_bit<0>(hasDependencies(plan, filterCondition, outVariable, vars,
+                                    [](Variable const*) { return true; }),
                     mask);
   }
   // evaluate sort condition volatility
@@ -557,7 +522,8 @@ int evaluateVolatility(IResearchViewNode const& node) {
   if (!scorers.empty() && inDependentScope) {
     vars.clear();
     for (auto const& scorer : scorers) {
-      if (hasDependencies(plan, *scorer.node, outVariable, vars)) {
+      if (hasDependencies(plan, *scorer.node, outVariable, vars,
+                          [](Variable const*) { return true; })) {
         irs::set_bit<1>(mask);
         break;
       }
@@ -810,6 +776,8 @@ char const* kNodeViewMetaStored = "metaStored";
 #ifdef USE_ENTERPRISE
 char const* kNodeViewMetaTopK = "metaTopK";
 #endif
+// it serialization optimized for transfer 0 and uint32_t::max
+char const* kNodeViewImmutableParts = "immutableParts";
 
 void toVelocyPack(velocypack::Builder& node, SearchMeta const& meta,
                   bool needSort, [[maybe_unused]] bool needHeapSort) {
@@ -1100,6 +1068,75 @@ bool isFilterConditionEmpty(aql::AstNode const* filterCondition) noexcept {
   return filterCondition == &kAll;
 }
 
+bool isInInnerLoopOrSubquery(aql::ExecutionNode const& node) {
+  auto* cur = &node;
+  while (true) {
+    auto const* dep = cur->getFirstDependency();
+    if (!dep) {
+      break;
+    }
+    switch (dep->getType()) {
+      case aql::ExecutionNode::ENUMERATE_COLLECTION:
+      case aql::ExecutionNode::INDEX:
+      case aql::ExecutionNode::JOIN:
+      case aql::ExecutionNode::TRAVERSAL:
+      case aql::ExecutionNode::ENUMERATE_LIST:
+      case aql::ExecutionNode::SHORTEST_PATH:
+      case aql::ExecutionNode::ENUMERATE_PATHS:
+      case aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+        // we're in a loop
+        return true;
+      default:
+        break;
+    }
+    cur = dep;
+  }
+  TRI_ASSERT(cur);
+  // SINGLETON nodes in subqueries have id != 1
+  return cur->getType() == aql::ExecutionNode::SINGLETON &&
+         cur->id() != aql::ExecutionNodeId{1};
+}
+
+bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
+                     aql::Variable const& ref, aql::VarSet& vars,
+                     std::function<bool(aql::Variable const*)> callback) {
+  vars.clear();
+  aql::Ast::getReferencedVariables(&node, vars);
+  vars.erase(&ref);  // remove "our" variable
+  for (auto const* var : vars) {
+    auto* setter = plan.getVarSetBy(var->id);
+    if (!setter) {
+      // unable to find setter
+      continue;
+    }
+    switch (setter->getType()) {
+      case aql::ExecutionNode::ENUMERATE_COLLECTION:
+      case aql::ExecutionNode::ENUMERATE_LIST:
+      case aql::ExecutionNode::SUBQUERY:
+      case aql::ExecutionNode::SUBQUERY_END:
+      case aql::ExecutionNode::COLLECT:
+      case aql::ExecutionNode::TRAVERSAL:
+      case aql::ExecutionNode::INDEX:
+      case aql::ExecutionNode::JOIN:
+      case aql::ExecutionNode::SHORTEST_PATH:
+      case aql::ExecutionNode::ENUMERATE_PATHS:
+      case aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+        // we're in the loop with dependent context
+        if (callback(var)) {
+          return true;
+        }
+        break;
+      default:
+        if ((!setter->isDeterministic() || setter->getLoop() != nullptr) &&
+            callback(var)) {
+          return true;
+        }
+        break;
+    }
+  }
+  return false;
+}
+
 IResearchViewNode* IResearchViewNode::getByVar(
     aql::ExecutionPlan const& plan, aql::Variable const& var) noexcept {
   auto* varOwner = plan.getVarSetBy(var.id);
@@ -1138,6 +1175,11 @@ IResearchViewNode::IResearchViewNode(
   std::string error;
   TRI_ASSERT(_view);
   TRI_ASSERT(_meta || _view->type() != ViewType::kSearchAlias);
+  _options.parallelism = ast->query()
+                             .vocbase()
+                             .server()
+                             .getFeature<IResearchFeature>()
+                             .defaultParallelism();
   if (!parseOptions(ast->query(), *_view, options, _options, error)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -1262,6 +1304,12 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
   if (volatilityMaskSlice.isNumber()) {
     _volatilityMask = volatilityMaskSlice.getNumber<int>();
   }
+
+  auto const immutablePartsSlice = base.get(kNodeViewImmutableParts);
+  if (immutablePartsSlice.isInteger()) {
+    _immutableParts = immutablePartsSlice.getNumber<uint32_t>() - 1U;
+  }
+
   // parse sort buckets and set them and sort
   auto const sortBucketsSlice = base.get(kNodePrimarySortBucketsParam);
   if (!sortBucketsSlice.isNone()) {
@@ -1623,6 +1671,10 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
   // volatility mask
   nodes.add(kNodeVolatilityParam, VPackValue(_volatilityMask));
 
+  if (_immutableParts != 0) {
+    nodes.add(kNodeViewImmutableParts, VPackValue{_immutableParts + 1U});
+  }
+
   // primary sort buckets
   bool const needSort = _sort && !_sort->empty();
   if (needSort) {
@@ -1692,6 +1744,7 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
   node->_shards = _shards;
   node->_options = _options;
   node->_volatilityMask = _volatilityMask;
+  node->_immutableParts = _immutableParts;
   node->_sort = _sort;
   node->_optState = _optState;
   if (outSearchDocId != nullptr) {
@@ -1762,28 +1815,55 @@ aql::AsyncPrefetchEligibility IResearchViewNode::canUseAsyncPrefetching()
 void IResearchViewNode::replaceVariables(
     std::unordered_map<aql::VariableId, aql::Variable const*> const&
         replacements) {
+  Ast* ast = plan()->getAst();
+  // replace in filter condition
   aql::AstNode const& search = filterCondition();
-  if (isFilterConditionEmpty(&search)) {
-    return;
-  }
-  aql::VarSet variables;
-  aql::Ast::getReferencedVariables(&search, variables);
-  // check if the search condition uses any of the variables that we want to
-  // replace
-  aql::AstNode* cloned = nullptr;
-  for (auto const& it : variables) {
-    if (replacements.find(it->id) != replacements.end()) {
-      if (cloned == nullptr) {
-        // only clone the original search condition once
-        cloned = plan()->getAst()->clone(&search);
+  if (!isFilterConditionEmpty(&search)) {
+    aql::VarSet variables;
+    aql::Ast::getReferencedVariables(&search, variables);
+    // check if the search condition uses any of the variables that we want to
+    // replace
+    aql::AstNode* cloned = nullptr;
+    for (auto const& it : variables) {
+      if (replacements.contains(it->id)) {
+        if (cloned == nullptr) {
+          // only clone the original search condition once
+          cloned = ast->clone(&search);
+        }
+        ast->replaceVariables(cloned, replacements);
       }
-      plan()->getAst()->replaceVariables(cloned, replacements);
+    }
+
+    if (cloned != nullptr) {
+      // exchange the filter condition
+      setFilterCondition(cloned);
     }
   }
 
-  if (cloned != nullptr) {
-    // exchange the filter condition
+  // replace in scorers
+  for (auto& it : _scorers) {
+    it.node = ast->replaceVariables(ast->clone(it.node), replacements);
+  }
+}
+
+void IResearchViewNode::replaceAttributeAccess(
+    aql::ExecutionNode const* self, aql::Variable const* searchVariable,
+    std::span<std::string_view> attribute, aql::Variable const* replaceVariable,
+    size_t /*index*/) {
+  Ast* ast = plan()->getAst();
+  // replace in filter condition
+  aql::AstNode const& search = filterCondition();
+  if (!isFilterConditionEmpty(&search)) {
+    AstNode* cloned = ast->clone(&search);
+    cloned = Ast::replaceAttributeAccess(ast, cloned, searchVariable, attribute,
+                                         replaceVariable);
     setFilterCondition(cloned);
+  }
+
+  // replace in scorers
+  for (auto& it : _scorers) {
+    it.node = ast->replaceAttributeAccess(
+        ast, ast->clone(it.node), searchVariable, attribute, replaceVariable);
   }
 }
 
@@ -1814,7 +1894,7 @@ std::vector<aql::Variable const*> IResearchViewNode::getVariablesSetHere()
   } else if (!isNoMaterialization()) {
     ++reserve;
   }
-  if (searchDocIdVar()) {
+  if (_outSearchDocId != nullptr) {
     ++reserve;
   }
   vars.reserve(reserve);
@@ -1833,7 +1913,7 @@ std::vector<aql::Variable const*> IResearchViewNode::getVariablesSetHere()
   } else {
     vars.emplace_back(_outVariable);
   }
-  if (searchDocIdVar()) {
+  if (_outSearchDocId != nullptr) {
     vars.emplace_back(_outSearchDocId);
   }
   return vars;
@@ -2036,6 +2116,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         outVariable(),
         filterCondition(),
         volatility(),
+        _immutableParts,
         getRegisterPlan()->varInfo,  // ??? do we need this?
         getDepth(),
         std::move(outNonMaterializedViewRegs),
@@ -2043,7 +2124,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         filterOptimization(),
         _heapSort,
         _heapSortLimit,
-        _meta.get()};
+        _meta.get(),
+        _options.parallelism,
+        _vocbase.server().getFeature<IResearchFeature>().getSearchPool()};
     return std::make_tuple(materializeType, std::move(executorInfos),
                            std::move(registerInfos));
   };
@@ -2058,8 +2141,14 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     return createNoResultsExecutor(engine);
   }
 
-  auto [materializeType, executorInfos, registerInfos] =
-      buildExecutorInfo(engine, std::move(reader));
+  // auto [materializeType, executorInfos, registerInfos] =
+  //    buildExecutorInfo(engine, std::move(reader));
+  // Workaround for using clang15 during asan build.
+  // FIXME: remove it as soon as we switch to clang16 or higher
+  auto infosTuple = buildExecutorInfo(engine, std::move(reader));
+  auto& materializeType = std::get<0>(infosTuple);
+  auto& executorInfos = std::get<1>(infosTuple);
+  auto& registerInfos = std::get<2>(infosTuple);
   // guaranteed by optimizer rule
   TRI_ASSERT(_sort == nullptr || !_sort->empty());
   bool const ordered = !_scorers.empty();
@@ -2076,46 +2165,52 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   auto const executorIdx =
       getExecutorIndex(sorted, ordered, heapsort, emitSearchDoc);
-
-  switch (materializeType) {
-    case MaterializeType::NotMaterialize:
-      return kExecutors<false, MaterializeType::NotMaterialize>[executorIdx](
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
-    case MaterializeType::LateMaterialize:
-      return kExecutors<false, MaterializeType::LateMaterialize>[executorIdx](
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
-    case MaterializeType::Materialize:
-      return kExecutors<false, MaterializeType::Materialize>[executorIdx](
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
-    case MaterializeType::NotMaterialize | MaterializeType::UseStoredValues:
+  return irs::ResolveBool(_options.parallelism > 1, [&]<bool copyStored>() {
+    switch (materializeType) {
+      case MaterializeType::NotMaterialize:
+        return kExecutors<copyStored,
+                          MaterializeType::NotMaterialize>[executorIdx](
+            &engine, this, std::move(registerInfos), std::move(executorInfos));
+      case MaterializeType::LateMaterialize:
+        return kExecutors<copyStored,
+                          MaterializeType::LateMaterialize>[executorIdx](
+            &engine, this, std::move(registerInfos), std::move(executorInfos));
+      case MaterializeType::Materialize:
+        return kExecutors<copyStored,
+                          MaterializeType::Materialize>[executorIdx](
+            &engine, this, std::move(registerInfos), std::move(executorInfos));
+      case MaterializeType::NotMaterialize | MaterializeType::UseStoredValues:
 #ifdef USE_ENTERPRISE
-      if (encrypted) {
-        return kExecutors<true,
+        if (encrypted) {
+          return kExecutors<true,
+                            MaterializeType::NotMaterialize |
+                                MaterializeType::UseStoredValues>[executorIdx](
+              &engine, this, std::move(registerInfos),
+              std::move(executorInfos));
+        }
+#endif
+        return kExecutors<copyStored,
                           MaterializeType::NotMaterialize |
                               MaterializeType::UseStoredValues>[executorIdx](
             &engine, this, std::move(registerInfos), std::move(executorInfos));
-      }
-#endif
-      return kExecutors<false,
-                        MaterializeType::NotMaterialize |
-                            MaterializeType::UseStoredValues>[executorIdx](
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
-    case MaterializeType::LateMaterialize | MaterializeType::UseStoredValues:
+      case MaterializeType::LateMaterialize | MaterializeType::UseStoredValues:
 #ifdef USE_ENTERPRISE
-      if (encrypted) {
-        return kExecutors<true,
+        if (encrypted) {
+          return kExecutors<true,
+                            MaterializeType::LateMaterialize |
+                                MaterializeType::UseStoredValues>[executorIdx](
+              &engine, this, std::move(registerInfos),
+              std::move(executorInfos));
+        }
+#endif
+        return kExecutors<copyStored,
                           MaterializeType::LateMaterialize |
                               MaterializeType::UseStoredValues>[executorIdx](
             &engine, this, std::move(registerInfos), std::move(executorInfos));
-      }
-#endif
-      return kExecutors<false,
-                        MaterializeType::LateMaterialize |
-                            MaterializeType::UseStoredValues>[executorIdx](
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
-    default:
-      ADB_UNREACHABLE;
-  }
+      default:
+        ADB_UNREACHABLE;
+    }
+  });
 }
 
 #if defined(__GNUC__)

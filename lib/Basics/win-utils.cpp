@@ -265,8 +265,7 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
     return -1;
   }
 
-  fileDescriptor = _open_osfhandle((intptr_t)(fileHandle),
-                                   (openFlags & O_ACCMODE) | _O_BINARY);
+  fileDescriptor = _open_osfhandle((intptr_t)(fileHandle), openFlags);
   return fileDescriptor;
 }
 

@@ -31,7 +31,6 @@ const isCluster = internal.isCluster();
 const isEnterprise = internal.isEnterprise();
 
 const IndexUniqueJoinTestSuite = function () {
-
   if (isCluster && !isEnterprise) {
     return {};
   }
@@ -91,9 +90,6 @@ const IndexUniqueJoinTestSuite = function () {
   };
 
   const queryOptions = {
-    optimizer: {
-      rules: ["+join-index-nodes"]
-    },
     maxNumberOfPlans: 1
   };
 

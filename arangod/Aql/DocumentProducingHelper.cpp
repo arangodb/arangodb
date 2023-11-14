@@ -26,16 +26,16 @@
 #include "Aql/AqlValue.h"
 #include "Aql/DocumentExpressionContext.h"
 #include "Aql/EnumerateCollectionExecutor.h"
-#include "Aql/Expression.h"
 #include "Aql/IndexExecutor.h"
 #include "Aql/LateMaterializedExpressionContext.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Basics/DownCast.h"
 #include "StorageEngine/PhysicalCollection.h"
-#include "VocBase/LogicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -44,29 +44,6 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
-namespace {
-
-template<typename Func>
-struct MultiFunc2MultiFunc {
-  bool operator()(LocalDocumentId token, velocypack::Slice doc) const {
-    return func(token, doc, doc);
-  }
-  bool operator()(LocalDocumentId token,
-                  std::unique_ptr<std::string>& doc) const {
-    TRI_ASSERT(doc);
-    VPackSlice slice{reinterpret_cast<uint8_t const*>(doc->data())};
-    return func(token, &doc, slice);
-  }
-
-  Func func;
-};
-
-template<typename Func>
-IndexIterator::DocumentCallback makeDocumentCallback(Func&& func) {
-  return {MultiFunc2MultiFunc<std::decay_t<Func>>{std::forward<Func>(func)}};
-}
-
-}  // namespace
 
 template<bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::getCallback(
@@ -85,6 +62,9 @@ IndexIterator::DocumentCallback aql::getCallback(
 
     if (context.hasFilter() && !context.checkFilter(slice)) {
       context.incrFiltered();
+      // required as we point lookup the document to check the filter condition
+      // as it is not covered by the index here.
+      context.incrLookups();
       return false;
     }
 
@@ -92,47 +72,39 @@ IndexIterator::DocumentCallback aql::getCallback(
       return true;
     }
 
+    context.incrLookups();
+
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
     TRI_ASSERT(!output.isFull());
 
-#if 0
-    auto const& p = context.getProjections();
-    for (size_t i = 0; i < p.size(); ++i) {
-      RegisterId registerId = context.registerForVariable(p[i].variable->id);
-      TRI_ASSERT(registerId != RegisterId::maxRegisterId);
-      VPackSlice s = slice.get(p[i].path.get());
-      if (p[i].type == AttributeNamePath::Type::IdAttribute) {
-        // _id attribute
-        TRI_ASSERT(s.isCustom());
-        auto v = AqlValue(transaction::helpers::extractIdString(
-            context.getTrxPtr()->resolver(), s, slice));
-        AqlValueGuard guard{v, true};
-        output.moveValueInto(registerId, input, &guard);
-      } else {
-        TRI_ASSERT(!s.isCustom());
-        if (s.isNone()) {
-          s = VPackSlice::nullSlice();
-        }
-        output.moveValueInto(registerId, input, s);
-      }
+    if (context.getProjectionsForRegisters().empty()) {
+      // write all projections combined into the global output register
+      // recycle our Builder object
+      VPackBuilder& objectBuilder = context.getBuilder();
+      objectBuilder.clear();
+      objectBuilder.openObject(true);
+      context.getProjections().toVelocyPackFromDocument(objectBuilder, slice,
+                                                        context.getTrxPtr());
+      objectBuilder.close();
+
+      VPackSlice s = objectBuilder.slice();
+      RegisterId registerId = context.getOutputRegister();
+      output.moveValueInto(registerId, input, s);
     } else {
-#endif
-    // recycle our Builder object
-    VPackBuilder& objectBuilder = context.getBuilder();
-    objectBuilder.clear();
-    objectBuilder.openObject(true);
-    context.getProjections().toVelocyPackFromDocument(objectBuilder, slice,
-                                                      context.getTrxPtr());
-    objectBuilder.close();
-
-    RegisterId registerId = context.getOutputRegister();
-
-    VPackSlice s = objectBuilder.slice();
-    output.moveValueInto(registerId, input, s);
-#if 0
+      // write projections into individual output registers
+      context.getProjectionsForRegisters().produceFromDocument(
+          context.getBuilder(), slice, context.getTrxPtr(),
+          [&](Variable const* variable, velocypack::Slice slice) {
+            if (slice.isNone()) {
+              slice = VPackSlice::nullSlice();
+            }
+            RegisterId registerId = context.registerForVariable(variable->id);
+            TRI_ASSERT(registerId != RegisterId::maxRegisterId);
+            output.moveValueInto(registerId, input, slice);
+          });
     }
-#endif
+
     TRI_ASSERT(output.produced());
     output.advanceRow();
 
@@ -156,12 +128,16 @@ IndexIterator::DocumentCallback aql::getCallback(
 
     if (context.hasFilter() && !context.checkFilter(s)) {
       context.incrFiltered();
+      // required as we point lookup the document to check the filter condition
+      // as it is not covered by the index here.
+      context.incrLookups();
       return false;
     }
 
     if constexpr (skip) {
       return true;
     }
+    context.incrLookups();
 
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
@@ -183,21 +159,12 @@ IndexIterator::DocumentCallback aql::getCallback(
 template<bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::buildDocumentCallback(
     DocumentProducingFunctionContext& context) {
-  if constexpr (!skip) {
-    if (!context.getProduceResult()) {
-      // This callback is disallowed use getNullCallback instead
-      TRI_ASSERT(false);
-      return [](LocalDocumentId, aql::DocumentData&&, VPackSlice) -> bool {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid callback");
-      };
-    }
-  }
-
-  if (!context.getProjections().empty()) {
+  auto const& p = context.getProjections();
+  if (!p.empty()) {
     // return a projection
     TRI_ASSERT(!context.getProjections().usesCoveringIndex() ||
                !context.getAllowCoveringIndexOptimization());
-    // projections from a "real" document
+
     return getCallback<checkUniqueness, skip>(
         DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex{},
         context);
@@ -207,7 +174,7 @@ IndexIterator::DocumentCallback aql::buildDocumentCallback(
       DocumentProducingCallbackVariant::DocumentCopy{}, context);
 }
 
-template<bool checkUniqueness>
+template<bool checkUniqueness, bool produceResult>
 IndexIterator::LocalDocumentIdCallback aql::getNullCallback(
     DocumentProducingFunctionContext& context) {
   TRI_ASSERT(!context.hasFilter());
@@ -224,11 +191,15 @@ IndexIterator::LocalDocumentIdCallback aql::getNullCallback(
 
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
-    RegisterId registerId = context.getOutputRegister();
-    // TODO: optimize this within the register planning mechanism?
-    TRI_ASSERT(!output.isFull());
-    output.cloneValueInto(registerId, input, AqlValue(AqlValueHintNull()));
-    TRI_ASSERT(output.produced());
+    if constexpr (produceResult) {
+      RegisterId registerId = context.getOutputRegister();
+      // TODO: optimize this within the register planning mechanism?
+      TRI_ASSERT(!output.isFull());
+      output.cloneValueInto(registerId, input, AqlValue(AqlValueHintNull()));
+      TRI_ASSERT(output.produced());
+    } else {
+      output.handleEmptyRow(input);
+    }
     output.advanceRow();
 
     return true;
@@ -246,16 +217,21 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _filter(infos.getFilter()),
       _projections(infos.getProjections()),
       _filterProjections(infos.getFilterProjections()),
+      _projectionsForRegisters(_projections),  // do a full copy first
       _resourceMonitor(infos.getResourceMonitor()),
       _numScanned(0),
       _numFiltered(0),
+      _numLookups(0),
       _outputVariable(infos.getOutVariable()),
       _outputRegister(infos.getOutputRegisterId()),
       _readOwnWrites(infos.canReadOwnWrites()),
       _checkUniqueness(false),
-      _produceResult(infos.getProduceResult()),
       _allowCoveringIndexOptimization(false),
       _isLastIndex(false) {
+  // now erase all projections for which there is no output register
+  _projectionsForRegisters.erase(
+      [](Projections::Projection& p) { return p.variable == nullptr; });
+
   // build ExpressionContext for filtering if we need one
   if (hasFilter()) {
     TRI_ASSERT(_outputVariable != nullptr);
@@ -268,11 +244,24 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
           _trx, _query, _aqlFunctionsInternalCache,
           infos.getFilterVarsToRegister(), _inputRow, _outputVariable);
     } else {
-      // filter condition refers to addition variables.
+      // filter condition refers to additional variables.
       // we have to use a more generic expression context
       _expressionContext = std::make_unique<GenericDocumentExpressionContext>(
           _trx, _query, _aqlFunctionsInternalCache,
           infos.getFilterVarsToRegister(), _inputRow, _outputVariable);
+    }
+  }
+
+  if (_expressionContext == nullptr) {
+    // we also need an ExpressionContext in case we write projections into
+    // output registers
+    for (size_t i = 0; i < _projections.size(); ++i) {
+      if (_projections[i].variable != nullptr) {
+        _expressionContext = std::make_unique<SimpleDocumentExpressionContext>(
+            _trx, _query, _aqlFunctionsInternalCache,
+            infos.getFilterVarsToRegister(), _inputRow, _outputVariable);
+        break;
+      }
     }
   }
 }
@@ -288,17 +277,22 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _filter(infos.getFilter()),
       _projections(infos.getProjections()),
       _filterProjections(infos.getFilterProjections()),
+      _projectionsForRegisters(_projections),  // do a full copy first
       _resourceMonitor(infos.getResourceMonitor()),
       _numScanned(0),
       _numFiltered(0),
+      _numLookups(0),
       _outputVariable(infos.getOutVariable()),
       _outputRegister(infos.getOutputRegisterId()),
       _readOwnWrites(infos.canReadOwnWrites()),
       _checkUniqueness(infos.getIndexes().size() > 1 ||
                        infos.hasMultipleExpansions()),
-      _produceResult(infos.getProduceResult()),
       _allowCoveringIndexOptimization(false),  // can be updated later
       _isLastIndex(false) {
+  // now erase all projections for which there is no output register
+  _projectionsForRegisters.erase(
+      [](Projections::Projection& p) { return p.variable == nullptr; });
+
   // build ExpressionContext for filtering if we need one
   if (hasFilter()) {
     if (infos.isLateMaterialized()) {
@@ -337,6 +331,19 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       }
     }
   }
+
+  if (_expressionContext == nullptr) {
+    // we also need an ExpressionContext in case we write projections into
+    // output registers
+    for (size_t i = 0; i < _projections.size(); ++i) {
+      if (_projections[i].variable != nullptr) {
+        _expressionContext = std::make_unique<SimpleDocumentExpressionContext>(
+            _trx, _query, _aqlFunctionsInternalCache,
+            infos.getFilterVarsToRegister(), _inputRow, _outputVariable);
+        break;
+      }
+    }
+  }
 }
 
 DocumentProducingFunctionContext::~DocumentProducingFunctionContext() {
@@ -349,10 +356,6 @@ void DocumentProducingFunctionContext::setOutputRow(
   _outputRow = outputRow;
 }
 
-bool DocumentProducingFunctionContext::getProduceResult() const noexcept {
-  return _produceResult;
-}
-
 aql::Projections const& DocumentProducingFunctionContext::getProjections()
     const noexcept {
   return _projections;
@@ -361,6 +364,11 @@ aql::Projections const& DocumentProducingFunctionContext::getProjections()
 aql::Projections const& DocumentProducingFunctionContext::getFilterProjections()
     const noexcept {
   return _filterProjections;
+}
+
+aql::Projections const&
+DocumentProducingFunctionContext::getProjectionsForRegisters() const noexcept {
+  return _projectionsForRegisters;
 }
 
 transaction::Methods* DocumentProducingFunctionContext::getTrxPtr()
@@ -379,6 +387,7 @@ velocypack::Builder& DocumentProducingFunctionContext::getBuilder() noexcept {
 
 RegisterId DocumentProducingFunctionContext::registerForVariable(
     VariableId id) const noexcept {
+  TRI_ASSERT(_expressionContext != nullptr);
   return _expressionContext->registerForVariable(id);
 }
 
@@ -398,12 +407,18 @@ void DocumentProducingFunctionContext::incrFiltered() noexcept {
   ++_numFiltered;
 }
 
+void DocumentProducingFunctionContext::incrLookups() noexcept { ++_numLookups; }
+
 uint64_t DocumentProducingFunctionContext::getAndResetNumScanned() noexcept {
   return std::exchange(_numScanned, 0);
 }
 
 uint64_t DocumentProducingFunctionContext::getAndResetNumFiltered() noexcept {
   return std::exchange(_numFiltered, 0);
+}
+
+uint64_t DocumentProducingFunctionContext::getAndResetNumLookups() noexcept {
+  return std::exchange(_numLookups, 0);
 }
 
 InputAqlItemRow const& DocumentProducingFunctionContext::getInputRow()
@@ -522,51 +537,68 @@ IndexIterator::CoveringCallback aql::getCallback(
         << " projections are: " << context.getProjections();
   }
 
-  return
-      [&context](LocalDocumentId token, IndexIteratorCoveringData& covering) {
-        TRI_ASSERT(context.getAllowCoveringIndexOptimization());
-        if constexpr (checkUniqueness) {
-          TRI_ASSERT(token.isSet());
-          if (!context.checkUniqueness(token)) {
-            // Document already found, skip it
-            return false;
-          }
-        }
+  return [&context](LocalDocumentId token,
+                    IndexIteratorCoveringData& covering) {
+    TRI_ASSERT(context.getAllowCoveringIndexOptimization());
+    if constexpr (checkUniqueness) {
+      TRI_ASSERT(token.isSet());
+      if (!context.checkUniqueness(token)) {
+        // Document already found, skip it
+        return false;
+      }
+    }
 
-        context.incrScanned();
+    context.incrScanned();
 
-        if (context.hasFilter() && !context.checkFilter(&covering)) {
-          context.incrFiltered();
-          return false;
-        }
+    if (context.hasFilter() && !context.checkFilter(&covering)) {
+      context.incrFiltered();
+      return false;
+    }
 
+    if constexpr (!skip) {
+      OutputAqlItemRow& output = context.getOutputRow();
+      InputAqlItemRow const& input = context.getInputRow();
+
+      if (context.getProjectionsForRegisters().empty()) {
+        // write all projections combined into the global output register
         // recycle our Builder object
         VPackBuilder& objectBuilder = context.getBuilder();
-        if constexpr (!skip) {
-          objectBuilder.clear();
-          objectBuilder.openObject(true);
+        objectBuilder.clear();
+        objectBuilder.openObject(true);
 
-          // projections from a covering index
-          context.getProjections().toVelocyPackFromIndex(
-              objectBuilder, covering, context.getTrxPtr());
+        // projections from a covering index
+        context.getProjections().toVelocyPackFromIndex(objectBuilder, covering,
+                                                       context.getTrxPtr());
 
-          objectBuilder.close();
+        objectBuilder.close();
 
-          InputAqlItemRow const& input = context.getInputRow();
-          OutputAqlItemRow& output = context.getOutputRow();
-          RegisterId registerId = context.getOutputRegister();
-          TRI_ASSERT(!output.isFull());
-          VPackSlice s = objectBuilder.slice();
-          output.moveValueInto(registerId, input, s);
-          TRI_ASSERT(output.produced());
-          output.advanceRow();
-        }
+        RegisterId registerId = context.getOutputRegister();
+        TRI_ASSERT(!output.isFull());
+        VPackSlice s = objectBuilder.slice();
+        output.moveValueInto(registerId, input, s);
+      } else {
+        // write projections into individual output registers
+        context.getProjectionsForRegisters().produceFromIndex(
+            context.getBuilder(), covering, context.getTrxPtr(),
+            [&](Variable const* variable, velocypack::Slice slice) {
+              if (slice.isNone()) {
+                slice = VPackSlice::nullSlice();
+              }
+              RegisterId registerId = context.registerForVariable(variable->id);
+              TRI_ASSERT(registerId != RegisterId::maxRegisterId);
+              output.moveValueInto(registerId, input, slice);
+            });
+      }
 
-        return true;
-      };
+      TRI_ASSERT(output.produced());
+      output.advanceRow();
+    }
+
+    return true;
+  };
 }
 
-template<bool checkUniqueness, bool skip>
+template<bool checkUniqueness, bool skip, bool produceResult>
 IndexIterator::CoveringCallback aql::getCallback(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context) {
@@ -581,6 +613,11 @@ IndexIterator::CoveringCallback aql::getCallback(
       }
     }
 
+    // skip and produceResult cannot be true at the same time
+    if constexpr (skip) {
+      static_assert(!produceResult);
+    }
+
     context.incrScanned();
 
     if (!context.checkFilter(&covering)) {
@@ -589,44 +626,68 @@ IndexIterator::CoveringCallback aql::getCallback(
     }
 
     if constexpr (!skip) {
-      // read the full document from the storage engine only now,
-      // after checking the filter condition
-      auto cb = [&](LocalDocumentId token, aql::DocumentData&& v,
-                    VPackSlice s) {
-        OutputAqlItemRow& output = context.getOutputRow();
-        TRI_ASSERT(!output.isFull());
+      if constexpr (produceResult) {
+        // read the full document from the storage engine only now,
+        // after checking the filter condition
+        auto cb = [&](LocalDocumentId token, aql::DocumentData&& v,
+                      VPackSlice s) {
+          OutputAqlItemRow& output = context.getOutputRow();
+          TRI_ASSERT(!output.isFull());
 
-        RegisterId registerId = context.getOutputRegister();
-        InputAqlItemRow const& input = context.getInputRow();
+          RegisterId registerId = context.getOutputRegister();
+          InputAqlItemRow const& input = context.getInputRow();
 
-        if (context.getProjections().empty()) {
-          if (v) {
-            output.moveValueInto(registerId, input, &v);
+          if (context.getProjections().empty()) {
+            if (v) {
+              output.moveValueInto(registerId, input, &v);
+            } else {
+              output.moveValueInto(registerId, input, s);
+            }
+          } else if (context.getProjectionsForRegisters().empty()) {
+            // write all projections combined into the global output register
+            // recycle our Builder object
+            VPackBuilder& objectBuilder = context.getBuilder();
+            objectBuilder.clear();
+            objectBuilder.openObject(true);
+
+            // projections from the index for the filter condition
+            context.getProjections().toVelocyPackFromDocument(
+                objectBuilder, s, context.getTrxPtr());
+
+            objectBuilder.close();
+
+            VPackSlice projectedSlice = objectBuilder.slice();
+            output.moveValueInto(registerId, input, projectedSlice);
           } else {
-            output.moveValueInto(registerId, input, s);
+            // write projections into individual output registers
+            context.getProjectionsForRegisters().produceFromDocument(
+                context.getBuilder(), s, context.getTrxPtr(),
+                [&](Variable const* variable, velocypack::Slice slice) {
+                  if (slice.isNone()) {
+                    slice = VPackSlice::nullSlice();
+                  }
+                  RegisterId registerId =
+                      context.registerForVariable(variable->id);
+                  TRI_ASSERT(registerId != RegisterId::maxRegisterId);
+                  output.moveValueInto(registerId, input, slice);
+                });
           }
-        } else {
-          VPackBuilder& objectBuilder = context.getBuilder();
-          objectBuilder.clear();
-          objectBuilder.openObject(true);
 
-          // projections from the index for the filter condition
-          context.getProjections().toVelocyPackFromDocument(
-              objectBuilder, s, context.getTrxPtr());
+          TRI_ASSERT(output.produced());
+          output.advanceRow();
 
-          objectBuilder.close();
-
-          VPackSlice projectedSlice = objectBuilder.slice();
-          output.moveValueInto(registerId, input, projectedSlice);
-        }
-
+          return false;
+        };
+        context.getPhysical().lookup(
+            context.getTrxPtr(), token, cb,
+            {.readOwnWrites = static_cast<bool>(context.getReadOwnWrites())});
+      } else {
+        OutputAqlItemRow& output = context.getOutputRow();
+        InputAqlItemRow const& input = context.getInputRow();
+        output.handleEmptyRow(input);
         TRI_ASSERT(output.produced());
         output.advanceRow();
-        return false;
-      };
-      context.getPhysical().lookup(
-          context.getTrxPtr(), token, cb,
-          {.readOwnWrites = static_cast<bool>(context.getReadOwnWrites())});
+      }
     }
 
     return true;
@@ -646,16 +707,24 @@ template IndexIterator::CoveringCallback aql::getCallback<true, true>(
     DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
     DocumentProducingFunctionContext& context);
 
-template IndexIterator::CoveringCallback aql::getCallback<false, false>(
+// there are only six valid instantiations for WithFilterCoveredByIndex,
+// because if skip = true, then we can't have produceResult = true.
+template IndexIterator::CoveringCallback aql::getCallback<false, false, false>(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context);
-template IndexIterator::CoveringCallback aql::getCallback<true, false>(
+template IndexIterator::CoveringCallback aql::getCallback<true, false, false>(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context);
-template IndexIterator::CoveringCallback aql::getCallback<false, true>(
+template IndexIterator::CoveringCallback aql::getCallback<false, true, false>(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context);
-template IndexIterator::CoveringCallback aql::getCallback<true, true>(
+template IndexIterator::CoveringCallback aql::getCallback<true, true, false>(
+    DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
+    DocumentProducingFunctionContext& context);
+template IndexIterator::CoveringCallback aql::getCallback<false, false, true>(
+    DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
+    DocumentProducingFunctionContext& context);
+template IndexIterator::CoveringCallback aql::getCallback<true, false, true>(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context);
 
@@ -685,10 +754,14 @@ template IndexIterator::DocumentCallback aql::getCallback<true, true>(
     DocumentProducingCallbackVariant::DocumentCopy,
     DocumentProducingFunctionContext& context);
 
-template IndexIterator::LocalDocumentIdCallback aql::getNullCallback<false>(
-    DocumentProducingFunctionContext& context);
-template IndexIterator::LocalDocumentIdCallback aql::getNullCallback<true>(
-    DocumentProducingFunctionContext& context);
+template IndexIterator::LocalDocumentIdCallback
+aql::getNullCallback<false, false>(DocumentProducingFunctionContext& context);
+template IndexIterator::LocalDocumentIdCallback
+aql::getNullCallback<true, false>(DocumentProducingFunctionContext& context);
+template IndexIterator::LocalDocumentIdCallback
+aql::getNullCallback<false, true>(DocumentProducingFunctionContext& context);
+template IndexIterator::LocalDocumentIdCallback
+aql::getNullCallback<true, true>(DocumentProducingFunctionContext& context);
 
 template IndexIterator::DocumentCallback aql::buildDocumentCallback<
     false, false>(DocumentProducingFunctionContext& context);

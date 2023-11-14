@@ -44,6 +44,7 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -128,6 +129,7 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
                                     plan->getAst()->query().resourceMonitor());
 
     bool const usedAsSatellite = it.get("usedAsSatellite").isTrue();
+    bool const producesOutput = it.get("producesOutput").isTrue();
 
     std::unique_ptr<Expression> filter = nullptr;
     if (auto fs = it.get("filter"); !fs.isNone()) {
@@ -143,7 +145,8 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
                   .index = coll->indexByIdentifier(iid),
                   .projections = projections,
                   .filterProjections = filterProjections,
-                  .usedAsSatellite = usedAsSatellite});
+                  .usedAsSatellite = usedAsSatellite,
+                  .producesOutput = producesOutput});
 
     VPackSlice usedShard = it.get("usedShard");
     if (usedShard.isString()) {
@@ -181,8 +184,6 @@ void JoinNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
 
   for (auto const& it : _indexInfos) {
     builder.openObject();
-    // TODO: check if this works in cluster, where we likely need shards and not
-    // collections
     if (!it.usedShard.empty()) {
       builder.add("collection", VPackValue(it.usedShard));
       builder.add("usedShard", VPackValue(it.usedShard));
@@ -190,6 +191,7 @@ void JoinNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
       builder.add("collection", VPackValue(it.collection->name()));
     }
 
+    builder.add("producesOutput", VPackValue(it.producesOutput));
     // out variable
     builder.add(VPackValue("outVariable"));
     it.outVariable->toVelocyPack(builder);
@@ -240,13 +242,36 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
 
   RegIdSet writableOutputRegisters;
+  containers::FlatHashMap<VariableId, RegisterId> varsToRegs;
 
   JoinExecutorInfos infos;
   infos.query = &engine.getQuery();
   infos.indexes.reserve(_indexInfos.size());
   for (auto const& idx : _indexInfos) {
-    auto documentOutputRegister = variableToRegisterId(idx.outVariable);
-    writableOutputRegisters.emplace(documentOutputRegister);
+    auto const& p = idx.projections;
+    // create one register per projection.
+    for (size_t i = 0; i < p.size(); ++i) {
+      Variable const* var = p[i].variable;
+      if (var == nullptr) {
+        // the output register can be a nullptr if the "optimize-projections"
+        // rule was not executed (potentially because it was disabled).
+        continue;
+      }
+      TRI_ASSERT(var != nullptr);
+      auto regId = variableToRegisterId(var);
+      varsToRegs.emplace(var->id, regId);
+      if (idx.producesOutput) {
+        writableOutputRegisters.emplace(regId);
+      }
+    }
+
+    RegisterId documentOutputRegister = RegisterId::maxRegisterId;
+    if (!p.hasOutputRegisters()) {
+      documentOutputRegister = variableToRegisterId(idx.outVariable);
+      if (idx.producesOutput) {
+        writableOutputRegisters.emplace(documentOutputRegister);
+      }
+    }
 
     // TODO probably those data structures can become one
     auto& data = infos.indexes.emplace_back();
@@ -254,6 +279,7 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
     data.index = idx.index;
     data.collection = idx.collection;
     data.projections = idx.projections;
+    data.producesOutput = idx.producesOutput;
 
     if (idx.filter) {
       auto& filter = data.filter.emplace();
@@ -266,7 +292,7 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
 
       filter.filterVarsToRegs.reserve(inVars.size());
 
-      for (auto& var : inVars) {
+      for (auto const& var : inVars) {
         TRI_ASSERT(var != nullptr);
         auto regId = variableToRegisterId(var);
         filter.filterVarsToRegs.emplace_back(var->id, regId);
@@ -287,6 +313,8 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
       }
     }
   }
+
+  infos.varsToRegister = std::move(varsToRegs);
 
   auto registerInfos = createRegisterInfos({}, writableOutputRegisters);
 
@@ -310,7 +338,8 @@ ExecutionNode* JoinNode::clone(ExecutionPlan* plan, bool withDependencies,
                                       .condition = it.condition->clone(),
                                       .index = it.index,
                                       .projections = it.projections,
-                                      .usedAsSatellite = it.usedAsSatellite});
+                                      .usedAsSatellite = it.usedAsSatellite,
+                                      .producesOutput = it.producesOutput});
   }
 
   auto c =
@@ -323,7 +352,33 @@ ExecutionNode* JoinNode::clone(ExecutionPlan* plan, bool withDependencies,
 /// replacements are { old variable id => new variable }
 void JoinNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
-  // TODO: replace variables inside index conditions.
+  for (auto& it : _indexInfos) {
+    if (it.condition) {
+      it.condition->replaceVariables(replacements);
+    }
+    if (it.filter != nullptr) {
+      it.filter->replaceVariables(replacements);
+    }
+  }
+}
+
+void JoinNode::replaceAttributeAccess(ExecutionNode const* self,
+                                      Variable const* searchVariable,
+                                      std::span<std::string_view> attribute,
+                                      Variable const* replaceVariable,
+                                      size_t index) {
+  size_t i = 0;
+  for (auto& it : _indexInfos) {
+    if (it.condition && (self != this || i > index)) {
+      it.condition->replaceAttributeAccess(searchVariable, attribute,
+                                           replaceVariable);
+    }
+    if (it.filter && (self != this || i > index)) {
+      it.filter->replaceAttributeAccess(searchVariable, attribute,
+                                        replaceVariable);
+    }
+    ++i;
+  }
 }
 
 /// @brief the cost of an join node is a multiple of the cost of
@@ -338,7 +393,7 @@ CostEstimate JoinNode::estimateCost() const {
   for (auto const& it : _indexInfos) {
     Index::FilterCosts costs = costsForIndexInfo(it);
     totalItems *= costs.estimatedItems;
-    totalCost *= costs.estimatedCosts;
+    totalCost += costs.estimatedCosts;
   }
 
   estimate.estimatedNrItems *= totalItems;
@@ -383,11 +438,18 @@ AsyncPrefetchEligibility JoinNode::canUseAsyncPrefetching() const noexcept {
 void JoinNode::getVariablesUsedHere(VarSet& vars) const {
   for (auto const& it : _indexInfos) {
     if (it.condition != nullptr && it.condition->root() != nullptr) {
+      // lookup condition
       Ast::getReferencedVariables(it.condition->root(), vars);
     }
   }
   for (auto const& it : _indexInfos) {
     vars.erase(it.outVariable);
+    // projection output variables.
+    for (size_t i = 0; i < it.projections.size(); ++i) {
+      if (it.projections[i].variable != nullptr) {
+        vars.erase(it.projections[i].variable);
+      }
+    }
   }
 }
 
@@ -402,8 +464,18 @@ std::vector<Variable const*> JoinNode::getVariablesSetHere() const {
   vars.reserve(_indexInfos.size());
 
   for (auto const& it : _indexInfos) {
-    vars.emplace_back(it.outVariable);
+    // projection output variables
+    for (size_t i = 0; i < it.projections.size(); ++i) {
+      // output registers are not necessarily set yet
+      if (it.projections[i].variable != nullptr) {
+        vars.push_back(it.projections[i].variable);
+      }
+    }
+    if (!it.projections.hasOutputRegisters() || it.filter != nullptr) {
+      vars.emplace_back(it.outVariable);
+    }
   }
+
   return vars;
 }
 
@@ -413,6 +485,19 @@ std::vector<JoinNode::IndexInfo> const& JoinNode::getIndexInfos() const {
 
 std::vector<JoinNode::IndexInfo>& JoinNode::getIndexInfos() {
   return _indexInfos;
+}
+
+bool JoinNode::isDeterministic() {
+  for (auto const& it : _indexInfos) {
+    if (it.condition != nullptr && it.condition->root() != nullptr &&
+        !it.condition->root()->isDeterministic()) {
+      return false;
+    }
+    if (it.filter != nullptr && !it.filter->isDeterministic()) {
+      return false;
+    }
+  }
+  return true;
 }
 
 Index::FilterCosts JoinNode::costsForIndexInfo(

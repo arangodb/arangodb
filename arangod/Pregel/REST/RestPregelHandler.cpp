@@ -102,12 +102,12 @@ RestStatus RestPregelHandler::execute() {
         auto resultState = std::make_unique<ResultState>(spawnWorkerMsg.ttl);
         auto resultData = resultState->data;
         auto resultActorID = _pregel._actorRuntime->spawn<ResultActor>(
-            _vocbase.name(), std::move(resultState),
+            std::move(resultState),
             message::ResultMessages{message::ResultStart{}});
-        auto resultActorPID =
-            actor::ActorPID{.server = ServerState::instance()->getId(),
-                            .database = _vocbase.name(),
-                            .id = resultActorID};
+        auto resultActorPID = actor::DistributedActorPID{
+            .server = ServerState::instance()->getId(),
+            .database = _vocbase.name(),
+            .id = resultActorID};
         _pregel._pregelRuns.doUnderLock([&](auto& actors) {
           actors.emplace(
               spawnWorkerMsg.message.executionNumber,
@@ -121,7 +121,6 @@ RestStatus RestPregelHandler::execute() {
             message::OtherResultActorStarted{});
 
         _pregel._actorRuntime->spawn<SpawnActor>(
-            _vocbase.name(),
             std::make_unique<SpawnState>(_vocbase, resultActorPID),
             spawnMessage.get());
         generateResult(rest::ResponseCode::OK, VPackBuilder().slice());

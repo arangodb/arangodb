@@ -48,10 +48,10 @@ shell_client_traffic !mac priority=250 parallelity=1 single suffix=ssl-http -- h
 shell_client_traffic !mac priority=250 parallelity=1 single suffix=ssl-http2 -- --http2 true --protocol ssl
 shell_client_traffic !mac priority=250 parallelity=1 single suffix=ssl-vst -- --vst true --protocol ssl
 
-shell_client_aql priority=250  single suffix=http -- --http true buckets=17
-shell_client_aql !mac priority=500  single suffix=http2 -- --http2 true buckets=17
-shell_client_aql !mac priority=750  single suffix=vst -- --vst true buckets=17
-shell_client_aql !mac priority=1000 single enterprise suffix=encrypt -- --encryptionAtRest true buckets=17
+shell_client_aql buckets=17 priority=250  single suffix=http -- --http true
+shell_client_aql buckets=17 !mac priority=500  single suffix=http2 -- --http2 true
+shell_client_aql buckets=17 !mac priority=750  single suffix=vst -- --vst true
+shell_client_aql buckets=17 !mac priority=1000 single enterprise suffix=encrypt -- --encryptionAtRest true
 
 # shell_server_aql priority=750 single buckets=5
 # execute without buckets in single server, but use 5 buckets in cluster
@@ -121,14 +121,14 @@ dump size=medium -- --dumpAgencyOnError true
 dump_authentication size=medium -- --dumpAgencyOnError true
 dump_jwt size=medium -- --dumpAgencyOnError true
 dump_multiple size=medium -- --dumpAgencyOnError true
-dump_parallel size=medium -- --dumpAgencyOnError true
+dump_non_parallel size=medium -- --dumpAgencyOnError true
 dump_maskings  enterprise size=medium -- --dumpAgencyOnError true
 dump_encrypted enterprise size=medium -- --dumpAgencyOnError true
 dump_mixed_cluster_single size=medium -- --dumpAgencyOnError true
 dump_mixed_single_cluster size=large -- --dumpAgencyOnError true
 # takes long, needs to go first. However, doesn't utilize the SUT hard.
 dump_with_crashes !mac size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true
-dump_with_crashes_parallel !mac size=medium parallelity=1 priority=2000 cluster -- --dumpAgencyOnError true 
+dump_with_crashes_non_parallel !mac size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true 
 
 # Audit Tests
 audit_client,audit_server enterprise name=audit -- --dumpAgencyOnError true

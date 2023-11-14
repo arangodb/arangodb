@@ -103,11 +103,26 @@ const IndexPrimaryJoinTestSuite = function () {
     maxNumberOfPlans: 1
   };
 
-  const runAndCheckQuery = function (query) {
+  const executeBothJoinStrategies = (query, expectedStats = null) => {
+    let defaultResult = runAndCheckQuery(query, null, expectedStats);
+    let genericResult = runAndCheckQuery(query, "generic");
+
+    assertEqual(defaultResult, genericResult, "Results do not match, but they should! Result of default execution: " +
+    JSON.stringify(defaultResult) + ", generic execution: " + JSON.stringify(genericResult));
+
+    return defaultResult;
+  };
+
+  const runAndCheckQuery = function (query, joinStrategyType = null, expectedStats = null) {
+    let qOptions = {...queryOptions};
+    if (joinStrategyType === "generic") {
+      qOptions.joinStrategyType = joinStrategyType;
+    }
+
     const plan = db._createStatement({
       query: query,
       bindVars: null,
-      options: queryOptions
+      options: qOptions
     }).explain().plan;
 
     let planNodes = plan.nodes.map(function (node) {
@@ -115,12 +130,21 @@ const IndexPrimaryJoinTestSuite = function () {
     });
 
     if (planNodes.indexOf("JoinNode") === -1) {
-      db._explain(query, null, queryOptions);
+      db._explain(query, null, qOptions);
     }
 
     assertNotEqual(planNodes.indexOf("JoinNode"), -1);
 
-    const result = db._createStatement({query: query, bindVars: null, options: queryOptions}).execute();
+    const result = db._createStatement({query: query, bindVars: null, options: qOptions}).execute();
+
+
+    if (expectedStats) {
+      const qStats = result.getExtra().stats;
+      for (const statName in expectedStats) {
+        assertEqual(expectedStats[statName], qStats[statName], `Wrong count for "${statName}"`);
+      }
+    }
+
     return result.toArray();
   };
 
@@ -149,15 +173,52 @@ const IndexPrimaryJoinTestSuite = function () {
       const A = fillCollectionWith("A", properties, ["x"]);
       A.ensureIndex({type: "persistent", fields: ["x"], unique: true});
 
-      const result = runAndCheckQuery(`
+      let expectedStats = {
+        documentLookups: 10,
+        filtered: 0
+      };
+      const result = executeBothJoinStrategies(`
         FOR doc1 IN A
           SORT doc1.x
           FOR doc2 IN B
               FILTER doc1.x == doc2._key
+              SORT doc2._key
               RETURN [doc1, doc2]
-      `);
+      `, expectedStats);
 
       assertEqual(result.length, 5);
+      for (const [a, b] of result) {
+        assertEqual(a.x, b._key);
+      }
+    },
+
+    testAllMatchWithAdditionalFilterPrimaryIndex: function () {
+      const B = fillCollection("B", singleAttributeGenerator(5, "x", x => 2 * x), ["_key"]);
+      // No additional index on B, we want to make use of the default (rocksdb) primary index
+      const documentsB = B.all().toArray();
+      let properties = [];
+      documentsB.forEach((doc, idx) => {
+        properties.push({"x": doc._key, "y": 2 * idx});
+      });
+
+      const A = fillCollectionWith("A", properties, ["x"]);
+      A.ensureIndex({type: "persistent", fields: ["x", "y"], unique: true});
+
+      let expectedStats = {
+        documentLookups: 6,
+        filtered: 2
+      };
+      const result = executeBothJoinStrategies(`
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2._key
+              FILTER doc1.y % 4 == 0
+              SORT doc2._key
+              RETURN [doc1, doc2]
+      `, expectedStats);
+
+      assertEqual(result.length, 3);
       for (const [a, b] of result) {
         assertEqual(a.x, b._key);
       }
@@ -175,13 +236,18 @@ const IndexPrimaryJoinTestSuite = function () {
       const A = fillCollectionWith("A", properties, ["x"]);
       A.ensureIndex({type: "persistent", fields: ["x"], unique: true});
 
-      const result = runAndCheckQuery(`
+      let expectedStats = {
+        documentLookups: 0,
+        filtered: 0
+      };
+      const result = executeBothJoinStrategies(`
         FOR doc1 IN A
           SORT doc1.x
           FOR doc2 IN B
               FILTER doc1.x == doc2._key
+              SORT doc2._key
               RETURN doc2._key
-      `);
+      `, expectedStats);
       assertEqual(result.length, documentsB.length);
       assertEqual(result.length, 5);
 
@@ -197,7 +263,7 @@ const IndexPrimaryJoinTestSuite = function () {
           documentsB[counter]._key, "Failed at index " + counter +
           ", Left: " + JSON.stringify(result[counter], null, 2) +
           ", Right: " + JSON.stringify(documentsB[counter], null, 2) +
-          ", Result: " + JSON.stringify(result, null, 2)  +
+          ", Result: " + JSON.stringify(result, null, 2) +
           ", Documents: " + JSON.stringify(documentsB, null, 2));
       }
     },
@@ -212,4 +278,3 @@ if (isCluster && !isEnterprise) {
 }
 
 return jsunity.done();
-

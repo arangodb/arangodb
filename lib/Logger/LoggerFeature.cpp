@@ -547,6 +547,23 @@ printed in the thread that triggered the log message. This is non-optimal for
 performance but can aid debugging. If set to `false`, log messages are handed
 off to an extra logging thread, which asynchronously writes the log messages.)");
 
+  options
+      ->addOption(
+          "--log.max-queued-entries",
+          "Upper limit of log entries that are queued in a background thread.",
+          new UInt32Parameter(&_maxQueuedLogMessages),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31012)
+      .setIntroducedIn(31105)
+      .setIntroducedIn(31200)
+      .setLongDescription(R"(Log entries are pushed on a queue for asynchronous
+writing unless you enable the `--log.force-direct` startup option. If you use a
+slow log output (e.g. syslog), the queue might grow and eventually overflow.
+
+You can configure the upper bound of the queue with this option. If the queue is
+full, log entries are written synchronously until the queue has space again.)");
+
   options->addOption(
       "--log.request-parameters",
       "include full URLs and HTTP request parameters in trace logs",
@@ -621,7 +638,7 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (!_fileMode.empty()) {
     try {
       int result = std::stoi(_fileMode, nullptr, 8);
-      LogAppenderFile::setFileMode(result);
+      LogAppenderFileFactory::setFileMode(result);
     } catch (...) {
       LOG_TOPIC("797c2", FATAL, arangodb::Logger::FIXME)
           << "expecting an octal number for log.file-mode, got '" << _fileMode
@@ -666,7 +683,7 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 #endif
     }
 
-    LogAppenderFile::setFileGroup(gidNumber);
+    LogAppenderFileFactory::setFileGroup(gidNumber);
   }
 #endif
 
@@ -723,9 +740,9 @@ void LoggerFeature::prepare() {
   }
 
   if (_forceDirect || _supervisor) {
-    Logger::initialize(server(), false);
+    Logger::initialize(server(), false, _maxQueuedLogMessages);
   } else {
-    Logger::initialize(server(), _threaded);
+    Logger::initialize(server(), _threaded, _maxQueuedLogMessages);
   }
 }
 

@@ -68,6 +68,12 @@ void Projections::clear() noexcept {
   _index.reset();
 }
 
+/// @brief erase projection members if cb returns true
+void Projections::erase(std::function<bool(Projection&)> const& cb) {
+  std::erase_if(_projections, cb);
+  handleSharedPrefixes();
+}
+
 /// @brief set the index context for projections using an index
 void Projections::setCoveringContext(DataSourceId const& id,
                                      std::shared_ptr<Index> const& index) {
@@ -83,6 +89,13 @@ bool Projections::contains(Projection const& other) const noexcept {
 /// @brief checks if we have a single attribute projection on the attribute
 bool Projections::isSingle(std::string_view attribute) const noexcept {
   return _projections.size() == 1 && _projections[0].path[0] == attribute;
+}
+
+/// @brief returns true if any of the projections will write into an
+/// output variable/register
+bool Projections::hasOutputRegisters() const noexcept {
+  return std::any_of(_projections.begin(), _projections.end(),
+                     [](Projection const& p) { return p.variable != nullptr; });
 }
 
 // return the covering index position for a specific attribute type.
@@ -101,6 +114,169 @@ uint16_t Projections::coveringIndexPosition(
                                  "unable to determine covering index position");
 }
 
+void Projections::produceFromDocument(
+    velocypack::Builder& b, velocypack::Slice slice,
+    transaction::Methods const* trxPtr,
+    fu2::unique_function<void(Variable const*, velocypack::Slice) const> const&
+        cb) const {
+  TRI_ASSERT(slice.isObject());
+
+  for (auto const& it : _projections) {
+    TRI_ASSERT(it.variable != nullptr);
+
+    if (it.type == AttributeNamePath::Type::IdAttribute) {
+      // projection for "_id"
+      TRI_ASSERT(it.path.size() == 1);
+
+      b.clear();
+      b.add(VPackValue(transaction::helpers::extractIdString(trxPtr->resolver(),
+                                                             slice, slice)));
+      cb(it.variable, b.slice());
+    } else if (it.type == AttributeNamePath::Type::KeyAttribute) {
+      // projection for "_key"
+      TRI_ASSERT(it.path.size() == 1);
+      b.clear();
+      cb(it.variable, transaction::helpers::extractKeyFromDocument(slice));
+    } else if (it.type == AttributeNamePath::Type::FromAttribute) {
+      // projection for "_from"
+      TRI_ASSERT(it.path.size() == 1);
+      cb(it.variable, transaction::helpers::extractFromFromDocument(slice));
+    } else if (it.type == AttributeNamePath::Type::ToAttribute) {
+      // projection for "_to"
+      TRI_ASSERT(it.path.size() == 1);
+      cb(it.variable, transaction::helpers::extractToFromDocument(slice));
+    } else if (it.type == AttributeNamePath::Type::SingleAttribute) {
+      // projection for any other top-level attribute
+      TRI_ASSERT(it.path.size() == 1);
+      cb(it.variable, slice.get(it.path.get().at(0)));
+    } else {
+      // projection for a sub-attribute, e.g. a.b.c
+      auto const& path = it.path.get();
+      // we need to keep track of the object on the previous level because
+      // of _id. materializing the value of _id requires access to _key.
+      velocypack::Slice prev = slice;
+      velocypack::Slice found = slice;
+      for (size_t i = 0; i < path.size(); ++i) {
+        if (!found.isObject()) {
+          found = VPackSlice::nullSlice();
+          break;
+        }
+        prev = found;
+        found = found.get(path[i]);
+      }
+      if (found.isCustom()) {
+        b.clear();
+        b.add(VPackValue(transaction::helpers::extractIdString(
+            trxPtr->resolver(), found, prev)));
+        cb(it.variable, b.slice());
+      } else {
+        cb(it.variable, found);
+      }
+    }
+  }
+}
+
+/// @brief projections from a covering index
+void Projections::produceFromIndex(
+    velocypack::Builder& b, IndexIteratorCoveringData& covering,
+    transaction::Methods const* trxPtr,
+    fu2::unique_function<void(Variable const*, velocypack::Slice) const> const&
+        cb) const {
+  TRI_ASSERT(_index != nullptr);
+
+  bool const isArray = covering.isArray();
+  for (auto const& it : _projections) {
+    if (isArray) {
+      // we will get a Slice with an array of index values. now we need
+      // to look up the array values from the correct positions to
+      // populate the result with the projection values. this case will
+      // be triggered for indexes that can be set up on any number of
+      // attributes (persistent/hash/skiplist)
+      TRI_ASSERT(isCoveringIndexPosition(it.coveringIndexPosition));
+      VPackSlice found = covering.at(it.coveringIndexPosition);
+
+      // _id cannot be part of a user-defined index, but can be used
+      // from within stored values
+      if (it.type == AttributeNamePath::Type::IdAttribute) {
+        // _id attribute
+        b.clear();
+        b.add(VPackValue(transaction::helpers::makeIdFromParts(
+            trxPtr->resolver(), _datasourceId, found)));
+        cb(it.variable, b.slice());
+      } else {
+        auto const& path = it.path.get();
+        if (it.coveringIndexCutoff < path.size()) {
+          for (size_t i = it.coveringIndexCutoff; i < path.size(); ++i) {
+            if (!found.isObject()) {
+              found = VPackSlice::nullSlice();
+            } else {
+              found = found.get(path[i]);
+            }
+          }
+        }
+        cb(it.variable, found);
+      }
+    } else {
+      // no array Slice... this case will be triggered for indexes that
+      // contain simple string values, such as the primary index or the
+      // edge index
+      TRI_ASSERT(it.path.size() == 1);
+
+      auto slice = covering.value();
+      if (it.type == AttributeNamePath::Type::IdAttribute) {
+        b.clear();
+        b.add(VPackValue(transaction::helpers::makeIdFromParts(
+            trxPtr->resolver(), _datasourceId, slice)));
+        cb(it.variable, b.slice());
+      } else {
+        cb(it.variable, slice);
+      }
+    }
+  }
+}
+
+/// @brief projections from a covering index
+void Projections::produceFromIndexCompactArray(
+    velocypack::Builder& b, IndexIteratorCoveringData& covering,
+    transaction::Methods const* trxPtr,
+    fu2::unique_function<void(Variable const*, velocypack::Slice) const> const&
+        cb) const {
+  TRI_ASSERT(_index != nullptr);
+  TRI_ASSERT(covering.isArray());
+
+  for (size_t k = 0; k < _projections.size(); k++) {
+    auto const& it = _projections[k];
+    // we will get a Slice with an array of index values. now we need
+    // to look up the array values from the correct positions to
+    // populate the result with the projection values. this case will
+    // be triggered for indexes that can be set up on any number of
+    // attributes (persistent/hash/skiplist)
+    VPackSlice found = covering.at(k);
+
+    // _id cannot be part of a user-defined index, but can be used
+    // from within stored values
+    if (it.type == AttributeNamePath::Type::IdAttribute) {
+      // _id attribute
+      b.clear();
+      b.add(VPackValue(transaction::helpers::makeIdFromParts(
+          trxPtr->resolver(), _datasourceId, found)));
+      cb(it.variable, b.slice());
+    } else {
+      auto const& path = it.path.get();
+      if (it.coveringIndexCutoff < path.size()) {
+        for (size_t i = it.coveringIndexCutoff; i < path.size(); ++i) {
+          if (!found.isObject()) {
+            found = VPackSlice::nullSlice();
+          } else {
+            found = found.get(path[i]);
+          }
+        }
+      }
+      cb(it.variable, found);
+    }
+  }
+}
+
 void Projections::toVelocyPackFromDocument(
     velocypack::Builder& b, velocypack::Slice slice,
     transaction::Methods const* trxPtr) const {
@@ -110,7 +286,7 @@ void Projections::toVelocyPackFromDocument(
   size_t levelsOpen = 0;
 
   // the single-attribute projections are easy. we dispatch here based on the
-  // attribute type there are a few optimized functions for retrieving _key,
+  // attribute type. there are a few optimized functions for retrieving _key,
   // _id, _from and _to.
   for (auto const& it : _projections) {
     if (it.type == AttributeNamePath::Type::IdAttribute) {

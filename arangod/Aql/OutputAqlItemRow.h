@@ -67,6 +67,8 @@ class OutputAqlItemRow {
 
   bool isInitialized() const noexcept;
 
+  void handleEmptyRow(InputAqlItemRow const& sourceRow);
+
   // Clones the given AqlValue
   template<class ItemRowType>
   void cloneValueInto(RegisterId registerId, ItemRowType const& sourceRow,

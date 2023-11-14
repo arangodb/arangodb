@@ -387,8 +387,8 @@ DistributeNode* insertDistributeGatherSnippet(ExecutionPlan& plan,
 void joinIndexNodesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                         OptimizerRule const&);
 
-void removeUnnecessaryProjections(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                  OptimizerRule const&);
+void optimizeProjections(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                         OptimizerRule const&);
 
 }  // namespace aql
 }  // namespace arangodb

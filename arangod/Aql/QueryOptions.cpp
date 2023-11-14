@@ -241,6 +241,12 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
     forceOneShardAttributeValue = value.copyString();
   }
 
+  if (value = slice.get(StaticStrings::JoinStrategyType); value.isString()) {
+    if (value.stringView() == "generic") {
+      desiredJoinStrategy = JoinStrategyType::GENERIC;
+    }
+  }
+
   VPackSlice optimizer = slice.get("optimizer");
   if (optimizer.isObject()) {
     value = optimizer.get("rules");

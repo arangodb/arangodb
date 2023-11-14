@@ -451,10 +451,12 @@ optimizations)");
 they are declared but unused in the query, or only used in filters that are
 pulled into the traversal, significantly reducing overhead.)");
 
-  registerRule("remove-unnecessary-projections", removeUnnecessaryProjections,
-               OptimizerRule::removeUnnecessaryProjections,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
-               R"(Remove projections that are no longer used.)");
+  registerRule(
+      "optimize-projections", optimizeProjections,
+      OptimizerRule::optimizeProjectionsRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Remove projections that are no longer used and store projection
+results in separate output registers.)");
 
   registerRule("optimize-cluster-single-document-operations",
                substituteClusterSingleDocumentOperationsRule,
@@ -776,6 +778,21 @@ involved attributes are covered by regular indexes.)");
 avoid unnecessary reads.)");
 #endif
 
+  registerRule(
+      "immutable-search-condition", iresearch::immutableSearchCondition,
+      OptimizerRule::immutableSearchConditionRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Optimize immutable search condition for nested loops, we don't need to make real search many times, if we can cache results in bitset)");
+
+  // remove calculations that are never necessary
+  registerRule("remove-unnecessary-calculations-4",
+               removeUnnecessaryCalculationsRule,
+               OptimizerRule::removeUnnecessaryCalculationsRule4,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Fourth pass of removing all calculations whose result is not
+referenced in the query. This can be a consequence of applying other
+optimizations)");
+
   // add the storage-engine specific rules
   addStorageEngineRules();
 
@@ -816,7 +833,7 @@ in case the indexes qualify for it.)");
   // current batch. this effectively allows parts of the query to run in
   // parallel. this is only supported by certain types of nodes and queries.
   registerRule("async-prefetch", asyncPrefetchRule,
-               OptimizerRule::asyncPrefetch,
+               OptimizerRule::asyncPrefetchRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
                R"(Allow query execution nodes to asynchronously prefetch the
 next batch while processing the current batch, allowing parts of the query to

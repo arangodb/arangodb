@@ -1314,19 +1314,10 @@ void RocksDBPrimaryIndex::handleValNode(transaction::Methods* trx,
 
 namespace {
 
-struct RocksDBPrimaryIndexStreamOptions {
-  std::size_t keyPrefixSize;
-  std::vector<std::size_t> projectedKeyValues;
-  std::vector<std::size_t> projectedStoredValues;
-  bool mustCheckBounds;
-  ReadOwnWrites readOwnWrites;
-};
-
 struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
   RocksDBPrimaryIndex const* _index;
   std::unique_ptr<rocksdb::Iterator> _iterator;
 
-  RocksDBPrimaryIndexStreamOptions _options;
   VPackBuilder _builder;
   VPackString _cache;
   RocksDBKeyBounds _bounds;
@@ -1334,10 +1325,8 @@ struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
   RocksDBKey _rocksdbKey;
 
   RocksDBPrimaryIndexStreamIterator(RocksDBPrimaryIndex const* index,
-                                    transaction::Methods* trx,
-                                    RocksDBPrimaryIndexStreamOptions options)
+                                    transaction::Methods* trx)
       : _index(index),
-        _options(std::move(options)),
         _bounds(RocksDBKeyBounds::PrimaryIndex(
             index->objectId(), KeyGeneratorHelper::lowestKey,
             KeyGeneratorHelper::highestKey)) {
@@ -1398,13 +1387,16 @@ struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
             std::span<VPackSlice> projections) override {
     _iterator->Next();
 
-    auto hasMore = position(key);
-
-    if (hasMore) {
-      docId = load(projections);
+    if (!_iterator->Valid()) {
+      return false;
     }
+    auto keySlice = RocksDBKey::primaryKey(_iterator->key());
+    _builder.clear();
+    _builder.add(VPackValue(std::string{keySlice.begin(), keySlice.end()}));
+    key[0] = _builder.slice();
+    docId = load(projections);
 
-    return hasMore;
+    return true;
   }
 
   void cacheCurrentKey(std::span<VPackSlice> cache) override {
@@ -1428,13 +1420,9 @@ std::unique_ptr<AqlIndexStreamIterator> RocksDBPrimaryIndex::streamForCondition(
                                    "called with unsupported options.");
   }
 
-  RocksDBPrimaryIndexStreamOptions streamOptions;
-  streamOptions.keyPrefixSize = opts.usedKeyFields.size();
-
   auto stream = [&]() -> std::unique_ptr<AqlIndexStreamIterator> {
     TRI_ASSERT(isSorted());
-    return std::make_unique<RocksDBPrimaryIndexStreamIterator>(this, trx,
-                                                               streamOptions);
+    return std::make_unique<RocksDBPrimaryIndexStreamIterator>(this, trx);
   }();
 
   return stream;

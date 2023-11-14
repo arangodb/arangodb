@@ -155,7 +155,8 @@ struct log_t {
     builder.add("term", VPackValue(term));
     builder.add("query", VPackSlice(entry->data()));
     builder.add("clientId", VPackValue(clientId));
-    builder.add("timestamp", VPackValue(timestamp.count()));
+    builder.add("timestamp",
+                VPackValue(static_cast<uint64_t>(timestamp.count())));
 
     builder.close();
   }

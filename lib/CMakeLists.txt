@@ -170,6 +170,7 @@ add_library(arango STATIC
   Basics/FileDescriptors.cpp
   Basics/FunctionUtils.cpp
   Basics/GlobalResourceMonitor.cpp
+  Basics/GlobalSerialization.cpp
   Basics/HybridLogicalClock.cpp
   Basics/IndexIter.h
   Basics/LdapUrlParser.cpp
@@ -306,6 +307,7 @@ if (USE_ENTERPRISE)
   target_include_directories(arango PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
+add_subdirectory(Actor)
 add_subdirectory(Futures)
 add_subdirectory(Geo)
 if (USE_V8)

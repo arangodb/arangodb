@@ -30,7 +30,6 @@ target_include_directories(arango_pregel PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
-add_subdirectory(Actor)
 add_subdirectory(Algos)
 add_subdirectory(Conductor)
 add_subdirectory(GraphStore)

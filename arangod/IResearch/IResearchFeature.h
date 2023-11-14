@@ -30,6 +30,8 @@
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 #include "resource_manager.hpp"
+#include "function2.hpp"
+#include "utils/async_utils.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -55,6 +57,8 @@ class IResearchAsync;
 class IResearchLink;
 class ResourceMutex;
 class IResearchRocksDBRecoveryHelper;
+
+struct IResearchExecutionPool;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @enum ThreadGroup
@@ -115,6 +119,7 @@ class IResearchFeature final : public ArangodFeature {
   void unprepare() final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
 
+  auto& getSearchPool() noexcept { return _searchExecutionPool; }
   //////////////////////////////////////////////////////////////////////////////
   /// @brief schedule an asynchronous task for execution
   /// @param id thread group to handle the execution
@@ -122,7 +127,7 @@ class IResearchFeature final : public ArangodFeature {
   /// @param delay how log to sleep before the execution
   //////////////////////////////////////////////////////////////////////////////
   bool queue(ThreadGroup id, std::chrono::steady_clock::duration delay,
-             std::function<void()>&& fn);
+             fu2::unique_function<void()>&& fn);
 
   std::tuple<size_t, size_t, size_t> stats(ThreadGroup id) const;
   std::pair<size_t, size_t> limits(ThreadGroup id) const;
@@ -148,6 +153,12 @@ class IResearchFeature final : public ArangodFeature {
     _columnsCacheOnlyLeader = b;
   }
 #endif
+#endif
+
+  uint32_t defaultParallelism() const noexcept { return _defaultParallelism; }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  void setDefaultParallelism(uint32_t v) noexcept { _defaultParallelism = v; }
 #endif
 
  private:
@@ -188,12 +199,16 @@ class IResearchFeature final : public ArangodFeature {
   uint32_t _commitThreadsIdle;
   uint32_t _threads;
   uint32_t _threadsLimit;
+  uint32_t _searchExecutionThreadsLimit;
+  uint32_t _defaultParallelism;
 
   std::shared_ptr<IndexTypeFactory> _clusterFactory;
   std::shared_ptr<IndexTypeFactory> _rocksDBFactory;
 
   // helper object, only useful during WAL recovery
   std::shared_ptr<IResearchRocksDBRecoveryHelper> _recoveryHelper;
+
+  IResearchExecutionPool& _searchExecutionPool;
 };
 
 }  // namespace iresearch
