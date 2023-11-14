@@ -27,13 +27,13 @@
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
+#include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
 #include "Transaction/Manager.h"
 
 #include <Basics/voc-errors.h>
 #include <Futures/Future.h>
-#include <Logger/LogContextKeys.h>
 
 using namespace arangodb::replication2::replicated_state::document;
 
@@ -65,11 +65,7 @@ auto DocumentFactory::constructCore(TRI_vocbase_t& vocbase,
                                     GlobalLogIdentifier gid,
                                     DocumentCoreParameters coreParameters)
     -> std::unique_ptr<DocumentCore> {
-  LoggerContext logContext =
-      LoggerContext(Logger::REPLICATED_STATE)
-          .with<logContextKeyStateImpl>(DocumentState::NAME)
-          .with<logContextKeyDatabaseName>(gid.database)
-          .with<logContextKeyLogId>(gid.id);
+  LoggerContext logContext = _handlersFactory->createLogger(gid);
   return std::make_unique<DocumentCore>(
       vocbase, std::move(gid), std::move(coreParameters), _handlersFactory,
       std::move(logContext));

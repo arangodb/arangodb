@@ -24,6 +24,7 @@
 
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/StateMachines/Document/DocumentStateErrorHandler.h"
 #include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 
 #include "Transaction/Options.h"
@@ -46,17 +47,20 @@ struct IDocumentStateTransactionHandler {
                          std::shared_ptr<IDocumentStateTransaction>>;
 
   virtual ~IDocumentStateTransactionHandler() = default;
-  [[nodiscard]] virtual auto applyEntry(ReplicatedOperation operation)
+
+  [[nodiscard]] virtual auto applyEntry(ReplicatedOperation operation) noexcept
       -> Result = 0;
+
   [[nodiscard]] virtual auto applyEntry(
-      ReplicatedOperation::OperationType const& operation) -> Result = 0;
+      ReplicatedOperation::OperationType const& operation) noexcept
+      -> Result = 0;
+
   virtual void removeTransaction(TransactionId tid) = 0;
+
   virtual auto getTransactionsForShard(ShardID const&)
       -> std::vector<TransactionId> = 0;
   [[nodiscard]] virtual auto getUnfinishedTransactions() const
       -> TransactionMap const& = 0;
-  [[nodiscard]] virtual auto validate(
-      ReplicatedOperation::OperationType const& operation) const -> Result = 0;
 };
 
 class DocumentStateTransactionHandler
@@ -66,18 +70,21 @@ class DocumentStateTransactionHandler
       GlobalLogIdentifier gid, TRI_vocbase_t* vocbase,
       std::shared_ptr<IDocumentStateHandlersFactory> factory,
       std::shared_ptr<IDocumentStateShardHandler> shardHandler);
-  [[nodiscard]] auto applyEntry(ReplicatedOperation operation)
+
+  [[nodiscard]] auto applyEntry(ReplicatedOperation operation) noexcept
       -> Result override;
+
   [[nodiscard]] auto applyEntry(
-      ReplicatedOperation::OperationType const& operation) -> Result override;
+      ReplicatedOperation::OperationType const& operation) noexcept
+      -> Result override;
+
   void removeTransaction(TransactionId tid) override;
+
   auto getTransactionsForShard(ShardID const&)
       -> std::vector<TransactionId> override;
+
   [[nodiscard]] auto getUnfinishedTransactions() const
       -> TransactionMap const& override;
-  [[nodiscard]] auto validate(
-      ReplicatedOperation::OperationType const& operation) const
-      -> Result override;
 
  private:
   auto getTrx(TransactionId tid) -> std::shared_ptr<IDocumentStateTransaction>;
@@ -97,9 +104,10 @@ class DocumentStateTransactionHandler
  private:
   GlobalLogIdentifier _gid;
   TRI_vocbase_t* _vocbase;
-  LoggerContext _logContext;
+  LoggerContext _loggerContext;
   std::shared_ptr<IDocumentStateHandlersFactory> _factory;
   std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
+  std::shared_ptr<IDocumentStateErrorHandler> _errorHandler;
   TransactionMap _transactions;
 };
 

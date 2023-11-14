@@ -731,7 +731,10 @@ const bumpTermOfLogsAndWaitForConfirmation = function (dbn, col) {
   const stateMachineIds = shards.map(s => shardsToLogs[s]);
 
   const increaseTerm = (stateId) => triggerLeaderElection(dbn, stateId);
+  const clearOldLeader = (stateId) => unsetLeader(dbn, stateId);
 
+  // Clear the old leader, so it doesn't get back automatically.
+  stateMachineIds.forEach(clearOldLeader);
   stateMachineIds.forEach(increaseTerm);
 
   const leaderReady = (stateId) => lpreds.replicatedLogLeaderEstablished(dbn, stateId, undefined, []);

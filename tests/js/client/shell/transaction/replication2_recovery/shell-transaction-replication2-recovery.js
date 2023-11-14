@@ -82,7 +82,7 @@ function transactionReplication2Recovery() {
     }),
     tearDown: tearDownAnd(() => {
       if (c !== null) {
-        c.drop();
+        db._drop(c.name());
       }
       c = null;
     }),
@@ -335,7 +335,7 @@ function transactionReplication2Recovery() {
 }
 
 let suites = [
-  //transactionReplication2Recovery,
+  transactionReplication2Recovery,
 ];
 
 for (const suite of suites) {

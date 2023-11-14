@@ -119,18 +119,31 @@ bool CreateCollection::first() {
 
   Result res;
 
+  // Temporary unavailability of the replication2 leader should not stop this
+  // server from creating the shard eventually.
+  bool ignoreTemporaryError = false;
+
   try {  // now try to guard the vocbase
     auto& df = _feature.server().getFeature<DatabaseFeature>();
     DatabaseGuard guard(df, database);
     auto& vocbase = guard.database();
 
-    if (vocbase.replicationVersion() == replication::Version::TWO &&
-        from == "maintenance") {
-      return createReplication2Shard(collection, shard, props, vocbase);
-    }
-
     TRI_col_type_e type = static_cast<TRI_col_type_e>(
         props.get(StaticStrings::DataSourceType).getNumber<uint32_t>());
+
+    // Replication2 collection group
+    auto group = getCollectionGroup(props);
+    TRI_ASSERT(vocbase.replicationVersion() != replication::Version::TWO ||
+               group != nullptr)
+        << shard;
+
+    // Replication2 log ID
+    auto logId = std::invoke([&]() -> std::optional<replication2::LogId> {
+      if (vocbase.replicationVersion() == replication::Version::TWO) {
+        return getReplicatedLogId(shard, group, props);
+      }
+      return std::nullopt;
+    });
 
     VPackBuilder docket;
     {
@@ -150,50 +163,36 @@ bool CreateCollection::first() {
         }
         docket.add(key, i.value);
       }
-      if (_description.has(maintenance::REPLICATED_LOG_ID)) {
-        auto logId = replication2::LogId::fromString(
-            _description.get(maintenance::REPLICATED_LOG_ID));
-        TRI_ASSERT(logId.has_value());
-        docket.add("replicatedStateId", VPackValue(*logId));
+      docket.add(PLAN_ID, VPackValue(collection));
+
+      if (vocbase.replicationVersion() == replication::Version::TWO) {
+        TRI_ASSERT(logId.has_value()) << shard;
+        docket.add(REPLICATED_STATE_ID, VPackValue(*logId));
+
+        // For replication 2 the CollectionGroupProperties are not stored
+        // in the collection anymore, but they are still required for
+        // shard creation. So let us rewrite the Properties.
+        fillGroupProperties(group, docket);
       }
-      docket.add("planId", VPackValue(collection));
     }
 
-    TRI_IF_FAILURE("create_collection_delay_follower_creation") {
-      if (!leader.empty()) {
-        // Make a race that the shard on the follower is not created more likely
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    res.reset(std::invoke([&]() {
+      if (vocbase.replicationVersion() == replication::Version::TWO) {
+        return createCollectionReplication2(vocbase, *logId, shard, type,
+                                            docket.sharedSlice());
       }
-    }
-    std::shared_ptr<LogicalCollection> col;
-    OperationOptions options(ExecContext::current());
-    res.reset(Collections::createShard(vocbase, options, shard, type,
-                                       docket.slice(), col));
+      return createCollectionReplication1(vocbase, shard, type, docket.slice(),
+                                          leader);
+    }));
     result(res);
-    if (col) {
-      LOG_TOPIC("9db9a", DEBUG, Logger::MAINTENANCE)
-          << "local collection " << database << "/" << shard
-          << " successfully created";
-
-      if (leader.empty()) {
-        std::vector<std::string> noFollowers;
-        col->followers()->takeOverLeadership(noFollowers, nullptr);
-      } else {
-        TRI_IF_FAILURE("create_collection_delay_follower_sync_start") {
-          // Make a race that the shard on the follower is not in sync more
-          // likely
-          std::this_thread::sleep_for(std::chrono::milliseconds(200));
-        }
-        col->followers()->setTheLeader(LEADER_NOT_YET_KNOWN);
-      }
-    }
 
     if (res.fail()) {
       // If this is TRI_ERROR_ARANGO_DUPLICATE_NAME, then we assume that a
       // previous incarnation of ourselves has already done the work. This can
-      // happen, if the timing of phaseOne runs is unfortunate with asynchronous
-      // creation of shards. In this case, we do not report an error and do not
-      // increase the version number of the shard in `setState` below.
+      // happen, if the timing of phaseOne runs is unfortunate with
+      // asynchronous creation of shards. In this case, we do not report an
+      // error and do not increase the version number of the shard in
+      // `setState` below.
       if (res.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME) {
         LOG_TOPIC("9db9c", DEBUG, Logger::MAINTENANCE)
             << "local collection " << database << "/" << shard
@@ -208,10 +207,17 @@ bool CreateCollection::first() {
             << "' failed: " << res;
       LOG_TOPIC("63687", ERR, Logger::MAINTENANCE) << error.str();
 
+      if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER) ||
+          res.is(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND)) {
+        // Do not store this error
+        // TODO prevent busy loop and wait for log to become ready (CINFRA-831).
+        std::this_thread::sleep_for(std::chrono::milliseconds{50});
+        ignoreTemporaryError = true;
+      }
+
       res.reset(TRI_ERROR_FAILED, error.str());
       result(res);
     }
-
   } catch (std::exception const& e) {
     std::stringstream error;
 
@@ -221,89 +227,13 @@ bool CreateCollection::first() {
     result(res);
   }
 
-  if (res.fail()) {
+  if (res.fail() && !ignoreTemporaryError) {
     _feature.storeShardError(database, collection, shard,
                              _description.get(SERVER_ID), res);
   }
 
   LOG_TOPIC("4562c", DEBUG, Logger::MAINTENANCE)
       << "Create collection done, notifying Maintenance";
-
-  return false;
-}
-
-bool CreateCollection::createReplication2Shard(CollectionID const& collection,
-                                               ShardID const& shard,
-                                               VPackSlice props,
-                                               TRI_vocbase_t& vocbase)
-    const {  // special case for replication 2 on the leader
-  auto logId = LogicalCollection::shardIdToStateId(shard);
-  auto cProps = _description.properties();
-  if (auto gid = props.get("groupId"); gid.isNumber()) {
-    logId = replication2::LogId{gid.getUInt()};
-    // Now look up the collection group
-    auto& ci = _feature.server().getFeature<ClusterFeature>().clusterInfo();
-    auto group = ci.getCollectionGroupById(
-        replication2::agency::CollectionGroupId{logId.id()});
-    if (group == nullptr) {
-      return false;  // retry later
-    }
-    // now find the index of the shard in the collection group
-    auto shardsR2 = props.get("shardsR2");
-    ADB_PROD_ASSERT(shardsR2.isArray());
-    bool found = false;
-    std::size_t index = 0;
-    for (auto x : VPackArrayIterator(shardsR2)) {
-      if (x.isEqualString(shard)) {
-        found = true;
-        break;
-      }
-      ++index;
-    }
-    ADB_PROD_ASSERT(found);
-    ADB_PROD_ASSERT(index < group->shardSheaves.size());
-    logId = group->shardSheaves[index].replicatedLog;
-
-    auto tmpBuilderReplication2 = std::make_shared<VPackBuilder>();
-    {
-      // For replication 2 the CollectionGroupProperties are not stored
-      // in the collection anymore, but they are still required for
-      // shard creation. So let us rewrite the Properties.
-      {
-        VPackObjectBuilder ob(tmpBuilderReplication2.get());
-        // Add all other attributes
-        tmpBuilderReplication2->add(VPackObjectIterator(cProps->slice()));
-        // Add Group attributes
-        tmpBuilderReplication2->add(
-            StaticStrings::NumberOfShards,
-            VPackValue(group->attributes.immutableAttributes.numberOfShards));
-        tmpBuilderReplication2->add(
-            StaticStrings::WriteConcern,
-            VPackValue(group->attributes.mutableAttributes.writeConcern));
-        tmpBuilderReplication2->add(
-            StaticStrings::WaitForSyncString,
-            VPackValue(group->attributes.mutableAttributes.waitForSync));
-        tmpBuilderReplication2->add(
-            StaticStrings::ReplicationFactor,
-            VPackValue(group->attributes.mutableAttributes.replicationFactor));
-      }
-      cProps.swap(tmpBuilderReplication2);
-    }
-  }
-  auto state = vocbase.getReplicatedStateById(logId);
-  if (state.ok()) {
-    auto leaderState = std::dynamic_pointer_cast<
-        replication2::replicated_state::document::DocumentLeaderState>(
-        state.get()->getLeader());
-    if (leaderState != nullptr) {
-      // It is necessary to block here to prevent creation of an additional
-      // action while we are waiting for the shard to be created.
-      leaderState->createShard(shard, collection, std::move(cProps)).get();
-    } else {
-      // TODO prevent busy loop and wait for log to become ready.
-      std::this_thread::sleep_for(std::chrono::milliseconds{50});
-    }
-  }
 
   return false;
 }
@@ -319,4 +249,132 @@ void CreateCollection::setState(ActionState state) {
     }
   }
   ActionBase::setState(state);
+}
+
+Result CreateCollection::createCollectionReplication1(
+    TRI_vocbase_t& vocbase, ShardID const& shard, TRI_col_type_e collectionType,
+    VPackSlice properties, std::string const& leader) {
+  TRI_IF_FAILURE("create_collection_delay_follower_creation") {
+    if (!leader.empty()) {
+      // Make a race that the shard on the follower is not created more
+      // likely
+      std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
+  }
+
+  std::shared_ptr<LogicalCollection> col;
+  OperationOptions options(ExecContext::current());
+  auto res = Collections::createShard(vocbase, options, shard, collectionType,
+                                      properties, col);
+  if (col) {
+    LOG_TOPIC("9db9a", DEBUG, Logger::MAINTENANCE)
+        << "local collection " << vocbase.name() << "/" << shard
+        << " successfully created";
+
+    if (leader.empty()) {
+      std::vector<std::string> noFollowers;
+      col->followers()->takeOverLeadership(noFollowers, nullptr);
+    } else {
+      TRI_IF_FAILURE("create_collection_delay_follower_sync_start") {
+        // Make a race that the shard on the follower is not in sync more
+        // likely
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+      }
+      col->followers()->setTheLeader(LEADER_NOT_YET_KNOWN);
+    }
+  }
+  return res;
+}
+
+Result CreateCollection::createCollectionReplication2(
+    TRI_vocbase_t& vocbase, replication2::LogId logId, ShardID const& shard,
+    TRI_col_type_e collectionType, velocypack::SharedSlice properties) {
+  auto res = Result{};
+
+  auto state = vocbase.getReplicatedStateById(logId);
+  if (state.ok()) {
+    auto leaderState = std::dynamic_pointer_cast<
+        replication2::replicated_state::document::DocumentLeaderState>(
+        state.get()->getLeader());
+    if (leaderState != nullptr) {
+      res.reset(
+          basics::catchToResult([&leaderState, &shard, collectionType,
+                                 properties = std::move(properties)]() mutable {
+            // It is necessary to block here to prevent creation of an
+            // additional action while we are waiting for the shard to be
+            // created.
+            return leaderState
+                ->createShard(shard, collectionType, std::move(properties))
+                .get();
+          }));
+    } else {
+      res.reset(
+          {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER,
+           fmt::format("Leader of log {} not found while creating shard {}",
+                       logId, shard)});
+    }
+  } else {
+    res.reset(state.result());
+  }
+
+  return res;
+}
+
+std::shared_ptr<replication2::agency::CollectionGroupPlanSpecification const>
+CreateCollection::getCollectionGroup(VPackSlice props) const {
+  auto gid = std::invoke(
+      [props]() -> std::optional<replication2::agency::CollectionGroupId> {
+        if (auto gid = props.get("groupId"); gid.isUInt()) {
+          return replication2::agency::CollectionGroupId{gid.getUInt()};
+        }
+        return std::nullopt;
+      });
+
+  if (!gid.has_value()) {
+    return nullptr;
+  }
+
+  auto& ci = _feature.server().getFeature<ClusterFeature>().clusterInfo();
+  return ci.getCollectionGroupById(*gid);
+}
+
+void CreateCollection::fillGroupProperties(
+    std::shared_ptr<
+        replication2::agency::CollectionGroupPlanSpecification const> const&
+        group,
+    VPackBuilder& builder) {
+  builder.add(StaticStrings::NumberOfShards,
+              VPackValue(group->attributes.immutableAttributes.numberOfShards));
+  builder.add(StaticStrings::WriteConcern,
+              VPackValue(group->attributes.mutableAttributes.writeConcern));
+  builder.add(StaticStrings::WaitForSyncString,
+              VPackValue(group->attributes.mutableAttributes.waitForSync));
+  builder.add(
+      StaticStrings::ReplicationFactor,
+      VPackValue(group->attributes.mutableAttributes.replicationFactor));
+}
+
+replication2::LogId CreateCollection::getReplicatedLogId(
+    ShardID const& shard,
+    std::shared_ptr<
+        replication2::agency::CollectionGroupPlanSpecification const> const&
+        group,
+    VPackSlice props) {
+  auto shardsR2 = props.get("shardsR2");
+  ADB_PROD_ASSERT(shardsR2.isArray()) << props.toJson();
+
+  bool found = false;
+  std::size_t index = 0;
+  for (auto sid : VPackArrayIterator(shardsR2)) {
+    if (sid.isEqualString(shard)) {
+      found = true;
+      break;
+    }
+    ++index;
+  }
+  ADB_PROD_ASSERT(found) << shard << " " << shardsR2.toJson();
+  ADB_PROD_ASSERT(index < group->shardSheaves.size())
+      << " " << index << " " << shard << " " << group->shardSheaves.size();
+
+  return group->shardSheaves[index].replicatedLog;
 }

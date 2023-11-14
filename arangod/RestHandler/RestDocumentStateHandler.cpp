@@ -27,6 +27,7 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/DocumentStateMethods.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshotInspectors.h"
 #include "Transaction/Helpers.h"
 #include "Utils/CollectionNameResolver.h"
 
