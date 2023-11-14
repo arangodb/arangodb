@@ -58,12 +58,12 @@ constexpr char mediumString[] =
     "的な「ビッグ・イン・ジャパン」状態であった。";
 }  // namespace
 
-TEST(EncodingUtilsTest, testStringBufferGzipInflateDeflate) {
+TEST(EncodingUtilsTest, testStringBufferZlibInflateDeflate) {
   basics::StringBuffer buffer(1024, true);
 
   // test with an empty input
   {
-    buffer.deflate();
+    buffer.zlibDeflate();
     EXPECT_EQ(0, buffer.size());
     EXPECT_EQ(14311807558968942501ULL,
               fasthash64(buffer.data(), buffer.size(), 0xdeadbeef));
@@ -78,7 +78,7 @@ TEST(EncodingUtilsTest, testStringBufferGzipInflateDeflate) {
               fasthash64(buffer.data(), buffer.size(), 0xdeadbeef));
 
     // deflate the string
-    buffer.deflate();
+    buffer.zlibDeflate();
 
     EXPECT_EQ(61, buffer.size());
     EXPECT_EQ(9241756237550896492ULL,
@@ -86,7 +86,7 @@ TEST(EncodingUtilsTest, testStringBufferGzipInflateDeflate) {
 
     // now inflate it. we should be back at the original size & content
     basics::StringBuffer inflated;
-    buffer.inflate(inflated);
+    buffer.zlibInflate(inflated);
 
     EXPECT_EQ(61, inflated.size());
     EXPECT_EQ(6019303676778172486ULL,
@@ -103,7 +103,7 @@ TEST(EncodingUtilsTest, testStringBufferGzipInflateDeflate) {
               fasthash64(buffer.data(), buffer.size(), 0xdeadbeef));
 
     // deflate the string
-    buffer.deflate();
+    buffer.zlibDeflate();
 
     EXPECT_EQ(902, buffer.size());
     EXPECT_EQ(1472963238402282948ULL,
@@ -111,7 +111,7 @@ TEST(EncodingUtilsTest, testStringBufferGzipInflateDeflate) {
 
     // now inflate it. we should be back at the original size & content
     basics::StringBuffer inflated;
-    buffer.inflate(inflated);
+    buffer.zlibInflate(inflated);
 
     EXPECT_EQ(2073, inflated.size());
     EXPECT_EQ(9970172085949113508ULL,
@@ -129,7 +129,7 @@ TEST(EncodingUtilsTest, testStringBufferGzipInflateDeflate) {
               fasthash64(buffer.data(), buffer.size(), 0xdeadbeef));
 
     // deflate the string
-    buffer.deflate();
+    buffer.zlibDeflate();
 
     EXPECT_EQ(4396, buffer.size());
     EXPECT_EQ(8778813652976263194ULL,
@@ -137,7 +137,7 @@ TEST(EncodingUtilsTest, testStringBufferGzipInflateDeflate) {
 
     // now inflate it. we should be back at the original size & content
     basics::StringBuffer inflated;
-    buffer.inflate(inflated);
+    buffer.zlibInflate(inflated);
 
     EXPECT_EQ(1024 * 1024, inflated.size());
     EXPECT_EQ(1187188410444752048ULL,
@@ -147,7 +147,7 @@ TEST(EncodingUtilsTest, testStringBufferGzipInflateDeflate) {
   // test deflating with empty input
   buffer.clear();
   {
-    buffer.deflate();
+    buffer.zlibDeflate();
     EXPECT_EQ(0, buffer.size());
     EXPECT_EQ(14311807558968942501ULL,
               fasthash64(buffer.data(), buffer.size(), 0xdeadbeef));
@@ -159,21 +159,21 @@ TEST(EncodingUtilsTest, testStringBufferGzipInflateDeflate) {
     buffer.append("this-is-broken-deflated-content");
 
     basics::StringBuffer inflated;
-    buffer.inflate(inflated);
+    buffer.zlibInflate(inflated);
     EXPECT_EQ(0, inflated.size());
     EXPECT_EQ(14311807558968942501ULL,
               fasthash64(inflated.data(), inflated.size(), 0xdeadbeef));
   }
 }
 
-TEST(EncodingUtilsTest, testVPackBufferGzipInflateDeflate) {
+TEST(EncodingUtilsTest, testVPackBufferZlibInflateDeflate) {
   velocypack::Buffer<uint8_t> buffer;
 
   // test with an empty input
   {
     velocypack::Buffer<uint8_t> deflated;
     EXPECT_EQ(TRI_ERROR_NO_ERROR,
-              encoding::gzipDeflate(buffer.data(), buffer.size(), deflated));
+              encoding::zlibDeflate(buffer.data(), buffer.size(), deflated));
     EXPECT_EQ(0, deflated.size());
     EXPECT_EQ(14311807558968942501ULL,
               fasthash64(deflated.data(), deflated.size(), 0xdeadbeef));
@@ -190,7 +190,7 @@ TEST(EncodingUtilsTest, testVPackBufferGzipInflateDeflate) {
     // deflate the string
     velocypack::Buffer<uint8_t> deflated;
     EXPECT_EQ(TRI_ERROR_NO_ERROR,
-              encoding::gzipDeflate(buffer.data(), buffer.size(), deflated));
+              encoding::zlibDeflate(buffer.data(), buffer.size(), deflated));
 
     EXPECT_EQ(61, deflated.size());
     EXPECT_EQ(9241756237550896492ULL,
@@ -200,7 +200,7 @@ TEST(EncodingUtilsTest, testVPackBufferGzipInflateDeflate) {
     velocypack::Buffer<uint8_t> inflated;
     EXPECT_EQ(
         TRI_ERROR_NO_ERROR,
-        encoding::gzipInflate(deflated.data(), deflated.size(), inflated));
+        encoding::zlibInflate(deflated.data(), deflated.size(), inflated));
 
     EXPECT_EQ(61, inflated.size());
     EXPECT_EQ(6019303676778172486ULL,
@@ -219,7 +219,7 @@ TEST(EncodingUtilsTest, testVPackBufferGzipInflateDeflate) {
     // deflate the string
     velocypack::Buffer<uint8_t> deflated;
     EXPECT_EQ(TRI_ERROR_NO_ERROR,
-              encoding::gzipDeflate(buffer.data(), buffer.size(), deflated));
+              encoding::zlibDeflate(buffer.data(), buffer.size(), deflated));
 
     EXPECT_EQ(902, deflated.size());
     EXPECT_EQ(1472963238402282948ULL,
@@ -229,7 +229,7 @@ TEST(EncodingUtilsTest, testVPackBufferGzipInflateDeflate) {
     velocypack::Buffer<uint8_t> inflated;
     EXPECT_EQ(
         TRI_ERROR_NO_ERROR,
-        encoding::gzipInflate(deflated.data(), deflated.size(), inflated));
+        encoding::zlibInflate(deflated.data(), deflated.size(), inflated));
 
     EXPECT_EQ(2073, inflated.size());
     EXPECT_EQ(9970172085949113508ULL,
@@ -249,7 +249,7 @@ TEST(EncodingUtilsTest, testVPackBufferGzipInflateDeflate) {
     // deflate the string
     velocypack::Buffer<uint8_t> deflated;
     EXPECT_EQ(TRI_ERROR_NO_ERROR,
-              encoding::gzipDeflate(buffer.data(), buffer.size(), deflated));
+              encoding::zlibDeflate(buffer.data(), buffer.size(), deflated));
 
     EXPECT_EQ(4396, deflated.size());
     EXPECT_EQ(8778813652976263194ULL,
@@ -259,7 +259,7 @@ TEST(EncodingUtilsTest, testVPackBufferGzipInflateDeflate) {
     velocypack::Buffer<uint8_t> inflated;
     EXPECT_EQ(
         TRI_ERROR_NO_ERROR,
-        encoding::gzipInflate(deflated.data(), deflated.size(), inflated));
+        encoding::zlibInflate(deflated.data(), deflated.size(), inflated));
 
     EXPECT_EQ(1024 * 1024, inflated.size());
     EXPECT_EQ(1187188410444752048ULL,
@@ -271,7 +271,7 @@ TEST(EncodingUtilsTest, testVPackBufferGzipInflateDeflate) {
   {
     velocypack::Buffer<uint8_t> deflated;
     EXPECT_EQ(TRI_ERROR_NO_ERROR,
-              encoding::gzipDeflate(buffer.data(), buffer.size(), deflated));
+              encoding::zlibDeflate(buffer.data(), buffer.size(), deflated));
     EXPECT_EQ(0, deflated.size());
     EXPECT_EQ(14311807558968942501ULL,
               fasthash64(deflated.data(), deflated.size(), 0xdeadbeef));
@@ -284,7 +284,7 @@ TEST(EncodingUtilsTest, testVPackBufferGzipInflateDeflate) {
 
     velocypack::Buffer<uint8_t> inflated;
     EXPECT_EQ(TRI_ERROR_INTERNAL,
-              encoding::gzipInflate(buffer.data(), buffer.size(), inflated));
+              encoding::zlibInflate(buffer.data(), buffer.size(), inflated));
     EXPECT_EQ(0, inflated.size());
     EXPECT_EQ(14311807558968942501ULL,
               fasthash64(inflated.data(), inflated.size(), 0xdeadbeef));

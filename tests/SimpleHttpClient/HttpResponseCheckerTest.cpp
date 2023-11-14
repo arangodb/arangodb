@@ -46,8 +46,8 @@ TEST(HttpResponseCheckerTest, testEmptyWithClientErrorMsg) {
 TEST(HttpResponseCheckerTest, testErrorResponse) {
   std::unique_ptr<httpclient::SimpleHttpResult> response =
       std::make_unique<httpclient::SimpleHttpResult>();
-  response->setResultType(httpclient::SimpleHttpResult::resultTypes{
-      arangodb::httpclient::SimpleHttpResult::COULD_NOT_CONNECT});
+  response->setResultType(
+      arangodb::httpclient::SimpleHttpResult::ResultType::COULD_NOT_CONNECT);
   auto check = HttpResponseChecker::check(
       "", response.get(), "Http request", "{\"abc123\":\"foo\"}",
       HttpResponseChecker::PayloadType::JSON);
@@ -58,8 +58,8 @@ TEST(HttpResponseCheckerTest, testErrorResponse) {
 TEST(HttpResponseCheckerTest, testErrorResponse2) {
   std::unique_ptr<httpclient::SimpleHttpResult> response =
       std::make_unique<httpclient::SimpleHttpResult>();
-  response->setResultType(httpclient::SimpleHttpResult::resultTypes{
-      arangodb::httpclient::SimpleHttpResult::COMPLETE});
+  response->setResultType(
+      arangodb::httpclient::SimpleHttpResult::ResultType::COMPLETE);
   response->setHttpReturnMessage("NOT FOUND");
   response->setHttpReturnCode(404);
   auto check = HttpResponseChecker::check("Http request", response.get());
@@ -74,8 +74,8 @@ TEST(HttpResponseCheckerTest, testErrorResponse2) {
 TEST(HttpResponseCheckerTest, testValidResponse) {
   std::unique_ptr<httpclient::SimpleHttpResult> response =
       std::make_unique<httpclient::SimpleHttpResult>();
-  response->setResultType(httpclient::SimpleHttpResult::resultTypes{
-      arangodb::httpclient::SimpleHttpResult::COMPLETE});
+  response->setResultType(
+      arangodb::httpclient::SimpleHttpResult::ResultType::COMPLETE);
   response->setHttpReturnMessage("COMPLETE");
   response->setHttpReturnCode(200);
   auto check = HttpResponseChecker::check("Http request", response.get());
@@ -88,8 +88,8 @@ TEST(HttpResponseCheckerTest, testValidResponseHtml) {
   response->addHeaderField("content-type: text/html", 23);
   response->getBody().appendText("foo bar");
   response->setContentLength(7);
-  response->setResultType(httpclient::SimpleHttpResult::resultTypes{
-      arangodb::httpclient::SimpleHttpResult::COMPLETE});
+  response->setResultType(
+      arangodb::httpclient::SimpleHttpResult::ResultType::COMPLETE);
   response->setHttpReturnMessage("COMPLETE");
   response->setHttpReturnCode(200);
   auto check = HttpResponseChecker::check("Http request", response.get());
@@ -103,8 +103,8 @@ TEST(HttpResponseCheckerTest, testErrorResponseJson) {
   response->getBody().appendText(
       "{\"errorNum\": 3, \"errorMessage\": \"foo bar\"}");
   response->setContentLength(response->getBody().length());
-  response->setResultType(httpclient::SimpleHttpResult::resultTypes{
-      arangodb::httpclient::SimpleHttpResult::COMPLETE});
+  response->setResultType(
+      arangodb::httpclient::SimpleHttpResult::ResultType::COMPLETE);
   response->setHttpReturnMessage("COMPLETE");
   response->setHttpReturnCode(403);
   auto check = HttpResponseChecker::check("Http request", response.get());
@@ -118,8 +118,8 @@ TEST(HttpResponseCheckerTest, testErrorResponseJson2) {
   response->addHeaderField("content-type: application/json", 28);
   response->getBody().appendText("{\"errorNum\": 3}");
   response->setContentLength(response->getBody().length());
-  response->setResultType(httpclient::SimpleHttpResult::resultTypes{
-      arangodb::httpclient::SimpleHttpResult::COMPLETE});
+  response->setResultType(
+      arangodb::httpclient::SimpleHttpResult::ResultType::COMPLETE);
   response->setHttpReturnMessage("ERROR");
   response->setHttpReturnCode(403);
   auto check = HttpResponseChecker::check("Http request", response.get());
@@ -133,8 +133,8 @@ TEST(HttpResponseCheckerTest, testErrorResponseJson3) {
   response->addHeaderField("content-type: application/json", 28);
   response->getBody().appendText("{}");
   response->setContentLength(response->getBody().length());
-  response->setResultType(httpclient::SimpleHttpResult::resultTypes{
-      arangodb::httpclient::SimpleHttpResult::COMPLETE});
+  response->setResultType(
+      arangodb::httpclient::SimpleHttpResult::ResultType::COMPLETE);
   response->setHttpReturnMessage("ERROR");
   response->setHttpReturnCode(403);
   auto check = HttpResponseChecker::check("Http request", response.get());
@@ -148,8 +148,8 @@ TEST(HttpResponseCheckerTest, testErrorResponseJson4) {
   response->addHeaderField("content-type: application/json", 28);
   response->getBody().appendText("{\"errorMessage\": \"foo bar\"}");
   response->setContentLength(response->getBody().length());
-  response->setResultType(httpclient::SimpleHttpResult::resultTypes{
-      arangodb::httpclient::SimpleHttpResult::COMPLETE});
+  response->setResultType(
+      arangodb::httpclient::SimpleHttpResult::ResultType::COMPLETE);
   response->setHttpReturnMessage("COMPLETE");
   response->setHttpReturnCode(403);
   auto check = HttpResponseChecker::check("Http request", response.get());
@@ -163,8 +163,8 @@ TEST(HttpResponseCheckerTest, testErrorResponseWithInvalidJson) {
   response->addHeaderField("content-type: application/json", 28);
   response->getBody().appendText("{abc123..}");
   response->setContentLength(response->getBody().length());
-  response->setResultType(httpclient::SimpleHttpResult::resultTypes{
-      arangodb::httpclient::SimpleHttpResult::COMPLETE});
+  response->setResultType(
+      arangodb::httpclient::SimpleHttpResult::ResultType::COMPLETE);
   response->setHttpReturnMessage("ERROR");
   response->setHttpReturnCode(403);
   auto check = HttpResponseChecker::check("Http request", response.get());
@@ -178,8 +178,8 @@ TEST(HttpResponseCheckerTest, testErrorResponseHtml) {
   response->addHeaderField("content-type: text/html", 23);
   response->getBody().appendText("foo bar");
   response->setContentLength(7);
-  response->setResultType(httpclient::SimpleHttpResult::resultTypes{
-      arangodb::httpclient::SimpleHttpResult::COMPLETE});
+  response->setResultType(
+      arangodb::httpclient::SimpleHttpResult::ResultType::COMPLETE);
   response->setHttpReturnMessage("NOT FOUND");
   response->setHttpReturnCode(404);
   auto check = HttpResponseChecker::check(
@@ -202,8 +202,8 @@ TEST(HttpResponseCheckerTest, testErrorResponseHtml2) {
   response->getBody().appendText(
       "{\"errorNum\": 3, \"errorMessage\": \"foo bar\"}");
   response->setContentLength(response->getBody().length());
-  response->setResultType(httpclient::SimpleHttpResult::resultTypes{
-      arangodb::httpclient::SimpleHttpResult::COMPLETE});
+  response->setResultType(
+      arangodb::httpclient::SimpleHttpResult::ResultType::COMPLETE);
   response->setHttpReturnMessage("COMPLETE");
   response->setHttpReturnCode(403);
   auto check = HttpResponseChecker::check("Http request", response.get());
