@@ -2493,7 +2493,7 @@ bool canParseResponse(fu::Response const& response) {
          (response.contentEncoding() == fuerte::ContentEncoding::Identity ||
           response.contentEncoding() == fuerte::ContentEncoding::Gzip ||
           response.contentEncoding() == fuerte::ContentEncoding::Deflate) &&
-         response.payload().size() > 0;
+         response.payloadSize() > 0;
 }
 
 v8::Local<v8::Value> parseReplyBodyToV8(fu::Response const& response,
@@ -2562,46 +2562,48 @@ v8::Local<v8::Value> parseReplyBodyToV8(fu::Response const& response,
   return v8::Undefined(isolate);
 }
 
-v8::Local<v8::Value> translateResultBodyToV8(fu::Response const& response,
+v8::Local<v8::Value> translateResultBodyToV8(fu::Response& response,
                                              v8::Isolate* isolate) {
-  auto responseBody = response.payload();
-  if (((response.contentEncoding() == fuerte::ContentEncoding::Identity) ||
-       (response.contentEncoding() == fuerte::ContentEncoding::Gzip) ||
-       (response.contentEncoding() == fuerte::ContentEncoding::Deflate)) &&
-      (response.isContentTypeJSON() || response.isContentTypeText() ||
-       response.isContentTypeHtml())) {
-    if (response.contentEncoding() == fuerte::ContentEncoding::Deflate ||
-        response.contentEncoding() == fuerte::ContentEncoding::Gzip) {
-      auto responseBody = response.payload();
-      VPackBuffer<uint8_t> inflateBuf;
-      ErrorCode code = TRI_ERROR_NO_ERROR;
-      if (response.contentEncoding() == fuerte::ContentEncoding::Deflate) {
-        code = arangodb::encoding::zlibInflate(
-            reinterpret_cast<uint8_t const*>(responseBody.data()),
-            responseBody.size(), inflateBuf);
-      } else {
-        TRI_ASSERT(response.contentEncoding() == fuerte::ContentEncoding::Gzip);
-        code = arangodb::encoding::gzipUncompress(
-            reinterpret_cast<uint8_t const*>(responseBody.data()),
-            responseBody.size(), inflateBuf);
-      }
-      if (code != TRI_ERROR_NO_ERROR) {
-        std::string err("Error inflating compressed response body");
-        TRI_CreateErrorObject(isolate, code, err, true);
-        return v8::Undefined(isolate);
-      }
-      return TRI_V8_PAIR_STRING(isolate, inflateBuf.data(), inflateBuf.size());
+  if (response.contentEncoding() == fuerte::ContentEncoding::Deflate ||
+      response.contentEncoding() == fuerte::ContentEncoding::Gzip) {
+    // transparently handling deflate/gzip encoded responses
+    auto responseBody = response.payload();
+    VPackBuffer<uint8_t> inflateBuf;
+    ErrorCode code = TRI_ERROR_NO_ERROR;
+    if (response.contentEncoding() == fuerte::ContentEncoding::Deflate) {
+      code = arangodb::encoding::zlibInflate(
+          reinterpret_cast<uint8_t const*>(responseBody.data()),
+          responseBody.size(), inflateBuf);
     } else {
-      const char* bodyStr = reinterpret_cast<const char*>(responseBody.data());
-      return TRI_V8_PAIR_STRING(isolate, bodyStr, responseBody.size());
+      TRI_ASSERT(response.contentEncoding() == fuerte::ContentEncoding::Gzip);
+      code = arangodb::encoding::gzipUncompress(
+          reinterpret_cast<uint8_t const*>(responseBody.data()),
+          responseBody.size(), inflateBuf);
     }
-  } else {
-    V8Buffer* buffer =
-        V8Buffer::New(isolate, static_cast<char const*>(responseBody.data()),
-                      responseBody.size());
-    return v8::Local<v8::Object>::New(isolate, buffer->_handle);
+    if (code != TRI_ERROR_NO_ERROR) {
+      std::string err("Error inflating compressed response body");
+      TRI_CreateErrorObject(isolate, code, err, true);
+      return v8::Undefined(isolate);
+    }
+    // replace response body with uncompressed value
+    response.setPayload(std::move(inflateBuf), 0);
+    // reset Content-Encoding, so that we do not accidentially
+    // uncompress again somewhere downstream
+    response.header.contentEncoding(fu::ContentEncoding::Identity);
+    response.header.removeMeta(StaticStrings::ContentEncoding);
   }
+
+  auto responseBody = response.payload();
+  if (response.contentEncoding() == fuerte::ContentEncoding::Identity) {
+    char const* bodyStr = reinterpret_cast<char const*>(responseBody.data());
+    return TRI_V8_PAIR_STRING(isolate, bodyStr, responseBody.size());
+  }
+  V8Buffer* buffer =
+      V8Buffer::New(isolate, static_cast<char const*>(responseBody.data()),
+                    responseBody.size());
+  return v8::Local<v8::Object>::New(isolate, buffer->_handle);
 }
+
 void setResultMessage(v8::Isolate* isolate, v8::Local<v8::Context> context,
                       bool isError, unsigned lastHttpReturnCode,
                       std::string const& message,
@@ -2744,15 +2746,14 @@ again:
     return parseReplyBodyToV8(*response, isolate);
   }
 
-  auto payloadSize = response->payload().size();
+  auto payloadSize = response->payloadSize();
   if (payloadSize > 0) {
     return translateResultBodyToV8(*response, isolate);
-  } else {
-    // no body
-    v8::Local<v8::Object> result = v8::Object::New(isolate);
-    setResultMessage(isolate, context, false, _lastHttpReturnCode, result);
-    return result;
   }
+  // no body
+  v8::Local<v8::Object> result = v8::Object::New(isolate);
+  setResultMessage(isolate, context, false, _lastHttpReturnCode, result);
+  return result;
 }
 
 v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
@@ -2818,7 +2819,7 @@ again:
               parseReplyBodyToV8(*response, isolate))
         .FromMaybe(false);
   }
-  auto payloadSize = response->payload().size();
+  auto payloadSize = response->payloadSize();
   if (payloadSize > 0) {
     result
         ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::Body),
@@ -2858,7 +2859,7 @@ again:
 void V8ClientConnection::forceNewConnection() {
   std::lock_guard<std::recursive_mutex> guard(_lock);
 
-  _lastErrorMessage = "";
+  _lastErrorMessage.clear();
   _lastHttpReturnCode = 0;
 
   // createConnection will populate _connection

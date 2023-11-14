@@ -54,7 +54,7 @@ function cursorAPI() {
   const headers = {
     'content-type': 'application/x-velocypack',
     'accept': 'application/x-velocypack',
-    'accept-encoding': 'none',
+    'accept-encoding': 'identity',
   };
 
   let db = require("@arangodb").db;
@@ -89,7 +89,7 @@ function versionJsonJson() {
   const headers = {
     'content-type': 'application/json',
     'accept': 'application/json',
-    'accept-encoding': 'none',
+    'accept-encoding': 'identity',
   };
 
   const res = arango.POST_RAW(path, "", headers);
@@ -113,7 +113,7 @@ function versionVpackJson() {
   const headers = {
     'content-type': 'application/x-velocypack',
     'accept': 'application/json',
-    'accept-encoding': 'none',
+    'accept-encoding': 'identity',
   };
 
   const res = arango.POST_RAW(path, "", headers);
@@ -137,7 +137,7 @@ function versionJsonVpack() {
   const headers = {
     'content-type': 'application/json',
     'accept': 'application/x-velocypack',
-    'accept-encoding': 'none',
+    'accept-encoding': 'identity',
   };
 
   const res = arango.POST_RAW(path, "", headers);
@@ -159,7 +159,8 @@ function versionVpackVpack() {
   const path = '/_api/version';
   const headers = {
     'content-type': 'application/x-velocypack',
-    'accept': 'application/x-velocypack'
+    'accept': 'application/x-velocypack',
+    'accept-encoding': 'identity',
   };
 
   const res = arango.POST_RAW(path, "", headers);
@@ -182,7 +183,7 @@ function echoVpackVpack() {
   const headers = {
     'content-type': 'application/x-velocypack',
     'accept': 'application/x-velocypack',
-    'accept-encoding': 'none',
+    'accept-encoding': 'identity',
   };
 
   const obj = {"server": "arango", "version": "3.0.devel"};
@@ -207,7 +208,7 @@ function adminExecuteWithHeaderVpack() {
   const path = '/_admin/execute';
   const headers = {
     'content-type': 'application/x-velocypack',
-    'accept-encoding': 'none',
+    'accept-encoding': 'identity',
   };
 
   const obj = "require(\"console\").log(\"abc\");";
@@ -224,7 +225,7 @@ function adminExecuteWithHeaderVpack2() {
   const path = '/_admin/execute';
   const headers = {
     'content-type': 'application/x-velocypack',
-    'accept-encoding': 'none',
+    'accept-encoding': 'identity',
   };
 
   const obj = "return \"abc\"";

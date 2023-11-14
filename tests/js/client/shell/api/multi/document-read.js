@@ -551,7 +551,7 @@ function checking_a_documentSuite () {
     test_create_a_document_and_check_to_read_it: function() {
       let cmd = `/_api/document?collection=${cid._id}`;
       let body = { "Hallo" : "World" };
-      let doc = arango.POST_RAW(cmd, body);
+      let doc = arango.POST_RAW(cmd, body, { 'accept-encoding': 'identity' });
 
       assertEqual(doc.code, 201, doc);
       let location = doc.headers['location'];
