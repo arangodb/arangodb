@@ -106,11 +106,12 @@ add_library(arango_aql STATIC
   NonConstExpression.cpp
   NonConstExpressionContainer.cpp
   Optimizer.cpp
+  OptimizerRuleReplaceEqualAttributeAccess.cpp
   OptimizerRules.cpp
   OptimizerRulesCluster.cpp
   OptimizerRulesFeature.cpp
-  OptimizerRulesReplaceFunctions.cpp
   OptimizerRulesJoin.cpp
+  OptimizerRulesReplaceFunctions.cpp
   OptimizerUtils.cpp
   OutputAqlItemRow.cpp
   ParallelUnsortedGatherExecutor.cpp
