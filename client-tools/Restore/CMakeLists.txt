@@ -53,3 +53,6 @@ if (USE_JEMALLOC)
   add_dependencies(${BIN_ARANGORESTORE} jemalloc_build)
 endif ()
 
+if (UNIX) 
+  add_dependencies(${BIN_ARANGORESTORE} man)
+endif ()

@@ -88,6 +88,10 @@ if (USE_JEMALLOC)
   add_dependencies(${BIN_ARANGOSH} jemalloc_build)
 endif ()
 
+if (UNIX) 
+  add_dependencies(${BIN_ARANGOSH} man)
+endif ()
+
 ################################################################################
 ## foxx-manager
 ################################################################################

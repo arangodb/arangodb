@@ -54,6 +54,10 @@ if (USE_JEMALLOC)
   add_dependencies(${BIN_ARANGOIMPORT} jemalloc_build)
 endif ()
 
+if (UNIX) 
+  add_dependencies(${BIN_ARANGOIMPORT} man)
+endif ()
+
 install_command_alias(${BIN_ARANGOIMPORT}
   ${CMAKE_INSTALL_BINDIR}
   arangoimp
