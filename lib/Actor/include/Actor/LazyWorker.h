@@ -23,24 +23,24 @@
 
 #pragma once
 
-#include "Actor/ActorBase.h"
+#include "Actor/IWorkable.h"
 
 namespace arangodb::actor {
 
-struct ActorWorker {
-  // capture a weak_ptr to the actor: this way, the actor can be destroyed
+struct LazyWorker {
+  // capture a weak_ptr to the workable: this way, the workable can be destroyed
   // although this worker is still waiting in the scheduler. When this worker is
-  // executed in the queue after actor was destroyed, the weak_ptr will
+  // executed in the queue after workable was destroyed, the weak_ptr will
   // be empty and work will just not be executed
-  explicit ActorWorker(ActorBase* actor) : actor(actor->weak_from_this()) {}
+  explicit LazyWorker(IWorkable* work) : work(work->weak_from_this()) {}
 
   void operator()() {
-    auto me = actor.lock();
+    auto me = work.lock();
     if (me != nullptr) {
       me->work();
     }
   }
-  std::weak_ptr<ActorBase> actor;
+  std::weak_ptr<IWorkable> work;
 };
 
 }  // namespace arangodb::actor
