@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include "IResearch/IResearchFilterFactoryCommon.h"
 #include "IResearchViewExecutor.h"
 
 #include "Aql/AqlCall.h"
@@ -213,14 +214,14 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     iresearch::IResearchViewStoredValues const& storedValues,
     ExecutionPlan const& plan, Variable const& outVariable,
     AstNode const& filterCondition, std::pair<bool, bool> volatility,
-    VarInfoMap const& varInfoMap, int depth,
+    uint32_t immutableParts, VarInfoMap const& varInfoMap, int depth,
     iresearch::IResearchViewNode::ViewValuesRegisters&&
         outNonMaterializedViewRegs,
     iresearch::CountApproximate countApproximate,
     iresearch::FilterOptimization filterOptimization,
     std::vector<iresearch::HeapSortElement> const& heapSort,
     size_t heapSortLimit, iresearch::SearchMeta const* meta, size_t parallelism,
-    iresearch::ArangoSearchPool& parallelExecutionPool)
+    iresearch::IResearchExecutionPool& parallelExecutionPool)
     : _searchDocOutReg{searchDocRegister},
       _documentOutReg{outRegister},
       _scoreRegisters{std::move(scoreRegisters)},
@@ -246,6 +247,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _meta{meta},
       _parallelExecutionPool{parallelExecutionPool},
       _depth{depth},
+      _immutableParts{immutableParts},
       _filterConditionIsEmpty{
           iresearch::isFilterConditionEmpty(&_filterCondition) &&
           !_reader->hasNestedFields()},
@@ -815,88 +817,138 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
   _ctx._inputRow = _inputRow;
 
   // `_volatileSort` implies `_volatileFilter`
-  if (infos().volatileFilter() || !_isInitialized) {
-    iresearch::QueryContext queryCtx{
-        .trx = &_trx,
-        .ast = infos().plan().getAst(),
-        .ctx = &_ctx,
-        .index = _reader.get(),
-        .ref = &infos().outVariable(),
-        .filterOptimization = infos().filterOptimization(),
-        .namePrefix = iresearch::nestedRoot(_reader->hasNestedFields()),
-        .isSearchQuery = true,
-        .isOldMangling = infos().isOldMangling(),
-    };
+  if (_isInitialized && !infos().volatileFilter()) {
+    return;
+  }
 
-    // The analyzer is referenced in the FilterContext and used during the
-    // following ::makeFilter() call, so can't be a temporary.
-    auto const emptyAnalyzer = iresearch::makeEmptyAnalyzer();
-    iresearch::AnalyzerProvider* fieldAnalyzerProvider = nullptr;
-    auto const* contextAnalyzer = &iresearch::FieldMeta::identity();
-    if (!infos().isOldMangling()) {
-      fieldAnalyzerProvider = &_provider;
-      contextAnalyzer = &emptyAnalyzer;
+  auto immutableParts = infos().immutableParts();
+  TRI_ASSERT(immutableParts == 0 || !infos().volatileSort());
+
+  iresearch::QueryContext queryCtx{
+      .trx = &_trx,
+      .ast = infos().plan().getAst(),
+      .ctx = &_ctx,
+      .index = _reader.get(),
+      .ref = &infos().outVariable(),
+      .filterOptimization = infos().filterOptimization(),
+      .namePrefix = iresearch::nestedRoot(_reader->hasNestedFields()),
+      .isSearchQuery = true,
+      .isOldMangling = infos().isOldMangling(),
+  };
+
+  // The analyzer is referenced in the FilterContext and used during the
+  // following ::makeFilter() call, so can't be a temporary.
+  auto const emptyAnalyzer = iresearch::makeEmptyAnalyzer();
+  iresearch::AnalyzerProvider* fieldAnalyzerProvider = nullptr;
+  auto const* contextAnalyzer = &iresearch::FieldMeta::identity();
+  if (!infos().isOldMangling()) {
+    fieldAnalyzerProvider = &_provider;
+    contextAnalyzer = &emptyAnalyzer;
+  }
+
+  iresearch::FilterContext const filterCtx{
+      .query = queryCtx,
+      .contextAnalyzer = *contextAnalyzer,
+      .fieldAnalyzerProvider = fieldAnalyzerProvider,
+  };
+  auto* cond = &infos().filterCondition();
+  Result r;
+  irs::And mutableAnd;
+  irs::Or mutableOr;
+  irs::boolean_filter* root = &mutableOr;
+  if (immutableParts == 0) {
+    r = iresearch::FilterFactory::filter(root, filterCtx, *cond);
+  } else {
+    if (immutableParts != std::numeric_limits<uint32_t>::max()) {
+      while (cond->numMembers() == 1) {
+        cond = cond->getMemberUnchecked(0);
+      }
+      if (cond->type == NODE_TYPE_OPERATOR_NARY_AND) {
+        root = &mutableAnd;
+      }
     }
-
-    iresearch::FilterContext const filterCtx{
-        .query = queryCtx,
-        .contextAnalyzer = *contextAnalyzer,
-        .fieldAnalyzerProvider = fieldAnalyzerProvider,
-    };
-
-    irs::Or root;
-    auto const rv = iresearch::FilterFactory::filter(&root, filterCtx,
-                                                     infos().filterCondition());
-
-    if (rv.fail()) {
-      velocypack::Builder builder;
-      infos().filterCondition().toVelocyPack(builder, true);
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          rv.errorNumber(),
-          absl::StrCat("failed to build filter while querying arangosearch "
-                       "view, query '",
-                       builder.toJson(), "': ", rv.errorMessage()));
-    }
-
-    if (infos().volatileSort() || !_isInitialized) {
-      auto const& scorers = infos().scorers();
-
-      _scorersContainer.clear();
-      _scorersContainer.reserve(scorers.size());
-
-      for (irs::Scorer::ptr scorer; auto const& scorerNode : scorers) {
-        TRI_ASSERT(scorerNode.node);
-
-        if (!iresearch::order_factory::scorer(&scorer, *scorerNode.node,
-                                              queryCtx)) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_BAD_PARAMETER,
-              "failed to build scorers while querying arangosearch view");
+    size_t i = 0;
+    auto& proxy = append<irs::proxy_filter>(*root, filterCtx);
+    if (_cache) {
+      proxy.set_cache(_cache);
+      i = immutableParts;
+    } else {
+      // TODO(MBkkt) simplify via additional template parameter for set_filter
+      irs::boolean_filter* immutableRoot{};
+      if (root == &mutableOr) {
+        auto c = proxy.set_filter<irs::Or>(_memory);
+        immutableRoot = &c.first;
+        _cache = std::move(c.second);
+      } else {
+        auto c = proxy.set_filter<irs::And>(_memory);
+        immutableRoot = &c.first;
+        _cache = std::move(c.second);
+      }
+      if (immutableParts == std::numeric_limits<uint32_t>::max()) {
+        r = iresearch::FilterFactory::filter(immutableRoot, filterCtx, *cond);
+        i = immutableParts;
+      } else {
+        for (; i != immutableParts && r.ok(); ++i) {
+          auto& member = iresearch::append<irs::Or>(*immutableRoot, filterCtx);
+          r = iresearch::FilterFactory::filter(&member, filterCtx,
+                                               *cond->getMemberUnchecked(i));
         }
+      }
+    }
+    for (auto members = cond->numMembers(); i < members && r.ok(); ++i) {
+      auto& member = iresearch::append<irs::Or>(*root, filterCtx);
+      r = iresearch::FilterFactory::filter(&member, filterCtx,
+                                           *cond->getMemberUnchecked(i));
+    }
+  }
+  if (!r.ok()) {
+    velocypack::Builder builder;
+    cond->toVelocyPack(builder, true);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        r.errorNumber(),
+        absl::StrCat("failed to build filter while querying arangosearch "
+                     "view, query '",
+                     builder.toJson(), "': ", r.errorMessage()));
+  }
 
-        TRI_ASSERT(scorer);
-        _scorersContainer.emplace_back(std::move(scorer));
+  if (!_isInitialized || infos().volatileSort()) {
+    auto const& scorers = infos().scorers();
+
+    _scorersContainer.clear();
+    _scorersContainer.reserve(scorers.size());
+
+    for (irs::Scorer::ptr scorer; auto const& scorerNode : scorers) {
+      TRI_ASSERT(scorerNode.node);
+
+      if (!iresearch::order_factory::scorer(&scorer, *scorerNode.node,
+                                            queryCtx)) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "failed to build scorers while querying arangosearch view");
       }
 
-      // compile scorers
-      _scorers = irs::Scorers::Prepare(_scorersContainer);
+      TRI_ASSERT(scorer);
+      _scorersContainer.emplace_back(std::move(scorer));
     }
 
-    // compile filter
-    _filter = root.prepare({
-        .index = *_reader,
-        .memory = _memory,
-        .scorers = _scorers,
-        .ctx = &_filterCtx,
-    });
-
-    if constexpr (ExecutionTraits::EmitSearchDoc) {
-      TRI_ASSERT(_filterCookie);
-      *_filterCookie = _filter.get();
-    }
-
-    _isInitialized = true;
+    // compile scorers
+    _scorers = irs::Scorers::Prepare(_scorersContainer);
   }
+
+  // compile filter
+  _filter = root->prepare({
+      .index = *_reader,
+      .memory = _memory,
+      .scorers = _scorers,
+      .ctx = &_filterCtx,
+  });
+
+  if constexpr (ExecutionTraits::EmitSearchDoc) {
+    TRI_ASSERT(_filterCookie);
+    *_filterCookie = _filter.get();
+  }
+
+  _isInitialized = true;
 }
 
 template<typename Impl, typename ExecutionTraits>
@@ -1093,9 +1145,9 @@ IResearchViewExecutor<ExecutionTraits>::IResearchViewExecutor(Fetcher& fetcher,
 
 template<typename ExecutionTraits>
 IResearchViewExecutor<ExecutionTraits>::~IResearchViewExecutor() {
-  if (_allocatedThreads) {
-    this->_infos.parallelExecutionPool().releaseThreads(
-        static_cast<int>(_allocatedThreads));
+  if (_allocatedThreads || _demandedThreads) {
+    this->_infos.parallelExecutionPool().releaseThreads(_allocatedThreads,
+                                                        _demandedThreads);
   }
 }
 
@@ -1567,8 +1619,14 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
   // and next time we would need all our parallelism again.
   auto& readersPool = this->infos().parallelExecutionPool();
   if (parallelism > (this->_allocatedThreads + 1)) {
+    uint64_t deltaDemanded{0};
+    if ((parallelism - 1) > _demandedThreads) {
+      deltaDemanded = parallelism - 1 - _demandedThreads;
+      _demandedThreads += deltaDemanded;
+    }
     this->_allocatedThreads += readersPool.allocateThreads(
-        static_cast<int>(parallelism - this->_allocatedThreads - 1));
+        static_cast<int>(parallelism - this->_allocatedThreads - 1),
+        deltaDemanded);
     parallelism = this->_allocatedThreads + 1;
   }
   atMost = atMostInitial * parallelism;

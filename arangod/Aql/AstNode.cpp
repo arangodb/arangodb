@@ -2588,12 +2588,6 @@ AstNode* AstNode::getMemberUnchecked(size_t i) const noexcept {
   return members[i];
 }
 
-void AstNode::sortMembers(
-    std::function<bool(AstNode const*, AstNode const*)> const& func) {
-  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-  std::sort(members.begin(), members.end(), func);
-}
-
 void AstNode::reduceMembers(size_t i) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
   if (i > members.size()) {

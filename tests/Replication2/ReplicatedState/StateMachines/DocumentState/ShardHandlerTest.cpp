@@ -48,8 +48,14 @@ using namespace arangodb::replication2::replicated_state::document;
 struct ShardHandlerTest : testing::Test {
   arangodb::tests::mocks::MockServer mockServer =
       arangodb::tests::mocks::MockServer();
-  MockVocbase vocbaseMock =
-      MockVocbase(mockServer.server(), "shardHandlerTestDb", 1);
+  std::shared_ptr<MockVocbase> vocbaseMock = nullptr;
+
+  void SetUp() override {
+    vocbaseMock = std::make_shared<MockVocbase>(mockServer.server(),
+                                                "shardHandlerTestDb", 1);
+  }
+
+  void TearDown() override { vocbaseMock.reset(); }
 };
 
 TEST_F(ShardHandlerTest, ensureShard_all_cases) {
@@ -60,55 +66,47 @@ TEST_F(ShardHandlerTest, ensureShard_all_cases) {
       std::make_shared<NiceMock<MockMaintenanceActionExecutor>>();
   auto shardHandler =
       std::make_shared<replicated_state::document::DocumentStateShardHandler>(
-          vocbaseMock, gid, maintenance);
+          *vocbaseMock, gid, maintenance);
 
   auto shardId = ShardID{"s1000"};
-  auto collectionId = CollectionID{"c1000"};
-  auto properties = std::make_shared<VPackBuilder>();
+  auto collectionType = TRI_COL_TYPE_DOCUMENT;
+  auto properties = velocypack::SharedSlice();
 
   {
     // Successful shard creation
     EXPECT_CALL(*maintenance,
-                executeCreateCollectionAction(shardId, collectionId, _))
+                executeCreateCollection(shardId, collectionType, _))
         .Times(1);
     EXPECT_CALL(*maintenance, addDirty()).Times(1);
-    auto res = shardHandler->ensureShard(shardId, collectionId, properties);
-    ASSERT_TRUE(res.ok());
-    ASSERT_TRUE(res.get());
+    auto res = shardHandler->ensureShard(shardId, collectionType, properties);
+    ASSERT_TRUE(res.ok()) << res;
     Mock::VerifyAndClearExpectations(maintenance.get());
-    auto shardMap = shardHandler->getShardMap();
-    ASSERT_EQ(shardMap.size(), 1);
-    ASSERT_TRUE(shardMap.find(shardId) != shardMap.end());
-    EXPECT_EQ(shardMap.find(shardId)->second.collection, collectionId);
   }
 
   {
-    // Shard should not be created again a second time
-    EXPECT_CALL(*maintenance, executeCreateCollectionAction(_, _, _)).Times(0);
-    EXPECT_CALL(*maintenance, addDirty()).Times(0);
-    auto res = shardHandler->ensureShard(shardId, collectionId, properties);
-    ASSERT_TRUE(res.ok());
-    ASSERT_FALSE(res.get());
+    // Shard should not be created again a second time.
+    // However, the maintenance executor will be called.
+    EXPECT_CALL(*maintenance, executeCreateCollection(_, _, _)).Times(1);
+    EXPECT_CALL(*maintenance, addDirty()).Times(1);
+    auto res = shardHandler->ensureShard(shardId, collectionType, properties);
+    ASSERT_TRUE(res.ok()) << res;
     Mock::VerifyAndClearExpectations(maintenance.get());
-    auto shardMap = shardHandler->getShardMap();
-    ASSERT_EQ(shardMap.size(), 1);
   }
 
   {
-    // Failure to create shard is propagated
+    // Failure to create shard is propagated.
+    // The maintenance executor will be called anyways and the database marked
+    // as dirty.
     shardId = ShardID{"s1001"};
     EXPECT_CALL(*maintenance,
-                executeCreateCollectionAction(shardId, collectionId, _))
+                executeCreateCollection(shardId, collectionType, _))
         .Times(1);
-    EXPECT_CALL(*maintenance, addDirty()).Times(0);
-    ON_CALL(*maintenance, executeCreateCollectionAction(_, _, _))
+    EXPECT_CALL(*maintenance, addDirty()).Times(1);
+    ON_CALL(*maintenance, executeCreateCollection(_, _, _))
         .WillByDefault(Return(Result{TRI_ERROR_WAS_ERLAUBE}));
-    auto res = shardHandler->ensureShard(shardId, collectionId, properties);
-    ASSERT_TRUE(res.fail());
+    auto res = shardHandler->ensureShard(shardId, collectionType, properties);
+    ASSERT_TRUE(res.is(TRI_ERROR_WAS_ERLAUBE)) << res;
     Mock::VerifyAndClearExpectations(maintenance.get());
-    auto shardMap = shardHandler->getShardMap();
-    ASSERT_EQ(shardMap.size(), 1);
-    ASSERT_TRUE(shardMap.find(shardId) == shardMap.end());
   }
 }
 
@@ -120,74 +118,47 @@ TEST_F(ShardHandlerTest, dropShard_all_cases) {
       std::make_shared<NiceMock<MockMaintenanceActionExecutor>>();
   auto shardHandler =
       std::make_shared<replicated_state::document::DocumentStateShardHandler>(
-          vocbaseMock, gid, maintenance);
+          *vocbaseMock, gid, maintenance);
 
   auto shardId = ShardID{"s1000"};
-  auto collectionId = CollectionID{"c1000"};
-  auto properties = std::make_shared<VPackBuilder>();
+  auto collectionType = TRI_COL_TYPE_DOCUMENT;
+  auto properties = velocypack::SharedSlice();
 
   {
     // Create shard first
-    auto res = shardHandler->ensureShard(shardId, collectionId, properties);
-    ASSERT_TRUE(res.ok());
-    ASSERT_TRUE(res.get());
-    auto shardMap = shardHandler->getShardMap();
-    ASSERT_EQ(shardMap.size(), 1);
-    ASSERT_TRUE(shardHandler->isShardAvailable(shardId));
+    auto res = shardHandler->ensureShard(shardId, collectionType, properties);
+    ASSERT_TRUE(res.ok()) << res;
+    vocbaseMock->registerLogicalCollection(shardId, LogId{1});
   }
 
   {
     // Successful shard deletion
-    EXPECT_CALL(*maintenance,
-                executeDropCollectionAction(shardId, collectionId))
-        .Times(1);
+    EXPECT_CALL(*maintenance, executeDropCollection(_)).Times(1);
     EXPECT_CALL(*maintenance, addDirty()).Times(1);
     auto res = shardHandler->dropShard(shardId);
-    ASSERT_TRUE(res.ok());
-    ASSERT_TRUE(res.get());
+    ASSERT_TRUE(res.ok()) << res;
     Mock::VerifyAndClearExpectations(maintenance.get());
-    auto shardMap = shardHandler->getShardMap();
-    ASSERT_EQ(shardMap.size(), 0);
-    ASSERT_FALSE(shardHandler->isShardAvailable(shardId));
   }
 
   {
-    // Shard should not be deleted again a second time
-    EXPECT_CALL(*maintenance, executeDropCollectionAction(_, _)).Times(0);
+    // Should not be able to delete a non-existent shard.
+    EXPECT_CALL(*maintenance, executeDropCollection(_)).Times(0);
     EXPECT_CALL(*maintenance, addDirty()).Times(0);
-    auto res = shardHandler->dropShard(shardId);
-    ASSERT_TRUE(res.ok());
-    ASSERT_FALSE(res.get());
+    auto res = shardHandler->dropShard(shardId + "abcd");
+    ASSERT_TRUE(res.fail()) << res;
     Mock::VerifyAndClearExpectations(maintenance.get());
-    auto shardMap = shardHandler->getShardMap();
-    ASSERT_EQ(shardMap.size(), 0);
-    ASSERT_FALSE(shardHandler->isShardAvailable(shardId));
-  }
-
-  {
-    // Create shard again
-    auto res = shardHandler->ensureShard(shardId, collectionId, properties);
-    ASSERT_TRUE(res.ok());
-    ASSERT_TRUE(res.get());
-    auto shardMap = shardHandler->getShardMap();
-    ASSERT_EQ(shardMap.size(), 1);
-    ASSERT_TRUE(shardHandler->isShardAvailable(shardId));
   }
 
   {
     // Failure to delete shard is propagated
-    EXPECT_CALL(*maintenance,
-                executeDropCollectionAction(shardId, collectionId))
-        .Times(1);
-    EXPECT_CALL(*maintenance, addDirty()).Times(0);
-    ON_CALL(*maintenance, executeDropCollectionAction(_, _))
+    // Database is marked as dirty anyway
+    EXPECT_CALL(*maintenance, executeDropCollection(_)).Times(1);
+    EXPECT_CALL(*maintenance, addDirty()).Times(1);
+    ON_CALL(*maintenance, executeDropCollection(_))
         .WillByDefault(Return(Result{TRI_ERROR_WAS_ERLAUBE}));
     auto res = shardHandler->dropShard(shardId);
-    ASSERT_TRUE(res.fail());
+    ASSERT_TRUE(res.fail()) << res;
     Mock::VerifyAndClearExpectations(maintenance.get());
-    auto shardMap = shardHandler->getShardMap();
-    ASSERT_EQ(shardMap.size(), 1);
-    ASSERT_TRUE(shardHandler->isShardAvailable(shardId));
   }
 }
 
@@ -199,40 +170,14 @@ TEST_F(ShardHandlerTest, dropAllShards_test) {
       std::make_shared<NiceMock<MockMaintenanceActionExecutor>>();
   auto shardHandler =
       std::make_shared<replicated_state::document::DocumentStateShardHandler>(
-          vocbaseMock, gid, maintenance);
-
-  auto collectionId = CollectionID{"c1000"};
-  auto properties = std::make_shared<VPackBuilder>();
-  auto const limit = 10;
-
-  // Create some shards
-  for (std::size_t idx = 0; idx < limit; ++idx) {
-    auto shardId = ShardID{std::to_string(idx)};
-    auto res =
-        shardHandler->ensureShard(std::move(shardId), collectionId, properties);
-    ASSERT_TRUE(res.ok());
-    ASSERT_TRUE(res.get());
-  }
-
-  auto shardMap = shardHandler->getShardMap();
-  ASSERT_EQ(shardMap.size(), limit);
+          *vocbaseMock, gid, maintenance);
+  vocbaseMock->registerLogicalCollection(ShardID{"s1000"}, LogId{1});
 
   // Failure to drop all shards is propagated
-  ON_CALL(*maintenance, executeDropCollectionAction(_, _))
+  ON_CALL(*maintenance, executeDropCollection(_))
       .WillByDefault(Return(Result{TRI_ERROR_WAS_ERLAUBE}));
   auto res = shardHandler->dropAllShards();
   ASSERT_TRUE(res.fail());
-
-  // Successful deletion of all shards should clear the shard map
-  ON_CALL(*maintenance, executeDropCollectionAction(_, _))
-      .WillByDefault(Return(Result{}));
-  EXPECT_CALL(*maintenance, addDirty()).Times(1);
-  EXPECT_CALL(*maintenance, executeDropCollectionAction(_, _)).Times(limit);
-  res = shardHandler->dropAllShards();
-  ASSERT_TRUE(res.ok());
-  Mock::VerifyAndClearExpectations(maintenance.get());
-  shardMap = shardHandler->getShardMap();
-  ASSERT_EQ(shardMap.size(), 0);
 }
 
 TEST_F(ShardHandlerTest, modifyShard_all_cases) {
@@ -243,16 +188,17 @@ TEST_F(ShardHandlerTest, modifyShard_all_cases) {
       std::make_shared<NiceMock<MockMaintenanceActionExecutor>>();
   auto shardHandler =
       std::make_shared<replicated_state::document::DocumentStateShardHandler>(
-          vocbaseMock, gid, maintenance);
+          *vocbaseMock, gid, maintenance);
 
   auto shardId = ShardID{"s1000"};
+  auto collectionType = TRI_COL_TYPE_DOCUMENT;
   auto collectionId = CollectionID{"c1000"};
   {
     // Create the shard
-    auto res = shardHandler->ensureShard(shardId, collectionId,
-                                         std::make_shared<VPackBuilder>());
+    auto res = shardHandler->ensureShard(shardId, collectionType,
+                                         velocypack::SharedSlice());
     ASSERT_TRUE(res.ok());
-    ASSERT_TRUE(res.get());
+    vocbaseMock->registerLogicalCollection(shardId, LogId{1});
   }
 
   // Modify shard properties
@@ -261,41 +207,33 @@ TEST_F(ShardHandlerTest, modifyShard_all_cases) {
   velocypack::serialize(b, newProperties);
   auto properties = b.sharedSlice();
   {
-    EXPECT_CALL(*maintenance,
-                executeModifyCollectionAction(shardId, collectionId, _))
+    EXPECT_CALL(*maintenance, executeModifyCollection(_, collectionId, _))
         .Times(1);
     EXPECT_CALL(*maintenance, addDirty()).Times(1);
 
     auto res = shardHandler->modifyShard(shardId, collectionId, properties);
     ASSERT_TRUE(res.ok());
     Mock::VerifyAndClearExpectations(maintenance.get());
-    auto shardMap = shardHandler->getShardMap();
-    ASSERT_EQ(shardMap.size(), 1);
   }
 
   {
     // Failure to modify shard is propagated
-    ON_CALL(*maintenance, executeModifyCollectionAction(_, _, _))
+    ON_CALL(*maintenance, executeModifyCollection(_, _, _))
         .WillByDefault(Return(Result{TRI_ERROR_WAS_ERLAUBE}));
     auto res = shardHandler->modifyShard(shardId, collectionId, properties);
     ASSERT_TRUE(res.fail());
     Mock::VerifyAndClearExpectations(maintenance.get());
-    auto shardMap = shardHandler->getShardMap();
-    ASSERT_EQ(shardMap.size(), 1);
   }
 
   {
     // Failure to modify non-existing shard
     shardId = ShardID{"s1001"};
-    EXPECT_CALL(*maintenance,
-                executeModifyCollectionAction(shardId, collectionId, _))
+    EXPECT_CALL(*maintenance, executeModifyCollection(_, collectionId, _))
         .Times(0);
     EXPECT_CALL(*maintenance, addDirty()).Times(0);
 
     auto res = shardHandler->modifyShard(shardId, collectionId, properties);
-    ASSERT_TRUE(res.ok());
+    ASSERT_TRUE(res.fail());
     Mock::VerifyAndClearExpectations(maintenance.get());
-    auto shardMap = shardHandler->getShardMap();
-    ASSERT_EQ(shardMap.size(), 1);
   }
 }

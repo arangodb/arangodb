@@ -189,7 +189,8 @@ class RemoveNode : public ModificationNode {
   void replaceAttributeAccess(ExecutionNode const* self,
                               Variable const* searchVariable,
                               std::span<std::string_view> attribute,
-                              Variable const* replaceVariable) override;
+                              Variable const* replaceVariable,
+                              size_t index) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final {
@@ -249,7 +250,8 @@ class InsertNode : public ModificationNode {
   void replaceAttributeAccess(ExecutionNode const* self,
                               Variable const* searchVariable,
                               std::span<std::string_view> attribute,
-                              Variable const* replaceVariable) override;
+                              Variable const* replaceVariable,
+                              size_t index) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final {
@@ -307,7 +309,8 @@ class UpdateReplaceNode : public ModificationNode {
   void replaceAttributeAccess(ExecutionNode const* self,
                               Variable const* searchVariable,
                               std::span<std::string_view> attribute,
-                              Variable const* replaceVariable) override;
+                              Variable const* replaceVariable,
+                              size_t index) override;
 
   /// @brief set the input key variable
   void setInKeyVariable(Variable const* var) { _inKeyVariable = var; }
@@ -440,7 +443,8 @@ class UpsertNode : public ModificationNode {
   void replaceAttributeAccess(ExecutionNode const* self,
                               Variable const* searchVariable,
                               std::span<std::string_view> attribute,
-                              Variable const* replaceVariable) override;
+                              Variable const* replaceVariable,
+                              size_t index) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final {

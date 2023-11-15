@@ -21,7 +21,7 @@ const isCoordinator = function () {
   } else {
     try {
       if (arango) {
-        var result = arango.GET('/_admin/server/role');
+        let result = arango.GET('/_admin/server/role');
         if (result.role === 'COORDINATOR') {
           isCoordinator = true;
         }
@@ -343,6 +343,7 @@ function printStats(stats, isCoord) {
   stringBuilder.appendLine(section('Query Statistics:'));
   let maxWELen = 'Writes Exec'.length;
   let maxWILen = 'Writes Ign'.length;
+  let maxDLLen = 'Doc. Lookups'.length;
   let maxSFLen = 'Scan Full'.length;
   let maxSILen = 'Scan Index'.length;
   let maxCHMLen = 'Cache Hits/Misses'.length;
@@ -351,12 +352,13 @@ function printStats(stats, isCoord) {
   let maxMemLen = 'Peak Mem [b]'.length;
   let maxETLen = 'Exec Time [s]'.length;
   stats.executionTime = stats.executionTime.toFixed(5);
-  stringBuilder.appendLine(' ' + header('Writes Exec') + spc + header('Writes Ign') + spc + header('Scan Full') + spc +
+  stringBuilder.appendLine(' ' + header('Writes Exec') + spc + header('Writes Ign') + spc + header('Doc. Lookups') + spc + header('Scan Full') + spc +
     header('Scan Index') + spc + header('Cache Hits/Misses') + spc + header('Filtered') + spc + (isCoord ? header('Requests') + spc : '') +
     header('Peak Mem [b]') + spc + header('Exec Time [s]'));
 
   stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + spc +
     pad(1 + maxWILen - String(stats.writesIgnored).length) + value(stats.writesIgnored) + spc +
+    pad(1 + maxDLLen - String(stats.documentLookups).length) + value(stats.documentLookups) + spc +
     pad(1 + maxSFLen - String(stats.scannedFull).length) + value(stats.scannedFull) + spc +
     pad(1 + maxSILen - String(stats.scannedIndex).length) + value(stats.scannedIndex) + spc +
     pad(1 + maxCHMLen - (String(stats.cacheHits || 0) + ' / ' + String(stats.cacheMisses || 0)).length) + value(stats.cacheHits || 0) + ' / ' + value(stats.cacheMisses || 0) + spc +
@@ -2088,10 +2090,12 @@ function processQuery(query, explain, planIndex) {
           filter = '   ' + keyword('FILTER') + ' ' + buildExpression(info.filter);
         }
         let accessString = '';
-        if (!info.indexCoversProjections) {
+        if (!info.indexCoversProjections && info.producesOutput) {
           accessString += "index scan + document lookup";
-        } else {
+        } else if (info.indexCoversProjections) {
           accessString += "index scan";
+        } else {
+          accessString += "index scan only";
         }
         if (info.projections) {
           accessString += projections(info, "projections", "projections");
@@ -2100,6 +2104,18 @@ function processQuery(query, explain, planIndex) {
           accessString += projections(info, 'filterProjections', 'filter projections');
         }
         accessString = '   ' + annotation('/* ' + accessString + ' */');
+        if (info.projections) {
+          // produce LET nodes for each projection output register
+          let parts = [];
+          info.projections.forEach((p) => {
+            if (p.hasOwnProperty('variable')) {
+              parts.push(variableName(p.variable) + ' = ' + variableName(info.outVariable) + '.' + p.path.map((p) => attribute(p)).join('.'));
+            }
+          });
+          if (parts.length) {
+            accessString = '   ' + keyword('LET') + ' ' + parts.join(', ') + accessString;
+          }
+        }
         line += indent(level, false) + label + filter + accessString;
         stringBuilder.appendLine(line);
       });

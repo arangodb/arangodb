@@ -418,6 +418,25 @@
       return queryObj;
     },
 
+    recalculateCount: function (callback) {
+      $.ajax({
+        type: "PUT",
+        url: arangoHelper.databaseUrl(
+          "/_api/collection/" +
+            encodeURIComponent(this.collectionID) +
+            "/recalculateCount"
+        ),
+        processData: false,
+        success: function (data) {
+          callback(false, data);
+        },
+        error: function (data) {
+          callback(true, data);
+        },
+      });
+    },
+
+
     uploadDocuments: function (file, callback) {
       var analyzeResponse = function (data) {
         if (data.hasOwnProperty('error')) {

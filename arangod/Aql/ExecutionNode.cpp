@@ -737,7 +737,7 @@ void ExecutionNode::replaceVariables(
 void ExecutionNode::replaceAttributeAccess(
     ExecutionNode const* /*self*/, Variable const* /*searchVariable*/,
     std::span<std::string_view> /*attribute*/,
-    Variable const* /*replaceVariable*/) {
+    Variable const* /*replaceVariable*/, size_t /*index*/) {
   // default implementation does nothing
 }
 
@@ -1331,6 +1331,7 @@ RegisterInfos ExecutionNode::createRegisterInfos(
 RegisterCount ExecutionNode::getNrInputRegisters() const {
   ExecutionNode const* previousNode = getFirstDependency();
   // in case of the SingletonNode, there are no input registers
+  TRI_ASSERT(previousNode != nullptr || getType() == ExecutionNode::SINGLETON);
   return previousNode == nullptr
              ? getNrOutputRegisters()
              : getRegisterPlan()->nrRegs[previousNode->getDepth()];
@@ -1788,10 +1789,7 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
   auto outputRegisters = RegIdSet{};
 
   auto const& p = projections();
-  if (p.empty()) {
-    // no projections. we produce the full document in outputRegister
-    outputRegisters.emplace(outputRegister);
-  } else {
+  if (!p.empty()) {
     // projections. no need to produce the full document.
     // instead create one register per projection.
     for (size_t i = 0; i < p.size(); ++i) {
@@ -1812,12 +1810,13 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
     TRI_ASSERT(outputRegisters.empty() || outputRegisters.size() == p.size());
     // in case we do not have any output registers for the projections,
     // we must write them to the main output register, in a velocypack
-    // object
-    if (outputRegisters.empty()) {
-      outputRegisters.emplace(outputRegister);
-    }
+    // object.
+    // this will be handled below by adding the main output register.
   }
-  TRI_ASSERT(!outputRegisters.empty());
+  if (outputRegisters.empty() && isProduceResult()) {
+    outputRegisters.emplace(outputRegister);
+  }
+  TRI_ASSERT(!outputRegisters.empty() || !isProduceResult());
 
   auto registerInfos = createRegisterInfos({}, std::move(outputRegisters));
   auto executorInfos = EnumerateCollectionExecutorInfos(
@@ -1856,7 +1855,8 @@ void EnumerateCollectionNode::replaceVariables(
 
 void EnumerateCollectionNode::replaceAttributeAccess(
     ExecutionNode const* self, Variable const* searchVariable,
-    std::span<std::string_view> attribute, Variable const* replaceVariable) {
+    std::span<std::string_view> attribute, Variable const* replaceVariable,
+    size_t /*index*/) {
   DocumentProducingNode::replaceAttributeAccess(self, searchVariable, attribute,
                                                 replaceVariable);
 }
@@ -2374,7 +2374,8 @@ void CalculationNode::replaceVariables(
 
 void CalculationNode::replaceAttributeAccess(
     ExecutionNode const* self, Variable const* searchVariable,
-    std::span<std::string_view> attribute, Variable const* replaceVariable) {
+    std::span<std::string_view> attribute, Variable const* replaceVariable,
+    size_t /*index*/) {
   expression()->replaceAttributeAccess(searchVariable, attribute,
                                        replaceVariable);
 }
@@ -2778,7 +2779,7 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
     TRI_ASSERT(!returnInheritedResults());
     // TODO We should be able to remove this special case when the new
     //      register planning is ready.
-    // The Return Executor only writes to register 0.
+    // The ReturnExecutor only writes to register 0.
     constexpr auto outputRegister = RegisterId{0};
 
     auto registerInfos =
@@ -2792,10 +2793,7 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
 
 bool ReturnNode::returnInheritedResults() const {
   bool const isRoot = plan()->root() == this;
-
-  bool const isDBServer = ServerState::instance()->isDBServer();
-
-  return isRoot && !isDBServer;
+  return isRoot;
 }
 
 /// @brief clone ExecutionNode recursively
@@ -3029,7 +3027,7 @@ constexpr std::string_view kMaterializeNodeInLocalDocIdParam = "inLocalDocId";
 MaterializeNode* materialize::createMaterializeNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice const base) {
   auto isMulti = base.get(kMaterializeNodeMultiNodeParam);
-  if (isMulti.isBoolean() && isMulti.getBoolean()) {
+  if (isMulti.isTrue()) {
     return new MaterializeSearchNode(plan, base);
   }
   return new MaterializeRocksDBNode(plan, base);

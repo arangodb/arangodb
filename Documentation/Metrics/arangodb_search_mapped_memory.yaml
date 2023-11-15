@@ -11,4 +11,4 @@ exposedBy:
   - single
 description: |
   Amount of memory in bytes that is mapped using memory-mapped files.
-  The metric value is very approximate and could be outdated in any moment.
+  The metric value is very approximate and can be outdated quickly.

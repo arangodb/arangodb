@@ -211,7 +211,13 @@ auto ReplicatedRocksDBTransactionCollection::ensureCollection() -> Result {
       // index creation is read-only, but might still use an exclusive lock
       !_transaction->hasHint(transaction::Hints::Hint::INDEX_CREATION) &&
       _leaderState == nullptr) {
-    _leaderState = _collection->getDocumentStateLeader();
+    try {
+      _leaderState = _collection->getDocumentStateLeader();
+    } catch (basics::Exception const& ex) {
+      return {ex.code(), std::move(ex.message())};
+    } catch (...) {
+      throw;
+    }
     ADB_PROD_ASSERT(_leaderState != nullptr);
   }
 
@@ -225,9 +231,9 @@ ReplicatedRocksDBTransactionCollection::performIntermediateCommitIfRequired() {
     // this multiple times in the same replicated log. This is not a serious
     // problem for intermediate commits, but we should avoid it.
     auto leader = leaderState();
-    auto operation =
-        replication2::replicated_state::document::ReplicatedOperation::
-            buildIntermediateCommitOperation(_transaction->id());
+    auto operation = replication2::replicated_state::document::
+        ReplicatedOperation::buildIntermediateCommitOperation(
+            _transaction->id().asFollowerTransactionId());
     auto options = replication2::replicated_state::document::ReplicationOptions{
         .waitForCommit = true};
     return leader->replicateOperation(operation, options)

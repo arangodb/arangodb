@@ -379,7 +379,8 @@ void TraversalNode::replaceVariables(
 
 void TraversalNode::replaceAttributeAccess(
     ExecutionNode const* self, Variable const* searchVariable,
-    std::span<std::string_view> attribute, Variable const* replaceVariable) {
+    std::span<std::string_view> attribute, Variable const* replaceVariable,
+    size_t /*index*/) {
   // this is an important assertion: if options are already built,
   // we would need to carry out the replacements in several other
   // places as well

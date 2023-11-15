@@ -24,6 +24,7 @@
 
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/LoggerContext.h"
 #include "VocBase/Methods/Indexes.h"
 
 struct TRI_vocbase_t;
@@ -35,49 +36,61 @@ namespace arangodb::replication2::replicated_state::document {
 
 struct IMaintenanceActionExecutor {
   virtual ~IMaintenanceActionExecutor() = default;
-  virtual auto executeCreateCollectionAction(
-      ShardID shard, CollectionID collection,
-      std::shared_ptr<VPackBuilder> properties) -> Result = 0;
-  virtual auto executeDropCollectionAction(ShardID shard,
-                                           CollectionID collection)
-      -> Result = 0;
-  virtual auto executeModifyCollectionAction(ShardID shard,
-                                             CollectionID collection,
-                                             velocypack::SharedSlice)
-      -> Result = 0;
+
+  virtual auto executeCreateCollection(
+      ShardID const& shard, TRI_col_type_e collectionType,
+      velocypack::SharedSlice const& properties) noexcept -> Result = 0;
+
+  virtual auto executeDropCollection(
+      std::shared_ptr<LogicalCollection> col) noexcept -> Result = 0;
+
+  virtual auto executeModifyCollection(
+      std::shared_ptr<LogicalCollection> col, CollectionID colId,
+      velocypack::SharedSlice properties) noexcept -> Result = 0;
+
   virtual auto executeCreateIndex(
-      ShardID shard, std::shared_ptr<VPackBuilder> const& properties,
-      std::shared_ptr<methods::Indexes::ProgressTracker> progress)
+      std::shared_ptr<LogicalCollection> col,
+      velocypack::SharedSlice properties,
+      std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
       -> Result = 0;
-  virtual auto executeDropIndex(ShardID shard, velocypack::SharedSlice index)
+
+  virtual auto executeDropIndex(std::shared_ptr<LogicalCollection> col,
+                                velocypack::SharedSlice index) noexcept
       -> Result = 0;
-  virtual void addDirty() = 0;
+
+  virtual auto addDirty() noexcept -> Result = 0;
 };
 
 class MaintenanceActionExecutor : public IMaintenanceActionExecutor {
  public:
   MaintenanceActionExecutor(GlobalLogIdentifier _gid, ServerID server,
                             MaintenanceFeature& maintenanceFeature,
-                            TRI_vocbase_t& vocbase);
-  auto executeCreateCollectionAction(ShardID shard, CollectionID collection,
-                                     std::shared_ptr<VPackBuilder> properties)
-      -> Result override;
-  auto executeDropCollectionAction(ShardID shard, CollectionID collection)
-      -> Result override;
-  auto executeModifyCollectionAction(ShardID shard, CollectionID collection,
-                                     velocypack::SharedSlice properties)
-      -> Result override;
-  auto executeCreateIndex(
-      ShardID shard, std::shared_ptr<VPackBuilder> const& properties,
-      std::shared_ptr<methods::Indexes::ProgressTracker> progress)
-      -> Result override;
-  auto executeDropIndex(ShardID shard, velocypack::SharedSlice index)
-      -> Result override;
-  void addDirty() override;
+                            TRI_vocbase_t& vocbase,
+                            LoggerContext const& loggerContext);
 
- private:
-  auto lookupShard(ShardID const& shard) noexcept
-      -> ResultT<std::shared_ptr<LogicalCollection>>;
+  auto executeCreateCollection(
+      ShardID const& shard, TRI_col_type_e collectionType,
+      velocypack::SharedSlice const& properties) noexcept -> Result override;
+
+  auto executeDropCollection(std::shared_ptr<LogicalCollection> col) noexcept
+      -> Result override;
+
+  auto executeModifyCollection(std::shared_ptr<LogicalCollection> col,
+                               CollectionID colId,
+                               velocypack::SharedSlice properties) noexcept
+      -> Result override;
+
+  auto executeCreateIndex(
+      std::shared_ptr<LogicalCollection> col,
+      velocypack::SharedSlice properties,
+      std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
+      -> Result override;
+
+  auto executeDropIndex(std::shared_ptr<LogicalCollection> col,
+                        velocypack::SharedSlice index) noexcept
+      -> Result override;
+
+  auto addDirty() noexcept -> Result override;
 
  private:
   GlobalLogIdentifier _gid;
@@ -87,5 +100,7 @@ class MaintenanceActionExecutor : public IMaintenanceActionExecutor {
   // The vocbase reference remains valid for the lifetime of the executor.
   // Replicated logs are stopped before the vocbase is marked as dropped.
   TRI_vocbase_t& _vocbase;
+
+  LoggerContext const _loggerContext;
 };
 }  // namespace arangodb::replication2::replicated_state::document

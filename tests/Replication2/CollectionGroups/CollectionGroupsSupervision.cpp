@@ -405,3 +405,93 @@ TEST_F(CollectionGroupsSupervisionTest,
   EXPECT_EQ(action.logs[1].replicatedLog, LogId{2});
   EXPECT_EQ(action.logs[2].replicatedLog, LogId{3});
 }
+
+TEST_F(CollectionGroupsSupervisionTest, modify_wait_for_sync) {
+  constexpr auto numberOfShards = 3;
+
+  CollectionGroup group;
+  group.target.id = ag::CollectionGroupId{12};
+  group.target.version = 1;
+  group.target.collections["A"] = {};
+  group.target.attributes.mutableAttributes.replicationFactor = 3;
+  group.target.attributes.mutableAttributes.writeConcern = 2;
+  group.target.attributes.mutableAttributes.waitForSync = true;
+  group.target.attributes.immutableAttributes.numberOfShards = numberOfShards;
+
+  group.targetCollections["A"].groupId = group.target.id;
+
+  group.plan.emplace();
+  group.plan->attributes = group.target.attributes;
+  group.plan->id = group.target.id;
+  group.plan->collections["A"] = {};
+  group.plan->shardSheaves.resize(3);
+  group.plan->shardSheaves[0].replicatedLog = LogId{1};
+  group.plan->shardSheaves[1].replicatedLog = LogId{2};
+  group.plan->shardSheaves[2].replicatedLog = LogId{3};
+
+  group.planCollections["A"].groupId = group.target.id;
+  group.planCollections["A"].shardList.assign({"s1", "s2", "s3"});
+  group.planCollections["A"].deprecatedShardMap.shards["s1"].servers.assign(
+      {"DB1", "DB2", "DB3"});
+  group.planCollections["A"].deprecatedShardMap.shards["s2"].servers.assign(
+      {"DB2", "DB3", "DB1"});
+  group.planCollections["A"].deprecatedShardMap.shards["s3"].servers.assign(
+      {"DB3", "DB1", "DB2"});
+
+  // Pretend that this group has converged.
+  // NOTE: The internals are not actually corret, we just implemented the quick
+  // test.
+  group.current.emplace();
+  group.current->supervision.version = group.target.version;
+
+  auto const currentConfig = ag::LogTargetConfig(2, 3, true);
+  auto const availableServers = std::to_array({"DB1", "DB2", "DB3"});
+
+  for (unsigned k = 1; k <= 3; k++) {
+    auto& log = group.logs[LogId{k}];
+    log.target.id = LogId{k};
+    log.target.config = currentConfig;
+    log.target.participants["DB1"];
+    log.target.participants["DB2"];
+    log.target.participants["DB3"];
+    log.target.leader = availableServers[k - 1];
+    log.target.version = 1;
+
+    log.plan.emplace();
+    log.plan->participantsConfig.participants["DB1"];
+    log.plan->participantsConfig.participants["DB2"];
+    log.plan->participantsConfig.participants["DB3"];
+    log.plan->currentTerm.emplace();
+    log.plan->currentTerm->term = LogTerm{1};
+    log.plan->currentTerm->leader.emplace();
+    log.plan->currentTerm->leader->serverId = availableServers[k - 1];
+  }
+
+  replicated_log::ParticipantsHealth health;
+  health.update("DB1", RebootId{12}, true);
+  health.update("DB2", RebootId{11}, true);
+  health.update("DB3", RebootId{110}, true);
+  health.update("DB4", RebootId{110}, true);
+
+  {
+    auto result = checkCollectionGroup(database, group, uniqid, health);
+    // Cannot do anything right now
+    ASSERT_TRUE(std::holds_alternative<NoActionRequired>(result))
+        << result.index();
+  }
+
+  // Now let us modify the waitForSync in target
+  group.target.attributes.mutableAttributes.waitForSync = false;
+
+  auto result = checkCollectionGroup(database, group, uniqid, health);
+  ASSERT_TRUE(std::holds_alternative<UpdateCollectionGroupInPlan>(result))
+      << result.index();
+
+  auto action = std::get<UpdateCollectionGroupInPlan>(result);
+  EXPECT_EQ(action.id, group.target.id);
+  EXPECT_EQ(action.spec.waitForSync, false);
+  EXPECT_EQ(action.spec.writeConcern,
+            group.target.attributes.mutableAttributes.writeConcern);
+  EXPECT_EQ(action.spec.replicationFactor,
+            group.target.attributes.mutableAttributes.replicationFactor);
+}

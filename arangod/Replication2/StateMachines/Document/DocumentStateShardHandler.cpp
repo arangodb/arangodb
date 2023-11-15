@@ -41,172 +41,150 @@ DocumentStateShardHandler::DocumentStateShardHandler(
     std::shared_ptr<IMaintenanceActionExecutor> maintenance)
     : _gid(std::move(gid)),
       _maintenance(std::move(maintenance)),
-      _vocbase(vocbase) {
-  auto manager = vocbase._logManager;
-  // TODO this is more like a hack than an actual solution
-  //  but for now its good enough
-
-  auto [from, to] = manager->_initCollections.equal_range(_gid.id);
-  for (auto iter = from; iter != to; ++iter) {
-    auto const& coll = iter->second;
-    auto properties = std::make_shared<VPackBuilder>();
-    coll->properties(*properties, LogicalDataSource::Serialization::Properties);
-    _shardMap.shards.emplace(
-        coll->name(),
-        ShardProperties{std::to_string(coll->planId().id()), properties});
-  }
-  manager->_initCollections.erase(from, to);
-}
+      _vocbase(vocbase) {}
 
 auto DocumentStateShardHandler::ensureShard(
-    ShardID shard, CollectionID collection,
-    std::shared_ptr<VPackBuilder> properties) -> ResultT<bool> {
-  std::unique_lock lock(_shardMap.mutex);
-  if (_shardMap.shards.contains(shard)) {
-    return false;
-  }
-
-  if (auto res = _maintenance->executeCreateCollectionAction(shard, collection,
-                                                             properties);
-      res.fail()) {
-    return res;
-  }
-
-  _shardMap.shards.emplace(
-      std::move(shard),
-      ShardProperties{std::move(collection), std::move(properties)});
-  lock.unlock();
-
-  _maintenance->addDirty();
-  return true;
+    ShardID const& shard, TRI_col_type_e collectionType,
+    velocypack::SharedSlice const& properties) noexcept -> Result {
+  auto res =
+      _maintenance->executeCreateCollection(shard, collectionType, properties);
+  std::ignore = _maintenance->addDirty();
+  return res;
 }
 
-auto DocumentStateShardHandler::modifyShard(ShardID shard,
-                                            CollectionID collection,
-                                            velocypack::SharedSlice properties)
+auto DocumentStateShardHandler::modifyShard(
+    ShardID shard, CollectionID colId,
+    velocypack::SharedSlice properties) noexcept -> Result {
+  auto col = lookupShard(shard);
+  if (col.fail()) {
+    return {col.errorNumber(),
+            fmt::format("Error while modifying shard: {}", col.errorMessage())};
+  }
+
+  auto res = _maintenance->executeModifyCollection(
+      std::move(col).get(), std::move(colId), std::move(properties));
+  std::ignore = _maintenance->addDirty();
+
+  return res;
+}
+
+auto DocumentStateShardHandler::dropShard(ShardID const& shard) noexcept
     -> Result {
-  // The shard map is not updated with the new properties.
-  // We are in progress of reworking the snapshot transfer to accomodate such
-  // changes. I am not even sure whether this map is still needed at all, we'll
-  // figure it out in an upcoming PR.
-  std::shared_lock lock(_shardMap.mutex);
-  if (!_shardMap.shards.contains(shard)) {
-    LOG_TOPIC("5de59", TRACE, arangodb::Logger::REPLICATED_STATE)
-        << "Shard " << shard << " not found in database " << _vocbase.name()
-        << " while trying to modifying it";
-
-    // Don't fail if the shard is not found.
-    return {};
+  auto col = lookupShard(shard);
+  if (col.fail()) {
+    return {col.errorNumber(),
+            fmt::format("Error while dropping shard: {}", col.errorMessage())};
   }
 
-  if (auto res = _maintenance->executeModifyCollectionAction(
-          std::move(shard), std::move(collection), std::move(properties));
-      res.fail()) {
-    return res;
-  }
-  lock.unlock();
+  auto res = _maintenance->executeDropCollection(std::move(*col));
+  std::ignore = _maintenance->addDirty();
 
-  _maintenance->addDirty();
-  return {};
+  return res;
 }
 
-auto DocumentStateShardHandler::dropShard(ShardID const& shard)
-    -> ResultT<bool> {
-  std::unique_lock lock(_shardMap.mutex);
-  auto it = _shardMap.shards.find(shard);
-  if (it == std::end(_shardMap.shards)) {
-    return false;
+auto DocumentStateShardHandler::dropAllShards() noexcept -> Result {
+  auto collections =
+      basics::catchToResultT([&]() { return getAvailableShards(); });
+  if (collections.fail()) {
+    return {collections.errorNumber(),
+            fmt::format("Replicated log {} failed to get available shards: {}",
+                        _gid, collections.errorMessage())};
   }
 
-  if (auto res = _maintenance->executeDropCollectionAction(
-          shard, it->second.collection);
-      res.fail()) {
-    return res;
-  }
-  _shardMap.shards.erase(shard);
-  lock.unlock();
-
-  _maintenance->addDirty();
-  return true;
-}
-
-auto DocumentStateShardHandler::dropAllShards() -> Result {
-  std::unique_lock lock(_shardMap.mutex);
-  for (auto const& [shard, properties] : _shardMap.shards) {
-    if (auto res = _maintenance->executeDropCollectionAction(
-            shard, properties.collection);
-        res.fail()) {
-      return Result{res.errorNumber(),
-                    fmt::format("Failed to drop shard {}: {}", shard,
-                                res.errorMessage())};
+  std::stringstream err;
+  auto res = Result{};
+  for (auto&& col : *collections) {
+    if (auto r = _maintenance->executeDropCollection(col); r.fail()) {
+      err << col->name() << ": " << r << ", ";
+      res.reset(std::move(r));
     }
   }
-  _shardMap.shards.clear();
-  lock.unlock();
 
-  _maintenance->addDirty();
-  return {};
+  std::ignore = _maintenance->addDirty();
+
+  if (res.fail()) {
+    res.reset(
+        res.errorNumber(),
+        fmt::format("Replicated log {} failed to drop shards: {} (error: {})",
+                    _gid, err.str(), res.errorMessage()));
+  }
+  return res;
 }
 
-auto DocumentStateShardHandler::isShardAvailable(const ShardID& shard) -> bool {
-  std::shared_lock lock(_shardMap.mutex);
-  return _shardMap.shards.contains(shard);
-}
-
-auto DocumentStateShardHandler::getShardMap() -> ShardMap {
-  std::shared_lock lock(_shardMap.mutex);
-  return _shardMap.shards;
+auto DocumentStateShardHandler::getAvailableShards()
+    -> std::vector<std::shared_ptr<LogicalCollection>> {
+  auto collections = _vocbase.collections(false);
+  std::erase_if(collections, [&](auto&& col) {
+    return col->replicatedStateId() != _gid.id;
+  });
+  return collections;
 }
 
 auto DocumentStateShardHandler::ensureIndex(
-    ShardID shard, std::shared_ptr<VPackBuilder> const& properties,
-    std::shared_ptr<methods::Indexes::ProgressTracker> progress) -> Result {
-  auto res = basics::catchToResult(
-      [this, &properties, shard = shard,
-       progress = std::move(progress)]() mutable -> Result {
-        return _maintenance->executeCreateIndex(shard, properties,
-                                                std::move(progress));
-      });
+    ShardID shard, velocypack::SharedSlice properties,
+    std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
+    -> Result {
+  auto col = lookupShard(shard);
+  if (col.fail()) {
+    return {col.errorNumber(),
+            fmt::format("Error while ensuring index: {}", col.errorMessage())};
+  }
 
-  if (res.ok()) {
-    _maintenance->addDirty();
-  } else {
-    res = Result{res.errorNumber(),
-                 fmt::format("Error: {}! Failed to ensure index on shard {}! "
-                             "Index: {}",
-                             res.errorMessage(), std::move(shard),
-                             properties->toJson())};
+  auto res = _maintenance->executeCreateIndex(std::move(col).get(), properties,
+                                              std::move(progress));
+  std::ignore = _maintenance->addDirty();
+
+  if (res.fail()) {
+    res.reset(
+        res.errorNumber(),
+        fmt::format(
+            "Error: {}! Replicated log {} failed to ensure index on shard {}! "
+            "Index: {}",
+            res.errorMessage(), _gid, std::move(shard), properties.toJson()));
   }
   return res;
 }
 
-auto DocumentStateShardHandler::dropIndex(ShardID shard,
-                                          velocypack::SharedSlice index)
-    -> Result {
-  auto indexId = index.toString();
-  auto res = basics::catchToResult(
-      [this, shard, index = std::move(index)]() mutable -> Result {
-        return _maintenance->executeDropIndex(std::move(shard),
-                                              std::move(index));
-      });
+auto DocumentStateShardHandler::dropIndex(
+    ShardID shard, velocypack::SharedSlice index) noexcept -> Result {
+  auto col = lookupShard(shard);
+  if (col.fail()) {
+    return {col.errorNumber(),
+            fmt::format("Error while dropping index: {}", col.errorMessage())};
+  }
 
-  if (res.ok()) {
-    _maintenance->addDirty();
-  } else {
-    res = Result{
-        res.errorNumber(),
-        fmt::format("Error {}! Failed to drop index on shard {}! Index: {}",
-                    res.errorMessage(), std::move(shard), std::move(indexId))};
+  auto indexId = index.toString();
+  auto res =
+      _maintenance->executeDropIndex(std::move(col).get(), std::move(index));
+  std::ignore = _maintenance->addDirty();
+
+  if (res.fail()) {
+    res = Result{res.errorNumber(),
+                 fmt::format("Error: {}! Replicated log {} failed to drop "
+                             "index on shard {}! Index: {}",
+                             res.errorMessage(), _gid, std::move(shard),
+                             std::move(indexId))};
   }
   return res;
+}
+
+auto DocumentStateShardHandler::lookupShard(ShardID const& shard) noexcept
+    -> ResultT<std::shared_ptr<LogicalCollection>> {
+  auto col = _vocbase.lookupCollection(shard);
+  if (col == nullptr) {
+    return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                  fmt::format("Replicated log {} failed to lookup shard {}",
+                              _gid, shard)};
+  }
+  return col;
 }
 
 auto DocumentStateShardHandler::lockShard(ShardID const& shard,
                                           AccessMode::Type accessType,
                                           transaction::OperationOrigin origin)
     -> ResultT<std::unique_ptr<transaction::Methods>> {
-  auto col = _vocbase.lookupCollection(shard);
-  if (col == nullptr) {
+  auto col = lookupShard(shard);
+  if (col.fail()) {
     return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   fmt::format("Failed to lookup shard {} in database {} while "
                               "locking it for operation {}",
@@ -224,8 +202,8 @@ auto DocumentStateShardHandler::lockShard(ShardID const& shard,
   transaction::Options options;
   options.requiresReplication = false;
 
-  auto trx = std::make_unique<SingleCollectionTransaction>(std::move(ctx), *col,
-                                                           accessType, options);
+  auto trx = std::make_unique<SingleCollectionTransaction>(
+      std::move(ctx), *col.get(), accessType, options);
   Result res = trx->begin();
   if (res.fail()) {
     return Result{res.errorNumber(),

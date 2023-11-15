@@ -34,7 +34,8 @@ using namespace arangodb::pregel::conductor;
 
 Initial::Initial(ConductorState& conductor) : conductor{conductor} {}
 
-auto Initial::cancel(actor::ActorPID sender, message::ConductorMessages message)
+auto Initial::cancel(actor::DistributedActorPID sender,
+                     message::ConductorMessages message)
     -> std::optional<StateChange> {
   auto newState = std::make_unique<Canceled>(conductor);
   auto stateName = newState->name();
@@ -45,7 +46,7 @@ auto Initial::cancel(actor::ActorPID sender, message::ConductorMessages message)
       .newState = std::move(newState)};
 }
 
-auto Initial::receive(actor::ActorPID sender,
+auto Initial::receive(actor::DistributedActorPID sender,
                       message::ConductorMessages message)
     -> std::optional<StateChange> {
   if (!std::holds_alternative<message::ConductorStart>(message)) {
@@ -55,9 +56,9 @@ auto Initial::receive(actor::ActorPID sender,
         .statusMessage =
             pregel::message::InFatalError{
                 .state = stateName,
-                .errorMessage =
-                    fmt::format("In {}: Received unexpected message {} from {}",
-                                name(), inspection::json(message), sender)},
+                .errorMessage = fmt::format(
+                    "In {}: Received unexpected message {} from {}", name(),
+                    inspection::json(message), inspection::json(sender))},
         .metricsMessage = pregel::metrics::message::ConductorFinished{},
         .newState = std::move(newState)};
   }

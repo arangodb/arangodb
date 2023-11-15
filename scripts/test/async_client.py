@@ -175,6 +175,8 @@ def add_message_to_report(params, string, print_it=True, add_to_error=False):
     offset = 80 - (len(string) + len(datestr) + 2 * len(oskar))
     if print_it:
         logging.info(string)
+        # we also want these messages to be written to stdout, so they also show up in CircleCI
+        print(string)
     if add_to_error:
         params["error"] += "async_client.py: " + string + "\n"
     if isinstance(params["output"], list):
