@@ -46,20 +46,17 @@ auto IndexJoinStrategyFactory::createStrategy(
   if (desc.size() == 2 &&
       joinStrategy != aql::QueryOptions::JoinStrategyType::GENERIC) {
     if (desc[0].isUnique && desc[1].isUnique) {
-      LOG_DEVEL << "Using new unique merge join strategy";
       // build optimized merge join strategy for two unique indices
       return std::make_unique<TwoIndicesUniqueMergeJoin<
           velocypack::Slice, LocalDocumentId, VPackSliceComparator>>(
           std::move(desc), numKeyComponents);
     } else {
-      LOG_DEVEL << "Using new non-unique merge join strategy";
       // build optimized merge join strategy for two non-unique indices
       return std::make_unique<TwoIndicesMergeJoin<
           velocypack::Slice, LocalDocumentId, VPackSliceComparator>>(
           std::move(desc), numKeyComponents);
     }
   }
-  LOG_DEVEL << "Using generic join strategy";
   return std::make_unique<GenericMergeJoin<velocypack::Slice, LocalDocumentId,
                                            VPackSliceComparator>>(
       std::move(desc), numKeyComponents);
