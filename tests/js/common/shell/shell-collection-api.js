@@ -164,7 +164,7 @@ const validateProperties = (overrides, colName, type, keepEnterpriseSimulationAt
   }
   if (isCluster && db._properties().replicationVersion === "2") {
     // Replication 2 always exposes the group id
-    assertTrue(props.hasOwnProperty("groupId"));
+    assertTrue(props.hasOwnProperty("groupId"), `${JSON.stringify(props)} is missing groupId`);
   }
   assertEqual(col.name(), colName);
   assertEqual(col.type(), type);
@@ -233,7 +233,7 @@ const isAllowed = (res, collname, input, expectLogEntry = true) => {
 
 const validatePropertiesDoNotExist = (colName, illegalProperties) => {
   const col = db._collection(colName);
-  const props = col.properties(true);
+  const props = col.properties();
   for (const key of illegalProperties) {
     assertFalse(props.hasOwnProperty(key), `Property ${key} should not exist`);
   }
