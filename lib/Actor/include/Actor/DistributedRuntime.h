@@ -43,6 +43,8 @@
 namespace arangodb::actor {
 
 struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
+  using ActorPID = DistributedActorPID;
+
   DistributedRuntime() = delete;
   DistributedRuntime(DistributedRuntime const&) = delete;
   DistributedRuntime(DistributedRuntime&&) = delete;
@@ -51,10 +53,8 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
                      std::shared_ptr<IExternalDispatcher> externalDispatcher)
       : myServerID(myServerID),
         runtimeID(runtimeID),
-        scheduler(scheduler),
+        _scheduler(scheduler),
         externalDispatcher(externalDispatcher) {}
-
-  using ActorPID = DistributedActorPID;
 
   template<typename ActorConfig>
   auto spawn(std::unique_ptr<typename ActorConfig::State> initialState,
@@ -112,8 +112,8 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
     if (actor.has_value()) {
       actor.value()->process(sender, msg);
     } else {
-      auto error =
-          message::ActorError{message::ActorNotFound{.actor = receiver}};
+      auto error = message::ActorError<ActorPID>{
+          message::ActorNotFound<ActorPID>{.actor = receiver}};
       auto payload = inspection::serializeWithErrorT(error);
       ACTOR_ASSERT(payload.ok());
       dispatch(receiver, sender, payload.get());
@@ -133,8 +133,8 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
   template<typename ActorMessage>
   auto dispatchDelayed(std::chrono::seconds delay, ActorPID sender,
                        ActorPID receiver, ActorMessage const& message) -> void {
-    scheduler->delay(delay, [self = this->weak_from_this(), sender, receiver,
-                             message](bool canceled) {
+    _scheduler->delay(delay, [self = this->weak_from_this(), sender, receiver,
+                              message](bool canceled) {
       auto me = self.lock();
       if (me != nullptr) {
         me->dispatch(sender, receiver, message);
@@ -143,43 +143,54 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
   }
 
   auto areAllActorsIdle() -> bool {
-    return actors.checkAll([](std::shared_ptr<ActorBase> const& actor) {
-      return actor->isIdle();
-    });
+    return actors.checkAll(
+        [](std::shared_ptr<ActorBase<ActorPID>> const& actor) {
+          return actor->isIdle();
+        });
   }
 
-  auto finish(ActorPID pid) -> void {
+  auto finishActor(ActorPID pid) -> void {
     auto actor = actors.find(pid.id);
     if (actor.has_value()) {
       actor.value()->finish();
     }
   }
 
-  // TODO call this function regularly
-  auto garbageCollect() {
-    actors.removeIf([](std::shared_ptr<ActorBase> const& actor) -> bool {
-      return actor->isFinishedAndIdle();
-    });
-  }
+  void stopActor(ActorPID pid) { actors.remove(pid.id); }
 
   auto softShutdown() -> void {
-    actors.apply(
-        [](std::shared_ptr<ActorBase> const& actor) { actor->finish(); });
-    garbageCollect();  // TODO call gc several times with some timeout
+    std::vector<std::shared_ptr<ActorBase<ActorPID>>> actorsCopy;
+    // we copy out all actors, because we have to call finish outside the lock!
+    actors.apply([&](std::shared_ptr<ActorBase<ActorPID>> const& actor) {
+      actorsCopy.emplace_back(actor);
+    });
+    for (auto& actor : actorsCopy) {
+      actor->finish();
+    }
   }
 
-  ServerID myServerID;
+  IScheduler& scheduler() { return *_scheduler; }
+
+  ServerID const myServerID;
   std::string const runtimeID;
 
-  std::shared_ptr<IScheduler> scheduler;
+  template<typename Inspector>
+  friend inline auto inspect(Inspector& f, DistributedRuntime& x) {
+    return f.object(x).fields(
+        f.field("myServerID", x.myServerID), f.field("runtimeID", x.runtimeID),
+        f.field("uniqueActorIDCounter", x.uniqueActorIDCounter.load()),
+        f.field("actors", x.actors));
+  }
+
+  ActorList<ActorPID> actors;
+
+ private:
+  std::shared_ptr<IScheduler> _scheduler;
   std::shared_ptr<IExternalDispatcher> externalDispatcher;
 
   // actor id 0 is reserved for special messages
   std::atomic<size_t> uniqueActorIDCounter{1};
 
-  ActorList actors;
-
- private:
   template<typename ActorMessage>
   auto dispatchLocally(ActorPID sender, ActorPID receiver,
                        ActorMessage const& message) -> void {
@@ -189,7 +200,8 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
       actor->get()->process(sender, payload);
     } else {
       dispatch(receiver, sender,
-               message::ActorError{message::ActorNotFound{.actor = receiver}});
+               message::ActorError<ActorPID>{
+                   message::ActorNotFound<ActorPID>{.actor = receiver}});
     }
   }
 
@@ -201,12 +213,5 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
     externalDispatcher->dispatch(sender, receiver, payload.get());
   }
 };
-template<typename Inspector>
-auto inspect(Inspector& f, DistributedRuntime& x) {
-  return f.object(x).fields(
-      f.field("myServerID", x.myServerID), f.field("runtimeID", x.runtimeID),
-      f.field("uniqueActorIDCounter", x.uniqueActorIDCounter.load()),
-      f.field("actors", x.actors));
-}
 
 };  // namespace arangodb::actor

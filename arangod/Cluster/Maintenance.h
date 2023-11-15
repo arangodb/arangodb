@@ -81,6 +81,12 @@ using ReplicatedLogStatusMapByDatabase =
 using ReplicatedLogSpecMap =
     std::unordered_map<arangodb::replication2::LogId,
                        arangodb::replication2::agency::LogPlanSpecification>;
+// ShardID -> LogId
+using ShardIdToLogIdMap =
+    std::unordered_map<arangodb::ShardID, arangodb::replication2::LogId>;
+// database -> ShardID -> LogId
+using ShardIdToLogIdMapByDatabase =
+    std::unordered_map<DatabaseID, ShardIdToLogIdMap>;
 
 /**
  * @brief          Diff Plan Replicated Logs and Local Replicated Logs for phase
@@ -129,7 +135,8 @@ arangodb::Result diffPlanLocal(
     containers::FlatHashSet<DatabaseID>& makeDirty, bool& callNotify,
     std::vector<std::shared_ptr<ActionDescription>>& actions,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
-    ReplicatedLogStatusMapByDatabase const& localLogs);
+    ReplicatedLogStatusMapByDatabase const& localLogs,
+    ShardIdToLogIdMapByDatabase const& shardIdToLogId);
 
 /**
  * @brief          Difference Plan and local for phase 1 of Maintenance run
@@ -158,7 +165,8 @@ arangodb::Result executePlan(
     std::string const& serverId, arangodb::MaintenanceFeature& feature,
     VPackBuilder& report,
     arangodb::MaintenanceFeature::ShardActionMap const& shardActionMap,
-    ReplicatedLogStatusMapByDatabase const& localLogs);
+    ReplicatedLogStatusMapByDatabase const& localLogs,
+    ShardIdToLogIdMapByDatabase const& shardIdToLogId);
 
 /**
  * @brief          Difference local and current states for phase 2 of
@@ -205,7 +213,8 @@ arangodb::Result phaseOne(
     std::string const& serverId, MaintenanceFeature& feature,
     VPackBuilder& report,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
-    ReplicatedLogStatusMapByDatabase const& localLogs);
+    ReplicatedLogStatusMapByDatabase const& localLogs,
+    ShardIdToLogIdMapByDatabase const& shardIdToLogId);
 
 /**
  * @brief          Phase two: Report in agency
@@ -230,7 +239,8 @@ arangodb::Result phaseTwo(
     std::string const& serverId, MaintenanceFeature& feature,
     VPackBuilder& report,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
-    ReplicatedLogStatusMapByDatabase const& localLogs);
+    ReplicatedLogStatusMapByDatabase const& localLogs,
+    ShardIdToLogIdMapByDatabase const& shardsToLogs);
 
 /**
  * @brief          Report local changes to current
@@ -261,7 +271,8 @@ arangodb::Result reportInCurrent(
         local,
     MaintenanceFeature::errors_t const& allErrors, std::string const& serverId,
     VPackBuilder& report, ShardStatistics& shardStats,
-    ReplicatedLogStatusMapByDatabase const& localLogs);
+    ReplicatedLogStatusMapByDatabase const& localLogs,
+    ShardIdToLogIdMapByDatabase const& shardIdToLogId);
 
 /**
  * @brief            Schedule synchroneous replications

@@ -27,6 +27,7 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshotInspectors.h"
 #include "VocBase/vocbase.h"
 
 #include <Basics/Exceptions.h>
@@ -78,7 +79,7 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
         params.params);
   }
 
-  auto getAssociatedShardList(LogId logId) const
+  [[nodiscard]] auto getAssociatedShardList(LogId logId) const
       -> std::vector<ShardID> override {
     auto stateMachine =
         std::dynamic_pointer_cast<replicated_state::ReplicatedState<

@@ -70,11 +70,11 @@ auto ReplicatedOperation::buildTruncateOperation(TransactionId tid,
 }
 
 auto ReplicatedOperation::buildCreateShardOperation(
-    ShardID shard, CollectionID collection,
-    std::shared_ptr<VPackBuilder> properties) noexcept -> ReplicatedOperation {
+    ShardID shard, TRI_col_type_e collectionType,
+    velocypack::SharedSlice properties) noexcept -> ReplicatedOperation {
   return ReplicatedOperation{
-      std::in_place, CreateShard{std::move(shard), std::move(collection),
-                                 std::move(properties)}};
+      std::in_place,
+      CreateShard{std::move(shard), collectionType, std::move(properties)}};
 }
 
 auto ReplicatedOperation::buildModifyShardOperation(
@@ -85,14 +85,13 @@ auto ReplicatedOperation::buildModifyShardOperation(
                                  std::move(properties)}};
 }
 
-auto ReplicatedOperation::buildDropShardOperation(
-    ShardID shard, CollectionID collection) noexcept -> ReplicatedOperation {
-  return ReplicatedOperation{
-      std::in_place, DropShard{std::move(shard), std::move(collection)}};
+auto ReplicatedOperation::buildDropShardOperation(ShardID shard) noexcept
+    -> ReplicatedOperation {
+  return ReplicatedOperation{std::in_place, DropShard{std::move(shard)}};
 }
 
 auto ReplicatedOperation::buildCreateIndexOperation(
-    ShardID shard, std::shared_ptr<VPackBuilder> properties,
+    ShardID shard, velocypack::SharedSlice properties,
     std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
     -> ReplicatedOperation {
   return ReplicatedOperation{

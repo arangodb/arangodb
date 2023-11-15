@@ -164,7 +164,7 @@ const checkIndexInfos = function (infos, filter, filterAttr, valueUsage, project
   if (valueUsage === "projection") {
     assertEqual(infos.producesOutput, true);
     const proj = _.flatten(normalize(infos.projections));
-    assertNotEqual(proj.indexOf("z"), -1);
+    assertEqual(proj, ["z"], proj);
     if (!filter || infos.indexCoversFilterProjections) {
       assertEqual(infos.indexCoversProjections, ["indexed", "stored"].indexOf(projectionAttr) !== -1, infos);
     } else {
@@ -206,7 +206,6 @@ const generateTestFunction = function (config) {
     const join = plan.nodes[1];
 
     // it can happen that the indexes are swap, so we have to find the correct index for collection A
-
     checkIndexInfos(getIndexForCollection(join.indexInfos, collection1), config.filter1, config.filterAttribute1,
         config.valueUsage1, config.projectedAttribute1);
     checkIndexInfos(getIndexForCollection(join.indexInfos, collection2), config.filter2, config.filterAttribute2,

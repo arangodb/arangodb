@@ -438,7 +438,7 @@ AstNode* Ast::createNodeExample(AstNode const* variable,
       example->type != NODE_TYPE_PARAMETER) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_PARSE,
-        "expecting object literal or bind parameter for example");
+        "expecting object literal or bind parameter for UPSERT example");
   }
 
   AstNode* node = createNode(NODE_TYPE_EXAMPLE);

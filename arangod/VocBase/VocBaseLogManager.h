@@ -99,12 +99,6 @@ struct VocBaseLogManager {
   TRI_vocbase_t& _vocbase;
   LoggerContext const _logContext;
 
-  // During startup this map contains a mapping from logs to shards. Not
-  // valid after startup.
-  std::unordered_multimap<replication2::LogId,
-                          std::shared_ptr<LogicalCollection>>
-      _initCollections;
-
   struct GuardedData {
     struct StateAndLog {
       cluster::CallbackGuard rebootTrackerGuard;
