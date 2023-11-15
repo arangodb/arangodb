@@ -64,7 +64,7 @@ using namespace arangodb::aql;
 using namespace arangodb::containers;
 using EN = arangodb::aql::ExecutionNode;
 
-#define LOG_RULE LOG_DEVEL_IF(true)
+#define LOG_RULE LOG_DEVEL_IF(false)
 
 namespace {
 
@@ -121,9 +121,6 @@ void findEqualComparedAttributeAccesses(Expression* expr, F&& fn) {
     TRI_ASSERT(ast->type == NODE_TYPE_OPERATOR_BINARY_EQ);
     auto* lhs = ast->getMember(0);
     auto* rhs = ast->getMember(1);
-
-    LOG_DEVEL << "EQUAL COMPARE 1 " << lhs->toString()
-              << " == " << rhs->toString();
 
     if (lhs->type != NODE_TYPE_REFERENCE &&
         !lhs->isAttributeAccessForVariable()) {
@@ -191,7 +188,6 @@ bool extractEqualConditions(
     Expression* expr, containers::SmallVector<EqualCondition, 8>& result) {
   findEqualComparedAttributeAccesses(expr, [&](AstNode const* lhs,
                                                AstNode const* rhs) {
-    LOG_DEVEL << "COMPARE " << lhs->toString() << " == " << rhs->toString();
     auto lhsAccess = extractVariableAttributeAccess(lhs);
     auto rhsAccess = extractVariableAttributeAccess(rhs);
     if (!lhsAccess || !rhsAccess) {
@@ -223,14 +219,11 @@ void arangodb::aql::replaceEqualAttributeAccesses(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     OptimizerRule const& rule) {
   bool modified = false;
-  LOG_RULE << "Rule executed, Plan is:";
 
   containers::SmallVector<ExecutionNode*, 8> nodes;
   containers::NodeHashMap<VarAttribKey, std::shared_ptr<EquivalenceClass>,
                           boost::hash<VarAttribKey>>
       equivalenceClasses;
-
-  plan->show();
 
   for (auto* node = plan->root()->getSingleton(); node != nullptr;
        node = node->getFirstParent()) {
@@ -310,63 +303,6 @@ void arangodb::aql::replaceEqualAttributeAccesses(
       }
     }
   }
-  /*
-    plan->findNodesOfType(nodes, EN::FILTER, true);
 
-    for (auto* f : nodes) {
-      auto* fn = static_cast<FilterNode*>(f);
-      auto* n = plan->getVarSetBy(fn->inVariable()->id);
-      TRI_ASSERT(n->getType() == EN::CALCULATION);
-      auto* cn = static_cast<CalculationNode*>(n);
-
-      containers::SmallVector<EqualCondition, 8> conditions;
-      extractEqualConditions(cn->expression(), conditions);
-
-      for (auto& pair : conditions) {
-        // detect which variable is declared first
-        auto [lhs, rhs] = findDominatingVariable(*plan, pair);
-
-        LOG_RULE << lhs.var->name << " is declared before " << rhs.var->name;
-
-        // introduce a new variable
-        auto variable = plan->getAst()->variables()->createTemporaryVariable();
-
-        // substitute
-        auto subst = plan->createNode<CalculationNode>(
-            plan.get(), plan->nextId(),
-            std::make_unique<Expression>(plan->getAst(),
-                                         lhs.expr->clone(plan->getAst())),
-            variable);
-        plan->insertAfter(cn, subst);
-
-        // now replace all usages of rhs and lhs
-
-        for (ExecutionNode* node = fn; node != nullptr;
-             node = node->getFirstParent()) {
-          if (lhs.path.empty()) {
-            node->replaceVariables({{lhs.var->id, variable}});
-          } else {
-            node->replaceAttributeAccess(node, lhs.var, lhs.path, variable, 0);
-          }
-          if (rhs.path.empty()) {
-            node->replaceVariables({{rhs.var->id, variable}});
-          } else {
-            node->replaceAttributeAccess(node, rhs.var, rhs.path, variable, 0);
-          }
-        }
-        modified = true;
-      }
-    }
-  */
-
-  if (modified) {
-    LOG_RULE << "###################";
-    for (auto const& [var, cls] : equivalenceClasses) {
-      LOG_RULE << var << " -> " << cls->var->name;
-    }
-    LOG_RULE << "###################";
-  }
-
-  plan->show();
   opt->addPlan(std::move(plan), rule, modified);
 }
