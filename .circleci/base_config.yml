@@ -449,7 +449,7 @@ jobs:
           when: always
           command: |
             mkdir test-results
-            find testrunXml -iname *xml -exec cp "{}" --target-directory=./test-results \;
+            Get-ChildItem -Path .\testrunXml -Filter *.xml -Recurse | ForEach-Object {Copy-Item $_.FullName -Destination .\test-results}
       - store_artifacts:
           destination: << parameters.suiteName >>
           path: ./work/
