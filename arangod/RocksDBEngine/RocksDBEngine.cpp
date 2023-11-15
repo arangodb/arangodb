@@ -151,7 +151,7 @@
 // correct sequence numbers for the files without gaps
 #undef USE_SST_INGESTION
 
-//#define USE_CUSTOM_WAL
+// #define USE_CUSTOM_WAL
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -3130,6 +3130,21 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   // scan the database path for "arangosearch" views
   scanViews(iresearch::StaticStrings::ViewArangoSearchType);
 
+  // replicated states should be loaded before their respective shards
+  if (vocbase->replicationVersion() == replication::Version::TWO) {
+    try {
+      loadReplicatedStates(*vocbase);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("554c1", ERR, arangodb::Logger::ENGINES)
+          << "error while opening database: " << ex.what();
+      throw;
+    } catch (...) {
+      LOG_TOPIC("5f33d", ERR, arangodb::Logger::ENGINES)
+          << "error while opening database: unknown exception";
+      throw;
+    }
+  }
+
   // scan the database path for collections
   try {
     VPackBuilder builder;
@@ -3173,12 +3188,6 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       LOG_TOPIC("39404", DEBUG, arangodb::Logger::ENGINES)
           << "added collection '" << vocbase->name() << "/"
           << collection->name() << "'";
-
-      if (collection->replicationVersion() ==
-          arangodb::replication::Version::TWO) {
-        vocbase->_logManager->_initCollections.emplace(
-            collection->replicatedStateId(), collection);
-      }
     }
   } catch (std::exception const& ex) {
     LOG_TOPIC("8d427", ERR, arangodb::Logger::ENGINES)
@@ -3189,18 +3198,6 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     LOG_TOPIC("0268e", ERR, arangodb::Logger::ENGINES)
         << "error while opening database '" << vocbase->name()
         << "': unknown exception";
-    throw;
-  }
-
-  try {
-    loadReplicatedStates(*vocbase);
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("554c1", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: " << ex.what();
-    throw;
-  } catch (...) {
-    LOG_TOPIC("5f33d", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: unknown exception";
     throw;
   }
 

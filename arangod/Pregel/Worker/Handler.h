@@ -24,7 +24,7 @@
 
 #include <chrono>
 #include <memory>
-#include "Actor/ActorPID.h"
+#include "Actor/DistributedActorPID.h"
 #include "Actor/HandlerBase.h"
 #include "Logger/LogMacros.h"
 #include "Pregel/GraphStore/GraphLoader.h"
@@ -48,12 +48,13 @@
 namespace arangodb::pregel::worker {
 
 struct VerticesProcessed {
-  std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor;
+  std::unordered_map<actor::DistributedActorPID, uint64_t> sendCountPerActor;
   size_t activeCount;
 };
 
 template<typename V, typename E, typename M, typename Runtime>
 struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
+  using ActorPID = typename Runtime::ActorPID;
   DispatchStatus const& dispatchStatus =
       [this](pregel::message::StatusMessages message) -> void {
     this->template dispatch<pregel::message::StatusMessages>(
@@ -74,7 +75,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     this->template dispatch<message::WorkerMessages>(this->self, message);
   };
   DispatchOther const& dispatchOther =
-      [this](actor::ActorPID other, message::WorkerMessages message) -> void {
+      [this](actor::DistributedActorPID other,
+             message::WorkerMessages message) -> void {
     this->template dispatch<message::WorkerMessages>(other, message);
   };
   DispatchResult const& dispatchResult =
@@ -169,14 +171,14 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     return std::move(this->state);
   }
 
-  auto operator()(actor::message::UnknownMessage unknown)
+  auto operator()(actor::message::UnknownMessage<ActorPID> unknown)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("7ee4d", INFO, Logger::PREGEL) << fmt::format(
         "Worker Actor: Error - sent unknown message to {}", unknown.receiver);
     return std::move(this->state);
   }
 
-  auto operator()(actor::message::ActorNotFound notFound)
+  auto operator()(actor::message::ActorNotFound<ActorPID> notFound)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("2d647", INFO, Logger::PREGEL) << fmt::format(
         "Worker Actor: Error - receiving actor {} not found", notFound.actor);

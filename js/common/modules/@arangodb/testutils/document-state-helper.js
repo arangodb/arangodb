@@ -299,6 +299,21 @@ const isIndexInCurrent = function (database, collectionId, indexId) {
   return Object.values(shards).some(shard => shard.indexes.some(index => index.id === indexId));
 };
 
+const computedValuesAppliedPredicate = function (collection, attribute) {
+  return function () {
+    if (collection.properties().computedValues === null) {
+      return Error(`Computed values not applied to collection ${collection.name()}, ` +
+        `properties: ${JSON.stringify(collection.properties())}`);
+    }
+    let doc = collection.insert({_key: "computedValuesAppliedPredicateTest"}, {waitForSync: true, returnNew: true});
+    collection.remove(doc);
+    if (doc.new.hasOwnProperty(attribute) === false) {
+      return Error(`Computed values not applied to collection ${collection.name()}`);
+    }
+    return true;
+  };
+};
+
 exports.getLocalValue = getLocalValue;
 exports.getLocalIndex = getLocalIndex;
 exports.getAllLocalIndexes = getAllLocalIndexes;
@@ -322,3 +337,4 @@ exports.allSnapshotsStatus = allSnapshotsStatus;
 exports.getSingleLogId = getSingleLogId;
 exports.getCollectionShardsAndLogs = getCollectionShardsAndLogs;
 exports.isIndexInCurrent = isIndexInCurrent;
+exports.computedValuesAppliedPredicate = computedValuesAppliedPredicate;

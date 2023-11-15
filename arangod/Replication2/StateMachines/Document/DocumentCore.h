@@ -33,7 +33,6 @@ struct TRI_vocbase_t;
 namespace arangodb::replication2::replicated_state::document {
 
 struct IDocumentStateShardHandler;
-struct IDocumentStateTransactionHandler;
 
 struct DocumentCore {
   explicit DocumentCore(
@@ -46,8 +45,7 @@ struct DocumentCore {
   LoggerContext const loggerContext;
 
   auto getVocbase() -> TRI_vocbase_t&;
-  void drop();
-  auto getShardHandler() -> std::shared_ptr<IDocumentStateShardHandler>;
+  void drop() noexcept;
 
  private:
   TRI_vocbase_t& _vocbase;

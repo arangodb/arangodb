@@ -231,9 +231,9 @@ ReplicatedRocksDBTransactionCollection::performIntermediateCommitIfRequired() {
     // this multiple times in the same replicated log. This is not a serious
     // problem for intermediate commits, but we should avoid it.
     auto leader = leaderState();
-    auto operation =
-        replication2::replicated_state::document::ReplicatedOperation::
-            buildIntermediateCommitOperation(_transaction->id());
+    auto operation = replication2::replicated_state::document::
+        ReplicatedOperation::buildIntermediateCommitOperation(
+            _transaction->id().asFollowerTransactionId());
     auto options = replication2::replicated_state::document::ReplicationOptions{
         .waitForCommit = true};
     return leader->replicateOperation(operation, options)

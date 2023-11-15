@@ -23,7 +23,7 @@
 #pragma once
 
 #include <string>
-#include "Actor/ActorPID.h"
+#include "Actor/DistributedActorPID.h"
 #include "Cluster/ClusterTypes.h"
 #include "Pregel/Conductor/Messages.h"
 #include "Pregel/StatusMessages.h"
@@ -49,15 +49,16 @@ struct StateChange {
 struct ExecutionState {
   virtual auto name() const -> std::string = 0;
   virtual auto messages()
-      -> std::unordered_map<actor::ActorPID, worker::message::WorkerMessages> {
+      -> std::unordered_map<actor::DistributedActorPID,
+                            worker::message::WorkerMessages> {
     return {};
   }
-  virtual auto receive(actor::ActorPID sender,
+  virtual auto receive(actor::DistributedActorPID sender,
                        conductor::message::ConductorMessages message)
       -> std::optional<StateChange> {
     return std::nullopt;
   };
-  virtual auto cancel(actor::ActorPID sender,
+  virtual auto cancel(actor::DistributedActorPID sender,
                       conductor::message::ConductorMessages message)
       -> std::optional<StateChange> {
     return std::nullopt;

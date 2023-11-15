@@ -42,7 +42,7 @@ DocumentCore::DocumentCore(
       _params(std::move(coreParameters)),
       _shardHandler(handlersFactory->createShardHandler(vocbase, this->gid)) {}
 
-void DocumentCore::drop() {
+void DocumentCore::drop() noexcept {
   if (auto res = _shardHandler->dropAllShards(); res.fail()) {
     LOG_CTX("f3b3d", ERR, loggerContext)
         << "Failed to drop all shards: " << res;
@@ -50,8 +50,3 @@ void DocumentCore::drop() {
 }
 
 auto DocumentCore::getVocbase() -> TRI_vocbase_t& { return _vocbase; }
-
-auto DocumentCore::getShardHandler()
-    -> std::shared_ptr<IDocumentStateShardHandler> {
-  return _shardHandler;
-}
