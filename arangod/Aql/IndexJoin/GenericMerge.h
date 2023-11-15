@@ -373,8 +373,7 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
                      << " exhausted = " << std::boolalpha
                      << minIndex->exhausted;
     LOG_INDEX_MERGER << "max is " << maxIter->_position[0]
-                     << " exhausted = " << std::boolalpha
-                     << minIndex->exhausted;
+                     << " exhausted = " << std::boolalpha << maxIter->exhausted;
 
     if (maxIter->exhausted) {
       return {false, amountOfSeeks};
