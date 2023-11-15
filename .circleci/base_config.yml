@@ -368,7 +368,7 @@ jobs:
             Get-ChildItem *.ifc -Recurse | foreach { Remove-Item -Path $_.FullName }
             Get-ChildItem *.ilk -Recurse | foreach { Remove-Item -Path $_.FullName }
             Get-ChildItem *.tlog -Recurse | where { ! $_.PSIsContainer } | foreach { Remove-Item -Path $_.FullName }
-            Get-ChildItem *.dat -Recurse | foreach { Remove-Item -Path $_.FullName }
+#            Get-ChildItem *.dat -Recurse | foreach { Remove-Item -Path $_.FullName }
       - run:
           name: Save workspace for development
           shell: powershell.exe
@@ -427,7 +427,6 @@ jobs:
     steps:
       - attach_workspace:
           at: .
-      - run: Write-Host 'Hello, Windows'
       - run:
           name: Run << parameters.suiteName >> tests
           # we increase the no_output_timeout so our own timeout mechanism can kick in and gather more information
@@ -435,10 +434,10 @@ jobs:
           command: |
             mkdir work
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
-            python3 scripts/test/test_launch_controller.py << parameters.suites >> \
-              --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
-              --cluster << parameters.cluster >> \
-              --extraArgs " << parameters.extraArgs >>" \
+            python3 scripts/test/test_launch_controller.py << parameters.suites >> `
+              --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX `
+              --cluster << parameters.cluster >> `
+              --extraArgs " << parameters.extraArgs >>" `
               --definition tests/test-definitions.txt
       - run:
           name: Copy test results
