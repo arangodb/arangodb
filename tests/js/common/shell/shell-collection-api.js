@@ -162,6 +162,10 @@ const validateProperties = (overrides, colName, type, keepEnterpriseSimulationAt
     // This is a local property only exposed on dbServer and singleServer
     assertTrue(props.hasOwnProperty("objectId"));
   }
+  if (isCluster && db._properties().replicationVersion === "2") {
+    // Replication 2 always exposes the group id
+    assertTrue(props.hasOwnProperty("groupId"));
+  }
   assertEqual(col.name(), colName);
   assertEqual(col.type(), type);
   const expectedProps = {...defaultProps, ...overrides};
@@ -185,6 +189,10 @@ const validateProperties = (overrides, colName, type, keepEnterpriseSimulationAt
     // The objectId is generated, so we cannot compare equality, we should make
     // sure it is always there.
     expectedKeys.push("objectId");
+  }
+  if (isCluster && db._properties().replicationVersion === "2" && !overrides.hasOwnProperty("groupId")) {
+    // Replication 2 always exposes the group id
+    expectedKeys.push("groupId");
   }
   if (isServer && isCluster && overrides.isSmart && type === 3) {
     // Special attribute for smartEdgeColelctions
