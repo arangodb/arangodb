@@ -660,9 +660,6 @@ std::shared_ptr<Conductor> PregelFeature::conductor(
 }
 
 void PregelFeature::garbageCollectActors() {
-  // garbage collect all finished actors
-  _actorRuntime->garbageCollect();
-
   // clean up map
   _pregelRuns.doUnderLock([this](auto& items) {
     std::erase_if(items, [this](auto& item) {
