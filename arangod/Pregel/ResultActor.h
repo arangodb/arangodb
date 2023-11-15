@@ -97,6 +97,7 @@ auto inspect(Inspector& f, ResultState& x) {
 
 template<typename Runtime>
 struct ResultHandler : actor::HandlerBase<Runtime, ResultState> {
+  using ActorPID = typename Runtime::ActorPID;
   auto setExpiration() {
     this->state->expiration =
         std::chrono::system_clock::now() + this->state->ttl.duration;
@@ -153,7 +154,7 @@ struct ResultHandler : actor::HandlerBase<Runtime, ResultState> {
     return std::move(this->state);
   }
 
-  auto operator()(actor::message::UnknownMessage unknown)
+  auto operator()(actor::message::UnknownMessage<ActorPID> unknown)
       -> std::unique_ptr<ResultState> {
     LOG_TOPIC("eb602", INFO, Logger::PREGEL)
         << fmt::format("Result Actor: Error - sent unknown message to {}",
@@ -161,7 +162,7 @@ struct ResultHandler : actor::HandlerBase<Runtime, ResultState> {
     return std::move(this->state);
   }
 
-  auto operator()(actor::message::ActorNotFound notFound)
+  auto operator()(actor::message::ActorNotFound<ActorPID> notFound)
       -> std::unique_ptr<ResultState> {
     LOG_TOPIC("e3156", INFO, Logger::PREGEL)
         << fmt::format("Result Actor: Error - receiving actor {} not found",

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,27 +18,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexandru Petenchea
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Cluster/ClusterTypes.h"
+#include <memory>
 
-namespace arangodb::replication2::replicated_state::document {
-inline constexpr auto kStringCollectionID = std::string_view{"collection"};
-inline constexpr auto kStringProperties = std::string_view{"properties"};
+namespace arangodb::actor {
 
-struct ShardProperties {
-  CollectionID collection;
-  std::shared_ptr<VPackBuilder> properties;
-
-  template<class Inspector>
-  inline friend auto inspect(Inspector& f, ShardProperties& s) {
-    return f.object(s).fields(f.field(kStringCollectionID, s.collection),
-                              f.field(kStringProperties, s.properties));
-  }
+struct IWorkable : std::enable_shared_from_this<IWorkable> {
+  virtual ~IWorkable() = default;
+  virtual void work() = 0;
 };
 
-using ShardMap = std::unordered_map<ShardID, ShardProperties>;
-}  // namespace arangodb::replication2::replicated_state::document
+}  // namespace arangodb::actor

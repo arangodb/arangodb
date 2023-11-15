@@ -121,7 +121,7 @@ PregelScheduler::PregelScheduler(Scheduler* scheduler) : _scheduler{scheduler} {
   TRI_ASSERT(_scheduler != nullptr);
 }
 
-void PregelScheduler::queue(actor::ActorWorker&& worker) {
+void PregelScheduler::queue(actor::LazyWorker&& worker) {
   _scheduler->queue(RequestLane::INTERNAL_LOW, std::move(worker));
 }
 
