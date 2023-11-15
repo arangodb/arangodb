@@ -3,7 +3,7 @@ devel
 
 * Added "readOwnWrites" option for AQL UPSERT operations.
   
-  If set to `false` (which is the default), an UPSERT operation will process
+  If set to `true` (which is the default), an UPSERT operation will process
   its inputs one by one. That way an UPSERT can observe its own writes and can
   handle modifying the same target document multiple times in the same query.
 
