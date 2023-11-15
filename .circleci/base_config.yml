@@ -428,13 +428,18 @@ jobs:
       - attach_workspace:
           at: .
       - run:
+          name: Install python packages
+          when: always
+          command: |
+            pip install psutil
+      - run:
           name: Run << parameters.suiteName >> tests
           # we increase the no_output_timeout so our own timeout mechanism can kick in and gather more information
           no_output_timeout: 20m
           command: |
             mkdir work
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
-            python3 scripts/test/test_launch_controller.py << parameters.suites >> `
+            python scripts/test/test_launch_controller.py << parameters.suites >> `
               --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX `
               --cluster << parameters.cluster >> `
               --extraArgs " << parameters.extraArgs >>" `
