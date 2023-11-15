@@ -2892,7 +2892,7 @@ struct Shower final
         auto const& calcNode =
             *ExecutionNode::castTo<CalculationNode const*>(&node);
         auto type = std::string{node.getTypeString()};
-        type += " " + calcNode.outVariable()->name + " = ";
+        type += " $" + calcNode.outVariable()->name + " = ";
         calcNode.expression()->stringify(type);
         return type;
       }
