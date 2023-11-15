@@ -369,6 +369,12 @@ jobs:
             Get-ChildItem *.ilk -Recurse | foreach { Remove-Item -Path $_.FullName }
             Get-ChildItem *.tlog -Recurse | where { ! $_.PSIsContainer } | foreach { Remove-Item -Path $_.FullName }
             Get-ChildItem *.dat -Recurse | foreach { Remove-Item -Path $_.FullName }
+      - run:
+          name: Save workspace for development
+          shell: powershell.exe
+          command: |
+            cd D:/CircleCI/project/
+            7z a -r ./workspace CMakePresets.json build/ scripts/ js/ enterprise/js etc/ tests/js enterprise/tests/js utils UnitTests 3rdParty/iresearch/tests/resources 3rdParty/rta-makedata            
       # - run:
       #     name: SCCache Statistics
       #     command: sccache -s
@@ -377,6 +383,8 @@ jobs:
       - when:
           condition: << parameters.publish-artifacts >>
           steps:
+            - store_artifacts:
+                path: D:/CircleCI/project/workspace.7z
             - store_artifacts:
                 path: D:/CircleCI/project/build/bin/RelWithDebInfo/
                 destination: windows
@@ -415,11 +423,34 @@ jobs:
     executor:
       name: win/default # executor type
       size: << parameters.size >> # can be medium, large, xlarge, 2xlarge
-#    parallelism: << parameters.buckets >>
+    parallelism: << parameters.buckets >>
     steps:
       - attach_workspace:
           at: .
       - run: Write-Host 'Hello, Windows'
+      - run:
+          name: Run << parameters.suiteName >> tests
+          # we increase the no_output_timeout so our own timeout mechanism can kick in and gather more information
+          no_output_timeout: 20m
+          command: |
+            mkdir work
+            # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
+            python3 scripts/test/test_launch_controller.py << parameters.suites >> \
+              --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
+              --cluster << parameters.cluster >> \
+              --extraArgs " << parameters.extraArgs >>" \
+              --definition tests/test-definitions.txt
+      - run:
+          name: Copy test results
+          when: always
+          command: |
+            mkdir test-results
+            find testrunXml -iname *xml -exec cp "{}" --target-directory=./test-results \;
+      - store_artifacts:
+          destination: << parameters.suiteName >>
+          path: ./work/
+      - store_test_results:
+          path: ./test-results/
 
   run-linux-tests:
     docker:
