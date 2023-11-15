@@ -109,7 +109,7 @@ struct TwoIndicesMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
   std::pair<bool, size_t> findCommonPosition();
 };
 
-#define LOG_IDX_TWO_NONU_MERGER LOG_DEVEL_IF(true)
+#define LOG_IDX_TWO_NONU_MERGER LOG_DEVEL_IF(false)
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
 void TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::reset() {
