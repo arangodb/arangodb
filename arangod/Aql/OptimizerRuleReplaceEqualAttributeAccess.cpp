@@ -233,11 +233,7 @@ void arangodb::aql::replaceEqualAttributeAccesses(
     auto* n = plan->getVarSetBy(fn->inVariable()->id);
     TRI_ASSERT(n->getType() == EN::CALCULATION);
     auto* cn = ExecutionNode::castTo<CalculationNode*>(n);
-    {
-      VPackBuilder builder;
-      cn->expression()->toVelocyPack(builder, true);
-      LOG_DEVEL << builder.toJson();
-    }
+
     containers::SmallVector<EqualCondition, 8> conditions;
     extractEqualConditions(cn->expression(), conditions);
 
