@@ -88,7 +88,7 @@ function optimizerRuleReplaceEqualAttributeAccess() {
       assertEqual(plan.rules.indexOf("replace-equal-attribute-accesses"), -1);
     },
 
-    testReturnEqualPairsOr: function () {
+    testReturnEqualPairsMixed: function () {
       const query = `
         for x in 1..10
           for y in 1..20
