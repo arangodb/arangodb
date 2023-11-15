@@ -37,7 +37,7 @@ ModificationExecutorInfos::ModificationExecutorInfos(
     RegisterId outputNewRegisterId, RegisterId outputOldRegisterId,
     RegisterId outputRegisterId, arangodb::aql::QueryContext& query,
     OperationOptions options, aql::Collection const* aqlCollection,
-    ProducesResults producesResults,
+    size_t batchSize, ProducesResults producesResults,
     ConsultAqlWriteFilter consultAqlWriteFilter, IgnoreErrors ignoreErrors,
     DoCount doCount, IsReplace isReplace,
     IgnoreDocumentNotFound ignoreDocumentNotFound)
@@ -45,6 +45,7 @@ ModificationExecutorInfos::ModificationExecutorInfos(
       _query(query),
       _options(options),
       _aqlCollection(aqlCollection),
+      _batchSize(batchSize),
       _producesResults(
           ProducesResults(producesResults._value || !_options.silent)),
       _consultAqlWriteFilter(consultAqlWriteFilter),
@@ -52,7 +53,6 @@ ModificationExecutorInfos::ModificationExecutorInfos(
       _doCount(doCount),
       _isReplace(isReplace),
       _ignoreDocumentNotFound(ignoreDocumentNotFound),
-      _useBatching(true),  // used only by upsert
       _input1RegisterId(input1RegisterId),
       _input2RegisterId(input2RegisterId),
       _input3RegisterId(input3RegisterId),

@@ -151,7 +151,8 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
       &engine, inDocRegister, RegisterPlan::MaxRegisterId,
       RegisterPlan::MaxRegisterId, outputNew, outputOld,
       RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
-      std::move(options), collection(), ProducesResults(producesResults()),
+      std::move(options), collection(), ExecutionBlock::DefaultBatchSize,
+      ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(false) /*(needed by upsert)*/,
@@ -232,7 +233,8 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
       &engine, inputRegister, RegisterPlan::MaxRegisterId,
       RegisterPlan::MaxRegisterId, outputNew, outputOld,
       RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
-      std::move(options), collection(), ProducesResults(producesResults()),
+      std::move(options), collection(), ExecutionBlock::DefaultBatchSize,
+      ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(false) /*(needed by upsert)*/,
@@ -385,7 +387,7 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
       &engine, inDocRegister, inKeyRegister, RegisterPlan::MaxRegisterId,
       outputNew, outputOld, RegisterPlan::MaxRegisterId /*output*/,
       _plan->getAst()->query(), std::move(options), collection(),
-      ProducesResults(producesResults()),
+      ExecutionBlock::DefaultBatchSize, ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(false) /*(needed by upsert)*/,
@@ -492,7 +494,7 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
       &engine, inDocRegister, inKeyRegister, RegisterPlan::MaxRegisterId,
       outputNew, outputOld, RegisterPlan::MaxRegisterId /*output*/,
       _plan->getAst()->query(), std::move(options), collection(),
-      ProducesResults(producesResults()),
+      ExecutionBlock::DefaultBatchSize, ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(true), IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
@@ -624,18 +626,23 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
   // a non-unique secondary index
   options.canDisableIndexing = false;
 
+  // if we do not need to observe our own writes, we can turn on batching
+  // for the UpsertNode. otherwise, the Upsert will execute with a batch
+  // size of just 1.
+  size_t batchSize = 1;
+  if (!_canReadOwnWrites) {
+    batchSize = ExecutionBlock::DefaultBatchSize;
+  }
+
   auto executorInfos = ModificationExecutorInfos(
       &engine, inDoc, insert, update, outputNew, outputOld,
       RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
-      std::move(options), collection(), ProducesResults(producesResults()),
+      std::move(options), collection(), batchSize,
+      ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(_isReplace) /*(needed by upsert)*/,
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
-  // if we do not need to observe our own writes, we can turn on batching
-  // for the UpsertNode. otherwise, the Upsert will execute with a batch
-  // size of just 1.
-  executorInfos._useBatching = !_canReadOwnWrites;
   return std::make_unique<SingleRowUpsertExecutionBlock>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }

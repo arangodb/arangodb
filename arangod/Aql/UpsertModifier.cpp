@@ -148,8 +148,8 @@ UpsertModifier::UpsertModifier(ModificationExecutorInfos& infos)
       _updateResults(Result(), infos._options),
       _insertResults(Result(), infos._options),
       // Batch size has to be 1 in case the upsert modifier sees its own
-      // writes. otherwise we can use the default batching
-      _batchSize(_infos._useBatching ? ExecutionBlock::DefaultBatchSize : 1),
+      // writes. otherwise it will use the default batching
+      _batchSize(_infos._batchSize),
       _resultState(ModificationExecutorResultState::NoResult) {}
 
 void UpsertModifier::reset() {

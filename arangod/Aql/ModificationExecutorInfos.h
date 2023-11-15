@@ -69,7 +69,7 @@ struct ModificationExecutorInfos {
       RegisterId outputNewRegisterId, RegisterId outputOldRegisterId,
       RegisterId outputRegisterId, arangodb::aql::QueryContext& query,
       OperationOptions options, aql::Collection const* aqlCollection,
-      ProducesResults producesResults,
+      size_t batchSize, ProducesResults producesResults,
       ConsultAqlWriteFilter consultAqlWriteFilter, IgnoreErrors ignoreErrors,
       DoCount doCount, IsReplace isReplace,
       IgnoreDocumentNotFound ignoreDocumentNotFound);
@@ -86,6 +86,7 @@ struct ModificationExecutorInfos {
   arangodb::aql::QueryContext& _query;
   OperationOptions _options;
   aql::Collection const* _aqlCollection;
+  size_t _batchSize;
   ProducesResults _producesResults;
   ConsultAqlWriteFilter _consultAqlWriteFilter;
   IgnoreErrors _ignoreErrors;
@@ -93,7 +94,6 @@ struct ModificationExecutorInfos {
   // bool _returnInheritedResults;
   IsReplace _isReplace;                            // needed for upsert
   IgnoreDocumentNotFound _ignoreDocumentNotFound;  // needed for update replace
-  bool _useBatching;                               // used only by upsert
 
   // insert (singleinput) - upsert (inDoc) - update replace (inDoc)
   RegisterId _input1RegisterId;
