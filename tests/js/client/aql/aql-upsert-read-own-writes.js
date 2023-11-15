@@ -28,6 +28,8 @@ const internal = require("internal");
 const db = require("@arangodb").db;
 const jsunity = require("jsunity");
 const errors = require("internal").errors;
+const isCluster = require("internal").isCluster();
+const isEnterprise = require("internal").isEnterprise();
 
 function readOwnWritesSuite() {
   const cn = "UnitTestsCollection";
@@ -123,6 +125,11 @@ function readOwnWritesSuite() {
     },
     
     testReadOwnWritesTrueOverlappingInputs: function () {
+      if (isCluster && !isEnterprise) {
+        // must bail out here because we need the cluster's OneShard optimization
+        // to achieve deterministic behavior
+        return;
+      }
       const q = `FOR i IN 1..1000 UPSERT FILTER $CURRENT.value == 1 INSERT { inserted: true, value: 1 } UPDATE { updated: true } IN ${cn} OPTIONS { readOwnWrites: true }`;
       const plan = db._createStatement(q).explain().plan;
 
@@ -172,6 +179,11 @@ function readOwnWritesSuite() {
     },
     
     testReadOwnWritesTrueRepeatedUpdates: function () {
+      if (isCluster && !isEnterprise) {
+        // must bail out here because we need the cluster's OneShard optimization
+        // to achieve deterministic behavior
+        return;
+      }
       const q = `FOR j IN 1..10 FOR i IN 1..200 UPSERT FILTER $CURRENT.value == j INSERT { inserted: true, value: j, hits: 1 } UPDATE { updated: true, hits: OLD.hits + 1 } IN ${cn} OPTIONS { readOwnWrites: true }`;
       const plan = db._createStatement(q).explain().plan;
 
