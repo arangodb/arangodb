@@ -18,29 +18,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
-/// @author Julia Volmer
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Actor/DistributedActorPID.h"
-#include "Actor/IWorkable.h"
-#include "Actor/Message.h"
+#include <memory>
 
 namespace arangodb::actor {
 
-template<typename ActorPID>
-struct ActorBase : IWorkable {
-  virtual ~ActorBase() = default;
-  virtual auto process(ActorPID sender, MessagePayloadBase& msg) -> void = 0;
-  virtual auto process(ActorPID sender, velocypack::SharedSlice msg)
-      -> void = 0;
-  virtual auto typeName() -> std::string_view = 0;
-  virtual auto serialize() -> velocypack::SharedSlice = 0;
-  virtual auto finish() -> void = 0;
-  virtual auto isFinishedAndIdle() -> bool = 0;
-  virtual auto isIdle() -> bool = 0;
+struct IWorkable : std::enable_shared_from_this<IWorkable> {
+  virtual ~IWorkable() = default;
+  virtual void work() = 0;
 };
 
 }  // namespace arangodb::actor

@@ -48,8 +48,10 @@ struct MockExternalDispatcher : IExternalDispatcher {
     if (receiving_runtime != std::end(runtimes)) {
       receiving_runtime->second->receive(sender, receiver, msg);
     } else {
-      auto error = actor::message::ActorError{actor::message::NetworkError{
-          .message = fmt::format("Cannot find server {}", receiver.server)}};
+      auto error =
+          actor::message::ActorError<ActorPID>{actor::message::NetworkError{
+              .message =
+                  fmt::format("Cannot find server {}", receiver.server)}};
       auto payload = inspection::serializeWithErrorT(error);
       if (payload.ok()) {
         runtimes[sender.server]->dispatch(receiver, sender, payload.get());

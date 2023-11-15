@@ -25,13 +25,13 @@
 
 #include <chrono>
 #include <functional>
-#include "Actor/ActorWorker.h"
+#include "Actor/LazyWorker.h"
 
 namespace arangodb::actor {
 
 struct IScheduler {
   virtual ~IScheduler() = default;
-  virtual void queue(ActorWorker&& worker) = 0;
+  virtual void queue(LazyWorker&& worker) = 0;
   virtual void delay(std::chrono::seconds delay,
                      std::function<void(bool)>&& fn) = 0;
 };

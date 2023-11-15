@@ -29,7 +29,6 @@
 
 #include <velocypack/Builder.h>
 
-#include "DistributedActorPID.h"
 #include "MPSCQueue.h"
 
 namespace arangodb::actor {
@@ -52,21 +51,23 @@ auto inspect(Inspector& f, MessagePayload<Payload>& x) {
 
 namespace message {
 
+template<typename PID>
 struct UnknownMessage {
-  DistributedActorPID sender;
-  DistributedActorPID receiver;
+  PID sender;
+  PID receiver;
 };
-template<typename Inspector>
-auto inspect(Inspector& f, UnknownMessage& x) {
+template<typename Inspector, typename PID>
+auto inspect(Inspector& f, UnknownMessage<PID>& x) {
   return f.object(x).fields(f.field("sender", x.sender),
                             f.field("receiver", x.receiver));
 }
 
+template<typename PID>
 struct ActorNotFound {
-  DistributedActorPID actor;
+  PID actor;
 };
-template<typename Inspector>
-auto inspect(Inspector& f, ActorNotFound& x) {
+template<typename Inspector, typename PID>
+auto inspect(Inspector& f, ActorNotFound<PID>& x) {
   return f.object(x).fields(f.field("actor", x.actor));
 }
 
@@ -78,14 +79,17 @@ auto inspect(Inspector& f, NetworkError& x) {
   return f.object(x).fields(f.field("server", x.message));
 }
 
-struct ActorError : std::variant<UnknownMessage, ActorNotFound, NetworkError> {
-  using std::variant<UnknownMessage, ActorNotFound, NetworkError>::variant;
+template<typename PID>
+struct ActorError
+    : std::variant<UnknownMessage<PID>, ActorNotFound<PID>, NetworkError> {
+  using std::variant<UnknownMessage<PID>, ActorNotFound<PID>,
+                     NetworkError>::variant;
 };
-template<typename Inspector>
-auto inspect(Inspector& f, ActorError& x) {
+template<typename Inspector, typename PID>
+auto inspect(Inspector& f, ActorError<PID>& x) {
   return f.variant(x).unqualified().alternatives(
-      arangodb::inspection::type<UnknownMessage>("UnknownMessage"),
-      arangodb::inspection::type<ActorNotFound>("ActorNotFound"),
+      arangodb::inspection::type<UnknownMessage<PID>>("UnknownMessage"),
+      arangodb::inspection::type<ActorNotFound<PID>>("ActorNotFound"),
       arangodb::inspection::type<NetworkError>("NetworkError"));
 }
 
@@ -104,9 +108,11 @@ struct concatenator<std::variant<Args0...>, std::variant<Args1...>> {
   }
 };
 
-template<typename T>
-struct MessageOrError : concatenator<typename T::variant, ActorError::variant> {
-  using concatenator<typename T::variant, ActorError::variant>::concatenator;
+template<typename T, typename PID>
+struct MessageOrError
+    : concatenator<typename T::variant, typename ActorError<PID>::variant> {
+  using concatenator<typename T::variant,
+                     typename ActorError<PID>::variant>::concatenator;
 };
 }  // namespace message
 
@@ -115,11 +121,11 @@ struct MessageOrError : concatenator<typename T::variant, ActorError::variant> {
 template<typename Payload>
 struct fmt::formatter<arangodb::actor::MessagePayload<Payload>>
     : arangodb::inspection::inspection_formatter {};
-template<>
-struct fmt::formatter<arangodb::actor::message::UnknownMessage>
+template<typename PID>
+struct fmt::formatter<arangodb::actor::message::UnknownMessage<PID>>
     : arangodb::inspection::inspection_formatter {};
-template<>
-struct fmt::formatter<arangodb::actor::message::ActorNotFound>
+template<typename PID>
+struct fmt::formatter<arangodb::actor::message::ActorNotFound<PID>>
     : arangodb::inspection::inspection_formatter {};
 template<>
 struct fmt::formatter<arangodb::actor::message::NetworkError>

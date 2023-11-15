@@ -74,7 +74,7 @@ concept Actorable = IncludesAllActorRelevantTypes<Runtime, A> &&
 
 template<typename Runtime, typename Config>
 requires Actorable<Runtime, Config>
-struct Actor : ActorBase {
+struct Actor : ActorBase<typename Runtime::ActorPID> {
   using ActorPID = typename Runtime::ActorPID;
   Actor(ActorPID pid, std::shared_ptr<Runtime> runtime,
         std::unique_ptr<typename Config::State> initialState)
@@ -97,13 +97,15 @@ struct Actor : ActorBase {
         m != nullptr) {
       push(sender, std::move(m->payload));
     } else if (auto* n =
-                   dynamic_cast<MessagePayload<message::ActorError>*>(&msg);
+                   dynamic_cast<MessagePayload<message::ActorError<ActorPID>>*>(
+                       &msg);
                n != nullptr) {
       push(sender, std::move(n->payload));
     } else {
-      runtime->dispatch(pid, sender,
-                        message::ActorError{message::UnknownMessage{
-                            .sender = sender, .receiver = pid}});
+      runtime->dispatch(
+          pid, sender,
+          message::ActorError<ActorPID>{message::UnknownMessage<ActorPID>{
+              .sender = sender, .receiver = pid}});
     }
   }
 
@@ -112,13 +114,13 @@ struct Actor : ActorBase {
             inspection::deserializeWithErrorT<typename Config::Message>(msg);
         m.ok()) {
       push(sender, std::move(m.get()));
-    } else if (auto n =
-                   inspection::deserializeWithErrorT<message::ActorError>(msg);
+    } else if (auto n = inspection::deserializeWithErrorT<
+                   message::ActorError<ActorPID>>(msg);
                n.ok()) {
       push(sender, std::move(n.get()));
     } else {
-      auto error = message::ActorError{
-          message::UnknownMessage{.sender = sender, .receiver = pid}};
+      auto error = message::ActorError<ActorPID>{
+          message::UnknownMessage<ActorPID>{.sender = sender, .receiver = pid}};
       auto payload = inspection::serializeWithErrorT(error);
       ACTOR_ASSERT(payload.ok());
       runtime->dispatch(pid, sender, payload.get());
@@ -153,19 +155,19 @@ struct Actor : ActorBase {
   void push(ActorPID sender, typename Config::Message&& msg) {
     pushToQueueAndKick(std::make_unique<InternalMessage>(
         sender,
-        std::make_unique<message::MessageOrError<typename Config::Message>>(
-            msg)));
+        std::make_unique<
+            message::MessageOrError<typename Config::Message, ActorPID>>(msg)));
   }
-  void push(ActorPID sender, message::ActorError&& msg) {
+  void push(ActorPID sender, message::ActorError<ActorPID>&& msg) {
     pushToQueueAndKick(std::make_unique<InternalMessage>(
         sender,
-        std::make_unique<message::MessageOrError<typename Config::Message>>(
-            msg)));
+        std::make_unique<
+            message::MessageOrError<typename Config::Message, ActorPID>>(msg)));
   }
 
   void kick() {
     // Make sure that *someone* works here
-    runtime->scheduler->queue(ActorWorker{this});
+    runtime->scheduler().queue(LazyWorker{this});
   }
 
   void work() override {
@@ -198,13 +200,13 @@ struct Actor : ActorBase {
   }
 
   struct InternalMessage : arangodb::actor::MPSCQueue<InternalMessage>::Node {
-    InternalMessage(
-        ActorPID sender,
-        std::unique_ptr<message::MessageOrError<typename Config::Message>>&&
-            payload)
+    InternalMessage(ActorPID sender,
+                    std::unique_ptr<message::MessageOrError<
+                        typename Config::Message, ActorPID>>&& payload)
         : sender(sender), payload(std::move(payload)) {}
     ActorPID sender;
-    std::unique_ptr<message::MessageOrError<typename Config::Message>> payload;
+    std::unique_ptr<message::MessageOrError<typename Config::Message, ActorPID>>
+        payload;
   };
 
   auto pushToQueueAndKick(std::unique_ptr<InternalMessage> msg) -> void {
