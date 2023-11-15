@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, fail */
+/*global assertEqual, assertTrue, fail, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -90,7 +90,21 @@ function ReplicatedLogsCreateSuite() {
     setUpAll, tearDownAll,
 
     testCreateAndDropReplicatedLog: function () {
-      const logId = 12;
+      let logId = -1;
+
+      for (let i = 1; i <= 100; ++i) {
+        // Test 100 log ids if they are currently in use
+        // As we are a fresh test we most likely use two right now, so 100 to test should be good enough
+        try {
+          db._replicatedLog(i);
+          // If we get here, the log exists, cannot use it for test
+        } catch (err) {
+          // Log is not yet in use. We can occupy it for the test.
+          logId = i;
+          break;
+        }
+      }
+      assertNotEqual(logId, -1, `Could not find a logId that is not already in use by another log`);
       const log = db._createReplicatedLog({id: logId, config});
 
       assertEqual(log.id(), logId);

@@ -149,26 +149,24 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
         });
   }
 
-  auto finish(ActorPID pid) -> void {
+  auto finishActor(ActorPID pid) -> void {
     auto actor = actors.find(pid.id);
     if (actor.has_value()) {
       actor.value()->finish();
     }
   }
 
-  // TODO call this function regularly
-  auto garbageCollect() {
-    actors.removeIf(
-        [](std::shared_ptr<ActorBase<ActorPID>> const& actor) -> bool {
-          return actor->isFinishedAndIdle();
-        });
-  }
+  void stopActor(ActorPID pid) { actors.remove(pid.id); }
 
   auto softShutdown() -> void {
-    actors.apply([](std::shared_ptr<ActorBase<ActorPID>> const& actor) {
-      actor->finish();
+    std::vector<std::shared_ptr<ActorBase<ActorPID>>> actorsCopy;
+    // we copy out all actors, because we have to call finish outside the lock!
+    actors.apply([&](std::shared_ptr<ActorBase<ActorPID>> const& actor) {
+      actorsCopy.emplace_back(actor);
     });
-    garbageCollect();  // TODO call gc several times with some timeout
+    for (auto& actor : actorsCopy) {
+      actor->finish();
+    }
   }
 
   IScheduler& scheduler() { return *_scheduler; }

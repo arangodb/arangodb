@@ -323,6 +323,7 @@ target_link_libraries(arangodbtests
   arango_rocksdb
   arangoserver
   arango_restore
+  clienttools_utils
   fuerte
   rocksdb
   snappy
