@@ -54,6 +54,7 @@ struct VerticesProcessed {
 
 template<typename V, typename E, typename M, typename Runtime>
 struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
+  using ActorPID = typename Runtime::ActorPID;
   DispatchStatus const& dispatchStatus =
       [this](pregel::message::StatusMessages message) -> void {
     this->template dispatch<pregel::message::StatusMessages>(
@@ -170,14 +171,14 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     return std::move(this->state);
   }
 
-  auto operator()(actor::message::UnknownMessage unknown)
+  auto operator()(actor::message::UnknownMessage<ActorPID> unknown)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("7ee4d", INFO, Logger::PREGEL) << fmt::format(
         "Worker Actor: Error - sent unknown message to {}", unknown.receiver);
     return std::move(this->state);
   }
 
-  auto operator()(actor::message::ActorNotFound notFound)
+  auto operator()(actor::message::ActorNotFound<ActorPID> notFound)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("2d647", INFO, Logger::PREGEL) << fmt::format(
         "Worker Actor: Error - receiving actor {} not found", notFound.actor);
