@@ -74,6 +74,35 @@ function optimizerRuleReplaceEqualAttributeAccess() {
       assertEqual(_.uniq(vars).length, 1);
     },
 
+    testReturnEqualPairsOr: function () {
+      const query = `
+        for x in 1..10
+          for y in 1..20
+            for z in 1..20
+            filter x == y || x == z
+            return [x, y, z]
+      `;
+
+      const stmt = db._createStatement({query});
+      const plan = stmt.explain().plan;
+      assertEqual(plan.rules.indexOf("replace-equal-attribute-accesses"), -1);
+    },
+
+    testReturnEqualPairsOr: function () {
+      const query = `
+        for x in 1..10
+          for y in 1..20
+            for z in 1..20
+              for w in 1..20
+            filter (x == w) && ( x == y || x == z )
+            return [x, y, z, w]
+      `;
+      // TODO make the rule more robust and detect more cases
+      const stmt = db._createStatement({query});
+      const plan = stmt.explain().plan;
+      assertEqual(plan.rules.indexOf("replace-equal-attribute-accesses"), -1);
+    },
+
     testReturnEqualPairsIndex: function () {
       const query = `
         for x in A

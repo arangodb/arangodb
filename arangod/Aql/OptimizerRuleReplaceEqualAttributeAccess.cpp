@@ -19,7 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstHelper.h"
 #include "Aql/AttributeNamePath.h"
 #include "Aql/Collection.h"
@@ -56,7 +55,7 @@ namespace {
 /*
  * This function calls the callback for all binary equal operators found
  * in the given expression. It will descend into nary-ors only if there is a
- * single member. It descents into all nary-and operators.
+ * single member. It descends into all nary-and operators.
  */
 template<typename F>
 void forEachEqualCondition(Expression* expr, F&& fn) {
@@ -230,11 +229,15 @@ void arangodb::aql::replaceEqualAttributeAccesses(
       continue;
     }
 
-    auto* fn = static_cast<FilterNode*>(node);
+    auto* fn = ExecutionNode::castTo<FilterNode*>(node);
     auto* n = plan->getVarSetBy(fn->inVariable()->id);
     TRI_ASSERT(n->getType() == EN::CALCULATION);
-    auto* cn = static_cast<CalculationNode*>(n);
-
+    auto* cn = ExecutionNode::castTo<CalculationNode*>(n);
+    {
+      VPackBuilder builder;
+      cn->expression()->toVelocyPack(builder, true);
+      LOG_DEVEL << builder.toJson();
+    }
     containers::SmallVector<EqualCondition, 8> conditions;
     extractEqualConditions(cn->expression(), conditions);
 
