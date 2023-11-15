@@ -60,6 +60,11 @@ class SnapshotId : public arangodb::basics::Identifier {
   static SnapshotId create();
 
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
+
+#ifdef _WIN32
+  explicit SnapshotId(BaseType id) noexcept
+      : arangodb::basics::Identifier(id) {}
+#endif
 };
 
 auto to_string(SnapshotId snapshotId) -> std::string;
