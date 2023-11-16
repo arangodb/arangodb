@@ -394,13 +394,13 @@ void Query::prepareQuery() {
 
     enterState(QueryExecutionState::ValueType::EXECUTION);
   } catch (Exception const& ex) {
-    _resultCode = ex.code();
+    _resultCode.store(ex.code());
     throw;
   } catch (std::bad_alloc const&) {
-    _resultCode = TRI_ERROR_OUT_OF_MEMORY;
+    _resultCode.store(TRI_ERROR_OUT_OF_MEMORY);
     throw;
   } catch (...) {
-    _resultCode = TRI_ERROR_INTERNAL;
+    _resultCode.store(TRI_ERROR_INTERNAL);
     throw;
   }
 }
@@ -1467,7 +1467,7 @@ bool Query::canUseQueryCache() const {
 
 ErrorCode Query::resultCode() const noexcept {
   // never return negative value from here
-  return _resultCode.value_or(TRI_ERROR_NO_ERROR);
+  return _resultCode.load().value_or(TRI_ERROR_NO_ERROR);
 }
 
 /// @brief enter a new state
@@ -1487,11 +1487,10 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 
 /// @brief cleanup plan and engine for current query
 ExecutionState Query::cleanupPlanAndEngine(ErrorCode errorCode, bool sync) {
-  ensureExecutionTime();
-
-  if (!_resultCode.has_value()) {  // TODO possible data race here
+  auto emptyResultCode = std::optional<ErrorCode>(std::nullopt);
+  if (_resultCode.compare_exchange_strong(emptyResultCode, errorCode)) {
     // result code not yet set.
-    _resultCode = errorCode;
+    ensureExecutionTime();
   }
 
   if (sync && _sharedState) {

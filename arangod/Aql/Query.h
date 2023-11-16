@@ -371,7 +371,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief return the final query result status code (0 = no error,
   /// > 0 = error, one of TRI_ERROR_...)
-  std::optional<ErrorCode> _resultCode;
+  std::atomic<std::optional<ErrorCode>> _resultCode;
 
   /// @brief user that started the query
   std::string _user;
