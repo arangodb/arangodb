@@ -214,6 +214,10 @@ void arangodb::aql::replaceEqualAttributeAccesses(
     // replace all known equivalence classes
     for (auto& [var, cls] : equivalenceClasses) {
       if (var.path.empty()) {
+        if (var.var->id == cls->var->id) {
+          continue;
+        }
+        LOG_RULE << "REPLACEING " << var.var->name << " -> " << cls->var->name;
         node->replaceVariables({{var.var->id, cls->var}});
       } else {
         node->replaceAttributeAccess(
