@@ -147,6 +147,10 @@ struct OptimizerRule {
 
     interchangeAdjacentEnumerationsRule,
 
+    // replace attribute accesses that are equal due to a filter statement
+    // with the same value. This might enable other optimizations later on.
+    replaceEqualAttributeAccesses,
+
     // "Pass 4": moving nodes "up" (potentially outside loops) (second try):
     // ======================================================
 

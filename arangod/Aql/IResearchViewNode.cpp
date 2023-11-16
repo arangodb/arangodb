@@ -1830,7 +1830,7 @@ void IResearchViewNode::replaceVariables(
           // only clone the original search condition once
           cloned = ast->clone(&search);
         }
-        ast->replaceVariables(cloned, replacements);
+        ast->replaceVariables(cloned, replacements, true);
       }
     }
 
