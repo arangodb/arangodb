@@ -463,12 +463,12 @@ TEST_F(
     lock.asyncLockShared().thenFinal([&](auto) { ++called; });
 
     lock.asyncLockShared().thenFinal([&](auto) { ++called; });
-    lock.asyncTryLockSharedFor(10ms).thenFinal([&](auto) {
+    std::ignore = lock.asyncTryLockSharedFor(10ms).thenValue([&](auto) {
       FAIL();
       ++called;
     });
     lock.asyncLockShared().thenFinal([&](auto) { ++called; });
-    lock.asyncTryLockSharedFor(10ms).thenFinal([&](auto) {
+    std::ignore = lock.asyncTryLockSharedFor(10ms).thenValue([&](auto) {
       FAIL();
       ++called;
     });
