@@ -47,9 +47,9 @@ struct EmptyExternalDispatcher : IExternalDispatcher {
 };
 
 template<typename T>
-class ActorRuntimeTest : public testing::Test {
+class DistributedRuntimeTest : public testing::Test {
  public:
-  ActorRuntimeTest() : scheduler{std::make_shared<T>()} {
+  DistributedRuntimeTest() : scheduler{std::make_shared<T>()} {
     scheduler->start(number_of_threads);
   }
 
@@ -57,9 +57,9 @@ class ActorRuntimeTest : public testing::Test {
   size_t number_of_threads = 128;
 };
 using SchedulerTypes = ::testing::Types<MockScheduler, ThreadPoolScheduler>;
-TYPED_TEST_SUITE(ActorRuntimeTest, SchedulerTypes);
+TYPED_TEST_SUITE(DistributedRuntimeTest, SchedulerTypes);
 
-TYPED_TEST(ActorRuntimeTest, formats_runtime_and_actor_state) {
+TYPED_TEST(DistributedRuntimeTest, formats_runtime_and_actor_state) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
       ServerID{"PRMR-1234"}, "RuntimeTest", this->scheduler, dispatcher);
@@ -78,7 +78,8 @@ TYPED_TEST(ActorRuntimeTest, formats_runtime_and_actor_state) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(ActorRuntimeTest, serializes_an_actor_including_its_actor_state) {
+TYPED_TEST(DistributedRuntimeTest,
+           serializes_an_actor_including_its_actor_state) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
       ServerID{"PRMR-1234"}, "RuntimeTest", this->scheduler, dispatcher);
@@ -94,7 +95,7 @@ TYPED_TEST(ActorRuntimeTest, serializes_an_actor_including_its_actor_state) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(ActorRuntimeTest, spawns_actor) {
+TYPED_TEST(DistributedRuntimeTest, spawns_actor) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
@@ -108,7 +109,7 @@ TYPED_TEST(ActorRuntimeTest, spawns_actor) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(ActorRuntimeTest, sends_initial_message_when_spawning_actor) {
+TYPED_TEST(DistributedRuntimeTest, sends_initial_message_when_spawning_actor) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
@@ -123,7 +124,7 @@ TYPED_TEST(ActorRuntimeTest, sends_initial_message_when_spawning_actor) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(ActorRuntimeTest, gives_all_existing_actor_ids) {
+TYPED_TEST(DistributedRuntimeTest, gives_all_existing_actor_ids) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
@@ -144,7 +145,7 @@ TYPED_TEST(ActorRuntimeTest, gives_all_existing_actor_ids) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(ActorRuntimeTest, sends_message_to_an_actor) {
+TYPED_TEST(DistributedRuntimeTest, sends_message_to_an_actor) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
@@ -178,7 +179,7 @@ auto inspect(Inspector& f, SomeMessages& x) {
       arangodb::inspection::type<SomeMessage>("someMessage"));
 }
 TYPED_TEST(
-    ActorRuntimeTest,
+    DistributedRuntimeTest,
     actor_receiving_wrong_message_type_sends_back_unknown_error_message) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
@@ -198,7 +199,7 @@ TYPED_TEST(
 }
 
 TYPED_TEST(
-    ActorRuntimeTest,
+    DistributedRuntimeTest,
     actor_receives_actor_not_found_message_after_trying_to_send_message_to_non_existent_actor) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
@@ -222,7 +223,7 @@ TYPED_TEST(
   runtime->softShutdown();
 }
 
-TYPED_TEST(ActorRuntimeTest, ping_pong_game) {
+TYPED_TEST(DistributedRuntimeTest, ping_pong_game) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
@@ -247,7 +248,7 @@ TYPED_TEST(ActorRuntimeTest, ping_pong_game) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(ActorRuntimeTest, spawn_game) {
+TYPED_TEST(DistributedRuntimeTest, spawn_game) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
@@ -270,7 +271,7 @@ TYPED_TEST(ActorRuntimeTest, spawn_game) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(ActorRuntimeTest, finishes_actor_when_actor_says_so) {
+TYPED_TEST(DistributedRuntimeTest, finishes_actor_when_actor_says_so) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
@@ -287,12 +288,12 @@ TYPED_TEST(ActorRuntimeTest, finishes_actor_when_actor_says_so) {
       FinishingActor::Message{test::message::FinishingFinish{}});
 
   this->scheduler->stop();
-  ASSERT_TRUE(
-      runtime->actors.find(finishing_actor)->get()->isFinishedAndIdle());
+  ASSERT_FALSE(runtime->actors.find(finishing_actor).has_value());
   runtime->softShutdown();
 }
 
-TYPED_TEST(ActorRuntimeTest, garbage_collects_finished_actor) {
+TYPED_TEST(DistributedRuntimeTest,
+           finished_actor_automatically_removes_itself) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
@@ -310,14 +311,12 @@ TYPED_TEST(ActorRuntimeTest, garbage_collects_finished_actor) {
   while (not runtime->areAllActorsIdle()) {
   }
 
-  runtime->garbageCollect();
-
   this->scheduler->stop();
   ASSERT_EQ(runtime->actors.size(), 0);
-  runtime->softShutdown();
 }
 
-TYPED_TEST(ActorRuntimeTest, garbage_collects_all_finished_actors) {
+TYPED_TEST(DistributedRuntimeTest,
+           finished_actors_automatically_remove_themselves) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
@@ -352,8 +351,6 @@ TYPED_TEST(ActorRuntimeTest, garbage_collects_all_finished_actors) {
   while (not runtime->areAllActorsIdle()) {
   }
 
-  runtime->garbageCollect();
-
   this->scheduler->stop();
   ASSERT_EQ(runtime->actors.size(), 3);
   auto remaining_actor_ids = runtime->getActorIDs();
@@ -362,9 +359,10 @@ TYPED_TEST(ActorRuntimeTest, garbage_collects_all_finished_actors) {
   ASSERT_FALSE(actor_ids.contains(actor_to_be_finished));
   ASSERT_FALSE(actor_ids.contains(another_actor_to_be_finished));
   runtime->softShutdown();
+  ASSERT_EQ(runtime->actors.size(), 0);
 }
 
-TYPED_TEST(ActorRuntimeTest,
+TYPED_TEST(DistributedRuntimeTest,
            finishes_and_garbage_collects_all_actors_when_shutting_down) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
@@ -389,7 +387,7 @@ TYPED_TEST(ActorRuntimeTest,
   ASSERT_EQ(runtime->actors.size(), 0);
 }
 
-TEST(ActorRuntimeTest, sends_messages_between_lots_of_actors) {
+TEST(DistributedRuntimeTest, sends_messages_between_lots_of_actors) {
   auto serverID = ServerID{"PRMR-1234"};
   auto scheduler = std::make_shared<ThreadPoolScheduler>();
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
