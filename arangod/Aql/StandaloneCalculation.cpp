@@ -164,7 +164,7 @@ struct CalculationTransactionContext final
   void unregisterTransaction() noexcept override {}
 
   std::shared_ptr<Context> clone() const override {
-    TRI_ASSERT(false;
+    TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_NOT_IMPLEMENTED,
         "CalculationTransactionContext cloning is not implemented");
