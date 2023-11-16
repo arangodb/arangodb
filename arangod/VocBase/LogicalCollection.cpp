@@ -330,6 +330,24 @@ UserInputCollectionProperties LogicalCollection::getCollectionProperties()
   return props;
 }
 
+bool LogicalCollection::waitForSync() const noexcept {
+  if (_groupId.has_value() && ServerState::instance()->isDBServer()) {
+    TRI_ASSERT(replicationVersion() == replication::Version::TWO)
+        << "Set a groupId although we are not in Replication Two";
+    auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+
+    auto const& group = ci.getCollectionGroupById(
+        replication2::agency::CollectionGroupId{_groupId.value()});
+    if (group) {
+      return group->attributes.mutableAttributes.waitForSync;
+    }
+    // If we cannot find a group this means the shard is dropped
+    // while we are still in this method. Let's just take the
+    // value at creation then.
+  }
+  return _waitForSync;
+}
+
 size_t LogicalCollection::numberOfShards() const noexcept {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->numberOfShards();
