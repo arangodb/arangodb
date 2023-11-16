@@ -60,7 +60,10 @@ void JoinExecutorInfos::determineProjectionsForRegisters() {
 JoinExecutor::~JoinExecutor() = default;
 
 JoinExecutor::JoinExecutor(Fetcher& fetcher, Infos& infos)
-    : _fetcher(fetcher), _infos(infos), _trx{_infos.query->newTrxContext()} {
+    : _fetcher(fetcher),
+      _infos(infos),
+      _trx{_infos.query->newTrxContext()},
+      _resourceMonitor(_infos.query->resourceMonitor()) {
   constructStrategy();
   _documents.resize(_infos.indexes.size());
 }
@@ -250,8 +253,15 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
               if (!filtered) {
                 // add document to the list
-                _documents[k] = std::make_unique<std::string>(
-                    doc.template startAs<char>(), doc.byteSize());
+                try {
+                  resourceMonitor().increaseMemoryUsage(doc.byteSize());
+                  _documents[k] = std::make_pair(
+                      std::make_unique<std::string>(
+                          doc.template startAs<char>(), doc.byteSize()),
+                      doc.byteSize());
+                } catch (...) {
+                  throw;
+                }
               }
             };
 
@@ -351,11 +361,14 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
               }
             };
 
-            if (auto& docPtr = _documents[k]; docPtr) {
+            if (auto& docPtr = _documents[k].first; docPtr) {
               TRI_ASSERT(idx.filter.has_value() &&
                          !idx.filter->projections.usesCoveringIndex());
               docProduceCallback.operator()<std::unique_ptr<std::string>&>(
                   docPtr);
+              resourceMonitor().decreaseMemoryUsage(_documents[k].second);
+              _documents[k].second = 0;
+              docPtr.reset();
             } else {
               if (idx.projections.usesCoveringIndex(idx.index)) {
                 buildProjections(k, idx.projections,
@@ -545,6 +558,8 @@ auto JoinExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
   return {inputRange.upstreamState(), stats, clientCall.getSkipCount(),
           AqlCall{}};
 }
+
+ResourceMonitor& JoinExecutor::resourceMonitor() { return _resourceMonitor; }
 
 void JoinExecutor::constructStrategy() {
   std::vector<IndexJoinStrategyFactory::Descriptor> indexDescription;
