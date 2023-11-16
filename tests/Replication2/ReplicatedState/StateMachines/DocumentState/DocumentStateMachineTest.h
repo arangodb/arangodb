@@ -35,11 +35,9 @@
 #include "Replication2/Mocks/DocumentStateMocks.h"
 #include "Replication2/Mocks/MockVocbase.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
-#include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
-#include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
-#include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
-#include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshotInspectors.h"
 #include "Transaction/Manager.h"
+#include "VocBase/LogicalCollection.h"
 
 #include "gmock/gmock.h"
 
@@ -86,8 +84,8 @@ struct DocumentStateMachineTest : testing::Test {
   MockTransactionManager transactionManagerMock;
   arangodb::tests::mocks::MockServer mockServer =
       arangodb::tests::mocks::MockServer();
-  MockVocbase vocbaseMock =
-      MockVocbase(mockServer.server(), "documentStateMachineTestDb", 2);
+  MockVocbase vocbaseMock = MockVocbase(
+      mockServer.server(), MockDocumentStateHandlersFactory::kDbName, 2);
 
   auto createDocumentEntry(
       TransactionId tid,
@@ -156,24 +154,22 @@ struct DocumentStateMachineTest : testing::Test {
 
     ON_CALL(*leaderInterfaceMock, startSnapshot).WillByDefault([&]() {
       return futures::Future<
-          ResultT<replicated_state::document::SnapshotConfig>>{
+          ResultT<replicated_state::document::SnapshotBatch>>{
           std::in_place,
-          replicated_state::document::SnapshotConfig{
-              replicated_state::document::SnapshotId{1}, shardMap}};
+          replicated_state::document::SnapshotBatch{
+              .snapshotId = replicated_state::document::SnapshotId{1},
+              .hasMore = false,
+              .operations = {}}};
     });
     ON_CALL(*leaderInterfaceMock, nextSnapshotBatch)
         .WillByDefault([&](replicated_state::document::SnapshotId) {
-          // An array is needed so that we can call the "length" method on the
-          // the slice later on.
-          auto payload = std::vector<int>{1, 2, 3};
           return futures::Future<
               ResultT<replicated_state::document::SnapshotBatch>>{
               std::in_place,
               replicated_state::document::SnapshotBatch{
                   .snapshotId = replicated_state::document::SnapshotId{1},
-                  .shardId = shardId,
                   .hasMore = false,
-                  .payload = velocypack::serialize(payload)}};
+                  .operations = {}}};
         });
     ON_CALL(*leaderInterfaceMock, finishSnapshot)
         .WillByDefault([&](replicated_state::document::SnapshotId) {
@@ -183,22 +179,18 @@ struct DocumentStateMachineTest : testing::Test {
     ON_CALL(*networkHandlerMock, getLeaderInterface)
         .WillByDefault(Return(leaderInterfaceMock));
 
-    ON_CALL(*maintenanceActionExecutorMock, executeCreateCollectionAction)
+    ON_CALL(*maintenanceActionExecutorMock, executeCreateCollection)
         .WillByDefault(Return(Result{}));
-    ON_CALL(*maintenanceActionExecutorMock, executeDropCollectionAction)
+    ON_CALL(*maintenanceActionExecutorMock, executeDropCollection)
         .WillByDefault(Return(Result{}));
 
     ON_CALL(*handlersFactoryMock, createShardHandler)
         .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const& gid) {
-          ON_CALL(*shardHandlerMock, ensureShard).WillByDefault(Return(true));
-          ON_CALL(*shardHandlerMock, dropShard).WillByDefault(Return(true));
+          ON_CALL(*shardHandlerMock, ensureShard)
+              .WillByDefault(Return(Result{}));
+          ON_CALL(*shardHandlerMock, dropShard).WillByDefault(Return(Result{}));
           ON_CALL(*shardHandlerMock, dropAllShards)
               .WillByDefault(Return(Result{}));
-          ON_CALL(*shardHandlerMock, isShardAvailable)
-              .WillByDefault(Return(true));
-          ON_CALL(*shardHandlerMock, getShardMap)
-              .WillByDefault(
-                  Return(replication2::replicated_state::document::ShardMap{}));
           return shardHandlerMock;
         });
 
@@ -219,7 +211,8 @@ struct DocumentStateMachineTest : testing::Test {
           return std::make_unique<
               replicated_state::document::DocumentStateSnapshotHandler>(
               handlersFactoryMock->makeUniqueDatabaseSnapshotFactory(),
-              MockDocumentStateSnapshotHandler::rebootTracker);
+              MockDocumentStateSnapshotHandler::rebootTracker, gid,
+              handlersFactoryMock->makeRealLoggerContext(gid));
         });
 
     ON_CALL(*handlersFactoryMock, createTransaction)
@@ -230,6 +223,14 @@ struct DocumentStateMachineTest : testing::Test {
 
     ON_CALL(*handlersFactoryMock, createMaintenanceActionExecutor)
         .WillByDefault(Return(maintenanceActionExecutorMock));
+
+    ON_CALL(*handlersFactoryMock, createLogger)
+        .WillByDefault(
+            Return(handlersFactoryMock->makeRealLoggerContext(globalId)));
+
+    ON_CALL(*handlersFactoryMock, createErrorHandler)
+        .WillByDefault(
+            Return(handlersFactoryMock->makeRealErrorHandler(globalId)));
   }
 
   void TearDown() override {
@@ -246,6 +247,7 @@ struct DocumentStateMachineTest : testing::Test {
   }
 
   const std::string collectionId = "testCollectionID";
+  const TRI_col_type_e collectionType = TRI_COL_TYPE_DOCUMENT;
   static constexpr LogId logId = LogId{1};
   const std::string dbName = "testDB";
   const GlobalLogIdentifier globalId{dbName, logId};
@@ -254,9 +256,20 @@ struct DocumentStateMachineTest : testing::Test {
                                                                       0};
   const velocypack::SharedSlice coreParamsSlice = coreParams.toSharedSlice();
   const std::string leaderId = "leader";
-  const replicated_state::document::ShardMap shardMap{
-      {shardId, replicated_state::document::ShardProperties{
-                    .collection = collectionId,
-                    .properties = std::make_shared<VPackBuilder>()}}};
+  const std::vector<std::shared_ptr<LogicalCollection>> logicalCollections{};
+  const LoggerContext loggerContext =
+      handlersFactoryMock->makeRealLoggerContext(globalId);
+
+  auto makeLogicalCollection(ShardID name)
+      -> std::shared_ptr<LogicalCollection> {
+    // Note that the collection is only created, not registered within the
+    // vocbase.
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add("name", std::move(name));
+    builder.close();
+    return std::make_shared<LogicalCollection>(vocbaseMock, builder.slice(),
+                                               true);
+  }
 };
 }  // namespace arangodb::replication2::tests

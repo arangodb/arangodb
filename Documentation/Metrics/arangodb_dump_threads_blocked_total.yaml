@@ -15,19 +15,19 @@ exposedBy:
 description: |
   This metric will be increased whenever a server-side dump
   thread tries to prefetch more data from the database and
-  make it ready to use for fetching, but doing so would
-  violated the configured per-server memory limit for all
+  makes it ready to use for fetching, but doing so would
+  violate the configured per-server memory limit for all
   ongoing arangodump invocations.
 troubleshoot: |
   If this metric keeps increasing drastically, it is an
   indication that the server could buffer and provide dump
   responses faster than it is allowed to. The two ways of
   fixing this problem are to increase the amount of memory
-  that dumps can use, by increasing the value of the startup
-  option `--dump.max-memory-usage`, to reduce the number
+  that dumps can use, by increasing the value of the
+  `--dump.max-memory-usage` startup option, to reduce the number
   of parallel threads used in an arangodump invocation, or
   to start less concurrent arangodumps.
   
-  This metric will have a value of 0 on coordinators. It will
+  This metric will have a value of 0 on Coordinators. It will
   also not be increased for arangodump invocations that did
   not use `--parallel-dump` option.

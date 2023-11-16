@@ -27,7 +27,6 @@
 #include "Aql/Graphs.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryOptions.h"
-#include "Aql/QueryString.h"
 #include "Aql/QueryWarnings.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"

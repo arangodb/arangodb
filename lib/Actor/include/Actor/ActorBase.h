@@ -25,23 +25,22 @@
 #pragma once
 
 #include "Actor/DistributedActorPID.h"
+#include "Actor/IWorkable.h"
 #include "Actor/Message.h"
 
 namespace arangodb::actor {
 
-struct ActorBase : std::enable_shared_from_this<ActorBase> {
+template<typename ActorPID>
+struct ActorBase : IWorkable {
   virtual ~ActorBase() = default;
-  virtual auto process(DistributedActorPID sender, MessagePayloadBase& msg)
-      -> void = 0;
-  virtual auto process(DistributedActorPID sender, velocypack::SharedSlice msg)
+  virtual auto process(ActorPID sender, MessagePayloadBase& msg) -> void = 0;
+  virtual auto process(ActorPID sender, velocypack::SharedSlice msg)
       -> void = 0;
   virtual auto typeName() -> std::string_view = 0;
   virtual auto serialize() -> velocypack::SharedSlice = 0;
   virtual auto finish() -> void = 0;
   virtual auto isFinishedAndIdle() -> bool = 0;
   virtual auto isIdle() -> bool = 0;
-
-  virtual void work() = 0;
 };
 
 }  // namespace arangodb::actor

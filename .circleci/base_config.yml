@@ -399,7 +399,7 @@ jobs:
 
   run-tests:
     docker:
-      - image: arangodb/test-ubuntu:22.04-1f010839b06
+      - image: arangodb/test-ubuntu:22.04-6c4e824d8d2
     parameters:
       suiteName:
         type: string
@@ -449,7 +449,7 @@ jobs:
 
   run-hotbackup-tests:
     docker:
-      - image: arangodb/test-ubuntu:22.04-1f010839b06
+      - image: arangodb/test-ubuntu:22.04-6c4e824d8d2
     parameters:
       size:
         type: string

@@ -121,7 +121,7 @@ PregelScheduler::PregelScheduler(Scheduler* scheduler) : _scheduler{scheduler} {
   TRI_ASSERT(_scheduler != nullptr);
 }
 
-void PregelScheduler::queue(actor::ActorWorker&& worker) {
+void PregelScheduler::queue(actor::LazyWorker&& worker) {
   _scheduler->queue(RequestLane::INTERNAL_LOW, std::move(worker));
 }
 
@@ -660,9 +660,6 @@ std::shared_ptr<Conductor> PregelFeature::conductor(
 }
 
 void PregelFeature::garbageCollectActors() {
-  // garbage collect all finished actors
-  _actorRuntime->garbageCollect();
-
   // clean up map
   _pregelRuns.doUnderLock([this](auto& items) {
     std::erase_if(items, [this](auto& item) {

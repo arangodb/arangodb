@@ -56,7 +56,7 @@ struct HandlerBase {
                                                 initialMessage);
   }
 
-  auto finish() -> void { runtime->finish(self); }
+  auto finish() -> void { runtime->finishActor(self); }
 
  protected:
   ActorPID const self;

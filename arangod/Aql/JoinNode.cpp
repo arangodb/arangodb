@@ -393,7 +393,7 @@ CostEstimate JoinNode::estimateCost() const {
   for (auto const& it : _indexInfos) {
     Index::FilterCosts costs = costsForIndexInfo(it);
     totalItems *= costs.estimatedItems;
-    totalCost *= costs.estimatedCosts;
+    totalCost += costs.estimatedCosts;
   }
 
   estimate.estimatedNrItems *= totalItems;
