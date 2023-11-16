@@ -211,6 +211,7 @@ void arangodb::aql::replaceEqualAttributeAccesses(
 
   for (auto* node = plan->root()->getSingleton(); node != nullptr;
        node = node->getFirstParent()) {
+    LOG_RULE << "[" << node->id() << "] " << node->getTypeString();
     // replace all known equivalence classes
     for (auto& [var, cls] : equivalenceClasses) {
       if (var.path.empty()) {
