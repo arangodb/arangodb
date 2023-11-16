@@ -109,7 +109,7 @@ struct TwoIndicesMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
   std::pair<bool, size_t> findCommonPosition();
 };
 
-#define LOG_IDX_TWO_NONU_MERGER LOG_DEVEL_IF(false)
+#define LOG_IDX_TWO_NONU_MERGER LOG_DEVEL_IF(true)
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
 void TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::reset() {
@@ -415,7 +415,7 @@ TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
     if (IndexStreamCompare{}.cmp(*maxIter, *minIndex) ==
         std::weak_ordering::less) {
       LOG_IDX_TWO_NONU_MERGER << "new max iter ";
-      maxIter = minIndex;
+      std::swap(minIter, maxIter);
     }
   }
 
