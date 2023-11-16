@@ -56,12 +56,12 @@ jobs:
           name: Generate config
           command: |
             CHANGED_DOCKER_FILES=$(curl https://api.github.com/repos/arangodb/arangodb/commits/$CIRCLE_SHA1 | jq '.files[]."filename"' | { grep "scripts/docker" || true; })
-            #if [ -n "$CHANGED_DOCKER_FILES" ]; then
+            if [ -n "$CHANGED_DOCKER_FILES" ]; then
               cp .circleci/docker_build.yml continuation_config.yml
-            #else
-            #  pip install pyyaml
-            #  python3 ".circleci/generate_config.py" -o continuation_config.yml ./.circleci/base_config.yml << parameters.definitions >>
-            #fi            
+            else
+              pip install pyyaml
+              python3 ".circleci/generate_config.py" -o continuation_config.yml ./.circleci/base_config.yml << parameters.definitions >>
+            fi            
 
       - continuation/continue:
           configuration_path: continuation_config.yml
