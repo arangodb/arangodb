@@ -58,7 +58,7 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
 
   template<typename ActorConfig>
   auto spawn(std::unique_ptr<typename ActorConfig::State> initialState,
-             typename ActorConfig::Message initialMessage) -> ActorID {
+             typename ActorConfig::Message initialMessage) -> ActorPID {
     auto newId = ActorID{uniqueActorIDCounter++};
 
     // TODO - we do not want to pass the database name as part of the spawn
@@ -74,7 +74,7 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
     // Send initial message to newly created actor
     dispatchLocally(address, address, initialMessage);
 
-    return newId;
+    return address;
   }
 
   auto getActorIDs() -> std::vector<ActorID> { return actors.allIDs(); }
@@ -93,6 +93,12 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
       }
     }
     return std::nullopt;
+  }
+
+  template<typename ActorConfig>
+  auto getActorStateByID(ActorPID pid) const
+      -> std::optional<typename ActorConfig::State> {
+    return getActorStateByID<ActorConfig>(pid.id);
   }
 
   auto getSerializedActorByID(ActorID id) const
