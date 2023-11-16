@@ -31,7 +31,6 @@
 #include <v8.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "V8/V8SecurityFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/EncodingUtils.h"
@@ -51,6 +50,7 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utilities/NameValidator.h"
+#include "V8/V8SecurityFeature.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-deadline.h"
@@ -533,7 +533,7 @@ static v8::Local<v8::Value> WrapV8ClientConnection(
   Connections[v8connection].Reset(isolate, myConnection);
   Connections[v8connection].SetWeak(&Connections[v8connection],
                                     ClientConnection_DestructorCallback,
-                                    v8::WeakCallbackType::kFinalizer);
+                                    v8::WeakCallbackType::kParameter);
   return scope.Escape<v8::Value>(result);
 }
 

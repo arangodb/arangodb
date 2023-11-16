@@ -35,11 +35,7 @@ install(
 
 install_config(${BIN_ARANGOEXPORT})
 
-add_dependencies(${BIN_ARANGOEXPORT} zlibstatic)
-
-if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(${BIN_ARANGOEXPORT} v8_build) # v8_build includes ICU build
-endif ()
+add_dependencies(${BIN_ARANGOEXPORT} zlibstatic icu_build)
 
 if (USE_JEMALLOC)
   add_dependencies(${BIN_ARANGOEXPORT} jemalloc_build)

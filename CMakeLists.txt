@@ -213,6 +213,11 @@ endif()
 option(USE_V8 "build with V8/JavaScript support" ON)
 if (USE_V8)
   add_definitions("-DUSE_V8=1")
+  # the following defines must be set when using a standard V8 build.
+  # pointer compression can be turned off when building V8. if we ever do
+  # this, the following define must be removed
+  add_definitions("-DV8_COMPRESS_POINTERS")
+  add_definitions("-DV8_ENABLE_SANDBOX")
 endif ()
 
 # enable dtrace
@@ -390,13 +395,10 @@ if (VERBOSE)
 endif ()
 
 ################################################################################
-## OPERATION SYSTEM
+## OPERATING SYSTEM
 ################################################################################
 
-option(HOMEBREW
-  "whether to install for homebrew"
-  Off
-)
+option(HOMEBREW "whether to install for homebrew" OFF)
 
 if (WIN32)
   set(WINDOWS TRUE)
@@ -444,19 +446,11 @@ if (WINDOWS)
 elseif (APPLE)
   SET(USE_JEMALLOC OFF)
 else ()
-  option(
-    USE_JEMALLOC
-    "use jemalloc memory allocator"
-    ON
-  )
+  option(USE_JEMALLOC "use jemalloc memory allocator" ON)
 endif ()
 
 if (LINUX)
-  option(
-    USE_LIBUNWIND
-    "use libunwind for stack traces"
-    ON
-  )
+  option(USE_LIBUNWIND "use libunwind for stack traces" ON)
 else ()
   SET(USE_LIBUNWIND OFF)
 endif ()
@@ -701,8 +695,7 @@ else (ARCH_AMD64)
   SET(ASM_OPTIMIZATIONS_DEFAULT OFF)
 endif (ARCH_AMD64)
 
-option(ASM_OPTIMIZATIONS "whether hand-optimized assembler code should be used"
-  ${ASM_OPTIMIZATIONS_DEFAULT})
+option(ASM_OPTIMIZATIONS "whether hand-optimized assembler code should be used" ${ASM_OPTIMIZATIONS_DEFAULT})
 
 if (ASM_OPTIMIZATIONS)
   add_definitions("-DASM_OPTIMIZATIONS=1")
@@ -714,10 +707,7 @@ endif (ASM_OPTIMIZATIONS)
 ## MAINTAINER MODE
 ################################################################################
 
-option(USE_MAINTAINER_MODE
-  "whether we want to have assertions and other development features"
-  OFF
-)
+option(USE_MAINTAINER_MODE "whether we want to have assertions and other development features" OFF)
 
 if (USE_MAINTAINER_MODE)
   add_definitions("-DIRESEARCH_DEBUG")
@@ -748,10 +738,7 @@ detect_binary_id_type(CMAKE_DEBUG_FILENAMES_SHA_SUM)
 ## FAILURE TESTS
 ################################################################################
 
-option(USE_FAILURE_TESTS
-  "whether we want to have failure tests compiled in"
-  OFF
-)
+option(USE_FAILURE_TESTS "whether we want to have failure tests compiled in" OFF)
 
 if (USE_FAILURE_TESTS)
   add_definitions("-DARANGODB_ENABLE_FAILURE_TESTS=1")
@@ -1222,11 +1209,11 @@ endif ()
 
 add_definitions("-DVELOCYPACK_XXHASH=1")
 
-set(V8_LINK_DIRECTORIES "${LINK_DIRECTORIES}" CACHE INTERNAL "" FORCE)
-
 ################################################################################
 ## V8
 ################################################################################
+
+set(V8_LINK_DIRECTORIES "${LINK_DIRECTORIES}" CACHE INTERNAL "" FORCE)
 
 add_definitions("-DARANGODB_V8_VERSION=\"${V8_VERSION}\"")
 

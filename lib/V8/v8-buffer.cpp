@@ -663,9 +663,9 @@ V8Buffer::~V8Buffer() { replace(_isolate, NULL, 0, NULL, NULL, true); }
 V8Buffer::V8Buffer(v8::Isolate* isolate, v8::Handle<v8::Object> wrapper,
                    size_t length)
     : V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID>(
-          isolate, this, nullptr, wrapper),  // TODO: warning C4355: 'this' :
-                                             // used in base member initializer
-                                             // list
+          isolate, this, wrapper),  // TODO: warning C4355: 'this' :
+                                    // used in base member initializer
+                                    // list
       _length(0),
       _data(nullptr),
       _callback(nullptr) {

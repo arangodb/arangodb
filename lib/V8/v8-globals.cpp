@@ -190,7 +190,7 @@ TRI_v8_global_t::SharedPtrPersistent::SharedPtrPersistent(
         // zero indicates that v8g was probably deallocated
         // before calling the v8::WeakCallbackInfo::Callback
       },
-      v8::WeakCallbackType::kFinalizer);
+      v8::WeakCallbackType::kParameter);
   v8g->increaseActiveExternals();
 }
 

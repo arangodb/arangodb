@@ -18,6 +18,31 @@ these changes called "master".
 To update to a new version pull from upstream (https://github.com/google/abseil-cpp)
 and rebase onto the new version the our "master" branch.
 
+When using a precompiled version of V8, the V8 libraries also contain their
+own copy of Abseil. This can lead to duplicate absl symbols when linking ArangoDB
+with the V8 libraries.
+
+We are currently using the following workaround patch for our absl version to 
+avoid these duplicate symbols: 
+
+```
+diff --git a/absl/base/options.h b/absl/base/options.h
+index 5c162a38..c70ea5f8 100644
+--- a/absl/base/options.h
++++ b/absl/base/options.h
+@@ -199,8 +199,8 @@
+ // be changed to a new, unique identifier name.  In particular "head" is not
+ // allowed.
+ 
+-#define ABSL_OPTION_USE_INLINE_NAMESPACE 0
+-#define ABSL_OPTION_INLINE_NAMESPACE_NAME head
++#define ABSL_OPTION_USE_INLINE_NAMESPACE 1
++#define ABSL_OPTION_INLINE_NAMESPACE_NAME arangodb
+ 
+ // ABSL_OPTION_HARDENED
+ //
+```
+
 ## boost
 
 https://www.boost.org/

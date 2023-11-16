@@ -87,24 +87,104 @@ endif ()
 
 option(USE_PRECOMPILED_V8 "use a precompiled V8" OFF)
 
-set(V8_VERSION
-  "7.9.317"
-  CACHE INTERNAL
-  "${PROJECT_NAME}: Version"
-  FORCE
-)
-set(V8_SUB_DIR "v${V8_VERSION}")
-set(V8_VERSION ${V8_VERSION} PARENT_SCOPE)
-add_subdirectory(V8)
-add_library(v8_interface INTERFACE)
-target_include_directories(v8_interface SYSTEM INTERFACE ${V8_INCLUDE_DIR})
+if (NOT USE_PRECOMPILED_V8)
+  # build V8 and ICU ourselves
+  set(V8_VERSION
+    "7.9.317"
+    CACHE INTERNAL
+    "${PROJECT_NAME}: Version"
+    FORCE
+  )
+  set(V8_SUB_DIR "v${V8_VERSION}")
+  set(V8_VERSION ${V8_VERSION} PARENT_SCOPE)
+  add_subdirectory(V8)
+  add_library(v8_interface INTERFACE)
+  target_include_directories(v8_interface SYSTEM INTERFACE ${V8_INCLUDE_DIR})
 
-set(ICU_DT "${ICU_DT}" PARENT_SCOPE)
-set(ICU_DT_DEST "${ICU_DT_DEST}" PARENT_SCOPE)
-set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
-set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/${V8_SUB_DIR}/third_party/icu/")
+  set(ICU_DT "${ICU_DT}" PARENT_SCOPE)
+  set(ICU_DT_DEST "${ICU_DT_DEST}" PARENT_SCOPE)
+  set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
+ 
+  set(V8_INTERNAL_INCLUDE_DIR ${V8_INTERNAL_INCLUDE_DIR} PARENT_SCOPE)
 
-set(V8_INTERNAL_INCLUDE_DIR ${V8_INTERNAL_INCLUDE_DIR} PARENT_SCOPE)
+  set(ICU_DT "${ICU_DT}" PARENT_SCOPE)
+  set(ICU_DT_DEST "${ICU_DT_DEST}" PARENT_SCOPE)
+  set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
+  set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/${V8_SUB_DIR}/third_party/icu/")
+  
+  add_custom_target(icu_build)
+  add_dependencies(icu_build v8_build)
+else ()
+  # use externally-built V8 and ICU
+  add_custom_target(v8_build)
+
+  set(V8_DIR "" CACHE STRING "External directory with V8 source code")
+  if (V8_DIR STREQUAL "")
+    message(FATAL_ERROR "must set -DV8_DIR to a directory that contains the V8 source code")
+  endif ()
+  
+  set(V8_LIBRARY_DIR "" CACHE STRING "External directory with generated V8 libraries")
+  if (V8_LIBRARY_DIR STREQUAL "")
+    message(FATAL_ERROR "must set -DV8_LIBRARY_DIR to a directory that contains the generated V8 libraries")
+  endif ()
+  
+  set(ICU_LIBRARY_DIR "" CACHE STRING "External directory with generated ICU libraries")
+  if (ICU_LIBRARY_DIR STREQUAL "")
+    message(FATAL_ERROR "must set -DICU_LIBRARY_DIR to a directory that contains the generated ICU libraries")
+  endif ()
+
+  set(V8_VERSION "12.1.9" CACHE INTERNAL "V8: version" FORCE)
+  set(V8_VERSION ${V8_VERSION} PARENT_SCOPE)
+  
+  set(V8_INCLUDE_DIR "${V8_DIR}/include" CACHE INTERNAL "V8: include path")
+  set(V8_INCLUDE_DIR ${V8_INCLUDE_DIR} PARENT_SCOPE)
+  
+  list(APPEND LINK_DIRECTORIES "${V8_LIBRARY_DIR}")
+
+  set(V8_LIBS
+    "v8_libbase;v8_libplatform;v8_monolith"
+    CACHE INTERNAL
+    "V8: libraries"
+  )
+
+  add_library(v8_interface INTERFACE)
+  target_include_directories(v8_interface SYSTEM INTERFACE ${V8_INCLUDE_DIR})
+  
+  set(V8_INTERNAL_INCLUDE_DIR ${V8_INTERNAL_INCLUDE_DIR} PARENT_SCOPE)
+
+  set(ICU_COMPACT_VERSION "73.1" CACHE INTERNAL "ICU: compact version")
+  set(ICU_VERSION "${ICU_COMPACT_VERSION}.0" CACHE INTERNAL "ICU: version")
+
+  set(ICU_LIBS "icui18n;icuuc" CACHE INTERNAL "ICU: libraries")
+  set(ICU_BASEDIR ${V8_DIR}/third_party/icu)
+  set(ICU_INCLUDE_DIR
+    ${ICU_BASEDIR}/source/common;${ICU_BASEDIR}/source/i18n;${ICU_BASEDIR}/source/io
+    CACHE INTERNAL
+    "ICU: include path"
+    FORCE
+  )
+  set(ICU_ROOT "${ICU_BASEDIR}")
+  set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
+  set(ICU_DT "${ICU_BASEDIR}/common/icudtl.dat")
+  set(ICU_DT ${ICU_DT} PARENT_SCOPE)
+  set(ICU_DT_DEST "icudtl.dat" )
+  set(ICU_DT_DEST ${ICU_DT_DEST} PARENT_SCOPE)
+  
+  list(APPEND LINK_DIRECTORIES "${ICU_LIBRARY_DIR}")
+  
+  set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)
+  
+  add_custom_target(icu_build)
+  add_dependencies(icu_build v8_build)
+  
+  add_custom_command(
+    TARGET v8_build POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${ICU_DT} ${CMAKE_BINARY_DIR}/bin/${ICU_DT_DEST})
+
+  add_custom_command(
+    TARGET v8_build POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${ICU_DT} ${CMAKE_BINARY_DIR}/tests/${ICU_DT_DEST})
+endif()
 
 ################################################################################
 ## Google Abseil

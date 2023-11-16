@@ -141,6 +141,15 @@ static UniformCharacter JSSaltGenerator(
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*(){}"
     "[]:;<>,.?/|");
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute a single garbage collection run
+////////////////////////////////////////////////////////////////////////////////
+
+bool singleRunGarbageCollectionV8(v8::Isolate* isolate, int idleTimeInMs) {
+  isolate->LowMemoryNotification();
+  return isolate->IdleNotificationDeadline(idleTimeInMs);
+}
+
 Result doSleep(double n,
                arangodb::application_features::ApplicationServer& server) {
   double until = TRI_microtime() + n;
@@ -296,7 +305,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
 
   v8::TryCatch tryCatch(isolate);
 
-  v8::ScriptOrigin scriptOrigin(name);
+  v8::ScriptOrigin scriptOrigin(isolate, name);
   v8::Handle<v8::Script> script =
       v8::Script::Compile(TRI_IGETC, source, &scriptOrigin)
           .FromMaybe(v8::Local<v8::Script>());
@@ -460,7 +469,7 @@ static void JS_Parse(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::TryCatch tryCatch(isolate);
 
-  v8::ScriptOrigin scriptOrigin(TRI_ObjectToString(context, filename));
+  v8::ScriptOrigin scriptOrigin(isolate, TRI_ObjectToString(context, filename));
   v8::Handle<v8::Script> script =
       v8::Script::Compile(
           TRI_IGETC,
@@ -556,7 +565,7 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::TryCatch tryCatch(isolate);
 
-  v8::ScriptOrigin scriptOrigin(TRI_ObjectToString(context, args[0]));
+  v8::ScriptOrigin scriptOrigin(isolate, TRI_ObjectToString(context, args[0]));
   v8::Handle<v8::Script> script =
       v8::Script::Compile(TRI_IGETC,
                           TRI_V8_PAIR_STRING(isolate, content, (int)length),
@@ -1230,7 +1239,8 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   {
     v8::TryCatch tryCatch(isolate);
 
-    v8::ScriptOrigin scriptOrigin(TRI_ObjectToString(context, filename));
+    v8::ScriptOrigin scriptOrigin(isolate,
+                                  TRI_ObjectToString(context, filename));
     script = v8::Script::Compile(context, TRI_ObjectToString(context, source),
                                  &scriptOrigin)
                  .FromMaybe(v8::Local<v8::Script>());
@@ -5539,7 +5549,7 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(
     bool printResult) {
   v8::EscapableHandleScope scope(isolate);
 
-  v8::ScriptOrigin scriptOrigin(name);
+  v8::ScriptOrigin scriptOrigin(isolate, name);
 
   v8::Handle<v8::Value> result;
   v8::Handle<v8::Script> script =
@@ -5690,18 +5700,6 @@ v8::Handle<v8::Array> static V8PathList(v8::Isolate* isolate,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a single garbage collection run
-////////////////////////////////////////////////////////////////////////////////
-
-static bool SingleRunGarbageCollectionV8(v8::Isolate* isolate,
-                                         int idleTimeInMs) {
-  isolate->LowMemoryNotification();
-  bool rc = isolate->IdleNotificationDeadline(idleTimeInMs);
-  isolate->RunMicrotasks();
-  return rc;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief run the V8 garbage collection for at most a specifiable amount of
 /// time. returns a boolean indicating whether or not the caller should attempt
 /// to do more gc
@@ -5733,7 +5731,7 @@ bool TRI_RunGarbageCollectionV8(v8::Isolate* isolate, double availableTime) {
     int gcTries = 0;
 
     while (++gcTries <= gcAttempts) {
-      if (SingleRunGarbageCollectionV8(isolate, idleTimeInMs)) {
+      if (::singleRunGarbageCollectionV8(isolate, idleTimeInMs)) {
         return false;
       }
     }
@@ -5744,7 +5742,7 @@ bool TRI_RunGarbageCollectionV8(v8::Isolate* isolate, double availableTime) {
         // garbage collection only every x iterations, otherwise we'll use too
         // much CPU
         if (++gcTries > gcAttempts ||
-            SingleRunGarbageCollectionV8(isolate, idleTimeInMs)) {
+            ::singleRunGarbageCollectionV8(isolate, idleTimeInMs)) {
           return false;
         }
       }

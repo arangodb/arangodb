@@ -103,12 +103,12 @@ static T* TRI_UnwrapClass(v8::Handle<v8::Object> obj, int32_t type,
   if (obj->InternalFieldCount() <= SLOT_CLASS) {
     return nullptr;
   }
-  auto slot = obj->GetInternalField(SLOT_CLASS_TYPE);
+  auto slot = obj->GetInternalField(SLOT_CLASS_TYPE).As<v8::Value>();
   if (slot->Int32Value(context).ToChecked() != type) {
     return nullptr;
   }
 
-  auto slotc = obj->GetInternalField(SLOT_CLASS);
+  auto slotc = obj->GetInternalField(SLOT_CLASS).As<v8::Value>();
   auto slotp = v8::Handle<v8::External>::Cast(slotc);
   auto val = slotp->Value();
   auto ret = static_cast<T*>(val);

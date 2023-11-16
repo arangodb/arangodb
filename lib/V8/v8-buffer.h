@@ -61,15 +61,7 @@
 /// @brief buffer encoding
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum TRI_V8_encoding_e {
-  ASCII,
-  UTF8,
-  BASE64,
-  UCS2,
-  BINARY,
-  HEX,
-  BUFFER
-} TRI_V8_encoding_t;
+enum TRI_V8_encoding_t { ASCII, UTF8, BASE64, UCS2, BINARY, HEX, BUFFER };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief binary buffer
