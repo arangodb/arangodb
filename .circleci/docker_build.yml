@@ -109,7 +109,6 @@ jobs:
             cp scripts/docker/build/linux/amd64-tag.txt BUILD_DOCKER_TAG
             git config user.email "build-automation@arangodb.biz"
             git config user.name "CircleCI Docker Image Builder"
-            git checkout $CIRCLE_BRANCH
             git add BUILD_DOCKER_TAG
             git commit -m "Update BUILD_DOCKER_TAG"
             git push origin HEAD:$CIRCLE_BRANCH
