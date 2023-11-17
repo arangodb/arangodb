@@ -481,7 +481,7 @@ jobs:
 
   run-cppcheck:
     docker:
-      - image: << pipeline.parameters.build-docker-tag >>
+      - image: << pipeline.parameters.build-docker-image >>
     resource_class: medium+
     steps:
       - run:
