@@ -1,3 +1,11 @@
+v3.11.6 (XXXX-XX-XX)
+--------------------
+
+* Remove version check on startup of arangosh. This can speed up the startup
+  of the arangosh considerably because it won't do a network request to
+  www.arangodb.com.
+
+
 v3.11.5 (2023-11-09)
 --------------------
 
