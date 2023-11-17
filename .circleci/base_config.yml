@@ -19,9 +19,9 @@ parameters:
   v8-build-targets:
     type: string
     default: "arangosh"
-  build-docker-tag:
+  build-docker-image:
     type: string
-    default: << pipeline.parameters.build-docker-image >>
+    default: ""
 
 commands:
   checkout-arangodb:
@@ -190,7 +190,7 @@ jobs:
         type: string
         default: ""
     docker:
-      - image: << pipeline.parameters.build-docker-tag >>
+      - image: << pipeline.parameters.build-docker-image >>
     resource_class: << parameters.resource-class >>
     environment:
       GIT_SSH_COMMAND: ssh
