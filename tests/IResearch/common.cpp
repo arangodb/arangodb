@@ -520,7 +520,7 @@ void v8Init() {
     }
     ~V8Init() {
       v8::V8::Dispose();
-      v8::V8::ShutdownPlatform();
+      v8::V8::DisposePlatform();
     }
 
    private:
