@@ -20,13 +20,18 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
+#include "gtest/gtest.h"                   // for Test, CmpHelperLT, Message
 
-#include "Cluster/Utils/ShardID.h"
-#include "Containers/FlatHashMap.h"
-#include "Containers/FlatHashSet.h"
+#include "absl/container/flat_hash_map.h"  // for BitMask
+#include "Cluster/Utils/ShardID.h"         // for ShardID, operator==, hash
+#include "Containers/FlatHashMap.h"        // for FlatHashMap
+#include "Containers/FlatHashSet.h"        // for FlatHashSet
 
-#include <unordered_set>
+#include <cstdint>                         // for uint64_t
+#include <set>                             // for set, operator==, _Rb_tree_...
+#include <string>                          // for allocator, string
+#include <unordered_set>                   // for unordered_set
+#include <vector>                          // for vector
 
 using namespace arangodb;
 
