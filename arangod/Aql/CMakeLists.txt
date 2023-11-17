@@ -186,6 +186,8 @@ if (USE_V8)
     V8Executor.cpp)
 endif()
 
+add_subdirectory(Ast)
+
 target_link_libraries(arango_aql
   arango_geo
   arango_graph

@@ -67,7 +67,7 @@ target_include_directories(arango_tests_basics
 target_link_libraries(arango_tests_basics gtest velocypack fmt fuerte arango_iresearch)
 
 add_subdirectory(IResearch)
-
+add_subdirectory(Aql/Ast)
 
 set(ARANGODB_TESTS_SOURCES
   ${ARANGODB_IRESEARCH_TESTS_SOURCES}
