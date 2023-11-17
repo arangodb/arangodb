@@ -35,6 +35,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 #define LOG_JOIN LOG_DEVEL_IF(false)
+#define LOG_JOIN_MEMORY LOG_DEVEL_IF(false)
 
 RegisterId JoinExecutorInfos::registerForVariable(
     VariableId id) const noexcept {
@@ -219,6 +220,9 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
           // handle increase of memory usage of the builder
           try {
+            LOG_JOIN_MEMORY
+                << "(buildProjections1) Increasing memory usage by: "
+                << _projectionsBuilder.size() << "for the projections builder";
             resourceMonitor().increaseMemoryUsage(_projectionsBuilder.size());
           } catch (...) {
             _projectionsBuilder.clear();
@@ -240,6 +244,9 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
           // handle increase of memory usage of the builder
           try {
+            LOG_JOIN_MEMORY
+                << "(buildProjections2) Increasing memory usage by: "
+                << _projectionsBuilder.size() << " for the projections builder";
             resourceMonitor().increaseMemoryUsage(_projectionsBuilder.size());
           } catch (...) {
             _projectionsBuilder.clear();
@@ -282,7 +289,18 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
           if (!filtered) {
             // add document to the list
+            if (_documents[k].second > 0) {
+              LOG_JOIN_MEMORY << "(filterCB) Decreasing memory usage by: "
+                              << _documents[k].second
+                              << " for doc at position: " << k;
+              resourceMonitor().decreaseMemoryUsage(_documents[k].second);
+              _documents[k].first.reset();
+            }
+
             try {
+              LOG_JOIN_MEMORY
+                  << "(filterCB) Increasing memory usage by: " << doc.byteSize()
+                  << " for doc at position: " << k;
               resourceMonitor().increaseMemoryUsage(doc.byteSize());
               _documents[k] = std::make_pair(
                   std::make_unique<std::string>(doc.template startAs<char>(),
@@ -378,6 +396,9 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
             // handle increase of memory usage of the builder
             try {
+              LOG_JOIN_MEMORY << "(docCB1) Increasing memory usage by: "
+                              << _projectionsBuilder.size()
+                              << "for the projections builder";
               resourceMonitor().increaseMemoryUsage(_projectionsBuilder.size());
             } catch (...) {
               _projectionsBuilder.clear();
@@ -408,6 +429,9 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
             // handle increase of memory usage of the builder
             try {
+              LOG_JOIN_MEMORY << "(docCB2) Increasing memory usage by: "
+                              << _projectionsBuilder.size()
+                              << "for the projections builder";
               resourceMonitor().increaseMemoryUsage(_projectionsBuilder.size());
             } catch (...) {
               _projectionsBuilder.clear();
