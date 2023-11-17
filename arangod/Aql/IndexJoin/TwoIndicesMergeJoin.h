@@ -81,7 +81,7 @@ struct TwoIndicesMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
 
   bool positionAligned = false;
 
-  std::vector<DocIdType> documentIds;
+  std::array<DocIdType, 2> documentIds;
   std::vector<SliceType> sliceBuffer;
   std::vector<SliceType> currentKeySet;
   std::span<SliceType> projectionsSpan;
@@ -192,7 +192,6 @@ TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::TwoIndicesMergeJoin(
     std::vector<Descriptor> descs, std::size_t numKeyComponents) {
   TRI_ASSERT(descs.size() == FIXED_NON_UNIQUE_INDEX_SIZE_VAR);
   indexes.reserve(FIXED_NON_UNIQUE_INDEX_SIZE_VAR);
-  documentIds.resize(FIXED_NON_UNIQUE_INDEX_SIZE_VAR);
   currentKeySet.resize(numKeyComponents);
 
   std::size_t bufferSize = 0;
