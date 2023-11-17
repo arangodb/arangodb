@@ -49,7 +49,7 @@ auto toStream(std::ostream& os, AstNode const* node, int level)
 
   for (size_t i = 0; i < n; ++i) {
     auto sub = node->getMemberUnchecked(i);
-    sub->toStream(os, level + 1);
+    toStream(os, sub, level + 1);
   }
   return os;
 }
