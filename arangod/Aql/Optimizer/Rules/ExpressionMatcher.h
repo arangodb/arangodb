@@ -28,52 +28,321 @@
 #include <Aql/AstNode.h>
 #include <Aql/Condition.h>
 #include <Aql/Variable.h>
+#include <Aql/Quantifier.h>
+
+#include "Aql/Optimizer/Rules/MatchResult.h"
 
 namespace arangodb::aql::expression_matcher {
 
-struct MatchResult {
-  AstNode const* closure;
-  AstNode const* value;
+template<typename T>
+concept Matchable = requires(T v, AstNode const* node) {
+  v.apply(node);
 };
 
-struct MatchError {
-  explicit MatchError(std::string message) : stack{{message}} {}
-  std::vector<std::string> stack;
+template<Matchable M>
+struct MatchWithName {
+  auto apply(AstNode const* node) -> MatchResult {
+    auto result = matcher.apply(node);
+
+    if (result.isError()) {
+      return result;
+    }
+
+    return MatchResult::match(name, node);
+  }
+  std::string name;
+  M matcher;
 };
 
-auto matchNodeType(AstNode const* node, AstNodeType type)
-    -> std::optional<AstNode const*>;
+template<Matchable M>
+auto matchWithName(std::string name, M matcher) -> MatchWithName<M> {
+  return MatchWithName<M>{.name = name, .matcher = matcher};
+};
 
-auto matchValueNode(AstNode const* node) -> std::optional<AstNode const*>;
+// Just matches any AstNode
+struct Any {
+  auto apply(AstNode const* node) -> MatchResult {
+    return MatchResult::match();
+  }
+};
 
-auto matchValueNode(AstNode const* node, AstNodeValueType valueType)
-    -> std::optional<AstNode const*>;
+struct MatchNodeType {
+  MatchNodeType(AstNodeType type) : type(type) {}
+  auto apply(AstNode const* node) -> MatchResult {
+    if (node->type != type) {
+      auto typeName = AstNode::getTypeStringForType(type);
+      ADB_PROD_ASSERT(typeName.has_value());
+      return MatchResult::error(
+          fmt::format("expected node of type {}, found {}",
+                      node->getTypeString(), typeName.value()));
+    }
+    return MatchResult::match();
+  }
+  AstNodeType type;
+};
 
-// Technically the AstNodeValueType is not necessary for this matcher
-// Also this seems dangerous since C++ converts everything and their dog
-// to an int.
-auto matchValueNode(AstNode const* node, AstNodeValueType valueType, bool v)
-    -> std::optional<AstNode const*>;
+struct NoOp {
+  auto apply(AstNode const* node) -> MatchResult {
+    return MatchNodeType(NODE_TYPE_NOP).apply(node);
+  }
+};
 
-// Technically the AstNodeValueType is not necessary for this matcher
-auto matchValueNode(AstNode const* node, AstNodeValueType valueType, int v)
-    -> std::optional<AstNode const*>;
+struct AnyValue {
+  auto apply(AstNode const* node) -> MatchResult {
+    if (node->type != NODE_TYPE_VALUE) {
+      return MatchResult::error(fmt::format(
+          "Expected node of type `value`, found {}", node->getTypeString()));
+    }
+    return MatchResult::match();
+  }
+};
 
-auto matchSupportedConditions(Variable const* pathVariable, VarSet variables,
-                              std::unique_ptr<Condition>& condition)
-    -> std::vector<MatchResult>;
+struct AnyVariable {
+  auto apply(AstNode const* node) -> MatchResult {
+    return MatchResult::match();
+  }
+};
 
-auto matchAttributeAccess(AstNode const* node, Variable const* variable,
-                          std::string attribute)
-    -> std::variant<MatchError, std::monostate>;
+struct Variable {
+  auto apply(AstNode const* node) -> MatchResult {
+    auto typeMatch = MatchNodeType(NODE_TYPE_VARIABLE).apply(node);
+    if (typeMatch.isError()) {
+      return typeMatch;
+    }
 
-auto matchIterator(AstNode const* node, Variable const* pathVariable)
-    -> std::variant<MatchError, std::monostate>;
+    auto var = static_cast<::arangodb::aql::Variable const*>(node->getData());
+    if (var->name != name) {
+      return MatchResult::error(fmt::format(
+          "Expected access to variable `{}`, but found {}", name, var->name));
+    }
+    return MatchResult::match();
+  }
 
-auto matchExpansionWithReturn(AstNode const* node, Variable const* pathVariable)
-    -> std::variant<MatchError, std::monostate>;
+  std::string name;
+};
+auto variable(std::string name) -> Variable;
 
-auto matchArrayEqualsAll(AstNode const* node, Variable const* pathVariable)
-    -> std::optional<MatchResult>;
+struct Quantifier {
+  auto apply(AstNode const* node) -> MatchResult {
+    if (node->type != NODE_TYPE_QUANTIFIER) {
+      return MatchResult::error(fmt::format(
+          "Expected node of type `quantifier`, found type `{}` instead",
+          node->getTypeString()));
+    }
 
+    auto maybeType = ::arangodb::aql::Quantifier::getType(node);
+    TRI_ASSERT(maybeType.has_value());
+
+    auto type = maybeType.value();
+    if (type != which) {
+      return MatchResult::error(
+          fmt::format("Expected quantifier of type `{}` but found type `{}`",
+                      ::arangodb::aql::Quantifier::stringify(which),
+                      ::arangodb::aql::Quantifier::stringify(type)));
+    }
+
+    return MatchResult::match();
+  }
+
+  ::arangodb::aql::Quantifier::Type which;
+};
+
+struct Reference {
+  auto apply(AstNode const* node) -> MatchResult {
+    if (node->type != NODE_TYPE_REFERENCE) {
+      return MatchResult::error(fmt::format(
+          "Expected node type `reference`, found {}", node->getTypeString()));
+    }
+
+    auto variable =
+        static_cast<::arangodb::aql::Variable const*>(node->getData());
+    if (variable->name != name) {
+      return MatchResult::error(
+          fmt::format("Expected variable `{}` to be referenced, but found `{}`",
+                      name, variable->name));
+    }
+    return MatchResult::match();
+  }
+
+  std::string name;
+};
+
+template<Matchable Reference>
+struct AttributeAccess {
+  auto apply(AstNode const* node) -> MatchResult {
+    if (node->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
+      return MatchResult::error(
+          fmt::format("Expected node type `attribute access`, found {}",
+                      node->getTypeString()));
+    }
+
+    auto referenceMatch = reference.apply(node->getMemberUnchecked(0));
+    if (referenceMatch.isError()) {
+      return MatchResult::error(std::move(referenceMatch),
+                                "reference match failed");
+    }
+
+    auto accessedAttribute = node->getStringView();
+    if (accessedAttribute != attribute) {
+      return MatchResult::error(
+          fmt::format("expecting to access attribute {} but found {}",
+                      accessedAttribute, attribute));
+    }
+    return MatchResult::match();
+  }
+
+  Reference reference;
+  std::string attribute;
+};
+
+template<Matchable Reference>
+auto attributeAccess(Reference reference, std::string attribute)
+    -> AttributeAccess<Reference> {
+  return AttributeAccess<Reference>{.reference = reference,
+                                    .attribute = attribute};
+}
+
+template<Matchable Variable, Matchable Iteratee>
+struct Iterator {
+  auto apply(AstNode const* node) -> MatchResult {
+    if (node->type != NODE_TYPE_ITERATOR) {
+      return MatchResult::error(fmt::format(
+          "Expected node type `iterator`, found {}", node->getTypeString()));
+    }
+
+    auto variableMatch = variable.apply(node->getMemberUnchecked(0));
+    if (variableMatch.isError()) {
+      return MatchResult::error(std::move(variableMatch),
+                                fmt::format("variable match failed"));
+    }
+
+    auto iterateeMatch = iteratee.apply(node->getMemberUnchecked(1));
+    if (iterateeMatch.isError()) {
+      return MatchResult::error(std::move(iterateeMatch),
+                                fmt::format("iteratee match failed"));
+    }
+
+    return MatchResult(std::move(variableMatch), std::move(iterateeMatch));
+  }
+
+  Variable variable;
+  Iteratee iteratee;
+};
+
+template<Matchable Variable, Matchable Iteratee>
+auto iterator(Variable variable, Iteratee iteratee)
+    -> Iterator<Variable, Iteratee> {
+  return Iterator<Variable, Iteratee>{.variable = variable,
+                                      .iteratee = iteratee};
+}
+
+template<Matchable LHS, Matchable RHS, Matchable Quantifier>
+struct ArrayEq {
+  auto apply(AstNode const* node) -> MatchResult {
+    if (node->type != NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ) {
+      return MatchResult::error(
+          fmt::format("Expected node of type `binary eq all`, found {}",
+                      node->getTypeString()));
+    }
+
+    auto lhsMatch = lhs.apply(node->getMemberUnchecked(0));
+    if (lhsMatch.isError()) {
+      return MatchResult::error(std::move(lhsMatch),
+                                fmt::format("left hand side match failed"));
+    }
+
+    auto rhsMatch = rhs.apply(node->getMemberUnchecked(1));
+    if (rhsMatch.isError()) {
+      return MatchResult::error(std::move(rhsMatch),
+                                fmt::format("right hand side match failed"));
+    }
+
+    auto quantifierMatch = quantifier.apply(node->getMemberUnchecked(2));
+    if (quantifierMatch.isError()) {
+      return MatchResult::error(std::move(quantifierMatch),
+                                fmt::format("quantifier match failed"));
+    }
+
+    return MatchResult(std::move(lhsMatch), std::move(rhsMatch));
+  }
+
+  LHS lhs;
+  RHS rhs;
+  Quantifier quantifier;
+};
+
+template<Matchable LHS, Matchable RHS, Matchable Quantifier>
+auto arrayEq(LHS lhs, RHS rhs, Quantifier quantifier)
+    -> ArrayEq<LHS, RHS, Quantifier> {
+  return ArrayEq<LHS, RHS, Quantifier>{
+      .lhs = lhs, .rhs = rhs, .quantifier = quantifier};
+};
+
+template<Matchable Iterator, Matchable Reference, Matchable Limit,
+         Matchable Filter, Matchable Map>
+struct Expansion {
+  auto apply(AstNode const* node) -> MatchResult {
+    if (node->type != NODE_TYPE_EXPANSION) {
+      return MatchResult::error(
+          fmt::format("Expected node of type `expansion`, found {}",
+                      node->getTypeString()));
+    }
+
+    auto iteratorMatch = iterator.apply(node->getMemberUnchecked(0));
+    if (iteratorMatch.isError()) {
+      return MatchResult::error(std::move(iteratorMatch),
+                                fmt::format("Iterator match failed"));
+    }
+
+    auto referenceMatch = reference.apply(node->getMemberUnchecked(1));
+    if (referenceMatch.isError()) {
+      std::cerr << "reference match error?";
+      return MatchResult::error(std::move(referenceMatch),
+                                fmt::format("Reference match failed"));
+    }
+
+    auto limitMatch = limit.apply(node->getMemberUnchecked(2));
+    if (limitMatch.isError()) {
+      return MatchResult::error(std::move(limitMatch),
+                                fmt::format("Limit match failed"));
+    }
+
+    auto filterMatch = filter.apply(node->getMemberUnchecked(3));
+    if (filterMatch.isError()) {
+      return MatchResult::error(std::move(filterMatch),
+                                fmt::format("Filter match failed"));
+    }
+
+    auto mapMatch = map.apply(node->getMemberUnchecked(4));
+    if (mapMatch.isError()) {
+      return MatchResult::error(std::move(mapMatch),
+                                fmt::format("Map match failed"));
+    }
+
+    // TODO fold or .combine
+    return MatchResult(
+        std::move(iteratorMatch),
+        MatchResult(std::move(limitMatch),
+                    MatchResult(std::move(filterMatch), std::move(mapMatch))));
+  }
+
+  Iterator iterator;
+  Reference reference;
+  Limit limit;
+  Filter filter;
+  Map map;
+};
+
+template<Matchable Iterator, Matchable Reference, Matchable Limit,
+         Matchable Filter, Matchable Map>
+auto expansion(Iterator iterator, Reference reference, Limit limit,
+               Filter filter, Map map)
+    -> Expansion<Iterator, Reference, Limit, Filter, Map> {
+  return Expansion<Iterator, Reference, Limit, Filter, Map>{
+      .iterator = std::move(iterator),
+      .reference = std::move(reference),
+      .limit = std::move(limit),
+      .filter = std::move(filter),
+      .map = std::move(map)};
+}
 }  // namespace arangodb::aql::expression_matcher

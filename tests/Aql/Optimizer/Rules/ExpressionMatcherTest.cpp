@@ -34,15 +34,62 @@
 
 #include "Mocks/Servers.h"
 
+#include <vector>
+#include <ranges>
+
 using namespace arangodb::aql;
 using namespace arangodb::velocypack;
 using namespace arangodb::tests;
 
+using namespace arangodb::aql::expression_matcher;
+
 namespace {
-auto json(AstNode* node) -> std::string {
+auto json(AstNode const* node) -> std::string {
   VPackBuilder b;
   node->toVelocyPack(b, true);
   return b.toString();
+}
+
+auto ast_printer(AstNode const* node, size_t indent) -> std::string;
+
+auto node_printer(AstNode const* node, size_t indent) -> std::string {
+  auto pad = std::string(indent, ' ');
+  auto result = std::string{};
+  switch (node->type) {
+    case NODE_TYPE_EXPANSION: {
+      result += "\n";
+      result += pad + fmt::format(
+                          "iterator: {}\n",
+                          ast_printer(node->getMemberUnchecked(0), indent + 2));
+      result += pad + fmt::format(
+                          "variable: {}\n",
+                          ast_printer(node->getMemberUnchecked(1), indent + 2));
+      result += pad + fmt::format(
+                          "filter: {}\n",
+                          ast_printer(node->getMemberUnchecked(2), indent + 2));
+      result += pad + fmt::format(
+                          "limit: {}\n",
+                          ast_printer(node->getMemberUnchecked(3), indent + 2));
+      result += pad + fmt::format(
+                          "map: {}",
+                          ast_printer(node->getMemberUnchecked(4), indent + 2));
+    }
+    default: {
+      if (auto members = node->numMembers(); members > 0) {
+        for (size_t i = 0; i < members; ++i) {
+          result += "\n";
+          result += pad + ast_printer(node->getMemberUnchecked(i), indent + 2);
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+auto ast_printer(AstNode const* node, size_t indent) -> std::string {
+  return fmt::format("(|{}| ({}){})", node->getTypeString(), node->type,
+                     node_printer(node, indent));
 }
 
 }  // namespace
@@ -58,13 +105,13 @@ struct TestContext {
     auto parser = arangodb::aql::Parser(*query, *query->ast(), qs);
     parser.parse();
 
-    // TODO: find out whether this validateAndOptimize step is necessary for
-    // these tests
-    query->ast()->validateAndOptimize(*trx, {.optimizeNonCacheable = true});
+    // TODO: find out whether this validateAndOptimize step is necessary (or
+    // counterproductive) for these tests
+    // query->ast()->validateAndOptimize(*trx, {.optimizeNonCacheable = true});
   }
 
   auto getTopNode() -> AstNode* {
-    return query->ast()->root()->getMemberUnchecked(1)->getMemberUnchecked(0);
+    return query->ast()->root()->getMemberUnchecked(2)->getMemberUnchecked(0);
   }
 
   mocks::MockAqlServer server;
@@ -72,44 +119,45 @@ struct TestContext {
   std::shared_ptr<arangodb::transaction::Methods> trx;
 };
 
-TEST(ExpressionMatcherTest, matches_value_node) {
-  auto expression = TestContext(R"=( RETURN 1 )=");
-
-  auto* node = expression.getTopNode();
+TEST(ExpressionMatcherTest, matches_type) {
+  auto node = AstNode(NODE_TYPE_NOP);
 
   {
-    auto match = expression_matcher::matchValueNode(node);
-    ASSERT_TRUE(match.has_value());
+    // Has to succeed
+    auto result = MatchNodeType(NODE_TYPE_NOP).apply(&node);
+    ASSERT_TRUE(result.success());
   }
 
   {
-    auto match = expression_matcher::matchValueNode(
-        node, AstNodeValueType::VALUE_TYPE_INT);
-    ASSERT_TRUE(match.has_value());
-  }
-
-  {
-    auto match = expression_matcher::matchValueNode(
-        node, AstNodeValueType::VALUE_TYPE_INT, 1);
-    ASSERT_TRUE(match.has_value());
-  }
-
-  {
-    auto match = expression_matcher::matchValueNode(
-        node, AstNodeValueType::VALUE_TYPE_INT, 2);
-    ASSERT_FALSE(match.has_value());
+    // Has to fail
+    auto result = MatchNodeType(NODE_TYPE_EXPANSION).apply(&node);
+    ASSERT_TRUE(result.isError());
   }
 }
 
 TEST(ExpressionMatcherTest, matches_filter_expression) {
   auto expression = TestContext(
-      R"=(RETURN path.vertices[* RETURN CURRENT.colour == "green"] ALL == true)=");
+      R"=(LET path = [] RETURN path.vertices[* RETURN CURRENT.f == "green"] ALL == true)=");
 
   auto* node = expression.getTopNode();
-
   {
-    auto match = expression_matcher::matchNodeType(
-        node, AstNodeType::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ);
-    ASSERT_TRUE(match.has_value()) << json(node);
+    auto matcher = arrayEq(  //
+        expansion(           //
+            iterator(
+                AnyVariable{},                                            //
+                attributeAccess(Reference{.name = "path"}, "vertices")),  //
+            Reference{.name = "3_"},                                      //
+            NoOp{},                                                       //
+            NoOp{},                                                       //
+            matchWithName("map", Any{})),                                 //
+        AnyValue{},                                                       //
+        expression_matcher::Quantifier{
+            .which = ::arangodb::aql::Quantifier::Type::kAll});
+
+    auto result = matcher.apply(node);
+    ASSERT_TRUE(result.success());
+
+    auto mapNode = result.matches().at("map");
+    std::cerr << json(mapNode) << std::endl;
   }
 }
