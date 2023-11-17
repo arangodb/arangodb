@@ -215,6 +215,7 @@ struct OptimizerRule {
     // merge filters into graph traversals
     optimizeTraversalsRule,
 
+    // put path filters into enumerate paths
     optimizeEnumeratePathsRule,
 
     // optimize K_PATHS

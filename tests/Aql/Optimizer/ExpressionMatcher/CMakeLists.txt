@@ -1,7 +1,7 @@
-add_library(arango_tests_optimizer_rules OBJECT
+add_library(arango_tests_ast_expression_matcher OBJECT
   ExpressionMatcherTest.cpp)
 
-target_link_libraries(arango_tests_optimizer_rules PUBLIC
+target_link_libraries(arango_tests_ast_expression_matcher PUBLIC
   arango_lightweight
   arango_aql
   velocypack
@@ -14,15 +14,15 @@ target_link_libraries(arango_tests_optimizer_rules PUBLIC
   boost_boost
   )
 
-target_include_directories(arango_tests_optimizer_rules PUBLIC
+target_include_directories(arango_tests_ast_expression_matcher PUBLIC
         "${PROJECT_SOURCE_DIR}/arangod"
         "${PROJECT_SOURCE_DIR}/tests"
         "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
-add_executable(arangodbtests_optimizer_rules EXCLUDE_FROM_ALL)
+add_executable(arangodbtests_ast_expression_matcher EXCLUDE_FROM_ALL)
 
-target_link_libraries(arangodbtests_optimizer_rules PRIVATE
+target_link_libraries(arangodbtests_ast_expression_matcher PRIVATE
   velocypack_utils
   arango_tests_basics
-  arango_tests_optimizer_rules)
+  arango_tests_ast_expression_matcher)
 

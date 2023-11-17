@@ -28,7 +28,7 @@
 #include "Aql/Expression.h"
 #include "Aql/EnumeratePathsNode.h"
 #include "Aql/Quantifier.h"
-#include "Aql/Optimizer/Rules/ExpressionMatcher.h"
+#include "Aql/Optimizer/ExpressionMatcher/ExpressionMatcher.h"
 
 #include "Basics/ErrorT.h"
 #include "Basics/overload.h"

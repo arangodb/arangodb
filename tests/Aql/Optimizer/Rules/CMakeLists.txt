@@ -1,5 +1,5 @@
 add_library(arango_tests_optimizer_rules OBJECT
-  ExpressionMatcherTest.cpp)
+  EnumeratePathsRuleTest.cpp)
 
 target_link_libraries(arango_tests_optimizer_rules PUBLIC
   arango_lightweight
