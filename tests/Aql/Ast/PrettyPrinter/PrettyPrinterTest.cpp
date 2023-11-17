@@ -72,7 +72,27 @@ TEST(PrettyPrinterTest, prints_pretty) {
   auto expression = TestContext(
       R"=(LET path = [] RETURN path.vertices[* RETURN CURRENT.f == "green"] ALL == true)=");
 
-  //  std::stringstream output;
+  auto expected = R"=(- array compare == (65): 
+  - expansion (38): 
+    - iterator (39): 
+      - variable (13): 
+      - attribute access (35): vertices
+        - reference (45): path
+    - reference (45): 3_
+    - no-op (50): 
+    - no-op (50): 
+    - compare == (25): 
+      - attribute access (35): f
+        - reference (45): 3_
+      - value (40): "green"
+  - value (40): true
+  - quantifier (73): all
+)=";
 
-  toStream(std::cerr, expression.getTopNode(), 0);
+  std::stringstream output;
+  toStream(output, expression.getTopNode(), 0);
+
+  std::cerr << output.str();
+
+  ASSERT_EQ(output.str(), expected);
 }

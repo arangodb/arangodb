@@ -20,8 +20,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "PrettyPrinter.h"
 
+#include <Aql/AstNode.h>
+#include <Aql/Quantifier.h>
 #include <Aql/Variable.h>
 #include <velocypack/Builder.h>
+
+#include <fmt/core.h>
 
 using namespace arangodb::aql;
 
@@ -32,16 +36,29 @@ auto toStream(std::ostream& os, AstNode const* node, int level)
   for (int i = 0; i < level; ++i) {
     os << "  ";
   }
-  os << "- " << node->getTypeString();
+  os << fmt::format("- {} ({})", node->getTypeString(), node->type);
 
-  if (node->type == NODE_TYPE_VALUE || node->type == NODE_TYPE_ARRAY) {
-    VPackBuilder b;
-    node->toVelocyPackValue(b);
-    os << ": " << b.toJson();
-  } else if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    os << ": " << node->getString();
-  } else if (node->type == NODE_TYPE_REFERENCE) {
-    os << ": " << static_cast<Variable const*>(node->getData())->name;
+  switch (node->type) {
+    case NODE_TYPE_VALUE:
+    case NODE_TYPE_ARRAY: {
+      VPackBuilder b;
+      node->toVelocyPackValue(b);
+      os << ": " << b.toJson();
+    } break;
+    case NODE_TYPE_ATTRIBUTE_ACCESS: {
+      os << ": " << node->getString();
+    } break;
+    case NODE_TYPE_REFERENCE: {
+      os << ": " << static_cast<Variable const*>(node->getData())->name;
+    } break;
+    case NODE_TYPE_QUANTIFIER: {
+      os << ": "
+         << Quantifier::stringify(
+                static_cast<Quantifier::Type>(node->getIntValue(true)));
+    } break;
+    default: {
+      os << ": ";
+    } break;
   }
   os << "\n";
 

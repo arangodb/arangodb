@@ -21,6 +21,7 @@ target_include_directories(arango_tests_ast_pretty_printer PUBLIC
 
 add_executable(arangodbtests_ast_pretty_printer EXCLUDE_FROM_ALL)
 
+
 target_link_libraries(arangodbtests_ast_pretty_printer PRIVATE
   velocypack_utils
   arango_tests_basics
