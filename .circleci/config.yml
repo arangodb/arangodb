@@ -70,7 +70,7 @@ jobs:
 
       - continuation/continue:
           configuration_path: continuation_config.yml
-          parameters: '{"default-enterprise-branch": "<< parameters.default-enterprise-branch >>", "build-docker-tag": "<< parameters.build-docker-image >> }'
+          parameters: '{"default-enterprise-branch": "<< parameters.default-enterprise-branch >>" }'
 
 # our single workflow, that triggers the setup job defined above
 workflows:
