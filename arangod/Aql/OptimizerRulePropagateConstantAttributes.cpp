@@ -22,19 +22,21 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerRules.h"
-#include "Aql/Expression.h"
 #include "Aql/Collection.h"
+#include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
-#include "VocBase/LogicalCollection.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
+#include "OptimizerRules.h"
 #include "OptimizerUtils.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::containers;
 using EN = arangodb::aql::ExecutionNode;
+
+#define LOG_RULE LOG_DEVEL_IF(false)
 
 namespace {
 class PropagateConstantAttributesHelper {
@@ -46,7 +48,7 @@ class PropagateConstantAttributesHelper {
 
   /// @brief inspects a plan and propagates constant values in expressions
   void propagateConstants() {
-    LOG_DEVEL << "PROPAGATE CONSTANTS";
+    LOG_RULE << "PROPAGATE CONSTANTS";
     containers::SmallVector<ExecutionNode*, 8> nodes;
     _plan->findNodesOfType(nodes, EN::FILTER, true);
 
@@ -93,7 +95,7 @@ class PropagateConstantAttributesHelper {
       return;
     }
 
-    LOG_DEVEL << node->toString();
+    LOG_RULE << node->toString();
 
     if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
       auto lhs = node->getMember(0);
@@ -104,19 +106,19 @@ class PropagateConstantAttributesHelper {
     } else if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
       auto lhs = node->getMember(0);
       auto rhs = node->getMember(1);
-      LOG_DEVEL << "BINARY EQ " << lhs->toString() << " == " << rhs->toString();
+      LOG_RULE << "BINARY EQ " << lhs->toString() << " == " << rhs->toString();
 
-      LOG_DEVEL << "LHS = " << lhs->getTypeString();
-      LOG_DEVEL << "RHS = " << rhs->getTypeString();
+      LOG_RULE << "LHS = " << lhs->getTypeString();
+      LOG_RULE << "RHS = " << rhs->getTypeString();
 
       if (lhs->isConstant() && (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
                                 rhs->type == NODE_TYPE_REFERENCE)) {
-        LOG_DEVEL << "LHS IS CONST";
+        LOG_RULE << "LHS IS CONST";
         inspectConstantAttribute(rhs, lhs);
       } else if (rhs->isConstant() &&
                  (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
                   lhs->type == NODE_TYPE_REFERENCE)) {
-        LOG_DEVEL << "RHS IS CONST";
+        LOG_RULE << "RHS IS CONST";
         inspectConstantAttribute(lhs, rhs);
       }
     }
@@ -182,11 +184,11 @@ class PropagateConstantAttributesHelper {
                                 AstNode const* value) {
     Variable const* variable = nullptr;
     std::string name;
-    LOG_DEVEL << "ATTR = " << attribute->toString();
+    LOG_RULE << "ATTR = " << attribute->toString();
     if (!getAttribute(attribute, variable, name)) {
       return;
     }
-    LOG_DEVEL << "VAR = " << variable->name << " NAME = " << name;
+    LOG_RULE << "VAR = " << variable->name << " NAME = " << name;
     auto it = _constants.find(variable);
 
     if (it == _constants.end()) {
@@ -228,7 +230,7 @@ class PropagateConstantAttributesHelper {
     if (!getAttribute(member, variable, name)) {
       return;
     }
-    LOG_DEVEL << "REPLACE " << variable->name << " NAME = " << name;
+    LOG_RULE << "REPLACE " << variable->name << " NAME = " << name;
 
     auto constantValue = getConstant(variable, name);
 
@@ -275,7 +277,7 @@ class PropagateConstantAttributesHelper {
         }
       }
 
-      LOG_DEVEL << "CHANGE MEMBER";
+      LOG_RULE << "CHANGE MEMBER";
       parentNode->changeMember(accessIndex,
                                const_cast<AstNode*>(constantValue));
       _modified = true;
@@ -294,7 +296,6 @@ class PropagateConstantAttributesHelper {
 void arangodb::aql::propagateConstantAttributesRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     OptimizerRule const& rule) {
-  plan->show();
   PropagateConstantAttributesHelper helper(plan.get());
   helper.propagateConstants();
 
