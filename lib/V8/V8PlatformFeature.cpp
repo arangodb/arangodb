@@ -187,9 +187,9 @@ void V8PlatformFeature::validateOptions(
   if (!_v8Options.empty()) {
     _v8CombinedOptions = StringUtils::join(_v8Options, " ");
 
-    if (_v8CombinedOptions == "help") {
-      std::string help = "--help";
-      v8::V8::SetFlagsFromString(help.c_str(), (int)help.size());
+    if (_v8CombinedOptions == "help" || _v8CombinedOptions == "--help") {
+      std::string_view help = "--help";
+      v8::V8::SetFlagsFromString(help.data(), help.size());
       exit(EXIT_SUCCESS);
     }
   }
@@ -197,6 +197,9 @@ void V8PlatformFeature::validateOptions(
 
 void V8PlatformFeature::start() {
   v8::V8::InitializeICU();
+
+  _platform = v8::platform::NewDefaultPlatform();
+  v8::V8::InitializePlatform(_platform.get());
 
   // explicit option --javascript.v8-options used
   if (!_v8CombinedOptions.empty()) {
@@ -211,8 +214,6 @@ void V8PlatformFeature::start() {
   v8::V8::SetFlagsFromString(forceARMv6.c_str(), (int)forceARMv6.size());
 #endif
 
-  _platform = v8::platform::NewDefaultPlatform();
-  v8::V8::InitializePlatform(_platform.get());
   v8::V8::Initialize();
 
   _allocator = std::unique_ptr<v8::ArrayBuffer::Allocator>(

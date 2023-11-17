@@ -111,7 +111,6 @@ void ConsoleThread::inner(V8ContextGuard const& guard) {
 
   auto localContext =
       v8::Local<v8::Context>::New(isolate, guard.context()->_context);
-  localContext->Enter();
   {
     v8::Context::Scope contextScope(localContext);
 
@@ -236,6 +235,5 @@ start_color_print('arangodb', true);
     }
   }
 
-  localContext->Exit();
   throw USER_ABORTED;
 }

@@ -174,7 +174,7 @@ transaction::V8Context::createWhenRequired(TRI_vocbase_t& vocbase,
   // is V8 enabled and are currently in a V8 scope ?
   if (vocbase.server().hasFeature<V8DealerFeature>() &&
       vocbase.server().isEnabled<V8DealerFeature>() &&
-      v8::Isolate::GetCurrent() != nullptr) {
+      v8::Isolate::TryGetCurrent() != nullptr) {
     return transaction::V8Context::create(vocbase, operationOrigin, embeddable);
   }
 
@@ -182,7 +182,7 @@ transaction::V8Context::createWhenRequired(TRI_vocbase_t& vocbase,
 }
 
 /*static*/ TRI_v8_global_t* transaction::V8Context::getV8State() noexcept {
-  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  v8::Isolate* isolate = v8::Isolate::TryGetCurrent();
   if (isolate == nullptr) {
     return nullptr;
   }

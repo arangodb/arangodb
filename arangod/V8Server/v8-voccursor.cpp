@@ -590,7 +590,7 @@ struct V8Cursor final {
 // .............................................................................
 
 void TRI_InitV8cursor(v8::Handle<v8::Context> context, TRI_v8_global_t* v8g) {
-  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  ISOLATE;
 
   // cursor functions. not intended to be used by end users
   // these cursor functions are the APIs implemented in js/actions/api-simple.js

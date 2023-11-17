@@ -296,6 +296,7 @@ class V8Completer : public Completer {
 
     // locate global object or sub-object
     v8::Isolate* isolate = v8::Isolate::GetCurrent();
+    TRI_ASSERT(isolate != nullptr);
 
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
     v8::Handle<v8::Object> current = context->Global();

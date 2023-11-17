@@ -123,7 +123,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
       _resultCode(std::nullopt),
 #ifdef USE_V8
       _contextOwnedByExterior(_transactionContext->isV8Context() &&
-                              v8::Isolate::GetCurrent() != nullptr),
+                              v8::Isolate::TryGetCurrent() != nullptr),
       _embeddedQuery(_transactionContext->isV8Context() &&
                      transaction::V8Context::isEmbedded()),
       _registeredInV8Context(false),
@@ -1163,6 +1163,7 @@ void Query::enterV8Context() {
       ctx->enterV8Context();
     } else {
       v8::Isolate* isolate = v8::Isolate::GetCurrent();
+      TRI_ASSERT(isolate != nullptr);
       TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
           isolate->GetData(V8PlatformFeature::V8_DATA_SLOT));
       v8g->_transactionState = _trx->stateShrdPtr();
@@ -1208,6 +1209,7 @@ void Query::exitV8Context() {
       ctx->exitV8Context();
     } else {
       v8::Isolate* isolate = v8::Isolate::GetCurrent();
+      TRI_ASSERT(isolate != nullptr);
       TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
           isolate->GetData(V8PlatformFeature::V8_DATA_SLOT));
       v8g->_transactionState = nullptr;

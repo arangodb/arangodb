@@ -87,10 +87,7 @@ static TRI_action_result_t ExecuteActionVocbase(
 class v8_action_t final : public TRI_action_t {
  public:
   explicit v8_action_t(ActionFeature const& actionFeature)
-      : TRI_action_t(),
-        _actionFeature(actionFeature),
-        _callbacks(),
-        _callbacksLock() {}
+      : TRI_action_t(), _actionFeature(actionFeature) {}
 
   void visit(void* data) override {
     v8::Isolate* isolate = static_cast<v8::Isolate*>(data);
@@ -163,27 +160,31 @@ class v8_action_t final : public TRI_action_t {
           return result;
         }
 
-        *data = (void*)guard.isolate();
+        *data = static_cast<void*>(guard.isolate());
       }
+
       v8::HandleScope scope(guard.isolate());
-      auto localFunction =
-          v8::Local<v8::Function>::New(guard.isolate(), it->second);
 
-      // we can release the lock here already as no other threads will
-      // work in our isolate at this time
-      readLocker.unlock();
-
-      try {
-        result = ExecuteActionVocbase(vocbase, guard.isolate(), this,
-                                      localFunction, request, response);
-      } catch (...) {
-        result.isValid = false;
-      }
+      auto localContext = v8::Local<v8::Context>::New(
+          guard.isolate(), guard.context()->_context);
 
       {
-        // cppcheck-suppress redundantPointerOp
-        std::lock_guard mutexLocker{*dataLock};
-        *data = nullptr;
+        v8::Context::Scope contextScope(localContext);
+        auto localFunction =
+            v8::Local<v8::Function>::New(guard.isolate(), it->second);
+
+        try {
+          result = ExecuteActionVocbase(vocbase, guard.isolate(), this,
+                                        localFunction, request, response);
+        } catch (...) {
+          result.isValid = false;
+        }
+
+        {
+          // cppcheck-suppress redundantPointerOp
+          std::lock_guard mutexLocker{*dataLock};
+          *data = nullptr;
+        }
       }
     }
 
@@ -1105,12 +1106,12 @@ static TRI_action_result_t ExecuteActionVocbase(
     TRI_vocbase_t* vocbase, v8::Isolate* isolate, TRI_action_t const* action,
     v8::Handle<v8::Function> callback, GeneralRequest* request,
     GeneralResponse* response) {
-  v8::HandleScope scope(isolate);
-  v8::TryCatch tryCatch(isolate);
-
   if (response == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response");
   }
+
+  v8::HandleScope scope(isolate);
+  v8::TryCatch tryCatch(isolate);
 
   TRI_GET_GLOBALS();
 
@@ -1166,14 +1167,10 @@ static TRI_action_result_t ExecuteActionVocbase(
     VPackBuilder b(buffer);
     b.add(VPackValue(errorMessage));
     response->addPayload(std::move(buffer));
-  }
-
-  else if (v8g->_canceled) {
+  } else if (v8g->_canceled) {
     result.isValid = false;
     result.canceled = true;
-  }
-
-  else if (tryCatch.HasCaught()) {
+  } else if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
       response->setResponseCode(rest::ResponseCode::SERVER_ERROR);
 
@@ -1190,9 +1187,7 @@ static TRI_action_result_t ExecuteActionVocbase(
       result.isValid = false;
       result.canceled = true;
     }
-  }
-
-  else {
+  } else {
     ResponseV8ToCpp(isolate, v8g, request, res, response);
   }
 

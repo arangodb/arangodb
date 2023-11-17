@@ -87,10 +87,9 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
 
     auto localContext =
         v8::Local<v8::Context>::New(isolate, guard.context()->_context);
-    localContext->Enter();
-    auto context = localContext;
     {
       v8::Context::Scope contextScope(localContext);
+      auto context = localContext;
       for (auto const& script : scripts) {
         LOG_TOPIC("e703c", TRACE, arangodb::Logger::FIXME)
             << "executing script '" << script << "'";
@@ -168,8 +167,6 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
         }
       }
     }
-
-    localContext->Exit();
   }
 
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

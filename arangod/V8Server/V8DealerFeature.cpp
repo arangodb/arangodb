@@ -1053,7 +1053,6 @@ void V8DealerFeature::collectGarbage() {
           auto localContext =
               v8::Local<v8::Context>::New(isolate, context->_context);
 
-          localContext->Enter();
           {
             v8::Context::Scope contextScope(localContext);
 
@@ -1065,7 +1064,6 @@ void V8DealerFeature::collectGarbage() {
             v8g->_inForcedCollect = false;
             hasActiveExternals = v8g->hasActiveExternals();
           }
-          localContext->Exit();
         }
 
         // update garbage collection statistics
@@ -1227,7 +1225,6 @@ void V8DealerFeature::prepareLockedContext(
   {
     v8::HandleScope scope(isolate);
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
-    localContext->Enter();
 
     {
       v8::Context::Scope contextScope(localContext);
@@ -1266,7 +1263,7 @@ V8Context* V8DealerFeature::enterContext(
   }
 
   double const startTime = TRI_microtime();
-  TRI_ASSERT(v8::Isolate::GetCurrent() == nullptr);
+  TRI_ASSERT(v8::Isolate::TryGetCurrent() == nullptr);
 
   V8Context* context = nullptr;
 
@@ -1434,8 +1431,6 @@ void V8DealerFeature::cleanupLockedContext(V8Context* context) {
     {
       auto localContext =
           v8::Local<v8::Context>::New(isolate, context->_context);
-      localContext->Enter();
-
       {
         v8::Context::Scope contextScope(localContext);
         v8g->_inForcedCollect = true;
@@ -1445,8 +1440,6 @@ void V8DealerFeature::cleanupLockedContext(V8Context* context) {
 
       // needs to be reset after the garbage collection
       V8PlatformFeature::resetOutOfMemory(isolate);
-
-      localContext->Exit();
     }
   }
 
@@ -1493,10 +1486,6 @@ void V8DealerFeature::cleanupLockedContext(V8Context* context) {
     v8g->_expressionContext = nullptr;
     v8g->_vocbase = nullptr;
     v8g->_securityContext.reset();
-
-    // now really exit
-    auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
-    localContext->Exit();
   }
 }
 
@@ -1752,8 +1741,6 @@ std::unique_ptr<V8Context> V8DealerFeature::buildContext(TRI_vocbase_t* vocbase,
                             v8::Context::New(isolate, nullptr, global));
     auto localContext = v8::Local<v8::Context>::New(isolate, persistentContext);
 
-    localContext->Enter();
-
     {
       v8::Context::Scope contextScope(localContext);
 
@@ -1859,8 +1846,6 @@ std::unique_ptr<V8Context> V8DealerFeature::buildContext(TRI_vocbase_t* vocbase,
       v8g->_securityContext = old;
     }
 
-    // and return from the context
-    localContext->Exit();
   } catch (...) {
     LOG_TOPIC("35586", WARN, Logger::V8)
         << "caught exception during context initialization";
@@ -1954,7 +1939,6 @@ void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file,
   v8::HandleScope scope(context->_isolate);
   auto localContext =
       v8::Local<v8::Context>::New(context->_isolate, context->_context);
-  localContext->Enter();
 
   {
     v8::Context::Scope contextScope(localContext);
@@ -1976,8 +1960,6 @@ void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file,
     }
   }
 
-  localContext->Exit();
-
   LOG_TOPIC("53bbb", TRACE, arangodb::Logger::V8)
       << "loaded JavaScript file '" << file << "' for V8 context #"
       << context->id();
@@ -1998,7 +1980,6 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
     TRI_GET_GLOBALS();
 
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
-    localContext->Enter();
 
     {
       v8::Context::Scope contextScope(localContext);
@@ -2012,8 +1993,6 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
 
       delete v8g;
     }
-
-    localContext->Exit();
   }
 
   context->_context.Reset();
