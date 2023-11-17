@@ -260,12 +260,6 @@ struct AstNode {
   /// @brief computes a hash value for a value node
   uint64_t hashValue(uint64_t) const noexcept;
 
-/// @brief dump the node (for debugging purposes)
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  std::ostream& toStream(std::ostream& os, int indent) const;
-  void dump(int indent) const;
-#endif
-
   /// @brief compute the value for a constant value node
   /// the value is owned by the node and must not be freed by the caller
   /// the Builder object can be passed in as an optimization

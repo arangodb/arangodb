@@ -757,37 +757,6 @@ uint64_t AstNode::hashValue(uint64_t hash) const noexcept {
   return 0;
 }
 
-/// @brief dump the node (for debugging purposes)
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-std::ostream& AstNode::toStream(std::ostream& os, int level) const {
-  for (int i = 0; i < level; ++i) {
-    os << "  ";
-  }
-  os << "- " << getTypeString();
-
-  if (type == NODE_TYPE_VALUE || type == NODE_TYPE_ARRAY) {
-    VPackBuilder b;
-    toVelocyPackValue(b);
-    os << ": " << b.toJson();
-  } else if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    os << ": " << getString();
-  } else if (type == NODE_TYPE_REFERENCE) {
-    os << ": " << static_cast<Variable const*>(getData())->name;
-  }
-  os << "\n";
-
-  size_t const n = numMembers();
-
-  for (size_t i = 0; i < n; ++i) {
-    auto sub = getMemberUnchecked(i);
-    sub->toStream(os, level + 1);
-  }
-  return os;
-}
-
-void AstNode::dump(int indent) const { toStream(std::cout, indent); }
-#endif
-
 /// @brief compute the value for a constant value node
 /// the value is owned by the node and must not be freed by the caller
 VPackSlice AstNode::computeValue(VPackBuilder* builder) const {

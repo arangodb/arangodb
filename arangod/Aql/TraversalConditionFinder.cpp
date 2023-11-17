@@ -24,6 +24,7 @@
 #include "TraversalConditionFinder.h"
 
 #include "Aql/Ast.h"
+#include "Aql/Ast/PrettyPrinter.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
@@ -358,7 +359,7 @@ bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
             LOG_TOPIC("fcdf3", ERR, arangodb::Logger::FIXME)
                 << "Failed type: " << node->getTypeString();
-            node->dump(0);
+            ast::pretty_printer::toStream(std::cerr, node, 0);
 #endif
             notSupported = true;
             return node;
