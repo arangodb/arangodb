@@ -121,7 +121,7 @@ PregelScheduler::PregelScheduler(Scheduler* scheduler) : _scheduler{scheduler} {
   TRI_ASSERT(_scheduler != nullptr);
 }
 
-void PregelScheduler::queue(actor::ActorWorker&& worker) {
+void PregelScheduler::queue(actor::LazyWorker&& worker) {
   _scheduler->queue(RequestLane::INTERNAL_LOW, std::move(worker));
 }
 
@@ -251,32 +251,22 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
         .algorithm = executionSpecifications.algorithm,
         .ttl = executionSpecifications.ttl,
         .parallelism = executionSpecifications.parallelism}};
-    auto statusActorID = _actorRuntime->spawn<StatusActor>(
+    auto statusActorPID = _actorRuntime->spawn<StatusActor>(
         std::make_unique<StatusState>(vocbase), std::move(statusStart));
-    auto statusActorPID = actor::DistributedActorPID{
-        .server = server, .database = vocbase.name(), .id = statusActorID};
 
-    auto metricsActorID = _actorRuntime->spawn<MetricsActor>(
+    auto metricsActorPID = _actorRuntime->spawn<MetricsActor>(
         std::make_unique<MetricsState>(_metrics),
         metrics::message::MetricsStart{});
-    auto metricsActorPID =
-        actor::DistributedActorPID{.server = ServerState::instance()->getId(),
-                                   .database = vocbase.name(),
-                                   .id = metricsActorID};
 
     auto resultState = std::make_unique<ResultState>(ttl);
     auto resultData = resultState->data;
-    auto resultActorID = _actorRuntime->spawn<ResultActor>(
+    auto resultActorPID = _actorRuntime->spawn<ResultActor>(
         std::move(resultState),
         message::ResultMessages{message::ResultStart{}});
-    auto resultActorPID = actor::DistributedActorPID{
-        .server = server, .database = vocbase.name(), .id = resultActorID};
 
-    auto spawnActorID = _actorRuntime->spawn<SpawnActor>(
+    auto spawnActor = _actorRuntime->spawn<SpawnActor>(
         std::make_unique<SpawnState>(vocbase, resultActorPID),
         message::SpawnMessages{message::SpawnStart{}});
-    auto spawnActor = actor::DistributedActorPID{
-        .server = server, .database = vocbase.name(), .id = spawnActorID};
     auto algorithm = AlgoRegistry::createAlgorithmNew(
         executionSpecifications.algorithm,
         executionSpecifications.userParameters.slice());
@@ -285,14 +275,12 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
                     fmt::format("Unsupported Algorithm: {}",
                                 executionSpecifications.algorithm)};
     }
-    auto conductorActorID = _actorRuntime->spawn<conductor::ConductorActor>(
+    auto conductorActorPID = _actorRuntime->spawn<conductor::ConductorActor>(
         std::make_unique<conductor::ConductorState>(
             std::move(algorithm.value()), executionSpecifications,
             std::move(spawnActor), std::move(resultActorPID),
             std::move(statusActorPID), std::move(metricsActorPID)),
         conductor::message::ConductorStart{});
-    auto conductorActorPID = actor::DistributedActorPID{
-        .server = server, .database = vocbase.name(), .id = conductorActorID};
 
     _pregelRuns.doUnderLock([&](auto& actors) {
       actors.emplace(
@@ -660,9 +648,6 @@ std::shared_ptr<Conductor> PregelFeature::conductor(
 }
 
 void PregelFeature::garbageCollectActors() {
-  // garbage collect all finished actors
-  _actorRuntime->garbageCollect();
-
   // clean up map
   _pregelRuns.doUnderLock([this](auto& items) {
     std::erase_if(items, [this](auto& item) {

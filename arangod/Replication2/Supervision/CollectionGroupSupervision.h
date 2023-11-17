@@ -59,6 +59,10 @@ struct AddCollectionGroupToPlan {
   std::unordered_map<CollectionID, agency::CollectionPlanSpecification>
       collections;
 };
+struct UpdateCollectionGroupInPlan {
+  agency::CollectionGroupId id;
+  agency::CollectionGroup::Attributes::MutableAttributes spec;
+};
 struct UpdateCollectionShardMap {
   CollectionID cid;
   PlanShardToServerMapping mapping;
@@ -101,9 +105,10 @@ struct NoActionPossible {
 using Action = std::variant<
     NoActionRequired, NoActionPossible, UpdateReplicatedLogConfig,
     UpdateConvergedVersion, DropCollectionPlan, DropCollectionGroup,
-    AddCollectionToPlan, AddCollectionGroupToPlan, UpdateCollectionShardMap,
-    AddParticipantToLog, RemoveParticipantFromLog, UpdateCollectionPlan,
-    RemoveCollectionIndexPlan, AddCollectionIndexPlan, IndexConvergedCurrent>;
+    AddCollectionToPlan, AddCollectionGroupToPlan, UpdateCollectionGroupInPlan,
+    UpdateCollectionShardMap, AddParticipantToLog, RemoveParticipantFromLog,
+    UpdateCollectionPlan, RemoveCollectionIndexPlan, AddCollectionIndexPlan,
+    IndexConvergedCurrent>;
 
 struct CollectionGroup {
   agency::CollectionGroupTargetSpecification target;

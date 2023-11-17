@@ -47,9 +47,9 @@ struct EmptyExternalDispatcher : IExternalDispatcher {
 };
 
 template<typename T>
-class ActorRuntimeTest : public testing::Test {
+class DistributedRuntimeTest : public testing::Test {
  public:
-  ActorRuntimeTest() : scheduler{std::make_shared<T>()} {
+  DistributedRuntimeTest() : scheduler{std::make_shared<T>()} {
     scheduler->start(number_of_threads);
   }
 
@@ -57,9 +57,9 @@ class ActorRuntimeTest : public testing::Test {
   size_t number_of_threads = 128;
 };
 using SchedulerTypes = ::testing::Types<MockScheduler, ThreadPoolScheduler>;
-TYPED_TEST_SUITE(ActorRuntimeTest, SchedulerTypes);
+TYPED_TEST_SUITE(DistributedRuntimeTest, SchedulerTypes);
 
-TYPED_TEST(ActorRuntimeTest, formats_runtime_and_actor_state) {
+TYPED_TEST(DistributedRuntimeTest, formats_runtime_and_actor_state) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
       ServerID{"PRMR-1234"}, "RuntimeTest", this->scheduler, dispatcher);
@@ -78,7 +78,8 @@ TYPED_TEST(ActorRuntimeTest, formats_runtime_and_actor_state) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(ActorRuntimeTest, serializes_an_actor_including_its_actor_state) {
+TYPED_TEST(DistributedRuntimeTest,
+           serializes_an_actor_including_its_actor_state) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
       ServerID{"PRMR-1234"}, "RuntimeTest", this->scheduler, dispatcher);
@@ -89,12 +90,12 @@ TYPED_TEST(ActorRuntimeTest, serializes_an_actor_including_its_actor_state) {
   using namespace arangodb::velocypack;
   auto expected =
       R"({"pid":{"server":"PRMR-1234","database":"database","id":1},"state":{"state":"foo","called":1},"batchsize":16})"_vpack;
-  ASSERT_EQ(runtime->getSerializedActorByID(actor)->toJson(),
+  ASSERT_EQ(runtime->getSerializedActorByID(actor.id)->toJson(),
             expected.toJson());
   runtime->softShutdown();
 }
 
-TYPED_TEST(ActorRuntimeTest, spawns_actor) {
+TYPED_TEST(DistributedRuntimeTest, spawns_actor) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
@@ -108,7 +109,7 @@ TYPED_TEST(ActorRuntimeTest, spawns_actor) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(ActorRuntimeTest, sends_initial_message_when_spawning_actor) {
+TYPED_TEST(DistributedRuntimeTest, sends_initial_message_when_spawning_actor) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
@@ -123,7 +124,7 @@ TYPED_TEST(ActorRuntimeTest, sends_initial_message_when_spawning_actor) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(ActorRuntimeTest, gives_all_existing_actor_ids) {
+TYPED_TEST(DistributedRuntimeTest, gives_all_existing_actor_ids) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
@@ -140,11 +141,11 @@ TYPED_TEST(ActorRuntimeTest, gives_all_existing_actor_ids) {
   ASSERT_EQ(allActorIDs.size(), 2);
   ASSERT_EQ(
       (std::unordered_set<ActorID>(allActorIDs.begin(), allActorIDs.end())),
-      (std::unordered_set<ActorID>{actor_foo, actor_bar}));
+      (std::unordered_set<ActorID>{actor_foo.id, actor_bar.id}));
   runtime->softShutdown();
 }
 
-TYPED_TEST(ActorRuntimeTest, sends_message_to_an_actor) {
+TYPED_TEST(DistributedRuntimeTest, sends_message_to_an_actor) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
@@ -152,10 +153,7 @@ TYPED_TEST(ActorRuntimeTest, sends_message_to_an_actor) {
       std::make_unique<TrivialState>("foo"), test::message::TrivialStart{});
 
   runtime->dispatch(
-      DistributedActorPID{
-          .server = "PRMR-1234", .database = "database", .id = actor},
-      DistributedActorPID{
-          .server = "PRMR-1234", .database = "database", .id = actor},
+      actor, actor,
       TrivialActor::Message{test::message::TrivialMessage("baz")});
 
   this->scheduler->stop();
@@ -178,35 +176,31 @@ auto inspect(Inspector& f, SomeMessages& x) {
       arangodb::inspection::type<SomeMessage>("someMessage"));
 }
 TYPED_TEST(
-    ActorRuntimeTest,
+    DistributedRuntimeTest,
     actor_receiving_wrong_message_type_sends_back_unknown_error_message) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
-  auto actor_id = runtime->template spawn<TrivialActor>(
+  auto actor = runtime->template spawn<TrivialActor>(
       std::make_unique<TrivialState>("foo"), test::message::TrivialStart{});
-  auto actor = DistributedActorPID{
-      .server = "PRMR-1234", .database = "database", .id = actor_id};
 
   runtime->dispatch(actor, actor, SomeMessages{SomeMessage{}});
 
   this->scheduler->stop();
   ASSERT_EQ(
-      runtime->template getActorStateByID<TrivialActor>(actor_id),
+      runtime->template getActorStateByID<TrivialActor>(actor),
       (TrivialState(fmt::format("sent unknown message to {}", actor), 2)));
   runtime->softShutdown();
 }
 
 TYPED_TEST(
-    ActorRuntimeTest,
+    DistributedRuntimeTest,
     actor_receives_actor_not_found_message_after_trying_to_send_message_to_non_existent_actor) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
-  auto actor_id = runtime->template spawn<TrivialActor>(
+  auto actor = runtime->template spawn<TrivialActor>(
       std::make_unique<TrivialState>("foo"), test::message::TrivialStart{});
-  auto actor = DistributedActorPID{
-      .server = "PRMR-1234", .database = "database", .id = actor_id};
 
   auto unknown_actor = DistributedActorPID{
       .server = "PRMR-1234", .database = "database", .id = {999}};
@@ -216,13 +210,13 @@ TYPED_TEST(
 
   this->scheduler->stop();
   ASSERT_EQ(
-      runtime->template getActorStateByID<TrivialActor>(actor_id),
+      runtime->template getActorStateByID<TrivialActor>(actor),
       (TrivialState(fmt::format("receiving actor {} not found", unknown_actor),
                     2)));
   runtime->softShutdown();
 }
 
-TYPED_TEST(ActorRuntimeTest, ping_pong_game) {
+TYPED_TEST(DistributedRuntimeTest, ping_pong_game) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
@@ -232,9 +226,7 @@ TYPED_TEST(ActorRuntimeTest, ping_pong_game) {
       std::make_unique<pong_actor::PongState>(), pong_actor::message::Start{});
   auto ping_actor = runtime->template spawn<ping_actor::Actor>(
       std::make_unique<ping_actor::PingState>(),
-      ping_actor::message::Start{
-          .pongActor = DistributedActorPID{
-              .server = serverID, .database = "database", .id = pong_actor}});
+      ping_actor::message::Start{.pongActor = pong_actor});
 
   this->scheduler->stop();
   auto ping_actor_state =
@@ -247,7 +239,7 @@ TYPED_TEST(ActorRuntimeTest, ping_pong_game) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(ActorRuntimeTest, spawn_game) {
+TYPED_TEST(DistributedRuntimeTest, spawn_game) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
@@ -256,12 +248,8 @@ TYPED_TEST(ActorRuntimeTest, spawn_game) {
   auto spawn_actor = runtime->template spawn<SpawnActor>(
       std::make_unique<SpawnState>(), test::message::SpawnStartMessage{});
 
-  runtime->dispatch(
-      DistributedActorPID{
-          .server = serverID, .database = "database", .id = spawn_actor},
-      DistributedActorPID{
-          .server = serverID, .database = "database", .id = spawn_actor},
-      SpawnActor::Message{test::message::SpawnMessage{"baz"}});
+  runtime->dispatch(spawn_actor, spawn_actor,
+                    SpawnActor::Message{test::message::SpawnMessage{"baz"}});
 
   this->scheduler->stop();
   ASSERT_EQ(runtime->getActorIDs().size(), 2);
@@ -270,7 +258,7 @@ TYPED_TEST(ActorRuntimeTest, spawn_game) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(ActorRuntimeTest, finishes_actor_when_actor_says_so) {
+TYPED_TEST(DistributedRuntimeTest, finishes_actor_when_actor_says_so) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
@@ -279,20 +267,16 @@ TYPED_TEST(ActorRuntimeTest, finishes_actor_when_actor_says_so) {
   auto finishing_actor = runtime->template spawn<FinishingActor>(
       std::make_unique<FinishingState>(), test::message::FinishingStart{});
 
-  runtime->dispatch(
-      DistributedActorPID{
-          .server = serverID, .database = "database", .id = finishing_actor},
-      DistributedActorPID{
-          .server = serverID, .database = "database", .id = finishing_actor},
-      FinishingActor::Message{test::message::FinishingFinish{}});
+  runtime->dispatch(finishing_actor, finishing_actor,
+                    FinishingActor::Message{test::message::FinishingFinish{}});
 
   this->scheduler->stop();
-  ASSERT_TRUE(
-      runtime->actors.find(finishing_actor)->get()->isFinishedAndIdle());
+  ASSERT_FALSE(runtime->actors.find(finishing_actor.id).has_value());
   runtime->softShutdown();
 }
 
-TYPED_TEST(ActorRuntimeTest, garbage_collects_finished_actor) {
+TYPED_TEST(DistributedRuntimeTest,
+           finished_actor_automatically_removes_itself) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
@@ -300,24 +284,18 @@ TYPED_TEST(ActorRuntimeTest, garbage_collects_finished_actor) {
   auto finishing_actor = runtime->template spawn<FinishingActor>(
       std::make_unique<FinishingState>(), test::message::FinishingStart{});
 
-  runtime->dispatch(
-      DistributedActorPID{
-          .server = serverID, .database = "database", .id = finishing_actor},
-      DistributedActorPID{
-          .server = serverID, .database = "database", .id = finishing_actor},
-      FinishingActor::Message{test::message::FinishingFinish{}});
+  runtime->dispatch(finishing_actor, finishing_actor,
+                    FinishingActor::Message{test::message::FinishingFinish{}});
   // wait for actor to work off all messages
   while (not runtime->areAllActorsIdle()) {
   }
 
-  runtime->garbageCollect();
-
   this->scheduler->stop();
   ASSERT_EQ(runtime->actors.size(), 0);
-  runtime->softShutdown();
 }
 
-TYPED_TEST(ActorRuntimeTest, garbage_collects_all_finished_actors) {
+TYPED_TEST(DistributedRuntimeTest,
+           finished_actors_automatically_remove_themselves) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
@@ -334,37 +312,26 @@ TYPED_TEST(ActorRuntimeTest, garbage_collects_all_finished_actors) {
   runtime->template spawn<FinishingActor>(std::make_unique<FinishingState>(),
                                           test::message::FinishingStart{});
 
-  runtime->dispatch(DistributedActorPID{.server = serverID,
-                                        .database = "database",
-                                        .id = actor_to_be_finished},
-                    DistributedActorPID{.server = serverID,
-                                        .database = "database",
-                                        .id = actor_to_be_finished},
+  runtime->dispatch(actor_to_be_finished, actor_to_be_finished,
                     FinishingActor::Message{test::message::FinishingFinish{}});
-  runtime->dispatch(DistributedActorPID{.server = serverID,
-                                        .database = "database",
-                                        .id = another_actor_to_be_finished},
-                    DistributedActorPID{.server = serverID,
-                                        .database = "database",
-                                        .id = another_actor_to_be_finished},
+  runtime->dispatch(another_actor_to_be_finished, another_actor_to_be_finished,
                     FinishingActor::Message{test::message::FinishingFinish{}});
   // wait for actor to work off all messages
   while (not runtime->areAllActorsIdle()) {
   }
-
-  runtime->garbageCollect();
 
   this->scheduler->stop();
   ASSERT_EQ(runtime->actors.size(), 3);
   auto remaining_actor_ids = runtime->getActorIDs();
   std::unordered_set<ActorID> actor_ids(remaining_actor_ids.begin(),
                                         remaining_actor_ids.end());
-  ASSERT_FALSE(actor_ids.contains(actor_to_be_finished));
-  ASSERT_FALSE(actor_ids.contains(another_actor_to_be_finished));
+  ASSERT_FALSE(actor_ids.contains(actor_to_be_finished.id));
+  ASSERT_FALSE(actor_ids.contains(another_actor_to_be_finished.id));
   runtime->softShutdown();
+  ASSERT_EQ(runtime->actors.size(), 0);
 }
 
-TYPED_TEST(ActorRuntimeTest,
+TYPED_TEST(DistributedRuntimeTest,
            finishes_and_garbage_collects_all_actors_when_shutting_down) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
@@ -389,7 +356,7 @@ TYPED_TEST(ActorRuntimeTest,
   ASSERT_EQ(runtime->actors.size(), 0);
 }
 
-TEST(ActorRuntimeTest, sends_messages_between_lots_of_actors) {
+TEST(DistributedRuntimeTest, sends_messages_between_lots_of_actors) {
   auto serverID = ServerID{"PRMR-1234"};
   auto scheduler = std::make_shared<ThreadPoolScheduler>();
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
