@@ -1,6 +1,9 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.17.2-preview-2 and arangosync to
+  v2.19.5-preview-1.
+
 * Remove version check on startup of arangosh. This can speed up the startup
   of the arangosh considerably because it won't do a network request to
   www.arangodb.com.
