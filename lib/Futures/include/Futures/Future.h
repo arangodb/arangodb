@@ -161,7 +161,7 @@ void waitImpl(Future<T>& f) {
 
 /// Simple Future library based on Facebooks Folly
 template<typename T>
-class Future {
+class [[nodiscard]] Future {
   static_assert(!std::is_same<void, T>::value,
                 "use futures::Unit instead of void");
 
@@ -343,7 +343,7 @@ class Future {
       } else {
         try {
           auto f = std::invoke(std::forward<DF>(fn), std::move(t).get());
-          std::move(f).then([pr = std::move(pr)](Try<B>&& t) mutable {
+          std::move(f).thenFinal([pr = std::move(pr)](Try<B>&& t) mutable {
             pr.setTry(std::move(t));
           });
         } catch (...) {
@@ -394,7 +394,7 @@ class Future {
                             pr = std::move(promise)](Try<T>&& t) mutable {
       try {
         auto f = std::invoke(std::forward<F>(fn), std::move(t));
-        std::move(f).then([pr = std::move(pr)](Try<B>&& t) mutable {
+        std::move(f).thenFinal([pr = std::move(pr)](Try<B>&& t) mutable {
           pr.setTry(std::move(t));
         });
       } catch (...) {
@@ -467,7 +467,7 @@ class Future {
         } catch (ET& e) {
           try {
             auto f = std::invoke(std::forward<DF>(fn), e);
-            std::move(f).then([pr = std::move(pr)](Try<B>&& t) mutable {
+            std::move(f).thenFinal([pr = std::move(pr)](Try<B>&& t) mutable {
               pr.setTry(std::move(t));
             });
           } catch (...) {
@@ -531,3 +531,6 @@ class Future {
 
 }  // namespace futures
 }  // namespace arangodb
+
+// make this available for convenience
+#include "Futures/coro-helper.h"

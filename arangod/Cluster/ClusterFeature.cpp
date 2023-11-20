@@ -1208,6 +1208,12 @@ void ClusterFeature::scheduleConnectivityCheck(std::uint32_t inSeconds) {
     return;
   }
 
+  std::lock_guard<std::mutex> guard(_connectivityCheckMutex);
+
+  if (server().isStopping()) {
+    return;
+  }
+
   auto workItem = arangodb::SchedulerFeature::SCHEDULER->queueDelayed(
       "connectivity-check", RequestLane::INTERNAL_LOW,
       std::chrono::seconds(inSeconds), [this](bool canceled) {
@@ -1218,14 +1224,10 @@ void ClusterFeature::scheduleConnectivityCheck(std::uint32_t inSeconds) {
         if (!this->server().isStopping()) {
           runConnectivityCheck();
         }
-        if (!this->server().isStopping()) {
-          scheduleConnectivityCheck(
-              _connectivityCheckInterval +
-              RandomGenerator::interval(std::uint32_t(3)));
-        }
+        scheduleConnectivityCheck(_connectivityCheckInterval +
+                                  RandomGenerator::interval(std::uint32_t(3)));
       });
 
-  std::lock_guard<std::mutex> guard(_connectivityCheckMutex);
   _connectivityCheck = std::move(workItem);
 }
 

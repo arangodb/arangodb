@@ -33,9 +33,9 @@ class RocksDBRestCollectionHandler : public arangodb::RestCollectionHandler {
                                GeneralResponse*);
 
  protected:
-  Result handleExtraCommandPut(std::shared_ptr<LogicalCollection> coll,
-                               std::string const& command,
-                               velocypack::Builder& builder) override final;
+  futures::Future<Result> handleExtraCommandPut(
+      std::shared_ptr<LogicalCollection> coll, std::string const& command,
+      velocypack::Builder& builder) override final;
 };
 
 }  // namespace arangodb

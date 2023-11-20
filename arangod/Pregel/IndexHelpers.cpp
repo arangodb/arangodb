@@ -48,7 +48,7 @@ EdgeCollectionInfo::EdgeCollectionInfo(ResourceMonitor& monitor,
       _collection(nullptr),
       _coveringPosition(0),
       _searchBuilder(monitor) {
-  _trx->addCollectionAtRuntime(_collectionName, AccessMode::Type::READ);
+  _trx->addCollectionAtRuntime(_collectionName, AccessMode::Type::READ).get();
 
   if (auto collection = trx->resolver()->getCollection(collectionName);
       collection != nullptr) {
