@@ -235,7 +235,6 @@ bool insertConstantAttribute(ExecutionPlan& plan, AstNode* parentNode,
 bool insertConstantAttributes(ExecutionPlan& plan, AstNode* node,
                               std::size_t currentLimitCount,
                               VarReplacementTransientMap const& replacements) {
-  LOG_RULE << __PRETTY_FUNCTION__ << " " << node->toString();
   if (node == nullptr) {
     return false;
   }
