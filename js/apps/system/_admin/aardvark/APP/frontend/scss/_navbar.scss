@@ -256,6 +256,9 @@ $navbar-size: 150px;
 
   > li {
     line-height: 30px;
+    &:hover {
+      background-color: var(--gray-800);
+    }
   }
 
   li {
@@ -324,7 +327,7 @@ $navbar-size: 150px;
   }
 
   > .active {
-    background-color: rgba(255, 255, 255, .2);
+    background-color: var(--gray-900);
 
     a {
       opacity: 1;
@@ -361,17 +364,13 @@ $navbar-size: 150px;
 }
 
 .tab {
+  display: flex;
+  align-items: center;
   color: rgba(255, 255, 255, .8);
-  display: block;
-  font-size: 9pt;
-  font-weight: 100;
-  padding: {
-    bottom: 5px;
-    left: 5px;
-    right: 5px;
-    top: 5px;
-  }
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 400;
+  padding: 0 8px;
+  height: 36px;
 
   &.userImg {
     padding-bottom: 5px;
