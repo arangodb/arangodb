@@ -836,6 +836,8 @@ void ClusterInfo::loadPlan() {
 
   [[maybe_unused]] auto start = clock::now();
 
+  LOG_DEVEL_IF(_debugLog) << "trying to load plan";
+
   auto& clusterFeature = _server.getFeature<ClusterFeature>();
   auto& databaseFeature = _server.getFeature<DatabaseFeature>();
   auto& agencyCache = clusterFeature.agencyCache();
@@ -1733,7 +1735,8 @@ void ClusterInfo::loadPlan() {
   _resourceMonitor.increaseMemoryUsage(memoryUsage);
   _planMemoryUsage = memoryUsage;
 
-  LOG_TOPIC("54321", DEBUG, Logger::CLUSTER)
+  LOG_DEVEL_IF(_debugLog)
+      // LOG_TOPIC("54321", DEBUG, Logger::CLUSTER)
       << "Updating ClusterInfo plan: version=" << _planVersion
       << " index=" << _planIndex;
 
@@ -1770,6 +1773,8 @@ void ClusterInfo::loadPlan() {
 
   {
     std::lock_guard w(_waitPlanLock);
+    LOG_DEVEL_IF(_waitPlan.empty() == false)
+        << "Triggering waiting threads for plan " << _planIndex;
     triggerWaiting(_waitPlan, _planIndex);
     auto heartbeatThread = clusterFeature.heartbeatThread();
     if (heartbeatThread) {
@@ -5550,8 +5555,12 @@ futures::Future<Result> ClusterInfo::waitForCurrentVersion(
       ->second.getFuture();
 }
 
-futures::Future<Result> ClusterInfo::waitForPlan(uint64_t raftIndex) {
+futures::Future<Result> ClusterInfo::waitForPlan(uint64_t raftIndex,
+                                                 bool doLog) {
   READ_LOCKER(readLocker, _planProt.lock);
+
+  LOG_DEVEL_IF(doLog) << "waitForPlan: " << raftIndex << " <= " << _planIndex;
+
   if (raftIndex <= _planIndex) {
     return futures::makeFuture(Result());
   }
@@ -5563,6 +5572,7 @@ futures::Future<Result> ClusterInfo::waitForPlan(uint64_t raftIndex) {
   // intentionally don't release _storeLock here until we have inserted the
   // promise
   std::lock_guard w(_waitPlanLock);
+  LOG_DEVEL_IF(doLog) << "registering waitForPlan on: " << raftIndex;
   return _waitPlan.emplace(raftIndex, futures::Promise<Result>())
       ->second.getFuture();
 }

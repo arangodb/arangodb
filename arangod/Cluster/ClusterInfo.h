@@ -323,7 +323,11 @@ class ClusterInfo final {
    * @param raftIndex Raft index to wait for
    * @return Operation's result
    */
-  [[nodiscard]] futures::Future<Result> waitForPlan(uint64_t raftIndex);
+  [[nodiscard]] futures::Future<Result> waitForPlan(uint64_t raftIndex,
+                                                    bool doLog = false);
+
+  void activateLogging(bool activate) { _debugLog = activate; };
+  bool _debugLog = false;
 
   /**
    * @brief Wait for Plan cache to be at the given Plan version

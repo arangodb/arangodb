@@ -839,6 +839,11 @@ auto ensureIndexCoordinatorReplication2Inner(
   AgencyComm ac(server);
 
   AgencyWriteTransaction trx(newValue, oldValue);
+
+  clusterInfo.activateLogging(true);
+  ScopeGuard unlogger(
+      [&clusterInfo]() noexcept { clusterInfo.activateLogging(false); });
+
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
 
   if (!result.successful()) {
@@ -886,12 +891,15 @@ auto ensureIndexCoordinatorReplication2Inner(
                   }
                   return false;
                 })
-            .thenValue([&clusterInfo](auto index) {
+            .thenValue([&clusterInfo, id = std::string{idString}](auto index) {
               // Need to wait here, until ClusterInfo has updated to latest
               // plan.
-              return clusterInfo.waitForPlan(index);
+              LOG_DEVEL << "Waiting for ClusterInfo to update to latest plan "
+                        << id << " index " << index;
+              return clusterInfo.waitForPlan(index, true);
             });
     auto res = waitOnSuccess.get();
+    LOG_DEVEL << "Waited for " << idString << " " << res;
     if (res.fail()) {
       return res;
     }
