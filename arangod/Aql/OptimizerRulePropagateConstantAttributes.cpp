@@ -45,7 +45,7 @@ namespace {
 
 struct Replacement {
   std::uint64_t limitCount;
-  AstNode const* ast;
+  AstNode* ast;
 };
 
 struct VarAttributeAccess {
@@ -97,7 +97,7 @@ bool getAttribute(AstNode const* attribute,
 /// @brief inspect the constant value assigned to an attribute
 /// the attribute value will be stored so it can be inserted for the attribute
 /// later
-void inspectConstantAttribute(AstNode const* attribute, AstNode const* value,
+void inspectConstantAttribute(AstNode const* attribute, AstNode* value,
                               std::size_t currentLimitCount,
                               VarReplacementTransientMap& replacements) {
   VarAttributeAccess access;
@@ -114,7 +114,8 @@ void inspectConstantAttribute(AstNode const* attribute, AstNode const* value,
   }
 }
 
-void collectConstantAttributes(AstNode* node, std::size_t currentLimitCount,
+void collectConstantAttributes(AstNode const* node,
+                               std::size_t currentLimitCount,
                                VarReplacementTransientMap& replacements) {
   if (node == nullptr) {
     return;
@@ -148,9 +149,9 @@ void collectConstantAttributes(AstNode* node, std::size_t currentLimitCount,
   }
 }
 
-AstNode const* getConstant(VarAttributeAccess const& access,
-                           std::size_t currentLimitCount,
-                           VarReplacementTransientMap const& replacements) {
+AstNode* getConstant(VarAttributeAccess const& access,
+                     std::size_t currentLimitCount,
+                     VarReplacementTransientMap const& replacements) {
   auto it = replacements.find(access);
 
   if (it == nullptr) {
@@ -158,7 +159,7 @@ AstNode const* getConstant(VarAttributeAccess const& access,
   }
 
   // Check is the constant was found at this limit count, i.e. check
-  // if there is a limit node between this node and whiteness.
+  // if there is a limit node between this node and witness.
   if (it->limitCount > currentLimitCount) {
     return nullptr;
   }
@@ -223,7 +224,7 @@ bool insertConstantAttribute(ExecutionPlan& plan, AstNode* parentNode,
     }
 
     LOG_RULE << "CHANGE MEMBER";
-    parentNode->changeMember(accessIndex, const_cast<AstNode*>(constantValue));
+    parentNode->changeMember(accessIndex, constantValue);
     return true;
   }
 
@@ -293,8 +294,8 @@ bool processQuery(ExecutionPlan& plan, ExecutionNode* root,
       auto cn = ExecutionNode::castTo<CalculationNode*>(setter);
       auto expression = cn->expression();
 
-      collectConstantAttributes(const_cast<AstNode*>(expression->node()),
-                                localLimitCount, replacementsMutable);
+      collectConstantAttributes(expression->node(), localLimitCount,
+                                replacementsMutable);
     }
   }
 
