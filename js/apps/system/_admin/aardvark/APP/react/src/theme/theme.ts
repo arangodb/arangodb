@@ -86,6 +86,32 @@ export const theme = extendTheme({
         }
       }
     },
+    Radio: {
+      defaultProps: {
+        colorScheme: "green"
+      },
+      baseStyle: {
+        control: {
+          _checked: {
+            bg: "green.600",
+            borderColor: "green.600"
+          }
+        }
+      }
+    },
+    Checkbox: {
+      defaultProps: {
+        colorScheme: "green"
+      },
+      baseStyle: {
+        control: {
+          _checked: {
+            bg: "green.600",
+            borderColor: "green.600"
+          }
+        }
+      }
+    },
     Switch: {
       defaultProps: {
         colorScheme: "green"
