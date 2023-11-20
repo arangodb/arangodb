@@ -43,15 +43,9 @@ class ExecutionEngine;
 class ExecutionPlan;
 
 // not yet supported:
-// - post-filtering
 // - IndexIteratorOptions: sorted, ascending, evalFCalls, useCache, waitForSync,
 // limit, lookahead
 // - reverse iteration
-// - support from GatherNodes
-// - producesResult
-// - read own writes
-// - proper cost estimates
-// - profile output in explainer
 class JoinNode : public ExecutionNode {
   friend class ExecutionBlock;
 
@@ -66,6 +60,7 @@ class JoinNode : public ExecutionNode {
     Projections projections;
     Projections filterProjections;
     bool usedAsSatellite;  // TODO maybe use CollectionAccess class
+    bool producesOutput;
   };
 
   JoinNode(ExecutionPlan* plan, ExecutionNodeId id,
@@ -97,6 +92,12 @@ class JoinNode : public ExecutionNode {
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
 
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable,
+                              size_t index) override;
+
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;
 
@@ -113,8 +114,7 @@ class JoinNode : public ExecutionNode {
   std::vector<IndexInfo> const& getIndexInfos() const;
   std::vector<IndexInfo>& getIndexInfos();
 
-  /// TODO: check if this is adequate
-  bool isDeterministic() override final { return true; }
+  bool isDeterministic() override final;
 
  protected:
   /// @brief export to VelocyPack

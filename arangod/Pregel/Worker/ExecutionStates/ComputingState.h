@@ -28,7 +28,7 @@
 
 namespace arangodb::pregel::worker {
 struct VerticesProcessed {
-  std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor;
+  std::unordered_map<actor::DistributedActorPID, uint64_t> sendCountPerActor;
   size_t activeCount;
 };
 
@@ -43,7 +43,8 @@ struct Computing : ExecutionState {
   [[nodiscard]] auto name() const -> std::string override {
     return "computing";
   };
-  auto receive(actor::ActorPID const& sender, actor::ActorPID const& self,
+  auto receive(actor::DistributedActorPID const& sender,
+               actor::DistributedActorPID const& self,
                message::WorkerMessages const& message, Dispatcher dispatcher)
       -> std::unique_ptr<ExecutionState> override;
 

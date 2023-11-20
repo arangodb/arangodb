@@ -70,7 +70,7 @@ function StatementSuiteNonCluster () {
       var plan = result.plan;
       assertTrue(plan.hasOwnProperty("estimatedCost"));
       assertTrue(plan.hasOwnProperty("rules"));
-      assertEqual([ "scatter-in-cluster", "remove-unnecessary-remote-scatter" ], plan.rules);
+      assertEqual([ "scatter-in-cluster", "remove-unnecessary-remote-scatter", "async-prefetch" ], plan.rules);
       assertTrue(plan.hasOwnProperty("nodes"));
       assertTrue(plan.hasOwnProperty("collections"));
       assertEqual([ { "name" : "_users", "type" : "read" } ], plan.collections);

@@ -101,6 +101,10 @@ bool OutputAqlItemRow::isInitialized() const noexcept {
   return _block != nullptr;
 }
 
+void OutputAqlItemRow::handleEmptyRow(InputAqlItemRow const& sourceRow) {
+  copyRow(sourceRow);
+}
+
 template<class ItemRowType>
 void OutputAqlItemRow::cloneValueInto(RegisterId registerId,
                                       ItemRowType const& sourceRow,
@@ -114,7 +118,7 @@ void OutputAqlItemRow::cloneValueInto(RegisterId registerId,
 template<class ItemRowType, class ValueType>
 void OutputAqlItemRow::moveValueWithoutRowCopy(RegisterId registerId,
                                                ValueType value) {
-  TRI_ASSERT(isOutputRegister(registerId));
+  TRI_ASSERT(isOutputRegister(registerId)) << registerId.value();
   // This is already implicitly asserted by isOutputRegister:
   TRI_ASSERT(registerId.isRegularRegister());
   TRI_ASSERT(registerId < getNumRegisters());
@@ -129,7 +133,7 @@ void OutputAqlItemRow::moveValueWithoutRowCopy(RegisterId registerId,
   } else {
     block().emplaceValue(_baseIndex, registerId.value(), value);
   }
-  _numValuesWritten++;
+  ++_numValuesWritten;
 }
 
 template<class ItemRowType, class ValueType>
@@ -291,10 +295,8 @@ size_t OutputAqlItemRow::numRowsWritten() const noexcept {
 
 void OutputAqlItemRow::advanceRow() noexcept {
   // cppcheck-suppress ignoredReturnValue
-  TRI_ASSERT(produced());
-  // cppcheck-suppress ignoredReturnValue
-  TRI_ASSERT(allValuesWritten());
-  TRI_ASSERT(_inputRowCopied);
+  TRI_ASSERT(produced()) << "input row copied: " << _inputRowCopied
+                         << ", all values written: " << allValuesWritten();
   if (!_block->isShadowRow(_baseIndex)) {
     // We have written a data row into the output.
     // Need to count it.

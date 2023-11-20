@@ -1,4 +1,3 @@
-/* global AQL_EXPLAIN, AQL_EXECUTE */
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -62,7 +61,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
           FILTER d.i == 0
           RETURN d
       `;
-            const res = db._createStatement({query: query.query, bindVars:  query.bindVars}).explain();
+            const res = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
             const nodeTypes = res.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
             const appliedRules = res.plan.rules;
             assertEqual(["SingletonNode", "EnumerateCollectionNode", "ReturnNode"], nodeTypes);
@@ -76,7 +75,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
           FILTER d.x >= 0 && d.i == 0
           RETURN d
       `;
-            const res = db._createStatement({query: query.query, bindVars:  query.bindVars}).explain();
+            const res = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
             const nodeTypes = res.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
             const appliedRules = res.plan.rules;
             assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
@@ -91,10 +90,10 @@ function optimizerRuleZkd2dIndexTestSuite() {
           FILTER 0 <= d.x && d.x <= 1
           RETURN d.x
       `;
-            const explainRes = db._createStatement({query: query.query, bindVars:  query.bindVars}).explain();
+            const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
             const appliedRules = explainRes.plan.rules;
             const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
-            assertEqual(["SingletonNode", "IndexNode", "CalculationNode", "ReturnNode"], nodeTypes);
+            assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
             assertTrue(appliedRules.includes(useIndexes));
             assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
             const executeRes = db._query(query.query, query.bindVars);
@@ -109,10 +108,10 @@ function optimizerRuleZkd2dIndexTestSuite() {
           FILTER 0 <= d.x && d.y <= 1
           RETURN d.x
       `;
-            const explainRes = db._createStatement({query: query.query, bindVars:  query.bindVars}).explain();
+            const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
             const appliedRules = explainRes.plan.rules;
             const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
-            assertEqual(["SingletonNode", "IndexNode", "CalculationNode", "ReturnNode"], nodeTypes);
+            assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
             assertTrue(appliedRules.includes(useIndexes));
             assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
             const executeRes = db._query(query.query, query.bindVars);
@@ -128,10 +127,10 @@ function optimizerRuleZkd2dIndexTestSuite() {
           FILTER 10 <= d.y && d.y <= 16
           RETURN d.x
       `;
-            const explainRes = db._createStatement({query: query.query, bindVars:  query.bindVars}).explain();
+            const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
             const appliedRules = explainRes.plan.rules;
             const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
-            assertEqual(["SingletonNode", "IndexNode", "CalculationNode", "ReturnNode"], nodeTypes);
+            assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
             assertTrue(appliedRules.includes(useIndexes));
             assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
             const executeRes = db._query(query.query, query.bindVars);
@@ -147,10 +146,10 @@ function optimizerRuleZkd2dIndexTestSuite() {
           FILTER d.y >= 0 && d.y <= 11
           RETURN d.x
       `;
-            const explainRes = db._createStatement({query: query.query, bindVars:  query.bindVars}).explain();
+            const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
             const appliedRules = explainRes.plan.rules;
             const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
-            assertEqual(["SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode"], nodeTypes);
+            assertEqual(["SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "ReturnNode"], nodeTypes);
             assertTrue(appliedRules.includes(useIndexes));
             //assertTrue(appliedRules.includes(removeFilterCoveredByIndex)); -- TODO
             const executeRes = db._query(query.query, query.bindVars);
@@ -165,10 +164,10 @@ function optimizerRuleZkd2dIndexTestSuite() {
           FILTER 0 == d.x
           RETURN d.x
       `;
-            const explainRes = db._createStatement({query: query.query, bindVars:  query.bindVars}).explain();
+            const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
             const appliedRules = explainRes.plan.rules;
             const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
-            assertEqual(["SingletonNode", "IndexNode", "CalculationNode", "ReturnNode"], nodeTypes);
+            assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
             assertTrue(appliedRules.includes(useIndexes));
             assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
             const executeRes = db._query(query.query, query.bindVars);
@@ -183,10 +182,10 @@ function optimizerRuleZkd2dIndexTestSuite() {
           FILTER 0 == d.x && 0 == d.y
           RETURN d.x
       `;
-            const explainRes = db._createStatement({query: query.query, bindVars:  query.bindVars}).explain();
+            const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
             const appliedRules = explainRes.plan.rules;
             const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
-            assertEqual(["SingletonNode", "IndexNode", "CalculationNode", "ReturnNode"], nodeTypes);
+            assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
             assertTrue(appliedRules.includes(useIndexes));
             assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
             const executeRes = db._query(query.query, query.bindVars);
@@ -201,10 +200,10 @@ function optimizerRuleZkd2dIndexTestSuite() {
           FILTER 0 < d.x && d.y <= 1
           RETURN d.x
       `;
-            const explainRes = db._createStatement({query: query.query, bindVars:  query.bindVars}).explain();
+            const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
             const appliedRules = explainRes.plan.rules;
             const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
-            assertEqual(["SingletonNode", "IndexNode", "CalculationNode", "ReturnNode"], nodeTypes);
+            assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
             assertTrue(appliedRules.includes(useIndexes));
             assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
             assertTrue(appliedRules.includes(moveFiltersIntoEnumerate));

@@ -620,8 +620,8 @@ void MerkleTree<Hasher, BranchingBits>::insert(
   std::vector<std::uint64_t> sortedKeys = keys;
   std::sort(sortedKeys.begin(), sortedKeys.end());
 
-  std::uint64_t minKey = sortedKeys[0];
-  std::uint64_t maxKey = sortedKeys[sortedKeys.size() - 1];
+  std::uint64_t minKey = sortedKeys.front();
+  std::uint64_t maxKey = sortedKeys.back();
 
   std::unique_lock<std::shared_mutex> guard(_dataLock);
 
@@ -657,8 +657,8 @@ void MerkleTree<Hasher, BranchingBits>::remove(
   std::vector<std::uint64_t> sortedKeys = keys;
   std::sort(sortedKeys.begin(), sortedKeys.end());
 
-  std::uint64_t minKey = sortedKeys[0];
-  std::uint64_t maxKey = sortedKeys[sortedKeys.size() - 1];
+  std::uint64_t minKey = sortedKeys.front();
+  std::uint64_t maxKey = sortedKeys.back();
 
   std::unique_lock<std::shared_mutex> guard(_dataLock);
 

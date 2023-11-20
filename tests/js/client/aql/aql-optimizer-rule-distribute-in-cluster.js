@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertTrue, assertMatch, AQL_EXPLAIN, AQL_EXECUTE */
+/*global assertEqual, assertNotEqual, assertTrue, assertMatch */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -94,7 +94,7 @@ function optimizerRuleTestSuite () {
         let c = db._create(temp, { numberOfShards: i });
         try {
           queries.forEach(function(query) {
-            let result = db._createStatement({query: query[0], bindVars:  {}, options:  thisRuleEnabled}).explain();
+            let result = db._createStatement({query: query[0], options: thisRuleEnabled}).explain();
             assertNotEqual(-1, explain(result).indexOf("DistributeNode"));
             if (query[1]) {
               assertMatch(/MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION/, JSON.stringify(result.plan.nodes));
@@ -130,7 +130,7 @@ function optimizerRuleTestSuite () {
         let c = db._create(temp, { numberOfShards: i, shardKeys: ["testi"] });
         try {
           queries.forEach(function(query) {
-            let result = db._createStatement({query: query[0], bindVars:  {}, options:  thisRuleEnabled}).explain();
+            let result = db._createStatement({query: query[0], options: thisRuleEnabled}).explain();
             assertNotEqual(-1, explain(result).indexOf("DistributeNode"));
             assertMatch(/MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION/, JSON.stringify(result.plan.nodes));
 
@@ -183,7 +183,7 @@ function optimizerRuleTestSuite () {
                           ];
 
       queries.forEach(function(query, i) {
-        var result = db._createStatement({query: query, bindVars:  { }, options:  maxPlans}).explain();
+        var result = db._createStatement({query: query, options: maxPlans}).explain();
         assertEqual(expectedRules[i], result.plan.rules, query);
       });
     },
@@ -394,7 +394,7 @@ function optimizerRuleTestSuite () {
                           ];
 
       queries.forEach(function(query, i) {
-        var result = db._createStatement({query: query, bindVars:  { }, options:  thisRuleEnabled}).explain();
+        var result = db._createStatement({query: query, options: thisRuleEnabled}).explain();
         assertEqual(expectedRules[i], result.plan.rules, query);
         assertEqual(expectedNodes[i], explain(result), query);
       });
@@ -415,20 +415,21 @@ function optimizerRuleTestSuite () {
       var expectedRules = [
                             [ 
                               "distribute-in-cluster", 
+                              "optimize-projections",
                               "remove-data-modification-out-variables",
                               "remove-unnecessary-remote-scatter",
                               "scatter-in-cluster", 
                               "undistribute-remove-after-enum-coll",
-                              "remove-unnecessary-projections"
                             ], 
                             [ 
                               "distribute-in-cluster", 
                               "distribute-filtercalc-to-cluster", 
+                              "optimize-projections",
                               "remove-data-modification-out-variables",
+                              "remove-unnecessary-calculations-4", 
                               "remove-unnecessary-remote-scatter",
                               "scatter-in-cluster", 
                               "undistribute-remove-after-enum-coll",
-                              "remove-unnecessary-projections"
                             ],
                             [ 
                               "distribute-in-cluster", 
@@ -439,10 +440,11 @@ function optimizerRuleTestSuite () {
                             [ 
                               "distribute-filtercalc-to-cluster", 
                               "distribute-in-cluster", 
+                              "optimize-projections",
                               "remove-data-modification-out-variables",
+                              "remove-unnecessary-calculations-4", 
                               "remove-unnecessary-remote-scatter",
                               "scatter-in-cluster",
-                              "remove-unnecessary-projections"
                             ]
                           ];
 
@@ -457,7 +459,6 @@ function optimizerRuleTestSuite () {
                             [
                               "SingletonNode",
                               "EnumerateCollectionNode", 
-                              "CalculationNode", 
                               "RemoveNode",
                               "RemoteNode",
                               "GatherNode"
@@ -477,7 +478,6 @@ function optimizerRuleTestSuite () {
                             [ 
                               "SingletonNode", 
                               "EnumerateCollectionNode", 
-                              "CalculationNode", 
                               "RemoteNode", 
                               "GatherNode", 
                               "CalculationNode", 
@@ -491,10 +491,10 @@ function optimizerRuleTestSuite () {
 
       queries.forEach(function(query, i) {
         // can't turn this rule off so should always get the same answer
-        var result = db._createStatement({query: query, bindVars:  { }, options:  rulesAll}).explain();
+        var result = db._createStatement({query: query, options:  rulesAll}).explain();
 
         assertEqual(expectedRules[i].sort(), result.plan.rules.sort(), query);
-        result = db._createStatement({query: query, bindVars:  { }, options:  thisRuleDisabled}).explain();
+        result = db._createStatement({query: query, options:  thisRuleDisabled}).explain();
         assertEqual(expectedNodes[i], explain(result), query);
       });
     },
@@ -514,20 +514,21 @@ function optimizerRuleTestSuite () {
       var expectedRules = [
                             [ 
                               "distribute-in-cluster", 
+                              "optimize-projections",
                               "remove-data-modification-out-variables",
                               "remove-unnecessary-remote-scatter",
                               "scatter-in-cluster", 
                               "undistribute-remove-after-enum-coll",
-                              "remove-unnecessary-projections"
                             ], 
                             [ 
                               "distribute-filtercalc-to-cluster", 
                               "distribute-in-cluster", 
+                              "optimize-projections",
                               "remove-data-modification-out-variables",
+                              "remove-unnecessary-calculations-4", 
                               "remove-unnecessary-remote-scatter",
                               "scatter-in-cluster", 
                               "undistribute-remove-after-enum-coll",
-                              "remove-unnecessary-projections"
                             ],
                             [ 
                               "distribute-in-cluster", 
@@ -538,10 +539,11 @@ function optimizerRuleTestSuite () {
                             [ 
                               "distribute-filtercalc-to-cluster", 
                               "distribute-in-cluster", 
+                              "optimize-projections",
                               "remove-data-modification-out-variables",
+                              "remove-unnecessary-calculations-4", 
                               "remove-unnecessary-remote-scatter", 
                               "scatter-in-cluster",
-                              "remove-unnecessary-projections"
                             ]
                           ];
 
@@ -556,7 +558,6 @@ function optimizerRuleTestSuite () {
                             [
                               "SingletonNode",
                               "EnumerateCollectionNode", 
-                              "CalculationNode", 
                               "RemoveNode",
                               "RemoteNode",
                               "GatherNode"
@@ -576,7 +577,6 @@ function optimizerRuleTestSuite () {
                             [ 
                               "SingletonNode", 
                               "EnumerateCollectionNode", 
-                              "CalculationNode", 
                               "RemoteNode", 
                               "GatherNode", 
                               "CalculationNode", 
@@ -590,7 +590,7 @@ function optimizerRuleTestSuite () {
       
       queries.forEach(function(query, i) {
         // can't turn this rule off so should always get the same answer
-        var result = db._createStatement({query: query, bindVars:  { }, options:  rulesAll}).explain();
+        var result = db._createStatement({query: query, options: rulesAll}).explain();
         assertEqual(expectedRules[i].sort(), result.plan.rules.sort(), query);
         assertEqual(expectedNodes[i], explain(result), query);
       });
@@ -689,7 +689,7 @@ function optimizerRuleTestSuite () {
 
       queries.forEach(function(query, i) {
         // can't turn this rule off so should always get the same answer
-        var result = db._createStatement({query: query, bindVars:  { }, options:  rulesNone}).explain();
+        var result = db._createStatement({query: query, options: rulesNone}).explain();
         assertEqual(expectedRules[i], result.plan.rules, query);
         assertEqual(expectedNodes[i], explain(result), query);
       });
@@ -709,8 +709,8 @@ function optimizerRuleTestSuite () {
        ];
 
       queries.forEach(function(query) {
-        var result1 = db._createStatement({query: query, bindVars:  { }, options:  thisRuleEnabled}).explain();
-        var result2 = db._createStatement({query: query, bindVars:  { }, options:  rulesAll}).explain();
+        var result1 = db._createStatement({query: query, options: thisRuleEnabled}).explain();
+        var result2 = db._createStatement({query: query, options: rulesAll}).explain();
 
         assertTrue(result1.plan.rules.indexOf(ruleName) === -1, query);
         assertTrue(result2.plan.rules.indexOf(ruleName) === -1, query);
@@ -844,7 +844,6 @@ function interactionOtherRulesTestSuite () {
                                      "EnumerateCollectionNode", 
                                      "CalculationNode", 
                                      "FilterNode", 
-                                     "CalculationNode", 
                                      "RemoveNode", 
                                      "RemoteNode", 
                                      "GatherNode"
@@ -878,10 +877,8 @@ function interactionOtherRulesTestSuite () {
                                       "EnumerateCollectionNode", 
                                       "CalculationNode", 
                                       "FilterNode", 
-                                      "CalculationNode", 
                                       "RemoteNode", 
                                       "GatherNode", 
-                                      "CalculationNode", 
                                       "DistributeNode", 
                                       "RemoteNode", 
                                       "RemoveNode", 
@@ -920,12 +917,12 @@ function interactionOtherRulesTestSuite () {
                                   ];
 
       queries.forEach(function(query, i) {
-        var result = db._createStatement({query: query, bindVars: { }, options: allRules}).explain();
+        var result = db._createStatement({query: query, options: allRules}).explain();
         assertTrue(result.plan.rules.indexOf(distribute) !== -1, query);
         assertTrue(result.plan.rules.indexOf(undist) !== -1, query);
         assertEqual(expectedNodesEnabled[i], explain(result), query);
         
-        result = db._createStatement({query: query, bindVars: { }, options: ruleDisabled}).explain();
+        result = db._createStatement({query: query, options: ruleDisabled}).explain();
         assertTrue(result.plan.rules.indexOf(distribute) !== -1, query);
         assertTrue(result.plan.rules.indexOf(undist) === -1, query);
         assertEqual(expectedNodesDisabled[i], explain(result), query);
@@ -987,13 +984,13 @@ function interactionOtherRulesTestSuite () {
       ];
 
       queries.forEach(function(query, i) {
-        var result = db._createStatement({query: query, bindVars: { }, options: allRules}).explain();
+        var result = db._createStatement({query: query, options: allRules}).explain();
         assertTrue(result.plan.rules.indexOf(scatter) !== -1, query);
         assertTrue(result.plan.rules.indexOf(undist) !== -1, query);
         assertTrue(result.plan.rules.indexOf(distribute) === -1, query);
         assertEqual(expectedNodesEnabled[i], explain(result), query);
         
-        result = db._createStatement({query: query, bindVars: { }, options: ruleDisabled}).explain();
+        result = db._createStatement({query: query, options: ruleDisabled}).explain();
         assertTrue(result.plan.rules.indexOf(scatter) !== -1, query);
         assertTrue(result.plan.rules.indexOf(undist) === -1, query);
         assertTrue(result.plan.rules.indexOf(distribute) === -1, query);
@@ -1053,10 +1050,8 @@ function interactionOtherRulesTestSuite () {
           "EnumerateCollectionNode", 
           "CalculationNode", 
           "FilterNode", 
-          "CalculationNode", 
           "RemoteNode", 
           "GatherNode", 
-          "CalculationNode", 
           "DistributeNode", 
           "RemoteNode", 
           "RemoveNode", 
@@ -1139,12 +1134,12 @@ function interactionOtherRulesTestSuite () {
       ];
 
       queries.forEach(function(query, i) {
-        var result = db._createStatement({query: query, bindVars:{ }, options: allRulesNoInter}).explain();
+        var result = db._createStatement({query: query, options: allRulesNoInter}).explain();
         assertTrue(result.plan.rules.indexOf(undist) === -1, query);
         assertTrue(result.plan.rules.indexOf(distribute) !== -1, query);
         assertEqual(expectedNodes[i], explain(result), query);
         
-        result = db._createStatement({query: query, bindVars:  { }, options:  ruleDisabledNoInter}).explain();
+        result = db._createStatement({query: query, options: ruleDisabledNoInter}).explain();
         assertTrue(result.plan.rules.indexOf(undist) === -1, query);
         assertTrue(result.plan.rules.indexOf(distribute) !== -1, query);
         assertEqual(expectedNodes[i], explain(result), query);
@@ -1201,7 +1196,6 @@ function interactionOtherRulesTestSuite () {
         "EnumerateCollectionNode", 
         "CalculationNode", 
         "FilterNode", 
-        "CalculationNode", 
         "RemoteNode", 
         "GatherNode", 
         "ScatterNode", 
@@ -1281,13 +1275,13 @@ function interactionOtherRulesTestSuite () {
           ];
 
       queries.forEach(function(query, i) {
-        var result = db._createStatement({query: query, bindVars: { }, options: allRulesNoInter}).explain();
+        var result = db._createStatement({query: query, options: allRulesNoInter}).explain();
         assertTrue(result.plan.rules.indexOf(undist) === -1, query);
         assertTrue(result.plan.rules.indexOf(distribute) === -1, query);
         assertTrue(result.plan.rules.indexOf(scatter) !== -1, query);
         assertEqual(expectedNodes[i], explain(result), query);
         
-        result = db._createStatement({query: query, bindVars:  { }, options:  ruleDisabledNoInter}).explain();
+        result = db._createStatement({query: query, options: ruleDisabledNoInter}).explain();
         assertTrue(result.plan.rules.indexOf(undist) === -1, query);
         assertTrue(result.plan.rules.indexOf(distribute) === -1, query);
         assertTrue(result.plan.rules.indexOf(scatter) !== -1, query);

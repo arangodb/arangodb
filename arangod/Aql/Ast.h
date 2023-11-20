@@ -474,6 +474,8 @@ class Ast {
   /// @brief determines the variables referenced in an expression
   static void getReferencedVariables(AstNode const*, VarSet&);
 
+  static bool isVarsUsed(AstNode const*, VarSet const&);
+
   /// @brief count how many times a variable is referenced in an expression
   static size_t countReferences(AstNode const*, Variable const*);
 

@@ -63,6 +63,8 @@ class DumpFeature final : public ArangoDumpFeature {
   /// @brief Holds configuration data to pass between methods
   struct Options {
     std::vector<std::string> collections{};
+    // Collections in here, will be ignored during the dump
+    std::vector<std::string> collectionsToBeIgnored{};
     std::vector<std::string> shards{};
     std::string outputPath{};
     std::string maskingsFile{};
@@ -83,7 +85,7 @@ class DumpFeature final : public ArangoDumpFeature {
     bool useGzipForStorage{true};
     bool useGzipForTransport{false};
     bool useVPack{false};
-    bool useParalleDump{false};
+    bool useParalleDump{true};
     bool splitFiles{false};
     std::uint64_t dbserverWorkerThreads{5};
     std::uint64_t dbserverPrefetchBatches{5};

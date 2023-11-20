@@ -26,7 +26,7 @@
 #include <utility>
 #include <memory>
 
-#include "Actor/ActorPID.h"
+#include "Actor/DistributedActorPID.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/CollectionSpecifications.h"
 #include "Pregel/GraphStore/Magazine.h"
@@ -47,15 +47,16 @@ namespace arangodb::pregel::worker {
 template<typename V, typename E, typename M>
 struct WorkerState {
   WorkerState(std::unique_ptr<WorkerContext> workerContext,
-              actor::ActorPID conductor,
+              actor::DistributedActorPID conductor,
               const worker::message::CreateWorker& specifications,
               std::chrono::seconds messageTimeout,
               std::unique_ptr<MessageFormat<M>> newMessageFormat,
               std::unique_ptr<MessageCombiner<M>> newMessageCombiner,
               std::unique_ptr<Algorithm<V, E, M>> algorithm,
-              TRI_vocbase_t& vocbase, actor::ActorPID spawnActor,
-              actor::ActorPID resultActor, actor::ActorPID statusActor,
-              actor::ActorPID metricsActor)
+              TRI_vocbase_t& vocbase, actor::DistributedActorPID spawnActor,
+              actor::DistributedActorPID resultActor,
+              actor::DistributedActorPID statusActor,
+              actor::DistributedActorPID metricsActor)
       : config{std::make_shared<WorkerConfig>(&vocbase)},
         workerContext{std::move(workerContext)},
         messageTimeout{messageTimeout},
@@ -79,16 +80,17 @@ struct WorkerState {
   std::chrono::seconds messageTimeout;
   std::unique_ptr<MessageFormat<M>> messageFormat;
   std::unique_ptr<MessageCombiner<M>> messageCombiner;
-  std::unordered_map<ShardID, actor::ActorPID> responsibleActorPerShard;
+  std::unordered_map<ShardID, actor::DistributedActorPID>
+      responsibleActorPerShard;
 
   std::unique_ptr<ExecutionState> executionState;
-  const actor::ActorPID conductor;
+  const actor::DistributedActorPID conductor;
   std::unique_ptr<Algorithm<V, E, M>> algorithm;
   const DatabaseGuard vocbaseGuard;
-  const actor::ActorPID spawnActor;
-  const actor::ActorPID resultActor;
-  const actor::ActorPID statusActor;
-  const actor::ActorPID metricsActor;
+  const actor::DistributedActorPID spawnActor;
+  const actor::DistributedActorPID resultActor;
+  const actor::DistributedActorPID statusActor;
+  const actor::DistributedActorPID metricsActor;
   Magazine<V, E> magazine;
   MessageStats messageStats;
 };

@@ -438,7 +438,7 @@ AstNode* Ast::createNodeExample(AstNode const* variable,
       example->type != NODE_TYPE_PARAMETER) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_PARSE,
-        "expecting object literal or bind parameter for example");
+        "expecting object literal or bind parameter for UPSERT example");
   }
 
   AstNode* node = createNode(NODE_TYPE_EXAMPLE);
@@ -2734,6 +2734,29 @@ void Ast::getReferencedVariables(AstNode const* node, VarSet& result) {
   };
 
   traverseReadOnly(node, preVisitor, visitor);
+}
+
+bool Ast::isVarsUsed(AstNode const* node, VarSet const& result) {
+  bool intersects = false;
+  auto visitor = [&](AstNode const* node) {
+    if (intersects || node->isConstant()) {
+      return false;
+    }
+    if (node->type != NODE_TYPE_REFERENCE) {
+      return true;
+    }
+    auto const* variable = static_cast<Variable const*>(node->getData());
+    if (variable == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "invalid reference in AST");
+    }
+    if (variable->needsRegister()) {
+      intersects = result.contains(variable);
+    }
+    return !intersects;
+  };
+  traverseReadOnly(node, visitor, [](AstNode const*) {});
+  return intersects;
 }
 
 /// @brief count how many times a variable is referenced in an expression

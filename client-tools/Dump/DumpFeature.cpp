@@ -660,6 +660,22 @@ Result DumpFeature::DumpCollectionJob::run(
         VPackObjectBuilder subObject(&excludes, "parameters");
         subObject->add(StaticStrings::ShadowCollections,
                        VPackSlice::nullSlice());
+
+        if (!options.clusterMode) {
+          // single server.
+          // remove replicationFactor, writeConcern and others that are
+          // only relevant in cluster
+          subObject->add(StaticStrings::MinReplicationFactor,
+                         VPackSlice::nullSlice());
+          subObject->add(StaticStrings::NumberOfShards,
+                         VPackSlice::nullSlice());
+          subObject->add(StaticStrings::ReplicationFactor,
+                         VPackSlice::nullSlice());
+          subObject->add(StaticStrings::WriteConcern, VPackSlice::nullSlice());
+          // note: we cannot exclude shardKeys and sharding, because they
+          // can be used even in single-server SmartGraphs.
+          subObject->add("shards", VPackSlice::nullSlice());
+        }
       }
     }
 
@@ -803,8 +819,19 @@ void DumpFeature::collectOptions(
   options->addOption(
       "--collection",
       "Restrict the dump to this collection name (can be specified multiple "
-      "times).",
+      "times). Either --collection or --ignore-collection can be used at the "
+      "same time.",
       new VectorParameter<StringParameter>(&_options.collections));
+
+  options
+      ->addOption(
+          "--ignore-collection",
+          "Ignore and exclude this collection during the dump process (can be "
+          "specified multiple times). Either --collection or "
+          "--ignore-collection can be used at the same time. ",
+          new VectorParameter<StringParameter>(
+              &_options.collectionsToBeIgnored))
+      .setIntroducedIn(31200);
 
   options
       ->addOption(
@@ -893,7 +920,6 @@ void DumpFeature::collectOptions(
                   "Compress data for transport using the gzip format.",
                   new BooleanParameter(&_options.useGzipForTransport),
                   arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Experimental,
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31200);
 
@@ -908,11 +934,15 @@ void DumpFeature::collectOptions(
       .setIntroducedIn(31200);
 
   options
-      ->addOption("--parallel-dump", "Enable experimental dump behavior.",
+      ->addOption("--parallel-dump", "Enable highly parallel dump behavior.",
                   new BooleanParameter(&_options.useParalleDump),
                   arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Experimental,
                       arangodb::options::Flags::Uncommon))
+      .setLongDescription(R"(This option enables a highly parallel variant
+of the dump protocol on the server side. It is only supported with ArangoDB 
+servers running version 3.12 or higher.
+If the dump should be restored into versions of ArangoDB older than 3.12, this
+option should be turned off.)")
       .setIntroducedIn(31200);
   // option was renamed in 3.12
   options->addOldOption("--use-experimental-dump", "--parallel-dump");
@@ -921,13 +951,11 @@ void DumpFeature::collectOptions(
       ->addOption(
           "--split-files",
           "Split a collection in multiple files to increase throughput.",
-          new BooleanParameter(&_options.splitFiles),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon))
+          new BooleanParameter(&_options.splitFiles))
       .setLongDescription(R"(This option only has effect when the option
 `--parallel-dump` is set to `true`. Restoring split files also
 requires an arangorestore version that is capable of restoring data of a
-single collection/shard from multiple files.)")
+single collection/shard from multiple files, i.e. ArangoDB 3.12 or higher.)")
       .setIntroducedIn(31200);
 
   options
@@ -989,6 +1017,13 @@ void DumpFeature::validateOptions(
       _options.allDatabases) {
     LOG_TOPIC("17e2b", FATAL, arangodb::Logger::DUMP)
         << "cannot use --server.database and --all-databases at the same time";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (options->processingResult().touched("collection") &&
+      options->processingResult().touched("ignore-collection")) {
+    LOG_TOPIC("17e2a", FATAL, arangodb::Logger::DUMP)
+        << "cannot use --collection and --ignore-collection at the same time";
     FATAL_ERROR_EXIT();
   }
 
@@ -1167,6 +1202,16 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
     if (cid == 0 || name.empty()) {
       return ::ErrorMalformedJsonResponse;
     }
+
+    // filtered based on the user-defined list of collections to be excluded
+    if (std::find(_options.collectionsToBeIgnored.begin(),
+                  _options.collectionsToBeIgnored.end(),
+                  name) != _options.collectionsToBeIgnored.end()) {
+      LOG_TOPIC("e413f", INFO, Logger::DUMP)
+          << "Collection: '" << name << "' will be ignored during the dump.";
+      continue;
+    }
+
     if (deleted) {
       continue;
     }

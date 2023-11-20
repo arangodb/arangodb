@@ -147,6 +147,10 @@ struct OptimizerRule {
 
     interchangeAdjacentEnumerationsRule,
 
+    // replace attribute accesses that are equal due to a filter statement
+    // with the same value. This might enable other optimizations later on.
+    replaceEqualAttributeAccesses,
+
     // "Pass 4": moving nodes "up" (potentially outside loops) (second try):
     // ======================================================
 
@@ -362,22 +366,35 @@ struct OptimizerRule {
     lateMaterialiationOffsetInfoRule,
 #endif
 
-    // remove unnecessary projections
-    removeUnnecessaryProjections,
-
     // replace adjacent index nodes with a join node if the indexes qualify
     // for it.
     joinIndexNodesRule,
 
+    // remove unnecessary projections & store projection attributes in
+    // individual registers. must be executed after the joinIndexNodesRule,
+    // otherwise the projections handling of JoinNodes will be incorrect.
+    optimizeProjectionsRule,
+
+    // final cleanup, after projections
+    removeUnnecessaryCalculationsRule4,
+
     // allows execution nodes to asynchronously prefetch the next batch from
     // their upstream node.
-    asyncPrefetch,
+    asyncPrefetchRule,
+
+    // Better to be last, because it doesn't change plan and
+    // rely on no one will change search condition after this rule
+    immutableSearchConditionRule,
 
     // splice subquery into the place of a subquery node
     // enclosed by a SubqueryStartNode and a SubqueryEndNode
     // Must run last.
     spliceSubqueriesRule
   };
+
+  static_assert(lateDocumentMaterializationRule < optimizeProjectionsRule);
+  static_assert(joinIndexNodesRule < optimizeProjectionsRule);
+  static_assert(optimizeProjectionsRule < removeUnnecessaryCalculationsRule4);
 
 #ifdef USE_ENTERPRISE
   static_assert(clusterOneShardRule < distributeInClusterRule);

@@ -1,11 +1,7 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
+/*global assertEqual, assertNotEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for optimizer rules
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -31,7 +27,6 @@
 const internal = require("internal");
 const jsunity = require("jsunity");
 const { findExecutionNodes, isEqual, getQueryMultiplePlansAndExecutions, removeAlwaysOnClusterRules } = require("@arangodb/aql-helper");
-const isCluster = internal.isCluster();
 const db = require('internal').db;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -136,7 +131,7 @@ function optimizerRuleTestSuite() {
 
       queries.forEach(function(query) {
         
-        var result = db._createStatement({query: query[0], bindVars:  { }, options:  paramIndexFromSort}).explain();
+        var result = db._createStatement({query: query[0], bindVars:  { }, options: paramIndexFromSort}).explain();
         assertEqual([], removeAlwaysOnClusterRules(result.plan.rules), query);
         if (query[1]) {
           var allresults = getQueryMultiplePlansAndExecutions(query[0], {});
@@ -177,13 +172,13 @@ function optimizerRuleTestSuite() {
 
       queries.forEach(function(query) {
         var result;
-        result = db._createStatement({query: query, bindVars:  { }, options:  paramIndexRangeFilter}).explain();
+        result = db._createStatement({query: query, bindVars:  { }, options: paramIndexRangeFilter}).explain();
         assertEqual([ IndexesRule, FilterRemoveRule ], removeAlwaysOnClusterRules(result.plan.rules), query);
         hasNoFilterNode(result);
 
         hasIndexNodeWithRanges(result);
 
-        result = db._createStatement({query: query, bindVars:  { }, options:  paramIndexRangeSortFilter}).explain();
+        result = db._createStatement({query: query, bindVars:  { }, options: paramIndexRangeSortFilter}).explain();
         assertEqual([ IndexesRule, FilterRemoveRule ], removeAlwaysOnClusterRules(result.plan.rules), query);
         hasNoFilterNode(result);
         hasIndexNodeWithRanges(result);
@@ -215,27 +210,21 @@ function optimizerRuleTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultipleConditions : function () {
-      let addPrefetch = (rules) => {
-        if (!isCluster) {
-          return rules.concat("async-prefetch");
-        }
-        return rules;
-      };
-      var query = "FOR v IN " + colName + " FILTER v.d == 'foo' || v.d == 'bar' RETURN v";
-      var result = db._createStatement(query).explain();
-      assertEqual(addPrefetch([ "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "use-indexes", "replace-or-with-in" ]).sort(),  
+      let query = "FOR v IN " + colName + " FILTER v.d == 'foo' || v.d == 'bar' RETURN v";
+      let result = db._createStatement(query).explain();
+      assertEqual([ "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "use-indexes", "replace-or-with-in", "async-prefetch" ].sort(),  
         removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
       hasNoFilterNode(result);
       hasIndexNodeWithRanges(result);
-      
+     
       query = "FOR v IN " + colName + " FILTER 'foo' IN v.z && 'bar' IN v.z RETURN v";
       result = db._createStatement(query).explain();
       // should optimize away one part of the filter
-      assertEqual(addPrefetch([ "remove-filter-covered-by-index", "use-indexes", "move-filters-into-enumerate", "remove-unnecessary-projections" ]).sort(),
+      assertEqual([ "remove-filter-covered-by-index", "use-indexes", "move-filters-into-enumerate", "async-prefetch" ].sort(),
         removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
       hasIndexNodeWithRanges(result);
       
-      result = db._createStatement({query: query, bindVars:  null, options:  { optimizer: { rules: ["-move-filters-into-enumerate"] } }}).explain();
+      result = db._createStatement({query: query, bindVars:  null, options: { optimizer: { rules: ["-move-filters-into-enumerate"] } }}).explain();
       // should optimize away one part of the filter
       assertEqual([ "async-prefetch", "remove-filter-covered-by-index", "use-indexes" ].sort(),  
         removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
@@ -245,11 +234,11 @@ function optimizerRuleTestSuite() {
       query = "FOR v IN " + colName + " FILTER 'foo' IN v.z[*] && 'bar' IN v.z[*] RETURN v";
       result = db._createStatement(query).explain();
       // should optimize away one part of the filter
-      assertEqual(addPrefetch([ "remove-filter-covered-by-index", "use-indexes", "move-filters-into-enumerate", "remove-unnecessary-projections" ]).sort(),
+      assertEqual([ "remove-filter-covered-by-index", "use-indexes", "move-filters-into-enumerate", "async-prefetch" ].sort(),
         removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
       hasIndexNodeWithRanges(result);
       
-      result = db._createStatement({query: query, bindVars:  null, options:  { optimizer: { rules: ["-move-filters-into-enumerate"] } }}).explain();
+      result = db._createStatement({query: query, bindVars:  null, options: { optimizer: { rules: ["-move-filters-into-enumerate"] } }}).explain();
       // should optimize away one part of the filter
       assertEqual([ "async-prefetch", "remove-filter-covered-by-index", "use-indexes" ].sort(),  
         removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
@@ -289,14 +278,14 @@ function optimizerRuleTestSuite() {
 
       queries.forEach(function(query) {
         var result;
-        result = db._createStatement({query: query, bindVars:  { }, options:  paramIndexRangeFilter}).explain();
+        result = db._createStatement({query: query, bindVars:  { }, options: paramIndexRangeFilter}).explain();
         assertEqual([ IndexesRule, FilterRemoveRule ], 
           removeAlwaysOnClusterRules(result.plan.rules).filter((r) => r !== "splice-subqueries"), query);
         hasNoFilterNode(result);
 
         hasIndexNodeWithRanges(result);
 
-        result = db._createStatement({query: query, bindVars:  { }, options:  paramIndexRangeSortFilter}).explain();
+        result = db._createStatement({query: query, bindVars:  { }, options: paramIndexRangeSortFilter}).explain();
         assertEqual([ IndexesRule, FilterRemoveRule, SortRemoveRule ], 
           removeAlwaysOnClusterRules(result.plan.rules).filter((r) => r !== "splice-subqueries"), query);
         hasNoFilterNode(result);
@@ -335,14 +324,14 @@ function optimizerRuleTestSuite() {
 
       queries.forEach(function(query) {
         var result;
-        result = db._createStatement({query: query, bindVars:  { }, options:  paramIndexRangeFilter}).explain();
+        result = db._createStatement({query: query, bindVars:  { }, options: paramIndexRangeFilter}).explain();
         assertEqual([ IndexesRule, FilterRemoveRule ], 
           removeAlwaysOnClusterRules(result.plan.rules), query);
         hasNoFilterNode(result);
 
         hasIndexNodeWithRanges(result);
 
-        result = db._createStatement({query: query, bindVars:  { }, options:  paramIndexRangeSortFilter}).explain();
+        result = db._createStatement({query: query, bindVars:  { }, options: paramIndexRangeSortFilter}).explain();
         assertEqual([ IndexesRule, FilterRemoveRule ], removeAlwaysOnClusterRules(result.plan.rules), query);
         hasNoFilterNode(result);
         hasIndexNodeWithRanges(result);
@@ -382,13 +371,13 @@ function optimizerRuleTestSuite() {
       queries.forEach(function(query) {
         var result;
 
-        result = db._createStatement({query: query, bindVars:  { }, options:  paramIndexRangeFilter}).explain();
+        result = db._createStatement({query: query, bindVars:  { }, options: paramIndexRangeFilter}).explain();
         assertEqual([ IndexesRule, FilterRemoveRule ], 
           removeAlwaysOnClusterRules(result.plan.rules).filter((r) => r !== "splice-subqueries"), query);
         hasNoFilterNode(result);
         hasIndexNodeWithRanges(result);
 
-        result = db._createStatement({query: query, bindVars:  { }, options:  paramIndexRangeSortFilter}).explain();
+        result = db._createStatement({query: query, bindVars:  { }, options: paramIndexRangeSortFilter}).explain();
         var rules = removeAlwaysOnClusterRules(result.plan.rules);
         assertNotEqual(-1, rules.indexOf(IndexesRule)); 
         assertNotEqual(-1, rules.indexOf(FilterRemoveRule)); 
@@ -426,13 +415,13 @@ function optimizerRuleTestSuite() {
       queries.forEach(function(query) {
         var result;
 
-        result = db._createStatement({query: query, bindVars:  { }, options:  paramIndexRangeFilter}).explain();
+        result = db._createStatement({query: query, bindVars:  { }, options: paramIndexRangeFilter}).explain();
         assertEqual([ IndexesRule, FilterRemoveRule ], 
           removeAlwaysOnClusterRules(result.plan.rules), query);
         hasNoFilterNode(result);
         hasIndexNodeWithRanges(result);
 
-        result = db._createStatement({query: query, bindVars:  { }, options:  paramIndexRangeSortFilter}).explain();
+        result = db._createStatement({query: query, bindVars:  { }, options: paramIndexRangeSortFilter}).explain();
         assertEqual([ IndexesRule, FilterRemoveRule ], 
           removeAlwaysOnClusterRules(result.plan.rules), query);
         hasNoFilterNode(result);
@@ -448,12 +437,12 @@ function optimizerRuleTestSuite() {
       queries.forEach(function(query) {
         var result;
 
-        result = db._createStatement({query: query, bindVars:  { }, options:  paramIndexRangeFilter}).explain();
+        result = db._createStatement({query: query, bindVars:  { }, options: paramIndexRangeFilter}).explain();
         assertEqual([ IndexesRule ], 
           removeAlwaysOnClusterRules(result.plan.rules), query);
         hasIndexNodeWithRanges(result);
 
-        result = db._createStatement({query: query, bindVars:  { }, options:  paramIndexRangeSortFilter}).explain();
+        result = db._createStatement({query: query, bindVars:  { }, options: paramIndexRangeSortFilter}).explain();
         assertEqual([ IndexesRule ], 
           removeAlwaysOnClusterRules(result.plan.rules), query);
         hasIndexNodeWithRanges(result);
@@ -463,13 +452,13 @@ function optimizerRuleTestSuite() {
     testOptimizeAwayFilter : function() {
       var query = "FOR outer IN [ { id: 123 } ] LET id = outer.id RETURN (FOR inner IN "  + colNameOther + " FILTER inner.x == id && inner.y == null RETURN inner)";
       
-      var result = db._createStatement({query: query, bindVars:  { }, options:  paramIndexRangeFilter}).explain();
+      var result = db._createStatement({query: query, bindVars:  { }, options: paramIndexRangeFilter}).explain();
       assertEqual([ FilterRemoveRule, IndexesRule ].sort(), 
         removeAlwaysOnClusterRules(result.plan.rules).sort().filter((r) => r !== "splice-subqueries"), query);
       hasIndexNodeWithRanges(result);
       hasNoFilterNode(result);
 
-      result = db._createStatement({query: query, bindVars:  { }, options:  paramIndexRangeSortFilter}).explain();
+      result = db._createStatement({query: query, bindVars:  { }, options: paramIndexRangeSortFilter}).explain();
       assertEqual([ FilterRemoveRule, IndexesRule ].sort(), 
         removeAlwaysOnClusterRules(result.plan.rules).sort().filter((r) => r !== "splice-subqueries"), query);
       hasIndexNodeWithRanges(result);

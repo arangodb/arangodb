@@ -666,7 +666,7 @@ void Condition::replaceVariables(
     return;
   }
 
-  _root = Ast::replaceVariables(_root, replacements);
+  _root = Ast::replaceVariables(_root, replacements, true);
 }
 
 void Condition::replaceAttributeAccess(Variable const* searchVariable,

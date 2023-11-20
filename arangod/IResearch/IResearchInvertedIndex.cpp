@@ -280,7 +280,6 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
       : IndexIterator(collection, trx, ReadOwnWrites::no),
         _memory(monitor),
         _snapshot(state),
-        _immutablePartCache(state.immutablePartCache()),
         _indexMeta(meta),
         _variable(variable),
         _mutableConditionIdx(mutableConditionIdx) {
@@ -330,99 +329,19 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
 
     irs::Or root;
     if (condition) {
-      if (_mutableConditionIdx ==
-              transaction::Methods::kNoMutableConditionIdx ||
-          (condition->type != aql::NODE_TYPE_OPERATOR_NARY_AND &&
-           condition->type != aql::NODE_TYPE_OPERATOR_NARY_OR)) {
-        auto rv = FilterFactory::filter(&root, filterCtx, *condition);
-
-        if (rv.fail()) {
-          velocypack::Builder builder;
-          condition->toVelocyPack(builder, true);
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              rv.errorNumber(),
-              absl::StrCat("failed to build filter while querying "
-                           "inverted index, query '",
-                           builder.toJson(), "': ", rv.errorMessage()));
-        }
-      } else {
-        TRI_ASSERT(static_cast<int64_t>(condition->numMembers()) >
-                   _mutableConditionIdx);
-        if (ADB_UNLIKELY(static_cast<int64_t>(condition->numMembers()) <=
-                         _mutableConditionIdx)) {
-          velocypack::Builder builder;
-          condition->toVelocyPack(builder, true);
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_INTERNAL_AQL,
-              absl::StrCat("Invalid condition members count while querying "
-                           "inverted index, query '",
-                           builder.toJson(), "'"));
-        }
-        irs::boolean_filter* conditionJoiner{nullptr};
-
-        if (condition->type == aql::NODE_TYPE_OPERATOR_NARY_AND) {
-          conditionJoiner = &append<irs::And>(root, filterCtx);
-        } else {
-          TRI_ASSERT((condition->type == aql::NODE_TYPE_OPERATOR_NARY_OR));
-          conditionJoiner = &append<irs::Or>(root, filterCtx);
-        }
-
-        auto& mutable_root = append<irs::Or>(*conditionJoiner, filterCtx);
-        auto rv =
-            FilterFactory::filter(&mutable_root, filterCtx,
-                                  *condition->getMember(_mutableConditionIdx));
-        if (rv.fail()) {
-          velocypack::Builder builder;
-          condition->toVelocyPack(builder, true);
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              rv.errorNumber(),
-              absl::StrCat("failed to build mutable filter part while querying "
-                           "inverted index, query '",
-                           builder.toJson(), "': ", rv.errorMessage()));
-        }
-
-        auto& proxy_filter =
-            append<irs::proxy_filter>(*conditionJoiner, filterCtx);
-        auto existingCache = _immutablePartCache.find(condition);
-        if (existingCache != _immutablePartCache.end()) {
-          proxy_filter.set_cache(existingCache->second);
-        } else {
-          irs::boolean_filter* immutableRoot;
-          irs::proxy_filter::cache_ptr newCache;
-          if (condition->type == aql::NODE_TYPE_OPERATOR_NARY_AND) {
-            auto res = proxy_filter.set_filter<irs::And>(_memory);
-            immutableRoot = &res.first;
-            _immutablePartCache[condition] = std::move(res.second);
-          } else {
-            TRI_ASSERT((condition->type == aql::NODE_TYPE_OPERATOR_NARY_OR));
-            auto res = proxy_filter.set_filter<irs::Or>(_memory);
-            immutableRoot = &res.first;
-            _immutablePartCache[condition] = std::move(res.second);
-          }
-
-          auto const conditionSize =
-              static_cast<int64_t>(condition->numMembers());
-
-          for (int64_t i = 0; i < conditionSize; ++i) {
-            if (i != _mutableConditionIdx) {
-              // cppcheck-suppress invalidLifetime
-              auto& tmp_root = append<irs::Or>(*immutableRoot, filterCtx);
-              auto rv = FilterFactory::filter(&tmp_root, filterCtx,
-                                              *condition->getMember(i));
-              if (rv.fail()) {
-                velocypack::Builder builder;
-                condition->toVelocyPack(builder, true);
-                THROW_ARANGO_EXCEPTION_MESSAGE(
-                    rv.errorNumber(),
-                    absl::StrCat(
-                        "failed to build immutable filter part while querying "
-                        "inverted index, query '",
-                        builder.toJson(), "': ", rv.errorMessage()));
-              }
-            }
-          }
-        }
+      TRI_ASSERT(_mutableConditionIdx ==
+                 transaction::Methods::kNoMutableConditionIdx);
+      auto r = FilterFactory::filter(&root, filterCtx, *condition);
+      if (!r.ok()) {
+        velocypack::Builder builder;
+        condition->toVelocyPack(builder, true);
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            r.errorNumber(),
+            absl::StrCat("failed to build filter while querying "
+                         "inverted index, query '",
+                         builder.toJson(), "': ", r.errorMessage()));
       }
+      // TODO(MBkkt) implement same rule as view rule immutableSearchCondition
     } else {
       // sorting case
       append<irs::all>(root, filterCtx);
@@ -450,7 +369,6 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
   MonitorManager _memory;
   irs::filter::prepared::ptr _filter;
   ViewSnapshot const& _snapshot;
-  ViewSnapshot::ImmutablePartCache& _immutablePartCache;
   IResearchInvertedIndexMeta const* _indexMeta;
   aql::Variable const* _variable;
   int _mutableConditionIdx;

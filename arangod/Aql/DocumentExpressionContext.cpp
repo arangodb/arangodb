@@ -26,6 +26,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/Variable.h"
+#include "Basics/system-compiler.h"
 
 using namespace arangodb::aql;
 
@@ -53,7 +54,7 @@ AqlValue SimpleDocumentExpressionContext::getVariableValue(
   TRI_ASSERT(variable != nullptr);
   return QueryExpressionContext::getVariableValue(
       variable, doCopy, mustDestroy,
-      [this](Variable const* variable, bool doCopy, bool& mustDestroy) {
+      [this](Variable const* /*variable*/, bool doCopy, bool& mustDestroy) {
         mustDestroy = doCopy;
         // return current document
         if (doCopy) {
@@ -89,9 +90,11 @@ AqlValue GenericDocumentExpressionContext::getVariableValue(
         TRI_ASSERT(regId != RegisterId::maxRegisterId)
             << "variable " << variable->name << " (" << variable->id
             << ") not found";
-        if (regId != RegisterId::maxRegisterId) {
+        if (ADB_LIKELY(regId != RegisterId::maxRegisterId)) {
           // we can only get here in a post-filter expression
-          TRI_ASSERT(regId < _inputRow.getNumRegisters());
+          TRI_ASSERT(regId < _inputRow.getNumRegisters())
+              << "variable " << variable->name << " (" << variable->id
+              << "), register " << regId.value() << " not found";
           if (doCopy) {
             return _inputRow.getValue(regId).clone();
           }

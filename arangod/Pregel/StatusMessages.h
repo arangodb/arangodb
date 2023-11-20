@@ -24,7 +24,7 @@
 
 #include <chrono>
 #include <variant>
-#include "Actor/ActorPID.h"
+#include "Actor/DistributedActorPID.h"
 #include "Pregel/PregelOptions.h"
 #include "Inspection/Types.h"
 #include "MetricsMessages.h"
