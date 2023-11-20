@@ -39,7 +39,7 @@ using namespace arangodb::aql;
 using namespace arangodb::containers;
 using EN = arangodb::aql::ExecutionNode;
 
-#define LOG_RULE LOG_DEVEL_IF(true)
+#define LOG_RULE LOG_DEVEL_IF(false)
 
 namespace {
 
@@ -83,8 +83,6 @@ using VarReplacementTransientMap =
 bool getAttribute(AstNode const* attribute,
                   VarAttributeAccess& attributeAccess) {
   TRI_ASSERT(attribute != nullptr);
-  TRI_ASSERT(attribute->type == NODE_TYPE_REFERENCE ||
-             attribute->type == NODE_TYPE_ATTRIBUTE_ACCESS);
   if (attribute->type == NODE_TYPE_REFERENCE) {
     attributeAccess.var = static_cast<Variable const*>(attribute->getData());
     return true;
@@ -175,7 +173,7 @@ bool insertConstantAttribute(ExecutionPlan& plan, AstNode* parentNode,
   VarAttributeAccess access;
 
   AstNode* member = parentNode->getMember(accessIndex);
-  LOG_DEVEL << "CONSIDER: " << member->toString();
+  LOG_RULE << "CONSIDER: " << member->toString();
   if (!getAttribute(member, access)) {
     return false;
   }
@@ -237,7 +235,7 @@ bool insertConstantAttribute(ExecutionPlan& plan, AstNode* parentNode,
 bool insertConstantAttributes(ExecutionPlan& plan, AstNode* node,
                               std::size_t currentLimitCount,
                               VarReplacementTransientMap const& replacements) {
-  LOG_DEVEL << __PRETTY_FUNCTION__ << " " << node->toString();
+  LOG_RULE << __PRETTY_FUNCTION__ << " " << node->toString();
   if (node == nullptr) {
     return false;
   }
@@ -282,7 +280,7 @@ bool processQuery(ExecutionPlan& plan, ExecutionNode* root,
   // collect
   for (auto* node = root->getSingleton(); node != nullptr;
        node = node->getFirstParent()) {
-    LOG_DEVEL << "[" << node->id() << "] " << node->getTypeString();
+    LOG_RULE << "[" << node->id() << "] " << node->getTypeString();
     if (node->getType() == EN::LIMIT) {
       localLimitCount += 1;
     }
@@ -305,7 +303,7 @@ bool processQuery(ExecutionPlan& plan, ExecutionNode* root,
   // replace and enter subqueries
   for (auto* node = root->getSingleton(); node != nullptr;
        node = node->getFirstParent()) {
-    LOG_DEVEL << "[" << node->id() << "] " << node->getTypeString();
+    LOG_RULE << "[" << node->id() << "] " << node->getTypeString();
     if (node->getType() == EN::LIMIT) {
       localLimitCount += 1;
     }
