@@ -40,7 +40,7 @@ struct MatchResult {
   struct ValueTag {};
   explicit MatchResult() {}
   explicit MatchResult(ErrorTag, std::string message) : _errors({message}) {}
-  explicit MatchResult(ValueTag, std::string key, AstNode const* value)
+  explicit MatchResult(ValueTag, std::string key, AstNode* value)
       : _matches({{key, value}}) {}
 
   explicit MatchResult(ErrorTag, MatchResult&& res, std::string message)
@@ -48,7 +48,7 @@ struct MatchResult {
     _errors.emplace_back(message);
   }
   explicit MatchResult(ValueTag, MatchResult&& res, std::string key,
-                       AstNode const* value)
+                       AstNode* value)
       : MatchResult(std::move(res)) {
     _matches.emplace(key, value);
   }
@@ -69,7 +69,7 @@ struct MatchResult {
   static auto error(MatchResult&& res, std::string message) -> MatchResult {
     return MatchResult(ErrorTag{}, std::move(res), message);
   }
-  static auto match(std::string key, AstNode const* value) {
+  static auto match(std::string key, AstNode* value) {
     return MatchResult(ValueTag{}, key, value);
   }
   static auto match() { return MatchResult(); }
@@ -78,7 +78,7 @@ struct MatchResult {
     return _errors;
   }
   auto matches() const noexcept
-      -> std::unordered_map<std::string, AstNode const*> const& {
+      -> std::unordered_map<std::string, AstNode*> const& {
     return _matches;
   }
 
@@ -90,7 +90,7 @@ struct MatchResult {
   }
 
  private:
-  std::unordered_map<std::string, AstNode const*> _matches;
+  std::unordered_map<std::string, AstNode*> _matches;
   std::vector<std::string> _errors;
   //  std::vector<SubMatch> submatches;
 };

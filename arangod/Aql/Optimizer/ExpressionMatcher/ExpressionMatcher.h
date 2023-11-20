@@ -37,15 +37,17 @@ namespace arangodb::aql::expression_matcher {
 
 // To implement a matcher, all that is needed is to implement the
 // concept Matchable, which is to say a struct with the method
-// apply that takes an `AstNode const*` and returns a MatchResult.
+// apply that takes an `AstNode *` and returns a MatchResult.
 template<typename T>
-concept Matchable = requires(T v, AstNode const* node) { v.apply(node); };
+concept Matchable = requires(T v, AstNode* node) {
+  v.apply(node);
+};
 
 // Applies the matcher of type M and if it succeeds registers the AqlNode* that
 // it succeeded on in the MatchResult under the name `name`
 template<Matchable M>
 struct MatchWithName {
-  auto apply(AstNode const* node) -> MatchResult {
+  auto apply(AstNode* node) -> MatchResult {
     auto result = matcher.apply(node);
 
     if (result.isError()) {
@@ -65,15 +67,13 @@ auto matchWithName(std::string name, M matcher) -> MatchWithName<M> {
 
 // Matches any AstNode
 struct Any {
-  auto apply(AstNode const* node) -> MatchResult {
-    return MatchResult::match();
-  }
+  auto apply(AstNode* node) -> MatchResult { return MatchResult::match(); }
 };
 
 // Matches any AstNode that has type `type`
 struct MatchNodeType {
   explicit MatchNodeType(AstNodeType type) : type(type) {}
-  auto apply(AstNode const* node) -> MatchResult {
+  auto apply(AstNode* node) -> MatchResult {
     if (node->type != type) {
       auto typeName = AstNode::getTypeStringForType(type);
       ADB_PROD_ASSERT(typeName.has_value());
@@ -88,14 +88,14 @@ struct MatchNodeType {
 
 // Matches AstNodes of type NODE_TYPE_NOP
 struct NoOp {
-  auto apply(AstNode const* node) -> MatchResult {
+  auto apply(AstNode* node) -> MatchResult {
     return MatchNodeType(NODE_TYPE_NOP).apply(node);
   }
 };
 
 // Matches AstNodes of type NODE_TYPE_VALUE
 struct AnyValue {
-  auto apply(AstNode const* node) -> MatchResult {
+  auto apply(AstNode* node) -> MatchResult {
     if (node->type != NODE_TYPE_VALUE) {
       return MatchResult::error(fmt::format(
           "Expected node of type `value`, found {}", node->getTypeString()));
@@ -106,14 +106,12 @@ struct AnyValue {
 
 // Matches AstNodes of type NODE_TYPE_VARIABLE
 struct AnyVariable {
-  auto apply(AstNode const* node) -> MatchResult {
-    return MatchResult::match();
-  }
+  auto apply(AstNode* node) -> MatchResult { return MatchResult::match(); }
 };
 
 // Matches AstNodes of type NODE_TYPE_VARIABLE with name `name`
 struct Variable {
-  auto apply(AstNode const* node) -> MatchResult {
+  auto apply(AstNode* node) -> MatchResult {
     auto typeMatch = MatchNodeType(NODE_TYPE_VARIABLE).apply(node);
     if (typeMatch.isError()) {
       return typeMatch;
@@ -134,7 +132,7 @@ auto variable(std::string name) -> Variable;
 
 // Matches a node of type NODE_TYPE_QUANTIFIER with quantifier `which`
 struct Quantifier {
-  auto apply(AstNode const* node) -> MatchResult {
+  auto apply(AstNode* node) -> MatchResult {
     if (node->type != NODE_TYPE_QUANTIFIER) {
       return MatchResult::error(fmt::format(
           "Expected node of type `quantifier`, found type `{}` instead",
@@ -160,7 +158,7 @@ struct Quantifier {
 
 // Matches a node of type NODE_TYPE_REFERENCE, referencing `name`
 struct Reference {
-  auto apply(AstNode const* node) -> MatchResult {
+  auto apply(AstNode* node) -> MatchResult {
     if (node->type != NODE_TYPE_REFERENCE) {
       return MatchResult::error(fmt::format(
           "Expected node type `reference`, found {}", node->getTypeString()));
@@ -183,7 +181,7 @@ struct Reference {
 // `reference` and accessing the attribute `attribute`
 template<Matchable Reference>
 struct AttributeAccess {
-  auto apply(AstNode const* node) -> MatchResult {
+  auto apply(AstNode* node) -> MatchResult {
     if (node->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
       return MatchResult::error(
           fmt::format("Expected node type `attribute access`, found {}",
@@ -222,7 +220,7 @@ auto attributeAccess(Reference reference,
 // `variable` and iterating over the node matching Iteratee
 template<Matchable Variable, Matchable Iteratee>
 struct Iterator {
-  auto apply(AstNode const* node) -> MatchResult {
+  auto apply(AstNode* node) -> MatchResult {
     if (node->type != NODE_TYPE_ITERATOR) {
       return MatchResult::error(fmt::format(
           "Expected node type `iterator`, found {}", node->getTypeString()));
@@ -259,7 +257,7 @@ auto iterator(Variable variable, Iteratee iteratee)
 // quantifier matching Quantifier
 template<Matchable LHS, Matchable RHS, Matchable Quantifier>
 struct ArrayEq {
-  auto apply(AstNode const* node) -> MatchResult {
+  auto apply(AstNode* node) -> MatchResult {
     if (node->type != NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ) {
       return MatchResult::error(
           fmt::format("Expected node of type `binary eq all`, found {}",
@@ -306,7 +304,7 @@ auto arrayEq(LHS lhs, RHS rhs, Quantifier quantifier)
 template<Matchable Iterator, Matchable Reference, Matchable Limit,
          Matchable Filter, Matchable Map>
 struct Expansion {
-  auto apply(AstNode const* node) -> MatchResult {
+  auto apply(AstNode* node) -> MatchResult {
     if (node->type != NODE_TYPE_EXPANSION) {
       return MatchResult::error(
           fmt::format("Expected node of type `expansion`, found {}",
@@ -325,13 +323,13 @@ struct Expansion {
                                 fmt::format("Reference match failed"));
     }
 
-    auto limitMatch = limit.apply(node->getMemberUnchecked(2));
+    auto limitMatch = limit.apply(node->getMemberUnchecked(3));
     if (limitMatch.isError()) {
       return MatchResult::error(std::move(limitMatch),
                                 fmt::format("Limit match failed"));
     }
 
-    auto filterMatch = filter.apply(node->getMemberUnchecked(3));
+    auto filterMatch = filter.apply(node->getMemberUnchecked(2));
     if (filterMatch.isError()) {
       return MatchResult::error(std::move(filterMatch),
                                 fmt::format("Filter match failed"));
@@ -372,7 +370,7 @@ auto expansion(Iterator iterator, Reference reference, Limit limit,
 
 template<Matchable Subnode>
 struct NaryOrWithOneSubNode {
-  auto apply(AstNode const* node) -> MatchResult {
+  auto apply(AstNode* node) -> MatchResult {
     auto nodeTypeMatch = MatchNodeType(NODE_TYPE_OPERATOR_NARY_OR).apply(node);
     if (nodeTypeMatch.isError()) {
       return nodeTypeMatch;
@@ -403,7 +401,7 @@ auto naryOrWithOneSubNode(SubNode subnode) -> NaryOrWithOneSubNode<SubNode> {
 
 template<Matchable SubMatch>
 struct ForAllSubNodes {
-  auto apply(AstNode const* node) -> MatchResult {
+  auto apply(AstNode* node) -> MatchResult {
     auto num = node->numMembers();
 
     auto result = MatchResult::match();

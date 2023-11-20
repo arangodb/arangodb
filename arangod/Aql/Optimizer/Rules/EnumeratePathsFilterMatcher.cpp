@@ -126,7 +126,8 @@ auto EnumeratePathsFilterMatcher::before(ExecutionNode* node) -> bool {
       // the conditions that are supported are ones that
       // access p.vertices[*] or p.edges[*], or both
       auto pathVar = &pathsNode->pathOutVariable();
-      auto const& varsValidInPathEnumeration = pathsNode->getVarsValid();
+      //      auto const& varsValidInPathEnumeration =
+      //      pathsNode->getVarsValid();
 
       // TODO: due to lack of time for design right now, I split this
       // match into two matches. Here's (an approximation of) the match I would
@@ -170,9 +171,9 @@ auto EnumeratePathsFilterMatcher::before(ExecutionNode* node) -> bool {
 
       auto matcher = arrayEq(                                             //
           expansion(                                                      //
-              iterator(AnyVariable{},                                     //
+              iterator(matchWithName("current", AnyVariable{}),           //
                        attributeAccess(Reference{.name = pathVar->name},  //
-                                       {"edges", "vertices"})),           //
+                                       {"vertices"})),                    //
               Any{},                                                      //
               NoOp{},                                                     //
               NoOp{},                                                     //
@@ -181,12 +182,43 @@ auto EnumeratePathsFilterMatcher::before(ExecutionNode* node) -> bool {
           expression_matcher::Quantifier{
               .which = ::arangodb::aql::Quantifier::Type::kAll});  //
 
+      auto* ast = _plan->getAst();
       for (auto i = std::size_t{0}; i < num; ++i) {
         auto result = matcher.apply(andNode->getMemberUnchecked(i));
 
-        toStream(std::cerr, result);
+        if (!result.isError()) {
+          // here `map` is $expr in `path.vertices[* $expr] == $rhsValue`, and
+          // it is assumed that the only variable reference in $expr is the
+          // variable filled by the iterator of the expansion.
+          //
+          // This variable reference is then replaced with the temporary
+          // variable from the EnumeratePathsNode, as this is in turn used by
+          // the PathValidator to evaluate the condition on the vertices. (yes,
+          // really)
+          auto* map = result.matches().at("map");
+          auto* tmpVar = pathsNode->getTemporaryRefNode();
+          map =
+              Ast::traverseAndModify(map, [&tmpVar](AstNode* node) -> AstNode* {
+                if (node->type == NODE_TYPE_REFERENCE) {
+                  return tmpVar;
+                }
+                return node;
+              });
+
+          // as per the pattern match above the right hand side is just a value
+          auto const* rhsValue = result.matches().at("rhs_value");
+
+          // build a condition of the form
+          // (lambda (vertex)
+          //   (== (map vertex) rhsValue))
+          // this condition has to hold for every vertex, and is registered as
+          // such with the path enumeration.
+          auto condition = ast->createNodeBinaryOperator(
+              NODE_TYPE_OPERATOR_BINARY_EQ, map, rhsValue);
+
+          pathsNode->registerGlobalVertexCondition(condition);
+        }
       }
-      (void)varsValidInPathEnumeration;
 
     } break;
     default: {

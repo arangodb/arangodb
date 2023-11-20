@@ -431,6 +431,8 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
   if (opts->_allVerticesExpression != nullptr) {
     auto allVerticesExpression =
         opts->_allVerticesExpression->clone(_plan->getAst());
+    std::cerr << "all vertices expr? ";
+    allVerticesExpression->node()->toStream(std::cerr, 4);
     validatorOptions.setAllVerticesExpression(std::move(allVerticesExpression));
   }
 
