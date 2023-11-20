@@ -22,7 +22,7 @@
     padding: 0 12px;
 
     &.active {
-      border-bottom: 2px solid $c-active-green;
+      border-bottom: 2px solid var(--green-600);
       cursor: default;
       padding-bottom: 5px;
 
@@ -118,7 +118,7 @@
       margin-top: 5px;
 
       &.active {
-        border-bottom: 2px solid $c-active-green;
+        border-bottom: 2px solid var(--green-600);
         cursor: default;
         padding-bottom: 5px;
 
@@ -248,7 +248,7 @@
   }
 
   .dropdown-header {
-    background-color: $c-active-green;
+    background-color: var(--green-600);
     cursor: default;
     margin: 0;
     margin-left: -1px;

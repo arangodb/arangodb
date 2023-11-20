@@ -1,6 +1,8 @@
 // 1. Import `extendTheme`
 import {
-  extendTheme, theme as defaultTheme, TooltipProps
+  extendTheme,
+  theme as defaultTheme,
+  TooltipProps
 } from "@chakra-ui/react";
 import { cssVar, mode, StyleFunctionProps } from "@chakra-ui/theme-tools";
 
@@ -41,6 +43,18 @@ export const theme = extendTheme({
     }
   },
   components: {
+    Switch: {
+      defaultProps: {
+        colorScheme: "green"
+      },
+      baseStyle: {
+        track: {
+          _checked: {
+            bg: "green.600"
+          }
+        }
+      }
+    },
     Button: {
       variants: {
         solid: (props: StyleFunctionProps) => {
