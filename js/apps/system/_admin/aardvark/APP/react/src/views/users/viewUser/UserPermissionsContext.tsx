@@ -9,6 +9,7 @@ import {
 import React from "react";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { getCurrentDB } from "../../../utils/arangoClient";
+import { notifyError } from "../../../utils/notifications";
 import {
   CollectionType,
   DatabaseTableType
@@ -217,48 +218,11 @@ export const UserPermissionsContextProvider = ({
   const { databaseTable, refetchDatabasePermissions } =
     usePermissionTableData();
   const { username } = useUsername();
-  const handleDatabaseCellClick = async ({
-    info,
-    permission
-  }: {
-    info: CellContext<DatabaseTableType, unknown>;
-    permission: string;
-  }) => {
-    const { databaseName } = info.row.original;
-    const currentDbRoute = getCurrentDB().route(
-      `_api/user/${username}/database/${databaseName}`
-    );
-    if (permission === "undefined") {
-      await currentDbRoute.delete();
-      refetchDatabasePermissions?.();
-      return;
-    }
-    await currentDbRoute.put({
-      grant: permission
+  const { handleDatabaseCellClick, handleCollectionCellClick } =
+    usePermissionChangeHandlers({
+      refetchDatabasePermissions
     });
-    refetchDatabasePermissions?.();
-  };
-  const handleCollectionCellClick = async ({
-    permission,
-    info,
-    databaseName
-  }: {
-    permission: string;
-    info: CellContext<CollectionType, unknown>;
-    databaseName: string;
-  }) => {
-    const { collectionName } = info.row.original;
-    const currentDbRoute = getCurrentDB().route(
-      `_api/user/${username}/database/${databaseName}/${collectionName}`
-    );
-    if (permission === "undefined") {
-      await currentDbRoute.delete();
-      refetchDatabasePermissions?.();
-      return;
-    }
-    await currentDbRoute.put({ grant: permission });
-    refetchDatabasePermissions?.();
-  };
+
   const tableInstance = useSortableReactTable<DatabaseTableType>({
     data: databaseTable || [],
     columns: TABLE_COLUMNS,
@@ -289,4 +253,68 @@ export const UserPermissionsContextProvider = ({
       {children}
     </UserPermissionsContext.Provider>
   );
+};
+
+const usePermissionChangeHandlers = ({
+  refetchDatabasePermissions
+}: {
+  refetchDatabasePermissions?: () => void;
+}) => {
+  const { username } = useUsername();
+
+  const handleDatabaseCellClick = async ({
+    info,
+    permission
+  }: {
+    info: CellContext<DatabaseTableType, unknown>;
+    permission: string;
+  }) => {
+    const { databaseName } = info.row.original;
+    try {
+      const currentDbRoute = getCurrentDB().route(
+        `_api/user/${username}/database/${databaseName}`
+      );
+      if (permission === "undefined") {
+        await currentDbRoute.delete();
+        refetchDatabasePermissions?.();
+        return;
+      }
+      await currentDbRoute.put({
+        grant: permission
+      });
+      refetchDatabasePermissions?.();
+    } catch (e: any) {
+      notifyError(e.message);
+    }
+  };
+
+  const handleCollectionCellClick = async ({
+    permission,
+    info,
+    databaseName
+  }: {
+    permission: string;
+    info: CellContext<CollectionType, unknown>;
+    databaseName: string;
+  }) => {
+    const { collectionName } = info.row.original;
+    try {
+      const currentDbRoute = getCurrentDB().route(
+        `_api/user/${username}/database/${databaseName}/${collectionName}`
+      );
+      if (permission === "undefined") {
+        await currentDbRoute.delete();
+        refetchDatabasePermissions?.();
+        return;
+      }
+      await currentDbRoute.put({ grant: permission });
+      refetchDatabasePermissions?.();
+    } catch (e: any) {
+      notifyError(e.message);
+    }
+  };
+  return {
+    handleDatabaseCellClick,
+    handleCollectionCellClick
+  };
 };
