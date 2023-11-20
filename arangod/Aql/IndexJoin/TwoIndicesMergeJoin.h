@@ -329,9 +329,10 @@ TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::advanceIndexes() {
       return {false, amountOfSeeks};
     }
     seekIndexAndCacheProjections(indexes[0], 0);
+    return {true, amountOfSeeks};
   }
-  seekIndexAndCacheProjections(indexes[1], 1);
 
+  seekIndexAndCacheProjections(indexes[1], 1);
   return {true, amountOfSeeks};
 }
 
