@@ -68,7 +68,8 @@ ClusterTransactionState::ClusterTransactionState(
 ClusterTransactionState::~ClusterTransactionState() = default;
 
 /// @brief start a transaction
-Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
+futures::Future<Result> ClusterTransactionState::beginTransaction(
+    transaction::Hints hints) {
   LOG_TRX("03dec", TRACE, this)
       << "beginning " << AccessMode::typeString(_type) << " transaction";
 
@@ -86,9 +87,9 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
     ++stats._transactionsAborted;
   });
 
-  Result res = useCollections();
+  Result res = co_await useCollections();
   if (res.fail()) {  // something is wrong
-    return res;
+    co_return res;
   }
 
   // all valid
@@ -148,13 +149,13 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
                 *this, leaders, transaction::MethodsApi::Synchronous)
                 .get();
       if (res.fail()) {  // something is wrong
-        return res;
+        co_return res;
       }
     }
   }
 
   cleanup.cancel();
-  return res;
+  co_return res;
 }
 
 /// @brief commit a transaction

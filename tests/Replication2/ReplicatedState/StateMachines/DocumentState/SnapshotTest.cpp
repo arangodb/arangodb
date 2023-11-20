@@ -148,7 +148,7 @@ TEST_F(DocumentStateSnapshotTest,
   EXPECT_CALL(*shardHandlerMock, ensureShard(shardId2, TRI_COL_TYPE_EDGE, _))
       .Times(1);
 
-  follower->acquireSnapshot("participantId");
+  std::ignore = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
 
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());

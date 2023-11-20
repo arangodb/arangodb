@@ -91,7 +91,7 @@ RestAqlHandler::RestAqlHandler(ArangodServer& server, GeneralRequest* request,
 //    traverserEngines: [ <infos for traverser engines> ],
 //    variables: [ <variables> ]
 //  }
-void RestAqlHandler::setupClusterQuery() {
+futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
   // We should not intentionally call this method
   // on the wrong server. So fail during maintanence.
   // On user setup reply gracefully.
@@ -99,7 +99,7 @@ void RestAqlHandler::setupClusterQuery() {
   if (ADB_UNLIKELY(!ServerState::instance()->isDBServer())) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
-    return;
+    co_return;
   }
 
   TRI_IF_FAILURE("Query::setupTimeout") {
@@ -127,7 +127,7 @@ void RestAqlHandler::setupClusterQuery() {
         << "Failed to setup query. Could not "
            "parse the transmitted plan. "
            "Aborting query.";
-    return;
+    co_return;
   }
 
   QueryId clusterQueryId = 0;
@@ -147,7 +147,7 @@ void RestAqlHandler::setupClusterQuery() {
         << "Invalid VelocyPack: \"lockInfo\" is required but not an object.";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"lockInfo\"");
-    return;
+    co_return;
   }
 
   VPackSlice optionsSlice = querySlice.get("options");
@@ -156,7 +156,7 @@ void RestAqlHandler::setupClusterQuery() {
         << "Invalid VelocyPack: \"options\" attribute missing.";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"options\"");
-    return;
+    co_return;
   }
 
   VPackSlice snippetsSlice = querySlice.get("snippets");
@@ -165,7 +165,7 @@ void RestAqlHandler::setupClusterQuery() {
         << "Invalid VelocyPack: \"snippets\" attribute missing.";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"snippets\"");
-    return;
+    co_return;
   }
 
   VPackSlice traverserSlice = querySlice.get("traverserEngines");
@@ -176,7 +176,7 @@ void RestAqlHandler::setupClusterQuery() {
     generateError(
         rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
         "if \"traverserEngines\" is set in the body, it has to be an array");
-    return;
+    co_return;
   }
 
   VPackSlice variablesSlice = querySlice.get("variables");
@@ -185,7 +185,7 @@ void RestAqlHandler::setupClusterQuery() {
         << "Invalid VelocyPack: \"variables\" attribute missing.";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"variables\"");
-    return;
+    co_return;
   }
 
   LOG_TOPIC("f9e30", DEBUG, arangodb::Logger::AQL)
@@ -220,7 +220,7 @@ void RestAqlHandler::setupClusterQuery() {
           absl::StrCat("body must be an object with attribute \"",
                        StaticStrings::AttrCoordinatorRebootId, "\" and \"",
                        StaticStrings::AttrCoordinatorId, "\""));
-      return;
+      co_return;
     }
   }
   // Valid to not exist for upgrade scenarios!
@@ -258,7 +258,7 @@ void RestAqlHandler::setupClusterQuery() {
           absl::StrCat("body must be an object with attribute: \"lockInfo.",
                        lockInf.key.stringView(),
                        "\" is required but not an array."));
-      return;
+      co_return;
     }
     for (VPackSlice col : VPackArrayIterator(lockInf.value)) {
       if (!col.isString()) {
@@ -270,7 +270,7 @@ void RestAqlHandler::setupClusterQuery() {
             absl::StrCat("body must be an object with attribute: \"lockInfo.",
                          lockInf.key.stringView(),
                          "\" is required but not an array."));
-        return;
+        co_return;
       }
       collectionBuilder.openObject();
       collectionBuilder.add("name", col);
@@ -295,9 +295,9 @@ void RestAqlHandler::setupClusterQuery() {
 
   double const ttl = options.ttl;
   // creates a StandaloneContext or a leased context
-  auto q = ClusterQuery::create(clusterQueryId,
-                                createTransactionContext(access, origin),
-                                std::move(options));
+  auto q = ClusterQuery::create(
+      clusterQueryId, co_await createTransactionContext(access, origin),
+      std::move(options));
   TRI_ASSERT(clusterQueryId == 0 || clusterQueryId == q->id());
 
   VPackBufferUInt8 buffer;
@@ -326,7 +326,7 @@ void RestAqlHandler::setupClusterQuery() {
         << "Failed to read ArangoSearch analyzers revision "
         << revisionRes.errorMessage();
     generateError(revisionRes);
-    return;
+    co_return;
   }
   q->prepareClusterQuery(querySlice, collectionBuilder.slice(), variablesSlice,
                          snippetsSlice, traverserSlice, answerBuilder,
@@ -446,7 +446,7 @@ RestStatus RestAqlHandler::execute() {
       if (suffixes.size() != 1) {
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       } else if (suffixes[0] == "setup") {
-        setupClusterQuery();
+        return waitForFuture(setupClusterQuery());
       } else {
         auto msg = absl::StrCat("Unknown POST API: ",
                                 basics::StringUtils::join(suffixes, '/'));
