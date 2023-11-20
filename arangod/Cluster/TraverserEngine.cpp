@@ -203,7 +203,7 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder,
       return true;
     };
     for (auto const& shard : shards->second) {
-      Result res = _trx->documentFastPathLocal(shard, vertex, cb);
+      Result res = _trx->documentFastPathLocal(shard, vertex, cb).get();
       if (res.ok()) {
         break;
       }

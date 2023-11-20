@@ -135,7 +135,7 @@ class IResearchInvertedIndexIteratorTestBase
                                                    &storedFields, &sortedFields,
                                                    "unique_name");
     bool created = false;
-    _inverted = _collection->createIndex(builder.slice(), created);
+    _inverted = _collection->createIndex(builder.slice(), created).get();
     EXPECT_TRUE(created);
     EXPECT_TRUE(_inverted);
     _index = dynamic_cast<arangodb::iresearch::IResearchInvertedIndex*>(
