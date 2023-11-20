@@ -105,8 +105,8 @@ $c-unloaded: #ff8f35;
 $c-primary: #34495e;
 $c-primary-hover: #415b76;
 
-$c-notification: #faa020;
-$c-notification-hover: #f87c0f;
+$c-notification: var(--orange-600);
+$c-notification-hover: var(--orange-700);
 
 $c-inactive: #d3d3d3;
 $c-inactive-hover: #d3d3d3;
