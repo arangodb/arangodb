@@ -273,7 +273,7 @@ $navbar-size: 150px;
       width: 10px;
 
       &.fa-heart {
-        color: rgb(255, 122, 122);
+        color: var(--red-400);
         opacity: 1;
       }
     }
