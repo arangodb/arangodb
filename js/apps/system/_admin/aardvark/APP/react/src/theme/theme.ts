@@ -14,6 +14,9 @@ export const theme = extendTheme({
     heading: "Inter, sans-serif",
     body: "Inter, sans-serif"
   },
+  shadows: {
+    outline: "0 0 0 3px rgb(126 173 53 / 60%)"
+  },
   colors: {
     green: {
       50: "#f5faeb",
@@ -39,7 +42,7 @@ export const theme = extendTheme({
       700: "#cc1409",
       800: "#a8150c",
       900: "#8b1811",
-      950: "#4c0703",
+      950: "#4c0703"
     },
     gray: {
       50: "#f8f8f8",
@@ -71,7 +74,7 @@ export const theme = extendTheme({
     Button: {
       variants: {
         solid: (props: StyleFunctionProps) => {
-          if (['green', 'red'].includes(props.colorScheme)) {
+          if (["green", "red"].includes(props.colorScheme)) {
             return {
               bg: `${props.colorScheme}.600`,
               color: "white",
