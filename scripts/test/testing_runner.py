@@ -71,7 +71,7 @@ def testing_runner(testing_instance, this, arangosh):
         ret = arangosh.run_testing(
             this.suite,
             this.args,
-            999999999,
+            15*60, # 15 Minutes screen idle before timeout
             this.base_logdir,
             this.log_file,
             this.name_enum,
