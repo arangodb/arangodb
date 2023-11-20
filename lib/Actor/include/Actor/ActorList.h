@@ -101,16 +101,6 @@ struct ActorList {
     });
   }
 
-  template<Predicate<ActorPID> F>
-  auto removeIf(F&& isDeletable) -> void {
-    actors.doUnderLock([&isDeletable](ActorMap& map) {
-      std::erase_if(map, [&isDeletable](const auto& item) {
-        auto& [_, entry] = item;
-        return isDeletable(entry.actor);
-      });
-    });
-  }
-
   template<typename F>
   requires requires(F fn, std::shared_ptr<ActorBase<ActorPID>>& actor) {
     {fn(actor)};

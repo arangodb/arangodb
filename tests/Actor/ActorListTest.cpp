@@ -130,39 +130,6 @@ TEST(ActorListTest, gives_all_actor_ids_in_list) {
                                        ActorID{10}}));
 }
 
-TEST(ActorListTest, removes_actors_by_precondition_from_list) {
-  auto list =
-      ActorList({{ActorID{1}, std::make_shared<ActorBaseMock>("deletable")},
-                 {ActorID{2}, std::make_shared<ActorBaseMock>("non-deletable")},
-                 {ActorID{3}, std::make_shared<ActorBaseMock>("deletable")},
-                 {ActorID{4}, std::make_shared<ActorBaseMock>("deletable")}});
-  ASSERT_EQ(list.size(), 4);
-
-  list.removeIf([](std::shared_ptr<ActorBase> const& actor) -> bool {
-    return actor->typeName() == "deletable";
-  });
-  ASSERT_EQ(list.size(), 1);
-  ASSERT_EQ(list.allIDs(), std::vector<ActorID>{ActorID{2}});
-}
-
-TEST(ActorListTest,
-     removes_actors_by_precondition_without_destroying_actors_in_use) {
-  auto list =
-      ActorList({{ActorID{1}, std::make_shared<ActorBaseMock>("deletable")},
-                 {ActorID{2}, std::make_shared<ActorBaseMock>("non-deletable")},
-                 {ActorID{3}, std::make_shared<ActorBaseMock>("deletable")},
-                 {ActorID{4}, std::make_shared<ActorBaseMock>("deletable")}});
-  ASSERT_EQ(list.size(), 4);
-
-  auto actorInUse = list.find(ActorID{1});
-  list.removeIf([](std::shared_ptr<ActorBase> const& actor) -> bool {
-    return actor->typeName() == "deletable";
-  });
-  ASSERT_EQ(list.size(), 1);
-  ASSERT_EQ(list.allIDs(), std::vector<ActorID>{ActorID{2}});
-  ASSERT_EQ(actorInUse->use_count(), 1);
-}
-
 TEST(ActorListTest, applies_function_to_each_actor) {
   auto list = ActorList({{ActorID{1}, std::make_shared<ActorBaseMock>()},
                          {ActorID{2}, std::make_shared<ActorBaseMock>()},
