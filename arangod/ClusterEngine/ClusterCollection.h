@@ -77,7 +77,7 @@ class ClusterCollection final : public PhysicalCollection {
   // -- SECTION Indexes --
   ///////////////////////////////////
 
-  std::shared_ptr<Index> createIndex(
+  futures::Future<std::shared_ptr<Index>> createIndex(
       velocypack::Slice info, bool restore, bool& created,
       std::shared_ptr<std::function<arangodb::Result(double)>> =
           nullptr) override;

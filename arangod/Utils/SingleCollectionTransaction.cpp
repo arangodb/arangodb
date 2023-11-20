@@ -102,8 +102,9 @@ LogicalCollection* SingleCollectionTransaction::documentCollection() {
   return _documentCollection;
 }
 
-DataSourceId SingleCollectionTransaction::addCollectionAtRuntime(
-    std::string_view name, AccessMode::Type type) {
+futures::Future<DataSourceId>
+SingleCollectionTransaction::addCollectionAtRuntime(std::string_view name,
+                                                    AccessMode::Type type) {
   TRI_ASSERT(!name.empty());
   if ((name[0] < '0' || name[0] > '9') &&
       name != resolveTrxCollection()->collectionName()) {

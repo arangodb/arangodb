@@ -159,8 +159,8 @@ class RocksDBReplicationContext {
   /// remove matching iterator
   void releaseIterators(TRI_vocbase_t&, DataSourceId);
 
-  std::tuple<Result, DataSourceId, uint64_t> bindCollectionIncremental(
-      TRI_vocbase_t& vocbase, std::string const& cname);
+  futures::Future<std::tuple<Result, DataSourceId, uint64_t>>
+  bindCollectionIncremental(TRI_vocbase_t& vocbase, std::string const& cname);
 
   // returns inventory
   Result getInventory(TRI_vocbase_t& vocbase, bool includeSystem,
