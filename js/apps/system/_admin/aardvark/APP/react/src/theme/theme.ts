@@ -28,6 +28,19 @@ export const theme = extendTheme({
       900: "#35481f",
       950: "#1a270c"
     },
+    red: {
+      50: "#fff2f1",
+      100: "#ffe1df",
+      200: "#ffc7c4",
+      300: "#ffa19b",
+      400: "#ff6a61",
+      500: "#ff3b30",
+      600: "#e6190d",
+      700: "#cc1409",
+      800: "#a8150c",
+      900: "#8b1811",
+      950: "#4c0703",
+    },
     gray: {
       50: "#f8f8f8",
       100: "#f0f0f0",
@@ -58,15 +71,15 @@ export const theme = extendTheme({
     Button: {
       variants: {
         solid: (props: StyleFunctionProps) => {
-          if (props.colorScheme === "green") {
+          if (['green', 'red'].includes(props.colorScheme)) {
             return {
-              bg: "green.600",
+              bg: `${props.colorScheme}.600`,
               color: "white",
               _hover: {
-                bg: "green.700"
+                bg: `${props.colorScheme}.700`
               },
               _active: {
-                bg: "green.700"
+                bg: `${props.colorScheme}.700`
               }
             };
           }
