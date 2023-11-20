@@ -117,7 +117,7 @@ const AddAnalyzerModalInner = ({
           <Button colorScheme="gray" onClick={onClose}>
             Close
           </Button>
-          <Button isLoading={isSubmitting} colorScheme="blue" type="submit">
+          <Button isLoading={isSubmitting} colorScheme="green" type="submit">
             Create
           </Button>
         </Stack>

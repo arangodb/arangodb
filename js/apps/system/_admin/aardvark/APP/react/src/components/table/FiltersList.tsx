@@ -87,7 +87,7 @@ const FilterButton = ({
           }}
           variant="ghost"
           size="xs"
-          colorScheme="blue"
+          colorScheme="green"
         >
           Reset
         </Button>
