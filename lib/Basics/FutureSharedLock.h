@@ -63,6 +63,8 @@ struct FutureSharedLock {
 
     bool isLocked() const noexcept { return _lock != nullptr; }
 
+    void release() noexcept { _lock = nullptr; }
+
     void unlock() noexcept {
       TRI_ASSERT(_lock != nullptr);
       _lock->unlock();
