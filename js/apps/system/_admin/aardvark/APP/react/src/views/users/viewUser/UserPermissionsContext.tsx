@@ -33,7 +33,7 @@ const UserPermissionsContext = React.createContext<{
   }: {
     info: CellContext<DatabaseTableType, unknown>;
     permission: string;
-  }) => void;
+  }) => Promise<void>;
   handleCollectionCellClick: ({
     permission,
     info,
@@ -42,7 +42,7 @@ const UserPermissionsContext = React.createContext<{
     permission: string;
     info: CellContext<CollectionType, unknown>;
     databaseName: string;
-  }) => void;
+  }) => Promise<void>;
 }>({} as any);
 
 export const useUserPermissionsContext = () => {

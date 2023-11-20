@@ -1,4 +1,4 @@
-import { Flex, Radio, Tag } from "@chakra-ui/react";
+import { Flex, Radio, Spinner, Tag } from "@chakra-ui/react";
 import { CellContext } from "@tanstack/react-table";
 import React from "react";
 import { DatabaseTableType } from "./CollectionsPermissionsTable";
@@ -20,6 +20,8 @@ export const CollectionPermissionSwitch = ({
     getMaxLevel({ databaseTable, databaseName });
   const isDefaultRow = getIsDefaultRow(info);
   const isUndefined = info.column.id === "undefined";
+  const [isLoading, setIsLoading] = React.useState(false);
+
   if (isDefaultRow && isUndefined) {
     return null;
   }
@@ -37,16 +39,23 @@ export const CollectionPermissionSwitch = ({
     isDefaultForCollection = true;
   }
 
-  const handleChange = () => {
-    handleCollectionCellClick?.({
+  const handleChange = async () => {
+    setIsLoading(true);
+    await handleCollectionCellClick({
       info,
       permission: info.column.id,
       databaseName
     });
+    setIsLoading(false);
   };
   return (
     <Flex gap="3">
-      <Radio isChecked={checked} onChange={handleChange} />
+      <Radio
+        isDisabled={isLoading}
+        isChecked={checked}
+        onChange={handleChange}
+      />
+      {isLoading && <Spinner size="sm" />}
       {isDefaultForCollection && <Tag size="sm">Default</Tag>}
     </Flex>
   );
