@@ -105,6 +105,17 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
   for (size_t j = 0; j < length; ++j) {
     _reverseLookupInfos.emplace_back(query, read.at(j), collections.at(j));
   }
+
+  read = info.get("baseVertexExpression");
+  if (!read.isNone()) {
+    if (!read.isObject()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "The options require vertexExpressions to be an object");
+    }
+    _allVerticesExpression =
+        std::make_unique<aql::Expression>(query.ast(), read);
+  }
 }
 
 ShortestPathOptions::~ShortestPathOptions() = default;
@@ -138,6 +149,14 @@ void ShortestPathOptions::toVelocyPack(VPackBuilder& builder) const {
   builder.add("defaultWeight", VPackValue(getDefaultWeight()));
   builder.add("produceVertices", VPackValue(produceVertices()));
   builder.add("type", VPackValue("shortestPath"));
+
+  if (_allVerticesExpression != nullptr) {
+    builder.add(VPackValue("baseVertexExpression"));
+    builder.openObject();
+    builder.add(VPackValue("expression"));
+    _allVerticesExpression->toVelocyPack(builder, true);
+    builder.close();
+  }
 }
 
 void ShortestPathOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
