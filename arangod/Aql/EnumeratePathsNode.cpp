@@ -26,6 +26,7 @@
 #include "EnumeratePathsNode.h"
 
 #include "Aql/Ast.h"
+#include "Aql/AstNode.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
@@ -431,9 +432,12 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
   if (opts->_allVerticesExpression != nullptr) {
     auto allVerticesExpression =
         opts->_allVerticesExpression->clone(_plan->getAst());
-    std::cerr << "all vertices expr? ";
-    allVerticesExpression->node()->toStream(std::cerr, 4);
     validatorOptions.setAllVerticesExpression(std::move(allVerticesExpression));
+  }
+
+  if (opts->_allEdgesExpression != nullptr) {
+    auto allEdgesExpression = opts->_allEdgesExpression->clone(_plan->getAst());
+    validatorOptions.setAllEdgesExpression(std::move(allEdgesExpression));
   }
 
   if (!ServerState::instance()->isCoordinator()) {
@@ -905,6 +909,15 @@ void EnumeratePathsNode::prepareOptions() {
       cond->addMember(it);
     }
     opts->_allVerticesExpression = std::make_unique<Expression>(ast, cond);
+  }
+
+  if (!_globalEdgeConditions.empty()) {
+    auto cond =
+        _plan->getAst()->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+    for (auto const& it : _globalEdgeConditions) {
+      cond->addMember(it);
+    }
+    opts->_allEdgesExpression = std::make_unique<Expression>(ast, cond);
   }
 
   // If we use the path output the cache should activate document

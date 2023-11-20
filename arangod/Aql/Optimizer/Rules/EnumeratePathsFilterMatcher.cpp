@@ -169,7 +169,7 @@ auto EnumeratePathsFilterMatcher::before(ExecutionNode* node) -> bool {
       auto const* andNode = _condition->root()->getMemberUnchecked(0);
       auto const num = andNode->numMembers();
 
-      auto matcher = arrayEq(                                             //
+      auto vertexMatcher = arrayEq(                                       //
           expansion(                                                      //
               iterator(matchWithName("current", AnyVariable{}),           //
                        attributeAccess(Reference{.name = pathVar->name},  //
@@ -182,9 +182,23 @@ auto EnumeratePathsFilterMatcher::before(ExecutionNode* node) -> bool {
           expression_matcher::Quantifier{
               .which = ::arangodb::aql::Quantifier::Type::kAll});  //
 
+      auto edgeMatcher = arrayEq(                                         //
+          expansion(                                                      //
+              iterator(matchWithName("current", AnyVariable{}),           //
+                       attributeAccess(Reference{.name = pathVar->name},  //
+                                       {"edges"})),                       //
+              Any{},                                                      //
+              NoOp{},                                                     //
+              NoOp{},                                                     //
+              matchWithName("map", Any{})),                               //
+          matchWithName("rhs_value", AnyValue{}),                         //
+          expression_matcher::Quantifier{
+              .which = ::arangodb::aql::Quantifier::Type::kAll});  //
+
       auto* ast = _plan->getAst();
-      for (auto i = std::size_t{0}; i < num; ++i) {
-        auto result = matcher.apply(andNode->getMemberUnchecked(i));
+
+      auto applyM = [&pathsNode, &ast](auto&& m, AstNode* node) -> AstNode* {
+        auto result = m.apply(node);
 
         if (!result.isError()) {
           // here `map` is $expr in `path.vertices[* $expr] == $rhsValue`, and
@@ -193,8 +207,8 @@ auto EnumeratePathsFilterMatcher::before(ExecutionNode* node) -> bool {
           //
           // This variable reference is then replaced with the temporary
           // variable from the EnumeratePathsNode, as this is in turn used by
-          // the PathValidator to evaluate the condition on the vertices. (yes,
-          // really)
+          // the PathValidator to evaluate the condition on the vertices.
+          // (yes, really)
           auto* map = result.matches().at("map");
           auto* tmpVar = pathsNode->getTemporaryRefNode();
           map =
@@ -205,7 +219,8 @@ auto EnumeratePathsFilterMatcher::before(ExecutionNode* node) -> bool {
                 return node;
               });
 
-          // as per the pattern match above the right hand side is just a value
+          // as per the pattern match above the right hand side is just a
+          // value
           auto const* rhsValue = result.matches().at("rhs_value");
 
           // build a condition of the form
@@ -216,10 +231,30 @@ auto EnumeratePathsFilterMatcher::before(ExecutionNode* node) -> bool {
           auto condition = ast->createNodeBinaryOperator(
               NODE_TYPE_OPERATOR_BINARY_EQ, map, rhsValue);
 
-          pathsNode->registerGlobalVertexCondition(condition);
+          return condition;
+        }
+
+        return nullptr;
+      };
+
+      for (auto i = std::size_t{0}; i < num; ++i) {
+        {
+          auto condition =
+              applyM(vertexMatcher, andNode->getMemberUnchecked(i));
+
+          if (condition != nullptr) {
+            pathsNode->registerGlobalVertexCondition(condition);
+          }
+        }
+
+        {
+          auto condition = applyM(edgeMatcher, andNode->getMemberUnchecked(i));
+
+          if (condition != nullptr) {
+            pathsNode->registerGlobalEdgeCondition(condition);
+          }
         }
       }
-
     } break;
     default: {
       // TODO: should this maybe just prevent the optimiser rule to fire

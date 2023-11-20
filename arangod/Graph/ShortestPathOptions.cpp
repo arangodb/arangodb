@@ -111,10 +111,20 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
     if (!read.isObject()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
-          "The options require vertexExpressions to be an object");
+          "The options require baseVertexExpression to be an object");
     }
     _allVerticesExpression =
         std::make_unique<aql::Expression>(query.ast(), read);
+  }
+
+  read = info.get("baseEdgeExpression");
+  if (!read.isNone()) {
+    if (!read.isObject()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "The options require baseEdgeExpression to be an object");
+    }
+    _allEdgesExpression = std::make_unique<aql::Expression>(query.ast(), read);
   }
 }
 
@@ -152,6 +162,14 @@ void ShortestPathOptions::toVelocyPack(VPackBuilder& builder) const {
 
   if (_allVerticesExpression != nullptr) {
     builder.add(VPackValue("baseVertexExpression"));
+    builder.openObject();
+    builder.add(VPackValue("expression"));
+    _allVerticesExpression->toVelocyPack(builder, true);
+    builder.close();
+  }
+
+  if (_allEdgesExpression != nullptr) {
+    builder.add(VPackValue("baseEdgeExpression"));
     builder.openObject();
     builder.add(VPackValue("expression"));
     _allVerticesExpression->toVelocyPack(builder, true);

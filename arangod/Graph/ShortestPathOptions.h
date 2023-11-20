@@ -120,6 +120,7 @@ struct ShortestPathOptions : public BaseOptions {
   /// AllShortestPaths, and that this expression is currently only used
   /// in the EnumeratePathsNode
   std::unique_ptr<aql::Expression> _allVerticesExpression;
+  std::unique_ptr<aql::Expression> _allEdgesExpression;
 };
 
 }  // namespace graph

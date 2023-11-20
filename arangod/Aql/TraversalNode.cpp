@@ -176,7 +176,7 @@ TraversalNode::TraversalNode(
     std::string vertexId, TRI_edge_direction_e defaultDirection,
     std::vector<TRI_edge_direction_e> const& directions,
     std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph)
-    : GraphNode(plan, id, vocbase, edgeColls, vertexColls, defaultDirection,
+    : GraphNode(plan, id, vocbase, edgeColls, vertexColls, defeaultDirection,
                 directions, std::move(options), graph),
       _pathOutVariable(nullptr),
       _inVariable(inVariable),
