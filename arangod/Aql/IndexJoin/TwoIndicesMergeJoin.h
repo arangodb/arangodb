@@ -276,66 +276,61 @@ void TwoIndicesMergeJoin<SliceType, DocIdType,
   TRI_ASSERT(minIter != nullptr);
   TRI_ASSERT(maxIter != nullptr);
 
-  // clear and re-coordinate min and max iterators
-  for (auto& idx : indexes) {
-    if (IndexStreamCompare{}.cmp(*maxIter, idx) == std::weak_ordering::less) {
-      minIter = maxIter;
-      maxIter = &idx;
-    }
+  // clear and re-coordinate min and max iterators (if required)
+  if (IndexStreamCompare{}.cmp(*maxIter, *minIter) ==
+      std::weak_ordering::less) {
+    std::swap(maxIter, minIter);
   }
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
 std::pair<bool, size_t>
 TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::advanceIndexes() {
-  std::size_t where = 0;
   std::size_t amountOfSeeks = 0;
 
-  while (true) {
-    if (where == indexes.size()) {
-      // reached the end of this streak
-      positionAligned = false;
-      return {false, amountOfSeeks};
-    }
-
-    auto& idx = indexes[where];
+  auto incrementAndCheckMatch = [&](IndexStreamData& idx) -> bool {
     bool exhausted = idx.next();
     if (!exhausted) {
-      LOG_IDX_TWO_NONU_MERGER << "at position " << where;
-      for (auto k : indexes[where]._position) {
-        LOG_IDX_TWO_NONU_MERGER << k;
-      }
-
-      LOG_IDX_TWO_NONU_MERGER << "at rbegin ";
-      for (auto k : indexes.rbegin()->_position) {
+      LOG_IDX_TWO_NONU_MERGER << "next call on idx: " << &idx;
+      for (auto k : idx._position) {
         LOG_IDX_TWO_NONU_MERGER << k;
       }
 
       LOG_IDX_TWO_NONU_MERGER
           << "diff = "
-          << (0 == IndexStreamCompare{}.cmp(indexes[where]._position,
-                                            currentKeySet));
+          << (0 == IndexStreamCompare{}.cmp(idx._position, currentKeySet));
 
-      if (0 ==
-          IndexStreamCompare{}.cmp(indexes[where]._position, currentKeySet)) {
-        break;
+      if (std::weak_ordering::equivalent ==
+          IndexStreamCompare{}.cmp(idx._position, currentKeySet)) {
+        return true;
       }
     }
+    return false;
+  };
 
-    where += 1;
-  }
-
-  while (where > 0) {
-    where -= 1;
-    auto& idx = indexes[where];
-    LOG_IDX_TWO_NONU_MERGER << "seeking iterator at " << where << " to";
+  auto seekIndexAndCacheProjections = [&](IndexStreamData& idx,
+                                          size_t position) {
+    LOG_IDX_TWO_NONU_MERGER << "seeking iterator at position: " << position
+                            << " to";
     for (auto k : currentKeySet) {
       LOG_IDX_TWO_NONU_MERGER << k;
     }
     idx.seekTo(currentKeySet);
     amountOfSeeks++;
-    documentIds[where] = idx._iter->load(idx._projections);
+    documentIds[position] = idx._iter->load(idx._projections);
+  };
+
+  bool foundMatch = incrementAndCheckMatch(indexes[0]);
+  if (!foundMatch) {
+    foundMatch = incrementAndCheckMatch(indexes[1]);
+    if (!foundMatch) {
+      // reached the end of this streak
+      positionAligned = false;
+      return {false, amountOfSeeks};
+    }
+    seekIndexAndCacheProjections(indexes[0], 0);
   }
+  seekIndexAndCacheProjections(indexes[1], 1);
 
   return {true, amountOfSeeks};
 }
