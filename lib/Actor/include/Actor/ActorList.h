@@ -24,6 +24,9 @@
 
 #pragma once
 
+#include <initializer_list>
+#include <memory>
+#include <vector>
 #include "Actor/ActorBase.h"
 #include "Actor/ActorID.h"
 #include "Basics/Guarded.h"
@@ -38,18 +41,28 @@ concept Predicate =
 
 template<typename ActorPID>
 struct ActorList {
- private:
-  struct ActorMap
-      : std::unordered_map<ActorID, std::shared_ptr<ActorBase<ActorPID>>> {};
-  Guarded<ActorMap> actors;
-  struct ActorInfo {
-    ActorID id;
-    std::string_view type;
+  struct Entry {
+    explicit Entry(std::shared_ptr<ActorBase<ActorPID>>&& actor)
+        : actor(std::move(actor)) {}
+
+    std::shared_ptr<ActorBase<ActorPID>> actor;
+    std::vector<ActorID> monitors;
+
+    template<class Inspector>
+    friend inline auto inspect(Inspector& f, Entry& x) {
+      return f.object(x).fields(f.field("type", x.actor->typeName()),
+                                f.field("monitors", x.monitors));
+    }
   };
 
- public:
-  ActorList(ActorMap map) : actors{std::move(map)} {}
   ActorList() = default;
+  ActorList(std::initializer_list<
+            std::pair<ActorID, std::shared_ptr<ActorBase<ActorPID>>>>
+                list) {
+    for (auto& [id, actor] : list) {
+      add(id, std::move(actor));
+    }
+  }
 
   auto contains(ActorID id) const -> bool {
     return actors.doUnderLock(
@@ -65,26 +78,35 @@ struct ActorList {
           if (a == std::end(map)) {
             return std::nullopt;
           }
-          auto& [_, actor] = *a;
-          return actor;
+          auto& [_, entry] = *a;
+          return entry.actor;
         });
   }
 
   auto add(ActorID id, std::shared_ptr<ActorBase<ActorPID>> actor) -> void {
-    actors.doUnderLock(
-        [&id, &actor](ActorMap& map) { map.emplace(id, std::move(actor)); });
+    actors.doUnderLock([&id, &actor](ActorMap& map) {
+      map.emplace(id, Entry{std::move(actor)});
+    });
   }
 
-  auto remove(ActorID id) -> void {
-    actors.doUnderLock([id](ActorMap& map) { map.erase(id); });
+  auto remove(ActorID id) -> std::optional<Entry> {
+    return actors.doUnderLock([id](ActorMap& map) -> std::optional<Entry> {
+      auto it = map.find(id);
+      if (it != map.end()) {
+        std::optional<Entry> result{std::move(it->second)};
+        map.erase(it);
+        return result;
+      }
+      return {};
+    });
   }
 
   template<Predicate<ActorPID> F>
   auto removeIf(F&& isDeletable) -> void {
     actors.doUnderLock([&isDeletable](ActorMap& map) {
       std::erase_if(map, [&isDeletable](const auto& item) {
-        auto& [_, actor] = item;
-        return isDeletable(actor);
+        auto& [_, entry] = item;
+        return isDeletable(entry.actor);
       });
     });
   }
@@ -95,8 +117,8 @@ struct ActorList {
   }
   auto apply(F&& fn) -> void {
     actors.doUnderLock([&fn](ActorMap& map) {
-      for (auto&& [_, actor] : map) {
-        fn(actor);
+      for (auto&& [_, entry] : map) {
+        fn(entry.actor);
       }
     });
   }
@@ -104,8 +126,8 @@ struct ActorList {
   template<Predicate<ActorPID> F>
   auto checkAll(F&& check) const -> bool {
     return actors.doUnderLock([&check](ActorMap const& map) {
-      for (auto const& [_, actor] : map) {
-        if (not check(actor)) {
+      for (auto const& [_, entry] : map) {
+        if (not check(entry.actor)) {
           return false;
         }
       }
@@ -128,6 +150,28 @@ struct ActorList {
     return actors.doUnderLock([](ActorMap const& map) { return map.size(); });
   }
 
+  auto monitor(ActorID monitoringActor, ActorID monitoredActor) -> bool {
+    return actors.doUnderLock(
+        [&monitoringActor, &monitoredActor](ActorMap& map) {
+          auto it = map.find(monitoredActor);
+          if (it == std::end(map)) {
+            return false;
+          }
+          it->second.monitors.emplace_back(monitoringActor);
+          return true;
+        });
+  }
+
+  auto getMonitors(ActorID actor) -> std::vector<ActorID> {
+    return actors.doUnderLock([&](auto& map) -> std::vector<ActorID> {
+      auto it = map.find(actor);
+      if (it != map.end()) {
+        return it->second.monitors;
+      }
+      return {};
+    });
+  }
+
   template<typename Inspector>
   friend inline auto inspect(Inspector& f, ActorList const& x) {
     static_assert(not Inspector::isLoading);
@@ -135,24 +179,9 @@ struct ActorList {
         [&f](typename ActorList::ActorMap const& map) { return f.apply(map); });
   }
 
-  template<typename Inspector>
-  friend inline auto inspect(Inspector& f, ActorList::ActorInfo& x) {
-    return f.object(x).fields(f.field("id", x.id), f.field("type", x.type));
-  }
-  template<typename Inspector>
-  friend inline auto inspect(Inspector& f, ActorList::ActorMap const& x) {
-    if constexpr (Inspector::isLoading) {
-      return inspection::Status{};
-    } else {
-      auto actorInfos = std::vector<ActorList::ActorInfo>{};
-      actorInfos.reserve(x.size());
-      for (auto const& [id, actor] : x) {
-        actorInfos.emplace_back(
-            ActorList::ActorInfo{.id = id, .type = actor->typeName()});
-      }
-      return f.apply(actorInfos);
-    }
-  }
+ private:
+  struct ActorMap : std::unordered_map<ActorID, Entry> {};
+  Guarded<ActorMap> actors;
 };
 
 };  // namespace arangodb::actor

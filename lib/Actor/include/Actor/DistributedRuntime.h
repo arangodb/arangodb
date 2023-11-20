@@ -57,8 +57,8 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
         externalDispatcher(externalDispatcher) {}
 
   template<typename ActorConfig>
-  auto spawn(std::unique_ptr<typename ActorConfig::State> initialState,
-             typename ActorConfig::Message initialMessage) -> ActorPID {
+  auto spawn(std::unique_ptr<typename ActorConfig::State> initialState)
+      -> ActorPID {
     auto newId = ActorID{uniqueActorIDCounter++};
 
     // TODO - we do not want to pass the database name as part of the spawn
@@ -71,8 +71,16 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
         address, this->shared_from_this(), std::move(initialState));
     actors.add(newId, std::move(newActor));
 
+    return address;
+  }
+
+  template<typename ActorConfig>
+  auto spawn(std::unique_ptr<typename ActorConfig::State> initialState,
+             typename ActorConfig::Message initialMessage) -> ActorPID {
+    auto address = spawn<ActorConfig>(std::move(initialState));
+
     // Send initial message to newly created actor
-    dispatchLocally(address, address, initialMessage);
+    dispatchLocally(address, address, initialMessage, true);
 
     return address;
   }
@@ -129,11 +137,7 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
   template<typename ActorMessage>
   auto dispatch(ActorPID sender, ActorPID receiver, ActorMessage const& message)
       -> void {
-    if (receiver.server == sender.server) {
-      dispatchLocally(sender, receiver, message);
-    } else {
-      dispatchExternally(sender, receiver, message);
-    }
+    doDispatch(sender, receiver, message, false);
   }
 
   template<typename ActorMessage>
@@ -162,7 +166,35 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
     }
   }
 
-  void stopActor(ActorPID pid) { actors.remove(pid.id); }
+  auto monitorActor(ActorPID monitoringActor, ActorPID monitoredActor) -> void {
+    // ATM we can only monitor actors on the same server
+    ACTOR_ASSERT(monitoringActor.server == myServerID);
+    ACTOR_ASSERT(monitoringActor.server == monitoredActor.server);
+    if (not actors.monitor(monitoringActor.id, monitoredActor.id)) {
+      // in case the monitored actor no longer exists (or may never have
+      // existed) we send the down msg right away
+      dispatch(
+          // we use 0 as the sender id
+          DistributedActorPID{.server = myServerID, .database = "", .id = {0}},
+          monitoringActor,
+          message::ActorDown<ActorPID>{.actor = monitoredActor});
+    }
+  }
+
+  void stopActor(ActorPID pid) {
+    auto res = actors.remove(pid.id);
+    if (res) {
+      auto& entry = *res;
+      entry.actor.reset();
+      for (auto& monitor : entry.monitors) {
+        dispatch(pid,
+                 // TODO - same problem with database as in dispatch
+                 DistributedActorPID{
+                     .server = myServerID, .database = "", .id = monitor},
+                 message::ActorDown<ActorPID>{.actor = pid});
+      }
+    }
+  }
 
   auto softShutdown() -> void {
     std::vector<std::shared_ptr<ActorBase<ActorPID>>> actorsCopy;
@@ -198,16 +230,30 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
   std::atomic<size_t> uniqueActorIDCounter{1};
 
   template<typename ActorMessage>
+  auto doDispatch(ActorPID sender, ActorPID receiver,
+                  ActorMessage const& message, bool ignoreFailure) -> void {
+    if (receiver.server == sender.server) {
+      dispatchLocally(sender, receiver, message, ignoreFailure);
+    } else {
+      dispatchExternally(sender, receiver, message);
+    }
+  }
+
+  template<typename ActorMessage>
   auto dispatchLocally(ActorPID sender, ActorPID receiver,
-                       ActorMessage const& message) -> void {
+                       ActorMessage const& message, bool ignoreFailure)
+      -> void {
     auto actor = actors.find(receiver.id);
     auto payload = MessagePayload<ActorMessage>(std::move(message));
     if (actor.has_value()) {
       actor->get()->process(sender, payload);
-    } else {
-      dispatch(receiver, sender,
-               message::ActorError<ActorPID>{
-                   message::ActorNotFound<ActorPID>{.actor = receiver}});
+    } else if (not ignoreFailure) {
+      // The sender might no longer exist, so don't bother if we cannot send the
+      // ActorNotFound message
+      doDispatch(receiver, sender,
+                 message::ActorError<ActorPID>{
+                     message::ActorNotFound<ActorPID>{.actor = receiver}},
+                 true);
     }
   }
 

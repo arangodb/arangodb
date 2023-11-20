@@ -97,6 +97,11 @@ struct Actor : ActorBase<typename Runtime::ActorPID> {
         m != nullptr) {
       push(sender, std::move(m->payload));
     } else if (auto* n =
+                   dynamic_cast<MessagePayload<message::ActorDown<ActorPID>>*>(
+                       &msg);
+               n != nullptr) {
+      push(sender, std::move(n->payload));
+    } else if (auto* n =
                    dynamic_cast<MessagePayload<message::ActorError<ActorPID>>*>(
                        &msg);
                n != nullptr) {
@@ -158,13 +163,11 @@ struct Actor : ActorBase<typename Runtime::ActorPID> {
   friend auto inspect(Inspector& f, Actor<R, C>& x);
 
  private:
-  void push(ActorPID sender, typename Config::Message&& msg) {
-    pushToQueueAndKick(std::make_unique<InternalMessage>(
-        sender,
-        std::make_unique<
-            message::MessageOrError<typename Config::Message, ActorPID>>(msg)));
-  }
-  void push(ActorPID sender, message::ActorError<ActorPID>&& msg) {
+  template<typename Msg>
+  requires(std::is_same_v<Msg, typename Config::Message> ||
+           std::is_same_v<Msg, message::ActorDown<ActorPID>> ||
+           std::is_same_v<Msg, message::ActorError<ActorPID>>)  //
+      void push(ActorPID sender, Msg&& msg) {
     pushToQueueAndKick(std::make_unique<InternalMessage>(
         sender,
         std::make_unique<
