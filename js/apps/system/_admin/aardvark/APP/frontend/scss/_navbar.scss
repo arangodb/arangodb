@@ -20,7 +20,7 @@ $navbar-size: 150px;
   width: $navbar-size;
 
   > .primary {
-    background-color: $c-bluegrey-dark;
+    background-color: var(--gray-950);
     float: left;
     height: 100%;
     width: $navbar-size;
