@@ -418,7 +418,7 @@
         $('#subNavigationBar .breadcrumb').html(
           'User: ' + arangoHelper.escapeHtml(this.currentUser.get('user'))
         );
-        arangoHelper.buildUserSubNav(self.currentUser.get('user'), 'Permissions');
+        arangoHelper.buildUserSubNav(encodeURIComponent(self.currentUser.get('user')), 'Permissions');
       } else {
         window.setTimeout(function () {
           self.breadcrumb();

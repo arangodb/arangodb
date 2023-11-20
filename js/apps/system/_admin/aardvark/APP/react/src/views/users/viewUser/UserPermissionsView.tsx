@@ -11,7 +11,8 @@ const useSetupUserPermissionsNav = () => {
     const breadcrumbDiv = document.querySelector(
       "#subNavigationBar .breadcrumb"
     );
-    breadcrumbDiv?.append(`User: ${username}`);
+    const decodedUsername = decodeURIComponent(username);
+    breadcrumbDiv?.append(`User: ${decodedUsername}`);
     window.arangoHelper.buildUserSubNav(username, "Permissions");
   }, [username]);
 };
