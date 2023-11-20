@@ -13,14 +13,13 @@ $navbar-size: 150px;
   @extend %fixedbar;
   bottom: 0;
   float: left;
-  -webkit-font-smoothing: subpixel-antialiased;
   margin-bottom: 0;
   position: absolute;
   top: 0;
   width: $navbar-size;
 
   > .primary {
-    background-color: var(--gray-950);
+    background-color: var(--gray-1000);
     float: left;
     height: 100%;
     width: $navbar-size;
@@ -181,10 +180,8 @@ $navbar-size: 150px;
 
   #communityLabel {
     color: $c-white;
-    font-family: Roboto,sans-serif;
-    font-size: 7pt;
-    -webkit-font-smoothing: auto;
-    font-weight: 100;
+    font-size: 9px;
+    font-weight: 300;
     left: 38px;
     letter-spacing: 1px;
     position: fixed;
@@ -194,9 +191,8 @@ $navbar-size: 150px;
 
   #enterpriseLabel {
     color: $c-white;
-    font-family: Roboto,sans-serif;
-    font-size: 7.3pt;
-    font-weight: 100;
+    font-size: 10px;
+    font-weight: 300;
     left: 38px;
     letter-spacing: 1px;
     position: fixed;
@@ -270,7 +266,7 @@ $navbar-size: 150px;
     }
 
     .fa {
-      opacity: .3;
+      opacity: 1;
       margin-left: 5px;
       margin-right: 15px;
       text-align: center;
@@ -306,28 +302,19 @@ $navbar-size: 150px;
     }
 
     &.navbar-spacer {
-      background-color: rgba(0, 0, 0, .2);
+      background-color: var(--gray-700);
       height: 2px;
       margin-bottom: 0;
       margin-top: 0;
     }
   }
 
-  .active {
-    border-left: 2px solid $c-active-green;
-
-    .tab {
-      color: $c-white;
-      margin-left: -2px;
-
-      .fa {
-        opacity: 1;
-      }
-    }
-  }
-
   > .active {
     background-color: var(--gray-900);
+
+    &:hover {
+      background-color: var(--gray-900);
+    }
 
     a {
       opacity: 1;
@@ -366,7 +353,7 @@ $navbar-size: 150px;
 .tab {
   display: flex;
   align-items: center;
-  color: rgba(255, 255, 255, .8);
+  color: white;
   font-size: 14px;
   font-weight: 400;
   padding: 0 8px;
