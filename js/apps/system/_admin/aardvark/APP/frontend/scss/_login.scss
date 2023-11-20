@@ -1,5 +1,5 @@
 .loginFixedWindow {
-  background: $c-test-green;
+  background: var(--green-900);
   height: 100%;
   left: 0;
   position: fixed;
@@ -35,10 +35,9 @@
 }
 
 .login-window {
-  //background-color: $c-white;
   background-color: rgba(255, 255, 255, .75);
-  border: 1px solid $c-content-border;
-  border-radius: 3px;
+  border: 1px solid var(--green-700);
+  border-radius: 8px;
   height: auto;
   margin: 0 auto;
 

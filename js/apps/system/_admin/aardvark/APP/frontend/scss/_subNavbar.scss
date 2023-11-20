@@ -172,7 +172,7 @@
         }
 
         i:hover {
-          color: $c-positive;
+          color: var(--green-500);
           cursor: pointer;
         }
       }
@@ -191,7 +191,7 @@
       .health-state,
       .state,
       .health-icon {
-        color: $c-positive;
+        color: var(--green-500);
       }
     }
 
@@ -209,7 +209,7 @@
     color: rgba(255, 255, 255, .95);
     display: block;
     float: left;
-    font-weight: 300;
+    font-weight: 400;
     max-width: 190px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -217,7 +217,7 @@
     white-space: nowrap;
 
     span {
-      color: $c-positive;
+      color: var(--green-500);
     }
 
     span:hover {
