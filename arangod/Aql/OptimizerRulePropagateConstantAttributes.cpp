@@ -22,6 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <boost/container_hash/hash.hpp>
 #include "Aql/Collection.h"
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
@@ -31,273 +32,316 @@
 #include "OptimizerUtils.h"
 #include "VocBase/LogicalCollection.h"
 
+#include "Containers/ImmutableMap.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::containers;
 using EN = arangodb::aql::ExecutionNode;
 
-#define LOG_RULE LOG_DEVEL_IF(false)
+#define LOG_RULE LOG_DEVEL_IF(true)
 
 namespace {
-class PropagateConstantAttributesHelper {
- public:
-  explicit PropagateConstantAttributesHelper(ExecutionPlan* plan)
-      : _plan(plan), _modified(false) {}
 
-  bool modified() const { return _modified; }
+struct Replacement {
+  std::uint64_t limitCount;
+  AstNode const* ast;
+};
 
-  /// @brief inspects a plan and propagates constant values in expressions
-  void propagateConstants() {
-    LOG_RULE << "PROPAGATE CONSTANTS";
-    containers::SmallVector<ExecutionNode*, 8> nodes;
-    _plan->findNodesOfType(nodes, EN::FILTER, true);
+struct VarAttributeAccess {
+  Variable const* var;
+  containers::SmallVector<std::string_view, 8> path;
 
-    for (auto* node = _plan->root()->getSingleton(); node != nullptr;
-         node = node->getFirstParent()) {
-      if (node->getType() != EN::FILTER) {
-        continue;
-      }
+  friend bool operator==(VarAttributeAccess const&,
+                         VarAttributeAccess const&) noexcept = default;
 
-      auto fn = ExecutionNode::castTo<FilterNode const*>(node);
-      auto setter = _plan->getVarSetBy(fn->inVariable()->id);
-      if (setter != nullptr && setter->getType() == EN::CALCULATION) {
-        auto cn = ExecutionNode::castTo<CalculationNode*>(setter);
-        auto expression = cn->expression();
-
-        insertConstantAttributes(const_cast<AstNode*>(expression->node()));
-        collectConstantAttributes(const_cast<AstNode*>(expression->node()));
-      }
-    }
+  friend std::size_t hash_value(VarAttributeAccess const& key) {
+    std::size_t seed = 0;
+    boost::hash_combine(seed, key.var);
+    boost::hash_range(seed, key.path.begin(), key.path.end());
+    return seed;
   }
 
- private:
-  AstNode const* getConstant(Variable const* variable,
-                             std::string const& attribute) const {
-    auto it = _constants.find(variable);
-
-    if (it == _constants.end()) {
-      return nullptr;
-    }
-
-    auto it2 = (*it).second.find(attribute);
-
-    if (it2 == (*it).second.end()) {
-      return nullptr;
-    }
-
-    return (*it2).second;
+  friend std::ostream& operator<<(std::ostream& os,
+                                  VarAttributeAccess const& x) {
+    os << x.var->name << " [";
+    std::copy(x.path.begin(), x.path.end(),
+              std::ostream_iterator<std::string_view>(os, ", "));
+    return os << "]";
   }
+};
 
-  /// @brief inspects an expression (recursively) and notes constant attribute
-  /// values so they can be propagated later
-  void collectConstantAttributes(AstNode* node) {
-    if (node == nullptr) {
-      return;
-    }
+using VarReplacementMap =
+    containers::ImmutableMap<VarAttributeAccess, Replacement,
+                             boost::hash<VarAttributeAccess>>;
+using VarReplacementTransientMap =
+    containers::ImmutableMapTransient<VarAttributeAccess, Replacement,
+                                      boost::hash<VarAttributeAccess>>;
 
-    LOG_RULE << node->toString();
-
-    if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-      auto lhs = node->getMember(0);
-      auto rhs = node->getMember(1);
-
-      collectConstantAttributes(lhs);
-      collectConstantAttributes(rhs);
-    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-      auto lhs = node->getMember(0);
-      auto rhs = node->getMember(1);
-      LOG_RULE << "BINARY EQ " << lhs->toString() << " == " << rhs->toString();
-
-      LOG_RULE << "LHS = " << lhs->getTypeString();
-      LOG_RULE << "RHS = " << rhs->getTypeString();
-
-      if (lhs->isConstant() && (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-                                rhs->type == NODE_TYPE_REFERENCE)) {
-        LOG_RULE << "LHS IS CONST";
-        inspectConstantAttribute(rhs, lhs);
-      } else if (rhs->isConstant() &&
-                 (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-                  lhs->type == NODE_TYPE_REFERENCE)) {
-        LOG_RULE << "RHS IS CONST";
-        inspectConstantAttribute(lhs, rhs);
-      }
-    }
-  }
-
-  /// @brief traverses an AST part recursively and patches it by inserting
-  /// constant values
-  void insertConstantAttributes(AstNode* node) {
-    if (node == nullptr) {
-      return;
-    }
-
-    if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-      auto lhs = node->getMember(0);
-      auto rhs = node->getMember(1);
-
-      insertConstantAttributes(lhs);
-      insertConstantAttributes(rhs);
-    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-      auto lhs = node->getMember(0);
-      auto rhs = node->getMember(1);
-
-      if (!lhs->isConstant() && (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-                                 rhs->type == NODE_TYPE_REFERENCE)) {
-        insertConstantAttribute(node, 1);
-      }
-      if (!rhs->isConstant() && (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-                                 lhs->type == NODE_TYPE_REFERENCE)) {
-        insertConstantAttribute(node, 0);
-      }
-    }
-  }
-
-  /// @brief extract an attribute and its variable from an attribute access
-  /// (e.g. `a.b.c` will return variable `a` and attribute name `b.c.`.
-  bool getAttribute(AstNode const* attribute, Variable const*& variable,
-                    std::string& name) {
-    TRI_ASSERT(attribute != nullptr);
-    TRI_ASSERT(attribute->type == NODE_TYPE_REFERENCE ||
-               attribute->type == NODE_TYPE_ATTRIBUTE_ACCESS);
-    TRI_ASSERT(name.empty());
-
-    while (attribute->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      name =
-          basics::StringUtils::concatT(".", attribute->getStringView(), name);
-      attribute = attribute->getMember(0);
-    }
-
-    if (attribute->type != NODE_TYPE_REFERENCE) {
-      return false;
-    }
-
-    variable = static_cast<Variable const*>(attribute->getData());
-    TRI_ASSERT(variable != nullptr);
-
+/// @brief extract an attribute and its variable from an attribute access
+/// (e.g. `a.b.c` will return variable `a` and attribute name `b.c.`.
+bool getAttribute(AstNode const* attribute,
+                  VarAttributeAccess& attributeAccess) {
+  TRI_ASSERT(attribute != nullptr);
+  TRI_ASSERT(attribute->type == NODE_TYPE_REFERENCE ||
+             attribute->type == NODE_TYPE_ATTRIBUTE_ACCESS);
+  if (attribute->type == NODE_TYPE_REFERENCE) {
+    attributeAccess.var = static_cast<Variable const*>(attribute->getData());
+    return true;
+  } else if (attribute->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    getAttribute(attribute->getMember(0), attributeAccess);
+    attributeAccess.path.emplace_back(attribute->getStringView());
     return true;
   }
+  return false;
+}
 
-  /// @brief inspect the constant value assigned to an attribute
-  /// the attribute value will be stored so it can be inserted for the attribute
-  /// later
-  void inspectConstantAttribute(AstNode const* attribute,
-                                AstNode const* value) {
-    Variable const* variable = nullptr;
-    std::string name;
-    LOG_RULE << "ATTR = " << attribute->toString();
-    if (!getAttribute(attribute, variable, name)) {
-      return;
-    }
-    LOG_RULE << "VAR = " << variable->name << " NAME = " << name;
-    auto it = _constants.find(variable);
+/// @brief inspect the constant value assigned to an attribute
+/// the attribute value will be stored so it can be inserted for the attribute
+/// later
+void inspectConstantAttribute(AstNode const* attribute, AstNode const* value,
+                              std::size_t currentLimitCount,
+                              VarReplacementTransientMap& replacements) {
+  VarAttributeAccess access;
+  LOG_RULE << "ATTR = " << attribute->toString();
+  if (!getAttribute(attribute, access)) {
+    return;
+  }
+  LOG_RULE << "VAR = " << access;
+  auto it = replacements.find(access);
 
-    if (it == _constants.end()) {
-      _constants.try_emplace(
-          variable,
-          std::unordered_map<std::string, AstNode const*>{{name, value}});
-      return;
-    }
+  if (it == nullptr) {
+    replacements.set(access, Replacement{currentLimitCount, value});
+    return;
+  }
+}
 
-    auto it2 = (*it).second.find(name);
-
-    if (it2 == (*it).second.end()) {
-      // first value for the attribute
-      (*it).second.try_emplace(name, value);
-    } else {
-      auto previous = (*it2).second;
-
-      if (previous == nullptr) {
-        // we have multiple different values for the attribute. better not use
-        // this attribute
-        return;
-      }
-
-      if (!value->computeValue().binaryEquals(previous->computeValue())) {
-        // different value found for an already tracked attribute. better not
-        // use this attribute
-        (*it2).second = nullptr;
-      }
-    }
+void collectConstantAttributes(AstNode* node, std::size_t currentLimitCount,
+                               VarReplacementTransientMap& replacements) {
+  if (node == nullptr) {
+    return;
   }
 
-  /// @brief patches an AstNode by inserting a constant value into it
-  void insertConstantAttribute(AstNode* parentNode, size_t accessIndex) {
-    Variable const* variable = nullptr;
-    std::string name;
+  LOG_RULE << node->toString();
 
-    AstNode* member = parentNode->getMember(accessIndex);
+  if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+    auto lhs = node->getMember(0);
+    auto rhs = node->getMember(1);
 
-    if (!getAttribute(member, variable, name)) {
-      return;
+    collectConstantAttributes(lhs, currentLimitCount, replacements);
+    collectConstantAttributes(rhs, currentLimitCount, replacements);
+  } else if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+    auto lhs = node->getMember(0);
+    auto rhs = node->getMember(1);
+    LOG_RULE << "BINARY EQ " << lhs->toString() << " == " << rhs->toString();
+
+    LOG_RULE << "LHS = " << lhs->getTypeString();
+    LOG_RULE << "RHS = " << rhs->getTypeString();
+
+    if (lhs->isConstant() && (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+                              rhs->type == NODE_TYPE_REFERENCE)) {
+      LOG_RULE << "LHS IS CONST";
+      inspectConstantAttribute(rhs, lhs, currentLimitCount, replacements);
+    } else if (rhs->isConstant() && (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+                                     lhs->type == NODE_TYPE_REFERENCE)) {
+      LOG_RULE << "RHS IS CONST";
+      inspectConstantAttribute(lhs, rhs, currentLimitCount, replacements);
     }
-    LOG_RULE << "REPLACE " << variable->name << " NAME = " << name;
+  }
+}
 
-    auto constantValue = getConstant(variable, name);
+AstNode const* getConstant(VarAttributeAccess const& access,
+                           std::size_t currentLimitCount,
+                           VarReplacementTransientMap const& replacements) {
+  auto it = replacements.find(access);
 
-    if (constantValue != nullptr) {
-      // first check if we would optimize away a join condition that uses a
-      // smartJoinAttribute... we must not do that, because that would otherwise
-      // disable SmartJoin functionality
-      if (arangodb::ServerState::instance()->isCoordinator() &&
-          parentNode->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-        AstNode const* current =
-            parentNode->getMember(accessIndex == 0 ? 1 : 0);
-        if (current->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-          AstNode const* nameAttribute = current;
-          current = current->getMember(0);
-          if (current->type == NODE_TYPE_REFERENCE) {
-            auto setter = _plan->getVarSetBy(
-                static_cast<Variable const*>(current->getData())->id);
-            if (setter != nullptr &&
-                (setter->getType() == EN::ENUMERATE_COLLECTION ||
-                 setter->getType() == EN::INDEX)) {
-              auto collection = utils::getCollection(setter);
-              if (collection != nullptr) {
-                auto logical = collection->getCollection();
-                if (logical->hasSmartJoinAttribute() &&
-                    logical->smartJoinAttribute() ==
-                        nameAttribute->getStringView()) {
-                  // don't remove a SmartJoin attribute access!
-                  return;
-                } else {
-                  std::vector<std::string> shardKeys =
-                      collection->shardKeys(true);
-                  if (std::find(shardKeys.begin(), shardKeys.end(),
-                                nameAttribute->getString()) !=
-                      shardKeys.end()) {
-                    // don't remove equality lookups on shard keys, as this may
-                    // prevent the restrict-to-single-shard rule from being
-                    // applied later!
-                    return;
-                  }
+  if (it == nullptr) {
+    return nullptr;
+  }
+
+  // Check is the constant was found at this limit count, i.e. check
+  // if there is a limit node between this node and whiteness.
+  if (it->limitCount > currentLimitCount) {
+    return nullptr;
+  }
+
+  return it->ast;
+}
+
+/// @brief patches an AstNode by inserting a constant value into it
+bool insertConstantAttribute(ExecutionPlan& plan, AstNode* parentNode,
+                             size_t accessIndex, std::size_t currentLimitCount,
+                             VarReplacementTransientMap const& replacements) {
+  VarAttributeAccess access;
+
+  AstNode* member = parentNode->getMember(accessIndex);
+  LOG_DEVEL << "CONSIDER: " << member->toString();
+  if (!getAttribute(member, access)) {
+    return false;
+  }
+  LOG_RULE << "REPLACE " << access;
+
+  auto constantValue = getConstant(access, currentLimitCount, replacements);
+
+  if (constantValue != nullptr) {
+    // first check if we would optimize away a join condition that uses a
+    // smartJoinAttribute... we must not do that, because that would otherwise
+    // disable SmartJoin functionality
+    if (arangodb::ServerState::instance()->isCoordinator() &&
+        parentNode->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+      AstNode const* current = parentNode->getMember(accessIndex == 0 ? 1 : 0);
+      if (current->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        AstNode const* nameAttribute = current;
+        current = current->getMember(0);
+        if (current->type == NODE_TYPE_REFERENCE) {
+          auto setter = plan.getVarSetBy(
+              static_cast<Variable const*>(current->getData())->id);
+          if (setter != nullptr &&
+              (setter->getType() == EN::ENUMERATE_COLLECTION ||
+               setter->getType() == EN::INDEX)) {
+            auto collection = utils::getCollection(setter);
+            if (collection != nullptr) {
+              auto logical = collection->getCollection();
+              if (logical->hasSmartJoinAttribute() &&
+                  logical->smartJoinAttribute() ==
+                      nameAttribute->getStringView()) {
+                // don't remove a SmartJoin attribute access!
+                return false;
+              } else {
+                std::vector<std::string> shardKeys =
+                    collection->shardKeys(true);
+                if (std::find(shardKeys.begin(), shardKeys.end(),
+                              nameAttribute->getString()) != shardKeys.end()) {
+                  // don't remove equality lookups on shard keys, as this may
+                  // prevent the restrict-to-single-shard rule from being
+                  // applied later!
+                  return false;
                 }
               }
             }
           }
         }
       }
+    }
 
-      LOG_RULE << "CHANGE MEMBER";
-      parentNode->changeMember(accessIndex,
-                               const_cast<AstNode*>(constantValue));
-      _modified = true;
+    LOG_RULE << "CHANGE MEMBER";
+    parentNode->changeMember(accessIndex, const_cast<AstNode*>(constantValue));
+    return true;
+  }
+
+  return false;
+}
+
+/// @brief traverses an AST part recursively and patches it by inserting
+/// constant values
+bool insertConstantAttributes(ExecutionPlan& plan, AstNode* node,
+                              std::size_t currentLimitCount,
+                              VarReplacementTransientMap const& replacements) {
+  LOG_DEVEL << __PRETTY_FUNCTION__ << " " << node->toString();
+  if (node == nullptr) {
+    return false;
+  }
+
+  bool modified = false;
+
+  if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+    auto lhs = node->getMember(0);
+    auto rhs = node->getMember(1);
+
+    modified |=
+        insertConstantAttributes(plan, lhs, currentLimitCount, replacements);
+    modified |=
+        insertConstantAttributes(plan, rhs, currentLimitCount, replacements);
+  } else if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+    auto lhs = node->getMember(0);
+    auto rhs = node->getMember(1);
+
+    if (!lhs->isConstant() && (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+                               rhs->type == NODE_TYPE_REFERENCE)) {
+      modified |= insertConstantAttribute(plan, node, 1, currentLimitCount,
+                                          replacements);
+    }
+    if (!rhs->isConstant() && (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+                               lhs->type == NODE_TYPE_REFERENCE)) {
+      modified |= insertConstantAttribute(plan, node, 0, currentLimitCount,
+                                          replacements);
     }
   }
 
-  ExecutionPlan* _plan;
-  std::unordered_map<Variable const*,
-                     std::unordered_map<std::string, AstNode const*>>
-      _constants;
-  bool _modified;
-};
+  return modified;
+}
+
+bool processQuery(ExecutionPlan& plan, ExecutionNode* root,
+                  VarReplacementMap replacements,
+                  std::size_t currentLimitCount) {
+  auto replacementsMutable = replacements.transient();
+
+  bool modified = false;
+
+  std::size_t localLimitCount = currentLimitCount;
+  // collect
+  for (auto* node = root->getSingleton(); node != nullptr;
+       node = node->getFirstParent()) {
+    LOG_DEVEL << "[" << node->id() << "] " << node->getTypeString();
+    if (node->getType() == EN::LIMIT) {
+      localLimitCount += 1;
+    }
+    if (node->getType() != EN::FILTER) {
+      continue;
+    }
+
+    auto fn = ExecutionNode::castTo<FilterNode const*>(node);
+    auto setter = plan.getVarSetBy(fn->inVariable()->id);
+    if (setter != nullptr && setter->getType() == EN::CALCULATION) {
+      auto cn = ExecutionNode::castTo<CalculationNode*>(setter);
+      auto expression = cn->expression();
+
+      collectConstantAttributes(const_cast<AstNode*>(expression->node()),
+                                localLimitCount, replacementsMutable);
+    }
+  }
+
+  localLimitCount = currentLimitCount;
+  // replace and enter subqueries
+  for (auto* node = root->getSingleton(); node != nullptr;
+       node = node->getFirstParent()) {
+    LOG_DEVEL << "[" << node->id() << "] " << node->getTypeString();
+    if (node->getType() == EN::LIMIT) {
+      localLimitCount += 1;
+    }
+    if (node->getType() == EN::SUBQUERY) {
+      auto* subquery = ExecutionNode::castTo<SubqueryNode*>(node);
+      LOG_RULE << "ENTER SUBQUERY";
+      modified |=
+          processQuery(plan, subquery->getSubquery(),
+                       replacementsMutable.persistent(), localLimitCount);
+      LOG_RULE << "LEAVE SUBQUERY";
+    }
+    if (node->getType() != EN::FILTER) {
+      continue;
+    }
+
+    auto fn = ExecutionNode::castTo<FilterNode const*>(node);
+    auto setter = plan.getVarSetBy(fn->inVariable()->id);
+    if (setter != nullptr && setter->getType() == EN::CALCULATION) {
+      auto cn = ExecutionNode::castTo<CalculationNode*>(setter);
+      auto expression = cn->expression();
+
+      modified |= insertConstantAttributes(
+          plan, const_cast<AstNode*>(expression->node()), localLimitCount,
+          replacementsMutable);
+    }
+  }
+
+  return modified;
+}
+
 }  // namespace
 
 /// @brief propagate constant attributes in FILTERs
 void arangodb::aql::propagateConstantAttributesRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     OptimizerRule const& rule) {
-  PropagateConstantAttributesHelper helper(plan.get());
-  helper.propagateConstants();
-
-  opt->addPlan(std::move(plan), rule, helper.modified());
+  bool modified = processQuery(*plan, plan->root(), {}, 0);
+  opt->addPlan(std::move(plan), rule, modified);
 }
