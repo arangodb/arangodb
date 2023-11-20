@@ -211,6 +211,7 @@ def filter_tests(args, tests, enterprise):
     if not enterprise:
         filters.append(lambda test: "enterprise" not in test["flags"])
 
+
     # if IS_ARM:
     #     filters.append(lambda test: "!arm" not in test["flags"])
 
@@ -278,6 +279,8 @@ def create_test_job(test, cluster, edition, arch, dist):
 def add_test_jobs_to_workflow(config, tests, workflow, edition, arch, dist):
     jobs = config["workflows"][workflow]["jobs"]
     for test in tests:
+        if "!" + dist in test["flags"]:
+            continue
         if "cluster" in test["flags"]:
             jobs.append(
                 {f"run-{dist}-tests": create_test_job(test, True, edition, arch, dist)}
