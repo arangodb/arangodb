@@ -3,7 +3,7 @@
   @include border-radius(2px);
   @include box-shadow(0);
   font-size: 13px;
-  font-weight: 300 !important;
+  font-weight: 400 !important;
 }
 
 %btn {
@@ -454,7 +454,7 @@ a.button-gui {
     border: 1px solid $c-cluster-button-grey-border;
     color: $c-cluster-button-grey-fg;
     font-size: 20px;
-    font-weight: 300;
+    font-weight: 400;
     margin: 0;
     padding: 12px 18px;
     text-align: center;
