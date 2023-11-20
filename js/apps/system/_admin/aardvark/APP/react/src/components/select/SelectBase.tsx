@@ -67,10 +67,10 @@ export const getSelectBase = <IsMulti extends boolean = false>(
               ...theme,
               colors: {
                 ...theme.colors,
-                primary: "#608726",
-                primary75: "#9dc853",
-                primary50: "#b8da7c",
-                primary25: "#d5e9ad"
+                primary: "var(--green-600)",
+                primary75: "var(--green-400)",
+                primary50: "var(--green-300)",
+                primary25: "var(--green-200)"
               }
             };
           }}
