@@ -1,6 +1,8 @@
 // 1. Import `extendTheme`
-import { extendTheme, TooltipProps } from "@chakra-ui/react";
-import { mode, cssVar } from "@chakra-ui/theme-tools";
+import {
+  extendTheme, theme as defaultTheme, TooltipProps
+} from "@chakra-ui/react";
+import { cssVar, mode, StyleFunctionProps } from "@chakra-ui/theme-tools";
 
 const $tooltipBg = cssVar("tooltip-bg");
 
@@ -11,6 +13,19 @@ export const theme = extendTheme({
     body: "Inter, sans-serif"
   },
   colors: {
+    green: {
+      50: "#f5faeb",
+      100: "#e9f4d3",
+      200: "#d5e9ad",
+      300: "#b8da7c",
+      400: "#9dc853",
+      500: "#7ead35",
+      600: "#608726",
+      700: "#4b6922",
+      800: "#3e5420",
+      900: "#35481f",
+      950: "#1a270c"
+    },
     gray: {
       50: "#f8f8f8",
       100: "#f0f0f0",
@@ -26,6 +41,25 @@ export const theme = extendTheme({
     }
   },
   components: {
+    Button: {
+      variants: {
+        solid: (props: StyleFunctionProps) => {
+          if (props.colorScheme === "green") {
+            return {
+              bg: "green.600",
+              color: "white",
+              _hover: {
+                bg: "green.700"
+              },
+              _active: {
+                bg: "green.700"
+              }
+            };
+          }
+          return defaultTheme.components.Button.variants.solid(props);
+        }
+      }
+    },
     Tooltip: {
       baseStyle: (props: TooltipProps) => {
         const bg = mode("gray.900", "gray.300")(props);
