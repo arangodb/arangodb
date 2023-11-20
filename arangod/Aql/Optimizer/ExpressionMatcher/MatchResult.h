@@ -24,10 +24,14 @@
 #include <unordered_map>
 #include <variant>
 #include <optional>
+#include <memory>
 
 #include <Aql/AstNode.h>
 
 namespace arangodb::aql::expression_matcher {
+// struct MatchResult;
+// using SubMatch = std::unique_ptr<MatchResult>;
+
 struct MatchResult {
   auto isSuccess() const noexcept -> bool { return _errors.empty(); };
   auto isError() const noexcept -> bool { return not _errors.empty(); }
@@ -78,7 +82,7 @@ struct MatchResult {
     return _matches;
   }
 
-  auto combine(MatchResult&& other) -> MatchResult {
+  auto combine(MatchResult&& other) -> MatchResult&& {
     _errors.insert(std::end(_errors), std::begin(other._errors),
                    std::end(other._errors));
     _matches.merge(other._matches);
@@ -88,7 +92,9 @@ struct MatchResult {
  private:
   std::unordered_map<std::string, AstNode const*> _matches;
   std::vector<std::string> _errors;
+  //  std::vector<SubMatch> submatches;
 };
 
 auto toStream(std::ostream&, MatchResult const& result) -> std::ostream&;
+auto toString(MatchResult const& result) -> std::string;
 }  // namespace arangodb::aql::expression_matcher

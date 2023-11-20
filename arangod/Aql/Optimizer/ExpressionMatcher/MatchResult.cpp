@@ -24,6 +24,7 @@
 #include <unordered_map>
 #include <variant>
 #include <optional>
+#include "Assertions/ProdAssert.h"
 
 #include <Aql/AstNode.h>
 
@@ -47,6 +48,14 @@ auto toStream(std::ostream& os, MatchResult const& result) -> std::ostream& {
   os << fmt::format("matches:\n  {}", fmt::join(keys, "\n  "));
 
   return os;
+}
+
+auto toString(MatchResult const& result) -> std::string {
+  auto resultStream = std::stringstream{};
+
+  toStream(resultStream, result);
+
+  return resultStream.str();
 }
 
 }  // namespace arangodb::aql::expression_matcher

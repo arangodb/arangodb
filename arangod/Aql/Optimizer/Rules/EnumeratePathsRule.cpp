@@ -56,7 +56,6 @@ void optimizeEnumeratePathsRule(Optimizer* opt,
     EnumeratePathsFilterMatcher f(plan.get());
     leaf->walk(f);
   }
-  ADB_PROD_ASSERT(false);
 
   opt->addPlan(std::move(plan), rule, appliedAChange);
 }

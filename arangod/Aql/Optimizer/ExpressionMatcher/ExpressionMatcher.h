@@ -39,9 +39,7 @@ namespace arangodb::aql::expression_matcher {
 // concept Matchable, which is to say a struct with the method
 // apply that takes an `AstNode const*` and returns a MatchResult.
 template<typename T>
-concept Matchable = requires(T v, AstNode const* node) {
-  v.apply(node);
-};
+concept Matchable = requires(T v, AstNode const* node) { v.apply(node); };
 
 // Applies the matcher of type M and if it succeeds registers the AqlNode* that
 // it succeeded on in the MatchResult under the name `name`
@@ -74,14 +72,14 @@ struct Any {
 
 // Matches any AstNode that has type `type`
 struct MatchNodeType {
-  MatchNodeType(AstNodeType type) : type(type) {}
+  explicit MatchNodeType(AstNodeType type) : type(type) {}
   auto apply(AstNode const* node) -> MatchResult {
     if (node->type != type) {
       auto typeName = AstNode::getTypeStringForType(type);
       ADB_PROD_ASSERT(typeName.has_value());
-      return MatchResult::error(
-          fmt::format("expected node of type {}, found {}",
-                      node->getTypeString(), typeName.value()));
+      return MatchResult::error(fmt::format(
+          "expected node of type {} ({}), found {} ({})", node->getTypeString(),
+          node->type, typeName.value(), type));
     }
     return MatchResult::match();
   }
@@ -200,9 +198,9 @@ struct AttributeAccess {
 
     auto accessedAttribute = node->getString();
     if (not attributes.contains(accessedAttribute)) {
-      return MatchResult::error(
-          fmt::format("expecting to attribute access any of [{}], but found `{}`",
-                      fmt::join(attributes, ", "), accessedAttribute));
+      return MatchResult::error(fmt::format(
+          "expecting to attribute access any of [{}], but found `{}`",
+          fmt::join(attributes, ", "), accessedAttribute));
     }
     return MatchResult::match();
   }
@@ -213,7 +211,8 @@ struct AttributeAccess {
 
 // Helper for template parameter deduction
 template<Matchable Reference>
-auto attributeAccess(Reference reference, std::unordered_set<std::string> attributes)
+auto attributeAccess(Reference reference,
+                     std::unordered_set<std::string> attributes)
     -> AttributeAccess<Reference> {
   return AttributeAccess<Reference>{.reference = reference,
                                     .attributes = attributes};
@@ -261,7 +260,6 @@ auto iterator(Variable variable, Iteratee iteratee)
 template<Matchable LHS, Matchable RHS, Matchable Quantifier>
 struct ArrayEq {
   auto apply(AstNode const* node) -> MatchResult {
-
     if (node->type != NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ) {
       return MatchResult::error(
           fmt::format("Expected node of type `binary eq all`, found {}",
@@ -309,8 +307,7 @@ template<Matchable Iterator, Matchable Reference, Matchable Limit,
          Matchable Filter, Matchable Map>
 struct Expansion {
   auto apply(AstNode const* node) -> MatchResult {
-
-   if (node->type != NODE_TYPE_EXPANSION) {
+    if (node->type != NODE_TYPE_EXPANSION) {
       return MatchResult::error(
           fmt::format("Expected node of type `expansion`, found {}",
                       node->getTypeString()));
@@ -346,11 +343,11 @@ struct Expansion {
                                 fmt::format("Map match failed"));
     }
 
-    return iteratorMatch //
-      .combine(std::move(referenceMatch))
-      .combine(std::move(limitMatch))
-      .combine(std::move(filterMatch))
-      .combine(std::move(mapMatch));
+    return iteratorMatch  //
+        .combine(std::move(referenceMatch))
+        .combine(std::move(limitMatch))
+        .combine(std::move(filterMatch))
+        .combine(std::move(mapMatch));
   }
 
   Iterator iterator;
@@ -372,4 +369,62 @@ auto expansion(Iterator iterator, Reference reference, Limit limit,
       .filter = std::move(filter),
       .map = std::move(map)};
 }
+
+template<Matchable Subnode>
+struct NaryOrWithOneSubNode {
+  auto apply(AstNode const* node) -> MatchResult {
+    auto nodeTypeMatch = MatchNodeType(NODE_TYPE_OPERATOR_NARY_OR).apply(node);
+    if (nodeTypeMatch.isError()) {
+      return nodeTypeMatch;
+    }
+
+    if (node->numMembers() != 1) {
+      return MatchResult::error(fmt::format(
+          "Expected n-ary or with only 1 subnode, found {} subnodes",
+          node->numMembers()));
+    }
+
+    auto subnodeMatch = subnode.apply(node->getMemberUnchecked(0));
+    if (subnodeMatch.isError()) {
+      return MatchResult::error(std::move(subnodeMatch),
+                                "Subnode match failed");
+    }
+
+    return MatchResult::match();
+  }
+
+  Subnode subnode;
+};
+
+template<Matchable SubNode>
+auto naryOrWithOneSubNode(SubNode subnode) -> NaryOrWithOneSubNode<SubNode> {
+  return NaryOrWithOneSubNode<SubNode>{.subnode = subnode};
+}
+
+template<Matchable SubMatch>
+struct ForAllSubNodes {
+  auto apply(AstNode const* node) -> MatchResult {
+    auto num = node->numMembers();
+
+    auto result = MatchResult::match();
+
+    for (auto i = size_t{0}; i < num; ++i) {
+      auto match = submatch.apply(node->getMemberUnchecked(i));
+      if (match.isError()) {
+        return MatchResult::error(std::move(match),
+                                  "Submatch failed for subnode");
+      }
+      result.combine(std::move(match));
+    }
+
+    return result;
+  }
+
+  SubMatch submatch;
+};
+
+template<Matchable SubMatch>
+auto forAllSubNodes(SubMatch submatch) -> ForAllSubNodes<SubMatch> {
+  return ForAllSubNodes<SubMatch>{.submatch = submatch};
+};
 }  // namespace arangodb::aql::expression_matcher

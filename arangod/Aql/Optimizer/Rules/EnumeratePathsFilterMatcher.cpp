@@ -20,6 +20,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "EnumeratePathsFilterMatcher.h"
 #include <optional>
+#include <ostream>
 #include <variant>
 
 #include "Aql/Ast.h"
@@ -33,7 +34,10 @@
 #include "Basics/ErrorT.h"
 #include "Basics/overload.h"
 
+using namespace arangodb::aql::expression_matcher;
 using EN = arangodb::aql::ExecutionNode;
+
+namespace {}
 
 namespace arangodb::aql {
 
@@ -113,22 +117,76 @@ auto EnumeratePathsFilterMatcher::before(ExecutionNode* node) -> bool {
         break;
       }
 
+      _condition->normalize();
+
       auto pathsNode = ExecutionNode::castTo<EnumeratePathsNode*>(node);
       TRI_ASSERT(pathsNode != nullptr);
 
-      // ENUMERATE_PATHS has one output variable `p`,
+      // ENUMERATE_PATHS has one output variable `pathVar`,
       // the conditions that are supported are ones that
       // access p.vertices[*] or p.edges[*], or both
       auto pathVar = &pathsNode->pathOutVariable();
       auto const& varsValidInPathEnumeration = pathsNode->getVarsValid();
 
-      (void)pathVar;
+      // TODO: due to lack of time for design right now, I split this
+      // match into two matches. Here's (an approximation of) the match I would
+      // like to write. When this is integrated into releaseable code, the
+      // design should be finished to a sufficient degree.
+      //
+      // For this application the result of the match should be a vector
+      // of matches that can then be used to rewrite the query
+#if 0
+      auto matcher = naryOrWithOneSubNode(forAllSubNodes(arrayEq(         //
+          expansion(                                                      //
+              iterator(AnyVariable{},                                     //
+                       attributeAccess(Reference{.name = pathVar->name},  //
+                                       {"edges", "vertices"})),           //
+              matchWithName("variable", Any{}),                           //
+              NoOp{},                                                     //
+              NoOp{},                                                     //
+              matchWithName("map", Any{})),                               //
+          matchWithName("rhs_value", AnyValue{}),                         //
+          expression_matcher::Quantifier{                                 //
+              .which = ::arangodb::aql::Quantifier::Type::kAll})));       //
+#endif
+
+      auto topMatcher =
+          naryOrWithOneSubNode(MatchNodeType(NODE_TYPE_OPERATOR_NARY_AND));
+      auto topResult = topMatcher.apply(_condition->root());
+
+      if (topResult.isError()) {
+        // No optimisation with reason topResult.errors()
+        LOG_DEVEL << "enumerate paths filter optimiser failed: "
+                  << toString(topResult);
+        return false;
+      }
+
+      // Every condition has to be of the form
+      // pathVariable.vertices[* ...] ALL == $literal_value
+      // pathVariable.edges[* ...] ALL == $literal_value
+
+      auto const* andNode = _condition->root()->getMemberUnchecked(0);
+      auto const num = andNode->numMembers();
+
+      auto matcher = arrayEq(                                             //
+          expansion(                                                      //
+              iterator(AnyVariable{},                                     //
+                       attributeAccess(Reference{.name = pathVar->name},  //
+                                       {"edges", "vertices"})),           //
+              Any{},                                                      //
+              NoOp{},                                                     //
+              NoOp{},                                                     //
+              matchWithName("map", Any{})),                               //
+          matchWithName("rhs_value", AnyValue{}),                         //
+          expression_matcher::Quantifier{
+              .which = ::arangodb::aql::Quantifier::Type::kAll});  //
+
+      for (auto i = std::size_t{0}; i < num; ++i) {
+        auto result = matcher.apply(andNode->getMemberUnchecked(i));
+
+        toStream(std::cerr, result);
+      }
       (void)varsValidInPathEnumeration;
-      /*      auto matches = matchSupportedConditions(
-          pathVar, varsValidInPathEnumeration, _condition);
-      if (not matches.empty()) {
-        LOG_DEVEL << "OPTIMIZER RULE FIRES";
-        }*/
 
     } break;
     default: {
