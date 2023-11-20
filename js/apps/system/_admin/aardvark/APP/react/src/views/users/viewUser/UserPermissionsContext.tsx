@@ -187,7 +187,11 @@ export const TABLE_COLUMNS = [
     },
     cell: info => {
       if (getIsDefaultRow(info)) {
-        return <Tag>Default</Tag>;
+        return (
+          <Flex padding="2">
+            <Tag>Default</Tag>
+          </Flex>
+        );
       }
       return (
         <Flex
