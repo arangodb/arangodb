@@ -46,8 +46,8 @@ TEST(CFpconvTest, tst_nan) {
   EXPECT_TRUE(std::isnan(value));
   length = fpconv_dtoa(value, out);
 
-  EXPECT_TRUE(EXPECT_EQ(std::string("-NaN"), std::string(out, length)) ||
-              EXPECT_EQ(std::string("NaN"), std::string(out, length)));
+  EXPECT_TRUE(std::string("-NaN") == std::string(out, length) ||
+              std::string("NaN") == std::string(out, length));
 
   StringBuffer buf(true);
   buf.appendDecimal(value);
