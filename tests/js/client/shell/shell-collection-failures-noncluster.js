@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertNull, fail, assertFalse */
+/*global assertEqual, assertTrue, assertNull, fail, assertFalse, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface

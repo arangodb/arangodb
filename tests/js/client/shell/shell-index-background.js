@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNotUndefined */
+/*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNotUndefined, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test indexes

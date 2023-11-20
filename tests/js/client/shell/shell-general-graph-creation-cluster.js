@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertFalse, fail */
+/*global assertEqual, assertTrue, assertFalse, fail, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the general-graph class
@@ -80,7 +80,6 @@ function GeneralGraphClusterCreationSuite() {
         graph._create(gn, edgeDef, null, { numberOfShards: maxNumberOfShards + 1, replicationFactor: 1 });
         fail();
       } catch (err) {
-        print(err);
         assertEqual(ERRORS.ERROR_CLUSTER_TOO_MANY_SHARDS.code, err.errorNum);
       }
     },

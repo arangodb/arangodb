@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail, assertEqual, assertTrue, assertFalse, assertNull */
+/*global fail, assertEqual, assertTrue, assertFalse, assertNull, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test collection functionality in a cluster

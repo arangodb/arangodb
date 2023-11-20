@@ -1,4 +1,4 @@
-/*global describe, it, ArangoAgency, beforeEach, afterEach, fail */
+/*global describe, it, ArangoAgency, beforeEach, afterEach, fail, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cluster collection creation tests

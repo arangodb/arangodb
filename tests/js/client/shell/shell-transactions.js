@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertTrue, assertEqual, TRANSACTION */
+/* global fail, assertTrue, assertEqual, TRANSACTION, params, assertNotEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for transactions

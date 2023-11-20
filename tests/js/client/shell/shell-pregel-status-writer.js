@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertNotEqual, fail */
+/*global assertEqual, assertTrue, assertNotEqual, fail, arango */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////

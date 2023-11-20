@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail, assertFalse, assertTrue, assertEqual */
+/*global fail, assertFalse, assertTrue, assertEqual, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test add/drop followers

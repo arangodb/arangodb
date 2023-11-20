@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertNotEqual, assertTrue, assertMatch, fail */
+/*global assertEqual, assertNotEqual, assertTrue, assertMatch, fail, params*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for client/server side transaction invocation

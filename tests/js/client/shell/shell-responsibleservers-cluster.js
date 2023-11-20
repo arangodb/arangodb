@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global global.ArangoClusterInfo, assertEqual, assertNotEqual, assertTrue, fail */
+/*global global.ArangoClusterInfo, assertEqual, assertNotEqual, assertTrue, fail, arango, assertMatch */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
