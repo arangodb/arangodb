@@ -162,7 +162,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // generates an error
   void generateError(arangodb::Result const&);
 
-  RestStatus waitForFuture(futures::Future<futures::Unit>&& f);
+  [[nodiscard]] RestStatus waitForFuture(futures::Future<futures::Unit>&& f);
+  [[nodiscard]] RestStatus waitForFuture(futures::Future<RestStatus>&& f);
 
   enum class HandlerState : uint8_t {
     PREPARE = 0,
@@ -205,6 +206,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
  private:
   mutable std::recursive_mutex _executionMutex;
   mutable std::atomic_uint8_t _executionCounter{0};
+  mutable RestStatus _followupRestStatus;
 
   std::function<void(rest::RestHandler*)> _callback;
 

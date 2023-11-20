@@ -171,7 +171,8 @@ bool TraverserCache::appendVertex(std::string_view id,
       return true;
     };
     Result res =
-        _trx->documentFastPathLocal(collectionName, id.substr(pos + 1), cb);
+        _trx->documentFastPathLocal(collectionName, id.substr(pos + 1), cb)
+            .get();
 
     if (res.ok()) {
       return true;
@@ -237,17 +238,19 @@ bool TraverserCache::appendVertex(std::string_view id,
     transaction::AllowImplicitCollectionsSwitcher disallower(
         _trx->state()->options(), _allowImplicitCollections);
 
-    Result res = _trx->documentFastPathLocal(
-        collectionName, id.substr(pos + 1),
-        [&](LocalDocumentId, aql::DocumentData&& data, VPackSlice doc) {
-          ++_insertedDocuments;
-          if (data) {
-            result = aql::AqlValue(data);
-          } else {
-            result = aql::AqlValue(doc);
-          }
-          return true;
-        });
+    Result res =
+        _trx->documentFastPathLocal(
+                collectionName, id.substr(pos + 1),
+                [&](LocalDocumentId, aql::DocumentData&& data, VPackSlice doc) {
+                  ++_insertedDocuments;
+                  if (data) {
+                    result = aql::AqlValue(data);
+                  } else {
+                    result = aql::AqlValue(doc);
+                  }
+                  return true;
+                })
+            .get();
 
     if (res.ok()) {
       return true;

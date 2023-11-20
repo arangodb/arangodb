@@ -79,7 +79,8 @@ auto MaintenanceActionExecutor::executeModifyCollection(
       basics::catchToResult([&col, properties = std::move(properties)]() {
         OperationOptions options(ExecContext::current());
         return methods::Collections::updateProperties(*col, properties.slice(),
-                                                      options);
+                                                      options)
+            .get();
       });
 
   if (res.fail()) {
@@ -108,7 +109,8 @@ auto MaintenanceActionExecutor::executeCreateIndex(
   VPackBuilder output;
   auto res = basics::catchToResult([&]() {
     return methods::Indexes::ensureIndex(*col, properties.slice(), true, output,
-                                         std::move(progress));
+                                         std::move(progress))
+        .get();
   });
 
   if (res.ok()) {
@@ -128,7 +130,7 @@ auto MaintenanceActionExecutor::executeDropIndex(
     std::shared_ptr<LogicalCollection> col,
     velocypack::SharedSlice index) noexcept -> Result {
   auto res = basics::catchToResult(
-      [&]() { return methods::Indexes::drop(*col, index.slice()); });
+      [&]() { return methods::Indexes::drop(*col, index.slice()).get(); });
 
   LOG_CTX("e155f", DEBUG, _loggerContext)
       << "Dropping local index " << index.toJson() << " of " << _vocbase.name()

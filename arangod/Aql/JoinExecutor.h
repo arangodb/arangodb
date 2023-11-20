@@ -140,6 +140,7 @@ class JoinExecutor {
 
  private:
   void constructStrategy();
+  [[nodiscard]] ResourceMonitor& resourceMonitor();
 
   aql::AqlFunctionsInternalCache _functionsCache;
   Fetcher& _fetcher;
@@ -147,11 +148,14 @@ class JoinExecutor {
   std::unique_ptr<AqlIndexJoinStrategy> _strategy;
 
   transaction::Methods _trx;
+  ResourceMonitor& _resourceMonitor;
 
   InputAqlItemRow _currentRow{CreateInvalidInputRowHint()};
   ExecutorState _currentRowState{ExecutorState::HASMORE};
   velocypack::Builder _projectionsBuilder;
-  std::vector<std::unique_ptr<std::string>> _documents;
+  // first value holds the unique ptr to a string (obvious), second value holds
+  // the amount of bytes used by that string
+  std::vector<std::pair<std::unique_ptr<std::string>, size_t>> _documents;
 };
 
 }  // namespace aql
