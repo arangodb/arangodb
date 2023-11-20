@@ -529,24 +529,24 @@ bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan,
     auto cond = conditionWithInlineCalculations(
         plan, parent->getMemberUnchecked(testIndex));
     tn->registerGlobalCondition(isEdge, cond);
-  } else
+  } else {
     conditionIsImpossible = !tn->isInRange(depth, isEdge);
-  if (conditionIsImpossible) {
-    return false;
+    if (conditionIsImpossible) {
+      return false;
+    }
+    // edit in-place; TODO replace instead?
+    TEMPORARILY_UNLOCK_NODE(parentOfReplace);
+    // Point Access
+    parentOfReplace->changeMember(replaceIdx, tempNode);
+
+    auto cond = conditionWithInlineCalculations(
+        plan, parent->getMemberUnchecked(testIndex));
+
+    // NOTE: We have to reload the NODE here, because we may have replaced
+    // it entirely
+    tn->registerCondition(isEdge, depth, cond);
   }
-  // edit in-place; TODO replace instead?
-  TEMPORARILY_UNLOCK_NODE(parentOfReplace);
-  // Point Access
-  parentOfReplace->changeMember(replaceIdx, tempNode);
-
-  auto cond = conditionWithInlineCalculations(
-      plan, parent->getMemberUnchecked(testIndex));
-
-  // NOTE: We have to reload the NODE here, because we may have replaced
-  // it entirely
-  tn->registerCondition(isEdge, depth, cond);
-}
-return true;
+  return true;
 }
 
 }  // namespace
