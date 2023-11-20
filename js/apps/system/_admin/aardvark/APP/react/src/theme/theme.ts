@@ -6,6 +6,10 @@ const $tooltipBg = cssVar("tooltip-bg");
 
 // 2. Call `extendTheme` and pass your custom values
 export const theme = extendTheme({
+  fonts: {
+    heading: "Inter, sans-serif",
+    body: "Inter, sans-serif"
+  },
   colors: {
     gray: {
       50: "#fafafa",
