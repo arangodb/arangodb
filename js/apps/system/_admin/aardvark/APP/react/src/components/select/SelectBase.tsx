@@ -62,6 +62,18 @@ export const getSelectBase = <IsMulti extends boolean = false>(
             Option,
             SingleValue
           }}
+          theme={theme => {
+            return {
+              ...theme,
+              colors: {
+                ...theme.colors,
+                primary: "#608726",
+                primary75: "#9dc853",
+                primary50: "#b8da7c",
+                primary25: "#d5e9ad"
+              }
+            };
+          }}
           styles={{
             ...props.styles,
             option: baseStyles => ({
