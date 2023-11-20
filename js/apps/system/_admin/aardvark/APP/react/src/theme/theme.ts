@@ -59,6 +59,33 @@ export const theme = extendTheme({
     }
   },
   components: {
+    Tabs: {
+      defaultProps: {
+        colorScheme: "green"
+      },
+      sizes: {
+        sm: {
+          tablist: {
+            height: "40px"
+          }
+        }
+      },
+      variants: {
+        line: (props: StyleFunctionProps) => {
+          if (props.colorScheme === "green") {
+            return {
+              tab: {
+                _selected: {
+                  color: "black",
+                  borderColor: "green.600"
+                }
+              }
+            };
+          }
+          return defaultTheme.components.Tabs.variants.line;
+        }
+      }
+    },
     Switch: {
       defaultProps: {
         colorScheme: "green"
