@@ -150,3 +150,6 @@ struct fmt::formatter<arangodb::actor::message::ActorNotFound<PID>>
 template<>
 struct fmt::formatter<arangodb::actor::message::NetworkError>
     : arangodb::inspection::inspection_formatter {};
+template<typename PID>
+struct fmt::formatter<arangodb::actor::message::ActorDown<PID>>
+    : arangodb::inspection::inspection_formatter {};
