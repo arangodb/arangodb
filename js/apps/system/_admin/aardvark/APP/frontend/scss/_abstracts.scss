@@ -7,7 +7,7 @@
 }
 
 %font-family {
-  font-family: 'Roboto', sans-serif !important;
+  font-family: var(--font-family);
 }
 
 %clear-float {
