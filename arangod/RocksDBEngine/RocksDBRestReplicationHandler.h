@@ -50,13 +50,13 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
   void handleCommandDetermineOpenTransactions() override;
 
   /// @brief handle a batch command
-  void handleCommandBatch() override;
+  futures::Future<futures::Unit> handleCommandBatch() override;
 
   /// @brief return the inventory (current replication and collection state)
   void handleCommandInventory() override;
 
   /// @brief produce list of keys for a specific collection
-  void handleCommandCreateKeys() override;
+  futures::Future<futures::Unit> handleCommandCreateKeys() override;
 
   /// @brief returns a key range
   void handleCommandGetKeys() override;

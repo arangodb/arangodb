@@ -66,7 +66,7 @@ RestStatus RestTransactionHandler::execute() {
     case rest::RequestType::POST:
       if (_request->suffixes().size() == 1 &&
           _request->suffixes()[0] == "begin") {
-        executeBegin();
+        return waitForFuture(executeBegin());
       } else if (_request->suffixes().empty()) {
         executeJSTransaction();
       } else {
@@ -156,7 +156,7 @@ void RestTransactionHandler::executeGetState() {
   }
 }
 
-void RestTransactionHandler::executeBegin() {
+futures::Future<futures::Unit> RestTransactionHandler::executeBegin() {
   TRI_ASSERT(_request->suffixes().size() == 1 &&
              _request->suffixes()[0] == "begin");
 
@@ -164,7 +164,7 @@ void RestTransactionHandler::executeBegin() {
   VPackSlice slice = parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
-    return;
+    co_return;
   }
 
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
@@ -184,20 +184,21 @@ void RestTransactionHandler::executeBegin() {
       generateError(
           rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
           "unexpected transaction ID received in begin transaction request");
-      return;
+      co_return;
     }
     // figure out the transaction ID
     TransactionId tid = TransactionId{basics::StringUtils::uint64(value)};
     if (tid.empty() || !tid.isChildTransactionId()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                     "invalid transaction ID on DBServer");
-      return;
+      co_return;
     }
     TRI_ASSERT(tid.isSet());
     TRI_ASSERT(!tid.isLegacyTransactionId());
     TRI_ASSERT(tid.isSet());
 
-    Result res = mgr->ensureManagedTrx(_vocbase, tid, slice, origin, false);
+    Result res =
+        co_await mgr->ensureManagedTrx(_vocbase, tid, slice, origin, false);
     if (res.fail()) {
       generateError(res);
     } else {
@@ -210,7 +211,7 @@ void RestTransactionHandler::executeBegin() {
       generateError(
           rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
           "missing transaction ID in internal transaction begin request");
-      return;
+      co_return;
     }
 
     // Check if dirty reads are allowed:
@@ -227,8 +228,8 @@ void RestTransactionHandler::executeBegin() {
     }
 
     // start
-    ResultT<TransactionId> res =
-        mgr->createManagedTrx(_vocbase, slice, origin, allowDirtyReads);
+    ResultT<TransactionId> res = co_await mgr->createManagedTrx(
+        _vocbase, slice, origin, allowDirtyReads);
     if (res.fail()) {
       generateError(res.result());
     } else {

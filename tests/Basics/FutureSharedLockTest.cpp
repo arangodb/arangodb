@@ -89,16 +89,16 @@ struct FutureSharedLockTest : public ::testing::Test {
 TEST_F(FutureSharedLockTest,
        asyncLockExclusive_should_return_resolved_future_when_unlocked) {
   int called = 0;
-  lock.asyncLockExclusive().then([&](auto) { ++called; });
+  lock.asyncLockExclusive().thenFinal([&](auto) { ++called; });
   EXPECT_EQ(1, called);
 
-  lock.asyncLockExclusive().then([&](auto) { ++called; });
+  lock.asyncLockExclusive().thenFinal([&](auto) { ++called; });
   EXPECT_EQ(2, called);
 }
 
 TEST_F(FutureSharedLockTest,
        asyncLockExclusive_should_return_unresolved_future_when_locked) {
-  lock.asyncLockExclusive().then([&](auto) {
+  lock.asyncLockExclusive().thenFinal([&](auto) {
     // try to lock again while we hold the exclusive lock
     // this must return a future that is not yet resolved
     auto fut = lock.asyncLockExclusive();
@@ -110,12 +110,12 @@ TEST_F(FutureSharedLockTest,
 TEST_F(FutureSharedLockTest,
        unlock_should_post_the_next_owner_on_the_scheduler) {
   int called = 0;
-  lock.asyncLockExclusive().then([&](auto) {
+  lock.asyncLockExclusive().thenFinal([&](auto) {
     ++called;
-    lock.asyncLockExclusive().then([&](auto) {  //
+    lock.asyncLockExclusive().thenFinal([&](auto) {  //
       ++called;
     });
-    lock.asyncLockExclusive().then([&](auto) {  //
+    lock.asyncLockExclusive().thenFinal([&](auto) {  //
       ++called;
     });
     // we still hold the lock, so nothing must be queued on the scheduler yet
@@ -133,7 +133,7 @@ TEST_F(FutureSharedLockTest,
 TEST_F(
     FutureSharedLockTest,
     asyncLockExclusive_should_return_unresolved_future_when_predecessor_has_shared_lock) {
-  lock.asyncLockShared().then([&](auto) {
+  lock.asyncLockShared().thenFinal([&](auto) {
     // try to acquire exclusive lock while we hold the shared lock
     // this must return a future that is not yet resolved
     auto fut = lock.asyncLockExclusive();
@@ -145,17 +145,17 @@ TEST_F(
 TEST_F(FutureSharedLockTest,
        asyncLockShared_should_return_resolved_future_when_unlocked) {
   int called = 0;
-  lock.asyncLockShared().then([&](auto) { ++called; });
+  lock.asyncLockShared().thenFinal([&](auto) { ++called; });
   EXPECT_EQ(1, called);
 
-  lock.asyncLockShared().then([&](auto) { ++called; });
+  lock.asyncLockShared().thenFinal([&](auto) { ++called; });
   EXPECT_EQ(2, called);
 }
 
 TEST_F(
     FutureSharedLockTest,
     asyncLockShared_should_return_resolved_future_when_predecessor_has_shared_lock_and_is_active_or_finished) {
-  lock.asyncLockShared().then([&](auto) {
+  lock.asyncLockShared().thenFinal([&](auto) {
     // try to lock again while we hold the shared lock
     // since we use shared access, this must succeed and return a resolved
     // future
@@ -175,7 +175,7 @@ TEST_F(
 TEST_F(
     FutureSharedLockTest,
     asyncLockShared_should_return_unresolved_future_when_predecessor_has_exclusive_lock) {
-  lock.asyncLockExclusive().then([&](auto) {
+  lock.asyncLockExclusive().thenFinal([&](auto) {
     // try to acquire shared lock while we hold the exclusive lock
     // this must return a future that is not yet resolved
     auto fut = lock.asyncLockShared();
@@ -187,7 +187,7 @@ TEST_F(
 TEST_F(
     FutureSharedLockTest,
     asyncLockShared_should_return_unresolved_future_when_predecessor_is_blocked) {
-  lock.asyncLockExclusive().then([&](auto) {
+  lock.asyncLockExclusive().thenFinal([&](auto) {
     // try to acquire shared lock while we hold the exclusive lock
     // this must return a future that is not yet resolved
     auto fut = lock.asyncLockShared();
@@ -205,12 +205,12 @@ TEST_F(
 TEST_F(FutureSharedLockTest,
        unlock_shared_should_post_the_next_exclusive_owner_on_the_scheduler) {
   int called = 0;
-  lock.asyncLockShared().then([&](auto) {
+  lock.asyncLockShared().thenFinal([&](auto) {
     ++called;
-    lock.asyncLockExclusive().then([&](auto) {  //
+    lock.asyncLockExclusive().thenFinal([&](auto) {  //
       ++called;
     });
-    lock.asyncLockExclusive().then([&](auto) {  //
+    lock.asyncLockExclusive().thenFinal([&](auto) {  //
       ++called;
     });
     // we still hold the lock, so nothing must be queued on the scheduler yet
@@ -228,15 +228,15 @@ TEST_F(FutureSharedLockTest,
 TEST_F(FutureSharedLockTest,
        unlock_exclusive_should_post_all_next_shared_requests_on_the_scheduler) {
   int called = 0;
-  lock.asyncLockExclusive().then([&](auto) {
+  lock.asyncLockExclusive().thenFinal([&](auto) {
     ++called;
-    lock.asyncLockShared().then([&](auto) {  //
+    lock.asyncLockShared().thenFinal([&](auto) {  //
       ++called;
     });
-    lock.asyncLockShared().then([&](auto) {  //
+    lock.asyncLockShared().thenFinal([&](auto) {  //
       ++called;
     });
-    lock.asyncLockExclusive().then([&](auto) {  //
+    lock.asyncLockExclusive().thenFinal([&](auto) {  //
       ++called;
     });
     // we still hold the lock, so nothing must be queued on the scheduler yet
@@ -255,15 +255,15 @@ TEST_F(FutureSharedLockTest,
        unlock_shared_should_post_next_exclusive_on_the_scheduler) {
   int called = 0;
 
-  lock.asyncLockShared().then([&](auto) {
+  lock.asyncLockShared().thenFinal([&](auto) {
     ++called;
-    lock.asyncLockShared().then([&](auto) {  //
+    lock.asyncLockShared().thenFinal([&](auto) {  //
       ++called;
     });
-    lock.asyncLockShared().then([&](auto) {  //
+    lock.asyncLockShared().thenFinal([&](auto) {  //
       ++called;
     });
-    lock.asyncLockExclusive().then([&](auto) {  //
+    lock.asyncLockExclusive().thenFinal([&](auto) {  //
       ++called;
     });
     EXPECT_EQ(3, called);
@@ -280,16 +280,16 @@ TEST_F(FutureSharedLockTest,
        unlock_shared_should_hand_over_ownership_to_next_active_shared) {
   int called = 0;
   FutureSharedLock::LockGuard lockGuard;
-  lock.asyncLockShared().then([&](auto) {
+  lock.asyncLockShared().thenFinal([&](auto) {
     ++called;
-    lock.asyncLockShared().thenValue([&](auto guard) {  //
+    std::ignore = lock.asyncLockShared().thenValue([&](auto guard) {  //
       ++called;
       lockGuard = std::move(guard);
     });
-    lock.asyncLockShared().then([&](auto) {  //
+    lock.asyncLockShared().thenFinal([&](auto) {  //
       ++called;
     });
-    lock.asyncLockExclusive().then([&](auto) {  //
+    lock.asyncLockExclusive().thenFinal([&](auto) {  //
       ++called;
     });
     EXPECT_EQ(3, called);
@@ -311,21 +311,22 @@ TEST_F(FutureSharedLockTest,
 TEST_F(FutureSharedLockTest,
        asyncTryLockExclusiveFor_should_return_resolved_future_when_unlocked) {
   int called = 0;
-  lock.asyncTryLockExclusiveFor(10ms).then([&](auto) { ++called; });
+  lock.asyncTryLockExclusiveFor(10ms).thenFinal([&](auto) { ++called; });
   EXPECT_EQ(1, called);
 
-  lock.asyncTryLockExclusiveFor(10ms).then([&](auto) { ++called; });
+  lock.asyncTryLockExclusiveFor(10ms).thenFinal([&](auto) { ++called; });
   EXPECT_EQ(2, called);
 }
 
 TEST_F(FutureSharedLockTest,
        asyncTryLockExclusiveFor_should_return_unresolved_future_when_locked) {
-  lock.asyncTryLockExclusiveFor(10ms).then([&](auto) {
+  lock.asyncTryLockExclusiveFor(10ms).thenFinal([&](auto) {
     // try to lock again while we hold the exclusive lock
     // this must return a future that is not yet resolved
     auto fut = lock.asyncTryLockExclusiveFor(10ms);
     EXPECT_FALSE(fut.isReady());
-    std::move(fut).then([](auto result) { EXPECT_TRUE(result.hasValue()); });
+    std::move(fut).thenFinal(
+        [](auto result) { EXPECT_TRUE(result.hasValue()); });
   });
   scheduler.executeScheduled();  // cleanup
 
@@ -336,12 +337,13 @@ TEST_F(FutureSharedLockTest,
 TEST_F(
     FutureSharedLockTest,
     asyncTryLockExclusiveFor_should_return_unresolved_future_when_predecessor_has_shared_lock) {
-  lock.asyncLockShared().then([&](auto) {
+  lock.asyncLockShared().thenFinal([&](auto) {
     // try to acquire exclusive lock while we hold the shared lock
     // this must return a future that is not yet resolved
     auto fut = lock.asyncTryLockExclusiveFor(10ms);
     EXPECT_FALSE(fut.isReady());
-    std::move(fut).then([](auto result) { EXPECT_TRUE(result.hasValue()); });
+    std::move(fut).thenFinal(
+        [](auto result) { EXPECT_TRUE(result.hasValue()); });
   });
   scheduler.executeScheduled();  // cleanup
 
@@ -354,9 +356,9 @@ TEST_F(
     asyncTryLockExclusiveFor_should_resolve_with_exception_when_timeout_is_reached) {
   FutureSharedLock::LockGuard lockGuard;
   bool resolvedWithTimeout = false;
-  lock.asyncLockExclusive().thenValue([&](auto guard) {
+  std::ignore = lock.asyncLockExclusive().thenValue([&](auto guard) {
     lockGuard = std::move(guard);
-    lock.asyncTryLockExclusiveFor(10ms).then([&](auto result) {
+    lock.asyncTryLockExclusiveFor(10ms).thenFinal([&](auto result) {
       EXPECT_TRUE(result.hasException());
       resolvedWithTimeout = true;
     });
@@ -371,17 +373,17 @@ TEST_F(
 TEST_F(FutureSharedLockTest,
        asyncTryLockSharedFor_should_return_resolved_future_when_unlocked) {
   int called = 0;
-  lock.asyncTryLockSharedFor(10ms).then([&](auto) { ++called; });
+  lock.asyncTryLockSharedFor(10ms).thenFinal([&](auto) { ++called; });
   EXPECT_EQ(1, called);
 
-  lock.asyncTryLockSharedFor(10ms).then([&](auto) { ++called; });
+  lock.asyncTryLockSharedFor(10ms).thenFinal([&](auto) { ++called; });
   EXPECT_EQ(2, called);
 }
 
 TEST_F(
     FutureSharedLockTest,
     asyncTryLockSharedFor_should_return_resolved_future_when_predecessor_has_shared_lock_and_is_active_or_finished) {
-  lock.asyncTryLockSharedFor(10ms).then([&](auto) {
+  lock.asyncTryLockSharedFor(10ms).thenFinal([&](auto) {
     // try to lock again while we hold the shared lock
     // since we use shared access, this must succeed and return a resolved
     // future
@@ -401,7 +403,7 @@ TEST_F(
 TEST_F(
     FutureSharedLockTest,
     asyncTryLockSharedFor_should_return_unresolved_future_when_predecessor_has_exclusive_lock) {
-  lock.asyncLockExclusive().then([&](auto) {
+  lock.asyncLockExclusive().thenFinal([&](auto) {
     // try to acquire shared lock while we hold the exclusive lock
     // this must return a future that is not yet resolved
     auto fut = lock.asyncTryLockSharedFor(10ms);
@@ -415,7 +417,7 @@ TEST_F(
 TEST_F(
     FutureSharedLockTest,
     asyncTryLockSharedFor_should_return_unresolved_future_when_predecessor_is_blocked) {
-  lock.asyncLockExclusive().then([&](auto) {
+  lock.asyncLockExclusive().thenFinal([&](auto) {
     // try to acquire shared lock while we hold the exclusive lock
     // this must return a future that is not yet resolved
     auto fut = lock.asyncLockShared();
@@ -434,9 +436,9 @@ TEST_F(
     asyncTryLockSharedFor_should_resolve_with_exception_when_timeout_is_reached) {
   FutureSharedLock::LockGuard lockGuard;
   bool resolvedWithTimeout = false;
-  lock.asyncLockExclusive().thenValue([&](auto guard) {
+  std::ignore = lock.asyncLockExclusive().thenValue([&](auto guard) {
     lockGuard = std::move(guard);
-    lock.asyncTryLockSharedFor(10ms).then([&](auto result) {
+    lock.asyncTryLockSharedFor(10ms).thenFinal([&](auto result) {
       EXPECT_TRUE(result.hasException());
       resolvedWithTimeout = true;
     });
@@ -454,19 +456,19 @@ TEST_F(
   FutureSharedLock::LockGuard lockGuard;
   int called = 0;
 
-  lock.asyncLockExclusive().thenValue([&](auto guard) {
+  std::ignore = lock.asyncLockExclusive().thenValue([&](auto guard) {
     lockGuard = std::move(guard);
     // first acquire shared lock without timeout
     // -> this will become the new leader
-    lock.asyncLockShared().thenValue([&](auto) { ++called; });
+    lock.asyncLockShared().thenFinal([&](auto) { ++called; });
 
-    lock.asyncLockShared().thenValue([&](auto) { ++called; });
-    lock.asyncTryLockSharedFor(10ms).thenValue([&](auto) {
+    lock.asyncLockShared().thenFinal([&](auto) { ++called; });
+    std::ignore = lock.asyncTryLockSharedFor(10ms).thenValue([&](auto) {
       FAIL();
       ++called;
     });
-    lock.asyncLockShared().thenValue([&](auto) { ++called; });
-    lock.asyncTryLockSharedFor(10ms).thenValue([&](auto) {
+    lock.asyncLockShared().thenFinal([&](auto) { ++called; });
+    std::ignore = lock.asyncTryLockSharedFor(10ms).thenValue([&](auto) {
       FAIL();
       ++called;
     });
@@ -485,8 +487,8 @@ TEST_F(FutureSharedLockTest,
        lock_can_be_deleted_before_timeout_callback_is_executed) {
   {
     FutureSharedLock lock(scheduler);
-    lock.asyncLockExclusive().thenValue(
-        [&](auto guard) { lock.asyncTryLockSharedFor(10ms); });
+    std::ignore = lock.asyncLockExclusive().thenValue(
+        [&](auto guard) { std::ignore = lock.asyncTryLockSharedFor(10ms); });
     scheduler.executeScheduled();
   }
   ASSERT_EQ(1, scheduler.delayedFuncs.size());
@@ -609,28 +611,29 @@ TEST(FutureSharedLockStressTest, parallel) {
         if (val & 1) {
           val = val >> 1;
           if (val & 1) {
-            lock.asyncLockExclusive().thenValue(
+            lock.asyncLockExclusive().thenFinal(
                 [exclusiveFunc, val](auto) mutable { exclusiveFunc(val); });
           } else {
             auto timeout = val & 15;
             lock.asyncTryLockExclusiveFor(std::chrono::milliseconds(timeout))
-                .then([exclusiveFunc, &lockTimeouts, val](auto res) mutable {
-                  if (res.hasValue()) {
-                    exclusiveFunc(val);
-                  } else {
-                    ++lockTimeouts;
-                  }
-                });
+                .thenFinal(
+                    [exclusiveFunc, &lockTimeouts, val](auto res) mutable {
+                      if (res.hasValue()) {
+                        exclusiveFunc(val);
+                      } else {
+                        ++lockTimeouts;
+                      }
+                    });
           }
         } else {
           val = val >> 1;
           if (val & 1) {
-            lock.asyncLockShared().thenValue(
+            std::ignore = lock.asyncLockShared().thenValue(
                 [sharedFunc, val](auto) mutable { sharedFunc(val); });
           } else {
             auto timeout = val & 15;
             lock.asyncTryLockSharedFor(std::chrono::milliseconds(timeout))
-                .then([sharedFunc, &lockTimeouts, val](auto res) mutable {
+                .thenFinal([sharedFunc, &lockTimeouts, val](auto res) mutable {
                   if (res.hasValue()) {
                     sharedFunc(val);
                   } else {
