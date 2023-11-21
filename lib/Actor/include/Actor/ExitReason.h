@@ -18,18 +18,24 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#ifdef STANDALONE
-#define ACTOR_ASSERT(expr) \
-  if (not(expr)) {         \
-    std::abort();          \
-  }
-#else
-#include "CrashHandler/CrashHandler.h"
-#include "Assertions/ProdAssert.h"
-#define ACTOR_ASSERT(expr) ADB_PROD_ASSERT(expr);
-#endif
+namespace arangodb::actor {
+
+enum class ExitReason {
+  kFinished,  //
+  kUnknown,   //
+  kShutdown
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, ExitReason& x) {
+  return f.enumeration(x).values(ExitReason::kFinished, "Finished",  //
+                                 ExitReason::kUnknown, "Unknown",    //
+                                 ExitReason::kShutdown, "Shutdown");
+}
+
+}  // namespace arangodb::actor
