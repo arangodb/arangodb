@@ -70,7 +70,7 @@ export const getSelectBase = <IsMulti extends boolean = false>(
                 primary: "var(--green-600)",
                 primary75: "var(--green-400)",
                 primary50: "var(--green-300)",
-                primary25: "var(--green-200)"
+                primary25: "var(--gray-100)"
               }
             };
           }}
