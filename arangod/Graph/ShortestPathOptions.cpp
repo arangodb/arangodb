@@ -106,8 +106,6 @@ ShortestPathOptions::ShortestPathOptions(ShortestPathOptions const& other,
     : BaseOptions(other, allowAlreadyBuiltCopy),
       _minDepth(other._minDepth),
       _maxDepth(other._maxDepth),
-      _start{other._start},
-      _end{other._end},
       _reverseLookupInfos{other._reverseLookupInfos},
       _weightAttribute{other._weightAttribute},
       _defaultWeight{other._defaultWeight} {

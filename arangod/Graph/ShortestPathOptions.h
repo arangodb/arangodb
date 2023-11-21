@@ -107,8 +107,6 @@ struct ShortestPathOptions : public BaseOptions {
  private:
   uint64_t _minDepth;
   uint64_t _maxDepth;
-  std::string _start;
-  std::string _end;
 
   /// @brief Lookup info to find all reverse edges.
   std::vector<LookupInfo> _reverseLookupInfos;
