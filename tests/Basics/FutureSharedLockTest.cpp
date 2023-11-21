@@ -360,7 +360,13 @@ TEST_F(
     lockGuard = std::move(guard);
     lock.asyncTryLockExclusiveFor(10ms).thenFinal([&](auto result) {
       EXPECT_TRUE(result.hasException());
-      resolvedWithTimeout = true;
+      try {
+        result.throwIfFailed();
+      } catch (::arangodb::basics::Exception const& e) {
+        EXPECT_EQ(e.code(), TRI_ERROR_LOCK_TIMEOUT);
+        resolvedWithTimeout = true;
+      } catch (...) {
+      }
     });
   });
   ASSERT_EQ(1, scheduler.delayedFuncs.size());
@@ -440,7 +446,13 @@ TEST_F(
     lockGuard = std::move(guard);
     lock.asyncTryLockSharedFor(10ms).thenFinal([&](auto result) {
       EXPECT_TRUE(result.hasException());
-      resolvedWithTimeout = true;
+      try {
+        result.throwIfFailed();
+      } catch (::arangodb::basics::Exception const& e) {
+        EXPECT_EQ(e.code(), TRI_ERROR_LOCK_TIMEOUT);
+        resolvedWithTimeout = true;
+      } catch (...) {
+      }
     });
   });
   ASSERT_EQ(1, scheduler.delayedFuncs.size());

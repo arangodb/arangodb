@@ -216,12 +216,15 @@ struct FutureSharedLock {
            queueIterator]() mutable {
             if (auto me = self.lock(); me) {
               if (auto nodePtr = node.lock(); nodePtr) {
-                std::lock_guard lock(me->_mutex);
+                std::unique_lock lock(me->_mutex);
                 if (nodePtr.use_count() != 1) {
                   // if use_count == 1, this means that the promise has already
                   // been scheduled and the node has been removed from the queue
                   // otherwise the iterator must still be valid!
                   me->removeNode(queueIterator);
+                  lock.unlock();
+                  nodePtr->promise.setException(::arangodb::basics::Exception(
+                      TRI_ERROR_LOCK_TIMEOUT, ADB_HERE));
                 }
               }
             }

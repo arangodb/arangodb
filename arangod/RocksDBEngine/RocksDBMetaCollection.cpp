@@ -95,7 +95,7 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
 }
 template<typename F>
 void RocksDBMetaCollection::SchedulerWrapper::queue(F&& fn) {
-  SchedulerFeature::SCHEDULER->queue(RequestLane::CLIENT_FAST,
+  SchedulerFeature::SCHEDULER->queue(RequestLane::CLUSTER_INTERNAL,
                                      std::forward<F>(fn));
 }
 template<typename F>
@@ -172,8 +172,14 @@ futures::Future<ErrorCode> RocksDBMetaCollection::lockWrite(double timeout) {
   return doLock(timeout, AccessMode::Type::WRITE);
 }
 
+#define LOG_COLLECTION LOG_DEVEL << this->_logicalCollection.name() << " ### "
+
 /// @brief write unlocks a collection
-void RocksDBMetaCollection::unlockWrite() noexcept { _exclusiveLock.unlock(); }
+void RocksDBMetaCollection::unlockWrite() noexcept {
+  LOG_COLLECTION << "UNLOCK EXCLUSIVE";
+  _exclusiveLock.unlock();
+  LOG_COLLECTION << "UNLOCK EXCLUSIVE DONE";
+}
 
 /// @brief read locks a collection, with a timeout
 futures::Future<ErrorCode> RocksDBMetaCollection::lockRead(double timeout) {
@@ -181,7 +187,11 @@ futures::Future<ErrorCode> RocksDBMetaCollection::lockRead(double timeout) {
 }
 
 /// @brief read unlocks a collection
-void RocksDBMetaCollection::unlockRead() { _exclusiveLock.unlock(); }
+void RocksDBMetaCollection::unlockRead() {
+  LOG_COLLECTION << "UNLOCK SHARED";
+  _exclusiveLock.unlock();
+  LOG_COLLECTION << "UNLOCK SHARED DONE";
+}
 
 // rescans the collection to update document count
 futures::Future<uint64_t> RocksDBMetaCollection::recalculateCounts() {
@@ -1725,56 +1735,32 @@ futures::Future<ErrorCode> RocksDBMetaCollection::doLock(
   if (timeout <= 0) {
     timeout = defaultLockTimeout;
   }
-  auto timeout_us = std::chrono::duration_cast<std::chrono::microseconds>(
+  auto timeout_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::duration<double>(timeout));
 
-  constexpr auto detachThreshold = std::chrono::milliseconds(1000);
-
   bool gotLock = false;
-  if (timeout_us > detachThreshold) {
-    if (mode == AccessMode::Type::WRITE) {
-      auto guard =
-          co_await _exclusiveLock.asyncTryLockExclusiveFor(detachThreshold);
-      gotLock = guard.isLocked();
-      guard.release();
-    } else {
-      auto guard =
-          co_await _exclusiveLock.asyncTryLockSharedFor(detachThreshold);
-      gotLock = guard.isLocked();
-      guard.release();
-    }
-    if (gotLock) {
-      // keep the lock and exit
-      co_return TRI_ERROR_NO_ERROR;
-    }
-    LOG_TOPIC("dd231", INFO, Logger::THREADS)
-        << "Did not get lock within 1 seconds, detaching scheduler thread.";
-    uint64_t currentNumberDetached = 0;
-    uint64_t maximumNumberDetached = 0;
-    Result r = arangodb::SchedulerFeature::SCHEDULER->detachThread(
-        &currentNumberDetached, &maximumNumberDetached);
-    if (r.is(TRI_ERROR_TOO_MANY_DETACHED_THREADS)) {
-      LOG_TOPIC("dd232", WARN, Logger::THREADS)
-          << "Could not detach scheduler thread (currently detached threads: "
-          << currentNumberDetached
-          << ", maximal number of detached threads: " << maximumNumberDetached
-          << "), will continue to acquire "
-             "lock in scheduler thread, this can potentially lead to "
-             "blockages!";
-    }
-  }
-
-  timeout_us -= detachThreshold;
-
   if (mode == AccessMode::Type::WRITE) {
-    auto guard =
-        co_await _exclusiveLock.asyncTryLockExclusiveFor(detachThreshold);
-    gotLock = guard.isLocked();
-    guard.release();
+    LOG_COLLECTION << "TRY LOCK EXCLUSIVE";
+    auto result =
+        co_await asTry(_exclusiveLock.asyncTryLockExclusiveFor(timeout_ms));
+    gotLock = result.hasValue();
+    if (gotLock) {
+      LOG_COLLECTION << "GOT LOCK EXCLUSIVE";
+      result.get().release();
+    } else {
+      LOG_COLLECTION << "TIMEOUT LOCK EXCLUSIVE";
+    }
   } else {
-    auto guard = co_await _exclusiveLock.asyncTryLockSharedFor(detachThreshold);
-    gotLock = guard.isLocked();
-    guard.release();
+    LOG_COLLECTION << "TRY LOCK SHARED";
+    auto result =
+        co_await asTry(_exclusiveLock.asyncTryLockSharedFor(timeout_ms));
+    gotLock = result.hasValue();
+    if (gotLock) {
+      LOG_COLLECTION << "GOT LOCK SHARED";
+      result.get().release();
+    } else {
+      LOG_COLLECTION << "TIMEOUT LOCK SHARED";
+    }
   }
 
   if (gotLock) {

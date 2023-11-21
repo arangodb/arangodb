@@ -29,6 +29,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -38,9 +39,9 @@
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/Options.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
-#include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/vocbase.h"
 
@@ -188,6 +189,8 @@ futures::Future<futures::Unit> RestDocumentHandler::insertDocument() {
     co_return;
   }
 
+  LOG_DEVEL << "INSERT " << body.toJson();
+
   arangodb::OperationOptions opOptions(_context);
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
@@ -241,6 +244,7 @@ futures::Future<futures::Unit> RestDocumentHandler::insertDocument() {
                                         // single document operations
 
   // find and load collection given by name or identifier
+  LOG_DEVEL << "AWAIT CREATE_TRANSACTION";
   _activeTrx = co_await createTransaction(
       cname, AccessMode::Type::WRITE, opOptions,
       transaction::OperationOriginREST{"inserting document(s)"},
@@ -249,7 +253,9 @@ futures::Future<futures::Unit> RestDocumentHandler::insertDocument() {
   addTransactionHints(cname, isMultiple,
                       opOptions.isOverwriteModeUpdateReplace());
 
-  Result res = _activeTrx->begin();
+  LOG_DEVEL << "AWAIT beginAsync";
+  Result res = co_await _activeTrx->beginAsync();
+  LOG_DEVEL << "AFTER beginAsync";
 
   if (!res.ok()) {
     generateTransactionError(cname, OperationResult(res, opOptions), "");

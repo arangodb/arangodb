@@ -71,11 +71,13 @@ function detachSchedulerThreadsSuite() {
         ts.push(arango.POST_RAW(`/_api/document/${cn}`,{Write: i},
                 {"x-arango-async": "store"})
           .headers["x-arango-async-id"]);
-      }
 
+      }
       // If threads detach, we should first be able to write to the second
       // collection without too much delay:
+      print("CanProceed before");
       c2.insert({"CanProceed": true});
+      print("CanProceed written");
 
       // And then we can commit the transaction:
       t.commit();
