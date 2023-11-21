@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertTrue, assertEqual, TRANSACTION, params, assertNotEqual */
+/* global fail, assertTrue, assertEqual, TRANSACTION, params, assertNotEqual, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for transactions
@@ -4087,7 +4087,7 @@ function transactionTraversalSuite () {
 // / @brief executes the test suites
 // //////////////////////////////////////////////////////////////////////////////
 
-if (arango.POST("/_admin/execute", "require('internal').debugCanUseFailAt());")) {
+if (arango.POST("/_admin/execute", "return require('internal').debugCanUseFailAt();")) {
   jsunity.run(transactionFailuresSuite);
 }
 jsunity.run(transactionRevisionsSuite);
