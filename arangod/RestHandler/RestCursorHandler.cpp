@@ -24,6 +24,7 @@
 #include "RestCursorHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/ClusterQuery.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/SharedQueryState.h"
@@ -161,6 +162,12 @@ RestStatus RestCursorHandler::registerQueryOrCursor(
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
     return RestStatus::DONE;
   }
+
+  auto planSlice = slice.get("plan");
+  if (planSlice.isObject()) {
+    return registerQueryOrCursorByPlan(slice, operationOrigin);
+  }
+
   VPackSlice querySlice = slice.get("query");
   if (!querySlice.isString() || querySlice.getStringLength() == 0) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
@@ -241,6 +248,113 @@ RestStatus RestCursorHandler::registerQueryOrCursor(
   registerQuery(std::move(query));
   return processQuery();
 }
+
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
+/// @brief register the query either as streaming cursor or in _query
+/// the query is not executed here.
+/// this method is also used by derived classes
+///
+/// return If true, we need to continue processing,
+///        If false we are done (error or stream)
+RestStatus RestCursorHandler::registerQueryOrCursorByPlan(
+    velocypack::Slice slice, transaction::OperationOrigin operationOrigin) {
+  TRI_ASSERT(_query == nullptr);
+
+  auto planSlice = slice.get("plan");
+
+  std::cerr << "planjson: " << planSlice.toJson() << std::endl;
+
+  // TODO: find out whether these are needed
+  VPackSlice bindVars = slice.get("bindVars");
+  if (!bindVars.isNone()) {
+    if (!bindVars.isObject() && !bindVars.isNull()) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
+                    "expecting object for <bindVars>");
+      return RestStatus::DONE;
+    }
+  }
+
+  std::shared_ptr<VPackBuilder> bindVarsBuilder;
+  if (!bindVars.isNone()) {
+    bindVarsBuilder = std::make_shared<VPackBuilder>(bindVars);
+  }
+
+  TRI_ASSERT(_options == nullptr);
+  buildOptions(slice);
+  TRI_ASSERT(_options != nullptr);
+  VPackSlice opts = _options->slice();
+
+  //  bool stream = VelocyPackHelper::getBooleanValue(opts, "stream", false);
+  //  if (ServerState::instance()->isDBServer()) {
+  //  stream = false;
+  // }
+  // size_t batchSize =
+  //    VelocyPackHelper::getNumericValue<size_t>(opts, "batchSize", 1000);
+  // double ttl = VelocyPackHelper::getNumericValue<double>(
+  //    opts, "ttl", _queryRegistry->defaultTTL());
+  // bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
+  // bool retriable = VelocyPackHelper::getBooleanValue(opts, "allowRetry",
+  // false);
+
+  // simon: access mode can always be write on the coordinator
+  AccessMode::Type mode = AccessMode::Type::WRITE;
+
+  auto queryId = TRI_NewServerSpecificTick();
+
+  auto query = aql::ClusterQuery::create(
+      queryId, createTransactionContext(mode, operationOrigin),
+      aql::QueryOptions(opts));
+
+  auto collections = planSlice.get("collections");
+  auto variables = planSlice.get("variables");
+
+  QueryAnalyzerRevisions analyzersRevision;
+  auto revisionRes = analyzersRevision.fromVelocyPack(planSlice);
+  if (revisionRes.fail()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
+                  "failed to parse analyzerRevision");
+    return RestStatus::DONE;
+  }
+
+  VPackBuilder snippetBuilder;  // simon: hack to make format conform
+  snippetBuilder.openObject();
+  snippetBuilder.add("0", VPackValue(VPackValueType::Object));
+  snippetBuilder.add("nodes", planSlice.get("nodes"));
+  snippetBuilder.close();
+  snippetBuilder.close();
+
+  VPackBuilder ignoreResponse;
+  query->prepareClusterQuery(VPackSlice::emptyObjectSlice(), collections,
+                             variables, snippetBuilder.slice(),
+                             VPackSlice::noneSlice(), ignoreResponse,
+                             analyzersRevision);
+
+  aql::QueryResult queryResult = query->executeSync();
+
+  if (queryResult.result.fail()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
+                  "query failed");
+    return RestStatus::DONE;
+  }
+
+  // non-stream case. Execute query, then build a cursor
+  // with the entire result set.
+  if (!ServerState::instance()->isDBServer()) {
+    auto ss = query->sharedState();
+    TRI_ASSERT(ss != nullptr);
+    if (ss == nullptr) {
+      generateError(Result(TRI_ERROR_INTERNAL, "invalid query state"));
+      return RestStatus::DONE;
+    }
+
+    ss->setWakeupHandler(withLogContext(
+        [self = shared_from_this()] { return self->wakeupHandler(); }));
+  }
+
+  registerQuery(std::move(query));
+  return processQuery();
+}
+#endif
 
 /// @brief Process the query registered in _query.
 /// The function is repeatable, so whenever we need to WAIT

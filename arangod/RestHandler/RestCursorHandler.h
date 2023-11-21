@@ -74,6 +74,14 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   RestStatus registerQueryOrCursor(
       velocypack::Slice body, transaction::OperationOrigin operationOrigin);
 
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
+  /// @brief register the query either as streaming cursor or in _query
+  /// the query is not executed here.
+  /// The query is created from the submitted plan
+  RestStatus registerQueryOrCursorByPlan(
+      velocypack::Slice body, transaction::OperationOrigin operationOrigin);
+#endif
+
   /// @brief Process the query registered in _query.
   /// The function is repeatable, so whenever we need to WAIT
   /// in AQL we can post a handler calling this function again.
