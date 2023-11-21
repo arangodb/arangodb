@@ -4,7 +4,7 @@
 
 
 # Single Server only Tests
-BackupAuthNoSysTests,BackupAuthSysTests,BackupNoAuthSysTests,arangosh, single name=single_server_only
+BackupAuthNoSysTests,BackupAuthSysTests,BackupNoAuthSysTests,arangosh single name=single_server_only
 arangobench,permissions,paths_server,version single name=single_server_only_part2
 
 
