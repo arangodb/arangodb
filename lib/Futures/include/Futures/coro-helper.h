@@ -30,10 +30,10 @@ namespace std_coro = std;
 #endif
 #include <optional>
 
-#include <Basics/Exceptions.h>
-#include <Basics/Result.h>
-#include <Futures/Promise.h>
-#include <Futures/Try.h>
+#include "Basics/Exceptions.h"
+#include "Basics/Result.h"
+#include "Promise.h"
+#include "Try.h"
 
 namespace arangodb::futures {
 template<typename T>
@@ -41,17 +41,22 @@ class Future;
 template<typename T>
 struct FutureAwaitable {
   [[nodiscard]] auto await_ready() const noexcept -> bool { return false; }
-  void await_suspend(std_coro::coroutine_handle<> coro) noexcept {
+  bool await_suspend(std_coro::coroutine_handle<> coro) noexcept {
+    // returning false resumes `coro`
     std::move(_future).thenFinal(
         [coro, this](futures::Try<T>&& result) mutable noexcept {
           _result = std::move(result);
-          coro.resume();
+          if (_counter.fetch_sub(1) == 1) {
+            coro.resume();
+          }
         });
+    return _counter.fetch_sub(1) != 1;
   }
   auto await_resume() -> T { return std::move(_result.value().get()); }
   explicit FutureAwaitable(Future<T> fut) : _future(std::move(fut)) {}
 
  private:
+  std::atomic_uint8_t _counter{2};
   Future<T> _future;
   std::optional<futures::Try<T>> _result;
 };
@@ -91,6 +96,13 @@ auto asTry(Future<T>&& f) noexcept {
       [](futures::Try<T>&& res) noexcept { return std::move(res); }};
 }
 
+static inline auto asResult(Future<Unit>&& f) noexcept {
+  return FutureTransformAwaitable{
+      std::move(f), [](futures::Try<Unit>&& res) noexcept -> Result {
+        return basics::catchVoidToResult([&] { return res.get(); });
+      }};
+}
+
 static inline auto asResult(Future<Result>&& f) noexcept {
   return FutureTransformAwaitable{
       std::move(f), [](futures::Try<Result>&& res) noexcept -> Result {
@@ -112,9 +124,26 @@ template<typename T, typename... Args>
 struct std_coro::coroutine_traits<arangodb::futures::Future<T>, Args...> {
   struct promise_type {
     arangodb::futures::Promise<T> promise;
+    arangodb::futures::Try<T> result;
 
     auto initial_suspend() noexcept { return std_coro::suspend_never{}; }
-    auto final_suspend() noexcept { return std_coro::suspend_never{}; }
+    auto final_suspend() noexcept {
+      // TODO use symmetric transfer here
+      struct awaitable {
+        bool await_ready() noexcept { return false; }
+        bool await_suspend(std::coroutine_handle<promise_type> self) noexcept {
+          // we have to destroy the coroutine frame before
+          // we resolve the promise
+          _promise->promise.setTry(std::move(_promise->result));
+          return false;
+        }
+        void await_resume() noexcept {}
+
+        promise_type* _promise;
+      };
+
+      return awaitable{this};
+    }
 
     auto get_return_object() -> arangodb::futures::Future<T> {
       return promise.getFuture();
@@ -123,16 +152,55 @@ struct std_coro::coroutine_traits<arangodb::futures::Future<T>, Args...> {
     auto return_value(T const& t) noexcept(
         std::is_nothrow_copy_constructible_v<T>) {
       static_assert(std::is_copy_constructible_v<T>);
-      promise.setValue(t);
+      result.emplace(t);
     }
 
     auto return_value(T&& t) noexcept(std::is_nothrow_move_constructible_v<T>) {
       static_assert(std::is_move_constructible_v<T>);
-      promise.setValue(std::move(t));
+      result.emplace(std::move(t));
     }
 
     auto unhandled_exception() noexcept {
-      promise.setException(std::current_exception());
+      result.set_exception(std::current_exception());
+    }
+  };
+};
+
+template<typename... Args>
+struct std_coro::coroutine_traits<
+    arangodb::futures::Future<arangodb::futures::Unit>, Args...> {
+  struct promise_type {
+    arangodb::futures::Promise<arangodb::futures::Unit> promise;
+    arangodb::futures::Try<arangodb::futures::Unit> result;
+
+    auto initial_suspend() noexcept { return std_coro::suspend_never{}; }
+    auto final_suspend() noexcept {
+      // TODO use symmetric transfer here
+      struct awaitable {
+        bool await_ready() noexcept { return false; }
+        bool await_suspend(std::coroutine_handle<promise_type> self) noexcept {
+          // we have to destroy the coroutine frame before
+          // we resolve the promise
+          _promise->promise.setTry(std::move(_promise->result));
+          return false;
+        }
+        void await_resume() noexcept {}
+
+        promise_type* _promise;
+      };
+
+      return awaitable{this};
+    }
+
+    auto get_return_object()
+        -> arangodb::futures::Future<arangodb::futures::Unit> {
+      return promise.getFuture();
+    }
+
+    auto return_void() noexcept { result.emplace(); }
+
+    auto unhandled_exception() noexcept {
+      result.set_exception(std::current_exception());
     }
   };
 };

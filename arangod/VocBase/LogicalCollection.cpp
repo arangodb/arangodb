@@ -1114,18 +1114,18 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(VPackSlice info) const {
   return getPhysical()->lookupIndex(info);
 }
 
-std::shared_ptr<Index> LogicalCollection::createIndex(
+futures::Future<std::shared_ptr<Index>> LogicalCollection::createIndex(
     VPackSlice info, bool& created,
     std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
-  auto idx = _physical->createIndex(info, /*restore*/ false, created,
-                                    std::move(progress));
+  auto idx = co_await _physical->createIndex(info, /*restore*/ false, created,
+                                             std::move(progress));
   if (idx) {
     auto& df = vocbase().server().getFeature<DatabaseFeature>();
     if (df.versionTracker() != nullptr) {
       df.versionTracker()->track("create index");
     }
   }
-  return idx;
+  co_return idx;
 }
 
 /// @brief drops an index, including index file removal and replication
