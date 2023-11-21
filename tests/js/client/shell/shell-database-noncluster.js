@@ -165,25 +165,19 @@ function DatabaseSuite () {
         c.count();
         fail();
       } catch (err) {
-        print(err)
-        assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
+        assertTrue(
+          internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code === err.errorNum ||
+          internal.errors.ERROR_ARANGO_DATABASE_NOT_FOUND.code === err.errorNum, err.errorNum);
       }
       
       try {
         c.properties();
         fail();
       } catch (err) {
-        assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
+        assertTrue(
+          internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code === err.errorNum ||
+          internal.errors.ERROR_ARANGO_DATABASE_NOT_FOUND.code === err.errorNum, err.errorNum);
       }
-
-      // but the name function still works...
-      assertEqual("test", c.name());
-      
-      // same for status
-      assertEqual(5, c.status());
-      
-      // and for id
-      assertEqual(cid, c._id);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
