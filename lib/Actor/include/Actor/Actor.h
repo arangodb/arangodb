@@ -133,10 +133,10 @@ struct Actor : ActorBase<typename Runtime::ActorPID> {
   }
 
   auto finish(ExitReason reason) -> void override {
-    finishReason = reason;
+    exitReason = reason;
     auto s = status.fetch_or(Status::kFinished);
     if (s & Status::kIdle) {
-      runtime->stopActor(pid, finishReason);
+      runtime->stopActor(pid, exitReason);
     }
   }
 
@@ -201,7 +201,7 @@ struct Actor : ActorBase<typename Runtime::ActorPID> {
 
     auto s = status.fetch_or(Status::kIdle);
     if (s & Status::kFinished) {
-      runtime->stopActor(pid, finishReason);
+      runtime->stopActor(pid, exitReason);
       return;
     }
 
@@ -213,7 +213,7 @@ struct Actor : ActorBase<typename Runtime::ActorPID> {
         kick();
       }
     } else if (status.load() & Status::kFinished) {
-      runtime->stopActor(pid, finishReason);
+      runtime->stopActor(pid, exitReason);
     }
   }
 
@@ -255,7 +255,7 @@ struct Actor : ActorBase<typename Runtime::ActorPID> {
     static constexpr std::uint8_t kFinished = 2;
   };
   std::atomic<std::uint8_t> status{Status::kIdle};
-  ExitReason finishReason = ExitReason::kFinished;
+  ExitReason exitReason = ExitReason::kFinished;
   arangodb::actor::MPSCQueue<InternalMessage> inbox;
   std::shared_ptr<Runtime> runtime;
   // tunable parameter: maximal number of processed messages per work() call
