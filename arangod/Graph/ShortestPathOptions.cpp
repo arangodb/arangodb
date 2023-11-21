@@ -106,9 +106,9 @@ ShortestPathOptions::ShortestPathOptions(ShortestPathOptions const& other,
     : BaseOptions(other, allowAlreadyBuiltCopy),
       _minDepth(other._minDepth),
       _maxDepth(other._maxDepth),
-      _reverseLookupInfos{other._reverseLookupInfos},
       _weightAttribute{other._weightAttribute},
-      _defaultWeight{other._defaultWeight} {
+      _defaultWeight{other._defaultWeight},
+      _reverseLookupInfos{other._reverseLookupInfos} {
   TRI_ASSERT(other._defaultWeight >= 0.);
 }
 

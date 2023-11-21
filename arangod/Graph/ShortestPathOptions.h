@@ -94,24 +94,27 @@ struct ShortestPathOptions : public BaseOptions {
 
   auto estimateDepth() const noexcept -> uint64_t override;
 
-  auto setWeightAttribute(std::string attribute) -> void;
-  auto getWeightAttribute() const& -> std::string;
-  auto setDefaultWeight(double weight) -> void;
-  auto getDefaultWeight() const -> double;
-
   auto setMinDepth(uint64_t minDepth) noexcept -> void;
   auto getMinDepth() const noexcept -> uint64_t;
+
   auto setMaxDepth(uint64_t maxDepth) noexcept -> void;
   auto getMaxDepth() const noexcept -> uint64_t;
 
+  auto setWeightAttribute(std::string attribute) -> void;
+  auto getWeightAttribute() const& -> std::string;
+
+  auto setDefaultWeight(double weight) -> void;
+  auto getDefaultWeight() const -> double;
+
  private:
+  /// These options come from the query's text
   uint64_t _minDepth;
   uint64_t _maxDepth;
+  std::string _weightAttribute;
+  double _defaultWeight;
 
   /// @brief Lookup info to find all reverse edges.
   std::vector<LookupInfo> _reverseLookupInfos;
-  std::string _weightAttribute;
-  double _defaultWeight;
 };
 
 }  // namespace graph
