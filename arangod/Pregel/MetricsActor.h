@@ -94,7 +94,7 @@ struct MetricsHandler : actor::HandlerBase<Runtime, MetricsState> {
         break;
     }
 
-    this->finish();
+    this->finish(actor::Error::kNoError);
 
     return std::move(this->state);
   }

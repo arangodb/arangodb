@@ -157,7 +157,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
   auto operator()([[maybe_unused]] message::Cleanup message)
       -> std::unique_ptr<WorkerState<V, E, M>> {
-    this->finish();
+    this->finish(actor::Error::kNoError);
 
     LOG_TOPIC("664f5", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is cleaned", this->self);

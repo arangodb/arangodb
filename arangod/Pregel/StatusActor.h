@@ -497,7 +497,7 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
   }
 
   auto operator()(message::Cleanup& msg) -> std::unique_ptr<StatusState> {
-    this->finish();
+    this->finish(actor::Error::kNoError);
     return std::move(this->state);
   }
 
