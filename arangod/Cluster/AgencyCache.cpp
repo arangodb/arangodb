@@ -432,18 +432,19 @@ void AgencyCache::run() {
             TRI_ASSERT(rs.get("log").isArray());
             LOG_TOPIC("4579e", TRACE, Logger::CLUSTER)
                 << "Applying to cache " << rs.get("log").toJson();
+
+            // We are acquiring the lock before the loop because we want to
+            // prevent the syncer threads from observing partial updates.
+            std::lock_guard g(_storeLock);
+
             for (auto const& i : VPackArrayIterator(rs.get("log"))) {
               pc.clear();
               cc.clear();
               {
-                std::lock_guard g(_storeLock);
                 _readDB.applyTransaction(i);  // apply logs
                 _commitIndex = i.get("index").getNumber<uint64_t>();
 
-                {
-                  std::lock_guard g(_callbacksLock);
-                  handleCallbacksNoLock(i.get("query"), uniq, toCall, pc, cc);
-                }
+                handleCallbacksNoLock(i.get("query"), uniq, toCall, pc, cc);
 
                 for (auto const& i : pc) {
                   _planChanges.emplace(_commitIndex, i);
