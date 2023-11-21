@@ -143,6 +143,15 @@ export const theme = extendTheme({
         }
       }
     },
+    Table: {
+      variants: {
+        simple: {
+          th: {
+            color: "gray.700"
+          }
+        }
+      }
+    },
     Tooltip: {
       baseStyle: (props: TooltipProps) => {
         const bg = mode("gray.950", "gray.300")(props);
