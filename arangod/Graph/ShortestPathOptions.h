@@ -42,11 +42,6 @@ class EdgeCursor;
 
 struct ShortestPathOptions : public BaseOptions {
  public:
-  uint64_t minDepth;
-  uint64_t maxDepth;
-  std::string start;
-  std::string end;
-
   explicit ShortestPathOptions(aql::QueryContext& query);
 
   ShortestPathOptions(aql::QueryContext& query,
@@ -56,7 +51,7 @@ struct ShortestPathOptions : public BaseOptions {
   ShortestPathOptions(aql::QueryContext& query,
                       arangodb::velocypack::Slice info,
                       arangodb::velocypack::Slice collections);
-  ~ShortestPathOptions() override;
+  ~ShortestPathOptions() override = default;
 
   /// @brief This copy constructor is only working during planning phase.
   ///        After planning this node should not be copied anywhere.
@@ -104,7 +99,17 @@ struct ShortestPathOptions : public BaseOptions {
   auto setDefaultWeight(double weight) -> void;
   auto getDefaultWeight() const -> double;
 
+  auto setMinDepth(uint64_t minDepth) noexcept -> void;
+  auto getMinDepth() const noexcept -> uint64_t;
+  auto setMaxDepth(uint64_t maxDepth) noexcept -> void;
+  auto getMaxDepth() const noexcept -> uint64_t;
+
  private:
+  uint64_t _minDepth;
+  uint64_t _maxDepth;
+  std::string _start;
+  std::string _end;
+
   /// @brief Lookup info to find all reverse edges.
   std::vector<LookupInfo> _reverseLookupInfos;
   std::string _weightAttribute;

@@ -41,7 +41,7 @@ using namespace arangodb::traverser;
 using VPackHelper = arangodb::basics::VelocyPackHelper;
 
 ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query)
-    : BaseOptions(query), minDepth(1), maxDepth(1) {
+    : BaseOptions(query), _minDepth(1), _maxDepth(1) {
   setWeightAttribute("");
   setDefaultWeight(1);
 }
@@ -56,8 +56,8 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
   TRI_ASSERT(type.isEqualString("shortestPath"));
 #endif
   parseShardIndependentFlags(info);
-  minDepth = VPackHelper::getNumericValue<uint64_t>(info, "minDepth", 1);
-  maxDepth = VPackHelper::getNumericValue<uint64_t>(info, "maxDepth", 1);
+  _minDepth = VPackHelper::getNumericValue<uint64_t>(info, "minDepth", 1);
+  _maxDepth = VPackHelper::getNumericValue<uint64_t>(info, "maxDepth", 1);
 
   setWeightAttribute(
       VelocyPackHelper::getStringValue(info, "weightAttribute", ""));
@@ -77,8 +77,8 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
   TRI_ASSERT(type.isString());
   TRI_ASSERT(type.isEqualString("shortestPath"));
 #endif
-  minDepth = VPackHelper::getNumericValue<uint64_t>(info, "minDepth", 1);
-  maxDepth = VPackHelper::getNumericValue<uint64_t>(info, "maxDepth", 1);
+  _minDepth = VPackHelper::getNumericValue<uint64_t>(info, "minDepth", 1);
+  _maxDepth = VPackHelper::getNumericValue<uint64_t>(info, "maxDepth", 1);
 
   setWeightAttribute(
       VelocyPackHelper::getStringValue(info, "weightAttribute", ""));
@@ -101,7 +101,18 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
   }
 }
 
-ShortestPathOptions::~ShortestPathOptions() = default;
+ShortestPathOptions::ShortestPathOptions(ShortestPathOptions const& other,
+                                         bool const allowAlreadyBuiltCopy)
+    : BaseOptions(other, allowAlreadyBuiltCopy),
+      _minDepth(other._minDepth),
+      _maxDepth(other._maxDepth),
+      _start{other._start},
+      _end{other._end},
+      _reverseLookupInfos{other._reverseLookupInfos},
+      _weightAttribute{other._weightAttribute},
+      _defaultWeight{other._defaultWeight} {
+  TRI_ASSERT(other._defaultWeight >= 0.);
+}
 
 void ShortestPathOptions::buildEngineInfo(VPackBuilder& result) const {
   result.openObject();
@@ -126,8 +137,8 @@ bool ShortestPathOptions::useWeight() const {
 void ShortestPathOptions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);
   toVelocyPackBase(builder);
-  builder.add("minDepth", VPackValue(minDepth));
-  builder.add("maxDepth", VPackValue(maxDepth));
+  builder.add("minDepth", VPackValue(_minDepth));
+  builder.add("maxDepth", VPackValue(_maxDepth));
   builder.add("weightAttribute", VPackValue(getWeightAttribute()));
   builder.add("defaultWeight", VPackValue(getDefaultWeight()));
   builder.add("produceVertices", VPackValue(produceVertices()));
@@ -220,15 +231,18 @@ auto ShortestPathOptions::getWeightAttribute() const& -> std::string {
   return _weightAttribute;
 }
 
-ShortestPathOptions::ShortestPathOptions(ShortestPathOptions const& other,
-                                         bool const allowAlreadyBuiltCopy)
-    : BaseOptions(other, allowAlreadyBuiltCopy),
-      minDepth(other.minDepth),
-      maxDepth(other.maxDepth),
-      start{other.start},
-      end{other.end},
-      _reverseLookupInfos{other._reverseLookupInfos},
-      _weightAttribute{other._weightAttribute},
-      _defaultWeight{other._defaultWeight} {
-  TRI_ASSERT(other._defaultWeight >= 0.);
+auto ShortestPathOptions::setMinDepth(uint64_t minDepth) noexcept -> void {
+  _minDepth = minDepth;
+}
+
+auto ShortestPathOptions::getMinDepth() const noexcept -> uint64_t {
+  return _minDepth;
+}
+
+auto ShortestPathOptions::setMaxDepth(uint64_t maxDepth) noexcept -> void {
+  _maxDepth = maxDepth;
+}
+
+auto ShortestPathOptions::getMaxDepth() const noexcept -> uint64_t {
+  return _maxDepth;
 }
