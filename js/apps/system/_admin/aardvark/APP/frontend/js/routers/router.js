@@ -4,6 +4,8 @@
   'use strict';
 
   let isCurrentCoordinator = false;
+
+
   window.Router = Backbone.Router.extend({
     toUpdate: [],
     dbServers: [],
@@ -257,6 +259,8 @@
       window.progressView = new window.ProgressView();
 
       this.userCollection = new window.ArangoUsers();
+       
+      window.Skeloading = new window.SkeLoading();
 
       this.initOnce = _.once(function () {
         const callback = function (error, isCoordinator) {
@@ -714,6 +718,7 @@
     cIndices: function (colname) {
       const self = this;
 
+      window.Skeloading.render()
       this.checkUser();
 
       this.init.then(() => {
@@ -738,6 +743,7 @@
     cSettings: function (colname) {
       const self = this;
 
+      window.Skeloading.render()
       this.checkUser();
 
       this.init.then(() => {
@@ -759,6 +765,7 @@
     cComputedValues: function (colname) {
       const self = this;
 
+      window.Skeloading.render()
       this.checkUser();
 
       this.init.then(() => {
@@ -779,6 +786,7 @@
 
     cSchema: function (colname) {
       const self = this;
+      window.Skeloading.render()
 
       this.checkUser();
 
@@ -801,12 +809,14 @@
     cInfo: function (colname) {
       const self = this;
 
+      window.Skeloading.render()
       this.checkUser();
-
+      
       this.init.then(() => {
         this.arangoCollectionsStore.fetch({
           cache: false,
           success: function () {
+            console.log('fetching cInfo');
             self.infoView = new window.InfoView({
               collectionName: colname,
               collection: self.arangoCollectionsStore.findWhere({
@@ -820,6 +830,7 @@
     },
 
     documents: function (colid, pageid) {
+      window.Skeloading.render()
       this.checkUser();
 
       this.init.then(() => {
