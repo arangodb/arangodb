@@ -46,12 +46,14 @@ TEST(CFpconvTest, tst_nan) {
   EXPECT_TRUE(std::isnan(value));
   length = fpconv_dtoa(value, out);
 
-  EXPECT_TRUE(std::string("-NaN") == std::string(out, length) ||
-              std::string("NaN") == std::string(out, length));
+  auto sv = std::string_view(out, length);
+  // MSVC returns -NaN at least in some versions
+  EXPECT_TRUE(sv == "NaN" || sv == "-NaN") << sv;
 
   StringBuffer buf(true);
   buf.appendDecimal(value);
-  EXPECT_EQ(std::string("NaN"), std::string(buf.c_str(), buf.length()));
+  sv = std::string_view(buf.c_str(), buf.length());
+  EXPECT_TRUE(sv == "NaN" || sv == "-NaN") << sv;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
