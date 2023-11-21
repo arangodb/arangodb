@@ -305,7 +305,8 @@ TEST_F(IResearchIndexTest, test_analyzer) {
     bool createdIndex;
 
 #ifdef USE_ENTERPRISE
-    auto index = collection0->createIndex(nestedIndex->slice(), createdIndex);
+    auto index =
+        collection0->createIndex(nestedIndex->slice(), createdIndex).get();
     //    collection->createIndex(nestedIndex->slice(), result);
     //    ASSERT_TRUE(createdIndex);
 
@@ -313,8 +314,9 @@ TEST_F(IResearchIndexTest, test_analyzer) {
     //    ASSERT_TRUE(arangodb::methods::Indexes::ensureIndex(collection,
     //    nestedIndex->slice(), createdIndex, outputDefinition).ok());
 #else
-    ASSERT_THROW(collection0->createIndex(nestedIndex->slice(), createdIndex),
-                 arangodb::basics::Exception);
+    ASSERT_THROW(
+        collection0->createIndex(nestedIndex->slice(), createdIndex).get(),
+        arangodb::basics::Exception);
 #endif
   }
 
@@ -1085,7 +1087,7 @@ TEST_F(IResearchIndexTest, test_pkCachedInverted) {
       "fields":  ["X", "Y"]})");
 
     bool created{false};
-    ASSERT_TRUE(collection0->createIndex(updateJson->slice(), created));
+    ASSERT_TRUE(collection0->createIndex(updateJson->slice(), created).get());
     ASSERT_TRUE(created);
   }
   // running query to force sync
@@ -1279,7 +1281,7 @@ TEST_F(IResearchIndexTest, test_sortCachedInverted) {
       "fields":  ["X", "Y"]})");
 
     bool created{false};
-    ASSERT_TRUE(collection0->createIndex(updateJson->slice(), created));
+    ASSERT_TRUE(collection0->createIndex(updateJson->slice(), created).get());
     ASSERT_TRUE(created);
   }
   // running query to force sync
@@ -1477,7 +1479,7 @@ TEST_F(IResearchIndexTest, test_geoCachedInverted) {
       "fields": ["X", {"name":"geofield", "cache":true, "analyzer":"geojson"}]})");
 
     bool created{false};
-    ASSERT_TRUE(collection0->createIndex(updateJson->slice(), created));
+    ASSERT_TRUE(collection0->createIndex(updateJson->slice(), created).get());
     ASSERT_TRUE(created);
   }
   // running query to force sync
@@ -1547,7 +1549,7 @@ TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted) {
       "fields":  ["X", "Y"]})");
 
     bool created{false};
-    ASSERT_TRUE(collection0->createIndex(updateJson->slice(), created));
+    ASSERT_TRUE(collection0->createIndex(updateJson->slice(), created).get());
     ASSERT_TRUE(created);
   }
   // running query to force sync
@@ -1623,7 +1625,7 @@ TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted_InitialLeader) {
       "fields":  ["X", "Y"]})");
 
     bool created{false};
-    ASSERT_TRUE(collection0->createIndex(updateJson->slice(), created));
+    ASSERT_TRUE(collection0->createIndex(updateJson->slice(), created).get());
     ASSERT_TRUE(created);
   }
   // running query to force sync

@@ -85,7 +85,7 @@ class PhysicalCollection {
   virtual void freeMemory() noexcept;
 
   /// recalculate counts for collection in case of failure, blocking
-  virtual uint64_t recalculateCounts();
+  virtual futures::Future<uint64_t> recalculateCounts();
 
   /// @brief whether or not the collection contains any documents. this
   /// function is allowed to return true even if there are no documents
@@ -146,7 +146,7 @@ class PhysicalCollection {
 
   /// @brief create or restore an index
   /// @param restore utilize specified ID, assume index has to be created
-  virtual std::shared_ptr<Index> createIndex(
+  virtual futures::Future<std::shared_ptr<Index>> createIndex(
       velocypack::Slice info, bool restore, bool& created,
       std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr) = 0;
 
@@ -240,7 +240,7 @@ class PhysicalCollection {
   virtual std::unique_ptr<containers::RevisionTree> computeRevisionTree(
       uint64_t batchId);
 
-  virtual Result rebuildRevisionTree();
+  virtual futures::Future<Result> rebuildRevisionTree();
 
   virtual uint64_t placeRevisionTreeBlocker(TransactionId transactionId);
   virtual void removeRevisionTreeBlocker(TransactionId transactionId);

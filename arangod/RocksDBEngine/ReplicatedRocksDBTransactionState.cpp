@@ -47,12 +47,12 @@ ReplicatedRocksDBTransactionState::ReplicatedRocksDBTransactionState(
 
 ReplicatedRocksDBTransactionState::~ReplicatedRocksDBTransactionState() {}
 
-Result ReplicatedRocksDBTransactionState::beginTransaction(
+futures::Future<Result> ReplicatedRocksDBTransactionState::beginTransaction(
     transaction::Hints hints) {
   TRI_ASSERT(!_hasActiveTrx);
-  auto res = RocksDBTransactionState::beginTransaction(hints);
+  auto res = co_await RocksDBTransactionState::beginTransaction(hints);
   if (!res.ok()) {
-    return res;
+    co_return res;
   }
 
   RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
@@ -60,11 +60,11 @@ Result ReplicatedRocksDBTransactionState::beginTransaction(
     res = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
               .beginTransaction();
     if (!res.ok()) {
-      return res;
+      co_return res;
     }
   }
   _hasActiveTrx = true;
-  return res;
+  co_return res;
 }
 
 /// @brief commit a transaction

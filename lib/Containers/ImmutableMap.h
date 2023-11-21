@@ -17,32 +17,23 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+#include "ImmerMemoryPolicy.h"
+#include <immer/map.hpp>
+#include <immer/map_transient.hpp>
 
-#include "Basics/Common.h"
-#include "RestHandler/RestCursorHandler.h"
+namespace arangodb::containers {
 
-namespace arangodb {
-namespace aql {
-class QueryRegistry;
-}
+template<typename K, typename T, typename Hash = std::hash<K>,
+         typename Equal = std::equal_to<K>>
+using ImmutableMap =
+    ::immer::map<K, T, Hash, Equal, immer::arango_memory_policy>;
 
-class RestSimpleQueryHandler : public RestCursorHandler {
- public:
-  RestSimpleQueryHandler(ArangodServer&, GeneralRequest*, GeneralResponse*,
-                         arangodb::aql::QueryRegistry*);
+template<typename K, typename T, typename Hash = std::hash<K>,
+         typename Equal = std::equal_to<K>>
+using ImmutableMapTransient =
+    ::immer::map_transient<K, T, Hash, Equal, immer::arango_memory_policy>;
 
- public:
-  RestStatus execute() override final;
-  char const* name() const override final { return "RestSimpleQueryHandler"; }
-
- private:
-  futures::Future<RestStatus> allDocuments();
-  futures::Future<RestStatus> allDocumentKeys();
-  futures::Future<RestStatus> byExample();
-};
-}  // namespace arangodb
+}  // namespace arangodb::containers

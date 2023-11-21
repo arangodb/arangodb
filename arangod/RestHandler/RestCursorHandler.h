@@ -71,7 +71,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief register the query either as streaming cursor or in _query
   /// the query is not executed here.
   /// this method is also used by derived classes
-  RestStatus registerQueryOrCursor(
+  [[nodiscard]] futures::Future<RestStatus> registerQueryOrCursor(
       velocypack::Slice body, transaction::OperationOrigin operationOrigin);
 
   /// @brief Process the query registered in _query.
