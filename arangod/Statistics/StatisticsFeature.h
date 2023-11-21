@@ -28,6 +28,7 @@
 
 #include "Basics/Result.h"
 #include "Basics/system-functions.h"
+#include "Metrics/Fwd.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/arangod.h"
 #include "Statistics/Descriptions.h"
@@ -126,6 +127,9 @@ class StatisticsFeature final : public ArangodFeature {
   stats::Descriptions _descriptions;
   std::unique_ptr<Thread> _statisticsThread;
   std::unique_ptr<StatisticsWorker> _statisticsWorker;
+
+  metrics::Gauge<uint64_t>& _requestStatisticsMemoryUsage;
+  metrics::Gauge<uint64_t>& _connectionStatisticsMemoryUsage;
 };
 
 }  // namespace arangodb
