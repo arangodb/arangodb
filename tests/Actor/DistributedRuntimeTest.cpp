@@ -389,6 +389,24 @@ TYPED_TEST(DistributedRuntimeTest, sends_down_message_to_monitoring_actors) {
   runtime->dispatch(monitored2, monitored2,
                     FinishingActor::Message{test::message::FinishingFinish{}});
   waitForAllMessagesToBeProcessed(runtime);
+  // the finish message is processed asynchronously, and the idle flag is set
+  // before the actor is removed and the down messages are dispatched.
+  // the waitForAllMessagesToBeProcessed only indicates that the message has
+  // been processed based on the idle state, but we don't know yet if the down
+  // messages have been dispatched. So we try to wait here until the system has
+  // converged to our expected state.
+  for (unsigned i = 0; i < 10; ++i) {
+    if (runtime->actors.size() == 5 &&
+        runtime->template getActorStateByID<MonitoringActor>(monitor1)
+                ->deadActors.size() == 1 &&
+        runtime->template getActorStateByID<MonitoringActor>(monitor2)
+                ->deadActors.size() == 1 &&
+        runtime->template getActorStateByID<MonitoringActor>(monitor3)
+                ->deadActors.size() == 1) {
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
   EXPECT_EQ(runtime->actors.size(), 5);
   EXPECT_EQ((MonitoringState{.deadActors = {monitored2.id}}),
             *runtime->template getActorStateByID<MonitoringActor>(monitor1));

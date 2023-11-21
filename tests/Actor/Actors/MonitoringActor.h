@@ -23,6 +23,7 @@
 #pragma once
 
 #include <chrono>
+#include <ostream>
 #include <string_view>
 #include <thread>
 #include <string>
@@ -41,7 +42,13 @@ struct MonitoringState {
 
   template<typename Inspector>
   friend inline auto inspect(Inspector& f, MonitoringState& x) {
-    return f.object(x).fields();
+    return f.object(x).fields(f.field("deadActors", x.deadActors));
+  }
+
+  friend inline std::ostream& operator<<(std::ostream& stream,
+                                         MonitoringState state) {
+    stream << inspection::json(state);
+    return stream;
   }
 };
 
