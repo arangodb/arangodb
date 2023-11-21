@@ -305,7 +305,6 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
   // Global edge condition
   auto edgeExpr = _options.getEdgeExpression();
   if (edgeExpr != nullptr) {
-    std::cerr << "W _O  W Y I ARE EVALUATTIN" << std::endl;
     edgeBuilder.clear();
     _provider.addEdgeToBuilder(step.getEdge(), edgeBuilder);
 

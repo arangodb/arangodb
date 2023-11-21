@@ -172,7 +172,7 @@ void ShortestPathOptions::toVelocyPack(VPackBuilder& builder) const {
     builder.add(VPackValue("baseEdgeExpression"));
     builder.openObject();
     builder.add(VPackValue("expression"));
-    _allVerticesExpression->toVelocyPack(builder, true);
+    _allEdgesExpression->toVelocyPack(builder, true);
     builder.close();
   }
 }
