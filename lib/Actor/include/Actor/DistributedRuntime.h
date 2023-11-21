@@ -159,10 +159,10 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
         });
   }
 
-  auto finishActor(ActorPID pid) -> void {
+  auto finishActor(ActorPID pid, Error reason) -> void {
     auto actor = actors.find(pid.id);
     if (actor.has_value()) {
-      actor.value()->finish();
+      actor.value()->finish(reason);
     }
   }
 
@@ -177,11 +177,12 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
           // we use 0 as the sender id
           DistributedActorPID{.server = myServerID, .database = "", .id = {0}},
           monitoringActor,
-          message::ActorDown<ActorPID>{.actor = monitoredActor});
+          message::ActorDown<ActorPID>{.actor = monitoredActor,
+                                       .reason = Error::kUnknownActor});
     }
   }
 
-  void stopActor(ActorPID pid) {
+  void stopActor(ActorPID pid, Error reason) {
     auto res = actors.remove(pid.id);
     if (res) {
       auto& entry = *res;
@@ -191,7 +192,7 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
                  // TODO - same problem with database as in dispatch
                  DistributedActorPID{
                      .server = myServerID, .database = "", .id = monitor},
-                 message::ActorDown<ActorPID>{.actor = pid});
+                 message::ActorDown<ActorPID>{.actor = pid, .reason = reason});
       }
     }
   }
@@ -203,7 +204,7 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
       actorsCopy.emplace_back(actor);
     });
     for (auto& actor : actorsCopy) {
-      actor->finish();
+      actor->finish(Error::kShutdown);
     }
   }
 

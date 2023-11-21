@@ -37,7 +37,7 @@
 namespace arangodb::actor::test {
 
 struct MonitoringState {
-  std::vector<ActorID> deadActors;
+  std::vector<std::pair<ActorID, Error>> deadActors;
   bool operator==(const MonitoringState&) const = default;
 
   template<typename Inspector>
@@ -75,7 +75,7 @@ template<typename Runtime>
 struct MonitoringHandler : HandlerBase<Runtime, MonitoringState> {
   auto operator()(actor::message::ActorDown<typename Runtime::ActorPID> msg)
       -> std::unique_ptr<MonitoringState> {
-    this->state->deadActors.push_back(msg.actor.id);
+    this->state->deadActors.push_back({msg.actor.id, msg.reason});
     return std::move(this->state);
   }
 

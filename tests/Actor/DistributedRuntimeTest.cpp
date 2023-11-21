@@ -408,24 +408,30 @@ TYPED_TEST(DistributedRuntimeTest, sends_down_message_to_monitoring_actors) {
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
   EXPECT_EQ(runtime->actors.size(), 5);
-  EXPECT_EQ((MonitoringState{.deadActors = {monitored2.id}}),
+  EXPECT_EQ((MonitoringState{.deadActors = {{monitored2.id, Error::kNoError}}}),
             *runtime->template getActorStateByID<MonitoringActor>(monitor1));
-  EXPECT_EQ((MonitoringState{.deadActors = {monitored2.id}}),
+  EXPECT_EQ((MonitoringState{.deadActors = {{monitored2.id, Error::kNoError}}}),
             *runtime->template getActorStateByID<MonitoringActor>(monitor2));
-  EXPECT_EQ((MonitoringState{.deadActors = {monitored2.id}}),
+  EXPECT_EQ((MonitoringState{.deadActors = {{monitored2.id, Error::kNoError}}}),
             *runtime->template getActorStateByID<MonitoringActor>(monitor3));
 
   runtime->dispatch(monitored1, monitored1,
-                    FinishingActor::Message{test::message::FinishingFinish{}});
+                    FinishingActor::Message{
+                        test::message::FinishingFinish{Error::kShutdown}});
   runtime->dispatch(monitored3, monitored3,
-                    FinishingActor::Message{test::message::FinishingFinish{}});
+                    FinishingActor::Message{
+                        test::message::FinishingFinish{Error::kShutdown}});
   waitForAllMessagesToBeProcessed(runtime);
-  EXPECT_EQ((MonitoringState{.deadActors = {monitored2.id, monitored1.id}}),
-            *runtime->template getActorStateByID<MonitoringActor>(monitor1));
-  EXPECT_EQ((MonitoringState{.deadActors = {monitored2.id}}),
+  EXPECT_EQ(
+      (MonitoringState{.deadActors = {{monitored2.id, Error::kNoError},
+                                      {monitored1.id, Error::kShutdown}}}),
+      *runtime->template getActorStateByID<MonitoringActor>(monitor1));
+  EXPECT_EQ((MonitoringState{.deadActors = {{monitored2.id, Error::kNoError}}}),
             *runtime->template getActorStateByID<MonitoringActor>(monitor2));
-  EXPECT_EQ((MonitoringState{.deadActors = {monitored2.id, monitored3.id}}),
-            *runtime->template getActorStateByID<MonitoringActor>(monitor3));
+  EXPECT_EQ(
+      (MonitoringState{.deadActors = {{monitored2.id, Error::kNoError},
+                                      {monitored3.id, Error::kShutdown}}}),
+      *runtime->template getActorStateByID<MonitoringActor>(monitor3));
 
   this->scheduler->stop();
   runtime->softShutdown();
@@ -447,8 +453,9 @@ TYPED_TEST(
                                                      .id = ActorID{999}});
 
   waitForAllMessagesToBeProcessed(runtime);
-  EXPECT_EQ((MonitoringState{.deadActors = {ActorID{999}}}),
-            *runtime->template getActorStateByID<MonitoringActor>(monitor));
+  EXPECT_EQ(
+      (MonitoringState{.deadActors = {{ActorID{999}, Error::kUnknownActor}}}),
+      *runtime->template getActorStateByID<MonitoringActor>(monitor));
 
   this->scheduler->stop();
   runtime->softShutdown();

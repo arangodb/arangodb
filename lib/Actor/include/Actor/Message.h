@@ -30,7 +30,8 @@
 
 #include <velocypack/Builder.h>
 
-#include "MPSCQueue.h"
+#include "Actor/Error.h"
+#include "Actor/MPSCQueue.h"
 
 namespace arangodb::actor {
 
@@ -56,10 +57,12 @@ namespace message {
 template<typename PID>
 struct ActorDown {
   PID actor;
+  Error reason;
 
   template<typename Inspector>
   friend inline auto inspect(Inspector& f, ActorDown& x) {
-    return f.object(x).fields(f.field("actor", x.actor));
+    return f.object(x).fields(f.field("actor", x.actor),
+                              f.field("reason", x.reason));
   }
 };
 
