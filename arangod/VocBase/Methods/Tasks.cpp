@@ -435,7 +435,7 @@ void Task::work(ExecContext const* exec) {
           : JavaScriptSecurityContext::createTaskContext(
                 false /*_allowUseDatabase*/);  // task context that has no
                                                // access to dbs
-  V8ContextGuard guard(&(_dbGuard->database()), securityContext);
+  V8ContextGuard guard(&_dbGuard->database(), securityContext);
 
   // now execute the function within this context
   {
@@ -455,8 +455,7 @@ void Task::work(ExecContext const* exec) {
               .FromMaybe(v8::Local<v8::Value>()));
 
       // Invoke Function constructor to create function with the given body and
-      // no
-      // arguments
+      // no arguments
       v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING(isolate, "params"),
                                        TRI_V8_STD_STRING(isolate, _command)};
       v8::Local<v8::Object> function = ctor->NewInstance(TRI_IGETC, 2, args)

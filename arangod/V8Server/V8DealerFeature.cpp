@@ -1479,7 +1479,6 @@ void V8DealerFeature::cleanupLockedContext(V8Context* context) {
         // ignore errors here
       }
     }
-
     TRI_GET_GLOBALS();
 
     // reset the context data; gc should be able to run without it
@@ -1764,8 +1763,8 @@ std::unique_ptr<V8Context> V8DealerFeature::buildContext(TRI_vocbase_t* vocbase,
           ->Set(localContext, TRI_V8_ASCII_STRING(isolate, "root"), globalObj)
           .FromMaybe(false);
 
-      std::string modules = "";
-      std::string sep = "";
+      std::string modules;
+      std::string sep;
 
       std::vector<std::string> directories;
       directories.insert(directories.end(), _moduleDirectories.begin(),
@@ -1898,7 +1897,7 @@ V8DealerFeature::getCurrentContextDetails() {
   return result;
 }
 
-bool V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
+void V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
                                                   std::string const& file,
                                                   V8Context* context,
                                                   VPackBuilder* builder) {
@@ -1906,11 +1905,11 @@ bool V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
   TRI_ASSERT(context != nullptr);
 
   if (_stopping) {
-    return false;
+    return;
   }
 
   if (!vocbase->use()) {
-    return false;
+    return;
   }
 
   JavaScriptSecurityContext securityContext =
@@ -1929,13 +1928,13 @@ bool V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
         << "' in context #" << context->id();
     throw;
   }
-
-  return true;
 }
 
 void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file,
                                                  V8Context* context,
                                                  VPackBuilder* builder) {
+  double start = TRI_microtime();
+
   v8::HandleScope scope(context->_isolate);
   auto localContext =
       v8::Local<v8::Context>::New(context->_isolate, context->_context);
@@ -1943,8 +1942,7 @@ void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file,
   {
     v8::Context::Scope contextScope(localContext);
 
-    switch (_startupLoader.loadScript(context->_isolate, localContext, file,
-                                      builder)) {
+    switch (_startupLoader.loadScript(context->_isolate, file, builder)) {
       case JSLoader::eSuccess:
         LOG_TOPIC("29e73", TRACE, arangodb::Logger::V8)
             << "loaded JavaScript file '" << file << "'";
@@ -1962,7 +1960,8 @@ void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file,
 
   LOG_TOPIC("53bbb", TRACE, arangodb::Logger::V8)
       << "loaded JavaScript file '" << file << "' for V8 context #"
-      << context->id();
+      << context->id()
+      << ", took: " << Logger::FIXED(TRI_microtime() - start, 6) << "s";
 }
 
 void V8DealerFeature::shutdownContext(V8Context* context) {

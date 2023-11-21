@@ -106,9 +106,6 @@ void ConsoleThread::inner(V8ContextGuard const& guard) {
             << ")" << std::endl;
   std::cout << "Copyright (c) ArangoDB GmbH" << std::endl;
 
-  v8::Local<v8::String> name(
-      TRI_V8_ASCII_STRING(isolate, TRI_V8_SHELL_COMMAND_NAME));
-
   auto localContext =
       v8::Local<v8::Context>::New(isolate, guard.context()->_context);
   {
@@ -122,7 +119,7 @@ void ConsoleThread::inner(V8ContextGuard const& guard) {
     uint64_t nrCommands = 0;
 
     // read and eval .arangod.rc from home directory if it exists
-    char const* startupScript = R"SCRIPT(
+    std::string_view startupScript = R"SCRIPT(
 start_pretty_print(true);
 start_color_print('arangodb', true);
 
@@ -141,9 +138,7 @@ start_color_print('arangodb', true);
 })();
 )SCRIPT";
 
-    TRI_ExecuteJavaScriptString(
-        isolate, localContext, TRI_V8_ASCII_STRING(isolate, startupScript),
-        TRI_V8_ASCII_STRING(isolate, "(startup)"), false);
+    TRI_ExecuteJavaScriptString(isolate, startupScript, "startup", false);
 
 #ifndef _WIN32
     // allow SIGINT in this particular thread... otherwise we cannot CTRL-C the
@@ -212,9 +207,8 @@ start_color_print('arangodb', true);
         v8::HandleScope scope(isolate);
 
         console.setExecutingCommand(true);
-        TRI_ExecuteJavaScriptString(isolate, localContext,
-                                    TRI_V8_STD_STRING(isolate, input), name,
-                                    true);
+        TRI_ExecuteJavaScriptString(
+            isolate, input, std::string_view(TRI_V8_SHELL_COMMAND_NAME), true);
         console.setExecutingCommand(false);
 
         if (_userAborted.load()) {

@@ -27,13 +27,15 @@
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
-#include <stddef.h>
+#include "Basics/ErrorCode.h"
+
+#include <cstddef>
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <tuple>
-#include <v8.h>
 
-#include "Basics/ErrorCode.h"
+#include <v8.h>
 
 namespace arangodb {
 class Result;
@@ -131,26 +133,28 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch*);
 /// @brief reads a file into the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteGlobalJavaScriptFile(v8::Isolate* isolate, char const*);
+bool TRI_ExecuteGlobalJavaScriptFile(v8::Isolate* isolate,
+                                     char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ParseJavaScriptFile(v8::Isolate* isolate, char const*);
+bool TRI_ParseJavaScriptFile(v8::Isolate* isolate, char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a string within a V8 context, optionally print the result
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(
-    v8::Isolate* isolate, v8::Handle<v8::Context> context,
-    v8::Handle<v8::String> const source, v8::Handle<v8::String> const name,
-    bool printResult);
+v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
+                                                  std::string_view source,
+                                                  std::string_view name,
+                                                  bool printResult);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object, based on arangodb::Result
 ////////////////////////////////////////////////////////////////////////////////
+///
 void TRI_CreateErrorObject(v8::Isolate* isolate, arangodb::Result const&);
 
 ////////////////////////////////////////////////////////////////////////////////

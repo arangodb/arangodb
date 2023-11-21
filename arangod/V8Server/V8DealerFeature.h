@@ -182,7 +182,7 @@ class V8DealerFeature final : public ArangodFeature {
   void unblockDynamicContextCreation();
   void loadJavaScriptFileInternal(std::string const& file, V8Context* context,
                                   VPackBuilder* builder);
-  bool loadJavaScriptFileInContext(TRI_vocbase_t*, std::string const& file,
+  void loadJavaScriptFileInContext(TRI_vocbase_t*, std::string const& file,
                                    V8Context* context, VPackBuilder* builder);
   void prepareLockedContext(TRI_vocbase_t*, V8Context*,
                             JavaScriptSecurityContext const&);

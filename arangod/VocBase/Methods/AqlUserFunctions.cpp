@@ -274,10 +274,8 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase,
     {
       v8::TryCatch tryCatch(isolate);
 
-      result = TRI_ExecuteJavaScriptString(
-          isolate, isolate->GetCurrentContext(),
-          TRI_V8_STD_STRING(isolate, testCode),
-          TRI_V8_ASCII_STRING(isolate, "userFunction"), false);
+      result =
+          TRI_ExecuteJavaScriptString(isolate, testCode, "userFunction", false);
 
       if (result.IsEmpty() || !result->IsFunction() || tryCatch.HasCaught()) {
         if (tryCatch.HasCaught()) {

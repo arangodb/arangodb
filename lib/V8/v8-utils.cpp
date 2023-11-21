@@ -292,13 +292,6 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
 
   auto guard = scopeGuard([&content]() noexcept { TRI_FreeString(content); });
 
-  if (content == nullptr) {
-    LOG_TOPIC("89c6f", ERR, arangodb::Logger::FIXME)
-        << "cannot load JavaScript file '" << filename
-        << "': " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
-    return false;
-  }
-
   v8::Handle<v8::String> name = TRI_V8_STRING(isolate, filename);
   v8::Handle<v8::String> source =
       TRI_V8_PAIR_STRING(isolate, content, (int)length);
@@ -2090,9 +2083,8 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::TryCatch tryCatch(isolate);
 
     result = TRI_ExecuteJavaScriptString(
-        isolate, isolate->GetCurrentContext(),
-        TRI_V8_PAIR_STRING(isolate, content, length),
-        TRI_ObjectToString(context, filename), false);
+        isolate, std::string_view(content, length),
+        TRI_ObjectToString(isolate, filename), false);
 
     TRI_FreeString(content);
 
@@ -5543,17 +5535,22 @@ bool TRI_ParseJavaScriptFile(v8::Isolate* isolate, char const* filename) {
 /// @brief executes a string within a V8 context, optionally print the result
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(
-    v8::Isolate* isolate, v8::Handle<v8::Context> context,
-    v8::Handle<v8::String> const source, v8::Handle<v8::String> const name,
-    bool printResult) {
+v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
+                                                  std::string_view source,
+                                                  std::string_view name,
+                                                  bool printResult) {
   v8::EscapableHandleScope scope(isolate);
 
-  v8::ScriptOrigin scriptOrigin(isolate, name);
+  v8::Handle<v8::Context> context = isolate->GetCurrentContext();
+
+  v8::ScriptOrigin scriptOrigin(
+      isolate, TRI_V8_PAIR_STRING(isolate, name.data(), name.size()));
 
   v8::Handle<v8::Value> result;
   v8::Handle<v8::Script> script =
-      v8::Script::Compile(context, source, &scriptOrigin)
+      v8::Script::Compile(
+          context, TRI_V8_PAIR_STRING(isolate, source.data(), source.size()),
+          &scriptOrigin)
           .FromMaybe(v8::Local<v8::Script>());
 
   // compilation failed, print errors that happened during compilation
@@ -5579,7 +5576,6 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(
         v8::Handle<v8::Function>::Cast(context->Global()
                                            ->Get(context, printFuncName)
                                            .FromMaybe(v8::Local<v8::Value>()));
-
     if (print->IsFunction()) {
       v8::Handle<v8::Value> arguments[] = {result};
       print->Call(TRI_IGETC, print, 1, arguments)
@@ -5606,6 +5602,7 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object, based on arangodb::result
 ////////////////////////////////////////////////////////////////////////////////
+
 void TRI_CreateErrorObject(v8::Isolate* isolate, arangodb::Result const& res) {
   TRI_CreateErrorObject(isolate, res.errorNumber(), res.errorMessage(), false);
 }

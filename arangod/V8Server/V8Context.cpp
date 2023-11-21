@@ -134,7 +134,7 @@ void V8Context::handleGlobalContextMethods() {
     return;
   }
 
-  for (auto& type : copy) {
+  for (auto const& type : copy) {
     std::string_view code = GlobalContextMethods::code(type);
 
     LOG_TOPIC("fcb75", DEBUG, arangodb::Logger::V8)
@@ -151,10 +151,8 @@ void V8Context::handleGlobalContextMethods() {
     try {
       v8::TryCatch tryCatch(_isolate);
 
-      TRI_ExecuteJavaScriptString(
-          _isolate, _isolate->GetCurrentContext(),
-          TRI_V8_STD_STRING(_isolate, code),
-          TRI_V8_ASCII_STRING(_isolate, "global context method"), false);
+      TRI_ExecuteJavaScriptString(_isolate, code, "global context method",
+                                  false);
 
       if (tryCatch.HasCaught()) {
         if (tryCatch.CanContinue()) {
@@ -178,11 +176,9 @@ void V8Context::handleCancellationCleanup() {
       << "executing cancelation cleanup context #" << _id;
 
   try {
-    TRI_ExecuteJavaScriptString(
-        _isolate, _isolate->GetCurrentContext(),
-        TRI_V8_ASCII_STRING(_isolate,
-                            "require('module')._cleanupCancelation();"),
-        TRI_V8_ASCII_STRING(_isolate, "context cleanup method"), false);
+    TRI_ExecuteJavaScriptString(_isolate,
+                                "require('module')._cleanupCancelation();",
+                                "context cleanup method", false);
   } catch (...) {
     LOG_TOPIC("558dd", WARN, arangodb::Logger::V8)
         << "caught exception during cancelation cleanup";
