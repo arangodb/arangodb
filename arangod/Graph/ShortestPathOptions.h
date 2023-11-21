@@ -46,7 +46,6 @@ struct ShortestPathOptions : public BaseOptions {
   uint64_t maxDepth;
   std::string start;
   std::string end;
-  bool multiThreaded;
 
   explicit ShortestPathOptions(aql::QueryContext& query);
 
