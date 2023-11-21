@@ -173,6 +173,7 @@ GeneralServerFeature::GeneralServerFeature(Server& server)
       _startedListening(false),
 #endif
       _allowEarlyConnections(false),
+      _handleContentEncodingForUnauthenticatedRequests(true),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _enableTelemetrics(false),
 #else
@@ -369,6 +370,18 @@ Using the value 0 disables the automatic response compression.")");
       arangodb::options::makeFlags(arangodb::options::Flags::Default,
                                    arangodb::options::Flags::Uncommon));
 #endif
+
+  options
+      ->addOption(
+          "--http.handle-content-encoding-for-unauthenticated-requests",
+          "Handle Content-Encoding headers for unauthenticated requests.",
+          new BooleanParameter(
+              &_handleContentEncodingForUnauthenticatedRequests))
+      .setIntroducedIn(31200)
+      .setLongDescription(
+          R"(If the option is set to `true`, the server will automatically 
+uncompress incoming HTTP requests with Content-Encodings gzip and deflate
+even if the request is not authenticated.)");
 }
 
 void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
@@ -511,6 +524,11 @@ void GeneralServerFeature::unprepare() {
 
 double GeneralServerFeature::keepAliveTimeout() const noexcept {
   return _keepAliveTimeout;
+}
+
+bool GeneralServerFeature::handleContentEncodingForUnauthenticatedRequests()
+    const noexcept {
+  return _handleContentEncodingForUnauthenticatedRequests;
 }
 
 bool GeneralServerFeature::proxyCheck() const noexcept { return _proxyCheck; }

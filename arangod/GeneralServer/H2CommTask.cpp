@@ -653,11 +653,10 @@ void H2CommTask<T>::processRequest(Stream& stream,
     return;  // prepareExecution sends the error message
   }
 
-  // unzip / deflate
-  if (!this->handleContentEncoding(*req)) {
+  // gzip-uncompress / zlib-deflate
+  if (Result res = this->handleContentEncoding(*req); res.fail()) {
     this->sendErrorResponse(rest::ResponseCode::BAD, req->contentTypeResponse(),
-                            1, TRI_ERROR_BAD_PARAMETER,
-                            "content-decoding error for incoming request");
+                            1, TRI_ERROR_BAD_PARAMETER, res.errorMessage());
     return;
   }
 

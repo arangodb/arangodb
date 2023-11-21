@@ -649,27 +649,23 @@ void RestHandler::compressResponse() {
 
   switch (_request->acceptEncoding()) {
     case rest::EncodingType::DEFLATE:
+      // TODO: the resulting compressed response body may be larger than
+      // the uncompressed input size. in this case we are still
+      // returning the compressed response body. we could optimize
+      // this case by just sending the original, uncompressed response
       _response->zlibDeflate();
       _response->setHeaderNC(StaticStrings::ContentEncoding,
                              StaticStrings::EncodingDeflate);
-#if 0
-      LOG_DEVEL << "DEFLATE. SIZE: " << _response->bodySize()
-                << ", ORIG: " << bodySize << ", %: "
-                << (static_cast<double>(_response->bodySize()) /
-                    static_cast<double>(bodySize) * 100.0);
-#endif
       break;
 
     case rest::EncodingType::GZIP:
+      // TODO: the resulting compressed response body may be larger than
+      // the uncompressed input size. in this case we are still
+      // returning the compressed response body. we could optimize
+      // this case by just sending the original, uncompressed response
       _response->gzipCompress();
       _response->setHeaderNC(StaticStrings::ContentEncoding,
                              StaticStrings::EncodingGzip);
-#if 0
-      LOG_DEVEL << "GZIP. SIZE: " << _response->bodySize()
-                << ", ORIG: " << bodySize << ", %: "
-                << (static_cast<double>(_response->bodySize()) /
-                    static_cast<double>(bodySize) * 100.0);
-#endif
       break;
 
     default:

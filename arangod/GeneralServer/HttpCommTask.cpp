@@ -579,11 +579,11 @@ void HttpCommTask<T>::doProcessRequest() {
     return;  // prepareExecution sends the error message
   }
 
-  // unzip / deflate
-  if (!this->handleContentEncoding(*_request)) {
-    this->sendErrorResponse(
-        rest::ResponseCode::BAD, _request->contentTypeResponse(), 1,
-        TRI_ERROR_BAD_PARAMETER, "content-decoding error for incoming request");
+  // gzip-uncompress / zlib-deflate
+  if (Result res = this->handleContentEncoding(*_request); res.fail()) {
+    this->sendErrorResponse(rest::ResponseCode::BAD,
+                            _request->contentTypeResponse(), 1,
+                            TRI_ERROR_BAD_PARAMETER, res.errorMessage());
     return;
   }
 

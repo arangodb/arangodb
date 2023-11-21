@@ -1,6 +1,13 @@
 devel
 -----
 
+* Added option `--http.handle-content-encoding-for-unauthenticated-requests`
+  for arangod. If set to `true`, the arangod server will automatically
+  uncompress incoming HTTP requests with Content-Encodings gzip and deflate
+  even if the request is not authenticated.
+  If the option is set to `false`, any unauthenticated request that has a 
+  Content-Encoding header set will be rejected.
+
 * Added options `--compress-transfer` and `--compress-request-threshold` to 
   all client tools.
   These options can be used to enable transparent compression of the data
