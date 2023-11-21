@@ -94,7 +94,6 @@ class StatisticsFeature final : public ArangodFeature {
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
   void start() override final;
   void stop() override final;
   void toPrometheus(std::string& result, double now, bool ensureWhitespace);
