@@ -145,7 +145,7 @@ export const theme = extendTheme({
     },
     Tooltip: {
       baseStyle: (props: TooltipProps) => {
-        const bg = mode("gray.900", "gray.300")(props);
+        const bg = mode("gray.950", "gray.300")(props);
         return {
           [$tooltipBg.variable]: `colors.${bg}`
         };
