@@ -230,6 +230,7 @@ def get_size(size, arch, dist):
         "medium+": "arm.large",
         "large": "arm.large",
         "xlarge": "arm.xlarge",
+        "2xlarge": "arm.xlarge",
     }
     windows_sizes = {
         "small": "medium",
@@ -237,12 +238,21 @@ def get_size(size, arch, dist):
         "medium+": "large",
         "large": "large",
         "xlarge": "xlarge",
+        "2xlarge": "2xlarge",
+    }
+    x86_sizes = {
+        "small": "small",
+        "medium": "medium",
+        "medium+": "medium+",
+        "large": "large",
+        "xlarge": "large",
+        "2xlarge": "large",
     }
     if dist == "windows":
         return windows_sizes[size]
     elif arch == "aarch64":
         return aarch64_sizes[size]
-    return size
+    return x86_sizes[size]
 
 
 def create_test_job(test, cluster, edition, arch, dist):
@@ -253,7 +263,7 @@ def create_test_job(test, cluster, edition, arch, dist):
     if suffix:
         suite_name += f"-{suffix}"
 
-    if not test["size"] in ["small", "medium", "medium+", "large", "xlarge"]:
+    if not test["size"] in ["small", "medium", "medium+", "large", "xlarge", "2xlarge"]:
         raise Exception("Invalid resource class size " + test["size"])
 
     result = {
@@ -309,11 +319,8 @@ def get_arch(workflow):
 def generate_output(config, tests, enterprise):
     """generate output"""
     workflows = config["workflows"]
-    print(workflows)
-    print(enterprise)
     edition = "ee" if enterprise else "ce"
     for workflow, jobs in workflows.items():
-        print(workflow)
         if ("windows" in workflow) and enterprise:
             arch = get_arch(workflow)
             add_test_jobs_to_workflow(config, tests, workflow, edition, arch, "windows")
@@ -339,7 +346,6 @@ def main():
         tests = read_definitions(args.definitions)
         # if args.validate_only:
         #    return  # nothing left to do
-        print("args", args)
         with open(args.base_config, "r", encoding="utf-8") as instream:
             with open(args.output, "w", encoding="utf-8") as outstream:
                 config = yaml.safe_load(instream)
