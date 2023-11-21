@@ -725,21 +725,17 @@ This is less intrusive than setting the `--server.statistics` option to
 
 void StatisticsFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
-  if (!_statistics) {
+  if (_statistics) {
+    // initialize counters for all HTTP request types
+    ConnectionStatistics::initialize();
+    RequestStatistics::initialize();
+  } else {
     // turn ourselves off
     disable();
   }
 
   _statisticsHistoryTouched =
       options->processingResult().touched("--server.statistics-history");
-}
-
-void StatisticsFeature::prepare() {
-  // initialize counters for all HTTP request types
-  if (_statistics) {
-    ConnectionStatistics::initialize();
-    RequestStatistics::initialize();
-  }
 }
 
 void StatisticsFeature::start() {
