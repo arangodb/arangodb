@@ -10,4 +10,5 @@ exposedBy:
   - dbserver
   - single
 description: |
-  Current count of opened file descriptors for this index.
+  The number of active file descriptors used for an inverted index of a
+  collection or View.

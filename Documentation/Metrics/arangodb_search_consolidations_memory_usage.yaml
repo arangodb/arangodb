@@ -10,4 +10,5 @@ exposedBy:
   - dbserver
   - single
 description: |
-  Amount of memory in bytes that is used for consolidating this index.
+  Amount of memory in bytes that is used for consolidating an inverted index of
+  a collection or View.

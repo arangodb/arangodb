@@ -10,4 +10,5 @@ exposedBy:
   - dbserver
   - single
 description: |
-  Amount of memory in bytes that is used for reading from this index.
+  Amount of memory in bytes that is used for reading from an inverted index of
+  a collection or View.

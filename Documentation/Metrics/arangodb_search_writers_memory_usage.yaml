@@ -10,4 +10,5 @@ exposedBy:
   - dbserver
   - single
 description: |
-  Amount of memory in bytes that is used for writing to this index.
+  Amount of memory in bytes that is used for writing to an inverted index of
+  a collection or View.
