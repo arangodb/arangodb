@@ -816,7 +816,6 @@
         this.arangoCollectionsStore.fetch({
           cache: false,
           success: function () {
-            console.log('fetching cInfo');
             self.infoView = new window.InfoView({
               collectionName: colname,
               collection: self.arangoCollectionsStore.findWhere({
