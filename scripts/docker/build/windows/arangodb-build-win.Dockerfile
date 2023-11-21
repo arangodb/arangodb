@@ -16,8 +16,9 @@ ENV COMPLUS_NGenProtectedProcess_FeatureEnabled=0
 
 RUN `
     # Download the Build Tools bootstrapper.
-    # We explicitly use the 17.3.3 release because newer versions are known to have issues with iresearch
-    curl -SL --output vs_buildtools.exe https://download.visualstudio.microsoft.com/download/pr/5fa6fcf5-8e43-4a4c-9ccc-ed024ab2585a/99a4dc8bc320597f73269a283d2a78fee20c521ad3ce69607c0c998d546cd71c/vs_BuildTools.exe && `
+    # We explicitly use the 17.3.6 release because newer versions are known to have issues with iresearch
+    # All installer versions can be found here: https://learn.microsoft.com/en-us/visualstudio/releases/2022/release-history#fixed-version-bootstrappers
+    curl -SL --output vs_buildtools.exe https://download.visualstudio.microsoft.com/download/pr/5c9aef4f-a79b-4b72-b379-14273860b285/bd2dd3a59d2553382f89712d19e4d5c3d930d9a41c9426cf8194dd5a3a75875f/vs_BuildTools.exe && `
     # Install Build Tools with the Microsoft.VisualStudio.Workload.AzureBuildTools workload, excluding workloads and components with known issues.
     (start /w vs_buildtools.exe --quiet --wait --norestart --nocache `
         --installPath "%ProgramFiles(x86)%\Microsoft Visual Studio\2022\BuildTools" `
@@ -34,7 +35,6 @@ RUN `
     # ngen .NET Fx
     && %windir%\Microsoft.NET\Framework64\v4.0.30319\ngen uninstall "Microsoft.Tpm.Commands, Version=10.0.0.0, Culture=Neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=amd64" `
     && %windir%\Microsoft.NET\Framework64\v4.0.30319\ngen update `
-    && %windir%\Microsoft.NET\Framework\v4.0.30319\ngen update `
     # clean out the package cache to reduce image size
     && @powershell Remove-Item 'C:/ProgramData/Package Cache/*' -Recurse -Force; `
     Set-ExecutionPolicy Bypass -Scope Process -Force; `
