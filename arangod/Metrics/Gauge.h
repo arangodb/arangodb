@@ -33,8 +33,10 @@
 namespace arangodb::metrics {
 
 template<typename T>
-class Gauge final : public Metric {
+class Gauge : public Metric {
  public:
+  using Value = T;
+
   Gauge(T t, std::string_view name, std::string_view help,
         std::string_view labels)
       : Metric{name, help, labels}, _g{t} {}

@@ -31,10 +31,11 @@ struct IResearchExecutionPool final : public metrics::Gauge<uint64_t> {
   using Value = uint64_t;
   using metrics::Gauge<uint64_t>::Gauge;
 
-  void setLimit(int newLimit) noexcept {
+  void setLimit(uint64_t newLimit) noexcept {
     // should not be called during execution of queries!
     TRI_ASSERT(load() == 0);
     _limit = newLimit;
+    _pool.start(_limit, IR_NATIVE_STRING("ARS-2"));
   }
 
   void stop() {
@@ -46,14 +47,14 @@ struct IResearchExecutionPool final : public metrics::Gauge<uint64_t> {
 
   void releaseThreads(uint64_t active, uint64_t demand);
 
-  using Pool = irs::async_utils::thread_pool<false>;
+  using Pool = irs::async_utils::ThreadPool<false>;
 
-  bool run(Pool::func_t&& fn) {
-    return _pool.run(std::forward<Pool::func_t>(fn));
+  bool run(Pool::Func&& fn) {
+    return _pool.run(std::forward<Pool::Func>(fn));
   }
 
  private:
-  Pool _pool{0, 0, IR_NATIVE_STRING("ARS-2")};
+  Pool _pool;
   std::atomic<uint64_t> _active;
   uint64_t _limit{0};
 };

@@ -115,6 +115,7 @@ class IResearchViewExecutorInfos {
   bool filterConditionIsEmpty() const noexcept {
     return _filterConditionIsEmpty;
   }
+
   VarInfoMap const& varInfoMap() const noexcept;
   int getDepth() const noexcept;
   bool volatileSort() const noexcept;
@@ -134,9 +135,9 @@ class IResearchViewExecutorInfos {
 
   iresearch::IResearchViewStoredValues const& storedValues() const noexcept;
 
-  size_t scoresSortLimit() const noexcept { return _scorersSortLimit; }
+  size_t heapSortLimit() const noexcept { return _heapSortLimit; }
 
-  auto scoresSort() const noexcept { return std::span{_scorersSort}; }
+  auto heapSort() const noexcept { return std::span{_heapSort}; }
 
   size_t scoreRegistersCount() const noexcept { return _scoreRegistersCount; }
 
@@ -225,20 +226,6 @@ struct FilterCtx final : irs::attribute_provider {
 template<typename ValueType, bool>
 class IndexReadBuffer;
 
-class IndexReadBufferEntry {
- public:
-  size_t getKeyIdx() const noexcept { return _keyIdx; };
-
- private:
-  template<typename ValueType, bool>
-  friend class IndexReadBuffer;
-
-  explicit inline IndexReadBufferEntry(size_t keyIdx) noexcept;
-
- protected:
-  size_t _keyIdx;
-};  // IndexReadBufferEntry
-
 class ScoreIterator {
  public:
   ScoreIterator(std::span<float_t> scoreBuffer, size_t keyIdx,
@@ -268,17 +255,9 @@ class IndexReadBuffer {
 
   explicit IndexReadBuffer(size_t numScoreRegisters, ResourceMonitor& monitor);
 
-  ValueType const& getValue(IndexReadBufferEntry bufferEntry) const noexcept;
-
   ValueType& getValue(size_t idx) noexcept {
     TRI_ASSERT(_keyBuffer.size() > idx);
-    return _keyBuffer[idx].value;
-  }
-
-  StorageSnapshot const& getSnapshot(size_t idx) noexcept {
-    TRI_ASSERT(_keyBuffer.size() > idx);
-    TRI_ASSERT(_keyBuffer[idx].snapshot);
-    return *_keyBuffer[idx].snapshot;
+    return _keyBuffer[idx];
   }
 
   iresearch::SearchDoc const& getSearchDoc(size_t idx) noexcept {
@@ -286,10 +265,10 @@ class IndexReadBuffer {
     return _searchDocs[idx];
   }
 
-  ScoreIterator getScores(IndexReadBufferEntry bufferEntry) noexcept;
+  ScoreIterator getScores(size_t idx) noexcept;
 
-  void setScoresSort(std::span<std::pair<size_t, bool> const> s) noexcept {
-    _scoresSort = s;
+  void setHeapSort(std::span<iresearch::HeapSortElement const> s) noexcept {
+    _heapSort = s;
   }
 
   irs::score_t* pushNoneScores(size_t count);
@@ -313,10 +292,8 @@ class IndexReadBuffer {
     }
   }
 
-  template<typename ColumnReaderProvider>
-  void pushSortedValue(ColumnReaderProvider& columnReader, ValueType&& value,
-                       std::span<float_t const> scores, irs::score& score,
-                       irs::score_t& threshold);
+  void pushSortedValue(ValueType&& value,
+                       std::span<float_t const> scores);
 
   void finalizeHeapSort();
   // A note on the scores: instead of saving an array of AqlValues, we could
@@ -335,7 +312,7 @@ class IndexReadBuffer {
 
   bool empty() const noexcept;
 
-  IndexReadBufferEntry pop_front() noexcept;
+  size_t pop_front() noexcept;
 
   // This is violated while documents and scores are pushed, but must hold
   // before and after.
@@ -347,7 +324,7 @@ class IndexReadBuffer {
         maxSize * sizeof(typename decltype(_scoreBuffer)::value_type) +
         maxSize * sizeof(typename decltype(_searchDocs)::value_type) +
         maxSize * sizeof(typename decltype(_storedValuesBuffer)::value_type);
-    if (!_scoresSort.empty()) {
+    if (!_heapSort.empty()) {
       res += maxSize * sizeof(typename decltype(_rows)::value_type);
     }
     return res;
@@ -379,7 +356,7 @@ class IndexReadBuffer {
       _searchDocs.reserve(atMost);
       _scoreBuffer.reserve(atMost * scores);
       _storedValuesBuffer.reserve(atMost * stored);
-      if (!_scoresSort.empty()) {
+      if (!_heapSort.empty()) {
         _rows.reserve(atMost);
       }
     }
@@ -421,23 +398,14 @@ class IndexReadBuffer {
   //   _keyBuffer[i / getNumScoreRegisters()]
   // .
 
-  struct BufferValueType {
-    template<typename... Args>
-    BufferValueType(StorageSnapshot const& s, Args&&... args)
-        : snapshot(&s), value(std::forward<Args>(args)...) {}
-    // have to keep it pointer as we need this struct
-    // to be assignable for HeapSort optimization
-    StorageSnapshot const* snapshot;
-    ValueType value;
-  };
-  std::vector<BufferValueType> _keyBuffer;
+  std::vector<ValueType> _keyBuffer;
   // FIXME(gnusi): compile time
   std::vector<iresearch::SearchDoc> _searchDocs;
   std::vector<irs::score_t> _scoreBuffer;
   StoredValuesContainer _storedValuesBuffer;
   size_t _numScoreRegisters;
   size_t _keyBaseIdx;
-  std::span<std::pair<size_t, bool> const> _scoresSort;
+  std::span<iresearch::HeapSortElement const> _heapSort;
   std::vector<size_t> _rows;
   size_t _maxSize;
   size_t _heapSizeLeft;
@@ -583,10 +551,8 @@ class IResearchViewExecutorBase {
     score(_indexReadBuffer.pushNoneScores(infos().scoreRegistersCount()));
   }
 
-  template<typename DocumentValueType>
-  bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry,
-                DocumentValueType const& documentId,
-                LogicalCollection const* collection);
+  template<typename Value>
+  bool writeRowImpl(ReadContext& ctx, size_t idx, Value const& value);
 
   void writeSearchDoc(ReadContext& ctx, iresearch::SearchDoc const& doc,
                       RegisterId reg);
@@ -722,13 +688,6 @@ struct ExecutorValue {
 #endif
   }
 
-  void translate(size_t i) noexcept {
-    _value.result = i;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(_state == State::RocksDB);
-    _state = State::Executor;
-#endif
-  }
 
   [[nodiscard]] iresearch::ViewSegment const* segment() const noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -744,17 +703,19 @@ struct ExecutorValue {
     return _value;
   }
 
+  LogicalCollection* collection{};
+
  protected:
-  DocumentValue _value;
+  DocumentValue _value{};
+  
   union {
-    size_t offset;
+    size_t offset{};
     iresearch::ViewSegment const* segment;
   } _reader;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   enum class State {
     IResearch = 0,
     RocksDB,
-    Executor,
   } _state{};
 #endif
 };
@@ -837,32 +798,16 @@ class IResearchViewMergeExecutor
 
   bool fillBuffer(ReadContext& ctx);
 
-  bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
+  bool writeRow(ReadContext& ctx, size_t idx);
 
   void reset(bool needFullCount);
   size_t skip(size_t toSkip, IResearchViewStats&);
   size_t skipAll(IResearchViewStats&);
 
   std::vector<Segment> _segments;
-  irs::ExternalMergeIterator<MinHeapContext> _heap_it;
+  irs::ExternalHeapIterator<MinHeapContext> _heap_it;
 };
 
-struct MergeSortExecutorValue {
-  explicit MergeSortExecutorValue(
-      LocalDocumentId id, iresearch::ViewSegment const& segment) noexcept
-      : _value{id}, _segment{&segment} {}
-
-  auto const& value() const noexcept { return _value; }
-  auto const* segment() const noexcept { return _segment; }
-
-  void translate(size_t i) noexcept { _value.result = i; }
-
- private:
-  DocumentValue _value;
-  iresearch::ViewSegment const* _segment;
-};
-
-==== BASE ====
 template<typename ExecutionTraits>
 struct IResearchViewExecutorTraits<
     IResearchViewMergeExecutor<ExecutionTraits>> {
@@ -901,7 +846,7 @@ class IResearchViewHeapSortExecutor
   bool fillBuffer(ReadContext& ctx);
   bool fillBufferInternal(size_t skip);
 
-  bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
+  bool writeRow(ReadContext& ctx, size_t idx);
 
   size_t _totalCount{};
   size_t _scannedCount{0};

@@ -35,14 +35,8 @@ uint64_t IResearchExecutionPool::allocateThreads(uint64_t deltaActive,
   do {
     newval = std::min(curr + deltaActive, _limit);
   } while (!_active.compare_exchange_weak(curr, newval));
-  auto add = newval - curr;
-  if (add > 0) {
-    // TODO: add a single call to thread_pool to change both
-    _pool.max_idle_delta(static_cast<int>(add));
-    _pool.max_threads_delta(static_cast<int>(add));
-  }
   fetch_add(deltaDemand);
-  return add;
+  return newval - curr;
 }
 
 void IResearchExecutionPool::releaseThreads(uint64_t active, uint64_t demand) {
@@ -53,8 +47,6 @@ void IResearchExecutionPool::releaseThreads(uint64_t active, uint64_t demand) {
   TRI_ASSERT(active < std::numeric_limits<int>::max());
   if (active) {
     int delta = static_cast<int>(active);
-    _pool.max_idle_delta(-delta);
-    _pool.max_threads_delta(-delta);
     _active.fetch_sub(active);
   }
   fetch_sub(demand);

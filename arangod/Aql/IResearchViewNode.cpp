@@ -1367,7 +1367,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
               absl::StrCat("'scorersSort[", itr.index(),
                            "].index' attribute is out of range"));
         }
-        _scorersSort.emplace_back(index.getNumber<size_t>(), asc.getBool());
+        _heapSort.emplace_back(index.getNumber<size_t>(), asc.getBool());
       } else {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER, absl::StrCat("'scorersSort[", itr.index(),
@@ -1382,7 +1382,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
           TRI_ERROR_BAD_PARAMETER,
           "'scorersSortLimit' attribute should be a numeric");
     }
-    _scorersSortLimit = scorersSortLimitSlice.getNumber<size_t>();
+    _heapSortLimit = scorersSortLimitSlice.getNumber<size_t>();
   }
 }
 
@@ -1442,14 +1442,14 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
     nodes.add(NODE_VIEW_NO_MATERIALIZATION, VPackValue(_noMaterialization));
   }
 
-  bool const needScorerSort = !_scorersSort.empty() && _scorersSortLimit;
+  bool const needScorerSort = !_heapSort.empty() && _heapSortLimit;
   if (needScorerSort) {
-    nodes.add(NODE_VIEW_SCORERS_SORT_LIMIT, VPackValue(_scorersSortLimit));
+    nodes.add(NODE_VIEW_SCORERS_SORT_LIMIT, VPackValue(_heapSortLimit));
     VPackArrayBuilder scorersSort(&nodes, NODE_VIEW_SCORERS_SORT);
-    for (auto const& s : _scorersSort) {
+    for (auto const& s : _heapSort) {
       VPackObjectBuilder scorer(&nodes);
-      nodes.add(NODE_VIEW_SCORERS_SORT_INDEX, VPackValue(s.first));
-      nodes.add(NODE_VIEW_SCORERS_SORT_ASC, VPackValue(s.second));
+      nodes.add(NODE_VIEW_SCORERS_SORT_INDEX, VPackValue(s.source));
+      nodes.add(NODE_VIEW_SCORERS_SORT_ASC, VPackValue(s.ascending));
     }
   }
 
@@ -1612,8 +1612,8 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
   }
   node->_noMaterialization = _noMaterialization;
   node->_outNonMaterializedViewVars = std::move(outNonMaterializedViewVars);
-  node->_scorersSort = _scorersSort;
-  node->_scorersSortLimit = _scorersSortLimit;
+  node->_heapSort = _heapSort;
+  node->_heapSortLimit = _heapSortLimit;
   return cloneHelper(std::move(node), withDependencies, withProperties);
 }
 
@@ -1976,7 +1976,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   TRI_ASSERT(_sort == nullptr || !_sort->empty());
   bool const ordered = !_scorers.empty();
   bool const sorted = _sort != nullptr;
-  bool const heapsort = !_scorersSort.empty();
+  bool const heapsort = !_heapSort.empty();
   bool const emitSearchDoc = executorInfos.searchDocIdRegId().isValid();
 #ifdef USE_ENTERPRISE
   auto& engineSelectorFeature =
@@ -1988,7 +1988,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   auto const executorIdx =
       getExecutorIndex(sorted, ordered, heapsort, emitSearchDoc);
-  return irs::ResolveBool(_options.parallelism > 1, [&]<bool copyStored>() {
+  return irs::ResolveBool(_options.parallelism > 1, [&]<bool copyStored>(
+                                                        std::integral_constant<
+                                                            bool, copyStored>) {
     switch (materializeType) {
       case MaterializeType::NotMaterialize:
         return kExecutors<copyStored,

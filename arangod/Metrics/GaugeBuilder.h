@@ -30,11 +30,12 @@ namespace arangodb::metrics {
 template<typename Derived, typename T>
 class GaugeBuilder : public GenericBuilder<Derived> {
  public:
-  using MetricT = Gauge<T>;
+  using MetricT = std::conditional_t<std::is_base_of_v<Metric, T>, T, Gauge<T>>;
+  using MetricV = typename MetricT::Value;
 
   [[nodiscard]] std::string_view type() const noexcept final { return "gauge"; }
   [[nodiscard]] std::shared_ptr<Metric> build() const final {
-    return std::make_shared<MetricT>(T{}, this->_name, this->_help,
+    return std::make_shared<MetricT>(MetricV{}, this->_name, this->_help,
                                      this->_labels);
   }
 };

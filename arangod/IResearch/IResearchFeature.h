@@ -29,7 +29,6 @@
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
-#include "resource_manager.hpp"
 #include "function2.hpp"
 #include "utils/async_utils.hpp"
 

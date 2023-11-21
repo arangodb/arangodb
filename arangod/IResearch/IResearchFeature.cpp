@@ -97,7 +97,7 @@ DECLARE_GAUGE(arangodb_search_num_out_of_sync_links, uint64_t,
               "Number of arangosearch links/indexes currently out of sync");
 
 DECLARE_GAUGE(
-    arangodb_search_execution_threads_demand, IResearchExecutionPool,
+    arangodb_search_execution_threads_demand, arangodb::iresearch::IResearchExecutionPool,
     "Number of Arangosearch parallel execution threads requested by queries.");
 
 #ifdef USE_ENTERPRISE
@@ -819,7 +819,7 @@ class AssertionCallbackSetter {
 ////////////////////////////////////////////////////////////////////////////////
 class IResearchAsync {
  public:
-  using ThreadPool = irs::async_utils::thread_pool<>;
+  using ThreadPool = irs::async_utils::ThreadPool<>;
 
   ~IResearchAsync() { stop(); }
 
@@ -849,8 +849,8 @@ class IResearchAsync {
   }
 
  private:
-  ThreadPool _0{0, 0, IR_NATIVE_STRING("ARS-0")};
-  ThreadPool _1{0, 0, IR_NATIVE_STRING("ARS-1")};
+  ThreadPool _0;
+  ThreadPool _1;
 };  // IResearchAsync
 
 bool isFilter(aql::Function const& func) noexcept {
@@ -1224,9 +1224,10 @@ void IResearchFeature::start() {
     TRI_ASSERT(_commitThreads && _commitThreadsIdle);
     TRI_ASSERT(_consolidationThreads && _consolidationThreadsIdle);
 
-    _async->get(ThreadGroup::_0).limits(_commitThreads, _commitThreadsIdle);
+    _async->get(ThreadGroup::_0)
+        .start(_commitThreads, IR_NATIVE_STRING("ARS-0"));
     _async->get(ThreadGroup::_1)
-        .limits(_consolidationThreads, _consolidationThreadsIdle);
+        .start(_consolidationThreads, IR_NATIVE_STRING("ARS-1"));
 
     LOG_TOPIC("c1b63", INFO, arangodb::iresearch::TOPIC)
         << "ArangoSearch maintenance: "
@@ -1351,7 +1352,8 @@ std::tuple<size_t, size_t, size_t> IResearchFeature::stats(
 }
 
 std::pair<size_t, size_t> IResearchFeature::limits(ThreadGroup id) const {
-  return _async->get(id).limits();
+  auto const threads = _async->get(id).threads();
+  return {threads, threads};
 }
 
 void IResearchFeature::trackOutOfSyncLink() noexcept { ++_outOfSyncLinks; }
