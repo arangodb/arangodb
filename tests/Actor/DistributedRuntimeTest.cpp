@@ -80,7 +80,7 @@ TYPED_TEST(DistributedRuntimeTest, formats_runtime_and_actor_state) {
       fmt::format(
           "{}", arangodb::inspection::json(
                     *runtime, arangodb::inspection::JsonPrintFormat::kMinimal)),
-      R"({"myServerID":"PRMR-1234","runtimeID":"RuntimeTest","uniqueActorIDCounter":2,"actors":{"1":{"type":"PongActor","monitors":[]}}})");
+      R"x({"myServerID":"PRMR-1234","runtimeID":"RuntimeTest","uniqueActorIDCounter":2,"actors":{"ActorID(1)":{"type":"PongActor","monitors":[]}}})x");
   auto actor =
       runtime->template getActorStateByID<pong_actor::Actor>(actorID).value();
   ASSERT_EQ(fmt::format("{}", actor), R"({"called":1})");
@@ -408,29 +408,33 @@ TYPED_TEST(DistributedRuntimeTest, sends_down_message_to_monitoring_actors) {
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
   EXPECT_EQ(runtime->actors.size(), 5);
-  EXPECT_EQ((MonitoringState{.deadActors = {{monitored2.id, Error::kNoError}}}),
-            *runtime->template getActorStateByID<MonitoringActor>(monitor1));
-  EXPECT_EQ((MonitoringState{.deadActors = {{monitored2.id, Error::kNoError}}}),
-            *runtime->template getActorStateByID<MonitoringActor>(monitor2));
-  EXPECT_EQ((MonitoringState{.deadActors = {{monitored2.id, Error::kNoError}}}),
-            *runtime->template getActorStateByID<MonitoringActor>(monitor3));
+  EXPECT_EQ(
+      (MonitoringState{.deadActors = {{monitored2.id, ExitReason::kFinished}}}),
+      *runtime->template getActorStateByID<MonitoringActor>(monitor1));
+  EXPECT_EQ(
+      (MonitoringState{.deadActors = {{monitored2.id, ExitReason::kFinished}}}),
+      *runtime->template getActorStateByID<MonitoringActor>(monitor2));
+  EXPECT_EQ(
+      (MonitoringState{.deadActors = {{monitored2.id, ExitReason::kFinished}}}),
+      *runtime->template getActorStateByID<MonitoringActor>(monitor3));
 
   runtime->dispatch(monitored1, monitored1,
                     FinishingActor::Message{
-                        test::message::FinishingFinish{Error::kShutdown}});
+                        test::message::FinishingFinish{ExitReason::kShutdown}});
   runtime->dispatch(monitored3, monitored3,
                     FinishingActor::Message{
-                        test::message::FinishingFinish{Error::kShutdown}});
+                        test::message::FinishingFinish{ExitReason::kShutdown}});
   waitForAllMessagesToBeProcessed(runtime);
   EXPECT_EQ(
-      (MonitoringState{.deadActors = {{monitored2.id, Error::kNoError},
-                                      {monitored1.id, Error::kShutdown}}}),
+      (MonitoringState{.deadActors = {{monitored2.id, ExitReason::kFinished},
+                                      {monitored1.id, ExitReason::kShutdown}}}),
       *runtime->template getActorStateByID<MonitoringActor>(monitor1));
-  EXPECT_EQ((MonitoringState{.deadActors = {{monitored2.id, Error::kNoError}}}),
-            *runtime->template getActorStateByID<MonitoringActor>(monitor2));
   EXPECT_EQ(
-      (MonitoringState{.deadActors = {{monitored2.id, Error::kNoError},
-                                      {monitored3.id, Error::kShutdown}}}),
+      (MonitoringState{.deadActors = {{monitored2.id, ExitReason::kFinished}}}),
+      *runtime->template getActorStateByID<MonitoringActor>(monitor2));
+  EXPECT_EQ(
+      (MonitoringState{.deadActors = {{monitored2.id, ExitReason::kFinished},
+                                      {monitored3.id, ExitReason::kShutdown}}}),
       *runtime->template getActorStateByID<MonitoringActor>(monitor3));
 
   this->scheduler->stop();
@@ -454,7 +458,7 @@ TYPED_TEST(
 
   waitForAllMessagesToBeProcessed(runtime);
   EXPECT_EQ(
-      (MonitoringState{.deadActors = {{ActorID{999}, Error::kUnknownActor}}}),
+      (MonitoringState{.deadActors = {{ActorID{999}, ExitReason::kUnknown}}}),
       *runtime->template getActorStateByID<MonitoringActor>(monitor));
 
   this->scheduler->stop();

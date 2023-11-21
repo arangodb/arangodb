@@ -46,7 +46,7 @@ struct ActorBaseMock : ActorBase {
   auto serialize() -> arangodb::velocypack::SharedSlice override {
     return arangodb::velocypack::SharedSlice();
   }
-  auto finish(arangodb::actor::Error reason) -> void override {
+  auto finish(arangodb::actor::ExitReason reason) -> void override {
     finished = true;
   }
   auto isFinishedAndIdle() -> bool override { return finished; }
@@ -139,7 +139,7 @@ TEST(ActorListTest, applies_function_to_each_actor) {
                          {ActorID{4}, std::make_shared<ActorBaseMock>()}});
 
   list.apply([](std::shared_ptr<ActorBase>& actor) -> void {
-    actor->finish(arangodb::actor::Error::kNoError);
+    actor->finish(arangodb::actor::ExitReason::kFinished);
   });
   ASSERT_TRUE(list.find(ActorID{1}).value()->isFinishedAndIdle());
   ASSERT_TRUE(list.find(ActorID{2}).value()->isFinishedAndIdle());

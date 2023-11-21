@@ -80,7 +80,8 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
     auto address = spawn<ActorConfig>(std::move(initialState));
 
     // Send initial message to newly created actor
-    dispatchLocally(address, address, initialMessage, true);
+    dispatchLocally(address, address, initialMessage,
+                    IgnoreDispatchFailure::yes);
 
     return address;
   }
@@ -137,7 +138,7 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
   template<typename ActorMessage>
   auto dispatch(ActorPID sender, ActorPID receiver, ActorMessage const& message)
       -> void {
-    doDispatch(sender, receiver, message, false);
+    doDispatch(sender, receiver, message, IgnoreDispatchFailure::no);
   }
 
   template<typename ActorMessage>
@@ -159,7 +160,7 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
         });
   }
 
-  auto finishActor(ActorPID pid, Error reason) -> void {
+  auto finishActor(ActorPID pid, ExitReason reason) -> void {
     auto actor = actors.find(pid.id);
     if (actor.has_value()) {
       actor.value()->finish(reason);
@@ -178,11 +179,11 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
           DistributedActorPID{.server = myServerID, .database = "", .id = {0}},
           monitoringActor,
           message::ActorDown<ActorPID>{.actor = monitoredActor,
-                                       .reason = Error::kUnknownActor});
+                                       .reason = ExitReason::kUnknown});
     }
   }
 
-  void stopActor(ActorPID pid, Error reason) {
+  void stopActor(ActorPID pid, ExitReason reason) {
     auto res = actors.remove(pid.id);
     if (res) {
       auto& entry = *res;
@@ -204,7 +205,7 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
       actorsCopy.emplace_back(actor);
     });
     for (auto& actor : actorsCopy) {
-      actor->finish(Error::kShutdown);
+      actor->finish(ExitReason::kShutdown);
     }
   }
 
@@ -230,9 +231,15 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
   // actor id 0 is reserved for special messages
   std::atomic<size_t> uniqueActorIDCounter{1};
 
+  enum class IgnoreDispatchFailure {
+    no,
+    yes,
+  };
+
   template<typename ActorMessage>
   auto doDispatch(ActorPID sender, ActorPID receiver,
-                  ActorMessage const& message, bool ignoreFailure) -> void {
+                  ActorMessage const& message,
+                  IgnoreDispatchFailure ignoreFailure) -> void {
     if (receiver.server == sender.server) {
       dispatchLocally(sender, receiver, message, ignoreFailure);
     } else {
@@ -242,19 +249,19 @@ struct DistributedRuntime : std::enable_shared_from_this<DistributedRuntime> {
 
   template<typename ActorMessage>
   auto dispatchLocally(ActorPID sender, ActorPID receiver,
-                       ActorMessage const& message, bool ignoreFailure)
-      -> void {
+                       ActorMessage const& message,
+                       IgnoreDispatchFailure ignoreFailure) -> void {
     auto actor = actors.find(receiver.id);
     auto payload = MessagePayload<ActorMessage>(std::move(message));
     if (actor.has_value()) {
       actor->get()->process(sender, payload);
-    } else if (not ignoreFailure) {
+    } else if (ignoreFailure == IgnoreDispatchFailure::no) {
       // The sender might no longer exist, so don't bother if we cannot send the
       // ActorNotFound message
       doDispatch(receiver, sender,
                  message::ActorError<ActorPID>{
                      message::ActorNotFound<ActorPID>{.actor = receiver}},
-                 true);
+                 IgnoreDispatchFailure::yes);
     }
   }
 

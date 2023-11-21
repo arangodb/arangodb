@@ -56,7 +56,7 @@ struct HandlerBase {
                                                 initialMessage);
   }
 
-  auto finish(Error reason) -> void { runtime->finishActor(self, reason); }
+  auto finish(ExitReason reason) -> void { runtime->finishActor(self, reason); }
 
  protected:
   ActorPID const self;

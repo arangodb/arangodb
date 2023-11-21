@@ -203,7 +203,7 @@ struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
   }
 
   auto operator()(message::SpawnCleanup msg) -> std::unique_ptr<SpawnState> {
-    this->finish(actor::Error::kNoError);
+    this->finish(actor::ExitReason::kFinished);
     return std::move(this->state);
   }
 

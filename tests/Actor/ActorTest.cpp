@@ -23,7 +23,6 @@
 
 #include <gtest/gtest.h>
 #include <memory>
-#include "Actor/Error.h"
 #include "fmt/core.h"
 #include "velocypack/SharedSlice.h"
 #include "Inspection/VPackWithErrorT.h"
@@ -31,6 +30,7 @@
 #include "Actor/Actor.h"
 #include "Actor/DistributedActorPID.h"
 #include "Actor/DistributedRuntime.h"
+#include "Actor/ExitReason.h"
 #include "Actor/Message.h"
 #include "Actor/MPSCQueue.h"
 
@@ -130,7 +130,7 @@ TEST(ActorTest, sets_itself_to_finish) {
       runtime, std::make_unique<TrivialState>());
   ASSERT_FALSE(actor->isFinishedAndIdle());
 
-  actor->finish(Error::kNoError);
+  actor->finish(ExitReason::kFinished);
 
   ASSERT_TRUE(actor->isFinishedAndIdle());
 }
@@ -142,7 +142,7 @@ TYPED_TEST(ActorTest, does_not_work_on_new_messages_after_actor_finished) {
   auto actor = std::make_shared<Actor<DistributedRuntime, TrivialActor>>(
       DistributedActorPID{.server = "A", .database = "database", .id = {1}},
       runtime, std::make_unique<TrivialState>());
-  actor->finish(Error::kNoError);
+  actor->finish(ExitReason::kFinished);
 
   // send message to actor
   auto message =

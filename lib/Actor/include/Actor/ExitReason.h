@@ -25,16 +25,17 @@
 
 namespace arangodb::actor {
 
-enum class Error {
-  kNoError,       //
-  kUnknownActor,  //
+enum class ExitReason {
+  kFinished,  //
+  kUnknown,   //
   kShutdown
 };
 
 template<typename Inspector>
-auto inspect(Inspector& f, Error& x) {
-  return f.enumeration(x).values(Error::kNoError, "NoError",  //
-                                 Error::kShutdown, "Shutdown");
+auto inspect(Inspector& f, ExitReason& x) {
+  return f.enumeration(x).values(ExitReason::kFinished, "Finished",  //
+                                 ExitReason::kUnknown, "Unknown",    //
+                                 ExitReason::kShutdown, "Shutdown");
 }
 
 }  // namespace arangodb::actor

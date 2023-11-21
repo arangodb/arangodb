@@ -37,7 +37,7 @@
 namespace arangodb::actor::test {
 
 struct MonitoringState {
-  std::vector<std::pair<ActorID, Error>> deadActors;
+  std::vector<std::pair<ActorID, ExitReason>> deadActors;
   bool operator==(const MonitoringState&) const = default;
 
   template<typename Inspector>

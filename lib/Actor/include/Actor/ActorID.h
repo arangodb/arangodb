@@ -36,7 +36,7 @@ struct ActorID {
 };
 
 inline std::ostream& operator<<(std::ostream& o, ActorID const& id) {
-  o << id.id;
+  o << "ActorID(" << id.id << ")";
   return o;
 }
 

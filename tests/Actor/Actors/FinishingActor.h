@@ -52,7 +52,7 @@ auto inspect(Inspector& f, FinishingStart& x) {
 }
 
 struct FinishingFinish {
-  Error reason;
+  ExitReason reason;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, FinishingFinish& x) {
