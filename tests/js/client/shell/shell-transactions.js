@@ -70,13 +70,13 @@ function transactionFailuresSuite () {
   return {
 
     setUp: function () {
-      internal.debugClearFailAt();
+      arango.POST("/_admin/execute", "require('internal').debugClearFailAt();");
       db._drop(cn);
       c = db._create(cn);
     },
 
     tearDown: function () {
-      internal.debugClearFailAt();
+      arango.POST("/_admin/execute", "require('internal').debugClearFailAt();");
 
       db._drop(cn);
       c = null;
@@ -86,7 +86,7 @@ function transactionFailuresSuite () {
       c.insert({ _key: "foobar", value: "baz" });
       assertEqual(1, c.count());
 
-      internal.debugSetFailAt("TransactionCommitFail");
+      arango.POST("/_admin/execute", "require('internal').debugSetFailAt('TransactionCommitFail');");
       try {
         db._executeTransaction({
           collections: {
@@ -100,7 +100,7 @@ function transactionFailuresSuite () {
         assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
 
-      internal.debugClearFailAt();
+      arango.POST("/_admin/execute", "require('internal').debugClearFailAt();");
       assertEqual(1, c.count());
       assertEqual("baz", c.document("foobar").value);
     },
@@ -113,7 +113,7 @@ function transactionFailuresSuite () {
       c.insert(docs);
       assertEqual(100, c.count());
       
-      internal.debugSetFailAt("TransactionCommitFail");
+      arango.POST("/_admin/execute", "require('internal').debugSetFailAt('TransactionCommitFail');");
       try {
         db._executeTransaction({ 
           collections: {
@@ -136,14 +136,14 @@ function transactionFailuresSuite () {
         assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
 
-      internal.debugClearFailAt();
+      arango.POST("/_admin/execute", "require('internal').debugClearFailAt();");
       assertEqual(100, c.count());
     },
     
     testCommitTransactionWithFailuresInsideFailure : function () {
       c.insert({ _key: "foobar", value: "baz" });
 
-      internal.debugSetFailAt("TransactionCommitFail");
+      arango.POST("/_admin/execute", "require('internal').debugSetFailAt('TransactionCommitFail');");
       try {
         db._executeTransaction({ 
           collections: {
@@ -172,7 +172,7 @@ function transactionFailuresSuite () {
         assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
 
-      internal.debugClearFailAt();
+      arango.POST("/_admin/execute", "require('internal').debugClearFailAt();");
       assertEqual(1, c.count());
       assertEqual("baz", c.document("foobar").value);
     }
@@ -188,13 +188,13 @@ function transactionRevisionsSuite () {
   return {
 
     setUp: function () {
-      internal.debugClearFailAt();
+      arango.POST("/_admin/execute", "require('internal').debugClearFailAt();");
       db._drop(cn);
       c = db._create(cn);
     },
 
     tearDown: function () {
-      internal.debugClearFailAt();
+      arango.POST("/_admin/execute", "require('internal').debugClearFailAt();");
       db._drop(cn);
     },
 
@@ -2282,7 +2282,7 @@ function transactionGraphSuite () {
         G._drop('UnitTestsGraph');
       } catch (err) {
       }
-      internal.wait(0);
+      arango.POST("/_admin/execute", "require('internal').wait(0);");
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -4087,7 +4087,7 @@ function transactionTraversalSuite () {
 // / @brief executes the test suites
 // //////////////////////////////////////////////////////////////////////////////
 
-if (internal.debugCanUseFailAt()) {
+if (arango.POST("/_admin/execute", "require('internal').debugCanUseFailAt());")) {
   jsunity.run(transactionFailuresSuite);
 }
 jsunity.run(transactionRevisionsSuite);
