@@ -98,8 +98,8 @@ $c-negative-bg: desaturate(lighten(#cc1409, 40%), 50%);
 $c-neutral: #8f8d8c;
 $c-neutral-hover: #736b68;
 
-$c-warning: #f1c40f;
-$c-warning-hover: #f4d313;
+$c-warning: var(--yellow-500);
+$c-warning-hover: var(--yellow-600);
 $c-unloaded: #ff8f35;
 
 $c-primary: #34495e;
