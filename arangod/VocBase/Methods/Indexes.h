@@ -35,6 +35,10 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace futures {
+template<typename T>
+class Future;
+}
 class LogicalCollection;
 class CollectionNameResolver;
 namespace methods {
@@ -43,29 +47,27 @@ namespace methods {
 struct Indexes {
   using ProgressTracker = std::function<arangodb::Result(double)>;
 
-  static arangodb::Result getIndex(LogicalCollection const& collection,
-                                   velocypack::Slice indexId,
-                                   velocypack::Builder& out,
-                                   transaction::Methods* trx = nullptr);
+  static futures::Future<arangodb::Result> getIndex(
+      LogicalCollection const& collection, velocypack::Slice indexId,
+      velocypack::Builder& out, transaction::Methods* trx = nullptr);
 
   /// @brief get all indexes, skips view links
-  static arangodb::Result getAll(LogicalCollection const& collection,
-                                 std::underlying_type<Index::Serialize>::type,
-                                 bool withHidden,
-                                 arangodb::velocypack::Builder&,
-                                 transaction::Methods* trx = nullptr);
+  static futures::Future<arangodb::Result> getAll(
+      LogicalCollection const& collection,
+      std::underlying_type<Index::Serialize>::type, bool withHidden,
+      arangodb::velocypack::Builder&, transaction::Methods* trx = nullptr);
 
-  static arangodb::Result createIndex(LogicalCollection&, Index::IndexType,
-                                      std::vector<std::string> const&,
-                                      bool unique, bool sparse, bool estimates);
+  static futures::Future<arangodb::Result> createIndex(
+      LogicalCollection&, Index::IndexType, std::vector<std::string> const&,
+      bool unique, bool sparse, bool estimates);
 
-  static arangodb::Result ensureIndex(
+  static futures::Future<arangodb::Result> ensureIndex(
       LogicalCollection& collection, velocypack::Slice definition, bool create,
       velocypack::Builder& output,
       std::shared_ptr<ProgressTracker> f = nullptr);
 
-  static arangodb::Result drop(LogicalCollection& collection,
-                               velocypack::Slice indexArg);
+  static futures::Future<arangodb::Result> drop(LogicalCollection& collection,
+                                                velocypack::Slice indexArg);
 
   static arangodb::Result extractHandle(LogicalCollection const& collection,
                                         CollectionNameResolver const* resolver,

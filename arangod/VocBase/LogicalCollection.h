@@ -165,8 +165,7 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Properties
   RevisionId revision(transaction::Methods*) const;
-  bool waitForSync() const noexcept { return _waitForSync; }
-  void waitForSync(bool value) { _waitForSync = value; }
+  bool waitForSync() const noexcept;
 #ifdef USE_ENTERPRISE
   bool isDisjoint() const noexcept { return _isDisjoint; }
   bool isSmart() const noexcept { return _isSmart; }
@@ -327,7 +326,7 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: Indexes
 
   /// @brief Create a new Index based on VelocyPack description
-  virtual std::shared_ptr<Index> createIndex(
+  virtual futures::Future<std::shared_ptr<Index>> createIndex(
       velocypack::Slice, bool&,
       std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr);
 

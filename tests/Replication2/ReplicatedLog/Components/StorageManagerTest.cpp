@@ -455,8 +455,9 @@ TEST_F(StorageManagerSyncIndexTest, wait_for_sync_false_update_fails) {
       });
 
   auto trx = storageManager->transaction();
-  trx->appendEntries(makeRange(LogTerm{1}, {LogIndex{100}, LogIndex{120}}),
-                     {.waitForSync = false});
+  std::ignore =
+      trx->appendEntries(makeRange(LogTerm{1}, {LogIndex{100}, LogIndex{120}}),
+                         {.waitForSync = false});
   auto syncIndex2 = storageManager->getSyncIndex();
   EXPECT_EQ(syncIndex2, syncIndex1);
 }
@@ -479,8 +480,9 @@ TEST_F(StorageManagerSyncIndexTest, manager_unavailable_during_update) {
       });
 
   auto trx = storageManager->transaction();
-  trx->appendEntries(makeRange(LogTerm{1}, {LogIndex{100}, LogIndex{120}}),
-                     {.waitForSync = false});
+  std::ignore =
+      trx->appendEntries(makeRange(LogTerm{1}, {LogIndex{100}, LogIndex{120}}),
+                         {.waitForSync = false});
   // In case the manager is unavailable, we should not panic.
   storageManager.reset();
   wfsPromise.setValue(Result{});
@@ -496,6 +498,7 @@ TEST_F(StorageManagerSyncIndexTest, methods_insertion_fails) {
       });
   EXPECT_CALL(*methods, waitForSync(testing::_)).Times(0);
   auto trx = storageManager->transaction();
-  trx->appendEntries(makeRange(LogTerm{1}, {LogIndex{100}, LogIndex{120}}),
-                     {.waitForSync = false});
+  std::ignore =
+      trx->appendEntries(makeRange(LogTerm{1}, {LogIndex{100}, LogIndex{120}}),
+                         {.waitForSync = false});
 }

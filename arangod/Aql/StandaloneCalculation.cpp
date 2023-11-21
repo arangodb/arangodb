@@ -72,9 +72,9 @@ class CalculationTransactionState final : public arangodb::TransactionState {
   [[nodiscard]] bool ensureSnapshot() override { return false; }
 
   /// @brief begin a transaction
-  [[nodiscard]] arangodb::Result beginTransaction(
+  [[nodiscard]] futures::Future<Result> beginTransaction(
       arangodb::transaction::Hints) override {
-    return {};
+    return Result{};
   }
 
   /// @brief commit a transaction
@@ -164,7 +164,7 @@ struct CalculationTransactionContext final
   void unregisterTransaction() noexcept override {}
 
   std::shared_ptr<Context> clone() const override {
-    TRI_ASSERT(FALSE);
+    TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_NOT_IMPLEMENTED,
         "CalculationTransactionContext cloning is not implemented");

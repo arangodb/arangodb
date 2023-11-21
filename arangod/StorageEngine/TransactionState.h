@@ -179,12 +179,12 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
       std::string_view name, AccessMode::Type accessType) const;
 
   /// @brief add a collection to a transaction
-  [[nodiscard]] Result addCollection(DataSourceId cid, std::string_view cname,
-                                     AccessMode::Type accessType,
-                                     bool lockUsage);
+  [[nodiscard]] futures::Future<Result> addCollection(
+      DataSourceId cid, std::string_view cname, AccessMode::Type accessType,
+      bool lockUsage);
 
   /// @brief use all participating collections of a transaction
-  [[nodiscard]] Result useCollections();
+  [[nodiscard]] futures::Future<Result> useCollections();
 
   /// @brief run a callback on all collections of the transaction
   template<typename F>
@@ -254,7 +254,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   [[nodiscard]] virtual bool ensureSnapshot() = 0;
 
   /// @brief begin a transaction
-  virtual Result beginTransaction(transaction::Hints hints) = 0;
+  virtual futures::Future<Result> beginTransaction(
+      transaction::Hints hints) = 0;
 
   /// @brief commit a transaction
   virtual futures::Future<Result> commitTransaction(
@@ -402,8 +403,10 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
                                    AccessMode::Type);
 
   /// @brief helper function for addCollection
-  Result addCollectionInternal(DataSourceId cid, std::string_view cname,
-                               AccessMode::Type accessType, bool lockUsage);
+  futures::Future<Result> addCollectionInternal(DataSourceId cid,
+                                                std::string_view cname,
+                                                AccessMode::Type accessType,
+                                                bool lockUsage);
 
   /// @brief find a collection in the transaction's list of collections
   struct CollectionNotFound {

@@ -132,7 +132,7 @@ bool UpdateCollection::first() {
         }
 
         OperationOptions options(ExecContext::current());
-        return Collections::updateProperties(*coll, props, options);
+        return Collections::updateProperties(*coll, props, options).get();
       }));
       result(res);
 
