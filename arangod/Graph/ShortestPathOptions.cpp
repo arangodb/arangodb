@@ -41,11 +41,7 @@ using namespace arangodb::traverser;
 using VPackHelper = arangodb::basics::VelocyPackHelper;
 
 ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query)
-    : BaseOptions(query),
-      minDepth(1),
-      maxDepth(1),
-      bidirectional(true),
-      multiThreaded(true) {
+    : BaseOptions(query), minDepth(1), maxDepth(1), multiThreaded(true) {
   setWeightAttribute("");
   setDefaultWeight(1);
 }
@@ -74,9 +70,7 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
 ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
                                          VPackSlice info,
                                          VPackSlice collections)
-    : BaseOptions(query, info, collections),
-      bidirectional(true),
-      multiThreaded(true) {
+    : BaseOptions(query, info, collections), multiThreaded(true) {
   TRI_ASSERT(info.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   VPackSlice type = info.get("type");
@@ -233,7 +227,6 @@ ShortestPathOptions::ShortestPathOptions(ShortestPathOptions const& other,
       maxDepth(other.maxDepth),
       start{other.start},
       end{other.end},
-      bidirectional{other.bidirectional},
       multiThreaded{other.multiThreaded},
       _reverseLookupInfos{other._reverseLookupInfos},
       _weightAttribute{other._weightAttribute},
