@@ -885,12 +885,6 @@ IResearchFeature::IResearchFeature(Server& server)
       _async(std::make_unique<IResearchAsync>()),
       _running(false),
       _failQueriesOnOutOfSync(false),
-      _outOfSyncLinks(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_search_num_out_of_sync_links{})),
-#ifdef USE_ENTERPRISE
-      _columnsCacheMemoryUsed(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_search_columns_cache_size{})),
-#endif
       _consolidationThreads(0),
       _consolidationThreadsIdle(0),
       _commitThreads(0),
@@ -899,6 +893,12 @@ IResearchFeature::IResearchFeature(Server& server)
       _threadsLimit(0),
       _searchExecutionThreadsLimit(0),
       _defaultParallelism(1),
+      _outOfSyncLinks(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_search_num_out_of_sync_links{})),
+#ifdef USE_ENTERPRISE
+      _columnsCacheMemoryUsed(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_search_columns_cache_size{})),
+#endif
       _searchExecutionPool(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_search_execution_threads_demand{})) {
   setOptional(true);
