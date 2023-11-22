@@ -54,22 +54,23 @@ class ViewSnapshotCookie final : public ViewSnapshot,
   [[nodiscard]] irs::SubReader const& operator[](
       std::size_t i) const noexcept final {
     TRI_ASSERT(i < _segments.size());
-    return *(std::get<1>(_segments[i]));
+    return *_segments[i].segment;
   }
 
   [[nodiscard]] std::size_t size() const noexcept final {
     return _segments.size();
   }
 
-  [[nodiscard]] DataSourceId cid(std::size_t i) const noexcept final {
+  [[nodiscard]] LogicalCollection const& collection(
+      std::size_t i) const noexcept final {
     TRI_ASSERT(i < _segments.size());
-    return std::get<0>(_segments[i]);
+    return *_segments[i].collection;
   }
 
   [[nodiscard]] StorageSnapshot const& snapshot(
       std::size_t i) const noexcept final {
     TRI_ASSERT(i < _segments.size());
-    return std::get<2>(_segments[i]);
+    return *_segments[i].snapshot;
   }
 
   [[nodiscard]] ViewSegment const& segment(std::size_t i) const noexcept final {
@@ -119,11 +120,12 @@ void ViewSnapshotCookie::compute(bool sync, std::string_view name) {
   }
   _segments.reserve(segments);
   for (size_t i = 0; i != _links.size(); ++i) {
-    auto const cid = _links[i]->index().collection().id();
     auto const& reader = _readers[i];
     auto const& snapshot = reader->_snapshot;
     for (auto const& segment : reader->_reader) {
-      _segments.emplace_back(cid, &segment, *snapshot.get());
+      _segments.emplace_back(_links[i]->index().collection(), 
+                             *snapshot.get(),
+                             segment);
     }
     _live_docs_count += reader->_reader.live_docs_count();
     _docs_count += reader->_reader.docs_count();

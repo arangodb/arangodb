@@ -780,15 +780,15 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRowImpl(
         ctx, this->_indexReadBuffer.getSearchDoc(idx), reg);
   }
   if constexpr (isMaterialized) {
-    TRI_ASSERT(value.collection);
     TRI_ASSERT(value.value().id.isSet());
     TRI_ASSERT(value.segment());
     // read document from underlying storage engine, if we got an id
-    if (ADB_UNLIKELY(!value.collection->getPhysical()
+    if (ADB_UNLIKELY(
+            !value.segment()->collection->getPhysical()
                  ->readFromSnapshot(&_trx, value.value().id, ctx.callback,
                                              ReadOwnWrites::no,
-                                             std::get<2>(*value.segment()))
-                          .ok())) {
+                                             *value.segment()->snapshot))
+                          .ok()) {
       return false;
     }
   }
@@ -808,14 +808,14 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRowImpl(
         return false;
       }
     }
-  } else if constexpr (Traits::MaterializeType ==
+  } else if constexpr (ExecutionTraits::MaterializeType ==
                            MaterializeType::NotMaterialize &&
-                       !Traits::Ordered && !Traits::EmitSearchDoc) {
+                       !ExecutionTraits::Ordered && !Traits::EmitSearchDoc) {
     ctx.outputRow.copyRow(ctx.inputRow);
   }
   // in the ordered case we have to write scores as well as a document
   // move to separate function that gets ScoresIterator
-  if constexpr (Traits::Ordered) {
+  if constexpr (ExecutionTraits::Ordered) {
     // scorer register are placed right before the document output register
     std::vector<RegisterId> const& scoreRegisters = infos().getScoreRegisters();
     auto scoreRegIter = scoreRegisters.begin();
@@ -950,8 +950,7 @@ bool IResearchViewExecutor<ExecutionTraits>::readPK(LocalDocumentId& documentId,
     TRI_ASSERT(reader.doc);
     commonReadPK(reader.pkReader, reader.doc->value, documentId);
   }
-
-  return false;
+  return true;
 }
 
 template<typename ExecutionTraits>
@@ -1157,7 +1156,7 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
     size_t lastSegmentIdx = count;
     ColumnIterator pkReader;
     aql::QueryContext& query = this->_infos.getQuery();
-    std::shared_ptr<arangodb::LogicalCollection> collection;
+    arangodb::LogicalCollection const* collection;
     auto orderIt = pkReadingOrder.begin();
     iresearch::ViewSegment const* segment{};
     while (orderIt != pkReadingOrder.end()) {
@@ -1166,22 +1165,20 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
       auto const segmentIdx = value.readerOffset();
       if (lastSegmentIdx != segmentIdx) {
         lastSegmentIdx = segmentIdx;
+        collection = &this->_reader->collection(lastSegmentIdx);
         auto& segmentReader = (*this->_reader)[lastSegmentIdx];
         auto pkIt = ::pkColumn(segmentReader);
-        pkReader.itr.reset();
-        DataSourceId const cid = this->_reader->cid(lastSegmentIdx);
-        collection = lookupCollection(this->_trx, cid, query);
-        segment = &this->_reader->segment(segmentIdx);
-        if (ADB_UNLIKELY(!pkIt || !collection)) {
+        if (ADB_UNLIKELY(!pkIt)) {
           LOG_TOPIC("bd02b", WARN, arangodb::iresearch::TOPIC)
-              << "encountered a sub-reader without a primary key column or "
-                 "without the collection while "
+              << "encountered a sub-reader without a primary key column "
                  "executing a query, ignoring";
           while ((++orderIt) != pkReadingOrder.end() &&
                  *orderIt == lastSegmentIdx) {
           }
           continue;
         }
+        pkReader.itr.reset();
+        segment = &this->_reader->segment(segmentIdx);
         ::resetColumn(pkReader, std::move(pkIt));
         if constexpr ((ExecutionTraits::MaterializeType &
                        MaterializeType::UseStoredValues) ==
@@ -1760,23 +1757,10 @@ void IResearchViewMergeExecutor<ExecutionTraits>::reset(
         numScores = this->infos().scorers().size();
       }
     }
-    std::shared_ptr<arangodb::LogicalCollection> collection{nullptr};
+    arangodb::LogicalCollection const* collection{nullptr};
     irs::doc_iterator::ptr pkReader;
     if constexpr (Base::isMaterialized) {
-      DataSourceId const cid = this->_reader->cid(i);
-      aql::QueryContext& query = this->_infos.getQuery();
-      collection = lookupCollection(this->_trx, cid, query);
-      if (!collection) {
-        std::stringstream msg;
-        msg << "failed to find collection while reading document from "
-               "arangosearch view, cid '"
-            << cid.id() << "'";
-        query.warnings().registerWarning(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                         msg.str());
-
-        // We don't have a collection, skip the current segment.
-        continue;
-      }
+      collection = &this->_reader->collection(i);
       pkReader = ::pkColumn(segment);
       if (ADB_UNLIKELY(!pkReader)) {
         LOG_TOPIC("ee041", WARN, arangodb::iresearch::TOPIC)
@@ -1799,7 +1783,7 @@ void IResearchViewMergeExecutor<ExecutionTraits>::reset(
       auto& sortReader = this->_storedValuesReaders[i * storedValuesCount];
 
       _segments.emplace_back(std::move(it), *doc, *score, numScores,
-                             collection.get(), std::move(pkReader), i,
+                             collection, std::move(pkReader), i,
                              sortReader.itr.get(), sortReader.value, nullptr);
     } else {
       auto itr = ::sortColumn(segment);
@@ -1817,7 +1801,7 @@ void IResearchViewMergeExecutor<ExecutionTraits>::reset(
       }
 
       _segments.emplace_back(std::move(it), *doc, *score, numScores,
-                             collection.get(), std::move(pkReader), i,
+                             collection, std::move(pkReader), i,
                              itr.get(), sortValue, std::move(itr));
     }
   }

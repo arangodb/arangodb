@@ -122,8 +122,7 @@ class QueryGeoContains : public QueryTest {
       options.returnNew = true;
       for (auto& docs : allDocs) {
         SingleCollectionTransaction trx(
-            transaction::StandaloneContext::create(
-                _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+            transaction::StandaloneContext::Create(_vocbase),
             *collection, AccessMode::Type::WRITE);
         EXPECT_TRUE(trx.begin().ok());
 

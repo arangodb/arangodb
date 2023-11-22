@@ -355,7 +355,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
          .ascending = sort.ascending});
   }
   // all sort elements are covered by view's scorers
-  viewNode.setScorersSort(std::move(scoresSort),
+  viewNode.setHeapSort(std::move(scoresSort),
                           limitNode->offset() + limitNode->limit());
   sortNode->_reinsertInCluster = false;
   if (!arangodb::ServerState::instance()->isCoordinator()) {

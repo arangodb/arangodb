@@ -35,6 +35,7 @@
 #include "Transaction/Methods.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
+#include "utils/empty.hpp"
 
 #include <iosfwd>
 #include <memory>
@@ -171,8 +172,7 @@ class MaterializeExecutor {
   };
 
   void fillBuffer(AqlItemBlockInputRange& inputRange);
-  using BufferRecord = std::tuple<iresearch::SearchDoc, LocalDocumentId,
-                                  LogicalCollection const*>;
+  using BufferRecord = std::tuple<iresearch::SearchDoc, LocalDocumentId>;
   using BufferedRecordsContainer = std::vector<BufferRecord>;
   BufferedRecordsContainer _bufferedDocs;
 
@@ -181,10 +181,7 @@ class MaterializeExecutor {
   Infos const& _infos;
 
   ResourceUsageScope _memoryTracker;
-  std::conditional_t<
-      isSingleCollection, LogicalCollection const*,
-      containers::FlatHashMap<DataSourceId, LogicalCollection const*>>
-      _collection;
+  IRS_NO_UNIQUE_ADDRESS irs::utils::Need<isSingleCollection, LogicalCollection const*> _collection;
 };
 
 }  // namespace aql

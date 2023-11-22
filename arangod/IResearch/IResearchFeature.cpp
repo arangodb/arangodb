@@ -1255,11 +1255,15 @@ void IResearchFeature::start() {
     // on _startState->mutex is already destroyed here!
     _startState = nullptr;
   }
-
-  _searchExecutionPool.setLimit(_searchExecutionThreadsLimit);
-  LOG_TOPIC("71efd", INFO, arangodb::iresearch::TOPIC)
-      << "ArangoSearch execution parallel threads limit: "
-      << _searchExecutionThreadsLimit;
+  if (ServerState::instance()->isDBServer() ||
+      ServerState::instance()->isSingleServer()) {
+    if (_searchExecutionThreadsLimit) {
+      _searchExecutionPool.setLimit(_searchExecutionThreadsLimit);
+    }
+    LOG_TOPIC("71efd", INFO, arangodb::iresearch::TOPIC)
+        << "ArangoSearch execution parallel threads limit: "
+        << _searchExecutionThreadsLimit;
+  }
   _running.store(true);
 }
 

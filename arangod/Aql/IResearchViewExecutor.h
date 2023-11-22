@@ -667,7 +667,6 @@ class IResearchViewExecutor
 union DocumentValue {
   irs::doc_id_t docId;
   LocalDocumentId id{};
-  size_t result;
 };
 
 struct ExecutorValue {
@@ -703,9 +702,7 @@ struct ExecutorValue {
     return _value;
   }
 
-  LogicalCollection* collection{};
-
- protected:
+protected:
   DocumentValue _value{};
   
   union {
