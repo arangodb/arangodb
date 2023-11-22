@@ -122,8 +122,8 @@ class QueryGeoContains : public QueryTest {
       options.returnNew = true;
       for (auto& docs : allDocs) {
         SingleCollectionTransaction trx(
-            transaction::StandaloneContext::Create(_vocbase),
-            *collection, AccessMode::Type::WRITE);
+            transaction::StandaloneContext::Create(_vocbase), *collection,
+            AccessMode::Type::WRITE);
         EXPECT_TRUE(trx.begin().ok());
 
         for (auto doc : VPackArrayIterator(docs->slice())) {

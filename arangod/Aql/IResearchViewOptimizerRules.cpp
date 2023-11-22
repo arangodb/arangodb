@@ -356,7 +356,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   }
   // all sort elements are covered by view's scorers
   viewNode.setHeapSort(std::move(scoresSort),
-                          limitNode->offset() + limitNode->limit());
+                       limitNode->offset() + limitNode->limit());
   sortNode->_reinsertInCluster = false;
   if (!arangodb::ServerState::instance()->isCoordinator()) {
     // in cluster node will be unlinked later by 'distributeSortToClusterRule'

@@ -292,8 +292,7 @@ class IndexReadBuffer {
     }
   }
 
-  void pushSortedValue(ValueType&& value,
-                       std::span<float_t const> scores);
+  void pushSortedValue(ValueType&& value, std::span<float_t const> scores);
 
   void finalizeHeapSort();
   // A note on the scores: instead of saving an array of AqlValues, we could
@@ -687,7 +686,6 @@ struct ExecutorValue {
 #endif
   }
 
-
   [[nodiscard]] iresearch::ViewSegment const* segment() const noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_state != State::IResearch);
@@ -702,9 +700,9 @@ struct ExecutorValue {
     return _value;
   }
 
-protected:
+ protected:
   DocumentValue _value{};
-  
+
   union {
     size_t offset{};
     iresearch::ViewSegment const* segment;

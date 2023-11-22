@@ -108,7 +108,7 @@ void MaterializeExecutor<T, localDocumentId>::fillBuffer(
       auto const buf =
           block->getValueReference(i, searchDocRegId).slice().stringView();
       auto searchDoc = iresearch::SearchDoc::decode(buf);
-      _bufferedDocs.push_back( std::make_tuple(searchDoc, LocalDocumentId{}));
+      _bufferedDocs.push_back(std::make_tuple(searchDoc, LocalDocumentId{}));
     }
   };
 

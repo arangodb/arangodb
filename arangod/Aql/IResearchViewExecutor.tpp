@@ -125,8 +125,7 @@ lookupCollection(arangodb::transaction::Methods& trx, DataSourceId cid,
 }
 
 [[maybe_unused]] inline void resetColumn(
-    ColumnIterator& column,
-                        irs::doc_iterator::ptr&& itr) noexcept {
+    ColumnIterator& column, irs::doc_iterator::ptr&& itr) noexcept {
   TRI_ASSERT(itr);
   column.itr = std::move(itr);
   column.value = irs::get<irs::payload>(*column.itr);
@@ -135,13 +134,11 @@ lookupCollection(arangodb::transaction::Methods& trx, DataSourceId cid,
   }
 }
 
-
 class BufferHeapSortContext {
  public:
-  explicit BufferHeapSortContext(
-      size_t numScoreRegisters,
-      std::span<HeapSortElement const> scoresSort,
-      std::span<float_t const> scoreBuffer)
+  explicit BufferHeapSortContext(size_t numScoreRegisters,
+                                 std::span<HeapSortElement const> scoresSort,
+                                 std::span<float_t const> scoreBuffer)
       : _numScoreRegisters(numScoreRegisters),
         _heapSort(scoresSort),
         _scoreBuffer(scoreBuffer) {}
@@ -152,7 +149,7 @@ class BufferHeapSortContext {
     for (auto const& cmp : _heapSort) {
       if (lhs_scores[cmp.source] != rhs_scores[cmp.source]) {
         return cmp.ascending ? lhs_scores[cmp.source] < rhs_scores[cmp.source]
-                          : lhs_scores[cmp.source] > rhs_scores[cmp.source];
+                             : lhs_scores[cmp.source] > rhs_scores[cmp.source];
       }
     }
     return false;
@@ -163,7 +160,7 @@ class BufferHeapSortContext {
     for (auto const& cmp : _heapSort) {
       if (lhs_scores[cmp.source] != rhs_scores[cmp.source]) {
         return cmp.ascending ? lhs_scores[cmp.source] < rhs_scores[cmp.source]
-                          : lhs_scores[cmp.source] > rhs_scores[cmp.source];
+                             : lhs_scores[cmp.source] > rhs_scores[cmp.source];
       }
     }
     return false;
@@ -323,7 +320,6 @@ IndexReadBuffer<ValueType, copyStored>::IndexReadBuffer(
   // FIXME(gnusi): reserve memory for vectors?
 }
 
-
 template<typename ValueType, bool copyStored>
 ScoreIterator IndexReadBuffer<ValueType, copyStored>::getScores(
     size_t idx) noexcept {
@@ -333,9 +329,8 @@ ScoreIterator IndexReadBuffer<ValueType, copyStored>::getScores(
 
 template<typename ValueType, bool copySorted>
 void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSort() {
-  std::sort(
-      _rows.begin(), _rows.end(),
-      BufferHeapSortContext{_numScoreRegisters, _heapSort, _scoreBuffer});
+  std::sort(_rows.begin(), _rows.end(),
+            BufferHeapSortContext{_numScoreRegisters, _heapSort, _scoreBuffer});
   if (_heapSizeLeft) {
     // heap was not filled up to the limit. So fill buffer here.
     _storedValuesBuffer.resize(_keyBuffer.size() * _storedValuesCount);
@@ -344,8 +339,7 @@ void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSort() {
 
 template<typename ValueType, bool copySorted>
 void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
-    ValueType&& value,
-    std::span<float_t const> scores) {
+    ValueType&& value, std::span<float_t const> scores) {
   BufferHeapSortContext sortContext(_numScoreRegisters, _heapSort,
                                     _scoreBuffer);
   TRI_ASSERT(_maxSize);
@@ -427,8 +421,7 @@ bool IndexReadBuffer<ValueType, copyStored>::empty() const noexcept {
 }
 
 template<typename ValueType, bool copyStored>
-size_t
-IndexReadBuffer<ValueType, copyStored>::pop_front() noexcept {
+size_t IndexReadBuffer<ValueType, copyStored>::pop_front() noexcept {
   TRI_ASSERT(!empty());
   TRI_ASSERT(_keyBaseIdx < _keyBuffer.size());
   assertSizeCoherence();
@@ -776,19 +769,17 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRowImpl(
     auto reg = this->infos().searchDocIdRegId();
     TRI_ASSERT(reg.isValid());
 
-    this->writeSearchDoc(
-        ctx, this->_indexReadBuffer.getSearchDoc(idx), reg);
+    this->writeSearchDoc(ctx, this->_indexReadBuffer.getSearchDoc(idx), reg);
   }
   if constexpr (isMaterialized) {
     TRI_ASSERT(value.value().id.isSet());
     TRI_ASSERT(value.segment());
     // read document from underlying storage engine, if we got an id
     if (ADB_UNLIKELY(
-            !value.segment()->collection->getPhysical()
-                 ->readFromSnapshot(&_trx, value.value().id, ctx.callback,
-                                             ReadOwnWrites::no,
-                                             *value.segment()->snapshot))
-                          .ok()) {
+            !value.segment()->collection->getPhysical()->readFromSnapshot(
+                &_trx, value.value().id, ctx.callback, ReadOwnWrites::no,
+                *value.segment()->snapshot))
+            .ok()) {
       return false;
     }
   }
@@ -1041,8 +1032,7 @@ void IResearchViewHeapSortExecutor<ExecutionTraits>::reset(
 
 template<typename ExecutionTraits>
 bool IResearchViewHeapSortExecutor<ExecutionTraits>::writeRow(
-    IResearchViewHeapSortExecutor::ReadContext& ctx,
-    size_t idx) {
+    IResearchViewHeapSortExecutor::ReadContext& ctx, size_t idx) {
   static_assert(!Base::isLateMaterialized,
                 "HeapSort superseeds LateMaterialization");
   auto const& value = this->_indexReadBuffer.getValue(idx);
@@ -1782,9 +1772,9 @@ void IResearchViewMergeExecutor<ExecutionTraits>::reset(
       TRI_ASSERT(i * storedValuesCount < this->_storedValuesReaders.size());
       auto& sortReader = this->_storedValuesReaders[i * storedValuesCount];
 
-      _segments.emplace_back(std::move(it), *doc, *score, numScores,
-                             collection, std::move(pkReader), i,
-                             sortReader.itr.get(), sortReader.value, nullptr);
+      _segments.emplace_back(std::move(it), *doc, *score, numScores, collection,
+                             std::move(pkReader), i, sortReader.itr.get(),
+                             sortReader.value, nullptr);
     } else {
       auto itr = ::sortColumn(segment);
 
@@ -1800,9 +1790,9 @@ void IResearchViewMergeExecutor<ExecutionTraits>::reset(
         sortValue = &NoPayload;
       }
 
-      _segments.emplace_back(std::move(it), *doc, *score, numScores,
-                             collection, std::move(pkReader), i,
-                             itr.get(), sortValue, std::move(itr));
+      _segments.emplace_back(std::move(it), *doc, *score, numScores, collection,
+                             std::move(pkReader), i, itr.get(), sortValue,
+                             std::move(itr));
     }
   }
 

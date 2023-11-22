@@ -3074,8 +3074,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
           *queryScores.plan(), nodeSlice);
       EXPECT_EQ(node.empty(), deserialized.empty());
       EXPECT_EQ(deserialized.getHeapSortLimit(), 42);
-      EXPECT_EQ(node.getHeapSort().size(),
-                deserialized.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSort().size(), deserialized.getHeapSort().size());
       auto orig = node.getHeapSort();
       auto clone = deserialized.getHeapSort();
       EXPECT_TRUE(
@@ -3091,8 +3090,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
           dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
               *deserializedNode);
       EXPECT_EQ(deserialized.getHeapSortLimit(), 42);
-      EXPECT_EQ(node.getHeapSort().size(),
-                deserialized.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSort().size(), deserialized.getHeapSort().size());
       auto orig = node.getHeapSort();
       auto clone = deserialized.getHeapSort();
       EXPECT_TRUE(

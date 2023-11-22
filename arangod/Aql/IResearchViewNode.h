@@ -77,7 +77,6 @@ enum class CountApproximate {
 };
 
 struct HeapSortElement {
-
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   auto operator<=>(HeapSortElement const&) const noexcept = default;
 #endif
@@ -225,8 +224,7 @@ class IResearchViewNode final : public aql::ExecutionNode {
   //   sort condition
   std::pair<bool, bool> volatility(bool force = false) const;
 
-  void setHeapSort(std::vector<HeapSortElement>&& sort,
-                      size_t limit) {
+  void setHeapSort(std::vector<HeapSortElement>&& sort, size_t limit) {
     _heapSort = std::move(sort);
     _heapSortLimit = limit;
   }

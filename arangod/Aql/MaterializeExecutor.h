@@ -181,7 +181,9 @@ class MaterializeExecutor {
   Infos const& _infos;
 
   ResourceUsageScope _memoryTracker;
-  IRS_NO_UNIQUE_ADDRESS irs::utils::Need<isSingleCollection, LogicalCollection const*> _collection;
+  IRS_NO_UNIQUE_ADDRESS
+      irs::utils::Need<isSingleCollection, LogicalCollection const*>
+          _collection;
 };
 
 }  // namespace aql

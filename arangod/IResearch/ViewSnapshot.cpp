@@ -123,8 +123,7 @@ void ViewSnapshotCookie::compute(bool sync, std::string_view name) {
     auto const& reader = _readers[i];
     auto const& snapshot = reader->_snapshot;
     for (auto const& segment : reader->_reader) {
-      _segments.emplace_back(_links[i]->index().collection(), 
-                             *snapshot.get(),
+      _segments.emplace_back(_links[i]->index().collection(), *snapshot.get(),
                              segment);
     }
     _live_docs_count += reader->_reader.live_docs_count();

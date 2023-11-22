@@ -49,9 +49,7 @@ struct IResearchExecutionPool final : public metrics::Gauge<uint64_t> {
 
   using Pool = irs::async_utils::ThreadPool<false>;
 
-  bool run(Pool::Func&& fn) {
-    return _pool.run(std::forward<Pool::Func>(fn));
-  }
+  bool run(Pool::Func&& fn) { return _pool.run(std::forward<Pool::Func>(fn)); }
 
  private:
   Pool _pool;
