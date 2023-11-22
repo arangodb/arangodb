@@ -26,12 +26,11 @@
 #include <memory>
 #include <type_traits>
 #include <unordered_set>
-#include "Actor/DistributedActorPID.h"
-#include "Actor/IScheduler.h"
 #include "fmt/format.h"
 #include "velocypack/SharedSlice.h"
 #include "VelocypackUtils/VelocyPackStringLiteral.h"
 
+#include "Actor/IScheduler.h"
 #include "Actor/DistributedRuntime.h"
 #include "Actor/LocalRuntime.h"
 
@@ -70,18 +69,18 @@ struct RuntimeFactor;
 
 template<>
 struct RuntimeFactor<DistributedRuntime> {
-  static constexpr ServerID serverId = "PRMR-1234";
+  static ServerID serverId() { return "PRMR-1234"; }
 
   static auto create(std::shared_ptr<IScheduler> scheduler)
       -> std::shared_ptr<DistributedRuntime> {
     auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
     return std::make_shared<DistributedRuntime>(
-        serverId, "DistributedRuntimeTest", scheduler, dispatcher);
+        serverId(), "DistributedRuntimeTest", scheduler, dispatcher);
   }
 
   static auto makePid(ActorID id) {
     return DistributedActorPID{
-        .server = serverId, .database = "database", .id = id};
+        .server = serverId(), .database = "database", .id = id};
   }
 };
 
