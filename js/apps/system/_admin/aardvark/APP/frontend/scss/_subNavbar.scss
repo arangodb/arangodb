@@ -35,6 +35,10 @@
     &.disabled {
       cursor: not-allowed;
 
+      a {
+        color: rgba(51, 51, 51, .6);
+      }
+
       &:hover {
         a {
           color: rgba(51, 51, 51, .6);
@@ -44,7 +48,7 @@
 
     &:hover {
       a {
-        color: rgba(51, 51, 51, 1);
+        color: black;
         -moz-transition: all .2s ease-in;
         -o-transition: all .2s ease-in;
         -webkit-transition: all .2s ease-in;
@@ -53,7 +57,7 @@
     }
 
     a {
-      color: rgba(51, 51, 51, .6);
+      color: black;
       -moz-transition: all .2s ease-in;
       -o-transition: all .2s ease-in;
       -webkit-transition: all .2s ease-in;
@@ -130,6 +134,10 @@
       &.disabled {
         cursor: not-allowed;
 
+        a {
+          color: rgba(51, 51, 51, .6);
+        }
+
         &:hover {
           a {
             color: rgba(51, 51, 51, .6);
@@ -139,7 +147,7 @@
 
       &:hover {
         a {
-          color: rgba(51, 51, 51, 1);
+          color: black;
           -moz-transition: all .2s ease-in;
           -o-transition: all .2s ease-in;
           -webkit-transition: all .2s ease-in;
@@ -148,7 +156,7 @@
       }
 
       a {
-        color: rgba(51, 51, 51, .6);
+        color: black;
         -moz-transition: all .2s ease-in;
         -o-transition: all .2s ease-in;
         -webkit-transition: all .2s ease-in;
