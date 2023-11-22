@@ -292,7 +292,7 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
 
     // evaluate expression
     bool satifiesCondition =
-        evaluateVertexExpression(vertexExpr, vertexBuilder.slice());
+        evaluateExpression(vertexExpr, vertexBuilder.slice());
     if (!satifiesCondition) {
       if (_options.bfsResultHasToIncludeFirstVertex() && step.isFirst()) {
         res.combine(ValidationResult::Type::PRUNE);
@@ -309,7 +309,7 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
 
       _provider.addEdgeToBuilder(step.getEdge(), edgeBuilder);
       bool satisfiesCondition =
-          evaluateVertexExpression(edgeExpr, edgeBuilder.slice());
+          evaluateExpression(edgeExpr, edgeBuilder.slice());
       if (!satisfiesCondition) {
         return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
       }
@@ -354,8 +354,8 @@ template<class ProviderType, class PathStore,
          VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness>
 auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
-    evaluateVertexExpression(arangodb::aql::Expression* expression,
-                             VPackSlice value) -> bool {
+    evaluateExpression(arangodb::aql::Expression* expression, VPackSlice value)
+        -> bool {
   if (expression == nullptr) {
     return true;
   }
