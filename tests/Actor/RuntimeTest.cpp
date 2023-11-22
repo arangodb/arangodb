@@ -28,8 +28,8 @@
 #include "velocypack/SharedSlice.h"
 #include "VelocypackUtils/VelocyPackStringLiteral.h"
 
-#include "Actor/DistributedActorPID.h"
 #include "Actor/DistributedRuntime.h"
+#include "Actor/LocalRuntime.h"
 
 #include "Actors/FinishingActor.h"
 #include "Actors/MonitoringActor.h"
@@ -56,9 +56,9 @@ struct EmptyExternalDispatcher : IExternalDispatcher {
 };
 
 template<typename T>
-class DistributedRuntimeTest : public testing::Test {
+class Runtime : public testing::Test {
  public:
-  DistributedRuntimeTest() : scheduler{std::make_shared<T>()} {
+  Runtime() : scheduler{std::make_shared<T>()} {
     scheduler->start(number_of_threads);
   }
 
@@ -66,9 +66,9 @@ class DistributedRuntimeTest : public testing::Test {
   size_t number_of_threads = 128;
 };
 using SchedulerTypes = ::testing::Types<MockScheduler, ThreadPoolScheduler>;
-TYPED_TEST_SUITE(DistributedRuntimeTest, SchedulerTypes);
+TYPED_TEST_SUITE(Runtime, SchedulerTypes);
 
-TYPED_TEST(DistributedRuntimeTest, formats_runtime_and_actor_state) {
+TYPED_TEST(Runtime, formats_runtime_and_actor_state) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
       ServerID{"PRMR-1234"}, "RuntimeTest", this->scheduler, dispatcher);
@@ -87,8 +87,7 @@ TYPED_TEST(DistributedRuntimeTest, formats_runtime_and_actor_state) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(DistributedRuntimeTest,
-           serializes_an_actor_including_its_actor_state) {
+TYPED_TEST(Runtime, serializes_an_actor_including_its_actor_state) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
       ServerID{"PRMR-1234"}, "RuntimeTest", this->scheduler, dispatcher);
@@ -104,7 +103,7 @@ TYPED_TEST(DistributedRuntimeTest,
   runtime->softShutdown();
 }
 
-TYPED_TEST(DistributedRuntimeTest, spawns_actor) {
+TYPED_TEST(Runtime, spawns_actor) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
@@ -118,7 +117,7 @@ TYPED_TEST(DistributedRuntimeTest, spawns_actor) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(DistributedRuntimeTest, sends_initial_message_when_spawning_actor) {
+TYPED_TEST(Runtime, sends_initial_message_when_spawning_actor) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
@@ -133,7 +132,7 @@ TYPED_TEST(DistributedRuntimeTest, sends_initial_message_when_spawning_actor) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(DistributedRuntimeTest, gives_all_existing_actor_ids) {
+TYPED_TEST(Runtime, gives_all_existing_actor_ids) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
@@ -154,7 +153,7 @@ TYPED_TEST(DistributedRuntimeTest, gives_all_existing_actor_ids) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(DistributedRuntimeTest, sends_message_to_an_actor) {
+TYPED_TEST(Runtime, sends_message_to_an_actor) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
@@ -185,7 +184,7 @@ auto inspect(Inspector& f, SomeMessages& x) {
       arangodb::inspection::type<SomeMessage>("someMessage"));
 }
 TYPED_TEST(
-    DistributedRuntimeTest,
+    Runtime,
     actor_receiving_wrong_message_type_sends_back_unknown_error_message) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
@@ -203,7 +202,7 @@ TYPED_TEST(
 }
 
 TYPED_TEST(
-    DistributedRuntimeTest,
+    Runtime,
     actor_receives_actor_not_found_message_after_trying_to_send_message_to_non_existent_actor) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
@@ -225,7 +224,7 @@ TYPED_TEST(
   runtime->softShutdown();
 }
 
-TYPED_TEST(DistributedRuntimeTest, ping_pong_game) {
+TYPED_TEST(Runtime, ping_pong_game) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
@@ -248,7 +247,7 @@ TYPED_TEST(DistributedRuntimeTest, ping_pong_game) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(DistributedRuntimeTest, spawn_game) {
+TYPED_TEST(Runtime, spawn_game) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
@@ -267,7 +266,7 @@ TYPED_TEST(DistributedRuntimeTest, spawn_game) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(DistributedRuntimeTest, finishes_actor_when_actor_says_so) {
+TYPED_TEST(Runtime, finishes_actor_when_actor_says_so) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
@@ -284,8 +283,7 @@ TYPED_TEST(DistributedRuntimeTest, finishes_actor_when_actor_says_so) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(DistributedRuntimeTest,
-           finished_actor_automatically_removes_itself) {
+TYPED_TEST(Runtime, finished_actor_automatically_removes_itself) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
@@ -301,8 +299,7 @@ TYPED_TEST(DistributedRuntimeTest,
   ASSERT_EQ(runtime->actors.size(), 0);
 }
 
-TYPED_TEST(DistributedRuntimeTest,
-           finished_actors_automatically_remove_themselves) {
+TYPED_TEST(Runtime, finished_actors_automatically_remove_themselves) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
@@ -336,7 +333,7 @@ TYPED_TEST(DistributedRuntimeTest,
   ASSERT_EQ(runtime->actors.size(), 0);
 }
 
-TYPED_TEST(DistributedRuntimeTest,
+TYPED_TEST(Runtime,
            finishes_and_garbage_collects_all_actors_when_shutting_down) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
@@ -359,7 +356,7 @@ TYPED_TEST(DistributedRuntimeTest,
   ASSERT_EQ(runtime->actors.size(), 0);
 }
 
-TYPED_TEST(DistributedRuntimeTest, sends_down_message_to_monitoring_actors) {
+TYPED_TEST(Runtime, sends_down_message_to_monitoring_actors) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
@@ -443,7 +440,7 @@ TYPED_TEST(DistributedRuntimeTest, sends_down_message_to_monitoring_actors) {
 }
 
 TYPED_TEST(
-    DistributedRuntimeTest,
+    Runtime,
     trying_to_monitor_an_already_terminated_actor_immediately_sends_ActorDown_message) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
@@ -466,7 +463,7 @@ TYPED_TEST(
 }
 
 TYPED_TEST(
-    DistributedRuntimeTest,
+    Runtime,
     trying_to_dispatching_a_message_to_a_non_existing_actor_does_not_crash_if_sender_no_longer_exists) {
   auto serverID = ServerID{"PRMR-1234"};
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
@@ -483,7 +480,7 @@ TYPED_TEST(
   runtime->softShutdown();
 }
 
-TEST(DistributedRuntimeTest, sends_messages_between_lots_of_actors) {
+TEST(Runtime, sends_messages_between_lots_of_actors) {
   auto serverID = ServerID{"PRMR-1234"};
   auto scheduler = std::make_shared<ThreadPoolScheduler>();
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
