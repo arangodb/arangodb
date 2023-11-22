@@ -258,7 +258,7 @@
 
       this.userCollection = new window.ArangoUsers();
        
-      window.Skeloading = new window.SkeLoading();
+      window.SkeletonLoader = new window.SkeletonLoader();
       this.initOnce = _.once(function () {
         const callback = function (error, isCoordinator) {
           if (isCoordinator === true) {
@@ -715,7 +715,7 @@
     cIndices: function (colname) {
       const self = this;
 
-      window.Skeloading.render()
+      window.SkeletonLoader.render()
       this.checkUser();
 
       this.init.then(() => {
@@ -740,7 +740,7 @@
     cSettings: function (colname) {
       const self = this;
 
-      window.Skeloading.render()
+      window.SkeletonLoader.render()
       this.checkUser();
 
       this.init.then(() => {
@@ -762,7 +762,7 @@
     cComputedValues: function (colname) {
       const self = this;
 
-      window.Skeloading.render()
+      window.SkeletonLoader.render()
       this.checkUser();
 
       this.init.then(() => {
@@ -783,7 +783,7 @@
 
     cSchema: function (colname) {
       const self = this;
-      window.Skeloading.render()
+      window.SkeletonLoader.render()
 
       this.checkUser();
 
@@ -806,7 +806,7 @@
     cInfo: function (colname) {
       const self = this;
 
-      window.Skeloading.render()
+      window.SkeletonLoader.render()
       this.checkUser();
       
       this.init.then(() => {
@@ -826,7 +826,7 @@
     },
 
     documents: function (colid, pageid) {
-      window.Skeloading.render()
+      window.SkeletonLoader.render()
       this.checkUser();
 
       this.init.then(() => {

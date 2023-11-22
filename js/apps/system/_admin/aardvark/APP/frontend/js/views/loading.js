@@ -2,7 +2,7 @@
 
 (function () {
     'use strict';
-    window.SkeLoading = Backbone.View.extend({
+    window.SkeletonLoader = Backbone.View.extend({
         el: '#content',
         readOnly: false,
         template: templateEngine.createTemplate('loading.ejs'),
