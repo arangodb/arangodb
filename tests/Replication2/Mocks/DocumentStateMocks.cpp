@@ -50,7 +50,7 @@ MockDocumentStateTransactionHandler::MockDocumentStateTransactionHandler(
       .WillByDefault(
           [this](TransactionId tid) { return _real->removeTransaction(tid); });
   ON_CALL(*this, getUnfinishedTransactions())
-      .WillByDefault([this]() -> TransactionMap const& {
+      .WillByDefault([this]() -> TransactionMap {
         return _real->getUnfinishedTransactions();
       });
   ON_CALL(*this, getTransactionsForShard(testing::_))

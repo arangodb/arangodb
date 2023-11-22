@@ -247,8 +247,7 @@ struct MockDocumentStateTransactionHandler
   MOCK_METHOD(void, removeTransaction, (TransactionId tid), (override));
   MOCK_METHOD(std::vector<TransactionId>, getTransactionsForShard,
               (ShardID const&), (override));
-  MOCK_METHOD(TransactionMap const&, getUnfinishedTransactions, (),
-              (const, override));
+  MOCK_METHOD(TransactionMap, getUnfinishedTransactions, (), (const, override));
 
  private:
   std::shared_ptr<replicated_state::document::IDocumentStateTransactionHandler>

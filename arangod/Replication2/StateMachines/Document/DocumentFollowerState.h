@@ -40,6 +40,15 @@ struct IDocumentStateLeaderInterface;
 struct IDocumentStateNetworkHandler;
 struct SnapshotBatch;
 
+struct Handlers {
+  Handlers(
+      std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
+      TRI_vocbase_t& vocbase, GlobalLogIdentifier gid);
+  std::shared_ptr<IDocumentStateShardHandler> const shardHandler;
+  std::shared_ptr<IDocumentStateTransactionHandler> const transactionHandler;
+  std::shared_ptr<IDocumentStateErrorHandler> const errorHandler;
+};
+
 struct DocumentFollowerState
     : replicated_state::IReplicatedFollowerState<DocumentState>,
       std::enable_shared_from_this<DocumentFollowerState> {
@@ -80,52 +89,55 @@ struct DocumentFollowerState
 
  private:
   struct GuardedData {
-    explicit GuardedData(
-        std::unique_ptr<DocumentCore> core,
-        std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
-        LoggerContext const& loggerContext,
-        std::shared_ptr<IDocumentStateErrorHandler> errorHandler);
+    explicit GuardedData(std::unique_ptr<DocumentCore> core,
+                         LoggerContext const& loggerContext);
 
     LoggerContext const& loggerContext;
-    std::shared_ptr<IDocumentStateErrorHandler> errorHandler;
 
     [[nodiscard]] bool didResign() const noexcept { return core == nullptr; }
 
-    auto applyEntry(ModifiesUserTransaction auto const&, LogIndex)
+    auto applyEntry(Handlers const& handlers,
+                    ModifiesUserTransaction auto const&, LogIndex)
         -> ResultT<std::optional<LogIndex>>;
-    auto applyEntry(ReplicatedOperation::IntermediateCommit const&, LogIndex)
+    auto applyEntry(Handlers const& handlers,
+                    ReplicatedOperation::IntermediateCommit const&, LogIndex)
         -> ResultT<std::optional<LogIndex>>;
-    auto applyEntry(FinishesUserTransaction auto const&, LogIndex)
+    auto applyEntry(Handlers const& handlers,
+                    FinishesUserTransaction auto const&, LogIndex)
         -> ResultT<std::optional<LogIndex>>;
-    auto applyEntry(ReplicatedOperation::AbortAllOngoingTrx const&, LogIndex)
+    auto applyEntry(Handlers const& handlers,
+                    ReplicatedOperation::AbortAllOngoingTrx const&, LogIndex)
         -> ResultT<std::optional<LogIndex>>;
-    auto applyEntry(ReplicatedOperation::ModifyShard const&, LogIndex)
+    auto applyEntry(Handlers const& handlers,
+                    ReplicatedOperation::ModifyShard const&, LogIndex)
         -> ResultT<std::optional<LogIndex>>;
-    auto applyEntry(ReplicatedOperation::DropShard const&, LogIndex)
+    auto applyEntry(Handlers const& handlers,
+                    ReplicatedOperation::DropShard const&, LogIndex)
         -> ResultT<std::optional<LogIndex>>;
-    auto applyEntry(ReplicatedOperation::CreateShard const&, LogIndex)
+    auto applyEntry(Handlers const& handlers,
+                    ReplicatedOperation::CreateShard const&, LogIndex)
         -> ResultT<std::optional<LogIndex>>;
-    auto applyEntry(ReplicatedOperation::CreateIndex const&, LogIndex)
+    auto applyEntry(Handlers const& handlers,
+                    ReplicatedOperation::CreateIndex const&, LogIndex)
         -> ResultT<std::optional<LogIndex>>;
-    auto applyEntry(ReplicatedOperation::DropIndex const&, LogIndex)
+    auto applyEntry(Handlers const& handlers,
+                    ReplicatedOperation::DropIndex const&, LogIndex)
         -> ResultT<std::optional<LogIndex>>;
 
     template<class T>
     auto applyAndRelease(
-        T const& op, std::optional<LogIndex> index = std::nullopt,
+        Handlers const& handlers, T const& op,
+        std::optional<LogIndex> index = std::nullopt,
         std::optional<fu2::unique_function<void(Result&&)>> fun = std::nullopt)
         -> ResultT<std::optional<LogIndex>>;
 
     std::unique_ptr<DocumentCore> core;
     std::uint64_t currentSnapshotVersion;
-    std::shared_ptr<IDocumentStateShardHandler> shardHandler;
-    std::shared_ptr<IDocumentStateTransactionHandler> transactionHandler;
     ActiveTransactionsQueue activeTransactions;
   };
 
-  std::shared_ptr<IDocumentStateNetworkHandler> _networkHandler;
-  std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
-  std::shared_ptr<IDocumentStateErrorHandler> _errorHandler;
+  std::shared_ptr<IDocumentStateNetworkHandler> const _networkHandler;
+  Handlers const _handlers;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
 
   std::atomic<bool> _resigning{false};  // Allows for a quicker shutdown of the

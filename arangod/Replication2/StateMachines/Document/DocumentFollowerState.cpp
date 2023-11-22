@@ -37,19 +37,19 @@
 
 namespace arangodb::replication2::replicated_state::document {
 
-DocumentFollowerState::GuardedData::GuardedData(
-    std::unique_ptr<DocumentCore> core,
+Handlers::Handlers(
     std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
-    LoggerContext const& loggerContext,
-    std::shared_ptr<IDocumentStateErrorHandler> errorHandler)
-    : loggerContext(loggerContext),
-      errorHandler(std::move(errorHandler)),
-      core(std::move(core)),
-      currentSnapshotVersion{0},
-      shardHandler(handlersFactory->createShardHandler(this->core->getVocbase(),
-                                                       this->core->gid)),
+    TRI_vocbase_t& vocbase, GlobalLogIdentifier gid)
+    : shardHandler(handlersFactory->createShardHandler(vocbase, gid)),
       transactionHandler(handlersFactory->createTransactionHandler(
-          this->core->getVocbase(), this->core->gid, shardHandler)) {}
+          vocbase, gid, shardHandler)),
+      errorHandler(handlersFactory->createErrorHandler(gid)) {}
+
+DocumentFollowerState::GuardedData::GuardedData(
+    std::unique_ptr<DocumentCore> core, LoggerContext const& loggerContext)
+    : loggerContext(loggerContext),
+      core(std::move(core)),
+      currentSnapshotVersion{0} {}
 
 DocumentFollowerState::DocumentFollowerState(
     std::unique_ptr<DocumentCore> core,
@@ -58,11 +58,8 @@ DocumentFollowerState::DocumentFollowerState(
       loggerContext(handlersFactory->createLogger(core->gid)
                         .with<logContextKeyStateComponent>("FollowerState")),
       _networkHandler(handlersFactory->createNetworkHandler(core->gid)),
-      _shardHandler(
-          handlersFactory->createShardHandler(core->getVocbase(), core->gid)),
-      _errorHandler(handlersFactory->createErrorHandler(core->gid)),
-      _guardedData(std::move(core), handlersFactory, loggerContext,
-                   _errorHandler) {}
+      _handlers(handlersFactory, core->getVocbase(), core->gid),
+      _guardedData(std::move(core), loggerContext) {}
 
 DocumentFollowerState::~DocumentFollowerState() = default;
 
@@ -73,7 +70,7 @@ auto DocumentFollowerState::resign() && noexcept
     ADB_PROD_ASSERT(!data.didResign())
         << "Follower " << gid << " already resigned!";
 
-    auto abortAllRes = data.transactionHandler->applyEntry(
+    auto abortAllRes = _handlers.transactionHandler->applyEntry(
         ReplicatedOperation::buildAbortAllOngoingTrxOperation());
     ADB_PROD_ASSERT(abortAllRes.ok())
         << "Failed to abort ongoing transactions while resigning follower "
@@ -88,7 +85,7 @@ auto DocumentFollowerState::resign() && noexcept
 
 auto DocumentFollowerState::getAssociatedShardList() const
     -> std::vector<ShardID> {
-  auto collections = _shardHandler->getAvailableShards();
+  auto collections = _handlers.shardHandler->getAvailableShards();
 
   std::vector<ShardID> shardIds;
   shardIds.reserve(collections.size());
@@ -110,7 +107,7 @@ auto DocumentFollowerState::acquireSnapshot(
           return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
         }
 
-        if (auto abortAllRes = data.transactionHandler->applyEntry(
+        if (auto abortAllRes = self->_handlers.transactionHandler->applyEntry(
                 ReplicatedOperation::buildAbortAllOngoingTrxOperation());
             abortAllRes.fail()) {
           LOG_CTX("c863a", ERR, self->loggerContext)
@@ -122,7 +119,7 @@ auto DocumentFollowerState::acquireSnapshot(
         LOG_CTX("529bb", DEBUG, self->loggerContext)
             << "All ongoing transactions aborted before acquiring snapshot";
 
-        if (auto dropAllRes = self->_shardHandler->dropAllShards();
+        if (auto dropAllRes = self->_handlers.shardHandler->dropAllShards();
             dropAllRes.fail()) {
           LOG_CTX("ae182", ERR, self->loggerContext)
               << "Failed to drop shards before acquiring snapshot: "
@@ -312,7 +309,8 @@ auto DocumentFollowerState::handleSnapshotTransfer(
                   << " operations: " << snapshotRes->operations;
 
               for (auto const& op : snapshotRes->operations) {
-                if (auto applyRes = data.transactionHandler->applyEntry(op);
+                if (auto applyRes =
+                        self->_handlers.transactionHandler->applyEntry(op);
                     applyRes.fail()) {
                   reportingFailure = true;
                   return applyRes;
@@ -375,14 +373,14 @@ auto DocumentFollowerState::applyEntries(
             auto [index, doc] = *entry;
 
             auto currentReleaseIndex = std::visit(
-                [&data, index = index](
+                [self, &data, index = index](
                     auto const& op) -> ResultT<std::optional<LogIndex>> {
-                  return data.applyEntry(op, index);
+                  return data.applyEntry(self->_handlers, op, index);
                 },
                 doc.getInnerOperation());
 
             if (currentReleaseIndex.fail()) {
-              TRI_ASSERT(self->_errorHandler
+              TRI_ASSERT(self->_handlers.errorHandler
                              ->handleOpResult(doc.getInnerOperation(),
                                               currentReleaseIndex.result())
                              .fail())
@@ -430,11 +428,11 @@ auto DocumentFollowerState::applyEntries(
 
 template<class T>
 auto DocumentFollowerState::GuardedData::applyAndRelease(
-    T const& op, std::optional<LogIndex> index,
+    Handlers const& handlers, T const& op, std::optional<LogIndex> index,
     std::optional<fu2::unique_function<void(Result&&)>> fun)
     -> ResultT<std::optional<LogIndex>> {
-  auto originalRes = transactionHandler->applyEntry(op);
-  auto res = errorHandler->handleOpResult(op, originalRes);
+  auto originalRes = handlers.transactionHandler->applyEntry(op);
+  auto res = handlers.errorHandler->handleOpResult(op, originalRes);
   if (res.fail()) {
     return res;
   }
@@ -452,11 +450,11 @@ auto DocumentFollowerState::GuardedData::applyAndRelease(
 }
 
 auto DocumentFollowerState::GuardedData::applyEntry(
-    ModifiesUserTransaction auto const& op, LogIndex index)
-    -> ResultT<std::optional<LogIndex>> {
+    Handlers const& handlers, ModifiesUserTransaction auto const& op,
+    LogIndex index) -> ResultT<std::optional<LogIndex>> {
   activeTransactions.markAsActive(op.tid, index);
   // Will not release the index until the transaction is finished
-  return applyAndRelease(op, std::nullopt, [&](Result&& res) {
+  return applyAndRelease(handlers, op, std::nullopt, [&](Result&& res) {
     if (res.fail()) {
       // If the transaction could not be applied, we have to mark it as inactive
       activeTransactions.markAsInactive(op.tid);
@@ -465,8 +463,8 @@ auto DocumentFollowerState::GuardedData::applyEntry(
 }
 
 auto DocumentFollowerState::GuardedData::applyEntry(
-    ReplicatedOperation::IntermediateCommit const& op, LogIndex)
-    -> ResultT<std::optional<LogIndex>> {
+    Handlers const& handlers, ReplicatedOperation::IntermediateCommit const& op,
+    LogIndex) -> ResultT<std::optional<LogIndex>> {
   if (!activeTransactions.getTransactions().contains(op.tid)) {
     LOG_CTX("b41dc", INFO, loggerContext)
         << "will not apply intermediate commit for transaction " << op.tid
@@ -478,12 +476,12 @@ auto DocumentFollowerState::GuardedData::applyEntry(
   // commit. However, we could release everything in this transaction up
   // to this point and update the start LogIndex of this transaction to
   // the current log index.
-  return applyAndRelease(op);
+  return applyAndRelease(handlers, op);
 }
 
 auto DocumentFollowerState::GuardedData::applyEntry(
-    FinishesUserTransaction auto const& op, LogIndex index)
-    -> ResultT<std::optional<LogIndex>> {
+    Handlers const& handlers, FinishesUserTransaction auto const& op,
+    LogIndex index) -> ResultT<std::optional<LogIndex>> {
   if (!activeTransactions.getTransactions().contains(op.tid)) {
     // Single commit/abort operations are possible.
     LOG_CTX("cf7ea", INFO, loggerContext)
@@ -492,29 +490,30 @@ auto DocumentFollowerState::GuardedData::applyEntry(
     return ResultT<std::optional<LogIndex>>{std::nullopt};
   }
 
-  return applyAndRelease(
-      op, index, [&](Result&&) { activeTransactions.markAsInactive(op.tid); });
+  return applyAndRelease(handlers, op, index, [&](Result&&) {
+    activeTransactions.markAsInactive(op.tid);
+  });
 }
 
 auto DocumentFollowerState::GuardedData::applyEntry(
-    ReplicatedOperation::AbortAllOngoingTrx const& op, LogIndex index)
-    -> ResultT<std::optional<LogIndex>> {
+    Handlers const& handlers, ReplicatedOperation::AbortAllOngoingTrx const& op,
+    LogIndex index) -> ResultT<std::optional<LogIndex>> {
   // Since everything was aborted, we can release all of it.
-  return applyAndRelease(op, index,
+  return applyAndRelease(handlers, op, index,
                          [&](Result&&) { activeTransactions.clear(); });
 }
 
 auto DocumentFollowerState::GuardedData::applyEntry(
-    ReplicatedOperation::DropShard const& op, LogIndex index)
-    -> ResultT<std::optional<LogIndex>> {
+    Handlers const& handlers, ReplicatedOperation::DropShard const& op,
+    LogIndex index) -> ResultT<std::optional<LogIndex>> {
   // We first have to abort all transactions for this shard.
   // This stunt may seem unnecessary, as the leader counterpart takes care of
   // this by replicating the abort operations. However, because we're currently
   // replicating the "DropShard" operation first, "Abort" operations come later.
   // Hence, we need to abort transactions manually for now.
   for (auto const& tid :
-       transactionHandler->getTransactionsForShard(op.shard)) {
-    auto abortRes = transactionHandler->applyEntry(
+       handlers.transactionHandler->getTransactionsForShard(op.shard)) {
+    auto abortRes = handlers.transactionHandler->applyEntry(
         ReplicatedOperation::buildAbortOperation(tid));
     if (abortRes.fail()) {
       LOG_CTX("aa36c", INFO, loggerContext)
@@ -525,38 +524,38 @@ auto DocumentFollowerState::GuardedData::applyEntry(
     activeTransactions.markAsInactive(tid);
   }
 
-  return applyAndRelease(op, index);
+  return applyAndRelease(handlers, op, index);
 }
 
 auto DocumentFollowerState::GuardedData::applyEntry(
-    ReplicatedOperation::CreateShard const& op, LogIndex index)
-    -> ResultT<std::optional<LogIndex>> {
-  return applyAndRelease(op, index);
+    Handlers const& handlers, ReplicatedOperation::CreateShard const& op,
+    LogIndex index) -> ResultT<std::optional<LogIndex>> {
+  return applyAndRelease(handlers, op, index);
 }
 
 auto DocumentFollowerState::GuardedData::applyEntry(
-    ReplicatedOperation::CreateIndex const& op, LogIndex index)
-    -> ResultT<std::optional<LogIndex>> {
-  return applyAndRelease(op, index);
+    Handlers const& handlers, ReplicatedOperation::CreateIndex const& op,
+    LogIndex index) -> ResultT<std::optional<LogIndex>> {
+  return applyAndRelease(handlers, op, index);
 }
 
 auto DocumentFollowerState::GuardedData::applyEntry(
-    ReplicatedOperation::DropIndex const& op, LogIndex index)
-    -> ResultT<std::optional<LogIndex>> {
-  return applyAndRelease(op, index);
+    Handlers const& handlers, ReplicatedOperation::DropIndex const& op,
+    LogIndex index) -> ResultT<std::optional<LogIndex>> {
+  return applyAndRelease(handlers, op, index);
 }
 
 auto DocumentFollowerState::GuardedData::applyEntry(
-    ReplicatedOperation::ModifyShard const& op, LogIndex index)
-    -> ResultT<std::optional<LogIndex>> {
+    Handlers const& handlers, ReplicatedOperation::ModifyShard const& op,
+    LogIndex index) -> ResultT<std::optional<LogIndex>> {
   // Note that locking the shard is not necessary on the follower.
   // However, we still do it for safety reasons.
   auto origin =
       transaction::OperationOriginREST{"follower collection properties update"};
-  auto trxLock = shardHandler->lockShard(op.shard, AccessMode::Type::EXCLUSIVE,
-                                         std::move(origin));
+  auto trxLock = handlers.shardHandler->lockShard(
+      op.shard, AccessMode::Type::EXCLUSIVE, std::move(origin));
   if (trxLock.fail()) {
-    auto res = errorHandler->handleOpResult(op, trxLock.result());
+    auto res = handlers.errorHandler->handleOpResult(op, trxLock.result());
 
     // If the shard was not found, we can ignore this operation and release it.
     if (res.ok()) {
@@ -567,7 +566,7 @@ auto DocumentFollowerState::GuardedData::applyEntry(
     return res;
   }
 
-  return applyAndRelease(op, index);
+  return applyAndRelease(handlers, op, index);
 }
 
 }  // namespace arangodb::replication2::replicated_state::document
