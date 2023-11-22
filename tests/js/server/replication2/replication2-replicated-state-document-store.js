@@ -1500,6 +1500,23 @@ const replicatedStateDocumentShardsSuite = function () {
       db._drop(collectionName);
     }),
 
+    testAgencyFoo: function () {
+      let collection = db._create(collectionName, {numberOfShards: 1, writeConcern: 2, replicationFactor: 3});
+      helper.agency.set("Testing/Hund", "Wuff");
+      for (let i = 1; i < 1000; ++i) {
+        // Create an index.
+        let rs = collection.ensureIndex({
+          name: `katze${i}`,
+          type: "persistent",
+          fields: [`foo${i}`],
+          unique: false,
+          inBackground: false
+        });
+        internal.print(rs);
+        internal.sleep(1);
+      }
+    },
+
     testCreateSingleCollection: function () {
       let collection = db._create(collectionName, {numberOfShards: 4, writeConcern: 2, replicationFactor: 3});
       checkCollectionShards(collection);

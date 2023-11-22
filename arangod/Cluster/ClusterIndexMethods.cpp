@@ -859,6 +859,31 @@ auto ensureIndexCoordinatorReplication2Inner(
                       __FILE__, ":", __LINE__));
   }
 
+  auto agencyRandomness = [&]() {
+    for (int i = 0; i < 100; ++i) {
+      AgencyComm agency(server);
+      auto agencyTestPath =
+          paths::arango()->str(arangodb::cluster::paths::SkipComponents(1)) +
+          "/Testing/testAgencyFoo/Begin";
+      auto res = agency.increment(agencyTestPath);
+      if (!res.successful()) {
+        LOG_DEVEL << "Failed to increment " << agencyTestPath << " "
+                  << res.asResult();
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+  };
+
+  std::jthread agencyRandomnessThread1(agencyRandomness);
+  auto& cache = server.getFeature<ClusterFeature>().agencyCache();
+  if (cache.has(
+          paths::arango()->str(arangodb::cluster::paths::SkipComponents(1)) +
+          "/Testing/Hund")) {
+    LOG_DEVEL << "waiting before registering callback";
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+  }
+  std::jthread agencyRandomnessThread2(agencyRandomness);
+
   try {
     AgencyCallbackRegistry& callbackRegistry =
         clusterInfo.agencyCallbackRegistry();
@@ -899,6 +924,8 @@ auto ensureIndexCoordinatorReplication2Inner(
               return clusterInfo.waitForPlan(index, true);
             });
     auto res = waitOnSuccess.get();
+    agencyRandomnessThread1.join();
+    agencyRandomnessThread2.join();
     LOG_DEVEL << "Waited for " << idString << " " << res;
     if (res.fail()) {
       return res;
