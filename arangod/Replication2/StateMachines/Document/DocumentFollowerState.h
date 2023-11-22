@@ -30,6 +30,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
 #include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 
+#include "Actor/LocalRuntime.h"
 #include "Basics/UnshackledMutex.h"
 
 #include <function2.hpp>
@@ -142,6 +143,8 @@ struct DocumentFollowerState
 
   std::atomic<bool> _resigning{false};  // Allows for a quicker shutdown of the
                                         // state machine upon resigning
+
+  actor::LocalRuntime _runtime;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

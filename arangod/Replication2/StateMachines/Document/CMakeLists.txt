@@ -18,3 +18,5 @@ target_sources(arango_replication2 PRIVATE
   DocumentStateTransactionHandler.cpp
   ReplicatedOperation.cpp
   MaintenanceActionExecutor.cpp)
+
+add_subdirectory(Actor)

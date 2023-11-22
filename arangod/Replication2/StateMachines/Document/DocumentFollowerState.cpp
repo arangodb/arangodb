@@ -23,11 +23,13 @@
 
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 
+#include "Replication2/StateMachines/Document/Actor/Scheduler.h"
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 #include "Replication2/StateMachines/Document/DocumentStateErrorHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <Basics/application-exit.h>
@@ -59,7 +61,10 @@ DocumentFollowerState::DocumentFollowerState(
                         .with<logContextKeyStateComponent>("FollowerState")),
       _networkHandler(handlersFactory->createNetworkHandler(core->gid)),
       _handlers(handlersFactory, core->getVocbase(), core->gid),
-      _guardedData(std::move(core), loggerContext) {}
+      _guardedData(std::move(core), loggerContext),
+      _runtime(
+          "FollowerState-" + to_string(gid),
+          std::make_shared<actor::Scheduler>(SchedulerFeature::SCHEDULER)) {}
 
 DocumentFollowerState::~DocumentFollowerState() = default;
 
