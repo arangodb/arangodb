@@ -45,10 +45,7 @@ void IResearchExecutionPool::releaseThreads(uint64_t active, uint64_t demand) {
   TRI_ASSERT(load() >= demand);
 
   TRI_ASSERT(active < std::numeric_limits<int>::max());
-  if (active) {
-    int delta = static_cast<int>(active);
-    _active.fetch_sub(active);
-  }
+  _active.fetch_sub(active);
   fetch_sub(demand);
 }
 
