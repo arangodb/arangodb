@@ -8,9 +8,6 @@ import logging
 import psutil
 from site_config import IS_WINDOWS
 from async_client import (
-    make_logfile_params,
-    logfile_line_result,
-    delete_logfile_params,
     make_tail_params,
     tail_line_result,
     delete_tail_params,
@@ -56,7 +53,6 @@ class DmesgWatcher(ArangoCLIprogressiveTimeoutExecutor):
             result_line_handler=tail_line_result,
             identifier="0_dmesg",
         )
-        # delete_logfile_params(params)
         ret = {}
         ret["error"] = self.params["error"]
         delete_tail_params(self.params)
