@@ -96,13 +96,13 @@ struct RuntimeFactor<LocalRuntime> {
 };
 
 template<typename TParams>
-class Runtime : public testing::Test {
+class RuntimeTest : public testing::Test {
  public:
   using Scheduler = typename TParams::Scheduler;
   using TRuntime = typename TParams::Runtime;
   using ActorPID = typename TRuntime::ActorPID;
 
-  Runtime() : scheduler{std::make_shared<Scheduler>()} {
+  RuntimeTest() : scheduler{std::make_shared<Scheduler>()} {
     scheduler->start(number_of_threads);
   }
 
@@ -122,9 +122,9 @@ using Types = ::testing::Types<Params<DistributedRuntime, MockScheduler>,
                                Params<DistributedRuntime, ThreadPoolScheduler>,
                                Params<LocalRuntime, MockScheduler>,
                                Params<LocalRuntime, ThreadPoolScheduler>>;
-TYPED_TEST_SUITE(Runtime, Types);
+TYPED_TEST_SUITE(RuntimeTest, Types);
 
-TYPED_TEST(Runtime, formats_runtime_and_actor_state) {
+TYPED_TEST(RuntimeTest, formats_runtime_and_actor_state) {
   auto runtime = this->makeRuntime();
 
   auto actorID = runtime->template spawn<pong_actor::Actor>(
@@ -152,7 +152,7 @@ TYPED_TEST(Runtime, formats_runtime_and_actor_state) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(Runtime, serializes_an_actor_including_its_actor_state) {
+TYPED_TEST(RuntimeTest, serializes_an_actor_including_its_actor_state) {
   auto runtime = this->makeRuntime();
   auto actor = runtime->template spawn<TrivialActor>(
       std::make_unique<TrivialState>("foo"), test::message::TrivialStart());
@@ -172,7 +172,7 @@ TYPED_TEST(Runtime, serializes_an_actor_including_its_actor_state) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(Runtime, spawns_actor) {
+TYPED_TEST(RuntimeTest, spawns_actor) {
   auto runtime = this->makeRuntime();
 
   auto actor = runtime->template spawn<TrivialActor>(
@@ -184,7 +184,7 @@ TYPED_TEST(Runtime, spawns_actor) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(Runtime, sends_initial_message_when_spawning_actor) {
+TYPED_TEST(RuntimeTest, sends_initial_message_when_spawning_actor) {
   auto runtime = this->makeRuntime();
 
   auto actor = runtime->template spawn<TrivialActor>(
@@ -197,7 +197,7 @@ TYPED_TEST(Runtime, sends_initial_message_when_spawning_actor) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(Runtime, gives_all_existing_actor_ids) {
+TYPED_TEST(RuntimeTest, gives_all_existing_actor_ids) {
   auto runtime = this->makeRuntime();
 
   ASSERT_TRUE(runtime->getActorIDs().empty());
@@ -216,7 +216,7 @@ TYPED_TEST(Runtime, gives_all_existing_actor_ids) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(Runtime, sends_message_to_an_actor) {
+TYPED_TEST(RuntimeTest, sends_message_to_an_actor) {
   auto runtime = this->makeRuntime();
   auto actor = runtime->template spawn<TrivialActor>(
       std::make_unique<TrivialState>("foo"), test::message::TrivialStart{});
@@ -245,7 +245,7 @@ auto inspect(Inspector& f, SomeMessages& x) {
       arangodb::inspection::type<SomeMessage>("someMessage"));
 }
 TYPED_TEST(
-    Runtime,
+    RuntimeTest,
     actor_receiving_wrong_message_type_sends_back_unknown_error_message) {
   auto runtime = this->makeRuntime();
   auto actor = runtime->template spawn<TrivialActor>(
@@ -261,7 +261,7 @@ TYPED_TEST(
 }
 
 TYPED_TEST(
-    Runtime,
+    RuntimeTest,
     actor_receives_actor_not_found_message_after_trying_to_send_message_to_non_existent_actor) {
   auto runtime = this->makeRuntime();
   auto actor = runtime->template spawn<TrivialActor>(
@@ -280,7 +280,7 @@ TYPED_TEST(
   runtime->softShutdown();
 }
 
-TYPED_TEST(Runtime, ping_pong_game) {
+TYPED_TEST(RuntimeTest, ping_pong_game) {
   auto runtime = this->makeRuntime();
 
   auto pong_actor = runtime->template spawn<pong_actor::Actor>(
@@ -303,7 +303,7 @@ TYPED_TEST(Runtime, ping_pong_game) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(Runtime, spawn_game) {
+TYPED_TEST(RuntimeTest, spawn_game) {
   auto runtime = this->makeRuntime();
 
   auto spawn_actor = runtime->template spawn<SpawnActor>(
@@ -319,7 +319,7 @@ TYPED_TEST(Runtime, spawn_game) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(Runtime, finishes_actor_when_actor_says_so) {
+TYPED_TEST(RuntimeTest, finishes_actor_when_actor_says_so) {
   auto runtime = this->makeRuntime();
 
   auto finishing_actor = runtime->template spawn<FinishingActor>(
@@ -333,7 +333,7 @@ TYPED_TEST(Runtime, finishes_actor_when_actor_says_so) {
   runtime->softShutdown();
 }
 
-TYPED_TEST(Runtime, finished_actor_automatically_removes_itself) {
+TYPED_TEST(RuntimeTest, finished_actor_automatically_removes_itself) {
   auto runtime = this->makeRuntime();
   auto finishing_actor = runtime->template spawn<FinishingActor>(
       std::make_unique<FinishingState>(), test::message::FinishingStart{});
@@ -346,7 +346,7 @@ TYPED_TEST(Runtime, finished_actor_automatically_removes_itself) {
   ASSERT_EQ(runtime->actors.size(), 0);
 }
 
-TYPED_TEST(Runtime, finished_actors_automatically_remove_themselves) {
+TYPED_TEST(RuntimeTest, finished_actors_automatically_remove_themselves) {
   auto runtime = this->makeRuntime();
 
   auto actor_to_be_finished = runtime->template spawn<FinishingActor>(
@@ -377,7 +377,7 @@ TYPED_TEST(Runtime, finished_actors_automatically_remove_themselves) {
   ASSERT_EQ(runtime->actors.size(), 0);
 }
 
-TYPED_TEST(Runtime,
+TYPED_TEST(RuntimeTest,
            finishes_and_garbage_collects_all_actors_when_shutting_down) {
   auto runtime = this->makeRuntime();
   runtime->template spawn<TrivialActor>(std::make_unique<TrivialState>(),
@@ -397,7 +397,7 @@ TYPED_TEST(Runtime,
   ASSERT_EQ(runtime->actors.size(), 0);
 }
 
-TYPED_TEST(Runtime, sends_down_message_to_monitoring_actors) {
+TYPED_TEST(RuntimeTest, sends_down_message_to_monitoring_actors) {
   auto runtime = this->makeRuntime();
   auto monitor1 = runtime->template spawn<MonitoringActor>(
       std::make_unique<MonitoringState>());
@@ -478,7 +478,7 @@ TYPED_TEST(Runtime, sends_down_message_to_monitoring_actors) {
 }
 
 TYPED_TEST(
-    Runtime,
+    RuntimeTest,
     trying_to_monitor_an_already_terminated_actor_immediately_sends_ActorDown_message) {
   auto runtime = this->makeRuntime();
   auto monitor = runtime->template spawn<MonitoringActor>(
@@ -496,7 +496,7 @@ TYPED_TEST(
 }
 
 TYPED_TEST(
-    Runtime,
+    RuntimeTest,
     trying_to_dispatching_a_message_to_a_non_existing_actor_does_not_crash_if_sender_no_longer_exists) {
   auto runtime = this->makeRuntime();
 
@@ -507,13 +507,20 @@ TYPED_TEST(
   runtime->softShutdown();
 }
 
-TEST(Runtime, sends_messages_between_lots_of_actors) {
-  // TODO - convert to typed
-  auto serverID = ServerID{"PRMR-1234"};
+template<typename TRuntime>
+struct RuntimeStressTest : public testing::Test {
+  using Runtime = TRuntime;
+
+  auto makePid(ActorID id) { return RuntimeFactor<TRuntime>::makePid(id); }
+};
+
+using Runtimes = ::testing::Types<DistributedRuntime, LocalRuntime>;
+TYPED_TEST_SUITE(RuntimeStressTest, Runtimes);
+
+TYPED_TEST(RuntimeStressTest, sends_messages_between_lots_of_actors) {
   auto scheduler = std::make_shared<ThreadPoolScheduler>();
-  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime = std::make_shared<DistributedRuntime>(serverID, "RuntimeTest",
-                                                      scheduler, dispatcher);
+  auto runtime =
+      RuntimeFactor<typename TestFixture::Runtime>::create(scheduler);
 
   scheduler->start(128);
   size_t actor_count = 128;
@@ -525,22 +532,14 @@ TEST(Runtime, sends_messages_between_lots_of_actors) {
 
   // send from actor i to actor i+1 a message with content i
   for (size_t i = 1; i < actor_count; i++) {
-    runtime->dispatch(
-        DistributedActorPID{.server = serverID,
-                            .database = "database",
-                            .id = ActorID{(i + 1) % actor_count}},
-        DistributedActorPID{
-            .server = serverID, .database = "database", .id = ActorID{i}},
-        TrivialActor::Message{
-            test::message::TrivialMessage{std::to_string(i)}});
+    runtime->dispatch(this->makePid(ActorID{(i + 1) % actor_count}),
+                      this->makePid(ActorID{i}),
+                      TrivialActor::Message{
+                          test::message::TrivialMessage{std::to_string(i)}});
   }
   // send from actor actor_count to actor 1 (jump over special actor id 0)
   runtime->dispatch(
-      DistributedActorPID{
-          .server = serverID, .database = "database", .id = ActorID{1}},
-      DistributedActorPID{.server = serverID,
-                          .database = "database",
-                          .id = ActorID{actor_count}},
+      this->makePid(ActorID{1}), this->makePid(ActorID{actor_count}),
       TrivialActor::Message{
           test::message::TrivialMessage{std::to_string(actor_count)}});
 
