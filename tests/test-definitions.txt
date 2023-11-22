@@ -98,7 +98,7 @@ shell_client_multi priority=2500 cluster suffix=vst -- --vst true
 
 # different number of buckets in cluster
 shell_client_aql !mac priority=1000 size=medium+ cluster buckets=17 -- --dumpAgencyOnError true
-shell_client priority=500 cluster buckets=5 -- --dumpAgencyOnError true
+shell_client priority=500 cluster buckets=6 -- --dumpAgencyOnError true
 shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5 -- --dumpAgencyOnError true
 shell_client_replication2_recovery priority=500 size=small cluster -- --dumpAgencyOnError true
 shell_server priority=500 size=medium+ cluster buckets=6 -- --dumpAgencyOnError true
