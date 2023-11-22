@@ -304,13 +304,17 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
 
   auto edgeExpr = _options.getEdgeExpression();
   if (edgeExpr != nullptr) {
-    edgeBuilder.clear();
-    _provider.addEdgeToBuilder(step.getEdge(), edgeBuilder);
+    if (step.getEdge().isValid()) {
+      edgeBuilder.clear();
 
-    bool satisfiesCondition =
-        evaluateVertexExpression(edgeExpr, edgeBuilder.slice());
-    if (!satisfiesCondition) {
-      return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
+      _provider.addEdgeToBuilder(step.getEdge(), edgeBuilder);
+      bool satisfiesCondition =
+          evaluateVertexExpression(edgeExpr, edgeBuilder.slice());
+      if (!satisfiesCondition) {
+        return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
+      }
+    } else {
+      // TODO: at the moment we smile and wave...
     }
   }
 
