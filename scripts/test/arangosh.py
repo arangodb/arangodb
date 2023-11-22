@@ -104,3 +104,17 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
         delete_logfile_params(params)
         ret["error"] = params["error"]
         return ret
+    
+        # fmt: on
+    def run_monitored(
+        self,
+        executable,
+        args,
+        params={"error": "", "verbose": True, "output": []},
+        progressive_timeout=60,
+        deadline=0,
+        deadline_grace_period=180,
+        result_line_handler=None,
+        identifier="",
+    ):
+        raise NotImplementedError("Not implemented for ArangoshExecutor")

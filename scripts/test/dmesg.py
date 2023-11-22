@@ -7,26 +7,22 @@ to detect serious incidents like oom
 import logging
 import psutil
 from site_config import IS_WINDOWS
+from async_client import (
+    make_logfile_params,
+    logfile_line_result,
+    delete_logfile_params,
+    make_tail_params,
+    tail_line_result,
+    delete_tail_params,
+)
 
 if IS_WINDOWS:
     from async_client_windows import (
-        ArangoCLIprogressiveTimeoutExecutor,
-        make_logfile_params,
-        logfile_line_result,
-        delete_logfile_params,
-        make_tail_params,
-        tail_line_result,
-        delete_tail_params,
+        ArangoCLIprogressiveTimeoutExecutorWindows as ArangoCLIprogressiveTimeoutExecutor,
     )
 else:
-    from async_client import (
-        ArangoCLIprogressiveTimeoutExecutor,
-        make_logfile_params,
-        logfile_line_result,
-        delete_logfile_params,
-        make_tail_params,
-        tail_line_result,
-        delete_tail_params,
+    from async_client_posix import (
+        ArangoCLIprogressiveTimeoutExecutorPosix as ArangoCLIprogressiveTimeoutExecutor,
     )
 
 
