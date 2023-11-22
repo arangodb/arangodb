@@ -98,7 +98,6 @@ void MaterializeExecutor<T, localDocumentId>::fillBuffer(
   auto readInputDocs = [numRows, this, &block]<bool HasShadowRows>() {
     auto searchDocRegId =
         _readDocumentContext._infos->inputNonMaterializedDocRegId();
-    auto lastSourceId = DataSourceId::none();
     for (size_t i = 0; i < numRows; ++i) {
       if constexpr (HasShadowRows) {
         if (block->isShadowRow(i)) {

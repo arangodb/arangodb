@@ -1145,8 +1145,6 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
 
     size_t lastSegmentIdx = count;
     ColumnIterator pkReader;
-    aql::QueryContext& query = this->_infos.getQuery();
-    arangodb::LogicalCollection const* collection;
     auto orderIt = pkReadingOrder.begin();
     iresearch::ViewSegment const* segment{};
     while (orderIt != pkReadingOrder.end()) {
@@ -1155,7 +1153,6 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
       auto const segmentIdx = value.readerOffset();
       if (lastSegmentIdx != segmentIdx) {
         lastSegmentIdx = segmentIdx;
-        collection = &this->_reader->collection(lastSegmentIdx);
         auto& segmentReader = (*this->_reader)[lastSegmentIdx];
         auto pkIt = ::pkColumn(segmentReader);
         if (ADB_UNLIKELY(!pkIt)) {
