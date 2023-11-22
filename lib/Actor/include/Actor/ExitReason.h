@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
@@ -18,29 +18,24 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
-/// @author Julia Volmer
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Actor/ExitReason.h"
-#include "Actor/IWorkable.h"
-#include "Actor/Message.h"
-
 namespace arangodb::actor {
 
-template<typename ActorPID>
-struct ActorBase : IWorkable {
-  virtual ~ActorBase() = default;
-  virtual auto process(ActorPID sender, MessagePayloadBase& msg) -> void = 0;
-  virtual auto process(ActorPID sender, velocypack::SharedSlice msg)
-      -> void = 0;
-  virtual auto typeName() -> std::string_view = 0;
-  virtual auto serialize() -> velocypack::SharedSlice = 0;
-  virtual auto finish(ExitReason reason) -> void = 0;
-  virtual auto isFinishedAndIdle() -> bool = 0;
-  virtual auto isIdle() -> bool = 0;
+enum class ExitReason {
+  kFinished,  //
+  kUnknown,   //
+  kShutdown
 };
+
+template<typename Inspector>
+auto inspect(Inspector& f, ExitReason& x) {
+  return f.enumeration(x).values(ExitReason::kFinished, "Finished",  //
+                                 ExitReason::kUnknown, "Unknown",    //
+                                 ExitReason::kShutdown, "Shutdown");
+}
 
 }  // namespace arangodb::actor

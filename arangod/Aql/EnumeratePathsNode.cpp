@@ -384,7 +384,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
   TRI_ASSERT(pathType() != arangodb::graph::PathType::Type::ShortestPath);
 
   arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{
-      opts->minDepth, opts->maxDepth, pathType()};
+      opts->getMinDepth(), opts->getMaxDepth(), pathType()};
   PathValidatorOptions validatorOptions(opts->tmpVar(),
                                         opts->getExpressionCtx());
 
