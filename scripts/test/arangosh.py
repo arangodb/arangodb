@@ -106,3 +106,4 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
         delete_logfile_params(params)
         ret["error"] = params["error"]
         return ret
+    
