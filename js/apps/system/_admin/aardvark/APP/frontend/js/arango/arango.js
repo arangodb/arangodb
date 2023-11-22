@@ -449,7 +449,6 @@
 
     enableSubNavBar: function () {
       const navItems = $('.subMenuEntries.bottom').children();
-
       _.each(navItems, function (item) {
         $(item).removeClass('disabled');
         $(item).css('pointer-events', 'all');
