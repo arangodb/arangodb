@@ -1367,7 +1367,8 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
               absl::StrCat("'scorersSort[", itr.index(),
                            "].index' attribute is out of range"));
         }
-        _heapSort.emplace_back(index.getNumber<size_t>(), asc.getBool());
+        _heapSort.emplace_back(HeapSortElement{
+            .source = index.getNumber<size_t>(), .ascending = asc.getBool()});
       } else {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER, absl::StrCat("'scorersSort[", itr.index(),

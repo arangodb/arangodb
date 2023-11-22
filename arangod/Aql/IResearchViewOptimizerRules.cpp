@@ -350,9 +350,9 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     if (s == std::end(scorers)) {
       return false;
     }
-    scoresSort.push_back(
-        {.source = static_cast<size_t>(std::distance(scorers.begin(), s)),
-         .ascending = sort.ascending});
+    scoresSort.push_back(HeapSortElement{
+        .source = static_cast<size_t>(std::distance(scorers.begin(), s)),
+        .ascending = sort.ascending});
   }
   // all sort elements are covered by view's scorers
   viewNode.setHeapSort(std::move(scoresSort),
