@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-table";
 import React from "react";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
+import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { notifyError } from "../../../utils/notifications";
 import {
@@ -89,7 +90,14 @@ const columnHelper = createColumnHelper<DatabaseTableType>();
 
 const permissionColumns = [
   columnHelper.accessor(row => (row.permission === "rw" ? true : false), {
-    header: "Administrate",
+    header: () => {
+      return (
+        <Flex alignItems="center">
+          <Text>Administrate</Text>
+          <InfoTooltip label="Allows creating/dropping of collections and setting user permissions in the database." />
+        </Flex>
+      );
+    },
     id: "rw",
     cell: info => {
       return (
@@ -102,7 +110,14 @@ const permissionColumns = [
     }
   }),
   columnHelper.accessor(row => (row.permission === "ro" ? true : false), {
-    header: "Access",
+    header: () => {
+      return (
+        <Flex alignItems="center">
+          <Text>Access</Text>
+          <InfoTooltip label="Allows access to the database. User cannot create or drop collections." />
+        </Flex>
+      );
+    },
     id: "ro",
     cell: info => {
       return (
@@ -115,7 +130,14 @@ const permissionColumns = [
     }
   }),
   columnHelper.accessor(row => (row.permission === "none" ? true : false), {
-    header: "No Accesss",
+    header: () => {
+      return (
+        <Flex alignItems="center">
+          <Text>No Access</Text>
+          <InfoTooltip label="User has no access to the database." />
+        </Flex>
+      );
+    },
     id: "none",
     cell: info => {
       return (
@@ -130,7 +152,14 @@ const permissionColumns = [
   columnHelper.accessor(
     row => (row.permission === "undefined" ? true : false),
     {
-      header: "Use Default",
+      header: () => {
+        return (
+          <Flex alignItems="center">
+            <Text>Use Default</Text>
+            <InfoTooltip label="Access level is unspecified. Database default (*) will be used." />
+          </Flex>
+        );
+      },
       id: "undefined",
       cell: info => {
         return (
@@ -190,6 +219,7 @@ export const TABLE_COLUMNS = [
         return (
           <Flex padding="2">
             <Tag>Default</Tag>
+            <InfoTooltip label="Default access level for databases, if authorization level is not specified." />
           </Flex>
         );
       }

@@ -1,8 +1,9 @@
-import { Box, Tag } from "@chakra-ui/react";
+import { Box, Flex, Tag } from "@chakra-ui/react";
 import { createColumnHelper, Row } from "@tanstack/react-table";
 import React from "react";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
+import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
 import { CollectionPermissionSwitch } from "./CollectionPermissionSwitch";
 import { getIsDefaultRow } from "./DatabasePermissionSwitch";
 import { PermissionType } from "./useFetchDatabasePermissions";
@@ -100,8 +101,16 @@ const COLLECTION_COLUMNS = [
     header: "Collections",
     id: "collectionName",
     cell: info => {
+      const { databaseName } = (info.table.options.meta || {}) as any;
       if (getIsDefaultRow(info)) {
-        return <Tag>Default</Tag>;
+        return (
+          <Flex>
+            <Tag>Default</Tag>
+            <InfoTooltip
+              label={`Default access level for collections in ${databaseName}, if authentication level is not specified.`}
+            />
+          </Flex>
+        );
       }
       return info.cell.getValue();
     },
