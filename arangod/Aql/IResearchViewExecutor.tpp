@@ -775,11 +775,12 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRowImpl(
     TRI_ASSERT(value.value().id.isSet());
     TRI_ASSERT(value.segment());
     // read document from underlying storage engine, if we got an id
-    if (ADB_UNLIKELY(
-            !value.segment()->collection->getPhysical()->readFromSnapshot(
-                &_trx, value.value().id, ctx.callback, ReadOwnWrites::no,
-                *value.segment()->snapshot))
-            .ok()) {
+    if (ADB_UNLIKELY(!value.segment()
+                          ->collection->getPhysical()
+                          ->readFromSnapshot(&_trx, value.value().id,
+                                             ctx.callback, ReadOwnWrites::no,
+                                             *value.segment()->snapshot)
+                          .ok())) {
       return false;
     }
   }
