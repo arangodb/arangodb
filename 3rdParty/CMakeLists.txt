@@ -32,23 +32,23 @@ target_include_directories(zlib_interface SYSTEM INTERFACE ${ZLIB_INCLUDE_DIR})
 ################################################################################
 
 function (add_snappy)
-    # use the function to open a scope so CMAKE_CXX_FLAGS is only changed for
-    # snappy
-    add_c_flags_if_supported(CMAKE_C_FLAGS -Wno-suggest-override -Wno-sign-compare)
-    add_cxx_flags_if_supported(CMAKE_CXX_FLAGS -Wno-suggest-override -Wno-sign-compare)
-    set(SNAPPY_VERSION "1.1.9")
-    set(SNAPPY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/snappy/snappy-${SNAPPY_VERSION}")
-    set(SNAPPY_SOURCE_DIR "${SNAPPY_SOURCE_DIR}" PARENT_SCOPE)
-    set(SNAPPY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/snappy/snappy-${SNAPPY_VERSION}" PARENT_SCOPE)
-    set(SNAPPY_LIB "snappy")
-    set(SNAPPY_FUZZING_BUILD OFF CACHE BOOL "build Snappy for fuzzing")
-    set(SNAPPY_BUILD_TESTS OFF CACHE BOOL "disable Snappy tests" FORCE)
-    set(SNAPPY_BUILD_BENCHMARKS OFF CACHE BOOL "disable Snappy benchmarks" FORCE)
-    set(SNAPPY_INSTALL OFF CACHE BOOL "disable Snappy installation")
-    set(SNAPPY_REQUIRE_AVX ON CACHE BOOL "target processors with AVX support" FORCE)
-    set(SNAPPY_REQUIRE_AVX2 OFF CACHE BOOL "target processors with AVX2 support" FORCE)
-    set(SNAPPY_HAVE_BMI2 OFF CACHE BOOL "target processors with BMI2 support" FORCE)
-    add_subdirectory(${SNAPPY_SOURCE_DIR})
+  # use the function to open a scope so CMAKE_CXX_FLAGS is only changed for
+  # snappy
+  add_c_flags_if_supported(CMAKE_C_FLAGS -Wno-suggest-override -Wno-sign-compare)
+  add_cxx_flags_if_supported(CMAKE_CXX_FLAGS -Wno-suggest-override -Wno-sign-compare)
+  set(SNAPPY_VERSION "1.1.9")
+  set(SNAPPY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/snappy/snappy-${SNAPPY_VERSION}")
+  set(SNAPPY_SOURCE_DIR "${SNAPPY_SOURCE_DIR}" PARENT_SCOPE)
+  set(SNAPPY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/snappy/snappy-${SNAPPY_VERSION}" PARENT_SCOPE)
+  set(SNAPPY_LIB "snappy")
+  set(SNAPPY_FUZZING_BUILD OFF CACHE BOOL "build Snappy for fuzzing")
+  set(SNAPPY_BUILD_TESTS OFF CACHE BOOL "disable Snappy tests" FORCE)
+  set(SNAPPY_BUILD_BENCHMARKS OFF CACHE BOOL "disable Snappy benchmarks" FORCE)
+  set(SNAPPY_INSTALL OFF CACHE BOOL "disable Snappy installation")
+  set(SNAPPY_REQUIRE_AVX ON CACHE BOOL "target processors with AVX support" FORCE)
+  set(SNAPPY_REQUIRE_AVX2 OFF CACHE BOOL "target processors with AVX2 support" FORCE)
+  set(SNAPPY_HAVE_BMI2 OFF CACHE BOOL "target processors with BMI2 support" FORCE)
+  add_subdirectory(${SNAPPY_SOURCE_DIR})
 endfunction ()
 add_snappy()
 set(SNAPPY_SOURCE_DIR "${SNAPPY_SOURCE_DIR}" PARENT_SCOPE)
@@ -92,7 +92,7 @@ set(V8_VERSION
   CACHE INTERNAL
   "${PROJECT_NAME}: Version"
   FORCE
-  )
+)
 set(V8_SUB_DIR "v${V8_VERSION}")
 set(V8_VERSION ${V8_VERSION} PARENT_SCOPE)
 add_subdirectory(V8)

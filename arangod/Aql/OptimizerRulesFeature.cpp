@@ -273,6 +273,15 @@ optimizations.)");
       R"(Try out permutations of `FOR` statements in queries that contain
 multiple loops, which may enable further optimizations by other rules.)");
 
+  // replace attribute accesses that are equal due to a filter statement
+  // with the same value. This might enable other optimizations later on.
+  registerRule(
+      "replace-equal-attribute-accesses", replaceEqualAttributeAccesses,
+      OptimizerRule::replaceEqualAttributeAccesses,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Replace attribute accesses that are equal due to a filter statement
+with the same value. This might enable other optimizations later on.)");
+
   // "Pass 4": moving nodes "up" (potentially outside loops) (second try):
   // move calculations up the dependency chain (to pull them out of
   // inner loops etc.)

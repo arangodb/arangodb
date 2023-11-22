@@ -256,9 +256,12 @@ bool RefactoredTraverserCache::appendVertex(
         }
         return true;
       };
-      Result res = _trx->documentFastPathLocal(
-          collectionName,
-          id.substr(collectionNameResult.get().second + 1).stringView(), cb);
+      Result res =
+          _trx->documentFastPathLocal(
+                  collectionName,
+                  id.substr(collectionNameResult.get().second + 1).stringView(),
+                  cb)
+              .get();
       if (res.ok()) {
         return true;
       }

@@ -62,18 +62,18 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
       methods::Collections::Context& ctxt, bool showProperties,
       FiguresType showFigures, CountType showCount);
 
-  virtual Result handleExtraCommandPut(std::shared_ptr<LogicalCollection> coll,
-                                       std::string const& command,
-                                       velocypack::Builder& builder) = 0;
+  virtual futures::Future<Result> handleExtraCommandPut(
+      std::shared_ptr<LogicalCollection> coll, std::string const& command,
+      velocypack::Builder& builder) = 0;
 
  private:
   RestStatus standardResponse();
-  void initializeTransaction(LogicalCollection&);
+  futures::Future<futures::Unit> initializeTransaction(LogicalCollection&);
 
  private:
-  RestStatus handleCommandGet();
+  futures::Future<RestStatus> handleCommandGet();
   void handleCommandPost();
-  RestStatus handleCommandPut();
+  futures::Future<RestStatus> handleCommandPut();
   void handleCommandDelete();
 
  private:

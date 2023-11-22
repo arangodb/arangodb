@@ -343,18 +343,18 @@ void Manager::unregisterAQLTrx(TransactionId tid) noexcept {
   buck._managed.erase(it);  // unlocking not necessary
 }
 
-ResultT<TransactionId> Manager::createManagedTrx(
+futures::Future<ResultT<TransactionId>> Manager::createManagedTrx(
     TRI_vocbase_t& vocbase, velocypack::Slice trxOpts,
     OperationOrigin operationOrigin, bool allowDirtyReads) {
   if (_softShutdownOngoing.load(std::memory_order_relaxed)) {
-    return {TRI_ERROR_SHUTTING_DOWN};
+    co_return {TRI_ERROR_SHUTTING_DOWN};
   }
   transaction::Options options;
   std::vector<std::string> reads, writes, exclusives;
 
   Result res = buildOptions(trxOpts, options, reads, writes, exclusives);
   if (res.fail()) {
-    return res;
+    co_return res;
   }
   if (ServerState::instance()->isCoordinator() && writes.empty() &&
       exclusives.empty()) {
@@ -369,14 +369,13 @@ ResultT<TransactionId> Manager::createManagedTrx(
     options.allowDirtyReads = false;
   }
 
-  return createManagedTrx(vocbase, reads, writes, exclusives,
-                          std::move(options), operationOrigin);
+  co_return co_await createManagedTrx(vocbase, reads, writes, exclusives,
+                                      std::move(options), operationOrigin);
 }
 
-Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
-                                 velocypack::Slice trxOpts,
-                                 OperationOrigin operationOrigin,
-                                 bool isFollowerTransaction) {
+futures::Future<Result> Manager::ensureManagedTrx(
+    TRI_vocbase_t& vocbase, TransactionId tid, velocypack::Slice trxOpts,
+    OperationOrigin operationOrigin, bool isFollowerTransaction) {
   TRI_ASSERT(
       (ServerState::instance()->isSingleServer() && !isFollowerTransaction) ||
       tid.isFollowerTransactionId() == isFollowerTransaction);
@@ -385,11 +384,12 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
 
   Result res = buildOptions(trxOpts, options, reads, writes, exclusives);
   if (res.fail()) {
-    return res;
+    co_return res;
   }
 
-  return ensureManagedTrx(vocbase, tid, reads, writes, exclusives,
-                          std::move(options), operationOrigin, /*ttl*/ 0.0);
+  co_return co_await ensureManagedTrx(vocbase, tid, reads, writes, exclusives,
+                                      std::move(options), operationOrigin,
+                                      /*ttl*/ 0.0);
 }
 
 transaction::Hints Manager::ensureHints(transaction::Options& options) const {
@@ -406,13 +406,14 @@ transaction::Hints Manager::ensureHints(transaction::Options& options) const {
   return hints;
 }
 
-Result Manager::beginTransaction(transaction::Hints hints,
-                                 std::shared_ptr<TransactionState>& state) {
+futures::Future<Result> Manager::beginTransaction(
+    transaction::Hints hints, std::shared_ptr<TransactionState>& state) {
   TRI_ASSERT(state != nullptr);
   Result res;
 
   try {
-    res = state->beginTransaction(hints);  // registers with transaction manager
+    res = co_await state->beginTransaction(
+        hints);  // registers with transaction manager
   } catch (basics::Exception const& ex) {
     res.reset(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -420,7 +421,7 @@ Result Manager::beginTransaction(transaction::Hints hints,
   }
 
   TRI_ASSERT(res.ok() || !state->isRunning());
-  return res;
+  co_return res;
 }
 
 Result Manager::prepareOptions(transaction::Options& options) {
@@ -480,7 +481,7 @@ Result Manager::prepareOptions(transaction::Options& options) {
   return res;
 }
 
-Result Manager::lockCollections(
+futures::Future<Result> Manager::lockCollections(
     TRI_vocbase_t& vocbase, std::shared_ptr<TransactionState> state,
     std::vector<std::string> const& exclusiveCollections,
     std::vector<std::string> const& writeCollections,
@@ -489,7 +490,7 @@ Result Manager::lockCollections(
   CollectionNameResolver resolver(vocbase);
 
   auto lockCols = [&](std::vector<std::string> const& cols,
-                      AccessMode::Type mode) {
+                      AccessMode::Type mode) -> futures::Future<bool> {
     for (auto const& cname : cols) {
       DataSourceId cid = DataSourceId::none();
       if (state->isCoordinator()) {
@@ -519,55 +520,56 @@ Result Manager::lockCollections(
                     TRI_ERROR_INTERNAL,
                     "cannot cast collection to smart edge collection");
               }
-              res.reset(state->addCollection(theEdge->getLocalCid(),
-                                             "_local_" + cname, mode,
-                                             /*lockUsage*/ false));
+              res.reset(co_await state->addCollection(theEdge->getLocalCid(),
+                                                      "_local_" + cname, mode,
+                                                      /*lockUsage*/ false));
               if (res.fail()) {
-                return false;
+                co_return false;
               }
               if (!col->isDisjoint()) {
-                res.reset(state->addCollection(theEdge->getFromCid(),
-                                               "_from_" + cname, mode,
-                                               /*lockUsage*/ false));
+                res.reset(co_await state->addCollection(theEdge->getFromCid(),
+                                                        "_from_" + cname, mode,
+                                                        /*lockUsage*/ false));
                 if (res.fail()) {
-                  return false;
+                  co_return false;
                 }
-                res.reset(state->addCollection(theEdge->getToCid(),
-                                               "_to_" + cname, mode,
-                                               /*lockUsage*/ false));
+                res.reset(co_await state->addCollection(theEdge->getToCid(),
+                                                        "_to_" + cname, mode,
+                                                        /*lockUsage*/ false));
                 if (res.fail()) {
-                  return false;
+                  co_return false;
                 }
               }
             }
           } catch (basics::Exception const& ex) {
             res.reset(ex.code(), ex.what());
-            return false;
+            co_return false;
           }
         }
 #endif
-        res.reset(state->addCollection(cid, cname, mode, /*lockUsage*/ false));
+        res.reset(co_await state->addCollection(cid, cname, mode,
+                                                /*lockUsage*/ false));
       }
 
       if (res.fail()) {
-        return false;
+        co_return false;
       }
     }
-    return true;
+    co_return true;
   };
 
-  if (!lockCols(exclusiveCollections, AccessMode::Type::EXCLUSIVE) ||
-      !lockCols(writeCollections, AccessMode::Type::WRITE) ||
-      !lockCols(readCollections, AccessMode::Type::READ)) {
+  if (!co_await lockCols(exclusiveCollections, AccessMode::Type::EXCLUSIVE) ||
+      !co_await lockCols(writeCollections, AccessMode::Type::WRITE) ||
+      !co_await lockCols(readCollections, AccessMode::Type::READ)) {
     if (res.fail()) {
       // error already set by callback function
-      return res;
+      co_return res;
     }
     // no error set. so it must be "data source not found"
-    return res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    co_return res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
-  return res;
+  co_return res;
 }
 
 bool Manager::isFollowerTransactionOnDBServer(
@@ -576,7 +578,7 @@ bool Manager::isFollowerTransactionOnDBServer(
 }
 
 /// @brief create managed transaction
-ResultT<TransactionId> Manager::createManagedTrx(
+futures::Future<ResultT<TransactionId>> Manager::createManagedTrx(
     TRI_vocbase_t& vocbase, std::vector<std::string> const& readCollections,
     std::vector<std::string> const& writeCollections,
     std::vector<std::string> const& exclusiveCollections, Options options,
@@ -586,13 +588,13 @@ ResultT<TransactionId> Manager::createManagedTrx(
   TRI_ASSERT(!isFollowerTransactionOnDBServer(options));
   Result res;
   if (_disallowInserts.load(std::memory_order_acquire)) {
-    return res.reset(TRI_ERROR_SHUTTING_DOWN);
+    co_return res.reset(TRI_ERROR_SHUTTING_DOWN);
   }
 
   // no transaction with ID exists yet, so start a new transaction
   res = prepareOptions(options);
   if (res.fail()) {
-    return res;
+    co_return res;
   }
 
   ServerState::RoleEnum role = ServerState::instance()->getRole();
@@ -609,7 +611,7 @@ ResultT<TransactionId> Manager::createManagedTrx(
                                          operationOrigin);
   });
   if (!maybeState.ok()) {
-    return std::move(maybeState).result();
+    co_return std::move(maybeState).result();
   }
   auto& state = maybeState.get();
 
@@ -633,10 +635,10 @@ ResultT<TransactionId> Manager::createManagedTrx(
   }
 
   // lock collections
-  res = lockCollections(vocbase, state, exclusiveCollections, writeCollections,
-                        readCollections);
+  res = co_await lockCollections(vocbase, state, exclusiveCollections,
+                                 writeCollections, readCollections);
   if (res.fail()) {
-    return res;
+    co_return res;
   }
 
   // start the transaction
@@ -645,9 +647,9 @@ ResultT<TransactionId> Manager::createManagedTrx(
   // We can only do this because we KNOW that the tid is not
   // known to any other place yet.
   hints.set(transaction::Hints::Hint::ALLOW_FAST_LOCK_ROUND_CLUSTER);
-  res = beginTransaction(hints, state);
+  res = co_await beginTransaction(hints, state);
   if (res.fail()) {
-    return res;
+    co_return res;
   }
   // Unset the FastLockRound hint, if for some reason we ever end up locking
   // something again for this transaction we cannot recover from a fast lock
@@ -659,19 +661,19 @@ ResultT<TransactionId> Manager::createManagedTrx(
 
   bool stored = storeManagedState(tid, std::move(state), /*ttl*/ 0.0);
   if (!stored) {
-    return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
-                     absl::StrCat("transaction id ", tid.id(),
-                                  " already used (while creating)"));
+    co_return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
+                        absl::StrCat("transaction id ", tid.id(),
+                                     " already used (while creating)"));
   }
 
   LOG_TOPIC("d6807", DEBUG, Logger::TRANSACTIONS)
       << "created managed trx " << tid;
 
-  return ResultT{tid};
+  co_return ResultT{tid};
 }
 
 /// @brief create managed transaction
-Result Manager::ensureManagedTrx(
+futures::Future<Result> Manager::ensureManagedTrx(
     TRI_vocbase_t& vocbase, TransactionId tid,
     std::vector<std::string> const& readCollections,
     std::vector<std::string> const& writeCollections,
@@ -679,7 +681,7 @@ Result Manager::ensureManagedTrx(
     OperationOrigin operationOrigin, double ttl) {
   Result res;
   if (_disallowInserts.load(std::memory_order_acquire)) {
-    return res.reset(TRI_ERROR_SHUTTING_DOWN);
+    co_return res.reset(TRI_ERROR_SHUTTING_DOWN);
   }
 
   // This method should not be used in a single server. Note that single-server
@@ -710,18 +712,19 @@ Result Manager::ensureManagedTrx(
       // important that both succeed, because otherwise one of the calls
       // would just drop db server 3 as a follower.
       TRI_ASSERT(res.ok());
-      return res;
+      co_return res;
     }
 
-    return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
-                     std::string("transaction id ") + std::to_string(tid.id()) +
-                         " already used (before creating)");
+    co_return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
+                        std::string("transaction id ") +
+                            std::to_string(tid.id()) +
+                            " already used (before creating)");
   }
 
   // no transaction with ID exists yet, so start a new transaction
   res = prepareOptions(options);
   if (res.fail()) {
-    return res;
+    co_return res;
   }
 
   auto maybeState = basics::catchToResultT([&] {
@@ -732,7 +735,7 @@ Result Manager::ensureManagedTrx(
                                          operationOrigin);
   });
   if (!maybeState.ok()) {
-    return std::move(maybeState).result();
+    co_return std::move(maybeState).result();
   }
   auto& state = maybeState.get();
 
@@ -740,17 +743,17 @@ Result Manager::ensureManagedTrx(
   TRI_ASSERT(state->id() == tid);
 
   // lock collections
-  res = lockCollections(vocbase, state, exclusiveCollections, writeCollections,
-                        readCollections);
+  res = co_await lockCollections(vocbase, state, exclusiveCollections,
+                                 writeCollections, readCollections);
   if (res.fail()) {
-    return res;
+    co_return res;
   }
 
   // start the transaction
   auto hints = ensureHints(options);
-  res = beginTransaction(hints, state);
+  res = co_await beginTransaction(hints, state);
   if (res.fail()) {
-    return res;
+    co_return res;
   }
   // The coordinator in some cases can reroll the Transaction id.
   // This however can not be allowed here, as this transaction ID
@@ -761,18 +764,19 @@ Result Manager::ensureManagedTrx(
   if (!stored) {
     if (isFollowerTransactionOnDBServer(options)) {
       TRI_ASSERT(res.ok());
-      return res;
+      co_return res;
     }
 
-    return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
-                     std::string("transaction id ") + std::to_string(tid.id()) +
-                         " already used (while creating)");
+    co_return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
+                        std::string("transaction id ") +
+                            std::to_string(tid.id()) +
+                            " already used (while creating)");
   }
 
   LOG_TOPIC("d6806", DEBUG, Logger::TRANSACTIONS)
       << "created managed trx " << tid;
 
-  return res;
+  co_return res;
 }
 
 /// @brief lease the transaction, increases nesting

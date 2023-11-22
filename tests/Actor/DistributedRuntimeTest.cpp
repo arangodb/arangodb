@@ -32,14 +32,23 @@
 #include "Actor/DistributedRuntime.h"
 
 #include "Actors/FinishingActor.h"
+#include "Actors/MonitoringActor.h"
+#include "Actors/PingPongActors.h"
 #include "Actors/SpawnActor.h"
 #include "Actors/TrivialActor.h"
-#include "Actors/PingPongActors.h"
 #include "MockScheduler.h"
 #include "ThreadPoolScheduler.h"
 
 using namespace arangodb::actor;
 using namespace arangodb::actor::test;
+
+namespace {
+void waitForAllMessagesToBeProcessed(auto& runtime) {
+  while (not runtime->areAllActorsIdle()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+}
+}  // namespace
 
 struct EmptyExternalDispatcher : IExternalDispatcher {
   void dispatch(DistributedActorPID sender, DistributedActorPID receiver,
@@ -71,7 +80,7 @@ TYPED_TEST(DistributedRuntimeTest, formats_runtime_and_actor_state) {
       fmt::format(
           "{}", arangodb::inspection::json(
                     *runtime, arangodb::inspection::JsonPrintFormat::kMinimal)),
-      R"({"myServerID":"PRMR-1234","runtimeID":"RuntimeTest","uniqueActorIDCounter":2,"actors":[{"id":1,"type":"PongActor"}]})");
+      R"x({"myServerID":"PRMR-1234","runtimeID":"RuntimeTest","uniqueActorIDCounter":2,"actors":{"ActorID(1)":{"type":"PongActor","monitors":[]}}})x");
   auto actor =
       runtime->template getActorStateByID<pong_actor::Actor>(actorID).value();
   ASSERT_EQ(fmt::format("{}", actor), R"({"called":1})");
@@ -90,7 +99,7 @@ TYPED_TEST(DistributedRuntimeTest,
   using namespace arangodb::velocypack;
   auto expected =
       R"({"pid":{"server":"PRMR-1234","database":"database","id":1},"state":{"state":"foo","called":1},"batchsize":16})"_vpack;
-  ASSERT_EQ(runtime->getSerializedActorByID(actor)->toJson(),
+  ASSERT_EQ(runtime->getSerializedActorByID(actor.id)->toJson(),
             expected.toJson());
   runtime->softShutdown();
 }
@@ -141,7 +150,7 @@ TYPED_TEST(DistributedRuntimeTest, gives_all_existing_actor_ids) {
   ASSERT_EQ(allActorIDs.size(), 2);
   ASSERT_EQ(
       (std::unordered_set<ActorID>(allActorIDs.begin(), allActorIDs.end())),
-      (std::unordered_set<ActorID>{actor_foo, actor_bar}));
+      (std::unordered_set<ActorID>{actor_foo.id, actor_bar.id}));
   runtime->softShutdown();
 }
 
@@ -153,10 +162,7 @@ TYPED_TEST(DistributedRuntimeTest, sends_message_to_an_actor) {
       std::make_unique<TrivialState>("foo"), test::message::TrivialStart{});
 
   runtime->dispatch(
-      DistributedActorPID{
-          .server = "PRMR-1234", .database = "database", .id = actor},
-      DistributedActorPID{
-          .server = "PRMR-1234", .database = "database", .id = actor},
+      actor, actor,
       TrivialActor::Message{test::message::TrivialMessage("baz")});
 
   this->scheduler->stop();
@@ -184,16 +190,14 @@ TYPED_TEST(
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
-  auto actor_id = runtime->template spawn<TrivialActor>(
+  auto actor = runtime->template spawn<TrivialActor>(
       std::make_unique<TrivialState>("foo"), test::message::TrivialStart{});
-  auto actor = DistributedActorPID{
-      .server = "PRMR-1234", .database = "database", .id = actor_id};
 
   runtime->dispatch(actor, actor, SomeMessages{SomeMessage{}});
 
   this->scheduler->stop();
   ASSERT_EQ(
-      runtime->template getActorStateByID<TrivialActor>(actor_id),
+      runtime->template getActorStateByID<TrivialActor>(actor),
       (TrivialState(fmt::format("sent unknown message to {}", actor), 2)));
   runtime->softShutdown();
 }
@@ -204,10 +208,8 @@ TYPED_TEST(
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<DistributedRuntime>(
       "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
-  auto actor_id = runtime->template spawn<TrivialActor>(
+  auto actor = runtime->template spawn<TrivialActor>(
       std::make_unique<TrivialState>("foo"), test::message::TrivialStart{});
-  auto actor = DistributedActorPID{
-      .server = "PRMR-1234", .database = "database", .id = actor_id};
 
   auto unknown_actor = DistributedActorPID{
       .server = "PRMR-1234", .database = "database", .id = {999}};
@@ -217,7 +219,7 @@ TYPED_TEST(
 
   this->scheduler->stop();
   ASSERT_EQ(
-      runtime->template getActorStateByID<TrivialActor>(actor_id),
+      runtime->template getActorStateByID<TrivialActor>(actor),
       (TrivialState(fmt::format("receiving actor {} not found", unknown_actor),
                     2)));
   runtime->softShutdown();
@@ -233,9 +235,7 @@ TYPED_TEST(DistributedRuntimeTest, ping_pong_game) {
       std::make_unique<pong_actor::PongState>(), pong_actor::message::Start{});
   auto ping_actor = runtime->template spawn<ping_actor::Actor>(
       std::make_unique<ping_actor::PingState>(),
-      ping_actor::message::Start{
-          .pongActor = DistributedActorPID{
-              .server = serverID, .database = "database", .id = pong_actor}});
+      ping_actor::message::Start{.pongActor = pong_actor});
 
   this->scheduler->stop();
   auto ping_actor_state =
@@ -257,12 +257,8 @@ TYPED_TEST(DistributedRuntimeTest, spawn_game) {
   auto spawn_actor = runtime->template spawn<SpawnActor>(
       std::make_unique<SpawnState>(), test::message::SpawnStartMessage{});
 
-  runtime->dispatch(
-      DistributedActorPID{
-          .server = serverID, .database = "database", .id = spawn_actor},
-      DistributedActorPID{
-          .server = serverID, .database = "database", .id = spawn_actor},
-      SpawnActor::Message{test::message::SpawnMessage{"baz"}});
+  runtime->dispatch(spawn_actor, spawn_actor,
+                    SpawnActor::Message{test::message::SpawnMessage{"baz"}});
 
   this->scheduler->stop();
   ASSERT_EQ(runtime->getActorIDs().size(), 2);
@@ -280,15 +276,11 @@ TYPED_TEST(DistributedRuntimeTest, finishes_actor_when_actor_says_so) {
   auto finishing_actor = runtime->template spawn<FinishingActor>(
       std::make_unique<FinishingState>(), test::message::FinishingStart{});
 
-  runtime->dispatch(
-      DistributedActorPID{
-          .server = serverID, .database = "database", .id = finishing_actor},
-      DistributedActorPID{
-          .server = serverID, .database = "database", .id = finishing_actor},
-      FinishingActor::Message{test::message::FinishingFinish{}});
+  runtime->dispatch(finishing_actor, finishing_actor,
+                    FinishingActor::Message{test::message::FinishingFinish{}});
 
   this->scheduler->stop();
-  ASSERT_FALSE(runtime->actors.find(finishing_actor).has_value());
+  ASSERT_FALSE(runtime->actors.find(finishing_actor.id).has_value());
   runtime->softShutdown();
 }
 
@@ -301,15 +293,9 @@ TYPED_TEST(DistributedRuntimeTest,
   auto finishing_actor = runtime->template spawn<FinishingActor>(
       std::make_unique<FinishingState>(), test::message::FinishingStart{});
 
-  runtime->dispatch(
-      DistributedActorPID{
-          .server = serverID, .database = "database", .id = finishing_actor},
-      DistributedActorPID{
-          .server = serverID, .database = "database", .id = finishing_actor},
-      FinishingActor::Message{test::message::FinishingFinish{}});
-  // wait for actor to work off all messages
-  while (not runtime->areAllActorsIdle()) {
-  }
+  runtime->dispatch(finishing_actor, finishing_actor,
+                    FinishingActor::Message{test::message::FinishingFinish{}});
+  waitForAllMessagesToBeProcessed(runtime);
 
   this->scheduler->stop();
   ASSERT_EQ(runtime->actors.size(), 0);
@@ -333,31 +319,19 @@ TYPED_TEST(DistributedRuntimeTest,
   runtime->template spawn<FinishingActor>(std::make_unique<FinishingState>(),
                                           test::message::FinishingStart{});
 
-  runtime->dispatch(DistributedActorPID{.server = serverID,
-                                        .database = "database",
-                                        .id = actor_to_be_finished},
-                    DistributedActorPID{.server = serverID,
-                                        .database = "database",
-                                        .id = actor_to_be_finished},
+  runtime->dispatch(actor_to_be_finished, actor_to_be_finished,
                     FinishingActor::Message{test::message::FinishingFinish{}});
-  runtime->dispatch(DistributedActorPID{.server = serverID,
-                                        .database = "database",
-                                        .id = another_actor_to_be_finished},
-                    DistributedActorPID{.server = serverID,
-                                        .database = "database",
-                                        .id = another_actor_to_be_finished},
+  runtime->dispatch(another_actor_to_be_finished, another_actor_to_be_finished,
                     FinishingActor::Message{test::message::FinishingFinish{}});
-  // wait for actor to work off all messages
-  while (not runtime->areAllActorsIdle()) {
-  }
+  waitForAllMessagesToBeProcessed(runtime);
 
   this->scheduler->stop();
   ASSERT_EQ(runtime->actors.size(), 3);
   auto remaining_actor_ids = runtime->getActorIDs();
   std::unordered_set<ActorID> actor_ids(remaining_actor_ids.begin(),
                                         remaining_actor_ids.end());
-  ASSERT_FALSE(actor_ids.contains(actor_to_be_finished));
-  ASSERT_FALSE(actor_ids.contains(another_actor_to_be_finished));
+  ASSERT_FALSE(actor_ids.contains(actor_to_be_finished.id));
+  ASSERT_FALSE(actor_ids.contains(another_actor_to_be_finished.id));
   runtime->softShutdown();
   ASSERT_EQ(runtime->actors.size(), 0);
 }
@@ -379,12 +353,134 @@ TYPED_TEST(DistributedRuntimeTest,
   runtime->template spawn<TrivialActor>(std::make_unique<TrivialState>(),
                                         test::message::TrivialStart{});
   ASSERT_EQ(runtime->actors.size(), 5);
-  // wait for actor to work off all messages
-  while (not runtime->areAllActorsIdle()) {
-  }
+  waitForAllMessagesToBeProcessed(runtime);
   this->scheduler->stop();
   runtime->softShutdown();
   ASSERT_EQ(runtime->actors.size(), 0);
+}
+
+TYPED_TEST(DistributedRuntimeTest, sends_down_message_to_monitoring_actors) {
+  auto serverID = ServerID{"PRMR-1234"};
+  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
+  auto runtime = std::make_shared<DistributedRuntime>(
+      serverID, "RuntimeTest", this->scheduler, dispatcher);
+  auto monitor1 = runtime->template spawn<MonitoringActor>(
+      std::make_unique<MonitoringState>());
+  auto monitor2 = runtime->template spawn<MonitoringActor>(
+      std::make_unique<MonitoringState>());
+  auto monitor3 = runtime->template spawn<MonitoringActor>(
+      std::make_unique<MonitoringState>());
+
+  auto monitored1 = runtime->template spawn<FinishingActor>(
+      std::make_unique<FinishingState>());
+  auto monitored2 = runtime->template spawn<FinishingActor>(
+      std::make_unique<FinishingState>());
+  auto monitored3 = runtime->template spawn<FinishingActor>(
+      std::make_unique<FinishingState>());
+
+  ASSERT_EQ(runtime->actors.size(), 6);
+
+  runtime->monitorActor(monitor1, monitored1);
+  runtime->monitorActor(monitor1, monitored2);
+  runtime->monitorActor(monitor2, monitored2);
+  runtime->monitorActor(monitor3, monitored2);
+  runtime->monitorActor(monitor3, monitored3);
+
+  runtime->dispatch(monitored2, monitored2,
+                    FinishingActor::Message{test::message::FinishingFinish{}});
+  waitForAllMessagesToBeProcessed(runtime);
+  // the finish message is processed asynchronously, and the idle flag is set
+  // before the actor is removed and the down messages are dispatched.
+  // the waitForAllMessagesToBeProcessed only indicates that the message has
+  // been processed based on the idle state, but we don't know yet if the down
+  // messages have been dispatched. So we try to wait here until the system has
+  // converged to our expected state.
+  for (unsigned i = 0; i < 10; ++i) {
+    if (runtime->actors.size() == 5 &&
+        runtime->template getActorStateByID<MonitoringActor>(monitor1)
+                ->deadActors.size() == 1 &&
+        runtime->template getActorStateByID<MonitoringActor>(monitor2)
+                ->deadActors.size() == 1 &&
+        runtime->template getActorStateByID<MonitoringActor>(monitor3)
+                ->deadActors.size() == 1) {
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  EXPECT_EQ(runtime->actors.size(), 5);
+  EXPECT_EQ(
+      (MonitoringState{.deadActors = {{monitored2.id, ExitReason::kFinished}}}),
+      *runtime->template getActorStateByID<MonitoringActor>(monitor1));
+  EXPECT_EQ(
+      (MonitoringState{.deadActors = {{monitored2.id, ExitReason::kFinished}}}),
+      *runtime->template getActorStateByID<MonitoringActor>(monitor2));
+  EXPECT_EQ(
+      (MonitoringState{.deadActors = {{monitored2.id, ExitReason::kFinished}}}),
+      *runtime->template getActorStateByID<MonitoringActor>(monitor3));
+
+  runtime->dispatch(monitored1, monitored1,
+                    FinishingActor::Message{
+                        test::message::FinishingFinish{ExitReason::kShutdown}});
+  runtime->dispatch(monitored3, monitored3,
+                    FinishingActor::Message{
+                        test::message::FinishingFinish{ExitReason::kShutdown}});
+  waitForAllMessagesToBeProcessed(runtime);
+  EXPECT_EQ(
+      (MonitoringState{.deadActors = {{monitored2.id, ExitReason::kFinished},
+                                      {monitored1.id, ExitReason::kShutdown}}}),
+      *runtime->template getActorStateByID<MonitoringActor>(monitor1));
+  EXPECT_EQ(
+      (MonitoringState{.deadActors = {{monitored2.id, ExitReason::kFinished}}}),
+      *runtime->template getActorStateByID<MonitoringActor>(monitor2));
+  EXPECT_EQ(
+      (MonitoringState{.deadActors = {{monitored2.id, ExitReason::kFinished},
+                                      {monitored3.id, ExitReason::kShutdown}}}),
+      *runtime->template getActorStateByID<MonitoringActor>(monitor3));
+
+  this->scheduler->stop();
+  runtime->softShutdown();
+  ASSERT_EQ(runtime->actors.size(), 0);
+}
+
+TYPED_TEST(
+    DistributedRuntimeTest,
+    trying_to_monitor_an_already_terminated_actor_immediately_sends_ActorDown_message) {
+  auto serverID = ServerID{"PRMR-1234"};
+  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
+  auto runtime = std::make_shared<DistributedRuntime>(
+      serverID, "RuntimeTest", this->scheduler, dispatcher);
+  auto monitor = runtime->template spawn<MonitoringActor>(
+      std::make_unique<MonitoringState>());
+
+  runtime->monitorActor(monitor, DistributedActorPID{.server = serverID,
+                                                     .database = "database",
+                                                     .id = ActorID{999}});
+
+  waitForAllMessagesToBeProcessed(runtime);
+  EXPECT_EQ(
+      (MonitoringState{.deadActors = {{ActorID{999}, ExitReason::kUnknown}}}),
+      *runtime->template getActorStateByID<MonitoringActor>(monitor));
+
+  this->scheduler->stop();
+  runtime->softShutdown();
+}
+
+TYPED_TEST(
+    DistributedRuntimeTest,
+    trying_to_dispatching_a_message_to_a_non_existing_actor_does_not_crash_if_sender_no_longer_exists) {
+  auto serverID = ServerID{"PRMR-1234"};
+  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
+  auto runtime = std::make_shared<DistributedRuntime>(
+      serverID, "RuntimeTest", this->scheduler, dispatcher);
+
+  runtime->monitorActor(
+      DistributedActorPID{
+          .server = serverID, .database = "database", .id = ActorID{998}},
+      DistributedActorPID{
+          .server = serverID, .database = "database", .id = ActorID{999}});
+
+  this->scheduler->stop();
+  runtime->softShutdown();
 }
 
 TEST(DistributedRuntimeTest, sends_messages_between_lots_of_actors) {
@@ -422,9 +518,7 @@ TEST(DistributedRuntimeTest, sends_messages_between_lots_of_actors) {
       TrivialActor::Message{
           test::message::TrivialMessage{std::to_string(actor_count)}});
 
-  // wait for actor to work off all messages
-  while (not runtime->areAllActorsIdle()) {
-  }
+  waitForAllMessagesToBeProcessed(runtime);
 
   scheduler->stop();
   ASSERT_EQ(runtime->actors.size(), actor_count);

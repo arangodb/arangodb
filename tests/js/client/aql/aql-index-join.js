@@ -119,7 +119,7 @@ const IndexJoinTestSuite = function () {
 
   const queryOptions = {
     optimizer: {
-      rules: ["+join-index-nodes"]
+      rules: ["+join-index-nodes", "-replace-equal-attribute-accesses"]
     },
     maxNumberOfPlans: 1
   };
@@ -849,7 +849,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1.x, doc2.x, doc3.x, doc4.x]
       `;
 
-      const plan = db._createStatement(query).explain().plan;
+      const plan = db._createStatement({query, options: queryOptions}).explain().plan;
       const joins = plan.nodes.filter(x => x.type === "JoinNode");
       assertEqual(joins.length, 2);
       for (const join of joins) {
@@ -880,7 +880,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1.x, doc2.x, doc3.x]
       `;
 
-      const plan = db._createStatement(query).explain().plan;
+      const plan = db._createStatement({query, options: queryOptions}).explain().plan;
       const nodes = plan.nodes.map(x => x.type);
 
       assertEqual(nodes.indexOf("JoinNode"), 1);
