@@ -225,9 +225,11 @@ TEST_F(IResearchFeatureTest, test_options_default) {
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
                            size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(
+      std::make_tuple(size_t(0), size_t(0), size_t(expectedNumThreads)),
                ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(
+      std::make_tuple(size_t(0), size_t(0), size_t(expectedNumThreads)),
                ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
@@ -329,9 +331,11 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_default_set) {
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
                            size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(
+      std::make_tuple(size_t(0), size_t(0), size_t(expectedCommitThreads)),
                ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(std::make_tuple(size_t(0), size_t(0),
+                               size_t(expectedConsolidationThreads)),
                ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
@@ -418,9 +422,11 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_min) {
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
                            size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(
+      std::make_tuple(size_t(0), size_t(0), size_t(expectedCommitThreads)),
                ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(std::make_tuple(size_t(0), size_t(0),
+                               size_t(expectedConsolidationThreads)),
                ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
@@ -507,9 +513,11 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads) {
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
                            size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(
+      std::make_tuple(size_t(0), size_t(0), size_t(expectedCommitThreads)),
                ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(std::make_tuple(size_t(0), size_t(0),
+                               size_t(expectedConsolidationThreads)),
                ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
@@ -596,9 +604,11 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads) {
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
                            size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(
+      std::make_tuple(size_t(0), size_t(0), size_t(expectedCommitThreads)),
                ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(std::make_tuple(size_t(0), size_t(0),
+                               size_t(expectedConsolidationThreads)),
                ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
@@ -682,14 +692,15 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_auto) {
 
   feature.start();
   ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
-                           size_t(*commitThreadsIdle->ptr)),
+                           size_t(*commitThreads->ptr)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
-                           size_t(*consolidationThreadsIdle->ptr)),
+                           size_t(*consolidationThreads->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(
+      std::make_tuple(size_t(0), size_t(0), size_t(expectedCommitThreads)),
                ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(expectedConsolidationThreads)),
                ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
@@ -774,14 +785,14 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_set) {
 
   feature.start();
   ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
-                           size_t(*commitThreadsIdle->ptr)),
+                           size_t(*commitThreads->ptr)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
-                           size_t(*consolidationThreadsIdle->ptr)),
+                           size_t(*consolidationThreads->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(expectedCommitThreads)),
                ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(expectedConsolidationThreads)),
                ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
@@ -868,14 +879,14 @@ TEST_F(IResearchFeatureTest,
 
   feature.start();
   ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
-                           size_t(*commitThreadsIdle->ptr)),
+                           size_t(*commitThreads->ptr)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
-                           size_t(*consolidationThreadsIdle->ptr)),
+                           size_t(*consolidationThreads->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(expectedCommitThreads)),
                ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(expectedConsolidationThreads)),
                ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
@@ -962,14 +973,14 @@ TEST_F(
 
   feature.start();
   ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
-                           size_t(*commitThreadsIdle->ptr)),
+                           size_t(*commitThreads->ptr)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
-                           size_t(*consolidationThreadsIdle->ptr)),
+                           size_t(*consolidationThreads->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(expectedCommitThreads)),
                ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(expectedConsolidationThreads)),
                ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
@@ -1053,14 +1064,14 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_auto) {
 
   feature.start();
   ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
-                           size_t(*commitThreadsIdle->ptr)),
+                           size_t(*commitThreads->ptr)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
-                           size_t(*consolidationThreadsIdle->ptr)),
+                           size_t(*consolidationThreads->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(expectedCommitThreads)),
                ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(expectedConsolidationThreads)),
                ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
@@ -1145,14 +1156,14 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_set) {
 
   feature.start();
   ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
-                           size_t(*commitThreadsIdle->ptr)),
+                           size_t(*commitThreads->ptr)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
-                           size_t(*consolidationThreadsIdle->ptr)),
+                           size_t(*consolidationThreads->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(expectedCommitThreads)),
                ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(expectedConsolidationThreads)),
                ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
@@ -1238,14 +1249,14 @@ TEST_F(IResearchFeatureTest,
 
   feature.start();
   ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
-                           size_t(*commitThreadsIdle->ptr)),
+                           size_t(*commitThreads->ptr)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
-                           size_t(*consolidationThreadsIdle->ptr)),
+                           size_t(*consolidationThreads->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(expectedCommitThreads)),
                ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(expectedConsolidationThreads)),
                ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
@@ -1334,14 +1345,14 @@ TEST_F(IResearchFeatureTest, test_options_custom_thread_count) {
 
   feature.start();
   ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
-                           size_t(*commitThreadsIdle->ptr)),
+                           size_t(*commitThreads->ptr)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
-                           size_t(*consolidationThreadsIdle->ptr)),
+                           size_t(*consolidationThreads->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(expectedCommitThreads)),
                ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(expectedConsolidationThreads)),
                ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
@@ -1424,14 +1435,14 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_max) {
 
   feature.start();
   ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
-                           size_t(*commitThreadsIdle->ptr)),
+                           size_t(*commitThreads->ptr)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
-                           size_t(*consolidationThreadsIdle->ptr)),
+                           size_t(*consolidationThreads->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(expectedCommitThreads)),
                ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(expectedConsolidationThreads)),
                ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
@@ -1510,14 +1521,16 @@ TEST_F(IResearchFeatureTest, test_options_threads_set_zero) {
 
   feature.start();
   ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
-                           size_t(*commitThreadsIdle->ptr)),
+                           size_t(*commitThreads->ptr)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
-                           size_t(*consolidationThreadsIdle->ptr)),
+                           size_t(*consolidationThreads->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(
+      std::make_tuple(size_t(0), size_t(0), size_t(expectedNumThreads)),
                ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(
+      std::make_tuple(size_t(0), size_t(0), size_t(expectedNumThreads)),
                ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
@@ -1596,14 +1609,16 @@ TEST_F(IResearchFeatureTest, test_options_threads) {
 
   feature.start();
   ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
-                           size_t(*commitThreadsIdle->ptr)),
+                           size_t(*commitThreads->ptr)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
-                           size_t(*consolidationThreadsIdle->ptr)),
+                           size_t(*consolidationThreads->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(
+      std::make_tuple(size_t(0), size_t(0), size_t(expectedNumThreads)),
                ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(
+      std::make_tuple(size_t(0), size_t(0), size_t(expectedNumThreads)),
                ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
@@ -1682,14 +1697,16 @@ TEST_F(IResearchFeatureTest, test_options_threads_max) {
 
   feature.start();
   ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
-                           size_t(*commitThreadsIdle->ptr)),
+                           size_t(*commitThreads->ptr)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
-                           size_t(*consolidationThreadsIdle->ptr)),
+                           size_t(*consolidationThreads->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(
+      std::make_tuple(size_t(0), size_t(0), size_t(expectedNumThreads)),
                ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(
+      std::make_tuple(size_t(0), size_t(0), size_t(expectedNumThreads)),
                ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
@@ -1768,14 +1785,16 @@ TEST_F(IResearchFeatureTest, test_options_threads_limit_max) {
 
   feature.start();
   ASSERT_EQ(std::make_pair(size_t(*commitThreads->ptr),
-                           size_t(*commitThreadsIdle->ptr)),
+                           size_t(*commitThreads->ptr)),
             feature.limits(ThreadGroup::_0));
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
-                           size_t(*consolidationThreadsIdle->ptr)),
+                           size_t(*consolidationThreads->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(
+      std::make_tuple(size_t(0), size_t(0), size_t(expectedNumThreads)),
                ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(
+      std::make_tuple(size_t(0), size_t(0), size_t(expectedNumThreads)),
                ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
@@ -1952,11 +1971,14 @@ TEST_F(IResearchFeatureTest, test_start) {
             iresearch.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             iresearch.stats(ThreadGroup::_1));
-
+  uint32_t const expectedNumThreads =
+      std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
   iresearch.start();
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(
+      std::make_tuple(size_t(0), size_t(0), size_t(expectedNumThreads)),
                ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+  waitForStats(
+      std::make_tuple(size_t(0), size_t(0), size_t(expectedNumThreads)),
                ThreadGroup::_1);
 
   for (auto& entry : expected) {
