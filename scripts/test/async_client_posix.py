@@ -11,7 +11,6 @@ from subprocess import PIPE
 from threading import Thread
 import psutil
 import sys
-from allure_commons._allure import attach
 from async_client import (
     ArangoCLIprogressiveTimeoutExecutor,
     print_log,
@@ -19,8 +18,6 @@ from async_client import (
     add_message_to_report,
     kill_children
 )
-
-from tools.asciiprint import print_progress as progress
 
 # import tools.loghelper as lh
 # pylint: disable=dangerous-default-value
