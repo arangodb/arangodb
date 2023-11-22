@@ -61,25 +61,27 @@
 #include <velocypack/Exception.h>
 #include <velocypack/Iterator.h>
 
+#include <string_view>
+
 namespace {
-std::string const garbageCollectionQuery(
+constexpr std::string_view garbageCollectionQuery(
     "FOR s in @@collection FILTER s.time < @start RETURN s._key");
 
-std::string const lastEntryQuery(
+constexpr std::string_view lastEntryQuery(
     "FOR s in @@collection FILTER s.time >= @start SORT s.time DESC LIMIT 1 "
     "RETURN s");
-std::string const filteredLastEntryQuery(
+constexpr std::string_view filteredLastEntryQuery(
     "FOR s in @@collection FILTER s.time >= @start FILTER s.clusterId == "
     "@clusterId SORT s.time DESC LIMIT 1 RETURN s");
 
-std::string const fifteenMinuteQuery(
+constexpr std::string_view fifteenMinuteQuery(
     "FOR s in _statistics FILTER s.time >= @start SORT s.time RETURN s");
 
-std::string const filteredFifteenMinuteQuery(
+constexpr std::string_view filteredFifteenMinuteQuery(
     "FOR s in _statistics FILTER s.time >= @start FILTER s.clusterId == "
     "@clusterId SORT s.time RETURN s");
 
-double extractNumber(VPackSlice slice, char const* attribute) {
+double extractNumber(VPackSlice slice, std::string_view attribute) {
   if (!slice.isObject()) {
     return 0.0;
   }
