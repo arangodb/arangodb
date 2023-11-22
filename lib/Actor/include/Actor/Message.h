@@ -23,15 +23,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <Inspection/VPackWithErrorT.h>
 #include <memory>
 #include <type_traits>
 #include <variant>
 
-#include <velocypack/Builder.h>
-
 #include "Actor/ExitReason.h"
-#include "Actor/MPSCQueue.h"
+#include "Inspection/Format.h"
+#include "Inspection/Types.h"
 
 namespace arangodb::actor {
 
