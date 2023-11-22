@@ -1,7 +1,7 @@
 name: arangodb_search_mapped_memory
 introducedIn: "3.12.0"
 help: |
-  Amount of memory in bytes that is mapped.
+  Amount of memory in bytes that is mapped for this ArangoSearch index.
 unit: bytes
 type: gauge
 category: ArangoSearch
@@ -10,5 +10,6 @@ exposedBy:
   - dbserver
   - single
 description: |
-  Amount of memory in bytes that is mapped using memory-mapped files.
+  Amount of memory in bytes that is mapped for an inverted index of a collection
+  or an index of a View (`arangosearch` View link) using memory-mapped files.
   The metric value is very approximate and can be outdated quickly.
