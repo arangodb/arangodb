@@ -4,8 +4,6 @@
   'use strict';
 
   let isCurrentCoordinator = false;
-
-
   window.Router = Backbone.Router.extend({
     toUpdate: [],
     dbServers: [],
@@ -261,7 +259,6 @@
       this.userCollection = new window.ArangoUsers();
        
       window.Skeloading = new window.SkeLoading();
-
       this.initOnce = _.once(function () {
         const callback = function (error, isCoordinator) {
           if (isCoordinator === true) {
