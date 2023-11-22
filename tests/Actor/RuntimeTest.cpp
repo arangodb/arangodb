@@ -459,6 +459,16 @@ TYPED_TEST(RuntimeTest, sends_down_message_to_monitoring_actors) {
                     FinishingActor::Message{
                         test::message::FinishingFinish{ExitReason::kShutdown}});
   waitForAllMessagesToBeProcessed(runtime);
+  for (unsigned i = 0; i < 10; ++i) {
+    if (runtime->actors.size() == 3 &&
+        runtime->template getActorStateByID<MonitoringActor>(monitor1)
+                ->deadActors.size() == 2 &&
+        runtime->template getActorStateByID<MonitoringActor>(monitor3)
+                ->deadActors.size() == 2) {
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
   EXPECT_EQ(
       (MonitoringState{.deadActors = {{monitored2.id, ExitReason::kFinished},
                                       {monitored1.id, ExitReason::kShutdown}}}),
