@@ -39,24 +39,24 @@ struct MatchResult {
   MatchResult(MatchResult&&) = default;
   MatchResult(MatchResult const&) = delete;
 
-  auto addError(std::string error) -> MatchResult&& {
+  auto addError(std::string error) && -> MatchResult&& {
     _errors.emplace_back(error);
     return std::move(*this);
   }
 
-  auto addErrorIfError(std::string error) -> MatchResult&& {
+  auto addErrorIfError(std::string error) && -> MatchResult&& {
     if (isError()) {
       _errors.emplace_back(error);
     }
     return std::move(*this);
   }
 
-  auto addMatch(std::string name, AstNode const* value) -> MatchResult&& {
+  auto addMatch(std::string name, AstNode const* value) && -> MatchResult&& {
     _matches.emplace(name, value);
     return std::move(*this);
   }
 
-  auto combine(MatchResult&& rhs) -> MatchResult&& {
+  auto combine(MatchResult&& rhs) && -> MatchResult&& {
     _errors.insert(std::end(_errors), std::begin(rhs._errors),
                    std::end(rhs._errors));
     _matches.merge(rhs._matches);
@@ -81,17 +81,18 @@ struct MatchResult {
   }
 
   friend inline auto operator/(MatchResult&& lhs, std::string error)
-      -> MatchResult {
+      -> MatchResult&& {
     lhs._errors.emplace_back(error);
     return std::move(lhs);
   }
 
   template<typename Func>
-  friend inline auto operator|(MatchResult&& lhs, Func&& func) {
+  friend inline auto operator|(MatchResult&& lhs, Func&& func)
+      -> MatchResult&& {
     if (lhs.isError()) {
       return std::move(lhs);
     }
-    return lhs.combine(func());
+    return std::move(lhs).combine(func());
   }
 
  private:
