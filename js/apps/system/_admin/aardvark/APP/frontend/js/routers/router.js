@@ -808,7 +808,6 @@
 
       window.SkeletonLoader.render()
       this.checkUser();
-      
       this.init.then(() => {
         this.arangoCollectionsStore.fetch({
           cache: false,
