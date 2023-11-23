@@ -2279,7 +2279,7 @@ function explain(data, options, shouldPrint) {
   stringBuilder.clearOutput();
   let stmt = db._createStatement(data);
   let result = stmt.explain(options);
-  if (options.allPlans) {
+  if (options.allPlans === true) {
     // multiple plans
     printQuery(data.query);
     for (let i = 0; i < result.plans.length; ++i) {
