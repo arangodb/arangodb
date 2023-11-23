@@ -1,7 +1,7 @@
 {
   "files": {
-    "main.css": "./static/css/main.4939e283.css",
-    "main.js": "./static/js/main.07385e5c.js",
+    "main.css": "./static/css/main.84de7fc1.css",
+    "main.js": "./static/js/main.66e9c7ae.js",
     "static/media/fontawesome-webfont.svg?v=4.4.0": "./static/media/fontawesome-webfont.ed6298903ae1554c7f3e.svg",
     "static/media/fontawesome-webfont.ttf?v=4.4.0": "./static/media/fontawesome-webfont.f0af1680f082547a7aae.ttf",
     "static/media/fontawesome-webfont.woff?v=4.4.0": "./static/media/fontawesome-webfont.f7f1738ca345185e0185.woff",
@@ -44,11 +44,11 @@
     "static/media/arangodb-icon.svg": "./static/media/arangodb-icon.35807d6e11925bd44973.svg",
     "index.html": "./index.html",
     "static/media/favicon.ico": "./static/media/favicon.909457142f6be9dae418.ico",
-    "main.4939e283.css.map": "./static/css/main.4939e283.css.map",
-    "main.07385e5c.js.map": "./static/js/main.07385e5c.js.map"
+    "main.84de7fc1.css.map": "./static/css/main.84de7fc1.css.map",
+    "main.66e9c7ae.js.map": "./static/js/main.66e9c7ae.js.map"
   },
   "entrypoints": [
-    "static/css/main.4939e283.css",
-    "static/js/main.07385e5c.js"
+    "static/css/main.84de7fc1.css",
+    "static/js/main.66e9c7ae.js"
   ]
 }
