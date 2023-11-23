@@ -22,6 +22,10 @@
 
 #include <Aql/Optimizer/ExpressionMatcher/Matchable.h>
 
+#include <Assertions/ProdAssert.h>
+
+#include <fmt/core.h>
+
 namespace arangodb::aql::expression_matcher {
 
 // Matches any AstNode that has type `type`

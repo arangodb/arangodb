@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-#include "ExpressionMatcher.h"
+#include "Variable.h"
 
 #include <optional>
 #include <variant>

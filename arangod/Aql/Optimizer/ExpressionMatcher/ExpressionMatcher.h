@@ -41,6 +41,7 @@
 #include <Aql/Optimizer/ExpressionMatcher/Matchers/Expansion.h>
 #include <Aql/Optimizer/ExpressionMatcher/Matchers/Iterator.h>
 #include <Aql/Optimizer/ExpressionMatcher/Matchers/NAryAnd.h>
+#include <Aql/Optimizer/ExpressionMatcher/Matchers/NAryOr.h>
 #include <Aql/Optimizer/ExpressionMatcher/Matchers/NoOp.h>
 #include <Aql/Optimizer/ExpressionMatcher/Matchers/NodeType.h>
 #include <Aql/Optimizer/ExpressionMatcher/Matchers/Quantifier.h>

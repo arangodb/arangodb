@@ -20,16 +20,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <Aql/Optimizer/ExpressionMatcher/Matchers/NodeType.h>
 #include <Aql/Optimizer/ExpressionMatcher/Matchable.h>
 
 namespace arangodb::aql::expression_matcher {
 
-// Applies the matcher  M and if it succeeds registers the AqlNode* that
-// it succeeded on in the MatchResult under the name `name`
 template<Matchable M>
-struct NAryAnd {
+struct NAryAndAll {
   auto apply(AstNode const* node) -> MatchResult {
-    return MatchResult().error("Not Implemented");
+    return MatchNodeType(NODE_TYPE_OPERATOR_NARY_AND).apply(node)  //
+           | [&]() {
+               for (auto i = size_t{0}; i < node->numMembers(); ++i) {
+                 auto snr = matcher.apply(node->getMemberUnchecked(i));
+               }
+             };
   }
   M matcher;
 };

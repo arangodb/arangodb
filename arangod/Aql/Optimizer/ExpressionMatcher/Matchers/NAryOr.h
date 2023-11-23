@@ -20,40 +20,51 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <Aql/Optimizer/ExpressionMatcher/Matchable.h>
-
 #include <Aql/Optimizer/ExpressionMatcher/Matchers/NodeType.h>
-
-#include <Aql/Variable.h>
+#include <Aql/Optimizer/ExpressionMatcher/Matchable.h>
+#include "Aql/AstNode.h"
 
 namespace arangodb::aql::expression_matcher {
-// Matches AstNodes of type NODE_TYPE_VARIABLE
-struct AnyVariable {
+
+template<Matchable M>
+struct NAryOrAll {
   auto apply(AstNode const* node) -> MatchResult {
-    return MatchNodeType(NODE_TYPE_VARIABLE).apply(node);
+    return MatchNodeType(NODE_TYPE_OPERATOR_NARY_OR).apply(node)  //
+           | [&]() {
+               for (auto i = size_t{0}; i < node->numMembers(); ++i) {
+                 auto snr = matcher.apply(node->getMemberUnchecked(i));
+               }
+             };
   }
+  M matcher;
 };
 
-// Matches AstNodes of type NODE_TYPE_VARIABLE with name `name`
-struct Variable {
+// Applies the matcher  M and if it succeeds registers the AqlNode* that
+// it succeeded on in the MatchResult under the name `name`
+template<Matchable M>
+struct NAryOrSingleton {
   auto apply(AstNode const* node) -> MatchResult {
-    return MatchNodeType(NODE_TYPE_VARIABLE).apply(node)  //
+    return MatchNodeType(NODE_TYPE_OPERATOR_NARY_OR).apply(node)  //
            |
            [&]() {
-             auto var =
-                 static_cast<::arangodb::aql::Variable const*>(node->getData());
-             if (var->name != name) {
-               return MatchResult::error(
-                   fmt::format("Expected access to variable `{}`, but found {}",
-                               name, var->name));
+             if (node->numMembers() != 1) {
+               return MatchResult::error("expected precisely 1 member");
+             } else {
+               return MatchResult::match();
              }
-             return MatchResult::match();
-           };
+           } |
+           [&]() { return matcher.apply(node->getMemberUnchecked(0)); };
   }
-
-  std::string name;
+  M matcher;
 };
-// helper for naming consistency
-auto variable(std::string name) -> Variable;
+
+// TODO: it should be possible to do the following
+
+template<Matchable... M>
+struct NAryOr {
+  auto apply(AstNode const* node) -> MatchResult{
+      // .. matches precisely the members in order to the given pattern matchers
+  };
+};
 
 }  // namespace arangodb::aql::expression_matcher
