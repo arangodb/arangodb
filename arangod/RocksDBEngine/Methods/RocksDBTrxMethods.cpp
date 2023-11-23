@@ -154,6 +154,8 @@ std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
     iterator.reset(_rocksTransaction->GetIterator(opts, cf));
   } else {
     if (iteratorMustCheckBounds(ReadOwnWrites::no)) {
+      TRI_ASSERT(opts.iterate_lower_bound == nullptr);
+      TRI_ASSERT(opts.iterate_upper_bound == nullptr);
       iterator.reset(
           _readWriteBatch->NewIteratorWithBase(cf, _db->NewIterator(opts, cf)));
     } else {
