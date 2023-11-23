@@ -29,6 +29,9 @@ const _ = require('lodash');
 const database = "ReplaceEqualAccessDatabase";
 
 function optimizerRuleReplaceEqualAttributeAccess() {
+
+  const options = {optimizer: {rules: ["+replace-equal-attribute-accesses"]}};
+
   return {
 
     setUpAll: function () {
@@ -54,7 +57,7 @@ function optimizerRuleReplaceEqualAttributeAccess() {
             return [x, y]
       `;
 
-      const stmt = db._createStatement({query});
+      const stmt = db._createStatement({query, options});
       const plan = stmt.explain().plan;
       assertNotEqual(plan.rules.indexOf("replace-equal-attribute-accesses"), -1);
 
@@ -83,7 +86,7 @@ function optimizerRuleReplaceEqualAttributeAccess() {
             return [x, y, z]
       `;
 
-      const stmt = db._createStatement({query});
+      const stmt = db._createStatement({query, options});
       const plan = stmt.explain().plan;
       assertEqual(plan.rules.indexOf("replace-equal-attribute-accesses"), -1);
     },
@@ -98,7 +101,7 @@ function optimizerRuleReplaceEqualAttributeAccess() {
             return [x, y, z, w]
       `;
       // TODO make the rule more robust and detect more cases
-      const stmt = db._createStatement({query});
+      const stmt = db._createStatement({query, options});
       const plan = stmt.explain().plan;
       assertEqual(plan.rules.indexOf("replace-equal-attribute-accesses"), -1);
     },
@@ -111,7 +114,10 @@ function optimizerRuleReplaceEqualAttributeAccess() {
             return [x.x, y.x]
       `;
 
-      const stmt = db._createStatement({query, options: {optimizer: {rules: ["-join-index-nodes"]}}});
+      const stmt = db._createStatement({
+        query,
+        options: {optimizer: {rules: ["+replace-equal-attribute-accesses", "-join-index-nodes"]}}
+      });
       const plan = stmt.explain().plan;
       assertNotEqual(plan.rules.indexOf("replace-equal-attribute-accesses"), -1);
 
@@ -151,7 +157,7 @@ function optimizerRuleReplaceEqualAttributeAccess() {
             return [a.x, b.x, c.x]
       `;
 
-      const stmt = db._createStatement({query});
+      const stmt = db._createStatement({query, options});
       const plan = stmt.explain().plan;
       assertNotEqual(plan.rules.indexOf("replace-equal-attribute-accesses"), -1);
       assertNotEqual(plan.rules.indexOf("join-index-nodes"), -1);
@@ -182,7 +188,7 @@ function optimizerRuleReplaceEqualAttributeAccess() {
             return [a.x, b.x, c.x]
       `;
 
-      const stmt = db._createStatement({query});
+      const stmt = db._createStatement({query, options});
       const plan = stmt.explain().plan;
       assertNotEqual(plan.rules.indexOf("replace-equal-attribute-accesses"), -1);
       assertNotEqual(plan.rules.indexOf("join-index-nodes"), -1);
@@ -213,7 +219,7 @@ function optimizerRuleReplaceEqualAttributeAccess() {
               return [c, i, j]
       `;
 
-      const stmt = db._createStatement({query});
+      const stmt = db._createStatement({query, options});
       const plan = stmt.explain().plan;
       assertNotEqual(plan.rules.indexOf("replace-equal-attribute-accesses"), -1);
 
@@ -250,7 +256,7 @@ function optimizerRuleReplaceEqualAttributeAccess() {
                 limit 10
                 return [x, i, j, k, m]`;
 
-      const stmt = db._createStatement({query});
+      const stmt = db._createStatement({query, options});
       const plan = stmt.explain().plan;
       assertNotEqual(plan.rules.indexOf("replace-equal-attribute-accesses"), -1);
 
