@@ -20,30 +20,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include <variant>
-#include <optional>
-
-#include <Aql/AstNode.h>
-#include <Aql/Condition.h>
-#include <Aql/Variable.h>
-#include <Aql/Quantifier.h>
-
-#include <Aql/Optimizer/ExpressionMatcher/MatchResult.h>
 #include <Aql/Optimizer/ExpressionMatcher/Matchable.h>
-
-#include <Aql/Optimizer/ExpressionMatcher/Matchers/Any.h>
-#include <Aql/Optimizer/ExpressionMatcher/Matchers/AnyValue.h>
-#include <Aql/Optimizer/ExpressionMatcher/Matchers/ArrayEq.h>
-#include <Aql/Optimizer/ExpressionMatcher/Matchers/AttributeAccess.h>
-#include <Aql/Optimizer/ExpressionMatcher/Matchers/Expansion.h>
-#include <Aql/Optimizer/ExpressionMatcher/Matchers/Iterator.h>
-#include <Aql/Optimizer/ExpressionMatcher/Matchers/NAryAnd.h>
-#include <Aql/Optimizer/ExpressionMatcher/Matchers/NoOp.h>
 #include <Aql/Optimizer/ExpressionMatcher/Matchers/NodeType.h>
-#include <Aql/Optimizer/ExpressionMatcher/Matchers/Quantifier.h>
-#include <Aql/Optimizer/ExpressionMatcher/Matchers/Reference.h>
-#include <Aql/Optimizer/ExpressionMatcher/Matchers/Variable.h>
-#include <Aql/Optimizer/ExpressionMatcher/Matchers/WithName.h>
+
+namespace arangodb::aql::expression_matcher {
+
+// Matches any AstNode
+struct Any {
+  auto apply(AstNode const* node) -> MatchResult {
+    return MatchResult::match();
+  }
+};
+}  // namespace arangodb::aql::expression_matcher
