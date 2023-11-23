@@ -126,14 +126,14 @@ struct BaseRuntime
   }
 
   template<typename ActorMessage>
-  auto dispatch(ActorPID sender, ActorPID receiver, ActorMessage const& message)
+  auto dispatch(ActorPID sender, ActorPID receiver, ActorMessage&& message)
       -> void {
     self().doDispatch(sender, receiver, message, IgnoreDispatchFailure::no);
   }
 
   template<typename ActorMessage>
   auto dispatchDelayed(std::chrono::seconds delay, ActorPID sender,
-                       ActorPID receiver, ActorMessage const& message) -> void {
+                       ActorPID receiver, ActorMessage&& message) -> void {
     _scheduler->delay(delay, [self = this->weak_from_this(), sender, receiver,
                               message](bool canceled) {
       auto me = self.lock();
