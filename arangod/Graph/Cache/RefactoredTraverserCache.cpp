@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+<////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
@@ -216,8 +216,8 @@ bool RefactoredTraverserCache::appendVertex(
     THROW_ARANGO_EXCEPTION(collectionNameResult.result());
   }
 
-  auto findDocumentInShard =
-      [&](std::string_view const& collectionName) -> bool {
+  auto findDocumentInCollection =
+      [&](std::string const& shardId) -> bool {
     if (!_produceVertices) {
       // we don't need any vertex data, return quickly
       result.add(VPackSlice::nullSlice());
@@ -258,7 +258,7 @@ bool RefactoredTraverserCache::appendVertex(
       };
       Result res =
           _trx->documentFastPathLocal(
-                  collectionName,
+                  shardId.c_str(),
                   id.substr(collectionNameResult.get().second + 1).stringView(),
                   cb)
               .get();
@@ -274,8 +274,8 @@ bool RefactoredTraverserCache::appendVertex(
       if (isWithClauseMissing(ex)) {
         // turn the error into a different error
         auto message =
-            absl::StrCat("collection not known to traversal: '", collectionName,
-                         "'. please add 'WITH ", collectionName,
+            absl::StrCat("collection not known to traversal: '", shardId.c_str(),
+                         "'. please add 'WITH ", shardId.c_str(),
                          "' as the first line in your AQL");
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
                                        message);
@@ -289,7 +289,7 @@ bool RefactoredTraverserCache::appendVertex(
   std::string const& collectionName = collectionNameResult.get().first;
   if (_collectionToShardMap.empty()) {
     TRI_ASSERT(!ServerState::instance()->isDBServer());
-    if (findDocumentInShard(collectionName)) {
+    if (findDocumentInCollection(collectionName)) {
       return true;
     }
   } else {
@@ -303,10 +303,11 @@ bool RefactoredTraverserCache::appendVertex(
               "' as the first line in your AQL");
     }
     for (auto const& shard : it->second) {
-      if (findDocumentInShard(shard)) {
+      if (findDocumentInCollection(shard.c_str())) {
         // Short circuit, as soon as one shard contains this document
         // we can return it.
         return true;
+
       }
     }
   }

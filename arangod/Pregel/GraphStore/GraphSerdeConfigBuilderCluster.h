@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Cluster/Utils/ShardID.h"
 #include "Pregel/GraphStore/GraphSerdeConfigBuilder.h"
 
 namespace arangodb {

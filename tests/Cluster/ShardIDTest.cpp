@@ -26,12 +26,14 @@
 #include "Cluster/Utils/ShardID.h"         // for ShardID, operator==, hash
 #include "Containers/FlatHashMap.h"        // for FlatHashMap
 #include "Containers/FlatHashSet.h"        // for FlatHashSet
+#include "Inspection/VPack.h"
 
-#include <cstdint>                         // for uint64_t
-#include <set>                             // for set, operator==, _Rb_tree_...
-#include <string>                          // for allocator, string
-#include <unordered_set>                   // for unordered_set
-#include <vector>                          // for vector
+#include <cstdint>        // for uint64_t
+#include <set>            // for set, operator==, _Rb_tree_...
+#include <string>         // for allocator, string
+#include <unordered_map>  // for unordered_set
+#include <unordered_set>  // for unordered_set
+#include <vector>         // for vector
 
 using namespace arangodb;
 
@@ -116,3 +118,75 @@ TEST(ShardIDTest, canBeAddedToFlatHashMap) {
     EXPECT_EQ(shardIds.at(ShardID{i}), i);
   }
 }
+
+TEST(ShardIDTest, canBeWrittenToStreamOutput) {
+  {
+    ShardID a{42};
+    std::stringstream ss;
+    ss << a;
+    EXPECT_EQ(ss.str(), "s42");
+  }
+  {
+    ShardID a{1337};
+    std::stringstream ss;
+    ss << a;
+    EXPECT_EQ(ss.str(), "s1337");
+  }
+}
+
+TEST(ShardIDTest, canBeSerializedStandalone) {
+  ShardID a{42};
+  auto result = velocypack::serialize(a);
+  ASSERT_TRUE(result.isString());
+  EXPECT_TRUE(result.isEqualString("s42"));
+  auto b = velocypack::deserialize<ShardID>(result.slice());
+  EXPECT_EQ(b, a);
+}
+
+TEST(ShardIDTest, canBeSerializedAsPartOfSet) {
+  ShardID a{42};
+  ShardID b{1337};
+  ShardID c{91};
+  std::set<ShardID> shardIds{a, b, c};
+  auto result = velocypack::serialize(shardIds);
+  // As this is a set, the ordering is guaranteed. Note: it is different from
+  // injection order!
+  ASSERT_TRUE(result.isArray());
+  EXPECT_TRUE(result.at(0).isEqualString("s42"));
+  EXPECT_TRUE(result.at(1).isEqualString("s91"));
+  EXPECT_TRUE(result.at(2).isEqualString("s1337"));
+
+  auto deserialized =
+      velocypack::deserialize<std::set<ShardID>>(result.slice());
+  EXPECT_EQ(deserialized, shardIds);
+}
+
+TEST(ShardIDTest, canBeSerializedAsUnorderdMap) {
+  std::unordered_map<ShardID, uint64_t> shardIds{};
+  shardIds.emplace(ShardID{42}, 42);
+  shardIds.emplace(ShardID{1337}, 1337);
+  shardIds.emplace(ShardID{91}, 91);
+
+  auto result = velocypack::serialize(shardIds);
+  // As this is a set, the ordering is guaranteed. Note: it is different from
+  // injection order!
+  ASSERT_TRUE(result.isObject());
+  EXPECT_TRUE(result.hasKey("s42"));
+  EXPECT_TRUE(result.get("s42").isNumber());
+  EXPECT_EQ(result.get("s42").getNumber<uint64_t>(), 42);
+
+  EXPECT_TRUE(result.hasKey("s1337"));
+  EXPECT_TRUE(result.get("s1337").isNumber());
+  EXPECT_EQ(result.get("s1337").getNumber<uint64_t>(), 1337);
+
+  EXPECT_TRUE(result.hasKey("s91"));
+  EXPECT_TRUE(result.get("s91").isNumber());
+  EXPECT_EQ(result.get("s91").getNumber<uint64_t>(), 91);
+
+  auto deserialized =
+      velocypack::deserialize<std::unordered_map<ShardID, uint64_t>>(
+          result.slice());
+
+  EXPECT_EQ(deserialized, shardIds);
+}
+// TODO: Add tests for inspection

@@ -170,7 +170,7 @@ auto DocumentStateShardHandler::dropIndex(
 
 auto DocumentStateShardHandler::lookupShard(ShardID const& shard) noexcept
     -> ResultT<std::shared_ptr<LogicalCollection>> {
-  auto col = _vocbase.lookupCollection(shard);
+  auto col = _vocbase.lookupCollection(shard.c_str());
   if (col == nullptr) {
     return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   fmt::format("Replicated log {} failed to lookup shard {}",

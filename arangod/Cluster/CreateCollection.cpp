@@ -31,6 +31,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -365,8 +366,9 @@ replication2::LogId CreateCollection::getReplicatedLogId(
 
   bool found = false;
   std::size_t index = 0;
+  std::string cmpShard{shard};
   for (auto sid : VPackArrayIterator(shardsR2)) {
-    if (sid.isEqualString(shard)) {
+    if (sid.isEqualString(cmpShard)) {
       found = true;
       break;
     }

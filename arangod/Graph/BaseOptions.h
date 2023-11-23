@@ -152,7 +152,7 @@ struct BaseOptions {
   void serializeVariables(arangodb::velocypack::Builder&) const;
 
   void setCollectionToShard(
-      std::unordered_map<std::string, std::string> const&);
+      std::unordered_map<std::string, ShardID> const&);
 
   bool produceVertices() const { return _produceVertices; }
 
