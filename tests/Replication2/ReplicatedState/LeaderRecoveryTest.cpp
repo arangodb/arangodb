@@ -85,7 +85,8 @@ struct MyHelperFactory {
   explicit MyHelperFactory(ReplicatedStateRecoveryTest& test) : test(test) {}
   auto constructLeader(std::unique_ptr<MyCoreType> core)
       -> std::shared_ptr<MyHelperLeaderState>;
-  auto constructFollower(std::unique_ptr<MyCoreType> core)
+  auto constructFollower(std::unique_ptr<MyCoreType> core,
+                         std::shared_ptr<IScheduler> scheduler)
       -> std::shared_ptr<EmptyFollowerType<MyHelperState>> {
     return std::make_shared<EmptyFollowerType<MyHelperState>>(std::move(core));
   }

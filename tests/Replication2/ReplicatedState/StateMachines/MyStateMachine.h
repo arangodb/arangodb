@@ -95,7 +95,8 @@ struct MyFollowerState : MyStateBase,
 };
 
 struct MyFactory {
-  auto constructFollower(std::unique_ptr<MyCoreType>)
+  auto constructFollower(std::unique_ptr<MyCoreType>,
+                         std::shared_ptr<IScheduler> scheduler)
       -> std::shared_ptr<MyFollowerState>;
   auto constructLeader(std::unique_ptr<MyCoreType>)
       -> std::shared_ptr<MyLeaderState>;

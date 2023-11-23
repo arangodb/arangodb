@@ -73,7 +73,7 @@ TEST_F(DocumentStateMachineTest,
   auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
   auto follower = std::make_shared<DocumentFollowerStateWrapper>(
       factory.constructCore(vocbaseMock, globalId, coreParams),
-      handlersFactoryMock);
+      handlersFactoryMock, schedulerMock);
 
   // Two steps are necessary before the snapshot is acquired:
   //  - all ongoing transactions are aborted

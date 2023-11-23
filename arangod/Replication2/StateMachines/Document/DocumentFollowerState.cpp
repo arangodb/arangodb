@@ -55,7 +55,8 @@ DocumentFollowerState::GuardedData::GuardedData(
 
 DocumentFollowerState::DocumentFollowerState(
     std::unique_ptr<DocumentCore> core,
-    std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory)
+    std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
+    std::shared_ptr<IScheduler> scheduler)
     : gid(core->gid),
       loggerContext(handlersFactory->createLogger(core->gid)
                         .with<logContextKeyStateComponent>("FollowerState")),

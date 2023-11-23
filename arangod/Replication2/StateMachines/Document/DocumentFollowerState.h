@@ -55,7 +55,8 @@ struct DocumentFollowerState
       std::enable_shared_from_this<DocumentFollowerState> {
   explicit DocumentFollowerState(
       std::unique_ptr<DocumentCore> core,
-      std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory);
+      std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
+      std::shared_ptr<IScheduler> scheduler);
 
   ~DocumentFollowerState() override;
 

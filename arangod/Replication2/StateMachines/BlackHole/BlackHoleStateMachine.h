@@ -93,7 +93,8 @@ struct BlackHoleFollowerState
 struct BlackHoleCore {};
 
 struct BlackHoleFactory {
-  auto constructFollower(std::unique_ptr<BlackHoleCore> core)
+  auto constructFollower(std::unique_ptr<BlackHoleCore> core,
+                         std::shared_ptr<IScheduler> scheduler)
       -> std::shared_ptr<BlackHoleFollowerState>;
   auto constructLeader(std::unique_ptr<BlackHoleCore> core)
       -> std::shared_ptr<BlackHoleLeaderState>;
