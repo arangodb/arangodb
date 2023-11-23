@@ -63,7 +63,7 @@ auto DocumentStateTransaction::commit() -> Result { return _methods->commit(); }
 auto DocumentStateTransaction::abort() -> Result { return _methods->abort(); }
 
 auto DocumentStateTransaction::containsShard(ShardID const& sid) -> bool {
-  return nullptr != _methods->state()->collection(sid.c_str(), AccessMode::Type::NONE);
+  return nullptr != _methods->state()->collection(std::string{sid}, AccessMode::Type::NONE);
 }
 
 auto DocumentStateTransaction::buildDefaultOptions() -> OperationOptions {
@@ -83,19 +83,19 @@ auto DocumentStateTransaction::applyOp(InsertsDocuments auto const& op,
                                        OperationOptions& opts)
     -> OperationResult {
   opts.overwriteMode = OperationOptions::OverwriteMode::Replace;
-  return _methods->insert(op.shard.c_str(), op.payload.slice(), opts);
+  return _methods->insert(op.shard, op.payload.slice(), opts);
 }
 auto DocumentStateTransaction::applyOp(ReplicatedOperation::Remove const& op,
                                        OperationOptions& opts)
     -> OperationResult {
-  return _methods->remove(op.shard.c_str(), op.payload.slice(), opts);
+  return _methods->remove(op.shard, op.payload.slice(), opts);
 }
 
 auto DocumentStateTransaction::applyOp(ReplicatedOperation::Truncate const& op,
                                        OperationOptions& opts)
     -> OperationResult {
   // TODO Think about correctness and efficiency.
-  return _methods->truncate(op.shard.c_str(), opts);
+  return _methods->truncate(op.shard, opts);
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

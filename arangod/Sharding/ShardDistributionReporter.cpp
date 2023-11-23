@@ -360,7 +360,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
           entry.followers = curServers;
           if (timeleft > 0.0) {
             std::string path = "/_api/collection/" +
-                               basics::StringUtils::urlEncode(s.first.c_str()) +
+                               basics::StringUtils::urlEncode(std::string{s.first}) +
                                "/count";
             VPackBuffer<uint8_t> body;
             network::RequestOptions reqOpts;

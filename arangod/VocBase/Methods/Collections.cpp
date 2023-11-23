@@ -777,12 +777,12 @@ Collections::create(         // create collection
 
   if (collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
              collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
-    events::CreateCollection(vocbase.name(), std::string{name.c_str()},
+    events::CreateCollection(vocbase.name(), std::string{name},
                              TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     return TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
   }
 
-  std::vector<CollectionCreationInfo> infos{{name.c_str(), collectionType, properties}};
+  std::vector<CollectionCreationInfo> infos{{name, collectionType, properties}};
 
   bool allowEnterpriseCollectionsOnSingleServer = false;
   TRI_ASSERT(!vocbase.isDangling());
@@ -801,7 +801,7 @@ Collections::create(         // create collection
         false, allowSystem);
     if (res.fail()) {
       // Audit Log the error
-      events::CreateCollection(vocbase.name(), std::string{name.c_str()}, res.errorNumber());
+      events::CreateCollection(vocbase.name(), name, res.errorNumber());
       return res;
     }
   }
@@ -827,10 +827,10 @@ Collections::create(         // create collection
 
     for (auto const& info : infos) {
       // Add audit logging for the one collection we have
-      events::CreateCollection(vocbase.name(), std::string{name.c_str()}, TRI_ERROR_NO_ERROR);
+      events::CreateCollection(vocbase.name(), std::string{name}, TRI_ERROR_NO_ERROR);
       velocypack::Builder reportBuilder(info.properties);
       OperationResult result(Result(), reportBuilder.steal(), options);
-      events::PropertyUpdateCollection(vocbase.name(), name.c_str(), result);
+      events::PropertyUpdateCollection(vocbase.name(), name, result);
     }
     // We asked for one shard. It did not throw on creation.
     // So we expect to get exactly one back

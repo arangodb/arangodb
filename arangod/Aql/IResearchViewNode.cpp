@@ -606,11 +606,11 @@ ViewSnapshotPtr snapshotDBServer(IResearchViewNode const& node,
     linksLock = searchLinksLock;
   }
   for (auto const& [shard, indexes] : shards) {
-    auto const& collection = resolver->getCollection(shard.c_str());
+    auto const& collection = resolver->getCollection(std::string{shard});
     if (!collection) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-          absl::StrCat("failed to find shard by id '", shard.c_str(), "'"));
+          absl::StrCat("failed to find shard by id '", std::string{shard}, "'"));
     }
     if (options.restrictSources &&
         !options.sources.contains(collection->planId())) {

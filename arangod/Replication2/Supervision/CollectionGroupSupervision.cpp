@@ -410,7 +410,7 @@ auto checkCollectionGroupConverged(CollectionGroup const& group) -> Action {
         for (auto const& shard : planCol.shardList) {
           if (not curCol.shards.contains(shard)) {
             return NoActionPossible{
-                basics::StringUtils::concatT("shard ", shard.c_str(), " of collection ",
+                basics::StringUtils::concatT("shard ", shard, " of collection ",
                                              cid, " not yet in current.")};
           }
         }

@@ -180,7 +180,7 @@ auto Snapshot::giveUpOnShard(ShardID const& shardId) -> Result {
     }
 
     if (data.shards.back().first != nullptr &&
-        data.shards.back().first->name() == shardId.c_str()) {
+        data.shards.back().first->name() == shardId) {
       auto res = data.databaseSnapshot->resetTransaction();
       if (res.fail()) {
         LOG_CTX("38d54", ERR, loggerContext)
@@ -194,7 +194,7 @@ auto Snapshot::giveUpOnShard(ShardID const& shardId) -> Result {
     if (auto it = std::find_if(std::begin(data.shards), std::end(data.shards),
                                [&](auto const& shard) {
                                  return shard.first != nullptr &&
-                                        shard.first->name() == shardId.c_str();
+                                        shard.first->name() == shardId;
                                });
         it != std::end(data.shards)) {
       // Give up the shared pointer to the logical collection

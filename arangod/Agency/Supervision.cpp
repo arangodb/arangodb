@@ -3623,7 +3623,7 @@ void Supervision::checkUndoLeaderChangeActions() {
       [&](std::string_view database, std::string_view collection,
           ShardID shard, std::string_view server) -> bool {
     auto path = basics::StringUtils::joinT("/", "Plan/Collections", database,
-                                           collection, "shards", shard.c_str());
+                                           collection, "shards", shard);
     auto servers = snapshot().hasAsArray(path);
     if (not servers) {
       return false;

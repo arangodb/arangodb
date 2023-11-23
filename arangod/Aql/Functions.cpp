@@ -9065,7 +9065,7 @@ AqlValue functions::ShardId(ExpressionContext* expressionContext,
           "could not find shard for document by shard keys " + keys.toJson() +
               " in " + colName);
     }
-    shardId = maybeShardID.get().c_str();
+    shardId = maybeShardID.get();
   } else {  // Agents, single server, AFO return the collection name in favour
             // of AQL universality
     shardId = colName;

@@ -375,7 +375,7 @@ static_assert(!std::is_constructible<Root::Arango::Current::Coordinators::Server
 static_assert(!std::is_constructible<Root::Arango::Current::DbServers::Server, Root::Arango::Current::DbServers, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::Collections::Database, Root::Arango::Current::Collections, DatabaseID>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::Collections::Database::Collection, Root::Arango::Current::Collections::Database, CollectionID>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_constructible<Root::Arango::Current::Collections::Database::Collection::Shard, Root::Arango::Current::Collections::Database::Collection, ShardID>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Current::Collections::Database::Collection::Shard, Root::Arango::Current::Collections::Database::Collection, std::string>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::Databases::Database, Root::Arango::Current::Databases, DatabaseID>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::Databases::Database::Server, Root::Arango::Current::Databases::Database, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::ReplicatedLogs::Database, Root::Arango::Current::ReplicatedLogs, std::string>::value, CONSTRUCTIBLE_MESSAGE);
@@ -386,8 +386,8 @@ static_assert(!std::is_constructible<Root::Arango::Plan::Coordinators::Server, R
 static_assert(!std::is_constructible<Root::Arango::Plan::DbServers::Server, Root::Arango::Plan::DbServers, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database, Root::Arango::Plan::Collections, DatabaseID>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection, Root::Arango::Plan::Collections::Database, CollectionID>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::ReplicatedLogs::Shard, Root::Arango::Plan::Collections::Database::Collection::ReplicatedLogs, ShardID>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::Shards::Shard, Root::Arango::Plan::Collections::Database::Collection::Shards, ShardID>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::ReplicatedLogs::Shard, Root::Arango::Plan::Collections::Database::Collection::ReplicatedLogs, std::string>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::Shards::Shard, Root::Arango::Plan::Collections::Database::Collection::Shards, std::string>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Databases::Database, Root::Arango::Plan::Databases, DatabaseID>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Supervision::Health::Server, Root::Arango::Supervision::Health, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Target::MapUniqueToShortId::Server, Root::Arango::Target::MapUniqueToShortId, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
@@ -447,10 +447,10 @@ class AgencyPathsTest : public ::testing::Test {
       {{"arango", "Plan", "Collections", "_system", "12345", "type"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->type()},
       {{"arango", "Plan", "Collections", "_system", "12345", "status"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->status()},
       {{"arango", "Plan", "Collections", "_system", "12345", "shards"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->shards()},
-      {{"arango", "Plan", "Collections", "_system", "12345", "shards", "s123"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->shards()->shard(ShardID{123})},
-      {{"arango", "Plan", "Collections", "_system", "12345", "shards", "s456"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->shards()->shard(ShardID{456})},
+      {{"arango", "Plan", "Collections", "_system", "12345", "shards", "s123"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->shards()->shard("s123")},
+      {{"arango", "Plan", "Collections", "_system", "12345", "shards", "s456"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->shards()->shard("s456")},
       {{"arango", "Plan", "Collections", "_system", "12345", "replicatedLogs"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->replicatedLogs()},
-      {{"arango", "Plan", "Collections", "_system", "12345", "replicatedLogs", "s123"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->replicatedLogs()->shard(ShardID{123})},
+      {{"arango", "Plan", "Collections", "_system", "12345", "replicatedLogs", "s123"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->replicatedLogs()->shard("s123")},
       {{"arango", "Plan", "Collections", "_system", "12345", "statusString"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->statusString()},
       {{"arango", "Plan", "Collections", "_system", "12345", "shardingStrategy"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->shardingStrategy()},
       {{"arango", "Plan", "Collections", "_system", "12345", "shardKeys"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->shardKeys()},
@@ -527,14 +527,14 @@ class AgencyPathsTest : public ::testing::Test {
       {{"arango", "Current", "Collections", "myDb"}, root()->arango()->current()->collections()->database("myDb")},
       {{"arango", "Current", "Collections", "_system", "12345"}, root()->arango()->current()->collections()->database("_system")->collection("12345")},
       {{"arango", "Current", "Collections", "_system", "67890"}, root()->arango()->current()->collections()->database("_system")->collection("67890")},
-      {{"arango", "Current", "Collections", "_system", "12345", "s123"}, root()->arango()->current()->collections()->database("_system")->collection("12345")->shard(ShardID{123})},
-      {{"arango", "Current", "Collections", "_system", "12345", "s456"}, root()->arango()->current()->collections()->database("_system")->collection("12345")->shard(ShardID{456})},
-      {{"arango", "Current", "Collections", "_system", "12345", "s123", "servers"}, root()->arango()->current()->collections()->database("_system")->collection("12345")->shard(ShardID{123})->servers()},
-      {{"arango", "Current", "Collections", "_system", "12345", "s123", "indexes"}, root()->arango()->current()->collections()->database("_system")->collection("12345")->shard(ShardID{123})->indexes()},
-      {{"arango", "Current", "Collections", "_system", "12345", "s123", "failoverCandidates"}, root()->arango()->current()->collections()->database("_system")->collection("12345")->shard(ShardID{123})->failoverCandidates()},
-      {{"arango", "Current", "Collections", "_system", "12345", "s123", "errorNum"}, root()->arango()->current()->collections()->database("_system")->collection("12345")->shard(ShardID{123})->errorNum()},
-      {{"arango", "Current", "Collections", "_system", "12345", "s123", "errorMessage"}, root()->arango()->current()->collections()->database("_system")->collection("12345")->shard(ShardID{123})->errorMessage()},
-      {{"arango", "Current", "Collections", "_system", "12345", "s123", "error"}, root()->arango()->current()->collections()->database("_system")->collection("12345")->shard(ShardID{123})->error()},
+      {{"arango", "Current", "Collections", "_system", "12345", "s123"}, root()->arango()->current()->collections()->database("_system")->collection("12345")->shard("s123")},
+      {{"arango", "Current", "Collections", "_system", "12345", "s456"}, root()->arango()->current()->collections()->database("_system")->collection("12345")->shard("s456")},
+      {{"arango", "Current", "Collections", "_system", "12345", "s123", "servers"}, root()->arango()->current()->collections()->database("_system")->collection("12345")->shard("s123")->servers()},
+      {{"arango", "Current", "Collections", "_system", "12345", "s123", "indexes"}, root()->arango()->current()->collections()->database("_system")->collection("12345")->shard("s123")->indexes()},
+      {{"arango", "Current", "Collections", "_system", "12345", "s123", "failoverCandidates"}, root()->arango()->current()->collections()->database("_system")->collection("12345")->shard("s123")->failoverCandidates()},
+      {{"arango", "Current", "Collections", "_system", "12345", "s123", "errorNum"}, root()->arango()->current()->collections()->database("_system")->collection("12345")->shard("s123")->errorNum()},
+      {{"arango", "Current", "Collections", "_system", "12345", "s123", "errorMessage"}, root()->arango()->current()->collections()->database("_system")->collection("12345")->shard("s123")->errorMessage()},
+      {{"arango", "Current", "Collections", "_system", "12345", "s123", "error"}, root()->arango()->current()->collections()->database("_system")->collection("12345")->shard("s123")->error()},
       {{"arango", "Current", "Databases"}, root()->arango()->current()->databases()},
       {{"arango", "Current", "Databases", "_system"}, root()->arango()->current()->databases()->database("_system")},
       {{"arango", "Current", "Databases", "myDb"}, root()->arango()->current()->databases()->database("myDb")},

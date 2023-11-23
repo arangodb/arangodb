@@ -191,7 +191,7 @@ void CloneWorker::setUsedShardsOnClone(ExecutionNode* node,
         // found a JoinNode, now add the `i` th shard for used collections
         for (auto& idx : joinNode->getIndexInfos()) {
           auto const& shards = permuter->second.at(idx.collection->name());
-          idx.usedShard = *std::next(shards.begin(), _shardId)->c_str();
+          idx.usedShard = *std::next(shards.begin(), _shardId);
         }
 
       } else {
@@ -522,7 +522,7 @@ void QuerySnippet::serializeIntoBuilder(
       }
 
       // hook distribute node into stream '0', since that does not happen below
-      prototypeConsumer = createConsumerNode(plan, internalScatter, distIds[0].c_str());
+      prototypeConsumer = createConsumerNode(plan, internalScatter, std::string{distIds[0]});
       nodeAliases.try_emplace(prototypeConsumer->id(),
                               ExecutionNodeId::InternalNode);
       // now wire up the temporary nodes
@@ -558,7 +558,7 @@ void QuerySnippet::serializeIntoBuilder(
     for (size_t i = 1; i < numberOfShardsToPermutate; ++i) {
       auto cloneWorker =
           CloneWorker(snippetRoot, internalGather, internalScatter,
-                      localExpansions, i, distIds.at(i).c_str(), nodeAliases);
+                      localExpansions, i, std::string{distIds.at(i)}, nodeAliases);
       // Warning, the walkerworker is abused.
       cloneWorker.process();
     }
@@ -653,7 +653,7 @@ auto QuerySnippet::prepareFirstBranch(
           return {TRI_ERROR_CLUSTER_NOT_LEADER};
         }
 
-        idx.usedShard = myExp.begin()->c_str();
+        idx.usedShard = *myExp.begin();
         myExpFinal.insert({idx.collection->name(), std::move(myExp)});
       }
 

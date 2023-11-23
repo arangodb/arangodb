@@ -782,7 +782,7 @@ void EngineInfoContainerDBServerServerBased::addOptionsPart(
       if (_query.trxForOptimization().isInaccessibleCollection(coll->id())) {
         for (ShardID const& sid :
              _shardLocking.getShardsForCollection(server, coll)) {
-          opts.inaccessibleCollections.insert(sid.c_str());
+          opts.inaccessibleCollections.insert(sid);
         }
         opts.inaccessibleCollections.insert(std::to_string(coll->id().id()));
       }
