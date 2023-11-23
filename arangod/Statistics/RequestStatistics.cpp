@@ -26,6 +26,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 
+#include <atomic>
 #include <iomanip>
 #include <thread>
 #include <vector>
@@ -39,6 +40,14 @@ using namespace arangodb;
 // -----------------------------------------------------------------------------
 
 namespace {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+// this variable is only used in maintainer mode, to check that we are
+// only acquiring memory for statistics in case they are enabled.
+bool statisticsEnabled = false;
+#endif
+
+std::atomic<uint64_t> memoryUsage = 0;
+
 // initial amount of empty statistics items to be created in statisticsItems
 constexpr size_t kInitialQueueSize = 64;
 
@@ -62,6 +71,10 @@ boost::lockfree::queue<RequestStatistics*> finishedList;
 
 bool enqueueItem(boost::lockfree::queue<RequestStatistics*>& queue,
                  RequestStatistics* item) noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(statisticsEnabled);
+#endif
+
   int tries = 0;
 
   try {
@@ -91,7 +104,16 @@ bool enqueueItem(boost::lockfree::queue<RequestStatistics*>& queue,
 // --SECTION--                                             static public methods
 // -----------------------------------------------------------------------------
 
+uint64_t RequestStatistics::memoryUsage() noexcept {
+  return ::memoryUsage.load(std::memory_order_relaxed);
+}
+
 void RequestStatistics::initialize() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(!statisticsEnabled);
+  statisticsEnabled = true;
+#endif
+
   MUTEX_LOCKER(guard, ::statisticsMutex);
 
   ::freeList.reserve(kInitialQueueSize * 2);
@@ -110,9 +132,18 @@ void RequestStatistics::initialize() {
       ::statisticsItems.pop_back();
     }
   }
+
+  ::memoryUsage.fetch_add(::statisticsItems.size() *
+                              (sizeof(decltype(::statisticsItems)::value_type) +
+                               sizeof(RequestStatistics)),
+                          std::memory_order_relaxed);
 }
 
 size_t RequestStatistics::processAll() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(statisticsEnabled);
+#endif
+
   RequestStatistics* statistics = nullptr;
   size_t count = 0;
 
@@ -127,6 +158,10 @@ size_t RequestStatistics::processAll() {
 }
 
 RequestStatistics::Item RequestStatistics::acquire() noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(statisticsEnabled);
+#endif
+
   RequestStatistics* statistics = nullptr;
 
   // try the happy path first
@@ -141,8 +176,14 @@ RequestStatistics::Item RequestStatistics::acquire() noexcept {
     // store pointer for just-created item
     statistics = cs.get();
 
-    MUTEX_LOCKER(guard, ::statisticsMutex);
-    ::statisticsItems.emplace_back(std::move(cs));
+    {
+      MUTEX_LOCKER(guard, ::statisticsMutex);
+      ::statisticsItems.emplace_back(std::move(cs));
+    }
+
+    ::memoryUsage.fetch_add(sizeof(decltype(::statisticsItems)::value_type) +
+                                sizeof(RequestStatistics),
+                            std::memory_order_relaxed);
   } catch (...) {
     statistics = nullptr;
   }
@@ -151,6 +192,10 @@ RequestStatistics::Item RequestStatistics::acquire() noexcept {
 }
 
 void RequestStatistics::release() noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(statisticsEnabled);
+#endif
+
   ::enqueueItem(::finishedList, this);
 }
 
@@ -159,6 +204,10 @@ void RequestStatistics::release() noexcept {
 // -----------------------------------------------------------------------------
 
 void RequestStatistics::process(RequestStatistics* statistics) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(statisticsEnabled);
+#endif
+
   TRI_ASSERT(statistics != nullptr);
 
   statistics::TotalRequests.incCounter();
