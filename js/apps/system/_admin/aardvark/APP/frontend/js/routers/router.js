@@ -715,7 +715,7 @@
     cIndices: function (colname) {
       const self = this;
 
-      window.SkeletonLoader.render()
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {
@@ -740,7 +740,7 @@
     cSettings: function (colname) {
       const self = this;
 
-      window.SkeletonLoader.render()
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {
@@ -762,7 +762,7 @@
     cComputedValues: function (colname) {
       const self = this;
 
-      window.SkeletonLoader.render()
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {
@@ -783,7 +783,7 @@
 
     cSchema: function (colname) {
       const self = this;
-      window.SkeletonLoader.render()
+      window.SkeletonLoader.render();
 
       this.checkUser();
 
@@ -806,7 +806,7 @@
     cInfo: function (colname) {
       const self = this;
 
-      window.SkeletonLoader.render()
+      window.SkeletonLoader.render();
       this.checkUser();
       this.init.then(() => {
         this.arangoCollectionsStore.fetch({
@@ -825,7 +825,7 @@
     },
 
     documents: function (colid, pageid) {
-      window.SkeletonLoader.render()
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {
