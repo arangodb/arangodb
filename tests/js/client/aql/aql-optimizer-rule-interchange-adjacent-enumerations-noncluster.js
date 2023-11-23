@@ -81,7 +81,7 @@ function optimizerRuleTestSuite () {
       opts.verbosePlans = true;
 
       queries.forEach(function(query) {
-        let result = db._createStatement({query: query, bindVars:  { }, options:  opts}).explain();
+        let result = db._createStatement({query, bindVars: {}, options: opts}).explain();
         result.plans.forEach(function(plan) {
           assertEqual([ ], plan.rules);
         });
@@ -104,6 +104,8 @@ function optimizerRuleTestSuite () {
         "FOR i IN " + collectionName + " FOR sub1 IN i FOR sub2 IN sub1 FILTER sub2.value1 == 'test' && sub2.value2 != '' RETURN i",
         "FOR i IN " + collectionName + " FOR sub1 IN i FOR sub2 IN i FILTER sub2.value1 == 'test' && sub2.value2 != '' RETURN i",
         "FOR i IN " + collectionName + " FOR sub1 IN i FOR sub2 IN i FILTER sub2.value1 == 'test' && sub2.value2 != '' && sub2.value != sub1 RETURN i",
+        // defined order for EnumerateList -> EnumerateCollection with dependencies
+        "FOR i IN 1..10 FOR j IN " + collectionName + " FILTER j.value == i RETURN j",
       ];
 
       let opts = _.clone(paramEnabled);
@@ -111,7 +113,7 @@ function optimizerRuleTestSuite () {
       opts.verbosePlans = true;
 
       queries.forEach(function(query) {
-        let result = db._createStatement({query: query, bindVars:  { }, options:  opts}).explain();
+        let result = db._createStatement({query, bindVars: {}, options: opts}).explain();
         result.plans.forEach(function(plan) {
           assertEqual(-1, plan.rules.indexOf(ruleName), query);
         });
@@ -123,14 +125,16 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRuleHasEffect : function () {
-      let queries = [ 
+      let queries = [
         [ "FOR i IN " + collectionName + " FOR j IN " + collectionName + " RETURN i", 1 ],
         [ "FOR i IN 1..10 FOR j IN " + collectionName + " FOR k IN " + collectionName + " RETURN i", 5 ],
         [ "FOR i IN " + collectionName + " FOR j IN " + collectionName + " FOR k IN " + collectionName + " RETURN i", 5 ],
         [ "FOR i IN " + collectionName + " FOR j IN " + collectionName + " FOR k IN " + collectionName + " FOR l IN " + collectionName + " RETURN i", 23 ],
         [ "FOR x IN (FOR i IN " + collectionName + " FOR j IN " + collectionName + " RETURN i) RETURN x", 1 ],
         [ "FOR x IN (FOR i IN " + collectionName + " FOR j IN " + collectionName + " FOR k IN " + collectionName + " RETURN i) RETURN x", 5 ],
-        [ "FOR x IN (FOR i IN " + collectionName + " FOR j IN " + collectionName + " FOR k IN " + collectionName + " RETURN i) FOR y IN (FOR i IN " + collectionName + " FOR j IN " + collectionName + " RETURN i) RETURN x", 11 ]
+        [ "FOR x IN (FOR i IN " + collectionName + " FOR j IN " + collectionName + " FOR k IN " + collectionName + " RETURN i) FOR y IN (FOR i IN " + collectionName + " FOR j IN " + collectionName + " RETURN i) RETURN x", 11 ],
+        [ "FOR i IN " + collectionName + " FOR j IN " + collectionName + " FILTER i.value == j.value RETURN j", 1 ],
+        [ "LET x = 1..10 FOR j IN " + collectionName + " FOR i IN x FILTER j.value == i RETURN j", 1 ],
       ];
       
       let opts = _.clone(paramEnabled);
@@ -141,12 +145,11 @@ function optimizerRuleTestSuite () {
         let withRule = 0;
         let withoutRule = 0;
 
-        let result = db._createStatement({query: query[0], bindVars:  { }, options:  opts}).explain();
+        let result = db._createStatement({query: query[0], bindVars: {}, options: opts}).explain();
         result.plans.forEach(function(plan) {
           if (plan.rules.indexOf(ruleName) === -1) {
             withoutRule++;
-          }
-          else {
+          } else {
             withRule++;
           }
         });
@@ -175,9 +178,9 @@ function optimizerRuleTestSuite () {
       opts.verbosePlans = true;
 
       queries.forEach(function(query) {
-        let planDisabled   = db._createStatement({query: query[0], bindVars:  { }, options:  paramDisabled}).explain();
-        let plansEnabled    = db._createStatement({query: query[0], bindVars:  { }, options:  opts}).explain();
-        let resultDisabled = db._query(query[0], { }, paramDisabled).toArray();
+        let planDisabled   = db._createStatement({query: query[0], bindVars: {}, options: paramDisabled}).explain();
+        let plansEnabled   = db._createStatement({query: query[0], bindVars: {}, options: opts}).explain();
+        let resultDisabled = db._query(query[0], {}, paramDisabled).toArray();
 
         assertTrue(planDisabled.plan.rules.indexOf(ruleName) === -1, query[0]);
         assertEqual(resultDisabled, query[1]);
@@ -244,7 +247,7 @@ function optimizerRuleTestSuite () {
                   "FOR n IN " + collectionName + " " + 
                   "FOR o IN " + collectionName + " RETURN 1";
 
-      let explain = db._createStatement({query: query, bindVars: null, options: { maxNumberOfPlans: 9999999 }}).explain();
+      let explain = db._createStatement({query, bindVars: null, options: { maxNumberOfPlans: 9999999 }}).explain();
       assertEqual(5040, explain.stats.plansCreated); // faculty of 7 
     }
 

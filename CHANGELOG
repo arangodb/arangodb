@@ -1,6 +1,11 @@
 devel
 -----
 
+* Make AQL optimizer rule "interchange-adjacent-enumerations" generate less
+  plan permutations for the case the a non-collection FOR loop is followed
+  by a collection-based FOR loop. This change can reduce the number of plans
+  in complex AQL queries, and thus can save time needed for plan optimization.
+
 * Rebuilt included rclone v1.62.2 with go1.21.4.
 
 * Updated ArangoDB Starter to 0.17.2 and arangosync to v2.19.5.
