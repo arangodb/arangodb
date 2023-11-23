@@ -1,5 +1,5 @@
 import { ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
-import { Flex, IconButton, Tag, Text } from "@chakra-ui/react";
+import { Flex, Icon, Tag, Text } from "@chakra-ui/react";
 import {
   CellContext,
   createColumnHelper,
@@ -176,7 +176,7 @@ const permissionColumns = [
     }
   )
 ];
-const ExpandButton = ({
+const ExpandIcon = ({
   info
 }: {
   info: CellContext<DatabaseTableType, unknown>;
@@ -185,18 +185,13 @@ const ExpandButton = ({
     return null;
   }
   return (
-    <IconButton
-      display="block"
-      padding="0"
-      variant="unstyled"
-      size="sm"
-      aria-label="Expand/collapse row"
-      icon={info.row.getIsExpanded() ? <ChevronUpIcon /> : <ChevronDownIcon />}
-      _focus={{
-        boxShadow: "none"
-      }}
-      onClick={info.row.getToggleExpandedHandler()}
-    />
+    <Flex padding="2">
+      <Icon
+        display="block"
+        aria-label="Expand/collapse row"
+        as={info.row.getIsExpanded() ? ChevronUpIcon : ChevronDownIcon}
+      />
+    </Flex>
   );
 };
 export const TABLE_COLUMNS = [
@@ -233,7 +228,7 @@ export const TABLE_COLUMNS = [
           cursor={info.row.getCanExpand() ? "pointer" : ""}
           onClick={info.row.getToggleExpandedHandler()}
         >
-          <ExpandButton info={info} />
+          <ExpandIcon info={info} />
           <Text fontWeight={info.row.getIsExpanded() ? "semibold" : "normal"}>
             {info.cell.getValue()}
           </Text>
