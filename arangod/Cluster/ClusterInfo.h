@@ -195,8 +195,6 @@ class ClusterInfo final {
     using DatabaseID = ManagedString;       // ID/name of a database
     using CollectionID = ManagedString;     // ID of a collection
     using ViewID = ManagedString;           // ID of a view
-    using ShardID = ManagedString;          // ID of a shard
-    using ServerShortName = ManagedString;  // Short name of a server
   };
 
   template<typename K, typename V>
@@ -758,7 +756,7 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<ManagedVector<pmr::ServerID> const> getResponsibleServer(
-      std::string_view shardID);
+      ShardID shardID);
 
   enum class ShardLeadership { kLeader, kFollower, kUnclear };
   ShardLeadership getShardLeadership(ServerID const& server,
@@ -894,10 +892,10 @@ class ClusterInfo final {
    * @param shardId  The id of said shard
    * @return         List of DB servers serving the shard
    */
-  Result getShardServers(std::string_view shardId, std::vector<ServerID>&);
+  Result getShardServers(ShardID const& shardId, std::vector<ServerID>&);
 
   /// @brief map shardId to collection name (not ID)
-  CollectionID getCollectionNameForShard(std::string_view shardId);
+  CollectionID getCollectionNameForShard(ShardID const& shardId);
 
   auto getReplicatedLogLeader(replication2::LogId) const -> ResultT<ServerID>;
 
@@ -1120,14 +1118,14 @@ class ClusterInfo final {
   AllCollections _plannedCollections;     // from Plan/Collections/
   AllCollections _newPlannedCollections;  // TODO
   // TODO is it ok to don't account value for _shards?
-  FlatMapShared<pmr::CollectionID, std::vector<std::string> const>
+  FlatMapShared<pmr::CollectionID, std::vector<ShardID> const>
       _shards;  // from Plan/Collections/
                 // (may later come from Current/Collections/ )
   // planned shard => servers map
-  FlatMapShared<pmr::ShardID, ManagedVector<pmr::ServerID> const>
+  FlatMapShared<ShardID, ManagedVector<pmr::ServerID> const>
       _shardsToPlanServers;
   // planned shard ID => collection name
-  FlatMap<pmr::ShardID, pmr::CollectionID> _shardToName;
+  FlatMap<ShardID, pmr::CollectionID> _shardToName;
 
   // planned shard ID => shard ID of shard group leader
   // This deserves an explanation. If collection B has `distributeShardsLike`
@@ -1161,10 +1159,10 @@ class ClusterInfo final {
   // Note however, that a follower for a shard group can be in sync with
   // its leader for some of the shards in the group and not for others!
   // Note that shard group leaders themselves do not appear in this map:
-  FlatMap<pmr::ShardID, pmr::ShardID> _shardToShardGroupLeader;
+  FlatMap<ShardID, ShardID> _shardToShardGroupLeader;
   // In the following map we store for each shard group leader the list
   // of shards in the group, including the leader.
-  FlatMapShared<pmr::ShardID, ManagedVector<pmr::ShardID>> _shardGroups;
+  FlatMapShared<ShardID, ManagedVector<ShardID>> _shardGroups;
 
   AllViews _plannedViews;     // from Plan/Views/
   AllViews _newPlannedViews;  // views that have been created during `loadPlan`
@@ -1179,7 +1177,7 @@ class ClusterInfo final {
   // The Current state:
   FlatMapShared<pmr::DatabaseID, DatabaseCollectionsCurrent const>
       _currentCollections;  // from Current/Collections/
-  FlatMapShared<pmr::ShardID, ManagedVector<pmr::ServerID> const>
+  FlatMapShared<ShardID, ManagedVector<pmr::ServerID> const>
       _shardsToCurrentServers;  // from Current/Collections/
 
   struct NewStuffByDatabase;

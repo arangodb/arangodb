@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Result.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Containers/FlatHashMap.h"
 #include "RestServer/arangod.h"
 
@@ -45,7 +46,6 @@ class ApplicationServer;
 }
 
 typedef std::string ServerID;  // ID of a server
-typedef std::string ShardID;   // ID of a shard
 using ShardMap = containers::FlatHashMap<ShardID, std::vector<ServerID>>;
 
 class ShardingInfo {
@@ -103,10 +103,10 @@ class ShardingInfo {
       std::unordered_set<std::string> const& includedShards) const;
   void setShardMap(std::shared_ptr<ShardMap> const& map);
 
-  ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice,
-                                bool docComplete, ShardID& shardID,
-                                bool& usesDefaultShardKeys,
-                                std::string_view key);
+  ResultT<ShardID> getResponsibleShard(arangodb::velocypack::Slice slice,
+                                       bool docComplete,
+                                       bool& usesDefaultShardKeys,
+                                       std::string_view key);
 
   template<typename T>
   static void sortShardNamesNumerically(T& list);

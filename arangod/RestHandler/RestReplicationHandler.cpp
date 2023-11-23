@@ -789,9 +789,16 @@ Result RestReplicationHandler::testPermissions() {
         std::string collectionName = _request->value("collection");
 
         if (ServerState::instance()->isCoordinator()) {
-          // We have a shard id, need to translate
+          // We have a shard id, need to translate.
+          // This API is explicitly called with Shards not with Collections.
           ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
-          collectionName = ci.getCollectionNameForShard(collectionName);
+          auto maybeShardID = ShardID::shardIdFromString(collectionName);
+          if (maybeShardID.fail()) {
+            // Compatibility with old API, which would return
+            // an empty collection name if we were not handing in a shard.
+            return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+          }
+          collectionName = ci.getCollectionNameForShard(maybeShardID.get());
         }
 
         if (!collectionName.empty()) {
@@ -1007,7 +1014,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     bool isReady = true;
     bool allInSync = true;
     for (auto const& p : *shardMap) {
-      auto currentServerList = cic->servers(p.first /* shardId */);
+      auto currentServerList = cic->servers(p.first);
       if (c->isSmart() && c->type() == TRI_COL_TYPE_EDGE && c->isAStub()) {
         // Means we do have a Virtual SmartEdge Collection.
         // A Virtual SmartEdge Collection does not include any shards.

@@ -161,7 +161,8 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
   if (shardsSlice.isObject()) {
     for (auto const& shardSlice : VPackObjectIterator(shardsSlice)) {
       if (shardSlice.key.isString() && shardSlice.value.isArray()) {
-        ShardID shard = shardSlice.key.copyString();
+        // NOTE: Can throw if shard is not a valid shard name
+        ShardID shard{shardSlice.key.copyString()};
 
         std::vector<ServerID> servers;
         for (auto const& serverSlice : VPackArrayIterator(shardSlice.value)) {
@@ -478,7 +479,7 @@ std::shared_ptr<std::vector<ShardID>> ShardingInfo::shardListAsShardID() const {
   for (auto const& mapElement : *_shardIds) {
     vector->emplace_back(mapElement.first);
   }
-  sortShardNamesNumerically(*vector);
+  std::sort(vector->begin(), vector->end());
   return vector;
 }
 
@@ -507,11 +508,10 @@ void ShardingInfo::setShardMap(std::shared_ptr<ShardMap> const& map) {
   _numberOfShards = map->size();
 }
 
-ErrorCode ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice,
-                                            bool docComplete, ShardID& shardID,
-                                            bool& usesDefaultShardKeys,
-                                            std::string_view key) {
-  return _shardingStrategy->getResponsibleShard(slice, docComplete, shardID,
+ResultT<ShardID> ShardingInfo::getResponsibleShard(
+    arangodb::velocypack::Slice slice, bool docComplete,
+    bool& usesDefaultShardKeys, std::string_view key) {
+  return _shardingStrategy->getResponsibleShard(slice, docComplete,
                                                 usesDefaultShardKeys, key);
 }
 

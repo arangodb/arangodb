@@ -3554,6 +3554,12 @@ void Supervision::checkUndoLeaderChangeActions() {
         return Result{TRI_ERROR_BAD_PARAMETER, "collection missing"};
       }
 
+      auto maybeShardID = ShardID::shardIdFromString(id);
+      if (ADB_UNLIKELY(maybeShardID.fail())) {
+        return Result{TRI_ERROR_BAD_PARAMETER,
+                      fmt::format("shard name: {} malformed", id)};
+      }
+
       if (isReplication2(*database)) {
         auto stateId =
             Job::getReplicatedStateId(snapshot(), *database, *collection, id);
@@ -3564,13 +3570,13 @@ void Supervision::checkUndoLeaderChangeActions() {
 
         return UndoAction{
             UndoAction::UndoMoveShardR2{
-                std::move(*database), std::move(*collection), id,
+                std::move(*database), std::move(*collection), maybeShardID.get(),
                 std::move(*fromServer), std::move(*toServer), stateId.value()},
             deadline, started, jobId, rebootId};
       }
 
       return UndoAction{UndoAction::UndoMoveShardR1{
-                            std::move(*database), std::move(*collection), id,
+                            std::move(*database), std::move(*collection), maybeShardID.get(),
                             std::move(*fromServer), std::move(*toServer)},
                         deadline, started, jobId, rebootId};
     } else if (jobOpt = undoOp.get("reconfigureReplicatedLog");
@@ -3596,7 +3602,8 @@ void Supervision::checkUndoLeaderChangeActions() {
         return result;
       }
 
-      auto logId = replication2::LogId::fromString(id);
+      // TODO: Check if this is correct
+      auto logId = replication2::LogId::fromString(id.c_str());
       if (!logId.has_value()) {
         auto result = Result{TRI_ERROR_BAD_PARAMETER,
                              fmt::format("Malformed replicated log ID {}", id)};
@@ -3614,9 +3621,9 @@ void Supervision::checkUndoLeaderChangeActions() {
 
   auto const isServerInPlan =
       [&](std::string_view database, std::string_view collection,
-          std::string_view shard, std::string_view server) -> bool {
+          ShardID shard, std::string_view server) -> bool {
     auto path = basics::StringUtils::joinT("/", "Plan/Collections", database,
-                                           collection, "shards", shard);
+                                           collection, "shards", shard.c_str());
     auto servers = snapshot().hasAsArray(path);
     if (not servers) {
       return false;
@@ -3702,7 +3709,7 @@ void Supervision::checkUndoLeaderChangeActions() {
 
   auto const isServerInSync =
       [&](std::string_view database, std::string_view collection,
-          std::string_view shard, std::string_view server) -> bool {
+          ShardID shard, std::string_view server) -> bool {
     auto path = basics::StringUtils::joinT("/", "Current/Collections", database,
                                            collection, shard, "servers");
     auto servers = snapshot().hasAsArray(path);
@@ -3813,7 +3820,7 @@ void Supervision::checkUndoLeaderChangeActions() {
     for (auto const& [id, entry] : *undos) {
       TRI_ASSERT(entry != nullptr);
 
-      auto undoRes = buildUndoActionFromNode(id, *entry);
+      auto undoRes = buildUndoActionFromNode(ShardID{id}, *entry);
       if (undoRes.fail() || checkDeletion(undoRes.get())) {
         if (undoRes.fail()) {
           LOG_TOPIC("f8ef0", ERR, Logger::SUPERVISION)

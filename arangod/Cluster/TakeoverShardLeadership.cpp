@@ -218,8 +218,9 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
       return;
     }
     TRI_ASSERT(currentInfo != nullptr);
+    ShardID shardId{collection.name()};
     std::vector<ServerID> currentServers =
-        currentInfo->servers(collection.name());
+        currentInfo->servers(shardId);
     std::shared_ptr<std::vector<ServerID>> realInsyncFollowers;
 
     TRI_IF_FAILURE("HandleLeadership::before") {
@@ -246,7 +247,7 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
     }
 
     std::vector<ServerID> failoverCandidates =
-        currentInfo->failoverCandidates(collection.name());
+        currentInfo->failoverCandidates(shardId);
     followers->takeOverLeadership(failoverCandidates, realInsyncFollowers);
     transaction::cluster::abortFollowerTransactionsOnShard(collection.id());
 

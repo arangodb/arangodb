@@ -26,6 +26,7 @@
 #include "Agency/PathComponent.h"
 #include "Basics/debugging.h"
 #include "Cluster/ClusterTypes.h"
+#include "Cluster/Utils/ShardID.h"
 
 #include <iostream>
 #include <memory>

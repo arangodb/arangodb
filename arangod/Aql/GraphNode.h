@@ -99,8 +99,6 @@ class GraphNode : public ExecutionNode {
   struct THIS_THROWS_WHEN_CALLED {};
   explicit GraphNode(THIS_THROWS_WHEN_CALLED);
 
-  std::string const& collectionToShardName(std::string const& collName) const;
-
  public:
   ~GraphNode() override = default;
 
@@ -197,7 +195,7 @@ class GraphNode : public ExecutionNode {
 
   std::vector<aql::Collection const*> collections() const;
   void resetCollectionToShard() { _collectionToShard.clear(); }
-  void addCollectionToShard(std::string const& coll, std::string const& shard) {
+  void addCollectionToShard(std::string const& coll, ShardID const& shard) {
     // NOTE: Do not replace this by emplace or insert.
     // This is also used to overwrite the existing entry.
     _collectionToShard[coll] = shard;
@@ -315,7 +313,7 @@ class GraphNode : public ExecutionNode {
   std::unordered_map<ServerID, aql::EngineId> _engines;
 
   /// @brief list of shards involved, required for one-shard-databases
-  std::unordered_map<std::string, std::string> _collectionToShard;
+  std::unordered_map<std::string, ShardID> _collectionToShard;
 };
 
 }  // namespace aql

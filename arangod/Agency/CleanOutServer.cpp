@@ -460,11 +460,11 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
           if (isLeader) {
             std::string toServer =
                 Job::findNonblockedCommonHealthyInSyncFollower(
-                    _snapshot, database.first, collptr.first, shard.first,
+                    _snapshot, database.first, collptr.first, ShardID{shard.first},
                     _server);
 
             MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                      _jobId, database.first, collptr.first, shard.first,
+                      _jobId, database.first, collptr.first, ShardID{shard.first},
                       _server, toServer, isLeader, false)
                 .withParent(_jobId)
                 .create(trx);
@@ -502,7 +502,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
 
           // Schedule move into trx:
           MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                    _jobId, database.first, collptr.first, shard.first, _server,
+                    _jobId, database.first, collptr.first, ShardID{shard.first}, _server,
                     toServer, isLeader, false)
               .withParent(_jobId)
               .create(trx);

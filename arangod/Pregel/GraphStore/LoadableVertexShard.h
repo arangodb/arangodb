@@ -30,10 +30,10 @@
 namespace arangodb::pregel {
 struct LoadableVertexShard {
   PregelShard pregelShard;
-  ShardID vertexShard;
+  PregelShardID vertexShard;
   ServerID responsibleServer;
   CollectionName collectionName;
-  std::vector<ShardID> edgeShards;
+  std::vector<PregelShardID> edgeShards;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, LoadableVertexShard& x) {

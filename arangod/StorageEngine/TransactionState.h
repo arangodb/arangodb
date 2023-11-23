@@ -29,6 +29,7 @@
 #include "Basics/Result.h"
 #include "Basics/ResourceUsage.h"
 #include "Cluster/ClusterTypes.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"

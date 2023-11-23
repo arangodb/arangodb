@@ -97,9 +97,9 @@ TEST_F(CollectionGroupsSupervisionTest, check_add_server) {
   group.plan->shardSheaves[2].replicatedLog = LogId{3};
 
   group.planCollections["A"].groupId = group.target.id;
-  group.planCollections["A"].shardList.assign({"s1", "s2", "s3"});
+  group.planCollections["A"].shardList.assign({ShardID{1}, ShardID{2}, ShardID{3}});
   group.planCollections["B"].groupId = group.target.id;
-  group.planCollections["B"].shardList.assign({"s1", "s2", "s3"});
+  group.planCollections["B"].shardList.assign({ShardID{1}, ShardID{2}, ShardID{3}});
 
   auto const currentConfig = ag::LogTargetConfig(3, 3, true);
   auto const expectedConfig = ag::LogTargetConfig(3, 4, true);
@@ -215,9 +215,9 @@ TEST_F(CollectionGroupsSupervisionTest, check_remove_server) {
   group.plan->shardSheaves[2].replicatedLog = LogId{3};
 
   group.planCollections["A"].groupId = group.target.id;
-  group.planCollections["A"].shardList.assign({"s1", "s2", "s3"});
+  group.planCollections["A"].shardList.assign({ShardID{1}, ShardID{2}, ShardID{3}});
   group.planCollections["B"].groupId = group.target.id;
-  group.planCollections["B"].shardList.assign({"s1", "s2", "s3"});
+  group.planCollections["B"].shardList.assign({ShardID{1}, ShardID{2}, ShardID{3}});
 
   auto const currentConfig = ag::LogTargetConfig(3, 3, true);
   auto const expectedConfig = ag::LogTargetConfig(1, 2, true);
@@ -335,9 +335,9 @@ TEST_F(CollectionGroupsSupervisionTest, add_collection) {
   group.plan->shardSheaves[2].replicatedLog = LogId{3};
 
   group.planCollections["A"].groupId = group.target.id;
-  group.planCollections["A"].shardList.assign({"s1", "s2", "s3"});
+  group.planCollections["A"].shardList.assign({ShardID{1}, ShardID{2}, ShardID{3}});
   group.planCollections["B"].groupId = group.target.id;
-  group.planCollections["B"].shardList.assign({"s1", "s2", "s3"});
+  group.planCollections["B"].shardList.assign({ShardID{1}, ShardID{2}, ShardID{3}});
 
   auto const currentConfig = ag::LogTargetConfig(2, 3, true);
   auto const availableServers = std::to_array({"DB1", "DB2", "DB3"});

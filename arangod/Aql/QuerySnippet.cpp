@@ -191,7 +191,7 @@ void CloneWorker::setUsedShardsOnClone(ExecutionNode* node,
         // found a JoinNode, now add the `i` th shard for used collections
         for (auto& idx : joinNode->getIndexInfos()) {
           auto const& shards = permuter->second.at(idx.collection->name());
-          idx.usedShard = *std::next(shards.begin(), _shardId);
+          idx.usedShard = *std::next(shards.begin(), _shardId)->c_str();
         }
 
       } else {
@@ -446,7 +446,7 @@ void QuerySnippet::serializeIntoBuilder(
     size_t numberOfShardsToPermutate = colToShardMap.begin()->second.size();
     TRI_ASSERT(numberOfShardsToPermutate > 1);
 
-    std::vector<std::string> distIds{};
+    std::vector<ShardID> distIds{};
     // Reserve the amount of localExpansions,
     distIds.reserve(numberOfShardsToPermutate);
     // Create an internal GatherNode, that will connect to all execution
@@ -522,7 +522,7 @@ void QuerySnippet::serializeIntoBuilder(
       }
 
       // hook distribute node into stream '0', since that does not happen below
-      prototypeConsumer = createConsumerNode(plan, internalScatter, distIds[0]);
+      prototypeConsumer = createConsumerNode(plan, internalScatter, distIds[0].c_str());
       nodeAliases.try_emplace(prototypeConsumer->id(),
                               ExecutionNodeId::InternalNode);
       // now wire up the temporary nodes
@@ -558,7 +558,7 @@ void QuerySnippet::serializeIntoBuilder(
     for (size_t i = 1; i < numberOfShardsToPermutate; ++i) {
       auto cloneWorker =
           CloneWorker(snippetRoot, internalGather, internalScatter,
-                      localExpansions, i, distIds.at(i), nodeAliases);
+                      localExpansions, i, distIds.at(i).c_str(), nodeAliases);
       // Warning, the walkerworker is abused.
       cloneWorker.process();
     }
@@ -653,7 +653,7 @@ auto QuerySnippet::prepareFirstBranch(
           return {TRI_ERROR_CLUSTER_NOT_LEADER};
         }
 
-        idx.usedShard = *myExp.begin();
+        idx.usedShard = myExp.begin()->c_str();
         myExpFinal.insert({idx.collection->name(), std::move(myExp)});
       }
 
@@ -782,7 +782,7 @@ auto QuerySnippet::prepareFirstBranch(
             // to serve later lookups for this collection, we insert an empty
             // string into the collection->shard map. on lookup, we will react
             // to this.
-            localGraphNode->addCollectionToShard(aqlCollection->name(), "");
+            localGraphNode->addCollectionToShard(aqlCollection->name(), ShardID::invalidShard());
           }
         }
       }

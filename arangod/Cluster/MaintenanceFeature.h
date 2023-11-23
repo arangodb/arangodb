@@ -31,6 +31,7 @@
 #include "Cluster/Action.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/MaintenanceWorker.h"
+#include "Cluster/Utils/ShardID.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 

@@ -158,7 +158,7 @@ auto createCollectionPlanSpec(
   shardList.reserve(target.attributes.immutableAttributes.numberOfShards);
   std::generate_n(std::back_inserter(shardList),
                   target.attributes.immutableAttributes.numberOfShards, [&] {
-                    return basics::StringUtils::concatT("s", uniqid.next());
+                    return ShardID{uniqid.next()};
                   });
 
   auto mapping = computeShardList(logs, shardSheaves, shardList);
@@ -222,7 +222,7 @@ auto createCollectionGroupTarget(
     if (!targetCollection.immutableProperties.shadowCollections.has_value()) {
       std::generate_n(std::back_inserter(shardList),
                       attributes.immutableAttributes.numberOfShards, [&] {
-                        return basics::StringUtils::concatT("s", uniqid.next());
+                        return ShardID{uniqid.next()};
                       });
 
       for (size_t k = 0; k < shardList.size(); ++k) {
@@ -400,7 +400,7 @@ auto checkCollectionGroupConverged(CollectionGroup const& group) -> Action {
         for (auto const& shard : planCol.shardList) {
           if (not curCol.shards.contains(shard)) {
             return NoActionPossible{
-                basics::StringUtils::concatT("shard ", shard, " of collection ",
+                basics::StringUtils::concatT("shard ", shard.c_str(), " of collection ",
                                              cid, " not yet in current.")};
           }
         }

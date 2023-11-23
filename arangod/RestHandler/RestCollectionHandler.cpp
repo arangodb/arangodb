@@ -227,9 +227,15 @@ RestStatus RestCollectionHandler::handleCommandGet() {
 
       // check if a SynchronizeShard job is currently executing for the
       // specified shard
-      bool isSyncing = server().getFeature<MaintenanceFeature>().hasAction(
-          maintenance::EXECUTING, name,
-          arangodb::maintenance::SYNCHRONIZE_SHARD);
+      auto maybeShard = ShardID::shardIdFromString(name);
+      // Compatibility, if the shard is not valid we would never find an action for it,
+      // so ignore non-shards.
+      bool isSyncing = false;
+      if (maybeShard.ok()) {
+        isSyncing = server().getFeature<MaintenanceFeature>().hasAction(
+            maintenance::EXECUTING, maybeShard.get(),
+            arangodb::maintenance::SYNCHRONIZE_SHARD);
+      }
 
       // already put some data into the response
       _builder.openObject();
@@ -479,12 +485,11 @@ RestStatus RestCollectionHandler::handleCommandPut() {
                                      "expecting object for responsibleShard");
     }
 
-    std::string shardId;
-    res = coll->getResponsibleShard(body, false, shardId);
+    auto maybeShard = coll->getResponsibleShard(body, false);
 
-    if (res.ok()) {
+    if (maybeShard.ok()) {
       _builder.openObject();
-      _builder.add("shardId", VPackValue(shardId));
+      _builder.add("shardId", VPackValue(maybeShard.get().c_str()));
       _builder.close();
       return standardResponse();
     } else {

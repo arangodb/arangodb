@@ -733,7 +733,7 @@ bool SynchronizeShard::first() {
 
   std::string const& database = getDatabase();
   std::string const& planId = _description.get(COLLECTION);
-  std::string const& shard = getShard();
+  auto shard = getShard();
   std::string const& leader = _description.get(THE_LEADER);
   bool forcedResync = _description.has(FORCED_RESYNC) &&
                       _description.get(FORCED_RESYNC) == "true";
@@ -754,7 +754,7 @@ bool SynchronizeShard::first() {
     DatabaseGuard guard(df, database);
     auto vocbase = &guard.database();
 
-    auto collection = vocbase->lookupCollection(shard);
+    auto collection = vocbase->lookupCollection(std::string{shard});
     if (collection != nullptr && syncByRevision &&
         collection->useSyncByRevision()) {
       LOG_TOPIC("7a2cf", WARN, Logger::MAINTENANCE)
@@ -809,7 +809,7 @@ bool SynchronizeShard::first() {
     DatabaseGuard guard(df, database);
     auto vocbase = &guard.database();
 
-    auto collection = vocbase->lookupCollection(shard);
+    auto collection = vocbase->lookupCollection(std::string{shard});
     if (collection != nullptr && syncByRevision &&
         collection->useSyncByRevision()) {
       LOG_TOPIC("614fa", WARN, Logger::MAINTENANCE)
@@ -827,7 +827,7 @@ bool SynchronizeShard::first() {
       reqOpts.database = database;
       reqOpts.timeout = network::Timeout(6000.0);  // this can be slow!!!
       reqOpts.skipScheduler = true;  // hack to speed up future.get()
-      reqOpts.param("collection", shard);
+      reqOpts.param("collection", std::string{shard});
 
       std::string const url = "/_api/replication/revisions/tree";
 
@@ -912,9 +912,9 @@ bool SynchronizeShard::first() {
   TRI_IF_FAILURE("SynchronizeShard::beginning") {
     std::string shortName = ServerState::instance()->getShortName();
     waitForGlobalEvent("SynchronizeShard::beginning",
-                       absl::StrCat(shortName, ":", shard));
+                       absl::StrCat(shortName, ":", std::string{shard}));
     waitForGlobalEvent("SynchronizeShard::beginning2",
-                       absl::StrCat(shortName, ":", shard));
+                       absl::StrCat(shortName, ":", std::string{shard}));
   }
 
   auto& clusterInfo =
@@ -1022,7 +1022,7 @@ bool SynchronizeShard::first() {
     DatabaseGuard guard(df, database);
     auto vocbase = &guard.database();
 
-    auto collection = vocbase->lookupCollection(shard);
+    auto collection = vocbase->lookupCollection(std::string{shard});
     if (collection == nullptr) {
       std::stringstream error;
       error << "failed to lookup local shard " << database << "/" << shard;
@@ -1134,7 +1134,7 @@ bool SynchronizeShard::first() {
       if (_feature.server().isStopping()) {
         auto errorMessage =
             absl::StrCat("SynchronizeShard: synchronization failed for shard ",
-                         shard, ": shutdown in progress, giving up");
+                         std::string{shard}, ": shutdown in progress, giving up");
         LOG_TOPIC("a0f9a", INFO, Logger::MAINTENANCE) << errorMessage;
         result(TRI_ERROR_SHUTTING_DOWN, errorMessage);
         return false;
@@ -1162,7 +1162,7 @@ bool SynchronizeShard::first() {
       TRI_IF_FAILURE("SynchronizeShard::beforeSetTheLeader") {
         std::string shortName = ServerState::instance()->getShortName();
         waitForGlobalEvent("SynchronizeShard::beforeSetTheLeader",
-                           absl::StrCat(shortName, ":", shard));
+                           absl::StrCat(shortName, ":", std::string{shard}));
       }
       // Configure the shard to follow the leader without any following
       // term id, this is necessary, such that no replication requests
@@ -1243,7 +1243,7 @@ bool SynchronizeShard::first() {
       if (collections.length() == 0 ||
           collections[0].get("name").stringView() != shard) {
         auto error = absl::StrCat(
-            "shard ", database, "/", shard,
+            "shard ", database, "/", std::string{shard},
             " seems to be gone from leader, this "
             "can happen if a collection was dropped during synchronization!");
         LOG_TOPIC("664ae", WARN, Logger::MAINTENANCE)
@@ -1437,7 +1437,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
           res.errorNumber(),
           absl::StrCat(
               "synchronizeOneShard: error in syncCollectionCatchup for shard ",
-              getDatabase(), "/", getShard(), ": ", res.errorMessage()));
+              getDatabase(), "/", std::string{getShard()}, ": ", res.errorMessage()));
     }
 
     // Stop the read lock again:
@@ -1644,7 +1644,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
         auto errorMessage = absl::StrCat(
             "addShardFollower: could not add us to the leader's follower list "
             "for ",
-            getDatabase(), "/", getShard(),
+            getDatabase(), "/", std::string{getShard()},
             ", error while recalculating count on leader: ",
             result.errorMessage());
         LOG_TOPIC("22e0b", WARN, Logger::MAINTENANCE) << errorMessage;

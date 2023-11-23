@@ -72,7 +72,7 @@ class ShardDistributionReporter {
 
   bool testAllShardsInSync(
       std::string const& dbName, LogicalCollection const* col,
-      containers::FlatHashMap<std::string, std::vector<std::string>> const*
+      containers::FlatHashMap<ShardID, std::vector<ServerID>> const*
           allShards);
 
   void helperDistributionForDatabase(
