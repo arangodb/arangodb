@@ -32,23 +32,23 @@ target_include_directories(zlib_interface SYSTEM INTERFACE ${ZLIB_INCLUDE_DIR})
 ################################################################################
 
 function (add_snappy)
-    # use the function to open a scope so CMAKE_CXX_FLAGS is only changed for
-    # snappy
-    add_c_flags_if_supported(CMAKE_C_FLAGS -Wno-suggest-override -Wno-sign-compare)
-    add_cxx_flags_if_supported(CMAKE_CXX_FLAGS -Wno-suggest-override -Wno-sign-compare)
-    set(SNAPPY_VERSION "1.1.9")
-    set(SNAPPY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/snappy/snappy-${SNAPPY_VERSION}")
-    set(SNAPPY_SOURCE_DIR "${SNAPPY_SOURCE_DIR}" PARENT_SCOPE)
-    set(SNAPPY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/snappy/snappy-${SNAPPY_VERSION}" PARENT_SCOPE)
-    set(SNAPPY_LIB "snappy")
-    set(SNAPPY_FUZZING_BUILD OFF CACHE BOOL "build Snappy for fuzzing")
-    set(SNAPPY_BUILD_TESTS OFF CACHE BOOL "disable Snappy tests" FORCE)
-    set(SNAPPY_BUILD_BENCHMARKS OFF CACHE BOOL "disable Snappy benchmarks" FORCE)
-    set(SNAPPY_INSTALL OFF CACHE BOOL "disable Snappy installation")
-    set(SNAPPY_REQUIRE_AVX ON CACHE BOOL "target processors with AVX support" FORCE)
-    set(SNAPPY_REQUIRE_AVX2 OFF CACHE BOOL "target processors with AVX2 support" FORCE)
-    set(SNAPPY_HAVE_BMI2 OFF CACHE BOOL "target processors with BMI2 support" FORCE)
-    add_subdirectory(${SNAPPY_SOURCE_DIR})
+  # use the function to open a scope so CMAKE_CXX_FLAGS is only changed for
+  # snappy
+  add_c_flags_if_supported(CMAKE_C_FLAGS -Wno-suggest-override -Wno-sign-compare)
+  add_cxx_flags_if_supported(CMAKE_CXX_FLAGS -Wno-suggest-override -Wno-sign-compare)
+  set(SNAPPY_VERSION "1.1.9")
+  set(SNAPPY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/snappy/snappy-${SNAPPY_VERSION}")
+  set(SNAPPY_SOURCE_DIR "${SNAPPY_SOURCE_DIR}" PARENT_SCOPE)
+  set(SNAPPY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/snappy/snappy-${SNAPPY_VERSION}" PARENT_SCOPE)
+  set(SNAPPY_LIB "snappy")
+  set(SNAPPY_FUZZING_BUILD OFF CACHE BOOL "build Snappy for fuzzing")
+  set(SNAPPY_BUILD_TESTS OFF CACHE BOOL "disable Snappy tests" FORCE)
+  set(SNAPPY_BUILD_BENCHMARKS OFF CACHE BOOL "disable Snappy benchmarks" FORCE)
+  set(SNAPPY_INSTALL OFF CACHE BOOL "disable Snappy installation")
+  set(SNAPPY_REQUIRE_AVX ON CACHE BOOL "target processors with AVX support" FORCE)
+  set(SNAPPY_REQUIRE_AVX2 OFF CACHE BOOL "target processors with AVX2 support" FORCE)
+  set(SNAPPY_HAVE_BMI2 OFF CACHE BOOL "target processors with BMI2 support" FORCE)
+  add_subdirectory(${SNAPPY_SOURCE_DIR})
 endfunction ()
 add_snappy()
 set(SNAPPY_SOURCE_DIR "${SNAPPY_SOURCE_DIR}" PARENT_SCOPE)
@@ -92,7 +92,7 @@ set(V8_VERSION
   CACHE INTERNAL
   "${PROJECT_NAME}: Version"
   FORCE
-  )
+)
 set(V8_SUB_DIR "v${V8_VERSION}")
 set(V8_VERSION ${V8_VERSION} PARENT_SCOPE)
 add_subdirectory(V8)
@@ -284,35 +284,6 @@ add_subdirectory(fmt)
 ################################################################################
 
 set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)
-
-set(STARTER_SOURCE "${PROJECT_SOURCE_DIR}/3rdParty/arangodb-starter/")
-set(STARTER_BUILD "${CMAKE_CURRENT_BINARY_DIR}/arangodb-starter/")
-set(STARTER_BINARY "${STARTER_BUILD}/arangodb${CMAKE_EXECUTABLE_SUFFIX}")
-if (EXISTS ${STARTER_SOURCE})
-  find_program(GO_COMMAND "go")
-  if (GO_COMMAND)
-    MESSAGE("-- building arangodb starter.")
-    ExternalProject_Add(arangodb_starter_build
-      SOURCE_DIR
-      ${STARTER_SOURCE}
-      CONFIGURE_COMMAND
-      ""
-      BINARY_DIR
-      ${STARTER_BUILD}
-      BUILD_COMMAND
-      $(MAKE) -f "${STARTER_SOURCE}Makefile" "NODOCKER=1" "BUILDDIR=${STARTER_BUILD}" "SCRIPTDIR=${STARTER_SOURCE}" local
-      LOG_INSTALL 1
-      INSTALL_DIR
-      ${CMAKE_INSTALL_BINDIR}
-      INSTALL_COMMAND
-      ${CMAKE_COMMAND} -E copy ${STARTER_BINARY} ${CMAKE_INSTALL_BINDIR}
-      )
-    list(APPEND THIRDPARTY_BIN ${STARTER_BINARY})
-    set(THIRDPARTY_BIN ${THIRDPARTY_BIN} PARENT_SCOPE)
-  else()
-    MESSAGE(WARNING "arangodb starter source present, but no go command to build it found.")
-  endif()
-endif()
 
 ################################################################################
 ## fuerte

@@ -230,7 +230,7 @@ static Result getReadLockId(network::ConnectionPool* pool,
 Result collectionReCount(LogicalCollection& collection, uint64_t& c) {
   Result res;
   try {
-    c = collection.getPhysical()->recalculateCounts();
+    c = collection.getPhysical()->recalculateCounts().get();
   } catch (basics::Exception const& e) {
     res.reset(e.code(), e.message());
   }
@@ -768,7 +768,8 @@ bool SynchronizeShard::first() {
       ++_feature.server().getFeature<ClusterFeature>().syncTreeRebuildCounter();
 
       Result res = static_cast<RocksDBCollection*>(collection->getPhysical())
-                       ->rebuildRevisionTree();
+                       ->rebuildRevisionTree()
+                       .get();
 
       if (res.ok()) {
         LOG_TOPIC("02969", INFO, Logger::MAINTENANCE)

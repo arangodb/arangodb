@@ -85,7 +85,7 @@ template<SocketType T>
   }
 
   int32_t const sid = frame->hd.stream_id;
-  me->acquireStatistics(sid).SET_READ_START(TRI_microtime());
+  me->acquireRequestStatistics(sid).SET_READ_START(TRI_microtime());
   auto req =
       std::make_unique<HttpRequest>(me->_connectionInfo, /*messageId*/ sid);
   me->createStream(sid, std::move(req));
@@ -624,7 +624,7 @@ void H2CommTask<T>::processRequest(Stream& stream,
   // store origin header for later use
   stream.origin = req->header(StaticStrings::Origin);
   auto messageId = req->messageId();
-  RequestStatistics::Item const& stat = this->statistics(messageId);
+  RequestStatistics::Item const& stat = this->requestStatistics(messageId);
   stat.SET_REQUEST_TYPE(req->requestType());
   stat.ADD_RECEIVED_BYTES(stream.headerBuffSize + req->body().size());
   stat.SET_READ_END();

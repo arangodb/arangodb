@@ -325,6 +325,7 @@ ArangoCollection.prototype.properties = function (properties) {
     'syncByRevision': false,
     'schema' : true,
     'isDisjoint': false,
+    'groupId': false,
   };
 
   let requestResult;

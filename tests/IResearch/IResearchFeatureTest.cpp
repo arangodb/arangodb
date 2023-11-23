@@ -2027,7 +2027,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
   // logicalView0->guid();
   ASSERT_NE(logicalView0, nullptr);
   bool created = false;
-  auto index = logicalCollection->createIndex(linkJson->slice(), created);
+  auto index = logicalCollection->createIndex(linkJson->slice(), created).get();
   ASSERT_TRUE(created);
   ASSERT_NE(index, nullptr);
   auto link0 =
@@ -2133,7 +2133,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
   auto logicalView0 = vocbase.createView(viewJson->slice(), false);
   ASSERT_FALSE(!logicalView0);
   bool created;
-  auto index = logicalCollection->createIndex(linkJson->slice(), created);
+  auto index = logicalCollection->createIndex(linkJson->slice(), created).get();
   ASSERT_TRUE(created);
   ASSERT_FALSE(!index);
   auto link0 =
@@ -2710,6 +2710,7 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
 
   ASSERT_TRUE((arangodb::methods::Indexes::ensureIndex(
                    *logicalCollection, linkJson->slice(), true, tmp)
+                   .get()
                    .ok()));
   logicalCollection = ci.getCollection(vocbase->name(), collectionId);
   ASSERT_FALSE(!logicalCollection);
@@ -2899,7 +2900,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
       dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
   ASSERT_FALSE(!view);
   bool created = false;
-  auto index = logicalCollection->createIndex(linkJson->slice(), created);
+  auto index = logicalCollection->createIndex(linkJson->slice(), created).get();
   ASSERT_TRUE(created);
   ASSERT_FALSE(!index);
   auto link =
@@ -2997,7 +2998,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
       dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
   ASSERT_FALSE(!view);
   bool created;
-  auto index = logicalCollection->createIndex(linkJson->slice(), created);
+  auto index = logicalCollection->createIndex(linkJson->slice(), created).get();
   ASSERT_TRUE(created);
   ASSERT_FALSE(!index);
   auto link =
@@ -3108,7 +3109,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
   auto* view =
       dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
   bool created;
-  auto index = logicalCollection->createIndex(linkJson->slice(), created);
+  auto index = logicalCollection->createIndex(linkJson->slice(), created).get();
   ASSERT_TRUE(created);
   ASSERT_FALSE(!index);
   auto link =

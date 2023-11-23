@@ -294,6 +294,16 @@ auto pickBestServerToRemoveFromLog(
                    });
   return servers.front();
 }
+auto checkCollectionGroupAttributes(
+    ag::CollectionGroupTargetSpecification const& target,
+    ag::CollectionGroupPlanSpecification const& plan) -> Action {
+  if (target.attributes.mutableAttributes !=
+      plan.attributes.mutableAttributes) {
+    return UpdateCollectionGroupInPlan{target.id,
+                                       target.attributes.mutableAttributes};
+  }
+  return NoActionRequired{};
+}
 
 auto checkAssociatedReplicatedLogs(
     ag::CollectionGroupTargetSpecification const& target,
@@ -558,6 +568,11 @@ auto document::supervision::checkCollectionGroup(
   if (not group.plan.has_value()) {
     // create collection group in plan
     return createCollectionGroupTarget(database, group, uniqid, health);
+  }
+  // Check CollectionGroupAttributes
+  if (auto action = checkCollectionGroupAttributes(group.target, *group.plan);
+      not std::holds_alternative<NoActionRequired>(action)) {
+    return action;
   }
 
   // check replicated logs
@@ -859,6 +874,22 @@ struct TransactionBuilder {
     env = write.precs()
               .isNotEmpty(basics::StringUtils::concatT(
                   "/arango/Target/CollectionGroups/", database, "/", gid.id()))
+              .end();
+  }
+
+  void operator()(UpdateCollectionGroupInPlan const& action) {
+    auto write = env.write().emplace_object(
+        basics::StringUtils::concatT("/arango/Plan/CollectionGroups/", database,
+                                     "/", action.id.id(),
+                                     "/attributes/mutable"),
+        [&](VPackBuilder& builder) {
+          velocypack::serialize(builder, action.spec);
+        });
+    env = write.precs()
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Target/CollectionGroups/", database, "/", gid.id()))
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Plan/CollectionGroups/", database, "/", gid.id()))
               .end();
   }
 

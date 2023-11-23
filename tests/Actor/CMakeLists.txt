@@ -1,8 +1,8 @@
 add_library(arango_tests_actor OBJECT
   ActorListTest.cpp
   ActorTest.cpp
-  EgressActorTest.cpp
   RuntimeTest.cpp
+  EgressActorTest.cpp
   MultiRuntimeTest.cpp
   MPSCQueueTest.cpp)
 target_include_directories(arango_tests_actor PRIVATE

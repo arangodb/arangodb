@@ -897,7 +897,8 @@ void getDocumentByIdentifier(transaction::Methods* trx,
   Result res;
   try {
     res = trx->documentFastPath(collectionName, searchBuilder->slice(), options,
-                                result);
+                                result)
+              .get();
   } catch (basics::Exception const& ex) {
     res.reset(ex.code());
   }

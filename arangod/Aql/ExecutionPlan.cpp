@@ -376,8 +376,8 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
 
   aql::QueryContext& query = ast->query();
   auto options = std::make_unique<graph::ShortestPathOptions>(query);
-  options->minDepth = minDepth;
-  options->maxDepth = maxDepth;
+  options->setMinDepth(minDepth);
+  options->setMaxDepth(maxDepth);
 
   if (optionsNode != nullptr && optionsNode->type == NODE_TYPE_OBJECT) {
     size_t n = optionsNode->numMembers();
@@ -2888,6 +2888,14 @@ struct Shower final
 
   static std::string detailedNodeType(ExecutionNode const& node) {
     switch (node.getType()) {
+      case ExecutionNode::CALCULATION: {
+        auto const& calcNode =
+            *ExecutionNode::castTo<CalculationNode const*>(&node);
+        auto type = std::string{node.getTypeString()};
+        type += " $" + calcNode.outVariable()->name + " = ";
+        calcNode.expression()->stringify(type);
+        return type;
+      }
       case ExecutionNode::TRAVERSAL:
       case ExecutionNode::SHORTEST_PATH:
       case ExecutionNode::ENUMERATE_PATHS: {

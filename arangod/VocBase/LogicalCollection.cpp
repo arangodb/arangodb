@@ -330,6 +330,24 @@ UserInputCollectionProperties LogicalCollection::getCollectionProperties()
   return props;
 }
 
+bool LogicalCollection::waitForSync() const noexcept {
+  if (_groupId.has_value() && ServerState::instance()->isDBServer()) {
+    TRI_ASSERT(replicationVersion() == replication::Version::TWO)
+        << "Set a groupId although we are not in Replication Two";
+    auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+
+    auto const& group = ci.getCollectionGroupById(
+        replication2::agency::CollectionGroupId{_groupId.value()});
+    if (group) {
+      return group->attributes.mutableAttributes.waitForSync;
+    }
+    // If we cannot find a group this means the shard is dropped
+    // while we are still in this method. Let's just take the
+    // value at creation then.
+  }
+  return _waitForSync;
+}
+
 size_t LogicalCollection::numberOfShards() const noexcept {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->numberOfShards();
@@ -1096,18 +1114,18 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(VPackSlice info) const {
   return getPhysical()->lookupIndex(info);
 }
 
-std::shared_ptr<Index> LogicalCollection::createIndex(
+futures::Future<std::shared_ptr<Index>> LogicalCollection::createIndex(
     VPackSlice info, bool& created,
     std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
-  auto idx = _physical->createIndex(info, /*restore*/ false, created,
-                                    std::move(progress));
+  auto idx = co_await _physical->createIndex(info, /*restore*/ false, created,
+                                             std::move(progress));
   if (idx) {
     auto& df = vocbase().server().getFeature<DatabaseFeature>();
     if (df.versionTracker() != nullptr) {
       df.versionTracker()->track("create index");
     }
   }
-  return idx;
+  co_return idx;
 }
 
 /// @brief drops an index, including index file removal and replication
