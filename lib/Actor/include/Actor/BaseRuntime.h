@@ -70,7 +70,7 @@ struct BaseRuntime
     auto address = spawn<ActorConfig>(std::move(initialState));
 
     // Send initial message to newly created actor
-    dispatchLocally(address, address, initialMessage,
+    dispatchLocally(address, address, std::move(initialMessage),
                     IgnoreDispatchFailure::yes);
 
     return address;
@@ -217,10 +217,10 @@ struct BaseRuntime
 
   template<typename ActorMessage>
   auto dispatchLocally(ActorPID sender, ActorPID receiver,
-                       ActorMessage const& message,
+                       ActorMessage&& message,
                        IgnoreDispatchFailure ignoreFailure) -> void {
     auto actor = actors.find(receiver.id);
-    auto payload = MessagePayload<ActorMessage>(std::move(message));
+    MessagePayload<ActorMessage> payload(std::move(message));
     if (actor.has_value()) {
       actor->get()->process(sender, payload);
     } else if (ignoreFailure == IgnoreDispatchFailure::no) {
