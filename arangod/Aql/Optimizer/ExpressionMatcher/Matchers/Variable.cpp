@@ -23,20 +23,6 @@
 #include <optional>
 #include <variant>
 
-#include "Aql/AstNode.h"
-#include "Aql/ExecutionNode.h"
-#include "Aql/Expression.h"
-#include "Aql/EnumeratePathsNode.h"
-#include "Aql/Ast.h"
-#include "Aql/Quantifier.h"
-
-#include "Basics/ErrorT.h"
-#include "Basics/overload.h"
-
-#include "Logger/LogMacros.h"
-using EN = arangodb::aql::ExecutionNode;
-
 namespace arangodb::aql::expression_matcher {
 auto variable(std::string name) -> Variable { return Variable{.name = name}; }
-
 }  // namespace arangodb::aql::expression_matcher
