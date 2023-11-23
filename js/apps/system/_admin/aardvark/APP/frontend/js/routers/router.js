@@ -48,6 +48,7 @@
       'metrics': 'metrics',
       'users': 'userManagement',
       'user/:name': 'userView',
+      'user/:name/permissionOld': 'userPermissionOld',
       'user/:name/permission': 'userPermission',
       'cluster': 'cluster',
       'nodes': 'nodes',
@@ -1181,6 +1182,23 @@
           document.getElementById("content-react")
         )
       );
+    },
+    userPermissionOld: function (name) {
+      this.checkUser();
+
+      this.init.then(() => {
+        if (this.userPermissionView) {
+          this.userPermissionView.remove();
+        }
+
+        this.userPermissionView = new window.UserPermissionView({
+          collection: this.userCollection,
+          databases: this.arangoDatabase,
+          username: name
+        });
+
+        this.userPermissionView.render();
+      });
     },
 
     userView: function (name) {
