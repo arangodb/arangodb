@@ -6,7 +6,7 @@ import { useSortableReactTable } from "../../../components/table/useSortableReac
 import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
 import { CollectionPermissionSwitch } from "./CollectionPermissionSwitch";
 import { getIsDefaultRow } from "./DatabasePermissionSwitch";
-import { PermissionType } from "./useFetchDatabasePermissions";
+import { PermissionType, useUsername } from "./useFetchDatabasePermissions";
 
 export type CollectionType = {
   collectionName: string;
@@ -136,7 +136,7 @@ export const CollectionsPermissionsTable = ({
   row: Row<DatabaseTableType>;
 }) => {
   const { databaseName } = row.original;
-
+  const { username } = useUsername();
   const tableInstance = useSortableReactTable<CollectionType>({
     data: row.original.collections || [],
     columns: COLLECTION_COLUMNS,
@@ -147,7 +147,8 @@ export const CollectionsPermissionsTable = ({
       }
     ],
     meta: {
-      databaseName
+      databaseName,
+      username: decodeURIComponent(username)
     }
   });
 

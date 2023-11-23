@@ -12,7 +12,9 @@ export const CollectionPermissionSwitch = ({
   checked: boolean;
   info: CellContext<any, unknown>;
 }) => {
-  const { databaseName } = (info.table.options.meta as any) || {};
+  const { databaseName, username } = (info.table.options.meta || {}) as any;
+  const isSystemDatabase = databaseName === "_system";
+  const isRootUser = username === "root";
   const { handleCollectionCellClick } = useUserPermissionsContext();
   const { databaseTable } = useUserPermissionsContext();
   const maxLevel =
@@ -51,7 +53,9 @@ export const CollectionPermissionSwitch = ({
   return (
     <Flex gap="3">
       <Radio
-        isDisabled={isLoading}
+        isDisabled={
+          isLoading || (isDefaultRow && isSystemDatabase && isRootUser)
+        }
         isChecked={checked}
         onChange={handleChange}
       />
