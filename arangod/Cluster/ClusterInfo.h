@@ -883,6 +883,11 @@ class ClusterInfo final {
     return _planVersion;
   }
 
+  uint64_t getPlanIndex() const {
+    READ_LOCKER(readLocker, _planProt.lock);
+    return _planIndex;
+  }
+
   uint64_t getCurrentVersion() const {
     READ_LOCKER(guard, _currentProt.lock);
     return _currentVersion;
