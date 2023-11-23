@@ -1,6 +1,11 @@
 devel
 -----
 
+* EE Only: When creating a disjoint Smart Graph or a SmartJoin collection where
+  the list of shard names would go from a k digit number to a k+1 digit number,
+  some AQL queries would miss-match the shard list of one collection with the others.
+  The data is all in correct place, this is a read-only issue.
+
 * Track memory usage of internal connection statistics and request statistics:
   - `arangodb_connection_statistics_memory_usage`
   - `arangodb_requests_statistics_memory_usage`
