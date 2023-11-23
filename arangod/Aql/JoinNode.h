@@ -61,6 +61,8 @@ class JoinNode : public ExecutionNode {
     Projections filterProjections;
     bool usedAsSatellite;  // TODO maybe use CollectionAccess class
     bool producesOutput;
+    bool isLateMaterialized;
+    Variable const* outDocIdVariable;
   };
 
   JoinNode(ExecutionPlan* plan, ExecutionNodeId id,
