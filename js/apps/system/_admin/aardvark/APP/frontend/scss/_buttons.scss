@@ -506,3 +506,13 @@ a.button-gui {
   top: 5px;
   position: relative;
 }
+
+
+.button-help-inline {
+  display: inline-flex;
+  align-items: center;
+
+  i {
+    margin-right: 8px;
+  }
+}
