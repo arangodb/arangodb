@@ -489,7 +489,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
 
     if (maybeShard.ok()) {
       _builder.openObject();
-      _builder.add("shardId", VPackValue(maybeShard.get().c_str()));
+      _builder.add("shardId", VPackValue(maybeShard.get()));
       _builder.close();
       return standardResponse();
     } else {

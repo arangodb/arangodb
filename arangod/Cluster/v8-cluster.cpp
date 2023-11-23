@@ -1025,7 +1025,7 @@ static void JS_GetResponsibleServersClusterInfo(
   v8::Handle<v8::Object> responsible = v8::Object::New(isolate);
   for (auto const& it : result) {
     responsible
-        ->Set(context, TRI_V8_ASCII_STRING(isolate, it.first.c_str()),
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, std::string{it.first}.c_str()),
               TRI_V8_STD_STRING(isolate, it.second))
         .FromMaybe(false);
   }
@@ -1092,7 +1092,7 @@ static void JS_GetResponsibleShardClusterInfo(
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   result
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "shardId"),
-            TRI_V8_STD_STRING(isolate, maybeShard.get().c_str()))
+            TRI_V8_STD_STRING(isolate, std::string{maybeShard.get()}))
       .FromMaybe(true);
   result
       ->Set(context,

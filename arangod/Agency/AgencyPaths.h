@@ -26,7 +26,6 @@
 #include "Agency/PathComponent.h"
 #include "Basics/debugging.h"
 #include "Cluster/ClusterTypes.h"
-#include "Cluster/Utils/ShardID.h"
 
 #include <iostream>
 #include <memory>
@@ -331,7 +330,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
               using BaseType::StaticComponent;
 
-              class Shard : public DynamicComponent<Shard, Shards, ShardID> {
+              class Shard : public DynamicComponent<Shard, Shards, std::string> {
                public:
                 char const* component() const noexcept {
                   return value().c_str();
@@ -340,7 +339,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
                 using BaseType::DynamicComponent;
               };
 
-              std::shared_ptr<Shard const> shard(ShardID name) const {
+              std::shared_ptr<Shard const> shard(std::string name) const {
                 return Shard::make_shared(shared_from_this(), std::move(name));
               }
             };
@@ -400,7 +399,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
               using BaseType::StaticComponent;
 
               class Shard
-                  : public DynamicComponent<Shard, ReplicatedLogs, ShardID> {
+                  : public DynamicComponent<Shard, ReplicatedLogs, std::string> {
                public:
                 char const* component() const noexcept {
                   return value().c_str();
@@ -409,7 +408,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
                 using BaseType::DynamicComponent;
               };
 
-              std::shared_ptr<Shard const> shard(ShardID value) const {
+              std::shared_ptr<Shard const> shard(std::string value) const {
                 return Shard::make_shared(shared_from_this(), std::move(value));
               }
             };
@@ -1365,7 +1364,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
             using BaseType::DynamicComponent;
 
-            class Shard : public DynamicComponent<Shard, Collection, ShardID> {
+            class Shard : public DynamicComponent<Shard, Collection, std::string> {
              public:
               char const* component() const noexcept { return value().c_str(); }
 
@@ -1452,7 +1451,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
               }
             };
 
-            std::shared_ptr<Shard const> shard(ShardID name) const {
+            std::shared_ptr<Shard const> shard(std::string name) const {
               return Shard::make_shared(shared_from_this(), std::move(name));
             }
           };

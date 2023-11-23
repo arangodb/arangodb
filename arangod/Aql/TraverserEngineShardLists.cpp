@@ -92,7 +92,7 @@ std::vector<ShardID> TraverserEngineShardLists::getAllLocalShards(
     auto const& it = shardMapping.find(shard);
     if (it == shardMapping.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL, absl::StrCat("no entry for shard '", shard.c_str(),
+          TRI_ERROR_INTERNAL, absl::StrCat("no entry for shard '", std::string{shard},
                                            "' in shard mapping table (",
                                            shardMapping.size(), " entries)"));
     }

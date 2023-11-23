@@ -50,10 +50,10 @@ struct ShardID {
   static ShardID invalidShard() { return ShardID{0}; }
 
   // Default constructor required for Inspectors.
-  ShardID() : id(0), _idString("s" + std::to_string(0)) {}
+  // Note: This shardID is considered Invalid.
+  ShardID() : id(0) {}
 
-  explicit ShardID(uint64_t id)
-      : id(id), _idString{"s" + basics::StringUtils::itoa(id)} {}
+  explicit ShardID(uint64_t id) : id(id) {}
 
   explicit ShardID(std::string_view id) {
     auto maybeShardID = shardIdFromString(std::string(id));
@@ -89,10 +89,6 @@ struct ShardID {
     return other == std::string{*this};
   }
 
-  char const* c_str() const noexcept {
-    return _idString.c_str();
-  }
-
   bool isValid() const noexcept {
     // We can never have ShardID 0. So we use it as invalid value.
     return id != 0;
@@ -124,11 +120,6 @@ struct ShardID {
   }
 
   uint64_t id;
-
-  // NOTE: Temporary solution to support c_str() operator.
-  // Plan is to remove c_str() operator and instead use std::string if possible
- private:
-  std::string _idString;
 };
 
 // Make ShardID logable

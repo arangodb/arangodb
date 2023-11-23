@@ -80,7 +80,7 @@ auto DistributeExecutorInfos::getResponsibleClient(
     TRI_ASSERT(!server.empty());
     return server;
   }
-  return maybeShard.get().c_str();
+  return maybeShard.get();
 }
 
 auto DistributeExecutorInfos::shouldDistributeToAll(

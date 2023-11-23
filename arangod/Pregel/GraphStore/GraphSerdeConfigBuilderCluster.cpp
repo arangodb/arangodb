@@ -120,7 +120,7 @@ GraphSerdeConfigBuilderCluster::GraphSerdeConfigBuilderCluster(
       ADB_PROD_ASSERT(not responsibleServers->empty());
       auto loadableVertexShard = LoadableVertexShard{
           .pregelShard = PregelShard(result.size()),
-          .vertexShard = vertexShard.c_str(),
+          .vertexShard = vertexShard,
           .responsibleServer = ServerID{responsibleServers->at(0)},
           .collectionName = vertexCollection,
           .edgeShards = {}};
@@ -129,7 +129,7 @@ GraphSerdeConfigBuilderCluster::GraphSerdeConfigBuilderCluster(
         if (not graphByCollections.isRestricted(vertexCollection,
                                                 edgeCollection)) {
           for (auto shard : edgeShardMap.at(edgeCollection).at(shardIdx)) {
-            loadableVertexShard.edgeShards.emplace_back(shard.c_str());
+            loadableVertexShard.edgeShards.emplace_back(shard);
           }
         }
       }

@@ -300,7 +300,7 @@ bool RefactoredTraverserCache::appendVertex(
               "' as the first line in your AQL");
     }
     for (auto const& shard : it->second) {
-      if (findDocumentInCollection(shard.c_str())) {
+      if (findDocumentInCollection(shard)) {
         // Short circuit, as soon as one shard contains this document
         // we can return it.
         return true;
