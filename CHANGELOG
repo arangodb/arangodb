@@ -1,6 +1,25 @@
 v3.11.6 (XXXX-XX-XX)
 --------------------
 
+* Track memory usage of internal connection statistics and request statistics:
+  - `arangodb_connection_statistics_memory_usage`
+  - `arangodb_requests_statistics_memory_usage`
+  These metrics will remain at 0 if the server is started with the option
+  `--server.statistics false`. Otherwise they will contain the memory usage used
+  by connection and request statistics. Memory usage should remain pretty
+  constant over time, unless there are bursts of new connections and/or
+  requests.
+
+* Avoid memory leak in case an arangod instance is started with the option
+  `--server.statistics false`. Previously, with that setting the request and
+  connection statistics were built up in memory, but were never released because
+  the statistics background thread was not running.
+
+* Avoid memory leak in case an arangod instance is started with the option 
+  `--server.statistics false`. Previously, with that setting the request
+  and connection statistics were built up in memory, but were never released
+  because the statistics background thread was not running.
+
 * Remove version check on startup of arangosh. This can speed up the startup of
   the arangosh considerably because it won't do a network request to
   www.arangodb.com.
