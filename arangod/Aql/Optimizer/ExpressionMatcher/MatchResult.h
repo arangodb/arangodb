@@ -24,7 +24,6 @@
 #include <unordered_map>
 #include <variant>
 #include <optional>
-#include "tao/json/external/pegtl/internal/bump.hpp"
 
 #include <Aql/AstNode.h>
 

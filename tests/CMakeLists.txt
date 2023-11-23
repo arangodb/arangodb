@@ -318,6 +318,7 @@ target_link_libraries(arangodbtests
   arango_tests_pregel
   arango_tests_pregel_graphstore
   arango_tests_actor
+  arango_tests_optimizer_rules 
   arango_tests_inspection
   arango_inspection_test_helper
   arango_agency
