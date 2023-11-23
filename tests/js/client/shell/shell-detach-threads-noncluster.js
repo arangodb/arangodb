@@ -24,13 +24,10 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
-const console = require('console');
-let jsunity = require('jsunity');
-let internal = require('internal');
-let arangodb = require('@arangodb');
-let fs = require('fs');
-let db = arangodb.db;
-let { debugCanUseFailAt, debugRemoveFailAt, debugSetFailAt, debugClearFailAt } = require('@arangodb/test-helper');
+const jsunity = require('jsunity');
+const internal = require('internal');
+const arangodb = require('@arangodb');
+const db = arangodb.db;
 
 function detachSchedulerThreadsSuite() {
   'use strict';
@@ -50,24 +47,16 @@ function detachSchedulerThreadsSuite() {
       let c = db._create(cn);
       let c2 = db._create(cn2);
 
-      // Let's insert some documents:
-      let l = [];
-      for (let i = 0; i < 100; ++i) {
-        l.push({Hallo:i});
-      }
-      c.insert(l);
-      c2.insert(l);
-
       // Create a transaction with an exclusive lock and write something:
       let t = db._createTransaction({collections:{exclusive:[cn]}});
       let cc = t.collection(cn);
       cc.insert({});
 
-      // Now create 200 more writes all waiting for the lock, but
+      // Now create many more writes all waiting for the lock, but
       // asynchronously, without detached threads, this will make all
       // low prio threads block:
       let ts = [];
-      for (let i = 0; i < 200; ++i) {
+      for (let i = 0; i < 120; ++i) {
         ts.push(arango.POST_RAW(`/_api/document/${cn}`,{Write: i},
                 {"x-arango-async": "store"})
           .headers["x-arango-async-id"]);
