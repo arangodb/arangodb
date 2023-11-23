@@ -1,6 +1,9 @@
 v3.10.12 (XXXX-XX-XX)
 ---------------------
 
+* Fixed MDS-1170: Significant performance degradation when queries are
+  executed within transactions that involve edits.
+
 * Remove version check on startup of arangosh. This can speed up the startup of
   the arangosh considerably because it won't do a network request to
   www.arangodb.com.
