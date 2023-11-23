@@ -62,14 +62,19 @@ const usePermissionTableData = () => {
       return {
         databaseName,
         permission: permissionObject.permission,
-        collections: Object.entries(permissionObject.collections || {}).map(
-          ([collectionName, collectionPermission]) => {
+        collections: Object.entries(permissionObject.collections || {})
+          .map(([collectionName, collectionPermission]) => {
+            
+            // filter out built-in collections
+            if (collectionName.startsWith("_")) {
+              return null;
+            }
             return {
               collectionName,
               permission: collectionPermission
             };
-          }
-        )
+          })
+          .filter(Boolean) as CollectionType[]
       };
     })
     .filter(Boolean) as DatabaseTableType[];
