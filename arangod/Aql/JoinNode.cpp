@@ -345,17 +345,25 @@ ExecutionNode* JoinNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   for (auto const& it : _indexInfos) {
     auto outVariable = it.outVariable;
+    auto outDocIdVariable = it.outDocIdVariable;
     if (withProperties) {
       outVariable = plan->getAst()->variables()->createVariable(outVariable);
+      if (outDocIdVariable) {
+        outDocIdVariable =
+            plan->getAst()->variables()->createVariable(outDocIdVariable);
+      }
     }
-    indexInfos.emplace_back(IndexInfo{.collection = it.collection,
-                                      .usedShard = it.usedShard,
-                                      .outVariable = outVariable,
-                                      .condition = it.condition->clone(),
-                                      .index = it.index,
-                                      .projections = it.projections,
-                                      .usedAsSatellite = it.usedAsSatellite,
-                                      .producesOutput = it.producesOutput});
+    indexInfos.emplace_back(
+        IndexInfo{.collection = it.collection,
+                  .usedShard = it.usedShard,
+                  .outVariable = outVariable,
+                  .condition = it.condition->clone(),
+                  .index = it.index,
+                  .projections = it.projections,
+                  .usedAsSatellite = it.usedAsSatellite,
+                  .producesOutput = it.producesOutput,
+                  .isLateMaterialized = it.isLateMaterialized,
+                  .outDocIdVariable = outDocIdVariable});
   }
 
   auto c =

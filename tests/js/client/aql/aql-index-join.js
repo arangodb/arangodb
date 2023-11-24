@@ -938,7 +938,6 @@ const IndexJoinTestSuite = function () {
         assertEqual(a, b.x);
       }
     },
-
   };
 };
 

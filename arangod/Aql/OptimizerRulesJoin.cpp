@@ -438,6 +438,44 @@ void findCandidates(IndexNode* indexNode,
   }
 }
 
+Projections translateLMIndexVarsToProjections(
+    ExecutionPlan* plan, IndexNode::IndexValuesVars const& indexVars,
+    transaction::Methods::IndexHandle index) {
+  // Translate the late materialize "projections" description
+  // into the usual projections description
+  auto& coveredFields = index->coveredFields();
+
+  std::vector<AttributeNamePath> projectedAttributes;
+  for (auto [var, fieldIndex] : indexVars.second) {
+    auto& field = coveredFields[fieldIndex];
+    std::vector<std::string> fieldCopy;
+    fieldCopy.reserve(field.size());
+    std::transform(field.begin(), field.end(), std::back_inserter(fieldCopy),
+                   [&](auto const& attr) {
+                     TRI_ASSERT(attr.shouldExpand == false);
+                     return attr.name;
+                   });
+    projectedAttributes.emplace_back(std::move(fieldCopy),
+                                     plan->getAst()->query().resourceMonitor());
+  }
+
+  Projections projections{std::move(projectedAttributes)};
+
+  std::size_t i = 0;
+  for (auto [var, fieldIndex] : indexVars.second) {
+    auto& proj = projections[i++];
+    proj.coveringIndexPosition = fieldIndex;
+    proj.coveringIndexCutoff = fieldIndex;
+    proj.variable = var;
+    proj.levelsToClose = proj.startsAtLevel = 0;
+    proj.type = proj.path.size() > 1 ? AttributeNamePath::Type::MultiAttribute
+                                     : AttributeNamePath::Type::SingleAttribute;
+  }
+
+  projections.setCoveringContext(index->collection().id(), index);
+  return projections;
+}
+
 }  // namespace
 
 void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
@@ -501,44 +539,8 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                 auto [outVar, indexVars] = c->getLateMaterializedInfo();
                 TRI_ASSERT(indexVars.first == c->getIndexes()[0]->id());
                 info.outDocIdVariable = outVar;
-
-                // Translate the late materialize "projections" description
-                // into the usual projections description
-                auto& coveredFields = c->getIndexes()[0]->coveredFields();
-
-                std::vector<AttributeNamePath> projectedAttributes;
-                for (auto [var, fieldIndex] : indexVars.second) {
-                  auto& field = coveredFields[fieldIndex];
-                  std::vector<std::string> fieldCopy;
-                  fieldCopy.reserve(field.size());
-                  std::transform(field.begin(), field.end(),
-                                 std::back_inserter(fieldCopy),
-                                 [&](auto const& attr) {
-                                   TRI_ASSERT(attr.shouldExpand == false);
-                                   return attr.name;
-                                 });
-                  projectedAttributes.emplace_back(
-                      std::move(fieldCopy),
-                      plan->getAst()->query().resourceMonitor());
-                }
-
-                Projections projections{std::move(projectedAttributes)};
-
-                std::size_t i = 0;
-                for (auto [var, fieldIndex] : indexVars.second) {
-                  auto& proj = projections[i++];
-                  proj.coveringIndexPosition = fieldIndex;
-                  proj.coveringIndexCutoff = fieldIndex;
-                  proj.variable = var;
-                  proj.levelsToClose = proj.startsAtLevel = 0;
-                  proj.type = proj.path.size() > 1
-                                  ? AttributeNamePath::Type::MultiAttribute
-                                  : AttributeNamePath::Type::SingleAttribute;
-                }
-
-                auto& index = c->getIndexes()[0];
-                projections.setCoveringContext(index->collection().id(), index);
-                info.projections = std::move(projections);
+                info.projections = translateLMIndexVarsToProjections(
+                    plan.get(), indexVars, c->getIndexes()[0]);
               }
 
               indexInfos.emplace_back(std::move(info));
