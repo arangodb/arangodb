@@ -97,7 +97,7 @@ class ArangoCLIprogressiveTimeoutExecutorWindows(ArangoCLIprogressiveTimeoutExec
             run_cmd,
             stdout=PIPE,
             stderr=PIPE,
-            close_fds=ON_POSIX,
+            close_fds=False,
             cwd=self.cfg.test_data_dir.resolve(),
             env=self.get_environment(params),
         ) as process:
