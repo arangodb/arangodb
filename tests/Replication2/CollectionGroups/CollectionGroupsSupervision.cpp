@@ -430,12 +430,12 @@ TEST_F(CollectionGroupsSupervisionTest, modify_wait_for_sync) {
   group.plan->shardSheaves[2].replicatedLog = LogId{3};
 
   group.planCollections["A"].groupId = group.target.id;
-  group.planCollections["A"].shardList.assign({"s1", "s2", "s3"});
-  group.planCollections["A"].deprecatedShardMap.shards["s1"].servers.assign(
+  group.planCollections["A"].shardList.assign({ShardID{1}, ShardID{2}, ShardID{3}});
+  group.planCollections["A"].deprecatedShardMap.shards[ShardID{1}].servers.assign(
       {"DB1", "DB2", "DB3"});
-  group.planCollections["A"].deprecatedShardMap.shards["s2"].servers.assign(
+  group.planCollections["A"].deprecatedShardMap.shards[ShardID{2}].servers.assign(
       {"DB2", "DB3", "DB1"});
-  group.planCollections["A"].deprecatedShardMap.shards["s3"].servers.assign(
+  group.planCollections["A"].deprecatedShardMap.shards[ShardID{3}].servers.assign(
       {"DB3", "DB1", "DB2"});
 
   // Pretend that this group has converged.
