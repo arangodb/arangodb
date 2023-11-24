@@ -74,7 +74,7 @@ TEST(ShardIDTest, canBeAddedToSet) {
   // The set needs to retain the elements in increasing
   // numerical order
   for (auto const& s : shardIds) {
-    EXPECT_EQ(s.id, i);
+    EXPECT_EQ(s.id(), i);
     ++i;
   }
 }

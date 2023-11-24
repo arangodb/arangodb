@@ -39,9 +39,9 @@ struct ShardID {
 
   // Default constructor required for Inspectors.
   // Note: This shardID is considered Invalid.
-  constexpr ShardID() noexcept : id(0) {}
+  constexpr ShardID() noexcept : _id(0) {}
 
-  explicit ShardID(uint64_t id) noexcept : id(id) {}
+  explicit ShardID(uint64_t id) noexcept : _id(id) {}
 
   explicit ShardID(std::string_view id);
 
@@ -59,6 +59,10 @@ struct ShardID {
   bool operator==(std::string_view other) const noexcept;
 
   bool isValid() const noexcept;
+
+  uint64_t id() const noexcept {
+    return _id;
+  }
 
   // Add an inspector implementation, shardIDs will be serialized and
   // deserialized as "s" + number for compatibility reasons.
@@ -86,7 +90,8 @@ struct ShardID {
     }
   }
 
-  uint64_t id;
+ private:
+  uint64_t _id;
 };
 
 // Make ShardID loggable
@@ -111,7 +116,7 @@ struct fmt::formatter<arangodb::ShardID> {
 
   template<typename FormatContext>
   auto format(arangodb::ShardID const& shardId, FormatContext& ctx) {
-    return format_to(ctx.out(), "s{}", std::to_string(shardId.id));
+    return format_to(ctx.out(), "s{}", std::to_string(shardId.id()));
   }
 };
 

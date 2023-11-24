@@ -1290,7 +1290,7 @@ std::optional<replication2::LogId> LogicalCollection::tryShardIdToStateId(
   if (!shardId.isValid()) {
     return {};
   }
-  return replication2::LogId::fromString(std::to_string(shardId.id));
+  return replication2::LogId::fromString(std::to_string(shardId.id()));
 }
 
 auto LogicalCollection::getDocumentState()

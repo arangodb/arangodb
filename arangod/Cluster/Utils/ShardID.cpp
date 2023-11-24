@@ -48,7 +48,7 @@ arangodb::ShardID::ShardID(std::string_view id) {
   *this = maybeShardID.get();
 }
 arangodb::ShardID::operator std::string() const {
-  return absl::StrCat("s", std::to_string(id));
+  return absl::StrCat("s", std::to_string(_id));
 }
 
 // NOTE: This is not noexcept because of shardIdFromString
@@ -62,22 +62,22 @@ bool arangodb::ShardID::operator==(std::string_view other) const noexcept {
 
 bool arangodb::ShardID::isValid() const noexcept {
   // We can never have ShardID 0. So we use it as invalid value.
-  return id != 0;
+  return _id != 0;
 }
 
 std::ostream& arangodb::operator<<(std::ostream& o,
                                    const arangodb::ShardID& r) {
-  o << "s" << r.id;
+  o << "s" << r.id();
   return o;
 }
 std::string operator+(const std::string& text, const arangodb::ShardID& s) {
-  return absl::StrCat(text, "s", std::to_string(s.id));
+  return absl::StrCat(text, "s", std::to_string(s.id()));
 }
 std::string operator+(const arangodb::ShardID& s, const std::string& text) {
-  return absl::StrCat("s", std::to_string(s.id), text);
+  return absl::StrCat("s", std::to_string(s.id()), text);
 }
 
 auto std::hash<arangodb::ShardID>::operator()(
     const arangodb::ShardID& v) const noexcept -> std::size_t {
-  return std::hash<uint64_t>{}(v.id);
+  return std::hash<uint64_t>{}(v.id());
 }
