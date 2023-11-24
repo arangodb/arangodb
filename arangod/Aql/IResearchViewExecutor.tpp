@@ -137,10 +137,10 @@ lookupCollection(arangodb::transaction::Methods& trx, DataSourceId cid,
 class BufferHeapSortContext {
  public:
   explicit BufferHeapSortContext(size_t numScoreRegisters,
-                                 std::span<HeapSortElement const> scoresSort,
+                                 std::span<HeapSortElement const> heapSort,
                                  std::span<float_t const> scoreBuffer)
       : _numScoreRegisters(numScoreRegisters),
-        _heapSort(scoresSort),
+        _heapSort(heapSort),
         _scoreBuffer(scoreBuffer) {}
 
   bool operator()(size_t a, size_t b) const noexcept {
@@ -339,7 +339,8 @@ void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSort() {
 
 template<typename ValueType, bool copySorted>
 void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
-    ValueType&& value, std::span<float_t const> scores) {
+    ValueType&& value, std::span<float_t const> scores,
+    irs::score_threshold* threshold) {
   BufferHeapSortContext sortContext(_numScoreRegisters, _heapSort,
                                     _scoreBuffer);
   TRI_ASSERT(_maxSize);
@@ -363,6 +364,11 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
       ++bufferIt;
     }
     std::push_heap(_rows.begin(), _rows.end(), sortContext);
+    if (threshold) {
+      TRI_ASSERT(threshold->min <=
+                 _scoreBuffer[_rows.front() * _numScoreRegisters]);
+      threshold->min = _scoreBuffer[_rows.front() * _numScoreRegisters];
+    }
   } else {
     _keyBuffer.emplace_back(std::move(value));
     size_t i = 0;
@@ -1125,7 +1131,7 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
 
     this->_indexReadBuffer.pushSortedValue(
         HeapSortExecutorValue{readerOffset, doc->value},
-        std::span{scores.data(), numScores});
+        std::span{scores.data(), numScores}, threshold);
   }
   this->_indexReadBuffer.finalizeHeapSort();
   _bufferedCount = this->_indexReadBuffer.size();
