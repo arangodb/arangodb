@@ -7,10 +7,9 @@ import {
   Table
 } from "@tanstack/react-table";
 import React from "react";
+
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
-import { getCurrentDB } from "../../../utils/arangoClient";
-import { notifyError } from "../../../utils/notifications";
 import {
   CollectionType,
   DatabaseTableType
@@ -23,6 +22,10 @@ import {
   useFetchDatabasePermissions,
   useUsername
 } from "./useFetchDatabasePermissions";
+import {
+  SystemDatabaseActionState,
+  usePermissionChangeHandlers
+} from "./usePermissionChangeHandlers";
 
 const UserPermissionsContext = React.createContext<{
   tableInstance: Table<DatabaseTableType>;
@@ -44,6 +47,9 @@ const UserPermissionsContext = React.createContext<{
     info: CellContext<CollectionType, unknown>;
     databaseName: string;
   }) => Promise<void>;
+  systemDatabaseActionState: SystemDatabaseActionState | undefined;
+  onConfirmSystemDatabasePermissionChange: () => void;
+  onCancelSystemDatabasePermissionChange: () => void;
 }>({} as any);
 
 export const useUserPermissionsContext = () => {
@@ -252,10 +258,15 @@ export const UserPermissionsContextProvider = ({
   const { databaseTable, refetchDatabasePermissions } =
     usePermissionTableData();
   const { username } = useUsername();
-  const { handleDatabaseCellClick, handleCollectionCellClick } =
-    usePermissionChangeHandlers({
-      refetchDatabasePermissions
-    });
+  const {
+    handleDatabaseCellClick,
+    handleCollectionCellClick,
+    systemDatabaseActionState,
+    onConfirmSystemDatabasePermissionChange,
+    onCancelSystemDatabasePermissionChange
+  } = usePermissionChangeHandlers({
+    refetchDatabasePermissions
+  });
 
   const tableInstance = useSortableReactTable<DatabaseTableType>({
     data: databaseTable || [],
@@ -281,74 +292,13 @@ export const UserPermissionsContextProvider = ({
         tableInstance,
         refetchDatabasePermissions,
         handleCollectionCellClick,
-        databaseTable
+        databaseTable,
+        systemDatabaseActionState,
+        onConfirmSystemDatabasePermissionChange,
+        onCancelSystemDatabasePermissionChange
       }}
     >
       {children}
     </UserPermissionsContext.Provider>
   );
-};
-
-const usePermissionChangeHandlers = ({
-  refetchDatabasePermissions
-}: {
-  refetchDatabasePermissions?: () => void;
-}) => {
-  const { username } = useUsername();
-
-  const handleDatabaseCellClick = async ({
-    info,
-    permission
-  }: {
-    info: CellContext<DatabaseTableType, unknown>;
-    permission: string;
-  }) => {
-    const { databaseName } = info.row.original;
-    try {
-      const currentDbRoute = getCurrentDB().route(
-        `_api/user/${username}/database/${databaseName}`
-      );
-      if (permission === "undefined") {
-        await currentDbRoute.delete();
-        refetchDatabasePermissions?.();
-        return;
-      }
-      await currentDbRoute.put({
-        grant: permission
-      });
-      refetchDatabasePermissions?.();
-    } catch (e: any) {
-      notifyError(e.message);
-    }
-  };
-
-  const handleCollectionCellClick = async ({
-    permission,
-    info,
-    databaseName
-  }: {
-    permission: string;
-    info: CellContext<CollectionType, unknown>;
-    databaseName: string;
-  }) => {
-    const { collectionName } = info.row.original;
-    try {
-      const currentDbRoute = getCurrentDB().route(
-        `_api/user/${username}/database/${databaseName}/${collectionName}`
-      );
-      if (permission === "undefined") {
-        await currentDbRoute.delete();
-        refetchDatabasePermissions?.();
-        return;
-      }
-      await currentDbRoute.put({ grant: permission });
-      refetchDatabasePermissions?.();
-    } catch (e: any) {
-      notifyError(e.message);
-    }
-  };
-  return {
-    handleDatabaseCellClick,
-    handleCollectionCellClick
-  };
 };

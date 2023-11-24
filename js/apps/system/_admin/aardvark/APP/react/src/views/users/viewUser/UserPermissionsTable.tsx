@@ -6,6 +6,7 @@ import {
   CollectionsPermissionsTable,
   DatabaseTableType
 } from "./CollectionsPermissionsTable";
+import { SystemDatabaseWarningModal } from "./SystemDatabaseWarningModal";
 import {
   TABLE_COLUMNS,
   UserPermissionsContextProvider,
@@ -25,6 +26,7 @@ const UserPermissionsTableInner = () => {
 
   return (
     <Stack padding="4">
+      <SystemDatabaseWarningModal />
       <FiltersList<DatabaseTableType>
         columns={TABLE_COLUMNS}
         table={tableInstance}
