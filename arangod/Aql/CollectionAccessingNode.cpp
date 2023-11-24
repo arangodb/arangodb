@@ -75,7 +75,7 @@ CollectionAccessingNode::CollectionAccessingNode(
       LOG_TOPIC("63e33", WARN, Logger::AQL)
           << "Internal JSON representation of CollectionAccess for collection "
           << colName << " contains invalid shard ID "
-          << restrictedTo.copyString() << " - ignoring";
+          << restrictedTo.stringView() << " - ignoring";
     } else {
       _restrictedTo = maybeShardID.get();
     }
