@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertEqual, assertTrue, assertFalse, arango */
+/* global fail, assertEqual, assertTrue, assertFalse, arango, getOptions */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Test detaching threads in scheduler which wait for locks.
@@ -37,8 +37,8 @@
 // the test will not test the detaching of threads.
 if (getOptions === true) {
   return {
-    'server.maximal-threads' : '40',
-    'server.minimal-threads' : '40'
+    'server.maximal-threads' : '60',
+    'server.minimal-threads' : '60'
   };
 }
 
@@ -94,9 +94,7 @@ function detachSchedulerThreadsSuite() {
       }
       // If threads detach, we should first be able to write to the second
       // collection without too much delay:
-      print("CanProceed before");
       c2.insert({"CanProceed": true});
-      print("CanProceed written");
 
       // And then we can commit the transaction:
       t.commit();
