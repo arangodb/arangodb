@@ -22,7 +22,7 @@ const collectionPermissionColumns = [
   collectionColumnHelper.accessor(
     row => (row.permission === "rw" ? true : false),
     {
-      header: "Administrate",
+      header: "Read/Write",
       id: "rw",
       cell: info => {
         return (
@@ -41,7 +41,7 @@ const collectionPermissionColumns = [
   collectionColumnHelper.accessor(
     row => (row.permission === "ro" ? true : false),
     {
-      header: "Access",
+      header: "Read only",
       id: "ro",
       cell: info => {
         return (
