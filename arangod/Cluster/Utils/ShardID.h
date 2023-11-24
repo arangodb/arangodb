@@ -105,7 +105,7 @@ struct ShardID {
           // NOTE: For some reason we cannot inline the errorMessage() into the
           // return in that case the string_view variant will be selected, which
           // is no valid input for status.
-          std::string msg{std::move(result.errorMessage())};
+          std::string msg{result.errorMessage()};
           return {std::move(msg)};
         }
         x = result.get();
