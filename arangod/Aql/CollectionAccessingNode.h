@@ -82,7 +82,7 @@ class CollectionAccessingNode : public DataAccessingNode {
 
   void setUsedShard(ShardID const& shardName) {
     // We can only use the shard we are restricted to
-    TRI_ASSERT(_restrictedTo == shardName);
+    TRI_ASSERT(!_restrictedTo.has_value() || _restrictedTo == shardName);
     _usedShard = shardName;
   }
 

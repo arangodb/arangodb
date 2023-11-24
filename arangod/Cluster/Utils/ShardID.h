@@ -60,9 +60,7 @@ struct ShardID {
 
   bool isValid() const noexcept;
 
-  uint64_t id() const noexcept {
-    return _id;
-  }
+  uint64_t id() const noexcept { return _id; }
 
   // Add an inspector implementation, shardIDs will be serialized and
   // deserialized as "s" + number for compatibility reasons.

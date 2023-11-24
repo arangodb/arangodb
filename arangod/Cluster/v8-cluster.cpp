@@ -1009,7 +1009,8 @@ static void JS_GetResponsibleServersClusterInfo(
         isolate, array->Get(context, i).FromMaybe(v8::Local<v8::Value>())));
     if (maybeShard.fail()) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(
-          maybeShard.errorNumber(), absl::StrCat("Error on entry ", i, ": ", maybeShard.errorMessage()));
+          maybeShard.errorNumber(),
+          absl::StrCat("Error on entry ", i, ": ", maybeShard.errorMessage()));
     }
     shardIds.emplace(std::move(maybeShard.get()));
   }

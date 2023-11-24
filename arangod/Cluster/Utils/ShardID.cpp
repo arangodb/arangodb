@@ -39,7 +39,9 @@ arangodb::ResultT<arangodb::ShardID> arangodb::ShardID::shardIdFromString(
   }
   return ShardID{res.get()};
 }
-arangodb::ShardID arangodb::ShardID::invalidShard() noexcept { return ShardID{0}; }
+arangodb::ShardID arangodb::ShardID::invalidShard() noexcept {
+  return ShardID{0};
+}
 arangodb::ShardID::ShardID(std::string_view id) {
   auto maybeShardID = shardIdFromString(id);
   if (maybeShardID.fail()) {
@@ -53,7 +55,7 @@ arangodb::ShardID::operator std::string() const {
 
 // NOTE: This is not noexcept because of shardIdFromString
 bool arangodb::ShardID::operator==(std::string_view other) const noexcept {
-  if (auto otherShard = shardIdFromString(other) ; otherShard.ok()) {
+  if (auto otherShard = shardIdFromString(other); otherShard.ok()) {
     return *this == otherShard.get();
   }
   // If the other is not a valid Shard we cannot be equal to it.

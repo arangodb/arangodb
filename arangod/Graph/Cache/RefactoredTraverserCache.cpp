@@ -216,8 +216,7 @@ bool RefactoredTraverserCache::appendVertex(
     THROW_ARANGO_EXCEPTION(collectionNameResult.result());
   }
 
-  auto findDocumentInCollection =
-      [&](std::string const& shardId) -> bool {
+  auto findDocumentInCollection = [&](std::string const& shardId) -> bool {
     if (!_produceVertices) {
       // we don't need any vertex data, return quickly
       result.add(VPackSlice::nullSlice());
@@ -273,10 +272,9 @@ bool RefactoredTraverserCache::appendVertex(
     } catch (basics::Exception const& ex) {
       if (isWithClauseMissing(ex)) {
         // turn the error into a different error
-        auto message =
-            absl::StrCat("collection not known to traversal: '", shardId,
-                         "'. please add 'WITH ", shardId,
-                         "' as the first line in your AQL");
+        auto message = absl::StrCat("collection not known to traversal: '",
+                                    shardId, "'. please add 'WITH ", shardId,
+                                    "' as the first line in your AQL");
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
                                        message);
       }
@@ -307,7 +305,6 @@ bool RefactoredTraverserCache::appendVertex(
         // Short circuit, as soon as one shard contains this document
         // we can return it.
         return true;
-
       }
     }
   }
