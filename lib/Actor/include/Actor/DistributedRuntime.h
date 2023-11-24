@@ -77,19 +77,18 @@ struct DistributedRuntime
   }
 
   template<typename ActorMessage>
-  auto doDispatch(ActorPID sender, ActorPID receiver,
-                  ActorMessage const& message,
+  auto doDispatch(ActorPID sender, ActorPID receiver, ActorMessage&& message,
                   IgnoreDispatchFailure ignoreFailure) -> void {
     if (receiver.server == sender.server) {
-      dispatchLocally(sender, receiver, message, ignoreFailure);
+      dispatchLocally(sender, receiver, std::move(message), ignoreFailure);
     } else {
-      dispatchExternally(sender, receiver, message);
+      dispatchExternally(sender, receiver, std::move(message));
     }
   }
 
   template<typename ActorMessage>
   auto dispatchExternally(ActorPID sender, ActorPID receiver,
-                          ActorMessage const& message) -> void {
+                          ActorMessage&& message) -> void {
     auto payload = inspection::serializeWithErrorT(message);
     ACTOR_ASSERT(payload.ok());
     externalDispatcher->dispatch(sender, receiver, payload.get());
