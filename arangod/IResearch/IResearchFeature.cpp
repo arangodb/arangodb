@@ -813,18 +813,8 @@ class IResearchAsync {
 
   ~IResearchAsync() { stop(); }
 
-  ThreadPool& get(ThreadGroup id)
-#ifndef ARANGODB_ENABLE_FAILURE_TESTS
-      noexcept
-#endif
-  {
-    TRI_IF_FAILURE("IResearchFeature::testGroupAccess") {
-      // cppcheck-suppress throwInNoexceptFunction
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-
-    TRI_ASSERT(static_cast<size_t>(id) < 2);
-    return (ThreadGroup::_0 == id) ? _0 : _1;
+  ThreadPool& get(ThreadGroup id) noexcept {
+    return ThreadGroup::_0 == id ? _0 : _1;
   }
 
   void stop() noexcept {
@@ -1214,28 +1204,6 @@ bool IResearchFeature::queue(ThreadGroup id,
                              std::chrono::steady_clock::duration delay,
                              fu2::unique_function<void()>&& fn) {
   try {
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-    TRI_IF_FAILURE("IResearchFeature::queue") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-
-    switch (id) {
-      case ThreadGroup::_0:
-        TRI_IF_FAILURE("IResearchFeature::queueGroup0") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        break;
-      case ThreadGroup::_1:
-        TRI_IF_FAILURE("IResearchFeature::queueGroup1") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        break;
-      default:
-        TRI_ASSERT(false);
-        break;
-    }
-#endif
-
     if (_async->get(id).run(std::move(fn), delay)) {
       return true;
     }
