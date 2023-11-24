@@ -314,7 +314,8 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
         // skip over rules if we should
         // however, we don't want to skip those rules that will not create
         // additional plans
-        if (p->isDisabledRule(rule.level) ||
+        auto ruleDisabled = p->isDisabledRule(rule.level);
+        if (ruleDisabled ||
             (_runOnlyRequiredRules && rule.canCreateAdditionalPlans() &&
              rule.canBeDisabled())) {
           // we picked a disabled rule or we have reached the max number of
@@ -323,7 +324,8 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
                  // iteration
           _newPlans.push_back(std::move(p), it);  // nothing to do, just keep it
 
-          if (!rule.isHidden()) {
+          if (!rule.isHidden() &&
+              !(rule.isDisabledByDefault() && ruleDisabled)) {
             ++_stats.rulesSkipped;
           }
 

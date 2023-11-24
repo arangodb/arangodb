@@ -29,6 +29,9 @@ const _ = require('lodash');
 const database = "ReplaceEqualAccessDatabase";
 
 function optimizerRuleReplaceEqualAttributeAccess() {
+
+  const options = {optimizer: {rules: ["+replace-equal-attribute-accesses"]}};
+
   return {
 
     setUpAll: function () {
@@ -54,7 +57,7 @@ function optimizerRuleReplaceEqualAttributeAccess() {
             return [x, y]
       `;
 
-      const stmt = db._createStatement({query});
+      const stmt = db._createStatement({query, options});
       const plan = stmt.explain().plan;
       assertNotEqual(plan.rules.indexOf("replace-equal-attribute-accesses"), -1);
 
@@ -83,7 +86,7 @@ function optimizerRuleReplaceEqualAttributeAccess() {
             return [x, y, z]
       `;
 
-      const stmt = db._createStatement({query});
+      const stmt = db._createStatement({query, options});
       const plan = stmt.explain().plan;
       assertEqual(plan.rules.indexOf("replace-equal-attribute-accesses"), -1);
     },
@@ -98,7 +101,7 @@ function optimizerRuleReplaceEqualAttributeAccess() {
             return [x, y, z, w]
       `;
       // TODO make the rule more robust and detect more cases
-      const stmt = db._createStatement({query});
+      const stmt = db._createStatement({query, options});
       const plan = stmt.explain().plan;
       assertEqual(plan.rules.indexOf("replace-equal-attribute-accesses"), -1);
     },
@@ -111,7 +114,10 @@ function optimizerRuleReplaceEqualAttributeAccess() {
             return [x.x, y.x]
       `;
 
-      const stmt = db._createStatement({query, options: {optimizer: {rules: ["-join-index-nodes"]}}});
+      const stmt = db._createStatement({
+        query,
+        options: {optimizer: {rules: ["+replace-equal-attribute-accesses", "-join-index-nodes"]}}
+      });
       const plan = stmt.explain().plan;
       assertNotEqual(plan.rules.indexOf("replace-equal-attribute-accesses"), -1);
 
@@ -151,7 +157,7 @@ function optimizerRuleReplaceEqualAttributeAccess() {
             return [a.x, b.x, c.x]
       `;
 
-      const stmt = db._createStatement({query});
+      const stmt = db._createStatement({query, options});
       const plan = stmt.explain().plan;
       assertNotEqual(plan.rules.indexOf("replace-equal-attribute-accesses"), -1);
       assertNotEqual(plan.rules.indexOf("join-index-nodes"), -1);
@@ -182,7 +188,7 @@ function optimizerRuleReplaceEqualAttributeAccess() {
             return [a.x, b.x, c.x]
       `;
 
-      const stmt = db._createStatement({query});
+      const stmt = db._createStatement({query, options});
       const plan = stmt.explain().plan;
       assertNotEqual(plan.rules.indexOf("replace-equal-attribute-accesses"), -1);
       assertNotEqual(plan.rules.indexOf("join-index-nodes"), -1);
@@ -202,6 +208,72 @@ function optimizerRuleReplaceEqualAttributeAccess() {
 
       assertEqual(_.uniq(vars).length, 1);
     },
+
+    testPropagateIntoSubquery: function () {
+      const query = `
+          for i in 1..5
+            for j in 1..5
+              filter i == j
+              limit 10        // prevent subquery being moved above the filter
+              let c = (return [i, j])
+              return [c, i, j]
+      `;
+
+      const stmt = db._createStatement({query, options});
+      const plan = stmt.explain().plan;
+      assertNotEqual(plan.rules.indexOf("replace-equal-attribute-accesses"), -1);
+
+      const nodes = plan.nodes.map(x => x.type);
+      assertNotEqual(nodes.indexOf("SubqueryStartNode"), -1);
+
+      const returnNode = plan.nodes[nodes.indexOf("SubqueryStartNode") + 1];
+      assertEqual(returnNode.type, "SubqueryEndNode");
+
+      const inVar = returnNode.inVariable.id;
+
+      const calc = plan.nodes.filter(x => x.type === "CalculationNode" && x.outVariable.id === inVar)[0];
+      const expr = calc.expression;
+      assertEqual(expr.type, "array");
+      assertEqual(expr.subNodes.length, 2);
+
+      const vars = expr.subNodes.map(function (expr) {
+        assertTrue(expr.type, "reference");
+        return expr.name;
+      });
+
+      assertEqual(_.uniq(vars).length, 1);
+    },
+
+    testDoNotPropagateOutOfSubquery: function () {
+      const query = `
+        for i in 1..5
+          for j in 1..5
+            for k in 1..5
+              for m in 1..5
+                filter i == j
+                filter k == m
+                let x = (FILTER j == k RETURN 1)
+                limit 10
+                return [x, i, j, k, m]`;
+
+      const stmt = db._createStatement({query, options});
+      const plan = stmt.explain().plan;
+      assertNotEqual(plan.rules.indexOf("replace-equal-attribute-accesses"), -1);
+
+      const calc = plan.nodes[plan.nodes.length - 2];
+      assertEqual(calc.type, "CalculationNode");
+
+      const expr = calc.expression;
+      assertEqual(expr.type, "array");
+      assertEqual(expr.subNodes.length, 5);
+
+      const vars = expr.subNodes.map(function (expr) {
+        assertTrue(expr.type, "reference");
+        return expr.name;
+      });
+
+      assertEqual(_.uniq(vars).length, 3);
+    }
   };
 }
 
