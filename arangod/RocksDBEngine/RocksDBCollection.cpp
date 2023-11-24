@@ -944,7 +944,9 @@ Result RocksDBCollection::truncateWithRemovals(transaction::Methods& trx,
 
   auto iter =
       mthds->NewIterator(documentBounds.columnFamily(), [&](ReadOptions& ro) {
-        ro.iterate_upper_bound = &end;
+        if (!mthds->iteratorMustCheckBounds(ReadOwnWrites::no)) {
+          ro.iterate_upper_bound = &end;
+        }
         // we are going to blow away all data anyway. no need to blow up the
         // cache
         ro.fill_cache = false;
