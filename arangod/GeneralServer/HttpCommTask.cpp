@@ -101,7 +101,7 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) try {
   me->_messageDone = false;
 
   // acquire a new statistics entry for the request
-  me->acquireStatistics(1UL).SET_READ_START(TRI_microtime());
+  me->acquireRequestStatistics(1UL).SET_READ_START(TRI_microtime());
   return HPE_OK;
 } catch (...) {
   // the caller of this function is a C function, which doesn't know
@@ -118,7 +118,7 @@ int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) try {
                            rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
     return HPE_USER;
   }
-  me->statistics(1UL).SET_REQUEST_TYPE(me->_request->requestType());
+  me->requestStatistics(1UL).SET_REQUEST_TYPE(me->_request->requestType());
 
   me->_url.append(at, len);
   return HPE_OK;
@@ -247,7 +247,7 @@ int HttpCommTask<T>::on_message_complete(llhttp_t* p) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   me->_request->parseUrl(me->_url.data(), me->_url.size());
 
-  me->statistics(1UL).SET_READ_END();
+  me->requestStatistics(1UL).SET_READ_END();
   me->_messageDone = true;
 
   return HPE_PAUSED;
@@ -332,7 +332,7 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     // Remove consumed data from receive buffer.
     this->_protocol->buffer.consume(nparsed);
     // And count it in the statistics:
-    this->statistics(1UL).ADD_RECEIVED_BYTES(nparsed);
+    this->requestStatistics(1UL).ADD_RECEIVED_BYTES(nparsed);
 
     if (_messageDone) {
       TRI_ASSERT(err == HPE_PAUSED);
@@ -423,7 +423,7 @@ void HttpCommTask<T>::checkVSTPrefix() {
       auto commTask = std::make_unique<VstCommTask<T>>(
           me._server, me._connectionInfo, std::move(me._protocol),
           fuerte::vst::VST1_0);
-      commTask->setStatistics(1UL, me.stealStatistics(1UL));
+      commTask->setStatistics(1UL, me.stealRequestStatistics(1UL));
       me._server.registerTask(std::move(commTask));
       me.close(ec);
       return;  // vst 1.0
@@ -434,7 +434,7 @@ void HttpCommTask<T>::checkVSTPrefix() {
       auto commTask = std::make_unique<VstCommTask<T>>(
           me._server, me._connectionInfo, std::move(me._protocol),
           fuerte::vst::VST1_1);
-      commTask->setStatistics(1UL, me.stealStatistics(1UL));
+      commTask->setStatistics(1UL, me.stealRequestStatistics(1UL));
       me._server.registerTask(std::move(commTask));
       me.close(ec);
       return;  // vst 1.1
@@ -444,7 +444,7 @@ void HttpCommTask<T>::checkVSTPrefix() {
       // do not remove preface here, H2CommTask will read it from buffer
       auto commTask = std::make_unique<H2CommTask<T>>(
           me._server, me._connectionInfo, std::move(me._protocol));
-      commTask->setStatistics(1UL, me.stealStatistics(1UL));
+      commTask->setStatistics(1UL, me.stealRequestStatistics(1UL));
       me._server.registerTask(std::move(commTask));
       me.close(ec);
       return;  // http2 upgrade
@@ -522,7 +522,7 @@ void HttpCommTask<T>::doProcessRequest() {
     if (h2 == "h2c" && found && !settings.empty()) {
       auto task = std::make_shared<H2CommTask<T>>(
           this->_server, this->_connectionInfo, std::move(this->_protocol));
-      task->setStatistics(1UL, this->stealStatistics(1UL));
+      task->setStatistics(1UL, this->stealRequestStatistics(1UL));
       task->upgradeHttp1(std::move(_request));
       this->close();
       return;
@@ -570,7 +570,7 @@ void HttpCommTask<T>::doProcessRequest() {
 
   // We want to separate superuser token traffic:
   if (_request->authenticated() && _request->user().empty()) {
-    this->statistics(1UL).SET_SUPERUSER();
+    this->requestStatistics(1UL).SET_SUPERUSER();
   }
 
   // first check whether we allow the request to continue

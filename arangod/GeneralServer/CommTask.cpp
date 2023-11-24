@@ -148,7 +148,7 @@ bool queueTimeViolated(GeneralRequest const& req) {
 CommTask::CommTask(GeneralServer& server, ConnectionInfo info)
     : _server(server),
       _connectionInfo(std::move(info)),
-      _connectionStatistics(ConnectionStatistics::acquire()),
+      _connectionStatistics(acquireConnectionStatistics()),
       _auth(AuthenticationFeature::instance()) {
   TRI_ASSERT(_auth != nullptr);
   _connectionStatistics.SET_START();
@@ -511,7 +511,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   if (mode == ServerState::Mode::STARTUP) {
     // request during startup phase
-    handler->setStatistics(stealStatistics(messageId));
+    handler->setRequestStatistics(stealRequestStatistics(messageId));
     handleRequestStartup(std::move(handler));
     return;
   }
@@ -520,12 +520,13 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   bool forwarded;
   auto res = handler->forwardRequest(forwarded);
   if (forwarded) {
-    statistics(messageId).SET_SUPERUSER();
-    std::move(res).thenFinal([self(shared_from_this()), h(std::move(handler)),
-                              messageId](
-                                 futures::Try<Result>&& /*ignored*/) -> void {
-      self->sendResponse(h->stealResponse(), self->stealStatistics(messageId));
-    });
+    requestStatistics(messageId).SET_SUPERUSER();
+    std::move(res).thenFinal(
+        [self(shared_from_this()), h(std::move(handler)),
+         messageId](futures::Try<Result>&& /*ignored*/) -> void {
+          self->sendResponse(h->stealResponse(),
+                             self->stealRequestStatistics(messageId));
+        });
     return;
   }
 
@@ -541,9 +542,9 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   // asynchronous request
   if (found && (asyncExec == "true" || asyncExec == "store")) {
-    RequestStatistics::Item stats = stealStatistics(messageId);
+    RequestStatistics::Item stats = stealRequestStatistics(messageId);
     stats.SET_ASYNC();
-    handler->setStatistics(std::move(stats));
+    handler->setRequestStatistics(std::move(stats));
     handler->setIsAsyncRequest();
 
     uint64_t jobId = 0;
@@ -576,7 +577,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
     }
   } else {
     // synchronous request
-    handler->setStatistics(stealStatistics(messageId));
+    handler->setRequestStatistics(stealRequestStatistics(messageId));
     // handleRequestSync adds an error response
     handleRequestSync(std::move(handler));
   }
@@ -591,19 +592,32 @@ void CommTask::setStatistics(uint64_t id, RequestStatistics::Item&& stat) {
   _statisticsMap.insert_or_assign(id, std::move(stat));
 }
 
-RequestStatistics::Item const& CommTask::acquireStatistics(uint64_t id) {
-  RequestStatistics::Item stat = RequestStatistics::acquire();
+ConnectionStatistics::Item CommTask::acquireConnectionStatistics() {
+  ConnectionStatistics::Item stat;
+  if (_server.server().getFeature<StatisticsFeature>().isEnabled()) {
+    // only acquire a new item if the statistics are enabled.
+    stat = ConnectionStatistics::acquire();
+  }
+  return stat;
+}
+
+RequestStatistics::Item const& CommTask::acquireRequestStatistics(uint64_t id) {
+  RequestStatistics::Item stat;
+  if (_server.server().getFeature<StatisticsFeature>().isEnabled()) {
+    // only acquire a new item if the statistics are enabled.
+    stat = RequestStatistics::acquire();
+  }
 
   std::lock_guard<std::mutex> guard(_statisticsMutex);
   return _statisticsMap.insert_or_assign(id, std::move(stat)).first->second;
 }
 
-RequestStatistics::Item const& CommTask::statistics(uint64_t id) {
+RequestStatistics::Item const& CommTask::requestStatistics(uint64_t id) {
   std::lock_guard<std::mutex> guard(_statisticsMutex);
   return _statisticsMap[id];
 }
 
-RequestStatistics::Item CommTask::stealStatistics(uint64_t id) {
+RequestStatistics::Item CommTask::stealRequestStatistics(uint64_t id) {
   RequestStatistics::Item result;
   std::lock_guard<std::mutex> guard(_statisticsMutex);
 
@@ -626,7 +640,7 @@ void CommTask::sendSimpleResponse(rest::ResponseCode code,
     if (!buffer.empty()) {
       resp->setPayload(std::move(buffer), VPackOptions::Defaults);
     }
-    sendResponse(std::move(resp), this->stealStatistics(mid));
+    sendResponse(std::move(resp), this->stealRequestStatistics(mid));
   } catch (...) {
     LOG_TOPIC("fc831", WARN, Logger::REQUESTS)
         << "addSimpleResponse received an exception, closing connection";
@@ -696,7 +710,8 @@ void CommTask::handleRequestStartup(std::shared_ptr<RestHandler> handler) {
     handler->trackTaskEnd();
     try {
       // Pass the response to the io context
-      self->sendResponse(handler->stealResponse(), handler->stealStatistics());
+      self->sendResponse(handler->stealResponse(),
+                         handler->stealRequestStatistics());
     } catch (...) {
       LOG_TOPIC("e1322", WARN, Logger::REQUESTS)
           << "got an exception while sending response, closing connection";
@@ -732,7 +747,7 @@ void CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
       try {
         // Pass the response to the io context
         self->sendResponse(handler->stealResponse(),
-                           handler->stealStatistics());
+                           handler->stealRequestStatistics());
       } catch (...) {
         LOG_TOPIC("fc834", WARN, Logger::REQUESTS)
             << "got an exception while sending response, closing connection";
@@ -964,7 +979,7 @@ void CommTask::processCorsOptions(std::unique_ptr<GeneralRequest> req,
   }
 
   // discard request and send response
-  sendResponse(std::move(resp), stealStatistics(req->messageId()));
+  sendResponse(std::move(resp), stealRequestStatistics(req->messageId()));
 }
 
 auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req,

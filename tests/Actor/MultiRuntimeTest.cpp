@@ -25,6 +25,7 @@
 #include <gtest/gtest.h>
 #include <unordered_set>
 
+#include "Actor/DistributedActorPID.h"
 #include "Actor/DistributedRuntime.h"
 
 #include "Actors/TrivialActor.h"
@@ -300,9 +301,12 @@ TYPED_TEST(ActorMultiRuntimeTest, ping_pong_game) {
       ping_server,
       std::make_shared<typename TestFixture::MockRuntime>(
           ping_server, "RuntimeTest-B", this->scheduler, dispatcher));
-  auto ping_actor = runtimes[ping_server]->template spawn<ping_actor::Actor>(
-      std::make_unique<ping_actor::PingState>(),
-      ping_actor::message::Start{.pongActor = pong_actor});
+  auto ping_actor =
+      runtimes[ping_server]
+          ->template spawn<ping_actor::Actor<DistributedActorPID>>(
+              std::make_unique<ping_actor::PingState>(),
+              ping_actor::message::Start<DistributedActorPID>{.pongActor =
+                                                                  pong_actor});
 
   this->scheduler->stop();
   // pong actor was called twice
@@ -312,8 +316,9 @@ TYPED_TEST(ActorMultiRuntimeTest, ping_pong_game) {
   ASSERT_EQ(pong_actor_state, (pong_actor::PongState{.called = 2}));
   // ping actor received message from pong
   auto ping_actor_state =
-      runtimes[ping_server]->template getActorStateByID<ping_actor::Actor>(
-          ping_actor);
+      runtimes[ping_server]
+          ->template getActorStateByID<ping_actor::Actor<DistributedActorPID>>(
+              ping_actor);
   ASSERT_EQ(ping_actor_state,
             (ping_actor::PingState{.called = 2, .message = "hello world"}));
   for (auto& [_, runtime] : runtimes) {

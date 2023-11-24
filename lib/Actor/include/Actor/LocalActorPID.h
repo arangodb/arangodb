@@ -18,29 +18,36 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
-/// @author Julia Volmer
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Actor/ExitReason.h"
-#include "Actor/IWorkable.h"
-#include "Actor/Message.h"
+#include "Actor/ActorID.h"
 
 namespace arangodb::actor {
 
-template<typename ActorPID>
-struct ActorBase : IWorkable {
-  virtual ~ActorBase() = default;
-  virtual auto process(ActorPID sender, MessagePayloadBase& msg) -> void = 0;
-  virtual auto process(ActorPID sender, velocypack::SharedSlice msg)
-      -> void = 0;
-  virtual auto typeName() -> std::string_view = 0;
-  virtual auto serialize() -> velocypack::SharedSlice = 0;
-  virtual auto finish(ExitReason reason) -> void = 0;
-  virtual auto isFinishedAndIdle() -> bool = 0;
-  virtual auto isIdle() -> bool = 0;
-};
+struct LocalActorPID {
+  ActorID id;
+  bool operator==(const LocalActorPID&) const = default;
 
+  template<typename Inspector>
+  friend inline auto inspect(Inspector& f, LocalActorPID& x) {
+    return f.object(x).fields(f.field("id", x.id));
+  }
+};
 }  // namespace arangodb::actor
+
+// TODO - remove in favor of inspection::json()
+template<>
+struct fmt::formatter<arangodb::actor::LocalActorPID>
+    : arangodb::inspection::inspection_formatter {};
+
+namespace std {
+template<>
+struct hash<arangodb::actor::LocalActorPID> {
+  size_t operator()(arangodb::actor::LocalActorPID const& x) const noexcept {
+    return std::hash<arangodb::actor::ActorID>()(x.id);
+  };
+};
+}  // namespace std
