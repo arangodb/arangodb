@@ -14,12 +14,12 @@ from async_client import (
 )
 
 if IS_WINDOWS:
-    from async_client_windows import (
-        ArangoCLIprogressiveTimeoutExecutorWindows as ArangoCLIprogressiveTimeoutExecutor,
+    from async_client_pipe import (
+        ArangoCLIprogressiveTimeoutExecutorPipe as ArangoCLIprogressiveTimeoutExecutor,
     )
 else:
-    from async_client_posix import (
-        ArangoCLIprogressiveTimeoutExecutorPosix as ArangoCLIprogressiveTimeoutExecutor,
+    from async_client_pty import (
+        ArangoCLIprogressiveTimeoutExecutorPty as ArangoCLIprogressiveTimeoutExecutor,
     )
 
 

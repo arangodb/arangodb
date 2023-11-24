@@ -42,7 +42,7 @@ def enqueue_output(fd, queue, instance, identifier, params):
     os.close(fd)
 
 
-class ArangoCLIprogressiveTimeoutExecutorPosix(ArangoCLIprogressiveTimeoutExecutor):
+class ArangoCLIprogressiveTimeoutExecutorPty(ArangoCLIprogressiveTimeoutExecutor):
     """
     Abstract base class to run arangodb cli tools
     with username/password/endpoint specification

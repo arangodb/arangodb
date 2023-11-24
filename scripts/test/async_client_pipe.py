@@ -52,7 +52,7 @@ def enqueue_stderr(std_err, queue, instance, identifier, params):
 
 
 
-class ArangoCLIprogressiveTimeoutExecutorWindows(ArangoCLIprogressiveTimeoutExecutor):
+class ArangoCLIprogressiveTimeoutExecutorPipe(ArangoCLIprogressiveTimeoutExecutor):
 
     # pylint: disable=too-few-public-methods too-many-arguments disable=too-many-instance-attributes disable=too-many-statements disable=too-many-branches disable=too-many-locals
     def __init__(self, config, connect_instance, deadline_signal=-1):
