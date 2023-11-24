@@ -1160,8 +1160,10 @@ void IResearchFeature::start() {
     TRI_ASSERT(_commitThreads);
     TRI_ASSERT(_consolidationThreads);
 
-    _async->get(ThreadGroup::_0).start(_commitThreads);
-    _async->get(ThreadGroup::_1).start(_consolidationThreads);
+    _async->get(ThreadGroup::_0)
+        .start(_commitThreads, IR_NATIVE_STRING("ARS-0"));
+    _async->get(ThreadGroup::_1)
+        .start(_consolidationThreads, IR_NATIVE_STRING("ARS-1"));
     _searchExecutionPool.setLimit(_searchExecutionThreadsLimit);
 
     LOG_TOPIC("c1b63", INFO, TOPIC)
