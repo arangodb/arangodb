@@ -3556,8 +3556,7 @@ void Supervision::checkUndoLeaderChangeActions() {
 
       auto maybeShardID = ShardID::shardIdFromString(id);
       if (ADB_UNLIKELY(maybeShardID.fail())) {
-        return Result{TRI_ERROR_BAD_PARAMETER,
-                      fmt::format("shard name: {} malformed", id)};
+        return Result{TRI_ERROR_BAD_PARAMETER, maybeShardID.errorMessage()};
       }
 
       if (isReplication2(*database)) {
