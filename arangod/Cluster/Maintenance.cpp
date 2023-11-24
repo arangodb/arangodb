@@ -941,12 +941,12 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
                       dbs.isEqualString(UNDERSCORE + serverId)) {
                     // at this point a shard is in plan, we have the db for it
                     auto maybeShardID =
-                        ShardID::shardIdFromString(shard.key.string_view());
+                        ShardID::shardIdFromString(shard.key.stringView());
                     if (ADB_UNLIKELY(maybeShardID.fail())) {
                       TRI_ASSERT(false)
                           << "Malformed shard ID in agency: "
-                          << shard.key.copyString() << " in db: " << dbname
-                          << " and collection: " << pcol.key.copyString();
+                          << shard.key.stringView() << " in db: " << dbname
+                          << " and collection: " << pcol.key.stringView();
                       THROW_ARANGO_EXCEPTION(maybeShardID.result());
                     }
                     handlePlanShard(engine, planIndex, cprops, ldb, dbname,
@@ -1017,10 +1017,10 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 
         for (auto const& lcol : VPackObjectIterator(ldbslice)) {
           auto const shardMap = getShardMap(plan);  // plan shards -> servers
-          auto maybeShardID = ShardID::shardIdFromString(lcol.key.string_view());
+          auto maybeShardID = ShardID::shardIdFromString(lcol.key.stringView());
           if (ADB_UNLIKELY(maybeShardID.fail())) {
             TRI_ASSERT(false)
-                << "Malformed shard ID in agency: " << lcol.key.string_view()
+                << "Malformed shard ID in agency: " << lcol.key.stringView()
                 << " in db: " << ldbname;
             THROW_ARANGO_EXCEPTION(maybeShardID.result());
           }
