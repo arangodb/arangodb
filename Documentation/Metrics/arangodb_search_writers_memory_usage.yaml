@@ -1,7 +1,7 @@
 name: arangodb_search_writers_memory_usage
 introducedIn: "3.12.0"
 help: |
-  Amount of memory in bytes that is used for writing to this index.
+  Amount of memory in bytes that is used for writing to this ArangoSearch index.
 unit: bytes
 type: gauge
 category: ArangoSearch
@@ -10,4 +10,5 @@ exposedBy:
   - dbserver
   - single
 description: |
-  Amount of memory in bytes that is used for writing to this index.
+  Amount of memory in bytes that is used for writing to an inverted index of
+  a collection or index of a View (`arangosearch` View link).

@@ -35,6 +35,7 @@
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IndexHint.h"
+#include "Aql/IndexNode.h"
 #include "Aql/EnumeratePathsNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
@@ -376,8 +377,8 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
 
   aql::QueryContext& query = ast->query();
   auto options = std::make_unique<graph::ShortestPathOptions>(query);
-  options->minDepth = minDepth;
-  options->maxDepth = maxDepth;
+  options->setMinDepth(minDepth);
+  options->setMaxDepth(maxDepth);
 
   if (optionsNode != nullptr && optionsNode->type == NODE_TYPE_OBJECT) {
     size_t n = optionsNode->numMembers();
@@ -2892,8 +2893,15 @@ struct Shower final
         auto const& calcNode =
             *ExecutionNode::castTo<CalculationNode const*>(&node);
         auto type = std::string{node.getTypeString()};
-        type += " $" + calcNode.outVariable()->name + " = ";
+        type += " $" + std::to_string(calcNode.outVariable()->id) + " = ";
         calcNode.expression()->stringify(type);
+        return type;
+      }
+      case ExecutionNode::FILTER: {
+        auto const& filterNode =
+            *ExecutionNode::castTo<FilterNode const*>(&node);
+        auto type = std::string{node.getTypeString()};
+        type += " $" + std::to_string(filterNode.inVariable()->id);
         return type;
       }
       case ExecutionNode::TRAVERSAL:
@@ -2906,7 +2914,14 @@ struct Shower final
         }
         return type;
       }
-      case ExecutionNode::INDEX:
+      case ExecutionNode::INDEX: {
+        auto* indexNode = ExecutionNode::castTo<IndexNode const*>(&node);
+        auto type = std::string{node.getTypeString()};
+        type += " " + indexNode->collection()->name();
+        type += std::string{" -> "} + indexNode->outVariable()->name;
+        type += std::string{" "} + indexNode->condition()->root()->toString();
+        return type;
+      }
       case ExecutionNode::ENUMERATE_COLLECTION:
       case ExecutionNode::UPDATE:
       case ExecutionNode::INSERT:

@@ -1,6 +1,7 @@
 if (USE_ENTERPRISE)
 
   if (MSVC AND NOT(SKIP_PACKAGING))
+    set(ARANGO_BACKUP_FRIENDLY_STRING  "arangobackup - hot backup tool")
     generate_product_version(ProductVersionFiles_arangobackup
       NAME arangobackup
       FILE_DESCRIPTION ${ARANGO_BACKUP_FRIENDLY_STRING}
