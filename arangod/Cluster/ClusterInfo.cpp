@@ -1978,7 +1978,7 @@ void ClusterInfo::loadCurrent() {
           continue;
         }
 
-        auto shardID = std::move(maybeShardID.get());
+        auto shardID = maybeShardID.get();
         collectionDataCurrent->add(shardID, shardSlice.value);
 
         // Note that we have only inserted the CollectionInfoCurrent under
