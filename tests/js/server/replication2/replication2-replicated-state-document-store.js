@@ -1426,7 +1426,7 @@ const replicatedStateDocumentShardsSuite = function () {
           if (dh.getOperationsByType(logContents, "CreateIndex").length > 0) {
             return true;
           }
-          return Error(`CreateIndex not found! Contents of log ${log.id()}: ${JSON.stringify(logContents)}`)
+          return Error(`CreateIndex not found! Contents of log ${log.id()}: ${JSON.stringify(logContents)}`);
         });
       }
 
