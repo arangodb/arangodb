@@ -275,10 +275,14 @@ multiple loops, which may enable further optimizations by other rules.)");
 
   // replace attribute accesses that are equal due to a filter statement
   // with the same value. This might enable other optimizations later on.
+  // WARNING: THIS RULE HAS BEEN DISABLED because while it can lead to new
+  // optimizations it can do harm to other optimizations. Furthermore, the
+  // user can always rewrite the query to make this rule unnecessary.
   registerRule(
       "replace-equal-attribute-accesses", replaceEqualAttributeAccesses,
       OptimizerRule::replaceEqualAttributeAccesses,
-      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      OptimizerRule::makeFlags(OptimizerRule::Flags::DisabledByDefault,
+                               OptimizerRule::Flags::CanBeDisabled),
       R"(Replace attribute accesses that are equal due to a filter statement
 with the same value. This might enable other optimizations later on.)");
 

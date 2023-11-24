@@ -93,11 +93,12 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   ArangodServer& server() noexcept { return _server; }
   ArangodServer const& server() const noexcept { return _server; }
 
-  RequestStatistics::Item const& statistics() const noexcept {
+  [[nodiscard]] RequestStatistics::Item const& requestStatistics()
+      const noexcept {
     return _statistics;
   }
-  RequestStatistics::Item&& stealStatistics();
-  void setStatistics(RequestStatistics::Item&& stat);
+  [[nodiscard]] RequestStatistics::Item&& stealRequestStatistics();
+  void setRequestStatistics(RequestStatistics::Item&& stat);
 
   void setIsAsyncRequest() noexcept { _isAsyncRequest = true; }
 

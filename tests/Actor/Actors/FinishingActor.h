@@ -52,11 +52,11 @@ auto inspect(Inspector& f, FinishingStart& x) {
 }
 
 struct FinishingFinish {
-  bool finish;
+  ExitReason reason;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, FinishingFinish& x) {
-  return f.object(x).fields(f.field("finish", x.finish));
+  return f.object(x).fields(f.field("reason", x.reason));
 }
 
 struct FinishingMessages : std::variant<FinishingStart, FinishingFinish> {
@@ -80,7 +80,7 @@ struct FinishingHandler : HandlerBase<Runtime, FinishingState> {
 
   auto operator()(message::FinishingFinish msg)
       -> std::unique_ptr<FinishingState> {
-    this->finish();
+    this->finish(msg.reason);
     return std::move(this->state);
   }
 
