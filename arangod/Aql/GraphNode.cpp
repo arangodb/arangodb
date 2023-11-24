@@ -479,7 +479,7 @@ GraphNode::GraphNode(ExecutionPlan* plan,
         "graph needs a translation from collection to shard names");
   }
   for (auto const& item : VPackObjectIterator(collectionToShard)) {
-    auto maybeShardID = ShardID::shardIdFromString(item.value.copyString());
+    auto maybeShardID = ShardID::shardIdFromString(item.value.string_view());
     if (ADB_UNLIKELY(maybeShardID.fail())) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
                                      maybeShardID.errorMessage());

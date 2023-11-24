@@ -1969,7 +1969,7 @@ void ClusterInfo::loadCurrent() {
       for (auto const& shardSlice :
            velocypack::ObjectIterator(collectionSlice.value)) {
         auto maybeShardID =
-            ShardID::shardIdFromString(shardSlice.key.copyString());
+            ShardID::shardIdFromString(shardSlice.key.stringView());
         if (ADB_UNLIKELY(maybeShardID.fail())) {
           TRI_ASSERT(false)
               << "Indexed malformed shard name " << shardSlice.key.copyString();

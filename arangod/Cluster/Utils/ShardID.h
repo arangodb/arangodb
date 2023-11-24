@@ -35,12 +35,12 @@
 namespace arangodb {
 
 struct ShardID {
-  static ResultT<ShardID> shardIdFromString(std::string const& s) {
+  static ResultT<ShardID> shardIdFromString(std::string_view s) {
     if (s.empty() || s.at(0) != 's') {
       return Result{TRI_ERROR_BAD_PARAMETER,
                     "Expected ShardID to start with 's'"};
     }
-    auto res = basics::StringUtils::try_uint64(s.c_str() + 1, s.length() - 1);
+    auto res = basics::StringUtils::try_uint64(s.data() + 1, s.length() - 1);
     if (res.fail()) {
       return std::move(res.result());
     }
@@ -56,7 +56,7 @@ struct ShardID {
   explicit ShardID(uint64_t id) : id(id) {}
 
   explicit ShardID(std::string_view id) {
-    auto maybeShardID = shardIdFromString(std::string(id));
+    auto maybeShardID = shardIdFromString(id);
     if (maybeShardID.fail()) {
       THROW_ARANGO_EXCEPTION(maybeShardID.result());
     }

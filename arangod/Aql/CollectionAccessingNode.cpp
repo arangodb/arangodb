@@ -70,7 +70,7 @@ CollectionAccessingNode::CollectionAccessingNode(
   VPackSlice restrictedTo = slice.get("restrictedTo");
 
   if (restrictedTo.isString()) {
-    auto maybeShardID = ShardID::shardIdFromString(restrictedTo.copyString());
+    auto maybeShardID = ShardID::shardIdFromString(restrictedTo.stringView());
     if (ADB_UNLIKELY(maybeShardID.fail())) {
       LOG_TOPIC("63e33", WARN, Logger::AQL)
           << "Internal JSON representation of CollectionAccess for collection "
