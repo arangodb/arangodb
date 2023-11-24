@@ -42,7 +42,7 @@ struct NAryOrAll {
 // Applies the matcher  M and if it succeeds registers the AqlNode* that
 // it succeeded on in the MatchResult under the name `name`
 template<Matchable M>
-struct NAryOrSingleton {
+struct NAryOrWithOneSubnode {
   auto apply(AstNode const* node) -> MatchResult {
     return MatchNodeType(NODE_TYPE_OPERATOR_NARY_OR).apply(node)  //
            |
@@ -57,9 +57,12 @@ struct NAryOrSingleton {
   }
   M matcher;
 };
+template<Matchable M>
+auto naryOrWithOneSubnode(M m) -> NAryOrWithOneSubnode<M> {
+  return NAryOrWithOneSubnode<M>{.matcher = std::move(m)};
+}
 
 // TODO: it should be possible to do the following
-
 template<Matchable... M>
 struct NAryOr {
   auto apply(AstNode const* node) -> MatchResult{
