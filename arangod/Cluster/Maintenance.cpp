@@ -1981,7 +1981,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       }
 
       for (auto const& shard : VPackObjectIterator(ldb, true)) {
-        auto const shName = ShardID{shard.key.copyString()};
+        auto const shName = ShardID{shard.key.stringView()};
         auto const shSlice = shard.value;
         TRI_ASSERT(shSlice.isObject());
         auto const colName =
