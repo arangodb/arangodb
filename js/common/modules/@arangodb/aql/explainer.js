@@ -2091,14 +2091,15 @@ function processQuery(query, explain, planIndex) {
         }
         let accessString = '';
 
-        if (info.isLateMaterialized === true) {
-          accessString += 'with late materialization';
-        } else if (!info.indexCoversProjections && info.producesOutput) {
+        if (!info.indexCoversProjections && info.producesOutput) {
           accessString += "index scan + document lookup";
         } else if (info.indexCoversProjections) {
           accessString += "index scan";
         } else {
           accessString += "index scan only";
+        }
+        if (info.isLateMaterialized === true) {
+          accessString += ' with late materialization';
         }
         if (info.projections) {
           accessString += projections(info, "projections", "projections");
