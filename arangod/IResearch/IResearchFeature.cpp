@@ -926,9 +926,7 @@ then the commit and consolidation thread counts are calculated as follows:
 and consolidation thread counts separately via the following options instead:
 
 - `--arangosearch.commit-threads`
-- `--arangosearch.commit-threads-idle`
 - `--arangosearch.consolidation-threads`
-- `--arangosearch.consolidation-threads-idle`
 
 If either `--arangosearch.commit-threads` or
 `--arangosearch.consolidation-threads` is set, then `--arangosearch.threads` and
