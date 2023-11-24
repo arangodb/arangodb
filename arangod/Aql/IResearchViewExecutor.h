@@ -240,11 +240,6 @@ class ScoreIterator {
   size_t _numScores;
 };
 
-union HeapSortValue {
-  irs::score_t score;
-  velocypack::Slice slice;
-};
-
 struct PushTag {};
 
 // Holds and encapsulates the data read from the iresearch index.

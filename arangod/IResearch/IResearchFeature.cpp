@@ -1063,7 +1063,7 @@ but the returned data may be incomplete.)");
           options::makeDefaultFlags(options::Flags::DefaultNoComponents,
                                     options::Flags::OnDBServer,
                                     options::Flags::OnSingle))
-      .setIntroducedIn(3'12'00);
+      .setIntroducedIn(3'11'06);
   options
       ->addOption(SEARCH_DEFAULT_PARALLELISM,
                   "Default parallelism for ArangoSearch queries",
@@ -1071,7 +1071,7 @@ but the returned data may be incomplete.)");
                   options::makeDefaultFlags(options::Flags::DefaultNoComponents,
                                             options::Flags::OnDBServer,
                                             options::Flags::OnSingle))
-      .setIntroducedIn(3'12'00);
+      .setIntroducedIn(3'11'06);
 }
 
 void IResearchFeature::validateOptions(
@@ -1252,18 +1252,16 @@ void IResearchFeature::start() {
       }
     }
 
-    // this can destroy the state instance, so we have to ensure that our lock
-    // on _startState->mutex is already destroyed here!
-    _startState = nullptr;
-  }
-  if (ServerState::instance()->isDBServer() ||
-      ServerState::instance()->isSingleServer()) {
     if (_searchExecutionThreadsLimit) {
       _searchExecutionPool.setLimit(_searchExecutionThreadsLimit);
     }
     LOG_TOPIC("71efd", INFO, arangodb::iresearch::TOPIC)
         << "ArangoSearch execution parallel threads limit: "
         << _searchExecutionThreadsLimit;
+
+    // this can destroy the state instance, so we have to ensure that our lock
+    // on _startState->mutex is already destroyed here!
+    _startState = nullptr;
   }
   _running.store(true);
 }
