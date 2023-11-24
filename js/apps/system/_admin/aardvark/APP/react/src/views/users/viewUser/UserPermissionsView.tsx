@@ -7,7 +7,7 @@ import { UserPermissionsTable } from "./UserPermissionsTable";
 
 const useSetupUserPermissionsNav = () => {
   const { username } = useUsername();
-  const breadcrumbText = `User: ${username}`;
+  const breadcrumbText = `User: ${decodeURIComponent(username)}`;
   useSetupBreadcrumbs({ breadcrumbText });
 };
 
