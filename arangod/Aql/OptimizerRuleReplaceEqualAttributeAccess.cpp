@@ -302,7 +302,7 @@ bool processQuery(ExecutionPlan& plan, ExecutionNode* root,
         LOG_RULE << "CREATE " << lhs << " == " << rhs;
         // create a new equivalence class
         // introduce a new variable if necessary
-        auto variable = [&]() -> Variable const* {
+        auto variable = [&, &lhs = lhs]() -> Variable const* {
           if (lhs.path.empty()) {
             return lhs.var;
           } else {
