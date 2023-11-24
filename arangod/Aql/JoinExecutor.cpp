@@ -462,6 +462,12 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
           }
         }
 
+        if (idx.isLateMaterialized) {
+          AqlValue v(AqlValueHintUInt(docIds[k].id()));
+          AqlValueGuard guard{v, false};
+          output.moveValueInto(idx.docIdOutputRegister, _currentRow, &guard);
+        }
+
         if (idx.filter && idx.filter->projections.usesCoveringIndex()) {
           projectionsOffset += idx.filter->projections.size();
         }
