@@ -561,19 +561,23 @@ bool ImportHelper::importJson(std::string const& collectionName,
       }
 
       // send all data before last '\n'
-      char const* first = _outputBuffer.c_str();
-      char const* pos = static_cast<char const*>(
-          memrchr(first, '\n', _outputBuffer.length()));
+      std::string_view sv(_outputBuffer.c_str(), _outputBuffer.length());
 
-      if (pos != nullptr) {
-        size_t len = pos - first + 1;
-        char const* cursor = first;
-        do {
-          ++cursor;
-          cursor = static_cast<char const*>(memchr(cursor, '\n', pos - cursor));
-          ++_rowsRead;
-        } while (nullptr != cursor);
-        sendJsonBuffer(first, len, isObject);
+      size_t pos = sv.rfind('\n');
+
+      if (pos != std::string_view::npos) {
+        size_t len = pos + 1;
+        // count number of \n characters in the range we are sending
+        size_t cursor = 0;
+        while (cursor < pos) {
+          size_t found = sv.find('\n', cursor);
+          if (found != std::string_view::npos) {
+            ++_rowsRead;
+          } else {
+            cursor = found + 1;
+          }
+        }
+        sendJsonBuffer(_outputBuffer.c_str(), len, isObject);
         _outputBuffer.erase_front(len);
         _rowOffset = _rowsRead;
       }

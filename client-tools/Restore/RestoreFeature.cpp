@@ -1671,17 +1671,16 @@ Result RestoreFeature::RestoreMainJob::restoreData(
           length = buffer->length();
         } else {
           // look for the last \n in the buffer
-          char const* found = static_cast<char const*>(
-              memrchr(static_cast<void const*>(buffer->begin()), '\n',
-                      buffer->length()));
+          std::string_view sv(buffer->begin(), buffer->length());
+          size_t found = sv.rfind('\n');
 
-          if (found == nullptr) {
+          if (found == std::string_view::npos) {
             // no \n in buffer...
             // don't have a complete line yet, read more
             continue;
           }
           // found a \n somewhere; break at line
-          length = found - buffer->begin();
+          length = found;
         }
       }
 

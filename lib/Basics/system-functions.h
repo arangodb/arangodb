@@ -27,15 +27,6 @@
 
 #include "Basics/Common.h"
 
-#ifdef ARANGODB_MISSING_MEMRCHR
-void* memrchr(void const* block, int c, size_t size);
-#endif
-
-#ifdef _WIN32
-void* memmem(void const* haystack, size_t haystackLength, void const* needle,
-             size_t needleLength);
-#endif
-
 #ifdef TRI_HAVE_WIN32_GETTIMEOFDAY
 int gettimeofday(struct timeval* tv, void* tz);
 #endif
@@ -52,11 +43,9 @@ time_t TRI_timegm(struct tm*);
 // seconds with microsecond resolution
 double TRI_microtime() noexcept;
 
-namespace arangodb {
-namespace utilities {
+namespace arangodb::utilities {
 // return the current time as string in format "YYYY-MM-DDTHH:MM:SSZ"
 std::string timeString(char sep = 'T', char fin = 'Z');
 
 std::string hostname();
-}  // namespace utilities
-}  // namespace arangodb
+}  // namespace arangodb::utilities

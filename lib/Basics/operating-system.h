@@ -113,8 +113,6 @@
 
 #define TRI_OVERLOAD_FUNCS_SIZE_T 1
 
-#define ARANGODB_MISSING_MEMRCHR 1
-
 #define TRI_SC_NPROCESSORS_ONLN 1
 
 // alignment and limits
@@ -611,7 +609,6 @@
 #define TRI_HAVE_WIN32_THREADS 1
 
 #define TRI_HAVE_ANONYMOUS_MMAP 1
-#define ARANGODB_MISSING_MEMRCHR 1
 
 #ifndef va_copy
 #define va_copy(d, s) ((d) = (s))

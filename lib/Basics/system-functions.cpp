@@ -33,50 +33,6 @@
 using namespace arangodb;
 using namespace arangodb::utilities;
 
-#ifdef ARANGODB_MISSING_MEMRCHR
-void* memrchr(void const* block, int c, size_t size) {
-  if (size) {
-    unsigned char const* p = static_cast<unsigned char const*>(block);
-
-    for (p += size - 1; size; p--, size--) {
-      if (*p == c) {
-        return (void*)p;
-      }
-    }
-  }
-  return nullptr;
-}
-#endif
-
-#ifdef _WIN32
-void* memmem(void const* haystack, size_t haystackLength, void const* needle,
-             size_t needleLength) {
-  if (haystackLength == 0 || needleLength == 0 ||
-      haystackLength < needleLength) {
-    return nullptr;
-  }
-
-  char const* n = static_cast<char const*>(needle);
-
-  if (needleLength == 1) {
-    return memchr(const_cast<void*>(haystack), static_cast<int>(*n),
-                  haystackLength);
-  }
-
-  char const* current = static_cast<char const*>(haystack);
-  char const* end =
-      static_cast<char const*>(haystack) + haystackLength - needleLength;
-
-  for (; current <= end; ++current) {
-    if (*current == *n && memcmp(needle, current, needleLength) == 0) {
-      return const_cast<void*>(static_cast<void const*>(current));
-    }
-  }
-
-  return nullptr;
-}
-#endif
-
 #ifdef TRI_HAVE_WIN32_GETTIMEOFDAY
 int gettimeofday(struct timeval* tv, void* tz) {
   union {

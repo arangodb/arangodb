@@ -2366,14 +2366,15 @@ AqlValue functions::Contains(ExpressionContext* ctx, AstNode const&,
     size_t const searchLength = buffer->length() - valueLength;
 
     if (searchLength > 0) {
-      char const* found = static_cast<char const*>(
-          memmem(buffer->data(), valueLength, buffer->data() + searchOffset,
-                 searchLength));
+      std::string_view haystack(buffer->data(), valueLength);
+      std::string_view needle(buffer->data() + searchOffset, searchLength);
 
-      if (found != nullptr) {
+      size_t found = haystack.find(needle);
+
+      if (found != std::string_view::npos) {
         if (willReturnIndex) {
           // find offset into string
-          int bytePosition = static_cast<int>(found - buffer->data());
+          int bytePosition = static_cast<int>(found);
           char const* p = buffer->data();
           int pos = 0;
           while (pos < bytePosition) {
