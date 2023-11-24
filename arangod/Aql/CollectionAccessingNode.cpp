@@ -171,7 +171,7 @@ bool CollectionAccessingNode::isRestricted() const {
   return _restrictedTo.has_value();
 }
 
-ShardID const& CollectionAccessingNode::restrictedShard() const {
+ShardID CollectionAccessingNode::restrictedShard() const {
   TRI_ASSERT(isRestricted());
   return _restrictedTo.value();
 }
