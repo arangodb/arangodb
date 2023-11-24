@@ -58,6 +58,10 @@ export const CollectionPermissionSwitch = ({
         }
         isChecked={checked}
         onChange={handleChange}
+        name={info.row.original.collectionName}
+        _focus={{
+          boxShadow: "none"
+        }}
       />
       {isLoading && <Spinner size="sm" />}
       {isDefaultForCollection && <Tag size="sm">Default</Tag>}
