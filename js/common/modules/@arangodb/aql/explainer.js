@@ -2097,6 +2097,9 @@ function processQuery(query, explain, planIndex) {
         } else {
           accessString += "index scan only";
         }
+        if (info.isLateMaterialized === true) {
+          accessString += ' with late materialization';
+        }
         if (info.projections) {
           accessString += projections(info, "projections", "projections");
         }

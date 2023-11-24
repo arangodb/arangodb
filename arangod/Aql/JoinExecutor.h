@@ -71,6 +71,8 @@ struct JoinExecutorInfos {
   struct IndexInfo {
     // Register to load the document into
     RegisterId documentOutputRegister;
+    RegisterId docIdOutputRegister;
+    bool isLateMaterialized;
 
     // Associated document collection for this index
     Collection const* collection;
