@@ -1,6 +1,9 @@
 v3.10.13 (XXXX-XX-XX)
 ---------------------
 
+* Removal artificial upper bound value of `128` for the startup option 
+  `--rocksdb.max-background-jobs`.
+
 * Fixed a crash during recursive AstNode creation when an exception was thrown.
   This can happen on DB servers when a query plan snippet is created from
   VelocyPack, and the query plan snippet would use more memory than is allowed
