@@ -22,6 +22,7 @@
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
+const internal = require("internal");
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const request = require("@arangodb/request");
 const jsunity = require('jsunity');
@@ -314,6 +315,43 @@ const computedValuesAppliedPredicate = function (collection, attribute) {
   };
 };
 
+const logIfFailure = function (fun, msg, dumpObjects) {
+  try {
+    fun();
+  } catch (e) {
+    let dumpMsg = {};
+    if (dumpObjects !== undefined) {
+      // dump collections
+      if (dumpObjects.hasOwnProperty('collections')) {
+        let collections = {}
+        for (const collection of dumpObjects.collections) {
+
+          try {
+            collections[collection.name()] = collection.toArray();
+          } catch (e) {
+            collections[collection.name()] = e;
+          }
+        }
+        dumpMsg['collections'] = collections;
+      }
+
+      // dump logs
+      if (dumpObjects.hasOwnProperty('logs')) {
+        for (const log of dumpObjects.logs) {
+          try {
+            dumpMsg[log.id()] = log.head(1000);
+          } catch (e) {
+            dumpMsg[log.id()] = e;
+          }
+        }
+      }
+    }
+
+    internal.print(`${msg}: ${JSON.stringify(e)}. Dump: ${JSON.stringify(dumpMsg)}`);
+    throw e;
+  }
+};
+
 exports.getLocalValue = getLocalValue;
 exports.getLocalIndex = getLocalIndex;
 exports.getAllLocalIndexes = getAllLocalIndexes;
@@ -338,3 +376,4 @@ exports.getSingleLogId = getSingleLogId;
 exports.getCollectionShardsAndLogs = getCollectionShardsAndLogs;
 exports.isIndexInCurrent = isIndexInCurrent;
 exports.computedValuesAppliedPredicate = computedValuesAppliedPredicate;
+exports.logIfFailure = logIfFailure;
