@@ -557,7 +557,7 @@ struct CrudOperationCtx {
     // However we can work with the other babies.
     // This is for compatibility with single server
     // We just assign it to any shard and pretend the user has given a key
-    shardID = collinfo.shardingInfo()->shardListAsShardID()->at(0);
+    shardID = *collinfo.shardingInfo()->shardListAsShardID().begin();
   } else {
     // Now find the responsible shard:
     [[maybe_unused]] bool usesDefaultShardingAttributes;
@@ -618,7 +618,7 @@ struct InsertOperationCtx {
       // However we can work with the other babies.
       // This is for compatibility with single server
       // We just assign it to any shard and pretend the user has given a key
-      return collinfo.shardingInfo()->shardListAsShardID()->at(0);
+      return *collinfo.shardingInfo()->shardListAsShardID().begin();
     } else {
       // Sort out the _key attribute:
       // The user is allowed to specify _key, provided that _key is the one

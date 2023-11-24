@@ -201,14 +201,11 @@ static void ReportPartialNoProgress(
     VPackBuilder& result) {
   // create a sorted list of shards, so that the callers will get the
   // shard list in a deterministic order (this is very useful for the UI).
-  containers::SmallVector<ShardID, 8> sortedShards;
-  sortedShards.reserve(shardIds.size());
+  std::set<ShardID> sortedShards;
 
   for (auto const& s : shardIds) {
-    sortedShards.emplace_back(s.first);
+    sortedShards.emplace(s.first);
   }
-  // sorts sortedShards in place in a deterministic order
-  std::sort(sortedShards.begin(), sortedShards.end());
 
   TRI_ASSERT(result.isOpenObject());
 

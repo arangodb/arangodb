@@ -32,6 +32,7 @@
 #include <velocypack/Slice.h>
 
 #include <atomic>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -96,7 +97,7 @@ class ShardingInfo {
   std::shared_ptr<ShardMap> shardIds() const;
 
   // return a sorted vector of ShardIDs
-  std::shared_ptr<std::vector<ShardID>> shardListAsShardID() const;
+  std::set<ShardID> shardListAsShardID() const;
 
   // return a filtered list of the collection's shards
   std::shared_ptr<ShardMap> shardIds(

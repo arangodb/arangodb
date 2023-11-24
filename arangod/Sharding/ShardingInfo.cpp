@@ -162,7 +162,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
     for (auto const& shardSlice : VPackObjectIterator(shardsSlice)) {
       if (shardSlice.key.isString() && shardSlice.value.isArray()) {
         // NOTE: Can throw if shard is not a valid shard name
-        ShardID shard{shardSlice.key.copyString()};
+        ShardID shard{shardSlice.key.stringView()};
 
         std::vector<ServerID> servers;
         for (auto const& serverSlice : VPackArrayIterator(shardSlice.value)) {
@@ -474,13 +474,12 @@ std::vector<std::string> const& ShardingInfo::shardKeys() const noexcept {
 
 std::shared_ptr<ShardMap> ShardingInfo::shardIds() const { return _shardIds; }
 
-std::shared_ptr<std::vector<ShardID>> ShardingInfo::shardListAsShardID() const {
-  auto vector = std::make_shared<std::vector<ShardID>>();
+std::set<ShardID> ShardingInfo::shardListAsShardID() const {
+  std::set<ShardID> result;
   for (auto const& mapElement : *_shardIds) {
-    vector->emplace_back(mapElement.first);
+    result.emplace(mapElement.first);
   }
-  std::sort(vector->begin(), vector->end());
-  return vector;
+  return result;
 }
 
 // return a filtered list of the collection's shards
