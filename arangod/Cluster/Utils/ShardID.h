@@ -22,17 +22,19 @@
 
 #pragma once
 
-#include "Basics/Exceptions.h"
 #include "Basics/ResultT.h"
-#include "Basics/StringUtils.h"
 #include "Inspection/Status.h"
 
-#include <compare>
-#include <cstdint>
 #include <fmt/format.h>
-#include <velocypack/Value.h>
+
+#include <cstdint>
+#include <string_view>
 
 namespace arangodb {
+
+namespace velocypack {
+class Value;
+}
 
 struct ShardID {
   static ResultT<ShardID> shardIdFromString(std::string_view s);

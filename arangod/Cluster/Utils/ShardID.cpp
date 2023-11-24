@@ -22,6 +22,10 @@
 
 #include "ShardID.h"
 
+#include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
+#include <velocypack/Value.h>
+
 arangodb::ResultT<arangodb::ShardID> arangodb::ShardID::shardIdFromString(
     std::string_view s) {
   if (s.empty() || s.at(0) != 's') {
