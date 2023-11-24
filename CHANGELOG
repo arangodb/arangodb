@@ -6,7 +6,7 @@ v3.10.12 (XXXX-XX-XX)
 
 * Rebuilt included rclone v1.59.0 with go1.21.4.
 
-* Updated ArangoDB Starter to 0.17.2 and arangosync to v2.19.5.
+* Updated ArangoDB Starter to v0.17.2 and arangosync to v2.19.5.
 
 * Track memory usage of internal connection statistics and request statistics:
   - `arangodb_connection_statistics_memory_usage`
