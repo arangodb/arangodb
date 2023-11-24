@@ -150,7 +150,7 @@ void ClusterIndex::toVelocyPack(
       std::string const url =
           prefix + shard.first + "/" + std::to_string(_iid.id());
       futures.emplace_back(
-          network::sendRequestRetry(pool, "shard:" + std::string(shard.first),
+          network::sendRequestRetry(pool, "shard:" + shard.first,
                                     fuerte::RestVerb::Get, url, body, reqOpts));
     }
     for (Future<network::Response>& f : futures) {

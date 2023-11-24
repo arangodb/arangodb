@@ -2485,8 +2485,6 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
   //     are given, we first try the fast path, but might, as above,
   //     have to use the slow path after all.
 
-  ShardID shardID;
-
   CrudOperationCtx opCtx;
   opCtx.options = options;
   bool useMultiple = slice.isArray();

@@ -839,6 +839,7 @@ std::optional<arangodb::ShardID> getSingleShardId(
   }
 
   // we will only need a single shard!
+  TRI_ASSERT(res.get().isValid());
   return std::move(res.get());
 }
 
@@ -4970,7 +4971,8 @@ void arangodb::aql::restrictToSingleShardRule(
                 ->collection();
         auto shardId = ::getSingleShardId(plan.get(), current, collection);
 
-        if (shardId.has_value() && shardId.value().isValid()) {
+        if (shardId.has_value()) {
+          TRI_ASSERT(shardId.value().isValid());
           wasModified = true;
           // we are on a single shard. we must not ignore not-found documents
           // now

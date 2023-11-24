@@ -33,15 +33,15 @@
 namespace arangodb {
 
 struct ShardID {
-  static ResultT<ShardID> shardIdFromString(std::string_view s);
+  static ResultT<ShardID> shardIdFromString(std::string_view s) noexcept;
 
-  static ShardID invalidShard();
+  static ShardID invalidShard() noexcept;
 
   // Default constructor required for Inspectors.
   // Note: This shardID is considered Invalid.
-  ShardID() : id(0) {}
+  constexpr ShardID() noexcept : id(0) {}
 
-  explicit ShardID(uint64_t id) : id(id) {}
+  explicit ShardID(uint64_t id) noexcept : id(id) {}
 
   explicit ShardID(std::string_view id);
 
@@ -53,12 +53,10 @@ struct ShardID {
 
   operator std::string() const;
 
-  friend auto operator<=>(ShardID const&, ShardID const&) = default;
-  friend bool operator==(ShardID const&, ShardID const&) = default;
+  friend auto operator<=>(ShardID const&, ShardID const&) noexcept = default;
+  friend bool operator==(ShardID const&, ShardID const&) noexcept = default;
 
-  bool operator==(std::string_view other) const;
-
-  bool operator==(std::string const& other) const;
+  bool operator==(std::string_view other) const noexcept;
 
   bool isValid() const noexcept;
 
@@ -91,7 +89,7 @@ struct ShardID {
   uint64_t id;
 };
 
-// Make ShardID logable
+// Make ShardID loggable
 std::ostream& operator<<(std::ostream& o, arangodb::ShardID const& r);
 
 }  // namespace arangodb

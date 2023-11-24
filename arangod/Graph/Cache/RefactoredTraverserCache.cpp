@@ -258,7 +258,7 @@ bool RefactoredTraverserCache::appendVertex(
       };
       Result res =
           _trx->documentFastPathLocal(
-                  shardId.c_str(),
+                  shardId,
                   id.substr(collectionNameResult.get().second + 1).stringView(),
                   cb)
               .get();
@@ -274,8 +274,8 @@ bool RefactoredTraverserCache::appendVertex(
       if (isWithClauseMissing(ex)) {
         // turn the error into a different error
         auto message =
-            absl::StrCat("collection not known to traversal: '", shardId.c_str(),
-                         "'. please add 'WITH ", shardId.c_str(),
+            absl::StrCat("collection not known to traversal: '", shardId,
+                         "'. please add 'WITH ", shardId,
                          "' as the first line in your AQL");
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
                                        message);

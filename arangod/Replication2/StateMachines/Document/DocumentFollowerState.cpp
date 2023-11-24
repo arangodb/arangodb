@@ -98,7 +98,7 @@ auto DocumentFollowerState::getAssociatedShardList() const
         << "Tried to produce shard list on Database Server for a collection "
            "that is not a shard "
         << shard->name();
-    shardIds.emplace_back(std::move(maybeShardId.get()));
+    shardIds.emplace_back(maybeShardId.get());
   }
   return shardIds;
 }

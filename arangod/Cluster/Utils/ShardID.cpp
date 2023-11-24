@@ -28,8 +28,8 @@
 #include <absl/strings/str_cat.h>
 
 arangodb::ResultT<arangodb::ShardID> arangodb::ShardID::shardIdFromString(
-    std::string_view s) {
-  if (s.empty() || s.at(0) != 's') {
+    std::string_view s) noexcept {
+  if (!s.starts_with('s')) {
     return Result{TRI_ERROR_BAD_PARAMETER,
                   "Expected ShardID to start with 's'"};
   }
@@ -39,7 +39,7 @@ arangodb::ResultT<arangodb::ShardID> arangodb::ShardID::shardIdFromString(
   }
   return ShardID{res.get()};
 }
-arangodb::ShardID arangodb::ShardID::invalidShard() { return ShardID{0}; }
+arangodb::ShardID arangodb::ShardID::invalidShard() noexcept { return ShardID{0}; }
 arangodb::ShardID::ShardID(std::string_view id) {
   auto maybeShardID = shardIdFromString(id);
   if (maybeShardID.fail()) {
@@ -51,16 +51,20 @@ arangodb::ShardID::operator std::string() const {
   return absl::StrCat("s", std::to_string(id));
 }
 
-bool arangodb::ShardID::operator==(std::string_view other) const {
-  return other == std::string{*this};
+// NOTE: This is not noexcept because of shardIdFromString
+bool arangodb::ShardID::operator==(std::string_view other) const noexcept {
+  if (auto otherShard = shardIdFromString(other) ; otherShard.ok()) {
+    return *this == otherShard.get();
+  }
+  // If the other is not a valid Shard we cannot be equal to it.
+  return false;
 }
-bool arangodb::ShardID::operator==(const std::string& other) const {
-  return other == std::string{*this};
-}
+
 bool arangodb::ShardID::isValid() const noexcept {
   // We can never have ShardID 0. So we use it as invalid value.
   return id != 0;
 }
+
 std::ostream& arangodb::operator<<(std::ostream& o,
                                    const arangodb::ShardID& r) {
   o << "s" << r.id;

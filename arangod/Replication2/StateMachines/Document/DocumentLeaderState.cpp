@@ -450,7 +450,6 @@ auto DocumentLeaderState::getAssociatedShardList() const
            "that is not a shard "
         << shardId->name();
     shardIds.emplace_back(std::move(maybeShardId.get()));
-    shardIds.emplace_back(std::move(maybeShardId.get()));
   }
   return shardIds;
 }
