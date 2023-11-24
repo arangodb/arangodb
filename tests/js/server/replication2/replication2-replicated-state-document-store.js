@@ -1420,9 +1420,14 @@ const replicatedStateDocumentShardsSuite = function () {
 
       // Check if the CreateIndex operation appears in the log.
       for (let log of logs) {
-        const logContents = log.head(1000);
-        assertTrue(dh.getOperationsByType(logContents, "CreateIndex").length > 0,
-          `CreateIndex not found! Contents of log ${log.id()}: ${JSON.stringify(logContents)}`);
+        // The CreateIndex operation may appear in the log after the index is added to Current.
+        lh.waitFor(() => {
+          const logContents = log.head(1000);
+          if (dh.getOperationsByType(logContents, "CreateIndex").length > 0) {
+            return true;
+          }
+          return Error(`CreateIndex not found! Contents of log ${log.id()}: ${JSON.stringify(logContents)}`)
+        });
       }
 
       // Check that the newly created index is available on all participants.
