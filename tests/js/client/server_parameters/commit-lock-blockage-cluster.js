@@ -22,8 +22,10 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Puget
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
+
+const isEnterprise = require("internal").isEnterprise();
 
 if (getOptions === true) {
   return {
@@ -34,13 +36,15 @@ if (getOptions === true) {
 
 const jsunity = require("jsunity");
 const arango = require("@arangodb").arango;
-const db = require("internal").db;
 
 function AuthBlockageSuite() {
   'use strict';
 
   return {
     testBlockage: function () {
+      if (!isEnterprise) {
+        return;
+      }
       let r = arango.POST_RAW("/_admin/backup/lock", {unlockTimeout:6000});
       assertEqual(200, r.code);
       let r2 = arango.POST_RAW("/_api/user", {"user":"hanswurst", "passwd":""});
