@@ -1410,6 +1410,14 @@ const replicatedStateDocumentShardsSuite = function () {
       }
       const indexId = index.id.split('/')[1];
 
+      // Wait for the index to appear in Current. This is how we know that the leader has created it successfully.
+      lh.waitFor(() => {
+        if (!dh.isIndexInCurrent(database, collection._id, indexId)) {
+          return Error(`Index ${indexId} is not in Current`);
+        }
+        return true;
+      });
+
       // Check if the CreateIndex operation appears in the log.
       for (let log of logs) {
         const logContents = log.head(1000);
