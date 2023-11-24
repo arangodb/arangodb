@@ -360,7 +360,8 @@ void clusterCollectionName(LogicalCollection const& collection, ClusterInfo* ci,
   if (name.empty()) {
     if (ci) {
       // Non ShardIDs will be handled because the name stays empty.
-      if (auto maybeShardID = ShardID::shardIdFromString(collection.name()); maybeShardID.ok()) {
+      if (auto maybeShardID = ShardID::shardIdFromString(collection.name());
+          maybeShardID.ok()) {
         name = ci->getCollectionNameForShard(maybeShardID.get());
       }
     } else {

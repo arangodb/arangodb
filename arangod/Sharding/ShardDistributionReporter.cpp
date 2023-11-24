@@ -359,9 +359,9 @@ void ShardDistributionReporter::helperDistributionForDatabase(
         } else {
           entry.followers = curServers;
           if (timeleft > 0.0) {
-            std::string path = "/_api/collection/" +
-                               basics::StringUtils::urlEncode(std::string{s.first}) +
-                               "/count";
+            std::string path =
+                "/_api/collection/" +
+                basics::StringUtils::urlEncode(std::string{s.first}) + "/count";
             VPackBuffer<uint8_t> body;
             network::RequestOptions reqOpts;
             reqOpts.database = dbName;

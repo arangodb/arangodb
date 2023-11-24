@@ -297,9 +297,11 @@ Result RestDumpHandler::validateRequest() {
           if (ServerState::instance()->isSingleServer()) {
             collectionName = it;
           } else {
-            if (auto maybeShardID = ShardID::shardIdFromString(it); maybeShardID.ok()) {
+            if (auto maybeShardID = ShardID::shardIdFromString(it);
+                maybeShardID.ok()) {
               // If we are called without a shard, leave collectionName empty.
-              collectionName = _clusterInfo.getCollectionNameForShard(maybeShardID.get());
+              collectionName =
+                  _clusterInfo.getCollectionNameForShard(maybeShardID.get());
             }
           }
           if (!ExecContext::current().canUseCollection(

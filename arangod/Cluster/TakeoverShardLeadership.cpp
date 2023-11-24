@@ -219,8 +219,7 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
     }
     TRI_ASSERT(currentInfo != nullptr);
     ShardID shardId{collection.name()};
-    std::vector<ServerID> currentServers =
-        currentInfo->servers(shardId);
+    std::vector<ServerID> currentServers = currentInfo->servers(shardId);
     std::shared_ptr<std::vector<ServerID>> realInsyncFollowers;
 
     TRI_IF_FAILURE("HandleLeadership::before") {

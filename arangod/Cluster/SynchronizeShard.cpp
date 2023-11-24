@@ -1133,9 +1133,9 @@ bool SynchronizeShard::first() {
       // First once without a read transaction:
 
       if (_feature.server().isStopping()) {
-        auto errorMessage =
-            absl::StrCat("SynchronizeShard: synchronization failed for shard ",
-                         std::string{shard}, ": shutdown in progress, giving up");
+        auto errorMessage = absl::StrCat(
+            "SynchronizeShard: synchronization failed for shard ",
+            std::string{shard}, ": shutdown in progress, giving up");
         LOG_TOPIC("a0f9a", INFO, Logger::MAINTENANCE) << errorMessage;
         result(TRI_ERROR_SHUTTING_DOWN, errorMessage);
         return false;
@@ -1438,7 +1438,8 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
           res.errorNumber(),
           absl::StrCat(
               "synchronizeOneShard: error in syncCollectionCatchup for shard ",
-              getDatabase(), "/", std::string{getShard()}, ": ", res.errorMessage()));
+              getDatabase(), "/", std::string{getShard()}, ": ",
+              res.errorMessage()));
     }
 
     // Stop the read lock again:

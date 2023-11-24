@@ -73,7 +73,10 @@ Snapshot::GuardedData::GuardedData(
     : databaseSnapshot(std::move(databaseSnapshot)) {
   for (auto&& shard : shards) {
     auto maybeShardId = ShardID::shardIdFromString(shard->name());
-    ADB_PROD_ASSERT(maybeShardId.ok()) << "Tried to create a Snapshot on Database Server for a collection that is not a shard " << shard->name();
+    ADB_PROD_ASSERT(maybeShardId.ok())
+        << "Tried to create a Snapshot on Database Server for a collection "
+           "that is not a shard "
+        << shard->name();
     statistics.shards.emplace(maybeShardId.get(),
                               SnapshotStatistics::ShardStatistics{});
     this->shards.emplace_back(std::move(shard), nullptr);
@@ -332,7 +335,8 @@ auto Snapshot::generateBatch(state::Ongoing const&) -> ResultT<SnapshotBatch> {
 
     auto tid = TransactionId::createFollower();
     operations.emplace_back(ReplicatedOperation::buildDocumentOperation(
-        TRI_VOC_DOCUMENT_OPERATION_INSERT, tid, maybeShardID.get(), std::move(payload)));
+        TRI_VOC_DOCUMENT_OPERATION_INSERT, tid, maybeShardID.get(),
+        std::move(payload)));
     operations.emplace_back(ReplicatedOperation::buildCommitOperation(tid));
 
     auto readerHasMore = reader->hasMore();
@@ -361,9 +365,9 @@ auto Snapshot::generateBatch(state::Ongoing const&) -> ResultT<SnapshotBatch> {
 
     LOG_CTX("9d1b4", DEBUG, loggerContext)
         << "Trx " << tid << " reading " << payloadLen << " documents from "
-        << maybeShardID.get() << " in batch " << data.statistics.batchesSent << " with "
-        << payloadSize << " bytes. There is " << (readerHasMore ? "" : "no")
-        << " more data to read from this shard.";
+        << maybeShardID.get() << " in batch " << data.statistics.batchesSent
+        << " with " << payloadSize << " bytes. There is "
+        << (readerHasMore ? "" : "no") << " more data to read from this shard.";
 
     return SnapshotBatch{.snapshotId = getId(),
                          .hasMore = readerHasMore || !data.shards.empty(),

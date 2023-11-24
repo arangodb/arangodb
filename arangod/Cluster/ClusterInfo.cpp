@@ -1968,11 +1968,13 @@ void ClusterInfo::loadCurrent() {
 
       for (auto const& shardSlice :
            velocypack::ObjectIterator(collectionSlice.value)) {
-
-        auto maybeShardID = ShardID::shardIdFromString(shardSlice.key.copyString());
+        auto maybeShardID =
+            ShardID::shardIdFromString(shardSlice.key.copyString());
         if (ADB_UNLIKELY(maybeShardID.fail())) {
-          TRI_ASSERT(false) << "Indexed malformed shard name "<< shardSlice.key.copyString();
-          // TODO cannot handle this entry, is it better to continue or to abort here?
+          TRI_ASSERT(false)
+              << "Indexed malformed shard name " << shardSlice.key.copyString();
+          // TODO cannot handle this entry, is it better to continue or to abort
+          // here?
           continue;
         }
 
@@ -1995,9 +1997,9 @@ void ClusterInfo::loadCurrent() {
         TRI_IF_FAILURE("ClusterInfo::loadCurrentSeesLeader") {
           if (!xx.empty()) {  // just in case
             std::string myShortName = ServerState::instance()->getShortName();
-            observeGlobalEvent(
-                "ClusterInfo::loadCurrentSeesLeader",
-                absl::StrCat(myShortName, ":", std::string{shardID}, ":", xx[0]));
+            observeGlobalEvent("ClusterInfo::loadCurrentSeesLeader",
+                               absl::StrCat(myShortName, ":",
+                                            std::string{shardID}, ":", xx[0]));
           }
         }
       }
@@ -4615,11 +4617,11 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
 /// @brief find the shard list of a collection, sorted numerically
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<std::vector<ShardID> const>
-arangodb::ClusterInfo::getShardList(std::string_view collectionID) {
+std::shared_ptr<std::vector<ShardID> const> arangodb::ClusterInfo::getShardList(
+    std::string_view collectionID) {
   TRI_IF_FAILURE("ClusterInfo::failedToGetShardList") {
     // Simulate no results
-     return std::make_shared<std::vector<ShardID> const>();
+    return std::make_shared<std::vector<ShardID> const>();
   }
 
   {

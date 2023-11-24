@@ -20,7 +20,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"                   // for Test, CmpHelperLT, Message
+#include "gtest/gtest.h"  // for Test, CmpHelperLT, Message
 
 #include "absl/container/flat_hash_map.h"  // for BitMask
 #include "Cluster/Utils/ShardID.h"         // for ShardID, operator==, hash

@@ -522,7 +522,8 @@ void QuerySnippet::serializeIntoBuilder(
       }
 
       // hook distribute node into stream '0', since that does not happen below
-      prototypeConsumer = createConsumerNode(plan, internalScatter, std::string{distIds[0]});
+      prototypeConsumer =
+          createConsumerNode(plan, internalScatter, std::string{distIds[0]});
       nodeAliases.try_emplace(prototypeConsumer->id(),
                               ExecutionNodeId::InternalNode);
       // now wire up the temporary nodes
@@ -556,9 +557,9 @@ void QuerySnippet::serializeIntoBuilder(
     // make sure we don't explode accessing distIds
     TRI_ASSERT(numberOfShardsToPermutate == distIds.size());
     for (size_t i = 1; i < numberOfShardsToPermutate; ++i) {
-      auto cloneWorker =
-          CloneWorker(snippetRoot, internalGather, internalScatter,
-                      localExpansions, i, std::string{distIds.at(i)}, nodeAliases);
+      auto cloneWorker = CloneWorker(snippetRoot, internalGather,
+                                     internalScatter, localExpansions, i,
+                                     std::string{distIds.at(i)}, nodeAliases);
       // Warning, the walkerworker is abused.
       cloneWorker.process();
     }
@@ -782,7 +783,8 @@ auto QuerySnippet::prepareFirstBranch(
             // to serve later lookups for this collection, we insert an empty
             // string into the collection->shard map. on lookup, we will react
             // to this.
-            localGraphNode->addCollectionToShard(aqlCollection->name(), ShardID::invalidShard());
+            localGraphNode->addCollectionToShard(aqlCollection->name(),
+                                                 ShardID::invalidShard());
           }
         }
       }

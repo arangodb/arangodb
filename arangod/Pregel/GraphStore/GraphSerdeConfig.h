@@ -89,7 +89,8 @@ struct GraphSerdeConfig {
     return result;
   }
   //
-  [[nodiscard]] auto localShardIDs(ServerID server) const -> std::set<PregelShardID> {
+  [[nodiscard]] auto localShardIDs(ServerID server) const
+      -> std::set<PregelShardID> {
     auto result = std::set<PregelShardID>{};
 
     for (auto&& loadableVertexShard : loadableVertexShards) {

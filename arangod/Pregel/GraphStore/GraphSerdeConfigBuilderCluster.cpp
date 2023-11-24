@@ -116,7 +116,6 @@ GraphSerdeConfigBuilderCluster::GraphSerdeConfigBuilderCluster(
       auto vertexShard = shardmap.at(shardIdx).at(0);
       auto responsibleServers = clusterInfo.getResponsibleServer(vertexShard);
 
-
       ADB_PROD_ASSERT(not responsibleServers->empty());
       auto loadableVertexShard = LoadableVertexShard{
           .pregelShard = PregelShard(result.size()),

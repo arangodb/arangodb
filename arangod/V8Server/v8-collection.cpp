@@ -1143,7 +1143,8 @@ static void JS_GetResponsibleShardVocbaseCol(
     TRI_V8_THROW_EXCEPTION(maybeShard.result());
   }
 
-  v8::Handle<v8::Value> result = TRI_V8_STD_STRING(isolate, std::string{maybeShard.get()});
+  v8::Handle<v8::Value> result =
+      TRI_V8_STD_STRING(isolate, std::string{maybeShard.get()});
   TRI_V8_RETURN(result);
 
   TRI_V8_TRY_CATCH_END

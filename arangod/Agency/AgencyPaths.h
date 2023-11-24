@@ -330,7 +330,8 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
               using BaseType::StaticComponent;
 
-              class Shard : public DynamicComponent<Shard, Shards, std::string> {
+              class Shard
+                  : public DynamicComponent<Shard, Shards, std::string> {
                public:
                 char const* component() const noexcept {
                   return value().c_str();
@@ -398,8 +399,8 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
               using BaseType::StaticComponent;
 
-              class Shard
-                  : public DynamicComponent<Shard, ReplicatedLogs, std::string> {
+              class Shard : public DynamicComponent<Shard, ReplicatedLogs,
+                                                    std::string> {
                public:
                 char const* component() const noexcept {
                   return value().c_str();
@@ -1364,7 +1365,8 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
             using BaseType::DynamicComponent;
 
-            class Shard : public DynamicComponent<Shard, Collection, std::string> {
+            class Shard
+                : public DynamicComponent<Shard, Collection, std::string> {
              public:
               char const* component() const noexcept { return value().c_str(); }
 

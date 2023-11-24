@@ -29,9 +29,9 @@ namespace arangodb::pregel::conductor {
 struct ConductorState;
 
 struct Loading : ExecutionState {
-  Loading(
-      ConductorState& conductor,
-      std::unordered_map<PregelShardID, actor::DistributedActorPID> actorForShard);
+  Loading(ConductorState& conductor,
+          std::unordered_map<PregelShardID, actor::DistributedActorPID>
+              actorForShard);
   ~Loading() override = default;
   auto name() const -> std::string override { return "loading"; };
   auto messages()

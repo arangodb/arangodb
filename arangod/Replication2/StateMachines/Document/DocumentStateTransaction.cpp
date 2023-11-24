@@ -63,7 +63,8 @@ auto DocumentStateTransaction::commit() -> Result { return _methods->commit(); }
 auto DocumentStateTransaction::abort() -> Result { return _methods->abort(); }
 
 auto DocumentStateTransaction::containsShard(ShardID const& sid) -> bool {
-  return nullptr != _methods->state()->collection(std::string{sid}, AccessMode::Type::NONE);
+  return nullptr != _methods->state()->collection(std::string{sid},
+                                                  AccessMode::Type::NONE);
 }
 
 auto DocumentStateTransaction::buildDefaultOptions() -> OperationOptions {

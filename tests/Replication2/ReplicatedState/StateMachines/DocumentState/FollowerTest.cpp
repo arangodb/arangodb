@@ -465,7 +465,8 @@ TEST_F(DocumentStateFollowerTest,
   std::ignore = follower->applyEntries(std::move(entryIterator));
 
   entries.clear();
-  entries.emplace_back(ReplicatedOperation::buildDropShardOperation(ShardID{1}));
+  entries.emplace_back(
+      ReplicatedOperation::buildDropShardOperation(ShardID{1}));
   entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
 
   ON_CALL(*transactionHandlerMock, getTransactionsForShard(ShardID{1}))

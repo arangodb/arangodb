@@ -421,7 +421,7 @@ void LogicalCollection::setShardMap(std::shared_ptr<ShardMap> map) noexcept {
 }
 
 ResultT<ShardID> LogicalCollection::getResponsibleShard(velocypack::Slice slice,
-                                                 bool docComplete) {
+                                                        bool docComplete) {
   bool usesDefaultShardKeys;
   return getResponsibleShard(slice, docComplete, usesDefaultShardKeys);
 }

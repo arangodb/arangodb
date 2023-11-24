@@ -126,8 +126,7 @@ std::vector<ServerID> CollectionInfoCurrent::failoverCandidates(
   return v;
 }
 
-std::string CollectionInfoCurrent::errorMessage(
-    ShardID const& shardID) const {
+std::string CollectionInfoCurrent::errorMessage(ShardID const& shardID) const {
   auto it = _vpacks.find(shardID);
   if (it != _vpacks.end()) {
     VPackSlice slice = it->second->slice();

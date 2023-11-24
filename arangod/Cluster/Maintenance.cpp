@@ -484,9 +484,8 @@ static void handlePlanShard(
 }
 
 static void handleLocalShard(
-    std::string const& dbname,ShardID const& shname,
-    VPackSlice const& cprops, VPackSlice const& shardMap,
-    containers::FlatHashSet<ShardID>& commonShrds,
+    std::string const& dbname, ShardID const& shname, VPackSlice const& cprops,
+    VPackSlice const& shardMap, containers::FlatHashSet<ShardID>& commonShrds,
     containers::FlatHashSet<std::string>& indis, std::string const& serverId,
     std::vector<std::shared_ptr<ActionDescription>>& actions,
     containers::FlatHashSet<DatabaseID>& makeDirty, bool& callNotify,
@@ -941,7 +940,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
                   if (dbs.isEqualString(serverId) ||
                       dbs.isEqualString(UNDERSCORE + serverId)) {
                     // at this point a shard is in plan, we have the db for it
-                    auto maybeShardID = ShardID::shardIdFromString(shard.key.copyString());
+                    auto maybeShardID =
+                        ShardID::shardIdFromString(shard.key.copyString());
                     if (ADB_UNLIKELY(maybeShardID.fail())) {
                       TRI_ASSERT(false)
                           << "Malformed shard ID in agency: "
@@ -949,12 +949,12 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
                           << " and collection: " << pcol.key.copyString();
                       THROW_ARANGO_EXCEPTION(maybeShardID.result());
                     }
-                    handlePlanShard(
-                        engine, planIndex, cprops, ldb, dbname,
-                        pcol.key.copyString(), maybeShardID.get(), serverId,
-                        shard.value[0].copyString(), commonShrds, indis, errors,
-                        makeDirty, callNotify, actions, shardActionMap, rv,
-                        localLogs, shardsToLogs);
+                    handlePlanShard(engine, planIndex, cprops, ldb, dbname,
+                                    pcol.key.copyString(), maybeShardID.get(),
+                                    serverId, shard.value[0].copyString(),
+                                    commonShrds, indis, errors, makeDirty,
+                                    callNotify, actions, shardActionMap, rv,
+                                    localLogs, shardsToLogs);
                     break;
                   }
                 }
@@ -1020,14 +1020,14 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
           auto maybeShardID = ShardID::shardIdFromString(lcol.key.copyString());
           if (ADB_UNLIKELY(maybeShardID.fail())) {
             TRI_ASSERT(false)
-                << "Malformed shard ID in agency: "
-                << lcol.key.copyString() << " in db: " << ldbname;
+                << "Malformed shard ID in agency: " << lcol.key.copyString()
+                << " in db: " << ldbname;
             THROW_ARANGO_EXCEPTION(maybeShardID.result());
           }
-          handleLocalShard(ldbname, maybeShardID.get(), lcol.value, shardMap.slice(),
-                           commonShrds, indis, serverId, actions, makeDirty,
-                           callNotify, shardActionMap, rv, localLogs,
-                           shardsToLogs);
+          handleLocalShard(ldbname, maybeShardID.get(), lcol.value,
+                           shardMap.slice(), commonShrds, indis, serverId,
+                           actions, makeDirty, callNotify, shardActionMap, rv,
+                           localLogs, shardsToLogs);
         }
       }
     }
@@ -1208,8 +1208,8 @@ arangodb::Result arangodb::maintenance::executePlan(
       TRI_ASSERT(action->has(SHARD));
       TRI_ASSERT(action->has(DATABASE));
 
-      // Note: In theory this could throw, however we have transformed a shardID to this string before
-      // so in praxis this is safe.
+      // Note: In theory this could throw, however we have transformed a shardID
+      // to this string before so in praxis this is safe.
       ShardID shardName{action->get(SHARD)};
 
       bool ok = feature.lockShard(shardName, action);
@@ -2034,8 +2034,9 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
             auto const [localCollectionInfo, shardInSync, shardReplicated] =
                 assembleLocalCollectionInfo(
-                    df, shSlice, shardMap.slice().get(std::string{shName}), dbName, shName,
-                    serverId, allErrors, replicationVersion, localLogs);
+                    df, shSlice, shardMap.slice().get(std::string{shName}),
+                    dbName, shName, serverId, allErrors, replicationVersion,
+                    localLogs);
             // Collection no longer exists
             TRI_ASSERT(!localCollectionInfo.slice().isNone());
             if (localCollectionInfo.slice().isEmptyObject() ||

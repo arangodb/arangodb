@@ -842,7 +842,8 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
         "getCollectionInfoCurrent(<database-id>, <collection-id>, <shardID>)");
   }
 
-  auto maybeShardID = ShardID::shardIdFromString(TRI_ObjectToString(isolate, args[2]));
+  auto maybeShardID =
+      ShardID::shardIdFromString(TRI_ObjectToString(isolate, args[2]));
   if (maybeShardID.fail()) {
     TRI_V8_THROW_EXCEPTION(maybeShardID.result());
   }
@@ -962,7 +963,8 @@ static void JS_GetResponsibleServerClusterInfo(
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
-  auto maybeShardID = ShardID::shardIdFromString(TRI_ObjectToString(isolate, args[0]));
+  auto maybeShardID =
+      ShardID::shardIdFromString(TRI_ObjectToString(isolate, args[0]));
   if (maybeShardID.fail()) {
     // Asking for non-shard name pattern.
     // Compatibility with original API return empty array.
@@ -1025,7 +1027,8 @@ static void JS_GetResponsibleServersClusterInfo(
   v8::Handle<v8::Object> responsible = v8::Object::New(isolate);
   for (auto const& it : result) {
     responsible
-        ->Set(context, TRI_V8_ASCII_STRING(isolate, std::string{it.first}.c_str()),
+        ->Set(context,
+              TRI_V8_ASCII_STRING(isolate, std::string{it.first}.c_str()),
               TRI_V8_STD_STRING(isolate, it.second))
         .FromMaybe(false);
   }
@@ -1081,9 +1084,8 @@ static void JS_GetResponsibleShardClusterInfo(
 
   bool usesDefaultShardingAttributes;
 
-  auto maybeShard =
-      collInfo->getResponsibleShard(builder.slice(), documentIsComplete,
-                                     usesDefaultShardingAttributes);
+  auto maybeShard = collInfo->getResponsibleShard(
+      builder.slice(), documentIsComplete, usesDefaultShardingAttributes);
 
   if (maybeShard.fail()) {
     TRI_V8_THROW_EXCEPTION(maybeShard.result());

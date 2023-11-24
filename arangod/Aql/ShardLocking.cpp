@@ -57,46 +57,45 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
   bool useRestrictedShard =
       pushToSingleServer && !forceOneShardAttributeValue.empty();
 
-  auto addRestrictedShard =
-      [&](aql::Collection const* col,
-          std::unordered_set<ShardID>& restrictedShards) {
-        TRI_ASSERT(!forceOneShardAttributeValue.empty());
-        TRI_ASSERT(useRestrictedShard);
-        auto maybeShardID = std::invoke([&]() {
-          if (col->isDisjoint()) {
-            // if disjoint smart edge collection, we must insert an
-            // artifical key with two colons, to pretend it is a real
-            // smart graph key
-            return col->getCollection()->getResponsibleShard(
-                forceOneShardAttributeValue +
-                ":test:" + forceOneShardAttributeValue);
-          } else {
-            auto const& shardKeys = col->getCollection().get()->shardKeys();
-            TRI_ASSERT(!shardKeys.empty());
-            auto const& shardKey = shardKeys.at(0);
-            if (shardKey == "_key:") {
-              return col->getCollection()->getResponsibleShard(
-                  forceOneShardAttributeValue + ":test");
-            } else if (shardKey == ":_key") {
-              return col->getCollection()->getResponsibleShard(
-                  "test:" + forceOneShardAttributeValue);
-            } else {
-              VPackBuilder builder;
-              {
-                VPackObjectBuilder guard(&builder);
-                builder.add(shardKey, VPackValue(forceOneShardAttributeValue));
-              }
-              return col->getCollection()->getResponsibleShard(builder.slice(),
-                                                               false);
-            }
+  auto addRestrictedShard = [&](aql::Collection const* col,
+                                std::unordered_set<ShardID>& restrictedShards) {
+    TRI_ASSERT(!forceOneShardAttributeValue.empty());
+    TRI_ASSERT(useRestrictedShard);
+    auto maybeShardID = std::invoke([&]() {
+      if (col->isDisjoint()) {
+        // if disjoint smart edge collection, we must insert an
+        // artifical key with two colons, to pretend it is a real
+        // smart graph key
+        return col->getCollection()->getResponsibleShard(
+            forceOneShardAttributeValue +
+            ":test:" + forceOneShardAttributeValue);
+      } else {
+        auto const& shardKeys = col->getCollection().get()->shardKeys();
+        TRI_ASSERT(!shardKeys.empty());
+        auto const& shardKey = shardKeys.at(0);
+        if (shardKey == "_key:") {
+          return col->getCollection()->getResponsibleShard(
+              forceOneShardAttributeValue + ":test");
+        } else if (shardKey == ":_key") {
+          return col->getCollection()->getResponsibleShard(
+              "test:" + forceOneShardAttributeValue);
+        } else {
+          VPackBuilder builder;
+          {
+            VPackObjectBuilder guard(&builder);
+            builder.add(shardKey, VPackValue(forceOneShardAttributeValue));
           }
-        });
-        if (maybeShardID.fail()) {
-          THROW_ARANGO_EXCEPTION(maybeShardID.result());
+          return col->getCollection()->getResponsibleShard(builder.slice(),
+                                                           false);
         }
+      }
+    });
+    if (maybeShardID.fail()) {
+      THROW_ARANGO_EXCEPTION(maybeShardID.result());
+    }
 
-        restrictedShards.emplace(std::move(maybeShardID.get()));
-      };
+    restrictedShards.emplace(std::move(maybeShardID.get()));
+  };
 
   // If we have ever accessed the server lists,
   // we cannot insert Nodes anymore.
@@ -235,8 +234,7 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
 
 void ShardLocking::updateLocking(
     Collection const* col, AccessMode::Type const& accessType, size_t snippetId,
-    std::unordered_set<ShardID> const& restrictedShards,
-    bool usedAsSatellite) {
+    std::unordered_set<ShardID> const& restrictedShards, bool usedAsSatellite) {
   auto& info = _collectionLocking[col];
   // We need to upgrade the lock
   info.lockType = (std::max)(info.lockType, accessType);

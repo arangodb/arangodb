@@ -213,7 +213,8 @@ void replaceGatherNodeVariables(
   }
 }
 
-void restrictToShard(arangodb::aql::ExecutionNode* node, arangodb::ShardID const& shardId) {
+void restrictToShard(arangodb::aql::ExecutionNode* node,
+                     arangodb::ShardID const& shardId) {
   auto* n = dynamic_cast<arangodb::aql::CollectionAccessingNode*>(node);
   if (n != nullptr) {
     return n->restrictToShard(shardId);
@@ -357,8 +358,7 @@ class RestrictToSingleShardChecker final
     : public arangodb::aql::WalkerWorker<
           arangodb::aql::ExecutionNode,
           arangodb::aql::WalkerUniqueness::NonUnique> {
-
-  struct AllShards{};
+  struct AllShards {};
 
   arangodb::aql::ExecutionPlan* _plan;
   CollectionVariableTracker& _tracker;
@@ -422,7 +422,7 @@ class RestrictToSingleShardChecker final
     } else {
       // If we have exactly one shard, we can optimize
       return std::get<std::unordered_set<arangodb::ShardID>>(it->second)
-          .size() == 1;
+                 .size() == 1;
     }
   }
 
@@ -4968,8 +4968,7 @@ void arangodb::aql::restrictToSingleShardRule(
         auto collection =
             ExecutionNode::castTo<ModificationNode const*>(current)
                 ->collection();
-        auto shardId =
-            ::getSingleShardId(plan.get(), current, collection);
+        auto shardId = ::getSingleShardId(plan.get(), current, collection);
 
         if (shardId.has_value() && shardId.value().isValid()) {
           wasModified = true;

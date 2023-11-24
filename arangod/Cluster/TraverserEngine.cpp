@@ -130,7 +130,9 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
       auto maybeShardID = ShardID::shardIdFromString(shardString);
       _query.collections().add(shardString, AccessMode::Type::READ,
                                aql::Collection::Hint::Shard);
-      TRI_ASSERT(maybeShardID.ok()) << "Parsed a list of shards contianing an invalid name: " << shardString;
+      TRI_ASSERT(maybeShardID.ok())
+          << "Parsed a list of shards contianing an invalid name: "
+          << shardString;
       shards.emplace_back(std::move(maybeShardID.get()));
     }
     _vertexShards.emplace(collection.key.copyString(), std::move(shards));
@@ -205,7 +207,8 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder,
       return true;
     };
     for (auto const& shard : shards->second) {
-      Result res = _trx->documentFastPathLocal(std::string{shard}, vertex, cb).get();
+      Result res =
+          _trx->documentFastPathLocal(std::string{shard}, vertex, cb).get();
       if (res.ok()) {
         break;
       }

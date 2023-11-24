@@ -74,7 +74,8 @@ VertexID WorkerConfig::documentIdToPregel(std::string_view documentID) const {
       THROW_ARANGO_EXCEPTION(maybeShardID.result());
     }
 
-    PregelShard source = this->_graphSerdeConfig.pregelShard(maybeShardID.get());
+    PregelShard source =
+        this->_graphSerdeConfig.pregelShard(maybeShardID.get());
     return VertexID(source, std::string(keyPart));
   }
 }

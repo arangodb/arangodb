@@ -228,8 +228,8 @@ futures::Future<RestStatus> RestCollectionHandler::handleCommandGet() {
       // check if a SynchronizeShard job is currently executing for the
       // specified shard
       auto maybeShard = ShardID::shardIdFromString(name);
-      // Compatibility, if the shard is not valid we would never find an action for it,
-      // so ignore non-shards.
+      // Compatibility, if the shard is not valid we would never find an action
+      // for it, so ignore non-shards.
       bool isSyncing = false;
       if (maybeShard.ok()) {
         isSyncing = server().getFeature<MaintenanceFeature>().hasAction(

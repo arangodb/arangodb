@@ -191,10 +191,10 @@ class ClusterInfo final {
   struct pmr {
     using ManagedString = std::basic_string<char, std::char_traits<char>,
                                             ClusterInfoResourceAllocator<char>>;
-    using ServerID = ManagedString;         // ID of a server
-    using DatabaseID = ManagedString;       // ID/name of a database
-    using CollectionID = ManagedString;     // ID of a collection
-    using ViewID = ManagedString;           // ID of a view
+    using ServerID = ManagedString;      // ID of a server
+    using DatabaseID = ManagedString;    // ID/name of a database
+    using CollectionID = ManagedString;  // ID of a collection
+    using ViewID = ManagedString;        // ID of a view
   };
 
   template<typename K, typename V>

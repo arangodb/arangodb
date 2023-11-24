@@ -72,8 +72,7 @@ class ShardDistributionReporter {
 
   bool testAllShardsInSync(
       std::string const& dbName, LogicalCollection const* col,
-      containers::FlatHashMap<ShardID, std::vector<ServerID>> const*
-          allShards);
+      containers::FlatHashMap<ShardID, std::vector<ServerID>> const* allShards);
 
   void helperDistributionForDatabase(
       std::string const& dbName, arangodb::velocypack::Builder& result,

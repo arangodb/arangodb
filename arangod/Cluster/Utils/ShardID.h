@@ -35,12 +35,12 @@
 namespace arangodb {
 
 struct ShardID {
-
   static ResultT<ShardID> shardIdFromString(std::string const& s) {
     if (s.empty() || s.at(0) != 's') {
-      return Result{TRI_ERROR_BAD_PARAMETER, "Expected ShardID to start with 's'"};
+      return Result{TRI_ERROR_BAD_PARAMETER,
+                    "Expected ShardID to start with 's'"};
     }
-    auto res = basics::StringUtils::try_uint64(s.c_str() + 1, s.length() -1);
+    auto res = basics::StringUtils::try_uint64(s.c_str() + 1, s.length() - 1);
     if (res.fail()) {
       return std::move(res.result());
     }
@@ -63,16 +63,13 @@ struct ShardID {
     *this = maybeShardID.get();
   }
 
-
   ~ShardID() = default;
   ShardID(ShardID const&) = default;
   ShardID(ShardID&&) = default;
   ShardID& operator=(ShardID const&) = default;
   ShardID& operator=(ShardID&&) = default;
 
-  operator std::string() const {
-    return "s" + std::to_string(id);
-  }
+  operator std::string() const { return "s" + std::to_string(id); }
 
   operator arangodb::velocypack::Value() const {
     return arangodb::velocypack::Value("s" + std::to_string(id));
@@ -94,19 +91,20 @@ struct ShardID {
     return id != 0;
   }
 
-  // Add an inspector implementation, shardIDs will be serialized and deserialized as "s" + number
-  // for compatibility reasons.
+  // Add an inspector implementation, shardIDs will be serialized and
+  // deserialized as "s" + number for compatibility reasons.
   template<class Inspector>
-  inline friend auto inspect(Inspector& f, ShardID& x) -> arangodb::inspection::Status {
+  inline friend auto inspect(Inspector& f, ShardID& x)
+      -> arangodb::inspection::Status {
     if constexpr (Inspector::isLoading) {
       std::string v;
       auto res = f.apply(v);
       if (res.ok()) {
         auto result = shardIdFromString(v);
         if (result.fail()) {
-          // NOTE: For some reason we cannot inline the errorMessage() into the return
-          // in that case the string_view variant will be selected, which is no valid input
-          // for status.
+          // NOTE: For some reason we cannot inline the errorMessage() into the
+          // return in that case the string_view variant will be selected, which
+          // is no valid input for status.
           std::string msg{std::move(result.errorMessage())};
           return {std::move(msg)};
         }
@@ -123,7 +121,8 @@ struct ShardID {
 };
 
 // Make ShardID logable
-static inline std::ostream& operator<<(std::ostream& o, arangodb::ShardID const& r) {
+static inline std::ostream& operator<<(std::ostream& o,
+                                       arangodb::ShardID const& r) {
   o << "s" << r.id;
   return o;
 }
@@ -142,8 +141,10 @@ struct std::hash<arangodb::ShardID> {
 // Make ShardID fmt::formatable
 template<>
 struct fmt::formatter<arangodb::ShardID> {
-  template <typename ParseContext>
-  constexpr auto parse(ParseContext& ctx) { return ctx.begin(); }
+  template<typename ParseContext>
+  constexpr auto parse(ParseContext& ctx) {
+    return ctx.begin();
+  }
 
   template<typename FormatContext>
   auto format(arangodb::ShardID const& shardId, FormatContext& ctx) {
@@ -152,10 +153,12 @@ struct fmt::formatter<arangodb::ShardID> {
 };
 
 // Allow ShardID to be added to std::strings
-static inline std::string operator+(std::string const& text, arangodb::ShardID const& s) {
+static inline std::string operator+(std::string const& text,
+                                    arangodb::ShardID const& s) {
   return text + "s" + std::to_string(s.id);
 }
 // Allow ShardID to be added to std::strings
-static inline std::string operator+(arangodb::ShardID const& s, std::string const& text) {
-  return  "s" + std::to_string(s.id) + text;
+static inline std::string operator+(arangodb::ShardID const& s,
+                                    std::string const& text) {
+  return "s" + std::to_string(s.id) + text;
 }

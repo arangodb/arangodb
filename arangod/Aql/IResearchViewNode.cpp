@@ -610,7 +610,8 @@ ViewSnapshotPtr snapshotDBServer(IResearchViewNode const& node,
     if (!collection) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-          absl::StrCat("failed to find shard by id '", std::string{shard}, "'"));
+          absl::StrCat("failed to find shard by id '", std::string{shard},
+                       "'"));
     }
     if (options.restrictSources &&
         !options.sources.contains(collection->planId())) {

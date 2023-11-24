@@ -660,14 +660,14 @@ struct InsertOperationCtx {
       bool usesDefaultShardingAttributes;
       if (userSpecifiedKey) {
         return collinfo.getResponsibleShard(value, /*docComplete*/ true,
-                                         usesDefaultShardingAttributes);
+                                            usesDefaultShardingAttributes);
       } else {
         // we pass in the generated _key so we do not need to rebuild the input
         // slice
         TRI_ASSERT(!key.empty() || !collinfo.mustCreateKeyOnCoordinator());
-        return collinfo.getResponsibleShard(
-            value, /*docComplete*/ true, usesDefaultShardingAttributes,
-            std::string_view(key));
+        return collinfo.getResponsibleShard(value, /*docComplete*/ true,
+                                            usesDefaultShardingAttributes,
+                                            std::string_view(key));
       }
       // Now perform the above mentioned check:
       if (userSpecifiedKey &&
@@ -886,7 +886,8 @@ futures::Future<OperationResult> revisionOnCoordinator(
   for (auto const& p : *shards) {
     auto future = network::sendRequestRetry(
         pool, "shard:" + p.first, fuerte::RestVerb::Get,
-        "/_api/collection/" + StringUtils::urlEncode(std::string{p.first}) + "/revision",
+        "/_api/collection/" + StringUtils::urlEncode(std::string{p.first}) +
+            "/revision",
         VPackBuffer<uint8_t>(), reqOpts);
     futures.emplace_back(std::move(future));
   }
@@ -947,7 +948,8 @@ futures::Future<OperationResult> checksumOnCoordinator(
   for (auto const& p : *shards) {
     auto future = network::sendRequestRetry(
         pool, "shard:" + p.first, fuerte::RestVerb::Get,
-        "/_api/collection/" + StringUtils::urlEncode(std::string{p.first}) + "/checksum",
+        "/_api/collection/" + StringUtils::urlEncode(std::string{p.first}) +
+            "/checksum",
         VPackBuffer<uint8_t>(), reqOpts);
     futures.emplace_back(std::move(future));
   }
@@ -1133,7 +1135,8 @@ futures::Future<OperationResult> figuresOnCoordinator(
   for (auto const& p : *shards) {
     auto future = network::sendRequestRetry(
         pool, "shard:" + p.first, fuerte::RestVerb::Get,
-        "/_api/collection/" + StringUtils::urlEncode(std::string{p.first}) + "/figures",
+        "/_api/collection/" + StringUtils::urlEncode(std::string{p.first}) +
+            "/figures",
         VPackBuffer<uint8_t>(), reqOpts);
     futures.emplace_back(std::move(future));
   }
@@ -1224,7 +1227,8 @@ futures::Future<OperationResult> countOnCoordinator(
 
     futures.emplace_back(network::sendRequestRetry(
         pool, "shard:" + p.first, fuerte::RestVerb::Get,
-        "/_api/collection/" + StringUtils::urlEncode(std::string{p.first}) + "/count",
+        "/_api/collection/" + StringUtils::urlEncode(std::string{p.first}) +
+            "/count",
         VPackBuffer<uint8_t>(), reqOpts, std::move(headers)));
   }
 
@@ -1714,68 +1718,70 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
                                         api);
     }
 
-    return std::move(f).thenValue([=, &trx,
-                                   opCtx(std::move(opCtx))](Result&& r) mutable
-                                  -> Future<OperationResult> {
-      if (r.fail()) {
-        return OperationResult(std::move(r), options);
-      }
-
-      // Now prepare the requests:
-      auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
-      std::vector<Future<network::Response>> futures;
-      futures.reserve(opCtx.shardMap.size());
-
-      for (auto const& it : opCtx.shardMap) {
-        VPackBuffer<uint8_t> buffer;
-        if (!useMultiple) {
-          TRI_ASSERT(it.second.size() == 1);
-          buffer.append(slice.begin(), slice.byteSize());
-        } else {
-          VPackBuilder reqBuilder(buffer);
-          reqBuilder.openArray(/*unindexed*/ true);
-          for (VPackSlice value : it.second) {
-            reqBuilder.add(value);
+    return std::move(f).thenValue(
+        [=, &trx, opCtx(std::move(opCtx))](
+            Result&& r) mutable -> Future<OperationResult> {
+          if (r.fail()) {
+            return OperationResult(std::move(r), options);
           }
-          reqBuilder.close();
-        }
 
-        network::Headers headers;
-        // Just make sure that no dirty read flag makes it here, since we
-        // are writing and then `addTransactionHeaderForShard` might
-        // misbehave!
-        TRI_ASSERT(!trx.state()->options().allowDirtyReads);
-        addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first,
-                                     headers);
-        futures.emplace_back(network::sendRequestRetry(
-            pool, "shard:" + it.first, fuerte::RestVerb::Delete,
-            absl::StrCat("/_api/document/", StringUtils::urlEncode(std::string{it.first})),
-            std::move(buffer), reqOpts, std::move(headers)));
-      }
+          // Now prepare the requests:
+          auto* pool =
+              trx.vocbase().server().getFeature<NetworkFeature>().pool();
+          std::vector<Future<network::Response>> futures;
+          futures.reserve(opCtx.shardMap.size());
 
-      // Now listen to the results:
-      if (!useMultiple) {
-        TRI_ASSERT(futures.size() == 1);
-        auto cb = [options](network::Response&& res) -> OperationResult {
-          if (res.error != fuerte::Error::NoError) {
-            return OperationResult(network::fuerteToArangoErrorCode(res),
-                                   options);
+          for (auto const& it : opCtx.shardMap) {
+            VPackBuffer<uint8_t> buffer;
+            if (!useMultiple) {
+              TRI_ASSERT(it.second.size() == 1);
+              buffer.append(slice.begin(), slice.byteSize());
+            } else {
+              VPackBuilder reqBuilder(buffer);
+              reqBuilder.openArray(/*unindexed*/ true);
+              for (VPackSlice value : it.second) {
+                reqBuilder.add(value);
+              }
+              reqBuilder.close();
+            }
+
+            network::Headers headers;
+            // Just make sure that no dirty read flag makes it here, since we
+            // are writing and then `addTransactionHeaderForShard` might
+            // misbehave!
+            TRI_ASSERT(!trx.state()->options().allowDirtyReads);
+            addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first,
+                                         headers);
+            futures.emplace_back(network::sendRequestRetry(
+                pool, "shard:" + it.first, fuerte::RestVerb::Delete,
+                absl::StrCat("/_api/document/",
+                             StringUtils::urlEncode(std::string{it.first})),
+                std::move(buffer), reqOpts, std::move(headers)));
           }
-          return network::clusterResultRemove(res.statusCode(),
-                                              res.response().stealPayload(),
-                                              std::move(options), {});
-        };
-        return std::move(futures[0]).thenValue(cb);
-      }
 
-      return futures::collectAll(std::move(futures))
-          .thenValue([opCtx = std::move(opCtx)](
-                         std::vector<Try<network::Response>>&& results)
-                         -> OperationResult {
-            return handleCRUDShardResponsesFast(network::clusterResultRemove,
-                                                opCtx, results);
-          });
-    });
+          // Now listen to the results:
+          if (!useMultiple) {
+            TRI_ASSERT(futures.size() == 1);
+            auto cb = [options](network::Response&& res) -> OperationResult {
+              if (res.error != fuerte::Error::NoError) {
+                return OperationResult(network::fuerteToArangoErrorCode(res),
+                                       options);
+              }
+              return network::clusterResultRemove(res.statusCode(),
+                                                  res.response().stealPayload(),
+                                                  std::move(options), {});
+            };
+            return std::move(futures[0]).thenValue(cb);
+          }
+
+          return futures::collectAll(std::move(futures))
+              .thenValue([opCtx = std::move(opCtx)](
+                             std::vector<Try<network::Response>>&& results)
+                             -> OperationResult {
+                return handleCRUDShardResponsesFast(
+                    network::clusterResultRemove, opCtx, results);
+              });
+        });
   }
 
   // Not all shard keys are known in all documents.
@@ -1819,7 +1825,8 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
           addTransactionHeaderForShard(trx, *shardIds, shard, headers);
           futures.emplace_back(network::sendRequestRetry(
               pool, "shard:" + shard, fuerte::RestVerb::Delete,
-              absl::StrCat("/_api/document/", StringUtils::urlEncode(std::string{shard})),
+              absl::StrCat("/_api/document/",
+                           StringUtils::urlEncode(std::string{shard})),
               /*cannot move*/ buffer, reqOpts, std::move(headers)));
         }
 
@@ -1895,7 +1902,8 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
     addTransactionHeaderForShard(trx, *shardIds, /*shard*/ p.first, headers);
     auto future = network::sendRequestRetry(
         pool, "shard:" + p.first, fuerte::RestVerb::Put,
-        "/_api/collection/" + StringUtils::urlEncode(std::string{p.first}) + "/truncate",
+        "/_api/collection/" + StringUtils::urlEncode(std::string{p.first}) +
+            "/truncate",
         std::move(buffer), reqOpts, std::move(headers));
     futures.emplace_back(std::move(future));
   }
@@ -2588,15 +2596,15 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
           std::string_view const ref(
               slice.get(StaticStrings::KeyString).stringView());
           // We send to single endpoint
-          url =
-              absl::StrCat("/_api/document/", StringUtils::urlEncode(std::string{it.first}),
-                           "/", StringUtils::urlEncode(ref.data(), ref.size()));
+          url = absl::StrCat("/_api/document/",
+                             StringUtils::urlEncode(std::string{it.first}), "/",
+                             StringUtils::urlEncode(ref.data(), ref.size()));
           buffer.append(slice.begin(), slice.byteSize());
 
         } else {
           // We send to Babies endpoint
-          url =
-              absl::StrCat("/_api/document/", StringUtils::urlEncode(std::string{it.first}));
+          url = absl::StrCat("/_api/document/",
+                             StringUtils::urlEncode(std::string{it.first}));
 
           VPackBuilder builder(buffer);
           builder.clear();
@@ -2675,11 +2683,13 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
       if (!useMultiple) {
         // send to single document API
         std::string_view key(slice.get(StaticStrings::KeyString).stringView());
-        url = absl::StrCat("/_api/document/", StringUtils::urlEncode(std::string{shard}),
-                           "/", StringUtils::urlEncode(key.data(), key.size()));
+        url = absl::StrCat("/_api/document/",
+                           StringUtils::urlEncode(std::string{shard}), "/",
+                           StringUtils::urlEncode(key.data(), key.size()));
       } else {
         // send to batch API
-        url = absl::StrCat("/_api/document/", StringUtils::urlEncode(std::string{shard}));
+        url = absl::StrCat("/_api/document/",
+                           StringUtils::urlEncode(std::string{shard}));
       }
       futures.emplace_back(network::sendRequestRetry(
           pool, "shard:" + shard, restVerb, std::move(url),
@@ -2767,8 +2777,9 @@ Result recalculateCountsOnAllDBServers(ClusterFeature& feature,
   std::vector<network::FutureRes> futures;
   for (auto const& shard : *shardList) {
     for (ServerID const& serverId : shard.second) {
-      std::string uri = baseUrl + basics::StringUtils::urlEncode(std::string{shard.first}) +
-                        "/recalculateCount";
+      std::string uri =
+          baseUrl + basics::StringUtils::urlEncode(std::string{shard.first}) +
+          "/recalculateCount";
       auto f = network::sendRequestRetry(pool, "server:" + serverId,
                                          fuerte::RestVerb::Put, std::move(uri),
                                          body, options, headers);
