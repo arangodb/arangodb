@@ -5,10 +5,12 @@
 import os
 from queue import Queue, Empty
 import logging
+import pty
 from datetime import datetime, timedelta
 from subprocess import PIPE
 from threading import Thread
 import psutil
+import sys
 from async_client import (
     ArangoCLIprogressiveTimeoutExecutor,
     print_log,
@@ -19,40 +21,33 @@ from async_client import (
 
 # import tools.loghelper as lh
 # pylint: disable=dangerous-default-value
+ON_POSIX = "posix" in sys.builtin_module_names
 
-
-def enqueue_stdout(std_out, queue, instance, identifier, params):
-    """add stdout to the specified queue"""
-    try:
-        for line in iter(std_out.readline, b""):
-            # print("O: " + str(line))
-            queue.put((line, instance))
-    except ValueError as ex:
-        print_log(
-            f"{identifier} communication line seems to be closed: {str(ex)}", params
-        )
-    print_log(f"{identifier} x0 done!", params)
+def enqueue_output(fd, queue, instance, identifier, params):
+    """add stdout/stderr to the specified queue"""
+    while True:
+        try:
+            data = os.read(fd, 1024)
+        except OSError as ex:
+            print_log(
+                f"{identifier} communication line seems to be closed: {str(ex)}", params
+            )
+            break
+        if not data:
+            break
+        queue.put((data, instance))
+    print(f"{identifier} done! {params}")
+    print_log(f"{identifier} done!", params)
     queue.put(-1)
-    std_out.close()
+    os.close(fd)
 
 
-def enqueue_stderr(std_err, queue, instance, identifier, params):
-    """add stderr to the specified queue"""
-    try:
-        for line in iter(std_err.readline, b""):
-            # print("E: " + str(line))
-            queue.put((line, instance))
-    except ValueError as ex:
-        print_log(
-            f"{identifier} communication line seems to be closed: {str(ex)}", params
-        )
-    print_log(f"{identifier} x1 done!", params)
-    queue.put(-1)
-    std_err.close()
-
-
-
-class ArangoCLIprogressiveTimeoutExecutorWindows(ArangoCLIprogressiveTimeoutExecutor):
+class ArangoCLIprogressiveTimeoutExecutorPosix(ArangoCLIprogressiveTimeoutExecutor):
+    """
+    Abstract base class to run arangodb cli tools
+    with username/password/endpoint specification
+    timeout will be relative to the last thing printed.
+    """
 
     # pylint: disable=too-few-public-methods too-many-arguments disable=too-many-instance-attributes disable=too-many-statements disable=too-many-branches disable=too-many-locals
     def __init__(self, config, connect_instance, deadline_signal=-1):
@@ -93,42 +88,37 @@ class ArangoCLIprogressiveTimeoutExecutorWindows(ArangoCLIprogressiveTimeoutExec
                 deadline = datetime.now() + timedelta(seconds=deadline)
         final_deadline = deadline + timedelta(seconds=deadline_grace_period)
         logging.info("%s: launching %s", {identifier}, str(run_cmd))
+        master, slave = pty.openpty()
         with psutil.Popen(
             run_cmd,
-            stdout=PIPE,
-            stderr=PIPE,
-            close_fds=False,
+            stdout=slave,
+            stderr=slave,
+            close_fds=ON_POSIX,
             cwd=self.cfg.test_data_dir.resolve(),
             env=self.get_environment(params),
         ) as process:
+            os.close(slave)
             # pylint: disable=consider-using-f-string
             params["pid"] = process.pid
             queue = Queue()
-            thread1 = Thread(
+            io_thread = Thread(
                 name=f"readIO {identifier}",
-                target=enqueue_stdout,
-                args=(process.stdout, queue, self.connect_instance, identifier, params),
+                target=enqueue_output,
+                args=(master, queue, self.connect_instance, identifier, params),
             )
-            thread2 = Thread(
-                name="readErrIO {identifier}",
-                target=enqueue_stderr,
-                args=(process.stderr, queue, self.connect_instance, identifier, params),
-            )
-            thread1.start()
-            thread2.start()
+            io_thread.start()
 
             try:
                 logging.info(
-                    "%s me PID:%s launched PID:%s with LWPID:%s and LWPID:%s",
+                    "%s me PID:%s launched PID:%s with LWPID:%s",
                     identifier,
                     str(os.getpid()),
                     str(process.pid),
-                    str(thread1.native_id),
-                    str(thread2.native_id),
+                    str(io_thread.native_id),
                 )
             except AttributeError:
                 logging.info(
-                    "%s me PID:%s launched PID:%s with LWPID:N/A and LWPID:N/A",
+                    "%s me PID:%s launched PID:%s with LWPID:N/A",
                     identifier,
                     str(os.getpid()),
                     str(process.pid),
@@ -137,7 +127,6 @@ class ArangoCLIprogressiveTimeoutExecutorWindows(ArangoCLIprogressiveTimeoutExec
             # read line without blocking
             have_progressive_timeout = False
             tcount = 0
-            close_count = 0
             have_deadline = 0
             deadline_grace_count = 0
             while not have_progressive_timeout:
@@ -154,10 +143,8 @@ class ArangoCLIprogressiveTimeoutExecutorWindows(ArangoCLIprogressiveTimeoutExec
                     line_filter = line_filter or ret
                     tcount = 0
                     if not isinstance(line, tuple):
-                        close_count += 1
-                        print_log(f"{identifier} 1 IO Thead done!", params)
-                        if close_count == 2:
-                            break
+                        print_log(f"{identifier} 1 IO Thread done!", params)
+                        break
                 except Empty:
                     tcount += 1
                     have_progressive_timeout = tcount >= progressive_timeout
@@ -203,8 +190,7 @@ class ArangoCLIprogressiveTimeoutExecutorWindows(ArangoCLIprogressiveTimeoutExec
                         pass
                     process.kill()
                     kill_children(identifier, params, children)
-                    thread1.join()
-                    thread2.join()
+                    io_thread.join()
                     return {
                         "progressive_timeout": True,
                         "have_deadline": True,
@@ -282,8 +268,7 @@ class ArangoCLIprogressiveTimeoutExecutorWindows(ArangoCLIprogressiveTimeoutExec
                 print_log(f"{identifier} done", params)
             kill_children(identifier, params, children)
             print_log(f"{identifier} joining io Threads", params)
-            thread1.join()
-            thread2.join()
+            io_thread.join()
             print_log(f"{identifier} OK", params)
 
         return {
