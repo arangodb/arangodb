@@ -886,10 +886,21 @@ auto ensureIndexCoordinatorReplication2Inner(
                   }
                   return false;
                 })
-            .thenValue([&clusterInfo](auto index) {
-              // Need to wait here, until ClusterInfo has updated to latest
-              // plan.
-              return clusterInfo.waitForPlan(index);
+            .thenValue([&clusterInfo,
+                        &server](auto index) -> futures::Future<Result> {
+              if (clusterInfo.getPlanIndex() < index) {
+                // Need to wait here, until ClusterInfo has updated to latest
+                // plan.
+                auto& agencyCache =
+                    server.getFeature<ClusterFeature>().agencyCache();
+                auto [version, _] = agencyCache.read(std::vector<std::string>{
+                    AgencyCommHelper::path("Plan/Version")});
+                auto planVersion = version->slice()[0]
+                                       .get({"arango", "Plan", "Version"})
+                                       .getNumber<uint64_t>();
+                return clusterInfo.waitForPlanVersion(planVersion);
+              }
+              return Result{};
             });
     auto res = waitOnSuccess.get();
     if (res.fail()) {
