@@ -3599,10 +3599,9 @@ arangodb::Result unlockServersTrxCommit(
   std::vector<Future<network::Response>> futures;
   futures.reserve(lockedServers.size());
 
-  for (auto const& dbServer : lockedServers) {
-    futures.emplace_back(network::sendRequestRetry(pool, "server:" + dbServer,
-                                                   fuerte::RestVerb::Post, url,
-                                                   body, reqOpts));
+  for (auto const& server : lockedServers) {
+    futures.emplace_back(network::sendRequestRetry(
+        pool, "server:" + server, fuerte::RestVerb::Post, url, body, reqOpts));
   }
 
   std::ignore = futures::collectAll(futures).get();
