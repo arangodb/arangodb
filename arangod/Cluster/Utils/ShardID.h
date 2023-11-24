@@ -32,10 +32,6 @@
 
 namespace arangodb {
 
-namespace velocypack {
-class Value;
-}
-
 struct ShardID {
   static ResultT<ShardID> shardIdFromString(std::string_view s);
 
@@ -56,8 +52,6 @@ struct ShardID {
   ShardID& operator=(ShardID&&) = default;
 
   operator std::string() const;
-
-  operator arangodb::velocypack::Value() const;
 
   friend auto operator<=>(ShardID const&, ShardID const&) = default;
   friend bool operator==(ShardID const&, ShardID const&) = default;
@@ -90,7 +84,7 @@ struct ShardID {
       }
       return res;
     } else {
-      return f.apply("s" + std::to_string(x.id));
+      return f.apply(std::string{x});
     }
   }
 
@@ -119,7 +113,7 @@ struct fmt::formatter<arangodb::ShardID> {
 
   template<typename FormatContext>
   auto format(arangodb::ShardID const& shardId, FormatContext& ctx) {
-    return format_to(ctx.out(), "{}", "s" + std::to_string(shardId.id));
+    return format_to(ctx.out(), "s{}", std::to_string(shardId.id));
   }
 };
 

@@ -189,4 +189,51 @@ TEST(ShardIDTest, canBeSerializedAsUnorderdMap) {
 
   EXPECT_EQ(deserialized, shardIds);
 }
-// TODO: Add tests for inspection
+
+TEST(ShardIDTest, canBeSerializedAsFlatHashMap) {
+  containers::FlatHashMap<ShardID, uint64_t> shardIds{};
+  shardIds.emplace(ShardID{42}, 42);
+  shardIds.emplace(ShardID{1337}, 1337);
+  shardIds.emplace(ShardID{91}, 91);
+
+  auto result = velocypack::serialize(shardIds);
+  // As this is a set, the ordering is guaranteed. Note: it is different from
+  // injection order!
+  ASSERT_TRUE(result.isObject());
+  EXPECT_TRUE(result.hasKey("s42"));
+  EXPECT_TRUE(result.get("s42").isNumber());
+  EXPECT_EQ(result.get("s42").getNumber<uint64_t>(), 42);
+
+  EXPECT_TRUE(result.hasKey("s1337"));
+  EXPECT_TRUE(result.get("s1337").isNumber());
+  EXPECT_EQ(result.get("s1337").getNumber<uint64_t>(), 1337);
+
+  EXPECT_TRUE(result.hasKey("s91"));
+  EXPECT_TRUE(result.get("s91").isNumber());
+  EXPECT_EQ(result.get("s91").getNumber<uint64_t>(), 91);
+
+  auto deserialized =
+      velocypack::deserialize<containers::FlatHashMap<ShardID, uint64_t>>(
+          result.slice());
+
+  EXPECT_EQ(deserialized, shardIds);
+}
+
+TEST(ShardIDTest, canBeFMTFormatted) {
+  ShardID shard{42};
+  EXPECT_EQ(fmt::format("{}", shard), "s42");
+}
+
+TEST(ShardIDTest, canBeConcateatedWithStrings) {
+  ShardID shard{42};
+  EXPECT_EQ(shard + "foo", "s42foo");
+  EXPECT_EQ("foo" + shard, "foos42");
+}
+
+TEST(ShardIDTest, testInvalidShard) {
+  EXPECT_FALSE(ShardID::invalidShard().isValid());
+  EXPECT_FALSE(ShardID{0}.isValid());
+  EXPECT_TRUE(ShardID{1}.isValid());
+  EXPECT_TRUE(ShardID{42}.isValid());
+  EXPECT_TRUE(ShardID{1337}.isValid());
+}

@@ -24,7 +24,8 @@
 
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
-#include <velocypack/Value.h>
+
+#include <absl/strings/str_cat.h>
 
 arangodb::ResultT<arangodb::ShardID> arangodb::ShardID::shardIdFromString(
     std::string_view s) {
@@ -47,11 +48,9 @@ arangodb::ShardID::ShardID(std::string_view id) {
   *this = maybeShardID.get();
 }
 arangodb::ShardID::operator std::string() const {
-  return "s" + std::to_string(id);
+  return absl::StrCat("s", std::to_string(id));
 }
-arangodb::ShardID::operator arangodb::velocypack::Value() const {
-  return arangodb::velocypack::Value("s" + std::to_string(id));
-}
+
 bool arangodb::ShardID::operator==(std::string_view other) const {
   return other == std::string{*this};
 }
@@ -68,10 +67,10 @@ std::ostream& arangodb::operator<<(std::ostream& o,
   return o;
 }
 std::string operator+(const std::string& text, const arangodb::ShardID& s) {
-  return text + "s" + std::to_string(s.id);
+  return absl::StrCat(text, "s", std::to_string(s.id));
 }
 std::string operator+(const arangodb::ShardID& s, const std::string& text) {
-  return "s" + std::to_string(s.id) + text;
+  return absl::StrCat("s", std::to_string(s.id), text);
 }
 
 auto std::hash<arangodb::ShardID>::operator()(
