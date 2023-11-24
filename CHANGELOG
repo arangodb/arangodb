@@ -1,6 +1,8 @@
 v3.11.6 (XXXX-XX-XX)
 --------------------
 
+* Stabilize detaching of threads test.
+
 * Rebuilt included rclone v1.62.2 with go1.21.4.
 
 * Updated ArangoDB Starter to v0.17.2 and arangosync to v2.19.5.
