@@ -8958,6 +8958,11 @@ void arangodb::aql::optimizeProjections(Optimizer* opt,
       auto* joinNode = ExecutionNode::castTo<JoinNode*>(n);
       size_t index = 0;
       for (auto& it : joinNode->getIndexInfos()) {
+        if (it.isLateMaterialized) {
+          // For late materialization in join nodes, that variables
+          // are already set by the optimizer rule for late materialization
+          continue;
+        }
         modified |= replace(n, it.projections, it.outVariable, index++);
       }
     } else {
