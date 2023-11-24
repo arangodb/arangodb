@@ -20,7 +20,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <Aql/Quantifier.h>
+
 #include <Aql/Optimizer/ExpressionMatcher/Matchable.h>
+#include <Aql/Optimizer/ExpressionMatcher/Matchers/NodeType.h>
+
+#include <Assertions/Assert.h>
 
 namespace arangodb::aql::expression_matcher {
 
@@ -45,5 +50,7 @@ struct Quantifier {
 
   ::arangodb::aql::Quantifier::Type which;
 };
+
+auto quantifier(::arangodb::aql::Quantifier::Type which) -> Quantifier;
 
 }  // namespace arangodb::aql::expression_matcher
