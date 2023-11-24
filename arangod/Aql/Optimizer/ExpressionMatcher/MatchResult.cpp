@@ -21,6 +21,7 @@
 #include "MatchResult.h"
 
 #include <string>
+#include <sstream>
 #include <unordered_map>
 #include <variant>
 #include <optional>
@@ -47,6 +48,12 @@ auto toStream(std::ostream& os, MatchResult const& result) -> std::ostream& {
   os << fmt::format("matches:\n  {}", fmt::join(keys, "\n  "));
 
   return os;
+}
+
+auto toString(MatchResult const& result) -> std::string {
+  auto buffer = std::stringstream{};
+  toStream(buffer, result);
+  return buffer.str();
 }
 
 }  // namespace arangodb::aql::expression_matcher

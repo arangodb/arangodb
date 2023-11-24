@@ -101,4 +101,5 @@ struct MatchResult {
 };
 
 auto toStream(std::ostream&, MatchResult const& result) -> std::ostream&;
+auto toString(MatchResult const& result) -> std::string;
 }  // namespace arangodb::aql::expression_matcher
