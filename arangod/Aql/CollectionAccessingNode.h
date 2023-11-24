@@ -105,7 +105,7 @@ class CollectionAccessingNode : public DataAccessingNode {
    *
    * @return The Shard this node is restricted to
    */
-  ShardID const& restrictedShard() const;
+  ShardID restrictedShard() const;
 
   /// @brief set the prototype collection when using distributeShardsLike
   void setPrototype(arangodb::aql::Collection const* prototypeCollection,

@@ -35,19 +35,9 @@
 namespace arangodb {
 
 struct ShardID {
-  static ResultT<ShardID> shardIdFromString(std::string_view s) {
-    if (s.empty() || s.at(0) != 's') {
-      return Result{TRI_ERROR_BAD_PARAMETER,
-                    "Expected ShardID to start with 's'"};
-    }
-    auto res = basics::StringUtils::try_uint64(s.data() + 1, s.length() - 1);
-    if (res.fail()) {
-      return std::move(res.result());
-    }
-    return ShardID{res.get()};
-  }
+  static ResultT<ShardID> shardIdFromString(std::string_view s);
 
-  static ShardID invalidShard() { return ShardID{0}; }
+  static ShardID invalidShard();
 
   // Default constructor required for Inspectors.
   // Note: This shardID is considered Invalid.
@@ -55,13 +45,7 @@ struct ShardID {
 
   explicit ShardID(uint64_t id) : id(id) {}
 
-  explicit ShardID(std::string_view id) {
-    auto maybeShardID = shardIdFromString(id);
-    if (maybeShardID.fail()) {
-      THROW_ARANGO_EXCEPTION(maybeShardID.result());
-    }
-    *this = maybeShardID.get();
-  }
+  explicit ShardID(std::string_view id);
 
   ~ShardID() = default;
   ShardID(ShardID const&) = default;
@@ -69,27 +53,18 @@ struct ShardID {
   ShardID& operator=(ShardID const&) = default;
   ShardID& operator=(ShardID&&) = default;
 
-  operator std::string() const { return "s" + std::to_string(id); }
+  operator std::string() const;
 
-  operator arangodb::velocypack::Value() const {
-    return arangodb::velocypack::Value("s" + std::to_string(id));
-  }
+  operator arangodb::velocypack::Value() const;
 
   friend auto operator<=>(ShardID const&, ShardID const&) = default;
   friend bool operator==(ShardID const&, ShardID const&) = default;
 
-  bool operator==(std::string_view other) const {
-    return other == std::string{*this};
-  }
+  bool operator==(std::string_view other) const;
 
-  bool operator==(std::string const& other) const {
-    return other == std::string{*this};
-  }
+  bool operator==(std::string const& other) const;
 
-  bool isValid() const noexcept {
-    // We can never have ShardID 0. So we use it as invalid value.
-    return id != 0;
-  }
+  bool isValid() const noexcept;
 
   // Add an inspector implementation, shardIDs will be serialized and
   // deserialized as "s" + number for compatibility reasons.
@@ -121,11 +96,7 @@ struct ShardID {
 };
 
 // Make ShardID logable
-static inline std::ostream& operator<<(std::ostream& o,
-                                       arangodb::ShardID const& r) {
-  o << "s" << r.id;
-  return o;
-}
+std::ostream& operator<<(std::ostream& o, arangodb::ShardID const& r);
 
 }  // namespace arangodb
 
@@ -133,9 +104,7 @@ static inline std::ostream& operator<<(std::ostream& o,
 template<>
 struct std::hash<arangodb::ShardID> {
   [[nodiscard]] auto operator()(arangodb::ShardID const& v) const noexcept
-      -> std::size_t {
-    return std::hash<uint64_t>{}(v.id);
-  }
+      -> std::size_t;
 };
 
 // Make ShardID fmt::formatable
@@ -153,12 +122,6 @@ struct fmt::formatter<arangodb::ShardID> {
 };
 
 // Allow ShardID to be added to std::strings
-static inline std::string operator+(std::string const& text,
-                                    arangodb::ShardID const& s) {
-  return text + "s" + std::to_string(s.id);
-}
+std::string operator+(std::string const& text, arangodb::ShardID const& s);
 // Allow ShardID to be added to std::strings
-static inline std::string operator+(arangodb::ShardID const& s,
-                                    std::string const& text) {
-  return "s" + std::to_string(s.id) + text;
-}
+std::string operator+(arangodb::ShardID const& s, std::string const& text);
