@@ -21,6 +21,7 @@ target_include_directories(arango_shell PRIVATE ${CMAKE_SOURCE_DIR}/client-tools
 
 if (USE_V8)
   if (MSVC AND NOT(SKIP_PACKAGING))
+    set(ARANGOSH_FRIENDLY_STRING       "arangosh - commandline client")
     generate_product_version(ProductVersionFiles_arangosh
       NAME arangosh
       FILE_DESCRIPTION ${ARANGOSH_FRIENDLY_STRING}

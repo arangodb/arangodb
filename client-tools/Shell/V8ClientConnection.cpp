@@ -700,10 +700,8 @@ static void ClientConnection_reconnect(
     TRI_V8_THROW_EXCEPTION_PARAMETER(errorMessage.c_str());
   }
 
-  TRI_ExecuteJavaScriptString(
-      isolate, isolate->GetCurrentContext(),
-      TRI_V8_STRING(isolate, "require('internal').db._flushCache();"),
-      TRI_V8_ASCII_STRING(isolate, "reload db object"), false);
+  TRI_ExecuteJavaScriptString(isolate, "require('internal').db._flushCache();",
+                              "reload db object", false);
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END

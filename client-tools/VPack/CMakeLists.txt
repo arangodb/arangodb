@@ -1,4 +1,5 @@
 if (MSVC AND NOT(SKIP_PACKAGING))
+  set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - VelocyPack formatter")
   generate_product_version(ProductVersionFiles_arangovpack
     NAME arangovpack
     FILE_DESCRIPTION ${ARANGO_VPACK_FRIENDLY_STRING}

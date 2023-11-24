@@ -1,4 +1,5 @@
 if (MSVC AND NOT(SKIP_PACKAGING))
+  set(ARANGO_EXPORT_FRIENDLY_STRING  "arangoexport - data exporter")
   generate_product_version(ProductVersionFiles_arangoexport
     NAME arangoexport
     FILE_DESCRIPTION ${ARANGO_EXPORT_FRIENDLY_STRING}

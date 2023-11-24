@@ -1,4 +1,5 @@
 if (MSVC AND NOT(SKIP_PACKAGING))
+  set(ARANGO_IMPORT_FRIENDLY_STRING  "arangoimport - data importer")
   generate_product_version(ProductVersionFiles_arangoimport
     NAME arangoimport
     FILE_DESCRIPTION ${ARANGO_IMPORT_FRIENDLY_STRING}
