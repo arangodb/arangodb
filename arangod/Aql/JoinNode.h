@@ -59,6 +59,7 @@ class JoinNode : public ExecutionNode {
     transaction::Methods::IndexHandle index;
     Projections projections;
     Projections filterProjections;
+    std::vector<std::unique_ptr<Expression>> expressions;
     bool usedAsSatellite;  // TODO maybe use CollectionAccess class
     bool producesOutput;
   };

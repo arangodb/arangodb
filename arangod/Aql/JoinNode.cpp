@@ -128,6 +128,15 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
         Projections::fromVelocyPack(plan->getAst(), it, "filterProjections",
                                     plan->getAst()->query().resourceMonitor());
 
+    std::vector<std::unique_ptr<Expression>> expressions{};
+    if (it.get("expressions").isArray()) {
+      auto expressionsSlice = it.get("expressions");
+      for (auto const& expr : VPackArrayIterator(expressionsSlice)) {
+        expressions.push_back(
+            std::make_unique<Expression>(plan->getAst(), expr));
+      }
+    }
+
     bool const usedAsSatellite = it.get("usedAsSatellite").isTrue();
     bool const producesOutput = it.get("producesOutput").isTrue();
 
@@ -145,6 +154,7 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
                   .index = coll->indexByIdentifier(iid),
                   .projections = projections,
                   .filterProjections = filterProjections,
+                  .expressions = std::move(expressions),
                   .usedAsSatellite = usedAsSatellite,
                   .producesOutput = producesOutput});
 
@@ -211,6 +221,14 @@ void JoinNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
       builder.add("indexCoversFilterProjections",
                   VPackValue(it.filterProjections.usesCoveringIndex(it.index)));
     }
+    if (!it.expressions.empty()) {
+      builder.add(VPackValue("expressions"));
+      builder.openArray();
+      for (auto const& expr : it.expressions) {
+        expr->toVelocyPack(builder, true);
+      }
+      builder.close();  // array
+    }
     // index
     builder.add(VPackValue("index"));
     it.index->toVelocyPack(builder,
@@ -240,7 +258,6 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
     ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-
   RegIdSet writableOutputRegisters;
   containers::FlatHashMap<VariableId, RegisterId> varsToRegs;
 
@@ -273,6 +290,22 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
       }
     }
 
+    if (!idx.expressions.empty()) {
+      // TODO: currently only one expression will be interpreted as one const
+      // value in the future we should support multiple expressions
+      TRI_ASSERT(idx.expressions.size() == 1);
+      auto const& expr = idx.expressions[0];
+      TRI_ASSERT(expr != nullptr);
+      TRI_ASSERT(expr->isConstant());
+      // TRI_ASSERT(expr->isDeterministic()); <-- Later
+      VPackBuilder removeMe;
+      expr->toVelocyPack(removeMe, true);
+      LOG_DEVEL << "JoinNode";
+      LOG_DEVEL << removeMe.slice().toJson();
+    } else {
+      LOG_DEVEL << "JoinNode is Empty o0o0o0o00";  // TODO REMOVE
+    }
+
     // TODO probably those data structures can become one
     auto& data = infos.indexes.emplace_back();
     data.documentOutputRegister = documentOutputRegister;
@@ -280,6 +313,7 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
     data.collection = idx.collection;
     data.projections = idx.projections;
     data.producesOutput = idx.producesOutput;
+    data.tmpConstantExpression = std::nullopt;
 
     if (idx.filter) {
       auto& filter = data.filter.emplace();

@@ -268,6 +268,80 @@ const IndexPrimaryJoinTestSuite = function () {
       }
     },
     // TODO: Add additional FILTER for doc2._key (e.g. calculation compare last character)
+
+    testJoinFixedValuesEasy: function () {
+      const collectionA = db._createDocumentCollection('A');
+      collectionA.ensureIndex({type: "persistent", fields: ["x", "y"], unique: false});
+
+      const collectionB = db._createDocumentCollection('B');
+      collectionB.ensureIndex({type: "persistent", fields: ["y"], unique: true});
+
+      // insert some data. Every second document in A has x = 5.
+      // Apart from that, just incrementing y from 0 to 10.
+      for (let i = 0; i < 10; i++) {
+        collectionA.insert({
+          x: (i % 2 === 0) ? i : 5,
+          y: i,
+        });
+        collectionB.insert({
+          y: i,
+        });
+      }
+
+      const queryOptions = {
+        optimizer: {
+          rules: ["+join-index-nodes"]
+        },
+        maxNumberOfPlans: 1
+      };
+
+      const queryStringEasy = `
+        FOR doc1 IN A
+          FILTER doc1.x == 5
+            FOR doc2 IN B
+            FILTER doc1.y == doc2.y
+            RETURN [doc1, doc2]`;
+
+      db._profileQuery(queryStringEasy, null, queryOptions);
+      /*const q = db._query(queryStringEasy, null, queryOptions);
+      const qResult = q.toArray();
+      console.warn("Length is: " + qResult.length);
+      console.warn("Content is:");
+      console.warn(qResult);*/
+    },
+
+    testJoinFixedValuesComplex: function () {
+      const collectionA = db._createDocumentCollection('A');
+      collectionA.ensureIndex({type: "persistent", fields: ["x", "y"], unique: false});
+      // collectionA.ensureIndex({type: "persistent", fields: ["x"], unique: false});
+
+      const collectionB = db._createDocumentCollection('B');
+      collectionB.ensureIndex({type: "persistent", fields: ["x", "y", "z"], unique: true});
+
+      // insert some data. Every second document in A has x = 5.
+      // Apart from that, just incrementing y from 0 to 10.
+      for (let i = 0; i < 10; i++) {
+        collectionA.insert({
+          x: (i % 2 === 0) ? i : 5,
+          y: i,
+        });
+        collectionB.insert({
+          y: i,
+        });
+      }
+
+      const queryStringComplex = `
+      FOR i in 1..5 
+        FOR doc1 IN A
+          FILTER doc1.x == i
+            FOR doc2 IN B
+            FILTER doc1.y == doc2.y
+            FILTER doc2.x == (2 * i)
+            FILTER doc2.z == 8
+            RETURN [doc1, doc2]`;
+
+      db._explain(queryStringComplex);
+    },
   };
 };
 

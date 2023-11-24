@@ -3004,7 +3004,10 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
     storeKey(cache, _cache);
   }
 
-  bool reset(std::span<VPackSlice> span) override {
+  bool reset(std::span<VPackSlice> span,
+             std::span<VPackSlice> constants) override {
+    // TODO: Seek with constants
+
     _iterator->Seek(_bounds.start());
     return position(span);
   }

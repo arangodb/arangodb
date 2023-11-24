@@ -153,7 +153,9 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   while (inputRange.hasDataRow() && !output.isFull()) {
     if (!_currentRow) {
       std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
-      _strategy->reset();
+      LOG_JOIN << "Resetting strategy";
+      /*evaluate ast expressions*/
+      _strategy->reset(/*SLICE*/);
     }
 
     [[maybe_unused]] std::size_t rowCount = 0;

@@ -96,9 +96,13 @@ struct JoinExecutorInfos {
       // projections used for filtering
       Projections projections;
       std::vector<Variable const*> filterProjectionVars;
+
+      // expression used for resetting to the correct index position
+      // std::vector<std::unique_ptr<Expression>> resetExpressions;
     };
 
     std::optional<FilterInformation> filter;
+    std::optional<size_t> tmpConstantExpression;
   };
 
   RegisterId registerForVariable(VariableId id) const noexcept;

@@ -56,6 +56,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/Methods/Collections.h"
 
+#include <bitset>
 #include <span>
 #include <tuple>
 
@@ -64,9 +65,11 @@ using namespace arangodb::aql;
 using namespace arangodb::containers;
 using EN = arangodb::aql::ExecutionNode;
 
-#define LOG_JOIN_OPTIMIZER_RULE LOG_DEVEL_IF(false)
+#define LOG_JOIN_OPTIMIZER_RULE LOG_DEVEL_IF(true)
 
 namespace {
+
+enum IndexUsage { LEFT, RIGHT, NONE };
 
 bool indexNodeQualifies(IndexNode const& indexNode) {
   // not yet supported:
@@ -311,55 +314,274 @@ void optimizeJoinNode(ExecutionPlan& plan, JoinNode* jn) {
   removeUnnecessaryProjections(plan, jn);
 }
 
+bool constIndexConditionsMatches(
+    IndexNode const* firstNode, IndexNode const* otherNode,
+    std::map<Variable const*,
+             std::vector<std::vector<arangodb::basics::AttributeName>>>
+        constants) {
+  bool eligible = true;
+
+  auto buildOrderedIndexAttributes =
+      [](IndexNode const* indexNode,
+         std::map<Variable const*,
+                  std::vector<std::vector<arangodb::basics::AttributeName>>>&
+             constants) {
+        std::vector<std::string_view> usedIndexFields;
+        std::map<std::string_view, bool> orderedIndexAttributes;
+
+        for (auto const& element : constants) {
+          // TODO: We can get rid of this whole for-loop iteration later
+          // probably.
+          for (auto const& outerVector : element.second) {
+            for (auto const& innerVector : outerVector) {
+              usedIndexFields.push_back(innerVector.name);
+            }
+          }
+        }
+        for (auto const& field : indexNode->getIndexes()[0]->fields()) {
+          // TODO: I think the field[0] access needs to be fixed here.
+          // TODO: This is just a dummy-incomplete implementation right now.
+          // TODO: This covers e.g. "x" but not "x.y" represented as
+          // [...["x", "y"]...]
+          auto it = std::find(usedIndexFields.begin(), usedIndexFields.end(),
+                              field[0].name);
+          if (it != usedIndexFields.end()) {
+            orderedIndexAttributes.try_emplace(field[0].name, true);
+            LOG_JOIN_OPTIMIZER_RULE << "-> " << field[0].name
+                                    << ", value: true";
+          } else {
+            orderedIndexAttributes.try_emplace(field[0].name, false);
+            LOG_JOIN_OPTIMIZER_RULE << "-> " << field[0].name
+                                    << ", value: false";
+          }
+        }
+
+        return orderedIndexAttributes;
+      };
+
+  LOG_JOIN_OPTIMIZER_RULE << "Index information for first node:";
+  auto orderedIndexAttributesLHS =
+      buildOrderedIndexAttributes(firstNode, constants);
+
+  auto checkVarCoveredByIndex = [&](Variable const* var) {
+    LOG_JOIN_OPTIMIZER_RULE << "Checking index valid for var: " << var->name;
+    if (var->isEqualTo(*firstNode->outVariable())) {
+      LOG_JOIN_OPTIMIZER_RULE << "-> Var fits to first node's index";
+      return IndexUsage::LEFT;
+    } else if (var->isEqualTo(*otherNode->outVariable())) {
+      LOG_JOIN_OPTIMIZER_RULE << "-> Var fits to other node's index";
+      return IndexUsage::RIGHT;
+    }
+
+    LOG_JOIN_OPTIMIZER_RULE
+        << "Variable is not related to any index, we cannot optimize.";
+    return IndexUsage::NONE;
+  };
+
+  auto checkVariableEligible =
+      [&](Variable const* var,
+          std::vector<basics::AttributeName> const& attrs) -> bool {
+    LOG_JOIN_OPTIMIZER_RULE << "Calling checkVariableEligible: ";
+    // 1.) Check if the variable is related to the index of the first node
+    // or to the index of the second node.
+    auto result = checkVarCoveredByIndex(var);
+
+    if (result == IndexUsage::LEFT) {
+      for (auto const& elem : orderedIndexAttributesLHS) {
+        if (elem.first != var->name && !elem.second) {
+          // We've found another attribute here, which is not used and does not
+          // match our current variable to check. Therefore, we need to stop
+          // optimizing here.
+          return false;
+        } else {
+          // Match found between variable and index attribute. We can continue.
+          break;
+        }
+      }
+      LOG_JOIN_OPTIMIZER_RULE << "Variable: " << var->name << " is eligible";
+    } else if (result == IndexUsage::RIGHT) {
+      LOG_JOIN_OPTIMIZER_RULE << "Variable: " << var->name << " is eligible";
+      return true;
+    } else {
+      TRI_ASSERT(result == IndexUsage::NONE);
+      return false;
+    }
+
+    return true;
+  };
+
+  auto* otherRoot = otherNode->condition()->root();
+  if (otherRoot->type == NODE_TYPE_OPERATOR_NARY_OR) {
+    auto member = otherRoot->getMember(0);
+    TRI_ASSERT(member->numMembers() == 1);
+    if (member->type == NODE_TYPE_OPERATOR_NARY_AND) {
+      member = member->getMember(0);
+      size_t numMembers = member->numMembers();
+
+      if (member->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+        TRI_ASSERT(numMembers == 2);
+
+        auto lhsi = member->getMember(0);
+        auto rhsi = member->getMember(1);
+
+        std::pair<Variable const*, std::vector<basics::AttributeName>> lParts;
+        std::pair<Variable const*, std::vector<basics::AttributeName>> rParts;
+
+        if (lhsi->isAttributeAccessForVariable(lParts)) {
+          LOG_JOIN_OPTIMIZER_RULE << "attr name: " << lParts.first->name;
+          for (auto const& attr : lParts.second) {
+            LOG_JOIN_OPTIMIZER_RULE << " -> inner attr: " << attr.name;
+          }
+          eligible = checkVariableEligible(lParts.first, lParts.second);
+          if (!eligible) {
+            return false;
+          }
+        }
+
+        if (rhsi->isAttributeAccessForVariable(rParts)) {
+          LOG_JOIN_OPTIMIZER_RULE << "attr name: " << rParts.first->name;
+          for (auto const& attr : rParts.second) {
+            LOG_JOIN_OPTIMIZER_RULE << " -> inner attr: " << attr.name;
+          }
+          eligible = checkVariableEligible(rParts.first, rParts.second);
+          if (!eligible) {
+            return false;
+          }
+        }
+      }
+    }
+  }
+
+  LOG_JOIN_OPTIMIZER_RULE << "################## END ###############";
+  return eligible;
+}
+
 bool checkCandidatesEligible(
     ExecutionPlan& plan,
-    containers::SmallVector<IndexNode*, 8> const& candidates) {
-  size_t i = 0;
-  for (auto* c : candidates) {
-    if (i == 0) {
-      // first FOR loop. we expect it to not have any lookup condition
-      if (c->condition()->root() != nullptr) {
-        return false;
+    containers::SmallVector<IndexNode*, 8> const& candidates,
+    AstNode* constantValue) {
+  // This flag is set to true if the first index node has a lookup condition
+  // and all other indexes do match the order of conditions and the variables
+  std::map<Variable const*,
+           std::vector<std::vector<arangodb::basics::AttributeName>>>
+      outerCandidateConstantVariables = {};
+
+  size_t candidatePosition = 0;
+  for (auto* candidate : candidates) {
+    if (candidatePosition == 0) {
+      // first FOR loop. I may have a lookup condition. In case it has, it needs
+      // further checks later if the lookup conditions do match with the
+      // upcoming FOR loops.
+
+      auto const* root = candidate->condition()->root();
+      if (root != nullptr) {
+        // TODO: candidate->getVarsValid() + "doc1 case"
+        if (root->hasFlag(AstNodeFlagType::DETERMINED_CONSTANT)) {
+          if (root->type == NODE_TYPE_OPERATOR_NARY_OR) {
+            LOG_JOIN_OPTIMIZER_RULE << "FOUND NARY_OR";
+            TRI_ASSERT(root->numMembers() == 1);
+            auto member = root->getMember(0);
+            if (member->type == NODE_TYPE_OPERATOR_NARY_AND) {
+              LOG_JOIN_OPTIMIZER_RULE << "FOUND NARY_AND";
+              TRI_ASSERT(member->numMembers() == 1);
+              member = member->getMember(0);
+              if (member->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+                LOG_JOIN_OPTIMIZER_RULE << "FOUND BINARY_EQ";
+                TRI_ASSERT(member->numMembers() == 2);
+
+                auto lhsi = member->getMember(0);
+                auto rhsi = member->getMember(1);
+                // LATER Improvement TODO: Check "flag" isDeterministic <-- all
+                // allowed here then
+                if (lhsi->type == NODE_TYPE_VALUE) {
+                  LOG_DEVEL << "Setting constant value to lhsi";
+                  constantValue = lhsi;
+                } else if (rhsi->type == NODE_TYPE_VALUE) {
+                  LOG_DEVEL << "Setting constant value to rhsi";
+                  constantValue = rhsi;
+                }
+              }
+            }
+          }
+          if (constantValue != nullptr) {
+            LOG_DEVEL << "NOT A NULLPETER";
+            for (auto const* var : candidate->getVariablesSetHere()) {
+              outerCandidateConstantVariables.try_emplace(
+                  var, candidate->condition()->getConstAttributes(var, false));
+            }
+          } else {
+            LOG_DEVEL << "IT IS A NULLPETER";
+          }
+        } else {
+          LOG_JOIN_OPTIMIZER_RULE << "Not eligible for index join: "
+                                     "first index node has a lookup "
+                                     "condition";
+          return false;
+        }
       }
     } else {
       // follow-up FOR loop. we expect it to have a lookup condition
-      if (c->condition()->root() == nullptr) {
+      if (candidate->condition()->root() == nullptr) {
+        LOG_JOIN_OPTIMIZER_RULE << "Not eligible for index join: "
+                                   "index node does not have a "
+                                   "lookup condition";
         return false;
       }
-      auto const* root = c->condition()->root();
+      auto const* root = candidate->condition()->root();
       if (root == nullptr || root->type != NODE_TYPE_OPERATOR_NARY_OR ||
           root->numMembers() != 1) {
+        LOG_JOIN_OPTIMIZER_RULE << "I. (NARY_OR) Not eligible for index join: "
+                                   "index node's lookup condition "
+                                   "does not match";
         return false;
       }
       root = root->getMember(0);
       if (root == nullptr || root->type != NODE_TYPE_OPERATOR_NARY_AND ||
           root->numMembers() != 1) {
+        LOG_JOIN_OPTIMIZER_RULE
+            << "II. (NARY_AND) Not eligible for index join: "
+               "index node's lookup condition "
+               "does not match";
         return false;
       }
       root = root->getMember(0);
       if (root == nullptr || root->type != NODE_TYPE_OPERATOR_BINARY_EQ ||
           root->numMembers() != 2) {
+        LOG_JOIN_OPTIMIZER_RULE << "III. (BINARY_EQ) Not eligible for index "
+                                   "join: index node's lookup "
+                                   "condition does not match";
         return false;
       }
-      auto* lhs = root->getMember(0);
-      auto* rhs = root->getMember(1);
 
-      if (!joinConditionMatches(plan, lhs, rhs, c, candidates[0]) &&
-          !joinConditionMatches(plan, lhs, rhs, candidates[0], c)) {
-        LOG_JOIN_OPTIMIZER_RULE
-            << "IndexNode's lookup condition does not match";
-        return false;
+      if (!outerCandidateConstantVariables.empty()) {
+        bool eligible = constIndexConditionsMatches(
+            candidates[0], candidate, outerCandidateConstantVariables);
+        if (!eligible) {
+          LOG_JOIN_OPTIMIZER_RULE
+              << "IndexNode's outer loop has a condition, but inner loop "
+                 "does not match";
+          return false;
+        }
+      } else {
+        auto* lhs = root->getMember(0);
+        auto* rhs = root->getMember(1);
+        if (!joinConditionMatches(plan, lhs, rhs, candidate, candidates[0]) &&
+            !joinConditionMatches(plan, lhs, rhs, candidates[0], candidate)) {
+          LOG_JOIN_OPTIMIZER_RULE
+              << "IndexNode's lookup condition does not match";
+          return false;
+        }
       }
     }
 
     // if there is a post filter, make sure it only accesses variables
     // that are available before all index nodes
-    if (c->hasFilter()) {
+    if (candidate->hasFilter()) {
       VarSet vars;
-      c->filter()->variables(vars);
+      candidate->filter()->variables(vars);
 
       for (auto* other : candidates) {
-        if (other != c && other->setsVariable(vars)) {
+        if (other != candidate && other->setsVariable(vars)) {
           LOG_JOIN_OPTIMIZER_RULE << "IndexNode's post filter "
                                      "accesses variables that are "
                                      "not available before all "
@@ -373,25 +595,24 @@ bool checkCandidatesEligible(
     {
       IndexStreamOptions opts;
       opts.usedKeyFields = {0};  // for now only 0 is supported
-      if (c->projections().usesCoveringIndex()) {
-        opts.projectedFields.reserve(c->projections().size());
-        auto& proj = c->projections().projections();
+      if (candidate->projections().usesCoveringIndex()) {
+        opts.projectedFields.reserve(candidate->projections().size());
+        auto& proj = candidate->projections().projections();
         std::transform(proj.begin(), proj.end(),
                        std::back_inserter(opts.projectedFields),
                        [](auto const& p) { return p.coveringIndexPosition; });
       }
-      if (!c->getIndexes()[0]->supportsStreamInterface(opts)) {
+      if (!candidate->getIndexes()[0]->supportsStreamInterface(opts)) {
         LOG_JOIN_OPTIMIZER_RULE << "IndexNode's index does not "
                                    "support streaming interface";
         LOG_JOIN_OPTIMIZER_RULE
-            << "-> Index name: " << c->getIndexes()[0]->name()
-            << ", id: " << c->getIndexes()[0]->id();
+            << "-> Index name: " << candidate->getIndexes()[0]->name()
+            << ", id: " << candidate->getIndexes()[0]->id();
         return false;
       }
     }
-    ++i;
+    ++candidatePosition;
   }
-
   return true;
 }
 
@@ -469,18 +690,40 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
       while (true) {
         containers::SmallVector<IndexNode*, 8> candidates;
         findCandidates(startNode, candidates, handled);
+        // this needs to be passed through up to the executor
+        AstNode* constantValue = nullptr;
 
         if (candidates.size() >= 2) {
           LOG_JOIN_OPTIMIZER_RULE << "Found " << candidates.size()
                                   << " index nodes that qualify for joining";
-          bool const eligible = checkCandidatesEligible(*plan, candidates);
+          bool const eligible =
+              checkCandidatesEligible(*plan, candidates, constantValue);
+          if (constantValue == nullptr) {
+            LOG_DEVEL << "Why null?";
+          } else {
+            LOG_DEVEL << "Why not null?";
+          }
           if (eligible) {
             // we will now replace all candidate IndexNodes with a JoinNode,
             // and remove the previous IndexNodes from the plan
             LOG_JOIN_OPTIMIZER_RULE << "Should be eligible for index join";
             std::vector<JoinNode::IndexInfo> indexInfos;
             indexInfos.reserve(candidates.size());
+            size_t candidateCounter = 0;
             for (auto* c : candidates) {
+              std::vector<std::unique_ptr<Expression>> constExpressions{};
+              if (candidateCounter == 0) {
+                // TODO: Currently only first outer loop supported / implemented
+                // TODO: Currently constantValue is only a "constant value" but
+                // it can be any eligible expression
+                if (constantValue != nullptr) {
+                  auto e = std::make_unique<Expression>(plan->getAst(),
+                                                        constantValue);
+                  constExpressions.push_back(std::move(e));
+                } else {
+                  LOG_DEVEL << "NO EXPRESSION FOUND OR SET";
+                }
+              }
               indexInfos.emplace_back(JoinNode::IndexInfo{
                   .collection = c->collection(),
                   .outVariable = c->outVariable(),
@@ -490,9 +733,11 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                   .index = c->getIndexes()[0],
                   .projections = c->projections(),
                   .filterProjections = c->filterProjections(),
+                  .expressions = std::move(constExpressions),
                   .usedAsSatellite = c->isUsedAsSatellite(),
                   .producesOutput = c->isProduceResult()});
               handled.emplace(c);
+              candidateCounter++;
             }
             JoinNode* jn = plan->createNode<JoinNode>(
                 plan.get(), plan->nextId(), std::move(indexInfos),

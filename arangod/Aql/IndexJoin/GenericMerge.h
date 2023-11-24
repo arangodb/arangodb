@@ -52,6 +52,9 @@ struct GenericMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
  private:
   struct IndexStreamData {
     std::unique_ptr<StreamIteratorType> _iter;
+    std::span<SliceType>
+        _constants;  // <-- Do not store, will only be used whenever we call
+                     // reset (start from the input row)
     std::span<SliceType> _position;
     std::span<SliceType> _projections;
     DocIdType& _docId;
@@ -178,7 +181,7 @@ void GenericMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamData::
 template<typename SliceType, typename DocIdType, typename KeyCompare>
 void GenericMergeJoin<SliceType, DocIdType,
                       KeyCompare>::IndexStreamData::reset() {
-  exhausted = !_iter->reset(_position);
+  exhausted = !_iter->reset(_position, _constants);
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>

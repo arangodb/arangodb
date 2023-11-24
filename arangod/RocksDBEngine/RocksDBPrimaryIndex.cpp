@@ -1337,7 +1337,7 @@ struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
       TRI_ASSERT(opts.prefix_same_as_start);
       opts.iterate_upper_bound = &_end;
     });
-    seekInternal({});
+    seekInternal({}, {});
   }
 
   bool position(std::span<VPackSlice> span) const override {
@@ -1351,7 +1351,7 @@ struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
     return true;
   }
 
-  void seekInternal(std::string_view key) {
+  void seekInternal(std::string_view key, std::span<VPackSlice> constants) {
     if (key.empty()) {
       _iterator->Seek(_bounds.start());
     } else {
@@ -1368,7 +1368,7 @@ struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
 
   bool seek(std::span<VPackSlice> span) override {
     TRI_ASSERT(span.size() == 1 && span[0].isString());
-    seekInternal(span[0].stringView());
+    seekInternal(span[0].stringView(), {});
 
     return position(span);
   }
@@ -1404,8 +1404,9 @@ struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
     cache[0] = _cache;
   }
 
-  bool reset(std::span<VPackSlice> span) override {
-    seekInternal({});
+  bool reset(std::span<VPackSlice> span,
+             std::span<VPackSlice> constants) override {
+    seekInternal({}, {});
     return position(span);
   }
 };

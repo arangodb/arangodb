@@ -64,7 +64,8 @@ struct IndexStreamIterator {
 
   // called to reset the iterator to the initial position and loads that
   // positions keys into span. returns false if the iterator is exhausted.
-  virtual bool reset(std::span<SliceType> span) = 0;
+  virtual bool reset(std::span<SliceType> span,
+                     std::span<SliceType> constants) = 0;
 };
 
 struct AqlIndexStreamIterator
