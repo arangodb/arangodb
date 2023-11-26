@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added metric `arangodb_aql_cursors_memory_usage` to show the memory usage of
+  open, not yet fully consumed server-side query cursors.
+
 * Fixed MDS-1170: Significant performance degradation when queries are
   executed within transactions that involve edits.
 
