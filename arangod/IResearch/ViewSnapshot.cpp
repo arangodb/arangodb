@@ -43,8 +43,6 @@ namespace {
 class ViewSnapshotCookie final : public ViewSnapshot,
                                  public TransactionState::Cookie {
  public:
-  ViewSnapshotCookie() noexcept = default;
-
   explicit ViewSnapshotCookie(Links&& links) noexcept;
 
   void clear() noexcept;

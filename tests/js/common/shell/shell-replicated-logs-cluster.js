@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, fail, assertNotEqual */
+/*global assertEqual, assertTrue, fail, assertNotEqual, print */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -269,16 +269,29 @@ function ReplicatedLogsWriteSuite() {
 
     testRelease: function () {
       const payloads = [...Array(2000).keys()].map(i => ({foo: i}));
+      const s0 = log.status();
       for (const batch of _.chunk(payloads, 1000)) {
         log.multiInsert(batch);
       }
       const s1 = getLeaderStatus(log);
-      assertEqual(s1.local.firstIndex, 1);
-      assertEqual(s1.local.spearhead.index, 2001);
-      assertEqual(s1.local.commitIndex, 2001);
-
+      try {
+          assertEqual(s1.local.firstIndex, 1); // !here
+          assertEqual(s1.local.spearhead.index, 2001);
+          assertEqual(s1.local.commitIndex, 2001);
+      } catch (e) {
+        // This catch is temporary, to debug the following failure we've seen in Jenkins:
+        //   "testRelease" failed: Error: at assertion #1: assertEqual: (1) is not equal to (0)
+        // which happens at the line marked !here above.
+        print("Initial ---------------------");
+        print(s0);
+        print("Final ---------------------");
+        print(s1);
+        print("Full ---------------------");
+        print(log.status());
+        throw e;
+      }
+      
       log.release(1500);
-
       const s2 = getLeaderStatus(log);
       // Compaction runs asynchronously, so we can not expect the firstIndex to be 1500 as well (yet)
       assertEqual(s2.local.releaseIndex, 1500);

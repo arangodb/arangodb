@@ -1908,7 +1908,8 @@ void RocksDBEngine::processTreeRebuilds() {
                   << candidate.first << "/" << collection->name();
               Result res =
                   static_cast<RocksDBCollection*>(collection->getPhysical())
-                      ->rebuildRevisionTree();
+                      ->rebuildRevisionTree()
+                      .get();
               if (res.ok()) {
                 ++_metricsTreeRebuildsSuccess;
                 LOG_TOPIC("2f997", INFO, Logger::ENGINES)
@@ -2085,7 +2086,7 @@ Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   bool const prefixSameAsStart = true;
   bool const useRangeDelete = rcoll->meta().numberDocuments() >= 32 * 1024;
 
-  auto resLock = rcoll->lockWrite();  // technically not necessary
+  auto resLock = rcoll->lockWrite().get();  // technically not necessary
   if (resLock != TRI_ERROR_NO_ERROR) {
     return resLock;
   }

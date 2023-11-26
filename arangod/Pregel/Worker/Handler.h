@@ -58,36 +58,37 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
   DispatchStatus const& dispatchStatus =
       [this](pregel::message::StatusMessages message) -> void {
     this->template dispatch<pregel::message::StatusMessages>(
-        this->state->statusActor, message);
+        this->state->statusActor, std::move(message));
   };
   DispatchMetrics const& dispatchMetrics =
       [this](metrics::message::MetricsMessages message) -> void {
     this->template dispatch<metrics::message::MetricsMessages>(
-        this->state->metricsActor, message);
+        this->state->metricsActor, std::move(message));
   };
   DispatchConductor const& dispatchConductor =
       [this](conductor::message::ConductorMessages message) -> void {
     this->template dispatch<conductor::message::ConductorMessages>(
-        this->state->conductor, message);
+        this->state->conductor, std::move(message));
   };
   DispatchSelf const& dispatchSelf =
       [this](message::WorkerMessages message) -> void {
-    this->template dispatch<message::WorkerMessages>(this->self, message);
+    this->template dispatch<message::WorkerMessages>(this->self,
+                                                     std::move(message));
   };
   DispatchOther const& dispatchOther =
       [this](actor::DistributedActorPID other,
              message::WorkerMessages message) -> void {
-    this->template dispatch<message::WorkerMessages>(other, message);
+    this->template dispatch<message::WorkerMessages>(other, std::move(message));
   };
   DispatchResult const& dispatchResult =
       [this](pregel::message::ResultMessages message) -> void {
     this->template dispatch<pregel::message::ResultMessages>(
-        this->state->resultActor, message);
+        this->state->resultActor, std::move(message));
   };
   DispatchSpawn const& dispatchSpawn =
       [this](pregel::message::SpawnMessages message) -> void {
     this->template dispatch<pregel::message::SpawnMessages>(
-        this->state->spawnActor, message);
+        this->state->spawnActor, std::move(message));
   };
 
   Dispatcher dispatcher{.dispatchStatus = dispatchStatus,
@@ -157,7 +158,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
   auto operator()([[maybe_unused]] message::Cleanup message)
       -> std::unique_ptr<WorkerState<V, E, M>> {
-    this->finish();
+    this->finish(actor::ExitReason::kFinished);
 
     LOG_TOPIC("664f5", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is cleaned", this->self);

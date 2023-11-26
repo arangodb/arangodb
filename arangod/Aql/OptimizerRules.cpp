@@ -145,32 +145,6 @@ std::string getSingleShardId(
     arangodb::aql::Collection const* collection,
     arangodb::aql::Variable const* collectionVariable = nullptr);
 
-arangodb::aql::Collection const* getCollection(
-    arangodb::aql::ExecutionNode const* node) {
-  using EN = arangodb::aql::ExecutionNode;
-  using arangodb::aql::ExecutionNode;
-
-  switch (node->getType()) {
-    case EN::ENUMERATE_COLLECTION:
-      return ExecutionNode::castTo<
-                 arangodb::aql::EnumerateCollectionNode const*>(node)
-          ->collection();
-    case EN::INDEX:
-      return ExecutionNode::castTo<arangodb::aql::IndexNode const*>(node)
-          ->collection();
-    case EN::TRAVERSAL:
-    case EN::ENUMERATE_PATHS:
-    case EN::SHORTEST_PATH:
-      return ExecutionNode::castTo<arangodb::aql::GraphNode const*>(node)
-          ->collection();
-
-    default:
-      // note: modification nodes are not covered here yet
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "node type does not have a collection");
-  }
-}
-
 arangodb::aql::Variable const* getOutVariable(
     arangodb::aql::ExecutionNode const* node) {
   using EN = arangodb::aql::ExecutionNode;
@@ -314,11 +288,6 @@ class CollectionVariableTracker final
     return _dependencies[var];
   }
 
-  arangodb::aql::VarSet const& getCollectionVariables(
-      arangodb::aql::Collection const* collection) {
-    return _collectionVariables[collection];
-  }
-
   void after(arangodb::aql::ExecutionNode* en) override final {
     using EN = arangodb::aql::ExecutionNode;
     using arangodb::aql::ExecutionNode;
@@ -332,7 +301,7 @@ class CollectionVariableTracker final
 
       case EN::INDEX:
       case EN::ENUMERATE_COLLECTION: {
-        auto collection = ::getCollection(en);
+        auto collection = arangodb::aql::utils::getCollection(en);
         auto variable = ::getOutVariable(en);
 
         // originates the collection variable, direct dependence
@@ -533,7 +502,7 @@ class RestrictToSingleShardChecker final
     TRI_ASSERT(en->getType() == arangodb::aql::ExecutionNode::INDEX ||
                en->getType() ==
                    arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION);
-    auto collection = ::getCollection(en);
+    auto collection = arangodb::aql::utils::getCollection(en);
     auto variable = ::getOutVariable(en);
     auto shardId = ::getSingleShardId(_plan, en, collection, variable);
     if (shardId.empty()) {
@@ -1116,8 +1085,9 @@ Collection* addCollectionToQuery(QueryContext& query, std::string const& cname,
     // could become unnecessary if the AST takes care of adding the collections
     if (!ServerState::instance()->isCoordinator()) {
       TRI_ASSERT(coll != nullptr);
-      query.trxForOptimization().addCollectionAtRuntime(cname,
-                                                        AccessMode::Type::READ);
+      query.trxForOptimization()
+          .addCollectionAtRuntime(cname, AccessMode::Type::READ)
+          .get();
     }
   }
 
@@ -1661,255 +1631,6 @@ void arangodb::aql::removeCollectVariablesRule(
 
   }  // for node in nodes
   opt->addPlan(std::move(plan), rule, modified);
-}
-
-class PropagateConstantAttributesHelper {
- public:
-  explicit PropagateConstantAttributesHelper(ExecutionPlan* plan)
-      : _plan(plan), _modified(false) {}
-
-  bool modified() const { return _modified; }
-
-  /// @brief inspects a plan and propagates constant values in expressions
-  void propagateConstants() {
-    containers::SmallVector<ExecutionNode*, 8> nodes;
-    _plan->findNodesOfType(nodes, EN::FILTER, true);
-
-    for (auto const& node : nodes) {
-      auto fn = ExecutionNode::castTo<FilterNode const*>(node);
-      auto setter = _plan->getVarSetBy(fn->inVariable()->id);
-      if (setter != nullptr && setter->getType() == EN::CALCULATION) {
-        auto cn = ExecutionNode::castTo<CalculationNode*>(setter);
-        auto expression = cn->expression();
-        collectConstantAttributes(const_cast<AstNode*>(expression->node()));
-      }
-    }
-
-    if (!_constants.empty()) {
-      for (auto const& node : nodes) {
-        auto fn = ExecutionNode::castTo<FilterNode const*>(node);
-        auto setter = _plan->getVarSetBy(fn->inVariable()->id);
-        if (setter != nullptr && setter->getType() == EN::CALCULATION) {
-          auto cn = ExecutionNode::castTo<CalculationNode*>(setter);
-          auto expression = cn->expression();
-          insertConstantAttributes(const_cast<AstNode*>(expression->node()));
-        }
-      }
-    }
-  }
-
- private:
-  AstNode const* getConstant(Variable const* variable,
-                             std::string const& attribute) const {
-    auto it = _constants.find(variable);
-
-    if (it == _constants.end()) {
-      return nullptr;
-    }
-
-    auto it2 = (*it).second.find(attribute);
-
-    if (it2 == (*it).second.end()) {
-      return nullptr;
-    }
-
-    return (*it2).second;
-  }
-
-  /// @brief inspects an expression (recursively) and notes constant attribute
-  /// values so they can be propagated later
-  void collectConstantAttributes(AstNode* node) {
-    if (node == nullptr) {
-      return;
-    }
-
-    if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-      auto lhs = node->getMember(0);
-      auto rhs = node->getMember(1);
-
-      collectConstantAttributes(lhs);
-      collectConstantAttributes(rhs);
-    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-      auto lhs = node->getMember(0);
-      auto rhs = node->getMember(1);
-
-      if (lhs->isConstant() && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        inspectConstantAttribute(rhs, lhs);
-      } else if (rhs->isConstant() && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        inspectConstantAttribute(lhs, rhs);
-      }
-    }
-  }
-
-  /// @brief traverses an AST part recursively and patches it by inserting
-  /// constant values
-  void insertConstantAttributes(AstNode* node) {
-    if (node == nullptr) {
-      return;
-    }
-
-    if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-      auto lhs = node->getMember(0);
-      auto rhs = node->getMember(1);
-
-      insertConstantAttributes(lhs);
-      insertConstantAttributes(rhs);
-    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-      auto lhs = node->getMember(0);
-      auto rhs = node->getMember(1);
-
-      if (!lhs->isConstant() && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        insertConstantAttribute(node, 1);
-      }
-      if (!rhs->isConstant() && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        insertConstantAttribute(node, 0);
-      }
-    }
-  }
-
-  /// @brief extract an attribute and its variable from an attribute access
-  /// (e.g. `a.b.c` will return variable `a` and attribute name `b.c.`.
-  bool getAttribute(AstNode const* attribute, Variable const*& variable,
-                    std::string& name) {
-    TRI_ASSERT(attribute != nullptr &&
-               attribute->type == NODE_TYPE_ATTRIBUTE_ACCESS);
-    TRI_ASSERT(name.empty());
-
-    while (attribute->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      name = absl::StrCat(".", attribute->getStringView(), name);
-      attribute = attribute->getMember(0);
-    }
-
-    if (attribute->type != NODE_TYPE_REFERENCE) {
-      return false;
-    }
-
-    variable = static_cast<Variable const*>(attribute->getData());
-    TRI_ASSERT(variable != nullptr);
-
-    return true;
-  }
-
-  /// @brief inspect the constant value assigned to an attribute
-  /// the attribute value will be stored so it can be inserted for the attribute
-  /// later
-  void inspectConstantAttribute(AstNode const* attribute,
-                                AstNode const* value) {
-    Variable const* variable = nullptr;
-    std::string name;
-
-    if (!getAttribute(attribute, variable, name)) {
-      return;
-    }
-
-    auto it = _constants.find(variable);
-
-    if (it == _constants.end()) {
-      _constants.try_emplace(
-          variable,
-          std::unordered_map<std::string, AstNode const*>{{name, value}});
-      return;
-    }
-
-    auto it2 = (*it).second.find(name);
-
-    if (it2 == (*it).second.end()) {
-      // first value for the attribute
-      (*it).second.try_emplace(name, value);
-    } else {
-      auto previous = (*it2).second;
-
-      if (previous == nullptr) {
-        // we have multiple different values for the attribute. better not use
-        // this attribute
-        return;
-      }
-
-      if (!value->computeValue().binaryEquals(previous->computeValue())) {
-        // different value found for an already tracked attribute. better not
-        // use this attribute
-        (*it2).second = nullptr;
-      }
-    }
-  }
-
-  /// @brief patches an AstNode by inserting a constant value into it
-  void insertConstantAttribute(AstNode* parentNode, size_t accessIndex) {
-    Variable const* variable = nullptr;
-    std::string name;
-
-    AstNode* member = parentNode->getMember(accessIndex);
-
-    if (!getAttribute(member, variable, name)) {
-      return;
-    }
-
-    auto constantValue = getConstant(variable, name);
-
-    if (constantValue != nullptr) {
-      // first check if we would optimize away a join condition that uses a
-      // smartJoinAttribute... we must not do that, because that would otherwise
-      // disable SmartJoin functionality
-      if (arangodb::ServerState::instance()->isCoordinator() &&
-          parentNode->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-        AstNode const* current =
-            parentNode->getMember(accessIndex == 0 ? 1 : 0);
-        if (current->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-          AstNode const* nameAttribute = current;
-          current = current->getMember(0);
-          if (current->type == NODE_TYPE_REFERENCE) {
-            auto setter = _plan->getVarSetBy(
-                static_cast<Variable const*>(current->getData())->id);
-            if (setter != nullptr &&
-                (setter->getType() == EN::ENUMERATE_COLLECTION ||
-                 setter->getType() == EN::INDEX)) {
-              auto collection = ::getCollection(setter);
-              if (collection != nullptr) {
-                auto logical = collection->getCollection();
-                if (logical->hasSmartJoinAttribute() &&
-                    logical->smartJoinAttribute() ==
-                        nameAttribute->getStringView()) {
-                  // don't remove a SmartJoin attribute access!
-                  return;
-                } else {
-                  std::vector<std::string> shardKeys =
-                      collection->shardKeys(true);
-                  if (std::find(shardKeys.begin(), shardKeys.end(),
-                                nameAttribute->getString()) !=
-                      shardKeys.end()) {
-                    // don't remove equality lookups on shard keys, as this may
-                    // prevent the restrict-to-single-shard rule from being
-                    // applied later!
-                    return;
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-
-      parentNode->changeMember(accessIndex,
-                               const_cast<AstNode*>(constantValue));
-      _modified = true;
-    }
-  }
-
-  ExecutionPlan* _plan;
-  std::unordered_map<Variable const*,
-                     std::unordered_map<std::string, AstNode const*>>
-      _constants;
-  bool _modified;
-};
-
-/// @brief propagate constant attributes in FILTERs
-void arangodb::aql::propagateConstantAttributesRule(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-    OptimizerRule const& rule) {
-  PropagateConstantAttributesHelper helper(plan.get());
-  helper.propagateConstants();
-
-  opt->addPlan(std::move(plan), rule, helper.modified());
 }
 
 /// @brief move calculations up in the plan
@@ -4576,7 +4297,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
               }
               case ExecutionNode::ENUMERATE_COLLECTION:
               case ExecutionNode::INDEX: {
-                auto col = getCollection(p);
+                auto col = utils::getCollection(p);
                 if (col->numberOfShards() > 1 ||
                     (col->type() == TRI_COL_TYPE_EDGE && col->isSmart())) {
                   hasFoundMultipleShards = true;
@@ -5210,8 +4931,8 @@ void arangodb::aql::restrictToSingleShardRule(
       return;
     }
 
-    auto s1 = ::getCollection(current)->shardIds();
-    auto s2 = ::getCollection(setter)->shardIds();
+    auto s1 = utils::getCollection(current)->shardIds();
+    auto s2 = utils::getCollection(setter)->shardIds();
 
     if (s1->size() != s2->size()) {
       // different number of shard ids... should not happen if we have a
@@ -5314,7 +5035,7 @@ void arangodb::aql::restrictToSingleShardRule(
         }
 
         if (!disable) {
-          auto collection = ::getCollection(current);
+          auto collection = utils::getCollection(current);
           auto collectionVariable = ::getOutVariable(current);
           std::string shardId = finder.getShard(collectionVariable);
 
@@ -5537,7 +5258,7 @@ class RemoveToEnumCollFinder final
 
         _enumColl = enumColl;
 
-        if (::getCollection(_enumColl) != rn->collection()) {
+        if (utils::getCollection(_enumColl) != rn->collection()) {
           break;  // abort . . .
         }
 
@@ -9159,6 +8880,11 @@ void arangodb::aql::optimizeProjections(Optimizer* opt,
       auto* joinNode = ExecutionNode::castTo<JoinNode*>(n);
       size_t index = 0;
       for (auto& it : joinNode->getIndexInfos()) {
+        if (it.isLateMaterialized) {
+          // For late materialization in join nodes, that variables
+          // are already set by the optimizer rule for late materialization
+          continue;
+        }
         modified |= replace(n, it.projections, it.outVariable, index++);
       }
     } else {

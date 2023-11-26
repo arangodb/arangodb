@@ -119,7 +119,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   //    variables: [ <variables> ]
   //  }
 
-  void setupClusterQuery();
+  [[nodiscard]] futures::Future<futures::Unit> setupClusterQuery();
 
   // handle for useQuery
   RestStatus handleUseQuery(std::string const&,

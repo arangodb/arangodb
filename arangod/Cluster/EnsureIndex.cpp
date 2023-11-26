@@ -164,7 +164,8 @@ bool EnsureIndex::first() {
       }
       auto index = VPackBuilder();
       auto res = methods::Indexes::ensureIndex(*col, body.slice(), true, index,
-                                               std::move(lambda));
+                                               std::move(lambda))
+                     .get();
       if (res.ok()) {
         indexCreationLogging(index.slice());
       }
