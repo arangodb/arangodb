@@ -47,7 +47,8 @@ struct MyVectorIterator : MyIndexStreamIterator {
     cache[0] = *current;
   }
 
-  bool reset(std::span<MyKeyValue> span) override {
+  bool reset(std::span<MyKeyValue> span,
+             std::span<MyKeyValue> constants) override {
     current = begin;
     if (current != end) {
       span[0] = *current;
