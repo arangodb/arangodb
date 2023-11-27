@@ -446,7 +446,7 @@ void QuerySnippet::serializeIntoBuilder(
     size_t numberOfShardsToPermutate = colToShardMap.begin()->second.size();
     TRI_ASSERT(numberOfShardsToPermutate > 1);
 
-    std::vector<ShardID> distIds{};
+    std::vector<std::string> distIds{};
     // Reserve the amount of localExpansions,
     distIds.reserve(numberOfShardsToPermutate);
     // Create an internal GatherNode, that will connect to all execution
@@ -523,7 +523,7 @@ void QuerySnippet::serializeIntoBuilder(
 
       // hook distribute node into stream '0', since that does not happen below
       prototypeConsumer =
-          createConsumerNode(plan, internalScatter, std::string{distIds[0]});
+          createConsumerNode(plan, internalScatter, distIds[0]);
       nodeAliases.try_emplace(prototypeConsumer->id(),
                               ExecutionNodeId::InternalNode);
       // now wire up the temporary nodes
@@ -559,7 +559,7 @@ void QuerySnippet::serializeIntoBuilder(
     for (size_t i = 1; i < numberOfShardsToPermutate; ++i) {
       auto cloneWorker = CloneWorker(snippetRoot, internalGather,
                                      internalScatter, localExpansions, i,
-                                     std::string{distIds.at(i)}, nodeAliases);
+                                     distIds.at(i), nodeAliases);
       // Warning, the walkerworker is abused.
       cloneWorker.process();
     }
