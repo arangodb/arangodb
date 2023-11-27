@@ -25,7 +25,7 @@ description: |
   more data. While that server-side cursor is present, its memory usage
   is counted in this metric.
   
-  While an AQL query is executing an is building up its result, the memory 
+  While an AQL query is executing and is building up its result, the memory 
   usage of the query is included in the running query's `memoryUsage`
   attribute and in the metric `arangodb_aql_global_memory_usage`.
 
