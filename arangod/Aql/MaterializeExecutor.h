@@ -119,7 +119,6 @@ class MaterializeRocksDBExecutor : public MaterializeExecutorBase {
       AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output);
 
  private:
-  RocksDBMethods* _rocksdbMethods;
   PhysicalCollection* _collection{};
   std::vector<LocalDocumentId> docIds;
   std::vector<InputAqlItemRow> inputRows;

@@ -42,8 +42,6 @@ MaterializeExecutorBase::MaterializeExecutorBase(Infos& infos)
 
 MaterializeRocksDBExecutor::MaterializeRocksDBExecutor(Fetcher&, Infos& infos)
     : MaterializeExecutorBase(infos),
-      _rocksdbMethods(
-          RocksDBTransactionState::toMethods(&_trx, infos.collection()->id())),
       _collection(infos.collection()->getCollection()->getPhysical()) {
   TRI_ASSERT(_collection != nullptr);
 }
