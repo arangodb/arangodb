@@ -114,7 +114,7 @@ struct fmt::formatter<arangodb::ShardID> {
 
   template<typename FormatContext>
   auto format(arangodb::ShardID const& shardId, FormatContext& ctx) {
-    return format_to(ctx.out(), "s{}", std::to_string(shardId.id()));
+    return fmt::format_to(ctx.out(), "s{}", std::to_string(shardId.id()));
   }
 };
 
