@@ -5,7 +5,12 @@ import { DatabaseTableType } from "./CollectionsPermissionsTable";
 import { getIsDefaultRow } from "./DatabasePermissionSwitch";
 import { useUserPermissionsContext } from "./UserPermissionsContext";
 
-const getIsDefaultForCollection = ({
+/**
+ * Returns true if the current cell is evaluated as the default,
+ * based on the "max level" login
+ * @returns 
+ */
+const getIsCellDefaultForCollection = ({
   info,
   databaseTable,
   databaseName
@@ -53,7 +58,7 @@ export const CollectionPermissionSwitch = ({
     return null;
   }
 
-  const isDefaultForCollection = getIsDefaultForCollection({
+  const isCellDefaultForCollection = getIsCellDefaultForCollection({
     info,
     databaseTable,
     databaseName
@@ -82,7 +87,7 @@ export const CollectionPermissionSwitch = ({
         }}
       />
       {isLoading && <Spinner size="sm" />}
-      {isDefaultForCollection && <Tag size="sm">Default</Tag>}
+      {isCellDefaultForCollection && <Tag size="sm">Default</Tag>}
     </Flex>
   );
 };
