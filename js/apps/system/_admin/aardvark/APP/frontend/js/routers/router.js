@@ -257,7 +257,8 @@
       window.progressView = new window.ProgressView();
 
       this.userCollection = new window.ArangoUsers();
-
+       
+      window.SkeletonLoader = new window.SkeletonLoader();
       this.initOnce = _.once(function () {
         const callback = function (error, isCoordinator) {
           if (isCoordinator === true) {
@@ -714,6 +715,7 @@
     cIndices: function (colname) {
       const self = this;
 
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {
@@ -738,6 +740,7 @@
     cSettings: function (colname) {
       const self = this;
 
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {
@@ -759,6 +762,7 @@
     cComputedValues: function (colname) {
       const self = this;
 
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {
@@ -779,6 +783,7 @@
 
     cSchema: function (colname) {
       const self = this;
+      window.SkeletonLoader.render();
 
       this.checkUser();
 
@@ -801,8 +806,8 @@
     cInfo: function (colname) {
       const self = this;
 
+      window.SkeletonLoader.render();
       this.checkUser();
-
       this.init.then(() => {
         this.arangoCollectionsStore.fetch({
           cache: false,
@@ -820,6 +825,7 @@
     },
 
     documents: function (colid, pageid) {
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {

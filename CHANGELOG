@@ -1,6 +1,13 @@
 devel
 -----
 
+* Fixed MDS-1170: Significant performance degradation when queries are
+  executed within transactions that involve edits.
+
+* Rebuilt included rclone v1.62.2 with go1.21.4.
+
+* Updated ArangoDB Starter to v0.17.2 and arangosync to v2.19.5.
+
 * Track memory usage of internal connection statistics and request statistics:
   - `arangodb_connection_statistics_memory_usage`
   - `arangodb_requests_statistics_memory_usage`
