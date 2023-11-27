@@ -19,7 +19,7 @@ $navbar-size: 150px;
   width: $navbar-size;
 
   > .primary {
-    background-color: var(--gray-1000);
+    background-color: var(--gray-950);
     float: left;
     height: 100%;
     width: $navbar-size;
@@ -303,7 +303,7 @@ $navbar-size: 150px;
 
     &.navbar-spacer {
       background-color: var(--gray-700);
-      height: 2px;
+      height: 1px;
       margin-bottom: 0;
       margin-top: 0;
     }
