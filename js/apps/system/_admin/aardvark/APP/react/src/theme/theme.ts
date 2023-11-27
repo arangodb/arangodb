@@ -66,7 +66,7 @@ export const theme = extendTheme({
       sizes: {
         sm: {
           tablist: {
-            height: "40px"
+            height: "38px"
           }
         }
       },
