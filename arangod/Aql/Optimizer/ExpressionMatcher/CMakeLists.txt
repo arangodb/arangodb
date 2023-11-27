@@ -1,4 +1,4 @@
 add_subdirectory(Matchers)
 
 target_sources(arango_aql PRIVATE
-    MatchResult.cpp)
+    MatchStatus.cpp)

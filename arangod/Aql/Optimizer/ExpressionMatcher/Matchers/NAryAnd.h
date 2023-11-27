@@ -33,9 +33,15 @@ struct NAryAndAll {
                for (auto i = size_t{0}; i < node->numMembers(); ++i) {
                  auto snr = matcher.apply(node->getMemberUnchecked(i));
                }
+               return MatchResult();
              };
   }
   M matcher;
 };
+
+template<Matchable M>
+auto naryAndAll(M m) -> NAryAndAll<M> {
+  return NAryAndAll<M>{.matcher = std::move(m)};
+}
 
 }  // namespace arangodb::aql::expression_matcher

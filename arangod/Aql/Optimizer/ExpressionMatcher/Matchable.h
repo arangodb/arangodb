@@ -28,14 +28,13 @@ namespace arangodb::aql::expression_matcher {
 // To implement a matcher, all that is needed is a struct with the method
 // apply that takes an `AstNode const*` and returns a MatchResult.
 template<typename T>
-concept Matchable = requires(T v, AstNode const* node) {
-  v.apply(node);
-};
+concept Matchable = std::same_as<decltype(std::declval<T>().apply(
+                                     std::declval<AstNode const*>())),
+                                 MatchResultSingle>;
 
-// TODO: is this needed?
-template<Matchable M>
-auto apply(M m, AstNode* node) -> MatchResult {
-  return m->apply(node);
-}
+template<typename T>
+concept MultiMatchable = std::same_as<decltype(std::declval<T>().apply(
+                                          std::declval<AstNode const*>())),
+                                      MatchResultMulti>;
 
 }  // namespace arangodb::aql::expression_matcher

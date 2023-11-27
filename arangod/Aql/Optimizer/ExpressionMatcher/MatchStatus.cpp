@@ -33,7 +33,7 @@
 
 namespace arangodb::aql::expression_matcher {
 
-auto toStream(std::ostream& os, MatchResult const& result) -> std::ostream& {
+auto toStream(std::ostream& os, MatchStatus const& result) -> std::ostream& {
   if (result.isError()) {
     os << fmt::format("[[ERROR]] backtrace\n{}",
                       fmt::join(result.errors(), "\n"));
@@ -41,7 +41,7 @@ auto toStream(std::ostream& os, MatchResult const& result) -> std::ostream& {
   return os;
 }
 
-auto toString(MatchResult const& result) -> std::string {
+auto toString(MatchStatus const& result) -> std::string {
   auto buffer = std::stringstream{};
   toStream(buffer, result);
   return buffer.str();

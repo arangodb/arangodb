@@ -123,3 +123,23 @@ TEST(ExpressionMatcherTest, matches_filter_expression_into_variable) {
     ASSERT_NE(map, nullptr);
   }
 }
+
+TEST(ExpressionMatcherTest, matches_filter_expression_into_multi_variable) {
+  auto expression = TestContext(
+      R"=(LET path = [] RETURN path.vertices[* RETURN CURRENT.f == "green"] ALL == true)=");
+
+  auto node = AstNode(NODE_TYPE_OPERATOR_NARY_AND);
+
+  {
+    std::vector<AstNode const*> ands = {};
+
+    auto matcher = into(ands, naryAndAll(Any{}));
+    auto result = matcher.apply(&node);
+
+    ASSERT_TRUE(result.isSuccess())
+        << fmt::format("error {}", fmt::join(result.errors(), "\n"));
+
+    std::cerr << "size: " << ands.size() << std::endl;
+    ASSERT_NE(ands.size(), 0);
+  }
+}

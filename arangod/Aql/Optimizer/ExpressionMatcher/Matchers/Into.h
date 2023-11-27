@@ -48,4 +48,14 @@ auto into(AstNode const*& into, M matcher) -> Into<M> {
   return Into<M>{.into = into, .matcher = std::move(matcher)};
 };
 
+template<Matchable M>
+auto into(std::vector<AstNode const*>& into, M matcher) -> Into<M> {
+  into.push_back(nullptr);
+  into.push_back(nullptr);
+  into.push_back(nullptr);
+  into.push_back(nullptr);
+  into.push_back(nullptr);
+  return Into<M>{.into = into.at(0), .matcher = std::move(matcher)};
+};
+
 }  // namespace arangodb::aql::expression_matcher

@@ -47,7 +47,7 @@ struct Variable {
                    fmt::format("Expected access to variable `{}`, but found {}",
                                name, var->name));
              }
-             return MatchResult::match();
+             return MatchResultSingle(MatchStatus(), node);
            };
   }
 

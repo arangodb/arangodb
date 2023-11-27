@@ -29,10 +29,16 @@ namespace arangodb::aql::expression_matcher {
 template<Matchable M>
 struct NAryOrAll {
   auto apply(AstNode const* node) -> MatchResult {
+    // TODO: this must be possible to do better
     return MatchNodeType(NODE_TYPE_OPERATOR_NARY_OR).apply(node)  //
            | [&]() {
+               auto mr = MatchResult();
+
                for (auto i = size_t{0}; i < node->numMembers(); ++i) {
-                 auto snr = matcher.apply(node->getMemberUnchecked(i));
+                 mr.combine(matcher.apply(node->getMemberUnchecked(i)));
+                 if (mr.isError()) {
+                   return mr;
+                 }
                }
              };
   }
