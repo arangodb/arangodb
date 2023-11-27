@@ -323,9 +323,8 @@ const logIfFailure = function (fun, msg, dumpObjects) {
     if (dumpObjects !== undefined) {
       // dump collections
       if (dumpObjects.hasOwnProperty('collections')) {
-        let collections = {}
+        let collections = {};
         for (const collection of dumpObjects.collections) {
-
           try {
             collections[collection.name()] = collection.toArray();
           } catch (e) {
@@ -337,13 +336,15 @@ const logIfFailure = function (fun, msg, dumpObjects) {
 
       // dump logs
       if (dumpObjects.hasOwnProperty('logs')) {
+        let logs = {};
         for (const log of dumpObjects.logs) {
           try {
-            dumpMsg[log.id()] = log.head(1000);
+            logs[log.id()] = log.head(1000);
           } catch (e) {
-            dumpMsg[log.id()] = e;
+            logs[log.id()] = e;
           }
         }
+        dumpMsg['logs'] = logs;
       }
     }
 
