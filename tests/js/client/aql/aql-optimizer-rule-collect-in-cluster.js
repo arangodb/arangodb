@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertTrue, assertEqual, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for COLLECT w/ COUNT
@@ -260,7 +260,7 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
       });
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "SortNode", "CalculationNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "SortNode", "CalculationNode", "ReturnNode"], nodeTypes);
     
       if (isSearchAlias) {
         let indexQuery = `FOR doc IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
@@ -289,7 +289,7 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
       });
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
       
       if (isSearchAlias) {
         /*
@@ -365,7 +365,7 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
       });
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
       
       if (isSearchAlias) {
         let indexQuery = `FOR doc1 IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc1.value < 10 
@@ -662,10 +662,10 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
       if (internal.isEnterprise()) {
         assertNotEqual(-1, plan.rules.indexOf("cluster-one-shard"));
         // one shard rule has kicked in as well and modified the plan accordingly
-        assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "CollectNode", "SortNode", "CalculationNode", "RemoteNode", "GatherNode", "ReturnNode"], nodeTypes);
+        assertEqual(["SingletonNode", "EnumerateCollectionNode", "CollectNode", "SortNode", "CalculationNode", "RemoteNode", "GatherNode", "ReturnNode"], nodeTypes);
       } else {
         assertEqual(-1, plan.rules.indexOf("cluster-one-shard"));
-        assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "RemoteNode", "GatherNode", "CollectNode", "SortNode", "CalculationNode", "ReturnNode"], nodeTypes);
+        assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "CollectNode", "SortNode", "CalculationNode", "ReturnNode"], nodeTypes);
       }
 
       if (isSearchAlias) {
@@ -695,7 +695,7 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
       });
 
       assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "SortNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
     
       if (isSearchAlias) {
         let indexQuery = `FOR doc IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
@@ -757,7 +757,7 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
       });
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
     
       if (isSearchAlias) {
         let indexQuery = `FOR doc1 IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc1.value < 10 
@@ -907,7 +907,7 @@ function optimizerCollectInClusterSuiteSmartGraph() {
       });
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "SortNode", "CalculationNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "SortNode", "CalculationNode", "ReturnNode"], nodeTypes);
     },
 
     testDistinct: function () {
@@ -926,7 +926,7 @@ function optimizerCollectInClusterSuiteSmartGraph() {
       });
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
     },
 
     testDistinctMulti: function () {
@@ -945,7 +945,7 @@ function optimizerCollectInClusterSuiteSmartGraph() {
       });
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
     },
 
   };

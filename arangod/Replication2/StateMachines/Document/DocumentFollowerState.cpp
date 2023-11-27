@@ -24,47 +24,63 @@
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
+#include "Replication2/StateMachines/Document/DocumentStateErrorHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
-#include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <Basics/application-exit.h>
 #include <Basics/Exceptions.h>
 #include <Futures/Future.h>
 #include <Logger/LogContextKeys.h>
 
-using namespace arangodb::replication2::replicated_state::document;
+namespace arangodb::replication2::replicated_state::document {
 
 DocumentFollowerState::GuardedData::GuardedData(
     std::unique_ptr<DocumentCore> core,
-    std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory)
-    : core(std::move(core)), currentSnapshotVersion{0} {
-  transactionHandler = handlersFactory->createTransactionHandler(
-      this->core->getVocbase(), this->core->gid, this->core->getShardHandler());
-}
+    std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
+    LoggerContext const& loggerContext,
+    std::shared_ptr<IDocumentStateErrorHandler> errorHandler)
+    : loggerContext(loggerContext),
+      errorHandler(std::move(errorHandler)),
+      core(std::move(core)),
+      currentSnapshotVersion{0},
+      shardHandler(handlersFactory->createShardHandler(this->core->getVocbase(),
+                                                       this->core->gid)),
+      transactionHandler(handlersFactory->createTransactionHandler(
+          this->core->getVocbase(), this->core->gid, shardHandler)) {}
 
 DocumentFollowerState::DocumentFollowerState(
     std::unique_ptr<DocumentCore> core,
     std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory)
-    : loggerContext(core->loggerContext.with<logContextKeyStateComponent>(
-          "FollowerState")),
+    : gid(core->gid),
+      loggerContext(handlersFactory->createLogger(core->gid)
+                        .with<logContextKeyStateComponent>("FollowerState")),
       _networkHandler(handlersFactory->createNetworkHandler(core->gid)),
-      _guardedData(std::move(core), handlersFactory) {}
+      _shardHandler(
+          handlersFactory->createShardHandler(core->getVocbase(), core->gid)),
+      _errorHandler(handlersFactory->createErrorHandler(core->gid)),
+      _guardedData(std::move(core), handlersFactory, loggerContext,
+                   _errorHandler) {}
 
 DocumentFollowerState::~DocumentFollowerState() = default;
 
 auto DocumentFollowerState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
   _resigning = true;
-  return _guardedData.doUnderLock([](auto& data) {
-    if (data.didResign()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_FOLLOWER);
-    }
+  return _guardedData.doUnderLock([&](auto& data) {
+    ADB_PROD_ASSERT(!data.didResign())
+        << "Follower " << gid << " already resigned!";
 
     auto abortAllRes = data.transactionHandler->applyEntry(
         ReplicatedOperation::buildAbortAllOngoingTrxOperation());
-    ADB_PROD_ASSERT(abortAllRes.ok()) << abortAllRes;
+    ADB_PROD_ASSERT(abortAllRes.ok())
+        << "Failed to abort ongoing transactions while resigning follower "
+        << gid << ": " << abortAllRes;
+
+    LOG_CTX("ed901", DEBUG, loggerContext)
+        << "All ongoing transactions were aborted, as follower  resigned";
 
     return std::move(data.core);
   });
@@ -72,37 +88,48 @@ auto DocumentFollowerState::resign() && noexcept
 
 auto DocumentFollowerState::getAssociatedShardList() const
     -> std::vector<ShardID> {
-  auto shardMap =
-      _guardedData.getLockedGuard()->core->getShardHandler()->getShardMap();
+  auto collections = _shardHandler->getAvailableShards();
 
   std::vector<ShardID> shardIds;
-  shardIds.reserve(shardMap.size());
-  for (auto const& [id, props] : shardMap) {
-    shardIds.emplace_back(id);
+  shardIds.reserve(collections.size());
+  for (auto const& shard : collections) {
+    shardIds.emplace_back(shard->name());
   }
   return shardIds;
 }
 
 auto DocumentFollowerState::acquireSnapshot(
     ParticipantId const& destination) noexcept -> futures::Future<Result> {
-  LOG_CTX("1f67d", DEBUG, loggerContext)
+  LOG_CTX("1f67d", INFO, loggerContext)
       << "Trying to acquire snapshot from destination " << destination;
 
   auto snapshotVersion = _guardedData.doUnderLock(
-      [self = shared_from_this()](auto& data) -> ResultT<std::uint64_t> {
+      [self =
+           shared_from_this()](auto& data) noexcept -> ResultT<std::uint64_t> {
         if (data.didResign()) {
           return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
         }
 
-        auto abortAllRes = data.transactionHandler->applyEntry(
-            ReplicatedOperation::buildAbortAllOngoingTrxOperation());
-        ADB_PROD_ASSERT(abortAllRes.ok()) << abortAllRes;
+        if (auto abortAllRes = data.transactionHandler->applyEntry(
+                ReplicatedOperation::buildAbortAllOngoingTrxOperation());
+            abortAllRes.fail()) {
+          LOG_CTX("c863a", ERR, self->loggerContext)
+              << "Failed to abort ongoing transactions before acquiring "
+                 "snapshot: "
+              << abortAllRes;
+          return abortAllRes;
+        }
+        LOG_CTX("529bb", DEBUG, self->loggerContext)
+            << "All ongoing transactions aborted before acquiring snapshot";
 
-        auto const& shardHandler = data.core->getShardHandler();
-        if (auto dropAllRes = shardHandler->dropAllShards();
+        if (auto dropAllRes = self->_shardHandler->dropAllShards();
             dropAllRes.fail()) {
+          LOG_CTX("ae182", ERR, self->loggerContext)
+              << "Failed to drop shards before acquiring snapshot: "
+              << dropAllRes;
           return dropAllRes;
         }
+
         return ++data.currentSnapshotVersion;
       });
 
@@ -116,24 +143,55 @@ auto DocumentFollowerState::acquireSnapshot(
   // A follower may request a snapshot before leadership has been
   // established. A retry will occur in that case.
   auto leader = _networkHandler->getLeaderInterface(destination);
-  auto fut = leader->startSnapshot();
-  return handleSnapshotTransfer(leader, snapshotVersion.get(), std::move(fut))
-      .thenValue([leader, self = shared_from_this()](
-                     auto&& snapshotTransferResult) -> futures::Future<Result> {
-        if (!snapshotTransferResult.snapshotId.has_value()) {
-          TRI_ASSERT(snapshotTransferResult.res.fail());
+  auto snapshotStartRes =
+      basics::catchToResultT([&leader]() { return leader->startSnapshot(); });
+  if (snapshotStartRes.fail()) {
+    LOG_CTX("954e3", DEBUG, loggerContext)
+        << "Failed to start snapshot transfer with destination " << destination
+        << ": " << snapshotStartRes.result();
+    return snapshotStartRes.result();
+  }
+
+  return handleSnapshotTransfer(std::nullopt, leader, snapshotVersion.get(),
+                                std::move(snapshotStartRes.get()))
+      .then([leader, destination, self = shared_from_this()](
+                auto&& tryResult) -> futures::Future<Result> {
+        auto snapshotTransferResult =
+            basics::catchToResultT([&] { return tryResult.get(); });
+        if (snapshotTransferResult.fail()) {
+          LOG_CTX("0c6d9", ERR, self->loggerContext)
+              << "Snapshot transfer failed: "
+              << snapshotTransferResult.result();
+          return snapshotTransferResult.result();
+        }
+
+        if (!snapshotTransferResult->snapshotId.has_value()) {
+          TRI_ASSERT(snapshotTransferResult->res.fail()) << self->gid;
           LOG_CTX("85628", ERR, self->loggerContext)
-              << "Snapshot transfer failed: " << snapshotTransferResult.res;
-          return snapshotTransferResult.res;
+              << "Snapshot transfer failed: " << snapshotTransferResult->res;
+          return snapshotTransferResult->res;
         }
 
         LOG_CTX("b4fcb", DEBUG, self->loggerContext)
-            << "Snapshot " << *snapshotTransferResult.snapshotId
+            << "Snapshot " << *snapshotTransferResult->snapshotId
             << " data transfer over, will send finish request: "
-            << snapshotTransferResult.res;
+            << snapshotTransferResult->res;
 
-        return leader->finishSnapshot(*snapshotTransferResult.snapshotId)
-            .then([snapshotTransferResult](auto&& tryRes) {
+        auto snapshotFinishRes = basics::catchToResultT(
+            [&leader, snapshotId = *snapshotTransferResult->snapshotId]() {
+              return leader->finishSnapshot(snapshotId);
+            });
+        if (snapshotFinishRes.fail()) {
+          LOG_CTX("4404d", ERR, self->loggerContext)
+              << "Failed to initiate snapshot finishing procedure with "
+                 "destination "
+              << destination << ": " << snapshotFinishRes.result();
+          return snapshotFinishRes.result();
+        }
+
+        return std::move(snapshotFinishRes.get())
+            .then([snapshotTransferResult =
+                       std::move(snapshotTransferResult).get()](auto&& tryRes) {
               auto res = basics::catchToResult([&] { return tryRes.get(); });
               if (res.fail()) {
                 LOG_TOPIC("0e168", ERR, Logger::REPLICATION2)
@@ -147,10 +205,16 @@ auto DocumentFollowerState::acquireSnapshot(
 
               TRI_ASSERT(snapshotTransferResult.res.fail() ||
                          (snapshotTransferResult.res.ok() &&
-                          !snapshotTransferResult.reportFailure));
+                          !snapshotTransferResult.reportFailure))
+                  << snapshotTransferResult.res << " "
+                  << snapshotTransferResult.reportFailure;
 
               if (snapshotTransferResult.reportFailure) {
-                LOG_TOPIC("2883c", DEBUG, Logger::REPLICATION2)
+                // Some failures don't need to be reported. For example, it's
+                // totally fine for the follower to interrupt a snapshot
+                // transfer while resigning, because there's no point in
+                // continuing it.
+                LOG_TOPIC("2883c", WARN, Logger::REPLICATION2)
                     << "During the processing of snapshot "
                     << *snapshotTransferResult.snapshotId
                     << ", the following problem occurred on the follower: "
@@ -163,6 +227,130 @@ auto DocumentFollowerState::acquireSnapshot(
                   << " finished: " << snapshotTransferResult.res;
               return Result{};
             });
+      });
+}
+
+auto DocumentFollowerState::handleSnapshotTransfer(
+    std::optional<SnapshotId> snapshotId,
+    std::shared_ptr<IDocumentStateLeaderInterface> leader,
+    std::uint64_t snapshotVersion,
+    futures::Future<ResultT<SnapshotBatch>>&& snapshotFuture) noexcept
+    -> futures::Future<SnapshotTransferResult> {
+  return std::move(snapshotFuture)
+      .then([weak = weak_from_this(), leader = std::move(leader), snapshotId,
+             snapshotVersion](
+                futures::Try<ResultT<SnapshotBatch>>&& tryResult) mutable
+            -> futures::Future<SnapshotTransferResult> {
+        auto catchRes =
+            basics::catchToResultT([&] { return std::move(tryResult).get(); });
+        if (catchRes.fail()) {
+          return SnapshotTransferResult{.res = catchRes.result(),
+                                        .reportFailure = true,
+                                        .snapshotId = snapshotId};
+        }
+
+        auto snapshotRes = catchRes.get();
+        if (snapshotRes.fail()) {
+          return SnapshotTransferResult{.res = snapshotRes.result(),
+                                        .reportFailure = true,
+                                        .snapshotId = snapshotId};
+        }
+
+        if (snapshotId.has_value()) {
+          if (snapshotId != snapshotRes->snapshotId) {
+            auto err = fmt::format("Expected snapshot id {} but got {}",
+                                   *snapshotId, snapshotRes->snapshotId);
+            TRI_ASSERT(snapshotId == snapshotRes->snapshotId) << err;
+            return SnapshotTransferResult{
+                .res = {TRI_ERROR_INTERNAL, err},
+                .reportFailure = true,
+                .snapshotId = snapshotRes->snapshotId};
+          }
+        } else {
+          // First batch of this snapshot, we got the ID now.
+          snapshotId = snapshotRes->snapshotId;
+        }
+
+        auto self = weak.lock();
+        if (self == nullptr) {
+          // The follower resigned, there is no need to continue.
+          return SnapshotTransferResult{
+              .res = TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,
+              .reportFailure = true,
+              .snapshotId = snapshotId};
+        }
+
+        // Apply operations locally
+        bool reportingFailure = false;
+        auto applyOperationsRes = self->_guardedData.doUnderLock(
+            [&self, &snapshotRes, &reportingFailure,
+             snapshotVersion](auto& data) -> Result {
+              if (data.didResign() || self->_resigning) {
+                reportingFailure = true;
+                return TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED;
+              }
+
+              // The user may remove and add the server again. The leader
+              // might do a compaction which the follower won't notice.
+              // Hence, a new snapshot is required. This can happen so
+              // quick, that one snapshot transfer is not yet completed
+              // before another one is requested. Before populating the
+              // shard, we have to make sure there's no new snapshot
+              // transfer in progress.
+              if (data.currentSnapshotVersion != snapshotVersion) {
+                return {TRI_ERROR_INTERNAL,
+                        "Snapshot transfer cancelled because a new one was "
+                        "started!"};
+              }
+
+              LOG_CTX("c1d58", DEBUG, self->loggerContext)
+                  << "Trying to apply " << snapshotRes->operations.size()
+                  << " operations during snapshot transfer "
+                  << snapshotRes->snapshotId;
+              LOG_CTX("fcc92", TRACE, self->loggerContext)
+                  << snapshotRes->snapshotId
+                  << " operations: " << snapshotRes->operations;
+
+              for (auto const& op : snapshotRes->operations) {
+                if (auto applyRes = data.transactionHandler->applyEntry(op);
+                    applyRes.fail()) {
+                  reportingFailure = true;
+                  return applyRes;
+                }
+              }
+
+              return {};
+            });
+        if (applyOperationsRes.fail()) {
+          return SnapshotTransferResult{.res = applyOperationsRes,
+                                        .reportFailure = reportingFailure,
+                                        .snapshotId = snapshotId};
+        }
+
+        // If there are more batches to come, fetch the next one
+        if (snapshotRes->hasMore) {
+          auto nextBatchRes = basics::catchToResultT([&leader, snapshotId]() {
+            return leader->nextSnapshotBatch(*snapshotId);
+          });
+          if (nextBatchRes.fail()) {
+            LOG_CTX("a732f", ERR, self->loggerContext)
+                << "Failed to fetch the next batch of snapshot: "
+                << *snapshotId;
+            return SnapshotTransferResult{.res = nextBatchRes.result(),
+                                          .reportFailure = true,
+                                          .snapshotId = snapshotId};
+          }
+          return self->handleSnapshotTransfer(snapshotId, std::move(leader),
+                                              snapshotVersion,
+                                              std::move(nextBatchRes.get()));
+        }
+
+        // Snapshot transfer completed
+        LOG_CTX("742df", DEBUG, self->loggerContext)
+            << "Leader informed the follower there is no more data to be sent "
+               "for snapshot "
+            << snapshotRes->snapshotId;
+        return SnapshotTransferResult{.snapshotId = snapshotId};
       });
 }
 
@@ -180,23 +368,32 @@ auto DocumentFollowerState::applyEntries(
 
           while (auto entry = ptr->next()) {
             if (self->_resigning) {
-              // We have not officially resigned yet, but we are about to. So,
-              // we can just stop here.
+              // We have not officially resigned yet, but we are about to.
+              // So, we can just stop here.
               break;
             }
             auto [index, doc] = *entry;
 
             auto currentReleaseIndex = std::visit(
-                [&data,
-                 index = index](auto&& op) -> ResultT<std::optional<LogIndex>> {
+                [&data, index = index](
+                    auto const& op) -> ResultT<std::optional<LogIndex>> {
                   return data.applyEntry(op, index);
                 },
                 doc.getInnerOperation());
 
             if (currentReleaseIndex.fail()) {
+              TRI_ASSERT(self->_errorHandler
+                             ->handleOpResult(doc.getInnerOperation(),
+                                              currentReleaseIndex.result())
+                             .fail())
+                  << currentReleaseIndex.result()
+                  << " should have been already handled for operation "
+                  << doc.getInnerOperation()
+                  << " during applyEntries of follower " << self->gid;
               LOG_CTX("0aa2e", FATAL, self->loggerContext)
                   << "failed to apply entry " << doc
                   << " on follower: " << currentReleaseIndex.result();
+              TRI_ASSERT(false) << currentReleaseIndex.result();
               FATAL_ERROR_EXIT();
             }
             if (currentReleaseIndex->has_value()) {
@@ -216,8 +413,8 @@ auto DocumentFollowerState::applyEntries(
     return applyResult.result();
   }
   if (applyResult->has_value()) {
-    // The follower might have resigned, so we need to be careful when accessing
-    // the stream.
+    // The follower might have resigned, so we need to be careful when
+    // accessing the stream.
     auto releaseRes = basics::catchVoidToResult([&] {
       auto const& stream = getStream();
       stream->release(applyResult->value());
@@ -231,302 +428,57 @@ auto DocumentFollowerState::applyEntries(
   return {TRI_ERROR_NO_ERROR};
 }
 
-auto DocumentFollowerState::populateLocalShard(
-    ShardID shardId, velocypack::SharedSlice slice,
-    std::shared_ptr<IDocumentStateTransactionHandler> const& transactionHandler)
-    -> Result {
-  auto tid = TransactionId::createFollower();
-  auto op = ReplicatedOperation::buildDocumentOperation(
-      TRI_VOC_DOCUMENT_OPERATION_INSERT, tid, std::move(shardId),
-      std::move(slice));
-  if (auto applyRes = transactionHandler->applyEntry(op); applyRes.fail()) {
-    transactionHandler->removeTransaction(tid);
-    return applyRes;
-  }
-  auto commit = ReplicatedOperation::buildCommitOperation(tid);
-  return transactionHandler->applyEntry(commit);
-}
-
-auto DocumentFollowerState::handleSnapshotTransfer(
-    std::shared_ptr<IDocumentStateLeaderInterface> leader,
-    std::uint64_t snapshotVersion,
-    futures::Future<ResultT<SnapshotConfig>>&& snapshotFuture) noexcept
-    -> futures::Future<SnapshotTransferResult> {
-  return std::move(snapshotFuture)
-      .then([weak = weak_from_this(), leader = std::move(leader),
-             snapshotVersion](
-                futures::Try<ResultT<SnapshotConfig>>&& tryResult) mutable
-            -> futures::Future<SnapshotTransferResult> {
-        auto catchRes =
-            basics::catchToResultT([&] { return std::move(tryResult).get(); });
-        if (catchRes.fail()) {
-          return SnapshotTransferResult{catchRes.result(), true, {}};
-        }
-
-        auto snapshotRes = catchRes.get();
-        if (snapshotRes.fail()) {
-          return SnapshotTransferResult{.res = snapshotRes.result(),
-                                        .reportFailure = true};
-        }
-
-        auto self = weak.lock();
-        if (self == nullptr) {
-          // The follower resigned, there is no need to continue.
-          return SnapshotTransferResult{
-              .res = TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,
-              .reportFailure = true,
-              .snapshotId = snapshotRes->snapshotId};
-        }
-
-        if (snapshotRes->shards.empty()) {
-          LOG_CTX("289dc", DEBUG, self->loggerContext)
-              << "No shards to transfer for snapshot "
-              << snapshotRes->snapshotId;
-          // There are no shards, no need to continue.
-          return SnapshotTransferResult{.snapshotId = snapshotRes->snapshotId};
-        }
-
-        auto res = self->_guardedData.doUnderLock(
-            [self, snapshotId = snapshotRes->snapshotId,
-             shards = std::move(snapshotRes->shards),
-             snapshotVersion](auto& data) -> Result {
-              if (data.didResign()) {
-                return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
-              }
-
-              if (data.currentSnapshotVersion != snapshotVersion) {
-                return {TRI_ERROR_INTERNAL,
-                        "Snapshot transfer cancelled because a "
-                        "new one was started!"};
-              }
-
-              std::stringstream ss;
-              for (auto const& [shardId, _] : shards) {
-                ss << shardId << " ";
-              }
-              LOG_CTX("2410c", DEBUG, self->loggerContext)
-                  << "While starting snapshot " << snapshotId
-                  << ", the follower tries to create the following shards: "
-                  << ss.str();
-
-              for (auto const& [shardId, properties] : shards) {
-                auto res = data.transactionHandler->applyEntry(
-                    ReplicatedOperation::buildCreateShardOperation(
-                        shardId, properties.collection, properties.properties));
-                if (res.fail()) {
-                  LOG_CTX("bd17c", ERR, self->loggerContext)
-                      << "Failed to ensure shard " << shardId << " " << res;
-                  FATAL_ERROR_EXIT();
-                }
-              }
-
-              return Result{};
-            });
-
-        if (res.fail()) {
-          if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED)) {
-            return SnapshotTransferResult{
-                .res = res,
-                .reportFailure = true,
-                .snapshotId = snapshotRes->snapshotId};
-          }
-          // If we got here, it means the snapshot transfer is no longer needed.
-          return SnapshotTransferResult{.res = res,
-                                        .snapshotId = snapshotRes->snapshotId};
-        }
-
-        LOG_CTX("d6666", DEBUG, self->loggerContext)
-            << "Trying to get first batch of snapshot: "
-            << snapshotRes->snapshotId;
-        auto fut = leader->nextSnapshotBatch(snapshotRes->snapshotId);
-        return self->handleSnapshotTransfer(snapshotRes->snapshotId,
-                                            std::move(leader), snapshotVersion,
-                                            std::nullopt, std::move(fut));
-      });
-}
-
-auto DocumentFollowerState::handleSnapshotTransfer(
-    SnapshotId snapshotId,
-    std::shared_ptr<IDocumentStateLeaderInterface> leader,
-    std::uint64_t snapshotVersion, std::optional<ShardID> currentShard,
-    futures::Future<ResultT<SnapshotBatch>>&& snapshotFuture) noexcept
-    -> futures::Future<SnapshotTransferResult> {
-  return std::move(snapshotFuture)
-      .then([weak = weak_from_this(), leader = std::move(leader),
-             snapshotVersion, snapshotId,
-             currentShard = std::move(currentShard)](
-                futures::Try<ResultT<SnapshotBatch>>&& tryResult) mutable
-            -> futures::Future<SnapshotTransferResult> {
-        auto catchRes =
-            basics::catchToResultT([&] { return std::move(tryResult).get(); });
-        if (catchRes.fail()) {
-          return SnapshotTransferResult{.res = catchRes.result(),
-                                        .reportFailure = true,
-                                        .snapshotId = snapshotId};
-        }
-
-        auto snapshotRes = catchRes.get();
-        if (snapshotRes.fail()) {
-          return SnapshotTransferResult{.res = snapshotRes.result(),
-                                        .reportFailure = true,
-                                        .snapshotId = snapshotId};
-        }
-
-        TRI_ASSERT(snapshotRes->snapshotId == snapshotId);
-
-        auto self = weak.lock();
-        if (self == nullptr) {
-          // The follower resigned, no need to continue the transfer.
-          return SnapshotTransferResult{
-              .res = TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,
-              .reportFailure = true,
-              .snapshotId = snapshotId};
-        }
-
-        if (currentShard.has_value()) {
-          if (currentShard != snapshotRes->shardId) {
-            LOG_CTX("9f630", DEBUG, self->loggerContext)
-                << "Snapshot transfer " << snapshotId
-                << " completed all batches for shard " << *currentShard;
-            if (snapshotRes->shardId.has_value()) {
-              LOG_CTX("2add0", DEBUG, self->loggerContext)
-                  << "Snapshot transfer " << snapshotId
-                  << " beginning to transfer batches for shard "
-                  << *snapshotRes->shardId;
-              currentShard = snapshotRes->shardId;
-            } else {
-              LOG_CTX("ee8f7", DEBUG, self->loggerContext)
-                  << "Snapshot transfer " << snapshotId
-                  << " does not get any more batches";
-            }
-          }
-        } else {
-          currentShard = snapshotRes->shardId;
-        }
-
-        if (snapshotRes->shardId.has_value()) {
-          bool reportingFailure = false;
-          auto insertRes = self->_guardedData.doUnderLock([&self, &snapshotRes,
-                                                           &reportingFailure,
-                                                           snapshotVersion](
-                                                              auto& data)
-                                                              -> Result {
-            if (data.didResign()) {
-              reportingFailure = true;
-              return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
-            }
-
-            // The user may remove and add the server again. The leader
-            // might do a compaction which the follower won't notice. Hence, a
-            // new snapshot is required. This can happen so quick, that one
-            // snapshot transfer is not yet completed before another one is
-            // requested. Before populating the shard, we have to make sure
-            // there's no new snapshot transfer in progress.
-            if (data.currentSnapshotVersion != snapshotVersion) {
-              return {
-                  TRI_ERROR_INTERNAL,
-                  "Snapshot transfer cancelled because a new one was started!"};
-            }
-
-            LOG_CTX("c1d58", DEBUG, self->loggerContext)
-                << "Trying to insert " << snapshotRes->payload.length()
-                << " documents with " << snapshotRes->payload.byteSize()
-                << " bytes into shard " << *snapshotRes->shardId;
-
-            // Note that when the DocumentStateSnapshot::infiniteSnapshot
-            // failure point is enabled, the payload is an empty array.
-            if (auto localShardRes = self->populateLocalShard(
-                    *snapshotRes->shardId, snapshotRes->payload,
-                    data.transactionHandler);
-                localShardRes.fail()) {
-              reportingFailure = true;
-              return localShardRes;
-            }
-
-            return Result{};
-          });
-          if (insertRes.fail()) {
-            return SnapshotTransferResult{.res = insertRes,
-                                          .reportFailure = reportingFailure,
-                                          .snapshotId = snapshotId};
-          }
-        } else {
-          TRI_ASSERT(!snapshotRes->hasMore);
-        }
-
-        if (snapshotRes->hasMore) {
-          LOG_CTX("a732f", DEBUG, self->loggerContext)
-              << "Trying to fetch the next batch of snapshot: "
-              << snapshotRes->snapshotId;
-          auto fut = leader->nextSnapshotBatch(snapshotId);
-          return self->handleSnapshotTransfer(
-              snapshotId, std::move(leader), snapshotVersion,
-              std::move(currentShard), std::move(fut));
-        }
-
-        LOG_CTX("742df", DEBUG, self->loggerContext)
-            << "Leader informed the follower there is no more data to be sent "
-               "for "
-               "snapshot "
-            << snapshotRes->snapshotId;
-        return SnapshotTransferResult{.snapshotId = snapshotId};
-      });
-}
-
 template<class T>
-auto DocumentFollowerState::GuardedData::applyAndRelease(T const& op,
-                                                         LogIndex index)
+auto DocumentFollowerState::GuardedData::applyAndRelease(
+    T const& op, std::optional<LogIndex> index,
+    std::optional<fu2::unique_function<void(Result&&)>> fun)
     -> ResultT<std::optional<LogIndex>> {
-  if (auto res = transactionHandler->applyEntry(op); res.fail()) {
+  auto originalRes = transactionHandler->applyEntry(op);
+  auto res = errorHandler->handleOpResult(op, originalRes);
+  if (res.fail()) {
     return res;
   }
 
-  return ResultT<std::optional<LogIndex>>::success(
-      activeTransactions.getReleaseIndex().value_or(index));
+  if (fun.has_value()) {
+    fun->operator()(std::move(originalRes));
+  }
+
+  if (index.has_value()) {
+    return ResultT<std::optional<LogIndex>>::success(
+        activeTransactions.getReleaseIndex().value_or(*index));
+  }
+
+  return ResultT<std::optional<LogIndex>>::success(std::nullopt);
 }
 
 auto DocumentFollowerState::GuardedData::applyEntry(
     ModifiesUserTransaction auto const& op, LogIndex index)
     -> ResultT<std::optional<LogIndex>> {
-  if (auto validationRes = transactionHandler->validate(op);
-      validationRes.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-    //  Even though a shard was dropped before acquiring the
-    //  snapshot, we could still see transactions referring to
-    //  that shard.
-    LOG_CTX("e1edb", INFO, core->loggerContext)
-        << "will not apply transaction " << op.tid << " on shard " << op.shard
-        << " because the shard is not available";
-    return ResultT<std::optional<LogIndex>>::success(std::nullopt);
-  } else if (validationRes.fail()) {
-    return validationRes;
-  }
-
   activeTransactions.markAsActive(op.tid, index);
-  if (auto res = transactionHandler->applyEntry(op); res.fail()) {
-    return res;
-  }
-
-  // We don't need to update the release index after such operations.
-  return ResultT<std::optional<LogIndex>>::success(std::nullopt);
+  // Will not release the index until the transaction is finished
+  return applyAndRelease(op, std::nullopt, [&](Result&& res) {
+    if (res.fail()) {
+      // If the transaction could not be applied, we have to mark it as inactive
+      activeTransactions.markAsInactive(op.tid);
+    }
+  });
 }
 
 auto DocumentFollowerState::GuardedData::applyEntry(
     ReplicatedOperation::IntermediateCommit const& op, LogIndex)
     -> ResultT<std::optional<LogIndex>> {
   if (!activeTransactions.getTransactions().contains(op.tid)) {
-    LOG_CTX("b41dc", INFO, core->loggerContext)
+    LOG_CTX("b41dc", INFO, loggerContext)
         << "will not apply intermediate commit for transaction " << op.tid
         << " because it is not active";
     return ResultT<std::optional<LogIndex>>{std::nullopt};
   }
-  if (auto res = transactionHandler->applyEntry(op); res.fail()) {
-    return res;
-  }
 
-  // We don't need to update the release index after an intermediate commit.
-  // However, we could release everything in this transaction up to this point
-  // and update the start LogIndex of this transaction to the current log index.
-  return ResultT<std::optional<LogIndex>>::success(std::nullopt);
+  // We don't need to update the release index after an intermediate
+  // commit. However, we could release everything in this transaction up
+  // to this point and update the start LogIndex of this transaction to
+  // the current log index.
+  return applyAndRelease(op);
 }
 
 auto DocumentFollowerState::GuardedData::applyEntry(
@@ -534,59 +486,46 @@ auto DocumentFollowerState::GuardedData::applyEntry(
     -> ResultT<std::optional<LogIndex>> {
   if (!activeTransactions.getTransactions().contains(op.tid)) {
     // Single commit/abort operations are possible.
-    LOG_CTX("cf7ea", INFO, core->loggerContext)
+    LOG_CTX("cf7ea", INFO, loggerContext)
         << "will not finish transaction " << op.tid
         << " because it is not active";
     return ResultT<std::optional<LogIndex>>{std::nullopt};
   }
 
-  if (auto res = transactionHandler->applyEntry(op); res.fail()) {
-    return res;
-  }
-
-  activeTransactions.markAsInactive(op.tid);
-  // We can now potentially release past the finished transaction.
-  return ResultT<std::optional<LogIndex>>::success(
-      activeTransactions.getReleaseIndex().value_or(index));
+  return applyAndRelease(
+      op, index, [&](Result&&) { activeTransactions.markAsInactive(op.tid); });
 }
 
 auto DocumentFollowerState::GuardedData::applyEntry(
     ReplicatedOperation::AbortAllOngoingTrx const& op, LogIndex index)
     -> ResultT<std::optional<LogIndex>> {
-  if (auto res = transactionHandler->applyEntry(op); res.fail()) {
-    return res;
-  }
-
-  activeTransactions.clear();
   // Since everything was aborted, we can release all of it.
-  return ResultT<std::optional<LogIndex>>::success(index);
+  return applyAndRelease(op, index,
+                         [&](Result&&) { activeTransactions.clear(); });
 }
 
 auto DocumentFollowerState::GuardedData::applyEntry(
     ReplicatedOperation::DropShard const& op, LogIndex index)
     -> ResultT<std::optional<LogIndex>> {
   // We first have to abort all transactions for this shard.
+  // This stunt may seem unnecessary, as the leader counterpart takes care of
+  // this by replicating the abort operations. However, because we're currently
+  // replicating the "DropShard" operation first, "Abort" operations come later.
+  // Hence, we need to abort transactions manually for now.
   for (auto const& tid :
        transactionHandler->getTransactionsForShard(op.shard)) {
     auto abortRes = transactionHandler->applyEntry(
         ReplicatedOperation::buildAbortOperation(tid));
     if (abortRes.fail()) {
-      LOG_CTX("aa36c", INFO, core->loggerContext)
-          << "failed to abort transaction " << tid << " for shard " << op.shard
+      LOG_CTX("aa36c", INFO, loggerContext)
+          << "Failed to abort transaction " << tid << " for shard " << op.shard
           << " before dropping the shard: " << abortRes.errorMessage();
       return abortRes;
     }
     activeTransactions.markAsInactive(tid);
   }
 
-  if (auto res = transactionHandler->applyEntry(op); res.fail()) {
-    return res;
-  }
-
-  // Since some transactions were aborted, we could potentially increase the
-  // release index.
-  return ResultT<std::optional<LogIndex>>::success(
-      activeTransactions.getReleaseIndex().value_or(index));
+  return applyAndRelease(op, index);
 }
 
 auto DocumentFollowerState::GuardedData::applyEntry(
@@ -610,18 +549,27 @@ auto DocumentFollowerState::GuardedData::applyEntry(
 auto DocumentFollowerState::GuardedData::applyEntry(
     ReplicatedOperation::ModifyShard const& op, LogIndex index)
     -> ResultT<std::optional<LogIndex>> {
-  // Note that locking the shard is not necessary on the follower. However, we
-  // still do it for safety reasons.
-  auto shardHandler = core->getShardHandler();
+  // Note that locking the shard is not necessary on the follower.
+  // However, we still do it for safety reasons.
   auto origin =
       transaction::OperationOriginREST{"follower collection properties update"};
   auto trxLock = shardHandler->lockShard(op.shard, AccessMode::Type::EXCLUSIVE,
                                          std::move(origin));
   if (trxLock.fail()) {
-    return trxLock.result();
+    auto res = errorHandler->handleOpResult(op, trxLock.result());
+
+    // If the shard was not found, we can ignore this operation and release it.
+    if (res.ok()) {
+      return ResultT<std::optional<LogIndex>>::success(
+          activeTransactions.getReleaseIndex().value_or(index));
+    }
+
+    return res;
   }
 
   return applyAndRelease(op, index);
 }
+
+}  // namespace arangodb::replication2::replicated_state::document
 
 #include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"

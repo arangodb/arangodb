@@ -1,11 +1,7 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
+/*global assertEqual, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for optimizer rules
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany

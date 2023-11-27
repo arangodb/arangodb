@@ -13,6 +13,7 @@ import {
   Tr
 } from "@chakra-ui/react";
 import {
+  Cell,
   flexRender,
   Header,
   Row,
@@ -23,26 +24,47 @@ import * as React from "react";
 type ReactTableProps<Data extends object> = {
   table: TableType<Data>;
   emptyStateMessage?: string;
+  onCellClick?: (cell: Cell<Data, unknown>) => void;
   onRowSelect?: (row: Row<Data>) => void;
   children?: React.ReactNode;
+  renderSubComponent?: (row: Row<Data>) => React.ReactNode;
+  layout?: "fixed" | "auto";
+  getCellProps?: (cell: Cell<Data, unknown>) => any;
+  backgroundColor?: string;
+  tableWidth?: string;
 };
 
 export function ReactTable<Data extends object>({
   emptyStateMessage = "No data found.",
   onRowSelect,
   children,
-  table
+  table,
+  renderSubComponent,
+  layout,
+  onCellClick,
+  getCellProps,
+  tableWidth,
+  backgroundColor = "white"
 }: ReactTableProps<Data>) {
   const rows = table.getRowModel().rows;
+
   return (
     <Stack>
       {children}
       <TableContainer
         borderY="1px solid"
         borderColor="gray.200"
-        backgroundColor="white"
+        backgroundColor={backgroundColor}
       >
-        <Table whiteSpace="normal" size="sm" colorScheme="gray">
+        <Table
+          whiteSpace="normal"
+          size="sm"
+          colorScheme="gray"
+          css={{
+            tableLayout: layout
+          }}
+          width={tableWidth}
+        >
           <Thead>
             {table.getHeaderGroups().map(headerGroup => (
               <Tr key={headerGroup.id}>
@@ -55,11 +77,20 @@ export function ReactTable<Data extends object>({
           <Tbody>
             {rows.length > 0 ? (
               rows.map(row => (
-                <SelectableTr<Data>
-                  key={row.id}
-                  row={row}
-                  onRowSelect={onRowSelect}
-                />
+                <>
+                  <SelectableTr<Data>
+                    key={row.id}
+                    row={row}
+                    onRowSelect={onRowSelect}
+                    onCellClick={onCellClick}
+                    getCellProps={getCellProps}
+                  />
+                  <Tr>
+                    {row.getIsExpanded() && renderSubComponent
+                      ? renderSubComponent(row)
+                      : null}
+                  </Tr>
+                </>
               ))
             ) : (
               <Box padding="4">{emptyStateMessage}</Box>
@@ -79,6 +110,7 @@ const SortableTh = <Data extends object>({
   const canSort = header.column.getCanSort();
   return (
     <Th
+      width={header.getSize()}
       onClick={header.column.getToggleSortingHandler()}
       _hover={
         canSort
@@ -87,6 +119,7 @@ const SortableTh = <Data extends object>({
             }
           : {}
       }
+      height={canSort ? "36px" : ""}
       role="group"
     >
       <Box display="flex" alignItems="center">
@@ -141,10 +174,14 @@ const SortIcon = ({
 
 const SelectableTr = <Data extends object>({
   row,
-  onRowSelect
+  onRowSelect,
+  onCellClick,
+  getCellProps
 }: {
   row: Row<Data>;
   onRowSelect: ((row: Row<Data>) => void) | undefined;
+  onCellClick?: (cell: Cell<Data, unknown>) => void;
+  getCellProps?: (cell: Cell<Data, unknown>) => any;
 }) => {
   return (
     <Tr
@@ -161,7 +198,12 @@ const SelectableTr = <Data extends object>({
     >
       {row.getVisibleCells().map(cell => {
         return (
-          <Td key={cell.id}>
+          <Td
+            key={cell.id}
+            width={cell.column.getSize()}
+            onClick={() => onCellClick?.(cell)}
+            {...getCellProps?.(cell)}
+          >
             {flexRender(cell.column.columnDef.cell, cell.getContext())}
           </Td>
         );

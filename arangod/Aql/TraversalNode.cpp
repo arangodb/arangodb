@@ -352,6 +352,8 @@ void TraversalNode::replaceVariables(
   // this is an important assertion: if options are already built,
   // we would need to carry out the replacements in several other
   // places as well
+  // we are explicitly not trying to replace inside the _options
+  // LookupInfos
   TRI_ASSERT(!_optionsBuilt);
 
   _inVariable = Variable::replace(_inVariable, replacements);
@@ -361,17 +363,39 @@ void TraversalNode::replaceVariables(
     VarSet variables;
     _pruneExpression->variables(variables);
     for (auto const& it : variables) {
-      if (replacements.find(it->id) != replacements.end()) {
+      if (replacements.contains(it->id)) {
         _pruneExpression->replaceVariables(replacements);
 
         // and need to recalculate the set of variables used
         // by the prune expression
         variables.clear();
         _pruneExpression->variables(variables);
-        _pruneVariables = variables;
+        _pruneVariables = std::move(variables);
         break;
       }
     }
+  }
+}
+
+void TraversalNode::replaceAttributeAccess(
+    ExecutionNode const* self, Variable const* searchVariable,
+    std::span<std::string_view> attribute, Variable const* replaceVariable,
+    size_t /*index*/) {
+  // this is an important assertion: if options are already built,
+  // we would need to carry out the replacements in several other
+  // places as well
+  // we are explicitly not trying to replace inside the _options
+  // LookupInfos
+  TRI_ASSERT(!_optionsBuilt);
+
+  if (_inVariable != nullptr && searchVariable == _inVariable &&
+      attribute.size() == 1 && attribute[0] == StaticStrings::IdString) {
+    _inVariable = replaceVariable;
+  }
+
+  if (_pruneExpression != nullptr) {
+    _pruneExpression->replaceAttributeAccess(searchVariable, attribute,
+                                             replaceVariable);
   }
 }
 
@@ -737,7 +761,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
                                                   // SingleServer, Cluster...
         outputRegisterMapping, getStartVertex(), inputRegister,
         plan()->getAst(), opts->uniqueVertices, opts->uniqueEdges, opts->mode,
-        opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
+        opts->defaultWeight, opts->weightAttribute, opts->query(),
         std::move(validatorOptions), std::move(options),
         std::move(clusterBaseProviderOptions), isSmart);
 
@@ -751,7 +775,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
                                                   // SingleServer, Cluster...
         outputRegisterMapping, getStartVertex(), inputRegister,
         plan()->getAst(), opts->uniqueVertices, opts->uniqueEdges, opts->mode,
-        opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
+        opts->defaultWeight, opts->weightAttribute, opts->query(),
         std::move(validatorOptions), std::move(options),
         std::move(singleServerBaseProviderOptions), isSmart);
 

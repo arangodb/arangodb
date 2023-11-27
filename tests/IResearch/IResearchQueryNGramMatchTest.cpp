@@ -1239,7 +1239,7 @@ class QueryNGramMatchSearch : public QueryNGramMatch {
         version(), toString(analyzer)));
     auto collection = vocbase.lookupCollection("testCollection0");
     ASSERT_TRUE(collection);
-    collection->createIndex(createJson->slice(), created);
+    collection->createIndex(createJson->slice(), created).get();
     ASSERT_TRUE(created);
 
     // add view

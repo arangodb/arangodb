@@ -47,16 +47,17 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
 
  private:
   // inserts a document
-  RestStatus insertDocument();
+  [[nodiscard]] futures::Future<futures::Unit> insertDocument();
 
   // reads a single or all documents
   RestStatus readDocument();
 
   // reads a single document
-  RestStatus readSingleDocument(bool generateBody);
+  [[nodiscard]] futures::Future<futures::Unit> readSingleDocument(
+      bool generateBody);
 
   // reads multiple documents
-  RestStatus readManyDocuments();
+  [[nodiscard]] futures::Future<futures::Unit> readManyDocuments();
 
   // reads a single document head
   RestStatus checkDocument();
@@ -68,10 +69,10 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
   RestStatus updateDocument();
 
   // helper function for replace and update
-  RestStatus modifyDocument(bool);
+  [[nodiscard]] futures::Future<futures::Unit> modifyDocument(bool);
 
   // removes a document
-  RestStatus removeDocument();
+  [[nodiscard]] futures::Future<futures::Unit> removeDocument();
 
   void handleFillIndexCachesValue(OperationOptions& options);
 

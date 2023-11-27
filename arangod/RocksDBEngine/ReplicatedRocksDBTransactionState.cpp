@@ -47,12 +47,12 @@ ReplicatedRocksDBTransactionState::ReplicatedRocksDBTransactionState(
 
 ReplicatedRocksDBTransactionState::~ReplicatedRocksDBTransactionState() {}
 
-Result ReplicatedRocksDBTransactionState::beginTransaction(
+futures::Future<Result> ReplicatedRocksDBTransactionState::beginTransaction(
     transaction::Hints hints) {
   TRI_ASSERT(!_hasActiveTrx);
-  auto res = RocksDBTransactionState::beginTransaction(hints);
+  auto res = co_await RocksDBTransactionState::beginTransaction(hints);
   if (!res.ok()) {
-    return res;
+    co_return res;
   }
 
   RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
@@ -60,11 +60,11 @@ Result ReplicatedRocksDBTransactionState::beginTransaction(
     res = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
               .beginTransaction();
     if (!res.ok()) {
-      return res;
+      co_return res;
     }
   }
   _hasActiveTrx = true;
-  return res;
+  co_return res;
 }
 
 /// @brief commit a transaction
@@ -84,8 +84,9 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
     return res;
   }
 
+  auto tid = id().asFollowerTransactionId();
   auto operation = replication2::replicated_state::document::
-      ReplicatedOperation::buildCommitOperation(id());
+      ReplicatedOperation::buildCommitOperation(tid);
   auto options = replication2::replicated_state::document::ReplicationOptions{
       .waitForCommit = true};
   std::vector<futures::Future<Result>> commits;
@@ -100,37 +101,45 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
   }};
 
   // Due to distributeShardsLike, multiple collections can have the same log
-  // leader. We need to make sure that we only commit once per log.
-  std::unordered_set<replication2::LogId> logs;
-
+  // leader. In this case, we are going to commit the same transaction multiple
+  // times in the same log. This is ok, because followers know how to handle
+  // this situation.
   allCollections([&](TransactionCollection& tc) {
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(tc);
     // We have to write to the log and wait for the log entry to be
     // committed (in the log sense), before we can commit locally.
     if ((rtc.accessType() != AccessMode::Type::READ)) {
       auto leader = rtc.leaderState();
-      if (logs.contains(leader->gid.id) ||
-          !leader->needsReplication(operation)) {
-        // For transactions that have been already committed in the log, we only
-        // have to commit locally.
+      if (!leader->needsReplication(operation)) {
+        // For transactions that have no operations, we only
+        // have to commit locally. It is a nop, but helps with cleanup.
         commits.emplace_back(rtc.commitTransaction());
         return true;
       }
-      logs.emplace(leader->gid.id);
 
       commits.emplace_back(
           leader->replicateOperation(operation, options)
-              .thenValue([&rtc](auto&& res) -> ResultT<replication2::LogIndex> {
+              .thenValue([&rtc, leader,
+                          tid](auto&& res) -> ResultT<replication2::LogIndex> {
                 if (res.fail()) {
-                  return res.result();
+                  LOG_CTX("57328", WARN, leader->loggerContext)
+                      << "Failed to replicate commit of transaction (follower "
+                         "ID) "
+                      << tid << " on collection " << rtc.collectionName()
+                      << ": " << res.result();
+                  return res;
                 }
                 if (auto localCommitRes = rtc.commitTransaction();
                     localCommitRes.fail()) {
+                  LOG_CTX("e8dd4", ERR, leader->loggerContext)
+                      << "Failed to commit transaction (follower ID) " << tid
+                      << " locally on collection " << rtc.collectionName()
+                      << ": " << res.result();
                   return localCommitRes;
                 }
                 return res;
               })
-              .thenValue([leader, tid = id()](auto&& res) -> Result {
+              .thenValue([leader, tid](auto&& res) -> Result {
                 if (res.fail()) {
                   return res.result();
                 }
@@ -154,20 +163,41 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
 
   // We are capturing a shared pointer to this state so we prevent reclamation
   // while we are waiting for the commit operations.
-  return futures::collectAll(commits).thenValue(
-      [self = shared_from_this()](
-          std::vector<futures::Try<Result>>&& results) -> Result {
-        for (auto& res : results) {
-          auto result = res.get();
-          if (result.fail()) {
-            LOG_TOPIC("8ebc0", FATAL, Logger::REPLICATION2)
-                << "Failed to commit replicated transaction locally: "
-                << result;
-            FATAL_ERROR_EXIT();
-          }
-        }
+  return futures::collectAll(commits).thenValue([self = shared_from_this()](
+                                                    std::vector<
+                                                        futures::Try<Result>>&&
+                                                        results) -> Result {
+    std::vector<Result> partialResults;
+    partialResults.reserve(results.size());
+    for (auto& res : results) {
+      partialResults.emplace_back(
+          basics::catchToResult([&]() { return res.get(); }));
+    }
+
+    if (std::all_of(
+            partialResults.begin(), partialResults.end(), [](auto const& r) {
+              return r.ok() ||
+                     r.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+            })) {
+      if (partialResults.empty() || partialResults.front().ok()) {
         return {};
-      });
+      }
+      LOG_TOPIC("6d1ce", ERR, Logger::REPLICATED_STATE)
+          << "The leader has resigned, so nothing has been replicated. "
+             "However, if the transaction spans multiple collections, with "
+             "different leaders, it might have been partially applied.";
+      TRI_ASSERT(false) << partialResults;
+      // There's no need to crash in production.
+      return partialResults.front();
+    }
+
+    LOG_TOPIC("8ebc0", FATAL, Logger::REPLICATED_STATE)
+        << "Failed to commit replicated transaction locally (partial "
+           "commits detected): "
+        << partialResults;
+    TRI_ASSERT(false) << partialResults;
+    FATAL_ERROR_EXIT();
+  });
 }
 
 std::lock_guard<std::mutex> ReplicatedRocksDBTransactionState::lockCommit() {
@@ -191,14 +221,18 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
     return res;
   }
 
+  auto tid = id().asFollowerTransactionId();
   auto operation = replication2::replicated_state::document::
-      ReplicatedOperation::buildAbortOperation(id());
+      ReplicatedOperation::buildAbortOperation(tid);
   auto options = replication2::replicated_state::document::ReplicationOptions{};
 
   // The following code has been simplified based on this assertion.
   TRI_ASSERT(options.waitForCommit == false);
 
-  std::unordered_set<replication2::LogId> logs;
+  // Due to distributeShardsLike, multiple collections can have the same log
+  // leader. In this case, we are going to abort the same transaction multiple
+  // times in the same log. This is ok, because followers know how to handle
+  // this situation.
   RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   for (auto& col : _collections) {
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(*col);
@@ -206,21 +240,39 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
     if (rtc.accessType() != AccessMode::Type::READ) {
       auto leader = rtc.leaderState();
       auto needsReplication = leader->needsReplication(operation);
-      if (logs.contains(leader->gid.id) || !needsReplication) {
+      if (!needsReplication) {
         if (auto r = rtc.abortTransaction(); r.fail()) {
           return r;
         }
         continue;
       }
-      logs.emplace(leader->gid.id);
       auto res = leader->replicateOperation(operation, options).get();
+      bool resigned = false;
       if (res.fail()) {
-        return res.result();
+        if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED)) {
+          // During the resign procedure, the stream becomes unavailable, hence
+          // any insertion attempts will be rejected. This means that
+          // replication is expected to fail. In that case, we no longer have to
+          // worry about the followers. If they are going to resign too, they'll
+          // abort any unfinished transactions themselves. Otherwise, a new
+          // leader will replicated an abort-all entry during recovery.
+          resigned = true;
+        } else {
+          return res.result();
+        }
       }
+
       if (auto r = rtc.abortTransaction(); r.fail()) {
         return r;
       }
-      if (auto releaseRes = leader->release(id(), res.get());
+
+      if (resigned) {
+        // Skip the release step because it is not going to work anyway, and
+        // that's ok.
+        continue;
+      }
+
+      if (auto releaseRes = leader->release(tid, res.get());
           releaseRes.fail()) {
         LOG_CTX("0279d", ERR, leader->loggerContext)
             << "Failed to call release: " << releaseRes;

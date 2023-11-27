@@ -1,11 +1,7 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
+/*global assertEqual, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for optimizer rules
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -158,6 +154,7 @@ function optimizerRuleTestSuite () {
       queries.forEach(function(query) {
         let result = db._createStatement(query[0]).explain();
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        assertEqual("count", result.plan.nodes.filter((node) => node.type === 'IndexNode')[0].strategy);
         result = db._query(query[0]).toArray();
         assertEqual(query[1], result, query);
       });
@@ -180,6 +177,9 @@ function optimizerRuleTestSuite () {
         let opts = { optimizer: { rules: ["-reduce-extraction-to-projection"] } };
         let result = db._createStatement({query: query[0], bindVars:  null, options:  opts}).explain();
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        if (result.plan.nodes.filter((node) => node.type === 'IndexNode').length) {
+          assertEqual("count", result.plan.nodes.filter((node) => node.type === 'IndexNode')[0].strategy);
+        }
         result = db._query(query[0], null, opts).toArray();
         assertEqual(query[1], result, query);
       });

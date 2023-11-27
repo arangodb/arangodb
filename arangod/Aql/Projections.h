@@ -27,6 +27,8 @@
 #include "Containers/FlatHashSet.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 
+#include <function2.hpp>
+
 #include <cstdint>
 #include <limits>
 #include <memory>
@@ -93,6 +95,9 @@ class Projections {
   /// @brief reset all projections
   void clear() noexcept;
 
+  /// @brief erase projection members if cb returns true
+  void erase(std::function<bool(Projection&)> const& cb);
+
   /// @brief set covering index context for these projections
   void setCoveringContext(DataSourceId const& id,
                           std::shared_ptr<Index> const& index);
@@ -116,6 +121,10 @@ class Projections {
   /// @brief checks if we have a single attribute projection on the attribute
   bool isSingle(std::string_view attribute) const noexcept;
 
+  /// @brief returns true if any of the projections will write into an
+  /// output variable/register
+  bool hasOutputRegisters() const noexcept;
+
   // return the covering index position for a specific attribute type.
   // will throw if the index does not cover!
   uint16_t coveringIndexPosition(aql::AttributeNamePath::Type type) const;
@@ -126,6 +135,28 @@ class Projections {
   /// @brief get projection at position
   Projection& operator[](size_t index);
 
+  /// @brief extract projections from a full document, calling a callback for
+  /// each projection value
+  void produceFromDocument(
+      velocypack::Builder& b, velocypack::Slice slice,
+      transaction::Methods const* trxPtr,
+      fu2::unique_function<void(Variable const*, velocypack::Slice)
+                               const> const& cb) const;
+
+  /// @brief extract projections from a covering index, calling a callback for
+  /// each projection value
+  void produceFromIndex(
+      velocypack::Builder& b, IndexIteratorCoveringData& covering,
+      transaction::Methods const* trxPtr,
+      fu2::unique_function<void(Variable const*, velocypack::Slice)
+                               const> const& cb) const;
+
+  void produceFromIndexCompactArray(
+      velocypack::Builder& b, IndexIteratorCoveringData& covering,
+      transaction::Methods const* trxPtr,
+      fu2::unique_function<void(Variable const*, velocypack::Slice)
+                               const> const& cb) const;
+
   /// @brief extract projections from a full document
   void toVelocyPackFromDocument(velocypack::Builder& b, velocypack::Slice slice,
                                 transaction::Methods const* trxPtr) const;
@@ -134,9 +165,10 @@ class Projections {
   void toVelocyPackFromIndex(velocypack::Builder& b,
                              IndexIteratorCoveringData& covering,
                              transaction::Methods const* trxPtr) const;
+
   /// @brief extract projections from a covering index
   /// this variant accesses the covering data using the projection index
-  // instead of coveringIndexPosition attribute.
+  /// instead of coveringIndexPosition attribute.
   void toVelocyPackFromIndexCompactArray(
       velocypack::Builder& b, IndexIteratorCoveringData& covering,
       transaction::Methods const* trxPtr) const;

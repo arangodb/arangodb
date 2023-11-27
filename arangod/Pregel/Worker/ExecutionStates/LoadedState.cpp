@@ -45,8 +45,8 @@ template<typename V, typename E, typename M>
 Loaded<V, E, M>::Loaded(WorkerState<V, E, M>& worker) : worker{worker} {}
 
 template<typename V, typename E, typename M>
-auto Loaded<V, E, M>::receive(actor::ActorPID const& sender,
-                              actor::ActorPID const& self,
+auto Loaded<V, E, M>::receive(actor::DistributedActorPID const& sender,
+                              actor::DistributedActorPID const& self,
                               worker::message::WorkerMessages const& message,
                               Dispatcher dispatcher)
     -> std::unique_ptr<ExecutionState> {

@@ -1,5 +1,4 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global AQL_EXECUTE */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, functions
 ///

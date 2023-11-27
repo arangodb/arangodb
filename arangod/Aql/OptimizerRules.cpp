@@ -79,6 +79,7 @@
 #include "VocBase/Methods/Collections.h"
 #include "Logger/LogMacros.h"
 
+#include <span>
 #include <tuple>
 
 #include <absl/strings/str_cat.h>
@@ -143,32 +144,6 @@ std::string getSingleShardId(
     arangodb::aql::ExecutionNode const* node,
     arangodb::aql::Collection const* collection,
     arangodb::aql::Variable const* collectionVariable = nullptr);
-
-arangodb::aql::Collection const* getCollection(
-    arangodb::aql::ExecutionNode const* node) {
-  using EN = arangodb::aql::ExecutionNode;
-  using arangodb::aql::ExecutionNode;
-
-  switch (node->getType()) {
-    case EN::ENUMERATE_COLLECTION:
-      return ExecutionNode::castTo<
-                 arangodb::aql::EnumerateCollectionNode const*>(node)
-          ->collection();
-    case EN::INDEX:
-      return ExecutionNode::castTo<arangodb::aql::IndexNode const*>(node)
-          ->collection();
-    case EN::TRAVERSAL:
-    case EN::ENUMERATE_PATHS:
-    case EN::SHORTEST_PATH:
-      return ExecutionNode::castTo<arangodb::aql::GraphNode const*>(node)
-          ->collection();
-
-    default:
-      // note: modification nodes are not covered here yet
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "node type does not have a collection");
-  }
-}
 
 arangodb::aql::Variable const* getOutVariable(
     arangodb::aql::ExecutionNode const* node) {
@@ -313,11 +288,6 @@ class CollectionVariableTracker final
     return _dependencies[var];
   }
 
-  arangodb::aql::VarSet const& getCollectionVariables(
-      arangodb::aql::Collection const* collection) {
-    return _collectionVariables[collection];
-  }
-
   void after(arangodb::aql::ExecutionNode* en) override final {
     using EN = arangodb::aql::ExecutionNode;
     using arangodb::aql::ExecutionNode;
@@ -331,7 +301,7 @@ class CollectionVariableTracker final
 
       case EN::INDEX:
       case EN::ENUMERATE_COLLECTION: {
-        auto collection = ::getCollection(en);
+        auto collection = arangodb::aql::utils::getCollection(en);
         auto variable = ::getOutVariable(en);
 
         // originates the collection variable, direct dependence
@@ -532,7 +502,7 @@ class RestrictToSingleShardChecker final
     TRI_ASSERT(en->getType() == arangodb::aql::ExecutionNode::INDEX ||
                en->getType() ==
                    arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION);
-    auto collection = ::getCollection(en);
+    auto collection = arangodb::aql::utils::getCollection(en);
     auto variable = ::getOutVariable(en);
     auto shardId = ::getSingleShardId(_plan, en, collection, variable);
     if (shardId.empty()) {
@@ -1115,8 +1085,9 @@ Collection* addCollectionToQuery(QueryContext& query, std::string const& cname,
     // could become unnecessary if the AST takes care of adding the collections
     if (!ServerState::instance()->isCoordinator()) {
       TRI_ASSERT(coll != nullptr);
-      query.trxForOptimization().addCollectionAtRuntime(cname,
-                                                        AccessMode::Type::READ);
+      query.trxForOptimization()
+          .addCollectionAtRuntime(cname, AccessMode::Type::READ)
+          .get();
     }
   }
 
@@ -1660,255 +1631,6 @@ void arangodb::aql::removeCollectVariablesRule(
 
   }  // for node in nodes
   opt->addPlan(std::move(plan), rule, modified);
-}
-
-class PropagateConstantAttributesHelper {
- public:
-  explicit PropagateConstantAttributesHelper(ExecutionPlan* plan)
-      : _plan(plan), _modified(false) {}
-
-  bool modified() const { return _modified; }
-
-  /// @brief inspects a plan and propagates constant values in expressions
-  void propagateConstants() {
-    containers::SmallVector<ExecutionNode*, 8> nodes;
-    _plan->findNodesOfType(nodes, EN::FILTER, true);
-
-    for (auto const& node : nodes) {
-      auto fn = ExecutionNode::castTo<FilterNode const*>(node);
-      auto setter = _plan->getVarSetBy(fn->inVariable()->id);
-      if (setter != nullptr && setter->getType() == EN::CALCULATION) {
-        auto cn = ExecutionNode::castTo<CalculationNode*>(setter);
-        auto expression = cn->expression();
-        collectConstantAttributes(const_cast<AstNode*>(expression->node()));
-      }
-    }
-
-    if (!_constants.empty()) {
-      for (auto const& node : nodes) {
-        auto fn = ExecutionNode::castTo<FilterNode const*>(node);
-        auto setter = _plan->getVarSetBy(fn->inVariable()->id);
-        if (setter != nullptr && setter->getType() == EN::CALCULATION) {
-          auto cn = ExecutionNode::castTo<CalculationNode*>(setter);
-          auto expression = cn->expression();
-          insertConstantAttributes(const_cast<AstNode*>(expression->node()));
-        }
-      }
-    }
-  }
-
- private:
-  AstNode const* getConstant(Variable const* variable,
-                             std::string const& attribute) const {
-    auto it = _constants.find(variable);
-
-    if (it == _constants.end()) {
-      return nullptr;
-    }
-
-    auto it2 = (*it).second.find(attribute);
-
-    if (it2 == (*it).second.end()) {
-      return nullptr;
-    }
-
-    return (*it2).second;
-  }
-
-  /// @brief inspects an expression (recursively) and notes constant attribute
-  /// values so they can be propagated later
-  void collectConstantAttributes(AstNode* node) {
-    if (node == nullptr) {
-      return;
-    }
-
-    if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-      auto lhs = node->getMember(0);
-      auto rhs = node->getMember(1);
-
-      collectConstantAttributes(lhs);
-      collectConstantAttributes(rhs);
-    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-      auto lhs = node->getMember(0);
-      auto rhs = node->getMember(1);
-
-      if (lhs->isConstant() && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        inspectConstantAttribute(rhs, lhs);
-      } else if (rhs->isConstant() && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        inspectConstantAttribute(lhs, rhs);
-      }
-    }
-  }
-
-  /// @brief traverses an AST part recursively and patches it by inserting
-  /// constant values
-  void insertConstantAttributes(AstNode* node) {
-    if (node == nullptr) {
-      return;
-    }
-
-    if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-      auto lhs = node->getMember(0);
-      auto rhs = node->getMember(1);
-
-      insertConstantAttributes(lhs);
-      insertConstantAttributes(rhs);
-    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-      auto lhs = node->getMember(0);
-      auto rhs = node->getMember(1);
-
-      if (!lhs->isConstant() && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        insertConstantAttribute(node, 1);
-      }
-      if (!rhs->isConstant() && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        insertConstantAttribute(node, 0);
-      }
-    }
-  }
-
-  /// @brief extract an attribute and its variable from an attribute access
-  /// (e.g. `a.b.c` will return variable `a` and attribute name `b.c.`.
-  bool getAttribute(AstNode const* attribute, Variable const*& variable,
-                    std::string& name) {
-    TRI_ASSERT(attribute != nullptr &&
-               attribute->type == NODE_TYPE_ATTRIBUTE_ACCESS);
-    TRI_ASSERT(name.empty());
-
-    while (attribute->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      name = absl::StrCat(".", attribute->getStringView(), name);
-      attribute = attribute->getMember(0);
-    }
-
-    if (attribute->type != NODE_TYPE_REFERENCE) {
-      return false;
-    }
-
-    variable = static_cast<Variable const*>(attribute->getData());
-    TRI_ASSERT(variable != nullptr);
-
-    return true;
-  }
-
-  /// @brief inspect the constant value assigned to an attribute
-  /// the attribute value will be stored so it can be inserted for the attribute
-  /// later
-  void inspectConstantAttribute(AstNode const* attribute,
-                                AstNode const* value) {
-    Variable const* variable = nullptr;
-    std::string name;
-
-    if (!getAttribute(attribute, variable, name)) {
-      return;
-    }
-
-    auto it = _constants.find(variable);
-
-    if (it == _constants.end()) {
-      _constants.try_emplace(
-          variable,
-          std::unordered_map<std::string, AstNode const*>{{name, value}});
-      return;
-    }
-
-    auto it2 = (*it).second.find(name);
-
-    if (it2 == (*it).second.end()) {
-      // first value for the attribute
-      (*it).second.try_emplace(name, value);
-    } else {
-      auto previous = (*it2).second;
-
-      if (previous == nullptr) {
-        // we have multiple different values for the attribute. better not use
-        // this attribute
-        return;
-      }
-
-      if (!value->computeValue().binaryEquals(previous->computeValue())) {
-        // different value found for an already tracked attribute. better not
-        // use this attribute
-        (*it2).second = nullptr;
-      }
-    }
-  }
-
-  /// @brief patches an AstNode by inserting a constant value into it
-  void insertConstantAttribute(AstNode* parentNode, size_t accessIndex) {
-    Variable const* variable = nullptr;
-    std::string name;
-
-    AstNode* member = parentNode->getMember(accessIndex);
-
-    if (!getAttribute(member, variable, name)) {
-      return;
-    }
-
-    auto constantValue = getConstant(variable, name);
-
-    if (constantValue != nullptr) {
-      // first check if we would optimize away a join condition that uses a
-      // smartJoinAttribute... we must not do that, because that would otherwise
-      // disable SmartJoin functionality
-      if (arangodb::ServerState::instance()->isCoordinator() &&
-          parentNode->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-        AstNode const* current =
-            parentNode->getMember(accessIndex == 0 ? 1 : 0);
-        if (current->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-          AstNode const* nameAttribute = current;
-          current = current->getMember(0);
-          if (current->type == NODE_TYPE_REFERENCE) {
-            auto setter = _plan->getVarSetBy(
-                static_cast<Variable const*>(current->getData())->id);
-            if (setter != nullptr &&
-                (setter->getType() == EN::ENUMERATE_COLLECTION ||
-                 setter->getType() == EN::INDEX)) {
-              auto collection = ::getCollection(setter);
-              if (collection != nullptr) {
-                auto logical = collection->getCollection();
-                if (logical->hasSmartJoinAttribute() &&
-                    logical->smartJoinAttribute() ==
-                        nameAttribute->getStringView()) {
-                  // don't remove a SmartJoin attribute access!
-                  return;
-                } else {
-                  std::vector<std::string> shardKeys =
-                      collection->shardKeys(true);
-                  if (std::find(shardKeys.begin(), shardKeys.end(),
-                                nameAttribute->getString()) !=
-                      shardKeys.end()) {
-                    // don't remove equality lookups on shard keys, as this may
-                    // prevent the restrict-to-single-shard rule from being
-                    // applied later!
-                    return;
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-
-      parentNode->changeMember(accessIndex,
-                               const_cast<AstNode*>(constantValue));
-      _modified = true;
-    }
-  }
-
-  ExecutionPlan* _plan;
-  std::unordered_map<Variable const*,
-                     std::unordered_map<std::string, AstNode const*>>
-      _constants;
-  bool _modified;
-};
-
-/// @brief propagate constant attributes in FILTERs
-void arangodb::aql::propagateConstantAttributesRule(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-    OptimizerRule const& rule) {
-  PropagateConstantAttributesHelper helper(plan.get());
-  helper.propagateConstants();
-
-  opt->addPlan(std::move(plan), rule, helper.modified());
 }
 
 /// @brief move calculations up in the plan
@@ -2848,8 +2570,10 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
 
   ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
 
+  bool modified = false;
+
   for (auto const& n : nodes) {
-    arangodb::aql::Variable const* outVariable = nullptr;
+    Variable const* outVariable = nullptr;
 
     if (n->getType() == EN::CALCULATION) {
       auto nn = ExecutionNode::castTo<CalculationNode*>(n);
@@ -3029,16 +2753,17 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
   if (!toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
     TRI_ASSERT(nodes.size() >= toUnlink.size());
+    modified = true;
     if (nodes.size() - toUnlink.size() > 0) {
       // need to rerun the rule because removing calculations may unlock
       // removal of further calculations
-      opt->addPlanAndRerun(std::move(plan), rule, true);
+      opt->addPlanAndRerun(std::move(plan), rule, modified);
     } else {
       // no need to rerun the rule
-      opt->addPlan(std::move(plan), rule, true);
+      opt->addPlan(std::move(plan), rule, modified);
     }
   } else {
-    opt->addPlan(std::move(plan), rule, false);
+    opt->addPlan(std::move(plan), rule, modified);
   }
 }
 
@@ -4572,7 +4297,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
               }
               case ExecutionNode::ENUMERATE_COLLECTION:
               case ExecutionNode::INDEX: {
-                auto col = getCollection(p);
+                auto col = utils::getCollection(p);
                 if (col->numberOfShards() > 1 ||
                     (col->type() == TRI_COL_TYPE_EDGE && col->isSmart())) {
                   hasFoundMultipleShards = true;
@@ -5206,8 +4931,8 @@ void arangodb::aql::restrictToSingleShardRule(
       return;
     }
 
-    auto s1 = ::getCollection(current)->shardIds();
-    auto s2 = ::getCollection(setter)->shardIds();
+    auto s1 = utils::getCollection(current)->shardIds();
+    auto s2 = utils::getCollection(setter)->shardIds();
 
     if (s1->size() != s2->size()) {
       // different number of shard ids... should not happen if we have a
@@ -5310,7 +5035,7 @@ void arangodb::aql::restrictToSingleShardRule(
         }
 
         if (!disable) {
-          auto collection = ::getCollection(current);
+          auto collection = utils::getCollection(current);
           auto collectionVariable = ::getOutVariable(current);
           std::string shardId = finder.getShard(collectionVariable);
 
@@ -5533,7 +5258,7 @@ class RemoveToEnumCollFinder final
 
         _enumColl = enumColl;
 
-        if (::getCollection(_enumColl) != rn->collection()) {
+        if (utils::getCollection(_enumColl) != rn->collection()) {
           break;  // abort . . .
         }
 
@@ -8450,12 +8175,9 @@ void arangodb::aql::asyncPrefetchRule(Optimizer* opt,
       }
       auto eligibility = n->canUseAsyncPrefetching();
       if (stack.back() == 0 &&
-          eligibility == AsyncPrefetchEligibility::kEnableForNode &&
-          (!n->hasParent() || n->getFirstParent()->getType() != EN::REMOTE)) {
-        // we are currently excluding any node inside a subquery and all
-        // nodes that are direct dependencies of REMOTE nodes from the
-        // optimization, because of assertion failures.
-        // TODO: lift these restrictions.
+          eligibility == AsyncPrefetchEligibility::kEnableForNode) {
+        // we are currently excluding any node inside a subquery.
+        // TODO: lift this restriction.
         n->setIsAsyncPrefetchEnabled(true);
         modified = true;
       }
@@ -9091,317 +8813,90 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
   }
 }
 
-#define LOG_INDEX_OPTIMIZER_RULE LOG_DEVEL_IF(false)
-
-void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
-                                       std::unique_ptr<ExecutionPlan> plan,
-                                       OptimizerRule const& rule) {
-  containers::SmallVector<ExecutionNode*, 8> nodes;
-  plan->findNodesOfType(nodes, EN::INDEX, true);
-
-  LOG_INDEX_OPTIMIZER_RULE << "Checking if we can join index nodes";
-
-  bool modified = false;
-  if (nodes.size() >= 2) {
-    // not yet supported:
-    // - IndexIteratorOptions: sorted, ascending, evalFCalls, useCache,
-    // waitForSync, limit, lookahead
-    // - reverse iteration
-    // - support from GatherNodes
-    auto nodeQualifies = [](IndexNode const& indexNode) {
-      LOG_INDEX_OPTIMIZER_RULE << "Index node id: " << indexNode.id();
-      if (indexNode.condition() == nullptr) {
-        // IndexNode does not have an index lookup condition
-        LOG_INDEX_OPTIMIZER_RULE << "IndexNode does not have an index lookup "
-                                    "condition, so we cannot join it";
-        return false;
-      }
-
-      if (!indexNode.options().ascending) {
-        // reverse sort not yet supported
-        LOG_INDEX_OPTIMIZER_RULE << "IndexNode is not sorted ascending, so we "
-                                    "cannot join it";
-        return false;
-      }
-
-      auto const& indexes = indexNode.getIndexes();
-      if (indexes.size() != 1) {
-        // must use exactly one index (otherwise this would be an OR condition)
-        LOG_INDEX_OPTIMIZER_RULE << "IndexNode uses more than one index, so we "
-                                    "cannot join it";
-        return false;
-      }
-
-      auto const& index = indexes[0];
-      if (!index->isSorted()) {
-        // must be a sorted index
-        LOG_INDEX_OPTIMIZER_RULE << "IndexNode uses an unsorted index, so we "
-                                    "cannot join it";
-        return false;
-      }
-
-      if (index->fields().empty()) {
-        // index on more than one attribute
-        LOG_INDEX_OPTIMIZER_RULE << "IndexNode uses an index on more than one "
-                                    "attribute, so we cannot join it";
-        return false;
-      }
-
-      if (index->hasExpansion()) {
-        // index uses expansion ([*]) operator
-        LOG_INDEX_OPTIMIZER_RULE << "IndexNode uses an index with expansion, "
-                                    "so we cannot join it";
-        return false;
-      }
-
-      LOG_INDEX_OPTIMIZER_RULE << "IndexNode qualifies for joining";
-      return true;
-    };
-
-    // IndexNodes we already handled
-    containers::FlatHashSet<ExecutionNode const*> handled;
-
-    // for each IndexNode we found in the found, iterate over a potential
-    // chain of IndexNodes, from top to bottom
-    for (auto* n : nodes) {
-      auto* startNode = ExecutionNode::castTo<IndexNode*>(n);
-      // go to the first IndexNode in the chain, so we can start at the
-      // top.
-      while (true) {
-        auto* dep = startNode->getFirstDependency();
-        if (dep == nullptr || dep->getType() != EN::INDEX) {
-          break;
-        }
-        startNode = ExecutionNode::castTo<IndexNode*>(dep);
-      }
-
-      while (true) {
-        containers::SmallVector<IndexNode*, 8> candidates;
-        IndexNode* indexNode = startNode;
-
-        containers::SmallVector<CalculationNode*, 8> calculations;
-
-        while (true) {
-          if (handled.contains(indexNode) || !nodeQualifies(*indexNode)) {
-            break;
-          }
-          candidates.emplace_back(indexNode);
-          auto* parent = indexNode->getFirstParent();
-          while (true) {
-            if (parent == nullptr) {
-              goto endOfIndexNodeSearch;
-            } else if (parent->getType() == EN::CALCULATION) {
-              // store this calculation and check later if and index depends on
-              // it
-              auto calc = ExecutionNode::castTo<CalculationNode*>(parent);
-              calculations.push_back(calc);
-              parent = parent->getFirstParent();
-              continue;
-            } else if (parent->getType() == EN::INDEX) {
-              // check that this index node does not depend on previous
-              // calculations
-
-              indexNode = ExecutionNode::castTo<IndexNode*>(parent);
-              VarSet usedVariables;
-              indexNode->getVariablesUsedHere(usedVariables);
-              for (auto* calc : calculations) {
-                if (calc->setsVariable(usedVariables)) {
-                  // can not join past this calculation
-                  goto endOfIndexNodeSearch;
-                }
-              }
-              break;
-            } else {
-              goto endOfIndexNodeSearch;
-            }
-          }
-        }
-      endOfIndexNodeSearch:
-
-        if (candidates.size() >= 2) {
-          LOG_INDEX_OPTIMIZER_RULE << "Found " << candidates.size()
-                                   << " index nodes that qualify for joining";
-          bool eligible = true;
-          size_t i = 0;
-          for (auto* c : candidates) {
-            if (i == 0) {
-              // first FOR loop. we expect it to not have any lookup condition
-              if (c->condition()->root() != nullptr) {
-                eligible = false;
-                break;
-              }
-            } else {
-              // follow-up FOR loop. we expect it to have a lookup condition
-              if (c->condition()->root() == nullptr) {
-                eligible = false;
-                break;
-              }
-              auto const* root = c->condition()->root();
-              if (root == nullptr || root->type != NODE_TYPE_OPERATOR_NARY_OR ||
-                  root->numMembers() != 1) {
-                eligible = false;
-                break;
-              }
-              root = root->getMember(0);
-              if (root == nullptr ||
-                  root->type != NODE_TYPE_OPERATOR_NARY_AND ||
-                  root->numMembers() != 1) {
-                eligible = false;
-                break;
-              }
-              root = root->getMember(0);
-              if (root == nullptr ||
-                  root->type != NODE_TYPE_OPERATOR_BINARY_EQ ||
-                  root->numMembers() != 2) {
-                eligible = false;
-                break;
-              }
-              auto* lhs = root->getMember(0);
-              auto* rhs = root->getMember(1);
-
-              auto matches = [](AstNode const* lhs, AstNode const* rhs,
-                                IndexNode const* i1, IndexNode const* i2) {
-                std::pair<Variable const*,
-                          std::vector<arangodb::basics::AttributeName>>
-                    usedVar;
-
-                if (!lhs->isAttributeAccessForVariable(
-                        usedVar, /*allowIndexedAccess*/ false)) {
-                  // lhs is not an attribute access
-                  return false;
-                }
-                if (usedVar.first != i1->outVariable() ||
-                    usedVar.second != i1->getIndexes()[0]->fields()[0]) {
-                  // lhs doesn't match i1's FOR loop index field
-                  return false;
-                }
-                // lhs matches i1's FOR loop index field
-                if (!rhs->isAttributeAccessForVariable(
-                        usedVar, /*allowIndexedAccess*/ false)) {
-                  // rhs is not an attribute access
-                  return false;
-                }
-                if (usedVar.first != i2->outVariable() ||
-                    usedVar.second != i2->getIndexes()[0]->fields()[0]) {
-                  // rhs doesn't match i2's FOR loop index field
-                  return false;
-                }
-                // rhs matches i2's FOR loop index field
-                return true;
-              };
-
-              if (!matches(lhs, rhs, c, candidates[i - 1]) &&
-                  !matches(lhs, rhs, candidates[i - 1], c)) {
-                LOG_INDEX_OPTIMIZER_RULE
-                    << "IndexNode's lookup condition does not match";
-                eligible = false;
-                break;
-              }
-            }
-
-            // if there is a post filter, make sure it only accesses variables
-            // that are available before all index nodes
-            if (c->hasFilter()) {
-              VarSet vars;
-              c->filter()->variables(vars);
-
-              for (auto* other : candidates) {
-                if (other != c && other->setsVariable(vars)) {
-                  LOG_INDEX_OPTIMIZER_RULE << "IndexNode's post filter "
-                                              "accesses variables that are "
-                                              "not available before all "
-                                              "index nodes";
-                  eligible = false;
-                }
-              }
-            }
-
-            // check if filter supports streaming interface
-            {
-              IndexStreamOptions opts;
-              opts.usedKeyFields = {0};  // for now only 0 is supported
-              if (c->projections().usesCoveringIndex()) {
-                opts.projectedFields.reserve(c->projections().size());
-                auto& proj = c->projections().projections();
-                std::transform(
-                    proj.begin(), proj.end(),
-                    std::back_inserter(opts.projectedFields),
-                    [](auto const& p) { return p.coveringIndexPosition; });
-              }
-              if (!c->getIndexes()[0]->supportsStreamInterface(opts)) {
-                LOG_INDEX_OPTIMIZER_RULE << "IndexNode's index does not "
-                                            "support streaming interface";
-                LOG_INDEX_OPTIMIZER_RULE
-                    << "-> Index name: " << c->getIndexes()[0]->name()
-                    << ", id: " << c->getIndexes()[0]->id();
-                eligible = false;
-              }
-            }
-
-            if (!eligible) {
-              break;
-            }
-            ++i;
-          }
-
-          if (eligible) {
-            LOG_INDEX_OPTIMIZER_RULE << "Should be eligible for index join";
-            std::vector<JoinNode::IndexInfo> indexInfos;
-            indexInfos.reserve(candidates.size());
-            for (auto* c : candidates) {
-              indexInfos.emplace_back(JoinNode::IndexInfo{
-                  .collection = c->collection(),
-                  .outVariable = c->outVariable(),
-                  .condition = c->condition()->clone(),
-                  .filter = c->hasFilter() ? c->filter()->clone(plan->getAst())
-                                           : nullptr,
-                  .index = c->getIndexes()[0],
-                  .projections = c->projections(),
-                  .filterProjections = c->filterProjections(),
-                  .usedAsSatellite = c->isUsedAsSatellite()});
-              handled.emplace(c);
-            }
-            JoinNode* jn = plan->createNode<JoinNode>(
-                plan.get(), plan->nextId(), std::move(indexInfos),
-                IndexIteratorOptions{});
-            // Nodes we jumped over (like calculations) are left in place
-            // and are now below the Join Node
-            plan->replaceNode(candidates[0], jn);
-            for (size_t i = 1; i < candidates.size(); ++i) {
-              plan->unlinkNode(candidates[i]);
-            }
-            modified = true;
-          } else {
-            LOG_INDEX_OPTIMIZER_RULE << "Not eligible for index join";
-          }
-        } else {
-          LOG_INDEX_OPTIMIZER_RULE << "Not enough index nodes to join, size: "
-                                   << candidates.size();
-        }
-
-        // try starting from next start node
-        auto* parent = startNode->getFirstParent();
-        if (parent == nullptr || parent->getType() != EN::INDEX) {
-          break;
-        }
-        startNode = ExecutionNode::castTo<IndexNode*>(parent);
-      }
-    }
+class AttributeAccessReplacer final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
+ public:
+  AttributeAccessReplacer(ExecutionNode const* self,
+                          Variable const* searchVariable,
+                          std::span<std::string_view> attribute,
+                          Variable const* replaceVariable, size_t index)
+      : _self(self),
+        _searchVariable(searchVariable),
+        _attribute(attribute),
+        _replaceVariable(replaceVariable),
+        _index(index) {
+    TRI_ASSERT(_searchVariable != nullptr);
+    TRI_ASSERT(!_attribute.empty());
+    TRI_ASSERT(_replaceVariable != nullptr);
   }
 
-  opt->addPlan(std::move(plan), rule, modified);
-}
+  bool before(ExecutionNode* en) override final {
+    en->replaceAttributeAccess(_self, _searchVariable, _attribute,
+                               _replaceVariable, _index);
 
-void arangodb::aql::removeUnnecessaryProjections(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-    OptimizerRule const& rule) {
+    // always continue
+    return false;
+  }
+
+ private:
+  ExecutionNode const* _self;
+  Variable const* _searchVariable;
+  std::span<std::string_view> _attribute;
+  Variable const* _replaceVariable;
+  size_t _index;
+};
+
+void arangodb::aql::optimizeProjections(Optimizer* opt,
+                                        std::unique_ptr<ExecutionPlan> plan,
+                                        OptimizerRule const& rule) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
-  plan->findNodesOfType(nodes, {EN::INDEX, EN::ENUMERATE_COLLECTION}, true);
+  plan->findNodesOfType(nodes, {EN::INDEX, EN::ENUMERATE_COLLECTION, EN::JOIN},
+                        true);
+
+  auto replace = [&plan](ExecutionNode* self, Projections& p,
+                         Variable const* searchVariable, size_t index) {
+    bool modified = false;
+    std::vector<std::string_view> path;
+    for (size_t i = 0; i < p.size(); ++i) {
+      TRI_ASSERT(p[i].variable == nullptr);
+      p[i].variable = plan->getAst()->variables()->createTemporaryVariable();
+      path.clear();
+      for (auto const& it : p[i].path.get()) {
+        path.emplace_back(it);
+      }
+
+      AttributeAccessReplacer replacer(self, searchVariable, std::span(path),
+                                       p[i].variable, index);
+      plan->root()->walk(replacer);
+      modified = true;
+    }
+    return modified;
+  };
 
   bool modified = false;
   for (auto* n : nodes) {
-    auto* documentNode = ExecutionNode::castTo<DocumentProducingNode*>(n);
-    modified |= documentNode->recalculateProjections(plan.get());
+    if (n->getType() == EN::JOIN) {
+      // JoinNode. optimize projections in all parts
+      auto* joinNode = ExecutionNode::castTo<JoinNode*>(n);
+      size_t index = 0;
+      for (auto& it : joinNode->getIndexInfos()) {
+        if (it.isLateMaterialized) {
+          // For late materialization in join nodes, that variables
+          // are already set by the optimizer rule for late materialization
+          continue;
+        }
+        modified |= replace(n, it.projections, it.outVariable, index++);
+      }
+    } else {
+      // IndexNode or EnumerateCollectionNode.
+      TRI_ASSERT(n->getType() == EN::ENUMERATE_COLLECTION ||
+                 n->getType() == EN::INDEX);
+
+      auto* documentNode = ExecutionNode::castTo<DocumentProducingNode*>(n);
+      modified |= documentNode->recalculateProjections(plan.get());
+      modified |= replace(n, documentNode->projections(),
+                          documentNode->outVariable(), /*index*/ 0);
+    }
   }
   opt->addPlan(std::move(plan), rule, modified);
 }

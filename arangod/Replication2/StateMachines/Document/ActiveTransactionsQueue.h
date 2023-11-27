@@ -35,6 +35,9 @@ namespace arangodb::replication2::replicated_state::document {
  * Keeps track of active transactions.
  * Uses a deque instead of a set because log indices are always given in
  * increasing order.
+ * Note that there is no concurrency control inside this class. It is assumed
+ * that the caller will take care of that. Currently, the leader wraps it into a
+ * guard, while the follower only uses it synchronously.
  */
 class ActiveTransactionsQueue {
   enum Status { kActive, kInactive };

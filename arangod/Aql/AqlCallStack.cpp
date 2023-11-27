@@ -35,6 +35,8 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+AqlCallStack::AqlCallStack(AqlCallStack::Empty) {}
+
 AqlCallStack::AqlCallStack(AqlCallList call) : _operations{{std::move(call)}} {}
 
 AqlCallStack::AqlCallStack(AqlCallStack const& other, AqlCallList call)

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, fail */
+/*global assertEqual, assertTrue, fail, assertNotEqual, print */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -63,7 +63,7 @@ const {setUpAll, tearDownAll} = (function () {
     setUpAll: function () {
       previousDatabase = db._name();
       if (!_.includes(db._databases(), database)) {
-        db._createDatabase(database);
+        db._createDatabase(database, {replicationVersion: "2"});
         databaseExisted = false;
       }
       db._useDatabase(database);
@@ -90,7 +90,21 @@ function ReplicatedLogsCreateSuite() {
     setUpAll, tearDownAll,
 
     testCreateAndDropReplicatedLog: function () {
-      const logId = 12;
+      let logId = -1;
+
+      for (let i = 1; i <= 100; ++i) {
+        // Test 100 log ids if they are currently in use
+        // As we are a fresh test we most likely use two right now, so 100 to test should be good enough
+        try {
+          db._replicatedLog(i);
+          // If we get here, the log exists, cannot use it for test
+        } catch (err) {
+          // Log is not yet in use. We can occupy it for the test.
+          logId = i;
+          break;
+        }
+      }
+      assertNotEqual(logId, -1, `Could not find a logId that is not already in use by another log`);
       const log = db._createReplicatedLog({id: logId, config});
 
       assertEqual(log.id(), logId);
@@ -255,16 +269,29 @@ function ReplicatedLogsWriteSuite() {
 
     testRelease: function () {
       const payloads = [...Array(2000).keys()].map(i => ({foo: i}));
+      const s0 = log.status();
       for (const batch of _.chunk(payloads, 1000)) {
         log.multiInsert(batch);
       }
       const s1 = getLeaderStatus(log);
-      assertEqual(s1.local.firstIndex, 1);
-      assertEqual(s1.local.spearhead.index, 2001);
-      assertEqual(s1.local.commitIndex, 2001);
-
+      try {
+          assertEqual(s1.local.firstIndex, 1); // !here
+          assertEqual(s1.local.spearhead.index, 2001);
+          assertEqual(s1.local.commitIndex, 2001);
+      } catch (e) {
+        // This catch is temporary, to debug the following failure we've seen in Jenkins:
+        //   "testRelease" failed: Error: at assertion #1: assertEqual: (1) is not equal to (0)
+        // which happens at the line marked !here above.
+        print("Initial ---------------------");
+        print(s0);
+        print("Final ---------------------");
+        print(s1);
+        print("Full ---------------------");
+        print(log.status());
+        throw e;
+      }
+      
       log.release(1500);
-
       const s2 = getLeaderStatus(log);
       // Compaction runs asynchronously, so we can not expect the firstIndex to be 1500 as well (yet)
       assertEqual(s2.local.releaseIndex, 1500);

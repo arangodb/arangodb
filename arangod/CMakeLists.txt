@@ -13,7 +13,7 @@ if (MSVC AND NOT(SKIP_PACKAGING))
     NAME ${BIN_ARANGOD}
     FILE_DESCRIPTION ${ARANGODB_FRIENDLY_STRING}
     ICON ${ARANGO_ICON}
-    COMPANY_NAME ${ARANGODB_PACKAGE_COMPANY}
+    COMPANY_NAME ${ARANGODB_PACKAGE_VENDOR}
     VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
     VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
     VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
@@ -30,17 +30,20 @@ add_executable(${BIN_ARANGOD}
 target_link_libraries(${BIN_ARANGOD}
   arangoserver
   arango_iresearch)
+
+if (USE_JEMALLOC)
+  target_link_libraries(${BIN_ARANGOD} ${JEMALLOC_LIB})
+endif ()
+
+add_dependencies(${BIN_ARANGOD} zlibstatic)
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(${BIN_ARANGOD} zlibstatic v8_build)
-else ()
-  add_dependencies(${BIN_ARANGOD} zlibstatic)
+  add_dependencies(${BIN_ARANGOD} v8_build)
 endif ()
 if (USE_JEMALLOC)
   add_dependencies(${BIN_ARANGOD} jemalloc_build)
 endif ()
-
-if (USE_JEMALLOC)
-  target_link_libraries(${BIN_ARANGOD} ${JEMALLOC_LIB})
+if (UNIX) 
+  add_dependencies(${BIN_ARANGOD} man)
 endif ()
 
 target_include_directories(${BIN_ARANGOD} PRIVATE

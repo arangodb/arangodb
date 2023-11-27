@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertFalse, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertTrue, assertFalse, assertEqual, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for late document materialization arangosearch rule
