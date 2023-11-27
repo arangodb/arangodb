@@ -5,6 +5,34 @@ import { DatabaseTableType } from "./CollectionsPermissionsTable";
 import { getIsDefaultRow } from "./DatabasePermissionSwitch";
 import { useUserPermissionsContext } from "./UserPermissionsContext";
 
+const getIsDefaultForCollection = ({
+  info,
+  databaseTable,
+  databaseName
+}: {
+  info: CellContext<any, unknown>;
+  databaseTable: DatabaseTableType[];
+  databaseName: string;
+}) => {
+  const isDefaultRow = getIsDefaultRow(info);
+  const maxLevel =
+    info.row.original.collectionName &&
+    getMaxLevel({ databaseTable, databaseName });
+
+  if (
+    // if it's a collection we are in
+    info.row.original.collectionName &&
+    // only if it's set to 'default'
+    info.row.original.permission === "undefined" &&
+    // for all columns which match the max level
+    info.column.id === maxLevel &&
+    // it's not the collection level default row
+    !isDefaultRow
+  ) {
+    return true;
+  }
+  return false;
+};
 export const CollectionPermissionSwitch = ({
   checked,
   info
@@ -17,9 +45,6 @@ export const CollectionPermissionSwitch = ({
   const isRootUser = username === "root";
   const { handleCollectionCellClick } = useUserPermissionsContext();
   const { databaseTable } = useUserPermissionsContext();
-  const maxLevel =
-    info.row.original.collectionName &&
-    getMaxLevel({ databaseTable, databaseName });
   const isDefaultRow = getIsDefaultRow(info);
   const isUndefined = info.column.id === "undefined";
   const [isLoading, setIsLoading] = React.useState(false);
@@ -27,19 +52,12 @@ export const CollectionPermissionSwitch = ({
   if (isDefaultRow && isUndefined) {
     return null;
   }
-  let isDefaultForCollection = false;
-  if (
-    // if it's a collection we are in
-    info.row.original.collectionName &&
-    // only if it's set to 'default'
-    info.row.original.permission === "undefined" &&
-    // for all columns which match the max level
-    info.column.id === maxLevel &&
-    // it's not the collection level default row
-    !isDefaultRow
-  ) {
-    isDefaultForCollection = true;
-  }
+
+  const isDefaultForCollection = getIsDefaultForCollection({
+    info,
+    databaseTable,
+    databaseName
+  });
 
   const handleChange = async () => {
     setIsLoading(true);
