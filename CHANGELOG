@@ -1,6 +1,10 @@
 devel
 -----
 
+* FE-286: refactor user permissions screen.
+
+* FE-396: fix JSON editor undo for inverted index addition.
+
 * Fixed MDS-1170: Significant performance degradation when queries are
   executed within transactions that involve edits.
 
