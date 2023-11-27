@@ -24,6 +24,7 @@
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 
 #include "Replication2/StateMachines/Document/Actor/Scheduler.h"
+#include "Replication2/StateMachines/Document/Actor/ApplyEntries.h"
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 #include "Replication2/StateMachines/Document/DocumentStateErrorHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
@@ -32,10 +33,13 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/LogicalCollection.h"
 
+#include "Actor/LocalRuntime.h"
 #include <Basics/application-exit.h>
 #include <Basics/Exceptions.h>
 #include <Futures/Future.h>
 #include <Logger/LogContextKeys.h>
+
+#include <memory>
 
 namespace arangodb::replication2::replicated_state::document {
 
@@ -63,9 +67,13 @@ DocumentFollowerState::DocumentFollowerState(
       _networkHandler(handlersFactory->createNetworkHandler(core->gid)),
       _handlers(handlersFactory, core->getVocbase(), core->gid),
       _guardedData(std::move(core), loggerContext),
-      _runtime(
+      _runtime(std::make_shared<actor::LocalRuntime>(
           "FollowerState-" + to_string(gid),
-          std::make_shared<actor::Scheduler>(SchedulerFeature::SCHEDULER)) {}
+          std::make_shared<actor::Scheduler>(std::move(scheduler)))) {
+  _applyEntriesActor = _runtime->template spawn<actor::ApplyEntriesActor>(
+      std::make_unique<actor::ApplyEntriesState>(
+          actor::ApplyEntriesState{*this}));
+}
 
 DocumentFollowerState::~DocumentFollowerState() = default;
 
@@ -360,76 +368,15 @@ auto DocumentFollowerState::handleSnapshotTransfer(
 
 auto DocumentFollowerState::applyEntries(
     std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
-  auto applyResult = _guardedData.doUnderLock(
-      [self = shared_from_this(),
-       ptr = std::move(ptr)](auto& data) -> ResultT<std::optional<LogIndex>> {
-        if (data.didResign()) {
-          return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
-        }
+  futures::Promise<Result> promise;
+  auto future = promise.getFuture();
 
-        return basics::catchToResultT([&]() -> std::optional<LogIndex> {
-          std::optional<LogIndex> releaseIndex;
+  _runtime->dispatch<actor::message::ApplyEntriesMessages>(
+      _applyEntriesActor, _applyEntriesActor,
+      actor::message::ApplyEntries{.entries = std::move(ptr),
+                                   .promise = std::move(promise)});
 
-          while (auto entry = ptr->next()) {
-            if (self->_resigning) {
-              // We have not officially resigned yet, but we are about to.
-              // So, we can just stop here.
-              break;
-            }
-            auto [index, doc] = *entry;
-
-            auto currentReleaseIndex = std::visit(
-                [self, &data, index = index](
-                    auto const& op) -> ResultT<std::optional<LogIndex>> {
-                  return data.applyEntry(self->_handlers, op, index);
-                },
-                doc.getInnerOperation());
-
-            if (currentReleaseIndex.fail()) {
-              TRI_ASSERT(self->_handlers.errorHandler
-                             ->handleOpResult(doc.getInnerOperation(),
-                                              currentReleaseIndex.result())
-                             .fail())
-                  << currentReleaseIndex.result()
-                  << " should have been already handled for operation "
-                  << doc.getInnerOperation()
-                  << " during applyEntries of follower " << self->gid;
-              LOG_CTX("0aa2e", FATAL, self->loggerContext)
-                  << "failed to apply entry " << doc
-                  << " on follower: " << currentReleaseIndex.result();
-              TRI_ASSERT(false) << currentReleaseIndex.result();
-              FATAL_ERROR_EXIT();
-            }
-            if (currentReleaseIndex->has_value()) {
-              releaseIndex = std::move(currentReleaseIndex).get();
-            }
-          }
-
-          return releaseIndex;
-        });
-      });
-
-  if (_resigning) {
-    return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
-  }
-
-  if (applyResult.fail()) {
-    return applyResult.result();
-  }
-  if (applyResult->has_value()) {
-    // The follower might have resigned, so we need to be careful when
-    // accessing the stream.
-    auto releaseRes = basics::catchVoidToResult([&] {
-      auto const& stream = getStream();
-      stream->release(applyResult->value());
-    });
-    if (releaseRes.fail()) {
-      LOG_CTX("10f07", ERR, loggerContext)
-          << "Failed to get stream! " << releaseRes;
-    }
-  }
-
-  return {TRI_ERROR_NO_ERROR};
+  return future;
 }
 
 template<class T>

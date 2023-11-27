@@ -23,7 +23,9 @@
 
 #pragma once
 
+#include <memory>
 #include "Actor/IScheduler.h"
+#include "Replication2/IScheduler.h"
 
 namespace arangodb {
 class Scheduler;
@@ -32,13 +34,13 @@ class Scheduler;
 namespace arangodb::replication2::replicated_state::document::actor {
 
 struct Scheduler : arangodb::actor::IScheduler {
-  explicit Scheduler(arangodb::Scheduler* scheduler);
+  explicit Scheduler(std::shared_ptr<replication2::IScheduler> scheduler);
   void queue(arangodb::actor::LazyWorker&& worker) override;
   void delay(std::chrono::seconds delay,
              std::function<void(bool)>&& fn) override;
 
  private:
-  arangodb::Scheduler* _scheduler;
+  std::shared_ptr<replication2::IScheduler> _scheduler;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document::actor

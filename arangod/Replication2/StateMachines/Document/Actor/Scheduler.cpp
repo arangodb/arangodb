@@ -28,18 +28,19 @@
 
 namespace arangodb::replication2::replicated_state::document::actor {
 
-Scheduler::Scheduler(arangodb::Scheduler* scheduler) : _scheduler{scheduler} {
+Scheduler::Scheduler(std::shared_ptr<replication2::IScheduler> scheduler)
+    : _scheduler{std::move(scheduler)} {
   TRI_ASSERT(_scheduler != nullptr);
 }
 
 void Scheduler::queue(arangodb::actor::LazyWorker&& worker) {
-  _scheduler->queue(RequestLane::INTERNAL_LOW, std::move(worker));
+  _scheduler->queue(std::move(worker));
 }
 
 void Scheduler::delay(std::chrono::seconds delay,
                       std::function<void(bool)>&& fn) {
-  std::ignore = _scheduler->queueDelayed("replication2-actors",
-                                         RequestLane::INTERNAL_LOW, delay, fn);
+  std::ignore =
+      _scheduler->queueDelayed("replication2-actors", delay, std::move(fn));
 }
 
 }  // namespace arangodb::replication2::replicated_state::document::actor

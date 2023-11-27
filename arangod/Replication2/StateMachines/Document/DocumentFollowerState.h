@@ -30,10 +30,14 @@
 #include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
 #include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 
-#include "Actor/LocalRuntime.h"
+#include "Actor/LocalActorPID.h"
 #include "Basics/UnshackledMutex.h"
 
 #include <function2.hpp>
+
+namespace arangodb::actor {
+struct LocalRuntime;
+}
 
 namespace arangodb::replication2::replicated_state::document {
 
@@ -65,7 +69,7 @@ struct DocumentFollowerState
 
   auto getAssociatedShardList() const -> std::vector<ShardID>;
 
- protected:
+  // protected:
   [[nodiscard]] auto resign() && noexcept
       -> std::unique_ptr<DocumentCore> override;
 
@@ -75,7 +79,9 @@ struct DocumentFollowerState
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
       -> futures::Future<Result> override;
 
- private:
+  using replicated_state::IReplicatedFollowerState<DocumentState>::getStream;
+
+  // private:
   struct SnapshotTransferResult {
     Result res{};
     bool reportFailure{};
@@ -89,7 +95,7 @@ struct DocumentFollowerState
       futures::Future<ResultT<SnapshotBatch>>&& snapshotFuture) noexcept
       -> futures::Future<SnapshotTransferResult>;
 
- private:
+  // private:
   struct GuardedData {
     explicit GuardedData(std::unique_ptr<DocumentCore> core,
                          LoggerContext const& loggerContext);
@@ -145,7 +151,8 @@ struct DocumentFollowerState
   std::atomic<bool> _resigning{false};  // Allows for a quicker shutdown of the
                                         // state machine upon resigning
 
-  actor::LocalRuntime _runtime;
+  std::shared_ptr<actor::LocalRuntime> _runtime;
+  actor::LocalActorPID _applyEntriesActor;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document
