@@ -1187,6 +1187,11 @@ void StatisticsWorker::run() {
         // process every 15 minutes
         historianAverage();
       }
+    } catch (basics::Exception const& ex) {
+      if (ex.code() != TRI_ERROR_ARANGO_READ_ONLY) {
+        LOG_TOPIC("2fbcb", WARN, Logger::STATISTICS)
+            << "caught exception in StatisticsWorker: " << ex.what();
+      }
     } catch (std::exception const& ex) {
       LOG_TOPIC("92a40", WARN, Logger::STATISTICS)
           << "caught exception in StatisticsWorker: " << ex.what();
