@@ -235,9 +235,14 @@ void Query::destroy() {
     }
   }
 
+  ErrorCode resultCode = TRI_ERROR_INTERNAL;
+  if (killed()) {
+    resultCode = TRI_ERROR_QUERY_KILLED;
+  }
+
   // this will reset _trx, so _trx is invalid after here
   try {
-    auto state = cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/ true);
+    auto state = cleanupPlanAndEngine(resultCode, /*sync*/ true);
     TRI_ASSERT(state != ExecutionState::WAITING);
   } catch (...) {
     // unfortunately we cannot do anything here, as we are in the destructor
