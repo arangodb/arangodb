@@ -68,6 +68,11 @@ export const CollectionPermissionSwitch = ({
     </Flex>
   );
 };
+
+/**
+ * Note: ported over from the existing code as-is.
+ * This returns the max level based on the documented backend logic.
+ */
 const getMaxLevel = ({
   databaseTable,
   databaseName
