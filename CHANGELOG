@@ -1,6 +1,9 @@
 v3.10.12 (XXXX-XX-XX)
 ---------------------
 
+* Fixed a problem in ReadWriteLock which could prevent waiting readers from
+  being woken up, when a write lock acquire timed out.
+
 * FE-395: Fix query editor map not loading.
 
 * Rebuilt included rclone v1.59.0 with go1.21.4.
