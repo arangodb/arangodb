@@ -269,7 +269,7 @@ def create_test_job(test, cluster, edition, arch, dist, replication_version=1):
     if not test["size"] in ["small", "medium", "medium+", "large", "xlarge", "2xlarge"]:
         raise Exception("Invalid resource class size " + test["size"])
 
-    deployment_variant = f"cluster-repl{replication_version}" if cluster else "single"
+    deployment_variant = f"cluster{'-repl2' if replication_version==2 else ''}" if cluster else "single"
 
     result = {
         "name": f"test-{edition}-{deployment_variant}-{suite_name}-{arch}",
