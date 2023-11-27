@@ -902,6 +902,9 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
           return false;
         }
 
+        TRI_ASSERT(_index->objectId() ==
+                   RocksDBKey::objectId(_iterator->key()));
+
         TRI_ASSERT(limit > 0);
 
         fillResultBuilder();
@@ -932,6 +935,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
     // cannot get here if we have a cache
     do {
+      TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
       consumeIteratorValue();
 
       if (!advance()) {
@@ -1089,12 +1093,30 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       _iterator =
           mthds->NewIterator(_index->columnFamily(), [&](ReadOptions& options) {
             TRI_ASSERT(options.prefix_same_as_start);
-            // we need to have a pointer to a slice for the upper bound
-            // so we need to assign the slice to an instance variable here
-            if constexpr (reverse) {
-              options.iterate_lower_bound = &_rangeBound;
-            } else {
-              options.iterate_upper_bound = &_rangeBound;
+            // note: iterate_lower_bound/iterate_upper_bound should only be
+            // set if the iterator is not supposed to check the bounds
+            // for every operation.
+            // when the iterator is a db snapshot-based iterator, it is ok
+            // to set iterate_lower_bound/iterate_upper_bound, because this
+            // is well supported by RocksDB.
+            // if the iterator is a multi-level iterator that merges data from
+            // the db snapshot with data from an ongoing in-memory transaction
+            // (contained in a WriteBatchWithIndex, WBWI), then RocksDB does
+            // not properly support the bounds checking using
+            // iterate_lower_bound/ iterate_upper_bound. in this case we must
+            // avoid setting the bounds here and rely on our own bounds checking
+            // using the comparator. at least one underlying issue was fixed in
+            // RocksDB in version 8.8.0 via
+            // https://github.com/facebook/rocksdb/pull/11680. we can revisit
+            // the issue once we have upgraded to RocksDB >= 8.8.0.
+            if constexpr (!mustCheckBounds) {
+              // we need to have a pointer to a slice for the upper bound
+              // so we need to assign the slice to an instance variable here
+              if constexpr (reverse) {
+                options.iterate_lower_bound = &_rangeBound;
+              } else {
+                options.iterate_upper_bound = &_rangeBound;
+              }
             }
             options.readOwnWrites = static_cast<bool>(canReadOwnWrites());
           });

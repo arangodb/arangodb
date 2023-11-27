@@ -5,6 +5,9 @@ devel
   transactions from committing during hotbackup. Furthermore, improve
   behavior of authentication in the case that the user cache is outdated.
 
+* Fixed MDS-1170: Significant performance degradation when queries are
+  executed within transactions that involve edits.
+
 * Rebuilt included rclone v1.62.2 with go1.21.4.
 
 * Updated ArangoDB Starter to v0.17.2 and arangosync to v2.19.5.

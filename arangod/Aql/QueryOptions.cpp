@@ -112,16 +112,13 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
     return;
   }
 
-  VPackSlice value;
-
   // use global memory limit value first
   if (QueryOptions::defaultMemoryLimit > 0) {
     memoryLimit = QueryOptions::defaultMemoryLimit;
   }
 
   // numeric options
-  value = slice.get("memoryLimit");
-  if (value.isNumber()) {
+  if (VPackSlice value = slice.get("memoryLimit"); value.isNumber()) {
     size_t v = value.getNumber<size_t>();
     if (allowMemoryLimitOverride) {
       memoryLimit = v;
@@ -132,65 +129,58 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
     }
   }
 
-  value = slice.get("maxNumberOfPlans");
-  if (value.isNumber()) {
+  if (VPackSlice value = slice.get("maxNumberOfPlans"); value.isNumber()) {
     maxNumberOfPlans = value.getNumber<size_t>();
     if (maxNumberOfPlans == 0) {
       maxNumberOfPlans = 1;
     }
   }
 
-  value = slice.get("maxWarningCount");
-  if (value.isNumber()) {
+  if (VPackSlice value = slice.get("maxWarningCount"); value.isNumber()) {
     maxWarningCount = value.getNumber<size_t>();
   }
 
-  value = slice.get("maxNodesPerCallstack");
-  if (value.isNumber()) {
+  if (VPackSlice value = slice.get("maxNodesPerCallstack"); value.isNumber()) {
     maxNodesPerCallstack = value.getNumber<size_t>();
   }
 
-  value = slice.get("spillOverThresholdNumRows");
-  if (value.isNumber()) {
+  if (VPackSlice value = slice.get("spillOverThresholdNumRows");
+      value.isNumber()) {
     spillOverThresholdNumRows = value.getNumber<size_t>();
   }
 
-  value = slice.get("spillOverThresholdMemoryUsage");
-  if (value.isNumber()) {
+  if (VPackSlice value = slice.get("spillOverThresholdMemoryUsage");
+      value.isNumber()) {
     spillOverThresholdMemoryUsage = value.getNumber<size_t>();
   }
 
-  value = slice.get("maxDNFConditionMembers");
-  if (value.isNumber()) {
+  if (VPackSlice value = slice.get("maxDNFConditionMembers");
+      value.isNumber()) {
     maxDNFConditionMembers = value.getNumber<size_t>();
   }
 
-  value = slice.get("maxRuntime");
-  if (value.isNumber()) {
+  if (VPackSlice value = slice.get("maxRuntime"); value.isNumber()) {
     maxRuntime = value.getNumber<double>();
   }
 
-  value = slice.get("satelliteSyncWait");
-  if (value.isNumber()) {
+  if (VPackSlice value = slice.get("satelliteSyncWait"); value.isNumber()) {
     satelliteSyncWait =
         std::chrono::duration<double>(value.getNumber<double>());
   }
 
-  value = slice.get("ttl");
-  if (value.isNumber()) {
+  if (VPackSlice value = slice.get("ttl"); value.isNumber()) {
     ttl = value.getNumber<double>();
   }
 
   // boolean options
-  value = slice.get("profile");
-  if (value.isBool()) {
+  if (VPackSlice value = slice.get("profile"); value.isBool()) {
     profile = value.getBool() ? ProfileLevel::Basic : ProfileLevel::None;
   } else if (value.isNumber()) {
     profile = static_cast<ProfileLevel>(value.getNumber<uint16_t>());
   }
 
-  value = slice.get(StaticStrings::GraphTraversalProfileLevel);
-  if (value.isBool()) {
+  if (VPackSlice value = slice.get(StaticStrings::GraphTraversalProfileLevel);
+      value.isBool()) {
     traversalProfile = value.getBool() ? TraversalProfileLevel::Basic
                                        : TraversalProfileLevel::None;
   } else if (value.isNumber()) {
@@ -198,88 +188,80 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
         static_cast<TraversalProfileLevel>(value.getNumber<uint16_t>());
   }
 
-  if (value = slice.get("allPlans"); value.isBool()) {
-    allPlans = value.getBool();
+  if (VPackSlice value = slice.get("allPlans"); value.isBool()) {
+    allPlans = value.isTrue();
   }
-  if (value = slice.get("verbosePlans"); value.isBool()) {
-    verbosePlans = value.getBool();
+  if (VPackSlice value = slice.get("verbosePlans"); value.isBool()) {
+    verbosePlans = value.isTrue();
   }
-  if (value = slice.get("explainInternals"); value.isBool()) {
-    explainInternals = value.getBool();
+  if (VPackSlice value = slice.get("explainInternals"); value.isBool()) {
+    explainInternals = value.isTrue();
   }
-  if (value = slice.get("stream"); value.isBool()) {
-    stream = value.getBool();
+  if (VPackSlice value = slice.get("stream"); value.isBool()) {
+    stream = value.isTrue();
   }
-  if (value = slice.get("allowRetry"); value.isBool()) {
+  if (VPackSlice value = slice.get("allowRetry"); value.isBool()) {
     retriable = value.isTrue();
   }
-  if (value = slice.get("silent"); value.isBool()) {
-    silent = value.getBool();
+  if (VPackSlice value = slice.get("silent"); value.isBool()) {
+    silent = value.isTrue();
   }
-  if (value = slice.get("failOnWarning"); value.isBool()) {
-    failOnWarning = value.getBool();
+  if (VPackSlice value = slice.get("failOnWarning"); value.isBool()) {
+    failOnWarning = value.isTrue();
   }
-  if (value = slice.get("cache"); value.isBool()) {
-    cache = value.getBool();
+  if (VPackSlice value = slice.get("cache"); value.isBool()) {
+    cache = value.isTrue();
   }
-  if (value = slice.get("fullCount"); value.isBool()) {
-    fullCount = value.getBool();
+  if (VPackSlice value = slice.get("fullCount"); value.isBool()) {
+    fullCount = value.isTrue();
   }
-  if (value = slice.get("count"); value.isBool()) {
-    count = value.getBool();
+  if (VPackSlice value = slice.get("count"); value.isBool()) {
+    count = value.isTrue();
   }
-  if (value = slice.get("explainRegisters"); value.isBool()) {
+  if (VPackSlice value = slice.get("explainRegisters"); value.isBool()) {
     explainRegisters =
-        value.getBool() ? ExplainRegisterPlan::Yes : ExplainRegisterPlan::No;
+        value.isTrue() ? ExplainRegisterPlan::Yes : ExplainRegisterPlan::No;
   }
 
   // note: skipAudit is intentionally not read here.
   // the end user cannot override this setting
 
-  if (value = slice.get(StaticStrings::ForceOneShardAttributeValue);
+  if (VPackSlice value = slice.get(StaticStrings::ForceOneShardAttributeValue);
       value.isString()) {
     forceOneShardAttributeValue = value.copyString();
   }
 
-  if (value = slice.get(StaticStrings::JoinStrategyType); value.isString()) {
+  if (VPackSlice value = slice.get(StaticStrings::JoinStrategyType);
+      value.isString()) {
     if (value.stringView() == "generic") {
       desiredJoinStrategy = JoinStrategyType::GENERIC;
     }
   }
 
-  VPackSlice optimizer = slice.get("optimizer");
-  if (optimizer.isObject()) {
-    value = optimizer.get("rules");
-    if (value.isArray()) {
-      for (auto const& rule : VPackArrayIterator(value)) {
+  if (VPackSlice optimizer = slice.get("optimizer"); optimizer.isObject()) {
+    if (VPackSlice value = optimizer.get("rules"); value.isArray()) {
+      for (auto rule : VPackArrayIterator(value)) {
         if (rule.isString()) {
           optimizerRules.emplace_back(rule.copyString());
         }
       }
     }
   }
-  value = slice.get("shardIds");
-  if (value.isArray()) {
-    VPackArrayIterator it(value);
-    while (it.valid()) {
-      value = it.value();
-      if (value.isString()) {
-        restrictToShards.emplace(value.copyString());
+  if (VPackSlice value = slice.get("shardIds"); value.isArray()) {
+    for (auto id : VPackArrayIterator(value)) {
+      if (id.isString()) {
+        restrictToShards.emplace(id.copyString());
       }
-      it.next();
     }
   }
 
 #ifdef USE_ENTERPRISE
-  value = slice.get("inaccessibleCollections");
-  if (value.isArray()) {
-    VPackArrayIterator it(value);
-    while (it.valid()) {
-      value = it.value();
-      if (value.isString()) {
-        inaccessibleCollections.emplace(value.copyString());
+  if (VPackSlice value = slice.get("inaccessibleCollections");
+      value.isArray()) {
+    for (auto c : VPackArrayIterator(value)) {
+      if (c.isString()) {
+        inaccessibleCollections.emplace(c.copyString());
       }
-      it.next();
     }
   }
 #endif
