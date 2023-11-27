@@ -35,7 +35,7 @@ export const CollectionPermissionSwitch = ({
     info.row.original.permission === "undefined" &&
     // for all columns which match the max level
     info.column.id === maxLevel &&
-    // it's not he collection level default row
+    // it's not the collection level default row
     !isDefaultRow
   ) {
     isDefaultForCollection = true;
