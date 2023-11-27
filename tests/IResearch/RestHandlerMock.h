@@ -82,6 +82,6 @@ struct GeneralResponseMock : public arangodb::GeneralResponse {
     return arangodb::rest::ResponseCompressionType::kNoCompression;
   }
   virtual size_t bodySize() const override { return _payload.size(); }
-  virtual ErrorCode zlibDeflate() override;
-  virtual ErrorCode gzipCompress() override;
+  virtual ErrorCode zlibDeflate(bool onlyIfSmaller) override;
+  virtual ErrorCode gzipCompress(bool onlyIfSmaller) override;
 };

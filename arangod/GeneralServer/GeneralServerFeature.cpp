@@ -326,8 +326,13 @@ and also react on overload.)");
                   new UInt64Parameter(&_compressResponseThreshold))
       .setIntroducedIn(31200)
       .setLongDescription(
-          R"(Automatically compress outgoing HTTP responses in case
-their uncompressed body size exceeds this threshold value.
+          R"(Automatically compress outgoing HTTP responses with the
+deflate or gzip compression format, in case the client request advertises
+support for this. Compression will only happen for HTTP/1.1 and HTTP/2
+connections, if the size of the uncompressed response body exceeds 
+the threshold value controlled by this startup option,
+and if the response body size after compression is less than the original 
+response body size.
 Using the value 0 disables the automatic response compression.")");
 
   options

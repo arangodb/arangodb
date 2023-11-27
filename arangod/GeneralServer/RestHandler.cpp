@@ -649,23 +649,25 @@ void RestHandler::compressResponse() {
 
   switch (_request->acceptEncoding()) {
     case rest::EncodingType::DEFLATE:
-      // TODO: the resulting compressed response body may be larger than
-      // the uncompressed input size. in this case we are still
-      // returning the compressed response body. we could optimize
-      // this case by just sending the original, uncompressed response
-      _response->zlibDeflate();
-      _response->setHeaderNC(StaticStrings::ContentEncoding,
-                             StaticStrings::EncodingDeflate);
+      // the resulting compressed response body may be larger than the
+      // uncompressed input size. in this case we are not returning the
+      // compressed response body, but the original, uncompressed body.
+      if (_response->zlibDeflate(/*onlyIfSmaller*/ true) ==
+          TRI_ERROR_NO_ERROR) {
+        _response->setHeaderNC(StaticStrings::ContentEncoding,
+                               StaticStrings::EncodingDeflate);
+      }
       break;
 
     case rest::EncodingType::GZIP:
-      // TODO: the resulting compressed response body may be larger than
-      // the uncompressed input size. in this case we are still
-      // returning the compressed response body. we could optimize
-      // this case by just sending the original, uncompressed response
-      _response->gzipCompress();
-      _response->setHeaderNC(StaticStrings::ContentEncoding,
-                             StaticStrings::EncodingGzip);
+      // the resulting compressed response body may be larger than the
+      // uncompressed input size. in this case we are not returning the
+      // compressed response body, but the original, uncompressed body.
+      if (_response->gzipCompress(/*onlyIfSmaller*/ true) ==
+          TRI_ERROR_NO_ERROR) {
+        _response->setHeaderNC(StaticStrings::ContentEncoding,
+                               StaticStrings::EncodingGzip);
+      }
       break;
 
     default:

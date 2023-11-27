@@ -37,26 +37,34 @@
 #include <cmath>
 #include <memory>
 
-ErrorCode arangodb::basics::StringBuffer::zlibDeflate() {
+ErrorCode arangodb::basics::StringBuffer::zlibDeflate(bool onlyIfSmaller) {
   arangodb::basics::StringBuffer deflated;
 
   ErrorCode code = arangodb::encoding::zlibDeflate(
       reinterpret_cast<uint8_t const*>(data()), size(), deflated);
 
   if (code == TRI_ERROR_NO_ERROR) {
-    swap(&deflated);
+    if (onlyIfSmaller && deflated.size() >= size()) {
+      code = TRI_ERROR_DISABLED;
+    } else {
+      swap(&deflated);
+    }
   }
   return code;
 }
 
-ErrorCode arangodb::basics::StringBuffer::gzipCompress() {
+ErrorCode arangodb::basics::StringBuffer::gzipCompress(bool onlyIfSmaller) {
   arangodb::basics::StringBuffer gzipped;
 
   ErrorCode code = arangodb::encoding::gzipCompress(
       reinterpret_cast<uint8_t const*>(data()), size(), gzipped);
 
   if (code == TRI_ERROR_NO_ERROR) {
-    swap(&gzipped);
+    if (onlyIfSmaller && gzipped.size() >= size()) {
+      code = TRI_ERROR_DISABLED;
+    } else {
+      swap(&gzipped);
+    }
   }
   return code;
 }

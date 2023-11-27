@@ -215,8 +215,12 @@ received by an ArangoDB server.)");
                   new UInt64Parameter(&_compressRequestThreshold))
       .setIntroducedIn(31200)
       .setLongDescription(
-          R"(Automatically compress outgoing HTTP requests in case
-their uncompressed body size exceeds this threshold value.
+          R"(Automatically compress outgoing HTTP requests 
+with the deflate compression format. Compression will only happen for
+HTTP/1.1 and HTTP/2 connections, if the size of the uncompressed request
+body exceeds the threshold value controlled by this startup option,
+and if the request body size after compression is less than the original
+request body size.
 Using the value 0 disables the automatic request compression.")");
 }
 

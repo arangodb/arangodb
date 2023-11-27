@@ -430,6 +430,10 @@ void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
   }
 }
 
-ErrorCode HttpResponse::zlibDeflate() { return _body->zlibDeflate(); }
+ErrorCode HttpResponse::zlibDeflate(bool onlyIfSmaller) {
+  return _body->zlibDeflate(onlyIfSmaller);
+}
 
-ErrorCode HttpResponse::gzipCompress() { return _body->gzipCompress(); }
+ErrorCode HttpResponse::gzipCompress(bool onlyIfSmaller) {
+  return _body->gzipCompress(onlyIfSmaller);
+}

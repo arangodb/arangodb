@@ -173,8 +173,8 @@ class GeneralResponse {
     return _generateBody = generateBody;
   }
 
-  virtual ErrorCode zlibDeflate() { return TRI_ERROR_NO_ERROR; }
-  virtual ErrorCode gzipCompress() { return TRI_ERROR_NO_ERROR; }
+  virtual ErrorCode zlibDeflate(bool onlyIfSmaller) = 0;
+  virtual ErrorCode gzipCompress(bool onlyIfSmaller) = 0;
 
  protected:
   std::unordered_map<std::string, std::string>

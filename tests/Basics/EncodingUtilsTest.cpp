@@ -63,7 +63,7 @@ TEST(EncodingUtilsTest, testStringBufferZlibInflateDeflate) {
 
   // test with an empty input
   {
-    buffer.zlibDeflate();
+    buffer.zlibDeflate(false);
     EXPECT_EQ(0, buffer.size());
     EXPECT_EQ(14311807558968942501ULL,
               fasthash64(buffer.data(), buffer.size(), 0xdeadbeef));
@@ -78,7 +78,7 @@ TEST(EncodingUtilsTest, testStringBufferZlibInflateDeflate) {
               fasthash64(buffer.data(), buffer.size(), 0xdeadbeef));
 
     // deflate the string
-    buffer.zlibDeflate();
+    buffer.zlibDeflate(false);
 
     EXPECT_EQ(61, buffer.size());
     EXPECT_EQ(9241756237550896492ULL,
@@ -103,7 +103,7 @@ TEST(EncodingUtilsTest, testStringBufferZlibInflateDeflate) {
               fasthash64(buffer.data(), buffer.size(), 0xdeadbeef));
 
     // deflate the string
-    buffer.zlibDeflate();
+    buffer.zlibDeflate(false);
 
     EXPECT_EQ(902, buffer.size());
     EXPECT_EQ(1472963238402282948ULL,
@@ -129,7 +129,7 @@ TEST(EncodingUtilsTest, testStringBufferZlibInflateDeflate) {
               fasthash64(buffer.data(), buffer.size(), 0xdeadbeef));
 
     // deflate the string
-    buffer.zlibDeflate();
+    buffer.zlibDeflate(false);
 
     EXPECT_EQ(4396, buffer.size());
     EXPECT_EQ(8778813652976263194ULL,
@@ -147,10 +147,28 @@ TEST(EncodingUtilsTest, testStringBufferZlibInflateDeflate) {
   // test deflating with empty input
   buffer.clear();
   {
-    buffer.zlibDeflate();
+    buffer.zlibDeflate(false);
     EXPECT_EQ(0, buffer.size());
     EXPECT_EQ(14311807558968942501ULL,
               fasthash64(buffer.data(), buffer.size(), 0xdeadbeef));
+  }
+
+  // test deflating with short input, and longer result after compression
+  buffer.clear();
+  buffer.appendText("der-fuchs");
+  {
+    buffer.zlibDeflate(false);
+    EXPECT_NE(9, buffer.size());
+    EXPECT_NE("der-fuchs", std::string_view(buffer.data(), buffer.size()));
+  }
+
+  // test deflating with short input, and longer result after compression
+  buffer.clear();
+  buffer.appendText("der-fuchs");
+  {
+    buffer.zlibDeflate(true);
+    EXPECT_EQ(9, buffer.size());
+    EXPECT_EQ("der-fuchs", std::string_view(buffer.data(), buffer.size()));
   }
 
   // test inflating with broken input
@@ -160,6 +178,132 @@ TEST(EncodingUtilsTest, testStringBufferZlibInflateDeflate) {
 
     basics::StringBuffer inflated;
     buffer.zlibInflate(inflated);
+    EXPECT_EQ(0, inflated.size());
+    EXPECT_EQ(14311807558968942501ULL,
+              fasthash64(inflated.data(), inflated.size(), 0xdeadbeef));
+  }
+}
+
+TEST(EncodingUtilsTest, testStringBufferGzipUncompressCompress) {
+  basics::StringBuffer buffer(1024, true);
+
+  // test with an empty input
+  {
+    buffer.gzipCompress(false);
+    EXPECT_EQ(0, buffer.size());
+    EXPECT_EQ(14311807558968942501ULL,
+              fasthash64(buffer.data(), buffer.size(), 0xdeadbeef));
+  }
+
+  // test with a short string first
+  {
+    buffer.append(::shortString);
+
+    EXPECT_EQ(61, buffer.size());
+    EXPECT_EQ(6019303676778172486ULL,
+              fasthash64(buffer.data(), buffer.size(), 0xdeadbeef));
+
+    // compress the string
+    buffer.gzipCompress(false);
+
+    EXPECT_EQ(73, buffer.size());
+    EXPECT_EQ(10698802630952079282ULL,
+              fasthash64(buffer.data(), buffer.size(), 0xdeadbeef));
+
+    // now inflate it. we should be back at the original size & content
+    basics::StringBuffer inflated;
+    buffer.gzipUncompress(inflated);
+
+    EXPECT_EQ(61, inflated.size());
+    EXPECT_EQ(6019303676778172486ULL,
+              fasthash64(inflated.data(), inflated.size(), 0xdeadbeef));
+  }
+
+  // now try a longer string
+  buffer.clear();
+  {
+    buffer.append(::mediumString);
+
+    EXPECT_EQ(2073, buffer.size());
+    EXPECT_EQ(9970172085949113508ULL,
+              fasthash64(buffer.data(), buffer.size(), 0xdeadbeef));
+
+    // compress the string
+    buffer.gzipCompress(false);
+
+    EXPECT_EQ(914, buffer.size());
+    EXPECT_EQ(1870623475430781373ULL,
+              fasthash64(buffer.data(), buffer.size(), 0xdeadbeef));
+
+    // now inflate it. we should be back at the original size & content
+    basics::StringBuffer inflated;
+    buffer.gzipUncompress(inflated);
+
+    EXPECT_EQ(2073, inflated.size());
+    EXPECT_EQ(9970172085949113508ULL,
+              fasthash64(inflated.data(), inflated.size(), 0xdeadbeef));
+  }
+
+  // now with a 1 MB string
+  buffer.clear();
+  {
+    for (size_t i = 0; i < 1024 * 1024; ++i) {
+      buffer.appendChar(char(i));
+    }
+    EXPECT_EQ(1024 * 1024, buffer.size());
+    EXPECT_EQ(1187188410444752048ULL,
+              fasthash64(buffer.data(), buffer.size(), 0xdeadbeef));
+
+    // compress the string
+    buffer.gzipCompress(false);
+
+    EXPECT_EQ(4408, buffer.size());
+    EXPECT_EQ(5048060407325082447ULL,
+              fasthash64(buffer.data(), buffer.size(), 0xdeadbeef));
+
+    // now inflate it. we should be back at the original size & content
+    basics::StringBuffer inflated;
+    buffer.gzipUncompress(inflated);
+
+    EXPECT_EQ(1024 * 1024, inflated.size());
+    EXPECT_EQ(1187188410444752048ULL,
+              fasthash64(inflated.data(), inflated.size(), 0xdeadbeef));
+  }
+
+  // test compressing with empty input
+  buffer.clear();
+  {
+    buffer.gzipCompress(false);
+    EXPECT_EQ(0, buffer.size());
+    EXPECT_EQ(14311807558968942501ULL,
+              fasthash64(buffer.data(), buffer.size(), 0xdeadbeef));
+  }
+
+  // test deflating with short input, and longer result after compression
+  buffer.clear();
+  buffer.appendText("der-fuchs");
+  {
+    buffer.gzipCompress(false);
+    EXPECT_NE(9, buffer.size());
+    EXPECT_NE("der-fuchs", std::string_view(buffer.data(), buffer.size()));
+  }
+
+  // test deflating with short input, and longer result after compression
+  buffer.clear();
+  buffer.appendText("der-fuchs");
+  {
+    buffer.gzipCompress(true);
+    EXPECT_EQ(9, buffer.size());
+    EXPECT_EQ("der-fuchs", std::string_view(buffer.data(), buffer.size()));
+  }
+
+  // test inflating with broken input
+  buffer.clear();
+  {
+    buffer.append("this-is-broken-deflated-content");
+
+    basics::StringBuffer inflated;
+    buffer.gzipUncompress(inflated);
     EXPECT_EQ(0, inflated.size());
     EXPECT_EQ(14311807558968942501ULL,
               fasthash64(inflated.data(), inflated.size(), 0xdeadbeef));

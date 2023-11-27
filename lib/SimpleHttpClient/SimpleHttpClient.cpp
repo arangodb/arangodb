@@ -666,20 +666,27 @@ ErrorCode SimpleHttpClient::setRequest(
   }
 
   // compress request body if we are asked for it, but only if
-  // no explicit "accept-encoding" header was already set
-  bool const compressBody = !foundContentEncoding &&
-                            _params._compressRequestThreshold > 0 &&
-                            _params._compressRequestThreshold <= bodyLength;
+  // no explicit "content-encoding" header was already set
+  bool compressBody = !foundContentEncoding &&
+                      _params._compressRequestThreshold > 0 &&
+                      _params._compressRequestThreshold <= bodyLength;
   std::string compressed;
   if (compressBody) {
-    _writeBuffer.appendText(std::string_view("Content-Encoding: deflate\r\n"));
-
     auto res = encoding::zlibDeflate(reinterpret_cast<uint8_t const*>(body),
                                      bodyLength, compressed);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
-    bodyLength = compressed.size();
+    if (compressed.size() >= bodyLength) {
+      // bad: compressed request body is larger than uncompressed body.
+      // in this case we give up on the compression
+      compressBody = false;
+    } else {
+      // good: compression resulted in some smaller request body
+      bodyLength = compressed.size();
+      _writeBuffer.appendText(
+          std::string_view("Content-Encoding: deflate\r\n"));
+    }
   }
 
   if (method != rest::RequestType::GET && _params._addContentLength) {
@@ -696,8 +703,7 @@ ErrorCode SimpleHttpClient::setRequest(
       TRI_ASSERT(bodyLength == compressed.size());
       _writeBuffer.appendText(compressed.data(), compressed.size());
     } else {
-      // don't compress body
-      TRI_ASSERT(compressed.empty());
+      // don't write compressed body
       _writeBuffer.appendText(body, bodyLength);
     }
   }

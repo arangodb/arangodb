@@ -110,11 +110,11 @@ class HttpResponse : public GeneralResponse {
 
  private:
   // the body must already be set. deflate is then run on the existing body
-  ErrorCode zlibDeflate() override;
+  ErrorCode zlibDeflate(bool onlyIfSmaller) override;
 
   // the body must already be set. gzip compression is then run on the existing
   // body
-  ErrorCode gzipCompress() override;
+  ErrorCode gzipCompress(bool onlyIfSmaller) override;
 
   void addPayloadInternal(uint8_t const* data, size_t length,
                           velocypack::Options const* options,

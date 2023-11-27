@@ -2373,10 +2373,10 @@ void translateHeaders(
 }
 
 // V8 -> fuerte
-bool setPostBody(fu::Request& request, v8::Isolate* isolate,
-                 v8::Local<v8::Value> const& body,
-                 velocypack::Options const& vpackOptions, bool forceJson,
-                 bool isFile, uint64_t compressRequestThreshold) {
+bool setRequestBody(fu::Request& request, v8::Isolate* isolate,
+                    v8::Local<v8::Value> const& body,
+                    velocypack::Options const& vpackOptions, bool forceJson,
+                    bool isFile, uint64_t compressRequestThreshold) {
   auto compressIfEligible = [&](uint8_t const* body, size_t size) {
     if (isFile) {
       // we don't compress file bodies
@@ -2395,17 +2395,22 @@ bool setPostBody(fu::Request& request, v8::Isolate* isolate,
       // body too small for compression
       return false;
     }
-    TRI_ASSERT(request.payloadForModification().empty());
-    if (encoding::zlibDeflate(body, size, request.payloadForModification()) !=
-        TRI_ERROR_NO_ERROR) {
+    auto& pfm = request.payloadForModification();
+    TRI_ASSERT(pfm.empty());
+    if (encoding::zlibDeflate(body, size, pfm) != TRI_ERROR_NO_ERROR) {
       TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "unable to compress request body");
       return false;
     }
     // compression successful
+    if (pfm.size() >= size) {
+      // size after compression is higher than before compression...
+      // clear again and fall back to regular, uncompressed encoding.
+      pfm.clear();
+      return false;
+    }
 
     // add "content-encoding: deflate" header
-    TRI_ASSERT(!isFile);
     TRI_ASSERT(compressRequestThreshold > 0);
     TRI_ASSERT(!request.header.meta().contains(StaticStrings::ContentEncoding));
 
@@ -2665,10 +2670,10 @@ again:
   translateHeaders(*req, method, location, _databaseName, _forceJson,
                    _requestTimeout, headerFields, _client.compressTransfer());
 
-  if (!setPostBody(*req, isolate, body, _vpackOptions, _forceJson, isFile,
-                   _client.compressTransfer() && !isVst
-                       ? _client.compressRequestThreshold()
-                       : 0)) {
+  if (!setRequestBody(*req, isolate, body, _vpackOptions, _forceJson, isFile,
+                      _client.compressTransfer() && !isVst
+                          ? _client.compressRequestThreshold()
+                          : 0)) {
     return v8::Undefined(isolate);
   }
 
@@ -2742,11 +2747,11 @@ again:
   translateHeaders(*req, method, location, _databaseName, _forceJson,
                    _requestTimeout, headerFields, _client.compressTransfer());
 
-  if (!setPostBody(*req, isolate, body, _vpackOptions, _forceJson,
-                   /*isFile*/ false,
-                   _client.compressTransfer() && !isVst
-                       ? _client.compressRequestThreshold()
-                       : 0)) {
+  if (!setRequestBody(*req, isolate, body, _vpackOptions, _forceJson,
+                      /*isFile*/ false,
+                      _client.compressTransfer() && !isVst
+                          ? _client.compressRequestThreshold()
+                          : 0)) {
     return v8::Undefined(isolate);
   }
 

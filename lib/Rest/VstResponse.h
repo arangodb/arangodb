@@ -62,8 +62,8 @@ class VstResponse : public GeneralResponse {
   rest::ResponseCompressionType compressionAllowed() const noexcept override {
     return rest::ResponseCompressionType::kNoCompression;
   }
-  ErrorCode zlibDeflate() override;
-  ErrorCode gzipCompress() override;
+  ErrorCode zlibDeflate(bool onlyIfSmaller) override;
+  ErrorCode gzipCompress(bool onlyIfSmaller) override;
 
   /// write VST response message header
   void writeMessageHeader(velocypack::Buffer<uint8_t>&) const;
