@@ -1,6 +1,9 @@
 v3.10.12 (XXXX-XX-XX)
 ---------------------
 
+* Fixed MDS-1170: Significant performance degradation when queries are executed
+  within transactions that involve edits.
+
 * Solve a potential blockage during hotbackup by not stopping read-only
   transactions from committing during hotbackup. Furthermore, improve behavior
   of authentication in the case that the user cache is outdated.
@@ -24,11 +27,6 @@ v3.10.12 (XXXX-XX-XX)
   `--server.statistics false`. Previously, with that setting the request and
   connection statistics were built up in memory, but were never released because
   the statistics background thread was not running.
-
-* Avoid memory leak in case an arangod instance is started with the option 
-  `--server.statistics false`. Previously, with that setting the request
-  and connection statistics were built up in memory, but were never released
-  because the statistics background thread was not running.
 
 * Remove version check on startup of arangosh. This can speed up the startup of
   the arangosh considerably because it won't do a network request to
