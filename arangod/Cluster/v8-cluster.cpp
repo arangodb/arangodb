@@ -1005,12 +1005,15 @@ static void JS_GetResponsibleServersClusterInfo(
 
   uint32_t const n = array->Length();
   for (uint32_t i = 0; i < n; ++i) {
-    auto maybeShard = ShardID::shardIdFromString(TRI_ObjectToString(
-        isolate, array->Get(context, i).FromMaybe(v8::Local<v8::Value>())));
+    auto shardID = TRI_ObjectToString(
+        isolate, array->Get(context, i).FromMaybe(v8::Local<v8::Value>()));
+    auto maybeShard = ShardID::shardIdFromString(shardID);
     if (maybeShard.fail()) {
+      // For API compatibility we throw DataSourceNotFound error here
+      // And ignore the parsing issue. (Illegally named shard cannot be found)
       TRI_V8_THROW_EXCEPTION_MESSAGE(
-          maybeShard.errorNumber(),
-          absl::StrCat("Error on entry ", i, ": ", maybeShard.errorMessage()));
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          absl::StrCat("no shard found with ID ", shardID));
     }
     shardIds.emplace(std::move(maybeShard.get()));
   }
