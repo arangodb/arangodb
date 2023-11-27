@@ -19,10 +19,6 @@ parameters:
   v8-build-targets:
     type: string
     default: "arangosh"
-  replication-two:
-    type: boolean
-    # We use replication1 as default.
-    default: false
   build-docker-tag:
     type: string
     default: arangodb/build-alpine:3.16-gcc11.2-openssl3.1.3-4999848556c
@@ -55,14 +51,6 @@ commands:
                   cd << parameters.destination >>
                   git submodule init
                   git submodule update --recursive --depth 1 --jobs 8
-      - when:
-          condition: << pipeline.parameters.replication-two >>
-          steps:
-            - run:
-                name: Setup Replication Version
-                command: |
-                  cat ./etc/testing/arangod-common.conf | sed -e "s/default-replication-version = 1/default-replication-version = 2/" > ./etc/testing/tmp-arangod-common.conf
-                  mv ./etc/testing/tmp-arangod-common.conf ./etc/testing/arangod-common.conf
 
   checkout-enterprise:
     description: "Checkout enterprise code"
