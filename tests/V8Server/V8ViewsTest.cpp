@@ -30,9 +30,7 @@
 
 #include "Mocks/Servers.h"  // this must be first because windows
 
-#include "src/objects/objects.h"
-#include "src/api/api.h"
-#include "src/objects/scope-info.h"
+#include <v8.h>
 
 #include "gtest/gtest.h"
 
@@ -66,18 +64,6 @@
 #endif
 
 namespace {
-
-class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
- public:
-  virtual void* Allocate(size_t length) override {
-    void* data = AllocateUninitialized(length);
-    return data == nullptr ? data : memset(data, 0, length);
-  }
-  virtual void* AllocateUninitialized(size_t length) override {
-    return malloc(length);
-  }
-  virtual void Free(void* data, size_t) override { free(data); }
-};
 
 struct TestView : public arangodb::LogicalView {
   arangodb::Result _appendVelocyPackResult;
@@ -203,8 +189,9 @@ TEST_F(V8ViewsTest, test_auth) {
   {
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
     v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
+    auto arrayBufferAllocator = std::unique_ptr<v8::ArrayBuffer::Allocator>(
+        v8::ArrayBuffer::Allocator::NewDefaultAllocator());
+    isolateParams.array_buffer_allocator = arrayBufferAllocator.get();
     auto isolate = std::shared_ptr<v8::Isolate>(
         v8::Isolate::New(isolateParams),
         [](v8::Isolate* p) -> void { p->Dispose(); });
@@ -212,10 +199,12 @@ TEST_F(V8ViewsTest, test_auth) {
     v8::Isolate::Scope isolateScope(
         isolate.get());  // otherwise v8::Isolate::Logger() will fail (called
                          // from v8::Exception::Error)
+#if 0
     v8::internal::Isolate::Current()
         ->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger()
                                            // will fail (called from
                                            // v8::Exception::Error)
+#endif
     v8::HandleScope handleScope(
         isolate.get());  // required for v8::Context::New(...),
                          // v8::ObjectTemplate::New(...) and
@@ -356,8 +345,9 @@ TEST_F(V8ViewsTest, test_auth) {
     ASSERT_FALSE(!logicalView);
 
     v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
+    auto arrayBufferAllocator = std::unique_ptr<v8::ArrayBuffer::Allocator>(
+        v8::ArrayBuffer::Allocator::NewDefaultAllocator());
+    isolateParams.array_buffer_allocator = arrayBufferAllocator.get();
     auto isolate = std::shared_ptr<v8::Isolate>(
         v8::Isolate::New(isolateParams),
         [](v8::Isolate* p) -> void { p->Dispose(); });
@@ -367,7 +357,9 @@ TEST_F(V8ViewsTest, test_auth) {
     v8::Isolate::Scope isolateScope(isolate.get());
     // otherwise v8::Isolate::Logger() will fail (called from
     // v8::Exception::Error)
+#if 0
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
+#endif
     // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
     // TRI_AddMethodVocbase(...)
     v8::HandleScope handleScope(isolate.get());
@@ -496,8 +488,9 @@ TEST_F(V8ViewsTest, test_auth) {
     ASSERT_FALSE(!logicalView);
 
     v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
+    auto arrayBufferAllocator = std::unique_ptr<v8::ArrayBuffer::Allocator>(
+        v8::ArrayBuffer::Allocator::NewDefaultAllocator());
+    isolateParams.array_buffer_allocator = arrayBufferAllocator.get();
     auto isolate = std::shared_ptr<v8::Isolate>(
         v8::Isolate::New(isolateParams),
         [](v8::Isolate* p) -> void { p->Dispose(); });
@@ -507,7 +500,9 @@ TEST_F(V8ViewsTest, test_auth) {
     v8::Isolate::Scope isolateScope(isolate.get());
     // otherwise v8::Isolate::Logger() will fail (called from
     // v8::Exception::Error)
+#if 0
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
+#endif
     // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
     // TRI_AddMethodVocbase(...)
     v8::HandleScope handleScope(isolate.get());
@@ -634,8 +629,9 @@ TEST_F(V8ViewsTest, test_auth) {
     ASSERT_FALSE(!logicalView);
 
     v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
+    auto arrayBufferAllocator = std::unique_ptr<v8::ArrayBuffer::Allocator>(
+        v8::ArrayBuffer::Allocator::NewDefaultAllocator());
+    isolateParams.array_buffer_allocator = arrayBufferAllocator.get();
     auto isolate = std::shared_ptr<v8::Isolate>(
         v8::Isolate::New(isolateParams),
         [](v8::Isolate* p) -> void { p->Dispose(); });
@@ -646,7 +642,9 @@ TEST_F(V8ViewsTest, test_auth) {
 
     // otherwise v8::Isolate::Logger() will fail (called from
     // v8::Exception::Error)
+#if 0
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
+#endif
     // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
     // TRI_AddMethodVocbase(...)
     v8::HandleScope handleScope(isolate.get());
@@ -830,8 +828,9 @@ TEST_F(V8ViewsTest, test_auth) {
     ASSERT_FALSE(!logicalView);
 
     v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
+    auto arrayBufferAllocator = std::unique_ptr<v8::ArrayBuffer::Allocator>(
+        v8::ArrayBuffer::Allocator::NewDefaultAllocator());
+    isolateParams.array_buffer_allocator = arrayBufferAllocator.get();
     auto isolate = std::shared_ptr<v8::Isolate>(
         v8::Isolate::New(isolateParams),
         [](v8::Isolate* p) -> void { p->Dispose(); });
@@ -845,7 +844,9 @@ TEST_F(V8ViewsTest, test_auth) {
     v8::Isolate::Scope isolateScope(isolate.get());
     // otherwise v8::Isolate::Logger() will fail (called from
     // v8::Exception::Error)
+#if 0
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
+#endif
     // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
     // TRI_AddMethodVocbase(...)
     v8::HandleScope handleScope(isolate.get());
@@ -1044,8 +1045,9 @@ TEST_F(V8ViewsTest, test_auth) {
     ASSERT_FALSE(!logicalView);
 
     v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
+    auto arrayBufferAllocator = std::unique_ptr<v8::ArrayBuffer::Allocator>(
+        v8::ArrayBuffer::Allocator::NewDefaultAllocator());
+    isolateParams.array_buffer_allocator = arrayBufferAllocator.get();
     auto isolate = std::shared_ptr<v8::Isolate>(
         v8::Isolate::New(isolateParams),
         [](v8::Isolate* p) -> void { p->Dispose(); });
@@ -1055,7 +1057,9 @@ TEST_F(V8ViewsTest, test_auth) {
     v8::Isolate::Scope isolateScope(isolate.get());
     // otherwise v8::Isolate::Logger() will fail (called from
     // v8::Exception::Error)
+#if 0
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
+#endif
     // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
     // TRI_AddMethodVocbase(...)
     v8::HandleScope handleScope(isolate.get());
@@ -1202,8 +1206,9 @@ TEST_F(V8ViewsTest, test_auth) {
     ASSERT_FALSE(!logicalView);
 
     v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
+    auto arrayBufferAllocator = std::unique_ptr<v8::ArrayBuffer::Allocator>(
+        v8::ArrayBuffer::Allocator::NewDefaultAllocator());
+    isolateParams.array_buffer_allocator = arrayBufferAllocator.get();
     auto isolate = std::shared_ptr<v8::Isolate>(
         v8::Isolate::New(isolateParams),
         [](v8::Isolate* p) -> void { p->Dispose(); });
@@ -1217,7 +1222,9 @@ TEST_F(V8ViewsTest, test_auth) {
     v8::Isolate::Scope isolateScope(isolate.get());
     // otherwise v8::Isolate::Logger() will fail (called from
     // v8::Exception::Error)
+#if 0
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
+#endif
     // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
     // TRI_AddMethodVocbase(...)
     v8::HandleScope handleScope(isolate.get());
@@ -1379,8 +1386,9 @@ TEST_F(V8ViewsTest, test_auth) {
     ASSERT_FALSE(!logicalView2);
 
     v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
+    auto arrayBufferAllocator = std::unique_ptr<v8::ArrayBuffer::Allocator>(
+        v8::ArrayBuffer::Allocator::NewDefaultAllocator());
+    isolateParams.array_buffer_allocator = arrayBufferAllocator.get();
     auto isolate = std::shared_ptr<v8::Isolate>(
         v8::Isolate::New(isolateParams),
         [](v8::Isolate* p) -> void { p->Dispose(); });
@@ -1390,7 +1398,9 @@ TEST_F(V8ViewsTest, test_auth) {
     v8::Isolate::Scope isolateScope(isolate.get());
     // otherwise v8::Isolate::Logger() will fail (called from
     // v8::Exception::Error)
+#if 0
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
+#endif
     // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
     // TRI_AddMethodVocbase(...)
     v8::HandleScope handleScope(isolate.get());
