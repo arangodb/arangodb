@@ -116,10 +116,10 @@ ActorVertexProcessor<V, E, M>::ActorVertexProcessor(
     std::unique_ptr<WorkerContext>& workerContext,
     std::unique_ptr<MessageCombiner<M>>& messageCombiner,
     std::unique_ptr<MessageFormat<M>>& messageFormat,
-    std::function<void(actor::ActorPID receiver,
+    std::function<void(actor::DistributedActorPID receiver,
                        worker::message::PregelMessage message)>
         dispatch,
-    std::unordered_map<ShardID, actor::ActorPID> const&
+    std::unordered_map<ShardID, actor::DistributedActorPID> const&
         responsibleActorPerShard) {
   if (messageCombiner != nullptr) {
     localMessageCache = std::make_shared<CombiningInCache<M>>(

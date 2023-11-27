@@ -26,7 +26,6 @@
 #include "Futures/Future.h"
 #include "Replication2/ReplicatedLog/Components/StorageManager.h"
 #include "Logger/LogContextKeys.h"
-#include "Replication2/coro-helper.h"
 #include "Basics/ScopeGuard.h"
 
 using namespace arangodb::replication2::replicated_log::comp;
@@ -176,12 +175,12 @@ void CompactionManager::triggerAsyncCompaction(
       guard = self->guarded.getLockedGuard();
     }
 
-    co_return futures::Unit{};
+    co_return;
   };
 
   guard->_fullCompactionNextRound |= ignoreThreshold;
   if (not guard->_compactionInProgress) {
-    worker(std::move(guard), shared_from_this());
+    std::ignore = worker(std::move(guard), shared_from_this());
   } else {
     LOG_CTX("b6135", TRACE, loggerContext)
         << "another compaction is still in progress";

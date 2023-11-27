@@ -34,10 +34,16 @@ struct DocumentStateSnapshotTest : DocumentStateMachineTest {};
 TEST_F(DocumentStateSnapshotTest, snapshot_has_valid_ongoing_state) {
   using namespace testing;
 
-  EXPECT_CALL(*collectionReaderMock, getDocCount()).Times(1);
+  auto shards = logicalCollections;
+  shards.emplace_back(makeLogicalCollection(shardId));
+
+  // A new snapshot is created. Nothing should happen, only initialization.
+  // No collection should be read from yet.
+  EXPECT_CALL(*collectionReaderMock, getDocCount()).Times(0);
   auto snapshot = Snapshot(
-      SnapshotId{12345}, shardMap,
-      std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock));
+      SnapshotId{12345}, globalId, shards,
+      std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock),
+      loggerContext);
   Mock::VerifyAndClearExpectations(collectionReaderMock.get());
 
   auto status = snapshot.status();
@@ -45,8 +51,7 @@ TEST_F(DocumentStateSnapshotTest, snapshot_has_valid_ongoing_state) {
             replication2::replicated_state::document::kStringOngoing);
   EXPECT_EQ(status.statistics.shards.size(), 1);
   EXPECT_TRUE(status.statistics.shards.contains(shardId));
-  EXPECT_EQ(status.statistics.shards[shardId].totalDocs,
-            collectionReaderMock->getDocCount());
+  EXPECT_EQ(status.statistics.shards[shardId].totalDocs, std::nullopt);
   EXPECT_EQ(status.statistics.shards[shardId].docsSent, 0);
   EXPECT_EQ(status.statistics.batchesSent, 0);
   EXPECT_EQ(status.statistics.bytesSent, 0);
@@ -56,11 +61,14 @@ TEST_F(DocumentStateSnapshotTest, snapshot_fetch_from_ongoing_state) {
   using namespace testing;
 
   auto snapshotId = SnapshotId{12345};
+  auto shards = logicalCollections;
+  shards.emplace_back(makeLogicalCollection(shardId));
   auto snapshot = Snapshot(
-      snapshotId, shardMap,
-      std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock));
-  std::size_t bytesSent{0};
+      snapshotId, globalId, shards,
+      std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock),
+      loggerContext);
 
+  std::size_t bytesSent{0};
   for (std::size_t idx{0}; idx < collectionData.size(); ++idx) {
     EXPECT_CALL(*collectionReaderMock, read(_, _)).Times(1);
     EXPECT_CALL(*collectionReaderMock, hasMore()).Times(1);
@@ -70,9 +78,16 @@ TEST_F(DocumentStateSnapshotTest, snapshot_fetch_from_ongoing_state) {
     ASSERT_TRUE(batchRes.ok()) << batchRes.result();
     auto batch = batchRes.get();
     EXPECT_EQ(batch.snapshotId, snapshotId);
-    EXPECT_EQ(batch.shardId, shardId);
     EXPECT_EQ(batch.hasMore, idx < collectionData.size() - 1);
-    EXPECT_TRUE(batch.payload.isArray());
+    if (idx == 0) {
+      // First batch contains the CreateShard operation, besides Insert and
+      // Commit
+      EXPECT_EQ(batch.operations.size(), 3);
+    } else {
+      // Additional batches contain only Insert and Commit (unless a new shard
+      // is "opened" for transfer)
+      EXPECT_EQ(batch.operations.size(), 2);
+    }
 
     auto status = snapshot.status();
     ASSERT_EQ(status.state,
@@ -80,8 +95,8 @@ TEST_F(DocumentStateSnapshotTest, snapshot_fetch_from_ongoing_state) {
     EXPECT_EQ(status.statistics.shards[shardId].docsSent, idx + 1);
     EXPECT_EQ(status.statistics.batchesSent, idx + 1);
 
-    bytesSent += batch.payload.byteSize();
-    EXPECT_EQ(status.statistics.bytesSent, bytesSent);
+    EXPECT_GT(status.statistics.bytesSent, bytesSent);
+    bytesSent = status.statistics.bytesSent;
   }
 }
 
@@ -91,38 +106,53 @@ TEST_F(DocumentStateSnapshotTest,
 
   auto transactionHandlerMock = createRealTransactionHandler();
 
-  // Acquire a snapshot containing a single shard
+  // Default initialize a follower
   auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
 
-  // We now acquire a second snapshot with a different set of shards
+  // Acquire a new snapshot with a different set of shards
   const ShardID shardId1 = "s123";
   const ShardID shardId2 = "s345";
-  auto newShardMap = document::ShardMap{
-      {shardId1,
-       ShardProperties{.collection = collectionId,
-                       .properties = std::make_shared<VPackBuilder>()}},
-      {shardId2,
-       ShardProperties{.collection = collectionId,
-                       .properties = std::make_shared<VPackBuilder>()}}};
-
   ON_CALL(*leaderInterfaceMock, startSnapshot).WillByDefault([&]() {
-    return futures::Future<ResultT<SnapshotConfig>>{
-        std::in_place, SnapshotConfig{SnapshotId{1}, newShardMap}};
+    return futures::Future<ResultT<SnapshotBatch>>{
+        std::in_place,
+        SnapshotBatch{
+            .snapshotId = SnapshotId{1},
+            .hasMore = true,
+            .operations = {ReplicatedOperation::buildCreateShardOperation(
+                shardId1, TRI_COL_TYPE_DOCUMENT, velocypack::SharedSlice())}}};
   });
+  ON_CALL(*leaderInterfaceMock, nextSnapshotBatch).WillByDefault([&]() {
+    return futures::Future<ResultT<SnapshotBatch>>{
+        std::in_place,
+        SnapshotBatch{
+            .snapshotId = SnapshotId{1},
+            .hasMore = false,
+            .operations = {ReplicatedOperation::buildCreateShardOperation(
+                shardId2, TRI_COL_TYPE_EDGE, velocypack::SharedSlice())}}};
+  });
+
+  // There should be exactly two batches sent
+  EXPECT_CALL(*leaderInterfaceMock, startSnapshot()).Times(1);
+  EXPECT_CALL(*leaderInterfaceMock, nextSnapshotBatch(SnapshotId{1})).Times(1);
+  EXPECT_CALL(*leaderInterfaceMock, finishSnapshot(SnapshotId{1})).Times(1);
 
   // The previous shard should be dropped
   EXPECT_CALL(*shardHandlerMock, dropAllShards()).Times(1);
-  // The new shards should be created
-  EXPECT_CALL(*shardHandlerMock, ensureShard(shardId1, collectionId, _))
+
+  // New shards should be created
+  EXPECT_CALL(*shardHandlerMock,
+              ensureShard(shardId1, TRI_COL_TYPE_DOCUMENT, _))
       .Times(1);
-  EXPECT_CALL(*shardHandlerMock, ensureShard(shardId2, collectionId, _))
+  EXPECT_CALL(*shardHandlerMock, ensureShard(shardId2, TRI_COL_TYPE_EDGE, _))
       .Times(1);
-  follower->acquireSnapshot("participantId");
+
+  std::ignore = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
 
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());
+  Mock::VerifyAndClearExpectations(leaderInterfaceMock.get());
 }
 
 TEST_F(DocumentStateSnapshotTest, snapshot_fetch_multiple_shards) {
@@ -131,103 +161,171 @@ TEST_F(DocumentStateSnapshotTest, snapshot_fetch_multiple_shards) {
   auto snapshotId = SnapshotId{1};
   const ShardID shardId1 = "s1";
   const ShardID shardId2 = "s2";
+  const ShardID shardId3 = "s3";
 
+  // The snapshot should fetch the shards in the reverse order of their
+  // insertion. This way, we ensure the order looks natural (1, 2, 3).
+  auto shards = logicalCollections;
+  shards.emplace_back(makeLogicalCollection(shardId3));
+  shards.emplace_back(makeLogicalCollection(shardId2));
+  shards.emplace_back(makeLogicalCollection(shardId1));
+
+  // s1 has 2 documents
+  std::vector<std::string> collectionData1 = {"1", "2"};
+  // s2 has 1 document
+  std::vector<std::string> collectionData2 = {"1"};
+  // s3 is empty
+  std::vector<std::string> collectionData3 = {};
+
+  // Setup collection reader creation.
+  // This step will check that the collection reader is created for each shard.
   std::shared_ptr<testing::NiceMock<MockCollectionReader>>
       collectionReaderMock1 =
           std::make_shared<testing::NiceMock<MockCollectionReader>>(
-              collectionData);
+              collectionData1);
   std::shared_ptr<testing::NiceMock<MockCollectionReader>>
       collectionReaderMock2 =
           std::make_shared<testing::NiceMock<MockCollectionReader>>(
-              collectionData);
-
-  EXPECT_CALL(*databaseSnapshotMock, createCollectionReader(shardId1))
-      .WillOnce([&collectionReaderMock1](std::string_view collectionName) {
-        return std::make_unique<MockCollectionReaderDelegator>(
-            collectionReaderMock1);
-      });
-  EXPECT_CALL(*databaseSnapshotMock, createCollectionReader(shardId2))
-      .WillOnce([&collectionReaderMock2](std::string_view collectionName) {
-        return std::make_unique<MockCollectionReaderDelegator>(
-            collectionReaderMock2);
+              collectionData2);
+  std::shared_ptr<testing::NiceMock<MockCollectionReader>>
+      collectionReaderMock3 =
+          std::make_shared<testing::NiceMock<MockCollectionReader>>(
+              collectionData3);
+  EXPECT_CALL(*databaseSnapshotMock, createCollectionReader(_))
+      .WillRepeatedly([&](std::shared_ptr<LogicalCollection> const& shard) {
+        if (shard->name() == "s1") {
+          return std::make_unique<MockCollectionReaderDelegator>(
+              collectionReaderMock1);
+        } else if (shard->name() == "s2") {
+          return std::make_unique<MockCollectionReaderDelegator>(
+              collectionReaderMock2);
+        } else if (shard->name() == "s3") {
+          return std::make_unique<MockCollectionReaderDelegator>(
+              collectionReaderMock3);
+        }
+        TRI_ASSERT(false) << "Unexpected shard name: " << shard->name();
       });
 
   auto snapshot = Snapshot(
-      snapshotId,
-      {{shardId1,
-        ShardProperties{.collection = collectionId,
-                        .properties = std::make_shared<VPackBuilder>()}},
-       {shardId2,
-        ShardProperties{.collection = collectionId,
-                        .properties = std::make_shared<VPackBuilder>()}}},
-      std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock));
-  std::size_t bytesSent{0};
+      snapshotId, globalId, shards,
+      std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock),
+      loggerContext);
 
+  // First batch should contain the creation of s1 along with the first document
   EXPECT_CALL(*collectionReaderMock1, read(_, _)).Times(1);
   EXPECT_CALL(*collectionReaderMock1, hasMore()).Times(1);
+  auto batchRes = snapshot.fetch();
+  ASSERT_TRUE(batchRes.ok()) << batchRes.result();
+  Mock::VerifyAndClearExpectations(collectionReaderMock1.get());
+  auto batch = batchRes.get();
+  EXPECT_EQ(snapshotId, batch.snapshotId) << batch;
+  EXPECT_TRUE(batch.hasMore) << batch;
+  EXPECT_EQ(batch.operations.size(), 3) << batch;
+  EXPECT_TRUE(std::holds_alternative<ReplicatedOperation::CreateShard>(
+      batch.operations[0].operation))
+      << batch;
+  EXPECT_TRUE(std::holds_alternative<ReplicatedOperation::Insert>(
+      batch.operations[1].operation))
+      << batch;
+  EXPECT_TRUE(std::holds_alternative<ReplicatedOperation::Commit>(
+      batch.operations[2].operation))
+      << batch;
+
+  // Second batch should contain the last document of s1
+  EXPECT_CALL(*collectionReaderMock1, read(_, _)).Times(1);
+  EXPECT_CALL(*collectionReaderMock1, hasMore()).Times(1);
+  batchRes = snapshot.fetch();
+  ASSERT_TRUE(batchRes.ok()) << batchRes.result();
+  Mock::VerifyAndClearExpectations(collectionReaderMock1.get());
+  batch = batchRes.get();
+  EXPECT_EQ(snapshotId, batch.snapshotId) << batch;
+  EXPECT_TRUE(batch.hasMore) << batch;
+  EXPECT_EQ(batch.operations.size(), 2) << batch;
+  EXPECT_TRUE(std::holds_alternative<ReplicatedOperation::Insert>(
+      batch.operations[0].operation))
+      << batch;
+  EXPECT_TRUE(std::holds_alternative<ReplicatedOperation::Commit>(
+      batch.operations[1].operation))
+      << batch;
+
+  // Third batch should contain the creation of s2 along with its document
   EXPECT_CALL(*collectionReaderMock2, read(_, _)).Times(1);
   EXPECT_CALL(*collectionReaderMock2, hasMore()).Times(1);
-  std::optional<ShardID> shardID;
+  EXPECT_CALL(*collectionReaderMock1, hasMore()).Times(0);
+  batchRes = snapshot.fetch();
+  ASSERT_TRUE(batchRes.ok()) << batchRes.result();
+  Mock::VerifyAndClearExpectations(collectionReaderMock1.get());
+  Mock::VerifyAndClearExpectations(collectionReaderMock2.get());
+  batch = batchRes.get();
+  EXPECT_EQ(snapshotId, batch.snapshotId) << batch;
+  EXPECT_TRUE(batch.hasMore) << batch;
+  EXPECT_EQ(batch.operations.size(), 3) << batch;
+  EXPECT_TRUE(std::holds_alternative<ReplicatedOperation::CreateShard>(
+      batch.operations[0].operation))
+      << batch;
+  EXPECT_TRUE(std::holds_alternative<ReplicatedOperation::Insert>(
+      batch.operations[1].operation))
+      << batch;
+  EXPECT_TRUE(std::holds_alternative<ReplicatedOperation::Commit>(
+      batch.operations[2].operation))
+      << batch;
 
-  // fetch data from first shard
-  for (std::size_t idx{0}; idx < collectionData.size(); ++idx) {
-    auto batchRes = snapshot.fetch();
-    ASSERT_TRUE(batchRes.ok()) << batchRes.result();
-    auto batch = batchRes.get();
-    EXPECT_EQ(snapshotId, batch.snapshotId);
-    shardID = batch.shardId;
+  // Fourth batch should contain the creation of s3 long with an empty Insert
+  // and Commit
+  EXPECT_CALL(*collectionReaderMock3, read(_, _)).Times(1);
+  EXPECT_CALL(*collectionReaderMock3, hasMore()).Times(1);
+  EXPECT_CALL(*collectionReaderMock2, hasMore()).Times(0);
+  EXPECT_CALL(*collectionReaderMock1, hasMore()).Times(0);
+  batchRes = snapshot.fetch();
+  ASSERT_TRUE(batchRes.ok()) << batchRes.result();
+  Mock::VerifyAndClearExpectations(collectionReaderMock1.get());
+  Mock::VerifyAndClearExpectations(collectionReaderMock2.get());
+  Mock::VerifyAndClearExpectations(collectionReaderMock3.get());
+  batch = batchRes.get();
+  EXPECT_EQ(snapshotId, batch.snapshotId) << batch;
+  EXPECT_FALSE(batch.hasMore) << batch;
+  EXPECT_EQ(batch.operations.size(), 3) << batch;
+  EXPECT_TRUE(std::holds_alternative<ReplicatedOperation::CreateShard>(
+      batch.operations[0].operation))
+      << batch;
+  EXPECT_TRUE(std::holds_alternative<ReplicatedOperation::Insert>(
+      batch.operations[1].operation))
+      << batch;
+  EXPECT_TRUE(
+      std::get<ReplicatedOperation::Insert>(batch.operations[1].operation)
+          .payload.slice()
+          .isEmptyArray())
+      << batch;
+  EXPECT_TRUE(std::holds_alternative<ReplicatedOperation::Commit>(
+      batch.operations[2].operation))
+      << batch;
 
-    if (shardID == shardId1) {
-      Mock::VerifyAndClearExpectations(collectionReaderMock1.get());
-    } else if (shardID == shardId2) {
-      Mock::VerifyAndClearExpectations(collectionReaderMock2.get());
-    } else {
-      ADD_FAILURE();
-    }
+  // Any further batches should come as empty
+  EXPECT_CALL(*collectionReaderMock3, hasMore()).Times(0);
+  EXPECT_CALL(*collectionReaderMock2, hasMore()).Times(0);
+  EXPECT_CALL(*collectionReaderMock1, hasMore()).Times(0);
+  batchRes = snapshot.fetch();
+  ASSERT_TRUE(batchRes.ok()) << batchRes.result();
+  Mock::VerifyAndClearExpectations(collectionReaderMock1.get());
+  Mock::VerifyAndClearExpectations(collectionReaderMock2.get());
+  Mock::VerifyAndClearExpectations(collectionReaderMock3.get());
+  batch = batchRes.get();
+  EXPECT_EQ(snapshotId, batch.snapshotId) << batch;
+  EXPECT_FALSE(batch.hasMore) << batch;
+  EXPECT_TRUE(batch.operations.empty()) << batch;
 
-    EXPECT_TRUE(batch.hasMore);
-    EXPECT_TRUE(batch.payload.isArray());
-
-    auto status = snapshot.status();
-    ASSERT_EQ(replication2::replicated_state::document::kStringOngoing,
-              status.state);
-    EXPECT_EQ(2, status.statistics.shards.size());
-    EXPECT_EQ(idx + 1, status.statistics.shards[*shardID].docsSent);
-    EXPECT_EQ(idx + 1, status.statistics.batchesSent);
-
-    bytesSent += batch.payload.byteSize();
-    EXPECT_EQ(bytesSent, status.statistics.bytesSent);
-  }
-
-  // fetch data from second shard
-  for (std::size_t idx{0}; idx < collectionData.size(); ++idx) {
-    auto batchRes = snapshot.fetch();
-    ASSERT_TRUE(batchRes.ok()) << batchRes.result();
-    auto batch = batchRes.get();
-    EXPECT_EQ(snapshotId, batch.snapshotId);
-    shardID = batch.shardId;
-
-    if (shardID == shardId1) {
-      Mock::VerifyAndClearExpectations(collectionReaderMock1.get());
-    } else if (shardID == shardId2) {
-      Mock::VerifyAndClearExpectations(collectionReaderMock2.get());
-    } else {
-      ADD_FAILURE();
-    }
-
-    EXPECT_EQ(snapshotId, batch.snapshotId);
-    EXPECT_EQ(batch.hasMore, idx < collectionData.size() - 1);
-    EXPECT_TRUE(batch.payload.isArray());
-
-    auto status = snapshot.status();
-    ASSERT_EQ(replication2::replicated_state::document::kStringOngoing,
-              status.state);
-    EXPECT_EQ(idx + 1, status.statistics.shards[*shardID].docsSent);
-    EXPECT_EQ(collectionData.size() + idx + 1, status.statistics.batchesSent);
-
-    bytesSent += batch.payload.byteSize();
-    EXPECT_EQ(bytesSent, status.statistics.bytesSent);
-  }
+  // Check statistics
+  auto status = snapshot.status();
+  ASSERT_EQ(replication2::replicated_state::document::kStringOngoing,
+            status.state);
+  EXPECT_EQ(status.statistics.shards[shardId1].docsSent,
+            collectionData1.size());
+  EXPECT_EQ(status.statistics.shards[shardId2].docsSent,
+            collectionData2.size());
+  EXPECT_EQ(status.statistics.shards[shardId3].docsSent,
+            collectionData3.size());
+  EXPECT_EQ(status.statistics.batchesSent, 4);
+  EXPECT_GT(status.statistics.bytesSent, 0);
 }
 
 TEST_F(DocumentStateSnapshotTest, snapshot_fetch_empty) {
@@ -239,17 +337,17 @@ TEST_F(DocumentStateSnapshotTest, snapshot_fetch_empty) {
       std::make_shared<testing::StrictMock<MockDatabaseSnapshot>>(nullptr);
 
   auto snapshot = Snapshot(
-      snapshotId, {},
-      std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock));
+      snapshotId, globalId, logicalCollections,
+      std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock),
+      loggerContext);
 
   auto batchRes = snapshot.fetch();
 
   ASSERT_TRUE(batchRes.ok()) << batchRes.result();
   auto batch = batchRes.get();
-  EXPECT_EQ(snapshotId, batch.snapshotId);
-  EXPECT_FALSE(batch.shardId.has_value());
-  EXPECT_FALSE(batch.hasMore);
-  EXPECT_TRUE(batch.payload.isNone());
+  EXPECT_EQ(snapshotId, batch.snapshotId) << batch;
+  EXPECT_FALSE(batch.hasMore) << batch;
+  EXPECT_TRUE(batch.operations.empty()) << batch;
 
   auto status = snapshot.status();
   ASSERT_EQ(replication2::replicated_state::document::kStringOngoing,
@@ -263,8 +361,9 @@ TEST_F(DocumentStateSnapshotTest, snapshot_try_fetch_after_finish) {
 
   auto snapshotId = SnapshotId{12345};
   auto snapshot = Snapshot(
-      snapshotId, shardMap,
-      std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock));
+      snapshotId, globalId, logicalCollections,
+      std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock),
+      loggerContext);
 
   auto res = snapshot.finish();
   ASSERT_TRUE(res.ok()) << res;
@@ -285,11 +384,11 @@ TEST_F(DocumentStateSnapshotTest, snapshot_try_fetch_after_abort) {
 
   auto snapshotId = SnapshotId{12345};
   auto snapshot = Snapshot(
-      snapshotId, shardMap,
-      std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock));
+      snapshotId, globalId, logicalCollections,
+      std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock),
+      loggerContext);
 
-  auto res = snapshot.abort();
-  ASSERT_TRUE(res.ok()) << res;
+  snapshot.abort();
 
   auto status = snapshot.status();
   ASSERT_EQ(status.state,
@@ -307,21 +406,20 @@ TEST_F(DocumentStateSnapshotTest, snapshot_try_finish_after_abort) {
 
   auto snapshotId = SnapshotId{12345};
   auto snapshot = Snapshot(
-      snapshotId, shardMap,
-      std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock));
+      snapshotId, globalId, logicalCollections,
+      std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock),
+      loggerContext);
 
-  auto res = snapshot.abort();
-  ASSERT_TRUE(res.ok()) << res;
+  snapshot.abort();
 
   EXPECT_CALL(*collectionReaderMock, read(_, _)).Times(0);
   EXPECT_CALL(*collectionReaderMock, hasMore()).Times(0);
-  res = snapshot.finish();
+  auto res = snapshot.finish();
   ASSERT_TRUE(res.fail());
   Mock::VerifyAndClearExpectations(collectionReaderMock.get());
 
   // Calling abort again should have no effect
-  res = snapshot.abort();
-  ASSERT_TRUE(res.ok()) << res;
+  snapshot.abort();
 }
 
 TEST_F(DocumentStateSnapshotTest, snapshot_try_abort_after_finish) {
@@ -329,16 +427,16 @@ TEST_F(DocumentStateSnapshotTest, snapshot_try_abort_after_finish) {
 
   auto snapshotId = SnapshotId{12345};
   auto snapshot = Snapshot(
-      snapshotId, shardMap,
-      std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock));
+      snapshotId, globalId, logicalCollections,
+      std::make_unique<MockDatabaseSnapshotDelegator>(databaseSnapshotMock),
+      loggerContext);
 
   auto res = snapshot.finish();
   ASSERT_TRUE(res.ok()) << res;
 
   EXPECT_CALL(*collectionReaderMock, read(_, _)).Times(0);
   EXPECT_CALL(*collectionReaderMock, hasMore()).Times(0);
-  res = snapshot.abort();
-  ASSERT_TRUE(res.fail());
+  snapshot.abort();
   Mock::VerifyAndClearExpectations(collectionReaderMock.get());
 
   // Calling finish again should have no effect
@@ -351,13 +449,13 @@ TEST_F(DocumentStateSnapshotTest, snapshot_handler_creation_error) {
 
   auto snapshotHandler = DocumentStateSnapshotHandler(
       handlersFactoryMock->makeUniqueDatabaseSnapshotFactory(),
-      MockDocumentStateSnapshotHandler::rebootTracker);
+      MockDocumentStateSnapshotHandler::rebootTracker, globalId, loggerContext);
   EXPECT_CALL(*databaseSnapshotFactoryMock, createSnapshot)
       .WillOnce([]() -> std::unique_ptr<
                          replicated_state::document::IDatabaseSnapshot> {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_WAS_ERLAUBE);
       });
-  auto res = snapshotHandler.create(shardMap, {});
+  auto res = snapshotHandler.create(logicalCollections, {});
   ASSERT_TRUE(res.fail());
   Mock::VerifyAndClearExpectations(collectionReaderMock.get());
 }
@@ -367,7 +465,7 @@ TEST_F(DocumentStateSnapshotTest, snapshot_handler_cannot_find_snapshot) {
 
   auto snapshotHandler = DocumentStateSnapshotHandler(
       handlersFactoryMock->makeUniqueDatabaseSnapshotFactory(),
-      MockDocumentStateSnapshotHandler::rebootTracker);
+      MockDocumentStateSnapshotHandler::rebootTracker, globalId, loggerContext);
   auto res = snapshotHandler.find(SnapshotId::create());
   ASSERT_TRUE(res.fail());
 }
@@ -378,16 +476,15 @@ TEST_F(DocumentStateSnapshotTest,
 
   cluster::RebootTracker fakeRebootTracker{nullptr};
   fakeRebootTracker.updateServerState(
-
       {{"documentStateMachineServer",
         ServerHealthState{RebootId{1}, arangodb::ServerHealth::kUnclear}}});
 
   auto snapshotHandler = DocumentStateSnapshotHandler(
       handlersFactoryMock->makeUniqueDatabaseSnapshotFactory(),
-      fakeRebootTracker);
+      fakeRebootTracker, globalId, loggerContext);
 
   auto res = snapshotHandler.create(
-      shardMap,
+      logicalCollections,
       {.serverId = "documentStateMachineServer", .rebootId = RebootId(1)});
   ASSERT_TRUE(res.ok()) << res.result();
 
@@ -422,10 +519,10 @@ TEST_F(DocumentStateSnapshotTest, snapshot_handler_abort_snapshot) {
 
   auto snapshotHandler = DocumentStateSnapshotHandler(
       handlersFactoryMock->makeUniqueDatabaseSnapshotFactory(),
-      fakeRebootTracker);
+      fakeRebootTracker, globalId, loggerContext);
 
   auto res = snapshotHandler.create(
-      shardMap,
+      logicalCollections,
       {.serverId = "documentStateMachineServer", .rebootId = RebootId(1)});
   ASSERT_TRUE(res.ok()) << res.result();
 
@@ -441,16 +538,17 @@ TEST_F(DocumentStateSnapshotTest,
 
   cluster::RebootTracker fakeRebootTracker{nullptr};
   fakeRebootTracker.updateServerState(
-
       {{"documentStateMachineServer",
         ServerHealthState{RebootId{1}, arangodb::ServerHealth::kUnclear}}});
 
   auto snapshotHandler = DocumentStateSnapshotHandler(
       handlersFactoryMock->makeUniqueDatabaseSnapshotFactory(),
-      fakeRebootTracker);
+      fakeRebootTracker, globalId, loggerContext);
 
+  auto shards = logicalCollections;
+  shards.emplace_back(makeLogicalCollection(shardId));
   auto res = snapshotHandler.create(
-      shardMap,
+      shards,
       {.serverId = "documentStateMachineServer", .rebootId = RebootId(1)});
   ASSERT_TRUE(res.ok()) << res.result();
 
@@ -494,11 +592,11 @@ TEST(SnapshotStatusTest, serialize_snapshot_statistics) {
 }
 
 TEST(SnapshotStatusTest, serialize_snapshot_batch) {
-  document::SnapshotBatch batch{SnapshotId{1234}, "s123", false,
-                                velocypack::SharedSlice()};
+  document::SnapshotBatch batch{
+      .snapshotId = SnapshotId{1234}, .hasMore = false, .operations = {}};
   auto s = velocypack::serialize(batch);
   auto d = velocypack::deserialize<document::SnapshotBatch>(s.slice());
   ASSERT_EQ(d.snapshotId, batch.snapshotId);
-  ASSERT_EQ(d.shardId, batch.shardId);
   ASSERT_EQ(d.hasMore, batch.hasMore);
+  ASSERT_EQ(d.operations, batch.operations);
 }

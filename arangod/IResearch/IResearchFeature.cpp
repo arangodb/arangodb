@@ -64,6 +64,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "IResearch/Containers.h"
 #include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchExecutionPool.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
@@ -98,10 +99,15 @@ class Query;
 }  // namespace arangodb::aql
 
 namespace arangodb::iresearch {
+
 namespace {
 
 DECLARE_GAUGE(arangodb_search_num_out_of_sync_links, uint64_t,
               "Number of arangosearch links/indexes currently out of sync");
+
+DECLARE_GAUGE(
+    arangodb_search_execution_threads_demand, IResearchExecutionPool,
+    "Number of Arangosearch parallel execution threads requested by queries.");
 
 #ifdef USE_ENTERPRISE
 
@@ -170,6 +176,8 @@ std::string const CACHE_LIMIT("--arangosearch.columns-cache-limit");
 std::string const CACHE_ONLY_LEADER("--arangosearch.columns-cache-only-leader");
 std::string const SEARCH_THREADS_LIMIT(
     "--arangosearch.execution-threads-limit");
+std::string const SEARCH_DEFAULT_PARALLELISM(
+    "--arangosearch.default-parallelism");
 
 aql::AqlValue dummyFunc(aql::ExpressionContext*, aql::AstNode const& node,
                         std::span<aql::AqlValue const>) {
@@ -302,15 +310,6 @@ aql::AqlValue dummyScorerFunc(aql::ExpressionContext*, aql::AstNode const& node,
       "be used only outside SEARCH statement within a context of ArangoSearch "
       "view. Please ensure function signature is correct.",
       aql::getFunctionName(node).data());
-}
-
-uint32_t computeIdleThreadsCount(uint32_t idleThreads,
-                                 uint32_t threads) noexcept {
-  if (0 == idleThreads) {
-    return std::max(threads / 2, 1U);
-  } else {
-    return std::min(idleThreads, threads);
-  }
 }
 
 uint32_t computeThreadsCount(uint32_t threads, uint32_t threadsLimit,
@@ -808,28 +807,14 @@ class AssertionCallbackSetter {
 
 }  // namespace
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class IResearchAsync
-/// @brief helper class for holding thread groups
-////////////////////////////////////////////////////////////////////////////////
 class IResearchAsync {
  public:
-  using ThreadPool = irs::async_utils::thread_pool<>;
+  using ThreadPool = irs::async_utils::ThreadPool<>;
 
   ~IResearchAsync() { stop(); }
 
-  ThreadPool& get(ThreadGroup id)
-#ifndef ARANGODB_ENABLE_FAILURE_TESTS
-      noexcept
-#endif
-  {
-    TRI_IF_FAILURE("IResearchFeature::testGroupAccess") {
-      // cppcheck-suppress throwInNoexceptFunction
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-
-    TRI_ASSERT(static_cast<size_t>(id) < 2);
-    return (ThreadGroup::_0 == id) ? _0 : _1;
+  ThreadPool& get(ThreadGroup id) noexcept {
+    return ThreadGroup::_0 == id ? _0 : _1;
   }
 
   void stop() noexcept {
@@ -844,9 +829,9 @@ class IResearchAsync {
   }
 
  private:
-  ThreadPool _0{0, 0, IR_NATIVE_STRING("ARS-0")};
-  ThreadPool _1{0, 0, IR_NATIVE_STRING("ARS-1")};
-};  // IResearchAsync
+  ThreadPool _0;
+  ThreadPool _1;
+};
 
 bool isFilter(aql::Function const& func) noexcept {
   return func.implementation == &dummyFunc ||
@@ -877,21 +862,14 @@ bool isOffsetInfo(aql::Function const& func) noexcept {
 IResearchFeature::IResearchFeature(Server& server)
     : ArangodFeature{server, *this},
       _async(std::make_unique<IResearchAsync>()),
-      _running(false),
-      _failQueriesOnOutOfSync(false),
       _outOfSyncLinks(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_search_num_out_of_sync_links{})),
 #ifdef USE_ENTERPRISE
       _columnsCacheMemoryUsed(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_search_columns_cache_size{})),
 #endif
-      _consolidationThreads(0),
-      _consolidationThreadsIdle(0),
-      _commitThreads(0),
-      _commitThreadsIdle(0),
-      _threads(0),
-      _threadsLimit(0),
-      _searchExecutionThreadsLimit(0) {
+      _searchExecutionPool(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_search_execution_threads_demand{})) {
   setOptional(true);
 #ifdef USE_V8
   startsAfter<application_features::V8FeaturePhase>();
@@ -902,11 +880,8 @@ IResearchFeature::IResearchFeature(Server& server)
   startsAfter<aql::AqlFunctionFeature>();
 }
 
-void IResearchFeature::beginShutdown() { _running.store(false); }
-
 void IResearchFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  _running.store(false);
   options->addSection("arangosearch", absl::StrCat(name(), " feature"));
 
   options
@@ -919,9 +894,7 @@ void IResearchFeature::collectOptions(
 and consolidation thread counts separately via the following options instead:
 
 - `--arangosearch.commit-threads`
-- `--arangosearch.commit-threads-idle`
 - `--arangosearch.consolidation-threads`
-- `--arangosearch.consolidation-threads-idle`
 
 If either `--arangosearch.commit-threads` or
 `--arangosearch.consolidation-threads` is set, then `--arangosearch.threads` and
@@ -943,9 +916,7 @@ then the commit and consolidation thread counts are calculated as follows:
 and consolidation thread counts separately via the following options instead:
 
 - `--arangosearch.commit-threads`
-- `--arangosearch.commit-threads-idle`
 - `--arangosearch.consolidation-threads`
-- `--arangosearch.consolidation-threads-idle`
 
 If either `--arangosearch.commit-threads` or
 `--arangosearch.consolidation-threads` is set, then `--arangosearch.threads` and
@@ -966,11 +937,14 @@ then the commit and consolidation thread counts are calculated as follows:
 `[ 1..arangosearch.consolidation-threads ]`. Set it to `0` to automatically
 choose a sensible number based on the number of cores in the system.)");
 
-  options->addOption(
-      CONSOLIDATION_THREADS_IDLE_PARAM,
-      "The upper limit to the allowed number of idle threads to use "
-      "for consolidation tasks (0 = auto-detect).",
-      new options::UInt32Parameter(&_consolidationThreadsIdle));
+  options
+      ->addOption(
+          CONSOLIDATION_THREADS_IDLE_PARAM,
+          "The upper limit to the allowed number of idle threads to use "
+          "for consolidation tasks (0 = auto-detect).",
+          new options::UInt32Parameter(&_deprecatedOptions))
+      .setDeprecatedIn(3'11'06)
+      .setDeprecatedIn(3'12'00);
 
   options
       ->addOption(COMMIT_THREADS_PARAM,
@@ -986,10 +960,12 @@ number based on the number of cores in the system.)");
           COMMIT_THREADS_IDLE_PARAM,
           "The upper limit to the allowed number of idle threads to use "
           "for commit tasks (0 = auto-detect)",
-          new options::UInt32Parameter(&_commitThreadsIdle))
+          new options::UInt32Parameter(&_deprecatedOptions))
       .setLongDescription(R"(The option value must fall in the range
 `[ 1..arangosearch.commit-threads ]`. Set it to `0` to automatically choose a
-sensible number based on the number of cores in the system.)");
+sensible number based on the number of cores in the system.)")
+      .setDeprecatedIn(3'11'06)
+      .setDeprecatedIn(3'12'00);
 
   options
       ->addOption(
@@ -1046,14 +1022,25 @@ but the returned data may be incomplete.)");
                                             options::Flags::Enterprise))
       .setIntroducedIn(3'10'06);
 #endif
-  options->addOption(
-      SEARCH_THREADS_LIMIT,
-      "Max number of threads that could be used to process ArangoSearch "
-      "indexes during SEARCH operation",
-      new options::UInt32Parameter(&_searchExecutionThreadsLimit),
-      options::makeDefaultFlags(options::Flags::DefaultNoComponents,
-                                options::Flags::OnDBServer,
-                                options::Flags::OnSingle));
+  options
+      ->addOption(SEARCH_THREADS_LIMIT,
+                  "The maximum number of threads that can be used to process "
+                  "ArangoSearch indexes during a SEARCH operation of a query.",
+                  new options::UInt32Parameter(&_searchExecutionThreadsLimit),
+                  options::makeDefaultFlags(options::Flags::DefaultNoComponents,
+                                            options::Flags::OnDBServer,
+                                            options::Flags::OnSingle))
+      .setIntroducedIn(3'11'06)
+      .setIntroducedIn(3'12'00);
+  options
+      ->addOption(SEARCH_DEFAULT_PARALLELISM,
+                  "Default parallelism for ArangoSearch queries",
+                  new options::UInt32Parameter(&_defaultParallelism),
+                  options::makeDefaultFlags(options::Flags::DefaultNoComponents,
+                                            options::Flags::OnDBServer,
+                                            options::Flags::OnSingle))
+      .setIntroducedIn(3'11'06)
+      .setIntroducedIn(3'12'00);
 }
 
 void IResearchFeature::validateOptions(
@@ -1086,11 +1073,8 @@ void IResearchFeature::validateOptions(
   bool const threadsSet = args.touched(THREADS_PARAM);
   bool const threadsLimitSet = args.touched(THREADS_LIMIT_PARAM);
   bool const commitThreadsSet = args.touched(COMMIT_THREADS_PARAM);
-  bool const commitThreadsIdleSet = args.touched(COMMIT_THREADS_IDLE_PARAM);
   bool const consolidationThreadsSet =
       args.touched(CONSOLIDATION_THREADS_PARAM);
-  bool const consolidationThreadsIdleSet =
-      args.touched(CONSOLIDATION_THREADS_IDLE_PARAM);
 
   uint32_t threadsLimit = static_cast<uint32_t>(4 * NumberOfCores::getValue());
 
@@ -1107,29 +1091,14 @@ void IResearchFeature::validateOptions(
         computeThreadsCount(_consolidationThreads, threadsLimit, 6);
   }
 
-  _commitThreadsIdle =
-      commitThreadsIdleSet
-          ? computeIdleThreadsCount(_commitThreadsIdle, _commitThreads)
-          : _commitThreads;
-
-  _consolidationThreadsIdle =
-      consolidationThreadsIdleSet
-          ? computeIdleThreadsCount(_consolidationThreadsIdle,
-                                    _consolidationThreads)
-          : _consolidationThreads;
-
   if (!args.touched(SEARCH_THREADS_LIMIT)) {
     _searchExecutionThreadsLimit =
         static_cast<uint32_t>(2 * NumberOfCores::getValue());
   }
-
-  _running.store(false);
 }
 
 void IResearchFeature::prepare() {
   TRI_ASSERT(isEnabled());
-
-  _running.store(false);
 
   // load all known codecs
   ::irs::formats::init();
@@ -1165,33 +1134,6 @@ void IResearchFeature::prepare() {
              stats(ThreadGroup::_0));
   TRI_ASSERT(std::make_tuple(size_t(0), size_t(0), size_t(0)) ==
              stats(ThreadGroup::_1));
-
-  // submit tasks to ensure that at least 1 worker for each group is started
-  if (ServerState::instance()->isDBServer() ||
-      ServerState::instance()->isSingleServer()) {
-    _startState = std::make_shared<State>();
-
-    auto submitTask = [this](ThreadGroup group) {
-      return queue(group, 0ms, [state = _startState]() noexcept {
-        {
-          std::lock_guard lock{state->mtx};
-          ++state->counter;
-        }
-        state->cv.notify_one();
-      });
-    };
-
-    if (!submitTask(ThreadGroup::_0) || !submitTask(ThreadGroup::_1)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_SYS_ERROR,
-          "failed to initialize ArangoSearch maintenance threads");
-    }
-
-    TRI_ASSERT(std::make_tuple(size_t(0), size_t(1), size_t(0)) ==
-               stats(ThreadGroup::_0));
-    TRI_ASSERT(std::make_tuple(size_t(0), size_t(1), size_t(0)) ==
-               stats(ThreadGroup::_1));
-  }
 }
 
 void IResearchFeature::start() {
@@ -1203,61 +1145,39 @@ void IResearchFeature::start() {
   // ensure that at least 1 worker for each group is started
   if (ServerState::instance()->isDBServer() ||
       ServerState::instance()->isSingleServer()) {
-    TRI_ASSERT(_startState);
-    TRI_ASSERT(_commitThreads && _commitThreadsIdle);
-    TRI_ASSERT(_consolidationThreads && _consolidationThreadsIdle);
+    TRI_ASSERT(_commitThreads);
+    TRI_ASSERT(_consolidationThreads);
 
-    _async->get(ThreadGroup::_0).limits(_commitThreads, _commitThreadsIdle);
+    _async->get(ThreadGroup::_0)
+        .start(_commitThreads, IR_NATIVE_STRING("ARS-0"));
     _async->get(ThreadGroup::_1)
-        .limits(_consolidationThreads, _consolidationThreadsIdle);
+        .start(_consolidationThreads, IR_NATIVE_STRING("ARS-1"));
+    _searchExecutionPool.setLimit(_searchExecutionThreadsLimit);
 
-    LOG_TOPIC("c1b63", INFO, arangodb::iresearch::TOPIC)
-        << "ArangoSearch maintenance: "
-        << "[" << _commitThreadsIdle << ".." << _commitThreads
-        << "] commit thread(s), "
-        << "[" << _consolidationThreadsIdle << ".." << _consolidationThreads
-        << "] consolidation thread(s)";
+    LOG_TOPIC("c1b63", INFO, TOPIC)
+        << "ArangoSearch maintenance: [" << _commitThreads << ".."
+        << _commitThreads << "] commit thread(s), [" << _consolidationThreads
+        << ".." << _consolidationThreads
+        << "] consolidation thread(s). ArangoSearch execution parallel threads "
+           "limit: "
+        << _searchExecutionThreadsLimit;
 
 #ifdef USE_ENTERPRISE
     auto& manager =
         basics::downCast<LimitedResourceManager>(_columnsCacheMemoryUsed);
-    LOG_TOPIC("c2c74", INFO, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("c2c74", INFO, TOPIC)
         << "ArangoSearch columns cache limit: " << manager.limit;
 #endif
-
-    {
-      std::unique_lock lock{_startState->mtx};
-      if (!_startState->cv.wait_for(
-              lock, 60s, [this]() { return _startState->counter == 2; })) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_SYS_ERROR,
-            "failed to start ArangoSearch maintenance threads");
-      }
-    }
-
-    // this can destroy the state instance, so we have to ensure that our lock
-    // on _startState->mutex is already destroyed here!
-    _startState = nullptr;
   }
-
-  _searchExecutionPool.setLimit(_searchExecutionThreadsLimit);
-  LOG_TOPIC("71efd", INFO, arangodb::iresearch::TOPIC)
-      << "ArangoSearch execution parallel threads limit: "
-      << _searchExecutionThreadsLimit;
-  _running.store(true);
 }
 
 void IResearchFeature::stop() {
   TRI_ASSERT(isEnabled());
   _async->stop();
   _searchExecutionPool.stop();
-  _running.store(false);
 }
 
-void IResearchFeature::unprepare() {
-  TRI_ASSERT(isEnabled());
-  _running.store(false);
-}
+void IResearchFeature::unprepare() { TRI_ASSERT(isEnabled()); }
 
 std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
                                        TRI_vocbase_t& database) {
@@ -1284,28 +1204,6 @@ bool IResearchFeature::queue(ThreadGroup id,
                              std::chrono::steady_clock::duration delay,
                              fu2::unique_function<void()>&& fn) {
   try {
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-    TRI_IF_FAILURE("IResearchFeature::queue") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-
-    switch (id) {
-      case ThreadGroup::_0:
-        TRI_IF_FAILURE("IResearchFeature::queueGroup0") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        break;
-      case ThreadGroup::_1:
-        TRI_IF_FAILURE("IResearchFeature::queueGroup1") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        break;
-      default:
-        TRI_ASSERT(false);
-        break;
-    }
-#endif
-
     if (_async->get(id).run(std::move(fn), delay)) {
       return true;
     }
@@ -1336,7 +1234,8 @@ std::tuple<size_t, size_t, size_t> IResearchFeature::stats(
 }
 
 std::pair<size_t, size_t> IResearchFeature::limits(ThreadGroup id) const {
-  return _async->get(id).limits();
+  auto threads = _async->get(id).threads();
+  return {threads, threads};
 }
 
 void IResearchFeature::trackOutOfSyncLink() noexcept { ++_outOfSyncLinks; }

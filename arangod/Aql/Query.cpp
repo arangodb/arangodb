@@ -235,9 +235,14 @@ void Query::destroy() {
     }
   }
 
+  ErrorCode resultCode = TRI_ERROR_INTERNAL;
+  if (killed()) {
+    resultCode = TRI_ERROR_QUERY_KILLED;
+  }
+
   // this will reset _trx, so _trx is invalid after here
   try {
-    auto state = cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/ true);
+    auto state = cleanupPlanAndEngine(resultCode, /*sync*/ true);
     TRI_ASSERT(state != ExecutionState::WAITING);
   } catch (...) {
     // unfortunately we cannot do anything here, as we are in the destructor
@@ -1766,18 +1771,19 @@ ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     TRI_IF_FAILURE("Query::finalize_error_on_finish_db_servers") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
     }
-    ::finishDBServerParts(*this, errorCode)
-        .thenValue([ss = _sharedState, this](Result r) {
-          LOG_TOPIC_IF("fd31e", INFO, Logger::QUERIES,
-                       r.fail() && r.isNot(TRI_ERROR_HTTP_NOT_FOUND))
-              << "received error from DBServer on query finalization: "
-              << r.errorNumber() << ", '" << r.errorMessage() << "'";
-          _sharedState->executeAndWakeup([&] {
-            _shutdownState.store(ShutdownState::Done,
-                                 std::memory_order_relaxed);
-            return true;
-          });
-        });
+    std::ignore =
+        ::finishDBServerParts(*this, errorCode)
+            .thenValue([ss = _sharedState, this](Result r) {
+              LOG_TOPIC_IF("fd31e", INFO, Logger::QUERIES,
+                           r.fail() && r.isNot(TRI_ERROR_HTTP_NOT_FOUND))
+                  << "received error from DBServer on query finalization: "
+                  << r.errorNumber() << ", '" << r.errorMessage() << "'";
+              _sharedState->executeAndWakeup([&] {
+                _shutdownState.store(ShutdownState::Done,
+                                     std::memory_order_relaxed);
+                return true;
+              });
+            });
 
     TRI_IF_FAILURE("Query::directKillAfterDBServerFinishRequests") {
       debugKillQuery();

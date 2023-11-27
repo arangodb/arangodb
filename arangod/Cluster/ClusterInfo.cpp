@@ -307,7 +307,7 @@ void doQueueLinkDrop(IndexId id, std::string const& collection,
           res = Result{TRI_ERROR_DEBUG};
         }
         else {
-          res = methods::Indexes::drop(*coll, builder.slice());
+          res = methods::Indexes::drop(*coll, builder.slice()).get();
         }
         if (res.fail() && res.isNot(TRI_ERROR_ARANGO_INDEX_NOT_FOUND)) {
           // we should have internal superuser
@@ -3150,10 +3150,13 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
       };
 
   // monitor the entry for the collection
+  // Note that generally, for replication2, we should monitor the Plan entry.
+  // However, dropping a collection can have potential effects on ongoing
+  // transactions. These effects are produced only once the maintenance thread
+  // has run. Therefore, we monitor the Current entry, which is updated by the
+  // maintenance thread.
   std::string const where =
-      (coll->replicationVersion() == replication::Version::TWO)
-          ? "Plan/Collections/" + dbName + "/" + collectionID
-          : "Current/Collections/" + dbName + "/" + collectionID;
+      "Current/Collections/" + dbName + "/" + collectionID;
 
   // ATTENTION: The following callback calls the above closure in a
   // different thread. Nevertheless, the closure accesses some of our

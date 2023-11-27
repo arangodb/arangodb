@@ -390,5 +390,8 @@ void joinIndexNodesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void optimizeProjections(Optimizer*, std::unique_ptr<ExecutionPlan>,
                          OptimizerRule const&);
 
+void replaceEqualAttributeAccesses(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                   OptimizerRule const&);
+
 }  // namespace aql
 }  // namespace arangodb

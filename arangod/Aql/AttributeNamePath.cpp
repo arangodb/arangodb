@@ -236,6 +236,11 @@ AttributeNamePath& AttributeNamePath::shortenTo(size_t length) {
   return numEqual;
 }
 
+bool AttributeNamePath::isPrefixOf(
+    const AttributeNamePath& other) const noexcept {
+  return commonPrefixLength(*this, other) == size();
+}
+
 std::ostream& operator<<(std::ostream& stream, AttributeNamePath const& path) {
   stream << "[";
   for (auto const& it : path.get()) {

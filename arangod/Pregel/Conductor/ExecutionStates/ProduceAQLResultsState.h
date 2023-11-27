@@ -42,16 +42,18 @@ struct ProduceAQLResults : ExecutionState {
   // defined name here. Better: Use the real name of that state.
   auto name() const -> std::string override { return "storing"; };
   auto messages()
-      -> std::unordered_map<actor::ActorPID,
+      -> std::unordered_map<actor::DistributedActorPID,
                             worker::message::WorkerMessages> override;
-  auto receive(actor::ActorPID sender, message::ConductorMessages message)
+  auto receive(actor::DistributedActorPID sender,
+               message::ConductorMessages message)
       -> std::optional<StateChange> override;
-  auto cancel(actor::ActorPID sender, message::ConductorMessages message)
+  auto cancel(actor::DistributedActorPID sender,
+              message::ConductorMessages message)
       -> std::optional<StateChange> override;
 
  private:
   ConductorState& conductor;
-  std::unordered_set<actor::ActorPID> respondedWorkers;
+  std::unordered_set<actor::DistributedActorPID> respondedWorkers;
   size_t responseCount{0};
 };
 

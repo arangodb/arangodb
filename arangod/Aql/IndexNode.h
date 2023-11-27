@@ -73,6 +73,13 @@ class IndexNode : public ExecutionNode,
     // index covers the IndexNode's filter condition only,
     // but not the rest of the query. that means we can use the
     // index data to evaluate the IndexNode's post-filter condition,
+    // for any entries that pass the filter, we don't read the document
+    // from the storage engine
+    kCoveringFilterScanOnly,
+
+    // index covers the IndexNode's filter condition only,
+    // but not the rest of the query. that means we can use the
+    // index data to evaluate the IndexNode's post-filter condition,
     // but for any entries that pass the filter, we will need to
     // read the full documents in addition
     kCoveringFilterOnly,
@@ -205,6 +212,8 @@ class IndexNode : public ExecutionNode,
   bool recalculateProjections(ExecutionPlan*) override;
 
   bool isProduceResult() const override;
+
+  std::pair<Variable const*, IndexValuesVars> getLateMaterializedInfo() const;
 
  protected:
   /// @brief export to VelocyPack

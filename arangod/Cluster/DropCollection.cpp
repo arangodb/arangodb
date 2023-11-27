@@ -64,23 +64,6 @@ DropCollection::DropCollection(MaintenanceFeature& feature,
 
 DropCollection::~DropCollection() = default;
 
-bool DropCollection::dropReplication2Shard(ShardID const& shard,
-                                           TRI_vocbase_t& vocbase) {
-  std::shared_ptr<LogicalCollection> coll;
-  Result found = methods::Collections::lookup(vocbase, shard, coll);
-  if (found.ok()) {
-    auto result = coll->getDocumentStateLeader()
-                      ->dropShard(shard, std::to_string(coll->planId().id()))
-                      .get();
-    if (result.fail()) {
-      LOG_TOPIC("2e981", ERR, Logger::MAINTENANCE)
-          << "failed to drop shard " << result;
-    }
-  }
-
-  return false;
-}
-
 bool DropCollection::first() {
   auto const& database = getDatabase();
   auto const& shard = getShard();
@@ -99,10 +82,6 @@ bool DropCollection::first() {
     // properly below
     DatabaseGuard guard(df, database);
     auto& vocbase = guard.database();
-    if (vocbase.replicationVersion() == replication::Version::TWO &&
-        from == "maintenance") {
-      return dropReplication2Shard(shard, vocbase);
-    }
 
     std::shared_ptr<LogicalCollection> coll;
     Result found = methods::Collections::lookup(vocbase, shard, coll);
@@ -110,7 +89,12 @@ bool DropCollection::first() {
       TRI_ASSERT(coll);
       LOG_TOPIC("03e2f", DEBUG, Logger::MAINTENANCE)
           << "Dropping local collection " << shard;
-      result(Collections::drop(*coll, false));
+
+      if (vocbase.replicationVersion() == replication::Version::TWO) {
+        result(dropCollectionReplication2(shard, coll));
+      } else {
+        result(Collections::drop(*coll, false));
+      }
 
       // it is safe here to clear our replication failure statistics even
       // if the collection could not be dropped. the drop attempt alone
@@ -121,7 +105,7 @@ bool DropCollection::first() {
 
       error << "failed to lookup local collection " << database << "/" << shard;
       LOG_TOPIC("02722", ERR, Logger::MAINTENANCE)
-          << "DropCollection: " << error.str();
+          << "DropCollection: " << error.str() << " found " << found;
       result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, error.str());
 
       return false;
@@ -165,4 +149,22 @@ void DropCollection::setState(ActionState state) {
     _feature.unlockShard(getShard());
   }
   ActionBase::setState(state);
+}
+
+Result DropCollection::dropCollectionReplication2(
+    ShardID const& shard, std::shared_ptr<LogicalCollection>& coll) {
+  TRI_ASSERT(coll != nullptr) << shard;
+
+  auto res = basics::catchToResult([&]() {
+    auto leader = coll->getDocumentStateLeader();
+    return leader->dropShard(shard).get();
+  });
+
+  if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER) ||
+      res.is(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND)) {
+    // TODO prevent busy loop and wait for log to become ready (CINFRA-831).
+    std::this_thread::sleep_for(std::chrono::milliseconds{50});
+  }
+
+  return res;
 }

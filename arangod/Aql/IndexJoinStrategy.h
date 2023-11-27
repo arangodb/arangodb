@@ -38,8 +38,9 @@ namespace aql {
 template<typename SliceType, typename DocIdType>
 struct IndexJoinStrategy {
   virtual ~IndexJoinStrategy() = default;
-  virtual bool next(std::function<bool(std::span<DocIdType>,
-                                       std::span<SliceType>)> const& cb) = 0;
+  virtual std::pair<bool, size_t> next(
+      std::function<bool(std::span<DocIdType>, std::span<SliceType>)> const&
+          cb) = 0;
 
   virtual void reset() = 0;
 };

@@ -110,7 +110,7 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
                       arangodb::aql::Collection::Hint::Collection),
         random(false),
         count(false),
-        registerInfos({}, RegIdSet{0}, 1 /*nrIn*/, 1 /*nrOut*/, RegIdFlatSet{},
+        registerInfos({}, RegIdSet{}, 1 /*nrIn*/, 0 /*nrOut*/, RegIdFlatSet{},
                       {{}}),
         executorInfos(0 /*outReg*/, *fakedQuery, &aqlCollection, &outVariable,
                       varUsedLater, nullptr, projections, {}, random, count,

@@ -1340,4 +1340,30 @@ NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
   return result;
 }
 
+arangodb::aql::Collection const* getCollection(
+    arangodb::aql::ExecutionNode const* node) {
+  using EN = arangodb::aql::ExecutionNode;
+  using arangodb::aql::ExecutionNode;
+
+  switch (node->getType()) {
+    case EN::ENUMERATE_COLLECTION:
+      return ExecutionNode::castTo<
+                 arangodb::aql::EnumerateCollectionNode const*>(node)
+          ->collection();
+    case EN::INDEX:
+      return ExecutionNode::castTo<arangodb::aql::IndexNode const*>(node)
+          ->collection();
+    case EN::TRAVERSAL:
+    case EN::ENUMERATE_PATHS:
+    case EN::SHORTEST_PATH:
+      return ExecutionNode::castTo<arangodb::aql::GraphNode const*>(node)
+          ->collection();
+
+    default:
+      // note: modification nodes are not covered here yet
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "node type does not have a collection");
+  }
+}
+
 }  // namespace arangodb::aql::utils

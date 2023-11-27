@@ -46,8 +46,9 @@ struct TwoIndicesUniqueMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
   TwoIndicesUniqueMergeJoin(std::vector<Descriptor> descs,
                             std::size_t numKeyComponents);
 
-  bool next(std::function<bool(std::span<DocIdType>,
-                               std::span<SliceType>)> const& cb) override;
+  std::pair<bool, size_t> next(
+      std::function<bool(std::span<DocIdType>, std::span<SliceType>)> const& cb)
+      override;
 
   void reset() override;
 
@@ -73,8 +74,8 @@ struct TwoIndicesUniqueMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
     bool operator()(IndexStreamData* left, IndexStreamData* right) const;
   };
 
-  std::vector<SliceType> keyCache;
-  std::vector<DocIdType> documentCache;
+  std::array<SliceType, 2> keyCache;
+  std::array<DocIdType, 2> documentCache;
 
   std::vector<SliceType> sliceBuffer;
   std::span<SliceType> projectionsSpan;
@@ -147,10 +148,7 @@ template<typename SliceType, typename DocIdType, typename KeyCompare>
 TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::
     TwoIndicesUniqueMergeJoin(std::vector<Descriptor> descs,
                               std::size_t numKeyComponents) {
-  TRI_ASSERT(descs.size() == 2);
-  keyCache.resize(FIXED_INDEX_SIZE_VAR);
-  documentCache.resize(FIXED_INDEX_SIZE_VAR);
-
+  TRI_ASSERT(descs.size() == FIXED_INDEX_SIZE_VAR);
   std::size_t bufferSize = 0;
   for (auto const& desc : descs) {
     bufferSize += desc.numProjections + numKeyComponents;
@@ -183,8 +181,11 @@ TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-bool TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::next(
+std::pair<bool, size_t>
+TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::next(
     const std::function<bool(std::span<DocIdType>, std::span<SliceType>)>& cb) {
+  size_t amountOfSeeks = 0;
+
   LOG_INDEX_UNIQUE_MERGER << "Calling main next() method";
   bool leftIteratorHasMore =
       leftIndex->_iter->position({keyCache.begin(), keyCache.begin() + 1});
@@ -217,6 +218,7 @@ bool TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::next(
       keyCache[0] = keyCache[1];
       leftIteratorHasMore =
           leftIndex->_iter->seek({keyCache.begin(), keyCache.begin() + 1});
+      amountOfSeeks++;
       isDocsPopulated = false;
     } else if (cmpResult ==
                std::weak_ordering::greater /*keyCache[0] > keyCache[1]*/) {
@@ -224,6 +226,7 @@ bool TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::next(
       keyCache[1] = keyCache[0];
       rightIteratorHasMore =
           rightIndex->_iter->seek({keyCache.begin() + 1, keyCache.begin() + 2});
+      amountOfSeeks++;
       isDocsPopulated = false;
     } else {
       LOG_INDEX_UNIQUE_MERGER << "Case: equal";
@@ -247,14 +250,14 @@ bool TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::next(
 
       if (!readMore) {
         LOG_INDEX_UNIQUE_MERGER << "next() returned true";
-        return true;  // potentially more data available
+        return {true, amountOfSeeks};  // potentially more data available
       }
     }
   }
 
   // either left or right iterators are exhausted
   LOG_INDEX_UNIQUE_MERGER << "next() returned false";
-  return false;
+  return {false, amountOfSeeks};
 }
 
 }  // namespace arangodb::aql

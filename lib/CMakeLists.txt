@@ -234,11 +234,6 @@ add_library(arango STATIC
   Zip/zip.cpp
 )
 
-if (USE_V8) 
-  target_sources(arango PRIVATE
-    ApplicationFeatures/V8PlatformFeature.cpp)
-endif()
-
 target_link_libraries(arango
   PUBLIC s2
          arango_build_id
@@ -307,6 +302,7 @@ if (USE_ENTERPRISE)
   target_include_directories(arango PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
+add_subdirectory(Actor)
 add_subdirectory(Futures)
 add_subdirectory(Geo)
 if (USE_V8)

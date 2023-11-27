@@ -71,6 +71,8 @@ struct JoinExecutorInfos {
   struct IndexInfo {
     // Register to load the document into
     RegisterId documentOutputRegister;
+    RegisterId docIdOutputRegister;
+    bool isLateMaterialized;
 
     // Associated document collection for this index
     Collection const* collection;
@@ -81,6 +83,7 @@ struct JoinExecutorInfos {
     Projections projections;
 
     bool hasProjectionsForRegisters = false;
+    bool producesOutput = true;
 
     struct FilterInformation {
       // post filter expression
@@ -107,6 +110,7 @@ struct JoinExecutorInfos {
   QueryContext* query;
   containers::FlatHashMap<VariableId, RegisterId> varsToRegister;
   bool projectionsInitialized = false;
+  bool producesAnyOutput = true;
 };
 
 /**
@@ -122,7 +126,7 @@ class JoinExecutor {
 
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = JoinExecutorInfos;
-  using Stats = NoStats;
+  using Stats = JoinStats;
 
   JoinExecutor() = delete;
   JoinExecutor(JoinExecutor&&) = delete;
@@ -138,6 +142,7 @@ class JoinExecutor {
 
  private:
   void constructStrategy();
+  [[nodiscard]] ResourceMonitor& resourceMonitor();
 
   aql::AqlFunctionsInternalCache _functionsCache;
   Fetcher& _fetcher;
@@ -145,11 +150,14 @@ class JoinExecutor {
   std::unique_ptr<AqlIndexJoinStrategy> _strategy;
 
   transaction::Methods _trx;
+  ResourceMonitor& _resourceMonitor;
 
   InputAqlItemRow _currentRow{CreateInvalidInputRowHint()};
   ExecutorState _currentRowState{ExecutorState::HASMORE};
   velocypack::Builder _projectionsBuilder;
-  std::vector<std::unique_ptr<std::string>> _documents;
+  // first value holds the unique ptr to a string (obvious), second value holds
+  // the amount of bytes used by that string
+  std::vector<std::pair<std::unique_ptr<std::string>, size_t>> _documents;
 };
 
 }  // namespace aql

@@ -3,13 +3,9 @@
 project(jemalloc C)
 include(ExternalProject)
 
-# set version and paths
 set(JEMALLOC_VERSION "5.3.0")
-set(JEMALLOC_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/v${JEMALLOC_VERSION}")
-set(JEMALLOC_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/v${JEMALLOC_VERSION}")
-
-# export to paths to parent scope
-set(JEMALLOC_VERSION "${JEMALLOC_VERSION}" PARENT_SCOPE)
+set(JEMALLOC_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/jemalloc")
+set(JEMALLOC_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/jemalloc")
 
 # copy files into binary directory
 file(
@@ -57,6 +53,10 @@ if (LINUX OR DARWIN)
         ${JEMALLOC_BINARY_DIR}/doc/jemalloc.html
         ${JEMALLOC_BINARY_DIR}/doc/jemalloc.3
     CONFIGURE_COMMAND
+# One could run autogen.sh (which is needed if jemalloc becomes a submodule), otherwise
+# it's fine to just commit the configure script to the arangodb repository.
+#      ./autogen.sh
+#      COMMAND
       ./configure
         CC=${JEMALLOC_CC}
         CXX=${JEMALLOC_CXX}

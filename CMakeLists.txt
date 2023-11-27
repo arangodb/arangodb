@@ -245,17 +245,7 @@ set(ARANGODB_URL_INFO_ABOUT  "https://www.arangodb.com")
 set(ARANGODB_HELP_LINK       "https://docs.arangodb.com/${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}/")
 set(ARANGODB_CONTACT         "hackers@arangodb.com")
 set(ARANGODB_FRIENDLY_STRING "ArangoDB - the native multi-model NoSQL database")
-set(ARANGODB_PACKAGE_COMPANY "ArangoDB GmbH")
 
-# MSVC
-set(ARANGO_BENCH_FRIENDLY_STRING   "arangobench - stress test tool")
-set(ARANGO_BACKUP_FRIENDLY_STRING  "arangobackup - hot backup tool")
-set(ARANGO_DUMP_FRIENDLY_STRING    "arangodump - data and configuration dumping tool")
-set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - data and configuration restoration tool")
-set(ARANGO_EXPORT_FRIENDLY_STRING  "arangoexport - data exporter")
-set(ARANGO_IMPORT_FRIENDLY_STRING  "arangoimport - data importer")
-set(ARANGOSH_FRIENDLY_STRING       "arangosh - commandline client")
-set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - VelocyPack formatter")
 
 # binaries
 set(BIN_ARANGOBENCH   arangobench)
@@ -973,6 +963,18 @@ else () # NOT MSVC
     if (CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL "11.1.0")
       set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=nonnull")
     endif()
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "13.0.0")
+      # the following warning types need to be suppressed with newer
+      # versions of g++, as they produce a lot of false positives.
+      # if the no-error directives are removed, a lot 3rdParty libraries
+      # such as date, fmt, and immer cannot be compiled anymore.
+      # https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=__open__&content=stringop-overread&no_redirect=1&product=gcc
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=dangling-reference")
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=array-bounds")
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=overloaded-virtual")
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=stringop-overflow")
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=stringop-overread")
+    endif()
   elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
     set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
@@ -1338,54 +1340,6 @@ add_subdirectory(arangod)
 
 if (USE_GOOGLE_TESTS)
   add_subdirectory(tests)
-endif ()
-
-add_dependencies(arangobench   zlibstatic)
-if (USE_ENTERPRISE)
-  add_dependencies(arangobackup  zlibstatic)
-endif ()
-add_dependencies(arangod       zlibstatic)
-add_dependencies(arangodump    zlibstatic)
-add_dependencies(arangoexport  zlibstatic)
-add_dependencies(arangoimport  zlibstatic)
-add_dependencies(arangorestore zlibstatic)
-if (USE_V8)
-  add_dependencies(arangosh      zlibstatic)
-endif ()
-
-if (UNIX)
-  add_dependencies(arangobench   man)
-  if (USE_ENTERPRISE)
-    add_dependencies(arangobackup  man)
-  endif ()
-  add_dependencies(arangod       man)
-  add_dependencies(arangodump    man)
-  add_dependencies(arangoexport  man)
-  add_dependencies(arangoimport  man)
-  add_dependencies(arangorestore man)
-  if (USE_V8) 
-    add_dependencies(arangosh      man)
-  endif ()
-endif ()
-
-if (NOT USE_PRECOMPILED_V8)
-  # all binaries depend on v8_build because it contains ICU as well
-  add_dependencies(arangobench   v8_build)
-
-  if (USE_ENTERPRISE)
-    add_dependencies(arangobackup  v8_build)
-  endif ()
-  add_dependencies(arangod       v8_build)
-  add_dependencies(arangodump    v8_build)
-  add_dependencies(arangoexport  v8_build)
-  add_dependencies(arangoimport  v8_build)
-  add_dependencies(arangorestore v8_build)
-  if (USE_V8)
-    add_dependencies(arangosh      v8_build)
-  endif ()
-  if (USE_GOOGLE_TESTS)
-    add_dependencies(arangodbtests v8_build)
-  endif ()
 endif ()
 
 add_custom_target(packages

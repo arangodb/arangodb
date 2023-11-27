@@ -38,6 +38,8 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder,
   builder.openObject();
   builder.add("writesExecuted", VPackValue(writesExecuted));
   builder.add("writesIgnored", VPackValue(writesIgnored));
+  builder.add("documentLookups", VPackValue(documentLookups));
+  builder.add("seeks", VPackValue(seeks));
   builder.add("scannedFull", VPackValue(scannedFull));
   builder.add("scannedIndex", VPackValue(scannedIndex));
   builder.add("cursorsCreated", VPackValue(cursorsCreated));
@@ -78,6 +80,8 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder,
 void ExecutionStats::add(ExecutionStats const& summand) {
   writesExecuted += summand.writesExecuted;
   writesIgnored += summand.writesIgnored;
+  documentLookups += summand.documentLookups;
+  seeks += summand.seeks;
   scannedFull += summand.scannedFull;
   scannedIndex += summand.scannedIndex;
   cursorsCreated += summand.cursorsCreated;
@@ -139,6 +143,8 @@ void ExecutionStats::addNode(arangodb::aql::ExecutionNodeId nid,
 ExecutionStats::ExecutionStats() noexcept
     : writesExecuted(0),
       writesIgnored(0),
+      documentLookups(0),
+      seeks(0),
       scannedFull(0),
       scannedIndex(0),
       cursorsCreated(0),
@@ -168,6 +174,10 @@ ExecutionStats::ExecutionStats(VPackSlice slice) : ExecutionStats() {
       slice, "writesExecuted", 0);
   writesIgnored = basics::VelocyPackHelper::getNumericValue<uint64_t>(
       slice, "writesIgnored", 0);
+  documentLookups = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "documentLookups", 0);
+  seeks =
+      basics::VelocyPackHelper::getNumericValue<uint64_t>(slice, "seeks", 0);
   scannedFull = basics::VelocyPackHelper::getNumericValue<uint64_t>(
       slice, "scannedFull", 0);
   scannedIndex = basics::VelocyPackHelper::getNumericValue<uint64_t>(
@@ -248,6 +258,8 @@ void ExecutionStats::setIntermediateCommits(uint64_t value) {
 void ExecutionStats::clear() noexcept {
   writesExecuted = 0;
   writesIgnored = 0;
+  documentLookups = 0;
+  seeks = 0;
   scannedFull = 0;
   scannedIndex = 0;
   cursorsCreated = 0;

@@ -43,15 +43,9 @@ class ExecutionEngine;
 class ExecutionPlan;
 
 // not yet supported:
-// - post-filtering
 // - IndexIteratorOptions: sorted, ascending, evalFCalls, useCache, waitForSync,
 // limit, lookahead
 // - reverse iteration
-// - support from GatherNodes
-// - producesResult
-// - read own writes
-// - proper cost estimates
-// - profile output in explainer
 class JoinNode : public ExecutionNode {
   friend class ExecutionBlock;
 
@@ -65,7 +59,10 @@ class JoinNode : public ExecutionNode {
     transaction::Methods::IndexHandle index;
     Projections projections;
     Projections filterProjections;
-    bool usedAsSatellite;  // TODO maybe use CollectionAccess class
+    bool usedAsSatellite{false};  // TODO maybe use CollectionAccess class
+    bool producesOutput{true};
+    bool isLateMaterialized{false};
+    Variable const* outDocIdVariable = nullptr;
   };
 
   JoinNode(ExecutionPlan* plan, ExecutionNodeId id,

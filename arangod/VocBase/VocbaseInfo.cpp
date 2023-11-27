@@ -322,11 +322,13 @@ CreateDatabaseInfo::CreateDatabaseInfo(CreateDatabaseInfo::MockConstruct,
                                        ArangodServer& server,
                                        ExecContext const& execContext,
                                        std::string const& name,
-                                       std::uint64_t id)
+                                       std::uint64_t id,
+                                       replication::Version version)
     : _server(server),
       _context(execContext),
       _id(id),
       _name(name),
+      _replicationVersion(version),
       _valid(true) {}
 #endif
 

@@ -73,6 +73,13 @@ struct ExecutionStats {
   /// @brief number of ignored write operations (ignored due to errors)
   uint64_t writesIgnored = 0;
 
+  /// @brief number of real document document lookups
+  uint64_t documentLookups = 0;
+
+  /// @brief number of seeks done by RocksDB iterators. Currently only populated
+  /// in JoinExecutor.
+  uint64_t seeks = 0;
+
   /// @brief number of documents scanned (full-collection scan)
   uint64_t scannedFull = 0;
 
