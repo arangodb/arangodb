@@ -1181,20 +1181,12 @@
 
     userPermission: function (name) {
       this.checkUser();
-
-      this.init.then(() => {
-        if (this.userPermissionView) {
-          this.userPermissionView.remove();
-        }
-
-        this.userPermissionView = new window.UserPermissionView({
-          collection: this.userCollection,
-          databases: this.arangoDatabase,
-          username: name
-        });
-
-        this.userPermissionView.render();
-      });
+      this.init.then(() =>
+        ReactDOM.render(
+          React.createElement(window.UserPermissionsReactView),
+          document.getElementById("content-react")
+        )
+      );
     },
 
     userView: function (name) {
