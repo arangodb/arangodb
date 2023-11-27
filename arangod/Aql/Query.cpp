@@ -1571,9 +1571,15 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
 
   auto& server = query.vocbase().server();
 
-  auto* manager = server.getFeature<transaction::ManagerFeature>().manager();
   // used by hotbackup to prevent commits
-  auto commitGuard = manager->getTransactionCommitGuard();
+  std::optional<arangodb::transaction::Manager::TransactionCommitGuard>
+      commitGuard;
+  // If the query is not read-only, we want to acquire the transaction
+  // commit lock as read lock, read-only queries can just proceed:
+  if (query.isModificationQuery()) {
+    auto* manager = server.getFeature<transaction::ManagerFeature>().manager();
+    commitGuard.emplace(manager->getTransactionCommitGuard());
+  }
 
   NetworkFeature const& nf = server.getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();

@@ -175,6 +175,7 @@ class UserManager {
   /// @brief used to update caches
   std::atomic<uint64_t> _globalVersion;
   std::atomic<uint64_t> _internalVersion;
+  std::atomic<bool> _usersInitialized;
 
   /// Caches permissions and other user info
   UserMap _userCache;
