@@ -660,15 +660,15 @@ struct InsertOperationCtx {
       bool usesDefaultShardingAttributes;
       ResultT<ShardID> result;
       if (userSpecifiedKey) {
-        result = collinfo.getResponsibleShard(
-            value, /*docComplete*/ true, usesDefaultShardingAttributes);
+        result = collinfo.getResponsibleShard(value, /*docComplete*/ true,
+                                              usesDefaultShardingAttributes);
       } else {
         // we pass in the generated _key so we do not need to rebuild the input
         // slice
         TRI_ASSERT(!key.empty() || !collinfo.mustCreateKeyOnCoordinator());
-        result = collinfo.getResponsibleShard(
-            value, /*docComplete*/ true, usesDefaultShardingAttributes,
-            std::string_view(key));
+        result = collinfo.getResponsibleShard(value, /*docComplete*/ true,
+                                              usesDefaultShardingAttributes,
+                                              std::string_view(key));
       }
       if (result.fail()) {
         return result;
