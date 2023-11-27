@@ -59,8 +59,9 @@ struct ArrayEq {
 template<Matchable LHS, Matchable RHS, Matchable Quantifier>
 auto arrayEq(LHS lhs, RHS rhs, Quantifier quantifier)
     -> ArrayEq<LHS, RHS, Quantifier> {
-  return ArrayEq<LHS, RHS, Quantifier>{
-      .lhs = lhs, .rhs = rhs, .quantifier = quantifier};
+  return ArrayEq<LHS, RHS, Quantifier>{.lhs = std::move(lhs),
+                                       .rhs = std::move(rhs),
+                                       .quantifier = std::move(quantifier)};
 };
 
 }  // namespace arangodb::aql::expression_matcher
