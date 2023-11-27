@@ -54,8 +54,8 @@ template<Matchable Reference>
 auto attributeAccess(Reference reference,
                      std::unordered_set<std::string> attributes)
     -> AttributeAccess<Reference> {
-  return AttributeAccess<Reference>{.reference = reference,
-                                    .attributes = attributes};
+  return AttributeAccess<Reference>{.reference = std::move(reference),
+                                    .attributes = std::move(attributes)};
 }
 
 }  // namespace arangodb::aql::expression_matcher

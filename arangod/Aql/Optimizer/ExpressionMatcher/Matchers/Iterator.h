@@ -52,8 +52,8 @@ struct Iterator {
 template<Matchable Variable, Matchable Iteratee>
 auto iterator(Variable variable, Iteratee iteratee)
     -> Iterator<Variable, Iteratee> {
-  return Iterator<Variable, Iteratee>{.variable = variable,
-                                      .iteratee = iteratee};
+  return Iterator<Variable, Iteratee>{.variable = std::move(variable),
+                                      .iteratee = std::move(iteratee)};
 }
 
 }  // namespace arangodb::aql::expression_matcher

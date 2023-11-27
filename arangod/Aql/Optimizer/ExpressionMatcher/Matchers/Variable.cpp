@@ -24,5 +24,7 @@
 #include <variant>
 
 namespace arangodb::aql::expression_matcher {
-auto variable(std::string name) -> Variable { return Variable{.name = name}; }
+auto variable(std::string name) -> Variable {
+  return Variable{.name = std::move(name)};
+}
 }  // namespace arangodb::aql::expression_matcher

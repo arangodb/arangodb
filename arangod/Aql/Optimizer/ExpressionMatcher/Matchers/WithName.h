@@ -44,7 +44,7 @@ struct MatchWithName {
 // Helper for convenient template argument deduction
 template<Matchable M>
 auto matchWithName(std::string name, M matcher) -> MatchWithName<M> {
-  return MatchWithName<M>{.name = name, .matcher = matcher};
+  return MatchWithName<M>{.name = std::move(name), .matcher = matcher};
 };
 
 }  // namespace arangodb::aql::expression_matcher
