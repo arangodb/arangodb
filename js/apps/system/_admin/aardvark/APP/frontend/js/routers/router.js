@@ -306,6 +306,7 @@
 
         this.arangoCollectionsStore = new window.ArangoCollections();
         this.arangoDocumentStore = new window.ArangoDocument();
+        window.SkeletonLoader = new window.SkeletonLoader();
 
         // Cluster
         this.coordinatorCollection = new window.ClusterCoordinators();
@@ -782,8 +783,8 @@
     cIndices: function (colname) {
       const self = this;
 
+      window.SkeletonLoader.render();
       this.checkUser();
-
       this.init.then(() => {
         this.arangoCollectionsStore.fetch({
           cache: false,
@@ -806,6 +807,7 @@
     cSettings: function (colname) {
       const self = this;
 
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {
@@ -827,6 +829,7 @@
     cComputedValues: function (colname) {
       const self = this;
 
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {
@@ -848,6 +851,7 @@
     cSchema: function (colname) {
       const self = this;
 
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {
@@ -869,6 +873,7 @@
     cInfo: function (colname) {
       const self = this;
 
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {
@@ -888,6 +893,7 @@
     },
 
     documents: function (colid, pageid) {
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {
