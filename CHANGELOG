@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added AQL functions `PARSE_COLLECTION` and `PARSE_KEY` to quickly extract the
+  collection name and document key from an `_id` value without much overhead.
+
 * FE-286: refactor user permissions screen.
 
 * FE-396: fix JSON editor undo for inverted index addition.
