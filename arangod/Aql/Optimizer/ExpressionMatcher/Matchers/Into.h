@@ -27,7 +27,7 @@ namespace arangodb::aql::expression_matcher {
 // Applies the matcher and if it succeeds registers the AqlNode* that
 // it succeeded on in the MatchResult under the name `name`
 template<Matchable M>
-struct MatchWithName {
+struct Into {
   auto apply(AstNode const* node) -> MatchResult {
     auto result = matcher.apply(node);
 
@@ -35,17 +35,17 @@ struct MatchWithName {
       return result;
     }
 
-    return MatchResult::match(name, node);
+    into = node;
+    return MatchResult::match();
   }
-  std::string name;
+  AstNode const*& into;
   M matcher;
 };
 
 // Helper for convenient template argument deduction
 template<Matchable M>
-auto matchWithName(std::string name, M matcher) -> MatchWithName<M> {
-  return MatchWithName<M>{.name = std::move(name),
-                          .matcher = std::move(matcher)};
+auto into(AstNode const*& into, M matcher) -> Into<M> {
+  return Into<M>{.into = into, .matcher = std::move(matcher)};
 };
 
 }  // namespace arangodb::aql::expression_matcher

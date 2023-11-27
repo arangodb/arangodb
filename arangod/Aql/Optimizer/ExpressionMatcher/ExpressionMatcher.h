@@ -39,6 +39,7 @@
 #include <Aql/Optimizer/ExpressionMatcher/Matchers/ArrayEq.h>
 #include <Aql/Optimizer/ExpressionMatcher/Matchers/AttributeAccess.h>
 #include <Aql/Optimizer/ExpressionMatcher/Matchers/Expansion.h>
+#include <Aql/Optimizer/ExpressionMatcher/Matchers/Into.h>
 #include <Aql/Optimizer/ExpressionMatcher/Matchers/Iterator.h>
 #include <Aql/Optimizer/ExpressionMatcher/Matchers/NAryAnd.h>
 #include <Aql/Optimizer/ExpressionMatcher/Matchers/NAryOr.h>
