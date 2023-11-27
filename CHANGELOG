@@ -1,6 +1,10 @@
 v3.10.12 (XXXX-XX-XX)
 ---------------------
 
+* Solve a potential blockage during hotbackup by not stopping read-only
+  transactions from committing during hotbackup. Furthermore, improve behavior
+  of authentication in the case that the user cache is outdated.
+
 * FE-395: Fix query editor map not loading.
 
 * Rebuilt included rclone v1.59.0 with go1.21.4.
