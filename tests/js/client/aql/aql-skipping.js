@@ -1,6 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertTrue, AQL_EXECUTE, AQL_EXPLAIN */
-
+/*global assertEqual, assertNotEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, simple queries

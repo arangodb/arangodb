@@ -598,7 +598,8 @@ auto RegisterPlanT<T>::variableToRegisterId(Variable const* variable) const
     -> RegisterId {
   TRI_ASSERT(variable != nullptr);
   auto it = varInfo.find(variable->id);
-  TRI_ASSERT(it != varInfo.end());
+  TRI_ASSERT(it != varInfo.end())
+      << "variable " << variable->name << " (" << variable->id << ")";
   RegisterId rv = it->second.registerId;
   TRI_ASSERT(rv.isValid());
   return rv;

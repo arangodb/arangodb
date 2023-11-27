@@ -30,9 +30,13 @@
 #include "Statistics/StatisticsFeature.h"
 #include "Statistics/figures.h"
 
+#include <cstddef>
+#include <cstdint>
+
 namespace arangodb {
 class RequestStatistics {
  public:
+  static uint64_t memoryUsage() noexcept;
   static void initialize();
   static size_t processAll();
 

@@ -32,6 +32,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/GlobalResourceMonitor.h"
+#include "Basics/GlobalSerialization.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/Result.h"
@@ -306,7 +307,7 @@ void doQueueLinkDrop(IndexId id, std::string const& collection,
           res = Result{TRI_ERROR_DEBUG};
         }
         else {
-          res = methods::Indexes::drop(*coll, builder.slice());
+          res = methods::Indexes::drop(*coll, builder.slice()).get();
         }
         if (res.fail() && res.isNot(TRI_ERROR_ARANGO_INDEX_NOT_FOUND)) {
           // we should have internal superuser
@@ -1987,6 +1988,14 @@ void ClusterInfo::loadCurrent() {
         servers->assign(xx.begin(), xx.end());
         newShardsToCurrentServers.insert_or_assign(std::move(shardID),
                                                    std::move(servers));
+        TRI_IF_FAILURE("ClusterInfo::loadCurrentSeesLeader") {
+          if (!xx.empty()) {  // just in case
+            std::string myShortName = ServerState::instance()->getShortName();
+            observeGlobalEvent(
+                "ClusterInfo::loadCurrentSeesLeader",
+                absl::StrCat(myShortName, ":", shardID, ":", xx[0]));
+          }
+        }
       }
 
       databaseCollections->try_emplace(std::move(collectionName),
@@ -2049,6 +2058,11 @@ void ClusterInfo::loadCurrent() {
 
   auto diff = duration<float, std::milli>(clock::now() - start).count();
   _lcTimer.count(diff);
+
+  TRI_IF_FAILURE("ClusterInfo::loadCurrentDone") {
+    observeGlobalEvent("ClusterInfo::loadCurrentDone",
+                       ServerState::instance()->getShortName());
+  }
 }
 
 /// @brief ask about a collection
@@ -3136,10 +3150,13 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
       };
 
   // monitor the entry for the collection
+  // Note that generally, for replication2, we should monitor the Plan entry.
+  // However, dropping a collection can have potential effects on ongoing
+  // transactions. These effects are produced only once the maintenance thread
+  // has run. Therefore, we monitor the Current entry, which is updated by the
+  // maintenance thread.
   std::string const where =
-      (coll->replicationVersion() == replication::Version::TWO)
-          ? "Plan/Collections/" + dbName + "/" + collectionID
-          : "Current/Collections/" + dbName + "/" + collectionID;
+      "Current/Collections/" + dbName + "/" + collectionID;
 
   // ATTENTION: The following callback calls the above closure in a
   // different thread. Nevertheless, the closure accesses some of our

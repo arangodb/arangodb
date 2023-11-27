@@ -21,11 +21,6 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <string_view>
-#include <type_traits>
-
-#include <velocypack/Iterator.h>
-
 #include "ClusterNodes.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -56,8 +51,12 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
-#include "Logger/LogMacros.h"
 #include "Transaction/Methods.h"
+
+#include <velocypack/Iterator.h>
+
+#include <string_view>
+#include <type_traits>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -281,6 +280,7 @@ DistributeNode::DistributeNode(ExecutionPlan* plan, ExecutionNodeId id,
     : ScatterNode(plan, id, type),
       CollectionAccessingNode(collection),
       _variable(variable),
+      _attribute(determineProjectionAttribute()),
       _targetNodeId(targetNodeId) {}
 
 /// @brief construct a distribute node
@@ -289,8 +289,7 @@ DistributeNode::DistributeNode(ExecutionPlan* plan,
     : ScatterNode(plan, base),
       CollectionAccessingNode(plan, base),
       _variable(Variable::varFromVPack(plan->getAst(), base, "variable")) {
-  auto sats = base.get("satelliteCollections");
-  if (sats.isArray()) {
+  if (auto sats = base.get("satelliteCollections"); sats.isArray()) {
     auto& queryCols = plan->getAst()->query().collections();
     _satellites.reserve(sats.length());
 
@@ -300,6 +299,12 @@ DistributeNode::DistributeNode(ExecutionPlan* plan,
       auto c = queryCols.add(v, AccessMode::Type::READ,
                              aql::Collection::Hint::Collection);
       addSatellite(c);
+    }
+  }
+
+  if (auto attr = base.get("attribute"); attr.isArray()) {
+    for (VPackSlice it : VPackArrayIterator(attr)) {
+      _attribute.push_back(it.copyString());
     }
   }
 }
@@ -326,6 +331,7 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
 
   // get the variable to inspect . . .
+  TRI_ASSERT(_variable != nullptr);
   VariableId varId = _variable->id;
 
   // get the register id of the variable to inspect . . .
@@ -336,12 +342,43 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
   TRI_ASSERT(regId.isValid());
 
   auto inRegs = RegIdSet{regId};
-  auto registerInfos = createRegisterInfos(inRegs, {});
-  auto infos = DistributeExecutorInfos(clients(), collection(), regId,
-                                       getScatterType(), getSatellites());
+  auto registerInfos = createRegisterInfos(std::move(inRegs), {});
+  auto infos =
+      DistributeExecutorInfos(clients(), collection(), regId, _attribute,
+                              getScatterType(), getSatellites());
 
   return std::make_unique<ExecutionBlockImpl<DistributeExecutor>>(
       &engine, this, std::move(registerInfos), std::move(infos));
+}
+
+void DistributeNode::setVariable(Variable const* var) {
+  _variable = var;
+  determineProjectionAttribute();
+}
+
+std::vector<std::string> DistributeNode::determineProjectionAttribute() const {
+  std::vector<std::string> attribute;
+  // check where input variable of DISTRIBUTE comes from.
+  // if it is from a projection, we also look up the projection's
+  // attribute name
+  TRI_ASSERT(_variable != nullptr);
+  auto setter = plan()->getVarSetBy(_variable->id);
+  if (setter != nullptr &&
+      (setter->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
+       setter->getType() == ExecutionNode::INDEX)) {
+    DocumentProducingNode const* document =
+        dynamic_cast<DocumentProducingNode const*>(setter);
+    auto const& p = document->projections();
+    for (size_t i = 0; i < p.size(); ++i) {
+      if (p[i].variable == _variable) {
+        // found the DISTRIBUTE input variable in a projection
+        attribute = p[i].path.get();
+        break;
+      }
+    }
+  }
+
+  return attribute;
 }
 
 /// @brief doToVelocyPack, for DistributeNode
@@ -354,6 +391,12 @@ void DistributeNode::doToVelocyPack(VPackBuilder& builder,
 
   builder.add(VPackValue("variable"));
   _variable->toVelocyPack(builder);
+
+  builder.add("attribute", VPackValue(VPackValueType::Array));
+  for (auto const& it : _attribute) {
+    builder.add(VPackValue(it));
+  }
+  builder.close();  // "attribute"
 
   if (!_satellites.empty()) {
     builder.add(VPackValue("satelliteCollections"));
@@ -372,6 +415,7 @@ void DistributeNode::doToVelocyPack(VPackBuilder& builder,
 void DistributeNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
   _variable = Variable::replace(_variable, replacements);
+  _attribute = determineProjectionAttribute();
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place
@@ -596,10 +640,7 @@ GatherNode::Parallelism GatherNode::evaluateParallelism(
 void GatherNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
   for (auto& it : _elements) {
-    auto v = Variable::replace(it.var, replacements);
-    if (v != it.var) {
-      it.var = v;
-    }
+    it.var = Variable::replace(it.var, replacements);
     it.attributePath.clear();
   }
 }
@@ -607,8 +648,26 @@ void GatherNode::replaceVariables(
 void GatherNode::replaceAttributeAccess(ExecutionNode const* self,
                                         Variable const* searchVariable,
                                         std::span<std::string_view> attribute,
-                                        Variable const* replaceVariable) {
-  // TODO!!!
+                                        Variable const* replaceVariable,
+                                        size_t /*index*/) {
+  auto equal = [](auto const& v1, auto const& v2) {
+    size_t n = v1.size();
+    if (n != v2.size()) {
+      return false;
+    }
+    for (size_t i = 0; i < n; ++i) {
+      if (v1[i] != v2[i]) {
+        return false;
+      }
+    }
+    return true;
+  };
+  for (auto& it : _elements) {
+    if (it.var == searchVariable && equal(it.attributePath, attribute)) {
+      it.var = replaceVariable;
+      it.attributePath.clear();
+    }
+  }
 }
 
 void GatherNode::getVariablesUsedHere(VarSet& vars) const {

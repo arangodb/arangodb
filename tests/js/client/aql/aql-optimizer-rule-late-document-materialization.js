@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertFalse, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertTrue, assertFalse, assertEqual, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for late document materialization rule
@@ -482,7 +482,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       for (i = 0; i < numOfCollectionIndexes; ++i) {
         let query = "FOR c IN " + collectionNames[i] + " FILTER c.obj.a == 'a_val_1' SORT c.obj.c LIMIT 10 " +
                     "FOR d IN " + collectionNames[(i + 1) % numOfCollectionIndexes] + " FILTER c.obj.a == d.obj.a RETURN d";
-        let plan = db._createStatement({query: query, bindVars:  null, options:  {optimizer:{rules:["-reduce-extraction-to-projection"]}}}).explain().plan;
+        let plan = db._createStatement({query, bindVars: null, options: {optimizer:{rules:["-reduce-extraction-to-projection"]}}}).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = db._query(query).toArray();
         assertEqual(1, result.length);
@@ -634,7 +634,7 @@ function lateDocumentMaterializationRuleTestSuite () {
 
     testIssue14819: function () {
       let query = "FOR doc IN UNION((FOR doc IN " + severalIndexesCollectionName + " FILTER doc.a >= 1 && doc.a <= 10 COLLECT dt = DATE_FORMAT(DATE_TRUNC(doc.a, 'day'), '%yyyy-%mm-%dd') AGGREGATE sum = SUM(doc.b) LIMIT 1000000 RETURN { dt, sum }), []) LIMIT 1000000 RETURN doc";
-      let plans = db._createStatement({query: query, bindVars: null, options: { allPlans: true }}).explain().plans; 
+      let plans = db._createStatement({query, bindVars: null, options: { allPlans: true }}).explain().plans; 
       assertEqual(2, plans.length);
       // preferred plan without late materialization
       let plan = plans[0];

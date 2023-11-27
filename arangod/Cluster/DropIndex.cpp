@@ -101,9 +101,9 @@ bool DropIndex::first() {
         << "Dropping local index " << shard << "/" << id;
     auto res = std::invoke([&]() -> Result {
       if (vocbase->replicationVersion() == replication::Version::TWO) {
-        return dropIndexReplication2(vocbase, *col, index.sharedSlice());
+        return dropIndexReplication2(col, index.sharedSlice());
       }
-      return Indexes::drop(*col, index.slice());
+      return Indexes::drop(*col, index.slice()).get();
     });
     result(res);
 
@@ -120,20 +120,20 @@ bool DropIndex::first() {
   return false;
 }
 
-auto DropIndex::dropIndexReplication2(TRI_vocbase_t* vocbase,
-                                      LogicalCollection& col,
-                                      velocypack::SharedSlice index) -> Result {
-  if (auto state = vocbase->getReplicatedStateById(col.replicatedStateId());
-      state.ok()) {
-    auto leaderState = std::dynamic_pointer_cast<
-        replication2::replicated_state::document::DocumentLeaderState>(
-        state.get()->getLeader());
-    if (leaderState != nullptr) {
-      return leaderState->dropIndex(col, std::move(index)).get();
-    } else {
-      // TODO prevent busy loop and wait for log to become ready (CINFRA-831)
-      std::this_thread::sleep_for(std::chrono::milliseconds{50});
-    }
+auto DropIndex::dropIndexReplication2(std::shared_ptr<LogicalCollection>& coll,
+                                      velocypack::SharedSlice index) noexcept
+    -> Result {
+  auto res = basics::catchToResult([&coll, index = std::move(index)]() mutable {
+    return coll->getDocumentStateLeader()
+        ->dropIndex(coll->name(), std::move(index))
+        .get();
+  });
+
+  if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER) ||
+      res.is(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND)) {
+    // TODO prevent busy loop and wait for log to become ready (CINFRA-831).
+    std::this_thread::sleep_for(std::chrono::milliseconds{50});
   }
-  return {TRI_ERROR_INTERNAL};
+
+  return res;
 }

@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 5000 */
-/* global AQL_EXPLAIN, assertTrue, assertFalse, assertEqual */
+/* global assertTrue, assertFalse, assertEqual */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -177,7 +177,7 @@ function TraversalOptimizeLastPathAccessTestSuite() {
             ];
             for (const q of queriesToTest) {
                 // We need to exclude the move filter into rule, otherwise we cannot simply find the path access anymore
-                const {nodes, rules} = db._createStatement(q).explain().plan;
+                const {nodes, rules} = db._createStatement({query: q, options: {optimizer: {rules: ["-optimize-projections"] }}}).explain().plan;
                 assertPlanContainsPathAccess(nodes);
                 assertRuleIsNotApplied(rules);
 

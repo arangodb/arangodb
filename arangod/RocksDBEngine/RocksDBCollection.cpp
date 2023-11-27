@@ -447,7 +447,7 @@ void RocksDBCollection::duringAddIndex(std::shared_ptr<Index> idx) {
   }
 }
 
-std::shared_ptr<Index> RocksDBCollection::createIndex(
+futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     VPackSlice info, bool restore, bool& created,
     std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
   TRI_ASSERT(info.isObject());
@@ -459,7 +459,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   CollectionGuard guard(&vocbase, _logicalCollection.id());
 
   RocksDBBuilderIndex::Locker locker(this);
-  if (!locker.lock()) {
+  if (!co_await locker.lock()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_LOCK_TIMEOUT);
   }
 
@@ -484,7 +484,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
       }
       // same index already exists. return it
       created = false;
-      return existingIdx;
+      co_return existingIdx;
     }
 
     auto const id = helpers::extractId(info);
@@ -542,7 +542,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
 
   // until here we have been completely read only.
   // modifications start now...
-  Result res = basics::catchToResult([&]() -> Result {
+  auto lambda = [&]() -> futures::Future<Result> {
     Result res;
 
     // Step 3. add index to collection entry (for removal after a crash)
@@ -560,7 +560,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
                                RocksDBColumnFamilyManager::Family::Definitions),
                            key.string(), &ps);
       if (!s.ok()) {
-        return res.reset(rocksutils::convertStatus(s));
+        co_return res.reset(rocksutils::convertStatus(s));
       }
 
       VPackBuilder builder;
@@ -581,7 +581,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
           vocbase.id(), _logicalCollection.id(), builder.slice(),
           RocksDBLogValue::Empty());
       if (res.fail()) {
-        return res;
+        co_return res;
       }
     }
 
@@ -600,16 +600,16 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
       }
 
       RocksDBFilePurgePreventer walKeeper(&engine);
-      res = buildIdx->fillIndexBackground(locker, std::move(progress));
+      res = co_await buildIdx->fillIndexBackground(locker, std::move(progress));
     } else {
       res = buildIdx->fillIndexForeground(std::move(progress));
     }
     if (res.fail()) {
-      return res;
+      co_return res;
     }
 
     // always (re-)lock to avoid inconsistencies
-    locker.lock();
+    co_await locker.lock();
 
     syncIndexOnCreate(*newIdx);
 
@@ -645,13 +645,14 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
                                        indexInfo.slice()));
     }
 
-    return res;
-  });
+    co_return res;
+  };
+  Result res = co_await asResult(lambda());
 
   if (res.ok()) {
     created = true;
     indexCleanup.cancel();
-    return newIdx;
+    co_return newIdx;
   }
 
   // cleanup routine
@@ -943,7 +944,9 @@ Result RocksDBCollection::truncateWithRemovals(transaction::Methods& trx,
 
   auto iter =
       mthds->NewIterator(documentBounds.columnFamily(), [&](ReadOptions& ro) {
-        ro.iterate_upper_bound = &end;
+        if (!mthds->iteratorMustCheckBounds(ReadOwnWrites::no)) {
+          ro.iterate_upper_bound = &end;
+        }
         // we are going to blow away all data anyway. no need to blow up the
         // cache
         ro.fill_cache = false;

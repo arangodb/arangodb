@@ -93,11 +93,12 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   ArangodServer& server() noexcept { return _server; }
   ArangodServer const& server() const noexcept { return _server; }
 
-  RequestStatistics::Item const& statistics() const noexcept {
+  [[nodiscard]] RequestStatistics::Item const& requestStatistics()
+      const noexcept {
     return _statistics;
   }
-  RequestStatistics::Item&& stealStatistics();
-  void setStatistics(RequestStatistics::Item&& stat);
+  [[nodiscard]] RequestStatistics::Item&& stealRequestStatistics();
+  void setRequestStatistics(RequestStatistics::Item&& stat);
 
   void setIsAsyncRequest() noexcept { _isAsyncRequest = true; }
 
@@ -162,7 +163,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // generates an error
   void generateError(arangodb::Result const&);
 
-  RestStatus waitForFuture(futures::Future<futures::Unit>&& f);
+  [[nodiscard]] RestStatus waitForFuture(futures::Future<futures::Unit>&& f);
+  [[nodiscard]] RestStatus waitForFuture(futures::Future<RestStatus>&& f);
 
   enum class HandlerState : uint8_t {
     PREPARE = 0,
@@ -205,6 +207,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
  private:
   mutable std::recursive_mutex _executionMutex;
   mutable std::atomic_uint8_t _executionCounter{0};
+  mutable RestStatus _followupRestStatus;
 
   std::function<void(rest::RestHandler*)> _callback;
 

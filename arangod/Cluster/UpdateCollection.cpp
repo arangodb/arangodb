@@ -132,7 +132,7 @@ bool UpdateCollection::first() {
         }
 
         OperationOptions options(ExecContext::current());
-        return Collections::updateProperties(*coll, props, options);
+        return Collections::updateProperties(*coll, props, options).get();
       }));
       result(res);
 
@@ -162,8 +162,16 @@ bool UpdateCollection::first() {
   }
 
   if (res.fail()) {
-    _feature.storeShardError(database, collection, shard,
-                             _description.get(SERVER_ID), res);
+    if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER) ||
+        res.is(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND)) {
+      // Temporary unavailability of the replication2 leader should not stop
+      // this server from updating the shard eventually.
+      // TODO prevent busy loop and wait for log to become ready (CINFRA-831).
+      std::this_thread::sleep_for(std::chrono::milliseconds{50});
+    } else {
+      _feature.storeShardError(database, collection, shard,
+                               _description.get(SERVER_ID), res);
+    }
   }
 
   return false;
@@ -178,7 +186,7 @@ void UpdateCollection::setState(ActionState state) {
 auto UpdateCollection::updateCollectionReplication2(
     ShardID const& shard, CollectionID const& collection,
     velocypack::SharedSlice props,
-    std::shared_ptr<LogicalCollection> coll) const noexcept -> Result {
+    std::shared_ptr<LogicalCollection> coll) noexcept -> Result {
   return basics::catchToResult([coll = std::move(coll),
                                 props = std::move(props), &collection,
                                 &shard]() mutable {

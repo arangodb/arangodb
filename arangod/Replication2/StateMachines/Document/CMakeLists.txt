@@ -2,6 +2,7 @@ target_sources(arango_replication2 PRIVATE
   ActiveTransactionsQueue.cpp
   CollectionReader.cpp
   DocumentCore.cpp
+  DocumentStateErrorHandler.cpp
   DocumentFollowerState.cpp
   DocumentLeaderState.cpp
   DocumentLogEntry.cpp

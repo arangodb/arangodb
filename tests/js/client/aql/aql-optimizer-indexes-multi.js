@@ -1,5 +1,5 @@
 /*jshint globalstrict:true, strict:true, maxlen: 500 */
-/*global assertTrue, assertEqual, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
+/*global assertTrue, assertEqual, assertNotEqual */
 
 "use strict";
 
@@ -1024,14 +1024,9 @@ function optimizerIndexesMultiTestSuite () {
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"),
                        "no index used for: " + query);
         assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
-
-        // This is somewhat fragile, we test whether the 3rd node is
-        // a calculation node and the 4th is the Return Node
-        // No filtering needed any more
-        // Furthermore, we check the type of expression in the CalcNode
-        // and the number of subnodes:
-        assertEqual("CalculationNode", plan.nodes[2].type, query);
         assertEqual(-1, nodeTypes.indexOf("FilterNode"), "filter used for: " + query);
+        assertEqual(-1, nodeTypes.indexOf("SortNode"));
+        assertEqual(-1, nodeTypes.indexOf("CalculationNode"));
 
         var results = db._query(query);
         var correct = makeResult(maker).map(function(x) { return x.a; });
@@ -1242,12 +1237,8 @@ function optimizerIndexesMultiTestSuite () {
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"),
                        "no index used for: " + query);
         assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
-
-        // This is somewhat fragile, we test whether the 3rd node is
-        // a calculation node and the 4th is a filter refering to it.
-        // Furthermore, we check the type of expression in the CalcNode
-        // and the number of subnodes:
-        assertEqual("CalculationNode", plan.nodes[2].type, query);
+        assertEqual(-1, nodeTypes.indexOf("SortNode"));
+        assertEqual(-1, nodeTypes.indexOf("CalculationNode"));
 
         var results = db._query(query);
         var correct = makeResult(maker).map(function(x) { return x.a; });
@@ -1303,12 +1294,8 @@ function optimizerIndexesMultiTestSuite () {
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"),
                        "no index used for: " + query);
         assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
-
-        // This is somewhat fragile, we test whether the 3rd node is
-        // a calculation node and the 4th is a ReturnNode refering to it.
-        // Furthermore, we check the type of expression in the CalcNode
-        // and the number of subnodes:
-        assertEqual("CalculationNode", plan.nodes[2].type, query);
+        assertEqual(-1, nodeTypes.indexOf("SortNode"));
+        assertEqual(-1, nodeTypes.indexOf("CalculationNode"));
         
         var results = db._query(query);
         var correct = makeResult(maker).map(function(x) { return x.a; });
@@ -1360,12 +1347,8 @@ function optimizerIndexesMultiTestSuite () {
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"),
                        "no index used for: " + query);
         assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
-
-        // This is somewhat fragile, we test whether the 3rd node is
-        // a calculation node and the 4th is a SortNode.
-        // Furthermore, we check the type of expression in the CalcNode
-        // and the number of subnodes:
-        assertEqual("CalculationNode", plan.nodes[2].type, query);
+        assertEqual(-1, nodeTypes.indexOf("SortNode"));
+        assertEqual(-1, nodeTypes.indexOf("CalculationNode"));
         
         var results = db._query(query);
         var correct = makeResult(maker).map(function(x) { return x.a; });
