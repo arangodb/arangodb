@@ -1,6 +1,9 @@
 v3.10.12 (XXXX-XX-XX)
 ---------------------
 
+* Fixed a problem in ReadWriteLock which could prevent waiting readers from
+  being woken up, when a write lock acquire timed out.
+
 * Fixed MDS-1170: Significant performance degradation when queries are executed
   within transactions that involve edits.
 
