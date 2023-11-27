@@ -20,9 +20,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "Variable.h"
 
-#include <optional>
-#include <variant>
-
 namespace arangodb::aql::expression_matcher {
 auto variable(std::string name) -> Variable {
   return Variable{.name = std::move(name)};
