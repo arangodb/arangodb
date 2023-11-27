@@ -255,7 +255,7 @@ def get_size(size, arch, dist):
     return x86_sizes[size]
 
 
-def create_test_job(test, cluster, edition, arch, dist):
+def create_test_job(test, cluster, edition, arch, dist, replication_version=1):
     """creates the test job definition to be put into the config yaml"""
     params = test["params"]
     suite_name = test["name"]
@@ -266,8 +266,10 @@ def create_test_job(test, cluster, edition, arch, dist):
     if not test["size"] in ["small", "medium", "medium+", "large", "xlarge", "2xlarge"]:
         raise Exception("Invalid resource class size " + test["size"])
 
+    deployment_variant = f"cluster-repl{replication_version}" if cluster else "single"
+
     result = {
-        "name": f"test-{edition}-{'cluster' if cluster else 'single'}-{suite_name}-{arch}",
+        "name": f"test-{edition}-{deployment_variant}-{suite_name}-{arch}",
         "suiteName": suite_name,
         "suites": test["suites"],
         "size": get_size(test["size"], arch, dist),
@@ -276,6 +278,8 @@ def create_test_job(test, cluster, edition, arch, dist):
     }
 
     extra_args = test["args"]
+    if cluster:
+        extra_args.append(f"--extraArgs:database.default-replication-version={replication_version}")
     if extra_args != []:
         result["extraArgs"] = " ".join(extra_args)
 
@@ -295,6 +299,9 @@ def add_test_jobs_to_workflow(config, tests, workflow, edition, arch, dist):
             jobs.append(
                 {f"run-{dist}-tests": create_test_job(test, True, edition, arch, dist)}
             )
+            jobs.append(
+                {f"run-{dist}-tests": create_test_job(test, True, edition, arch, dist, 2)}
+            )
         elif "single" in test["flags"]:
             jobs.append(
                 {f"run-{dist}-tests": create_test_job(test, False, edition, arch, dist)}
@@ -302,6 +309,9 @@ def add_test_jobs_to_workflow(config, tests, workflow, edition, arch, dist):
         else:
             jobs.append(
                 {f"run-{dist}-tests": create_test_job(test, True, edition, arch, dist)}
+            )
+            jobs.append(
+                {f"run-{dist}-tests": create_test_job(test, True, edition, arch, dist, 2)}
             )
             jobs.append(
                 {f"run-{dist}-tests": create_test_job(test, False, edition, arch, dist)}
