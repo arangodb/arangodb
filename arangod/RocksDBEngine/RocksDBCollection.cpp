@@ -1106,6 +1106,60 @@ Result RocksDBCollection::lookup(transaction::Methods* trx,
   return lookupDocumentVPack(trx, token, cb, options, snapshot);
 }
 
+Result RocksDBCollection::lookup(transaction::Methods* trx,
+                                 std::span<LocalDocumentId> tokens,
+                                 MultiDocumentCallback const& cb,
+                                 LookupOptions options) const {
+  ::ReadTimeTracker timeTracker(
+      _statistics._readWriteMetrics,
+      [](TransactionStatistics::ReadWriteMetrics& metrics,
+         float time) noexcept { metrics.rocksdb_read_sec.count(time); });
+
+  RocksDBMethods* mthd =
+      RocksDBTransactionState::toMethods(trx, _logicalCollection.id());
+  auto* family = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Documents);
+
+  constexpr auto keySize = 2 * sizeof(uint64_t);
+  std::string buffer;
+  buffer.resize(tokens.size() * keySize);
+
+  std::vector<rocksdb::Slice> keys;
+  keys.reserve(tokens.size());
+
+  RocksDBKey key;
+
+  for (std::size_t k = 0; k < tokens.size(); k++) {
+    auto docId = tokens[k];
+    key.constructDocument(objectId(), docId);
+    auto start = buffer.begin() + k * keySize;
+    std::copy(key.buffer()->begin(), key.buffer()->end(), start);
+    auto slice = rocksdb::Slice(std::string_view{start, start + keySize});
+    keys.push_back(slice);
+  }
+
+  std::vector<rocksdb::PinnableSlice> values;
+  values.resize(tokens.size());
+  std::vector<rocksdb::Status> statuses;
+  statuses.resize(tokens.size());
+  mthd->MultiGet(*family, tokens.size(), keys.data(), values.data(),
+                 statuses.data());
+
+  for (std::size_t k = 0; k < tokens.size(); k++) {
+    if (!statuses[k].ok()) {
+      cb(rocksutils::convertStatus(statuses[k]), tokens[k], nullptr,
+         VPackSlice::noneSlice());
+    } else {
+      // TODO optimization for non-pinned slices
+      // for that we have lease strings for each value.
+      cb(Result{}, tokens[k], nullptr,
+         VPackSlice{reinterpret_cast<uint8_t const*>(values[k].data())});
+    }
+  }
+
+  return {};
+}
+
 Result RocksDBCollection::insert(transaction::Methods& trx,
                                  IndexesSnapshot const& indexesSnapshot,
                                  RevisionId newRevisionId,

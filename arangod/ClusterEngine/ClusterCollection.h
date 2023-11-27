@@ -117,6 +117,10 @@ class ClusterCollection final : public PhysicalCollection {
                 LookupOptions options,
                 StorageSnapshot const* snapshot = nullptr) const final;
 
+  Result lookup(transaction::Methods* trx, std::span<LocalDocumentId> tokens,
+                MultiDocumentCallback const& cb,
+                LookupOptions options) const final;
+
   Result insert(transaction::Methods& trx,
                 IndexesSnapshot const& indexesSnapshot,
                 RevisionId newRevisionId, velocypack::Slice newDocument,

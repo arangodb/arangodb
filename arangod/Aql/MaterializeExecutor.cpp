@@ -42,6 +42,8 @@ MaterializeExecutorBase::MaterializeExecutorBase(Infos& infos)
 
 MaterializeRocksDBExecutor::MaterializeRocksDBExecutor(Fetcher&, Infos& infos)
     : MaterializeExecutorBase(infos),
+      _rocksdbMethods(
+          RocksDBTransactionState::toMethods(&_trx, infos.collection()->id())),
       _collection(infos.collection()->getCollection()->getPhysical()) {
   TRI_ASSERT(_collection != nullptr);
 }
@@ -56,36 +58,47 @@ MaterializeRocksDBExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
   auto docRegId = _infos.inputNonMaterializedDocRegId();
   auto docOutReg = _infos.outputMaterializedDocumentRegId();
-  while (inputRange.hasDataRow() && !output.isFull()) {
+
+  docIds.reserve(inputRange.numRowsLeft());
+  inputRows.reserve(inputRange.numRowsLeft());
+
+  while (inputRange.hasDataRow()) {
     auto const [state, input] =
         inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
-
     LocalDocumentId id{input.getValue(docRegId).slice().getUInt()};
-    auto result = _collection->lookup(
-        &_trx, id,
-        [&, &inputRef = input](LocalDocumentId, aql::DocumentData&& data,
-                               VPackSlice doc) {
-          TRI_ASSERT(inputRef.isInitialized());
-          if (data) {
-            output.moveValueInto(docOutReg, inputRef, &data);
-          } else {
-            output.moveValueInto(docOutReg, inputRef, doc);
-          }
-          return true;
-        },
-        {});
-
-    if (result.fail()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          result.errorNumber(),
-          basics::StringUtils::concatT(
-              "failed to materialize document ", id.id(), " for collection ",
-              _infos.collection()->name(), ": ", result.errorMessage()));
-    }
-
-    output.advanceRow();
+    docIds.push_back(id);
+    inputRows.emplace_back(std::move(input));
+  }
+  if (inputRows.empty()) {
+    return {inputRange.upstreamState(), stats, output.getClientCall()};
   }
 
+  auto inputRowIterator = inputRows.begin();
+  _collection->lookup(
+      &_trx, docIds,
+      [&](Result result, LocalDocumentId id, aql::DocumentData&& data,
+          VPackSlice doc) {
+        if (result.fail()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              result.errorNumber(),
+              basics::StringUtils::concatT("failed to materialize document ",
+                                           id.id(), " for collection ",
+                                           _infos.collection()->name(), ": ",
+                                           result.errorMessage()));
+        }
+        if (data) {
+          output.moveValueInto(docOutReg, *inputRowIterator, &data);
+        } else {
+          output.moveValueInto(docOutReg, *inputRowIterator, doc);
+        }
+        ++inputRowIterator;
+        output.advanceRow();
+        return true;
+      },
+      {});
+
+  docIds.clear();
+  inputRows.clear();
   return {inputRange.upstreamState(), stats, output.getClientCall()};
 }
 

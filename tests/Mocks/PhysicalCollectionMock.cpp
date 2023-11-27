@@ -1322,6 +1322,13 @@ arangodb::Result PhysicalCollectionMock::lookup(
   return arangodb::Result{TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND};
 }
 
+arangodb::Result PhysicalCollectionMock::lookup(
+    arangodb::transaction::Methods* trx,
+    std::span<arangodb::LocalDocumentId> tokens,
+    MultiDocumentCallback const& cb, LookupOptions options) const {
+  return arangodb::Result{TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND};
+}
+
 arangodb::Result PhysicalCollectionMock::remove(
     arangodb::transaction::Methods& trx,
     arangodb::IndexesSnapshot const& /*indexesSnapshot*/,

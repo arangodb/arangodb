@@ -97,6 +97,10 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
       arangodb::IndexIterator::DocumentCallback const& cb,
       LookupOptions options,
       arangodb::StorageSnapshot const* snapshot) const final;
+  arangodb::Result lookup(arangodb::transaction::Methods* trx,
+                          std::span<arangodb::LocalDocumentId> tokens,
+                          MultiDocumentCallback const& cb,
+                          LookupOptions options) const final;
   arangodb::Result remove(arangodb::transaction::Methods& trx,
                           arangodb::IndexesSnapshot const& indexesSnapshot,
                           arangodb::LocalDocumentId previousDocumentId,
