@@ -1,6 +1,19 @@
 devel
 -----
 
+* Added metric `arangodb_aql_cursors_memory_usage` to show the memory usage of
+  open, not yet fully consumed server-side query cursors.
+
+* Added AQL functions `PARSE_COLLECTION` and `PARSE_KEY` to quickly extract the
+  collection name and document key from an `_id` value without much overhead.
+
+* FE-286: refactor user permissions screen.
+
+* FE-396: fix JSON editor undo for inverted index addition.
+
+* Fixed MDS-1170: Significant performance degradation when queries are
+  executed within transactions that involve edits.
+
 * Rebuilt included rclone v1.62.2 with go1.21.4.
 
 * Updated ArangoDB Starter to v0.17.2 and arangosync to v2.19.5.
