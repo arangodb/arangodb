@@ -23,15 +23,14 @@
 
 #pragma once
 
+#include "Aql/AstNode.h"
 #include "Aql/EdgeConditionBuilder.h"
+#include "Aql/Variable.h"
 #include "Aql/VariableGenerator.h"
 
-namespace arangodb {
+#include "Basics/ResourceUsage.h"
 
-namespace velocypack {
-class Builder;
-class Slice;
-}  // namespace velocypack
+namespace arangodb {
 
 namespace aql {
 struct AstNode;
