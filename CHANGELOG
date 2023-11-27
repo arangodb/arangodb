@@ -1,6 +1,8 @@
 v3.10.12 (XXXX-XX-XX)
 ---------------------
 
+* FE-395: Fix query editor map not loading.
+
 * Rebuilt included rclone v1.59.0 with go1.21.4.
 
 * Updated ArangoDB Starter to v0.17.2 and arangosync to v2.19.5.
