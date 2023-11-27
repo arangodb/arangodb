@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-388: Update UI colors & fonts to new styles.
+
 * FE-286: refactor user permissions screen.
 
 * FE-396: fix JSON editor undo for inverted index addition.
