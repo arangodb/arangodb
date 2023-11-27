@@ -1,6 +1,9 @@
 v3.11.6 (XXXX-XX-XX)
 --------------------
 
+* Fixed MDS-1170: Significant performance degradation when queries are executed
+  within transactions that involve edits.
+
 * Solve a potential blockage during hotbackup by not stopping read-only
   transactions from committing during hotbackup. Furthermore, improve behavior
   of authentication in the case that the user cache is outdated.
