@@ -196,10 +196,11 @@ class RocksDBMetaCollection : public PhysicalCollection {
   /// @brief collection lock used for write access
 
   struct SchedulerWrapper {
+    using WorkHandle = Scheduler::WorkHandle;
     template<typename F>
     void queue(F&&);
     template<typename F>
-    void queueDelayed(F&&, std::chrono::milliseconds);
+    WorkHandle queueDelayed(F&&, std::chrono::milliseconds);
   };
 
   SchedulerWrapper _schedulerWrapper;

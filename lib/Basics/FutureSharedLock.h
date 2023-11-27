@@ -115,6 +115,7 @@ struct FutureSharedLock {
     explicit Node(bool exclusive) : exclusive(exclusive) {}
 
     Promise<LockGuard> promise;
+    Scheduler::WorkHandle _workItem;
     bool exclusive;
   };
 
@@ -210,10 +211,10 @@ struct FutureSharedLock {
     void scheduleTimeout(
         typename std::list<std::shared_ptr<Node>>::iterator queueIterator,
         std::chrono::milliseconds timeout) {
-      _scheduler.queueDelayed(
+      (*queueIterator)->_workItem = _scheduler.queueDelayed(
           [self = this->weak_from_this(),
            node = std::weak_ptr<Node>(*queueIterator),
-           queueIterator]() mutable {
+           queueIterator](bool cancelled) mutable {
             if (auto me = self.lock(); me) {
               if (auto nodePtr = node.lock(); nodePtr) {
                 std::unique_lock lock(me->_mutex);
@@ -224,7 +225,9 @@ struct FutureSharedLock {
                   me->removeNode(queueIterator);
                   lock.unlock();
                   nodePtr->promise.setException(::arangodb::basics::Exception(
-                      TRI_ERROR_LOCK_TIMEOUT, ADB_HERE));
+                      cancelled ? TRI_ERROR_REQUEST_CANCELED
+                                : TRI_ERROR_LOCK_TIMEOUT,
+                      ADB_HERE));
                 }
               }
             }

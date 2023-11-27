@@ -99,11 +99,12 @@ void RocksDBMetaCollection::SchedulerWrapper::queue(F&& fn) {
                                      std::forward<F>(fn));
 }
 template<typename F>
-void RocksDBMetaCollection::SchedulerWrapper::queueDelayed(
+RocksDBMetaCollection::SchedulerWrapper::WorkHandle
+RocksDBMetaCollection::SchedulerWrapper::queueDelayed(
     F&& fn, std::chrono::milliseconds timeout) {
-  std::ignore = SchedulerFeature::SCHEDULER
-                    ->delay("rocksdb-meta-collection-lock-timeout", timeout)
-                    .thenValue([fn](auto) mutable { fn(); });
+  return SchedulerFeature::SCHEDULER->queueDelayed(
+      "rocksdb-meta-collection-lock-timeout", RequestLane::CLUSTER_INTERNAL,
+      timeout, std::forward<F>(fn));
 }
 
 RocksDBMetaCollection::~RocksDBMetaCollection() { freeMemory(); }
@@ -172,14 +173,8 @@ futures::Future<ErrorCode> RocksDBMetaCollection::lockWrite(double timeout) {
   return doLock(timeout, AccessMode::Type::WRITE);
 }
 
-#define LOG_COLLECTION LOG_DEVEL << this->_logicalCollection.name() << " ### "
-
 /// @brief write unlocks a collection
-void RocksDBMetaCollection::unlockWrite() noexcept {
-  LOG_COLLECTION << "UNLOCK EXCLUSIVE";
-  _exclusiveLock.unlock();
-  LOG_COLLECTION << "UNLOCK EXCLUSIVE DONE";
-}
+void RocksDBMetaCollection::unlockWrite() noexcept { _exclusiveLock.unlock(); }
 
 /// @brief read locks a collection, with a timeout
 futures::Future<ErrorCode> RocksDBMetaCollection::lockRead(double timeout) {
@@ -187,11 +182,7 @@ futures::Future<ErrorCode> RocksDBMetaCollection::lockRead(double timeout) {
 }
 
 /// @brief read unlocks a collection
-void RocksDBMetaCollection::unlockRead() {
-  LOG_COLLECTION << "UNLOCK SHARED";
-  _exclusiveLock.unlock();
-  LOG_COLLECTION << "UNLOCK SHARED DONE";
-}
+void RocksDBMetaCollection::unlockRead() { _exclusiveLock.unlock(); }
 
 // rescans the collection to update document count
 futures::Future<uint64_t> RocksDBMetaCollection::recalculateCounts() {
@@ -1740,26 +1731,18 @@ futures::Future<ErrorCode> RocksDBMetaCollection::doLock(
 
   bool gotLock = false;
   if (mode == AccessMode::Type::WRITE) {
-    LOG_COLLECTION << "TRY LOCK EXCLUSIVE";
     auto result =
         co_await asTry(_exclusiveLock.asyncTryLockExclusiveFor(timeout_ms));
     gotLock = result.hasValue();
     if (gotLock) {
-      LOG_COLLECTION << "GOT LOCK EXCLUSIVE";
       result.get().release();
-    } else {
-      LOG_COLLECTION << "TIMEOUT LOCK EXCLUSIVE";
     }
   } else {
-    LOG_COLLECTION << "TRY LOCK SHARED";
     auto result =
         co_await asTry(_exclusiveLock.asyncTryLockSharedFor(timeout_ms));
     gotLock = result.hasValue();
     if (gotLock) {
-      LOG_COLLECTION << "GOT LOCK SHARED";
       result.get().release();
-    } else {
-      LOG_COLLECTION << "TIMEOUT LOCK SHARED";
     }
   }
 
