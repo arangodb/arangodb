@@ -1,7 +1,10 @@
 import { ChakraProvider } from "@chakra-ui/react";
 import { Global } from "@emotion/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React, { ReactNode } from "react";
 import { theme } from "./theme";
+
+const queryClient = new QueryClient();
 
 export const ChakraCustomProvider = ({
   children,
@@ -28,28 +31,30 @@ export const ChakraCustomProvider = ({
     };
   }
   return (
-    <ChakraProvider theme={theme}>
-      <Global
-        styles={{
-          // {/* This is to override the non-react wrappers */}
-          ...overrideNonReactStyles,
-          // {/* This is to override bootstrap styles */}
-          "input[type='number'], input[type='password']": {
-            borderColor: "var(--chakra-colors-gray-200)"
-          },
-          "input[type='password']": {
-            fontSize: "var(--chakra-fontSizes-md)",
-            padding: 0,
-            paddingLeft: "var(--chakra-space-4)",
-            paddingRight: "var(--chakra-space-4)"
-          },
-          "input[type='number'], input[type='password'], input[type='number']:focus, input[type='password']:focus":
-            {
-              height: "40px"
-            }
-        }}
-      />
-      {children}
-    </ChakraProvider>
+    <QueryClientProvider client={queryClient}>
+      <ChakraProvider theme={theme}>
+        <Global
+          styles={{
+            // {/* This is to override the non-react wrappers */}
+            ...overrideNonReactStyles,
+            // {/* This is to override bootstrap styles */}
+            "input[type='number'], input[type='password']": {
+              borderColor: "var(--chakra-colors-gray-200)"
+            },
+            "input[type='password']": {
+              fontSize: "var(--chakra-fontSizes-md)",
+              padding: 0,
+              paddingLeft: "var(--chakra-space-4)",
+              paddingRight: "var(--chakra-space-4)"
+            },
+            "input[type='number'], input[type='password'], input[type='number']:focus, input[type='password']:focus":
+              {
+                height: "40px"
+              }
+          }}
+        />
+        {children}
+      </ChakraProvider>
+    </QueryClientProvider>
   );
 };

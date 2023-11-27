@@ -94,6 +94,9 @@ class QueryRegistryFeature final : public ArangodFeature {
   uint64_t maxParallelism() const noexcept { return _maxParallelism; }
 
   metrics::Gauge<uint64_t>* cursorsMetric() const { return &_activeCursors; }
+  metrics::Gauge<uint64_t>* cursorsMemoryUsageMetric() const {
+    return &_cursorsMemoryUsage;
+  }
 
  private:
   bool _trackingEnabled;
@@ -144,6 +147,7 @@ class QueryRegistryFeature final : public ArangodFeature {
   metrics::Counter& _globalQueryMemoryLimitReached;
   metrics::Counter& _localQueryMemoryLimitReached;
   metrics::Gauge<uint64_t>& _activeCursors;
+  metrics::Gauge<uint64_t>& _cursorsMemoryUsage;
 };
 
 }  // namespace arangodb

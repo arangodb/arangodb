@@ -1,12 +1,12 @@
 version: 2.1
 
+orbs:
+  win: circleci/windows@5.0 # The Windows orb gives you everything you need to start using the 
+
 parameters:
-  enterprise-branch:
+  enterprise-commit:
     type: string
     default: ""
-  default-enterprise-branch:
-    type: string
-    default: "devel"
   build-targets:
     type: string
     default: "arangod arangoimport arangoexport arangodump arangorestore arangobench"
@@ -63,22 +63,13 @@ commands:
             - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
       - run:
           name: Checkout Enterprise
+          environment:
+            GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no"
           command: |
-            ssh-keyscan github.com >> ~/.ssh/known_hosts
-            if ["<< pipeline.parameters.enterprise-branch >>" == ""]; then
-              set +e
-              git ls-remote --exit-code --heads git@github.com:arangodb/enterprise.git "$CIRCLE_BRANCH"
-              if [ "$?" == "0" ] ; then
-                ENTERPRISE_BRANCH=$CIRCLE_BRANCH
-              else
-                ENTERPRISE_BRANCH=devel
-              fi
-              set -e
-            else
-              ENTERPRISE_BRANCH=<< pipeline.parameters.enterprise-branch >>
-            fi
-            echo "Using enterprise branch $ENTERPRISE_BRANCH"
-            git clone --depth 1 git@github.com:arangodb/enterprise.git --branch "$ENTERPRISE_BRANCH" << parameters.destination >>
+            mkdir -p << parameters.destination >>
+            cd << parameters.destination >>
+            git clone git@github.com:arangodb/enterprise.git .
+            git reset --hard << pipeline.parameters.enterprise-commit >>
 
 jobs:
   minimal-checkout:
@@ -272,6 +263,7 @@ jobs:
         type: string
       build-tests:
         type: boolean
+        default: true
       enterprise:
         type: boolean
         default: false
@@ -324,6 +316,7 @@ jobs:
         type: string
       build-tests:
         type: boolean
+        default: true
       publish-artifacts:
         type: boolean
         default: true
@@ -338,10 +331,9 @@ jobs:
       - checkout-arangodb:
           with-submodules: true
           destination: "D:/CircleCI/project"
-      # TODO - checking out enterprise is does currently not work on windows; will be addressed in a separate PR
       # for windows we build only enterprise, so we can check it out unconditionally
-      # - checkout-enterprise:
-      #    destination: "D:/CircleCI/project/enterprise"
+      - checkout-enterprise:
+          destination: "D:/CircleCI/project/enterprise"
       # TODO - sccache currently doesn't work on windows; will be addressed in a separate PR
       # - run:
       #     name: Print SCCache Settings
@@ -354,50 +346,122 @@ jobs:
             # make sure we have the latest image!
             docker pull arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.3
             # TODO - use preset
-            # TODO - enable enterprise!
-            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -w C:/project/build arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.3 cmake -G 'Visual Studio 17 2022' -T 'v143,host=x64' -DUSE_MAINTAINER_MODE=On -DUSE_GOOGLE_TESTS=On -DUSE_ENTERPRISE=Off -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPACKAGING=NSIS -DCMAKE_INSTALL_PREFIX=/ -DSKIP_PACKAGING=On -DUSE_FAILURE_TESTS=On -DSTATIC_EXECUTABLES=On -DOPENSSL_USE_STATIC_LIBS=On -DUSE_STRICT_OPENSSL_VERSION=On ..
+            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -w C:/project/build arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.3 cmake -G 'Visual Studio 17 2022' -T 'v143,host=x64' -DUSE_MAINTAINER_MODE=On -DUSE_GOOGLE_TESTS=On -DUSE_ENTERPRISE=On -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPACKAGING=NSIS -DCMAKE_INSTALL_PREFIX=/ -DSKIP_PACKAGING=On -DUSE_FAILURE_TESTS=On -DSTATIC_EXECUTABLES=On -DOPENSSL_USE_STATIC_LIBS=On -DUSE_STRICT_OPENSSL_VERSION=On ..
       - run:
           name: "Build"
           shell: powershell.exe
           command: |
             docker run --rm --isolation process -v D:/CircleCI/project:C:/project -w C:/project/build arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.3 cmake --build . --config `"RelWithDebInfo`" --parallel -- /p:CL_MPcount=24
-      - store_artifacts:
-          destination: arangod.exe
-          path: D:/CircleCI/project/build/bin/RelWithDebInfo/arangod.exe
-
-      # TODO - enable artifact upload once we actually use them
+      - run:
+          name: Cleanup build directory
+          shell: powershell.exe
+          command: |
+            cd D:/CircleCI/project/build
+            Get-ChildItem *.pdb -Recurse | foreach { Remove-Item -Path $_.FullName }
+            Get-ChildItem *.lib -Recurse | foreach { Remove-Item -Path $_.FullName }
+            Get-ChildItem *.exp -Recurse | foreach { Remove-Item -Path $_.FullName }
+            Get-ChildItem *.obj -Recurse | foreach { Remove-Item -Path $_.FullName }
+            Get-ChildItem *.vcxproj -Recurse | foreach { Remove-Item -Path $_.FullName }
+            Get-ChildItem *.filters -Recurse | foreach { Remove-Item -Path $_.FullName }
+            Get-ChildItem *.sln -Recurse | foreach { Remove-Item -Path $_.FullName }
+            Get-ChildItem *.pch -Recurse | foreach { Remove-Item -Path $_.FullName }
+            Get-ChildItem *.ifc -Recurse | foreach { Remove-Item -Path $_.FullName }
+            Get-ChildItem *.ilk -Recurse | foreach { Remove-Item -Path $_.FullName }
+            Get-ChildItem *.tlog -Recurse | where { ! $_.PSIsContainer } | foreach { Remove-Item -Path $_.FullName }
+#            Get-ChildItem *.dat -Recurse | foreach { Remove-Item -Path $_.FullName }
       # - run:
-      #     name: Cleanup build directory
+      #     name: Save workspace for development
+      #     shell: powershell.exe
       #     command: |
-      #       find build/ -iname *.a -delete || true
-      #       find build/ -iname *.o -delete || true
+      #       cd D:/CircleCI/project/
+      #       7z a -r ./workspace CMakePresets.json build/ scripts/ js/ enterprise/js etc/ tests/js enterprise/tests/js utils UnitTests 3rdParty/iresearch/tests/resources 3rdParty/rta-makedata            
       # - run:
       #     name: SCCache Statistics
       #     command: sccache -s
       # - store_artifacts:
       #     path: /tmp/sccache.log
-      # - when:
-      #     condition: << parameters.publish-artifacts >>
-      #     steps:
-      #       - store_artifacts:
-      #           path: build/bin/arango*
-      #       - persist_to_workspace:
-      #           root: .
-      #           paths:
-      #             - CMakePresets.json
-      #             - build/
-      #             - scripts/
-      #             - js/
-      #             - enterprise/js
-      #             - etc/
-      #             - tests/js
-      #             - enterprise/tests/js
-      #             - utils
-      #             - UnitTests
-      #             - 3rdParty/iresearch/tests/resources
-      #             - 3rdParty/rta-makedata
+      - when:
+          condition: << parameters.publish-artifacts >>
+          steps:
+            # - store_artifacts:
+            #     path: D:/CircleCI/project/workspace.7z
+            - store_artifacts:
+                path: D:/CircleCI/project/build/bin/RelWithDebInfo/
+                destination: windows
+            - persist_to_workspace:
+                root: D:/CircleCI/project/
+                paths:
+                  - CMakePresets.json
+                  - build/
+                  - scripts/
+                  - js/
+                  - enterprise/js
+                  - etc/
+                  - tests/js
+                  - enterprise/tests/js
+                  - utils
+                  - UnitTests
+                  - 3rdParty/iresearch/tests/resources
+                  - 3rdParty/rta-makedata
 
-  run-tests:
+  run-windows-tests:
+    parameters:
+      suiteName:
+        type: string
+      suites:
+        type: string
+      size:
+        type: string
+      extraArgs:
+        type: string
+        default: ""
+      buckets:
+        type: integer
+        default: 1
+      cluster:
+        type: boolean
+    executor:
+      name: win/default # executor type
+      size: << parameters.size >> # can be medium, large, xlarge, 2xlarge
+    parallelism: << parameters.buckets >>
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Install python packages
+          when: always
+          command: |
+            pip install psutil
+      - run:
+          name: Prepare OS
+          when: always
+          command: |
+            Set-TimeZone -Id "Central European Standard Time"
+      - run:
+          name: Run << parameters.suiteName >> tests
+          # we increase the no_output_timeout so our own timeout mechanism can kick in and gather more information
+          no_output_timeout: 20m
+          command: |
+            mkdir work
+            # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
+            python scripts/test/test_launch_controller.py << parameters.suites >> `
+              --testBuckets $env:CIRCLE_NODE_TOTAL/$env:CIRCLE_NODE_INDEX `
+              --cluster << parameters.cluster >> `
+              --extraArgs " << parameters.extraArgs >>" `
+              --definition tests/test-definitions.txt
+      - run:
+          name: Copy test results
+          when: always
+          command: |
+            mkdir test-results
+            Get-ChildItem -Path .\testrunXml -Filter *.xml -Recurse | ForEach-Object {Copy-Item $_.FullName -Destination .\test-results}
+      - store_artifacts:
+          destination: << parameters.suiteName >>
+          path: ./work/
+      - store_test_results:
+          path: ./test-results/
+
+  run-linux-tests:
     docker:
       - image: arangodb/test-ubuntu:22.04-6c4e824d8d2
     parameters:
@@ -532,28 +596,26 @@ workflows:
           name: eslint
           requires:
             - minimal-checkout
-
-  x64-community-pr:
+  x64-linux-community-pr:
     jobs:
       - compile-linux:
           context:
             - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           resource-class: xlarge
-          name: build-ce-x64
+          name: build-linux-ce-x64
           preset: community-pr
           enterprise: false
       - run-cppcheck:
           name: cppcheck
           requires:
-            - build-ce-x64
-
-  x64-enterprise-pr:
+            - build-linux-ce-x64
+  x64-linux-enterprise-pr:
     jobs:
       - compile-linux:
           context:
             - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           resource-class: xlarge
-          name: build-ee-x64
+          name: build-linux-ee-x64
           preset: enterprise-pr
           enterprise: true
       - compile-linux:
@@ -575,54 +637,41 @@ workflows:
           publish-artifacts: false
           build-tests: false
           build-v8: false
-
       - run-cppcheck:
           name: cppcheck
           requires:
-            - build-ee-x64
+            - build-linux-ee-x64
       - run-hotbackup-tests:
           name: run-hotbackup-tests-x64
           size: medium
           requires:
-            - build-ee-x64
-
-  aarch64-community-pr:
+            - build-linux-ee-x64
+  aarch64-linux-community-pr:
     jobs:
       - compile-linux:
           context:
             - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           resource-class: arm.xlarge
           s3-prefix: aarch64
-          name: build-ce-aarch64
+          name: build-linux-ce-aarch64
           preset: community-pr
           enterprise: false
-
-  aarch64-enterprise-pr:
+  aarch64-linux-enterprise-pr:
     jobs:
       - compile-linux:
           context:
             - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           resource-class: arm.xlarge
           s3-prefix: aarch64
-          name: build-ee-aarch64
+          name: build-linux-ee-aarch64
           preset: enterprise-pr
           enterprise: true
       - run-hotbackup-tests:
           name: run-hotbackup-tests-aarch64
           size: arm.medium
           requires:
-            - build-ee-aarch64
-
-  windows-community-pr:
-    jobs:
-      - compile-windows:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          name: build-ee-win
-          preset: enterprise-pr
-          build-tests: true
-
-  mac-tools-pr:
+            - build-linux-ee-aarch64
+  aarch64-mac-tools-pr:
     jobs:
       - compile-mac:
           context:
@@ -656,4 +705,11 @@ workflows:
           preset: community-pr
           build-tests: false
           enterprise: false
-
+  x64-enterprise-windows-pr:
+    jobs:
+      - compile-windows:
+          context:
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          name: build-windows-ee-x64
+          preset: enterprise-pr
+          build-tests: true
