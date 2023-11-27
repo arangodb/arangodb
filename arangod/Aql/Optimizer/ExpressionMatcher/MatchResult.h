@@ -32,9 +32,6 @@ struct MatchResult {
   auto isSuccess() const noexcept -> bool { return _errors.empty(); };
   auto isError() const noexcept -> bool { return not _errors.empty(); }
 
-  struct ErrorTag {};
-  struct ValueTag {};
-
   explicit MatchResult() = default;
   MatchResult(MatchResult&&) = default;
   MatchResult(MatchResult const&) = delete;
@@ -51,15 +48,9 @@ struct MatchResult {
     return std::move(*this);
   }
 
-  auto addMatch(std::string name, AstNode const* value) && -> MatchResult&& {
-    _matches.emplace(std::move(name), value);
-    return std::move(*this);
-  }
-
   auto combine(MatchResult&& rhs) && -> MatchResult&& {
     _errors.insert(std::end(_errors), std::begin(rhs._errors),
                    std::end(rhs._errors));
-    _matches.merge(rhs._matches);
 
     return std::move(*this);
   }
@@ -67,17 +58,10 @@ struct MatchResult {
   static auto error(std::string message) -> MatchResult {
     return MatchResult().addError(std::move(message));
   }
-  static auto match(std::string key, AstNode const* value) {
-    return MatchResult().addMatch(std::move(key), value);
-  }
   static auto match() { return MatchResult(); }
 
   auto errors() const noexcept -> std::vector<std::string> const& {
     return _errors;
-  }
-  auto matches() const noexcept
-      -> std::unordered_map<std::string, AstNode const*> const& {
-    return _matches;
   }
 
   friend inline auto operator/(MatchResult&& lhs, std::string error)
@@ -96,7 +80,6 @@ struct MatchResult {
   }
 
  private:
-  std::unordered_map<std::string, AstNode const*> _matches;
   std::vector<std::string> _errors;
 };
 

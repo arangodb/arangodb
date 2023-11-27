@@ -48,4 +48,3 @@
 #include <Aql/Optimizer/ExpressionMatcher/Matchers/Quantifier.h>
 #include <Aql/Optimizer/ExpressionMatcher/Matchers/Reference.h>
 #include <Aql/Optimizer/ExpressionMatcher/Matchers/Variable.h>
-#include <Aql/Optimizer/ExpressionMatcher/Matchers/WithName.h>

@@ -93,34 +93,6 @@ TEST(ExpressionMatcherTest, any_matches_any) {
   }
 }
 
-TEST(ExpressionMatcherTest, matches_filter_expression) {
-  auto expression = TestContext(
-      R"=(LET path = [] RETURN path.vertices[* RETURN CURRENT.f == "green"] ALL == true)=");
-
-  auto* node = expression.getTopNode();
-  {
-    auto matcher = arrayEq(                                      //
-        expansion(                                               //
-            iterator(AnyVariable{},                              //
-                     attributeAccess(Reference{.name = "path"},  //
-                                     {"edges", "vertices"})),    //
-            matchWithName("variable", Reference{.name = "3_"}),  //
-            NoOp{},                                              //
-            NoOp{},                                              //
-            matchWithName("map", Any{})),                        //
-        AnyValue{},                                              //
-        expression_matcher::Quantifier{
-            .which = ::arangodb::aql::Quantifier::Type::kAll});
-
-    auto result = matcher.apply(node);
-    ASSERT_TRUE(result.isSuccess())
-        << fmt::format("error {}", fmt::join(result.errors(), "\n"));
-
-    ASSERT_TRUE(result.matches().contains("map"));
-    ASSERT_TRUE(result.matches().contains("variable"));
-  }
-}
-
 TEST(ExpressionMatcherTest, matches_filter_expression_into_variable) {
   auto expression = TestContext(
       R"=(LET path = [] RETURN path.vertices[* RETURN CURRENT.f == "green"] ALL == true)=");

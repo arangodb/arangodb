@@ -38,15 +38,6 @@ auto toStream(std::ostream& os, MatchResult const& result) -> std::ostream& {
     os << fmt::format("[[ERROR]] backtrace\n{}",
                       fmt::join(result.errors(), "\n"));
   }
-
-  os << std::endl;
-
-  auto keys = std::vector<std::string>(result.matches().size());
-
-  std::transform(std::begin(result.matches()), std::end(result.matches()),
-                 std::begin(keys), [](auto pair) { return pair.first; });
-  os << fmt::format("matches:\n  {}", fmt::join(keys, "\n  "));
-
   return os;
 }
 
