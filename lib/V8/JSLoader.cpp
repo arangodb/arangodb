@@ -62,11 +62,16 @@ JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate,
     return eFailLoad;
   }
 
+#if 0
   v8::Handle<v8::Context> context = isolate->GetCurrentContext();
-
+#endif
   {
+#if 0
     // Enter the newly created execution environment.
     v8::Context::Scope context_scope(context);
+#endif
+
+    TRI_ASSERT(isolate->InContext());
 
     v8::Handle<v8::Value> result =
         TRI_ExecuteJavaScriptString(isolate, i->second, name, false);

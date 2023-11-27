@@ -1048,6 +1048,7 @@ void V8DealerFeature::collectGarbage() {
           // and automatically exit and unlock it when it runs out of scope
           V8ContextEntryGuard contextGuard(context);
 
+          TRI_ASSERT(!isolate->InContext());
           v8::HandleScope scope(isolate);
 
           auto localContext =
@@ -1055,6 +1056,7 @@ void V8DealerFeature::collectGarbage() {
 
           {
             v8::Context::Scope contextScope(localContext);
+            TRI_ASSERT(isolate->InContext());
 
             context->assertLocked();
 
@@ -1064,6 +1066,7 @@ void V8DealerFeature::collectGarbage() {
             v8g->_inForcedCollect = false;
             hasActiveExternals = v8g->hasActiveExternals();
           }
+          TRI_ASSERT(!isolate->InContext());
         }
 
         // update garbage collection statistics
@@ -1223,11 +1226,13 @@ void V8DealerFeature::prepareLockedContext(
   auto isolate = context->_isolate;
 
   {
+    TRI_ASSERT(!isolate->InContext());
     v8::HandleScope scope(isolate);
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
 
     {
       v8::Context::Scope contextScope(localContext);
+      TRI_ASSERT(isolate->InContext());
 
       context->assertLocked();
       TRI_GET_GLOBALS();
@@ -1245,6 +1250,7 @@ void V8DealerFeature::prepareLockedContext(
         // ignore errors here
       }
     }
+    TRI_ASSERT(!isolate->InContext());
   }
 }
 
@@ -1916,6 +1922,8 @@ void V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
       JavaScriptSecurityContext::createInternalContext();
 
   context->lockAndEnter();
+
+  TRI_ASSERT(!context->_isolate->InContext());
   prepareLockedContext(vocbase, context, securityContext);
   auto sg =
       arangodb::scopeGuard([&]() noexcept { exitContextInternal(context); });
@@ -1936,11 +1944,15 @@ void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file,
   double start = TRI_microtime();
 
   v8::HandleScope scope(context->_isolate);
+
+  TRI_ASSERT(!context->_isolate->InContext());
+
+  // enter the V8 context that is paired with the isolate
   auto localContext =
       v8::Local<v8::Context>::New(context->_isolate, context->_context);
-
   {
     v8::Context::Scope contextScope(localContext);
+    TRI_ASSERT(context->_isolate->InContext());
 
     switch (_startupLoader.loadScript(context->_isolate, file, builder)) {
       case JSLoader::eSuccess:
@@ -1957,6 +1969,8 @@ void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file,
         FATAL_ERROR_EXIT();
     }
   }
+
+  TRI_ASSERT(!context->_isolate->InContext());
 
   LOG_TOPIC("53bbb", TRACE, arangodb::Logger::V8)
       << "loaded JavaScript file '" << file << "' for V8 context #"
@@ -1975,6 +1989,8 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
     // and automatically exit and unlock it when it runs out of scope
     V8ContextEntryGuard contextGuard(context);
 
+    TRI_ASSERT(!isolate->InContext());
+
     v8::HandleScope scope(isolate);
     TRI_GET_GLOBALS();
 
@@ -1982,6 +1998,7 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
 
     {
       v8::Context::Scope contextScope(localContext);
+      TRI_ASSERT(isolate->InContext());
 
       TRI_VisitActions(
           [&isolate](TRI_action_t* action) { action->visit(isolate); });
@@ -1992,6 +2009,7 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
 
       delete v8g;
     }
+    TRI_ASSERT(!isolate->InContext());
   }
 
   context->_context.Reset();
@@ -1999,7 +2017,7 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
   server().getFeature<V8PlatformFeature>().disposeIsolate(isolate);
 
   LOG_TOPIC("34c28", TRACE, arangodb::Logger::V8)
-      << "closed V8 context #" << context->id();
+      << "shut down V8 context #" << context->id();
 
   delete context;
   ++_contextsDestroyed;

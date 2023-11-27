@@ -163,6 +163,7 @@ class v8_action_t final : public TRI_action_t {
         *data = static_cast<void*>(guard.isolate());
       }
 
+      TRI_ASSERT(!guard.isolate()->InContext());
       v8::HandleScope scope(guard.isolate());
 
       auto localContext = v8::Local<v8::Context>::New(
@@ -170,6 +171,9 @@ class v8_action_t final : public TRI_action_t {
 
       {
         v8::Context::Scope contextScope(localContext);
+
+        TRI_ASSERT(guard.isolate()->InContext());
+
         auto localFunction =
             v8::Local<v8::Function>::New(guard.isolate(), it->second);
 
@@ -186,6 +190,7 @@ class v8_action_t final : public TRI_action_t {
           *data = nullptr;
         }
       }
+      TRI_ASSERT(!guard.isolate()->InContext());
     }
 
     return result;

@@ -440,12 +440,15 @@ void Task::work(ExecContext const* exec) {
   // now execute the function within this context
   {
     auto isolate = guard.isolate();
+    TRI_ASSERT(!isolate->InContext());
+
     v8::HandleScope scope(isolate);
 
     auto localContext =
         v8::Local<v8::Context>::New(isolate, guard.context()->_context);
     {
       v8::Context::Scope contextScope(localContext);
+      TRI_ASSERT(isolate->InContext());
       auto context = TRI_IGETC;
 
       // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
@@ -503,6 +506,7 @@ void Task::work(ExecContext const* exec) {
         }
       }
     }
+    TRI_ASSERT(!isolate->InContext());
   }
 }
 
