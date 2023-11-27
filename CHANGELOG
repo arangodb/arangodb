@@ -6,7 +6,7 @@ devel
   uncompress incoming HTTP requests with Content-Encodings gzip and deflate
   even if the request is not authenticated.
   If the option is set to `false`, any unauthenticated request that has a 
-  Content-Encoding header set will be rejected.
+  Content-Encoding header set will be rejected. This is the default setting.
 
 * Added options `--compress-transfer` and `--compress-request-threshold` to 
   all client tools.

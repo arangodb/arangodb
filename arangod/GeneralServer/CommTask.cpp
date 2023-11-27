@@ -1073,7 +1073,9 @@ Result CommTask::handleContentEncoding(GeneralRequest& req) {
       VPackBuffer<uint8_t> dst;
       if (ErrorCode r = arangodb::encoding::gzipUncompress(src, len, dst);
           r != TRI_ERROR_NO_ERROR) {
-        return {r, "an error occurred while handling Content-Encoding: gzip"};
+        return {
+            r,
+            "a decoding error occurred while handling Content-Encoding: gzip"};
       }
       req.setPayload(std::move(dst));
       // as we have decoded, remove the encoding header.
@@ -1085,7 +1087,8 @@ Result CommTask::handleContentEncoding(GeneralRequest& req) {
       if (ErrorCode r = arangodb::encoding::zlibInflate(src, len, dst);
           r != TRI_ERROR_NO_ERROR) {
         return {r,
-                "an error occurred while handling Content-Encoding: deflate"};
+                "a decoding error occurred while handling Content-Encoding: "
+                "deflate"};
       }
       req.setPayload(std::move(dst));
       // as we have decoded, remove the encoding header.
@@ -1098,14 +1101,16 @@ Result CommTask::handleContentEncoding(GeneralRequest& req) {
   };
 
   bool found;
-  std::string const& val1 = req.header(StaticStrings::TransferEncoding, found);
-  if (found) {
-    return decode(StaticStrings::TransferEncoding, val1);
+  if (std::string const& val =
+          req.header(StaticStrings::TransferEncoding, found);
+      found) {
+    return decode(StaticStrings::TransferEncoding, val);
   }
 
-  std::string const& val2 = req.header(StaticStrings::ContentEncoding, found);
-  if (found) {
-    return decode(StaticStrings::ContentEncoding, val2);
+  if (std::string const& val =
+          req.header(StaticStrings::ContentEncoding, found);
+      found) {
+    return decode(StaticStrings::ContentEncoding, val);
   }
   return {};
 }

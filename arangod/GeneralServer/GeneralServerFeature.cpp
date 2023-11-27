@@ -173,7 +173,7 @@ GeneralServerFeature::GeneralServerFeature(Server& server)
       _startedListening(false),
 #endif
       _allowEarlyConnections(false),
-      _handleContentEncodingForUnauthenticatedRequests(true),
+      _handleContentEncodingForUnauthenticatedRequests(false),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _enableTelemetrics(false),
 #else

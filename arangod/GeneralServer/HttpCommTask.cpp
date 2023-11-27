@@ -80,7 +80,7 @@ bool HttpCommTask<T>::transferEncodingContainsChunked(
     commTask.sendErrorResponse(
         rest::ResponseCode::NOT_IMPLEMENTED, rest::ContentType::UNSET, 1,
         TRI_ERROR_NOT_IMPLEMENTED,
-        "Parsing for transfer-encoding of type chunked not implemented.");
+        "Support for Transfer-Encoding: chunked is not implemented.");
     return true;
   }
   return false;
@@ -183,10 +183,8 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) try {
   std::string const& encoding =
       me->_request->header(StaticStrings::TransferEncoding, found);
 
-  if (found) {
-    if (transferEncodingContainsChunked(*me, encoding)) {
-      return HPE_USER;
-    }
+  if (found && transferEncodingContainsChunked(*me, encoding)) {
+    return HPE_USER;
   }
 
   if ((p->http_major != 1 || p->http_minor != 0) &&
