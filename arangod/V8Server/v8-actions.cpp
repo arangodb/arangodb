@@ -1127,8 +1127,8 @@ static TRI_action_result_t ExecuteActionVocbase(
   v8::Handle<v8::Object> res = v8::Object::New(isolate);
 
   // register request & response in the context
-  v8g->_currentRequest = req;
-  v8g->_currentResponse = res;
+  v8g->_currentRequest.Reset(isolate, req);
+  v8g->_currentResponse.Reset(isolate, res);
 
   // execute the callback
   v8::Handle<v8::Value> args[2] = {req, res};
@@ -1151,8 +1151,8 @@ static TRI_action_result_t ExecuteActionVocbase(
   }
 
   // invalidate request / response objects
-  v8g->_currentRequest = v8::Undefined(isolate);
-  v8g->_currentResponse = v8::Undefined(isolate);
+  v8g->_currentRequest.Reset();
+  v8g->_currentResponse.Reset();
 
   // convert the result
   TRI_action_result_t result;
@@ -1306,7 +1306,9 @@ static void JS_GetCurrentRequest(
     TRI_V8_THROW_EXCEPTION_USAGE("getCurrentRequest()");
   }
 
-  TRI_V8_RETURN(v8g->_currentRequest);
+  v8::Handle<v8::Value> r =
+      v8::Handle<v8::Value>::New(isolate, v8g->_currentRequest);
+  TRI_V8_RETURN(r);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1572,7 +1574,9 @@ static void JS_GetCurrentResponse(
     TRI_V8_THROW_EXCEPTION_USAGE("getCurrentResponse()");
   }
 
-  TRI_V8_RETURN(v8g->_currentResponse);
+  v8::Handle<v8::Value> r =
+      v8::Handle<v8::Value>::New(isolate, v8g->_currentResponse);
+  TRI_V8_RETURN(r);
   TRI_V8_TRY_CATCH_END
 }
 

@@ -810,10 +810,10 @@ struct TRI_v8_global_t {
   v8::Persistent<v8::String> _ToKey;
 
   /// @brief currently request object (might be invalid!)
-  v8::Handle<v8::Value> _currentRequest;
+  v8::Persistent<v8::Value> _currentRequest;
 
   /// @brief currently response object (might be invalid!)
-  v8::Handle<v8::Value> _currentResponse;
+  v8::Persistent<v8::Value> _currentResponse;
 
   /// @brief information about the currently running transaction
   arangodb::transaction::V8Context* _transactionContext;

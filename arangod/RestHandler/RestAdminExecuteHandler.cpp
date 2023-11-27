@@ -140,13 +140,16 @@ RestStatus RestAdminExecuteHandler::execute() {
 
         TRI_fake_action_t adminExecuteAction("_admin/execute", 2);
 
-        v8g->_currentRequest = TRI_RequestCppToV8(isolate, v8g, _request.get(),
-                                                  &adminExecuteAction);
-        v8g->_currentResponse = v8::Object::New(isolate);
+        v8::Handle<v8::Object> req = TRI_RequestCppToV8(
+            isolate, v8g, _request.get(), &adminExecuteAction);
+        v8g->_currentRequest.Reset(isolate, req);
 
-        auto guard = scopeGuard([&v8g, &isolate]() noexcept {
-          v8g->_currentRequest = v8::Undefined(isolate);
-          v8g->_currentResponse = v8::Undefined(isolate);
+        v8::Handle<v8::Object> res = v8::Object::New(isolate);
+        v8g->_currentResponse.Reset(isolate, res);
+
+        auto guard = scopeGuard([&v8g]() noexcept {
+          v8g->_currentRequest.Reset();
+          v8g->_currentResponse.Reset();
         });
 
         v8::Handle<v8::Value> args[] = {v8::Null(isolate)};

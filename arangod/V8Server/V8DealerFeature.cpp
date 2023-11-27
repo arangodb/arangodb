@@ -1241,6 +1241,8 @@ void V8DealerFeature::prepareLockedContext(
       v8g->_expressionContext = nullptr;
       v8g->_vocbase = vocbase;
       v8g->_securityContext = securityContext;
+      v8g->_currentRequest.Reset();
+      v8g->_currentResponse.Reset();
 
       try {
         LOG_TOPIC("94226", TRACE, arangodb::Logger::V8)
@@ -1425,8 +1427,8 @@ void V8DealerFeature::cleanupLockedContext(V8Context* context) {
 
   auto isolate = context->_isolate;
   TRI_ASSERT(isolate != nullptr);
-  TRI_GET_GLOBALS();
   context->assertLocked();
+  TRI_ASSERT(!isolate->InContext());
 
   bool canceled = false;
 
@@ -1434,11 +1436,14 @@ void V8DealerFeature::cleanupLockedContext(V8Context* context) {
     static double const availableTime = 300.0;
 
     v8::HandleScope scope(isolate);
+    TRI_GET_GLOBALS();
     {
       auto localContext =
           v8::Local<v8::Context>::New(isolate, context->_context);
       {
         v8::Context::Scope contextScope(localContext);
+        TRI_ASSERT(isolate->InContext());
+
         v8g->_inForcedCollect = true;
         TRI_RunGarbageCollectionV8(isolate, availableTime);
         v8g->_inForcedCollect = false;
@@ -1447,50 +1452,56 @@ void V8DealerFeature::cleanupLockedContext(V8Context* context) {
       // needs to be reset after the garbage collection
       V8PlatformFeature::resetOutOfMemory(isolate);
     }
-  }
-
-  // update data for later garbage collection
-  {
-    TRI_GET_GLOBALS();
-    context->_hasActiveExternals = v8g->hasActiveExternals();
-    TRI_vocbase_t* vocbase = v8g->_vocbase;
-
-    TRI_ASSERT(vocbase != nullptr);
-    // release last recently used vocbase
-    vocbase->release();
-
-    // check for cancelation requests
-    canceled = v8g->_canceled;
-    v8g->_canceled = false;
+    TRI_ASSERT(!isolate->InContext());
   }
 
   // check if we need to execute global context methods
   bool const runGlobal = context->hasGlobalMethodsQueued();
 
+  // update data for later garbage collection
   {
     v8::HandleScope scope(isolate);
+    auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
 
-    // if the execution was canceled, we need to cleanup
-    if (canceled) {
-      context->handleCancellationCleanup();
-    }
+    {
+      v8::Context::Scope contextScope(localContext);
+      TRI_ASSERT(isolate->InContext());
 
-    // run global context methods
-    if (runGlobal) {
-      context->assertLocked();
+      TRI_GET_GLOBALS();
+      context->_hasActiveExternals = v8g->hasActiveExternals();
+      TRI_vocbase_t* vocbase = v8g->_vocbase;
 
-      try {
-        context->handleGlobalContextMethods();
-      } catch (...) {
-        // ignore errors here
+      TRI_ASSERT(vocbase != nullptr);
+      // release last recently used vocbase
+      vocbase->release();
+
+      // check for cancelation requests
+      canceled = v8g->_canceled;
+      v8g->_canceled = false;
+
+      // if the execution was canceled, we need to cleanup
+      if (canceled) {
+        context->handleCancellationCleanup();
       }
-    }
-    TRI_GET_GLOBALS();
 
-    // reset the context data; gc should be able to run without it
-    v8g->_expressionContext = nullptr;
-    v8g->_vocbase = nullptr;
-    v8g->_securityContext.reset();
+      // run global context methods
+      if (runGlobal) {
+        context->assertLocked();
+
+        try {
+          context->handleGlobalContextMethods();
+        } catch (...) {
+          // ignore errors here
+        }
+      }
+
+      // reset the context data; gc should be able to run without it
+      v8g->_expressionContext = nullptr;
+      v8g->_vocbase = nullptr;
+      v8g->_securityContext.reset();
+      v8g->_currentRequest.Reset();
+      v8g->_currentResponse.Reset();
+    }
   }
 }
 
