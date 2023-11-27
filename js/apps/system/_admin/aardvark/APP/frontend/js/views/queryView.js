@@ -1966,10 +1966,11 @@
             );
 
             self.maps[counter] = L.map('outputGeo' + counter).setView([51.505, -0.09], 13);
-
-            self.maps[counter].addLayer(new L.StamenTileLayer('terrain', {
-              detectRetina: true
-            }));
+            var layer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              maxZoom: 19,
+              attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            });
+            self.maps[counter].addLayer(layer);
 
             var position = 1;
             var geojson;
