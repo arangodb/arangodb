@@ -491,7 +491,7 @@ futures::Future<RestStatus> RestCollectionHandler::handleCommandPut() {
       _builder.close();
       co_return standardResponse();
     } else {
-      generateError(res);
+      generateError(maybeShard.result());
       co_return RestStatus::DONE;
     }
 
