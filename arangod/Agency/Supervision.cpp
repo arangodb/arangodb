@@ -3602,8 +3602,7 @@ void Supervision::checkUndoLeaderChangeActions() {
         return result;
       }
 
-      // TODO: Check if this is correct
-      auto logId = replication2::LogId::fromString(id.c_str());
+      auto logId = replication2::LogId::fromString(id);
       if (!logId.has_value()) {
         auto result = Result{TRI_ERROR_BAD_PARAMETER,
                              fmt::format("Malformed replicated log ID {}", id)};
@@ -3820,7 +3819,7 @@ void Supervision::checkUndoLeaderChangeActions() {
     for (auto const& [id, entry] : *undos) {
       TRI_ASSERT(entry != nullptr);
 
-      auto undoRes = buildUndoActionFromNode(ShardID{id}, *entry);
+      auto undoRes = buildUndoActionFromNode(id, *entry);
       if (undoRes.fail() || checkDeletion(undoRes.get())) {
         if (undoRes.fail()) {
           LOG_TOPIC("f8ef0", ERR, Logger::SUPERVISION)
