@@ -658,16 +658,20 @@ struct InsertOperationCtx {
 
       // Now find the responsible shard:
       bool usesDefaultShardingAttributes;
+      ResultT<ShardID> result;
       if (userSpecifiedKey) {
-        return collinfo.getResponsibleShard(value, /*docComplete*/ true,
-                                            usesDefaultShardingAttributes);
+        result = collinfo.getResponsibleShard(
+            value, /*docComplete*/ true, usesDefaultShardingAttributes);
       } else {
         // we pass in the generated _key so we do not need to rebuild the input
         // slice
         TRI_ASSERT(!key.empty() || !collinfo.mustCreateKeyOnCoordinator());
-        return collinfo.getResponsibleShard(value, /*docComplete*/ true,
-                                            usesDefaultShardingAttributes,
-                                            std::string_view(key));
+        result = collinfo.getResponsibleShard(
+            value, /*docComplete*/ true, usesDefaultShardingAttributes,
+            std::string_view(key));
+      }
+      if (result.fail()) {
+        return result;
       }
       // Now perform the above mentioned check:
       if (userSpecifiedKey &&
@@ -676,6 +680,7 @@ struct InsertOperationCtx {
         addLocalError(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
         return ShardID::invalidShard();
       }
+      return result;
     }
   });
   if (maybeShardID.fail()) {
