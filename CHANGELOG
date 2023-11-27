@@ -1,6 +1,8 @@
 v3.11.6 (XXXX-XX-XX)
 --------------------
 
+* FE-395: Fix query editor map not loading.
+
 * Stabilize detaching of threads test.
 
 * Rebuilt included rclone v1.62.2 with go1.21.4.
