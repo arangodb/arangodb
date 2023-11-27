@@ -42,6 +42,7 @@
 #include <string_view>
 #include <type_traits>
 #include <vector>
+#include <span>
 
 namespace arangodb {
 namespace transaction {
