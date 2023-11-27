@@ -40,19 +40,19 @@ struct MatchResult {
   MatchResult(MatchResult const&) = delete;
 
   auto addError(std::string error) && -> MatchResult&& {
-    _errors.emplace_back(error);
+    _errors.emplace_back(std::move(error));
     return std::move(*this);
   }
 
   auto addErrorIfError(std::string error) && -> MatchResult&& {
     if (isError()) {
-      _errors.emplace_back(error);
+      _errors.emplace_back(std::move(error));
     }
     return std::move(*this);
   }
 
   auto addMatch(std::string name, AstNode const* value) && -> MatchResult&& {
-    _matches.emplace(name, value);
+    _matches.emplace(std::move(name), value);
     return std::move(*this);
   }
 
@@ -65,10 +65,10 @@ struct MatchResult {
   }
 
   static auto error(std::string message) -> MatchResult {
-    return MatchResult().addError(message);
+    return MatchResult().addError(std::move(message));
   }
   static auto match(std::string key, AstNode const* value) {
-    return MatchResult().addMatch(key, value);
+    return MatchResult().addMatch(std::move(key), value);
   }
   static auto match() { return MatchResult(); }
 
@@ -82,7 +82,7 @@ struct MatchResult {
 
   friend inline auto operator/(MatchResult&& lhs, std::string error)
       -> MatchResult&& {
-    lhs._errors.emplace_back(error);
+    lhs._errors.emplace_back(std::move(error));
     return std::move(lhs);
   }
 
@@ -92,7 +92,7 @@ struct MatchResult {
     if (lhs.isError()) {
       return std::move(lhs);
     }
-    return std::move(lhs).combine(func());
+    return std::move(lhs).combine(std::forward<Func>(func)());
   }
 
  private:
