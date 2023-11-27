@@ -17,7 +17,7 @@ description: |
   result on the server for the client application to consume in batches.
   
   When an AQL query has finished building up its result, the initial batch
-  of the result will be send back to the client application. If the entire
+  of the result will be sent back to the client application. If the entire
   query result fits into a single batch, no cursor will be created and the
   query result will be returned to the client.
   If the query result is larger than a single batch, a server-side cursor
