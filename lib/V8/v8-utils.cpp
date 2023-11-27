@@ -5541,6 +5541,7 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
                                                   bool printResult) {
   v8::EscapableHandleScope scope(isolate);
 
+  TRI_ASSERT(isolate->InContext());
   v8::Handle<v8::Context> context = isolate->GetCurrentContext();
 
   v8::ScriptOrigin scriptOrigin(
