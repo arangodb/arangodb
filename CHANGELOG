@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated OpenSSL to 3.1.4.
+
 * Added metric `arangodb_aql_cursors_memory_usage` to show the memory usage of
   open, not yet fully consumed server-side query cursors.
 
