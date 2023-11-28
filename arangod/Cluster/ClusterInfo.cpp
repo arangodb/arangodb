@@ -4638,7 +4638,7 @@ std::shared_ptr<std::vector<ShardID> const> arangodb::ClusterInfo::getShardList(
 }
 
 std::shared_ptr<ClusterInfo::ManagedVector<ClusterInfo::pmr::ServerID> const>
-ClusterInfo::getCurrentServersForShard(std::string_view shardId) {
+ClusterInfo::getCurrentServersForShard(ShardID shardId) {
   READ_LOCKER(readLocker, _currentProt.lock);
 
   if (auto it = _shardsToCurrentServers.find(shardId);

@@ -809,7 +809,7 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<ManagedVector<pmr::ServerID> const> getCurrentServersForShard(
-      std::string_view shardId);
+      ShardID shardId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the list of coordinator server names
