@@ -25,7 +25,6 @@
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
-#include <v8.h>
 #include "Transactions.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -46,7 +45,9 @@
 #include "V8Server/V8Executor.h"
 #include "V8Server/v8-vocbaseprivate.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <v8.h>
 
 namespace arangodb {
 
@@ -65,7 +66,7 @@ bool allowTransactions(v8::Isolate* isolate) {
           v8security.isAdminScriptContext(isolate));
 }
 
-Result executeTransaction(V8Context* v8context, basics::ReadWriteLock& lock,
+Result executeTransaction(V8Executor* executor, basics::ReadWriteLock& lock,
                           std::atomic<bool>& canceled, VPackSlice slice,
                           std::string const& portType, VPackBuilder& builder) {
   // YOU NEED A TRY CATCH BLOCK like:
@@ -73,7 +74,7 @@ Result executeTransaction(V8Context* v8context, basics::ReadWriteLock& lock,
   //    TRI_V8_TRY_CATCH_END
   // outside of this function!
 
-  v8::Isolate* isolate = v8context->_isolate;
+  v8::Isolate* isolate = executor->_isolate;
   Result rv;
 
   if (!allowTransactions(isolate)) {
@@ -87,7 +88,7 @@ Result executeTransaction(V8Context* v8context, basics::ReadWriteLock& lock,
   }
 
   v8::HandleScope scope(isolate);
-  auto localContext = v8::Local<v8::Context>::New(isolate, v8context->_context);
+  auto localContext = v8::Local<v8::Context>::New(isolate, executor->_context);
   v8::Context::Scope contextScope(localContext);
 
   auto context = TRI_IGETC;
@@ -150,8 +151,7 @@ Result executeTransaction(V8Context* v8context, basics::ReadWriteLock& lock,
   return rv;
 }
 
-Result executeTransactionJS(v8::Isolate* isolate,
-                            v8::Handle<v8::Value> const& arg,
+Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> arg,
                             v8::Handle<v8::Value>& result,
                             v8::TryCatch& tryCatch) {
   Result rv;
