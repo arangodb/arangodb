@@ -62,9 +62,9 @@ const createGraph = () => {
       colour: "green"
     });
   }
-  for (var i = 19; i < 20; i++) {
+  for (var j = 19; j < 20; j++) {
     vertices.push({
-      _key: i.toString(),
+      _key: j.toString(),
       colour: "red"
     });
   }
@@ -73,16 +73,16 @@ const createGraph = () => {
   edges.push({ _from: `${vName}/1`, _to: `${vName}/2`, weight: 1, colour: "green" });
   edges.push({ _from: `${vName}/2`, _to: `${vName}/3`, weight: 0, colour: "green" });
 
-  edges.push({ _from: `${vName}/4`, _to: `${vName}/5`, weight: 0.5});
-  edges.push({ _from: `${vName}/5`, _to: `${vName}/6`, weight: 0});
-  edges.push({ _from: `${vName}/6`, _to: `${vName}/7`, weight: 2.5});
+  edges.push({ _from: `${vName}/4`, _to: `${vName}/5`, weight: 0.5, colour: "red" });
+  edges.push({ _from: `${vName}/5`, _to: `${vName}/6`, weight: 0, colour: "red" });
+  edges.push({ _from: `${vName}/6`, _to: `${vName}/7`, weight: 2.5, colour: "red" });
 
-  edges.push({ _from: `${vName}/8`, _to: `${vName}/9`, weight: 0.5});
-  edges.push({ _from: `${vName}/9`, _to: `${vName}/10`, weight: 0});
-  edges.push({ _from: `${vName}/10`, _to: `${vName}/11`, weight: 2.5});
-  edges.push({ _from: `${vName}/11`, _to: `${vName}/12`, weight: 0});
-  edges.push({ _from: `${vName}/12`, _to: `${vName}/13`, weight: 1.0});
-  edges.push({ _from: `${vName}/13`, _to: `${vName}/14`, weight: 2});
+  edges.push({ _from: `${vName}/8`, _to: `${vName}/9`, weight: 0.5, colour: "red"});
+  edges.push({ _from: `${vName}/9`, _to: `${vName}/10`, weight: 0, colour: "green"});
+  edges.push({ _from: `${vName}/10`, _to: `${vName}/11`, weight: 2.5, colour: "red"});
+  edges.push({ _from: `${vName}/11`, _to: `${vName}/12`, weight: 0, colour: "green"});
+  edges.push({ _from: `${vName}/12`, _to: `${vName}/13`, weight: 1.0, colour: "purple"});
+  edges.push({ _from: `${vName}/13`, _to: `${vName}/14`, weight: 2, colour: "banana"});
 
   edges.push({ _from: `${vName}/9`, _to: `${vName}/15`, weight: 0});
   edges.push({ _from: `${vName}/15`, _to: `${vName}/16`, weight: 1});
@@ -145,13 +145,6 @@ function queryFilterVerticesEdgesByType(pathQueryType) {
           RETURN path`;
 }
 
-function generateAssertRuleFires(pathQueryType) {
-  return function() {
-    const query = queryByType(pathQueryType);
-    assertRuleFires(query);
-  }
-}
-
 function enumeratePathsFilter() {
   var testObj = {
     setUpAll: function () {
@@ -199,17 +192,14 @@ function enumeratePathsFilter() {
     },
   };
 
-  for(pathType of pathSearchTypes) {
+  for (const pathType of pathSearchTypes) {
     testObj[`testFiresVertices_${pathType}`] = () => assertRuleFires(queryFilterVerticesByType(pathType));
     testObj[`testFiresEdges_${pathType}`] = () => assertRuleFires(queryFilterEdgesByType(pathType));
     testObj[`testFiresVerticesEdges_${pathType}`] = () => assertRuleFires(queryFilterVerticesEdgesByType(pathType));
-  }
-
-  for(pathType of pathSearchTypes) {
-    testObj[`testSameResultVertices_${pathType}`] = () => assertSameResults(queryFilterVerticesByType(pathType));
-    testObj[`testSameResultEdges_${pathType}`] = () => assertSameResults(queryFilterEdgesByType(pathType));
+    testObj[`testSameResultVertices_${pathType}`] =  () => assertSameResults(queryFilterVerticesByType(pathType));
+    testObj[`testSameResultEdges_${pathType}`] =  () => assertSameResults(queryFilterEdgesByType(pathType));
     testObj[`testSameResultVerticesEdges_${pathType}`] = () => assertSameResults(queryFilterVerticesEdgesByType(pathType));
-  }
+   }
 
   return testObj;
 }
