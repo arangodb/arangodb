@@ -38,6 +38,7 @@
 #include "Containers/NodeHashMap.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallVector.h"
+#include "Containers/ImmutableMap.h"
 #include "Logger/LogMacros.h"
 #include "OptimizerRules.h"
 
@@ -193,40 +194,63 @@ auto findDominatingVariable(ExecutionPlan& plan, EqualCondition& eq) {
   }
 }
 
-struct EquivalenceClass {
+struct Replacement {
   Variable const* var;
 };
 
-}  // namespace
+struct EquivalenceSet {
+  containers::ImmutableMap<Replacement const*, Replacement const*> unionFind;
+  containers::ImmutableMap<VarAttribKey, std::shared_ptr<Replacement>,
+                           boost::hash<VarAttribKey>>
+      variableToClass;
+};
 
-void arangodb::aql::replaceEqualAttributeAccesses(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-    OptimizerRule const& rule) {
+bool processQuery(ExecutionPlan& plan, ExecutionNode* root,
+                  EquivalenceSet equivalences, std::size_t currentLimitCount) {
   bool modified = false;
 
-  containers::SmallVector<ExecutionNode*, 8> nodes;
-  containers::NodeHashMap<VarAttribKey, std::shared_ptr<EquivalenceClass>,
-                          boost::hash<VarAttribKey>>
-      equivalenceClasses;
+  auto const findRoot = [&](Replacement const* replacement) {
+    while (replacement != nullptr) {
+      auto other = equivalences.unionFind.find(replacement);
+      if (other == nullptr) {
+        break;
+      }
+      replacement = *other;
+    }
+    return replacement;
+  };
 
-  for (auto* node = plan->root()->getSingleton(); node != nullptr;
+  for (auto* node = root->getSingleton(); node != nullptr;
        node = node->getFirstParent()) {
     LOG_RULE << "[" << node->id() << "] " << node->getTypeString();
     // replace all known equivalence classes
-    for (auto& [var, cls] : equivalenceClasses) {
+    for (auto& [var, cls] : equivalences.variableToClass) {
+      auto* clsRoot = findRoot(cls.get());
+      TRI_ASSERT(clsRoot->var != nullptr);
+
       if (var.path.empty()) {
-        if (var.var->id == cls->var->id) {
+        if (var.var->id == clsRoot->var->id) {
           continue;
         }
-        LOG_RULE << "REPLACEING " << var.var->name << " -> " << cls->var->name;
-        node->replaceVariables({{var.var->id, cls->var}});
+        LOG_RULE << "REPLACEING " << var.var->name << " -> "
+                 << clsRoot->var->name;
+        node->replaceVariables({{var.var->id, clsRoot->var}});
       } else {
         node->replaceAttributeAccess(
             node, var.var,
             {const_cast<std::string_view*>(var.path.data()), var.path.size()},
-            cls->var, 0);
+            clsRoot->var, 0);
       }
       modified = true;
+    }
+
+    if (node->getType() == EN::SUBQUERY) {
+      auto* sn = ExecutionNode::castTo<SubqueryNode*>(node);
+      LOG_RULE << "ENTER SUBQUERY";
+      modified |= processQuery(plan, sn->getSubquery(), equivalences,
+                               currentLimitCount);
+      LOG_RULE << "LEAVE SUBQUERY";
+      continue;
     }
 
     // check if this is a filter node
@@ -235,7 +259,7 @@ void arangodb::aql::replaceEqualAttributeAccesses(
     }
 
     auto* fn = ExecutionNode::castTo<FilterNode*>(node);
-    auto* n = plan->getVarSetBy(fn->inVariable()->id);
+    auto* n = plan.getVarSetBy(fn->inVariable()->id);
     TRI_ASSERT(n->getType() == EN::CALCULATION);
     auto* cn = ExecutionNode::castTo<CalculationNode*>(n);
 
@@ -248,50 +272,76 @@ void arangodb::aql::replaceEqualAttributeAccesses(
       LOG_RULE << lhs.var->name << " is declared before " << rhs.var->name;
 
       // check if one of the two is already identified
-      auto lhsIter = equivalenceClasses.find(lhs);
-      auto rhsIter = equivalenceClasses.find(rhs);
+      auto lhsIter = equivalences.variableToClass.find(lhs);
+      auto rhsIter = equivalences.variableToClass.find(rhs);
 
-      bool const lhsKnown = lhsIter != equivalenceClasses.end();
-      bool const rhsKnown = rhsIter != equivalenceClasses.end();
+      bool const lhsKnown = lhsIter != nullptr;
+      bool const rhsKnown = rhsIter != nullptr;
 
       if (lhsKnown && !rhsKnown) {
         // simply identify rhs as well
         LOG_RULE << "IDENTIFY " << lhs << " == " << rhs;
-        equivalenceClasses.emplace(rhs, lhsIter->second);
+        equivalences.variableToClass =
+            std::move(equivalences.variableToClass).set(rhs, *lhsIter);
 
       } else if (!lhsKnown && rhsKnown) {
         // simply identify lhs as well
         LOG_RULE << "IDENTIFY " << lhs << " == " << rhs;
-        equivalenceClasses.emplace(lhs, rhsIter->second);
+        equivalences.variableToClass =
+            std::move(equivalences.variableToClass).set(lhs, *rhsIter);
       } else if (lhsKnown && rhsKnown) {
         // merge the two equivalence classes
         LOG_RULE << "MERGE " << lhs << " == " << rhs;
-        rhsIter->second->var = lhsIter->second->var;
+        auto lhsRoot = findRoot(lhsIter->get());
+        auto rhsRoot = findRoot(rhsIter->get());
+        equivalences.unionFind =
+            std::move(equivalences.unionFind).set(lhsRoot, rhsRoot);
       } else {
-        auto [lhs, rhs] = findDominatingVariable(*plan, pair);
+        auto [lhs, rhs] = findDominatingVariable(plan, pair);
 
         LOG_RULE << "CREATE " << lhs << " == " << rhs;
         // create a new equivalence class
-        // introduce a new variable
-        auto variable = plan->getAst()->variables()->createTemporaryVariable();
+        // introduce a new variable if necessary
+        auto variable = [&, &lhs = lhs]() -> Variable const* {
+          if (lhs.path.empty()) {
+            return lhs.var;
+          } else {
+            auto variable =
+                plan.getAst()->variables()->createTemporaryVariable();
+            // substitute
+            auto subst = plan.createNode<CalculationNode>(
+                &plan, plan.nextId(),
+                std::make_unique<Expression>(plan.getAst(),
+                                             lhs.expr->clone(plan.getAst())),
+                variable);
+            plan.insertAfter(cn, subst);
+            return variable;
+          }
+        }();
         LOG_RULE << "WITNESS VAR " << variable->name;
-        // substitute
-        auto subst = plan->createNode<CalculationNode>(
-            plan.get(), plan->nextId(),
-            std::make_unique<Expression>(plan->getAst(),
-                                         lhs.expr->clone(plan->getAst())),
-            variable);
-        plan->insertAfter(cn, subst);
+
         modified = true;
 
-        auto cls =
-            std::make_shared<EquivalenceClass>(EquivalenceClass{variable});
-        equivalenceClasses.emplace(lhs, cls);
-        equivalenceClasses.emplace(rhs, cls);
-        equivalenceClasses.emplace(VarAttribKey{variable, {}}, cls);
+        auto cls = std::make_shared<Replacement>(Replacement{variable});
+        equivalences.variableToClass =
+            std::move(equivalences.variableToClass).set(lhs, cls);
+        equivalences.variableToClass =
+            std::move(equivalences.variableToClass).set(rhs, cls);
+        equivalences.variableToClass =
+            std::move(equivalences.variableToClass)
+                .set(VarAttribKey{variable, {}}, cls);
       }
     }
   }
 
+  return modified;
+}
+
+}  // namespace
+
+void arangodb::aql::replaceEqualAttributeAccesses(
+    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+    OptimizerRule const& rule) {
+  bool modified = processQuery(*plan, plan->root(), {}, 0);
   opt->addPlan(std::move(plan), rule, modified);
 }

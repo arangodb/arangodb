@@ -213,6 +213,8 @@ class IndexNode : public ExecutionNode,
 
   bool isProduceResult() const override;
 
+  std::pair<Variable const*, IndexValuesVars> getLateMaterializedInfo() const;
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,

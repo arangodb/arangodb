@@ -46,8 +46,13 @@ using namespace arangodb::actor;
 using namespace arangodb::actor::test;
 
 namespace {
-void waitForAllMessagesToBeProcessed(auto& runtime) {
-  while (not runtime->areAllActorsIdle()) {
+void waitForAllMessagesToBeProcessed(auto& runtime, auto& scheduler) {
+  // the finish message is processed asynchronously, and the idle flag is set
+  // before the actor is removed and the down messages are dispatched.
+  // to ensure that all messages are fully processed, we not only have to check
+  // the actors, but also make sure that the schedule itself is idle. And we
+  // have to do this in an atomic way to avoid races.
+  while (not scheduler.isIdle([&]() { return runtime->areAllActorsIdle(); })) {
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 }
@@ -339,7 +344,7 @@ TYPED_TEST(RuntimeTest, finished_actor_automatically_removes_itself) {
 
   runtime->dispatch(finishing_actor, finishing_actor,
                     FinishingActor::Message{test::message::FinishingFinish{}});
-  waitForAllMessagesToBeProcessed(runtime);
+  waitForAllMessagesToBeProcessed(runtime, *this->scheduler);
 
   this->scheduler->stop();
   ASSERT_EQ(runtime->actors.size(), 0);
@@ -363,7 +368,7 @@ TYPED_TEST(RuntimeTest, finished_actors_automatically_remove_themselves) {
                     FinishingActor::Message{test::message::FinishingFinish{}});
   runtime->dispatch(another_actor_to_be_finished, another_actor_to_be_finished,
                     FinishingActor::Message{test::message::FinishingFinish{}});
-  waitForAllMessagesToBeProcessed(runtime);
+  waitForAllMessagesToBeProcessed(runtime, *this->scheduler);
 
   this->scheduler->stop();
   ASSERT_EQ(runtime->actors.size(), 3);
@@ -390,7 +395,7 @@ TYPED_TEST(RuntimeTest,
   runtime->template spawn<TrivialActor>(std::make_unique<TrivialState>(),
                                         test::message::TrivialStart{});
   ASSERT_EQ(runtime->actors.size(), 5);
-  waitForAllMessagesToBeProcessed(runtime);
+  waitForAllMessagesToBeProcessed(runtime, *this->scheduler);
   this->scheduler->stop();
   runtime->softShutdown();
   ASSERT_EQ(runtime->actors.size(), 0);
@@ -422,25 +427,8 @@ TYPED_TEST(RuntimeTest, sends_down_message_to_monitoring_actors) {
 
   runtime->dispatch(monitored2, monitored2,
                     FinishingActor::Message{test::message::FinishingFinish{}});
-  waitForAllMessagesToBeProcessed(runtime);
-  // the finish message is processed asynchronously, and the idle flag is set
-  // before the actor is removed and the down messages are dispatched.
-  // the waitForAllMessagesToBeProcessed only indicates that the message has
-  // been processed based on the idle state, but we don't know yet if the down
-  // messages have been dispatched. So we try to wait here until the system
-  // has converged to our expected state.
-  for (unsigned i = 0; i < 10; ++i) {
-    if (runtime->actors.size() == 5 &&
-        runtime->template getActorStateByID<MonitoringActor>(monitor1)
-                ->deadActors.size() == 1 &&
-        runtime->template getActorStateByID<MonitoringActor>(monitor2)
-                ->deadActors.size() == 1 &&
-        runtime->template getActorStateByID<MonitoringActor>(monitor3)
-                ->deadActors.size() == 1) {
-      break;
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  }
+  waitForAllMessagesToBeProcessed(runtime, *this->scheduler);
+
   EXPECT_EQ(runtime->actors.size(), 5);
   EXPECT_EQ(
       (MonitoringState{.deadActors = {{monitored2.id, ExitReason::kFinished}}}),
@@ -458,7 +446,8 @@ TYPED_TEST(RuntimeTest, sends_down_message_to_monitoring_actors) {
   runtime->dispatch(monitored3, monitored3,
                     FinishingActor::Message{
                         test::message::FinishingFinish{ExitReason::kShutdown}});
-  waitForAllMessagesToBeProcessed(runtime);
+  waitForAllMessagesToBeProcessed(runtime, *this->scheduler);
+
   EXPECT_EQ(
       (MonitoringState{.deadActors = {{monitored2.id, ExitReason::kFinished},
                                       {monitored1.id, ExitReason::kShutdown}}}),
@@ -485,7 +474,7 @@ TYPED_TEST(
 
   runtime->monitorActor(monitor, this->makePid(ActorID{999}));
 
-  waitForAllMessagesToBeProcessed(runtime);
+  waitForAllMessagesToBeProcessed(runtime, *this->scheduler);
   EXPECT_EQ(
       (MonitoringState{.deadActors = {{ActorID{999}, ExitReason::kUnknown}}}),
       *runtime->template getActorStateByID<MonitoringActor>(monitor));
@@ -542,7 +531,7 @@ TYPED_TEST(RuntimeStressTest, sends_messages_between_lots_of_actors) {
       TrivialActor::Message{
           test::message::TrivialMessage{std::to_string(actor_count)}});
 
-  waitForAllMessagesToBeProcessed(runtime);
+  waitForAllMessagesToBeProcessed(runtime, *scheduler);
 
   scheduler->stop();
   ASSERT_EQ(runtime->actors.size(), actor_count);
