@@ -396,8 +396,8 @@ void RestTransactionHandler::executeJSTransaction() {
 
   VPackBuilder result;
   try {
-    Result res = executeTransaction(v8Context->_isolate, _lock, _canceled,
-                                    slice, portType, result);
+    Result res = executeTransaction(v8Context, _lock, _canceled, slice,
+                                    portType, result);
     if (res.ok()) {
       VPackSlice slice = result.slice();
       if (slice.isNone()) {

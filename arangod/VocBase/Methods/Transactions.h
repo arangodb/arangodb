@@ -31,11 +31,12 @@
 #include <velocypack/Builder.h>
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
+#include "V8Server/V8Context.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
 
-Result executeTransaction(v8::Isolate*, basics::ReadWriteLock& cancelLock,
+Result executeTransaction(V8Context*, basics::ReadWriteLock& cancelLock,
                           std::atomic<bool>& canceled, VPackSlice transaction,
                           std::string const& requestPortType,
                           VPackBuilder& result);

@@ -65,7 +65,7 @@ bool allowTransactions(v8::Isolate* isolate) {
           v8security.isAdminScriptContext(isolate));
 }
 
-Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
+Result executeTransaction(V8Context* v8context, basics::ReadWriteLock& lock,
                           std::atomic<bool>& canceled, VPackSlice slice,
                           std::string const& portType, VPackBuilder& builder) {
   // YOU NEED A TRY CATCH BLOCK like:
@@ -73,6 +73,7 @@ Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
   //    TRI_V8_TRY_CATCH_END
   // outside of this function!
 
+  v8::Isolate* isolate = v8context->_isolate;
   Result rv;
 
   if (!allowTransactions(isolate)) {
@@ -86,6 +87,9 @@ Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
   }
 
   v8::HandleScope scope(isolate);
+  auto localContext = v8::Local<v8::Context>::New(isolate, v8context->_context);
+  v8::Context::Scope contextScope(localContext);
+
   auto context = TRI_IGETC;
   v8::Handle<v8::Value> in = TRI_VPackToV8(isolate, slice);
 
