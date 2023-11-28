@@ -997,11 +997,12 @@ void ClusterInfo::loadPlan() {
             if (col.value.hasKey("shards")) {
               for (auto shard : VPackObjectIterator(col.value.get("shards"))) {
                 auto const& shardName = shard.key.copyString();
+                ShardID shardID{shardName};
                 newShards.erase(shardName);
-                newShardsToPlanServers.erase(shardName);
-                newShardToName.erase(shardName);
-                newShardToShardGroupLeader.erase(shardName);
-                newShardGroups.erase(shardName);
+                newShardsToPlanServers.erase(shardID);
+                newShardToName.erase(shardID);
+                newShardToShardGroupLeader.erase(shardID);
+                newShardGroups.erase(shardID);
               }
             }
           }
@@ -1390,7 +1391,8 @@ void ClusterInfo::loadPlan() {
           auto& collectionId = collection.first;
           // delete from maps with shardID as key
           newShards.erase(collectionId);
-          newShardToName.erase(collectionId);
+          ShardID shardID{collectionId};
+          newShardToName.erase(shardID);
         }
         _newPlannedCollections.erase(it);
       }
@@ -1452,13 +1454,14 @@ void ClusterInfo::loadPlan() {
                                                    ->second->slice()[0]
                                                    .get(collectionsPath))) {
               auto const& shardId = sh.key.copyString();
+              ShardID sId{shardId};
               newShards.erase(shardId);
-              newShardsToPlanServers.erase(shardId);
-              newShardToName.erase(shardId);
+              newShardsToPlanServers.erase(sId);
+              newShardToName.erase(sId);
               // We try to erase the shard ID anyway, no problem if it is
               // not in there, should it be a shard group leader!
-              newShardToShardGroupLeader.erase(shardId);
-              newShardGroups.erase(shardId);
+              newShardToShardGroupLeader.erase(sId);
+              newShardGroups.erase(sId);
             }
             collectionsPath.pop_back();
           }
@@ -1885,7 +1888,7 @@ void ClusterInfo::loadCurrent() {
             for (auto cc : VPackObjectIterator(colsSlice)) {
               if (cc.value.isObject()) {
                 for (auto cs : VPackObjectIterator(cc.value)) {
-                  newShardsToCurrentServers.erase(cs.key.stringView());
+                  newShardsToCurrentServers.erase(ShardID{cs.key.stringView()});
                 }
               }
             }
@@ -1950,7 +1953,8 @@ void ClusterInfo::loadCurrent() {
             for (auto const& sh : VPackObjectIterator(cc)) {
               path.push_back(sh.key.copyString());
               if (!ncs.hasKey(path)) {
-                newShardsToCurrentServers.erase(path.back());
+                ShardID shardID{path.back()};
+                newShardsToCurrentServers.erase(shardID);
               }
               path.pop_back();
             }

@@ -154,6 +154,13 @@ class ClusterInfo final {
     std::shared_ptr<LogicalCollection> collection;
   };
 
+  // IMPORTANT NOTE: This Hasher method does break ShardID.
+  // If you create a Map based on ShardID, and using this Hasher
+  // and then ask it for a string or string_view. This hasher will
+  // use the string_view hash method for the search term, but used
+  // the ShardID hash method for the inserted data, which are DIFFERENT.
+  // The compiler and sanitizers are absolutely happy with this.
+  // So it is on the developers duty to not make this mistake.
   struct Hasher {
     using is_transparent = void;
     template<typename T>
@@ -199,12 +206,16 @@ class ClusterInfo final {
 
   template<typename K, typename V>
   using FlatMap = containers::FlatHashMap<
-      K, V, Hasher, KeyEqual,
-      ClusterInfoResourceAllocator<std::pair<K const, V>>>;
-  template<typename K, typename V>
-  using FlatMapShared = containers::FlatHashMap<
-      K, std::shared_ptr<V>, Hasher, KeyEqual,
-      ClusterInfoResourceAllocator<std::pair<K const, std::shared_ptr<V>>>>;
+      K, V,
+      std::conditional_t<std::is_same_v<K, ShardID>, absl::Hash<K>, Hasher>,
+      KeyEqual, ClusterInfoResourceAllocator<std::pair<K const, V>>>;
+   template<typename K, typename V>
+   using FlatMapShared = containers::FlatHashMap<
+       K, std::shared_ptr<V>,
+       std::conditional_t<std::is_same_v<K, ShardID>, absl::Hash<K>, Hasher>,
+       KeyEqual,
+       ClusterInfoResourceAllocator<std::pair<K const, std::shared_ptr<V>>>>;
+
   template<typename K, typename V>
   using AssocMultiMap =
       std::multimap<K, V, KeyEqual,
