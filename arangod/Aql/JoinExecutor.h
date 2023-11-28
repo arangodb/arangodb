@@ -96,13 +96,14 @@ struct JoinExecutorInfos {
       // projections used for filtering
       Projections projections;
       std::vector<Variable const*> filterProjectionVars;
-
-      // expression used for resetting to the correct index position
-      // std::vector<std::unique_ptr<Expression>> resetExpressions;
     };
 
     std::optional<FilterInformation> filter;
-    std::optional<size_t> tmpConstantExpression;
+
+    // used for jumping to the correct location during reset calls
+    std::vector<std::unique_ptr<Expression>> constantExpressions;
+    std::vector<size_t> usedKeyFields;
+    std::vector<size_t> constantFields;
   };
 
   RegisterId registerForVariable(VariableId id) const noexcept;
@@ -160,6 +161,10 @@ class JoinExecutor {
   // first value holds the unique ptr to a string (obvious), second value holds
   // the amount of bytes used by that string
   std::vector<std::pair<std::unique_ptr<std::string>, size_t>> _documents;
+
+  // used for constant expressions, will stay a
+  VPackBuilder _constantBuilder;
+  std::vector<VPackSlice> _constantSlices;
 };
 
 }  // namespace aql

@@ -47,25 +47,24 @@ struct GenericMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
       std::function<bool(std::span<DocIdType>, std::span<SliceType>)> const& cb)
       override;
 
-  void reset() override;
+  void reset(std::span<SliceType> constants) override;
 
  private:
   struct IndexStreamData {
     std::unique_ptr<StreamIteratorType> _iter;
-    std::span<SliceType>
-        _constants;  // <-- Do not store, will only be used whenever we call
-                     // reset (start from the input row)
     std::span<SliceType> _position;
     std::span<SliceType> _projections;
     DocIdType& _docId;
+    // size_t _constantSize{0};
     bool exhausted{false};
 
     IndexStreamData(std::unique_ptr<StreamIteratorType> iter,
                     std::span<SliceType> position,
-                    std::span<SliceType> projections, DocIdType& docId);
+                    std::span<SliceType> projections, DocIdType& docId
+                    /*, size_t constantSize*/);
     void seekTo(std::span<SliceType> target);
     bool next();
-    void reset();
+    void reset(std::span<SliceType> constants);
   };
 
   struct IndexStreamCompare {
@@ -112,12 +111,34 @@ struct GenericMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
   std::pair<bool, size_t> findCommonPosition();
 };
 
-#define LOG_INDEX_MERGER LOG_DEVEL_IF(false)
+#define LOG_INDEX_MERGER LOG_DEVEL_IF(true)
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-void GenericMergeJoin<SliceType, DocIdType, KeyCompare>::reset() {
+void GenericMergeJoin<SliceType, DocIdType, KeyCompare>::reset(
+    std::span<SliceType> constants) {
+  LOG_DEVEL << "Calling reset in GenericMergeJoin:";
+
+  size_t constOffset = 0;
   for (auto& idx : indexes) {
-    idx.reset();
+    idx.reset(constants.subspan(constOffset, idx._constantSize));
+    constOffset += idx._constantSize;
+  }
+
+  maxIter = nullptr;
+  minHeap.clear();
+  for (auto& idx : indexes) {
+    if (maxIter == nullptr ||
+        IndexStreamCompare{}.cmp(*maxIter, idx) == std::weak_ordering::less) {
+      maxIter = &idx;
+    }
+    minHeap.push(&idx);
+  }
+
+  auto isAligned = IndexStreamCompare{}.cmp(*maxIter, *minHeap.top()) ==
+                   std::weak_ordering::equivalent;
+  if (!maxIter->exhausted && isAligned) {
+    fillInitialMatch();
+    positionAligned = true;
   }
 }
 
@@ -158,11 +179,13 @@ template<typename SliceType, typename DocIdType, typename KeyCompare>
 GenericMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamData::
     IndexStreamData(std::unique_ptr<StreamIteratorType> iter,
                     std::span<SliceType> position,
-                    std::span<SliceType> projections, DocIdType& docId)
+                    std::span<SliceType> projections, DocIdType& docId
+                    /*, std::size_t constantSize*/)
     : _iter(std::move(iter)),
       _position(position),
       _projections(projections),
-      _docId(docId) {
+      _docId(docId)
+/*, _constantSize(constantSize)*/ {
   exhausted = !_iter->position(_position);
   LOG_INDEX_MERGER << "iter at " << _position[0];
 }
@@ -170,18 +193,18 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamData::
 template<typename SliceType, typename DocIdType, typename KeyCompare>
 void GenericMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamData::
     seekTo(std::span<SliceType> target) {
-  LOG_INDEX_MERGER << "iterator seeking to " << target[0];
+  LOG_INDEX_MERGER << "iterator seeking to " << target[0].toJson();
   std::copy(target.begin(), target.end(), _position.begin());
   exhausted = !_iter->seek(_position);
 
-  LOG_INDEX_MERGER << "iterator seeked to " << _position[0]
-                   << " exhausted = " << exhausted;
+  LOG_INDEX_MERGER << "iterator seeked to " << _position[0].toJson()
+                   << " exhausted = " << std::boolalpha << exhausted;
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-void GenericMergeJoin<SliceType, DocIdType,
-                      KeyCompare>::IndexStreamData::reset() {
-  exhausted = !_iter->reset(_position, _constants);
+void GenericMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamData::reset(
+    std::span<SliceType> constants) {
+  exhausted = !_iter->reset(_position, constants);
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
@@ -203,7 +226,6 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::GenericMergeJoin(
   }
 
   sliceBuffer.resize(bufferSize);
-
   auto keySliceIter = sliceBuffer.begin();
   auto projectionsIter = sliceBuffer.begin() + numKeyComponents * descs.size();
   projectionsSpan = {projectionsIter, sliceBuffer.end()};
@@ -213,22 +235,10 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::GenericMergeJoin(
     projectionsIter += desc.numProjections;
     auto keyBuffer = keySliceIter;
     keySliceIter += numKeyComponents;
-    auto& idx = indexes.emplace_back(
-        std::move(desc.iter), std::span<SliceType>{keyBuffer, keySliceIter},
-        std::span<SliceType>{projections, projectionsIter}, *(docIdIter++));
-
-    if (maxIter == nullptr ||
-        IndexStreamCompare{}.cmp(*maxIter, idx) == std::weak_ordering::less) {
-      maxIter = &idx;
-    }
-    minHeap.push(&idx);
-  }
-
-  auto isAligned = IndexStreamCompare{}.cmp(*maxIter, *minHeap.top()) ==
-                   std::weak_ordering::equivalent;
-  if (!maxIter->exhausted && isAligned) {
-    fillInitialMatch();
-    positionAligned = true;
+    indexes.emplace_back(std::move(desc.iter),
+                         std::span<SliceType>{keyBuffer, keySliceIter},
+                         std::span<SliceType>{projections, projectionsIter},
+                         *(docIdIter++) /*, desc.numConstants*/);
   }
 }
 
@@ -366,26 +376,30 @@ void GenericMergeJoin<SliceType, DocIdType, KeyCompare>::fillInitialMatch() {
 template<typename SliceType, typename DocIdType, typename KeyCompare>
 std::pair<bool, size_t>
 GenericMergeJoin<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
+  LOG_INDEX_MERGER << "======= ALGO START =======";
   LOG_INDEX_MERGER << "find common position";
   size_t amountOfSeeks = 0;
 
   while (true) {
     // get the minimum
     auto minIndex = minHeap.top();
-    LOG_INDEX_MERGER << "min is " << minIndex->_position[0]
-                     << " exhausted = " << std::boolalpha
-                     << minIndex->exhausted;
-    LOG_INDEX_MERGER << "max is " << maxIter->_position[0]
-                     << " exhausted = " << std::boolalpha
-                     << minIndex->exhausted;
+    LOG_DEVEL << "Min Heap Size is: " << minHeap.size();
+    LOG_INDEX_MERGER << "min is " << minIndex->_position[0].toJson()
+                     << " exhausted = " << std::boolalpha << minIndex->exhausted
+                     << ", address: " << minIndex;
+    LOG_INDEX_MERGER << "max is " << maxIter->_position[0].toJson()
+                     << " exhausted = " << std::boolalpha << maxIter->exhausted
+                     << ", address: " << maxIter;
 
     if (maxIter->exhausted) {
+      LOG_DEVEL << "Max iter is exhausted";
       return {false, amountOfSeeks};
     }
 
     // check if min == max
     if (IndexStreamCompare::cmp(*minIndex, *maxIter) ==
         std::weak_ordering::equivalent) {
+      LOG_DEVEL << "min and max are equivalent";
       // all iterators are at the same position
       break;
     }
@@ -404,7 +418,8 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
       return {false, amountOfSeeks};  // we are done
     }
 
-    LOG_INDEX_MERGER << "seeked to position " << minIndex->_position[0];
+    LOG_INDEX_MERGER << "seeked to position "
+                     << minIndex->_position[0].toJson();
     // check if we have a new maximum
     if (IndexStreamCompare{}.cmp(*maxIter, *minIndex) ==
         std::weak_ordering::less) {
@@ -418,7 +433,8 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
 
   LOG_INDEX_MERGER << "common position found: ";
   for (auto const& idx : indexes) {
-    LOG_INDEX_MERGER << idx._position[0];
+    LOG_INDEX_MERGER << idx._position[0]
+                     << " -> Position: " << idx._position[0].toJson();
   }
 
   return {true, amountOfSeeks};

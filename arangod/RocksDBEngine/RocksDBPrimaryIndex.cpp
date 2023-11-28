@@ -1337,7 +1337,7 @@ struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
       TRI_ASSERT(opts.prefix_same_as_start);
       opts.iterate_upper_bound = &_end;
     });
-    seekInternal({}, {});
+    seekInternal({});
   }
 
   bool position(std::span<VPackSlice> span) const override {
@@ -1351,7 +1351,7 @@ struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
     return true;
   }
 
-  void seekInternal(std::string_view key, std::span<VPackSlice> constants) {
+  void seekInternal(std::string_view key) {
     if (key.empty()) {
       _iterator->Seek(_bounds.start());
     } else {
@@ -1368,7 +1368,7 @@ struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
 
   bool seek(std::span<VPackSlice> span) override {
     TRI_ASSERT(span.size() == 1 && span[0].isString());
-    seekInternal(span[0].stringView(), {});
+    seekInternal(span[0].stringView());
 
     return position(span);
   }
@@ -1406,7 +1406,9 @@ struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
 
   bool reset(std::span<VPackSlice> span,
              std::span<VPackSlice> constants) override {
-    seekInternal({}, {});
+    TRI_ASSERT(constants.empty());
+    LOG_DEVEL << "CALLING RANDOM RESET";
+    seekInternal({});
     return position(span);
   }
 };
@@ -1436,6 +1438,10 @@ bool RocksDBPrimaryIndex::checkSupportsStreamInterface(
   TRI_ASSERT(coveredFields.size() == 2);
   TRI_ASSERT(coveredFields[0][0].name == StaticStrings::KeyString &&
              coveredFields[1][0].name == StaticStrings::IdString);
+
+  if (!streamOpts.constantFields.empty()) {
+    return false;
+  }
 
   for (auto idx : streamOpts.projectedFields) {
     if (idx != 0) {

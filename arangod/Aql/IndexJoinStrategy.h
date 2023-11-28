@@ -42,7 +42,7 @@ struct IndexJoinStrategy {
       std::function<bool(std::span<DocIdType>, std::span<SliceType>)> const&
           cb) = 0;
 
-  virtual void reset() = 0;
+  virtual void reset(std::span<SliceType> constants) = 0;
 };
 
 template<typename SliceType, typename DocIdType>

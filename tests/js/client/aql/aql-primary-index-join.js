@@ -108,7 +108,7 @@ const IndexPrimaryJoinTestSuite = function () {
     let genericResult = runAndCheckQuery(query, "generic");
 
     assertEqual(defaultResult, genericResult, "Results do not match, but they should! Result of default execution: " +
-    JSON.stringify(defaultResult) + ", generic execution: " + JSON.stringify(genericResult));
+      JSON.stringify(defaultResult) + ", generic execution: " + JSON.stringify(genericResult));
 
     return defaultResult;
   };
@@ -277,16 +277,24 @@ const IndexPrimaryJoinTestSuite = function () {
       collectionB.ensureIndex({type: "persistent", fields: ["y"], unique: true});
 
       // insert some data. Every second document in A has x = 5.
+      // Means, we do have five documents with x = 5 in this example.
       // Apart from that, just incrementing y from 0 to 10.
       for (let i = 0; i < 10; i++) {
         collectionA.insert({
+          _key: JSON.stringify(i),
           x: (i % 2 === 0) ? i : 5,
           y: i,
         });
         collectionB.insert({
+          _key: JSON.stringify(i),
           y: i,
         });
       }
+
+      //print("Collection A Documents: ");
+      //print(collectionA.all().toArray());
+      //print("Collection B Documents: ");
+      //print(collectionB.all().toArray());
 
       const queryOptions = {
         optimizer: {
@@ -302,12 +310,20 @@ const IndexPrimaryJoinTestSuite = function () {
             FILTER doc1.y == doc2.y
             RETURN [doc1, doc2]`;
 
-      db._profileQuery(queryStringEasy, null, queryOptions);
-      /*const q = db._query(queryStringEasy, null, queryOptions);
+      db._explain(queryStringEasy, null, queryOptions);
+
+      const q = db._query(queryStringEasy, null, queryOptions);
       const qResult = q.toArray();
       console.warn("Length is: " + qResult.length);
       console.warn("Content is:");
-      console.warn(qResult);*/
+      console.warn(qResult);
+      qResult.forEach((docs) => {
+        let first = docs[0];
+        let second = docs[1];
+        assertEqual(first.x, 5, "Wrong value for 'x' in first document found");
+        assertEqual(second.y, 5);
+      });
+      assertEqual(qResult.length, 5);
     },
 
     testJoinFixedValuesComplex: function () {

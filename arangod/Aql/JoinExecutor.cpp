@@ -30,11 +30,12 @@
 #include "Basics/system-compiler.h"
 #include "Logger/LogMacros.h"
 #include "VocBase/LogicalCollection.h"
+#include "FixedVarExpressionContext.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-#define LOG_JOIN LOG_DEVEL_IF(false)
+#define LOG_JOIN LOG_DEVEL_IF(true)
 #define LOG_JOIN_MEMORY LOG_DEVEL_IF(false)
 
 RegisterId JoinExecutorInfos::registerForVariable(
@@ -153,9 +154,44 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   while (inputRange.hasDataRow() && !output.isFull()) {
     if (!_currentRow) {
       std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
-      LOG_JOIN << "Resetting strategy";
-      /*evaluate ast expressions*/
-      _strategy->reset(/*SLICE*/);
+      _constantBuilder.clear();
+      _constantSlices.clear();
+
+      LOG_JOIN << "Resetting strategy for new input row";
+
+      _constantBuilder.openArray();
+
+      for (auto const& idx : _infos.indexes) {
+        if (!idx.constantExpressions.empty()) {
+          for (auto& expr : idx.constantExpressions) {
+            // 1.) Falls register erforderlich
+            aql::AqlFunctionsInternalCache functionsCache;
+            aql::FixedVarExpressionContext expressionContext{
+                _trx, *_infos.query, functionsCache};
+            bool mustDestroy = false;
+            aql::AqlValue res = expr->execute(&expressionContext, mustDestroy);
+            aql::AqlValueGuard guard{res, mustDestroy};
+            LOG_DEVEL << "Expression result: ";
+            LOG_DEVEL << res.slice().toJson();
+            // constantSlices.push_back(res.slice());
+            _constantBuilder.add(res.slice());
+            /*GenericDocumentExpressionContext ctx{
+                _trx,
+                *_infos.query,
+                _functionsCache,
+                idx.filter->filterVarsToRegs,
+                _currentRow,
+                idx.filter->documentVariable};*/
+          }
+        }
+      }
+      _constantBuilder.close();  // array
+      _constantSlices.push_back(
+          _constantBuilder.slice().at(0));  // Fix this for multiple constants
+
+      LOG_DEVEL << "Resetting strategy with constant slice: "
+                << _constantBuilder.toJson();
+      _strategy->reset(_constantSlices);
     }
 
     [[maybe_unused]] std::size_t rowCount = 0;
@@ -497,7 +533,7 @@ auto JoinExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
   while (inputRange.hasDataRow() && clientCall.needSkipMore()) {
     if (!_currentRow) {
       std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
-      _strategy->reset();
+      _strategy->reset({});
     }
 
     auto [hasMore, amountOfSeeks] =
@@ -643,9 +679,12 @@ ResourceMonitor& JoinExecutor::resourceMonitor() { return _resourceMonitor; }
 void JoinExecutor::constructStrategy() {
   std::vector<IndexJoinStrategyFactory::Descriptor> indexDescription;
   for (auto const& idx : _infos.indexes) {
+    LOG_DEVEL << "--> Calculating index information";
     IndexStreamOptions options;
     // TODO right now we only support the first indexed field
-    options.usedKeyFields = {0};
+    // TODO join key write the correct one into this statement here
+    options.usedKeyFields = idx.usedKeyFields;  // previously {0};
+    options.constantFields = idx.constantFields;
 
     auto& desc = indexDescription.emplace_back();
     desc.isUnique = idx.index->unique();
@@ -676,6 +715,7 @@ void JoinExecutor::constructStrategy() {
       desc.numProjections += idx.filter->projections.size();
     }
     LOG_JOIN << "PROJECTIONS FOR INDEX " << options.projectedFields;
+
     auto stream = idx.index->streamForCondition(&_trx, options);
     TRI_ASSERT(stream != nullptr);
     desc.iter = std::move(stream);

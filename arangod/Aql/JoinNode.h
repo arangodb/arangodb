@@ -60,6 +60,8 @@ class JoinNode : public ExecutionNode {
     Projections projections;
     Projections filterProjections;
     std::vector<std::unique_ptr<Expression>> expressions;
+    std::vector<size_t> usedKeyFields;
+    std::vector<size_t> constantFields;
     bool usedAsSatellite;  // TODO maybe use CollectionAccess class
     bool producesOutput;
   };

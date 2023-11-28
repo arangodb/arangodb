@@ -290,22 +290,6 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
       }
     }
 
-    if (!idx.expressions.empty()) {
-      // TODO: currently only one expression will be interpreted as one const
-      // value in the future we should support multiple expressions
-      TRI_ASSERT(idx.expressions.size() == 1);
-      auto const& expr = idx.expressions[0];
-      TRI_ASSERT(expr != nullptr);
-      TRI_ASSERT(expr->isConstant());
-      // TRI_ASSERT(expr->isDeterministic()); <-- Later
-      VPackBuilder removeMe;
-      expr->toVelocyPack(removeMe, true);
-      LOG_DEVEL << "JoinNode";
-      LOG_DEVEL << removeMe.slice().toJson();
-    } else {
-      LOG_DEVEL << "JoinNode is Empty o0o0o0o00";  // TODO REMOVE
-    }
-
     // TODO probably those data structures can become one
     auto& data = infos.indexes.emplace_back();
     data.documentOutputRegister = documentOutputRegister;
@@ -313,7 +297,25 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
     data.collection = idx.collection;
     data.projections = idx.projections;
     data.producesOutput = idx.producesOutput;
-    data.tmpConstantExpression = std::nullopt;
+
+    if (!idx.expressions.empty()) {
+      // TODO: currently only one expression will be interpreted as one const
+      // value in the future we should support multiple expressions
+      TRI_ASSERT(idx.expressions.size() == 1);
+
+      for (auto& expr : idx.expressions) {
+        TRI_ASSERT(expr != nullptr);
+        TRI_ASSERT(expr->isConstant());
+        // TRI_ASSERT(expr->isDeterministic()); <-- Later
+        data.constantExpressions.push_back(
+            expr->clone(engine.getQuery().ast(), true));
+        data.usedKeyFields = idx.usedKeyFields;
+        data.constantFields = idx.constantFields;
+      }
+    } else {
+      data.usedKeyFields = {0};
+      data.constantFields = {};
+    }
 
     if (idx.filter) {
       auto& filter = data.filter.emplace();

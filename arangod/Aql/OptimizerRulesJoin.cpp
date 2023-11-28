@@ -456,12 +456,12 @@ bool constIndexConditionsMatches(
   return eligible;
 }
 
-bool checkCandidatesEligible(
+std::pair<bool, std::vector<AstNode*>> checkCandidatesEligible(
     ExecutionPlan& plan,
-    containers::SmallVector<IndexNode*, 8> const& candidates,
-    AstNode* constantValue) {
+    containers::SmallVector<IndexNode*, 8> const& candidates) {
   // This flag is set to true if the first index node has a lookup condition
   // and all other indexes do match the order of conditions and the variables
+  std::vector<AstNode*> constantValues;
   std::map<Variable const*,
            std::vector<std::vector<arangodb::basics::AttributeName>>>
       outerCandidateConstantVariables = {};
@@ -495,28 +495,25 @@ bool checkCandidatesEligible(
                 // allowed here then
                 if (lhsi->type == NODE_TYPE_VALUE) {
                   LOG_DEVEL << "Setting constant value to lhsi";
-                  constantValue = lhsi;
+                  constantValues.push_back(lhsi);
                 } else if (rhsi->type == NODE_TYPE_VALUE) {
                   LOG_DEVEL << "Setting constant value to rhsi";
-                  constantValue = rhsi;
+                  constantValues.push_back(rhsi);
                 }
               }
             }
           }
-          if (constantValue != nullptr) {
-            LOG_DEVEL << "NOT A NULLPETER";
+          if (!constantValues.empty()) {
             for (auto const* var : candidate->getVariablesSetHere()) {
               outerCandidateConstantVariables.try_emplace(
                   var, candidate->condition()->getConstAttributes(var, false));
             }
-          } else {
-            LOG_DEVEL << "IT IS A NULLPETER";
           }
         } else {
           LOG_JOIN_OPTIMIZER_RULE << "Not eligible for index join: "
                                      "first index node has a lookup "
                                      "condition";
-          return false;
+          return {false, {}};
         }
       }
     } else {
@@ -525,7 +522,7 @@ bool checkCandidatesEligible(
         LOG_JOIN_OPTIMIZER_RULE << "Not eligible for index join: "
                                    "index node does not have a "
                                    "lookup condition";
-        return false;
+        return {false, {}};
       }
       auto const* root = candidate->condition()->root();
       if (root == nullptr || root->type != NODE_TYPE_OPERATOR_NARY_OR ||
@@ -533,7 +530,7 @@ bool checkCandidatesEligible(
         LOG_JOIN_OPTIMIZER_RULE << "I. (NARY_OR) Not eligible for index join: "
                                    "index node's lookup condition "
                                    "does not match";
-        return false;
+        return {false, {}};
       }
       root = root->getMember(0);
       if (root == nullptr || root->type != NODE_TYPE_OPERATOR_NARY_AND ||
@@ -542,7 +539,7 @@ bool checkCandidatesEligible(
             << "II. (NARY_AND) Not eligible for index join: "
                "index node's lookup condition "
                "does not match";
-        return false;
+        return {false, {}};
       }
       root = root->getMember(0);
       if (root == nullptr || root->type != NODE_TYPE_OPERATOR_BINARY_EQ ||
@@ -550,7 +547,7 @@ bool checkCandidatesEligible(
         LOG_JOIN_OPTIMIZER_RULE << "III. (BINARY_EQ) Not eligible for index "
                                    "join: index node's lookup "
                                    "condition does not match";
-        return false;
+        return {false, {}};
       }
 
       if (!outerCandidateConstantVariables.empty()) {
@@ -560,7 +557,7 @@ bool checkCandidatesEligible(
           LOG_JOIN_OPTIMIZER_RULE
               << "IndexNode's outer loop has a condition, but inner loop "
                  "does not match";
-          return false;
+          return {false, {}};
         }
       } else {
         auto* lhs = root->getMember(0);
@@ -569,7 +566,7 @@ bool checkCandidatesEligible(
             !joinConditionMatches(plan, lhs, rhs, candidates[0], candidate)) {
           LOG_JOIN_OPTIMIZER_RULE
               << "IndexNode's lookup condition does not match";
-          return false;
+          return {false, {}};
         }
       }
     }
@@ -586,7 +583,7 @@ bool checkCandidatesEligible(
                                      "accesses variables that are "
                                      "not available before all "
                                      "index nodes";
-          return false;
+          return {false, {}};
         }
       }
     }
@@ -608,12 +605,13 @@ bool checkCandidatesEligible(
         LOG_JOIN_OPTIMIZER_RULE
             << "-> Index name: " << candidate->getIndexes()[0]->name()
             << ", id: " << candidate->getIndexes()[0]->id();
-        return false;
+        return {false, {}};
       }
     }
     ++candidatePosition;
   }
-  return true;
+
+  return {true, constantValues};
 }
 
 void findCandidates(IndexNode* indexNode,
@@ -690,40 +688,48 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
       while (true) {
         containers::SmallVector<IndexNode*, 8> candidates;
         findCandidates(startNode, candidates, handled);
-        // this needs to be passed through up to the executor
-        AstNode* constantValue = nullptr;
 
         if (candidates.size() >= 2) {
           LOG_JOIN_OPTIMIZER_RULE << "Found " << candidates.size()
                                   << " index nodes that qualify for joining";
-          bool const eligible =
-              checkCandidatesEligible(*plan, candidates, constantValue);
-          if (constantValue == nullptr) {
-            LOG_DEVEL << "Why null?";
-          } else {
-            LOG_DEVEL << "Why not null?";
-          }
+
+          // First: Eligible bool, Second: Vector of constant expressions
+          std::pair<bool, std::vector<AstNode*>> candidatesResult =
+              checkCandidatesEligible(*plan, candidates);
+          bool eligible = candidatesResult.first;
+          std::vector<AstNode*> constExpressionNodes =
+              std::move(candidatesResult.second);
+
           if (eligible) {
             // we will now replace all candidate IndexNodes with a JoinNode,
             // and remove the previous IndexNodes from the plan
             LOG_JOIN_OPTIMIZER_RULE << "Should be eligible for index join";
             std::vector<JoinNode::IndexInfo> indexInfos;
             indexInfos.reserve(candidates.size());
-            size_t candidateCounter = 0;
+
             for (auto* c : candidates) {
               std::vector<std::unique_ptr<Expression>> constExpressions{};
-              if (candidateCounter == 0) {
-                // TODO: Currently only first outer loop supported / implemented
-                // TODO: Currently constantValue is only a "constant value" but
-                // it can be any eligible expression
-                if (constantValue != nullptr) {
-                  auto e = std::make_unique<Expression>(plan->getAst(),
-                                                        constantValue);
-                  constExpressions.push_back(std::move(e));
+              std::vector<size_t> computedUseKeyFields{};
+              std::vector<size_t> computedConstantFields{};
+
+              if (candidates.front() == c) {
+                // TODO: Implement this for n-candidates
+                if (!constExpressionNodes.empty()) {
+                  // TODO: Only one expression is supported
+                  TRI_ASSERT(constExpressions.size() == 1);
+                  for (auto const& constExprNode : constExpressionNodes) {
+                    auto* constExpr = constExprNode->clone(plan->getAst());
+                    auto e =
+                        std::make_unique<Expression>(plan->getAst(), constExpr);
+                    constExpressions.push_back(std::move(e));
+                  }
+                  computedConstantFields = {0};
+                  computedUseKeyFields = {1};
                 } else {
-                  LOG_DEVEL << "NO EXPRESSION FOUND OR SET";
+                  computedUseKeyFields = {0};
                 }
               }
+
               indexInfos.emplace_back(JoinNode::IndexInfo{
                   .collection = c->collection(),
                   .outVariable = c->outVariable(),
@@ -734,10 +740,11 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                   .projections = c->projections(),
                   .filterProjections = c->filterProjections(),
                   .expressions = std::move(constExpressions),
+                  .usedKeyFields = computedUseKeyFields,
+                  .constantFields = computedConstantFields,
                   .usedAsSatellite = c->isUsedAsSatellite(),
                   .producesOutput = c->isProduceResult()});
               handled.emplace(c);
-              candidateCounter++;
             }
             JoinNode* jn = plan->createNode<JoinNode>(
                 plan.get(), plan->nextId(), std::move(indexInfos),

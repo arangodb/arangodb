@@ -50,7 +50,7 @@ struct TwoIndicesUniqueMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
       std::function<bool(std::span<DocIdType>, std::span<SliceType>)> const& cb)
       override;
 
-  void reset() override;
+  void reset(std::span<SliceType> constants) override;
 
  private:
   struct IndexStreamData {
@@ -58,7 +58,6 @@ struct TwoIndicesUniqueMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
     std::span<SliceType> _position;
     std::span<SliceType> _projections;
     DocIdType& _docId;
-    std::span<SliceType> _constants;
     bool exhausted{false};
 
     IndexStreamData(std::unique_ptr<StreamIteratorType> iter,
@@ -90,7 +89,8 @@ struct TwoIndicesUniqueMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
 #define LOG_INDEX_UNIQUE_MERGER LOG_DEVEL_IF(false)
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-void TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::reset() {
+void TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::reset(
+    std::span<SliceType> constants) {
   TRI_ASSERT(leftIndex != nullptr);
   leftIndex->reset();
   TRI_ASSERT(rightIndex != nullptr);
@@ -129,8 +129,7 @@ TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamData::
     : _iter(std::move(iter)),
       _position(position),
       _projections(projections),
-      _docId(docId),
-      _constants(constants) {
+      _docId(docId) {
   exhausted = !_iter->position(_position);
   LOG_INDEX_UNIQUE_MERGER << "iterator pointing to " << _position[0] << " ("
                           << this << ")";
@@ -139,7 +138,7 @@ TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamData::
 template<typename SliceType, typename DocIdType, typename KeyCompare>
 void TwoIndicesUniqueMergeJoin<SliceType, DocIdType,
                                KeyCompare>::IndexStreamData::reset() {
-  exhausted = !_iter->reset(_position, _constants);
+  exhausted = !_iter->reset(_position, {});
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
