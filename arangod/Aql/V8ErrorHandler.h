@@ -27,15 +27,10 @@
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
-#include "Basics/Common.h"
-
 #include <v8.h>
 
 namespace arangodb::aql {
-class V8Executor {
- public:
-  /// @brief checks if a V8 exception has occurred and throws an appropriate C++
-  /// exception from it if so
-  static void handleV8Error(v8::TryCatch&, v8::Handle<v8::Value>&);
-};
+/// @brief checks if a V8 exception has occurred and throws an appropriate C++
+/// exception from it if so
+void handleV8Error(v8::TryCatch&, v8::Handle<v8::Value>&);
 }  // namespace arangodb::aql

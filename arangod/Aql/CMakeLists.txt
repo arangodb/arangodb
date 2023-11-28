@@ -49,6 +49,8 @@ add_library(arango_aql STATIC
   DocumentExpressionContext.cpp
   DocumentProducingHelper.cpp
   DocumentProducingNode.cpp
+  EdgeConditionBuilder.cpp
+  EdgeConditionBuilderContainer.cpp
   EngineInfoContainerCoordinator.cpp
   EngineInfoContainerDBServerServerBased.cpp
   EnumerateCollectionExecutor.cpp
@@ -70,7 +72,6 @@ add_library(arango_aql STATIC
   Functions.cpp
   GraphNode.cpp
   GraphOptimizerRules.cpp
-  Graphs.cpp
   HashedCollectExecutor.cpp
   IResearchViewNode.cpp
   IResearchViewOptimizerRules.cpp
@@ -184,7 +185,7 @@ add_library(arango_aql STATIC
 
 if (USE_V8) 
   target_sources(arango_aql PRIVATE
-    V8Executor.cpp)
+    V8ErrorHandler.cpp)
 endif()
 
 target_link_libraries(arango_aql

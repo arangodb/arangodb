@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Functions.h"
-#include <cstdint>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/LanguageFeature.h"
@@ -33,9 +32,6 @@
 #include "Aql/Function.h"
 #include "Aql/Query.h"
 #include "Aql/Range.h"
-#ifdef USE_V8
-#include "Aql/V8Executor.h"
-#endif
 #include "Basics/Endian.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
@@ -115,6 +111,7 @@
 #include <velocypack/Sink.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <list>
 
 #ifdef __APPLE__
@@ -6893,53 +6890,99 @@ AqlValue functions::JsonParse(ExpressionContext* expressionContext,
   }
 }
 
+template<typename T>
+struct ParseBase : public T {
+  explicit ParseBase(ExpressionContext* expressionContext, char const* AFN)
+      : expressionContext(expressionContext), AFN(AFN) {}
+
+  AqlValue handle(std::string_view identifier) {
+    size_t pos = identifier.find('/');
+    if (pos == std::string::npos ||
+        identifier.find('/', pos + 1) != std::string::npos) {
+      registerWarning(expressionContext, AFN,
+                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    return T::handle(identifier, pos, expressionContext);
+  }
+
+  AqlValue parse(AqlValue const& value) {
+    if (value.isObject()) {
+      transaction::Methods* trx = &expressionContext->trx();
+      auto resolver = trx->resolver();
+      TRI_ASSERT(resolver != nullptr);
+      bool localMustDestroy;
+      AqlValue valueStr = value.get(*resolver, StaticStrings::IdString,
+                                    localMustDestroy, false);
+      AqlValueGuard guard(valueStr, localMustDestroy);
+
+      if (valueStr.isString()) {
+        return this->handle(valueStr.slice().stringView());
+      }
+    } else if (value.isString()) {
+      return this->handle(value.slice().stringView());
+    }
+
+    return this->handle("");
+  }
+
+  ExpressionContext* expressionContext;
+  char const* AFN;
+};
+
 /// @brief function PARSE_IDENTIFIER
 AqlValue functions::ParseIdentifier(ExpressionContext* expressionContext,
                                     AstNode const&,
                                     VPackFunctionParametersView parameters) {
-  static char const* AFN = "PARSE_IDENTIFIER";
-
-  transaction::Methods* trx = &expressionContext->trx();
-  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
-  std::string identifier;
-  if (value.isObject() && value.hasKey(StaticStrings::IdString)) {
-    auto resolver = trx->resolver();
-    TRI_ASSERT(resolver != nullptr);
-    bool localMustDestroy;
-    AqlValue valueStr =
-        value.get(*resolver, StaticStrings::IdString, localMustDestroy, false);
-    AqlValueGuard guard(valueStr, localMustDestroy);
-
-    if (valueStr.isString()) {
-      identifier = valueStr.slice().copyString();
+  struct ParseIdentifierImpl {
+    AqlValue handle(std::string_view identifier, size_t pos,
+                    ExpressionContext* expressionContext) {
+      transaction::Methods* trx = &expressionContext->trx();
+      transaction::BuilderLeaser builder(trx);
+      builder->openObject();
+      builder->add("collection", VPackValuePair(identifier.data(), pos,
+                                                VPackValueType::String));
+      builder->add("key", VPackValuePair(identifier.data() + pos + 1,
+                                         identifier.size() - pos - 1,
+                                         VPackValueType::String));
+      builder->close();
+      return AqlValue(builder->slice(), builder->size());
     }
-  } else if (value.isString()) {
-    identifier = value.slice().copyString();
-  }
+  };
 
-  if (identifier.empty()) {
-    registerWarning(expressionContext, AFN,
-                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(AqlValueHintNull());
-  }
+  ParseBase<ParseIdentifierImpl> impl(expressionContext, "PARSE_IDENTIFIER");
+  return impl.parse(extractFunctionParameterValue(parameters, 0));
+}
 
-  size_t pos = identifier.find('/');
-  if (pos == std::string::npos ||
-      identifier.find('/', pos + 1) != std::string::npos) {
-    registerWarning(expressionContext, AFN,
-                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(AqlValueHintNull());
-  }
+/// @brief function PARSE_COLLECTION
+AqlValue functions::ParseCollection(ExpressionContext* expressionContext,
+                                    AstNode const&,
+                                    VPackFunctionParametersView parameters) {
+  struct ParseCollectionImpl {
+    AqlValue handle(std::string_view identifier, size_t pos,
+                    ExpressionContext* expressionContext) {
+      return AqlValue(identifier.substr(0, pos));
+    }
+  };
 
-  transaction::BuilderLeaser builder(trx);
-  builder->openObject();
-  builder->add("collection",
-               VPackValuePair(identifier.data(), pos, VPackValueType::String));
-  builder->add("key", VPackValuePair(identifier.data() + pos + 1,
-                                     identifier.size() - pos - 1,
-                                     VPackValueType::String));
-  builder->close();
-  return AqlValue(builder->slice(), builder->size());
+  ParseBase<ParseCollectionImpl> impl(expressionContext, "PARSE_COLLECTION");
+  return impl.parse(extractFunctionParameterValue(parameters, 0));
+}
+
+/// @brief function PARSE_KEY
+AqlValue functions::ParseKey(ExpressionContext* expressionContext,
+                             AstNode const&,
+                             VPackFunctionParametersView parameters) {
+  struct ParseKeyImpl {
+    AqlValue handle(std::string_view identifier, size_t pos,
+                    ExpressionContext* expressionContext) {
+      return AqlValue(identifier.substr(pos + 1, identifier.size() - pos - 1));
+    }
+  };
+
+  ParseBase<ParseKeyImpl> impl(expressionContext, "PARSE_KEY");
+  return impl.parse(extractFunctionParameterValue(parameters, 0));
 }
 
 /// @brief function Slice

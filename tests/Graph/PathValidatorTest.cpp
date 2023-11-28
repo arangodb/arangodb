@@ -688,6 +688,53 @@ TYPED_TEST(PathValidatorTest, it_should_test_an_all_vertices_condition) {
   }
 }
 
+TYPED_TEST(PathValidatorTest, it_should_test_an_all_edges_condition) {
+  this->addEdgesOfPath({0, 1, 2});
+  std::string keyToMatch = "1";
+
+  auto expression = this->conditionKeyMatches(keyToMatch);
+
+  auto& opts = this->options();
+
+  opts.setAllEdgesExpression(std::move(expression));
+
+  auto validator = this->testee();
+  {
+    // Testing x._key == "1" with `{_key: "1"} => Should succeed
+    // but only because the edge condition is ignored (as there is no edge in
+    // the step ...)
+    Step s = this->startPath(1);
+    auto e = s.getEdge();
+    auto res = validator.validatePath(s);
+    EXPECT_FALSE(res.isFiltered());
+    EXPECT_FALSE(res.isPruned());
+  }
+
+  // start a new path, so reset the uniqueness checks
+  validator.reset();
+
+  {
+    // Testing x._key == "1" with `{_key: "0"} => Should fail
+    Step s = this->startPath(0);
+    {
+      auto res = validator.validatePath(s);
+      EXPECT_FALSE(res.isFiltered());
+      EXPECT_FALSE(res.isPruned());
+    }
+
+    // Testing condition on level 1 (not start)
+    auto neighbors = this->expandPath(s);
+    ASSERT_EQ(neighbors.size(), 1U);
+    s = neighbors.at(0);
+    {
+      // Testing x._key == "1" with `{_key: "1"} => Should succeed
+      auto res = validator.validatePath(s);
+      EXPECT_TRUE(res.isFiltered());
+      EXPECT_TRUE(res.isPruned());
+    }
+  }
+}
+
 }  // namespace graph_path_validator_test
 }  // namespace tests
 }  // namespace arangodb
