@@ -25,7 +25,6 @@
 #pragma once
 
 #include "Aql/GraphNode.h"
-#include "Aql/Graphs.h"
 #include "Graph/PathType.h"
 #include "Graph/Providers/BaseProviderOptions.h"
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
@@ -156,6 +155,9 @@ class EnumeratePathsNode : public virtual GraphNode {
   ///  (casts graph::BaseOptions* into graph::ShortestPathOptions*)
   auto options() const -> graph::ShortestPathOptions*;
 
+  auto registerGlobalVertexCondition(AstNode const*) -> void;
+  auto registerGlobalEdgeCondition(AstNode const*) -> void;
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
@@ -190,6 +192,14 @@ class EnumeratePathsNode : public virtual GraphNode {
 
   /// @brief The hard coded condition on _to
   AstNode* _toCondition;
+
+  /// @brief Global conditions on vertices; if these conditions
+  /// are not satisfied the path search is stopped from there.
+  std::vector<AstNode const*> _globalVertexConditions;
+
+  /// @brief Global conditions on edges; if this conditions are not
+  // satisfied the path search is stopped from here
+  std::vector<AstNode const*> _globalEdgeConditions;
 
   /// @brief Variable that contains the value on which the distribution is
   /// determined. This is required for hybrid disjoint smart graphs

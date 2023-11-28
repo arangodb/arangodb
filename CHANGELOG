@@ -55,6 +55,10 @@ devel
   work. Furthermore, responses should only be compressed when they exceed a
   certain minimum size, e.g. 250 bytes. 
 
+* Solve a potential blockage during hotbackup by not stopping read-only
+  transactions from committing during hotbackup. Furthermore, improve
+  behavior of authentication in the case that the user cache is outdated.
+
 * Added metric `arangodb_aql_cursors_memory_usage` to show the memory usage of
   open, not yet fully consumed server-side query cursors.
 
