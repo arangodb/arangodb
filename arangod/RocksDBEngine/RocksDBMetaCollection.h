@@ -208,6 +208,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   mutable FutureLock _exclusiveLock;
   /// @brief collection lock used for recalculation count values
   mutable std::mutex _recalculationLock;
+  mutable basics::ReadWriteLock _exclusiveLockOld;
 
   /// @brief depth for all revision trees.
   /// depth is large from the beginning so that the trees are always

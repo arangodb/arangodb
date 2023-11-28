@@ -69,12 +69,15 @@ auto operator co_await(Future<T>&& f) noexcept {
 template<typename T, typename F>
 struct FutureTransformAwaitable : F {
   [[nodiscard]] auto await_ready() const noexcept -> bool { return false; }
-  void await_suspend(std_coro::coroutine_handle<> coro) noexcept {
+  bool await_suspend(std_coro::coroutine_handle<> coro) noexcept {
     std::move(_future).thenFinal(
         [coro, this](futures::Try<T>&& result) noexcept {
           _result = F::operator()(std::move(result));
-          coro.resume();
+          if (_counter.fetch_sub(1) == 1) {
+            coro.resume();
+          }
         });
+    return _counter.fetch_sub(1) != 1;
   }
   using ResultType = std::invoke_result_t<F, futures::Try<T>&&>;
   auto await_resume() noexcept -> ResultType {
@@ -85,6 +88,7 @@ struct FutureTransformAwaitable : F {
 
  private:
   static_assert(std::is_nothrow_invocable_v<F, futures::Try<T>&&>);
+  std::atomic_uint8_t _counter{2};
   Future<T> _future;
   std::optional<ResultType> _result;
 };

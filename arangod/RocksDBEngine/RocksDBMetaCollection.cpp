@@ -168,22 +168,6 @@ uint64_t RocksDBMetaCollection::numberDocuments(
   return trxCollection->numberDocuments();
 }
 
-/// @brief write locks a collection, with a timeout
-futures::Future<ErrorCode> RocksDBMetaCollection::lockWrite(double timeout) {
-  return doLock(timeout, AccessMode::Type::WRITE);
-}
-
-/// @brief write unlocks a collection
-void RocksDBMetaCollection::unlockWrite() noexcept { _exclusiveLock.unlock(); }
-
-/// @brief read locks a collection, with a timeout
-futures::Future<ErrorCode> RocksDBMetaCollection::lockRead(double timeout) {
-  return doLock(timeout, AccessMode::Type::READ);
-}
-
-/// @brief read unlocks a collection
-void RocksDBMetaCollection::unlockRead() { _exclusiveLock.unlock(); }
-
 // rescans the collection to update document count
 futures::Future<uint64_t> RocksDBMetaCollection::recalculateCounts() {
   std::unique_lock<std::mutex> guard(_recalculationLock);
@@ -1715,6 +1699,36 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(
   });
 }
 
+#define USE_FUTURE_MUTEX 1
+
+/// @brief write locks a collection, with a timeout
+futures::Future<ErrorCode> RocksDBMetaCollection::lockWrite(double timeout) {
+  return doLock(timeout, AccessMode::Type::WRITE);
+}
+
+/// @brief write unlocks a collection
+void RocksDBMetaCollection::unlockWrite() noexcept {
+#if USE_FUTURE_MUTEX
+  _exclusiveLock.unlock();
+#else
+  _exclusiveLockOld.unlockWrite();
+#endif
+}
+
+/// @brief read locks a collection, with a timeout
+futures::Future<ErrorCode> RocksDBMetaCollection::lockRead(double timeout) {
+  return doLock(timeout, AccessMode::Type::READ);
+}
+
+/// @brief read unlocks a collection
+void RocksDBMetaCollection::unlockRead() {
+#if USE_FUTURE_MUTEX
+  _exclusiveLock.unlock();
+#else
+  _exclusiveLockOld.unlockRead();
+#endif
+}
+
 /// @brief lock a collection, with a timeout
 futures::Future<ErrorCode> RocksDBMetaCollection::doLock(
     double timeout, AccessMode::Type mode) {
@@ -1731,19 +1745,29 @@ futures::Future<ErrorCode> RocksDBMetaCollection::doLock(
 
   bool gotLock = false;
   if (mode == AccessMode::Type::WRITE) {
+#if USE_FUTURE_MUTEX
     auto result =
         co_await asTry(_exclusiveLock.asyncTryLockExclusiveFor(timeout_ms));
     gotLock = result.hasValue();
     if (gotLock) {
       result.get().release();
     }
+#else
+    gotLock = _exclusiveLockOld.tryLockWriteFor(
+        std::chrono::duration_cast<std::chrono::microseconds>(timeout_ms));
+#endif
   } else {
+#if USE_FUTURE_MUTEX
     auto result =
         co_await asTry(_exclusiveLock.asyncTryLockSharedFor(timeout_ms));
     gotLock = result.hasValue();
     if (gotLock) {
       result.get().release();
     }
+#else
+    gotLock = _exclusiveLockOld.tryLockReadFor(
+        std::chrono::duration_cast<std::chrono::microseconds>(timeout_ms));
+#endif
   }
 
   if (gotLock) {
