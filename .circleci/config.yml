@@ -12,6 +12,10 @@ parameters:
     # contains a branch with the same name as the arangodb repo. If this is the case
     # we use it, otherwise we fall back to "devel".
     default: ""
+  replication-two:
+    type: boolean
+    # We use replication1 as default.
+    default: false
 
 # our defined job, and its steps
 jobs:
@@ -81,7 +85,7 @@ jobs:
           name: Generate config
           command: |
             pip install pyyaml
-            python3 ".circleci/generate_config.py" -o generated_config.yml ./.circleci/base_config.yml << parameters.definitions >>
+            python3 ".circleci/generate_config.py" <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> -o generated_config.yml ./.circleci/base_config.yml << parameters.definitions >>
 
       - continuation/continue:
           configuration_path: generated_config.yml # use newly generated config to continue
