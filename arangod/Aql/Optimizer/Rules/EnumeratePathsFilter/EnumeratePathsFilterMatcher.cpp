@@ -77,9 +77,10 @@ auto doTheThing(Ast* ast, EnumeratePathsNode* enumeratePathsNode,
     }
 
     auto quantifier = member->getMemberUnchecked(2);
-    if (quantifier and Quantifier::isAll(quantifier)) {
+    if ((quantifier == nullptr) or (not Quantifier::isAll(quantifier))) {
       LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << fmt::format(
-          "iterating andNode, bailing binary eq quantifier not ALL");
+          "iterating andNode, bailing binary eq quantifier not ALL, but {}",
+          quantifier->getIntValue(true));
       continue;
     }
 
