@@ -33,6 +33,7 @@
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
+#include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Tasks.h"
 
@@ -237,24 +238,35 @@ void RestTasksHandler::registerTask(bool byId) {
     V8ContextGuard guard(&_vocbase, securityContext);
 
     v8::Isolate* isolate = guard.isolate();
+    TRI_ASSERT(!isolate->InContext());
     v8::HandleScope scope(isolate);
-    auto context = TRI_IGETC;
-    v8::Handle<v8::Object> bv8 = TRI_VPackToV8(isolate, body).As<v8::Object>();
 
-    if (bv8->Get(context, TRI_V8_ASCII_STRING(isolate, "command"))
-            .FromMaybe(v8::Handle<v8::Value>())
-            ->IsFunction()) {
-      // need to add ( and ) around function because call will otherwise break
-      command = "(" + cmdSlice.copyString() + ")(params)";
-    } else {
-      command = cmdSlice.copyString();
-    }
+    auto localContext =
+        v8::Local<v8::Context>::New(isolate, guard.context()->_context);
 
-    if (!Task::tryCompile(server(), isolate, command)) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                    "cannot compile command");
-      return;
+    {
+      v8::Context::Scope contextScope(localContext);
+      TRI_ASSERT(isolate->InContext());
+      auto context = TRI_IGETC;
+      v8::Handle<v8::Object> bv8 =
+          TRI_VPackToV8(isolate, body).As<v8::Object>();
+
+      if (bv8->Get(context, TRI_V8_ASCII_STRING(isolate, "command"))
+              .FromMaybe(v8::Handle<v8::Value>())
+              ->IsFunction()) {
+        // need to add ( and ) around function because call will otherwise break
+        command = "(" + cmdSlice.copyString() + ")(params)";
+      } else {
+        command = cmdSlice.copyString();
+      }
+
+      if (!Task::tryCompile(server(), isolate, command)) {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                      "cannot compile command");
+        return;
+      }
     }
+    TRI_ASSERT(!isolate->InContext());
   } catch (arangodb::basics::Exception const& ex) {
     generateError(Result{ex.code(), ex.what()});
     return;
