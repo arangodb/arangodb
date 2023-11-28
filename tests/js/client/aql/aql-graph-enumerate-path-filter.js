@@ -62,7 +62,7 @@ const createGraph = () => {
       colour: "green"
     });
   }
-  for (var j = 19; j < 20; j++) {
+  for (var j = 19; j < 29; j++) {
     vertices.push({
       _key: j.toString(),
       colour: "red"
@@ -84,13 +84,29 @@ const createGraph = () => {
   edges.push({ _from: `${vName}/12`, _to: `${vName}/13`, weight: 1.0, colour: "purple"});
   edges.push({ _from: `${vName}/13`, _to: `${vName}/14`, weight: 2, colour: "banana"});
 
-  edges.push({ _from: `${vName}/9`, _to: `${vName}/15`, weight: 0});
-  edges.push({ _from: `${vName}/15`, _to: `${vName}/16`, weight: 1});
-  edges.push({ _from: `${vName}/16`, _to: `${vName}/11`, weight: 1});
+  edges.push({ _from: `${vName}/9`, _to: `${vName}/15`, weight: 0, colour: "green"});
+  edges.push({ _from: `${vName}/15`, _to: `${vName}/16`, weight: 1, colour: "green"});
+  edges.push({ _from: `${vName}/16`, _to: `${vName}/11`, weight: 1, colour: "green"});
 
-  edges.push({ _from: `${vName}/9`, _to: `${vName}/17`, weight: 0});
-  edges.push({ _from: `${vName}/17`, _to: `${vName}/18`, weight: 0});
-  edges.push({ _from: `${vName}/18`, _to: `${vName}/14`, weight: 1});
+  edges.push({ _from: `${vName}/9`, _to: `${vName}/17`, weight: 0, colour: "purple"});
+  edges.push({ _from: `${vName}/17`, _to: `${vName}/18`, weight: 0, colour: "purple"});
+  edges.push({ _from: `${vName}/18`, _to: `${vName}/14`, weight: 1, colour: "purple"});
+
+
+  /* there is a path of length 5 with green edges and a path of length 4 with purple
+     the test below ascertains that the path with purple edges is actually skipped
+     and the path with green edges is found if there is a filter on edges only
+     letting green edges pass. */
+  edges.push({ _from: `${vName}/19`, _to: `${vName}/20`, weight: 1, colour: "green" });
+  edges.push({ _from: `${vName}/20`, _to: `${vName}/21`, weight: 1, colour: "green" });
+  edges.push({ _from: `${vName}/21`, _to: `${vName}/22`, weight: 1, colour: "green" });
+  edges.push({ _from: `${vName}/22`, _to: `${vName}/23`, weight: 1, colour: "green" });
+
+  edges.push({ _from: `${vName}/19`, _to: `${vName}/20`, weight: 1, colour: "purple" });
+  edges.push({ _from: `${vName}/20`, _to: `${vName}/21`, weight: 1, colour: "purple" });
+  edges.push({ _from: `${vName}/21`, _to: `${vName}/23`, weight: 1, colour: "purple" });
+
+
 
   db[vName].save(vertices);
   db[eName].save(edges);
@@ -108,17 +124,21 @@ function assertRuleDoesNotFire(query) {
              `[${result.plan.rules}] contains "${optimizerRuleName}"`);
 }
 
+function getVerticesAndEdgesFromPath(path) {
+  return {
+    vertices: path.vertices.map((v) => v._id),
+    edges: path.edges.map((e) => [e._from, e._to])
+  };
+}
+
 function assertSameResults(query) {
   const resultWith = db._query(query).toArray();
-  const resultWithVertices = resultWith.map((x) => x.vertices.map((v) => v._id));
-  const resultWithEdges = resultWith.map((x) => x.edges.map((e) => [e._from, e._to]));
+  const resultWithPaths = resultWith.map(getVerticesAndEdgesFromPath);
 
   const resultWithout = db._query(query, {}, {optimizer: {rules: [`-${optimizerRuleName}`]}}).toArray();
-  const resultWithoutVertices = resultWithout.map((x) => x.vertices.map((v) => v._id));
-  const resultWithoutEdges = resultWithout.map((x) => x.edges.map((e) => [e._from, e._to]));
+  const resultWithoutPaths = resultWithout.map(getVerticesAndEdgesFromPath);
 
-  assertEqual(resultWithVertices, resultWithoutVertices);
-  assertEqual(resultWithEdges, resultWithoutEdges);
+  assertEqual(resultWithPaths, resultWithoutPaths);
 }
 
 
@@ -189,6 +209,27 @@ function enumeratePathsFilter() {
             RETURN [path2, path]`;
       assertRuleFires(query);
       assertSameResults(query);
+    },
+    testExpectedPathFound: function() {
+      const unrestrictedQuery = `
+        FOR path IN ANY K_SHORTEST_PATHS "${vName}/19" TO "${vName}/23" GRAPH "${graphName}"
+            LIMIT 1
+            RETURN path`;
+      const ru = db._query(unrestrictedQuery).toArray();
+      assertEqual(ru.length, 1, "expecting precisely one result"); 
+      const shortPath = getVerticesAndEdgesFromPath(ru[0]);
+      assertEqual(shortPath.vertices.length, 4);
+
+      const restrictedQuery = `
+        FOR path IN ANY K_SHORTEST_PATHS "${vName}/19" TO "${vName}/23" GRAPH "${graphName}"
+            FILTER path.edges[* RETURN CURRENT.colour == "green"] ALL == true
+            LIMIT 1
+            RETURN path`;
+
+      const rr = db._query(restrictedQuery).toArray();
+      assertEqual(rr.length, 1, "expecting precisely one result");
+      const longPath = getVerticesAndEdgesFromPath(rr[0]);
+      assertEqual(longPath.vertices.length, 5);
     },
   };
 
