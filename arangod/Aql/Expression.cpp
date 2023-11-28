@@ -36,7 +36,7 @@
 #include "Aql/QueryContext.h"
 #include "Aql/Range.h"
 #ifdef USE_V8
-#include "Aql/V8Executor.h"
+#include "Aql/V8ErrorHandler.h"
 #endif
 #include "Aql/Variable.h"
 #include "Aql/AqlValueMaterializer.h"
@@ -948,7 +948,7 @@ AqlValue Expression::invokeV8Function(
           .FromMaybe(v8::Local<v8::Value>());
 
   try {
-    V8Executor::handleV8Error(tryCatch, result);
+    handleV8Error(tryCatch, result);
   } catch (basics::Exception const& ex) {
     if (rethrowV8Exception || ex.code() == TRI_ERROR_QUERY_FUNCTION_NOT_FOUND) {
       throw;

@@ -32,9 +32,6 @@
 #include "Aql/Function.h"
 #include "Aql/Query.h"
 #include "Aql/Range.h"
-#ifdef USE_V8
-#include "Aql/V8Executor.h"
-#endif
 #include "Basics/Endian.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
