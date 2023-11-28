@@ -53,7 +53,6 @@
 #include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "Random/RandomGenerator.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -1003,8 +1002,8 @@ void V8DealerFeature::collectGarbage() {
         if (executor == nullptr && !_dirtyExecutors.empty()) {
           executor = _dirtyExecutors.back();
           _dirtyExecutors.pop_back();
-          if (executor->_invocationsSinceLastGc < 50 &&
-              !executor->_hasActiveExternals) {
+          if (executor->invocationsSinceLastGc() < 50 &&
+              !executor->hasActiveExternals()) {
             // don't collect this one yet. it doesn't have externals, so there
             // is no urge for garbage collection
             _idleExecutors.emplace_back(executor);
@@ -1037,11 +1036,11 @@ void V8DealerFeature::collectGarbage() {
             << "collecting V8 garbage in executor #" << executor->id()
             << ", invocations total: " << executor->invocations()
             << ", invocations since last gc: "
-            << executor->_invocationsSinceLastGc
-            << ", hasActive: " << executor->_hasActiveExternals
+            << executor->invocationsSinceLastGc()
+            << ", hasActive: " << executor->hasActiveExternals()
             << ", wasDirty: " << wasDirty;
         bool hasActiveExternals = false;
-        auto isolate = executor->_isolate;
+        v8::Isolate* isolate = executor->isolate();
         {
           // this guard will lock and enter the isolate
           // and automatically exit and unlock it when it runs out of scope
@@ -1050,14 +1049,10 @@ void V8DealerFeature::collectGarbage() {
           TRI_ASSERT(!isolate->InContext());
           v8::HandleScope scope(isolate);
 
-          auto localContext =
-              v8::Local<v8::Context>::New(isolate, executor->_context);
-
+          auto localContext = executor->context();
           {
             v8::Context::Scope contextScope(localContext);
             TRI_ASSERT(isolate->InContext());
-
-            executor->assertLocked();
 
             TRI_GET_GLOBALS();
             v8g->_inForcedCollect = true;
@@ -1069,7 +1064,7 @@ void V8DealerFeature::collectGarbage() {
         }
 
         // update garbage collection statistics
-        executor->_hasActiveExternals = hasActiveExternals;
+        executor->setHasActiveExternals(hasActiveExternals);
         executor->setCleaned(lastGc);
 
         {
@@ -1223,21 +1218,17 @@ void V8DealerFeature::prepareLockedExecutor(
   TRI_ASSERT(vocbase != nullptr);
 
   // when we get here, we should have an executor and an isolate
-  executor->assertLocked();
-
-  auto isolate = executor->_isolate;
+  auto isolate = executor->isolate();
 
   {
     TRI_ASSERT(!isolate->InContext());
     v8::HandleScope scope(isolate);
-    auto localContext =
-        v8::Local<v8::Context>::New(isolate, executor->_context);
+    auto localContext = executor->context();
 
     {
       v8::Context::Scope contextScope(localContext);
       TRI_ASSERT(isolate->InContext());
 
-      executor->assertLocked();
       TRI_GET_GLOBALS();
 
       // initialize the context data
@@ -1428,9 +1419,8 @@ void V8DealerFeature::cleanupLockedExecutor(V8Executor* executor) {
   LOG_TOPIC("e1c52", TRACE, arangodb::Logger::V8)
       << "leaving V8 executor #" << executor->id();
 
-  auto isolate = executor->_isolate;
+  v8::Isolate* isolate = executor->isolate();
   TRI_ASSERT(isolate != nullptr);
-  executor->assertLocked();
   TRI_ASSERT(!isolate->InContext());
 
   bool canceled = false;
@@ -1441,8 +1431,7 @@ void V8DealerFeature::cleanupLockedExecutor(V8Executor* executor) {
     v8::HandleScope scope(isolate);
     TRI_GET_GLOBALS();
     {
-      auto localContext =
-          v8::Local<v8::Context>::New(isolate, executor->_context);
+      auto localContext = executor->context();
       {
         v8::Context::Scope contextScope(localContext);
         TRI_ASSERT(isolate->InContext());
@@ -1458,21 +1447,17 @@ void V8DealerFeature::cleanupLockedExecutor(V8Executor* executor) {
     TRI_ASSERT(!isolate->InContext());
   }
 
-  // check if we need to execute global executor methods
-  bool const runGlobal = executor->hasGlobalMethodsQueued();
-
   // update data for later garbage collection
   {
     v8::HandleScope scope(isolate);
-    auto localContext =
-        v8::Local<v8::Context>::New(isolate, executor->_context);
+    auto localContext = executor->context();
 
     {
       v8::Context::Scope contextScope(localContext);
       TRI_ASSERT(isolate->InContext());
 
       TRI_GET_GLOBALS();
-      executor->_hasActiveExternals = v8g->hasActiveExternals();
+      executor->setHasActiveExternals(v8g->hasActiveExternals());
       TRI_vocbase_t* vocbase = v8g->_vocbase;
 
       TRI_ASSERT(vocbase != nullptr);
@@ -1489,15 +1474,7 @@ void V8DealerFeature::cleanupLockedExecutor(V8Executor* executor) {
       }
 
       // run global executor methods
-      if (runGlobal) {
-        executor->assertLocked();
-
-        try {
-          executor->handleGlobalExecutorMethods();
-        } catch (...) {
-          // ignore errors here
-        }
-      }
+      executor->handleGlobalExecutorMethods();
 
       // reset the executor data; gc should be able to run without it
       v8g->_expressionContext = nullptr;
@@ -1521,9 +1498,9 @@ void V8DealerFeature::exitExecutor(V8Executor* executor) {
 
     // postpone garbage collection for standard executors
     double lastGc = gc->getLastGcStamp();
-    if (executor->_lastGcStamp + _gcFrequency < lastGc) {
+    if (executor->lastGcStamp() + _gcFrequency < lastGc) {
       performGarbageCollection = true;
-      if (executor->_lastGcStamp + 30 * _gcFrequency < lastGc) {
+      if (executor->lastGcStamp() + 30 * _gcFrequency < lastGc) {
         // force the GC, so that it happens eventually
         forceGarbageCollection = true;
         LOG_TOPIC("f543a", TRACE, arangodb::Logger::V8)
@@ -1534,7 +1511,7 @@ void V8DealerFeature::exitExecutor(V8Executor* executor) {
             << "V8 executor #" << executor->id()
             << " has reached GC timeout threshold and will be scheduled for GC";
       }
-    } else if (executor->_invocationsSinceLastGc >= _gcInterval) {
+    } else if (executor->invocationsSinceLastGc() >= _gcInterval) {
       LOG_TOPIC("c6441", TRACE, arangodb::Logger::V8)
           << "V8 executor #" << executor->id()
           << " has reached maximum number of requests and will "
@@ -1616,7 +1593,7 @@ void V8DealerFeature::shutdownExecutors() {
     for (auto& it : _busyExecutors) {
       LOG_TOPIC("e907b", WARN, arangodb::Logger::V8)
           << "sending termination signal to V8 executor #" << it->id();
-      it->_isolate->TerminateExecution();
+      it->isolate()->TerminateExecution();
     }
   }
 
@@ -1690,15 +1667,15 @@ V8Executor* V8DealerFeature::pickFreeExecutorForGc() {
 
   for (int i = n - 1; i > 0; --i) {
     // check if there's actually anything to clean up in the executor
-    if (_idleExecutors[i]->_invocationsSinceLastGc < 50 &&
-        !_idleExecutors[i]->_hasActiveExternals) {
+    if (_idleExecutors[i]->invocationsSinceLastGc() < 50 &&
+        !_idleExecutors[i]->hasActiveExternals()) {
       continue;
     }
 
     // compare last GC stamp
     if (pickedExecutorNr == -1 ||
-        _idleExecutors[i]->_lastGcStamp <=
-            _idleExecutors[pickedExecutorNr]->_lastGcStamp) {
+        _idleExecutors[i]->lastGcStamp() <=
+            _idleExecutors[pickedExecutorNr]->lastGcStamp()) {
       pickedExecutorNr = i;
     }
   }
@@ -1715,7 +1692,7 @@ V8Executor* V8DealerFeature::pickFreeExecutorForGc() {
   TRI_ASSERT(executor != nullptr);
 
   // now compare its last GC timestamp with the last global GC stamp
-  if (executor->_lastGcStamp + _gcFrequency >= gc->getLastGcStamp()) {
+  if (executor->lastGcStamp() + _gcFrequency >= gc->getLastGcStamp()) {
     // no need yet to clean up the executor
     return nullptr;
   }
@@ -1747,125 +1724,123 @@ std::unique_ptr<V8Executor> V8DealerFeature::buildExecutor(
 
   try {
     // pass isolate to a new executor
-    executor = std::make_unique<V8Executor>(id, isolate);
+    executor =
+        std::make_unique<V8Executor>(id, isolate, [&](V8Executor& executor) {
+          v8::Isolate* isolate = executor.isolate();
+          v8::HandleScope scope(isolate);
 
-    // this guard will lock and enter the isolate
-    // and automatically exit and unlock it when it runs out of scope
-    V8ExecutorEntryGuard executorGuard(executor.get());
+          if (executor.context().IsEmpty()) {
+            LOG_TOPIC("ba904", FATAL, arangodb::Logger::V8)
+                << "cannot initialize V8 engine";
+            FATAL_ERROR_EXIT();
+          }
 
-    v8::HandleScope scope(isolate);
+          auto localContext =
+              v8::Local<v8::Context>::New(isolate, executor.context());
 
-    v8::Handle<v8::ObjectTemplate> global = v8::ObjectTemplate::New(isolate);
+          {
+            v8::Context::Scope contextScope(localContext);
 
-    v8::Persistent<v8::Context> persistentContext;
-    persistentContext.Reset(isolate,
-                            v8::Context::New(isolate, nullptr, global));
-    auto localContext = v8::Local<v8::Context>::New(isolate, persistentContext);
+            auto* v8g = CreateV8Globals(server(), isolate, id);
 
-    {
-      v8::Context::Scope contextScope(localContext);
+            v8::Handle<v8::Object> globalObj = localContext->Global();
+            globalObj
+                ->Set(localContext, TRI_V8_ASCII_STRING(isolate, "GLOBAL"),
+                      globalObj)
+                .FromMaybe(false);
+            globalObj
+                ->Set(localContext, TRI_V8_ASCII_STRING(isolate, "global"),
+                      globalObj)
+                .FromMaybe(false);
+            globalObj
+                ->Set(localContext, TRI_V8_ASCII_STRING(isolate, "root"),
+                      globalObj)
+                .FromMaybe(false);
 
-      auto* v8g = CreateV8Globals(server(), isolate, id);
-      executor->_context.Reset(executor->_isolate, localContext);
+            std::string modules;
+            std::string sep;
 
-      if (executor->_context.IsEmpty()) {
-        LOG_TOPIC("ba904", FATAL, arangodb::Logger::V8)
-            << "cannot initialize V8 engine";
-        FATAL_ERROR_EXIT();
-      }
+            std::vector<std::string> directories;
+            directories.insert(directories.end(), _moduleDirectories.begin(),
+                               _moduleDirectories.end());
+            directories.emplace_back(_startupDirectory);
+            if (!_nodeModulesDirectory.empty() &&
+                _nodeModulesDirectory != _startupDirectory) {
+              directories.emplace_back(_nodeModulesDirectory);
+            }
 
-      v8::Handle<v8::Object> globalObj = localContext->Global();
-      globalObj
-          ->Set(localContext, TRI_V8_ASCII_STRING(isolate, "GLOBAL"), globalObj)
-          .FromMaybe(false);
-      globalObj
-          ->Set(localContext, TRI_V8_ASCII_STRING(isolate, "global"), globalObj)
-          .FromMaybe(false);
-      globalObj
-          ->Set(localContext, TRI_V8_ASCII_STRING(isolate, "root"), globalObj)
-          .FromMaybe(false);
+            for (auto const& directory : directories) {
+              modules += sep;
+              sep = ";";
 
-      std::string modules;
-      std::string sep;
+              modules += FileUtils::buildFilename(directory, "server/modules") +
+                         sep +
+                         FileUtils::buildFilename(directory, "common/modules") +
+                         sep + FileUtils::buildFilename(directory, "node");
+            }
 
-      std::vector<std::string> directories;
-      directories.insert(directories.end(), _moduleDirectories.begin(),
-                         _moduleDirectories.end());
-      directories.emplace_back(_startupDirectory);
-      if (!_nodeModulesDirectory.empty() &&
-          _nodeModulesDirectory != _startupDirectory) {
-        directories.emplace_back(_nodeModulesDirectory);
-      }
+            TRI_InitV8UserFunctions(isolate, localContext);
+            TRI_InitV8UserStructures(isolate, localContext);
+            TRI_InitV8Buffer(isolate);
+            TRI_InitV8Utils(isolate, localContext, _startupDirectory, modules);
+            TRI_InitV8ServerUtils(isolate);
+            TRI_InitV8Shell(isolate);
+            TRI_InitV8Ttl(isolate);
 
-      for (auto const& directory : directories) {
-        modules += sep;
-        sep = ";";
+            {
+              v8::HandleScope scope(isolate);
 
-        modules += FileUtils::buildFilename(directory, "server/modules") + sep +
-                   FileUtils::buildFilename(directory, "common/modules") + sep +
-                   FileUtils::buildFilename(directory, "node");
-      }
+              TRI_AddGlobalVariableVocbase(
+                  isolate, TRI_V8_ASCII_STRING(isolate, "APP_PATH"),
+                  TRI_V8_STD_STRING(isolate, _appPath));
 
-      TRI_InitV8UserFunctions(isolate, localContext);
-      TRI_InitV8UserStructures(isolate, localContext);
-      TRI_InitV8Buffer(isolate);
-      TRI_InitV8Utils(isolate, localContext, _startupDirectory, modules);
-      TRI_InitV8ServerUtils(isolate);
-      TRI_InitV8Shell(isolate);
-      TRI_InitV8Ttl(isolate);
+              for (auto const& j : _definedBooleans) {
+                localContext->Global()
+                    ->DefineOwnProperty(TRI_IGETC,
+                                        TRI_V8_STD_STRING(isolate, j.first),
+                                        v8::Boolean::New(isolate, j.second),
+                                        v8::ReadOnly)
+                    .FromMaybe(false);  // Ignore it...
+              }
 
-      {
-        v8::HandleScope scope(isolate);
+              for (auto const& j : _definedDoubles) {
+                localContext->Global()
+                    ->DefineOwnProperty(
+                        TRI_IGETC, TRI_V8_STD_STRING(isolate, j.first),
+                        v8::Number::New(isolate, j.second), v8::ReadOnly)
+                    .FromMaybe(false);  // Ignore it...
+              }
 
-        TRI_AddGlobalVariableVocbase(isolate,
-                                     TRI_V8_ASCII_STRING(isolate, "APP_PATH"),
-                                     TRI_V8_STD_STRING(isolate, _appPath));
+              for (auto const& j : _definedStrings) {
+                localContext->Global()
+                    ->DefineOwnProperty(TRI_IGETC,
+                                        TRI_V8_STD_STRING(isolate, j.first),
+                                        TRI_V8_STD_STRING(isolate, j.second),
+                                        v8::ReadOnly)
+                    .FromMaybe(false);  // Ignore it...
+              }
+            }
 
-        for (auto const& j : _definedBooleans) {
-          localContext->Global()
-              ->DefineOwnProperty(TRI_IGETC,
-                                  TRI_V8_STD_STRING(isolate, j.first),
-                                  v8::Boolean::New(isolate, j.second),
-                                  v8::ReadOnly)
-              .FromMaybe(false);  // Ignore it...
-        }
+            auto queryRegistry = QueryRegistryFeature::registry();
+            TRI_ASSERT(queryRegistry != nullptr);
 
-        for (auto const& j : _definedDoubles) {
-          localContext->Global()
-              ->DefineOwnProperty(
-                  TRI_IGETC, TRI_V8_STD_STRING(isolate, j.first),
-                  v8::Number::New(isolate, j.second), v8::ReadOnly)
-              .FromMaybe(false);  // Ignore it...
-        }
+            JavaScriptSecurityContext old(v8g->_securityContext);
+            v8g->_securityContext =
+                JavaScriptSecurityContext::createInternalContext();
+            {
+              TRI_InitV8VocBridge(isolate, localContext, queryRegistry,
+                                  *vocbase, id);
+              TRI_InitV8Queries(isolate, localContext);
+              TRI_InitV8Cluster(isolate, localContext);
+              TRI_InitV8Agency(isolate, localContext);
+              TRI_InitV8Dispatcher(isolate, localContext);
+              TRI_InitV8Actions(isolate);
+            }
 
-        for (auto const& j : _definedStrings) {
-          localContext->Global()
-              ->DefineOwnProperty(TRI_IGETC,
-                                  TRI_V8_STD_STRING(isolate, j.first),
-                                  TRI_V8_STD_STRING(isolate, j.second),
-                                  v8::ReadOnly)
-              .FromMaybe(false);  // Ignore it...
-        }
-      }
-
-      auto queryRegistry = QueryRegistryFeature::registry();
-      TRI_ASSERT(queryRegistry != nullptr);
-
-      JavaScriptSecurityContext old(v8g->_securityContext);
-      v8g->_securityContext =
-          JavaScriptSecurityContext::createInternalContext();
-      {
-        TRI_InitV8VocBridge(isolate, localContext, queryRegistry, *vocbase, id);
-        TRI_InitV8Queries(isolate, localContext);
-        TRI_InitV8Cluster(isolate, localContext);
-        TRI_InitV8Agency(isolate, localContext);
-        TRI_InitV8Dispatcher(isolate, localContext);
-        TRI_InitV8Actions(isolate);
-      }
-
-      // restore old security settings
-      v8g->_securityContext = old;
-    }
+            // restore old security settings
+            v8g->_securityContext = old;
+          }
+        });
 
   } catch (...) {
     LOG_TOPIC("35586", WARN, Logger::V8)
@@ -1874,16 +1849,7 @@ std::unique_ptr<V8Executor> V8DealerFeature::buildExecutor(
     throw;
   }
 
-  // some random delay value to add as an initial garbage collection offset
-  // this avoids collecting all contexts at the very same time
-  double const randomWait =
-      static_cast<double>(RandomGenerator::interval(0, 60));
-
   double const now = TRI_microtime();
-
-  // initialize garbage collection for executor
-  executor->_hasActiveExternals = true;
-  executor->_lastGcStamp = now + randomWait;
 
   LOG_TOPIC("83428", TRACE, arangodb::Logger::V8)
       << "initialized V8 executor #" << id << " in "
@@ -1909,7 +1875,7 @@ V8DealerFeature::getCurrentExecutorDetails() {
     std::lock_guard guard{_executorsCondition.mutex};
     result.reserve(_executors.size());
     for (auto it : _executors) {
-      auto isolate = it->_isolate;
+      v8::Isolate* isolate = it->isolate();
       TRI_GET_GLOBALS();
       result.push_back(DetailedExecutorStatistics{
           v8g->_id, v8g->_lastMaxTime, v8g->_countOfTimes, v8g->_heapMax,
@@ -1938,7 +1904,7 @@ void V8DealerFeature::loadJavaScriptFileInExecutor(
 
   executor->lockAndEnter();
 
-  TRI_ASSERT(!executor->_isolate->InContext());
+  TRI_ASSERT(!executor->isolate()->InContext());
   prepareLockedExecutor(vocbase, executor, securityContext);
   auto sg =
       arangodb::scopeGuard([&]() noexcept { exitExecutorInternal(executor); });
@@ -1958,18 +1924,18 @@ void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file,
                                                  velocypack::Builder* builder) {
   double start = TRI_microtime();
 
-  v8::HandleScope scope(executor->_isolate);
+  v8::Isolate* isolate = executor->isolate();
+  v8::HandleScope scope(isolate);
 
-  TRI_ASSERT(!executor->_isolate->InContext());
+  TRI_ASSERT(!isolate->InContext());
 
   // enter the V8 executor that is paired with the isolate
-  auto localContext =
-      v8::Local<v8::Context>::New(executor->_isolate, executor->_context);
+  auto localContext = executor->context();
   {
     v8::Context::Scope contextScope(localContext);
-    TRI_ASSERT(executor->_isolate->InContext());
+    TRI_ASSERT(executor->isolate()->InContext());
 
-    switch (_startupLoader.loadScript(executor->_isolate, file, builder)) {
+    switch (_startupLoader.loadScript(isolate, file, builder)) {
       case JSLoader::eSuccess:
         LOG_TOPIC("29e73", TRACE, arangodb::Logger::V8)
             << "loaded JavaScript file '" << file << "'";
@@ -1985,7 +1951,7 @@ void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file,
     }
   }
 
-  TRI_ASSERT(!executor->_isolate->InContext());
+  TRI_ASSERT(!isolate->InContext());
 
   LOG_TOPIC("53bbb", TRACE, arangodb::Logger::V8)
       << "loaded JavaScript file '" << file << "' for V8 executor #"
@@ -1998,7 +1964,7 @@ void V8DealerFeature::shutdownExecutor(V8Executor* executor) {
   LOG_TOPIC("7946e", TRACE, arangodb::Logger::V8)
       << "shutting down V8 executor #" << executor->id();
 
-  auto isolate = executor->_isolate;
+  v8::Isolate* isolate = executor->isolate();
   {
     // this guard will lock and enter the isolate
     // and automatically exit and unlock it when it runs out of scope
@@ -2009,9 +1975,7 @@ void V8DealerFeature::shutdownExecutor(V8Executor* executor) {
     v8::HandleScope scope(isolate);
     TRI_GET_GLOBALS();
 
-    auto localContext =
-        v8::Local<v8::Context>::New(isolate, executor->_context);
-
+    auto localContext = executor->context();
     {
       v8::Context::Scope contextScope(localContext);
       TRI_ASSERT(isolate->InContext());
@@ -2028,8 +1992,9 @@ void V8DealerFeature::shutdownExecutor(V8Executor* executor) {
     TRI_ASSERT(!isolate->InContext());
   }
 
+#if 0
   executor->_context.Reset();
-
+#endif
   server().getFeature<V8PlatformFeature>().disposeIsolate(isolate);
 
   LOG_TOPIC("34c28", TRACE, arangodb::Logger::V8)
@@ -2065,7 +2030,7 @@ V8ExecutorGuard::V8ExecutorGuard(
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT,
                                    "unable to acquire V8 executor in time");
   }
-  _isolate = _executor->_isolate;
+  _isolate = _executor->isolate();
 }
 
 V8ExecutorGuard::~V8ExecutorGuard() {
@@ -2093,7 +2058,7 @@ V8ConditionalExecutorGuard::V8ConditionalExecutorGuard(
                 "V8ConditionalExecutorGuard - could not acquire executor");
       return;
     }
-    isolate = _executor->_isolate;
+    isolate = _executor->isolate();
   }
 }
 

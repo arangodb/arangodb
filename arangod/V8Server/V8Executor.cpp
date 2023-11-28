@@ -27,8 +27,10 @@
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
+#include "Basics/ScopeGuard.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
+#include "Random/RandomGenerator.h"
 #include "RestServer/arangod.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -36,55 +38,93 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-V8Executor::V8Executor(size_t id, v8::Isolate* isolate)
+V8Executor::V8Executor(size_t id, v8::Isolate* isolate,
+                       std::function<void(V8Executor&)> const& cb)
     : _isolate{isolate},
-      _lastGcStamp{0.0},
-      _invocationsSinceLastGc{0},
-      _hasActiveExternals{false},
       _id{id},
+      _creationStamp{TRI_microtime()},
       _invocations{0},
-      _locker{nullptr},
+      // some random delay value to add as an initial garbage collection offset
+      // this avoids collecting all contexts at the very same time
+      _lastGcStamp{_creationStamp +
+                   static_cast<double>(RandomGenerator::interval(0, 60))},
+      _invocationsSinceLastGc{0},
       _description{"(none)"},
       _acquired{0.0},
-      _creationStamp{TRI_microtime()} {}
+      _hasActiveExternals{true} {
+  TRI_ASSERT(_isolate != nullptr);
+  TRI_ASSERT(_context.IsEmpty());
+
+  _isolate->Enter();
+  {
+    v8::HandleScope scope(_isolate);
+
+    _context.Reset(
+        _isolate,
+        v8::Context::New(_isolate, nullptr, v8::ObjectTemplate::New(_isolate)));
+
+    cb(*this);
+  }
+  _isolate->Exit();
+}
+
+v8::Handle<v8::Context> V8Executor::context() const noexcept {
+  v8::EscapableHandleScope scope(_isolate);
+
+  v8::Handle<v8::Context> context =
+      v8::Handle<v8::Context>::New(_isolate, _context);
+  return scope.Escape<v8::Context>(context);
+}
 
 void V8Executor::lockAndEnter() {
-  TRI_ASSERT(_isolate != nullptr);
   TRI_ASSERT(_locker == nullptr);
-  _locker = new v8::Locker(_isolate);
-  _isolate->Enter();
+  _locker = std::make_unique<v8::Locker>(_isolate);
+  TRI_ASSERT(_locker->IsLocked(_isolate));
 
-  assertLocked();
+  _isolate->Enter();
+  TRI_ASSERT(!_isolate->InContext());
 
   _invocations.fetch_add(1, std::memory_order_relaxed);
   ++_invocationsSinceLastGc;
 }
 
 void V8Executor::unlockAndExit() {
-  assertLocked();
-
+  TRI_ASSERT(!_isolate->InContext());
   _isolate->Exit();
-  delete _locker;
-  _locker = nullptr;
-
-  TRI_ASSERT(!v8::Locker::IsLocked(_isolate));
-}
-
-void V8Executor::assertLocked() const {
-  TRI_ASSERT(_locker != nullptr);
-  TRI_ASSERT(_isolate != nullptr);
-  TRI_ASSERT(_locker->IsLocked(_isolate));
-  TRI_ASSERT(v8::Locker::IsLocked(_isolate));
-}
-
-bool V8Executor::hasGlobalMethodsQueued() {
-  std::lock_guard mutexLocker{_globalMethodsLock};
-  return !_globalMethods.empty();
+  _locker.reset();
 }
 
 void V8Executor::setCleaned(double stamp) {
   _lastGcStamp = stamp;
   _invocationsSinceLastGc = 0;
+}
+
+void V8Executor::runCodeInContext(std::string_view code,
+                                  std::string_view codeDescription) {
+  runInContext([&, this]() {
+    try {
+      TRI_ExecuteJavaScriptString(_isolate, code, codeDescription, false);
+    } catch (...) {
+      LOG_TOPIC("558dd", WARN, arangodb::Logger::V8)
+          << "caught exception during code execution";
+      // do not throw from here
+    }
+  });
+}
+
+void V8Executor::runInContext(std::function<void()> const& cb) {
+  TRI_ASSERT(!_isolate->InContext());
+  TRI_ASSERT(!_context.IsEmpty());
+
+  v8::HandleScope scope(_isolate);
+  auto localContext = v8::Local<v8::Context>::New(_isolate, _context);
+  {
+    v8::Context::Scope contextScope(localContext);
+    TRI_ASSERT(_isolate->InContext());
+
+    cb();
+  }
+  TRI_ASSERT(!_isolate->InContext());
 }
 
 double V8Executor::age() const { return TRI_microtime() - _creationStamp; }
@@ -122,18 +162,27 @@ void V8Executor::addGlobalExecutorMethod(
 void V8Executor::handleGlobalExecutorMethods() {
   std::vector<GlobalExecutorMethods::MethodType> copy;
 
-  try {
+  {
     // we need to copy the vector of functions so we do not need to hold
-    // the lock while we execute them this avoids potential deadlocks when
+    // the lock while we execute them. this avoids potential deadlocks when
     // one of the executed functions itself registers a context method
 
     std::lock_guard mutexLocker{_globalMethodsLock};
     copy.swap(_globalMethods);
-  } catch (...) {
-    // if we failed, we shouldn't have modified _globalMethods yet, so we
-    // can try again on the next invocation
+  }
+
+  if (copy.empty()) {
     return;
   }
+
+  // save old security context settings
+  TRI_GET_GLOBALS2(_isolate);
+  JavaScriptSecurityContext old(v8g->_securityContext);
+
+  auto restorer = scopeGuard([&]() noexcept {
+    // restore old security settings
+    v8g->_securityContext = old;
+  });
 
   for (auto const& type : copy) {
     std::string_view code = GlobalExecutorMethods::code(type);
@@ -142,47 +191,16 @@ void V8Executor::handleGlobalExecutorMethods() {
         << "executing global context method '" << code << "' for context "
         << _id;
 
-    TRI_GET_GLOBALS2(_isolate);
-
-    // save old security context settings
-    JavaScriptSecurityContext old(v8g->_securityContext);
-
-    v8g->_securityContext = JavaScriptSecurityContext::createInternalContext();
-
-    try {
-      v8::TryCatch tryCatch(_isolate);
-
-      TRI_ExecuteJavaScriptString(_isolate, code, "global context method",
-                                  false);
-
-      if (tryCatch.HasCaught() && tryCatch.CanContinue()) {
-        TRI_LogV8Exception(_isolate, &tryCatch);
-      }
-    } catch (...) {
-      LOG_TOPIC("d0adc", WARN, arangodb::Logger::V8)
-          << "caught exception during global context method '" << code << "'";
-    }
-
-    // restore old security settings
-    v8g->_securityContext = old;
+    runCodeInContext(code, "global context method");
   }
 }
 
 void V8Executor::handleCancellationCleanup() {
-  v8::HandleScope scope(_isolate);
-
   LOG_TOPIC("e8060", DEBUG, arangodb::Logger::V8)
       << "executing cancelation cleanup context #" << _id;
 
-  try {
-    TRI_ExecuteJavaScriptString(_isolate,
-                                "require('module')._cleanupCancelation();",
-                                "context cleanup method", false);
-  } catch (...) {
-    LOG_TOPIC("558dd", WARN, arangodb::Logger::V8)
-        << "caught exception during cancelation cleanup";
-    // do not throw from here
-  }
+  runCodeInContext("require('module')._cleanupCancelation();",
+                   "context cleanup method");
 }
 
 V8ExecutorEntryGuard::V8ExecutorEntryGuard(V8Executor* executor)

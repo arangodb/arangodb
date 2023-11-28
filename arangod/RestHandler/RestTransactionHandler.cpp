@@ -428,7 +428,7 @@ void RestTransactionHandler::cancel() {
   _canceled.store(true);
 #ifdef USE_V8
   if (_v8Context != nullptr) {
-    auto isolate = _v8Context->_isolate;
+    v8::Isolate* isolate = _v8Context->isolate();
     if (!isolate->IsExecutionTerminating()) {
       isolate->TerminateExecution();
     }

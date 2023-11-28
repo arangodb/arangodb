@@ -166,9 +166,7 @@ class v8_action_t final : public TRI_action_t {
       TRI_ASSERT(!guard.isolate()->InContext());
       v8::HandleScope scope(guard.isolate());
 
-      auto localContext = v8::Local<v8::Context>::New(
-          guard.isolate(), guard.executor()->_context);
-
+      auto localContext = guard.executor()->context();
       {
         v8::Context::Scope contextScope(localContext);
 

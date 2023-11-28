@@ -106,8 +106,7 @@ void ConsoleThread::inner(V8ExecutorGuard const& guard) {
             << ")" << std::endl;
   std::cout << "Copyright (c) ArangoDB GmbH" << std::endl;
 
-  auto localContext =
-      v8::Local<v8::Context>::New(isolate, guard.executor()->_context);
+  auto localContext = guard.executor()->context();
   {
     v8::Context::Scope contextScope(localContext);
 

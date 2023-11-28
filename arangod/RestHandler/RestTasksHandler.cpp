@@ -241,9 +241,7 @@ void RestTasksHandler::registerTask(bool byId) {
     TRI_ASSERT(!isolate->InContext());
     v8::HandleScope scope(isolate);
 
-    auto localContext =
-        v8::Local<v8::Context>::New(isolate, guard.executor()->_context);
-
+    auto localContext = guard.executor()->context();
     {
       v8::Context::Scope contextScope(localContext);
       TRI_ASSERT(isolate->InContext());

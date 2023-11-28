@@ -85,8 +85,7 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
   {
     v8::HandleScope globalScope(isolate);
 
-    auto localContext =
-        v8::Local<v8::Context>::New(isolate, guard.executor()->_context);
+    auto localContext = guard.executor()->context();
     {
       v8::Context::Scope contextScope(localContext);
       auto context = localContext;

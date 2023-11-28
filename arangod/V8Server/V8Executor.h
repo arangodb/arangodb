@@ -32,6 +32,8 @@
 #include "V8Server/GlobalExecutorMethods.h"
 
 #include <atomic>
+#include <functional>
+#include <memory>
 #include <mutex>
 #include <string_view>
 
@@ -40,11 +42,13 @@
 namespace arangodb {
 class V8Executor {
  public:
-  V8Executor(size_t id, v8::Isolate* isolate);
+  V8Executor(size_t id, v8::Isolate* isolate,
+             std::function<void(V8Executor&)> const& cb);
 
+  v8::Isolate* isolate() const noexcept { return _isolate; }
+  v8::Handle<v8::Context> context() const noexcept;
   size_t id() const noexcept { return _id; }
   bool isDefault() const noexcept { return _id == 0; }
-  void assertLocked() const;
   double age() const;
   void lockAndEnter();
   void unlockAndExit();
@@ -54,37 +58,50 @@ class V8Executor {
   double acquired() const noexcept { return _acquired; }
   std::string_view description() const noexcept { return _description; }
   bool shouldBeRemoved(double maxAge, uint64_t maxInvocations) const;
-  bool hasGlobalMethodsQueued();
   void setCleaned(double stamp);
+  void runCodeInContext(std::string_view code,
+                        std::string_view codeDescription);
+  void runInContext(std::function<void()> const& cb);
 
-  // sets acquisition description (char const* must stay valid forever) and
-  // acquisition timestamp
+  // sets acquisition description (std::string_view data must stay valid
+  // forever) and acquisition timestamp
   void setDescription(std::string_view description, double acquired) noexcept {
     _description = description;
     _acquired = acquired;
   }
   void clearDescription() noexcept { _description = "none"; }
 
+  bool hasActiveExternals() const noexcept { return _hasActiveExternals; }
+  void setHasActiveExternals(bool value) noexcept {
+    _hasActiveExternals = value;
+  }
+  uint64_t invocationsSinceLastGc() const noexcept {
+    return _invocationsSinceLastGc;
+  }
+  double lastGcStamp() const noexcept { return _lastGcStamp; }
+
   void addGlobalExecutorMethod(GlobalExecutorMethods::MethodType type);
   void handleGlobalExecutorMethods();
   void handleCancellationCleanup();
 
-  v8::Persistent<v8::Context> _context;
+ private:
   v8::Isolate* const _isolate;
+  size_t const _id;
+  double const _creationStamp;
+
+  std::atomic_uint64_t _invocations;
+  std::unique_ptr<v8::Locker> _locker;
+
+  v8::Persistent<v8::Context> _context;
   double _lastGcStamp;
   uint64_t _invocationsSinceLastGc;
-  bool _hasActiveExternals;
 
- private:
-  size_t const _id;
-  std::atomic_uint64_t _invocations;
-  v8::Locker* _locker;
   /// @brief description of what the executor is doing. pointer must be valid
   /// through the entire program lifetime
   std::string_view _description;
   /// @brief timestamp of when the executor was last entered
   double _acquired;
-  double const _creationStamp;
+  bool _hasActiveExternals;
 
   std::mutex _globalMethodsLock;
   std::vector<GlobalExecutorMethods::MethodType> _globalMethods;

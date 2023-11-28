@@ -74,7 +74,7 @@ Result executeTransaction(V8Executor* executor, basics::ReadWriteLock& lock,
   //    TRI_V8_TRY_CATCH_END
   // outside of this function!
 
-  v8::Isolate* isolate = executor->_isolate;
+  v8::Isolate* isolate = executor->isolate();
   Result rv;
 
   if (!allowTransactions(isolate)) {
@@ -88,7 +88,7 @@ Result executeTransaction(V8Executor* executor, basics::ReadWriteLock& lock,
   }
 
   v8::HandleScope scope(isolate);
-  auto localContext = v8::Local<v8::Context>::New(isolate, executor->_context);
+  auto localContext = executor->context();
   v8::Context::Scope contextScope(localContext);
 
   auto context = TRI_IGETC;
