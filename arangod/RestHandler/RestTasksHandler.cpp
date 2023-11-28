@@ -33,8 +33,8 @@
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
+#include "V8Server/V8Executor.h"
 #include "VocBase/Methods/Tasks.h"
 
 #include <velocypack/Builder.h>
@@ -235,7 +235,7 @@ void RestTasksHandler::registerTask(bool byId) {
   try {
     JavaScriptSecurityContext securityContext =
         JavaScriptSecurityContext::createRestrictedContext();
-    V8ContextGuard guard(&_vocbase, securityContext);
+    V8ExecutorGuard guard(&_vocbase, securityContext);
 
     v8::Isolate* isolate = guard.isolate();
     TRI_ASSERT(!isolate->InContext());

@@ -49,7 +49,7 @@ struct TRI_vocbase_t;
 namespace arangodb {
 class JavaScriptSecurityContext;
 class Thread;
-class V8Context;
+class V8Executor;
 
 class V8DealerFeature final : public ArangodFeature {
  public:
@@ -141,9 +141,9 @@ class V8DealerFeature final : public ArangodFeature {
 
   /// @brief enter a V8 context
   /// currently returns a nullptr if no context can be acquired in time
-  V8Context* enterContext(TRI_vocbase_t*,
-                          JavaScriptSecurityContext const& securityContext);
-  void exitContext(V8Context*);
+  V8Executor* enterContext(TRI_vocbase_t*,
+                           JavaScriptSecurityContext const& securityContext);
+  void exitContext(V8Executor*);
 
   void setMinimumContexts(size_t nr) {
     if (nr > _nrMinContexts) {
@@ -175,20 +175,20 @@ class V8DealerFeature final : public ArangodFeature {
   uint64_t nextId() { return _nextId++; }
   void copyInstallationFiles();
   void startGarbageCollection();
-  std::unique_ptr<V8Context> addContext();
-  std::unique_ptr<V8Context> buildContext(TRI_vocbase_t* vocbase, size_t id);
-  V8Context* pickFreeContextForGc();
-  void shutdownContext(V8Context* context);
+  std::unique_ptr<V8Executor> addContext();
+  std::unique_ptr<V8Executor> buildContext(TRI_vocbase_t* vocbase, size_t id);
+  V8Executor* pickFreeContextForGc();
+  void shutdownContext(V8Executor* context);
   void unblockDynamicContextCreation();
-  void loadJavaScriptFileInternal(std::string const& file, V8Context* context,
+  void loadJavaScriptFileInternal(std::string const& file, V8Executor* context,
                                   VPackBuilder* builder);
   void loadJavaScriptFileInContext(TRI_vocbase_t*, std::string const& file,
-                                   V8Context* context, VPackBuilder* builder);
-  void prepareLockedContext(TRI_vocbase_t*, V8Context*,
+                                   V8Executor* context, VPackBuilder* builder);
+  void prepareLockedContext(TRI_vocbase_t*, V8Executor*,
                             JavaScriptSecurityContext const&);
-  void exitContextInternal(V8Context*);
-  void cleanupLockedContext(V8Context*);
-  void applyContextUpdate(V8Context* context);
+  void exitContextInternal(V8Executor*);
+  void cleanupLockedContext(V8Executor*);
+  void applyContextUpdate(V8Executor* context);
   void shutdownContexts();
 
   std::atomic<uint64_t> _nextId;
@@ -198,10 +198,10 @@ class V8DealerFeature final : public ArangodFeature {
   std::atomic<bool> _gcFinished;
 
   basics::ConditionVariable _contextCondition;
-  std::vector<V8Context*> _contexts;
-  std::vector<V8Context*> _idleContexts;
-  std::vector<V8Context*> _dirtyContexts;
-  std::unordered_set<V8Context*> _busyContexts;
+  std::vector<V8Executor*> _contexts;
+  std::vector<V8Executor*> _idleContexts;
+  std::vector<V8Executor*> _dirtyContexts;
+  std::unordered_set<V8Executor*> _busyContexts;
   size_t _dynamicContextCreationBlockers;
 
   JSLoader _startupLoader;
@@ -220,20 +220,20 @@ class V8DealerFeature final : public ArangodFeature {
 
 /// @brief enters and exits a context and provides an isolate
 /// throws an exception when no context can be provided
-class V8ContextGuard {
+class V8ExecutorGuard {
  public:
-  explicit V8ContextGuard(TRI_vocbase_t*, JavaScriptSecurityContext const&);
-  V8ContextGuard(V8ContextGuard const&) = delete;
-  V8ContextGuard& operator=(V8ContextGuard const&) = delete;
-  ~V8ContextGuard();
+  explicit V8ExecutorGuard(TRI_vocbase_t*, JavaScriptSecurityContext const&);
+  V8ExecutorGuard(V8ExecutorGuard const&) = delete;
+  V8ExecutorGuard& operator=(V8ExecutorGuard const&) = delete;
+  ~V8ExecutorGuard();
 
   v8::Isolate* isolate() const { return _isolate; }
-  V8Context* context() const { return _context; }
+  V8Executor* context() const { return _context; }
 
  private:
   TRI_vocbase_t* _vocbase;
   v8::Isolate* _isolate;
-  V8Context* _context;
+  V8Executor* _context;
 };
 
 // enters and exits a context and provides an isolate
@@ -250,7 +250,7 @@ class V8ConditionalContextGuard {
  private:
   TRI_vocbase_t* _vocbase;
   v8::Isolate*& _isolate;
-  V8Context* _context;
+  V8Executor* _context;
   bool _active;
 };
 

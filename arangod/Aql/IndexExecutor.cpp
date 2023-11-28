@@ -683,11 +683,11 @@ void IndexExecutor::initIndexes(InputAqlItemRow const& input) {
       // must have a V8 context here to protect Expression::execute()
       auto cleanup = [this]() {
         if (arangodb::ServerState::instance()->isRunningInCluster()) {
-          _infos.query().exitV8Context();
+          _infos.query().exitV8Executor();
         }
       };
 
-      _infos.query().enterV8Context();
+      _infos.query().enterV8Executor();
       auto sg = arangodb::scopeGuard([&]() noexcept { cleanup(); });
 
       ISOLATE;

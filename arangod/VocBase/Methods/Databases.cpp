@@ -48,7 +48,6 @@
 #ifdef USE_V8
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-utils.h"
-#include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Tasks.h"
 #endif

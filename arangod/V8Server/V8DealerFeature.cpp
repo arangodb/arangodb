@@ -62,7 +62,6 @@
 #include "RestServer/ScriptFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Transaction/V8Context.h"
 #include "Utilities/NameValidator.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/V8PlatformFeature.h"
@@ -74,7 +73,7 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-deadline.h"
 #include "V8Server/FoxxFeature.h"
-#include "V8Server/V8Context.h"
+#include "V8Server/V8Executor.h"
 #include "V8Server/v8-actions.h"
 #include "V8Server/v8-dispatcher.h"
 #include "V8Server/v8-query.h"
@@ -767,7 +766,7 @@ void V8DealerFeature::copyInstallationFiles() {
       basics::FileUtils::buildFilename(copyJSPath, "node", "node_modules");
 }
 
-std::unique_ptr<V8Context> V8DealerFeature::addContext() {
+std::unique_ptr<V8Executor> V8DealerFeature::addContext() {
   if (server().isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
@@ -979,7 +978,7 @@ void V8DealerFeature::collectGarbage() {
 
   while (!_stopping) {
     try {
-      V8Context* context = nullptr;
+      V8Executor* context = nullptr;
       bool wasDirty = false;
 
       {
@@ -1046,7 +1045,7 @@ void V8DealerFeature::collectGarbage() {
         {
           // this guard will lock and enter the isolate
           // and automatically exit and unlock it when it runs out of scope
-          V8ContextEntryGuard contextGuard(context);
+          V8ExecutorEntryGuard contextGuard(context);
 
           TRI_ASSERT(!isolate->InContext());
           v8::HandleScope scope(isolate);
@@ -1082,7 +1081,7 @@ void V8DealerFeature::collectGarbage() {
               _dynamicContextCreationBlockers == 0) {
             // remove the extra context as it is not needed anymore
             _contexts.erase(std::remove_if(_contexts.begin(), _contexts.end(),
-                                           [&context](V8Context* c) {
+                                           [&context](V8Executor* c) {
                                              return (c->id() == context->id());
                                            }));
 
@@ -1129,7 +1128,7 @@ void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
     builder->openArray();
   }
 
-  std::vector<V8Context*> contexts;
+  std::vector<V8Executor*> contexts;
   {
     std::unique_lock guard{_contextCondition.mutex};
 
@@ -1216,7 +1215,7 @@ void V8DealerFeature::startGarbageCollection() {
 }
 
 void V8DealerFeature::prepareLockedContext(
-    TRI_vocbase_t* vocbase, V8Context* context,
+    TRI_vocbase_t* vocbase, V8Executor* context,
     JavaScriptSecurityContext const& securityContext) {
   TRI_ASSERT(vocbase != nullptr);
 
@@ -1258,7 +1257,7 @@ void V8DealerFeature::prepareLockedContext(
 
 /// @brief enter a V8 context
 /// currently returns a nullptr if no context can be acquired in time
-V8Context* V8DealerFeature::enterContext(
+V8Executor* V8DealerFeature::enterContext(
     TRI_vocbase_t* vocbase, JavaScriptSecurityContext const& securityContext) {
   TRI_ASSERT(vocbase != nullptr);
 
@@ -1273,7 +1272,7 @@ V8Context* V8DealerFeature::enterContext(
   double const startTime = TRI_microtime();
   TRI_ASSERT(v8::Isolate::TryGetCurrent() == nullptr);
 
-  V8Context* context = nullptr;
+  V8Executor* context = nullptr;
 
   // look for a free context
   {
@@ -1414,12 +1413,12 @@ V8Context* V8DealerFeature::enterContext(
   return context;
 }
 
-void V8DealerFeature::exitContextInternal(V8Context* context) {
+void V8DealerFeature::exitContextInternal(V8Executor* context) {
   auto sg = arangodb::scopeGuard([&]() noexcept { context->unlockAndExit(); });
   cleanupLockedContext(context);
 }
 
-void V8DealerFeature::cleanupLockedContext(V8Context* context) {
+void V8DealerFeature::cleanupLockedContext(V8Executor* context) {
   TRI_ASSERT(context != nullptr);
 
   LOG_TOPIC("e1c52", TRACE, arangodb::Logger::V8)
@@ -1505,7 +1504,7 @@ void V8DealerFeature::cleanupLockedContext(V8Context* context) {
   }
 }
 
-void V8DealerFeature::exitContext(V8Context* context) {
+void V8DealerFeature::exitContext(V8Executor* context) {
   cleanupLockedContext(context);
 
   V8GcThread* gc = static_cast<V8GcThread*>(_gcThread.get());
@@ -1651,7 +1650,7 @@ void V8DealerFeature::shutdownContexts() {
 
   // shutdown all instances
   {
-    std::vector<V8Context*> contexts;
+    std::vector<V8Executor*> contexts;
     {
       std::lock_guard guard{_contextCondition.mutex};
       contexts = _contexts;
@@ -1667,7 +1666,7 @@ void V8DealerFeature::shutdownContexts() {
       << "V8 contexts are shut down";
 }
 
-V8Context* V8DealerFeature::pickFreeContextForGc() {
+V8Executor* V8DealerFeature::pickFreeContextForGc() {
   int const n = static_cast<int>(_idleContexts.size());
 
   if (n == 0) {
@@ -1706,7 +1705,7 @@ V8Context* V8DealerFeature::pickFreeContextForGc() {
   }
 
   // this is the context to clean up
-  V8Context* context = _idleContexts[pickedContextNr];
+  V8Executor* context = _idleContexts[pickedContextNr];
   TRI_ASSERT(context != nullptr);
 
   // now compare its last GC timestamp with the last global GC stamp
@@ -1728,8 +1727,8 @@ V8Context* V8DealerFeature::pickFreeContextForGc() {
   return context;
 }
 
-std::unique_ptr<V8Context> V8DealerFeature::buildContext(TRI_vocbase_t* vocbase,
-                                                         size_t id) {
+std::unique_ptr<V8Executor> V8DealerFeature::buildContext(
+    TRI_vocbase_t* vocbase, size_t id) {
   double const start = TRI_microtime();
 
   V8PlatformFeature& v8platform = server().getFeature<V8PlatformFeature>();
@@ -1738,15 +1737,15 @@ std::unique_ptr<V8Context> V8DealerFeature::buildContext(TRI_vocbase_t* vocbase,
   v8::Isolate* isolate = v8platform.createIsolate();
   TRI_ASSERT(isolate != nullptr);
 
-  std::unique_ptr<V8Context> context;
+  std::unique_ptr<V8Executor> context;
 
   try {
     // pass isolate to a new context
-    context = std::make_unique<V8Context>(id, isolate);
+    context = std::make_unique<V8Executor>(id, isolate);
 
     // this guard will lock and enter the isolate
     // and automatically exit and unlock it when it runs out of scope
-    V8ContextEntryGuard contextGuard(context.get());
+    V8ExecutorEntryGuard contextGuard(context.get());
 
     v8::HandleScope scope(isolate);
 
@@ -1916,7 +1915,7 @@ V8DealerFeature::getCurrentContextDetails() {
 
 void V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
                                                   std::string const& file,
-                                                  V8Context* context,
+                                                  V8Executor* context,
                                                   VPackBuilder* builder) {
   TRI_ASSERT(vocbase != nullptr);
   TRI_ASSERT(context != nullptr);
@@ -1950,7 +1949,7 @@ void V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
 }
 
 void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file,
-                                                 V8Context* context,
+                                                 V8Executor* context,
                                                  VPackBuilder* builder) {
   double start = TRI_microtime();
 
@@ -1989,7 +1988,7 @@ void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file,
       << ", took: " << Logger::FIXED(TRI_microtime() - start, 6) << "s";
 }
 
-void V8DealerFeature::shutdownContext(V8Context* context) {
+void V8DealerFeature::shutdownContext(V8Executor* context) {
   TRI_ASSERT(context != nullptr);
   LOG_TOPIC("7946e", TRACE, arangodb::Logger::V8)
       << "shutting down V8 context #" << context->id();
@@ -1998,7 +1997,7 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
   {
     // this guard will lock and enter the isolate
     // and automatically exit and unlock it when it runs out of scope
-    V8ContextEntryGuard contextGuard(context);
+    V8ExecutorEntryGuard contextGuard(context);
 
     TRI_ASSERT(!isolate->InContext());
 
@@ -2051,8 +2050,8 @@ bool V8DealerFeature::javascriptRequestedViaOptions(
   return false;
 }
 
-V8ContextGuard::V8ContextGuard(TRI_vocbase_t* vocbase,
-                               JavaScriptSecurityContext const& securityContext)
+V8ExecutorGuard::V8ExecutorGuard(
+    TRI_vocbase_t* vocbase, JavaScriptSecurityContext const& securityContext)
     : _vocbase(vocbase), _isolate(nullptr), _context(nullptr) {
   _context = vocbase->server().getFeature<V8DealerFeature>().enterContext(
       vocbase, securityContext);
@@ -2063,7 +2062,7 @@ V8ContextGuard::V8ContextGuard(TRI_vocbase_t* vocbase,
   _isolate = _context->_isolate;
 }
 
-V8ContextGuard::~V8ContextGuard() {
+V8ExecutorGuard::~V8ExecutorGuard() {
   if (_context) {
     try {
       _vocbase->server().getFeature<V8DealerFeature>().exitContext(_context);

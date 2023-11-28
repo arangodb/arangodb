@@ -126,7 +126,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
                               v8::Isolate::TryGetCurrent() != nullptr),
       _embeddedQuery(_transactionContext->isV8Context() &&
                      transaction::V8Context::isEmbedded()),
-      _registeredInV8Context(false),
+      _registeredInV8Executor(false),
 #endif
       _queryHashCalculated(false),
       _registeredQueryInTrx(false),
@@ -252,7 +252,7 @@ void Query::destroy() {
 
   unregisterSnippets();
 
-  exitV8Context();
+  exitV8Executor();
 
   _snippets.clear();  // simon: must be before plan
   _plans.clear();     // simon: must be before AST
@@ -487,8 +487,8 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   TRI_ASSERT(plan != nullptr);
 
-  // return the V8 context if we are in one
-  exitV8Context();
+  // return the V8 executor if we are in one
+  exitV8Executor();
 
   return plan;
 }
@@ -1157,8 +1157,8 @@ bool Query::isAsyncQuery() const noexcept {
   return _ast->canApplyParallelism();
 }
 
-/// @brief enter a V8 context
-void Query::enterV8Context() {
+/// @brief enter a V8 executor
+void Query::enterV8Executor() {
 #ifdef USE_V8
   auto registerCtx = [&] {
     // register transaction in context
@@ -1197,15 +1197,15 @@ void Query::enterV8Context() {
     }
     TRI_ASSERT(_v8Context != nullptr);
   } else if (!_embeddedQuery &&
-             !_registeredInV8Context) {  // may happen for stream trx
+             !_registeredInV8Executor) {  // may happen for stream trx
     registerCtx();
-    _registeredInV8Context = true;
+    _registeredInV8Executor = true;
   }
 #endif
 }
 
-/// @brief return a V8 context
-void Query::exitV8Context() {
+/// @brief return a V8 executor
+void Query::exitV8Executor() {
 #ifdef USE_V8
   auto unregister = [&] {
     if (_transactionContext->isV8Context()) {  // necessary for stream trx
@@ -1231,10 +1231,10 @@ void Query::exitV8Context() {
       server.getFeature<V8DealerFeature>().exitContext(_v8Context);
       _v8Context = nullptr;
     }
-  } else if (!_embeddedQuery && _registeredInV8Context) {
+  } else if (!_embeddedQuery && _registeredInV8Executor) {
     // prevent duplicate deregistration
     unregister();
-    _registeredInV8Context = false;
+    _registeredInV8Executor = false;
   }
 #endif
 }

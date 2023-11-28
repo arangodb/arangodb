@@ -24,7 +24,7 @@
 #pragma once
 
 #include "Basics/Thread.h"
-#include "V8Server/V8Context.h"
+#include "V8Server/V8Executor.h"
 #include "RestServer/arangod.h"
 
 #include <mutex>
@@ -32,7 +32,7 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class V8ContextGuard;
+class V8ExecutorGuard;
 class V8LineEditor;
 }  // namespace arangodb
 
@@ -62,7 +62,7 @@ class ConsoleThread final : public ServerThread<ArangodServer> {
   void userAbort() { _userAborted.store(true); }
 
  private:
-  void inner(V8ContextGuard const&);
+  void inner(V8ExecutorGuard const&);
 
  private:
   TRI_vocbase_t* _vocbase;

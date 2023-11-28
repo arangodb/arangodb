@@ -36,7 +36,7 @@
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/V8Context.h"
+#include "V8Server/V8Executor.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-actions.h"
 
@@ -111,7 +111,7 @@ RestStatus RestAdminExecuteHandler::execute() {
     JavaScriptSecurityContext securityContext =
         JavaScriptSecurityContext::createRestAdminScriptActionContext(
             allowUseDatabase);
-    V8ContextGuard guard(&_vocbase, securityContext);
+    V8ExecutorGuard guard(&_vocbase, securityContext);
 
     {
       v8::Isolate* isolate = guard.isolate();

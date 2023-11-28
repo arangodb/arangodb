@@ -21,7 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "V8Context.h"
+#include "V8Executor.h"
 
 #ifndef USE_V8
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
@@ -36,7 +36,7 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-V8Context::V8Context(size_t id, v8::Isolate* isolate)
+V8Executor::V8Executor(size_t id, v8::Isolate* isolate)
     : _isolate{isolate},
       _lastGcStamp{0.0},
       _invocationsSinceLastGc{0},
@@ -48,7 +48,7 @@ V8Context::V8Context(size_t id, v8::Isolate* isolate)
       _acquired{0.0},
       _creationStamp{TRI_microtime()} {}
 
-void V8Context::lockAndEnter() {
+void V8Executor::lockAndEnter() {
   TRI_ASSERT(_isolate != nullptr);
   TRI_ASSERT(_locker == nullptr);
   _locker = new v8::Locker(_isolate);
@@ -60,7 +60,7 @@ void V8Context::lockAndEnter() {
   ++_invocationsSinceLastGc;
 }
 
-void V8Context::unlockAndExit() {
+void V8Executor::unlockAndExit() {
   assertLocked();
 
   _isolate->Exit();
@@ -70,26 +70,26 @@ void V8Context::unlockAndExit() {
   TRI_ASSERT(!v8::Locker::IsLocked(_isolate));
 }
 
-void V8Context::assertLocked() const {
+void V8Executor::assertLocked() const {
   TRI_ASSERT(_locker != nullptr);
   TRI_ASSERT(_isolate != nullptr);
   TRI_ASSERT(_locker->IsLocked(_isolate));
   TRI_ASSERT(v8::Locker::IsLocked(_isolate));
 }
 
-bool V8Context::hasGlobalMethodsQueued() {
+bool V8Executor::hasGlobalMethodsQueued() {
   std::lock_guard mutexLocker{_globalMethodsLock};
   return !_globalMethods.empty();
 }
 
-void V8Context::setCleaned(double stamp) {
+void V8Executor::setCleaned(double stamp) {
   _lastGcStamp = stamp;
   _invocationsSinceLastGc = 0;
 }
 
-double V8Context::age() const { return TRI_microtime() - _creationStamp; }
+double V8Executor::age() const { return TRI_microtime() - _creationStamp; }
 
-bool V8Context::shouldBeRemoved(double maxAge, uint64_t maxInvocations) const {
+bool V8Executor::shouldBeRemoved(double maxAge, uint64_t maxInvocations) const {
   if (maxAge > 0.0 && age() > maxAge) {
     // context is "too old"
     return true;
@@ -104,7 +104,7 @@ bool V8Context::shouldBeRemoved(double maxAge, uint64_t maxInvocations) const {
   return false;
 }
 
-void V8Context::addGlobalContextMethod(GlobalContextMethods::MethodType type) {
+void V8Executor::addGlobalContextMethod(GlobalContextMethods::MethodType type) {
   std::lock_guard mutexLocker{_globalMethodsLock};
 
   for (auto const& it : _globalMethods) {
@@ -118,7 +118,7 @@ void V8Context::addGlobalContextMethod(GlobalContextMethods::MethodType type) {
   _globalMethods.emplace_back(type);
 }
 
-void V8Context::handleGlobalContextMethods() {
+void V8Executor::handleGlobalContextMethods() {
   std::vector<GlobalContextMethods::MethodType> copy;
 
   try {
@@ -169,7 +169,7 @@ void V8Context::handleGlobalContextMethods() {
   }
 }
 
-void V8Context::handleCancellationCleanup() {
+void V8Executor::handleCancellationCleanup() {
   v8::HandleScope scope(_isolate);
 
   LOG_TOPIC("e8060", DEBUG, arangodb::Logger::V8)
@@ -186,9 +186,9 @@ void V8Context::handleCancellationCleanup() {
   }
 }
 
-V8ContextEntryGuard::V8ContextEntryGuard(V8Context* context)
+V8ExecutorEntryGuard::V8ExecutorEntryGuard(V8Executor* context)
     : _context(context) {
   _context->lockAndEnter();
 }
 
-V8ContextEntryGuard::~V8ContextEntryGuard() { _context->unlockAndExit(); }
+V8ExecutorEntryGuard::~V8ExecutorEntryGuard() { _context->unlockAndExit(); }

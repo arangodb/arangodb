@@ -40,7 +40,7 @@
 #include "Basics/system-functions.h"
 #include "Scheduler/SchedulerFeature.h"
 #ifdef USE_V8
-#include "V8Server/V8Context.h"
+#include "V8Server/V8Executor.h"
 #endif
 
 #include <velocypack/Builder.h>
@@ -167,14 +167,14 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   bool isAsyncQuery() const noexcept final;
 
-  /// @brief enter a V8 context
-  void enterV8Context() final;
+  /// @brief enter a V8 executor
+  void enterV8Executor() final;
 
-  /// @brief exits a V8 context
-  void exitV8Context() final;
+  /// @brief exits a V8 executor
+  void exitV8Executor() final;
 
-  /// @brief check if the query has a V8 context ready for use
-  bool hasEnteredV8Context() const final {
+  /// @brief check if the query has a V8 executor ready for use
+  bool hasEnteredV8Executor() const final {
 #ifdef USE_V8
     return (_contextOwnedByExterior || _v8Context != nullptr);
 #else
@@ -315,7 +315,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
 #ifdef USE_V8
   /// @brief the currently used V8 context
-  V8Context* _v8Context;
+  V8Executor* _v8Context;
 #endif
 
   /// @brief bind parameters for the query
@@ -386,7 +386,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief whether or not the transaction context was registered
   /// in a v8 context
-  bool _registeredInV8Context;
+  bool _registeredInV8Executor;
 
   /// @brief whether or not the hash was already calculated
   bool _queryHashCalculated;

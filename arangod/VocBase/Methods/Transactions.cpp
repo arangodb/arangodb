@@ -42,8 +42,8 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-helper.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
+#include "V8Server/V8Executor.h"
 #include "V8Server/v8-vocbaseprivate.h"
 
 #include <velocypack/Slice.h>
@@ -457,7 +457,7 @@ Result executeTransactionJS(v8::Isolate* isolate,
 
   rv = trx.finish(rv);
 
-  // if we do not remove unused V8Cursors, V8Context might not reset global
+  // if we do not remove unused V8Cursors, V8Executor might not reset global
   // state
   vocbase.cursorRepository()->garbageCollect(/*force*/ false);
 

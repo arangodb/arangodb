@@ -24,7 +24,6 @@
 #include "RestAdminRoutingHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb;

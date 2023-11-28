@@ -38,9 +38,9 @@
 #include <v8.h>
 
 namespace arangodb {
-class V8Context {
+class V8Executor {
  public:
-  V8Context(size_t id, v8::Isolate* isolate);
+  V8Executor(size_t id, v8::Isolate* isolate);
 
   size_t id() const noexcept { return _id; }
   bool isDefault() const noexcept { return _id == 0; }
@@ -90,15 +90,15 @@ class V8Context {
   std::vector<GlobalContextMethods::MethodType> _globalMethods;
 };
 
-class V8ContextEntryGuard {
+class V8ExecutorEntryGuard {
  public:
-  explicit V8ContextEntryGuard(V8Context* context);
-  V8ContextEntryGuard(V8ContextEntryGuard const&) = delete;
-  V8ContextEntryGuard& operator=(V8ContextEntryGuard const&) = delete;
-  ~V8ContextEntryGuard();
+  explicit V8ExecutorEntryGuard(V8Executor* context);
+  V8ExecutorEntryGuard(V8ExecutorEntryGuard const&) = delete;
+  V8ExecutorEntryGuard& operator=(V8ExecutorEntryGuard const&) = delete;
+  ~V8ExecutorEntryGuard();
 
  private:
-  V8Context* _context;
+  V8Executor* _context;
 };
 
 }  // namespace arangodb

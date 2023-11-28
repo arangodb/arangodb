@@ -41,7 +41,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
-#include "V8Server/V8Context.h"
+#include "V8Server/V8Executor.h"
 #include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb::application_features;
@@ -79,7 +79,7 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
 
   JavaScriptSecurityContext securityContext =
       JavaScriptSecurityContext::createAdminScriptContext();
-  V8ContextGuard guard(database.get(), securityContext);
+  V8ExecutorGuard guard(database.get(), securityContext);
 
   auto isolate = guard.isolate();
   {

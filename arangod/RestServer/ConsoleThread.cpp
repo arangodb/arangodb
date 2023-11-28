@@ -76,7 +76,7 @@ void ConsoleThread::run() {
   // enter V8 context
   JavaScriptSecurityContext securityContext =
       JavaScriptSecurityContext::createAdminScriptContext();
-  V8ContextGuard guard(_vocbase, securityContext);
+  V8ExecutorGuard guard(_vocbase, securityContext);
 
   // work
   try {
@@ -94,7 +94,7 @@ void ConsoleThread::run() {
   _server.beginShutdown();
 }
 
-void ConsoleThread::inner(V8ContextGuard const& guard) {
+void ConsoleThread::inner(V8ExecutorGuard const& guard) {
   // flush all log output before we print the console prompt
   Logger::flush();
 

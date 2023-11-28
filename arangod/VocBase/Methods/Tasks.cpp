@@ -48,8 +48,8 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
+#include "V8Server/V8Executor.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -435,7 +435,7 @@ void Task::work(ExecContext const* exec) {
           : JavaScriptSecurityContext::createTaskContext(
                 false /*_allowUseDatabase*/);  // task context that has no
                                                // access to dbs
-  V8ContextGuard guard(&_dbGuard->database(), securityContext);
+  V8ExecutorGuard guard(&_dbGuard->database(), securityContext);
 
   // now execute the function within this context
   {

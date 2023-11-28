@@ -59,8 +59,8 @@
 #include "V8/v8-vpack.h"
 #include "V8Server/FoxxFeature.h"
 #include "V8Server/GlobalContextMethods.h"
-#include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
+#include "V8Server/V8Executor.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -129,7 +129,7 @@ class v8_action_t final : public TRI_action_t {
         _allowUseDatabase || _actionFeature.allowUseDatabase();
 
     // get a V8 context
-    V8ContextGuard guard(
+    V8ExecutorGuard guard(
         vocbase, _isSystem ? JavaScriptSecurityContext::createInternalContext()
                            : JavaScriptSecurityContext::createRestActionContext(
                                  allowUseDatabase));
