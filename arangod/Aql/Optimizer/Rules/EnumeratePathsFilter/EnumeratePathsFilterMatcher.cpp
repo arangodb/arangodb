@@ -162,7 +162,9 @@ auto EnumeratePathsFilterMatcher::before(ExecutionNode* node) -> bool {
                              member->getTypeString());
           continue;
         }
-        if (Quantifier::isAll(member->getMemberUnchecked(3))) {
+
+        auto quantifier = member->getMemberUnchecked(2);
+        if (quantifier and Quantifier::isAll(quantifier)) {
           LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << fmt::format(
               "iterating andNode, bailing binary eq quantifier not ALL");
           continue;
