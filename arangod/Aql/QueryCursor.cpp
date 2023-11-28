@@ -59,6 +59,7 @@ QueryResultCursor::QueryResultCursor(TRI_vocbase_t& vocbase,
       _guard(vocbase),
       _result(std::move(result)),
       _iterator(_result.data->slice()),
+      _memoryUsageAtStart(_result.memoryUsage()),
       _cached(_result.cached) {
   TRI_ASSERT(_result.data->slice().isArray());
 }
@@ -80,6 +81,10 @@ VPackSlice QueryResultCursor::next() {
   VPackSlice slice = _iterator.value();
   _iterator.next();
   return slice;
+}
+
+uint64_t QueryResultCursor::memoryUsage() const noexcept {
+  return _memoryUsageAtStart;
 }
 
 /// @brief return the cursor size
@@ -218,6 +223,14 @@ void QueryStreamCursor::debugKillQuery() {
     _query->debugKillQuery();
   }
 #endif
+}
+
+uint64_t QueryStreamCursor::memoryUsage() const noexcept {
+  // while a stream AQL query is operating, its memory usage
+  // is tracked by the still-running query. the cursor does
+  // not use a lot of memory on its own.
+  uint64_t value = 2048 /* arbitrary fixed size value */;
+  return value;
 }
 
 std::pair<ExecutionState, Result> QueryStreamCursor::dump(

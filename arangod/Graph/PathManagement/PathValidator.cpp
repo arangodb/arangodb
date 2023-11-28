@@ -292,13 +292,29 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
 
     // evaluate expression
     bool satifiesCondition =
-        evaluateVertexExpression(vertexExpr, vertexBuilder.slice());
+        evaluateExpression(vertexExpr, vertexBuilder.slice());
     if (!satifiesCondition) {
       if (_options.bfsResultHasToIncludeFirstVertex() && step.isFirst()) {
         res.combine(ValidationResult::Type::PRUNE);
       } else {
         return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
       }
+    }
+  }
+
+  auto edgeExpr = _options.getEdgeExpression();
+  if (edgeExpr != nullptr) {
+    if (step.getEdge().isValid()) {
+      edgeBuilder.clear();
+
+      _provider.addEdgeToBuilder(step.getEdge(), edgeBuilder);
+      bool satisfiesCondition =
+          evaluateExpression(edgeExpr, edgeBuilder.slice());
+      if (!satisfiesCondition) {
+        return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
+      }
+    } else {
+      // TODO: at the moment we smile and wave...
     }
   }
 
@@ -338,8 +354,8 @@ template<class ProviderType, class PathStore,
          VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness>
 auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
-    evaluateVertexExpression(arangodb::aql::Expression* expression,
-                             VPackSlice value) -> bool {
+    evaluateExpression(arangodb::aql::Expression* expression, VPackSlice value)
+        -> bool {
   if (expression == nullptr) {
     return true;
   }

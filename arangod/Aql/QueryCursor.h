@@ -32,6 +32,7 @@
 #include "Utils/Cursor.h"
 #include "VocBase/vocbase.h"
 
+#include <cstdint>
 #include <deque>
 
 namespace arangodb {
@@ -58,6 +59,8 @@ class QueryResultCursor final : public arangodb::Cursor {
 
   velocypack::Slice next();
 
+  uint64_t memoryUsage() const noexcept override final;
+
   size_t count() const override final;
 
   std::pair<aql::ExecutionState, Result> dump(
@@ -83,7 +86,8 @@ class QueryResultCursor final : public arangodb::Cursor {
   DatabaseGuard _guard;
   aql::QueryResult _result;
   arangodb::velocypack::ArrayIterator _iterator;
-  bool _cached;
+  uint64_t const _memoryUsageAtStart;
+  bool const _cached;
 };
 
 /// Cursor managing a query from which it continuously gets
@@ -104,6 +108,8 @@ class QueryStreamCursor final : public arangodb::Cursor {
   // is actually visible through other APIS (e.g. current queries)
   // so user actually has a chance to kill it here.
   void debugKillQuery() override;
+
+  uint64_t memoryUsage() const noexcept override final;
 
   size_t count() const override final { return 0; }
 
@@ -138,7 +144,6 @@ class QueryStreamCursor final : public arangodb::Cursor {
 
   void cleanupStateCallback();
 
- private:
   velocypack::UInt8Buffer _extrasBuffer;
   std::deque<SharedAqlItemBlockPtr> _queryResults;  /// buffered results
   std::shared_ptr<transaction::Context> _ctx;       /// cache context
