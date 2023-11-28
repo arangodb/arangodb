@@ -53,7 +53,7 @@ struct IResearchExecutionPool final : public metrics::Gauge<uint64_t> {
 
  private:
   Pool _pool;
-  std::atomic<uint64_t> _active;
+  std::atomic<uint64_t> _active{0};
   uint64_t _limit{0};
 };
 }  // namespace arangodb::iresearch
