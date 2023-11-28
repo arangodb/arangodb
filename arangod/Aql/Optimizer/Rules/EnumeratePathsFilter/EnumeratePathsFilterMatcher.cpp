@@ -35,12 +35,6 @@
 using EN = arangodb::aql::ExecutionNode;
 #define LOG_ENUMERATE_PATHS_OPTIMIZER_RULE LOG_DEVEL_IF(false)
 
-namespace {
-
-auto patternMatch(AstNode const* root) -> bool {}
-
-}  // namespace
-
 namespace arangodb::aql {
 
 EnumeratePathsFilterMatcher::EnumeratePathsFilterMatcher(ExecutionPlan* plan)
@@ -136,62 +130,112 @@ auto EnumeratePathsFilterMatcher::before(ExecutionNode* node) -> bool {
       //      pathsNode->getVarsValid();
 
       if (_condition->root()->type != NODE_TYPE_OPERATOR_NARY_OR) {
-        LOG_RULE << "need nary or.";
+        LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << fmt::format(
+            "expect normalised condition root to be n-ary or, found {}",
+            _condition->root()->getTypeString());
         return false;
       }
       if (_condition->root()->numMembers() != 1) {
-        LOG_RULE << "need one member.";
+        LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << fmt::format(
+            "expecting condition root to have precisely one member, found {}",
+            _condition->root()->numMembers());
         return false;
       }
       auto andNode = _condition->root()->getMemberUnchecked(0);
 
       if (andNode->type != NODE_TYPE_OPERATOR_NARY_AND) {
+        LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << fmt::format(
+            "expecting andNode to be of type n-ary and, found {}",
+            andNode->getTypeString());
         return false;
       }
 
-      // Every condition has to be of the form
-      // pathVariable.vertices[* ...] ALL == $literal_value
-      // pathVariable.edges[* ...] ALL == $literal_value
+      // Every condition that is in andNode has to be of the form
+      // pathVariable.vertices[* RETURN ...] ALL == $literal_value
+      // or
+      // pathVariable.edges[* RETURN ...] ALL == $literal_value
       for (auto i = size_t{0}; i < andNode->numMembers(); ++i) {
         auto member = andNode->getMemberUnchecked(i);
         if (member->type != NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ) {
+          LOG_ENUMERATE_PATHS_OPTIMIZER_RULE
+              << fmt::format("iterating andNode, bailing not binary eq, but {}",
+                             member->getTypeString());
           continue;
         }
         if (Quantifier::isAll(member->getMemberUnchecked(3))) {
+          LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << fmt::format(
+              "iterating andNode, bailing binary eq quantifier not ALL");
           continue;
         }
 
         auto lhs = member->getMemberUnchecked(0);
         if (lhs->type != NODE_TYPE_EXPANSION) {
+          LOG_ENUMERATE_PATHS_OPTIMIZER_RULE
+              << fmt::format("iterating andNode, bailing lhs not EXPANSION");
           continue;
         }
         if (lhs->getMemberUnchecked(2)->type != NODE_TYPE_NOP) {
+          LOG_ENUMERATE_PATHS_OPTIMIZER_RULE
+              << fmt::format("iterating andNode, bailing lhs member 2 not NOP");
           continue;
         }
         if (lhs->getMemberUnchecked(3)->type != NODE_TYPE_NOP) {
+          LOG_ENUMERATE_PATHS_OPTIMIZER_RULE
+              << fmt::format("iterating andNode, bailing lhs member 3 not NOP");
           continue;
         }
         auto map = lhs->getMemberUnchecked(4)->clone(ast);
 
         auto rhsValue = member->getMemberUnchecked(1);
+        if (rhsValue->type != NODE_TYPE_VALUE) {
+          LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << fmt::format(
+              "iterating andNode, bailing rhs not a Value, but a {}",
+              rhsValue->getTypeString());
+          continue;
+        }
 
         auto iterator = lhs->getMemberUnchecked(0);
         if (iterator->type != NODE_TYPE_ITERATOR) {
+          LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << fmt::format(
+              "iterating andNode, bailing lhs member 0 not an iterator, but a "
+              "{}",
+              rhsValue->getTypeString());
           continue;
         }
         auto current = iterator->getMemberUnchecked(0);
         if (current->type != NODE_TYPE_VARIABLE) {
+          LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << fmt::format(
+              "iterating andNode, bailing iterator member 0 not a variable, "
+              "but a "
+              "{}",
+              rhsValue->getTypeString());
           continue;
         }
 
         auto attributeAccess = iterator->getMemberUnchecked(1);
         if (attributeAccess->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
+          LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << fmt::format(
+              "iterating andNode, bailing iterator member 1 not an attribute "
+              "access, but a {}",
+              rhsValue->getTypeString());
           continue;
+        }
+
+        if (!attributeAccess->isAttributeAccessForVariable(pathVar, true)) {
+          LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << fmt::format(
+              "iterating andNode, bailing attribute access is not accessing "
+              "the path variable");
         }
 
         auto accessedAttribute = attributeAccess->getStringView();
         if (not(accessedAttribute == "vertices" or
                 accessedAttribute == "edges")) {
+          LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << fmt::format(
+              "iterating andNode, bailing iterator member accessed attribute "
+              "is {}"
+              " not `vertices` or `edges`",
+              accessedAttribute);
+
           continue;
         }
 
