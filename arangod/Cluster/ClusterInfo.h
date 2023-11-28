@@ -209,12 +209,12 @@ class ClusterInfo final {
       K, V,
       std::conditional_t<std::is_same_v<K, ShardID>, absl::Hash<K>, Hasher>,
       KeyEqual, ClusterInfoResourceAllocator<std::pair<K const, V>>>;
-   template<typename K, typename V>
-   using FlatMapShared = containers::FlatHashMap<
-       K, std::shared_ptr<V>,
-       std::conditional_t<std::is_same_v<K, ShardID>, absl::Hash<K>, Hasher>,
-       KeyEqual,
-       ClusterInfoResourceAllocator<std::pair<K const, std::shared_ptr<V>>>>;
+  template<typename K, typename V>
+  using FlatMapShared = containers::FlatHashMap<
+      K, std::shared_ptr<V>,
+      std::conditional_t<std::is_same_v<K, ShardID>, absl::Hash<K>, Hasher>,
+      KeyEqual,
+      ClusterInfoResourceAllocator<std::pair<K const, std::shared_ptr<V>>>>;
 
   template<typename K, typename V>
   using AssocMultiMap =
