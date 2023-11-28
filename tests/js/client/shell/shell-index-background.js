@@ -27,6 +27,7 @@ const jsunity = require("jsunity");
 const internal = require("internal");
 const errors = internal.errors;
 const db = internal.db;
+const {waitForEstimatorSync } = require('@arangodb/test-helper');
 
 function backgroundIndexSuite() {
   'use strict';
@@ -180,7 +181,7 @@ function backgroundIndexSuite() {
         assertEqual(cursor.count(), 100);
       }
 
-      arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();"); // make sure estimates are consistent
+      waitForEstimatorSync(); // make sure estimates are consistent
       let indexes = c.getIndexes(true);
       for (let i of indexes) {
         switch (i.type) {
@@ -238,7 +239,7 @@ function backgroundIndexSuite() {
         assertEqual(cursor.count(), 100);
       }
 
-      arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();"); // make sure estimates are consistent
+      waitForEstimatorSync(); // make sure estimates are consistent
       let indexes = c.getIndexes(true);
       for (let i of indexes) {
         switch (i.type) {
@@ -430,7 +431,7 @@ function backgroundIndexSuite() {
         assertEqual(cursor.count(), 0, [i, invalues]);
       }
 
-      arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();"); // make sure estimates are consistent
+      waitForEstimatorSync(); // make sure estimates are consistent
       let indexes = c.getIndexes(true);
       for (let i of indexes) {
         switch (i.type) {
@@ -502,7 +503,7 @@ function backgroundIndexSuite() {
                                   {'@coll': cn, 'val': 100000}, {count:true});
       assertEqual(oldCursor.count(), 0);
 
-      arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();"); // make sure estimates are consistent
+      waitForEstimatorSync(); // make sure estimates are consistent
       let indexes = c.getIndexes(true);
       for (let i of indexes) {
         switch (i.type) {
@@ -550,7 +551,7 @@ function backgroundIndexSuite() {
                                   {'@coll': cn, 'val': 12500}, {count:true});
       assertEqual(newCursor.count(), 12500);
 
-      arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();"); // make sure estimates are consistent
+      waitForEstimatorSync(); // make sure estimates are consistent
       let indexes = c.getIndexes(true);
       for (let i of indexes) {
         switch (i.type) {

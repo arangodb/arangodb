@@ -33,6 +33,7 @@ const arangodb = require("@arangodb");
 const db = arangodb.db;
 const internal = require("internal");
 const ERRORS = arangodb.errors;
+const waitForEstimatorSync = require('@arangodb/test-helper').waitForEstimatorSync;
 
 function DocumentOperationsFailuresSuite() {
   'use strict';
@@ -361,7 +362,7 @@ function CollectionTruncateFailuresSuite() {
 
       // Test Selectivity Estimates
       {
-        arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");  // make sure estimates are consistent
+        waitForEstimatorSync();  // make sure estimates are consistent
         let indexes = c.getIndexes(true);
         for (let i of indexes) {
           switch (i.type) {
@@ -433,7 +434,7 @@ function CollectionTruncateFailuresSuite() {
 
       // Test Selectivity Estimates
       {
-        arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");  // make sure estimates are consistent
+        waitForEstimatorSync();  // make sure estimates are consistent
         let indexes = c.getIndexes(true);
         for (let i of indexes) {
           switch (i.type) {
@@ -514,7 +515,7 @@ function CollectionTruncateFailuresSuite() {
       // Test Selectivity Estimates
       // This may be fuzzy...
       {
-        arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");  // make sure estimates are consistent
+        waitForEstimatorSync();  // make sure estimates are consistent
         let indexes = c.getIndexes(true);
         for (let i of indexes) {
           switch (i.type) {

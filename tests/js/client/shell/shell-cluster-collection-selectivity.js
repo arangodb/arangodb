@@ -31,6 +31,8 @@
 var jsunity = require("jsunity");
 var internal = require("internal");
 var arangodb = require("@arangodb");
+const waitForEstimatorSync = require('@arangodb/test-helper').waitForEstimatorSync;
+
 var db = arangodb.db;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -72,7 +74,7 @@ function ClusterCollectionSuite () {
       for (let i = 0; i < 10; ++i) {
         c.save({foo: i});
       }
-      arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");  // make sure estimates are consistent
+      waitForEstimatorSync();  // make sure estimates are consistent
       let indexes;
       let tries = 0;
       while (++tries < 60) {
@@ -89,7 +91,7 @@ function ClusterCollectionSuite () {
       for (let i = 0; i < 10; ++i) {
         c.save({foo: i});
       }
-      arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");  // make sure estimates are consistent
+      waitForEstimatorSync();  // make sure estimates are consistent
      
       tries = 0; 
       while (++tries < 60) {

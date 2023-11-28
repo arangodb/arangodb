@@ -31,7 +31,7 @@
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const ArangoCollection = arangodb.ArangoCollection;
-const testHelper = require("@arangodb/test-helper").Helper;
+const waitForEstimatorSync = require('@arangodb/test-helper').waitForEstimatorSync;
 const internal = require("internal");
 const db = arangodb.db;
 const ERRORS = arangodb.errors;
@@ -125,7 +125,7 @@ function CollectionSuite () {
 
       // Test Selectivity Estimates
       {
-        arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");  // make sure estimates are consistent
+        waitForEstimatorSync();  // make sure estimates are consistent
         let indexes = c.getIndexes(true);
         for (let i of indexes) {
           switch (i.type) {

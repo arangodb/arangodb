@@ -30,6 +30,7 @@
 const jsunity = require("jsunity");
 const internal = require("internal");
 const db = internal.db;
+const {waitForEstimatorSync } = require('@arangodb/test-helper');
 
 function IndexSelectionSuite() {
   'use strict';
@@ -66,7 +67,7 @@ function IndexSelectionSuite() {
       }
       c.insert(docs);
 
-      arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+      waitForEstimatorSync();
       let indexes = c.indexes();
       assertEqual(["a"], indexes[1].fields);
       assertEqual(["b"], indexes[2].fields);
@@ -95,7 +96,7 @@ function IndexSelectionSuite() {
       }
       c.insert(docs);
 
-      arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+      waitForEstimatorSync();
       let indexes = c.indexes();
       assertEqual(["a"], indexes[1].fields);
       assertEqual(["b"], indexes[2].fields);
@@ -124,7 +125,7 @@ function IndexSelectionSuite() {
       }
       c.insert(docs);
 
-      arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+      waitForEstimatorSync();
       let indexes = c.indexes();
       assertEqual(["b"], indexes[1].fields);
       assertEqual(["a"], indexes[2].fields);
@@ -153,7 +154,7 @@ function IndexSelectionSuite() {
       }
       c.insert(docs);
 
-      arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+      waitForEstimatorSync();
       let indexes = c.indexes();
       assertEqual(["a", "b"], indexes[1].fields);
       assertEqual(["a", "b", "c"], indexes[2].fields);
@@ -178,7 +179,7 @@ function IndexSelectionSuite() {
       }
       c.insert(docs);
 
-      arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+      waitForEstimatorSync();
       let indexes = c.indexes();
       assertEqual(["a", "b", "c"], indexes[1].fields);
       assertEqual(["a", "b"], indexes[2].fields);
@@ -203,7 +204,7 @@ function IndexSelectionSuite() {
       }
       c.insert(docs);
 
-      arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+      waitForEstimatorSync();
       let indexes = c.indexes();
       assertEqual(["a", "b"], indexes[1].fields);
       assertEqual(["a", "b", "c"], indexes[2].fields);
@@ -228,7 +229,7 @@ function IndexSelectionSuite() {
       }
       c.insert(docs);
 
-      arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+      waitForEstimatorSync();
       let indexes = c.indexes();
       assertEqual(["a", "b", "c"], indexes[1].fields);
       assertEqual(["a", "b"], indexes[2].fields);
