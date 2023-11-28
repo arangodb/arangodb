@@ -84,6 +84,9 @@ def parse_arguments():
     parser.add_argument(
         "--all", help="output all test, ignore other filters", action="store_true"
     )
+    parser.add_argument(
+        "-rt", "--replication_two", default=False, action='store_true', help="flag if we should enable replication two tests"
+    )
     return parser.parse_args()
 
 
@@ -255,7 +258,7 @@ def get_size(size, arch, dist):
     return x86_sizes[size]
 
 
-def create_test_job(test, cluster, edition, arch, dist):
+def create_test_job(test, cluster, edition, arch, dist, replication_version=1):
     """creates the test job definition to be put into the config yaml"""
     params = test["params"]
     suite_name = test["name"]
@@ -266,8 +269,10 @@ def create_test_job(test, cluster, edition, arch, dist):
     if not test["size"] in ["small", "medium", "medium+", "large", "xlarge", "2xlarge"]:
         raise Exception("Invalid resource class size " + test["size"])
 
+    deployment_variant = f"cluster{'-repl2' if replication_version==2 else ''}" if cluster else "single"
+
     result = {
-        "name": f"test-{edition}-{'cluster' if cluster else 'single'}-{suite_name}-{arch}",
+        "name": f"test-{edition}-{deployment_variant}-{suite_name}-{arch}",
         "suiteName": suite_name,
         "suites": test["suites"],
         "size": get_size(test["size"], arch, dist),
@@ -275,7 +280,9 @@ def create_test_job(test, cluster, edition, arch, dist):
         "requires": [f"build-{dist}-{edition}-{arch}"],
     }
 
-    extra_args = test["args"]
+    extra_args = test["args"].copy()
+    if cluster:
+        extra_args.append(f"--extraArgs:database.default-replication-version {replication_version}")
     if extra_args != []:
         result["extraArgs"] = " ".join(extra_args)
 
@@ -286,7 +293,7 @@ def create_test_job(test, cluster, edition, arch, dist):
     return result
 
 
-def add_test_jobs_to_workflow(config, tests, workflow, edition, arch, dist):
+def add_test_jobs_to_workflow(config, tests, workflow, edition, arch, dist, repl2):
     jobs = config["workflows"][workflow]["jobs"]
     for test in tests:
         if "!" + dist in test["flags"]:
@@ -295,6 +302,10 @@ def add_test_jobs_to_workflow(config, tests, workflow, edition, arch, dist):
             jobs.append(
                 {f"run-{dist}-tests": create_test_job(test, True, edition, arch, dist)}
             )
+            if repl2:
+                jobs.append(
+                    {f"run-{dist}-tests": create_test_job(test, True, edition, arch, dist, 2)}
+                )
         elif "single" in test["flags"]:
             jobs.append(
                 {f"run-{dist}-tests": create_test_job(test, False, edition, arch, dist)}
@@ -303,6 +314,10 @@ def add_test_jobs_to_workflow(config, tests, workflow, edition, arch, dist):
             jobs.append(
                 {f"run-{dist}-tests": create_test_job(test, True, edition, arch, dist)}
             )
+            if repl2:
+                jobs.append(
+                    {f"run-{dist}-tests": create_test_job(test, True, edition, arch, dist, 2)}
+                )
             jobs.append(
                 {f"run-{dist}-tests": create_test_job(test, False, edition, arch, dist)}
             )
@@ -316,27 +331,27 @@ def get_arch(workflow):
     raise Exception(f"Cannot extract architecture from workflow {workflow}")
 
 
-def generate_output(config, tests, enterprise):
+def generate_output(config, tests, enterprise, repl2):
     """generate output"""
     workflows = config["workflows"]
     edition = "ee" if enterprise else "ce"
     for workflow, jobs in workflows.items():
         if ("windows" in workflow) and enterprise:
             arch = get_arch(workflow)
-            add_test_jobs_to_workflow(config, tests, workflow, edition, arch, "windows")
+            add_test_jobs_to_workflow(config, tests, workflow, edition, arch, "windows", repl2)
         if (
             ("linux" in workflow)
             and (enterprise and "enterprise" in workflow)
             or (not enterprise and "community" in workflow)
         ):
             arch = get_arch(workflow)
-            add_test_jobs_to_workflow(config, tests, workflow, edition, arch, "linux")
+            add_test_jobs_to_workflow(config, tests, workflow, edition, arch, "linux", repl2)
 
 
 def generate_jobs(config, args, tests, enterprise):
     """generate job definitions"""
     tests = filter_tests(args, tests, enterprise)
-    generate_output(config, tests, enterprise)
+    generate_output(config, tests, enterprise, args.replication_two)
 
 
 def main():
