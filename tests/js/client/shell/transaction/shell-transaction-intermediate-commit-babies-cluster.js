@@ -168,10 +168,12 @@ function transactionIntermediateCommitsBabiesFollowerSuite() {
       }
       assertFalse(didWork);
 
-      if (!isReplication2) {
+      let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_total");
+      if (isReplication2) {
+        assertEqual(droppedFollowersBefore, droppedFollowersAfter);
+      } else {
         // a follower will be dropped here because we abort the transaction on the leader,
         // but have had intermediate commits on the follower
-        let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_total");
         assertEqual(droppedFollowersBefore + 1, droppedFollowersAfter);
       }
     
