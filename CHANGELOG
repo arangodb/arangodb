@@ -6,6 +6,13 @@ devel
   by a collection-based FOR loop. This change can reduce the number of plans
   in complex AQL queries, and thus can save time needed for plan optimization.
 
+* Fix an issue when forced index hints were used in a query, but the optimizer
+  selected a query execution plan that would not use the selected index.
+  Previously, the query failed with a "Could not serve index hint" error
+  message. With the fix, the optimizer will select the next best plan(s) until
+  all index hints are either satisfied, or there are no further plans to
+  select from. In the latter case, the query still aborts with said error.
+
 * Updated OpenSSL to 3.1.4.
 
 * Solve a potential blockage during hotbackup by not stopping read-only
