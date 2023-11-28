@@ -1391,8 +1391,13 @@ void ClusterInfo::loadPlan() {
           auto& collectionId = collection.first;
           // delete from maps with shardID as key
           newShards.erase(collectionId);
-          ShardID shardID{collectionId};
-          newShardToName.erase(shardID);
+          if (auto maybeShardID = ShardID::shardIdFromString(collectionId);
+              maybeShardID.ok()) {
+            // The list contains collections and shards by name and id.
+            // So it is expected that some are not valid shard ids.
+            // Make sure we only erase valid shard ids.
+            newShardToName.erase(maybeShardID.get());
+          }
         }
         _newPlannedCollections.erase(it);
       }
