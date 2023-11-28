@@ -50,7 +50,7 @@ RUN @powershell git config --global --add safe.directory *; `
     # perl and nasm are only needed to build OpenSSL
     choco uninstall strawberryperl nasm -y
 
-ENV OPENSSL_ROOT_DIR=C:\openssl-3.1.3
+ENV OPENSSL_ROOT_DIR=C:\openssl-3.1.4
 
 # Define the entry point for the docker container.
 # This entry point starts the developer command prompt and launches the PowerShell shell.
