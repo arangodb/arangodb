@@ -207,8 +207,11 @@ TEST(EncodingUtilsTest, testStringBufferGzipUncompressCompress) {
     buffer.gzipCompress(false);
 
     EXPECT_EQ(73, buffer.size());
+#ifdef __linux__
+    // gzip creates different binary encoding on windows than on linux
     EXPECT_EQ(10698802630952079282ULL,
               fasthash64(buffer.data(), buffer.size(), 0xdeadbeef));
+#endif
 
     // now inflate it. we should be back at the original size & content
     basics::StringBuffer inflated;
@@ -232,8 +235,11 @@ TEST(EncodingUtilsTest, testStringBufferGzipUncompressCompress) {
     buffer.gzipCompress(false);
 
     EXPECT_EQ(914, buffer.size());
+#ifdef __linux__
+    // gzip creates different binary encoding on windows than on linux
     EXPECT_EQ(1870623475430781373ULL,
               fasthash64(buffer.data(), buffer.size(), 0xdeadbeef));
+#endif
 
     // now inflate it. we should be back at the original size & content
     basics::StringBuffer inflated;
@@ -258,9 +264,11 @@ TEST(EncodingUtilsTest, testStringBufferGzipUncompressCompress) {
     buffer.gzipCompress(false);
 
     EXPECT_EQ(4408, buffer.size());
+#ifdef __linux__
+    // gzip creates different binary encoding on windows than on linux
     EXPECT_EQ(5048060407325082447ULL,
               fasthash64(buffer.data(), buffer.size(), 0xdeadbeef));
-
+#endif
     // now inflate it. we should be back at the original size & content
     basics::StringBuffer inflated;
     buffer.gzipUncompress(inflated);
