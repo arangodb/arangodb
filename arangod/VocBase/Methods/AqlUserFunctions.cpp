@@ -84,8 +84,8 @@ void reloadAqlUserFunctions(ArangodServer& server) {
   if (server.hasFeature<V8DealerFeature>() &&
       server.isEnabled<V8DealerFeature>() &&
       server.getFeature<V8DealerFeature>().isEnabled()) {
-    server.getFeature<V8DealerFeature>().addGlobalContextMethod(
-        GlobalContextMethods::MethodType::kReloadAql);
+    server.getFeature<V8DealerFeature>().addGlobalExecutorMethod(
+        GlobalExecutorMethods::MethodType::kReloadAql);
   }
 }
 
@@ -258,8 +258,8 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase,
 
     JavaScriptSecurityContext securityContext =
         JavaScriptSecurityContext::createRestrictedContext();
-    V8ConditionalContextGuard contextGuard(res, isolate, &vocbase,
-                                           securityContext);
+    V8ConditionalExecutorGuard contextGuard(res, isolate, &vocbase,
+                                            securityContext);
 
     if (res.fail()) {
       return res;

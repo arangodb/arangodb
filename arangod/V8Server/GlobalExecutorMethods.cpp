@@ -25,12 +25,12 @@
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
-#include "GlobalContextMethods.h"
+#include "GlobalExecutorMethods.h"
 
 using namespace arangodb;
 
-std::string_view GlobalContextMethods::name(
-    GlobalContextMethods::MethodType type) noexcept {
+std::string_view GlobalExecutorMethods::name(
+    GlobalExecutorMethods::MethodType type) noexcept {
   switch (type) {
     case MethodType::kReloadRouting:
       return "reloadRouting";
@@ -40,8 +40,8 @@ std::string_view GlobalContextMethods::name(
   return "unknown";
 }
 
-std::string_view GlobalContextMethods::code(
-    GlobalContextMethods::MethodType type) noexcept {
+std::string_view GlobalExecutorMethods::code(
+    GlobalExecutorMethods::MethodType type) noexcept {
   switch (type) {
     case MethodType::kReloadRouting:
       return "require(\"@arangodb/actions\").reloadRouting();";

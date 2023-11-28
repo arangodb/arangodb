@@ -104,7 +104,8 @@ bool V8Executor::shouldBeRemoved(double maxAge, uint64_t maxInvocations) const {
   return false;
 }
 
-void V8Executor::addGlobalContextMethod(GlobalContextMethods::MethodType type) {
+void V8Executor::addGlobalExecutorMethod(
+    GlobalExecutorMethods::MethodType type) {
   std::lock_guard mutexLocker{_globalMethodsLock};
 
   for (auto const& it : _globalMethods) {
@@ -118,8 +119,8 @@ void V8Executor::addGlobalContextMethod(GlobalContextMethods::MethodType type) {
   _globalMethods.emplace_back(type);
 }
 
-void V8Executor::handleGlobalContextMethods() {
-  std::vector<GlobalContextMethods::MethodType> copy;
+void V8Executor::handleGlobalExecutorMethods() {
+  std::vector<GlobalExecutorMethods::MethodType> copy;
 
   try {
     // we need to copy the vector of functions so we do not need to hold
@@ -135,7 +136,7 @@ void V8Executor::handleGlobalContextMethods() {
   }
 
   for (auto const& type : copy) {
-    std::string_view code = GlobalContextMethods::code(type);
+    std::string_view code = GlobalExecutorMethods::code(type);
 
     LOG_TOPIC("fcb75", DEBUG, arangodb::Logger::V8)
         << "executing global context method '" << code << "' for context "
@@ -154,10 +155,8 @@ void V8Executor::handleGlobalContextMethods() {
       TRI_ExecuteJavaScriptString(_isolate, code, "global context method",
                                   false);
 
-      if (tryCatch.HasCaught()) {
-        if (tryCatch.CanContinue()) {
-          TRI_LogV8Exception(_isolate, &tryCatch);
-        }
+      if (tryCatch.HasCaught() && tryCatch.CanContinue()) {
+        TRI_LogV8Exception(_isolate, &tryCatch);
       }
     } catch (...) {
       LOG_TOPIC("d0adc", WARN, arangodb::Logger::V8)
@@ -186,9 +185,9 @@ void V8Executor::handleCancellationCleanup() {
   }
 }
 
-V8ExecutorEntryGuard::V8ExecutorEntryGuard(V8Executor* context)
-    : _context(context) {
-  _context->lockAndEnter();
+V8ExecutorEntryGuard::V8ExecutorEntryGuard(V8Executor* executor)
+    : _executor(executor) {
+  _executor->lockAndEnter();
 }
 
-V8ExecutorEntryGuard::~V8ExecutorEntryGuard() { _context->unlockAndExit(); }
+V8ExecutorEntryGuard::~V8ExecutorEntryGuard() { _executor->unlockAndExit(); }

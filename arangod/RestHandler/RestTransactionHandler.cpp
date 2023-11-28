@@ -357,7 +357,7 @@ void RestTransactionHandler::executeJSTransaction() {
       server().getFeature<ActionFeature>().allowUseDatabase();
   JavaScriptSecurityContext securityContext =
       JavaScriptSecurityContext::createRestActionContext(allowUseDatabase);
-  V8Executor* v8Context = server().getFeature<V8DealerFeature>().enterContext(
+  V8Executor* v8Context = server().getFeature<V8DealerFeature>().enterExecutor(
       &_vocbase, securityContext);
 
   if (!v8Context) {
@@ -371,7 +371,7 @@ void RestTransactionHandler::executeJSTransaction() {
     try {
       WRITE_LOCKER(lock, _lock);
       if (_v8Context != nullptr) {
-        server().getFeature<V8DealerFeature>().exitContext(_v8Context);
+        server().getFeature<V8DealerFeature>().exitExecutor(_v8Context);
         _v8Context = nullptr;
       }
     } catch (std::exception const& ex) {

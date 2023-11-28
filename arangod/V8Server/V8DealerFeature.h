@@ -39,7 +39,7 @@
 #include "RestServer/arangod.h"
 #include "Utils/DatabaseGuard.h"
 #include "V8/JSLoader.h"
-#include "V8Server/GlobalContextMethods.h"
+#include "V8Server/GlobalExecutorMethods.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -61,7 +61,7 @@ class V8DealerFeature final : public ArangodFeature {
     size_t max;
     size_t min;
   };
-  struct DetailedContextStatistics {
+  struct DetailedExecutorStatistics {
     size_t id;
     double tMax;
     size_t countOfTimes;
@@ -94,19 +94,19 @@ class V8DealerFeature final : public ArangodFeature {
 
   double _gcFrequency;
   uint64_t _gcInterval;
-  double _maxContextAge;
+  double _maxExecutorAge;
   std::string _appPath;
   std::string _startupDirectory;
   std::string _nodeModulesDirectory;
   std::vector<std::string> _moduleDirectories;
-  // maximum number of contexts to create
-  uint64_t _nrMaxContexts;
-  // minimum number of contexts to keep
-  uint64_t _nrMinContexts;
-  // number of contexts currently in creation
-  uint64_t _nrInflightContexts;
+  // maximum number of executors to create
+  uint64_t _nrMaxExecutors;
+  // minimum number of executors to keep
+  uint64_t _nrMinExecutors;
+  // number of executors currently in creation
+  uint64_t _nrInflightExecutors;
   // maximum number of V8 context invocations
-  uint64_t _maxContextInvocations;
+  uint64_t _maxExecutorInvocations;
 
   // copy JavaScript files into database directory on startup
   bool _copyInstallation;
@@ -129,34 +129,34 @@ class V8DealerFeature final : public ArangodFeature {
   bool allowJavaScriptUdfs() const noexcept { return _allowJavaScriptUdfs; }
   bool allowJavaScriptTasks() const noexcept { return _allowJavaScriptTasks; }
 
-  bool addGlobalContextMethod(GlobalContextMethods::MethodType type);
+  bool addGlobalExecutorMethod(GlobalExecutorMethods::MethodType type);
   void collectGarbage();
 
-  /// @brief loads a JavaScript file in all contexts, only called at startup.
+  /// @brief loads a JavaScript file in all executors, only called at startup.
   /// if the builder pointer is not nullptr, then
   /// the Javascript result(s) are returned as VPack in the builder,
   /// the builder is not cleared and thus should be empty before the call.
-  void loadJavaScriptFileInAllContexts(TRI_vocbase_t*, std::string const& file,
-                                       VPackBuilder* builder);
+  void loadJavaScriptFileInAllExecutors(TRI_vocbase_t*, std::string const& file,
+                                        velocypack::Builder* builder);
 
-  /// @brief enter a V8 context
-  /// currently returns a nullptr if no context can be acquired in time
-  V8Executor* enterContext(TRI_vocbase_t*,
-                           JavaScriptSecurityContext const& securityContext);
-  void exitContext(V8Executor*);
+  /// @brief enter a V8 executor
+  /// currently returns a nullptr if no executor can be acquired in time
+  V8Executor* enterExecutor(TRI_vocbase_t*,
+                            JavaScriptSecurityContext const& securityContext);
+  void exitExecutor(V8Executor* executor);
 
-  void setMinimumContexts(size_t nr) {
-    if (nr > _nrMinContexts) {
-      _nrMinContexts = nr;
+  void setMinimumExecutors(size_t nr) {
+    if (nr > _nrMinExecutors) {
+      _nrMinExecutors = nr;
     }
   }
 
-  uint64_t maximumContexts() const noexcept { return _nrMaxContexts; }
+  uint64_t maximumExecutors() const noexcept { return _nrMaxExecutors; }
 
-  void setMaximumContexts(size_t nr) noexcept { _nrMaxContexts = nr; }
+  void setMaximumExecutors(size_t nr) noexcept { _nrMaxExecutors = nr; }
 
-  Statistics getCurrentContextNumbers();
-  std::vector<DetailedContextStatistics> getCurrentContextDetails();
+  Statistics getCurrentExecutorStatistics();
+  std::vector<DetailedExecutorStatistics> getCurrentExecutorDetails();
 
   void defineBoolean(std::string const& name, bool value) {
     _definedBooleans[name] = value;
@@ -175,21 +175,22 @@ class V8DealerFeature final : public ArangodFeature {
   uint64_t nextId() { return _nextId++; }
   void copyInstallationFiles();
   void startGarbageCollection();
-  std::unique_ptr<V8Executor> addContext();
-  std::unique_ptr<V8Executor> buildContext(TRI_vocbase_t* vocbase, size_t id);
-  V8Executor* pickFreeContextForGc();
-  void shutdownContext(V8Executor* context);
-  void unblockDynamicContextCreation();
-  void loadJavaScriptFileInternal(std::string const& file, V8Executor* context,
-                                  VPackBuilder* builder);
-  void loadJavaScriptFileInContext(TRI_vocbase_t*, std::string const& file,
-                                   V8Executor* context, VPackBuilder* builder);
-  void prepareLockedContext(TRI_vocbase_t*, V8Executor*,
-                            JavaScriptSecurityContext const&);
-  void exitContextInternal(V8Executor*);
-  void cleanupLockedContext(V8Executor*);
-  void applyContextUpdate(V8Executor* context);
-  void shutdownContexts();
+  std::unique_ptr<V8Executor> addExecutor();
+  std::unique_ptr<V8Executor> buildExecutor(TRI_vocbase_t* vocbase, size_t id);
+  V8Executor* pickFreeExecutorForGc();
+  void shutdownExecutor(V8Executor* executor);
+  void unblockDynamicExecutorCreation();
+  void loadJavaScriptFileInternal(std::string const& file, V8Executor* executor,
+                                  velocypack::Builder* builder);
+  void loadJavaScriptFileInExecutor(TRI_vocbase_t*, std::string const& file,
+                                    V8Executor* executor,
+                                    velocypack::Builder* builder);
+  void prepareLockedExecutor(TRI_vocbase_t*, V8Executor* executor,
+                             JavaScriptSecurityContext const&);
+  void exitExecutorInternal(V8Executor* executor);
+  void cleanupLockedExecutor(V8Executor* executor);
+  void applyExecutorUpdate(V8Executor* executor);
+  void shutdownExecutors();
 
   std::atomic<uint64_t> _nextId;
 
@@ -197,12 +198,12 @@ class V8DealerFeature final : public ArangodFeature {
   std::atomic<bool> _stopping;
   std::atomic<bool> _gcFinished;
 
-  basics::ConditionVariable _contextCondition;
-  std::vector<V8Executor*> _contexts;
-  std::vector<V8Executor*> _idleContexts;
-  std::vector<V8Executor*> _dirtyContexts;
-  std::unordered_set<V8Executor*> _busyContexts;
-  size_t _dynamicContextCreationBlockers;
+  basics::ConditionVariable _executorsCondition;
+  std::vector<V8Executor*> _executors;
+  std::vector<V8Executor*> _idleExecutors;
+  std::vector<V8Executor*> _dirtyExecutors;
+  std::unordered_set<V8Executor*> _busyExecutors;
+  size_t _dynamicExecutorCreationBlockers;
 
   JSLoader _startupLoader;
 
@@ -210,12 +211,12 @@ class V8DealerFeature final : public ArangodFeature {
   std::map<std::string, double> _definedDoubles;
   std::map<std::string, std::string> _definedStrings;
 
-  metrics::Counter& _contextsCreationTime;
-  metrics::Counter& _contextsCreated;
-  metrics::Counter& _contextsDestroyed;
-  metrics::Counter& _contextsEntered;
-  metrics::Counter& _contextsExited;
-  metrics::Counter& _contextsEnterFailures;
+  metrics::Counter& _executorsCreationTime;
+  metrics::Counter& _executorsCreated;
+  metrics::Counter& _executorsDestroyed;
+  metrics::Counter& _executorsEntered;
+  metrics::Counter& _executorsExited;
+  metrics::Counter& _executorsEnterFailures;
 };
 
 /// @brief enters and exits a context and provides an isolate
@@ -228,29 +229,29 @@ class V8ExecutorGuard {
   ~V8ExecutorGuard();
 
   v8::Isolate* isolate() const { return _isolate; }
-  V8Executor* context() const { return _context; }
+  V8Executor* executor() const { return _executor; }
 
  private:
   TRI_vocbase_t* _vocbase;
   v8::Isolate* _isolate;
-  V8Executor* _context;
+  V8Executor* _executor;
 };
 
-// enters and exits a context and provides an isolate
+// enters and exits an executor and provides an isolate
 // in case the passed in isolate is a nullptr
-class V8ConditionalContextGuard {
+class V8ConditionalExecutorGuard {
  public:
-  explicit V8ConditionalContextGuard(Result&, v8::Isolate*&, TRI_vocbase_t*,
-                                     JavaScriptSecurityContext const&);
-  V8ConditionalContextGuard(V8ConditionalContextGuard const&) = delete;
-  V8ConditionalContextGuard& operator=(V8ConditionalContextGuard const&) =
+  explicit V8ConditionalExecutorGuard(Result&, v8::Isolate*&, TRI_vocbase_t*,
+                                      JavaScriptSecurityContext const&);
+  V8ConditionalExecutorGuard(V8ConditionalExecutorGuard const&) = delete;
+  V8ConditionalExecutorGuard& operator=(V8ConditionalExecutorGuard const&) =
       delete;
-  ~V8ConditionalContextGuard();
+  ~V8ConditionalExecutorGuard();
 
  private:
   TRI_vocbase_t* _vocbase;
   v8::Isolate*& _isolate;
-  V8Executor* _context;
+  V8Executor* _executor;
   bool _active;
 };
 

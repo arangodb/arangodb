@@ -109,7 +109,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
       _transactionContext(std::move(ctx)),
       _sharedState(std::move(sharedState)),
 #ifdef USE_V8
-      _v8Context(nullptr),
+      _v8Executor(nullptr),
 #endif
       _bindParameters(_resourceMonitor, bindParameters),
       _queryOptions(std::move(options)),
@@ -122,8 +122,8 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
       _executionPhase(ExecutionPhase::INITIALIZE),
       _resultCode(std::nullopt),
 #ifdef USE_V8
-      _contextOwnedByExterior(_transactionContext->isV8Context() &&
-                              v8::Isolate::TryGetCurrent() != nullptr),
+      _executorOwnedByExterior(_transactionContext->isV8Context() &&
+                               v8::Isolate::TryGetCurrent() != nullptr),
       _embeddedQuery(_transactionContext->isV8Context() &&
                      transaction::V8Context::isEmbedded()),
       _registeredInV8Executor(false),
@@ -138,7 +138,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
   }
 
 #ifdef USE_V8
-  if (_contextOwnedByExterior) {
+  if (_executorOwnedByExterior) {
     // copy transaction options from global state into our local query options
     auto state = transaction::V8Context::getParentState();
     if (state != nullptr) {
@@ -1175,8 +1175,8 @@ void Query::enterV8Executor() {
     }
   };
 
-  if (!_contextOwnedByExterior) {
-    if (_v8Context == nullptr) {
+  if (!_executorOwnedByExterior) {
+    if (_v8Executor == nullptr) {
       auto& server = vocbase().server();
       if (!server.hasFeature<V8DealerFeature>() ||
           !server.isEnabled<V8DealerFeature>()) {
@@ -1185,17 +1185,17 @@ void Query::enterV8Executor() {
       }
       JavaScriptSecurityContext securityContext =
           JavaScriptSecurityContext::createQueryContext();
-      _v8Context = server.getFeature<V8DealerFeature>().enterContext(
+      _v8Executor = server.getFeature<V8DealerFeature>().enterExecutor(
           &_vocbase, securityContext);
 
-      if (_v8Context == nullptr) {
+      if (_v8Executor == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_RESOURCE_LIMIT,
-            "unable to enter V8 context for query execution");
+            "unable to enter V8 executor for query execution");
       }
       registerCtx();
     }
-    TRI_ASSERT(_v8Context != nullptr);
+    TRI_ASSERT(_v8Executor != nullptr);
   } else if (!_embeddedQuery &&
              !_registeredInV8Executor) {  // may happen for stream trx
     registerCtx();
@@ -1220,16 +1220,16 @@ void Query::exitV8Executor() {
       v8g->_transactionState = nullptr;
     }
   };
-  if (!_contextOwnedByExterior) {
-    if (_v8Context != nullptr) {
+  if (!_executorOwnedByExterior) {
+    if (_v8Executor != nullptr) {
       // unregister transaction in context
       unregister();
 
       auto& server = vocbase().server();
       TRI_ASSERT(server.hasFeature<V8DealerFeature>() &&
                  server.isEnabled<V8DealerFeature>());
-      server.getFeature<V8DealerFeature>().exitContext(_v8Context);
-      _v8Context = nullptr;
+      server.getFeature<V8DealerFeature>().exitExecutor(_v8Executor);
+      _v8Executor = nullptr;
     }
   } else if (!_embeddedQuery && _registeredInV8Executor) {
     // prevent duplicate deregistration

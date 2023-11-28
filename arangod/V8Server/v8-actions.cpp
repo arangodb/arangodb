@@ -58,7 +58,7 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/FoxxFeature.h"
-#include "V8Server/GlobalContextMethods.h"
+#include "V8Server/GlobalExecutorMethods.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/V8Executor.h"
 #include "V8Server/v8-vocbase.h"
@@ -167,7 +167,7 @@ class v8_action_t final : public TRI_action_t {
       v8::HandleScope scope(guard.isolate());
 
       auto localContext = v8::Local<v8::Context>::New(
-          guard.isolate(), guard.context()->_context);
+          guard.isolate(), guard.executor()->_context);
 
       {
         v8::Context::Scope contextScope(localContext);
@@ -1280,8 +1280,8 @@ static void JS_ReloadRouting(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
-  if (!v8g->server().getFeature<V8DealerFeature>().addGlobalContextMethod(
-          GlobalContextMethods::MethodType::kReloadRouting)) {
+  if (!v8g->server().getFeature<V8DealerFeature>().addGlobalExecutorMethod(
+          GlobalExecutorMethods::MethodType::kReloadRouting)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "unable to reload routing");
   }

@@ -29,7 +29,7 @@
 
 #include "Basics/Common.h"
 
-#include "V8Server/GlobalContextMethods.h"
+#include "V8Server/GlobalExecutorMethods.h"
 
 #include <atomic>
 #include <mutex>
@@ -65,8 +65,8 @@ class V8Executor {
   }
   void clearDescription() noexcept { _description = "none"; }
 
-  void addGlobalContextMethod(GlobalContextMethods::MethodType type);
-  void handleGlobalContextMethods();
+  void addGlobalExecutorMethod(GlobalExecutorMethods::MethodType type);
+  void handleGlobalExecutorMethods();
   void handleCancellationCleanup();
 
   v8::Persistent<v8::Context> _context;
@@ -79,26 +79,26 @@ class V8Executor {
   size_t const _id;
   std::atomic_uint64_t _invocations;
   v8::Locker* _locker;
-  /// @brief description of what the context is doing. pointer must be valid
+  /// @brief description of what the executor is doing. pointer must be valid
   /// through the entire program lifetime
   std::string_view _description;
-  /// @brief timestamp of when the context was last entered
+  /// @brief timestamp of when the executor was last entered
   double _acquired;
   double const _creationStamp;
 
   std::mutex _globalMethodsLock;
-  std::vector<GlobalContextMethods::MethodType> _globalMethods;
+  std::vector<GlobalExecutorMethods::MethodType> _globalMethods;
 };
 
 class V8ExecutorEntryGuard {
  public:
-  explicit V8ExecutorEntryGuard(V8Executor* context);
+  explicit V8ExecutorEntryGuard(V8Executor* executor);
   V8ExecutorEntryGuard(V8ExecutorEntryGuard const&) = delete;
   V8ExecutorEntryGuard& operator=(V8ExecutorEntryGuard const&) = delete;
   ~V8ExecutorEntryGuard();
 
  private:
-  V8Executor* _context;
+  V8Executor* _executor;
 };
 
 }  // namespace arangodb

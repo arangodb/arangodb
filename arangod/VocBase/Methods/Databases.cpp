@@ -509,8 +509,8 @@ Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
           JavaScriptSecurityContext::createInternalContext();
 
       v8::Isolate* isolate = v8::Isolate::TryGetCurrent();
-      V8ConditionalContextGuard guard(res, isolate, systemVocbase,
-                                      securityContext);
+      V8ConditionalExecutorGuard guard(res, isolate, systemVocbase,
+                                       securityContext);
 
       if (res.fail()) {
         events::DropDatabase(dbName, res, exec);
@@ -539,8 +539,8 @@ Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
         // run the garbage collection in case the database held some objects
         // which can now be freed
         TRI_RunGarbageCollectionV8(isolate, 0.25);
-        dealer.addGlobalContextMethod(
-            GlobalContextMethods::MethodType::kReloadRouting);
+        dealer.addGlobalExecutorMethod(
+            GlobalExecutorMethods::MethodType::kReloadRouting);
       }
     } catch (basics::Exception const& ex) {
       events::DropDatabase(dbName, TRI_ERROR_INTERNAL, exec);

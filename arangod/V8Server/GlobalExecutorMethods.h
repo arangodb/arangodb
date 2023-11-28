@@ -30,7 +30,7 @@
 #include <string_view>
 
 namespace arangodb {
-class GlobalContextMethods {
+class GlobalExecutorMethods {
  public:
   enum class MethodType {
     kReloadRouting,
