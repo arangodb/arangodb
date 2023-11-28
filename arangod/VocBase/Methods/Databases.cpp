@@ -508,7 +508,7 @@ Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
       JavaScriptSecurityContext securityContext =
           JavaScriptSecurityContext::createInternalContext();
 
-      v8::Isolate* isolate = v8::Isolate::GetCurrent();
+      v8::Isolate* isolate = v8::Isolate::TryGetCurrent();
       V8ConditionalContextGuard guard(res, isolate, systemVocbase,
                                       securityContext);
 
