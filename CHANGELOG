@@ -6,9 +6,11 @@ devel
   by a collection-based FOR loop. This change can reduce the number of plans
   in complex AQL queries, and thus can save time needed for plan optimization.
 
+* Updated OpenSSL to 3.1.4.
+
 * Solve a potential blockage during hotbackup by not stopping read-only
-  transactions from committing during hotbackup. Furthermore, improve
-  behavior of authentication in the case that the user cache is outdated.
+  transactions from committing during hotbackup. Furthermore, improve behavior
+  of authentication in the case that the user cache is outdated.
 
 * Added metric `arangodb_aql_cursors_memory_usage` to show the memory usage of
   open, not yet fully consumed server-side query cursors.
