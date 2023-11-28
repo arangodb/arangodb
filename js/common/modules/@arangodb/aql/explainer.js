@@ -759,7 +759,7 @@ function printKShortestPathsDetails(shortestPaths) {
   }
 
   stringBuilder.appendLine();
-  stringBuilder.appendLine(section('k shortest paths on graphs:'));
+  stringBuilder.appendLine(section('path enumerations on graphs:'));
 
   let maxIdLen = 'Id'.length;
   let maxVertexCollectionNameStrLen = 'Vertex collections'.length;
