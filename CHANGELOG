@@ -6,6 +6,23 @@ devel
   by a collection-based FOR loop. This change can reduce the number of plans
   in complex AQL queries, and thus can save time needed for plan optimization.
 
+* Solve a potential blockage during hotbackup by not stopping read-only
+  transactions from committing during hotbackup. Furthermore, improve
+  behavior of authentication in the case that the user cache is outdated.
+
+* Added metric `arangodb_aql_cursors_memory_usage` to show the memory usage of
+  open, not yet fully consumed server-side query cursors.
+
+* Added AQL functions `PARSE_COLLECTION` and `PARSE_KEY` to quickly extract the
+  collection name and document key from an `_id` value without much overhead.
+
+* FE-286: refactor user permissions screen.
+
+* FE-396: fix JSON editor undo for inverted index addition.
+
+* Fixed MDS-1170: Significant performance degradation when queries are
+  executed within transactions that involve edits.
+
 * Rebuilt included rclone v1.62.2 with go1.21.4.
 
 * Updated ArangoDB Starter to v0.17.2 and arangosync to v2.19.5.
