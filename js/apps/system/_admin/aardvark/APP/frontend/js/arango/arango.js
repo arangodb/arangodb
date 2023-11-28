@@ -458,10 +458,10 @@
     buildUserSubNav: function (username, activeKey) {
       var menus = {
         General: {
-          route: '#user/' + encodeURIComponent(username)
+          route: '#user/' + username
         },
         Permissions: {
-          route: '#user/' + encodeURIComponent(username) + '/permission'
+          route: '#user/' + username + '/permission'
         }
       };
 

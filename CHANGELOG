@@ -1,6 +1,20 @@
 devel
 -----
 
+* Solve a potential blockage during hotbackup by not stopping read-only
+  transactions from committing during hotbackup. Furthermore, improve
+  behavior of authentication in the case that the user cache is outdated.
+
+* Added metric `arangodb_aql_cursors_memory_usage` to show the memory usage of
+  open, not yet fully consumed server-side query cursors.
+
+* Added AQL functions `PARSE_COLLECTION` and `PARSE_KEY` to quickly extract the
+  collection name and document key from an `_id` value without much overhead.
+
+* FE-286: refactor user permissions screen.
+
+* FE-396: fix JSON editor undo for inverted index addition.
+
 * Fixed MDS-1170: Significant performance degradation when queries are
   executed within transactions that involve edits.
 
