@@ -146,6 +146,8 @@ class Cursor {
   // so user actually has a chance to kill it here.
   virtual void debugKillQuery() {}
 
+  virtual uint64_t memoryUsage() const noexcept = 0;
+
   virtual size_t count() const = 0;
 
   virtual std::shared_ptr<transaction::Context> context() const = 0;
