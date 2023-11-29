@@ -516,6 +516,8 @@ Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
         return res;
       }
 
+      Task::removeTasksForDatabase(dbName);
+
       res = guard.executor()->runInContext([&](v8::Isolate* isolate) -> Result {
         v8::HandleScope scope(isolate);
 
@@ -537,15 +539,15 @@ Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
             return res;
           }
 
-          Task::removeTasksForDatabase(dbName);
           // run the garbage collection in case the database held some objects
           // which can now be freed
-          TRI_RunGarbageCollectionV8(isolate, 0.25);
-          dealer.addGlobalExecutorMethod(
-              GlobalExecutorMethods::MethodType::kReloadRouting);
+          TRI_RunGarbageCollectionV8(isolate, 0.1);
         }
         return res;
       });
+
+      dealer.addGlobalExecutorMethod(
+          GlobalExecutorMethods::MethodType::kReloadRouting);
     } catch (basics::Exception const& ex) {
       events::DropDatabase(dbName, TRI_ERROR_INTERNAL, exec);
       return Result(ex.code(), absl::StrCat(dropError, ex.message()));

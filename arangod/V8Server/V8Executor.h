@@ -81,7 +81,6 @@ class V8Executor {
   double lastGcStamp() const noexcept { return _lastGcStamp; }
 
   void addGlobalExecutorMethod(GlobalExecutorMethods::MethodType type);
-  void handleGlobalExecutorMethods();
   void handleCancellationCleanup();
 
  private:

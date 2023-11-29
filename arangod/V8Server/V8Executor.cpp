@@ -129,6 +129,36 @@ Result V8Executor::runInContext(std::function<Result(v8::Isolate*)> const& cb) {
     v8::Context::Scope contextScope(localContext);
     TRI_ASSERT(_isolate->InContext());
 
+    std::vector<GlobalExecutorMethods::MethodType> copy;
+    {
+      // we need to copy the vector of functions so we do not need to hold
+      // the lock while we execute them. this avoids potential deadlocks when
+      // one of the executed functions itself registers a context method
+      std::lock_guard mutexLocker{_globalMethodsLock};
+      copy.swap(_globalMethods);
+    }
+    if (!copy.empty()) {
+      // save old security context settings
+      TRI_GET_GLOBALS2(_isolate);
+      JavaScriptSecurityContext old(v8g->_securityContext);
+
+      auto restorer = scopeGuard([&]() noexcept {
+        // restore old security settings
+        v8g->_securityContext = old;
+      });
+
+      for (auto const& type : copy) {
+        std::string_view code = GlobalExecutorMethods::code(type);
+
+        LOG_TOPIC("fcb75", DEBUG, arangodb::Logger::V8)
+            << "executing global context method '" << code << "' for context "
+            << _id;
+
+        TRI_ExecuteJavaScriptString(_isolate, code, "global context method",
+                                    false);
+      }
+    }
+
     res = cb(_isolate);
   }
   TRI_ASSERT(!_isolate->InContext());
@@ -165,42 +195,6 @@ void V8Executor::addGlobalExecutorMethod(
 
   // insert action into vector
   _globalMethods.emplace_back(type);
-}
-
-void V8Executor::handleGlobalExecutorMethods() {
-  std::vector<GlobalExecutorMethods::MethodType> copy;
-
-  {
-    // we need to copy the vector of functions so we do not need to hold
-    // the lock while we execute them. this avoids potential deadlocks when
-    // one of the executed functions itself registers a context method
-
-    std::lock_guard mutexLocker{_globalMethodsLock};
-    copy.swap(_globalMethods);
-  }
-
-  if (copy.empty()) {
-    return;
-  }
-
-  // save old security context settings
-  TRI_GET_GLOBALS2(_isolate);
-  JavaScriptSecurityContext old(v8g->_securityContext);
-
-  auto restorer = scopeGuard([&]() noexcept {
-    // restore old security settings
-    v8g->_securityContext = old;
-  });
-
-  for (auto const& type : copy) {
-    std::string_view code = GlobalExecutorMethods::code(type);
-
-    LOG_TOPIC("fcb75", DEBUG, arangodb::Logger::V8)
-        << "executing global context method '" << code << "' for context "
-        << _id;
-
-    runCodeInContext(code, "global context method");
-  }
 }
 
 void V8Executor::handleCancellationCleanup() {

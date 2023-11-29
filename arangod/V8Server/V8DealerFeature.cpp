@@ -1212,24 +1212,19 @@ void V8DealerFeature::prepareLockedExecutor(
     JavaScriptSecurityContext const& securityContext) {
   TRI_ASSERT(vocbase != nullptr);
 
-  // when we get here, we should have an executor and an isolate
-  executor->runInContext([&](v8::Isolate* isolate) -> Result {
-    v8::HandleScope scope(isolate);
+  v8::Isolate* isolate = executor->isolate();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
+      isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
 
-    TRI_GET_GLOBALS();
+  // reset the isolate data
+  v8g->_expressionContext = nullptr;
+  v8g->_vocbase = vocbase;
+  v8g->_securityContext = securityContext;
+  v8g->_currentRequest.Reset();
+  v8g->_currentResponse.Reset();
 
-    // initialize the context data
-    v8g->_expressionContext = nullptr;
-    v8g->_vocbase = vocbase;
-    v8g->_securityContext = securityContext;
-    v8g->_currentRequest.Reset();
-    v8g->_currentResponse.Reset();
-
-    LOG_TOPIC("94226", TRACE, arangodb::Logger::V8)
-        << "entering V8 context #" << executor->id();
-    executor->handleGlobalExecutorMethods();
-    return {};
-  });
+  LOG_TOPIC("94226", TRACE, arangodb::Logger::V8)
+      << "entering V8 context #" << executor->id();
 }
 
 /// @brief enter a V8 executor

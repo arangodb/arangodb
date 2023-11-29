@@ -180,6 +180,10 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 #endif
   }
 
+#ifdef USE_V8
+  void runInV8ExecutorContext(std::function<void(v8::Isolate*)> const& cb);
+#endif
+
   /// @brief return the final query result status code (0 = no error,
   /// > 0 = error, one of TRI_ERROR_...)
   ErrorCode resultCode() const noexcept;

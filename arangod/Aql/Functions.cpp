@@ -31,6 +31,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Query.h"
+#include "Aql/QueryExpressionContext.h"
 #include "Aql/Range.h"
 #include "Basics/Endian.h"
 #include "Basics/Exceptions.h"
@@ -1170,58 +1171,82 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext,
 
   // JavaScript function (this includes user-defined functions)
   {
-    ISOLATE;
+    v8::Isolate* isolate = v8::Isolate::GetCurrent();
     if (isolate == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
           absl::StrCat(
               "no V8 context available when executing call to function ", AFN));
     }
-    TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
-    auto context = TRI_IGETC;
+
+    TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
+        isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
+
+    TRI_ASSERT(v8g != nullptr);
+
+    auto queryCtx = dynamic_cast<QueryExpressionContext*>(expressionContext);
+    if (queryCtx == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, "unable to cast into QueryExpressionContext");
+    }
+
+    auto query = dynamic_cast<Query*>(&queryCtx->query());
+    if (query == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unable to cast into Query");
+    }
+
+    VPackOptions const& options = trx.vpackOptions();
 
     auto old = v8g->_expressionContext;
     v8g->_expressionContext = expressionContext;
     auto sg = scopeGuard([&]() noexcept { v8g->_expressionContext = old; });
 
-    VPackOptions const& options = trx.vpackOptions();
-    std::string jsName;
-    int const n = static_cast<int>(invokeParams.size());
-    int const callArgs = (func == nullptr ? 3 : n);
-    auto args = std::make_unique<v8::Handle<v8::Value>[]>(callArgs);
+    AqlValue funcRes;
+    query->runInV8ExecutorContext([&](v8::Isolate* isolate) {
+      v8::HandleScope scope(isolate);
 
-    if (func == nullptr) {
-      // a call to a user-defined function
-      jsName = "FCALL_USER";
+      std::string jsName;
+      int const n = static_cast<int>(invokeParams.size());
+      int const callArgs = (func == nullptr ? 3 : n);
+      auto args = std::make_unique<v8::Handle<v8::Value>[]>(callArgs);
 
-      // function name
-      args[0] = TRI_V8_STD_STRING(isolate, ucInvokeFN);
-      // call parameters
-      v8::Handle<v8::Array> params =
-          v8::Array::New(isolate, static_cast<int>(n));
+      if (func == nullptr) {
+        // a call to a user-defined function
+        jsName = "FCALL_USER";
 
-      for (int i = 0; i < n; ++i) {
-        params
-            ->Set(context, static_cast<uint32_t>(i),
-                  invokeParams[i].toV8(isolate, &options))
-            .FromMaybe(true);
+        // function name
+        args[0] = TRI_V8_STD_STRING(isolate, ucInvokeFN);
+
+        v8::Handle<v8::Context> context = isolate->GetCurrentContext();
+        // call parameters
+        v8::Handle<v8::Array> params =
+            v8::Array::New(isolate, static_cast<int>(n));
+
+        for (int i = 0; i < n; ++i) {
+          params
+              ->Set(context, static_cast<uint32_t>(i),
+                    invokeParams[i].toV8(isolate, &options))
+              .FromMaybe(true);
+        }
+        args[1] = params;
+        args[2] = TRI_V8_ASCII_STRING(isolate, AFN);
+      } else {
+        // a call to a built-in V8 function
+        TRI_ASSERT(func->hasV8Implementation());
+
+        jsName = absl::StrCat("AQL_", func->name);
+        for (int i = 0; i < n; ++i) {
+          args[i] = invokeParams[i].toV8(isolate, &options);
+        }
       }
-      args[1] = params;
-      args[2] = TRI_V8_ASCII_STRING(isolate, AFN);
-    } else {
-      // a call to a built-in V8 function
-      TRI_ASSERT(func->hasV8Implementation());
 
-      jsName = "AQL_" + func->name;
-      for (int i = 0; i < n; ++i) {
-        args[i] = invokeParams[i].toV8(isolate, &options);
-      }
-    }
-
-    bool dummy;
-    return Expression::invokeV8Function(*expressionContext, jsName, ucInvokeFN,
-                                        AFN, false, callArgs, args.get(),
-                                        dummy);
+      bool dummy;
+      funcRes = Expression::invokeV8Function(*expressionContext, jsName,
+                                             isolate, ucInvokeFN, AFN, false,
+                                             callArgs, args.get(), dummy);
+    });
+    return funcRes;
   }
 }
 #endif

@@ -113,12 +113,11 @@ RestStatus RestAdminExecuteHandler::execute() {
             allowUseDatabase);
     V8ExecutorGuard guard(&_vocbase, securityContext);
 
-    {
-      v8::Isolate* isolate = guard.isolate();
+    guard.executor()->runInContext([&](v8::Isolate* isolate) -> Result {
       v8::HandleScope scope(isolate);
-      auto context = TRI_IGETC;
 
-      v8::Handle<v8::Object> current = isolate->GetCurrentContext()->Global();
+      v8::Handle<v8::Context> context = isolate->GetCurrentContext();
+      v8::Handle<v8::Object> current = context->Global();
       v8::TryCatch tryCatch(isolate);
 
       // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
@@ -224,7 +223,8 @@ RestStatus RestAdminExecuteHandler::execute() {
 
         generateResult(rest::ResponseCode::OK, result.slice());
       }
-    }
+      return {};
+    });
 
   } catch (basics::Exception const& ex) {
     generateError(GeneralResponse::responseCode(ex.code()), ex.code(),

@@ -1239,6 +1239,28 @@ void Query::exitV8Executor() {
 #endif
 }
 
+#ifdef USE_V8
+void Query::runInV8ExecutorContext(
+    std::function<void(v8::Isolate*)> const& cb) {
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  TRI_ASSERT(isolate != nullptr);
+
+  if (_executorOwnedByExterior) {
+    TRI_ASSERT(_v8Executor == nullptr);
+    TRI_ASSERT(isolate->InContext());
+
+    cb(isolate);
+  } else {
+    TRI_ASSERT(!isolate->InContext());
+    TRI_ASSERT(_v8Executor != nullptr);
+    _v8Executor->runInContext([&cb](v8::Isolate* isolate) -> Result {
+      cb(isolate);
+      return {};
+    });
+  }
+}
+#endif
+
 /// @brief initializes the query
 void Query::init(bool createProfile) {
   TRI_ASSERT(!_queryProfile && !_ast);
