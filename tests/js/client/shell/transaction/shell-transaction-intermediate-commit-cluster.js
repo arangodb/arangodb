@@ -174,9 +174,12 @@ function transactionIntermediateCommitsSingleSuite() {
       }
       assertEqual(didWork, false);
 
-      if (!isReplication2) {
+      let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_total");
+      if (isReplication2) {
+        // This metric is not used in replication2.
+        assertEqual(droppedFollowersBefore, droppedFollowersAfter);
+      } else {
         // follower must have been dropped
-        let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_total");
         assertEqual(droppedFollowersBefore + 1, droppedFollowersAfter);
       }
     
@@ -282,9 +285,11 @@ function transactionIntermediateCommitsSingleSuite() {
       }
       assertEqual(didWork, false);
 
-      // follower must have been dropped
-      if (!isReplication2) {
-        let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_total");
+      let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_total");
+      if (isReplication2) {
+        assertEqual(droppedFollowersBefore, droppedFollowersAfter);
+      } else {
+        // follower must have been dropped
         assertEqual(droppedFollowersBefore + 1, droppedFollowersAfter);
       }
 
@@ -341,10 +346,12 @@ function transactionIntermediateCommitsSingleSuite() {
       assertEqual(0, c.count());
       assertEqual(9950, tc.count());
       trx.abort();
-      
-      // follower must have been dropped
-      if (!isReplication2) {
-        let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_total");
+
+      let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_total");
+      if (isReplication2) {
+        assertEqual(droppedFollowersBefore, droppedFollowersAfter);
+      } else {
+        // follower must have been dropped
         assertEqual(droppedFollowersBefore + 1, droppedFollowersAfter);
       }
     
