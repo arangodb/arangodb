@@ -289,11 +289,6 @@ class CollectionVariableTracker final
     return _dependencies[var];
   }
 
-  arangodb::aql::VarSet const& getCollectionVariables(
-      arangodb::aql::Collection const* collection) {
-    return _collectionVariables[collection];
-  }
-
   void after(arangodb::aql::ExecutionNode* en) override final {
     using EN = arangodb::aql::ExecutionNode;
     using arangodb::aql::ExecutionNode;
@@ -8887,6 +8882,11 @@ void arangodb::aql::optimizeProjections(Optimizer* opt,
       auto* joinNode = ExecutionNode::castTo<JoinNode*>(n);
       size_t index = 0;
       for (auto& it : joinNode->getIndexInfos()) {
+        if (it.isLateMaterialized) {
+          // For late materialization in join nodes, that variables
+          // are already set by the optimizer rule for late materialization
+          continue;
+        }
         modified |= replace(n, it.projections, it.outVariable, index++);
       }
     } else {

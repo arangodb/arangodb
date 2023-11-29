@@ -115,7 +115,7 @@ function optimizerRuleTestSuite () {
         queries = queries.concat([
           // JoinNode
           ["FOR doc1 IN @@cn SORT doc1.indexed1 FOR doc2 IN @@cn FILTER doc1.indexed1 == doc2.indexed1 RETURN doc1._key", jnn, [["_key"], []], 0 ],
-          ["FOR doc1 IN @@cn SORT doc1.indexed1 FOR doc2 IN @@cn FILTER doc1.indexed1 == doc2.indexed1 RETURN [doc1._key, doc2.indexed1]", jnn, [["_key", "indexed1"]], 1 ],
+          ["FOR doc1 IN @@cn SORT doc1.indexed1 FOR doc2 IN @@cn FILTER doc1.indexed1 == doc2.indexed1 RETURN [doc1._key, doc2.indexed1]", jnn, [["_key"], ["indexed1"]], 1 ],
           ["FOR doc1 IN @@cn SORT doc1.indexed1 FOR doc2 IN @@cn FILTER doc1.indexed1 == doc2.indexed1 RETURN [doc1._key, doc2._key, doc2.foo]", jnn, [["_key"], ["_key", "foo"]], 1 ],
         ]);
       }

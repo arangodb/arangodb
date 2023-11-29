@@ -70,7 +70,7 @@ struct BaseRuntime
     auto address = spawn<ActorConfig>(std::move(initialState));
 
     // Send initial message to newly created actor
-    dispatchLocally(address, address, initialMessage,
+    dispatchLocally(address, address, std::move(initialMessage),
                     IgnoreDispatchFailure::yes);
 
     return address;
@@ -126,14 +126,14 @@ struct BaseRuntime
   }
 
   template<typename ActorMessage>
-  auto dispatch(ActorPID sender, ActorPID receiver, ActorMessage const& message)
+  auto dispatch(ActorPID sender, ActorPID receiver, ActorMessage&& message)
       -> void {
     self().doDispatch(sender, receiver, message, IgnoreDispatchFailure::no);
   }
 
   template<typename ActorMessage>
   auto dispatchDelayed(std::chrono::seconds delay, ActorPID sender,
-                       ActorPID receiver, ActorMessage const& message) -> void {
+                       ActorPID receiver, ActorMessage&& message) -> void {
     _scheduler->delay(delay, [self = this->weak_from_this(), sender, receiver,
                               message](bool canceled) {
       auto me = self.lock();
@@ -217,10 +217,10 @@ struct BaseRuntime
 
   template<typename ActorMessage>
   auto dispatchLocally(ActorPID sender, ActorPID receiver,
-                       ActorMessage const& message,
+                       ActorMessage&& message,
                        IgnoreDispatchFailure ignoreFailure) -> void {
     auto actor = actors.find(receiver.id);
-    auto payload = MessagePayload<ActorMessage>(std::move(message));
+    MessagePayload<ActorMessage> payload(std::move(message));
     if (actor.has_value()) {
       actor->get()->process(sender, payload);
     } else if (ignoreFailure == IgnoreDispatchFailure::no) {

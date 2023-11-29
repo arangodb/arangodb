@@ -172,7 +172,8 @@ struct Actor : ActorBase<typename Runtime::ActorPID> {
     pushToQueueAndKick(std::make_unique<InternalMessage>(
         sender,
         std::make_unique<
-            message::MessageOrError<typename Config::Message, ActorPID>>(msg)));
+            message::MessageOrError<typename Config::Message, ActorPID>>(
+            std::move(msg))));
   }
 
   void kick() {
@@ -187,7 +188,7 @@ struct Actor : ActorBase<typename Runtime::ActorPID> {
       state = std::visit(
           typename Config::template Handler<Runtime>{
               {pid, msg->sender, std::move(state), runtime}},
-          msg->payload->item);
+          std::move(msg->payload->item));
       if (--i == 0) {
         break;
       }

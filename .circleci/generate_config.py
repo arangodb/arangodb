@@ -12,7 +12,7 @@ if sys.version_info[0] != 3:
     sys.exit()
 
 # pylint: disable=line-too-long disable=broad-except disable=chained-comparison
-IS_COVERAGE = 'COVERAGE' in os.environ and os.environ['COVERAGE'] == 'On'
+IS_COVERAGE = "COVERAGE" in os.environ and os.environ["COVERAGE"] == "On"
 
 known_flags = {
     "cluster": "this test requires a cluster",
@@ -83,6 +83,9 @@ def parse_arguments():
     parser.add_argument("--full", help="output full test set", action="store_true")
     parser.add_argument(
         "--all", help="output all test, ignore other filters", action="store_true"
+    )
+    parser.add_argument(
+        "-rt", "--replication_two", default=False, action='store_true', help="flag if we should enable replication two tests"
     )
     return parser.parse_args()
 
@@ -205,11 +208,12 @@ def filter_tests(args, tests, enterprise):
 
     # if args.gtest:
     #     filters.append(lambda test: "gtest" == test["name"])
-    #else:
+    # else:
     #   filters.append(lambda test: "gtest" != test["name"])
 
     if not enterprise:
         filters.append(lambda test: "enterprise" not in test["flags"])
+
 
     # if IS_ARM:
     #     filters.append(lambda test: "!arm" not in test["flags"])
@@ -221,20 +225,40 @@ def filter_tests(args, tests, enterprise):
         tests = filter(one_filter, tests)
     return list(tests)
 
-def get_size(size, arch):
+
+def get_size(size, arch, dist):
     aarch64_sizes = {
         "small": "arm.medium",
         "medium": "arm.medium",
         "medium+": "arm.large",
         "large": "arm.large",
-        "xlarge": "arm.xlarge"
+        "xlarge": "arm.xlarge",
+        "2xlarge": "arm.xlarge",
     }
-    if arch == "aarch64":
+    windows_sizes = {
+        "small": "medium",
+        "medium": "medium",
+        "medium+": "large",
+        "large": "large",
+        "xlarge": "xlarge",
+        "2xlarge": "2xlarge",
+    }
+    x86_sizes = {
+        "small": "small",
+        "medium": "medium",
+        "medium+": "medium+",
+        "large": "large",
+        "xlarge": "large",
+        "2xlarge": "large",
+    }
+    if dist == "windows":
+        return windows_sizes[size]
+    elif arch == "aarch64":
         return aarch64_sizes[size]
-    return size
+    return x86_sizes[size]
 
 
-def create_test_job(test, cluster, edition, arch):
+def create_test_job(test, cluster, edition, arch, dist, replication_version=1):
     """creates the test job definition to be put into the config yaml"""
     params = test["params"]
     suite_name = test["name"]
@@ -242,19 +266,23 @@ def create_test_job(test, cluster, edition, arch):
     if suffix:
         suite_name += f"-{suffix}"
 
-    if not test["size"] in ["small", "medium", "medium+", "large", "xlarge"]:
+    if not test["size"] in ["small", "medium", "medium+", "large", "xlarge", "2xlarge"]:
         raise Exception("Invalid resource class size " + test["size"])
 
+    deployment_variant = f"cluster{'-repl2' if replication_version==2 else ''}" if cluster else "single"
+
     result = {
-        "name": f"test-{edition}-{'cluster' if cluster else 'single'}-{suite_name}-{arch}",
+        "name": f"test-{edition}-{deployment_variant}-{suite_name}-{arch}",
         "suiteName": suite_name,
         "suites": test["suites"],
-        "size": get_size(test["size"], arch),
+        "size": get_size(test["size"], arch, dist),
         "cluster": cluster,
-        "requires": [f"build-{edition}-{arch}"],
+        "requires": [f"build-{dist}-{edition}-{arch}"],
     }
 
-    extra_args = test["args"]
+    extra_args = test["args"].copy()
+    if cluster:
+        extra_args.append(f"--extraArgs:database.default-replication-version {replication_version}")
     if extra_args != []:
         result["extraArgs"] = " ".join(extra_args)
 
@@ -265,43 +293,65 @@ def create_test_job(test, cluster, edition, arch):
     return result
 
 
-def add_test_jobs_to_workflow(config, tests, workflow, edition, arch):
+def add_test_jobs_to_workflow(config, tests, workflow, edition, arch, dist, repl2):
     jobs = config["workflows"][workflow]["jobs"]
     for test in tests:
-        print(f"test: {test}")
+        if "!" + dist in test["flags"]:
+            continue
         if "cluster" in test["flags"]:
-            jobs.append({"run-tests": create_test_job(test, True, edition, arch)})
+            jobs.append(
+                {f"run-{dist}-tests": create_test_job(test, True, edition, arch, dist)}
+            )
+            if repl2:
+                jobs.append(
+                    {f"run-{dist}-tests": create_test_job(test, True, edition, arch, dist, 2)}
+                )
         elif "single" in test["flags"]:
-            jobs.append({"run-tests": create_test_job(test, False, edition, arch)})
+            jobs.append(
+                {f"run-{dist}-tests": create_test_job(test, False, edition, arch, dist)}
+            )
         else:
-            jobs.append({"run-tests": create_test_job(test, True, edition, arch)})
-            jobs.append({"run-tests": create_test_job(test, False, edition, arch)})
+            jobs.append(
+                {f"run-{dist}-tests": create_test_job(test, True, edition, arch, dist)}
+            )
+            if repl2:
+                jobs.append(
+                    {f"run-{dist}-tests": create_test_job(test, True, edition, arch, dist, 2)}
+                )
+            jobs.append(
+                {f"run-{dist}-tests": create_test_job(test, False, edition, arch, dist)}
+            )
 
 
 def get_arch(workflow):
-    if workflow.startswith("aarch64") :
+    if workflow.startswith("aarch64"):
         return "aarch64"
-    if workflow.startswith("x64") :
+    if workflow.startswith("x64"):
         return "x64"
     raise Exception(f"Cannot extract architecture from workflow {workflow}")
 
 
-def generate_output(config, tests, enterprise):
+def generate_output(config, tests, enterprise, repl2):
     """generate output"""
     workflows = config["workflows"]
     edition = "ee" if enterprise else "ce"
     for workflow, jobs in workflows.items():
-        if ("windows" in workflow):
-            continue # ATM we don't generate tests for windows
-        if (enterprise and "enterprise" in workflow) or (not enterprise and "community" in workflow):
+        if ("windows" in workflow) and enterprise:
             arch = get_arch(workflow)
-            add_test_jobs_to_workflow(config, tests, workflow, edition, arch)
+            add_test_jobs_to_workflow(config, tests, workflow, edition, arch, "windows", repl2)
+        if (
+            ("linux" in workflow)
+            and (enterprise and "enterprise" in workflow)
+            or (not enterprise and "community" in workflow)
+        ):
+            arch = get_arch(workflow)
+            add_test_jobs_to_workflow(config, tests, workflow, edition, arch, "linux", repl2)
 
 
 def generate_jobs(config, args, tests, enterprise):
     """generate job definitions"""
     tests = filter_tests(args, tests, enterprise)
-    generate_output(config, tests, enterprise)
+    generate_output(config, tests, enterprise, args.replication_two)
 
 
 def main():
@@ -311,12 +361,11 @@ def main():
         tests = read_definitions(args.definitions)
         # if args.validate_only:
         #    return  # nothing left to do
-        print("args", args)
         with open(args.base_config, "r", encoding="utf-8") as instream:
             with open(args.output, "w", encoding="utf-8") as outstream:
                 config = yaml.safe_load(instream)
-                generate_jobs(config, args, tests, False) # community
-                generate_jobs(config, args, tests, True) # enterprise
+                generate_jobs(config, args, tests, False)  # community
+                generate_jobs(config, args, tests, True)  # enterprise
                 yaml.dump(config, outstream)
     except Exception as exc:
         traceback.print_exc(exc, file=sys.stderr)

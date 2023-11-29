@@ -57,10 +57,9 @@ struct LocalRuntime : BaseRuntime<LocalRuntime, LocalActorPID> {
   ActorPID makePid(ActorID id) { return ActorPID{.id = id}; }
 
   template<typename ActorMessage>
-  auto doDispatch(ActorPID sender, ActorPID receiver,
-                  ActorMessage const& message,
+  auto doDispatch(ActorPID sender, ActorPID receiver, ActorMessage&& message,
                   IgnoreDispatchFailure ignoreFailure) -> void {
-    dispatchLocally(sender, receiver, message, ignoreFailure);
+    dispatchLocally(sender, receiver, std::move(message), ignoreFailure);
   }
 };
 

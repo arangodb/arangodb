@@ -25,7 +25,6 @@
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
-#include "Aql/Graphs.h"
 #include "Aql/types.h"
 #include "Cluster/ClusterTypes.h"
 #include "Transaction/OperationOrigin.h"

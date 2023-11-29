@@ -314,7 +314,8 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
         // skip over rules if we should
         // however, we don't want to skip those rules that will not create
         // additional plans
-        if (p->isDisabledRule(rule.level) ||
+        auto ruleDisabled = p->isDisabledRule(rule.level);
+        if (ruleDisabled ||
             (_runOnlyRequiredRules && rule.canCreateAdditionalPlans() &&
              rule.canBeDisabled())) {
           // we picked a disabled rule or we have reached the max number of
@@ -323,7 +324,8 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
                  // iteration
           _newPlans.push_back(std::move(p), it);  // nothing to do, just keep it
 
-          if (!rule.isHidden()) {
+          if (!rule.isHidden() &&
+              !(rule.isDisabledByDefault() && ruleDisabled)) {
             ++_stats.rulesSkipped;
           }
 
@@ -338,6 +340,7 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
         p->findVarUsage();
         p->setValidity(false);
 
+        size_t numberOfPlansBeforeRule = _newPlans.size();
         if (queryOptions.getProfileLevel() >= ProfileLevel::Blocks) {
           // run rule with tracing optimizer rule execution time
           if (_stats.executionTimes == nullptr) {
@@ -362,6 +365,16 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
           // run rule without tracing optimizer rules
           rule.func(this, std::move(p), rule);
         }
+
+        // we should have at least one more plan than before
+        TRI_ASSERT(_newPlans.size() > numberOfPlansBeforeRule);
+        // if the rule is marked to create additional plans, it can create
+        // an arbitrary number of plans. otherwise it must create exactly
+        // one plan (which may be the same as its input plan).
+        TRI_ASSERT(rule.canCreateAdditionalPlans() ||
+                   _newPlans.size() == numberOfPlansBeforeRule + 1)
+            << "optimizer rule " << rule.name
+            << " executed additional plans although it is not marked as such";
 
         if (!rule.isHidden()) {
           ++_stats.rulesExecuted;
