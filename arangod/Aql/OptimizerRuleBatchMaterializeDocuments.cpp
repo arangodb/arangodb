@@ -69,6 +69,16 @@ void arangodb::aql::batchMaterializeDocumentsRule(
                << "has post filter";
       continue;
     }
+    if (index->getIndexes()[0]->coveredFields().empty()) {
+      LOG_RULE << "INDEX " << index->id() << " FAILED: "
+               << "does not support covering call";
+      continue;
+    }
+    if (!index->canApplyLateDocumentMaterializationRule()) {
+      LOG_RULE << "INDEX " << index->id() << " FAILED: "
+               << "no late materilize support";
+      continue;
+    }
 
     LOG_RULE << "FOUND INDEX NODE " << index->id();
 
