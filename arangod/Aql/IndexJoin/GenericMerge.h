@@ -193,11 +193,11 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamData::
 template<typename SliceType, typename DocIdType, typename KeyCompare>
 void GenericMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamData::
     seekTo(std::span<SliceType> target) {
-  LOG_INDEX_MERGER << "iterator seeking to " << target[0].toJson();
+  LOG_INDEX_MERGER << "iterator seeking to " << target[0];
   std::copy(target.begin(), target.end(), _position.begin());
   exhausted = !_iter->seek(_position);
 
-  LOG_INDEX_MERGER << "iterator seeked to " << _position[0].toJson()
+  LOG_INDEX_MERGER << "iterator seeked to " << _position[0]
                    << " exhausted = " << std::boolalpha << exhausted;
 }
 
@@ -382,10 +382,10 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
     // get the minimum
     auto minIndex = minHeap.top();
     LOG_INDEX_MERGER << "Min Heap Size is: " << minHeap.size();
-    LOG_INDEX_MERGER << "min is " << minIndex->_position[0].toJson()
+    LOG_INDEX_MERGER << "min is " << minIndex->_position[0]
                      << " exhausted = " << std::boolalpha << minIndex->exhausted
                      << ", address: " << minIndex;
-    LOG_INDEX_MERGER << "max is " << maxIter->_position[0].toJson()
+    LOG_INDEX_MERGER << "max is " << maxIter->_position[0]
                      << " exhausted = " << std::boolalpha << maxIter->exhausted
                      << ", address: " << maxIter;
 
@@ -416,8 +416,7 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
       return {false, amountOfSeeks};  // we are done
     }
 
-    LOG_INDEX_MERGER << "seeked to position "
-                     << minIndex->_position[0].toJson();
+    LOG_INDEX_MERGER << "seeked to position " << minIndex->_position[0];
     // check if we have a new maximum
     if (IndexStreamCompare{}.cmp(*maxIter, *minIndex) ==
         std::weak_ordering::less) {
@@ -432,7 +431,7 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
   LOG_INDEX_MERGER << "common position found: ";
   for (auto const& idx : indexes) {
     LOG_INDEX_MERGER << idx._position[0]
-                     << " -> Position: " << idx._position[0].toJson();
+                     << " -> Position: " << idx._position[0];
   }
 
   return {true, amountOfSeeks};
