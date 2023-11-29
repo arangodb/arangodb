@@ -609,6 +609,24 @@ std::pair<bool, std::vector<AstNode*>> checkCandidatesEligible(
         return {false, {}};
       }
     }
+
+    // check if index does support constant values
+    {
+      if (!constantValues.empty()) {
+        IndexStreamOptions opts;
+        std::vector<size_t> constantFieldsForVerification{};
+        for (size_t i = 0; i < constantValues.size(); ++i) {
+          constantFieldsForVerification.push_back(
+              {i});  // just used as a dummy here for verification
+        }
+        if (!candidate->getIndexes()[0]->supportsStreamInterface(opts)) {
+          LOG_JOIN_OPTIMIZER_RULE << "IndexNode's index does not "
+                                     "support constant values";
+          return {false, {}};
+        }
+      }
+    }
+
     ++candidatePosition;
   }
 
