@@ -14,7 +14,7 @@ description: |
 troubleshoot: |
   If this metric contains a value lower than configured "--arangosearch.execution-threads-limit" 
   (number of cores * 2 by default) then there is enought threads for runninng queries with parallel execution.
-  Value of metric represents number of currently used threads. If the value is greater than
+  The value of the metric represents the number of currently used threads. If the value is greater than
   "--arangosearch.execution-threads-limit" that means currently some queries can not get enough threads to 
-  achieve requested parallelism. In that state queries are less parallel up to single-threaded execution. 
+  achieve the requested parallelism. In that state queries are less parallel up to single-threaded execution. 
   Query performance migth degrade.
