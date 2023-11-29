@@ -28,7 +28,7 @@
 #include <absl/strings/str_cat.h>
 
 arangodb::ResultT<arangodb::ShardID> arangodb::ShardID::shardIdFromString(
-    std::string_view s) noexcept {
+    std::string_view s) {
   if (!s.starts_with('s')) {
     return Result{TRI_ERROR_BAD_PARAMETER,
                   "Expected ShardID to start with 's'"};
@@ -50,11 +50,11 @@ arangodb::ShardID::ShardID(std::string_view id) {
   *this = maybeShardID.get();
 }
 arangodb::ShardID::operator std::string() const {
-  return absl::StrCat("s", std::to_string(_id));
+  return absl::StrCat("s", _id);
 }
 
 // NOTE: This is not noexcept because of shardIdFromString
-bool arangodb::ShardID::operator==(std::string_view other) const noexcept {
+bool arangodb::ShardID::operator==(std::string_view other) const {
   if (auto otherShard = shardIdFromString(other); otherShard.ok()) {
     return *this == otherShard.get();
   }
@@ -68,18 +68,18 @@ bool arangodb::ShardID::isValid() const noexcept {
 }
 
 std::ostream& arangodb::operator<<(std::ostream& o,
-                                   const arangodb::ShardID& r) {
+                                   arangodb::ShardID const& r) {
   o << "s" << r.id();
   return o;
 }
-std::string operator+(const std::string& text, const arangodb::ShardID& s) {
-  return absl::StrCat(text, "s", std::to_string(s.id()));
+std::string operator+(std::string_view text, arangodb::ShardID const& s) {
+  return absl::StrCat(text, "s", s.id());
 }
-std::string operator+(const arangodb::ShardID& s, const std::string& text) {
-  return absl::StrCat("s", std::to_string(s.id()), text);
+std::string operator+(arangodb::ShardID const& s, std::string_view text) {
+  return absl::StrCat("s", s.id(), text);
 }
 
 auto std::hash<arangodb::ShardID>::operator()(
-    const arangodb::ShardID& v) const noexcept -> std::size_t {
+    arangodb::ShardID const& v) const noexcept -> std::size_t {
   return std::hash<uint64_t>{}(v.id());
 }

@@ -1981,7 +1981,7 @@ void ClusterInfo::loadCurrent() {
             ShardID::shardIdFromString(shardSlice.key.stringView());
         if (ADB_UNLIKELY(maybeShardID.fail())) {
           TRI_ASSERT(false)
-              << "Indexed malformed shard name " << shardSlice.key.copyString();
+              << "Indexed malformed shard name " << shardSlice.key.stringView();
           // TODO cannot handle this entry, is it better to continue or to abort
           // here?
           continue;

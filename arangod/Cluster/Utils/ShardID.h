@@ -33,7 +33,7 @@
 namespace arangodb {
 
 struct ShardID {
-  static ResultT<ShardID> shardIdFromString(std::string_view s) noexcept;
+  static ResultT<ShardID> shardIdFromString(std::string_view s);
 
   static ShardID invalidShard() noexcept;
 
@@ -56,7 +56,7 @@ struct ShardID {
   friend auto operator<=>(ShardID const&, ShardID const&) noexcept = default;
   friend bool operator==(ShardID const&, ShardID const&) noexcept = default;
 
-  bool operator==(std::string_view other) const noexcept;
+  bool operator==(std::string_view other) const;
 
   bool isValid() const noexcept;
 
@@ -119,6 +119,6 @@ struct fmt::formatter<arangodb::ShardID> {
 };
 
 // Allow ShardID to be added to std::strings
-std::string operator+(std::string const& text, arangodb::ShardID const& s);
+std::string operator+(std::string_view text, arangodb::ShardID const& s);
 // Allow ShardID to be added to std::strings
-std::string operator+(arangodb::ShardID const& s, std::string const& text);
+std::string operator+(arangodb::ShardID const& s, std::string_view text);

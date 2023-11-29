@@ -1030,7 +1030,7 @@ static void JS_GetResponsibleServersClusterInfo(
   for (auto const& it : result) {
     responsible
         ->Set(context,
-              TRI_V8_ASCII_STRING(isolate, std::string{it.first}.c_str()),
+              TRI_V8_ASCII_STD_STRING(isolate, std::string{it.first}),
               TRI_V8_STD_STRING(isolate, it.second))
         .FromMaybe(false);
   }
