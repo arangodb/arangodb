@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed BTS-1698: Inverted index can be hinted/forced for UPSERT, which is 
+  invalid.
+
 * Added "readOwnWrites" option for AQL UPSERT operations.
   
   If set to `true` (which is the default), an UPSERT operation will process

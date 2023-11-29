@@ -692,7 +692,8 @@ std::vector<arangodb::graph::IndexAccessor> ShortestPathNode::buildIndexes(
     auto& trx = plan()->getAst()->query().trxForOptimization();
     bool res = aql::utils::getBestIndexHandleForFilterCondition(
         trx, *_edgeColls[i], clonedCondition, options()->tmpVar(),
-        itemsInCollection, aql::IndexHint(), indexToUse, onlyEdgeIndexes);
+        itemsInCollection, aql::IndexHint(), indexToUse, ReadOwnWrites::no,
+        onlyEdgeIndexes);
     if (!res) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "expected edge index not found");
