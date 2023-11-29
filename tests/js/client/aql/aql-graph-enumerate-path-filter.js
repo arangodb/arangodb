@@ -145,21 +145,21 @@ function assertSameResults(query) {
 
 function queryFilterVerticesByType(pathQueryType) {
   return `
-      FOR path IN ANY ${pathQueryType} "${vName}/0" TO "${vName}/2" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
+      FOR path IN ANY ${pathQueryType} "${vName}/0" TO "${vName}/2" GRAPH "${graphName}"  // OPTIONS {weightAttribute: "weight"}
           FILTER path.vertices[* RETURN CURRENT.colour == "green"] ALL == true
           RETURN path`;
 }
 
 function queryFilterEdgesByType(pathQueryType) {
   return `
-      FOR path IN ANY ${pathQueryType} "${vName}/0" TO "${vName}/2" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
+      FOR path IN ANY ${pathQueryType} "${vName}/0" TO "${vName}/2" GRAPH "${graphName}" // OPTIONS {weightAttribute: "weight"}
           FILTER path.edges[* RETURN CURRENT.colour == "green"] ALL == true
           RETURN path`;
 }
 
 function queryFilterVerticesEdgesByType(pathQueryType) {
   return `
-      FOR path IN ANY ${pathQueryType} "${vName}/0" TO "${vName}/2" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
+      FOR path IN ANY ${pathQueryType} "${vName}/0" TO "${vName}/2" GRAPH "${graphName}" // OPTIONS {weightAttribute: "weight"}
           FILTER path.vertices[* RETURN CURRENT.colour == "red"] ALL == true
           FILTER path.edges[* RETURN CURRENT.colour == "green"] ALL == true
           RETURN path`;
