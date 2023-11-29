@@ -258,6 +258,7 @@ std::string_view subtypeName(int signal, int subCode) noexcept {
         default:
           break;
       }
+      break;
     }
     case SIGFPE: {
       switch (subCode) {
@@ -304,6 +305,7 @@ std::string_view subtypeName(int signal, int subCode) noexcept {
         default:
           break;
       }
+      break;
     }
     case SIGSEGV: {
       switch (subCode) {
@@ -342,8 +344,8 @@ std::string_view subtypeName(int signal, int subCode) noexcept {
         default:
           break;
       }
+      break;
     }
-
     case SIGBUS: {
       switch (subCode) {
 #ifdef BUS_ADRALN
@@ -371,6 +373,7 @@ std::string_view subtypeName(int signal, int subCode) noexcept {
         default:
           break;
       }
+      break;
     }
     case SIGTRAP: {
       switch (subCode) {
@@ -401,6 +404,7 @@ std::string_view subtypeName(int signal, int subCode) noexcept {
         default:
           break;
       }
+      break;
     }
 
     default:
