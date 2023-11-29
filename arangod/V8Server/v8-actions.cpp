@@ -169,6 +169,10 @@ class v8_action_t final : public TRI_action_t {
         v8::Handle<v8::Function> func =
             v8::Local<v8::Function>::New(isolate, it->second);
 
+        // we can release the lock here already as no other threads will
+        // work in our isolate at this time
+        readLocker.unlock();
+
         try {
           result = ExecuteActionVocbase(vocbase, isolate, this, func, request,
                                         response);
