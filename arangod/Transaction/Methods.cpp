@@ -2083,7 +2083,7 @@ futures::Future<Result> transaction::Methods::documentFastPath(
         auto shards = ci.getShardList(std::to_string(collection->id().id()));
         if (shards != nullptr && shards->size() == 1) {
           TRI_ASSERT(vocbase().isOneShard());
-          return (*shards)[0];
+          return std::string{(*shards)[0]};
         }
       }
     }
@@ -2697,9 +2697,14 @@ Future<OperationResult> transaction::Methods::truncateLocal(
       VPackObjectBuilder ob(&body);
       body.add("collection", collectionName);
     }
+    auto maybeShardID = ShardID::shardIdFromString(trxColl->collectionName());
+    ADB_PROD_ASSERT(maybeShardID.ok())
+        << "Tried to replicate an operation for a collection that is not a "
+           "shard."
+        << trxColl->collectionName() << " in collection: " << collectionName;
     auto operation = replication2::replicated_state::document::
         ReplicatedOperation::buildTruncateOperation(
-            state()->id().asFollowerTransactionId(), trxColl->collectionName());
+            state()->id().asFollowerTransactionId(), maybeShardID.get());
     // Should finish immediately, because we are not waiting the operation to be
     // committed in the replicated log
     auto replicationFut = leaderState->replicateOperation(
@@ -3196,10 +3201,15 @@ Future<Result> Methods::replicateOperations(
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(
         transactionCollection);
     auto leaderState = rtc.leaderState();
+    auto maybeShardID = ShardID::shardIdFromString(rtc.collectionName());
+    ADB_PROD_ASSERT(maybeShardID.ok())
+        << "Tried to replicate an operation for a collection that is not a "
+           "shard."
+        << rtc.collectionName();
     auto replicatedOp = replication2::replicated_state::document::
         ReplicatedOperation::buildDocumentOperation(
             operation, state()->id().asFollowerTransactionId(),
-            rtc.collectionName(), replicationData.sharedSlice());
+            maybeShardID.get(), replicationData.sharedSlice());
     // Should finish immediately
     auto replicationFut = leaderState->replicateOperation(
         std::move(replicatedOp),

@@ -26,7 +26,7 @@
 
 // TODO: at some point this needs to be ArangoDB's ShardID, ...
 // for this ClusterInfo should be broken into several files
-using ShardID = std::string;
+using PregelShardID = std::string;
 using CollectionID = std::string;
 // WARNING: there is a difference between CollectionID and
 // CollectionName

@@ -333,7 +333,7 @@ TEST_F(DocumentStateFollowerTest,
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
 
-  ShardID const myShard = "s12";
+  ShardID const myShard{12};
   CollectionID const myCollection = "myCollection";
 
   // CreateShard
@@ -456,29 +456,30 @@ TEST_F(DocumentStateFollowerTest,
 
   std::vector<DocumentLogEntry> entries;
   entries.emplace_back(ReplicatedOperation::buildDocumentOperation(
-      TRI_VOC_DOCUMENT_OPERATION_INSERT, TransactionId{6}, "shard1",
+      TRI_VOC_DOCUMENT_OPERATION_INSERT, TransactionId{6}, ShardID{1},
       velocypack::SharedSlice()));
   entries.emplace_back(ReplicatedOperation::buildDocumentOperation(
-      TRI_VOC_DOCUMENT_OPERATION_INSERT, TransactionId{10}, "shard2",
+      TRI_VOC_DOCUMENT_OPERATION_INSERT, TransactionId{10}, ShardID{2},
       velocypack::SharedSlice()));
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
   std::ignore = follower->applyEntries(std::move(entryIterator));
 
   entries.clear();
-  entries.emplace_back(ReplicatedOperation::buildDropShardOperation("shard1"));
+  entries.emplace_back(
+      ReplicatedOperation::buildDropShardOperation(ShardID{1}));
   entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
 
-  ON_CALL(*transactionHandlerMock, getTransactionsForShard("shard1"))
+  ON_CALL(*transactionHandlerMock, getTransactionsForShard(ShardID{1}))
       .WillByDefault(Return(std::vector<TransactionId>{TransactionId{6}}));
-  ON_CALL(*transactionHandlerMock, getTransactionsForShard("shard2"))
+  ON_CALL(*transactionHandlerMock, getTransactionsForShard(ShardID{2}))
       .WillByDefault(Return(std::vector<TransactionId>{TransactionId{10}}));
-  EXPECT_CALL(*transactionHandlerMock, getTransactionsForShard("shard1"))
+  EXPECT_CALL(*transactionHandlerMock, getTransactionsForShard(ShardID{1}))
       .Times(1);
   EXPECT_CALL(
       *transactionHandlerMock,
       applyEntry(ReplicatedOperation::buildAbortOperation(TransactionId{6})))
       .Times(1);
-  EXPECT_CALL(*transactionHandlerMock, getTransactionsForShard("shard2"))
+  EXPECT_CALL(*transactionHandlerMock, getTransactionsForShard(ShardID{2}))
       .Times(0);
   EXPECT_CALL(
       *transactionHandlerMock,

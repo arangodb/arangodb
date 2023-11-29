@@ -28,7 +28,7 @@
 
 namespace arangodb::aql {
 
-struct DefaultComparator {
+struct DefaultComparatorTwo {
   template<typename U, typename V>
   auto operator()(U&& left, V&& right) const {
     return left <=> right;
@@ -36,12 +36,15 @@ struct DefaultComparator {
 };
 
 template<typename SliceType, typename DocIdType,
-         typename KeyCompare = DefaultComparator>
-struct GenericMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
+         typename KeyCompare = DefaultComparatorTwo>
+struct TwoIndicesMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
+  static constexpr size_t FIXED_NON_UNIQUE_INDEX_SIZE_VAR = 2;
+
   using StreamIteratorType = IndexStreamIterator<SliceType, DocIdType>;
   using Descriptor = IndexDescriptor<SliceType, DocIdType>;
 
-  GenericMergeJoin(std::vector<Descriptor> descs, std::size_t numKeyComponents);
+  TwoIndicesMergeJoin(std::vector<Descriptor> descs,
+                      std::size_t numKeyComponents);
 
   std::pair<bool, size_t> next(
       std::function<bool(std::span<DocIdType>, std::span<SliceType>)> const& cb)
@@ -74,25 +77,22 @@ struct GenericMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
     bool operator()(IndexStreamData* left, IndexStreamData* right) const;
   };
 
-  struct IndexMinHeap
-      : std::priority_queue<IndexStreamData*, std::vector<IndexStreamData*>,
-                            IndexStreamCompare> {
-    void clear() { this->c.clear(); }
-  };
-
   std::vector<IndexStreamData> indexes;
 
   bool positionAligned = false;
 
-  std::vector<DocIdType> documentIds;
+  std::array<DocIdType, 2> documentIds;
   std::vector<SliceType> sliceBuffer;
   std::vector<SliceType> currentKeySet;
   std::span<SliceType> projectionsSpan;
 
-  IndexMinHeap minHeap;
+  // This iterator holds the current maximum position
+  // of all (in this case exactly two) iterators
   IndexStreamData* maxIter = nullptr;
+  // This is basically just the other iterator...
+  IndexStreamData* minIter = nullptr;
 
-  void updateHeap();
+  void updateMinMaxIterators();
   std::pair<bool, size_t> advanceIndexes();
 
   struct ProduceProductResult {
@@ -109,10 +109,10 @@ struct GenericMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
   std::pair<bool, size_t> findCommonPosition();
 };
 
-#define LOG_INDEX_MERGER LOG_DEVEL_IF(false)
+#define LOG_IDX_TWO_NONU_MERGER LOG_DEVEL_IF(false)
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-void GenericMergeJoin<SliceType, DocIdType, KeyCompare>::reset() {
+void TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::reset() {
   for (auto& idx : indexes) {
     idx.reset();
   }
@@ -120,7 +120,7 @@ void GenericMergeJoin<SliceType, DocIdType, KeyCompare>::reset() {
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
 std::weak_ordering
-GenericMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamCompare::cmp(
+TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamCompare::cmp(
     IndexStreamData const& left, IndexStreamData const& right) {
   if (!left.exhausted && right.exhausted) {
     return std::weak_ordering::less;
@@ -131,7 +131,7 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamCompare::cmp(
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
 std::weak_ordering
-GenericMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamCompare::cmp(
+TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamCompare::cmp(
     std::span<SliceType> left, std::span<SliceType> right) {
   for (std::size_t k = 0; k < left.size(); k++) {
     auto v = KeyCompare{}(left[k], right[k]);
@@ -146,13 +146,13 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamCompare::cmp(
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-bool GenericMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamCompare::
+bool TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamCompare::
 operator()(IndexStreamData* left, IndexStreamData* right) const {
   return cmp(*left, *right) == std::weak_ordering::greater;
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-GenericMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamData::
+TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamData::
     IndexStreamData(std::unique_ptr<StreamIteratorType> iter,
                     std::span<SliceType> position,
                     std::span<SliceType> projections, DocIdType& docId)
@@ -161,37 +161,37 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamData::
       _projections(projections),
       _docId(docId) {
   exhausted = !_iter->position(_position);
-  LOG_INDEX_MERGER << "iter at " << _position[0];
+  LOG_IDX_TWO_NONU_MERGER << "iter at " << _position[0];
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-void GenericMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamData::
+void TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamData::
     seekTo(std::span<SliceType> target) {
-  LOG_INDEX_MERGER << "iterator seeking to " << target[0];
+  LOG_IDX_TWO_NONU_MERGER << "iterator seeking to " << target[0];
   std::copy(target.begin(), target.end(), _position.begin());
   exhausted = !_iter->seek(_position);
 
-  LOG_INDEX_MERGER << "iterator seeked to " << _position[0]
-                   << " exhausted = " << exhausted;
+  LOG_IDX_TWO_NONU_MERGER << "iterator seeked to " << _position[0]
+                          << " exhausted = " << exhausted;
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-void GenericMergeJoin<SliceType, DocIdType,
-                      KeyCompare>::IndexStreamData::reset() {
+void TwoIndicesMergeJoin<SliceType, DocIdType,
+                         KeyCompare>::IndexStreamData::reset() {
   exhausted = !_iter->reset(_position);
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-bool GenericMergeJoin<SliceType, DocIdType,
-                      KeyCompare>::IndexStreamData::next() {
+bool TwoIndicesMergeJoin<SliceType, DocIdType,
+                         KeyCompare>::IndexStreamData::next() {
   return exhausted = !_iter->next(_position, _docId, _projections);
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-GenericMergeJoin<SliceType, DocIdType, KeyCompare>::GenericMergeJoin(
+TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::TwoIndicesMergeJoin(
     std::vector<Descriptor> descs, std::size_t numKeyComponents) {
-  indexes.reserve(descs.size());
-  documentIds.resize(descs.size());
+  TRI_ASSERT(descs.size() == FIXED_NON_UNIQUE_INDEX_SIZE_VAR);
+  indexes.reserve(FIXED_NON_UNIQUE_INDEX_SIZE_VAR);
   currentKeySet.resize(numKeyComponents);
 
   std::size_t bufferSize = 0;
@@ -216,12 +216,19 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::GenericMergeJoin(
 
     if (maxIter == nullptr ||
         IndexStreamCompare{}.cmp(*maxIter, idx) == std::weak_ordering::less) {
+      if (maxIter != nullptr) {
+        minIter = maxIter;
+      }
       maxIter = &idx;
+    } else {
+      minIter = &idx;
     }
-    minHeap.push(&idx);
   }
 
-  auto isAligned = IndexStreamCompare{}.cmp(*maxIter, *minHeap.top()) ==
+  TRI_ASSERT(minIter != nullptr);
+  TRI_ASSERT(maxIter != nullptr);
+  TRI_ASSERT(minIter != maxIter);
+  auto isAligned = IndexStreamCompare{}.cmp(*maxIter, *minIter) ==
                    std::weak_ordering::equivalent;
   if (!maxIter->exhausted && isAligned) {
     fillInitialMatch();
@@ -231,7 +238,7 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::GenericMergeJoin(
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
 std::pair<bool, std::size_t>
-GenericMergeJoin<SliceType, DocIdType, KeyCompare>::next(
+TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::next(
     const std::function<bool(std::span<DocIdType>, std::span<SliceType>)>& cb) {
   size_t amountOfSeeks = 0;
   while (true) {
@@ -240,7 +247,7 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::next(
       amountOfSeeks += result.seeks;
       if (!result.hasMore) {
         positionAligned = false;
-        updateHeap();
+        updateMinMaxIterators();
         if (maxIter->exhausted) {
           return {false, amountOfSeeks};
         }
@@ -262,73 +269,72 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::next(
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-void GenericMergeJoin<SliceType, DocIdType, KeyCompare>::updateHeap() {
-  // clear and rebuild heap
-  minHeap.clear();
-  for (auto& idx : indexes) {
-    if (IndexStreamCompare{}.cmp(*maxIter, idx) == std::weak_ordering::less) {
-      maxIter = &idx;
-    }
-    minHeap.push(&idx);
+void TwoIndicesMergeJoin<SliceType, DocIdType,
+                         KeyCompare>::updateMinMaxIterators() {
+  TRI_ASSERT(minIter != nullptr);
+  TRI_ASSERT(maxIter != nullptr);
+
+  // clear and re-coordinate min and max iterators (if required)
+  if (IndexStreamCompare{}.cmp(*maxIter, *minIter) ==
+      std::weak_ordering::less) {
+    std::swap(maxIter, minIter);
   }
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
 std::pair<bool, size_t>
-GenericMergeJoin<SliceType, DocIdType, KeyCompare>::advanceIndexes() {
-  std::size_t where = 0;
+TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::advanceIndexes() {
   std::size_t amountOfSeeks = 0;
 
-  while (true) {
-    if (where == indexes.size()) {
+  auto incrementAndCheckMatch = [&](IndexStreamData& idx) -> bool {
+    bool exhausted = idx.next();
+    if (!exhausted) {
+      LOG_IDX_TWO_NONU_MERGER << "next call on idx: " << &idx;
+      for (auto k : idx._position) {
+        LOG_IDX_TWO_NONU_MERGER << k;
+      }
+
+      LOG_IDX_TWO_NONU_MERGER
+          << "diff = "
+          << (0 == IndexStreamCompare{}.cmp(idx._position, currentKeySet));
+
+      if (std::weak_ordering::equivalent ==
+          IndexStreamCompare{}.cmp(idx._position, currentKeySet)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  auto seekIndexAndCacheProjections = [&](IndexStreamData& idx,
+                                          size_t position) {
+    LOG_IDX_TWO_NONU_MERGER << "seeking iterator at position: " << position
+                            << " to";
+    for (auto k : currentKeySet) {
+      LOG_IDX_TWO_NONU_MERGER << k;
+    }
+    idx.seekTo(currentKeySet);
+    amountOfSeeks++;
+    documentIds[position] = idx._iter->load(idx._projections);
+  };
+
+  bool foundMatch = incrementAndCheckMatch(indexes[0]);
+  if (!foundMatch) {
+    foundMatch = incrementAndCheckMatch(indexes[1]);
+    if (!foundMatch) {
       // reached the end of this streak
       positionAligned = false;
       return {false, amountOfSeeks};
     }
-
-    auto& idx = indexes[where];
-    bool exhausted = idx.next();
-    if (!exhausted) {
-      LOG_INDEX_MERGER << "at position " << where;
-      for (auto k : indexes[where]._position) {
-        LOG_INDEX_MERGER << k;
-      }
-
-      LOG_INDEX_MERGER << "at rbegin ";
-      for (auto k : indexes.rbegin()->_position) {
-        LOG_INDEX_MERGER << k;
-      }
-
-      LOG_INDEX_MERGER << "diff = "
-                       << (0 == IndexStreamCompare{}.cmp(
-                                    indexes[where]._position, currentKeySet));
-
-      if (0 ==
-          IndexStreamCompare{}.cmp(indexes[where]._position, currentKeySet)) {
-        break;
-      }
-    }
-
-    where += 1;
+    seekIndexAndCacheProjections(indexes[0], 0);
+    return {true, amountOfSeeks};
   }
 
-  while (where > 0) {
-    where -= 1;
-    auto& idx = indexes[where];
-    LOG_INDEX_MERGER << "seeking iterator at " << where << " to";
-    for (auto k : currentKeySet) {
-      LOG_INDEX_MERGER << k;
-    }
-    idx.seekTo(currentKeySet);
-    amountOfSeeks++;
-    documentIds[where] = idx._iter->load(idx._projections);
-  }
-
-  return {true, amountOfSeeks};
+  return {false, amountOfSeeks};
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-auto GenericMergeJoin<SliceType, DocIdType, KeyCompare>::produceCrossProduct(
+auto TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::produceCrossProduct(
     const std::function<bool(std::span<DocIdType>, std::span<SliceType>)>& cb)
     -> ProduceProductResult {
   bool readMore = true;
@@ -342,15 +348,15 @@ auto GenericMergeJoin<SliceType, DocIdType, KeyCompare>::produceCrossProduct(
     hasMore = hasMoreLocal;
     amountOfSeeks += amountOfSeeksLocal;
 
-    LOG_INDEX_MERGER << std::boolalpha << "readMore = " << readMore
-                     << " hasMore = " << hasMore;
+    LOG_IDX_TWO_NONU_MERGER << std::boolalpha << "readMore = " << readMore
+                            << " hasMore = " << hasMore;
   }
 
   return {.readMore = readMore, .hasMore = hasMore, .seeks = amountOfSeeks};
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-void GenericMergeJoin<SliceType, DocIdType, KeyCompare>::fillInitialMatch() {
+void TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::fillInitialMatch() {
   for (std::size_t i = 0; i < indexes.size(); i++) {
     auto& index = indexes[i];
     documentIds[i] = index._iter->load(index._projections);
@@ -360,18 +366,19 @@ void GenericMergeJoin<SliceType, DocIdType, KeyCompare>::fillInitialMatch() {
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
 std::pair<bool, size_t>
-GenericMergeJoin<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
-  LOG_INDEX_MERGER << "find common position";
+TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
+  LOG_IDX_TWO_NONU_MERGER << "find common position";
   size_t amountOfSeeks = 0;
 
   while (true) {
     // get the minimum
-    auto minIndex = minHeap.top();
-    LOG_INDEX_MERGER << "min is " << minIndex->_position[0]
-                     << " exhausted = " << std::boolalpha
-                     << minIndex->exhausted;
-    LOG_INDEX_MERGER << "max is " << maxIter->_position[0]
-                     << " exhausted = " << std::boolalpha << maxIter->exhausted;
+    auto minIndex = minIter;
+    LOG_IDX_TWO_NONU_MERGER << "min is " << minIndex->_position[0]
+                            << " exhausted = " << std::boolalpha
+                            << minIndex->exhausted;
+    LOG_IDX_TWO_NONU_MERGER << "max is " << maxIter->_position[0]
+                            << " exhausted = " << std::boolalpha
+                            << maxIter->exhausted;
 
     if (maxIter->exhausted) {
       return {false, amountOfSeeks};
@@ -384,35 +391,29 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
       break;
     }
 
-    // remove the minimum, we want to modify it
-    minHeap.pop();
-
     // seek this index to the maximum
 
-    LOG_INDEX_MERGER << "seeking to " << maxIter->_position[0];
+    LOG_IDX_TWO_NONU_MERGER << "seeking to " << maxIter->_position[0];
     minIndex->seekTo(maxIter->_position);
     amountOfSeeks++;
 
     if (minIndex->exhausted) {
-      LOG_INDEX_MERGER << "iterator exhausted ";
+      LOG_IDX_TWO_NONU_MERGER << "iterator exhausted ";
       return {false, amountOfSeeks};  // we are done
     }
 
-    LOG_INDEX_MERGER << "seeked to position " << minIndex->_position[0];
+    LOG_IDX_TWO_NONU_MERGER << "seeked to position " << minIndex->_position[0];
     // check if we have a new maximum
     if (IndexStreamCompare{}.cmp(*maxIter, *minIndex) ==
         std::weak_ordering::less) {
-      LOG_INDEX_MERGER << "new max iter ";
-      maxIter = minIndex;
+      LOG_IDX_TWO_NONU_MERGER << "new max iter ";
+      std::swap(minIter, maxIter);
     }
-
-    // insert with updated position into heap
-    minHeap.push(minIndex);
   }
 
-  LOG_INDEX_MERGER << "common position found: ";
+  LOG_IDX_TWO_NONU_MERGER << "common position found: ";
   for (auto const& idx : indexes) {
-    LOG_INDEX_MERGER << idx._position[0];
+    LOG_IDX_TWO_NONU_MERGER << idx._position[0];
   }
 
   return {true, amountOfSeeks};
