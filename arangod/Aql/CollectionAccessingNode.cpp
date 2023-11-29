@@ -31,6 +31,8 @@
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/Utils/ShardID.h"
+#include "Logger/LogMacros.h"
 #include "Indexes/Index.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -44,7 +46,8 @@ CollectionAccessingNode::CollectionAccessingNode(
     aql::Collection const* collection)
     : _collectionAccess(collection) {
   TRI_ASSERT(_collectionAccess.collection() != nullptr);
-  TRI_ASSERT(_usedShard.empty());
+  TRI_ASSERT(!_usedShard.has_value());
+  TRI_ASSERT(!_restrictedTo.has_value());
 }
 
 CollectionAccessingNode::CollectionAccessingNode(
@@ -67,7 +70,15 @@ CollectionAccessingNode::CollectionAccessingNode(
   VPackSlice restrictedTo = slice.get("restrictedTo");
 
   if (restrictedTo.isString()) {
-    _restrictedTo = restrictedTo.copyString();
+    auto maybeShardID = ShardID::shardIdFromString(restrictedTo.stringView());
+    if (ADB_UNLIKELY(maybeShardID.fail())) {
+      LOG_TOPIC("63e33", WARN, Logger::AQL)
+          << "Internal JSON representation of CollectionAccess for collection "
+          << colName << " contains invalid shard ID "
+          << restrictedTo.stringView() << " - ignoring";
+    } else {
+      _restrictedTo = maybeShardID.get();
+    }
   }
 }
 
@@ -84,8 +95,8 @@ void CollectionAccessingNode::collection(aql::Collection const* collection) {
 
 void CollectionAccessingNode::toVelocyPack(
     arangodb::velocypack::Builder& builder, unsigned /*flags*/) const {
-  if (!_usedShard.empty()) {
-    builder.add("collection", VPackValue(_usedShard));
+  if (_usedShard.has_value()) {
+    builder.add("collection", VPackValue(_usedShard.value()));
   } else {
     builder.add("collection", VPackValue(collection()->name()));
   }
@@ -101,8 +112,8 @@ void CollectionAccessingNode::toVelocyPack(
                 VPackValue(collection()->numberOfShards()));
   }
 
-  if (!_restrictedTo.empty()) {
-    builder.add("restrictedTo", VPackValue(_restrictedTo));
+  if (_restrictedTo.has_value()) {
+    builder.add("restrictedTo", VPackValue(_restrictedTo.value()));
   }
 #ifdef USE_ENTERPRISE
   builder.add("isSatellite", VPackValue(isUsedAsSatellite()));
@@ -152,16 +163,17 @@ aql::Collection const* CollectionAccessingNode::collection() const {
   return _collectionAccess.collection();
 }
 
-void CollectionAccessingNode::restrictToShard(std::string const& shardId) {
+void CollectionAccessingNode::restrictToShard(ShardID const& shardId) {
   _restrictedTo = shardId;
 }
 
 bool CollectionAccessingNode::isRestricted() const {
-  return !_restrictedTo.empty();
+  return _restrictedTo.has_value();
 }
 
-std::string const& CollectionAccessingNode::restrictedShard() const {
-  return _restrictedTo;
+ShardID CollectionAccessingNode::restrictedShard() const {
+  TRI_ASSERT(isRestricted());
+  return _restrictedTo.value();
 }
 
 void CollectionAccessingNode::setPrototype(
