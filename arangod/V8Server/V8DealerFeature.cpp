@@ -1422,38 +1422,30 @@ void V8DealerFeature::cleanupLockedExecutor(V8Executor* executor) {
   }
 
   // update data for later garbage collection
-  executor->runInContext([&](v8::Isolate* isolate) -> Result {
-    v8::HandleScope scope(isolate);
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
+      isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
+  executor->setHasActiveExternals(v8g->hasActiveExternals());
+  TRI_vocbase_t* vocbase = v8g->_vocbase;
 
-    TRI_GET_GLOBALS();
-    executor->setHasActiveExternals(v8g->hasActiveExternals());
-    TRI_vocbase_t* vocbase = v8g->_vocbase;
+  TRI_ASSERT(vocbase != nullptr);
+  // release last recently used vocbase
+  vocbase->release();
 
-    TRI_ASSERT(vocbase != nullptr);
-    // release last recently used vocbase
-    vocbase->release();
+  // check for cancelation requests
+  bool canceled = v8g->_canceled;
+  v8g->_canceled = false;
 
-    // check for cancelation requests
-    bool canceled = v8g->_canceled;
-    v8g->_canceled = false;
+  // if the execution was canceled, we need to cleanup
+  if (canceled) {
+    executor->handleCancellationCleanup();
+  }
 
-    // if the execution was canceled, we need to cleanup
-    if (canceled) {
-      executor->handleCancellationCleanup();
-    }
-
-    // run global executor methods
-    executor->handleGlobalExecutorMethods();
-
-    // reset the executor data; gc should be able to run without it
-    v8g->_expressionContext = nullptr;
-    v8g->_vocbase = nullptr;
-    v8g->_securityContext.reset();
-    v8g->_currentRequest.Reset();
-    v8g->_currentResponse.Reset();
-
-    return {};
-  });
+  // reset the executor data; gc should be able to run without it
+  v8g->_expressionContext = nullptr;
+  v8g->_vocbase = nullptr;
+  v8g->_securityContext.reset();
+  v8g->_currentRequest.Reset();
+  v8g->_currentResponse.Reset();
 }
 
 void V8DealerFeature::exitExecutor(V8Executor* executor) {
