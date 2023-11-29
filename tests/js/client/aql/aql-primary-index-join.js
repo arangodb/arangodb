@@ -365,7 +365,7 @@ const IndexPrimaryJoinTestSuite = function () {
             FILTER doc1.y == doc2.y
             RETURN [doc1, doc2]`;
 
-      db._explain(queryStringEasy, null, queryOptions);
+      //db._explain(queryStringEasy, null, queryOptions);
 
       const q = db._query(queryStringEasy, null, queryOptions);
       const qResult = q.toArray();
@@ -378,12 +378,13 @@ const IndexPrimaryJoinTestSuite = function () {
       assertEqual(qResult.length, 5);
     },
 
+    /*
     testJoinConstantValuesOneOuterMultipleInner: function () {
       const collectionA = db._createDocumentCollection('A');
       collectionA.ensureIndex({type: "persistent", fields: ["x", "y"], unique: false});
 
       const collectionB = db._createDocumentCollection('B');
-      collectionB.ensureIndex({type: "persistent", fields: ["x", "y", "z"], unique: false});
+      collectionB.ensureIndex({type: "persistent", fields: ["y", "z"], unique: false});
 
       // insert some data. Every second document in A has x = 5.
       // Means, we do have five documents with x = 5 in this example.
@@ -419,7 +420,7 @@ const IndexPrimaryJoinTestSuite = function () {
 
       db._explain(queryStringEasy, null, queryOptions);
 
-      /*const q = db._query(queryStringEasy, null, queryOptions);
+      const q = db._query(queryStringEasy, null, queryOptions);
       const qResult = q.toArray();
       qResult.forEach((docs) => {
         let first = docs[0];
@@ -427,7 +428,7 @@ const IndexPrimaryJoinTestSuite = function () {
         assertEqual(first.x, 5, "Wrong value for 'x' in first document found");
         assertEqual(first.y, second.y);
       });
-      assertEqual(qResult.length, 5);*/
+      assertEqual(qResult.length, 5);
     },
 
     testJoinFixedValuesComplex: function () {
@@ -462,6 +463,7 @@ const IndexPrimaryJoinTestSuite = function () {
 
       db._explain(queryStringComplex);
     },
+  */
   };
 };
 

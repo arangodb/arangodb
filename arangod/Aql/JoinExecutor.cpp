@@ -35,7 +35,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-#define LOG_JOIN LOG_DEVEL_IF(true)
+#define LOG_JOIN LOG_DEVEL_IF(false)
 #define LOG_JOIN_MEMORY LOG_DEVEL_IF(false)
 
 RegisterId JoinExecutorInfos::registerForVariable(
@@ -156,9 +156,6 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
       _constantBuilder.clear();
       _constantSlices.clear();
-
-      LOG_JOIN << "Resetting strategy for new input row";
-
       _constantBuilder.openArray();
 
       for (auto const& idx : _infos.indexes) {
@@ -171,10 +168,11 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
             bool mustDestroy = false;
             aql::AqlValue res = expr->execute(&expressionContext, mustDestroy);
             aql::AqlValueGuard guard{res, mustDestroy};
-            LOG_DEVEL << "Expression result: ";
-            LOG_DEVEL << res.slice().toJson();
+            LOG_JOIN << "Expression result: ";
+            LOG_JOIN << res.slice().toJson();
             // constantSlices.push_back(res.slice());
             _constantBuilder.add(res.slice());
+
             /*GenericDocumentExpressionContext ctx{
                 _trx,
                 *_infos.query,
@@ -186,13 +184,10 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
         }
       }
       _constantBuilder.close();  // array
-      _constantSlices.push_back(
-          _constantBuilder.slice().at(0));  // Fix this for multiple constants
 
-      LOG_DEVEL << "Resetting strategy with constant slice: "
-                << _constantBuilder.toJson();
-      LOG_DEVEL << _constantSlices;
-      LOG_DEVEL << "Vector size is: " << _constantSlices.size();
+      for (VPackSlice it : VPackArrayIterator(_constantBuilder.slice())) {
+        _constantSlices.push_back(it);
+      }
       _strategy->reset(_constantSlices);
     }
 
@@ -687,7 +682,7 @@ ResourceMonitor& JoinExecutor::resourceMonitor() { return _resourceMonitor; }
 void JoinExecutor::constructStrategy() {
   std::vector<IndexJoinStrategyFactory::Descriptor> indexDescription;
   for (auto const& idx : _infos.indexes) {
-    LOG_DEVEL << "--> Calculating index information";
+    LOG_JOIN << "--> Calculating index information";
     IndexStreamOptions options;
     // TODO right now we only support the first indexed field
     // TODO join key write the correct one into this statement here

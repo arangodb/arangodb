@@ -111,12 +111,12 @@ struct GenericMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
   std::pair<bool, size_t> findCommonPosition();
 };
 
-#define LOG_INDEX_MERGER LOG_DEVEL_IF(true)
+#define LOG_INDEX_MERGER LOG_DEVEL_IF(false)
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
 void GenericMergeJoin<SliceType, DocIdType, KeyCompare>::reset(
     std::span<SliceType> constants) {
-  LOG_DEVEL << "Calling reset in GenericMergeJoin:";
+  LOG_INDEX_MERGER << "Calling reset in GenericMergeJoin:";
 
   size_t constOffset = 0;
   for (auto& idx : indexes) {
@@ -381,7 +381,7 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
   while (true) {
     // get the minimum
     auto minIndex = minHeap.top();
-    LOG_DEVEL << "Min Heap Size is: " << minHeap.size();
+    LOG_INDEX_MERGER << "Min Heap Size is: " << minHeap.size();
     LOG_INDEX_MERGER << "min is " << minIndex->_position[0].toJson()
                      << " exhausted = " << std::boolalpha << minIndex->exhausted
                      << ", address: " << minIndex;
@@ -390,14 +390,14 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
                      << ", address: " << maxIter;
 
     if (maxIter->exhausted) {
-      LOG_DEVEL << "Max iter is exhausted";
+      LOG_INDEX_MERGER << "Max iter is exhausted";
       return {false, amountOfSeeks};
     }
 
     // check if min == max
     if (IndexStreamCompare::cmp(*minIndex, *maxIter) ==
         std::weak_ordering::equivalent) {
-      LOG_DEVEL << "min and max are equivalent";
+      LOG_INDEX_MERGER << "min and max are equivalent";
       // all iterators are at the same position
       break;
     }

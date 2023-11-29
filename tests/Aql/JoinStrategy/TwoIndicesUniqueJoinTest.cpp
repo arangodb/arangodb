@@ -49,7 +49,7 @@ struct MyVectorIterator : MyIndexStreamIterator {
   }
 
   bool reset(std::span<MyKeyValue> span,
-             std::optional<std::span<MyKeyValue>>) override {
+             std::span<MyKeyValue> constants) override {
     current = begin;
     if (current != end) {
       span[0] = *current;

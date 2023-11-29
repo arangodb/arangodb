@@ -66,7 +66,7 @@ using namespace arangodb::aql;
 using namespace arangodb::containers;
 using EN = arangodb::aql::ExecutionNode;
 
-#define LOG_JOIN_OPTIMIZER_RULE LOG_DEVEL_IF(true)
+#define LOG_JOIN_OPTIMIZER_RULE LOG_DEVEL_IF(false)
 
 namespace {
 
@@ -495,10 +495,10 @@ std::pair<bool, std::vector<AstNode*>> checkCandidatesEligible(
                 // LATER Improvement TODO: Check "flag" isDeterministic <-- all
                 // allowed here then
                 if (lhsi->type == NODE_TYPE_VALUE) {
-                  LOG_DEVEL << "Setting constant value to lhsi";
+                  LOG_JOIN_OPTIMIZER_RULE << "Setting constant value to lhsi";
                   constantValues.push_back(lhsi);
                 } else if (rhsi->type == NODE_TYPE_VALUE) {
-                  LOG_DEVEL << "Setting constant value to rhsi";
+                  LOG_JOIN_OPTIMIZER_RULE << "Setting constant value to rhsi";
                   constantValues.push_back(rhsi);
                 }
               }

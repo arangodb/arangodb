@@ -3070,11 +3070,7 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
     _rocksdbKeyUpperBound.constructUniqueVPackIndexValue(_index->objectId(),
                                                          keyBuilder.slice());
     _end = _rocksdbKeyUpperBound.string();
-    // LOG_DEVEL << "New upper bound is: " << arrayBuilder.slice().toJson();
-    LOG_DEVEL << "Default with constant";
     _iterator->Seek(key.string());
-
-    //_iterator->Seek(_bounds.start());
 
     auto x = position(span);
     for (auto p : span) {
