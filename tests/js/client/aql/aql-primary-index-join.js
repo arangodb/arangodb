@@ -291,11 +291,6 @@ const IndexPrimaryJoinTestSuite = function () {
         });
       }
 
-      //print("Collection A Documents: ");
-      //print(collectionA.all().toArray());
-      //print("Collection B Documents: ");
-      //print(collectionB.all().toArray());
-
       const queryOptions = {
         optimizer: {
           rules: ["+join-index-nodes"]
@@ -314,9 +309,6 @@ const IndexPrimaryJoinTestSuite = function () {
 
       const q = db._query(queryStringEasy, null, queryOptions);
       const qResult = q.toArray();
-      console.warn("Length is: " + qResult.length);
-      console.warn("Content is:");
-      console.warn(qResult);
       qResult.forEach((docs) => {
         let first = docs[0];
         let second = docs[1];
@@ -329,7 +321,6 @@ const IndexPrimaryJoinTestSuite = function () {
     testJoinFixedValuesComplex: function () {
       const collectionA = db._createDocumentCollection('A');
       collectionA.ensureIndex({type: "persistent", fields: ["x", "y"], unique: false});
-      // collectionA.ensureIndex({type: "persistent", fields: ["x"], unique: false});
 
       const collectionB = db._createDocumentCollection('B');
       collectionB.ensureIndex({type: "persistent", fields: ["x", "y", "z"], unique: true});
@@ -343,6 +334,7 @@ const IndexPrimaryJoinTestSuite = function () {
         });
         collectionB.insert({
           y: i,
+          z: i
         });
       }
 
