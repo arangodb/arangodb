@@ -29,6 +29,7 @@
 
 #include "Basics/Common.h"
 
+#include "Basics/Result.h"
 #include "V8Server/GlobalExecutorMethods.h"
 
 #include <atomic>
@@ -46,7 +47,6 @@ class V8Executor {
              std::function<void(V8Executor&)> const& cb);
 
   v8::Isolate* isolate() const noexcept { return _isolate; }
-  v8::Handle<v8::Context> context() const noexcept;
   size_t id() const noexcept { return _id; }
   bool isDefault() const noexcept { return _id == 0; }
   double age() const;
@@ -61,7 +61,7 @@ class V8Executor {
   void setCleaned(double stamp);
   void runCodeInContext(std::string_view code,
                         std::string_view codeDescription);
-  void runInContext(std::function<void()> const& cb);
+  Result runInContext(std::function<Result(v8::Isolate*)> const& cb);
 
   // sets acquisition description (std::string_view data must stay valid
   // forever) and acquisition timestamp

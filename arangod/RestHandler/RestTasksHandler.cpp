@@ -237,15 +237,10 @@ void RestTasksHandler::registerTask(bool byId) {
         JavaScriptSecurityContext::createRestrictedContext();
     V8ExecutorGuard guard(&_vocbase, securityContext);
 
-    v8::Isolate* isolate = guard.isolate();
-    TRI_ASSERT(!isolate->InContext());
-    v8::HandleScope scope(isolate);
+    guard.executor()->runInContext([&](v8::Isolate* isolate) -> Result {
+      v8::HandleScope scope(isolate);
 
-    auto localContext = guard.executor()->context();
-    {
-      v8::Context::Scope contextScope(localContext);
-      TRI_ASSERT(isolate->InContext());
-      auto context = TRI_IGETC;
+      v8::Handle<v8::Context> context = isolate->GetCurrentContext();
       v8::Handle<v8::Object> bv8 =
           TRI_VPackToV8(isolate, body).As<v8::Object>();
 
@@ -261,10 +256,9 @@ void RestTasksHandler::registerTask(bool byId) {
       if (!Task::tryCompile(server(), isolate, command)) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                       "cannot compile command");
-        return;
       }
-    }
-    TRI_ASSERT(!isolate->InContext());
+      return {};
+    });
   } catch (arangodb::basics::Exception const& ex) {
     generateError(Result{ex.code(), ex.what()});
     return;

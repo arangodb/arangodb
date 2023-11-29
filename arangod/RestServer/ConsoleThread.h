@@ -46,25 +46,20 @@ class ConsoleThread final : public ServerThread<ArangodServer> {
   ConsoleThread& operator=(const ConsoleThread&) = delete;
 
  public:
-  static arangodb::V8LineEditor* serverConsole;
-  static std::mutex serverConsoleMutex;
-
- public:
   ConsoleThread(Server&, TRI_vocbase_t*);
-
   ~ConsoleThread();
 
- public:
   void run() override;
   bool isSilent() const override { return true; }
 
- public:
   void userAbort() { _userAborted.store(true); }
+
+  static arangodb::V8LineEditor* serverConsole;
+  static std::mutex serverConsoleMutex;
 
  private:
   void inner(V8ExecutorGuard const&);
 
- private:
   TRI_vocbase_t* _vocbase;
   std::atomic<bool> _userAborted;
 };

@@ -437,76 +437,67 @@ void Task::work(ExecContext const* exec) {
                                                // access to dbs
   V8ExecutorGuard guard(&_dbGuard->database(), securityContext);
 
-  // now execute the function within this context
-  {
-    auto isolate = guard.isolate();
-    TRI_ASSERT(!isolate->InContext());
-
+  guard.executor()->runInContext([this](v8::Isolate* isolate) -> Result {
     v8::HandleScope scope(isolate);
 
-    auto localContext = guard.executor()->context();
-    {
-      v8::Context::Scope contextScope(localContext);
-      TRI_ASSERT(isolate->InContext());
-      auto context = TRI_IGETC;
+    // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
+    auto current = isolate->GetCurrentContext()->Global();
+    auto ctor = v8::Local<v8::Function>::Cast(
+        current
+            ->Get(isolate->GetCurrentContext(),
+                  TRI_V8_ASCII_STRING(isolate, "Function"))
+            .FromMaybe(v8::Local<v8::Value>()));
 
-      // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
-      auto current = context->Global();
-      auto ctor = v8::Local<v8::Function>::Cast(
-          current->Get(context, TRI_V8_ASCII_STRING(isolate, "Function"))
-              .FromMaybe(v8::Local<v8::Value>()));
+    // Invoke Function constructor to create function with the given body and
+    // no arguments
+    v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING(isolate, "params"),
+                                     TRI_V8_STD_STRING(isolate, _command)};
+    v8::Local<v8::Object> function = ctor->NewInstance(TRI_IGETC, 2, args)
+                                         .FromMaybe(v8::Local<v8::Object>());
 
-      // Invoke Function constructor to create function with the given body and
-      // no arguments
-      v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING(isolate, "params"),
-                                       TRI_V8_STD_STRING(isolate, _command)};
-      v8::Local<v8::Object> function = ctor->NewInstance(TRI_IGETC, 2, args)
-                                           .FromMaybe(v8::Local<v8::Object>());
+    v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
 
-      v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
+    if (!action.IsEmpty()) {
+      // only go in here if action is a function
+      v8::Handle<v8::Value> fArgs;
 
-      if (!action.IsEmpty()) {
-        // only go in here if action is a function
-        v8::Handle<v8::Value> fArgs;
+      if (_parameters != nullptr) {
+        fArgs = TRI_VPackToV8(isolate, _parameters->slice());
+      } else {
+        fArgs = v8::Undefined(isolate);
+      }
 
-        if (_parameters != nullptr) {
-          fArgs = TRI_VPackToV8(isolate, _parameters->slice());
-        } else {
-          fArgs = v8::Undefined(isolate);
-        }
+      // call the function within a try/catch
+      try {
+        v8::TryCatch tryCatch(isolate);
+        action->Call(TRI_IGETC, current, 1, &fArgs)
+            .FromMaybe(v8::Local<v8::Value>());
+        if (tryCatch.HasCaught()) {
+          if (tryCatch.CanContinue()) {
+            TRI_LogV8Exception(isolate, &tryCatch);
+          } else {
+            TRI_GET_GLOBALS();
 
-        // call the function within a try/catch
-        try {
-          v8::TryCatch tryCatch(isolate);
-          action->Call(TRI_IGETC, current, 1, &fArgs)
-              .FromMaybe(v8::Local<v8::Value>());
-          if (tryCatch.HasCaught()) {
-            if (tryCatch.CanContinue()) {
-              TRI_LogV8Exception(isolate, &tryCatch);
-            } else {
-              TRI_GET_GLOBALS();
-
-              v8g->_canceled = true;
-              LOG_TOPIC("131e8", WARN, arangodb::Logger::FIXME)
-                  << "caught non-catchable exception (aka termination) in job";
-            }
+            v8g->_canceled = true;
+            LOG_TOPIC("131e8", WARN, arangodb::Logger::FIXME)
+                << "caught non-catchable exception (aka termination) in job";
           }
-        } catch (arangodb::basics::Exception const& ex) {
-          LOG_TOPIC("d6729", ERR, arangodb::Logger::FIXME)
-              << "caught exception in V8 user task: "
-              << TRI_errno_string(ex.code()) << " " << ex.what();
-        } catch (std::bad_alloc const&) {
-          LOG_TOPIC("bfe8a", ERR, arangodb::Logger::FIXME)
-              << "caught exception in V8 user task: "
-              << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
-        } catch (...) {
-          LOG_TOPIC("342ec", ERR, arangodb::Logger::FIXME)
-              << "caught unknown exception in V8 user task";
         }
+      } catch (arangodb::basics::Exception const& ex) {
+        LOG_TOPIC("d6729", ERR, arangodb::Logger::FIXME)
+            << "caught exception in V8 user task: "
+            << TRI_errno_string(ex.code()) << " " << ex.what();
+      } catch (std::bad_alloc const&) {
+        LOG_TOPIC("bfe8a", ERR, arangodb::Logger::FIXME)
+            << "caught exception in V8 user task: "
+            << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
+      } catch (...) {
+        LOG_TOPIC("342ec", ERR, arangodb::Logger::FIXME)
+            << "caught unknown exception in V8 user task";
       }
     }
-    TRI_ASSERT(!isolate->InContext());
-  }
+    return {};
+  });
 }
 
 }  // namespace arangodb

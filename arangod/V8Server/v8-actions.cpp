@@ -128,7 +128,7 @@ class v8_action_t final : public TRI_action_t {
     bool allowUseDatabase =
         _allowUseDatabase || _actionFeature.allowUseDatabase();
 
-    // get a V8 context
+    // get a V8 executor
     V8ExecutorGuard guard(
         vocbase, _isSystem ? JavaScriptSecurityContext::createInternalContext()
                            : JavaScriptSecurityContext::createRestActionContext(
@@ -163,21 +163,14 @@ class v8_action_t final : public TRI_action_t {
         *data = static_cast<void*>(guard.isolate());
       }
 
-      TRI_ASSERT(!guard.isolate()->InContext());
-      v8::HandleScope scope(guard.isolate());
+      guard.executor()->runInContext([&](v8::Isolate* isolate) -> Result {
+        v8::HandleScope scope(isolate);
 
-      auto localContext = guard.executor()->context();
-      {
-        v8::Context::Scope contextScope(localContext);
-
-        TRI_ASSERT(guard.isolate()->InContext());
-
-        auto localFunction =
-            v8::Local<v8::Function>::New(guard.isolate(), it->second);
+        auto func = v8::Local<v8::Function>::New(isolate, it->second);
 
         try {
-          result = ExecuteActionVocbase(vocbase, guard.isolate(), this,
-                                        localFunction, request, response);
+          result = ExecuteActionVocbase(vocbase, isolate, this, func, request,
+                                        response);
         } catch (...) {
           result.isValid = false;
         }
@@ -187,8 +180,9 @@ class v8_action_t final : public TRI_action_t {
           std::lock_guard mutexLocker{*dataLock};
           *data = nullptr;
         }
-      }
-      TRI_ASSERT(!guard.isolate()->InContext());
+
+        return {};
+      });
     }
 
     return result;

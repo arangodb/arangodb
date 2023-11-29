@@ -49,6 +49,10 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
+namespace {
+struct UserAbortedException {};
+}  // namespace
+
 V8LineEditor* ConsoleThread::serverConsole = nullptr;
 std::mutex ConsoleThread::serverConsoleMutex;
 
@@ -58,8 +62,6 @@ ConsoleThread::ConsoleThread(Server& applicationServer, TRI_vocbase_t* vocbase)
       _userAborted(false) {}
 
 ConsoleThread::~ConsoleThread() { shutdown(); }
-
-static char const* USER_ABORTED = "user aborted";
 
 void ConsoleThread::run() {
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -81,10 +83,8 @@ void ConsoleThread::run() {
   // work
   try {
     inner(guard);
-  } catch (char const* error) {
-    if (strcmp(error, USER_ABORTED) != 0) {
-      LOG_TOPIC("6e7fd", ERR, arangodb::Logger::FIXME) << error;
-    }
+  } catch (UserAbortedException const&) {
+    LOG_TOPIC("6e7fd", TRACE, arangodb::Logger::FIXME) << "user aborted";
   } catch (...) {
     _server.beginShutdown();
     throw;
@@ -98,17 +98,13 @@ void ConsoleThread::inner(V8ExecutorGuard const& guard) {
   // flush all log output before we print the console prompt
   Logger::flush();
 
-  v8::Isolate* isolate = guard.isolate();
-  v8::HandleScope globalScope(isolate);
-
   // run the shell
   std::cout << "arangod console (" << rest::Version::getVerboseVersionString()
             << ")" << std::endl;
   std::cout << "Copyright (c) ArangoDB GmbH" << std::endl;
 
-  auto localContext = guard.executor()->context();
-  {
-    v8::Context::Scope contextScope(localContext);
+  guard.executor()->runInContext([this](v8::Isolate* isolate) -> Result {
+    v8::HandleScope globalScope(isolate);
 
     // .............................................................................
     // run console
@@ -152,7 +148,8 @@ start_color_print('arangodb', true);
     }
 #endif
 
-    V8LineEditor console(isolate, localContext, ".arangod.history");
+    v8::Handle<v8::Context> context = isolate->GetCurrentContext();
+    V8LineEditor console(isolate, context, ".arangod.history");
 
     console.open(true);
 
@@ -226,7 +223,9 @@ start_color_print('arangodb', true);
       std::lock_guard mutexLocker{serverConsoleMutex};
       serverConsole = nullptr;
     }
-  }
 
-  throw USER_ABORTED;
+    return {};
+  });
+
+  throw UserAbortedException{};
 }

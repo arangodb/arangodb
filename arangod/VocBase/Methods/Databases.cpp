@@ -49,6 +49,7 @@
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-utils.h"
 #include "V8Server/V8DealerFeature.h"
+#include "V8Server/V8Executor.h"
 #include "VocBase/Methods/Tasks.h"
 #endif
 #include "VocBase/Methods/Upgrade.h"
@@ -487,7 +488,6 @@ ErrorCode dropDBCoordinator(DatabaseFeature& df, std::string const& dbName) {
   return TRI_ERROR_NO_ERROR;
 }
 
-const std::string dropError = "Error when dropping database";
 }  // namespace
 
 Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
@@ -503,51 +503,55 @@ Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
 #ifdef USE_V8
   if (server.hasFeature<V8DealerFeature>() &&
       server.isEnabled<V8DealerFeature>()) {
+    constexpr std::string_view dropError = "Error when dropping database: ";
     V8DealerFeature& dealer = server.getFeature<V8DealerFeature>();
     try {
       JavaScriptSecurityContext securityContext =
           JavaScriptSecurityContext::createInternalContext();
 
-      v8::Isolate* isolate = v8::Isolate::TryGetCurrent();
-      V8ConditionalExecutorGuard guard(res, isolate, systemVocbase,
-                                       securityContext);
+      V8ConditionalExecutorGuard guard(systemVocbase, securityContext);
 
-      if (res.fail()) {
+      if (guard.isolate() == nullptr) {
         events::DropDatabase(dbName, res, exec);
         return res;
       }
 
-      v8::HandleScope scope(isolate);
+      res = guard.executor()->runInContext([&](v8::Isolate* isolate) -> Result {
+        v8::HandleScope scope(isolate);
 
-      // clear collections in cache object
-      TRI_ClearObjectCacheV8(isolate);
+        // clear collections in cache object
+        TRI_ClearObjectCacheV8(isolate);
 
-      if (ServerState::instance()->isCoordinator()) {
-        // If we are a coordinator in a cluster, we have to behave
-        // differently:
-        auto& df = server.getFeature<DatabaseFeature>();
-        res = ::dropDBCoordinator(df, dbName);
-      } else {
-        res = server.getFeature<DatabaseFeature>().dropDatabase(dbName);
+        Result res;
 
-        if (res.fail()) {
-          events::DropDatabase(dbName, res, exec);
-          return res;
+        if (ServerState::instance()->isCoordinator()) {
+          // If we are a coordinator in a cluster, we have to behave
+          // differently:
+          auto& df = server.getFeature<DatabaseFeature>();
+          res = ::dropDBCoordinator(df, dbName);
+        } else {
+          res = server.getFeature<DatabaseFeature>().dropDatabase(dbName);
+
+          if (res.fail()) {
+            events::DropDatabase(dbName, res, exec);
+            return res;
+          }
+
+          Task::removeTasksForDatabase(dbName);
+          // run the garbage collection in case the database held some objects
+          // which can now be freed
+          TRI_RunGarbageCollectionV8(isolate, 0.25);
+          dealer.addGlobalExecutorMethod(
+              GlobalExecutorMethods::MethodType::kReloadRouting);
         }
-
-        Task::removeTasksForDatabase(dbName);
-        // run the garbage collection in case the database held some objects
-        // which can now be freed
-        TRI_RunGarbageCollectionV8(isolate, 0.25);
-        dealer.addGlobalExecutorMethod(
-            GlobalExecutorMethods::MethodType::kReloadRouting);
-      }
+        return res;
+      });
     } catch (basics::Exception const& ex) {
       events::DropDatabase(dbName, TRI_ERROR_INTERNAL, exec);
-      return Result(ex.code(), dropError + ex.message());
+      return Result(ex.code(), absl::StrCat(dropError, ex.message()));
     } catch (std::exception const& ex) {
       events::DropDatabase(dbName, Result(TRI_ERROR_INTERNAL), exec);
-      return Result(TRI_ERROR_INTERNAL, dropError + ex.what());
+      return Result(TRI_ERROR_INTERNAL, absl::StrCat(dropError, ex.what()));
     } catch (...) {
       events::DropDatabase(dbName, Result(TRI_ERROR_INTERNAL), exec);
       return Result(TRI_ERROR_INTERNAL, dropError);

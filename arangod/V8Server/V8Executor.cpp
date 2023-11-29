@@ -27,6 +27,7 @@
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
+#include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
@@ -56,6 +57,8 @@ V8Executor::V8Executor(size_t id, v8::Isolate* isolate,
   TRI_ASSERT(_context.IsEmpty());
 
   _isolate->Enter();
+  auto guard = scopeGuard([this]() noexcept { _isolate->Exit(); });
+
   {
     v8::HandleScope scope(_isolate);
 
@@ -63,17 +66,14 @@ V8Executor::V8Executor(size_t id, v8::Isolate* isolate,
         _isolate,
         v8::Context::New(_isolate, nullptr, v8::ObjectTemplate::New(_isolate)));
 
+    if (_context.IsEmpty()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_OUT_OF_MEMORY,
+          "cannot initalize V8 engine for new executor");
+    }
+
     cb(*this);
   }
-  _isolate->Exit();
-}
-
-v8::Handle<v8::Context> V8Executor::context() const noexcept {
-  v8::EscapableHandleScope scope(_isolate);
-
-  v8::Handle<v8::Context> context =
-      v8::Handle<v8::Context>::New(_isolate, _context);
-  return scope.Escape<v8::Context>(context);
 }
 
 void V8Executor::lockAndEnter() {
@@ -101,20 +101,23 @@ void V8Executor::setCleaned(double stamp) {
 
 void V8Executor::runCodeInContext(std::string_view code,
                                   std::string_view codeDescription) {
-  runInContext([&, this]() {
+  runInContext([&](v8::Isolate* isolate) -> Result {
     try {
-      TRI_ExecuteJavaScriptString(_isolate, code, codeDescription, false);
+      TRI_ExecuteJavaScriptString(isolate, code, codeDescription, false);
     } catch (...) {
       LOG_TOPIC("558dd", WARN, arangodb::Logger::V8)
           << "caught exception during code execution";
       // do not throw from here
     }
+    return {};
   });
 }
 
-void V8Executor::runInContext(std::function<void()> const& cb) {
+Result V8Executor::runInContext(std::function<Result(v8::Isolate*)> const& cb) {
   TRI_ASSERT(!_isolate->InContext());
   TRI_ASSERT(!_context.IsEmpty());
+
+  Result res;
 
   v8::HandleScope scope(_isolate);
   auto localContext = v8::Local<v8::Context>::New(_isolate, _context);
@@ -122,9 +125,10 @@ void V8Executor::runInContext(std::function<void()> const& cb) {
     v8::Context::Scope contextScope(localContext);
     TRI_ASSERT(_isolate->InContext());
 
-    cb();
+    res = cb(_isolate);
   }
   TRI_ASSERT(!_isolate->InContext());
+  return res;
 }
 
 double V8Executor::age() const { return TRI_microtime() - _creationStamp; }

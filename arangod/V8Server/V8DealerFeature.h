@@ -219,8 +219,8 @@ class V8DealerFeature final : public ArangodFeature {
   metrics::Counter& _executorsEnterFailures;
 };
 
-/// @brief enters and exits a context and provides an isolate
-/// throws an exception when no context can be provided
+/// @brief enters and exits an executor and provides an isolate
+/// throws an exception when no executor can be provided
 class V8ExecutorGuard {
  public:
   explicit V8ExecutorGuard(TRI_vocbase_t*, JavaScriptSecurityContext const&);
@@ -228,8 +228,8 @@ class V8ExecutorGuard {
   V8ExecutorGuard& operator=(V8ExecutorGuard const&) = delete;
   ~V8ExecutorGuard();
 
-  v8::Isolate* isolate() const { return _isolate; }
-  V8Executor* executor() const { return _executor; }
+  v8::Isolate* isolate() const noexcept { return _isolate; }
+  V8Executor* executor() const noexcept { return _executor; }
 
  private:
   TRI_vocbase_t* _vocbase;
@@ -241,18 +241,20 @@ class V8ExecutorGuard {
 // in case the passed in isolate is a nullptr
 class V8ConditionalExecutorGuard {
  public:
-  explicit V8ConditionalExecutorGuard(Result&, v8::Isolate*&, TRI_vocbase_t*,
+  explicit V8ConditionalExecutorGuard(TRI_vocbase_t*,
                                       JavaScriptSecurityContext const&);
   V8ConditionalExecutorGuard(V8ConditionalExecutorGuard const&) = delete;
   V8ConditionalExecutorGuard& operator=(V8ConditionalExecutorGuard const&) =
       delete;
   ~V8ConditionalExecutorGuard();
 
+  v8::Isolate* isolate() const noexcept { return _isolate; }
+  V8Executor* executor() const noexcept { return _executor; }
+
  private:
   TRI_vocbase_t* _vocbase;
-  v8::Isolate*& _isolate;
+  v8::Isolate* _isolate;
   V8Executor* _executor;
-  bool _active;
 };
 
 }  // namespace arangodb

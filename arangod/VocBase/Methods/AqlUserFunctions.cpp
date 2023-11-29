@@ -218,33 +218,32 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase,
   try {
     auto vname = userFunction.get("name");
     if (!vname.isString()) {
-      return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_NAME,
-                    "function name has to be provided as a string");
+      return {TRI_ERROR_QUERY_FUNCTION_INVALID_NAME,
+              "function name has to be provided as a string"};
     }
     name = vname.copyString();
     if (name.empty()) {
-      return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_NAME,
-                    "function name has to be provided and must not be empty");
+      return {TRI_ERROR_QUERY_FUNCTION_INVALID_NAME,
+              "function name has to be provided and must not be empty"};
     }
   } catch (...) {
-    return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_NAME,
-                  "missing mandatory attribute 'name'");
+    return {TRI_ERROR_QUERY_FUNCTION_INVALID_NAME,
+            "missing mandatory attribute 'name'"};
   }
 
   if (!isValidFunctionName(name)) {
-    return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_NAME,
-                  absl::StrCat("error creating AQL user function: '", name,
-                               "' is not a valid name"));
+    return {TRI_ERROR_QUERY_FUNCTION_INVALID_NAME,
+            absl::StrCat("error creating AQL user function: '", name,
+                         "' is not a valid name")};
   }
 
   auto cvString = userFunction.get("code");
   if (!cvString.isString() || cvString.getStringLength() == 0) {
-    return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE,
-                  "expecting string with function definition");
+    return {TRI_ERROR_QUERY_FUNCTION_INVALID_CODE,
+            "expecting string with function definition"};
   }
 
-  std::string tmp = cvString.copyString();
-  std::string code = absl::StrCat("(", tmp, "\n)");
+  std::string code = absl::StrCat("(", cvString.stringView(), "\n)");
 
   bool isDeterministic = false;
   VPackSlice isDeterministicSlice = userFunction.get("isDeterministic");
@@ -253,35 +252,37 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase,
   }
 
   {
-    ISOLATE;
-    bool throwV8Exception = (isolate != nullptr);
+    bool throwV8Exception = (v8::Isolate::TryGetCurrent() != nullptr);
 
     JavaScriptSecurityContext securityContext =
         JavaScriptSecurityContext::createRestrictedContext();
-    V8ConditionalExecutorGuard contextGuard(res, isolate, &vocbase,
-                                            securityContext);
+    V8ConditionalExecutorGuard contextGuard(&vocbase, securityContext);
 
-    if (res.fail()) {
-      return res;
+    if (contextGuard.isolate() == nullptr) {
+      return {TRI_ERROR_INTERNAL, "could not acquire v8 executor in time"};
     }
 
-    std::string testCode = absl::StrCat("(function() { var callback = ", tmp,
-                                        "; return callback; })()");
-    v8::HandleScope scope(isolate);
+    std::string testCode =
+        absl::StrCat("(function() { var callback = ", cvString.stringView(),
+                     "; return callback; })()");
 
-    v8::Handle<v8::Value> result;
-    {
+    res = contextGuard.executor()->runInContext([&](v8::Isolate* isolate)
+                                                    -> Result {
+      v8::HandleScope scope(isolate);
+
       v8::TryCatch tryCatch(isolate);
 
-      result =
+      v8::Handle<v8::Value> result =
           TRI_ExecuteJavaScriptString(isolate, testCode, "userFunction", false);
+
+      Result res;
 
       if (result.IsEmpty() || !result->IsFunction() || tryCatch.HasCaught()) {
         if (tryCatch.HasCaught()) {
           res.reset(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE,
-                    std::string(TRI_errno_string(
-                        TRI_ERROR_QUERY_FUNCTION_INVALID_CODE)) +
-                        ": " + TRI_StringifyV8Exception(isolate, &tryCatch));
+                    absl::StrCat(
+                        TRI_errno_string(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE),
+                        ": ", TRI_StringifyV8Exception(isolate, &tryCatch)));
 
           if (!tryCatch.CanContinue()) {
             if (throwV8Exception) {
@@ -296,11 +297,14 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase,
                         TRI_ERROR_QUERY_FUNCTION_INVALID_CODE)));
         }
       }
-    }
+      return res;
+    });
   }
+
   if (!res.ok()) {
     return res;
   }
+
   std::string _key(name);
   basics::StringUtils::toupperInPlace(_key);
 
