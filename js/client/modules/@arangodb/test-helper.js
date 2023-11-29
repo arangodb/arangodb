@@ -625,11 +625,11 @@ exports.triggerMetrics = function () {
 };
 
 exports.activateFailure = function (name) {
-  exports.getEndpointsByType("dbserver").forEach(ep => debugSetFailAt(ep, name));
+  exports.getEndpointsByType("dbserver").forEach(ep => exports.debugSetFailAt(ep, name));
 };
 
 exports.deactivateFailure = function (name) {
-  exports.getEndpointsByType("dbserver").forEach(ep => debugClearFailAt(ep, name));
+  exports.getEndpointsByType("dbserver").forEach(ep => exports.debugClearFailAt(ep, name));
 };
 
 exports.getAllMetricsFromEndpoints = function (roles = "") {
