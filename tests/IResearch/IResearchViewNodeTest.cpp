@@ -27,6 +27,7 @@
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
+#include "absl/cleanup/cleanup.h"
 
 #include "velocypack/Iterator.h"
 
@@ -188,8 +189,8 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
     EXPECT_EQ(42, node.options().sources.begin()->id());
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
-    EXPECT_EQ(0, node.getScorersSortLimit());
-    EXPECT_TRUE(node.getScorersSort().empty());
+    EXPECT_EQ(0, node.getHeapSortLimit());
+    EXPECT_TRUE(node.getHeapSort().empty());
   }
 
   {
@@ -235,8 +236,8 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
     EXPECT_EQ(42, node.options().sources.begin()->id());
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
-    EXPECT_EQ(0, node.getScorersSortLimit());
-    EXPECT_TRUE(node.getScorersSort().empty());
+    EXPECT_EQ(0, node.getHeapSortLimit());
+    EXPECT_TRUE(node.getHeapSort().empty());
   }
 
   // invalid 'primarySortBuckets' specified
@@ -335,8 +336,8 @@ TEST_F(IResearchViewNodeTest, construct) {
               arangodb::iresearch::CountApproximate::Exact);
     EXPECT_EQ(1., node.getCost().estimatedCost);
     EXPECT_EQ(0, node.getCost().estimatedNrItems);
-    EXPECT_EQ(0, node.getScorersSortLimit());
-    EXPECT_TRUE(node.getScorersSort().empty());
+    EXPECT_EQ(0, node.getHeapSortLimit());
+    EXPECT_TRUE(node.getHeapSort().empty());
   }
 
   // with options
@@ -387,8 +388,8 @@ TEST_F(IResearchViewNodeTest, construct) {
               arangodb::iresearch::CountApproximate::Exact);
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
-    EXPECT_EQ(0, node.getScorersSortLimit());
-    EXPECT_TRUE(node.getScorersSort().empty());
+    EXPECT_EQ(0, node.getHeapSortLimit());
+    EXPECT_TRUE(node.getHeapSort().empty());
   }
 
   // with options default optimization
@@ -441,8 +442,8 @@ TEST_F(IResearchViewNodeTest, construct) {
               arangodb::iresearch::CountApproximate::Exact);
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
-    EXPECT_EQ(0, node.getScorersSortLimit());
-    EXPECT_TRUE(node.getScorersSort().empty());
+    EXPECT_EQ(0, node.getHeapSortLimit());
+    EXPECT_TRUE(node.getHeapSort().empty());
   }
   // with options none optimization
   {
@@ -494,8 +495,8 @@ TEST_F(IResearchViewNodeTest, construct) {
               arangodb::iresearch::CountApproximate::Exact);
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
-    EXPECT_EQ(0, node.getScorersSortLimit());
-    EXPECT_TRUE(node.getScorersSort().empty());
+    EXPECT_EQ(0, node.getHeapSortLimit());
+    EXPECT_TRUE(node.getHeapSort().empty());
   }
   // with options noneg optimization
   {
@@ -547,8 +548,8 @@ TEST_F(IResearchViewNodeTest, construct) {
               arangodb::iresearch::CountApproximate::Exact);
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
-    EXPECT_EQ(0, node.getScorersSortLimit());
-    EXPECT_TRUE(node.getScorersSort().empty());
+    EXPECT_EQ(0, node.getHeapSortLimit());
+    EXPECT_TRUE(node.getHeapSort().empty());
   }
   // with options nodnf optimization
   {
@@ -600,8 +601,8 @@ TEST_F(IResearchViewNodeTest, construct) {
               arangodb::iresearch::CountApproximate::Exact);
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
-    EXPECT_EQ(0, node.getScorersSortLimit());
-    EXPECT_TRUE(node.getScorersSort().empty());
+    EXPECT_EQ(0, node.getHeapSortLimit());
+    EXPECT_TRUE(node.getHeapSort().empty());
   }
   // with options exact countApproximate
   {
@@ -653,8 +654,8 @@ TEST_F(IResearchViewNodeTest, construct) {
               arangodb::iresearch::CountApproximate::Exact);
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
-    EXPECT_EQ(0, node.getScorersSortLimit());
-    EXPECT_TRUE(node.getScorersSort().empty());
+    EXPECT_EQ(0, node.getHeapSortLimit());
+    EXPECT_TRUE(node.getHeapSort().empty());
   }
   // with optionscost countApproximate
   {
@@ -706,8 +707,8 @@ TEST_F(IResearchViewNodeTest, construct) {
               arangodb::iresearch::CountApproximate::Cost);
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
-    EXPECT_EQ(0, node.getScorersSortLimit());
-    EXPECT_TRUE(node.getScorersSort().empty());
+    EXPECT_EQ(0, node.getHeapSortLimit());
+    EXPECT_TRUE(node.getHeapSort().empty());
   }
   // invalid options
   {
@@ -871,15 +872,15 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_FALSE(node.options().forceSync);
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
-    EXPECT_EQ(0, node.getScorersSortLimit());
-    EXPECT_TRUE(node.getScorersSort().empty());
+    EXPECT_EQ(0, node.getHeapSortLimit());
+    EXPECT_TRUE(node.getHeapSort().empty());
 
-    std::vector<std::pair<size_t, bool>> scorersSort{
+    std::vector<arangodb::iresearch::HeapSortElement> scorersSort{
         {1, true}, {2, false}, {4, true}};
     auto expectedScorersSort = scorersSort;
-    node.setScorersSort(std::move(scorersSort), 42);
-    EXPECT_EQ(42, node.getScorersSortLimit());
-    auto actualScorersSort = node.getScorersSort();
+    node.setHeapSort(std::move(scorersSort), 42);
+    EXPECT_EQ(42, node.getHeapSortLimit());
+    auto actualScorersSort = node.getHeapSort();
     EXPECT_EQ(expectedScorersSort.size(), actualScorersSort.size());
     EXPECT_TRUE(std::equal(expectedScorersSort.begin(),
                            expectedScorersSort.end(), actualScorersSort.begin(),
@@ -1272,13 +1273,13 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
     EXPECT_EQ(node.options().countApproximate,
               arangodb::iresearch::CountApproximate::Exact);
-    EXPECT_EQ(42, node.getScorersSortLimit());
-    auto actualScorersSort = node.getScorersSort();
+    EXPECT_EQ(42, node.getHeapSortLimit());
+    auto actualScorersSort = node.getHeapSort();
     EXPECT_EQ(2, actualScorersSort.size());
-    EXPECT_EQ(0, actualScorersSort[0].first);
-    EXPECT_TRUE(actualScorersSort[0].second);
-    EXPECT_EQ(1, actualScorersSort[1].first);
-    EXPECT_FALSE(actualScorersSort[1].second);
+    EXPECT_EQ(0, actualScorersSort[0].source);
+    EXPECT_TRUE(actualScorersSort[0].ascending);
+    EXPECT_EQ(1, actualScorersSort[1].source);
+    EXPECT_FALSE(actualScorersSort[1].ascending);
   }
 
   // no options with invalid index scorersSort
@@ -1362,12 +1363,19 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
   // with options
   {
     auto json = arangodb::velocypack::Parser::fromJson(
-        "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
-        "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
-        "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
-        "true, \"collections\":[] }, \"viewId\": \"" +
-        std::to_string(logicalView->id().id()) + "\" }");
+        R"({ 
+        "id":42, "depth":0, "totalNrRegs":0, "varInfoList":[],
+        "nrRegs":[], "nrRegsHere":[], "regsToClear":[],
+        "varsUsedLaterStack":[[]], "varsValid":[],
+        "outVariable": {
+          "name":"variable", "id":0
+        },
+        "options": { 
+          "waitForSync" : true, 
+          "collections":[],
+          "parallelism": 2
+        }, "viewId": ")" +
+        std::to_string(logicalView->id().id()) + R"(" })");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
                                                 json->slice());
@@ -1404,6 +1412,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
     EXPECT_EQ(node.options().countApproximate,
               arangodb::iresearch::CountApproximate::Exact);
+    EXPECT_EQ(node.options().parallelism, 2);
   }
 
   // with options none condition optimization
@@ -1930,8 +1939,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.volatility(), cloned.volatility());
       EXPECT_EQ(node.sort(), cloned.sort());
       EXPECT_EQ(node.getCost(), cloned.getCost());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
     }
 
     // clone with properties into another plan
@@ -1959,8 +1968,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
       EXPECT_EQ(node.sort(), cloned.sort());
       EXPECT_EQ(node.getCost(), cloned.getCost());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
     }
 
     // clone without properties into another plan
@@ -1986,8 +1995,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
       EXPECT_EQ(node.sort(), cloned.sort());
       EXPECT_EQ(node.getCost(), cloned.getCost());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
     }
   }
 
@@ -2001,9 +2010,20 @@ TEST_F(IResearchViewNodeTest, clone) {
         arangodb::aql::NODE_TYPE_OBJECT_ELEMENT);
     attributeName.addMember(&attributeValue);
     attributeName.setStringValue("waitForSync", strlen("waitForSync"));
+
+    arangodb::aql::AstNode attributeValueParallelism(
+        arangodb::aql::NODE_TYPE_VALUE);
+    attributeValueParallelism.setValueType(arangodb::aql::VALUE_TYPE_INT);
+    attributeValueParallelism.setIntValue(5);
+    arangodb::aql::AstNode attributeNameParallelism(
+        arangodb::aql::NODE_TYPE_OBJECT_ELEMENT);
+    attributeNameParallelism.addMember(&attributeValueParallelism);
+    attributeNameParallelism.setStringValue("parallelism",
+                                            strlen("parallelism"));
+
     arangodb::aql::AstNode options(arangodb::aql::NODE_TYPE_OBJECT);
     options.addMember(&attributeName);
-
+    options.addMember(&attributeNameParallelism);
     arangodb::iresearch::IResearchViewNode node(
         *query.plan(), arangodb::aql::ExecutionNodeId{42},
         vocbase,      // database
@@ -2015,7 +2035,7 @@ TEST_F(IResearchViewNodeTest, clone) {
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
     EXPECT_TRUE(node.options().forceSync);
-
+    EXPECT_EQ(5, node.options().parallelism);
     // clone without properties into the same plan
     {
       auto const nextId = node.plan()->nextId();
@@ -2032,8 +2052,9 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.volatility(), cloned.volatility());
       EXPECT_EQ(node.sort(), cloned.sort());
       EXPECT_EQ(node.getCost(), cloned.getCost());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
+      EXPECT_EQ(node.options().parallelism, cloned.options().parallelism);
     }
 
     // clone with properties into another plan
@@ -2061,8 +2082,9 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
       EXPECT_EQ(node.sort(), cloned.sort());
       EXPECT_EQ(node.getCost(), cloned.getCost());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
+      EXPECT_EQ(node.options().parallelism, cloned.options().parallelism);
     }
 
     // clone without properties into another plan
@@ -2088,13 +2110,20 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
       EXPECT_EQ(node.sort(), cloned.sort());
       EXPECT_EQ(node.getCost(), cloned.getCost());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
+      EXPECT_EQ(node.options().parallelism, cloned.options().parallelism);
     }
   }
 
   // no filter condition, no sort condition, with shards, no options
   {
+    auto& feature =
+        server.server().getFeature<arangodb::iresearch::IResearchFeature>();
+    feature.setDefaultParallelism(333);
+    absl::Cleanup cleanup = [&feature]() noexcept {
+      feature.setDefaultParallelism(1);
+    };
     arangodb::iresearch::IResearchViewNode node(
         *query.plan(), arangodb::aql::ExecutionNodeId{42},
         vocbase,      // database
@@ -2107,7 +2136,7 @@ TEST_F(IResearchViewNodeTest, clone) {
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
-
+    EXPECT_EQ(333, node.options().parallelism);
     node.shards().emplace("abc", arangodb::LogicalView::Indexes{});
     node.shards().emplace("def", arangodb::LogicalView::Indexes{});
 
@@ -2131,8 +2160,9 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
       EXPECT_EQ(node.sort(), cloned.sort());
       EXPECT_EQ(node.getCost(), cloned.getCost());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
+      EXPECT_EQ(node.options().parallelism, cloned.options().parallelism);
     }
 
     // clone with properties into another plan
@@ -2163,8 +2193,9 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
       EXPECT_EQ(node.sort(), cloned.sort());
       EXPECT_EQ(node.getCost(), cloned.getCost());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
+      EXPECT_EQ(node.options().parallelism, cloned.options().parallelism);
     }
 
     // clone without properties into another plan
@@ -2193,8 +2224,9 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
       EXPECT_EQ(node.sort(), cloned.sort());
       EXPECT_EQ(node.getCost(), cloned.getCost());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
+      EXPECT_EQ(node.options().parallelism, cloned.options().parallelism);
     }
   }
 
@@ -2238,8 +2270,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
       EXPECT_EQ(node.sort(), cloned.sort());
       EXPECT_EQ(node.getCost(), cloned.getCost());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
     }
 
     // clone with properties into another plan
@@ -2270,8 +2302,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
       EXPECT_EQ(node.sort(), cloned.sort());
       EXPECT_EQ(node.getCost(), cloned.getCost());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
     }
 
     // clone without properties into another plan
@@ -2300,8 +2332,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
       EXPECT_EQ(node.sort(), cloned.sort());
       EXPECT_EQ(node.getCost(), cloned.getCost());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
     }
   }
 
@@ -2344,8 +2376,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.isLateMaterialized(), cloned.isLateMaterialized());
       ASSERT_EQ(varsSetOriginal.size(), varsSetCloned.size());
       EXPECT_EQ(varsSetOriginal[0], varsSetCloned[0]);
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
     }
 
     // clone with properties into another plan
@@ -2380,8 +2412,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.isLateMaterialized(), cloned.isLateMaterialized());
       ASSERT_EQ(varsSetOriginal.size(), varsSetCloned.size());
       EXPECT_NE(varsSetOriginal[0], varsSetCloned[0]);
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
     }
     // clone without properties into another plan
     {
@@ -2413,8 +2445,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.isLateMaterialized(), cloned.isLateMaterialized());
       ASSERT_EQ(varsSetOriginal.size(), varsSetCloned.size());
       EXPECT_EQ(varsSetOriginal[0], varsSetCloned[0]);
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
     }
   }
 
@@ -2430,8 +2462,8 @@ TEST_F(IResearchViewNodeTest, clone) {
         {});      // no sort condition
     arangodb::aql::Variable const outNmColPtr("variable100", 100, false);
     arangodb::aql::Variable const outNmDocId("variable101", 101, false);
-    std::vector<std::pair<size_t, bool>> scorersSort{{0, true}};
-    node.setScorersSort(std::move(scorersSort), 42);
+    std::vector<arangodb::iresearch::HeapSortElement> scorersSort{{0, true}};
+    node.setHeapSort(std::move(scorersSort), 42);
     auto varsSetOriginal = node.getVariablesSetHere();
     // clone without properties into the same plan
     {
@@ -2439,10 +2471,10 @@ TEST_F(IResearchViewNodeTest, clone) {
           *node.clone(query.plan(), true, false));
       auto varsSetCloned = cloned.getVariablesSetHere();
       EXPECT_EQ(varsSetCloned, varsSetOriginal);
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      auto orig = node.getScorersSort();
-      auto clone = cloned.getScorersSort();
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      auto orig = node.getHeapSort();
+      auto clone = cloned.getHeapSort();
       EXPECT_TRUE(
           std::equal(orig.begin(), orig.end(), clone.begin(), clone.end()));
     }
@@ -2459,10 +2491,10 @@ TEST_F(IResearchViewNodeTest, clone) {
           *node.clone(otherQuery.plan(), true, false));
       auto varsSetCloned = cloned.getVariablesSetHere();
       ASSERT_EQ(varsSetOriginal.size(), varsSetCloned.size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      auto orig = node.getScorersSort();
-      auto clone = cloned.getScorersSort();
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      auto orig = node.getHeapSort();
+      auto clone = cloned.getHeapSort();
       EXPECT_TRUE(
           std::equal(orig.begin(), orig.end(), clone.begin(), clone.end()));
     }
@@ -2479,10 +2511,10 @@ TEST_F(IResearchViewNodeTest, clone) {
           *node.clone(otherQuery.plan(), true, true));
       auto varsSetCloned = cloned.getVariablesSetHere();
       ASSERT_EQ(varsSetOriginal.size(), varsSetCloned.size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      auto orig = node.getScorersSort();
-      auto clone = cloned.getScorersSort();
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      auto orig = node.getHeapSort();
+      auto clone = cloned.getHeapSort();
       EXPECT_TRUE(
           std::equal(orig.begin(), orig.end(), clone.begin(), clone.end()));
     }
@@ -3041,11 +3073,10 @@ TEST_F(IResearchViewNodeTest, serialize) {
       arangodb::iresearch::IResearchViewNode const deserialized(
           *queryScores.plan(), nodeSlice);
       EXPECT_EQ(node.empty(), deserialized.empty());
-      EXPECT_EQ(deserialized.getScorersSortLimit(), 42);
-      EXPECT_EQ(node.getScorersSort().size(),
-                deserialized.getScorersSort().size());
-      auto orig = node.getScorersSort();
-      auto clone = deserialized.getScorersSort();
+      EXPECT_EQ(deserialized.getHeapSortLimit(), 42);
+      EXPECT_EQ(node.getHeapSort().size(), deserialized.getHeapSort().size());
+      auto orig = node.getHeapSort();
+      auto clone = deserialized.getHeapSort();
       EXPECT_TRUE(
           std::equal(orig.begin(), orig.end(), clone.begin(), clone.end()));
     }
@@ -3058,11 +3089,10 @@ TEST_F(IResearchViewNodeTest, serialize) {
       auto& deserialized =
           dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
               *deserializedNode);
-      EXPECT_EQ(deserialized.getScorersSortLimit(), 42);
-      EXPECT_EQ(node.getScorersSort().size(),
-                deserialized.getScorersSort().size());
-      auto orig = node.getScorersSort();
-      auto clone = deserialized.getScorersSort();
+      EXPECT_EQ(deserialized.getHeapSortLimit(), 42);
+      EXPECT_EQ(node.getHeapSort().size(), deserialized.getHeapSort().size());
+      auto orig = node.getHeapSort();
+      auto clone = deserialized.getHeapSort();
       EXPECT_TRUE(
           std::equal(orig.begin(), orig.end(), clone.begin(), clone.end()));
     }

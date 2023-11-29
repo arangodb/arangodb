@@ -30,6 +30,7 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
+#include "IResearch/IResearchExecutionPool.h"
 #include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchView.h"
@@ -58,7 +59,7 @@ static constexpr frozen::map<std::string_view,
 class IResearchViewCountApproximateTest : public IResearchQueryTest {
  protected:
   std::shared_ptr<arangodb::iresearch::IResearchView> _view;
-
+  arangodb::iresearch::IResearchExecutionPool _pool{0, "", "", ""};
   IResearchViewCountApproximateTest() {
     // add collection_1
     std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
@@ -546,7 +547,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   arangodb::iresearch::IResearchViewSort sort;
   sort.emplace_back({{std::string_view("value"), false}}, true);
   std::vector<arangodb::iresearch::SearchFunc> emptyScorers;
-  std::vector<std::pair<size_t, bool>> emptyScorersSort;
+  std::vector<arangodb::iresearch::HeapSortElement> emptyScorersSort;
   arangodb::aql::IResearchViewExecutorInfos executorInfos(
       reader, arangodb::aql::RegisterId::makeInvalid(),
       arangodb::aql::RegisterId::makeInvalid(), {}, *query, emptyScorers,
@@ -556,7 +557,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
       arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
       arangodb::iresearch::CountApproximate::Exact,
       arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0,
-      nullptr);
+      nullptr, 1, _pool);
 
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable>
@@ -626,7 +627,7 @@ TEST_F(IResearchViewCountApproximateTest,
   arangodb::iresearch::IResearchViewSort sort;
   sort.emplace_back({{std::string_view("value"), false}}, true);
   std::vector<arangodb::iresearch::SearchFunc> emptyScorers;
-  std::vector<std::pair<size_t, bool>> emptyScorersSort;
+  std::vector<arangodb::iresearch::HeapSortElement> emptyScorersSort;
   arangodb::aql::IResearchViewExecutorInfos executorInfos(
       reader, arangodb::aql::RegisterId::makeInvalid(),
       arangodb::aql::RegisterId::makeInvalid(), {}, *query, emptyScorers,
@@ -636,7 +637,7 @@ TEST_F(IResearchViewCountApproximateTest,
       arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
       arangodb::iresearch::CountApproximate::Exact,
       arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0,
-      nullptr);
+      nullptr, 1, _pool);
 
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable>
@@ -708,7 +709,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
   arangodb::iresearch::IResearchViewSort sort;
   sort.emplace_back({{std::string_view("value"), false}}, true);
   std::vector<arangodb::iresearch::SearchFunc> emptyScorers;
-  std::vector<std::pair<size_t, bool>> emptyScorersSort;
+  std::vector<arangodb::iresearch::HeapSortElement> emptyScorersSort;
   arangodb::aql::IResearchViewExecutorInfos executorInfos(
       reader, arangodb::aql::RegisterId::makeInvalid(),
       arangodb::aql::RegisterId::makeInvalid(), {}, *query, emptyScorers,
@@ -718,7 +719,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
       arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
       arangodb::iresearch::CountApproximate::Cost,
       arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0,
-      nullptr);
+      nullptr, 1, _pool);
 
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable>

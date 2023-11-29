@@ -304,7 +304,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
 
   // we've found all we need
   auto const& sortElements = sortNode->elements();
-  std::vector<std::pair<size_t, bool>> scoresSort;
+  std::vector<HeapSortElement> scoresSort;
   for (auto const& sort : sortElements) {
     TRI_ASSERT(sort.var);
 
@@ -350,11 +350,13 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     if (s == std::end(scorers)) {
       return false;
     }
-    scoresSort.emplace_back(std::distance(scorers.begin(), s), sort.ascending);
+    scoresSort.push_back(HeapSortElement{
+        .source = static_cast<size_t>(std::distance(scorers.begin(), s)),
+        .ascending = sort.ascending});
   }
   // all sort elements are covered by view's scorers
-  viewNode.setScorersSort(std::move(scoresSort),
-                          limitNode->offset() + limitNode->limit());
+  viewNode.setHeapSort(std::move(scoresSort),
+                       limitNode->offset() + limitNode->limit());
   sortNode->_reinsertInCluster = false;
   if (!arangodb::ServerState::instance()->isCoordinator()) {
     // in cluster node will be unlinked later by 'distributeSortToClusterRule'

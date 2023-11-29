@@ -76,6 +76,14 @@ enum class CountApproximate {
   Cost = 1,   // iterator cost could be used as skipAllCount
 };
 
+struct HeapSortElement {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  auto operator<=>(HeapSortElement const&) const noexcept = default;
+#endif
+  size_t source{0};
+  bool ascending{true};
+};
+
 class IResearchViewNode final : public aql::ExecutionNode {
  public:
   // Node options
@@ -93,6 +101,9 @@ class IResearchViewNode final : public aql::ExecutionNode {
 
     // iresearch filters optimization level
     FilterOptimization filterOptimization{FilterOptimization::MAX};
+
+    // max number of threads to process segments in parallel.
+    size_t parallelism{1};
 
     // Use the list of sources to restrict a query.
     bool restrictSources{false};
@@ -213,16 +224,15 @@ class IResearchViewNode final : public aql::ExecutionNode {
   //   sort condition
   std::pair<bool, bool> volatility(bool force = false) const;
 
-  void setScorersSort(std::vector<std::pair<size_t, bool>>&& sort,
-                      size_t limit) {
-    _scorersSort = std::move(sort);
-    _scorersSortLimit = limit;
+  void setHeapSort(std::vector<HeapSortElement>&& sort, size_t limit) {
+    _heapSort = std::move(sort);
+    _heapSortLimit = limit;
   }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  size_t getScorersSortLimit() const noexcept { return _scorersSortLimit; }
+  size_t getHeapSortLimit() const noexcept { return _heapSortLimit; }
 
-  auto getScorersSort() const noexcept { return std::span(_scorersSort); }
+  auto getHeapSort() const noexcept { return std::span(_heapSort); }
 #endif
 
   // Creates corresponding ExecutionBlock.
@@ -376,8 +386,8 @@ class IResearchViewNode final : public aql::ExecutionNode {
   Options _options;
 
   // Internal order for scorers.
-  std::vector<std::pair<size_t, bool>> _scorersSort;
-  size_t _scorersSortLimit{0};
+  std::vector<HeapSortElement> _heapSort;
+  size_t _heapSortLimit{0};
 
   // Volatility mask
   mutable int _volatilityMask{-1};

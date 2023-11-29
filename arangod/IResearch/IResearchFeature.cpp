@@ -63,6 +63,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "IResearch/Containers.h"
 #include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchExecutionPool.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
@@ -94,6 +95,11 @@ using namespace std::chrono_literals;
 
 DECLARE_GAUGE(arangodb_search_num_out_of_sync_links, uint64_t,
               "Number of arangosearch links/indexes currently out of sync");
+
+DECLARE_GAUGE(
+    arangodb_search_execution_threads_demand,
+    arangodb::iresearch::IResearchExecutionPool,
+    "Number of Arangosearch parallel execution threads requested by queries.");
 
 #ifdef USE_ENTERPRISE
 DECLARE_GAUGE(arangodb_search_columns_cache_size, int64_t,
@@ -166,6 +172,10 @@ std::string const FAIL_ON_OUT_OF_SYNC(
 std::string const SKIP_RECOVERY("--arangosearch.skip-recovery");
 std::string const CACHE_LIMIT("--arangosearch.columns-cache-limit");
 std::string const CACHE_ONLY_LEADER("--arangosearch.columns-cache-only-leader");
+std::string const SEARCH_THREADS_LIMIT(
+    "--arangosearch.execution-threads-limit");
+std::string const SEARCH_DEFAULT_PARALLELISM(
+    "--arangosearch.default-parallelism");
 
 aql::AqlValue dummyFunc(aql::ExpressionContext*, aql::AstNode const& node,
                         std::span<aql::AqlValue const>) {
@@ -810,7 +820,7 @@ class AssertionCallbackSetter {
 ////////////////////////////////////////////////////////////////////////////////
 class IResearchAsync {
  public:
-  using ThreadPool = irs::async_utils::thread_pool;
+  using ThreadPool = irs::async_utils::ThreadPool<>;
 
   ~IResearchAsync() { stop(); }
 
@@ -840,8 +850,8 @@ class IResearchAsync {
   }
 
  private:
-  ThreadPool _0{0, 0, IR_NATIVE_STRING("ARS-0")};
-  ThreadPool _1{0, 0, IR_NATIVE_STRING("ARS-1")};
+  ThreadPool _0;
+  ThreadPool _1;
 };  // IResearchAsync
 
 bool isFilter(aql::Function const& func) noexcept {
@@ -881,14 +891,16 @@ IResearchFeature::IResearchFeature(Server& server)
       _commitThreadsIdle(0),
       _threads(0),
       _threadsLimit(0),
+      _searchExecutionThreadsLimit(0),
+      _defaultParallelism(1),
       _outOfSyncLinks(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_search_num_out_of_sync_links{}))
+          arangodb_search_num_out_of_sync_links{})),
 #ifdef USE_ENTERPRISE
-      ,
       _columnsCacheMemoryUsed(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_search_columns_cache_size{}))
+          arangodb_search_columns_cache_size{})),
 #endif
-{
+      _searchExecutionPool(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_search_execution_threads_demand{})) {
   setOptional(true);
   startsAfter<application_features::V8FeaturePhase>();
   startsAfter<IResearchAnalyzerFeature>();
@@ -1042,6 +1054,24 @@ but the returned data may be incomplete.)");
                                             options::Flags::Enterprise))
       .setIntroducedIn(3'10'06);
 #endif
+  options
+      ->addOption(
+          SEARCH_THREADS_LIMIT,
+          "Max number of threads that could be used to process ArangoSearch "
+          "indexes during SEARCH operation",
+          new options::UInt32Parameter(&_searchExecutionThreadsLimit),
+          options::makeDefaultFlags(options::Flags::DefaultNoComponents,
+                                    options::Flags::OnDBServer,
+                                    options::Flags::OnSingle))
+      .setIntroducedIn(3'11'06);
+  options
+      ->addOption(SEARCH_DEFAULT_PARALLELISM,
+                  "Default parallelism for ArangoSearch queries",
+                  new options::UInt32Parameter(&_defaultParallelism),
+                  options::makeDefaultFlags(options::Flags::DefaultNoComponents,
+                                            options::Flags::OnDBServer,
+                                            options::Flags::OnSingle))
+      .setIntroducedIn(3'11'06);
 }
 
 void IResearchFeature::validateOptions(
@@ -1105,6 +1135,11 @@ void IResearchFeature::validateOptions(
           ? computeIdleThreadsCount(_consolidationThreadsIdle,
                                     _consolidationThreads)
           : _consolidationThreads;
+
+  if (!args.touched(SEARCH_THREADS_LIMIT)) {
+    _searchExecutionThreadsLimit =
+        static_cast<uint32_t>(2 * NumberOfCores::getValue());
+  }
 
   _running.store(false);
 }
@@ -1190,9 +1225,10 @@ void IResearchFeature::start() {
     TRI_ASSERT(_commitThreads && _commitThreadsIdle);
     TRI_ASSERT(_consolidationThreads && _consolidationThreadsIdle);
 
-    _async->get(ThreadGroup::_0).limits(_commitThreads, _commitThreadsIdle);
+    _async->get(ThreadGroup::_0)
+        .start(_commitThreads, IR_NATIVE_STRING("ARS-0"));
     _async->get(ThreadGroup::_1)
-        .limits(_consolidationThreads, _consolidationThreadsIdle);
+        .start(_consolidationThreads, IR_NATIVE_STRING("ARS-1"));
 
     LOG_TOPIC("c1b63", INFO, arangodb::iresearch::TOPIC)
         << "ArangoSearch maintenance: "
@@ -1216,17 +1252,24 @@ void IResearchFeature::start() {
       }
     }
 
+    if (_searchExecutionThreadsLimit) {
+      _searchExecutionPool.setLimit(_searchExecutionThreadsLimit);
+    }
+    LOG_TOPIC("71efd", INFO, arangodb::iresearch::TOPIC)
+        << "ArangoSearch execution parallel threads limit: "
+        << _searchExecutionThreadsLimit;
+
     // this can destroy the state instance, so we have to ensure that our lock
     // on _startState->mutex is already destroyed here!
     _startState = nullptr;
   }
-
   _running.store(true);
 }
 
 void IResearchFeature::stop() {
   TRI_ASSERT(isEnabled());
   _async->stop();
+  _searchExecutionPool.stop();
   _running.store(false);
 }
 
@@ -1258,7 +1301,7 @@ void cleanupDatabase(TRI_vocbase_t& database) {
 
 bool IResearchFeature::queue(ThreadGroup id,
                              std::chrono::steady_clock::duration delay,
-                             std::function<void()>&& fn) {
+                             fu2::unique_function<void()>&& fn) {
   try {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
     TRI_IF_FAILURE("IResearchFeature::queue") {
@@ -1312,7 +1355,8 @@ std::tuple<size_t, size_t, size_t> IResearchFeature::stats(
 }
 
 std::pair<size_t, size_t> IResearchFeature::limits(ThreadGroup id) const {
-  return _async->get(id).limits();
+  auto const threads = _async->get(id).threads();
+  return {threads, threads};
 }
 
 void IResearchFeature::trackOutOfSyncLink() noexcept { ++_outOfSyncLinks; }
