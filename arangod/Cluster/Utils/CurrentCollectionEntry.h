@@ -24,6 +24,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Cluster/Utils/ResponsibleServerList.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Containers/NodeHashMap.h"
 
 #include <string>

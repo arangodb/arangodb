@@ -139,13 +139,13 @@ std::string Collection::distributeShardsLike() const {
 }
 
 /// @brief returns the shard ids of a collection
-std::shared_ptr<std::vector<std::string> const> Collection::shardIds() const {
+std::shared_ptr<std::vector<ShardID> const> Collection::shardIds() const {
   auto& clusterInfo =
       _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
   auto coll = getCollection();
   if (coll->isSmart() && coll->type() == TRI_COL_TYPE_EDGE) {
     auto names = coll->realNamesForRead();
-    auto res = std::make_shared<std::vector<std::string>>();
+    auto res = std::make_shared<std::vector<ShardID>>();
     for (auto const& n : names) {
       auto collectionInfo = clusterInfo.getCollection(_vocbase->name(), n);
       auto list = clusterInfo.getShardList(
@@ -161,8 +161,8 @@ std::shared_ptr<std::vector<std::string> const> Collection::shardIds() const {
 }
 
 /// @brief returns the filtered list of shard ids of a collection
-std::shared_ptr<std::vector<std::string> const> Collection::shardIds(
-    std::unordered_set<std::string> const& includedShards) const {
+std::shared_ptr<std::vector<ShardID> const> Collection::shardIds(
+    std::unordered_set<ShardID> const& includedShards) const {
   // use the simple method first
   auto copy = shardIds();
 
@@ -172,7 +172,7 @@ std::shared_ptr<std::vector<std::string> const> Collection::shardIds(
   }
 
   // copy first as we will modify the result
-  auto result = std::make_shared<std::vector<std::string>>(*copy);
+  auto result = std::make_shared<std::vector<ShardID>>(*copy);
 
   if (!includedShards.empty()) {
     std::erase_if(*result, [&includedShards](auto const& s) {
