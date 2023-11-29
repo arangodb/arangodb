@@ -69,20 +69,18 @@ auto DistributeExecutorInfos::scatterType() const noexcept
 
 auto DistributeExecutorInfos::getResponsibleClient(
     arangodb::velocypack::Slice value) const -> ResultT<std::string> {
-  std::string shardId;
-  auto res = _logCol->getResponsibleShard(value, true, shardId);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return Result{res};
+  auto maybeShard = _logCol->getResponsibleShard(value, true);
+  if (maybeShard.fail()) {
+    return maybeShard.result();
   }
 
-  TRI_ASSERT(!shardId.empty());
   if (_type == ScatterNode::ScatterType::SERVER) {
     // Special case for server based distribution.
-    shardId = _collection->getServerForShard(shardId);
-    TRI_ASSERT(!shardId.empty());
+    auto server = _collection->getServerForShard(maybeShard.get());
+    TRI_ASSERT(!server.empty());
+    return server;
   }
-  return shardId;
+  return maybeShard.get();
 }
 
 auto DistributeExecutorInfos::shouldDistributeToAll(

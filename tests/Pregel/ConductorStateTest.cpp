@@ -85,7 +85,7 @@ TEST(CreateWorkersStateTest, creates_as_many_messages_as_required_servers) {
     for (auto server : servers) {
       execSpec.graphSerdeConfig.loadableVertexShards.emplace_back(
           LoadableVertexShard{.pregelShard = {},
-                              .vertexShard = {},
+                              .vertexShard{0},
                               .responsibleServer = server,
                               .collectionName = {},
                               .edgeShards = {}});
@@ -113,7 +113,7 @@ TEST(CreateWorkersStateTest, creates_worker_pids_from_received_messages) {
   for (auto server : servers) {
     execSpec.graphSerdeConfig.loadableVertexShards.emplace_back(
         LoadableVertexShard{.pregelShard = {},
-                            .vertexShard = {},
+                            .vertexShard{0},
                             .responsibleServer = server,
                             .collectionName = {},
                             .edgeShards = {}});
@@ -156,7 +156,7 @@ TEST(CreateWorkersStateTest,
   for (auto server : servers) {
     execSpec.graphSerdeConfig.loadableVertexShards.emplace_back(
         LoadableVertexShard{.pregelShard = {},
-                            .vertexShard = {},
+                            .vertexShard{0},
                             .responsibleServer = server,
                             .collectionName = {},
                             .edgeShards = {}});

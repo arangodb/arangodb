@@ -339,20 +339,25 @@ bool upgradeArangoSearchLinkCollectionName(
     auto indexes = collection->getIndexes();
     std::string clusterCollectionName;
     if (!collection->shardIds()->empty()) {
-      unsigned tryCount{60};
-      do {
-        LOG_TOPIC("423b3", TRACE, arangodb::iresearch::TOPIC)
-            << " Checking collection '" << collection->name()
-            << "' in database '" << vocbase.name() << "'";
-        // we use getCollectionNameForShard as getCollectionNT here is still not
-        // available but shard-collection mapping is loaded eventually
-        clusterCollectionName =
-            clusterInfo.getCollectionNameForShard(collection->name());
-        if (!clusterCollectionName.empty()) {
-          break;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-      } while (--tryCount);
+      if (auto maybeShardID = ShardID::shardIdFromString(collection->name());
+          maybeShardID.ok()) {
+        unsigned tryCount{60};
+        // Only try to do this loop on valid shard names. ALl others have no
+        // chance to succeed.
+        do {
+          LOG_TOPIC("423b3", TRACE, arangodb::iresearch::TOPIC)
+              << " Checking collection '" << collection->name()
+              << "' in database '" << vocbase.name() << "'";
+          // we use getCollectionNameForShard as getCollectionNT here is still
+          // not available but shard-collection mapping is loaded eventually
+          clusterCollectionName =
+              clusterInfo.getCollectionNameForShard(maybeShardID.get());
+          if (!clusterCollectionName.empty()) {
+            break;
+          }
+          std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        } while (--tryCount);
+      }
     } else {
       clusterCollectionName = collection->name();
     }
