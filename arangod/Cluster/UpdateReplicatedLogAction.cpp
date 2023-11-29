@@ -62,9 +62,10 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
 
   auto const& database = _description.get(DATABASE);
   auto& df = _feature.server().getFeature<DatabaseFeature>();
-  DatabaseGuard guard(df, database);
 
-  auto result = std::invoke([&] {
+  auto result = basics::catchToResult([&] {
+    DatabaseGuard guard(df, database);
+
     if (spec.has_value()) {
       ADB_PROD_ASSERT(spec->currentTerm.has_value())
           << database << "/" << logId << " missing term";
@@ -87,9 +88,20 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
   });
 
   if (result.fail()) {
+    if (result.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
+      LOG_TOPIC("fe3d5", DEBUG, Logger::REPLICATION2)
+          << "Database of log " << _description.get(DATABASE) << '/' << logId
+          << " had been dropped before updating the replicated log. This "
+             "implies the replicated log has already been dropped.";
+      return false;
+    }
+
     LOG_TOPIC("ba775", ERR, Logger::REPLICATION2)
         << "failed to modify replicated log " << _description.get(DATABASE)
         << '/' << logId << "; " << result.errorMessage();
+
+    // Any errors apart from "database not found" will be reported properly.
+    this->result(result);
   }
 
   _feature.addDirty(database);
