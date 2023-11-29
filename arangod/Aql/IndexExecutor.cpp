@@ -176,7 +176,6 @@ IndexIterator::CoveringCallback getCallback(
       }
     } else {  // primary/edge
       auto indReg = outNonMaterializedIndRegs.second.cbegin();
-      TRI_ASSERT(indReg != outNonMaterializedIndRegs.second.cend());
       if (ADB_UNLIKELY(indReg == outNonMaterializedIndRegs.second.cend())) {
         return false;
       }
