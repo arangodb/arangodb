@@ -120,7 +120,7 @@ const getIndexRowData = (indexRow: IndexRowType) => {
     sparse: sparse === undefined ? "n/a" : `${sparse}`,
     selectivityEstimate: selectivityEstimateString,
     storedValues: storedValuesString,
-    unique,
+    unique: `${unique}`,
     name,
     type
   };
