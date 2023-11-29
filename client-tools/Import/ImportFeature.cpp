@@ -370,6 +370,9 @@ void ImportFeature::start() {
       if (extension == "json" || extension == "jsonl" || extension == "csv" ||
           extension == "tsv") {
         _typeImport = extension;
+        LOG_TOPIC("4271d", INFO, arangodb::Logger::FIXME)
+            << "Aauto-detected file type '" << _typeImport
+            << "' from filename '" << _filename << "'";
       }
     }
   }
