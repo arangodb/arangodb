@@ -1308,9 +1308,10 @@ auto LogicalCollection::isLeadingShard() const -> bool {
     // If the Leader is empty, we are the leader
     return followerInfo->getLeader().empty();
   } else {
-    auto const& docState = getDocumentState();
+    auto const& maybeDocState =
+        basics::catchToResultT([&]() { return getDocumentState(); });
     // We can only get the leader state if we are the leader
-    return docState->getLeader() != nullptr;
+    return maybeDocState.ok() && maybeDocState.get()->getLeader() != nullptr;
   }
 }
 
