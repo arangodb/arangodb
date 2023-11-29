@@ -46,6 +46,8 @@ class Buffer;
 class Slice;
 }  // namespace velocypack
 
+struct ShardID;
+
 namespace network {
 class ConnectionPool;
 
@@ -115,7 +117,7 @@ struct Response {
   ///   - the fuerte error, if there was a connectivity error.
   [[nodiscard]] Result combinedResult() const;
 
-  [[nodiscard]] std::string destinationShard()
+  [[nodiscard]] ResultT<ShardID> destinationShard()
       const;                                   /// @brief shardId or empty
   [[nodiscard]] std::string serverId() const;  /// @brief server ID
 

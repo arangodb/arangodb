@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Cluster/ClusterTypes.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Containers/FlatHashMap.h"
 
 #include <set>
@@ -60,7 +61,7 @@ class TraverserEngineShardLists {
   std::vector<ShardID> getAllLocalShards(
       containers::FlatHashMap<ShardID, ServerID> const& shardMapping,
       ServerID const& server,
-      std::shared_ptr<std::vector<std::string> const> const& shardIds,
+      std::shared_ptr<std::vector<ShardID> const> const& shardIds,
       bool allowReadFromFollower);
 
  private:

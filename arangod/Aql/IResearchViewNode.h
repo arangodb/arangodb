@@ -432,7 +432,7 @@ class IResearchViewNode final : public aql::ExecutionNode,
   std::vector<SearchFunc> _scorers;
 
   // List of shards involved, need this for the cluster.
-  containers::FlatHashMap<std::string, LogicalView::Indexes> _shards;
+  containers::FlatHashMap<ShardID, LogicalView::Indexes> _shards;
 
   // Node options.
   Options _options;

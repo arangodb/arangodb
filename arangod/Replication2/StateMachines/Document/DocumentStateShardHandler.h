@@ -34,6 +34,10 @@
 
 struct TRI_vocbase_t;
 
+namespace arangodb {
+struct ShardID;
+}
+
 namespace arangodb::replication2::replicated_state::document {
 
 struct IMaintenanceActionExecutor;
