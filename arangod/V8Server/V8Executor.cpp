@@ -52,12 +52,13 @@ V8Executor::V8Executor(size_t id, v8::Isolate* isolate,
       _invocationsSinceLastGc{0},
       _description{"(none)"},
       _acquired{0.0},
-      _hasActiveExternals{true} {
+      _hasActiveExternals{true},
+      _isInIsolate{false} {
   TRI_ASSERT(_isolate != nullptr);
   TRI_ASSERT(_context.IsEmpty());
 
-  _isolate->Enter();
-  auto guard = scopeGuard([this]() noexcept { _isolate->Exit(); });
+  lockAndEnter();
+  auto guard = scopeGuard([this]() noexcept { unlockAndExit(); });
 
   {
     v8::HandleScope scope(_isolate);
@@ -80,8 +81,10 @@ void V8Executor::lockAndEnter() {
   TRI_ASSERT(_locker == nullptr);
   _locker = std::make_unique<v8::Locker>(_isolate);
   TRI_ASSERT(_locker->IsLocked(_isolate));
+  TRI_ASSERT(!_isInIsolate);
 
   _isolate->Enter();
+  _isInIsolate = true;
   TRI_ASSERT(!_isolate->InContext());
 
   _invocations.fetch_add(1, std::memory_order_relaxed);
@@ -90,6 +93,7 @@ void V8Executor::lockAndEnter() {
 
 void V8Executor::unlockAndExit() {
   TRI_ASSERT(!_isolate->InContext());
+  _isInIsolate = false;
   _isolate->Exit();
   _locker.reset();
 }

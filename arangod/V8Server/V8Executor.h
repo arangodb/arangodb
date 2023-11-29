@@ -102,6 +102,7 @@ class V8Executor {
   /// @brief timestamp of when the executor was last entered
   double _acquired;
   bool _hasActiveExternals;
+  bool _isInIsolate;
 
   std::mutex _globalMethodsLock;
   std::vector<GlobalExecutorMethods::MethodType> _globalMethods;
