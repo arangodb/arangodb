@@ -269,6 +269,7 @@
 
       // This should be the only global object
       window.modalView = new window.ModalView();
+      window.SkeletonLoader = new window.SkeletonLoader();
 
       // foxxes
       this.foxxList = new window.FoxxCollection();
@@ -280,7 +281,6 @@
 
       this.userCollection = new window.ArangoUsers();
 
-      window.SkeletonLoader = new window.SkeletonLoader();
 
       this.initOnce = _.once(function () {
         const callback = function (error, isCoordinator) {
