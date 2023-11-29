@@ -56,20 +56,16 @@ namespace arangodb {
 
 ImportFeature::ImportFeature(Server& server, int* result)
     : ArangoImportFeature{server, *this},
-      _filename(""),
       _useBackslash(false),
       _convert(true),
       _autoChunkSize(false),
       _chunkSize(1024 * 1024 * 8),
       _threadCount(2),
-      _collectionName(""),
-      _fromCollectionPrefix(""),
-      _toCollectionPrefix(""),
       _overwriteCollectionPrefix(false),
       _createCollection(false),
       _createDatabase(false),
       _createCollectionType("document"),
-      _typeImport("json"),
+      _typeImport("auto"),
       _overwrite(false),
       _quote("\""),
       _separator(""),
@@ -374,17 +370,14 @@ void ImportFeature::start() {
       if (extension == "json" || extension == "jsonl" || extension == "csv" ||
           extension == "tsv") {
         _typeImport = extension;
-      } else {
-        LOG_TOPIC("cb067", FATAL, arangodb::Logger::FIXME)
-            << "Unsupported file extension '" << extension << "'";
-        FATAL_ERROR_EXIT();
       }
-    } else {
-      LOG_TOPIC("0ee99", WARN, arangodb::Logger::FIXME)
-          << "Unable to auto-detect file type from filename '" << _filename
-          << "'. using filetype 'json'";
-      _typeImport = "json";
     }
+  }
+  if (_typeImport == "auto") {
+    LOG_TOPIC("0ee99", WARN, arangodb::Logger::FIXME)
+        << "Unable to auto-detect file type from filename '" << _filename
+        << "'. using filetype 'json'";
+    _typeImport = "json";
   }
 
   try {
