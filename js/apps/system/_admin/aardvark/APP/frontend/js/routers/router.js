@@ -269,6 +269,7 @@
 
       // This should be the only global object
       window.modalView = new window.ModalView();
+      window.SkeletonLoader = new window.SkeletonLoader();
 
       // foxxes
       this.foxxList = new window.FoxxCollection();
@@ -306,7 +307,6 @@
 
         this.arangoCollectionsStore = new window.ArangoCollections();
         this.arangoDocumentStore = new window.ArangoDocument();
-        window.SkeletonLoader = new window.SkeletonLoader();
 
         // Cluster
         this.coordinatorCollection = new window.ClusterCoordinators();
