@@ -19,42 +19,24 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/AstHelper.h"
-#include "Aql/AttributeNamePath.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
-#include "Aql/ConditionFinder.h"
-#include "Aql/DocumentProducingNode.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/IndexNode.h"
 #include "Aql/JoinNode.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerUtils.h"
-#include "Aql/Query.h"
-#include "Aql/Variable.h"
-#include "Aql/types.h"
-#include "Containers/NodeHashMap.h"
-#include "Containers/HashSet.h"
-#include "Containers/SmallVector.h"
-#include "Containers/ImmutableMap.h"
+#include "Aql/OptimizerRules.h"
 #include "Logger/LogMacros.h"
-#include "OptimizerRules.h"
-
-#include <boost/container_hash/hash.hpp>
-
-#include "Aql/IndexNode.h"
-#include "Aql/ExecutionNode.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::containers;
 using EN = arangodb::aql::ExecutionNode;
 
-#define LOG_RULE LOG_DEVEL_IF(true)
-
-namespace {}  // namespace
+#define LOG_RULE LOG_DEVEL_IF(false)
 
 void arangodb::aql::batchMaterializeDocumentsRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
