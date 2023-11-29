@@ -1045,17 +1045,19 @@ void V8DealerFeature::collectGarbage() {
           // and automatically exit and unlock it when it runs out of scope
           V8ExecutorEntryGuard executorGuard(executor);
 
-          executor->runInContext([&](v8::Isolate* isolate) -> Result {
-            v8::HandleScope scope(isolate);
+          executor->runInContext(
+              [&](v8::Isolate* isolate) -> Result {
+                v8::HandleScope scope(isolate);
 
-            TRI_GET_GLOBALS();
-            v8g->_inForcedCollect = true;
-            TRI_RunGarbageCollectionV8(isolate, 1.0);
-            v8g->_inForcedCollect = false;
-            hasActiveExternals = v8g->hasActiveExternals();
+                TRI_GET_GLOBALS();
+                v8g->_inForcedCollect = true;
+                TRI_RunGarbageCollectionV8(isolate, 1.0);
+                v8g->_inForcedCollect = false;
+                hasActiveExternals = v8g->hasActiveExternals();
 
-            return {};
-          });
+                return {};
+              },
+              /*executeGlobalMethods*/ false);
         }
 
         // update garbage collection statistics
@@ -1405,8 +1407,7 @@ void V8DealerFeature::cleanupLockedExecutor(V8Executor* executor) {
       TRI_GET_GLOBALS();
 
       v8g->_inForcedCollect = true;
-      static constexpr double availableTime = 300.0;
-      TRI_RunGarbageCollectionV8(isolate, availableTime);
+      TRI_RunGarbageCollectionV8(isolate, 0.1);
       v8g->_inForcedCollect = false;
 
       // needs to be reset after the garbage collection
@@ -1903,27 +1904,32 @@ void V8DealerFeature::shutdownExecutor(V8Executor* executor) {
       << "shutting down V8 executor #" << executor->id();
 
   v8::Isolate* isolate = executor->isolate();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
+      isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
   {
     // this guard will lock and enter the isolate
     // and automatically exit and unlock it when it runs out of scope
     V8ExecutorEntryGuard executorGuard(executor);
 
-    executor->runInContext([&](v8::Isolate* isolate) -> Result {
-      v8::HandleScope scope(isolate);
-      TRI_GET_GLOBALS();
+    // note: executeGlobalMethods must be false here to prevent
+    // shutdown errors.
+    executor->runInContext(
+        [&](v8::Isolate* isolate) -> Result {
+          v8::HandleScope scope(isolate);
 
-      TRI_VisitActions(
-          [&isolate](TRI_action_t* action) { action->visit(isolate); });
+          TRI_VisitActions(
+              [&isolate](TRI_action_t* action) { action->visit(isolate); });
 
-      v8g->_inForcedCollect = true;
-      TRI_RunGarbageCollectionV8(isolate, 30.0);
-      v8g->_inForcedCollect = false;
+          v8g->_inForcedCollect = true;
+          TRI_RunGarbageCollectionV8(isolate, 30.0);
+          v8g->_inForcedCollect = false;
 
-      delete v8g;
-
-      return {};
-    });
+          return {};
+        },
+        /*executeGlobalMethods*/ false);
   }
+
+  delete v8g;
 
 #if 0
   executor->_context.Reset();

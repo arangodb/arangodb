@@ -61,7 +61,8 @@ class V8Executor {
   void setCleaned(double stamp);
   void runCodeInContext(std::string_view code,
                         std::string_view codeDescription);
-  Result runInContext(std::function<Result(v8::Isolate*)> const& cb);
+  Result runInContext(std::function<Result(v8::Isolate*)> const& cb,
+                      bool executeGlobalMethods = true);
 
   // sets acquisition description (std::string_view data must stay valid
   // forever) and acquisition timestamp

@@ -117,7 +117,8 @@ void V8Executor::runCodeInContext(std::string_view code,
   });
 }
 
-Result V8Executor::runInContext(std::function<Result(v8::Isolate*)> const& cb) {
+Result V8Executor::runInContext(std::function<Result(v8::Isolate*)> const& cb,
+                                bool executeGlobalMethods) {
   TRI_ASSERT(!_isolate->InContext());
   TRI_ASSERT(!_context.IsEmpty());
 
@@ -130,7 +131,7 @@ Result V8Executor::runInContext(std::function<Result(v8::Isolate*)> const& cb) {
     TRI_ASSERT(_isolate->InContext());
 
     std::vector<GlobalExecutorMethods::MethodType> copy;
-    {
+    if (executeGlobalMethods) {
       // we need to copy the vector of functions so we do not need to hold
       // the lock while we execute them. this avoids potential deadlocks when
       // one of the executed functions itself registers a context method
