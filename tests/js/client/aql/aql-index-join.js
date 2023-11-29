@@ -119,7 +119,7 @@ const IndexJoinTestSuite = function () {
 
   const queryOptions = {
     optimizer: {
-      rules: ["+join-index-nodes"]
+      rules: ["+join-index-nodes", "-replace-equal-attribute-accesses"]
     },
     maxNumberOfPlans: 1
   };
@@ -849,7 +849,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1.x, doc2.x, doc3.x, doc4.x]
       `;
 
-      const plan = db._createStatement(query).explain().plan;
+      const plan = db._createStatement({query, options: queryOptions}).explain().plan;
       const joins = plan.nodes.filter(x => x.type === "JoinNode");
       assertEqual(joins.length, 2);
       for (const join of joins) {
@@ -880,7 +880,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1.x, doc2.x, doc3.x]
       `;
 
-      const plan = db._createStatement(query).explain().plan;
+      const plan = db._createStatement({query, options: queryOptions}).explain().plan;
       const nodes = plan.nodes.map(x => x.type);
 
       assertEqual(nodes.indexOf("JoinNode"), 1);
@@ -900,6 +900,44 @@ const IndexJoinTestSuite = function () {
       }
     },
 
+    testLateMaterialized: function () {
+      const A = createCollection("A", ["x"]);
+      A.ensureIndex({type: "persistent", fields: ["x"]});
+      fillCollection("A", singleAttributeGenerator(20, "x", x => `${x}`));
+      const B = createCollection("B", ["x"]);
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+      fillCollection("B", singleAttributeGenerator(20, "x", x => `${x}`));
+
+      const query = `
+        for doc1 in A
+          for doc2 in B
+            filter doc2.x == doc1.x
+            sort doc2.x
+            limit 20
+            return [doc1.x, doc2]
+      `;
+
+      const plan = db._createStatement({query, options: queryOptions}).explain().plan;
+      const nodes = plan.nodes.map(x => x.type);
+
+      assertEqual(nodes.indexOf("JoinNode"), 1);
+      const join = plan.nodes[1];
+      assertEqual(join.type, "JoinNode");
+
+      assertEqual(join.indexInfos.length, 2);
+      assertEqual(normalize(join.indexInfos[0].projections), [["x"]]);
+      assertEqual(normalize(join.indexInfos[1].projections), [["x"]]);
+      assertEqual(join.indexInfos[1].isLateMaterialized, true);
+      assertEqual(join.indexInfos[1].producesOutput, true);
+      assertEqual(join.indexInfos[1].indexCoversProjections, true);
+
+
+      const result = db._createStatement(query).execute().toArray();
+      assertEqual(result.length, 20);
+      for (const [a, b] of result) {
+        assertEqual(a, b.x);
+      }
+    },
   };
 };
 

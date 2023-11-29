@@ -65,8 +65,7 @@ TYPED_TEST(EgressActorTest,
       std::move(actorState), test::message::EgressStart{});
 
   runtime->dispatch(
-      DistributedActorPID{.server = "A", .database = "database", .id = actor},
-      DistributedActorPID{.server = "A", .database = "database", .id = actor},
+      actor, actor,
       EgressActor::Message{test::message::EgressSet{.data = "Hallo"}});
 
   this->scheduler->stop();

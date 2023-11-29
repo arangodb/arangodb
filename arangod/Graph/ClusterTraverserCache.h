@@ -76,12 +76,6 @@ class ClusterTraverserCache final : public TraverserCache {
   void insertEdgeIntoResult(graph::EdgeDocumentToken const& idToken,
                             arangodb::velocypack::Builder& builder) override;
 
-  /// Lookup document in cache and add it into the builder
-  bool appendVertex(std::string_view idString,
-                    velocypack::Builder& result) override;
-  bool appendVertex(std::string_view idString,
-                    arangodb::aql::AqlValue& result) override;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return AQL value containing the result
   ///        The document will either be fetched from storage or looked up in

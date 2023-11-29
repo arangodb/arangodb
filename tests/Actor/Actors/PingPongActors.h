@@ -78,13 +78,15 @@ auto inspect(Inspector& f, PingState& x) {
 
 namespace message {
 
+template<typename PID>
 struct Start {
-  DistributedActorPID pongActor;
+  PID pongActor;
+
+  template<typename Inspector>
+  friend inline auto inspect(Inspector& f, Start& x) {
+    return f.object(x).fields(f.field("pongActor", x.pongActor));
+  }
 };
-template<typename Inspector>
-auto inspect(Inspector& f, Start& x) {
-  return f.object(x).fields(f.field("pongActor", x.pongActor));
-}
 
 struct Pong {
   std::string text;
@@ -94,21 +96,24 @@ auto inspect(Inspector& f, Pong& x) {
   return f.object(x).fields(f.field("text", x.text));
 }
 
-struct PingMessage : std::variant<Start, Pong> {
-  using std::variant<Start, Pong>::variant;
+template<typename PID>
+struct PingMessage : std::variant<Start<PID>, Pong> {
+  using std::variant<Start<PID>, Pong>::variant;
+
+  template<typename Inspector>
+  friend inline auto inspect(Inspector& f, PingMessage& x) {
+    return f.variant(x).unqualified().alternatives(
+        arangodb::inspection::type<Start<PID>>("start"),
+        arangodb::inspection::type<Pong>("pong"));
+  }
 };
-template<typename Inspector>
-auto inspect(Inspector& f, PingMessage& x) {
-  return f.variant(x).unqualified().alternatives(
-      arangodb::inspection::type<Start>("start"),
-      arangodb::inspection::type<Pong>("pong"));
-}
 
 }  // namespace message
 
 template<typename Runtime>
 struct PingHandler : HandlerBase<Runtime, PingState> {
-  auto operator()(message::Start msg) -> std::unique_ptr<PingState> {
+  auto operator()(message::Start<typename Runtime::ActorPID> msg)
+      -> std::unique_ptr<PingState> {
     this->template dispatch<pong_actor::message::PongMessage>(
         msg.pongActor, pong_actor::message::Ping{.text = "hello world"});
     this->state->called++;
@@ -127,11 +132,12 @@ struct PingHandler : HandlerBase<Runtime, PingState> {
   }
 };
 
+template<typename PID>
 struct Actor {
   using State = PingState;
   template<typename Runtime>
   using Handler = PingHandler<Runtime>;
-  using Message = message::PingMessage;
+  using Message = message::PingMessage<PID>;
   static constexpr auto typeName() -> std::string_view { return "PingActor"; };
 };
 
@@ -156,7 +162,8 @@ struct PongHandler : HandlerBase<Runtime, PongState> {
   }
 
   auto operator()(message::Ping msg) -> std::unique_ptr<PongState> {
-    this->template dispatch<ping_actor::Actor::Message>(
+    this->template dispatch<
+        typename ping_actor::Actor<typename Runtime::ActorPID>::Message>(
         this->sender, ping_actor::message::Pong{.text = msg.text});
     this->state->called++;
     return std::move(this->state);
@@ -181,14 +188,15 @@ struct Actor {
 }  // namespace arangodb::actor::test
 
 template<>
-struct fmt::formatter<arangodb::actor::test::pong_actor::message::PongMessage>
-    : arangodb::inspection::inspection_formatter {};
-template<>
 struct fmt::formatter<arangodb::actor::test::ping_actor::PingState>
     : arangodb::inspection::inspection_formatter {};
-template<>
-struct fmt::formatter<arangodb::actor::test::ping_actor::message::PingMessage>
+template<typename PID>
+struct fmt::formatter<
+    arangodb::actor::test::ping_actor::message::PingMessage<PID>>
     : arangodb::inspection::inspection_formatter {};
 template<>
 struct fmt::formatter<arangodb::actor::test::pong_actor::PongState>
+    : arangodb::inspection::inspection_formatter {};
+template<>
+struct fmt::formatter<arangodb::actor::test::pong_actor::message::PongMessage>
     : arangodb::inspection::inspection_formatter {};

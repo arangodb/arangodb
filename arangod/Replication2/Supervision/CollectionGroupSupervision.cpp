@@ -157,9 +157,8 @@ auto createCollectionPlanSpec(
   }
   shardList.reserve(target.attributes.immutableAttributes.numberOfShards);
   std::generate_n(std::back_inserter(shardList),
-                  target.attributes.immutableAttributes.numberOfShards, [&] {
-                    return basics::StringUtils::concatT("s", uniqid.next());
-                  });
+                  target.attributes.immutableAttributes.numberOfShards,
+                  [&] { return ShardID{uniqid.next()}; });
 
   auto mapping = computeShardList(logs, shardSheaves, shardList);
   return ag::CollectionPlanSpecification{collection, std::move(shardList),
@@ -221,9 +220,8 @@ auto createCollectionGroupTarget(
     // If we have shadow collections we do not have any shards
     if (!targetCollection.immutableProperties.shadowCollections.has_value()) {
       std::generate_n(std::back_inserter(shardList),
-                      attributes.immutableAttributes.numberOfShards, [&] {
-                        return basics::StringUtils::concatT("s", uniqid.next());
-                      });
+                      attributes.immutableAttributes.numberOfShards,
+                      [&] { return ShardID{uniqid.next()}; });
 
       for (size_t k = 0; k < shardList.size(); ++k) {
         ResponsibleServerList serverids{};
@@ -293,6 +291,16 @@ auto pickBestServerToRemoveFromLog(
                      return compareTuple(left) < compareTuple(right);
                    });
   return servers.front();
+}
+auto checkCollectionGroupAttributes(
+    ag::CollectionGroupTargetSpecification const& target,
+    ag::CollectionGroupPlanSpecification const& plan) -> Action {
+  if (target.attributes.mutableAttributes !=
+      plan.attributes.mutableAttributes) {
+    return UpdateCollectionGroupInPlan{target.id,
+                                       target.attributes.mutableAttributes};
+  }
+  return NoActionRequired{};
 }
 
 auto checkAssociatedReplicatedLogs(
@@ -558,6 +566,11 @@ auto document::supervision::checkCollectionGroup(
   if (not group.plan.has_value()) {
     // create collection group in plan
     return createCollectionGroupTarget(database, group, uniqid, health);
+  }
+  // Check CollectionGroupAttributes
+  if (auto action = checkCollectionGroupAttributes(group.target, *group.plan);
+      not std::holds_alternative<NoActionRequired>(action)) {
+    return action;
   }
 
   // check replicated logs
@@ -859,6 +872,22 @@ struct TransactionBuilder {
     env = write.precs()
               .isNotEmpty(basics::StringUtils::concatT(
                   "/arango/Target/CollectionGroups/", database, "/", gid.id()))
+              .end();
+  }
+
+  void operator()(UpdateCollectionGroupInPlan const& action) {
+    auto write = env.write().emplace_object(
+        basics::StringUtils::concatT("/arango/Plan/CollectionGroups/", database,
+                                     "/", action.id.id(),
+                                     "/attributes/mutable"),
+        [&](VPackBuilder& builder) {
+          velocypack::serialize(builder, action.spec);
+        });
+    env = write.precs()
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Target/CollectionGroups/", database, "/", gid.id()))
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Plan/CollectionGroups/", database, "/", gid.id()))
               .end();
   }
 

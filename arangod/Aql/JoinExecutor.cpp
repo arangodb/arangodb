@@ -35,6 +35,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 #define LOG_JOIN LOG_DEVEL_IF(false)
+#define LOG_JOIN_MEMORY LOG_DEVEL_IF(false)
 
 RegisterId JoinExecutorInfos::registerForVariable(
     VariableId id) const noexcept {
@@ -57,10 +58,28 @@ void JoinExecutorInfos::determineProjectionsForRegisters() {
   }
 }
 
-JoinExecutor::~JoinExecutor() = default;
+JoinExecutor::~JoinExecutor() {
+  // handle decrease of memory usage of the projections builder
+  if (!_projectionsBuilder.isEmpty()) {
+    resourceMonitor().decreaseMemoryUsage(_projectionsBuilder.size());
+    _projectionsBuilder.clear();
+  }
+
+  if (!_documents.empty()) {
+    for (auto& docPtr : _documents) {
+      if (docPtr.second > 0) {
+        resourceMonitor().decreaseMemoryUsage(docPtr.second);
+        docPtr.first.reset();
+      }
+    }
+  }
+}
 
 JoinExecutor::JoinExecutor(Fetcher& fetcher, Infos& infos)
-    : _fetcher(fetcher), _infos(infos), _trx{_infos.query->newTrxContext()} {
+    : _fetcher(fetcher),
+      _infos(infos),
+      _trx{_infos.query->newTrxContext()},
+      _resourceMonitor(_infos.query->resourceMonitor()) {
   constructStrategy();
   _documents.resize(_infos.indexes.size());
 }
@@ -138,100 +157,163 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     }
 
     [[maybe_unused]] std::size_t rowCount = 0;
-    auto [hasMore, amountOfSeeks] =
-        _strategy->next([&](std::span<LocalDocumentId> docIds,
-                            std::span<VPackSlice> projections) -> bool {
-          // increment scanned index value for every match. The amount of
-          // increment is equal to the amount of indices being used here.
-          stats.incrScannedIndex(_infos.indexes.size());
+    auto [hasMore,
+          amountOfSeeks] = _strategy->next([&](std::span<LocalDocumentId>
+                                                   docIds,
+                                               std::span<VPackSlice>
+                                                   projections) -> bool {
+      // increment scanned index value for every match. The amount of
+      // increment is equal to the amount of indices being used here.
+      stats.incrScannedIndex(_infos.indexes.size());
 
-          LOG_JOIN << "BEGIN OF ROW " << rowCount++;
+      LOG_JOIN << "BEGIN OF ROW " << rowCount++;
 
-          LOG_JOIN << "PROJECTIONS:";
-          for (auto p : projections) {
-            LOG_JOIN << p.toJson();
+      LOG_JOIN << "PROJECTIONS:";
+      for (auto p : projections) {
+        LOG_JOIN << p.toJson();
+      }
+
+      auto lookupDocument = [&](std::size_t index, LocalDocumentId id,
+                                auto cb) {
+        auto result =
+            _infos.indexes[index]
+                .collection->getCollection()
+                ->getPhysical()
+                ->lookup(&_trx, id,
+                         {DocumentCallbackOverload{
+                             [&](LocalDocumentId token, auto docPtr) {
+                               cb.template operator()<decltype(docPtr)>(docPtr);
+                               return true;
+                             }}},
+                         {});
+        if (ADB_UNLIKELY(result.fail())) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              result.errorNumber(),
+              basics::StringUtils::concatT(
+                  "failed to lookup indexed document ", id.id(),
+                  " for collection ", _infos.indexes[index].collection->name(),
+                  ": ", result.errorMessage()));
+        }
+        stats.incrDocumentLookups(1);
+      };
+
+      // first do all the filtering and only if all indexes produced a
+      // value write it into the aql output block
+
+      std::size_t projectionsOffset = 0;
+
+      auto buildProjections = [&](size_t k, aql::Projections const& proj,
+                                  bool hasProjectionsForRegisters) {
+        // build the document from projections
+        std::span<VPackSlice> projectionRange = {
+            projections.begin() + projectionsOffset,
+            projections.begin() + projectionsOffset + proj.size()};
+
+        auto data = SpanCoveringData{projectionRange};
+        if (!hasProjectionsForRegisters) {
+          // write all projections combined into the global output register
+          // recycle our Builder object _projectionsBuilder.clear();
+          _projectionsBuilder.openObject(true);
+          proj.toVelocyPackFromIndexCompactArray(_projectionsBuilder, data,
+                                                 &_trx);
+          _projectionsBuilder.close();
+
+          // handle increase of memory usage of the builder
+          try {
+            LOG_JOIN_MEMORY
+                << "(buildProjections1) Increasing memory usage by: "
+                << _projectionsBuilder.size() << "for the projections builder";
+            resourceMonitor().increaseMemoryUsage(_projectionsBuilder.size());
+          } catch (...) {
+            _projectionsBuilder.clear();
+            throw;
           }
+        } else {
+          // write projections into individual output registers
+          proj.produceFromIndexCompactArray(
+              _projectionsBuilder, data, &_trx,
+              [&](Variable const* variable, velocypack::Slice slice) {
+                if (slice.isNone()) {
+                  slice = VPackSlice::nullSlice();
+                }
+                RegisterId registerId =
+                    _infos.registerForVariable(variable->id);
+                TRI_ASSERT(registerId != RegisterId::maxRegisterId);
+                output.moveValueInto(registerId, _currentRow, slice);
+              });
 
-          auto lookupDocument = [&](std::size_t index, LocalDocumentId id,
-                                    auto cb) {
-            auto result =
-                _infos.indexes[index]
-                    .collection->getCollection()
-                    ->getPhysical()
-                    ->lookup(
-                        &_trx, id,
-                        {DocumentCallbackOverload{
-                            [&](LocalDocumentId token, auto docPtr) {
-                              cb.template operator()<decltype(docPtr)>(docPtr);
-                              return true;
-                            }}},
-                        {});
-            if (ADB_UNLIKELY(result.fail())) {
-              THROW_ARANGO_EXCEPTION_MESSAGE(
-                  result.errorNumber(),
-                  basics::StringUtils::concatT(
-                      "failed to lookup indexed document ", id.id(),
-                      " for collection ",
-                      _infos.indexes[index].collection->name(), ": ",
-                      result.errorMessage()));
-            }
-            stats.incrDocumentLookups(1);
-          };
+          // handle increase of memory usage of the builder
+          try {
+            LOG_JOIN_MEMORY
+                << "(buildProjections2) Increasing memory usage by: "
+                << _projectionsBuilder.size() << " for the projections builder";
+            resourceMonitor().increaseMemoryUsage(_projectionsBuilder.size());
+          } catch (...) {
+            _projectionsBuilder.clear();
+            throw;
+          }
+        }
+      };
 
-          // first do all the filtering and only if all indexes produced a
-          // value write it into the aql output block
+      for (std::size_t k = 0; k < docIds.size(); k++) {
+        auto& idx = _infos.indexes[k];
+        if (idx.projections.usesCoveringIndex(idx.index)) {
+          projectionsOffset += idx.projections.size();
+        }
+        // evaluate filter conditions
+        if (!idx.filter.has_value()) {
+          continue;
+        }
 
-          std::size_t projectionsOffset = 0;
+        bool const useFilterProjections =
+            idx.filter->projections.usesCoveringIndex();
+        bool filtered = false;
 
-          auto buildProjections = [&](size_t k, aql::Projections const& proj,
-                                      bool hasProjectionsForRegisters) {
-            // build the document from projections
-            std::span<VPackSlice> projectionRange = {
-                projections.begin() + projectionsOffset,
-                projections.begin() + projectionsOffset + proj.size()};
+        auto filterCallback = [&](auto docPtr) {
+          TRI_ASSERT(!useFilterProjections);
+          auto doc = extractSlice(docPtr);
+          LOG_JOIN << "INDEX " << k << " read document " << doc.toJson();
+          GenericDocumentExpressionContext ctx{_trx,
+                                               *_infos.query,
+                                               _functionsCache,
+                                               idx.filter->filterVarsToRegs,
+                                               _currentRow,
+                                               idx.filter->documentVariable};
+          ctx.setCurrentDocument(doc);
+          bool mustDestroy;
+          AqlValue result = idx.filter->expression->execute(&ctx, mustDestroy);
+          AqlValueGuard guard(result, mustDestroy);
+          filtered = !result.toBoolean();
+          LOG_JOIN << "INDEX " << k << " filter = " << std::boolalpha
+                   << filtered;
 
-            auto data = SpanCoveringData{projectionRange};
-            if (!hasProjectionsForRegisters) {
-              // write all projections combined into the global output register
-              // recycle our Builder object_projectionsBuilder.clear();
-              _projectionsBuilder.openObject(true);
-              proj.toVelocyPackFromIndexCompactArray(_projectionsBuilder, data,
-                                                     &_trx);
-              _projectionsBuilder.close();
-            } else {
-              // write projections into individual output registers
-              proj.produceFromIndexCompactArray(
-                  _projectionsBuilder, data, &_trx,
-                  [&](Variable const* variable, velocypack::Slice slice) {
-                    if (slice.isNone()) {
-                      slice = VPackSlice::nullSlice();
-                    }
-                    RegisterId registerId =
-                        _infos.registerForVariable(variable->id);
-                    TRI_ASSERT(registerId != RegisterId::maxRegisterId);
-                    output.moveValueInto(registerId, _currentRow, slice);
-                  });
-            }
-          };
-
-          for (std::size_t k = 0; k < docIds.size(); k++) {
-            auto& idx = _infos.indexes[k];
-            if (idx.projections.usesCoveringIndex(idx.index)) {
-              projectionsOffset += idx.projections.size();
-            }
-            // evaluate filter conditions
-            if (!idx.filter.has_value()) {
-              continue;
+          if (!filtered) {
+            // add document to the list
+            if (_documents[k].second > 0) {
+              LOG_JOIN_MEMORY << "(filterCB) Decreasing memory usage by: "
+                              << _documents[k].second
+                              << " for doc at position: " << k;
+              resourceMonitor().decreaseMemoryUsage(_documents[k].second);
+              _documents[k].first.reset();
             }
 
-            bool const useFilterProjections =
-                idx.filter->projections.usesCoveringIndex();
-            bool filtered = false;
+            try {
+              LOG_JOIN_MEMORY
+                  << "(filterCB) Increasing memory usage by: " << doc.byteSize()
+                  << " for doc at position: " << k;
+              resourceMonitor().increaseMemoryUsage(doc.byteSize());
+              _documents[k] = std::make_pair(
+                  std::make_unique<std::string>(doc.template startAs<char>(),
+                                                doc.byteSize()),
+                  doc.byteSize());
+            } catch (...) {
+              throw;
+            }
+          }
+        };
 
-            auto filterCallback = [&](auto docPtr) {
-              TRI_ASSERT(!useFilterProjections);
-              auto doc = extractSlice(docPtr);
-              LOG_JOIN << "INDEX " << k << " read document " << doc.toJson();
+        auto filterWithProjectionsCallback =
+            [&](std::span<VPackSlice> projections) {
               GenericDocumentExpressionContext ctx{
                   _trx,
                   *_infos.query,
@@ -239,153 +321,167 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                   idx.filter->filterVarsToRegs,
                   _currentRow,
                   idx.filter->documentVariable};
-              ctx.setCurrentDocument(doc);
+              ctx.setCurrentDocument(VPackSlice::noneSlice());
+
+              TRI_ASSERT(idx.filter->projections.size() == projections.size());
+              for (size_t j = 0; j < projections.size(); j++) {
+                TRI_ASSERT(projections[j].start() != nullptr);
+                LOG_JOIN << "INDEX " << k << " set "
+                         << idx.filter->filterProjectionVars[j]->id << " = "
+                         << projections[j].toJson();
+                ctx.setVariable(idx.filter->filterProjectionVars[j],
+                                projections[j]);
+              }
+
               bool mustDestroy;
               AqlValue result =
                   idx.filter->expression->execute(&ctx, mustDestroy);
               AqlValueGuard guard(result, mustDestroy);
               filtered = !result.toBoolean();
-              LOG_JOIN << "INDEX " << k << " filter = " << std::boolalpha
-                       << filtered;
-
-              if (!filtered) {
-                // add document to the list
-                _documents[k] = std::make_unique<std::string>(
-                    doc.template startAs<char>(), doc.byteSize());
-              }
             };
 
-            auto filterWithProjectionsCallback =
-                [&](std::span<VPackSlice> projections) {
-                  GenericDocumentExpressionContext ctx{
-                      _trx,
-                      *_infos.query,
-                      _functionsCache,
-                      idx.filter->filterVarsToRegs,
-                      _currentRow,
-                      idx.filter->documentVariable};
-                  ctx.setCurrentDocument(VPackSlice::noneSlice());
+        if (useFilterProjections) {
+          LOG_JOIN << "projectionsOffset = " << projectionsOffset;
+          std::span<VPackSlice> projectionRange = {
+              projections.begin() + projectionsOffset,
+              projections.begin() + projectionsOffset +
+                  idx.filter->projections.size()};
+          LOG_JOIN << "INDEX " << k << " using filter projections";
+          filterWithProjectionsCallback(projectionRange);
+          projectionsOffset += idx.filter->projections.size();
+        } else {
+          LOG_JOIN << "INDEX " << k << " looking up document " << docIds[k];
+          lookupDocument(k, docIds[k], filterCallback);
+        }
 
-                  TRI_ASSERT(idx.filter->projections.size() ==
-                             projections.size());
-                  for (size_t j = 0; j < projections.size(); j++) {
-                    TRI_ASSERT(projections[j].start() != nullptr);
-                    LOG_JOIN << "INDEX " << k << " set "
-                             << idx.filter->filterProjectionVars[j]->id << " = "
-                             << projections[j].toJson();
-                    ctx.setVariable(idx.filter->filterProjectionVars[j],
-                                    projections[j]);
+        if (filtered) {
+          // forget about this row
+          LOG_JOIN << "INDEX " << k << " eliminated pair";
+          LOG_JOIN << "FILTERED ROW " << (rowCount - 1);
+          stats.incrFiltered(1);
+          return true;
+        }
+      }
+
+      // Now produce the documents
+      TRI_ASSERT(_infos.projectionsInitialized);
+      projectionsOffset = 0;
+      for (std::size_t k = 0; k < docIds.size(); k++) {
+        auto& idx = _infos.indexes[k];
+
+        if (!idx.producesOutput) {
+          continue;
+        }
+        auto docProduceCallback = [&](auto docPtr) {
+          auto doc = extractSlice(docPtr);
+          if (idx.projections.empty()) {
+            // no projections
+            moveValueIntoRegister(output,
+                                  _infos.indexes[k].documentOutputRegister,
+                                  _currentRow, docPtr);
+          } else if (!idx.hasProjectionsForRegisters) {
+            // handle decrease of memory usage of the builder
+            if (!_projectionsBuilder.isEmpty()) {
+              resourceMonitor().decreaseMemoryUsage(_projectionsBuilder.size());
+            }
+
+            // write all projections combined into the
+            // global output register recycle our
+            // Builder object
+            _projectionsBuilder.clear();
+            _projectionsBuilder.openObject(true);
+            idx.projections.toVelocyPackFromDocument(_projectionsBuilder, doc,
+                                                     &_trx);
+            _projectionsBuilder.close();
+
+            // handle increase of memory usage of the builder
+            try {
+              LOG_JOIN_MEMORY << "(docCB1) Increasing memory usage by: "
+                              << _projectionsBuilder.size()
+                              << "for the projections builder";
+              resourceMonitor().increaseMemoryUsage(_projectionsBuilder.size());
+            } catch (...) {
+              _projectionsBuilder.clear();
+              throw;
+            }
+
+            output.moveValueInto(_infos.indexes[k].documentOutputRegister,
+                                 _currentRow, _projectionsBuilder.slice());
+          } else {
+            // handle decrease of memory usage of the builder
+            if (!_projectionsBuilder.isEmpty()) {
+              resourceMonitor().decreaseMemoryUsage(_projectionsBuilder.size());
+            }
+
+            // write projections into individual
+            // output registers
+            idx.projections.produceFromDocument(
+                _projectionsBuilder, doc, &_trx,
+                [&](Variable const* variable, velocypack::Slice slice) {
+                  if (slice.isNone()) {
+                    slice = VPackSlice::nullSlice();
                   }
+                  RegisterId registerId =
+                      _infos.registerForVariable(variable->id);
+                  TRI_ASSERT(registerId != RegisterId::maxRegisterId);
+                  output.moveValueInto(registerId, _currentRow, slice);
+                });
 
-                  bool mustDestroy;
-                  AqlValue result =
-                      idx.filter->expression->execute(&ctx, mustDestroy);
-                  AqlValueGuard guard(result, mustDestroy);
-                  filtered = !result.toBoolean();
-                };
-
-            if (useFilterProjections) {
-              LOG_JOIN << "projectionsOffset = " << projectionsOffset;
-              std::span<VPackSlice> projectionRange = {
-                  projections.begin() + projectionsOffset,
-                  projections.begin() + projectionsOffset +
-                      idx.filter->projections.size()};
-              LOG_JOIN << "INDEX " << k << " using filter projections";
-              filterWithProjectionsCallback(projectionRange);
-              projectionsOffset += idx.filter->projections.size();
-            } else {
-              LOG_JOIN << "INDEX " << k << " looking up document " << docIds[k];
-              lookupDocument(k, docIds[k], filterCallback);
-            }
-
-            if (filtered) {
-              // forget about this row
-              LOG_JOIN << "INDEX " << k << " eliminated pair";
-              LOG_JOIN << "FILTERED ROW " << (rowCount - 1);
-              stats.incrFiltered(1);
-              return true;
+            // handle increase of memory usage of the builder
+            try {
+              LOG_JOIN_MEMORY << "(docCB2) Increasing memory usage by: "
+                              << _projectionsBuilder.size()
+                              << "for the projections builder";
+              resourceMonitor().increaseMemoryUsage(_projectionsBuilder.size());
+            } catch (...) {
+              _projectionsBuilder.clear();
+              throw;
             }
           }
+        };
 
-          // Now produce the documents
-          TRI_ASSERT(_infos.projectionsInitialized);
-          projectionsOffset = 0;
-          for (std::size_t k = 0; k < docIds.size(); k++) {
-            auto& idx = _infos.indexes[k];
-
-            if (!idx.producesOutput) {
-              continue;
-            }
-            auto docProduceCallback = [&](auto docPtr) {
-              auto doc = extractSlice(docPtr);
-              if (idx.projections.empty()) {
-                // no projections
-                moveValueIntoRegister(output,
-                                      _infos.indexes[k].documentOutputRegister,
-                                      _currentRow, docPtr);
-              } else if (!idx.hasProjectionsForRegisters) {
-                // write all projections combined into the
-                // global output register recycle our
-                // Builder object
-                _projectionsBuilder.clear();
-                _projectionsBuilder.openObject(true);
-                idx.projections.toVelocyPackFromDocument(_projectionsBuilder,
-                                                         doc, &_trx);
-                _projectionsBuilder.close();
-                output.moveValueInto(_infos.indexes[k].documentOutputRegister,
-                                     _currentRow, _projectionsBuilder.slice());
-              } else {
-                // write projections into individual
-                // output registers
-                idx.projections.produceFromDocument(
-                    _projectionsBuilder, doc, &_trx,
-                    [&](Variable const* variable, velocypack::Slice slice) {
-                      if (slice.isNone()) {
-                        slice = VPackSlice::nullSlice();
-                      }
-                      RegisterId registerId =
-                          _infos.registerForVariable(variable->id);
-                      TRI_ASSERT(registerId != RegisterId::maxRegisterId);
-                      output.moveValueInto(registerId, _currentRow, slice);
-                    });
-              }
-            };
-
-            if (auto& docPtr = _documents[k]; docPtr) {
-              TRI_ASSERT(idx.filter.has_value() &&
-                         !idx.filter->projections.usesCoveringIndex());
-              docProduceCallback.operator()<std::unique_ptr<std::string>&>(
-                  docPtr);
-            } else {
-              if (idx.projections.usesCoveringIndex(idx.index)) {
-                buildProjections(k, idx.projections,
-                                 idx.hasProjectionsForRegisters);
-                if (!idx.hasProjectionsForRegisters) {
-                  output.moveValueInto(_infos.indexes[k].documentOutputRegister,
-                                       _currentRow,
-                                       _projectionsBuilder.slice());
-                }
-
-                projectionsOffset += idx.projections.size();
-              } else {
-                lookupDocument(k, docIds[k], docProduceCallback);
-              }
+        if (auto& docPtr = _documents[k].first; docPtr) {
+          TRI_ASSERT(idx.filter.has_value() &&
+                     !idx.filter->projections.usesCoveringIndex());
+          docProduceCallback.operator()<std::unique_ptr<std::string>&>(docPtr);
+          resourceMonitor().decreaseMemoryUsage(_documents[k].second);
+          _documents[k].second = 0;
+          docPtr.reset();
+        } else {
+          if (idx.projections.usesCoveringIndex(idx.index)) {
+            buildProjections(k, idx.projections,
+                             idx.hasProjectionsForRegisters);
+            if (!idx.hasProjectionsForRegisters) {
+              output.moveValueInto(_infos.indexes[k].documentOutputRegister,
+                                   _currentRow, _projectionsBuilder.slice());
             }
 
-            if (idx.filter && idx.filter->projections.usesCoveringIndex()) {
-              projectionsOffset += idx.filter->projections.size();
-            }
+            projectionsOffset += idx.projections.size();
+          } else {
+            lookupDocument(k, docIds[k], docProduceCallback);
           }
+        }
 
-          if (!_infos.producesAnyOutput) {
-            output.handleEmptyRow(_currentRow);
-          }
+        if (idx.isLateMaterialized) {
+          AqlValue v(AqlValueHintUInt(docIds[k].id()));
+          AqlValueGuard guard{v, false};
+          output.moveValueInto(idx.docIdOutputRegister, _currentRow, &guard);
+        }
 
-          TRI_ASSERT(output.produced());
-          output.advanceRow();
-          LOG_JOIN << "OUTPUT ROW " << (rowCount - 1);
-          return !output.isFull();
-        });
+        if (idx.filter && idx.filter->projections.usesCoveringIndex()) {
+          projectionsOffset += idx.filter->projections.size();
+        }
+      }
+
+      if (!_infos.producesAnyOutput) {
+        output.handleEmptyRow(_currentRow);
+      }
+
+      TRI_ASSERT(output.produced());
+      output.advanceRow();
+      LOG_JOIN << "OUTPUT ROW " << (rowCount - 1);
+      return !output.isFull();
+    });
 
     if (!hasMore) {
       _currentRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
@@ -545,6 +641,8 @@ auto JoinExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
   return {inputRange.upstreamState(), stats, clientCall.getSkipCount(),
           AqlCall{}};
 }
+
+ResourceMonitor& JoinExecutor::resourceMonitor() { return _resourceMonitor; }
 
 void JoinExecutor::constructStrategy() {
   std::vector<IndexJoinStrategyFactory::Descriptor> indexDescription;

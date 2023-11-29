@@ -77,7 +77,8 @@ RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
 #endif
 }
 
-void RocksDBRestReplicationHandler::handleCommandBatch() {
+futures::Future<futures::Unit>
+RocksDBRestReplicationHandler::handleCommandBatch() {
   // extract the request type
   auto const type = _request->requestType();
   auto const& suffixes = _request->suffixes();
@@ -91,7 +92,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     bool parseSuccess = true;
     VPackSlice body = this->parseVPackBody(parseSuccess);
     if (!parseSuccess || !body.isObject()) {  // error already created
-      return;
+      co_return;
     }
     std::string patchCount =
         VelocyPackHelper::getStringValue(body, "patchCount", "");
@@ -110,7 +111,8 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
         _manager->createContext(engine, ttl, syncerId, clientId, patchCount);
 
     if (!patchCount.empty()) {
-      auto triple = ctx->bindCollectionIncremental(_vocbase, patchCount);
+      auto triple =
+          co_await ctx->bindCollectionIncremental(_vocbase, patchCount);
       Result res = std::get<0>(triple);
       if (res.fail()) {
         LOG_TOPIC("3d5d4", WARN, Logger::REPLICATION)
@@ -158,7 +160,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
                                         ctx->snapshotTick(), ttl);
 
     generateResult(rest::ResponseCode::OK, b.slice());
-    return;
+    co_return;
   }
 
   if (type == rest::RequestType::PUT && len >= 2) {
@@ -168,7 +170,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     bool parseSuccess = true;
     VPackSlice body = this->parseVPackBody(parseSuccess);
     if (!parseSuccess || !body.isObject()) {  // error already created
-      return;
+      co_return;
     }
 
     // extract ttl. Context uses initial ttl from batch creation, if `ttl == 0`
@@ -178,7 +180,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     auto res = _manager->extendLifetime(id, ttl);
     if (res.fail()) {
       generateError(std::move(res).result());
-      return;
+      co_return;
     }
 
     SyncerId const syncerId = std::get<SyncerId>(res.get());
@@ -191,7 +193,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     _vocbase.replicationClients().extend(syncerId, clientId, clientInfo, ttl);
 
     resetResponse(rest::ResponseCode::NO_CONTENT);
-    return;
+    co_return;
   }
 
   if (type == rest::RequestType::DELETE_REQ && len >= 2) {
@@ -201,7 +203,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     auto res = _manager->remove(id);
     if (res.fail()) {
       generateError(std::move(res).result());
-      return;
+      co_return;
     }
 
     resetResponse(rest::ResponseCode::NO_CONTENT);
@@ -218,7 +220,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
     _vocbase.replicationClients().extend(syncerId, clientId, clientInfo,
                                          extendPeriod);
-    return;
+    co_return;
   }
 
   // we get here if anything above is invalid
@@ -472,12 +474,13 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
 /// If the call is made with option quick=true, and more than
 /// 1 million documents are counted for keys, we'll return only
 /// the document count, else, we proceed to deliver the keys.
-void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
+futures::Future<futures::Unit>
+RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   std::string const& collection = _request->value("collection");
   if (collection.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid collection parameter");
-    return;
+    co_return;
   }
 
   std::string const& quick = _request->value("quick");
@@ -485,7 +488,7 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
     generateError(
         rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
         std::string("invalid quick parameter: must be boolean, got ") + quick);
-    return;
+    co_return;
   }
 
   // to is ignored because the snapshot time is the latest point in time
@@ -499,15 +502,15 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   if (!ctx) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
                   "batchId not specified");
-    return;
+    co_return;
   }
 
   // bind collection to context - will initialize iterator
   auto [res, cid, numDocs] =
-      ctx->bindCollectionIncremental(_vocbase, collection);
+      co_await ctx->bindCollectionIncremental(_vocbase, collection);
   if (res.fail()) {
     generateError(res);
-    return;
+    co_return;
   }
 
   if (numDocs > _quickKeysNumDocsLimit && quick == "true") {
@@ -516,7 +519,7 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
     result.add("count", VPackValue(numDocs));
     result.close();
     generateResult(rest::ResponseCode::OK, result.slice());
-    return;
+    co_return;
   }
 
   // keysId = <batchId>-<cid>

@@ -144,7 +144,7 @@ TEST_F(ShardHandlerTest, dropShard_all_cases) {
     // Should not be able to delete a non-existent shard.
     EXPECT_CALL(*maintenance, executeDropCollection(_)).Times(0);
     EXPECT_CALL(*maintenance, addDirty()).Times(0);
-    auto res = shardHandler->dropShard(shardId + "abcd");
+    auto res = shardHandler->dropShard(ShardID{shardId.id() + 1337});
     ASSERT_TRUE(res.fail()) << res;
     Mock::VerifyAndClearExpectations(maintenance.get());
   }

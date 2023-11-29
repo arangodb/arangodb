@@ -1570,7 +1570,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
       auto const colPath = "/Current/Collections/_system/" +
                            std::to_string(logicalCollection->id().id());
       auto const colValue = VPackParser::fromJson(
-          "{ \"same-as-dummy-shard-id\": { \"indexes\": [ { "
+          "{ \"s1337\": { \"indexes\": [ { "
           "\"id\": \"43\" "
           "} ], \"servers\": [ \"same-as-dummy-shard-server\" ] } "
           "}");  // '1' must match 'idString' in
@@ -1582,7 +1582,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
       auto const dummyValue = VPackParser::fromJson(
           "{ \"_system\": { \"" + std::to_string(logicalCollection->id().id()) +
           "\": { \"name\": \"testCollection\", "
-          "\"shards\": { \"same-as-dummy-shard-id\": [ "
+          "\"shards\": { \"s1337\": [ "
           "\"same-as-dummy-shard-server\" ] } } } }");
       EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(dummyPath, dummyValue->slice(), 0.0)
@@ -1606,7 +1606,8 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
     builder.add("id", VPackValue("43"));
     builder.close();
     res = arangodb::methods::Indexes::ensureIndex(*logicalCollection,
-                                                  builder.slice(), true, tmp);
+                                                  builder.slice(), true, tmp)
+              .get();
     EXPECT_TRUE(res.ok());
   }
 }
@@ -2299,7 +2300,7 @@ TEST_F(IResearchAnalyzerFeatureTest,
         arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE((trx.begin().ok()));
     auto queryResult =
-        trx.all(arangodb::tests::AnalyzerCollectionName, 0, 2, options);
+        trx.all(arangodb::tests::AnalyzerCollectionName, 0, 2, options).get();
     EXPECT_TRUE((true == queryResult.ok()));
     auto slice = arangodb::velocypack::Slice(queryResult.buffer->data());
     EXPECT_TRUE(slice.isArray());
@@ -3884,7 +3885,7 @@ class IResearchAnalyzerFeatureUpgradeStaticLegacyTest
   std::shared_ptr<VPackBuilder> createCollectionJson = VPackParser::fromJson(
       std::string("{ \"id\": 42, \"name\": \"") +
       arangodb::tests::AnalyzerCollectionName +
-      "\", \"isSystem\": true, \"shards\": { \"same-as-dummy-shard-id\": [ "
+      "\", \"isSystem\": true, \"shards\": { \"s1337\": [ "
       "\"shard-server-does-not-matter\" ] }, \"type\": 2 }");  // 'id' and
                                                                // 'shards'
                                                                // required for
@@ -3894,7 +3895,7 @@ class IResearchAnalyzerFeatureUpgradeStaticLegacyTest
       VPackParser::fromJson(std::string("{ \"id\": 43, \"name\": \"") +
                             LEGACY_ANALYZER_COLLECTION_NAME +
                             "\", \"isSystem\": true, \"shards\": { "
-                            "\"shard-id-does-not-matter\": [ "
+                            "\"s1337\": [ "
                             "\"shard-server-does-not-matter\" ] }, \"type\": 2 "
                             "}");  // 'id' and 'shards' required for coordinator
                                    // tests

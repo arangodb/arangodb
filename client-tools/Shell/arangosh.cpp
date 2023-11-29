@@ -37,8 +37,6 @@
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/V8PlatformFeature.h"
-#include "V8/V8SecurityFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
@@ -56,6 +54,8 @@
 #include "Shell/V8ShellFeature.h"
 #include "Shell/ProcessMonitoringFeature.h"
 #include "Ssl/SslFeature.h"
+#include "V8/V8PlatformFeature.h"
+#include "V8/V8SecurityFeature.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"

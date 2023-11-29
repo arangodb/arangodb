@@ -608,11 +608,12 @@ ViewSnapshotPtr snapshotDBServer(IResearchViewNode const& node,
     linksLock = searchLinksLock;
   }
   for (auto const& [shard, indexes] : shards) {
-    auto const& collection = resolver->getCollection(shard);
+    auto const& collection = resolver->getCollection(std::string{shard});
     if (!collection) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-          absl::StrCat("failed to find shard by id '", shard, "'"));
+          absl::StrCat("failed to find shard by id '", std::string{shard},
+                       "'"));
     }
     if (options.restrictSources &&
         !options.sources.contains(collection->planId())) {
@@ -1266,7 +1267,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
             << viewName << "'";
         continue;
       }
-      _shards[shard->name()];
+      _shards[ShardID{shard->name()}];
     }
     if (_meta) {  // handle search-alias view
       auto const indexesSlice = base.get(kNodeIndexesParam);
@@ -1285,7 +1286,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
         if (!shard) {
           continue;
         }
-        _shards[shard->name()].emplace_back(indexId);
+        _shards[ShardID{shard->name()}].emplace_back(indexId);
       }
     }
   } else {
@@ -1832,7 +1833,7 @@ void IResearchViewNode::replaceVariables(
           // only clone the original search condition once
           cloned = ast->clone(&search);
         }
-        ast->replaceVariables(cloned, replacements);
+        ast->replaceVariables(cloned, replacements, true);
       }
     }
 

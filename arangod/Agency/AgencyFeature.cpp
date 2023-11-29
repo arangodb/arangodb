@@ -29,9 +29,6 @@
 #include "Agency/Supervision.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
-#ifdef USE_V8
-#include "ApplicationFeatures/V8PlatformFeature.h"
-#endif
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
 #include "Endpoint/Endpoint.h"
@@ -44,6 +41,7 @@
 #ifdef USE_V8
 #include "RestServer/FrontendFeature.h"
 #include "RestServer/ScriptFeature.h"
+#include "V8/V8PlatformFeature.h"
 #include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #endif
