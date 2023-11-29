@@ -280,6 +280,8 @@
 
       this.userCollection = new window.ArangoUsers();
 
+      window.SkeletonLoader = new window.SkeletonLoader();
+
       this.initOnce = _.once(function () {
         const callback = function (error, isCoordinator) {
           if (isCoordinator === true) {
@@ -306,7 +308,6 @@
 
         this.arangoCollectionsStore = new window.ArangoCollections();
         this.arangoDocumentStore = new window.ArangoDocument();
-        window.SkeletonLoader = new window.SkeletonLoader();
 
         // Cluster
         this.coordinatorCollection = new window.ClusterCoordinators();
