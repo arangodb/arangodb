@@ -205,14 +205,13 @@ void V8PlatformFeature::start() {
   if (!_v8CombinedOptions.empty()) {
     LOG_TOPIC("d064a", INFO, Logger::V8)
         << "using V8 options '" << _v8CombinedOptions << "'";
-    v8::V8::SetFlagsFromString(_v8CombinedOptions.c_str(),
-                               (int)_v8CombinedOptions.size());
   }
 
-#ifdef TRI_FORCE_ARMV6
-  std::string const forceARMv6 = "--noenable-armv7";
-  v8::V8::SetFlagsFromString(forceARMv6.c_str(), (int)forceARMv6.size());
-#endif
+  // must be turned off currently due to assertion failures
+  // and segfaults within V8's regexp peephole optimizer.
+  _v8CombinedOptions.append(" --no-regexp-peephole-optimization");
+  v8::V8::SetFlagsFromString(_v8CombinedOptions.c_str(),
+                             _v8CombinedOptions.size());
 
   v8::V8::Initialize();
 
