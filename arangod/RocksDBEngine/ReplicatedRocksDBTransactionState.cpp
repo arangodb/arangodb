@@ -29,7 +29,7 @@
 #include <numeric>
 
 #include "Futures/Utilities.h"
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 #include "RocksDBEngine/ReplicatedRocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
