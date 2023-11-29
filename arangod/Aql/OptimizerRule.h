@@ -363,6 +363,9 @@ struct OptimizerRule {
     // for index
     lateDocumentMaterializationRule,
 
+    // batch materialization rule
+    batchMaterializeDocumentsRule,
+
 #ifdef USE_ENTERPRISE
     lateMaterialiationOffsetInfoRule,
 #endif

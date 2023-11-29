@@ -107,6 +107,7 @@ add_library(arango_aql STATIC
   NonConstExpression.cpp
   NonConstExpressionContainer.cpp
   Optimizer.cpp
+  OptimizerRuleBatchMaterializeDocuments.cpp
   OptimizerRulePropagateConstantAttributes.cpp
   OptimizerRuleReplaceEqualAttributeAccess.cpp
   OptimizerRules.cpp

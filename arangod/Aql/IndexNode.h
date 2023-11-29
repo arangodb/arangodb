@@ -167,9 +167,12 @@ class IndexNode : public ExecutionNode,
   bool isLateMaterialized() const noexcept {
     TRI_ASSERT((_outNonMaterializedDocId == nullptr &&
                 _outNonMaterializedIndVars.second.empty()) ||
-               !(_outNonMaterializedDocId == nullptr ||
-                 _outNonMaterializedIndVars.second.empty()));
-    return !_outNonMaterializedIndVars.second.empty();
+               _outNonMaterializedDocId != nullptr)
+        << std::boolalpha << "_outNonMaterializedDocId == nullptr = "
+        << (_outNonMaterializedDocId == nullptr)
+        << " _outNonMaterializedIndVars.second.empty() = "
+        << _outNonMaterializedIndVars.second.empty();
+    return _outNonMaterializedDocId != nullptr;
   }
 
   bool canApplyLateDocumentMaterializationRule() const {
