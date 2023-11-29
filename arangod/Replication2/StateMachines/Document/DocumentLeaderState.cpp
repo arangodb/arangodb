@@ -444,7 +444,12 @@ auto DocumentLeaderState::getAssociatedShardList() const
   std::vector<ShardID> shardIds;
   shardIds.reserve(shards.size());
   for (auto&& shardId : shards) {
-    shardIds.emplace_back(shardId->name());
+    auto maybeShardId = ShardID::shardIdFromString(shardId->name());
+    ADB_PROD_ASSERT(maybeShardId.ok())
+        << "Tried to produce shard list on Database Server for a collection "
+           "that is not a shard "
+        << shardId->name();
+    shardIds.emplace_back(std::move(maybeShardId.get()));
   }
   return shardIds;
 }

@@ -24,6 +24,7 @@
 
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/Utils/ResponsibleServerList.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Containers/FlatHashMap.h"
 #include <unordered_map>
 

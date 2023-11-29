@@ -44,7 +44,7 @@ using namespace arangodb::velocypack;
 const std::string PREFIX = "arango";
 const std::string DATABASE = "database";
 const std::string COLLECTION = "collection";
-const std::string SHARD = "s99";
+const ShardID SHARD{99};
 const std::string SHARD_LEADER = "leader";
 const std::string SHARD_FOLLOWER1 = "follower1";
 const std::string SHARD_FOLLOWER2 = "follower2";
@@ -394,7 +394,7 @@ TEST_F(MoveShardTest, the_job_should_remain_in_todo_if_shard_is_locked) {
                 jobId,
                 createJob(COLLECTION, SHARD_LEADER, FREE_SERVER).slice());
           } else if (path == "/arango/Supervision/Shards") {
-            builder->add(SHARD, VPackValue("2"));
+            builder->add(std::string{SHARD}, VPackValue("2"));
           }
           builder->close();
         } else {
@@ -1743,7 +1743,7 @@ TEST_F(
         VPackSlice move = undo.get("moveShard");
         EXPECT_TRUE(guck.isInteger());
         EXPECT_TRUE(guck.getNumber<int64_t>() == 17);
-        EXPECT_TRUE(move.get("shard").isEqualString(SHARD));
+        EXPECT_TRUE(move.get("shard").isEqualString(std::string{SHARD}));
 
         auto preconditions = q[0][1];
         EXPECT_TRUE(preconditions
@@ -2034,7 +2034,7 @@ TEST_F(
               }
             }
           } else if (path == "/arango/Supervision/Shards") {
-            builder->add(SHARD, VPackValue(1));
+            builder->add(std::string{SHARD}, VPackValue(1));
           } else if (path == "/arango/Supervision/DBServers") {
             builder->add(FREE_SERVER, VPackValue(1));
           }
@@ -2193,7 +2193,7 @@ TEST_F(
           } else if (path == "/arango/Supervision/DBServers") {
             builder->add(FREE_SERVER, VPackValue("1"));
           } else if (path == "/arango/Supervision/Shards") {
-            builder->add(SHARD, VPackValue("1"));
+            builder->add(std::string{SHARD}, VPackValue("1"));
           }
           builder->close();
         } else {
@@ -2303,7 +2303,7 @@ TEST_F(MoveShardTest,
           } else if (path == "/arango/Supervision/DBServers") {
             builder->add(FREE_SERVER, VPackValue("1"));
           } else if (path == "/arango/Supervision/Shards") {
-            builder->add(SHARD, VPackValue("1"));
+            builder->add(std::string{SHARD}, VPackValue("1"));
           }
           builder->close();
         } else {
@@ -2434,7 +2434,7 @@ TEST_F(MoveShardTest, if_current_entry_missing_nothing_should_happen) {
           } else if (path == "/arango/Supervision/DBServers") {
             builder->add(FREE_SERVER, VPackValue("1"));
           } else if (path == "/arango/Supervision/Shards") {
-            builder->add(SHARD, VPackValue("1"));
+            builder->add(std::string{SHARD}, VPackValue("1"));
           } else if (path == "/arango/Current/Collections/" + DATABASE) {
             builder->add(VPackValue(COLLECTION));
             VPackObjectBuilder a(builder.get());
@@ -2499,7 +2499,7 @@ TEST_F(MoveShardTest,
           } else if (path == "/arango/Supervision/DBServers") {
             builder->add(FREE_SERVER, VPackValue("1"));
           } else if (path == "/arango/Supervision/Shards") {
-            builder->add(SHARD, VPackValue("1"));
+            builder->add(std::string{SHARD}, VPackValue("1"));
           }
           builder->close();
         } else {
@@ -2569,7 +2569,7 @@ TEST_F(
           } else if (path == "/arango/Supervision/DBServers") {
             builder->add(FREE_SERVER, VPackValue("1"));
           } else if (path == "/arango/Supervision/Shards") {
-            builder->add(SHARD, VPackValue("1"));
+            builder->add(std::string{SHARD}, VPackValue("1"));
           }
           builder->close();
         } else {
@@ -2679,7 +2679,7 @@ TEST_F(
           } else if (path == "/arango/Supervision/DBServers") {
             builder->add(FREE_SERVER, VPackValue("1"));
           } else if (path == "/arango/Supervision/Shards") {
-            builder->add(SHARD, VPackValue("1"));
+            builder->add(std::string{SHARD}, VPackValue("1"));
           }
           builder->close();
         } else {
@@ -2769,7 +2769,7 @@ TEST_F(
           } else if (path == "/arango/Supervision/DBServers") {
             builder->add(FREE_SERVER, VPackValue("1"));
           } else if (path == "/arango/Supervision/Shards") {
-            builder->add(SHARD, VPackValue("1"));
+            builder->add(std::string{SHARD}, VPackValue("1"));
           }
           builder->close();
         } else {
@@ -2896,7 +2896,7 @@ TEST_F(MoveShardTest, if_the_new_leader_took_over_finish_the_job) {
           } else if (path == "/arango/Supervision/DBServers") {
             builder->add(FREE_SERVER, VPackValue("1"));
           } else if (path == "/arango/Supervision/Shards") {
-            builder->add(SHARD, VPackValue("1"));
+            builder->add(std::string{SHARD}, VPackValue("1"));
           }
           builder->close();
         } else {
@@ -3100,7 +3100,7 @@ TEST_F(
           } else if (path == "/arango/Supervision/DBServers") {
             builder->add(FREE_SERVER, VPackValue("1"));
           } else if (path == "/arango/Supervision/Shards") {
-            builder->add(SHARD, VPackValue("1"));
+            builder->add(std::string{SHARD}, VPackValue("1"));
           }
           builder->close();
         } else {
@@ -3205,7 +3205,7 @@ TEST_F(MoveShardTest, if_aborting_failed_report_it_back_properly) {
           } else if (path == "/arango/Supervision/DBServers") {
             builder->add(FREE_SERVER, VPackValue("1"));
           } else if (path == "/arango/Supervision/Shards") {
-            builder->add(SHARD, VPackValue("1"));
+            builder->add(std::string{SHARD}, VPackValue("1"));
           }
           builder->close();
         } else {
@@ -3273,7 +3273,7 @@ TEST_F(MoveShardTest,
           } else if (path == "/arango/Supervision/DBServers") {
             builder->add(FREE_SERVER, VPackValue("1"));
           } else if (path == "/arango/Supervision/Shards") {
-            builder->add(SHARD, VPackValue("1"));
+            builder->add(std::string{SHARD}, VPackValue("1"));
           }
           builder->close();
         } else {
@@ -3340,7 +3340,7 @@ TEST_F(MoveShardTest, trying_to_abort_a_finished_should_result_in_failure) {
           } else if (path == "/arango/Supervision/DBServers") {
             builder->add(FREE_SERVER, VPackValue("1"));
           } else if (path == "/arango/Supervision/Shards") {
-            builder->add(SHARD, VPackValue("1"));
+            builder->add(std::string{SHARD}, VPackValue("1"));
           }
           builder->close();
         } else {
@@ -3534,7 +3534,7 @@ TEST_F(
           } else if (path == "/arango/Supervision/DBServers") {
             builder->add(FREE_SERVER, VPackValue("1"));
           } else if (path == "/arango/Supervision/Shards") {
-            builder->add(SHARD, VPackValue("1"));
+            builder->add(std::string{SHARD}, VPackValue("1"));
           }
           builder->close();
         } else {

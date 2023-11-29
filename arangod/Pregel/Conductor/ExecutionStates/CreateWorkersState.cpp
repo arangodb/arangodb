@@ -1,6 +1,5 @@
 #include "CreateWorkersState.h"
 
-#include "Pregel/Conductor/ExecutionStates/CollectionLookup.h"
 #include "Pregel/Conductor/ExecutionStates/LoadingState.h"
 #include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
 #include "Pregel/Conductor/State.h"

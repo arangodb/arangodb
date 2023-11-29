@@ -97,7 +97,7 @@ class OutCache {
                          worker::message::PregelMessage message)>
           dispatch){};
   virtual void setResponsibleActorPerShard(
-      std::unordered_map<ShardID, actor::DistributedActorPID>
+      std::unordered_map<PregelShardID, actor::DistributedActorPID>
           _responsibleActorPerShard){};
   virtual void appendMessage(PregelShard shard, std::string_view const& key,
                              M const& data) = 0;
@@ -114,7 +114,7 @@ class ArrayOutCache : public OutCache<M> {
   containers::NodeHashMap<PregelShard,
                           containers::NodeHashMap<std::string, std::vector<M>>>
       _shardMap;
-  std::unordered_map<ShardID, uint64_t> _sendCountPerShard;
+  std::unordered_map<PregelShardID, uint64_t> _sendCountPerShard;
 
   void _removeContainedMessages() override;
   auto messagesToVPack(
@@ -141,7 +141,7 @@ class CombiningOutCache : public OutCache<M> {
   containers::NodeHashMap<PregelShard,
                           containers::NodeHashMap<std::string_view, M>>
       _shardMap;
-  containers::FlatHashMap<ShardID, uint64_t> _sendCountPerShard;
+  containers::FlatHashMap<PregelShardID, uint64_t> _sendCountPerShard;
 
   void _removeContainedMessages() override;
   auto messagesToVPack(
@@ -165,7 +165,7 @@ class CombiningOutCache : public OutCache<M> {
 
 template<typename M>
 class ArrayOutActorCache : public OutCache<M> {
-  std::unordered_map<ShardID, actor::DistributedActorPID>
+  std::unordered_map<PregelShardID, actor::DistributedActorPID>
       _responsibleActorPerShard;
   std::function<void(actor::DistributedActorPID receiver,
                      worker::message::PregelMessage message)>
@@ -199,7 +199,7 @@ class ArrayOutActorCache : public OutCache<M> {
     _dispatch = std::move(dispatch);
   }
   void setResponsibleActorPerShard(
-      std::unordered_map<ShardID, actor::DistributedActorPID>
+      std::unordered_map<PregelShardID, actor::DistributedActorPID>
           responsibleActorPerShard) override {
     _responsibleActorPerShard = std::move(responsibleActorPerShard);
   }
@@ -215,7 +215,7 @@ class ArrayOutActorCache : public OutCache<M> {
 template<typename M>
 class CombiningOutActorCache : public OutCache<M> {
   MessageCombiner<M> const* _combiner;
-  std::unordered_map<ShardID, actor::DistributedActorPID>
+  std::unordered_map<PregelShardID, actor::DistributedActorPID>
       _responsibleActorPerShard;
   std::function<void(actor::DistributedActorPID receiver,
                      worker::message::PregelMessage message)>
@@ -251,7 +251,7 @@ class CombiningOutActorCache : public OutCache<M> {
     _dispatch = std::move(dispatch);
   }
   void setResponsibleActorPerShard(
-      std::unordered_map<ShardID, actor::DistributedActorPID>
+      std::unordered_map<PregelShardID, actor::DistributedActorPID>
           responsibleActorPerShard) override {
     _responsibleActorPerShard = std::move(responsibleActorPerShard);
   }
