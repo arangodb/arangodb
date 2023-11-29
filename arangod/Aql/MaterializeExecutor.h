@@ -120,8 +120,8 @@ class MaterializeRocksDBExecutor : public MaterializeExecutorBase {
 
  private:
   PhysicalCollection* _collection{};
-  std::vector<LocalDocumentId> docIds;
-  std::vector<InputAqlItemRow> inputRows;
+  std::vector<LocalDocumentId> _docIds;
+  std::vector<InputAqlItemRow> _inputRows;
 };
 
 class MaterializeSearchExecutor : public MaterializeExecutorBase {

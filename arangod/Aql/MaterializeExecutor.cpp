@@ -57,46 +57,51 @@ MaterializeRocksDBExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   auto docRegId = _infos.inputNonMaterializedDocRegId();
   auto docOutReg = _infos.outputMaterializedDocumentRegId();
 
-  docIds.reserve(inputRange.numRowsLeft());
-  inputRows.reserve(inputRange.numRowsLeft());
+  _docIds.reserve(inputRange.numRowsLeft());
+  _inputRows.reserve(inputRange.numRowsLeft());
+
+  constexpr auto kMaxBatchSize = 1000;
 
   while (inputRange.hasDataRow()) {
-    auto const [state, input] =
-        inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
-    LocalDocumentId id{input.getValue(docRegId).slice().getUInt()};
-    docIds.push_back(id);
-    inputRows.emplace_back(std::move(input));
-  }
-  if (inputRows.empty()) {
-    return {inputRange.upstreamState(), stats, output.getClientCall()};
-  }
+    while (inputRange.hasDataRow() && _docIds.size() < kMaxBatchSize) {
+      auto [state, input] =
+          inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+      LocalDocumentId id{input.getValue(docRegId).slice().getUInt()};
+      _docIds.push_back(id);
+      _inputRows.emplace_back(std::move(input));
+    }
+    if (_inputRows.empty()) {
+      return {inputRange.upstreamState(), stats, output.getClientCall()};
+    }
 
-  auto inputRowIterator = inputRows.begin();
-  _collection->lookup(
-      &_trx, docIds,
-      [&](Result result, LocalDocumentId id, aql::DocumentData&& data,
-          VPackSlice doc) {
-        if (result.fail()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              result.errorNumber(),
-              basics::StringUtils::concatT("failed to materialize document ",
-                                           id.id(), " for collection ",
-                                           _infos.collection()->name(), ": ",
-                                           result.errorMessage()));
-        }
-        if (data) {
-          output.moveValueInto(docOutReg, *inputRowIterator, &data);
-        } else {
-          output.moveValueInto(docOutReg, *inputRowIterator, doc);
-        }
-        ++inputRowIterator;
-        output.advanceRow();
-        return true;
-      },
-      {});
+    auto inputRowIterator = _inputRows.begin();
+    _collection->lookup(
+        &_trx, _docIds,
+        [&](Result result, LocalDocumentId id, aql::DocumentData&& data,
+            VPackSlice doc) {
+          if (result.fail()) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(
+                result.errorNumber(),
+                basics::StringUtils::concatT("failed to materialize document ",
+                                             id.id(), " for collection ",
+                                             _infos.collection()->name(), ": ",
+                                             result.errorMessage()));
+          }
+          if (data) {
+            output.moveValueInto(docOutReg, *inputRowIterator, &data);
+          } else {
+            output.moveValueInto(docOutReg, *inputRowIterator, doc);
+          }
+          ++inputRowIterator;
+          output.advanceRow();
+          return true;
+        },
+        {});
+    TRI_ASSERT(inputRowIterator == _inputRows.end());
 
-  docIds.clear();
-  inputRows.clear();
+    _docIds.clear();
+    _inputRows.clear();
+  }
   return {inputRange.upstreamState(), stats, output.getClientCall()};
 }
 
