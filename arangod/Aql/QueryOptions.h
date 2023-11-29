@@ -31,6 +31,7 @@
 #include "Aql/ProfileLevel.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Transaction/Options.h"
 
 namespace arangodb {
@@ -107,7 +108,7 @@ struct QueryOptions {
   std::vector<std::string> optimizerRules;
 
   /// @brief manual restriction to certain shards
-  std::unordered_set<std::string> restrictToShards;
+  std::unordered_set<ShardID> restrictToShards;
 
 #ifdef USE_ENTERPRISE
   // TODO: remove as soon as we have cluster wide transactions

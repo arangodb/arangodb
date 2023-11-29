@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Cluster/ClusterTypes.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Inspection/Format.h"
 #include "Inspection/Status.h"
 #include "Inspection/Types.h"
@@ -45,7 +46,10 @@ struct ReplicatedOperation {
     ShardID shard;
     velocypack::SharedSlice payload;
 
-    DocumentOperation() = default;
+    // TODO: This somehow seems to be needed for Inspection.
+    // Would like to remove it again though.
+    DocumentOperation() {}
+
     explicit DocumentOperation(TransactionId tid, ShardID shard,
                                velocypack::SharedSlice payload);
 

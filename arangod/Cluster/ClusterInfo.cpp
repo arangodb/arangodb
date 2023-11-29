@@ -997,11 +997,12 @@ void ClusterInfo::loadPlan() {
             if (col.value.hasKey("shards")) {
               for (auto shard : VPackObjectIterator(col.value.get("shards"))) {
                 auto const& shardName = shard.key.copyString();
+                ShardID shardID{shardName};
                 newShards.erase(shardName);
-                newShardsToPlanServers.erase(shardName);
-                newShardToName.erase(shardName);
-                newShardToShardGroupLeader.erase(shardName);
-                newShardGroups.erase(shardName);
+                newShardsToPlanServers.erase(shardID);
+                newShardToName.erase(shardID);
+                newShardToShardGroupLeader.erase(shardID);
+                newShardGroups.erase(shardID);
               }
             }
           }
@@ -1390,7 +1391,13 @@ void ClusterInfo::loadPlan() {
           auto& collectionId = collection.first;
           // delete from maps with shardID as key
           newShards.erase(collectionId);
-          newShardToName.erase(collectionId);
+          if (auto maybeShardID = ShardID::shardIdFromString(collectionId);
+              maybeShardID.ok()) {
+            // The list contains collections and shards by name and id.
+            // So it is expected that some are not valid shard ids.
+            // Make sure we only erase valid shard ids.
+            newShardToName.erase(maybeShardID.get());
+          }
         }
         _newPlannedCollections.erase(it);
       }
@@ -1452,13 +1459,14 @@ void ClusterInfo::loadPlan() {
                                                    ->second->slice()[0]
                                                    .get(collectionsPath))) {
               auto const& shardId = sh.key.copyString();
+              ShardID sId{shardId};
               newShards.erase(shardId);
-              newShardsToPlanServers.erase(shardId);
-              newShardToName.erase(shardId);
+              newShardsToPlanServers.erase(sId);
+              newShardToName.erase(sId);
               // We try to erase the shard ID anyway, no problem if it is
               // not in there, should it be a shard group leader!
-              newShardToShardGroupLeader.erase(shardId);
-              newShardGroups.erase(shardId);
+              newShardToShardGroupLeader.erase(sId);
+              newShardGroups.erase(sId);
             }
             collectionsPath.pop_back();
           }
@@ -1540,22 +1548,20 @@ void ClusterInfo::loadPlan() {
         }
 
         auto shardIDs = newCollection->shardIds();
-        auto shards = std::make_shared<std::vector<ServerID>>();
+        auto shards = allocateShared<std::vector<ShardID>>();
         shards->reserve(shardIDs->size());
         newShardToName.reserve(shardIDs->size());
 
         for (auto const& p : *shardIDs) {
-          TRI_ASSERT(p.first.size() >= 2);
           shards->push_back(p.first);
           auto v = allocateShared<ManagedVector<pmr::ServerID>>();
           v->assign(p.second.begin(), p.second.end());
-          newShardsToPlanServers.insert_or_assign(
-              pmr::ShardID{p.first, _resourceMonitor}, std::move(v));
+          newShardsToPlanServers.insert_or_assign(p.first, std::move(v));
           newShardToName.insert_or_assign(p.first, newCollection->name());
         }
 
         // Sort by the number in the shard ID ("s0000001" for example):
-        ShardingInfo::sortShardNamesNumerically(*shards);
+        std::sort(shards->begin(), shards->end());
         newShards.insert_or_assign(collectionId, std::move(shards));
       } catch (std::exception const& ex) {
         // The plan contains invalid collection information.
@@ -1638,7 +1644,7 @@ void ClusterInfo::loadPlan() {
               if (auto it = newShardGroups.find(groupLeaderCol->second->at(i));
                   it == newShardGroups.end()) {
                 // Need to create a new list:
-                auto list = allocateShared<ManagedVector<pmr::ShardID>>();
+                auto list = allocateShared<ManagedVector<ShardID>>();
                 list->reserve(2);
                 // group leader as well as member:
                 list->emplace_back(groupLeaderCol->second->at(i));
@@ -1887,7 +1893,7 @@ void ClusterInfo::loadCurrent() {
             for (auto cc : VPackObjectIterator(colsSlice)) {
               if (cc.value.isObject()) {
                 for (auto cs : VPackObjectIterator(cc.value)) {
-                  newShardsToCurrentServers.erase(cs.key.stringView());
+                  newShardsToCurrentServers.erase(ShardID{cs.key.stringView()});
                 }
               }
             }
@@ -1952,7 +1958,8 @@ void ClusterInfo::loadCurrent() {
             for (auto const& sh : VPackObjectIterator(cc)) {
               path.push_back(sh.key.copyString());
               if (!ncs.hasKey(path)) {
-                newShardsToCurrentServers.erase(path.back());
+                ShardID shardID{path.back()};
+                newShardsToCurrentServers.erase(shardID);
               }
               path.pop_back();
             }
@@ -1970,9 +1977,17 @@ void ClusterInfo::loadCurrent() {
 
       for (auto const& shardSlice :
            velocypack::ObjectIterator(collectionSlice.value)) {
-        pmr::ManagedString shardID{shardSlice.key.copyString(),
-                                   _resourceMonitor};
+        auto maybeShardID =
+            ShardID::shardIdFromString(shardSlice.key.stringView());
+        if (ADB_UNLIKELY(maybeShardID.fail())) {
+          TRI_ASSERT(false)
+              << "Indexed malformed shard name " << shardSlice.key.stringView();
+          // TODO cannot handle this entry, is it better to continue or to abort
+          // here?
+          continue;
+        }
 
+        auto shardID = maybeShardID.get();
         collectionDataCurrent->add(shardID, shardSlice.value);
 
         // Note that we have only inserted the CollectionInfoCurrent under
@@ -1991,9 +2006,9 @@ void ClusterInfo::loadCurrent() {
         TRI_IF_FAILURE("ClusterInfo::loadCurrentSeesLeader") {
           if (!xx.empty()) {  // just in case
             std::string myShortName = ServerState::instance()->getShortName();
-            observeGlobalEvent(
-                "ClusterInfo::loadCurrentSeesLeader",
-                absl::StrCat(myShortName, ":", shardID, ":", xx[0]));
+            observeGlobalEvent("ClusterInfo::loadCurrentSeesLeader",
+                               absl::StrCat(myShortName, ":",
+                                            std::string{shardID}, ":", xx[0]));
           }
         }
       }
@@ -4464,7 +4479,7 @@ std::vector<ServerID> ClusterInfo::getCurrentDBServers() {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<ClusterInfo::ManagedVector<ClusterInfo::pmr::ServerID> const>
-ClusterInfo::getResponsibleServer(std::string_view shardID) {
+ClusterInfo::getResponsibleServer(ShardID shardID) {
   int tries = 0;
 
   if (!_currentProt.isValid) {
@@ -4611,7 +4626,7 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
 /// @brief find the shard list of a collection, sorted numerically
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<std::vector<ShardID> const> ClusterInfo::getShardList(
+std::shared_ptr<std::vector<ShardID> const> arangodb::ClusterInfo::getShardList(
     std::string_view collectionID) {
   TRI_IF_FAILURE("ClusterInfo::failedToGetShardList") {
     // Simulate no results
@@ -4632,7 +4647,7 @@ std::shared_ptr<std::vector<ShardID> const> ClusterInfo::getShardList(
 }
 
 std::shared_ptr<ClusterInfo::ManagedVector<ClusterInfo::pmr::ServerID> const>
-ClusterInfo::getCurrentServersForShard(std::string_view shardId) {
+ClusterInfo::getCurrentServersForShard(ShardID shardId) {
   READ_LOCKER(readLocker, _currentProt.lock);
 
   if (auto it = _shardsToCurrentServers.find(shardId);
@@ -4819,7 +4834,7 @@ void ClusterInfo::setShardGroups(
   WRITE_LOCKER(writeLocker, _planProt.lock);
   _shardGroups.clear();
   for (auto const& [k, v] : shardGroups) {
-    auto vv = allocateShared<ManagedVector<pmr::ShardID>>();
+    auto vv = allocateShared<ManagedVector<ShardID>>();
     vv->assign(v->begin(), v->end());
     _shardGroups.emplace(k, std::move(vv));
   }
@@ -4832,7 +4847,7 @@ void ClusterInfo::setShardIds(
   WRITE_LOCKER(writeLocker, _currentProt.lock);
   _shardsToCurrentServers.clear();
   for (auto const& [k, v] : shardIds) {
-    auto vv = allocateShared<ManagedVector<pmr::ShardID>>();
+    auto vv = allocateShared<ManagedVector<pmr::ServerID>>();
     vv->assign(v->begin(), v->end());
     _shardsToCurrentServers.emplace(k, std::move(vv));
   }
@@ -4873,7 +4888,7 @@ containers::FlatHashMap<ServerID, std::string> ClusterInfo::getServerAliases() {
   return ret;
 }
 
-Result ClusterInfo::getShardServers(std::string_view shardId,
+Result ClusterInfo::getShardServers(ShardID const& shardId,
                                     std::vector<ServerID>& servers) {
   READ_LOCKER(readLocker, _planProt.lock);
 
@@ -4888,7 +4903,7 @@ Result ClusterInfo::getShardServers(std::string_view shardId,
   return Result{TRI_ERROR_FAILED};
 }
 
-CollectionID ClusterInfo::getCollectionNameForShard(std::string_view shardId) {
+CollectionID ClusterInfo::getCollectionNameForShard(ShardID const& shardId) {
   READ_LOCKER(readLocker, _planProt.lock);
 
   if (auto it = _shardToName.find(shardId); it != _shardToName.end()) {
@@ -5650,7 +5665,7 @@ VPackBuilder ClusterInfo::toVelocyPack() {
         {
           VPackObjectBuilder d(&dump);
           for (auto const& s : _shardToName) {
-            dump.add(s.first, VPackValue(s.second));
+            dump.add(std::string{s.first}, VPackValue(s.second));
           }
         }
         dump.add(VPackValue("shardServers"));
@@ -5668,7 +5683,7 @@ VPackBuilder ClusterInfo::toVelocyPack() {
         {
           VPackObjectBuilder d(&dump);
           for (auto const& s : _shardToShardGroupLeader) {
-            dump.add(s.first, VPackValue(s.second));
+            dump.add(std::string{s.first}, VPackValue(s.second));
           }
         }
         dump.add(VPackValue("shardGroups"));
