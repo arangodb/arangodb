@@ -249,12 +249,12 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
     }
   }
   // On single server we cannot restrict to shards.
-  if (!ServerState::instance()->isSingleServer()&& VPackSlice value =
-          slice.get("shardIds");
-      value.isArray()) {
-    for (auto id : VPackArrayIterator(value)) {
-      if (id.isString()) {
-        restrictToShards.emplace(id.copyString());
+  if (!ServerState::instance()->isSingleServer()) {
+    if (VPackSlice value = slice.get("shardIds"); value.isArray()) {
+      for (auto id : VPackArrayIterator(value)) {
+        if (id.isString()) {
+          restrictToShards.emplace(id.copyString());
+        }
       }
     }
   }
