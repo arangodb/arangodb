@@ -80,7 +80,6 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
   _options.limit = basics::VelocyPackHelper::getNumericValue(base, "limit", 0);
   _options.lookahead = basics::VelocyPackHelper::getNumericValue(
       base, StaticStrings::IndexLookahead, IndexIteratorOptions{}.lookahead);
-
   if (_options.sorted && base.isObject() && base.get("reverse").isBool()) {
     // legacy
     _options.sorted = true;
@@ -152,11 +151,17 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
                   .condition = Condition::fromVPack(plan, condition),
                   .filter = std::move(filter),
                   .index = coll->indexByIdentifier(iid),
-                  .projections = projections,
+                  .projections = std::move(projections),
                   .filterProjections = filterProjections,
-                  .expressions = std::move(expressions),
                   .usedAsSatellite = usedAsSatellite,
-                  .producesOutput = producesOutput});
+                  .producesOutput = producesOutput,
+                  .expressions = std::move(expressions)});
+
+    idx.isLateMaterialized = it.get("isLateMaterialized").isTrue();
+    if (idx.isLateMaterialized) {
+      idx.outDocIdVariable =
+          Variable::varFromVPack(plan->getAst(), it, "outDocIdVariable");
+    }
 
     VPackSlice usedShard = it.get("usedShard");
     if (usedShard.isString()) {
@@ -205,6 +210,12 @@ void JoinNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
     // out variable
     builder.add(VPackValue("outVariable"));
     it.outVariable->toVelocyPack(builder);
+
+    if (it.isLateMaterialized) {
+      builder.add("isLateMaterialized", VPackValue(true));
+      builder.add(VPackValue("outDocIdVariable"));
+      it.outDocIdVariable->toVelocyPack(builder);
+    }
     // condition
     builder.add(VPackValue("condition"));
     it.condition->toVelocyPack(builder, flags);
@@ -290,13 +301,18 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
       }
     }
 
-    // TODO probably those data structures can become one
     auto& data = infos.indexes.emplace_back();
     data.documentOutputRegister = documentOutputRegister;
     data.index = idx.index;
     data.collection = idx.collection;
     data.projections = idx.projections;
     data.producesOutput = idx.producesOutput;
+
+    data.isLateMaterialized = idx.isLateMaterialized;
+    if (data.isLateMaterialized) {
+      data.docIdOutputRegister = variableToRegisterId(idx.outDocIdVariable);
+      writableOutputRegisters.emplace(data.docIdOutputRegister);
+    }
 
     if (!idx.expressions.empty()) {
       // TODO: currently only one expression will be interpreted as one const
@@ -365,17 +381,26 @@ ExecutionNode* JoinNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   for (auto const& it : _indexInfos) {
     auto outVariable = it.outVariable;
+    auto outDocIdVariable = it.outDocIdVariable;
     if (withProperties) {
       outVariable = plan->getAst()->variables()->createVariable(outVariable);
+      if (outDocIdVariable) {
+        outDocIdVariable =
+            plan->getAst()->variables()->createVariable(outDocIdVariable);
+      }
     }
-    indexInfos.emplace_back(IndexInfo{.collection = it.collection,
-                                      .usedShard = it.usedShard,
-                                      .outVariable = outVariable,
-                                      .condition = it.condition->clone(),
-                                      .index = it.index,
-                                      .projections = it.projections,
-                                      .usedAsSatellite = it.usedAsSatellite,
-                                      .producesOutput = it.producesOutput});
+    // TODO: HEIKO NEXT
+    indexInfos.emplace_back(
+        IndexInfo{.collection = it.collection,
+                  .usedShard = it.usedShard,
+                  .outVariable = outVariable,
+                  .condition = it.condition->clone(),
+                  .index = it.index,
+                  .projections = it.projections,
+                  .usedAsSatellite = it.usedAsSatellite,
+                  .producesOutput = it.producesOutput,
+                  .isLateMaterialized = it.isLateMaterialized,
+                  .outDocIdVariable = outDocIdVariable});
   }
 
   auto c =
@@ -477,6 +502,10 @@ void JoinNode::getVariablesUsedHere(VarSet& vars) const {
       // lookup condition
       Ast::getReferencedVariables(it.condition->root(), vars);
     }
+    if (it.filter != nullptr && it.filter->node() != nullptr) {
+      // lookup condition
+      Ast::getReferencedVariables(it.filter->node(), vars);
+    }
   }
   for (auto const& it : _indexInfos) {
     vars.erase(it.outVariable);
@@ -507,6 +536,11 @@ std::vector<Variable const*> JoinNode::getVariablesSetHere() const {
         vars.push_back(it.projections[i].variable);
       }
     }
+
+    if (it.isLateMaterialized) {
+      vars.emplace_back(it.outDocIdVariable);
+    }
+
     if (!it.projections.hasOutputRegisters() || it.filter != nullptr) {
       vars.emplace_back(it.outVariable);
     }

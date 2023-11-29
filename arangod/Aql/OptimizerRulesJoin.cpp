@@ -54,6 +54,7 @@
 #include "Logger/LogMacros.h"
 #include "OptimizerRules.h"
 #include "Utils/CollectionNameResolver.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 
 #include <bitset>
@@ -242,7 +243,7 @@ void removeUnnecessaryProjections(ExecutionPlan& plan, JoinNode* jn) {
   // for every index in the JoinNode...
   for (size_t i = 0; i < indexInfos.size(); ++i) {
     // check if it has projections
-    if (indexInfos[i].projections.empty()) {
+    if (indexInfos[i].projections.empty() || indexInfos[i].isLateMaterialized) {
       // no projections => no projections to optimize away.
       // this check is important because further down we
       // rely on that projections have been present.
@@ -656,6 +657,44 @@ void findCandidates(IndexNode* indexNode,
   }
 }
 
+Projections translateLMIndexVarsToProjections(
+    ExecutionPlan* plan, IndexNode::IndexValuesVars const& indexVars,
+    transaction::Methods::IndexHandle index) {
+  // Translate the late materialize "projections" description
+  // into the usual projections description
+  auto& coveredFields = index->coveredFields();
+
+  std::vector<AttributeNamePath> projectedAttributes;
+  for (auto [var, fieldIndex] : indexVars.second) {
+    auto& field = coveredFields[fieldIndex];
+    std::vector<std::string> fieldCopy;
+    fieldCopy.reserve(field.size());
+    std::transform(field.begin(), field.end(), std::back_inserter(fieldCopy),
+                   [&](auto const& attr) {
+                     TRI_ASSERT(attr.shouldExpand == false);
+                     return attr.name;
+                   });
+    projectedAttributes.emplace_back(std::move(fieldCopy),
+                                     plan->getAst()->query().resourceMonitor());
+  }
+
+  Projections projections{std::move(projectedAttributes)};
+
+  std::size_t i = 0;
+  for (auto [var, fieldIndex] : indexVars.second) {
+    auto& proj = projections[i++];
+    proj.coveringIndexPosition = fieldIndex;
+    proj.coveringIndexCutoff = fieldIndex;
+    proj.variable = var;
+    proj.levelsToClose = proj.startsAtLevel = 0;
+    proj.type = proj.path.size() > 1 ? AttributeNamePath::Type::MultiAttribute
+                                     : AttributeNamePath::Type::SingleAttribute;
+  }
+
+  projections.setCoveringContext(index->collection().id(), index);
+  return projections;
+}
+
 }  // namespace
 
 void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
@@ -730,7 +769,7 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                 }
               }
 
-              indexInfos.emplace_back(JoinNode::IndexInfo{
+              auto info = JoinNode::IndexInfo{
                   .collection = c->collection(),
                   .outVariable = c->outVariable(),
                   .condition = c->condition()->clone(),
@@ -739,11 +778,24 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                   .index = c->getIndexes()[0],
                   .projections = c->projections(),
                   .filterProjections = c->filterProjections(),
+                  .usedAsSatellite = c->isUsedAsSatellite(),
+                  .producesOutput = c->isProduceResult(),
                   .expressions = std::move(constExpressions),
                   .usedKeyFields = computedUseKeyFields,
-                  .constantFields = computedConstantFields,
-                  .usedAsSatellite = c->isUsedAsSatellite(),
-                  .producesOutput = c->isProduceResult()});
+                  .constantFields = computedConstantFields};
+
+              if (c->isLateMaterialized()) {
+                TRI_ASSERT(c->projections().empty());
+                info.isLateMaterialized = true;
+
+                auto [outVar, indexVars] = c->getLateMaterializedInfo();
+                TRI_ASSERT(indexVars.first == c->getIndexes()[0]->id());
+                info.outDocIdVariable = outVar;
+                info.projections = translateLMIndexVarsToProjections(
+                    plan.get(), indexVars, c->getIndexes()[0]);
+              }
+
+              indexInfos.emplace_back(std::move(info));
               handled.emplace(c);
             }
             JoinNode* jn = plan->createNode<JoinNode>(

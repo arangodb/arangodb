@@ -59,11 +59,13 @@ class JoinNode : public ExecutionNode {
     transaction::Methods::IndexHandle index;
     Projections projections;
     Projections filterProjections;
+    bool usedAsSatellite{false};  // TODO maybe use CollectionAccess class
+    bool producesOutput{true};
+    bool isLateMaterialized{false};
+    Variable const* outDocIdVariable = nullptr;
     std::vector<std::unique_ptr<Expression>> expressions;
     std::vector<size_t> usedKeyFields;
     std::vector<size_t> constantFields;
-    bool usedAsSatellite;  // TODO maybe use CollectionAccess class
-    bool producesOutput;
   };
 
   JoinNode(ExecutionPlan* plan, ExecutionNodeId id,

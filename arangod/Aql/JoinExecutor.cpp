@@ -191,6 +191,8 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
       LOG_DEVEL << "Resetting strategy with constant slice: "
                 << _constantBuilder.toJson();
+      LOG_DEVEL << _constantSlices;
+      LOG_DEVEL << "Vector size is: " << _constantSlices.size();
       _strategy->reset(_constantSlices);
     }
 
@@ -498,6 +500,12 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
           } else {
             lookupDocument(k, docIds[k], docProduceCallback);
           }
+        }
+
+        if (idx.isLateMaterialized) {
+          AqlValue v(AqlValueHintUInt(docIds[k].id()));
+          AqlValueGuard guard{v, false};
+          output.moveValueInto(idx.docIdOutputRegister, _currentRow, &guard);
         }
 
         if (idx.filter && idx.filter->projections.usesCoveringIndex()) {

@@ -161,11 +161,11 @@ void RestHandler::trackTaskEnd() noexcept {
   }
 }
 
-RequestStatistics::Item&& RestHandler::stealStatistics() {
+RequestStatistics::Item&& RestHandler::stealRequestStatistics() {
   return std::move(_statistics);
 }
 
-void RestHandler::setStatistics(RequestStatistics::Item&& stat) {
+void RestHandler::setRequestStatistics(RequestStatistics::Item&& stat) {
   _statistics = std::move(stat);
 }
 

@@ -250,9 +250,7 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::next(
   while (true) {
     if (positionAligned) {
       auto result = produceCrossProduct(cb);
-      if (result.seeks > 0) {
-        amountOfSeeks += result.seeks;
-      }
+      amountOfSeeks += result.seeks;
       if (!result.hasMore) {
         positionAligned = false;
         updateHeap();
