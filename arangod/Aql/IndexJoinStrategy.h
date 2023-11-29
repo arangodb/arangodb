@@ -57,6 +57,7 @@ struct IndexDescriptor {
         isUnique(isUnique) {}
   std::unique_ptr<StreamIteratorType> iter;
   std::size_t numProjections{0};
+  std::size_t numConstants{0};
   bool isUnique{false};
 };
 

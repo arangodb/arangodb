@@ -321,7 +321,7 @@ const IndexPrimaryJoinTestSuite = function () {
         let first = docs[0];
         let second = docs[1];
         assertEqual(first.x, 5, "Wrong value for 'x' in first document found");
-        assertEqual(second.y, 5);
+        assertEqual(first.y, second.y);
       });
       assertEqual(qResult.length, 5);
     },

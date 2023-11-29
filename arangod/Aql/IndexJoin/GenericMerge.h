@@ -55,13 +55,13 @@ struct GenericMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
     std::span<SliceType> _position;
     std::span<SliceType> _projections;
     DocIdType& _docId;
-    // size_t _constantSize{0};
+    size_t _constantSize{0};
     bool exhausted{false};
 
     IndexStreamData(std::unique_ptr<StreamIteratorType> iter,
                     std::span<SliceType> position,
-                    std::span<SliceType> projections, DocIdType& docId
-                    /*, size_t constantSize*/);
+                    std::span<SliceType> projections, DocIdType& docId,
+                    size_t constantSize);
     void seekTo(std::span<SliceType> target);
     bool next();
     void reset(std::span<SliceType> constants);
@@ -179,13 +179,13 @@ template<typename SliceType, typename DocIdType, typename KeyCompare>
 GenericMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamData::
     IndexStreamData(std::unique_ptr<StreamIteratorType> iter,
                     std::span<SliceType> position,
-                    std::span<SliceType> projections, DocIdType& docId
-                    /*, std::size_t constantSize*/)
+                    std::span<SliceType> projections, DocIdType& docId,
+                    std::size_t constantSize)
     : _iter(std::move(iter)),
       _position(position),
       _projections(projections),
-      _docId(docId)
-/*, _constantSize(constantSize)*/ {
+      _docId(docId),
+      _constantSize(constantSize) {
   exhausted = !_iter->position(_position);
   LOG_INDEX_MERGER << "iter at " << _position[0];
 }
@@ -238,7 +238,7 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::GenericMergeJoin(
     indexes.emplace_back(std::move(desc.iter),
                          std::span<SliceType>{keyBuffer, keySliceIter},
                          std::span<SliceType>{projections, projectionsIter},
-                         *(docIdIter++) /*, desc.numConstants*/);
+                         *(docIdIter++), desc.numConstants);
   }
 }
 

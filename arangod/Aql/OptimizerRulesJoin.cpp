@@ -715,14 +715,14 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
               if (candidates.front() == c) {
                 // TODO: Implement this for n-candidates
                 if (!constExpressionNodes.empty()) {
-                  // TODO: Only one expression is supported
-                  TRI_ASSERT(constExpressions.size() == 1);
                   for (auto const& constExprNode : constExpressionNodes) {
                     auto* constExpr = constExprNode->clone(plan->getAst());
                     auto e =
                         std::make_unique<Expression>(plan->getAst(), constExpr);
                     constExpressions.push_back(std::move(e));
                   }
+                  TRI_ASSERT(constExpressions.size() == 1);
+                  // TODO: Only one expression is supported right now
                   computedConstantFields = {0};
                   computedUseKeyFields = {1};
                 } else {

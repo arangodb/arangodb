@@ -689,6 +689,8 @@ void JoinExecutor::constructStrategy() {
     auto& desc = indexDescription.emplace_back();
     desc.isUnique = idx.index->unique();
     desc.numProjections = 0;
+    desc.numConstants =
+        idx.constantFields.size();  // TODO:  HEIKO Double check this.
 
     if (idx.projections.usesCoveringIndex()) {
       TRI_ASSERT(!idx.filter.has_value() ||
@@ -725,6 +727,7 @@ void JoinExecutor::constructStrategy() {
   // special implementations for n = 2, 3, ...
   // TODO maybe make this an template parameter
   _strategy = IndexJoinStrategyFactory{}.createStrategy(
-      std::move(indexDescription), 1,
+      std::move(indexDescription), 1,  // TODO: HEIKO, remove this static 1 and
+                                       // put it into the indexDescription
       _infos.query->queryOptions().desiredJoinStrategy);
 }
