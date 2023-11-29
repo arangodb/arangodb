@@ -1,6 +1,8 @@
 v3.11.6 (XXXX-XX-XX)
 --------------------
 
+* FE-403: Fix loader instantiation.
+
 * Fix display of "unique" column in indexes overview of collections.
 
 * Updated OpenSSL to 3.0.12.
