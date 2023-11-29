@@ -281,7 +281,6 @@
 
       this.userCollection = new window.ArangoUsers();
 
-
       this.initOnce = _.once(function () {
         const callback = function (error, isCoordinator) {
           if (isCoordinator === true) {
