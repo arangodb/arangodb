@@ -269,7 +269,7 @@ const IndexPrimaryJoinTestSuite = function () {
     },
     // TODO: Add additional FILTER for doc2._key (e.g. calculation compare last character)
 
-    testJoinFixedValuesEasy: function () {
+    testJoinConstantValuesOneOuterOneInner: function () {
       const collectionA = db._createDocumentCollection('A');
       collectionA.ensureIndex({type: "persistent", fields: ["x", "y"], unique: false});
 
@@ -316,6 +316,58 @@ const IndexPrimaryJoinTestSuite = function () {
         assertEqual(first.y, second.y);
       });
       assertEqual(qResult.length, 5);
+    },
+
+    testJoinConstantValuesOneOuterMultipleInner: function () {
+      const collectionA = db._createDocumentCollection('A');
+      collectionA.ensureIndex({type: "persistent", fields: ["x", "y"], unique: false});
+
+      const collectionB = db._createDocumentCollection('B');
+      collectionB.ensureIndex({type: "persistent", fields: ["x", "y", "z"], unique: false});
+
+      // insert some data. Every second document in A has x = 5.
+      // Means, we do have five documents with x = 5 in this example.
+      // Apart from that, just incrementing y from 0 to 10.
+      for (let i = 0; i < 10; i++) {
+        collectionA.insert({
+          _key: JSON.stringify(i),
+          x: (i % 2 === 0) ? i : 5,
+          y: i,
+        });
+        collectionB.insert({
+          _key: JSON.stringify(i),
+          x: 10,
+          y: i,
+          z: i
+        });
+      }
+
+      const queryOptions = {
+        optimizer: {
+          rules: ["+join-index-nodes"]
+        },
+        maxNumberOfPlans: 1
+      };
+
+      const queryStringEasy = `
+        FOR doc1 IN A
+          FILTER doc1.x == 5
+            FOR doc2 IN B
+            FILTER doc1.y == doc2.y
+            FILTER doc2.z == 8
+            RETURN [doc1, doc2]`;
+
+      db._explain(queryStringEasy, null, queryOptions);
+
+      /*const q = db._query(queryStringEasy, null, queryOptions);
+      const qResult = q.toArray();
+      qResult.forEach((docs) => {
+        let first = docs[0];
+        let second = docs[1];
+        assertEqual(first.x, 5, "Wrong value for 'x' in first document found");
+        assertEqual(first.y, second.y);
+      });
+      assertEqual(qResult.length, 5);*/
     },
 
     testJoinFixedValuesComplex: function () {
