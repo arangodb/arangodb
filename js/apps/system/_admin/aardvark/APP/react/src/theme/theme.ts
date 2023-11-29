@@ -14,9 +14,6 @@ export const theme = extendTheme({
     heading: "Inter, sans-serif",
     body: "Inter, sans-serif"
   },
-  shadows: {
-    outline: "0 0 0 3px rgb(126 173 53 / 60%)"
-  },
   colors: {
     green: {
       50: "#f5faeb",

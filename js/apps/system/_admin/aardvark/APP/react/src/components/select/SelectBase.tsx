@@ -81,6 +81,19 @@ export const getSelectBase = <IsMulti extends boolean = false>(
               overflow: "hidden",
               textOverflow: "ellipsis"
             }),
+            control: (baseStyles, inputProps) => ({
+              ...baseStyles,
+              borderColor: inputProps.isFocused ? "var(--blue-600)" : undefined,
+              boxShadow: inputProps.isFocused
+                ? "0 0 0 1px var(--blue-600)"
+                : undefined,
+              ":hover": {
+                borderColor: inputProps.isFocused
+                  ? "var(--blue-600)"
+                  : "var(--gray-300)"
+              },
+              ...props.styles?.control?.(baseStyles, inputProps)
+            }),
             menuPortal: base => ({ ...base, zIndex: 9999 }),
             input: (baseStyles, inputProps) => ({
               ...baseStyles,

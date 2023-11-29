@@ -328,7 +328,7 @@
   outline-style: none;
 
   &:focus {
-    border-color: $c-positive;
+    border-color: var(--blue-600);
     box-shadow: none;
     outline: none;
     outline-color: $c-transp;

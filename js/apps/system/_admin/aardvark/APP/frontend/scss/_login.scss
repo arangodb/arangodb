@@ -141,7 +141,7 @@
     width: 100%;
 
     &:focus {
-      border: 2px solid $c-positive !important;
+      border: 2px solid var(--blue-600) !important;
       box-shadow: none !important;
     }
   }
