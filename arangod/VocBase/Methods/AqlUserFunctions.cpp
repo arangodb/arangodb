@@ -266,8 +266,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase,
         absl::StrCat("(function() { var callback = ", cvString.stringView(),
                      "; return callback; })()");
 
-    res = contextGuard.executor()->runInContext([&](v8::Isolate* isolate)
-                                                    -> Result {
+    res = contextGuard.runInContext([&](v8::Isolate* isolate) -> Result {
       v8::HandleScope scope(isolate);
 
       v8::TryCatch tryCatch(isolate);

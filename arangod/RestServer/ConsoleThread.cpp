@@ -75,13 +75,13 @@ void ConsoleThread::run() {
     FATAL_ERROR_EXIT();
   }
 
-  // enter V8 context
-  JavaScriptSecurityContext securityContext =
-      JavaScriptSecurityContext::createAdminScriptContext();
-  V8ExecutorGuard guard(_vocbase, securityContext);
-
   // work
   try {
+    // enter V8 context
+    JavaScriptSecurityContext securityContext =
+        JavaScriptSecurityContext::createAdminScriptContext();
+    V8ExecutorGuard guard(_vocbase, securityContext);
+
     inner(guard);
   } catch (UserAbortedException const&) {
     LOG_TOPIC("6e7fd", TRACE, arangodb::Logger::FIXME) << "user aborted";
@@ -94,7 +94,7 @@ void ConsoleThread::run() {
   _server.beginShutdown();
 }
 
-void ConsoleThread::inner(V8ExecutorGuard const& guard) {
+void ConsoleThread::inner(V8ExecutorGuard& guard) {
   // flush all log output before we print the console prompt
   Logger::flush();
 
@@ -103,7 +103,7 @@ void ConsoleThread::inner(V8ExecutorGuard const& guard) {
             << ")" << std::endl;
   std::cout << "Copyright (c) ArangoDB GmbH" << std::endl;
 
-  guard.executor()->runInContext([this](v8::Isolate* isolate) -> Result {
+  guard.runInContext([this](v8::Isolate* isolate) -> Result {
     v8::HandleScope globalScope(isolate);
 
     // .............................................................................

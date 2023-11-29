@@ -1041,9 +1041,9 @@ void V8DealerFeature::collectGarbage() {
             << ", wasDirty: " << wasDirty;
         bool hasActiveExternals = false;
         {
-          // this guard will lock and enter the isolate
-          // and automatically exit and unlock it when it runs out of scope
-          V8ExecutorEntryGuard executorGuard(executor);
+          executor->lockAndEnter();
+          auto guard =
+              scopeGuard([&]() noexcept { executor->unlockAndExit(); });
 
           executor->runInContext(
               [&](v8::Isolate* isolate) -> Result {
@@ -1907,9 +1907,8 @@ void V8DealerFeature::shutdownExecutor(V8Executor* executor) {
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
       isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
   {
-    // this guard will lock and enter the isolate
-    // and automatically exit and unlock it when it runs out of scope
-    V8ExecutorEntryGuard executorGuard(executor);
+    executor->lockAndEnter();
+    auto guard = scopeGuard([&]() noexcept { executor->unlockAndExit(); });
 
     // note: executeGlobalMethods must be false here to prevent
     // shutdown errors.
@@ -1981,6 +1980,12 @@ V8ExecutorGuard::~V8ExecutorGuard() {
   }
 }
 
+Result V8ExecutorGuard::runInContext(
+    std::function<Result(v8::Isolate*)> const& cb, bool executeGlobalMethods) {
+  TRI_ASSERT(_executor != nullptr);
+  return _executor->runInContext(cb, executeGlobalMethods);
+}
+
 V8ConditionalExecutorGuard::V8ConditionalExecutorGuard(
     TRI_vocbase_t* vocbase, JavaScriptSecurityContext const& securityContext)
     : _vocbase(vocbase),
@@ -2004,4 +2009,26 @@ V8ConditionalExecutorGuard::~V8ConditionalExecutorGuard() {
     } catch (...) {
     }
   }
+}
+
+Result V8ConditionalExecutorGuard::runInContext(
+    std::function<Result(v8::Isolate*)> const& cb, bool executeGlobalMethods) {
+  TRI_ASSERT(_isolate != nullptr);
+
+  Result res;
+  if (_executor != nullptr) {
+    res = _executor->runInContext(cb, executeGlobalMethods);
+  } else {
+    v8::HandleScope scope(_isolate);
+
+    v8::Handle<v8::Context> context = _isolate->GetCurrentContext();
+    TRI_ASSERT(!context.IsEmpty());
+    {
+      v8::Context::Scope contextScope(context);
+      TRI_ASSERT(_isolate->InContext());
+
+      res = cb(_isolate);
+    }
+  }
+  return res;
 }

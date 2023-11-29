@@ -163,10 +163,11 @@ class v8_action_t final : public TRI_action_t {
         *data = static_cast<void*>(guard.isolate());
       }
 
-      guard.executor()->runInContext([&](v8::Isolate* isolate) -> Result {
+      guard.runInContext([&](v8::Isolate* isolate) -> Result {
         v8::HandleScope scope(isolate);
 
-        auto func = v8::Local<v8::Function>::New(isolate, it->second);
+        v8::Handle<v8::Function> func =
+            v8::Local<v8::Function>::New(isolate, it->second);
 
         try {
           result = ExecuteActionVocbase(vocbase, isolate, this, func, request,

@@ -58,7 +58,7 @@ class ConsoleThread final : public ServerThread<ArangodServer> {
   static std::mutex serverConsoleMutex;
 
  private:
-  void inner(V8ExecutorGuard const&);
+  void inner(V8ExecutorGuard&);
 
   TRI_vocbase_t* _vocbase;
   std::atomic<bool> _userAborted;

@@ -113,7 +113,7 @@ RestStatus RestAdminExecuteHandler::execute() {
             allowUseDatabase);
     V8ExecutorGuard guard(&_vocbase, securityContext);
 
-    guard.executor()->runInContext([&](v8::Isolate* isolate) -> Result {
+    guard.runInContext([&](v8::Isolate* isolate) -> Result {
       v8::HandleScope scope(isolate);
 
       v8::Handle<v8::Context> context = isolate->GetCurrentContext();

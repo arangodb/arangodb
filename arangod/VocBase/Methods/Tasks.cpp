@@ -437,13 +437,13 @@ void Task::work(ExecContext const* exec) {
                                                // access to dbs
   V8ExecutorGuard guard(&_dbGuard->database(), securityContext);
 
-  guard.executor()->runInContext([this](v8::Isolate* isolate) -> Result {
+  guard.runInContext([this](v8::Isolate* isolate) -> Result {
     v8::HandleScope scope(isolate);
 
     // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
-    auto current = isolate->GetCurrentContext()->Global();
+    v8::Handle<v8::Object> global = isolate->GetCurrentContext()->Global();
     auto ctor = v8::Local<v8::Function>::Cast(
-        current
+        global
             ->Get(isolate->GetCurrentContext(),
                   TRI_V8_ASCII_STRING(isolate, "Function"))
             .FromMaybe(v8::Local<v8::Value>()));
@@ -470,14 +470,14 @@ void Task::work(ExecContext const* exec) {
       // call the function within a try/catch
       try {
         v8::TryCatch tryCatch(isolate);
-        action->Call(TRI_IGETC, current, 1, &fArgs)
+        action->Call(isolate->GetCurrentContext(), global, 1, &fArgs)
             .FromMaybe(v8::Local<v8::Value>());
         if (tryCatch.HasCaught()) {
           if (tryCatch.CanContinue()) {
             TRI_LogV8Exception(isolate, &tryCatch);
           } else {
-            TRI_GET_GLOBALS();
-
+            TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
+                isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
             v8g->_canceled = true;
             LOG_TOPIC("131e8", WARN, arangodb::Logger::FIXME)
                 << "caught non-catchable exception (aka termination) in job";

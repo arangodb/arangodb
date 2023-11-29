@@ -518,7 +518,7 @@ Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
 
       Task::removeTasksForDatabase(dbName);
 
-      res = guard.executor()->runInContext([&](v8::Isolate* isolate) -> Result {
+      res = guard.runInContext([&](v8::Isolate* isolate) -> Result {
         v8::HandleScope scope(isolate);
 
         // clear collections in cache object

@@ -81,7 +81,7 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
       JavaScriptSecurityContext::createAdminScriptContext();
   V8ExecutorGuard guard(database.get(), securityContext);
 
-  guard.executor()->runInContext([&](v8::Isolate* isolate) -> Result {
+  guard.runInContext([&](v8::Isolate* isolate) -> Result {
     v8::HandleScope globalScope(isolate);
 
     for (auto const& script : scripts) {

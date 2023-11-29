@@ -35,6 +35,7 @@
 
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/ConditionVariable.h"
+#include "Basics/Result.h"
 #include "Metrics/Fwd.h"
 #include "RestServer/arangod.h"
 #include "Utils/DatabaseGuard.h"
@@ -229,7 +230,8 @@ class V8ExecutorGuard {
   ~V8ExecutorGuard();
 
   v8::Isolate* isolate() const noexcept { return _isolate; }
-  V8Executor* executor() const noexcept { return _executor; }
+  Result runInContext(std::function<Result(v8::Isolate*)> const& cb,
+                      bool executeGlobalMethods = true);
 
  private:
   TRI_vocbase_t* _vocbase;
@@ -249,7 +251,8 @@ class V8ConditionalExecutorGuard {
   ~V8ConditionalExecutorGuard();
 
   v8::Isolate* isolate() const noexcept { return _isolate; }
-  V8Executor* executor() const noexcept { return _executor; }
+  Result runInContext(std::function<Result(v8::Isolate*)> const& cb,
+                      bool executeGlobalMethods = true);
 
  private:
   TRI_vocbase_t* _vocbase;

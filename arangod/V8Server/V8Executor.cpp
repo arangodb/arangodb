@@ -119,15 +119,18 @@ void V8Executor::runCodeInContext(std::string_view code,
 
 Result V8Executor::runInContext(std::function<Result(v8::Isolate*)> const& cb,
                                 bool executeGlobalMethods) {
+  TRI_ASSERT(_isolate != nullptr);
   TRI_ASSERT(!_isolate->InContext());
-  TRI_ASSERT(!_context.IsEmpty());
 
   Result res;
 
   v8::HandleScope scope(_isolate);
-  auto localContext = v8::Local<v8::Context>::New(_isolate, _context);
+
+  v8::Handle<v8::Context> context =
+      v8::Local<v8::Context>::New(_isolate, _context);
+  TRI_ASSERT(!context.IsEmpty());
   {
-    v8::Context::Scope contextScope(localContext);
+    v8::Context::Scope contextScope(context);
     TRI_ASSERT(_isolate->InContext());
 
     std::vector<GlobalExecutorMethods::MethodType> copy;
@@ -140,7 +143,9 @@ Result V8Executor::runInContext(std::function<Result(v8::Isolate*)> const& cb,
     }
     if (!copy.empty()) {
       // save old security context settings
-      TRI_GET_GLOBALS2(_isolate);
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
+          _isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
+
       JavaScriptSecurityContext old(v8g->_securityContext);
 
       auto restorer = scopeGuard([&]() noexcept {
@@ -162,6 +167,7 @@ Result V8Executor::runInContext(std::function<Result(v8::Isolate*)> const& cb,
 
     res = cb(_isolate);
   }
+
   TRI_ASSERT(!_isolate->InContext());
   return res;
 }
@@ -205,10 +211,3 @@ void V8Executor::handleCancellationCleanup() {
   runCodeInContext("require('module')._cleanupCancelation();",
                    "context cleanup method");
 }
-
-V8ExecutorEntryGuard::V8ExecutorEntryGuard(V8Executor* executor)
-    : _executor(executor) {
-  _executor->lockAndEnter();
-}
-
-V8ExecutorEntryGuard::~V8ExecutorEntryGuard() { _executor->unlockAndExit(); }

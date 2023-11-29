@@ -108,15 +108,4 @@ class V8Executor {
   std::vector<GlobalExecutorMethods::MethodType> _globalMethods;
 };
 
-class V8ExecutorEntryGuard {
- public:
-  explicit V8ExecutorEntryGuard(V8Executor* executor);
-  V8ExecutorEntryGuard(V8ExecutorEntryGuard const&) = delete;
-  V8ExecutorEntryGuard& operator=(V8ExecutorEntryGuard const&) = delete;
-  ~V8ExecutorEntryGuard();
-
- private:
-  V8Executor* _executor;
-};
-
 }  // namespace arangodb
