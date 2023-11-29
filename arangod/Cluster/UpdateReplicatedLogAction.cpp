@@ -88,6 +88,11 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
   });
 
   if (result.fail()) {
+    // Any errors apart from "database not found" will be reported properly.
+    // If the database has been already dropped, the replicated log is gone
+    // anyway, so we can safely ignore the error. This may happen when someone
+    // drops the database while the maintenance worker is still updating the
+    // replicated log, which is a very rare case.
     if (result.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
       LOG_TOPIC("fe3d5", DEBUG, Logger::REPLICATION2)
           << "Database of log " << _description.get(DATABASE) << '/' << logId
@@ -100,7 +105,6 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
         << "failed to modify replicated log " << _description.get(DATABASE)
         << '/' << logId << "; " << result.errorMessage();
 
-    // Any errors apart from "database not found" will be reported properly.
     this->result(result);
   }
 
