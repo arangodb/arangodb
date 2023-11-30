@@ -24,6 +24,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateMethods.h"
 
 #include "Cluster/ServerState.h"
+#include "Inspection/VPack.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
