@@ -457,14 +457,16 @@ bool constIndexConditionsMatches(
   return eligible;
 }
 
-std::pair<bool, std::vector<AstNode*>> checkCandidatesEligible(
+std::pair<bool, std::map<ExecutionNodeId, std::vector<AstNode*>>>
+checkCandidatesEligible(
     ExecutionPlan& plan,
     containers::SmallVector<IndexNode*, 8> const& candidates) {
   // This flag is set to true if the first index node has a lookup condition
   // and all other indexes do match the order of conditions and the variables
-  std::vector<AstNode*> constantValues;
-  std::map<Variable const*,
-           std::vector<std::vector<arangodb::basics::AttributeName>>>
+  std::map<ExecutionNodeId, std::vector<AstNode*>> constantValues;
+  std::map<ExecutionNodeId,
+           std::map<Variable const*,
+                    std::vector<std::vector<arangodb::basics::AttributeName>>>>
       outerCandidateConstantVariables = {};
 
   size_t candidatePosition = 0;
@@ -496,17 +498,18 @@ std::pair<bool, std::vector<AstNode*>> checkCandidatesEligible(
                 // allowed here then
                 if (lhsi->type == NODE_TYPE_VALUE) {
                   LOG_JOIN_OPTIMIZER_RULE << "Setting constant value to lhsi";
-                  constantValues.push_back(lhsi);
+                  constantValues[candidate->id()].emplace_back(lhsi);
                 } else if (rhsi->type == NODE_TYPE_VALUE) {
                   LOG_JOIN_OPTIMIZER_RULE << "Setting constant value to rhsi";
-                  constantValues.push_back(rhsi);
+                  constantValues[candidate->id()].emplace_back(rhsi);
                 }
               }
             }
           }
-          if (!constantValues.empty()) {
+          if (constantValues.contains(candidate->id()) &&
+              !constantValues[candidate->id()].empty()) {
             for (auto const* var : candidate->getVariablesSetHere()) {
-              outerCandidateConstantVariables.try_emplace(
+              outerCandidateConstantVariables[candidate->id()].try_emplace(
                   var, candidate->condition()->getConstAttributes(var, false));
             }
           }
@@ -551,9 +554,11 @@ std::pair<bool, std::vector<AstNode*>> checkCandidatesEligible(
         return {false, {}};
       }
 
-      if (!outerCandidateConstantVariables.empty()) {
+      if (outerCandidateConstantVariables.contains(candidate->id()) &&
+          !outerCandidateConstantVariables[candidate->id()].empty()) {
         bool eligible = constIndexConditionsMatches(
-            candidates[0], candidate, outerCandidateConstantVariables);
+            candidates[0], candidate,
+            outerCandidateConstantVariables[candidate->id()]);
         if (!eligible) {
           LOG_JOIN_OPTIMIZER_RULE
               << "IndexNode's outer loop has a condition, but inner loop "
@@ -613,11 +618,20 @@ std::pair<bool, std::vector<AstNode*>> checkCandidatesEligible(
     // check if index does support constant values
     {
       if (!constantValues.empty()) {
+        size_t amountOfFields = candidate->getIndexes()[0]->fields().size();
+        if (amountOfFields == 1 || constantValues.size() >= amountOfFields) {
+          constantValues.clear();
+          continue;
+        }
         IndexStreamOptions opts;
+        opts.usedKeyFields = {0};  // for now only 0 is supported
         std::vector<size_t> constantFieldsForVerification{};
-        for (size_t i = 0; i < constantValues.size(); ++i) {
-          constantFieldsForVerification.push_back(
-              {i});  // just used as a dummy here for verification
+        // TODO: Adjust this whole area.
+        for (auto const& cV : constantValues) {
+          for (auto const& constants : constantValues[cV.first]) {
+            constantFieldsForVerification.push_back(
+                {0});  // just used as a dummy here for verification
+          }
         }
         if (!candidate->getIndexes()[0]->supportsStreamInterface(opts)) {
           LOG_JOIN_OPTIMIZER_RULE << "IndexNode's index does not "
@@ -751,11 +765,11 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                                   << " index nodes that qualify for joining";
 
           // First: Eligible bool, Second: Vector of constant expressions
-          std::pair<bool, std::vector<AstNode*>> candidatesResult =
-              checkCandidatesEligible(*plan, candidates);
+          std::pair<bool, std::map<ExecutionNodeId, std::vector<AstNode*>>>
+              candidatesResult = checkCandidatesEligible(*plan, candidates);
           bool eligible = candidatesResult.first;
-          std::vector<AstNode*> constExpressionNodes =
-              std::move(candidatesResult.second);
+          std::map<ExecutionNodeId, std::vector<AstNode*>>
+              constExpressionNodes = std::move(candidatesResult.second);
 
           if (eligible) {
             // we will now replace all candidate IndexNodes with a JoinNode,
@@ -769,22 +783,21 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
               std::vector<size_t> computedUseKeyFields{};
               std::vector<size_t> computedConstantFields{};
 
-              if (candidates.front() == c) {
-                // TODO: Implement this for n-candidates
-                if (!constExpressionNodes.empty()) {
-                  for (auto const& constExprNode : constExpressionNodes) {
-                    auto* constExpr = constExprNode->clone(plan->getAst());
-                    auto e =
-                        std::make_unique<Expression>(plan->getAst(), constExpr);
-                    constExpressions.push_back(std::move(e));
-                  }
-                  TRI_ASSERT(constExpressions.size() == 1);
-                  // TODO: Only one expression is supported right now
-                  computedConstantFields = {0};
-                  computedUseKeyFields = {1};
-                } else {
-                  computedUseKeyFields = {0};
+              if (!constExpressionNodes[c->id()].empty()) {
+                for (auto const& constExprNode :
+                     constExpressionNodes[c->id()]) {
+                  auto* constExpr = constExprNode->clone(plan->getAst());
+                  auto e =
+                      std::make_unique<Expression>(plan->getAst(), constExpr);
+                  constExpressions.push_back(std::move(e));
                 }
+                TRI_ASSERT(constExpressions.size() == 1);
+                // TODO: Only one expression is supported right now
+                // TODO: THIS NEEDS TO BE FIXED ASAP
+                computedUseKeyFields = {1};
+                computedConstantFields = {0};
+              } else {
+                computedUseKeyFields = {0};
               }
 
               auto info = JoinNode::IndexInfo{
