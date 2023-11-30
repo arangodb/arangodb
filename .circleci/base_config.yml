@@ -212,6 +212,11 @@ jobs:
           name: Print SCCache Settings
           command: sccache -s
       - run:
+          name: Setup SCCache for clang
+          command: |
+            ln /usr/bin/sccache /usr/local/bin/clang
+            ln /usr/bin/sccache /usr/local/bin/clang++
+      - run:
           name: Configure
           command: |
             cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib
