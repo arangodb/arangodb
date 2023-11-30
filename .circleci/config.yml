@@ -12,6 +12,9 @@ parameters:
     # contains a branch with the same name as the arangodb repo. If this is the case
     # we use it, otherwise we fall back to "devel".
     default: ""
+  rebuild-docker-images:
+    type: boolean
+    default: false
   build-docker-image:
     type: string
     # The actual default value will be read from the file  BUILD_DOCKER_TAG in the
@@ -90,7 +93,7 @@ jobs:
           name: Generate config
           command: |
             CHANGED_DOCKER_FILES=$(curl https://api.github.com/repos/arangodb/arangodb/commits/$CIRCLE_SHA1 | jq '.files[]."filename"' | { grep "scripts/docker" || true; })
-            if [ -n "$CHANGED_DOCKER_FILES" ]; then
+            if [ -n "$CHANGED_DOCKER_FILES" ] || [ "<< pipeline.parameters.rebuild-docker-images >>" == "true" ]; then
               cp .circleci/docker_build.yml continuation_config.yml
             else
               pip install pyyaml
