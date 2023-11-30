@@ -9,7 +9,6 @@ export const useSyncQueryExecuteJob = ({
 }: {
   queryResult: QueryResultType;
   asyncJobId: string;
-  index: number;
 }) => {
   const {
     setQueryResultById,

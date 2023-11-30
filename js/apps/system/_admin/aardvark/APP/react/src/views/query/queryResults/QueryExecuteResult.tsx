@@ -35,8 +35,7 @@ export const QueryExecuteResult = ({
 }) => {
   useSyncQueryExecuteJob({
     queryResult,
-    asyncJobId: queryResult.asyncJobId,
-    index
+    asyncJobId: queryResult.asyncJobId
   });
   const {
     displayTypes,
