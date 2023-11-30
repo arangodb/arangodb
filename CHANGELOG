@@ -3,6 +3,13 @@ devel
 
 * FE-388: Update UI colors & fonts to new styles.
 
+* FE-372: Truncate long saved query names in UI.
+
+* EE Only: When creating a disjoint SmartGraph or a SmartJoin collection where
+  the list of shard names would go from a k digit number to a k+1 digit number,
+  some AQL queries would mismatch the shard list of one collection with the others.
+  The data is all in the correct place, this is an issue only in read operations.
+
 * Updated OpenSSL to 3.1.4.
 
 * Solve a potential blockage during hotbackup by not stopping read-only

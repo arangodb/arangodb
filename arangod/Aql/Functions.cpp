@@ -9104,12 +9104,14 @@ AqlValue functions::ShardId(ExpressionContext* expressionContext,
 
   std::string shardId;
   if (cluster) {
-    auto const errorCode = collection->getResponsibleShard(keys, true, shardId);
-    if (errorCode != TRI_ERROR_NO_ERROR) {
+    auto maybeShardID = collection->getResponsibleShard(keys, true);
+    if (maybeShardID.fail()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          errorCode, "could not find shard for document by shard keys " +
-                         keys.toJson() + " in " + colName);
+          maybeShardID.errorNumber(),
+          "could not find shard for document by shard keys " + keys.toJson() +
+              " in " + colName);
     }
+    shardId = maybeShardID.get();
   } else {  // Agents, single server, AFO return the collection name in favour
             // of AQL universality
     shardId = colName;
