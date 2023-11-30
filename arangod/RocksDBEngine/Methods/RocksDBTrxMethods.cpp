@@ -123,6 +123,25 @@ rocksdb::Status RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
   return _rocksTransaction->Get(ro, cf, key, val);
 }
 
+void RocksDBTrxMethods::MultiGet(rocksdb::ColumnFamilyHandle& family,
+                                 size_t count, rocksdb::Slice const* keys,
+                                 rocksdb::PinnableSlice* values,
+                                 rocksdb::Status* statuses,
+                                 ReadOwnWrites readOwnWrites) {
+  if (readOwnWrites == ReadOwnWrites::no) {
+    if (_readWriteBatch) {
+      _readWriteBatch->MultiGetFromBatchAndDB(_db, _readOptions, &family, count,
+                                              keys, values, statuses, false);
+    } else {
+      _db->MultiGet(_readOptions, &family, count, keys, values, statuses,
+                    false);
+    }
+  } else {
+    _rocksTransaction->MultiGet(_readOptions, &family, count, keys, values,
+                                statuses, false);
+  }
+}
+
 std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
     rocksdb::ColumnFamilyHandle* cf, ReadOptionsCallback readOptionsCallback) {
   TRI_ASSERT(cf != nullptr);

@@ -55,6 +55,10 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
                       rocksdb::PinnableSlice*, ReadOwnWrites) override;
 
+  void MultiGet(rocksdb::ColumnFamilyHandle& family, size_t count,
+                rocksdb::Slice const* keys, rocksdb::PinnableSlice* values,
+                rocksdb::Status* statuses, ReadOwnWrites) final;
+
   std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ColumnFamilyHandle*,
                                                  ReadOptionsCallback) override;
 

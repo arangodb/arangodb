@@ -1142,8 +1142,9 @@ Result RocksDBCollection::lookup(transaction::Methods* trx,
   values.resize(tokens.size());
   std::vector<rocksdb::Status> statuses;
   statuses.resize(tokens.size());
-  mthd->MultiGet(*family, tokens.size(), keys.data(), values.data(),
-                 statuses.data());
+  mthd->MultiGet(
+      *family, tokens.size(), keys.data(), values.data(), statuses.data(),
+      options.readOwnWrites ? ReadOwnWrites::yes : ReadOwnWrites::no);
 
   for (std::size_t k = 0; k < tokens.size(); k++) {
     if (!statuses[k].ok()) {

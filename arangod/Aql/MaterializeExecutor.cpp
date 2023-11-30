@@ -80,8 +80,10 @@ MaterializeRocksDBExecutor::produceRows(AqlItemBlockInputRange& inputRange,
               result.errorNumber(),
               basics::StringUtils::concatT(
                   "failed to materialize document ", RevisionId(id).toString(),
-                  " for collection ", _infos.collection()->name(), ": ",
-                  result.errorMessage()));
+                  " (", id.id(),
+                  ")"
+                  " for collection ",
+                  _infos.collection()->name(), ": ", result.errorMessage()));
         }
         if (data) {
           output.moveValueInto(docOutReg, *inputRowIterator, &data);

@@ -140,8 +140,8 @@ void RocksDBReadOnlyBaseMethods::MultiGet(rocksdb::ColumnFamilyHandle& family,
                                           size_t count,
                                           rocksdb::Slice const* keys,
                                           rocksdb::PinnableSlice* values,
-                                          rocksdb::Status* statuses) {
-  // Timestamps and multiple ColumnFamilies are not necessary for us
+                                          rocksdb::Status* statuses,
+                                          ReadOwnWrites) {
   _db->MultiGet(_readOptions, &family, count, keys, values, statuses, false);
 }
 

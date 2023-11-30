@@ -56,6 +56,10 @@ class RocksDBBatchedWithIndexMethods final : public RocksDBBatchedBaseMethods {
                                RocksDBKey const&) override;
   void PutLogData(rocksdb::Slice const&) override;
 
+  void MultiGet(rocksdb::ColumnFamilyHandle& family, size_t count,
+                rocksdb::Slice const* keys, rocksdb::PinnableSlice* values,
+                rocksdb::Status* statuses, ReadOwnWrites) override;
+
  private:
   size_t currentWriteBatchSize() const noexcept override;
 

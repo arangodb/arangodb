@@ -79,6 +79,9 @@ void arangodb::aql::batchMaterializeDocumentsRule(
                << "no late materilize support";
       continue;
     }
+    if (index->canReadOwnWrites() == ReadOwnWrites::yes) {
+      continue;
+    }
 
     LOG_RULE << "FOUND INDEX NODE " << index->id();
 

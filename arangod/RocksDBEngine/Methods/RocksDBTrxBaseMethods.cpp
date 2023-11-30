@@ -592,10 +592,14 @@ void RocksDBTrxBaseMethods::MultiGet(rocksdb::Snapshot const* snapshot,
 void RocksDBTrxBaseMethods::MultiGet(rocksdb::ColumnFamilyHandle& family,
                                      size_t count, rocksdb::Slice const* keys,
                                      rocksdb::PinnableSlice* values,
-                                     rocksdb::Status* statuses) {
-  // Timestamps and multiple ColumnFamilies are not necessary for us
-  _rocksTransaction->MultiGet(_readOptions, &family, count, keys, values,
-                              statuses, false);
+                                     rocksdb::Status* statuses,
+                                     ReadOwnWrites readOwnWrites) {
+  if (readOwnWrites == ReadOwnWrites::yes) {
+    _rocksTransaction->MultiGet(_readOptions, &family, count, keys, values,
+                                statuses, false);
+  } else {
+    _db->MultiGet(_readOptions, &family, count, keys, values, statuses, false);
+  }
 }
 
 size_t RocksDBTrxBaseMethods::currentWriteBatchSize() const noexcept {
