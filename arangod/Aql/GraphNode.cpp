@@ -712,16 +712,6 @@ void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
     }
   }
 
-  // Out variables
-  if (isVertexOutVariableUsedLater()) {
-    nodes.add(VPackValue("vertexOutVariable"));
-    vertexOutVariable()->toVelocyPack(nodes);
-  }
-  if (isEdgeOutVariableUsedLater()) {
-    nodes.add(VPackValue("edgeOutVariable"));
-    edgeOutVariable()->toVelocyPack(nodes);
-  }
-
   nodes.add(VPackValue("optimizedOutVariables"));
   {
     VPackArrayBuilder guard(&nodes);

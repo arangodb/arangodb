@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed BTS-1701: Assertion triggered in AQL Traversal on edge PRUNE.
+
 * FE-372: Truncate long saved query names in UI.
 
 * EE Only: When creating a disjoint SmartGraph or a SmartJoin collection where
