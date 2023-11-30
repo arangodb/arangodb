@@ -191,6 +191,13 @@ void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
   buffer.append(" (").append(arangodb::signals::name(signal));
 #ifndef _WIN32
   if (info != nullptr) {
+    // signal sub type, if available
+    std::string_view subType =
+        arangodb::signals::subtypeName(signal, info->si_code);
+    if (!subType.empty()) {
+      buffer.append(", sub type ");
+      buffer.append(subType);
+    }
     // pid that sent the signal
     buffer.append(") from pid ").appendUInt64(uint64_t(info->si_pid));
     printed = true;
