@@ -594,7 +594,8 @@ void RocksDBTrxBaseMethods::MultiGet(rocksdb::ColumnFamilyHandle& family,
                                      rocksdb::PinnableSlice* values,
                                      rocksdb::Status* statuses) {
   // Timestamps and multiple ColumnFamilies are not necessary for us
-  _db->MultiGet(_readOptions, &family, count, keys, values, statuses, false);
+  _rocksTransaction->MultiGet(_readOptions, &family, count, keys, values,
+                              statuses, false);
 }
 
 size_t RocksDBTrxBaseMethods::currentWriteBatchSize() const noexcept {

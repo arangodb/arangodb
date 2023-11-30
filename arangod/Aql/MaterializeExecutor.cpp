@@ -78,10 +78,10 @@ MaterializeRocksDBExecutor::produceRows(AqlItemBlockInputRange& inputRange,
         if (result.fail()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               result.errorNumber(),
-              basics::StringUtils::concatT("failed to materialize document ",
-                                           id.id(), " for collection ",
-                                           _infos.collection()->name(), ": ",
-                                           result.errorMessage()));
+              basics::StringUtils::concatT(
+                  "failed to materialize document ", RevisionId(id).toString(),
+                  " for collection ", _infos.collection()->name(), ": ",
+                  result.errorMessage()));
         }
         if (data) {
           output.moveValueInto(docOutReg, *inputRowIterator, &data);
