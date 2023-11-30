@@ -8,6 +8,12 @@ parameters:
   default-enterprise-branch:
     type: string
     default: "devel"
+  rebuild-docker-images:
+    type: boolean
+    default: false
+  enterprise-commit:
+    type: string
+    default: ""
 
 commands:
   checkout-arangodb:
@@ -75,7 +81,7 @@ jobs:
           root: .
           paths:
             - scripts/docker/build/linux/*-tag.txt
- 
+
   build-build-docker-manifest:
     docker:
       - image: cimg/base:current
@@ -120,7 +126,7 @@ workflows:
           resource-class: arm.large
           name: aarch64-docker-ok
           arch: arm64
-            
+
       - build-build-docker-container:
           resource-class: large
           name: x86-docker-ok
