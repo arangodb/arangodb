@@ -23,8 +23,8 @@
 
 #pragma once
 
+#include "Aql/EdgeConditionBuilder.h"
 #include "Aql/GraphNode.h"
-#include "Aql/Graphs.h"
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/TraversalExecutor.h"
 #include "Graph/Types/UniquenessLevel.h"

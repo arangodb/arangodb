@@ -753,11 +753,10 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
           TRI_ASSERT(shardingInfo != nullptr);
 
           auto shardNames = shardingInfo->shardListAsShardID();
-          TRI_ASSERT(shardNames != nullptr);
           std::vector<ResponsibleServerList> result{};
           auto shardIds = shardingInfo->shardIds();
           result.reserve(shardIds->size());
-          for (auto const& s : *shardNames) {
+          for (auto const& s : shardNames) {
             auto servers = shardIds->find(s);
             result.emplace_back(ResponsibleServerList{servers->second});
           }

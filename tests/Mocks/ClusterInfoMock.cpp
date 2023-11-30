@@ -90,7 +90,7 @@ arangodb::AgencyOperation CreateCollectionSuccess(std::string_view dbName,
                                    info};
 }
 
-auto createDocumentStateSpec(std::string const& shardId,
+auto createDocumentStateSpec(ShardID const& shardId,
                              std::vector<std::string> const& serverIds,
                              ClusterCollectionCreationInfo const& info,
                              std::string const& databaseName)
@@ -382,7 +382,7 @@ Result ClusterInfo::createCollectionsCoordinator(
 
     std::map<ShardID, std::vector<ServerID>> shardServers;
     for (auto pair : VPackObjectIterator(info.json.get("shards"))) {
-      ShardID shardID = pair.key.copyString();
+      ShardID shardID{pair.key.copyString()};
       std::vector<ServerID> serverIds;
 
       for (auto const& serv : VPackArrayIterator(pair.value)) {
@@ -450,7 +450,7 @@ Result ClusterInfo::createCollectionsCoordinator(
             // plannedServers
             {
               READ_LOCKER(readLocker, _planProt.lock);
-              auto it = shardServers.find(p.key.copyString());
+              auto it = shardServers.find(ShardID{p.key.copyString()});
               if (it != shardServers.end()) {
                 plannedServers = (*it).second;
               } else {

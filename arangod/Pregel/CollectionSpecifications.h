@@ -23,16 +23,16 @@
 #pragma once
 
 #include <map>
-#include "Cluster/ClusterTypes.h"
+#include "Pregel/DatabaseTypes.h"
 #include "Inspection/Format.h"
 
 namespace arangodb::pregel {
 
 struct CollectionSpecifications {
-  std::map<CollectionID, std::vector<ShardID>> vertexShards;
-  std::map<CollectionID, std::vector<ShardID>> edgeShards;
+  std::map<CollectionID, std::vector<PregelShardID>> vertexShards;
+  std::map<CollectionID, std::vector<PregelShardID>> edgeShards;
   std::unordered_map<CollectionID, std::string> collectionPlanIds;
-  std::vector<ShardID> allShards;
+  std::vector<PregelShardID> allShards;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, CollectionSpecifications& x) {

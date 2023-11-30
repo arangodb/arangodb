@@ -23,7 +23,6 @@
 #pragma once
 
 #include "Actor/DistributedActorPID.h"
-#include "Pregel/Conductor/ExecutionStates/CollectionLookup.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/ExecutionStates/InitialState.h"
 #include "Pregel/PregelOptions.h"
