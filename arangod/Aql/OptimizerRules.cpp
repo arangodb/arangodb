@@ -3396,12 +3396,21 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
     OptimizerRule const& rule) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
 
+  // note: we are looking here only for ENUMERATE_COLLECTION
+  // and ENUMERATE_LIST node. this optimizer rule runs very
+  // early, so nodes of type INDEX or JOIN are not yet present
+  // in the plan, at least not the expected ones that come from
+  // substituing a full collection scan with an index etc.
+  // we may find indexes in the plan when this rule runs, but
+  // only some geo/fulltext indexes which are inserted into the
+  // plan by an optimizer rule that replaces old AQL functions
+  // FULLTEXT/WITHIN with actual FOR loop-index lookups
   plan->findNodesOfType(nodes, ::interchangeAdjacentEnumerationsNodeTypes,
                         true);
 
   ::arangodb::containers::HashSet<ExecutionNode*> nodesSet;
   for (auto const& n : nodes) {
-    TRI_ASSERT(nodesSet.find(n) == nodesSet.end());
+    TRI_ASSERT(!nodesSet.contains(n));
     nodesSet.emplace(n);
   }
 
@@ -3410,40 +3419,104 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
   std::vector<size_t> starts;
   std::vector<ExecutionNode*> nn;
 
+  containers::FlatHashMap<VariableId, CalculationNode const*> calculations;
   VarSet inputVars;
+  VarSet filterVars;
 
   // We use that the order of the nodes is such that a node B that is among the
   // recursive dependencies of a node A is later in the vector.
   for (auto const& n : nodes) {
-    if (nodesSet.find(n) != nodesSet.end()) {
-      nn.clear();
-      nn.emplace_back(n);
-      nodesSet.erase(n);
+    if (!nodesSet.contains(n)) {
+      continue;
+    }
+    nn.clear();
+    nn.emplace_back(n);
+    nodesSet.erase(n);
 
-      inputVars.clear();
+    inputVars.clear();
 
-      // Now follow the dependencies as long as we see further such nodes:
-      auto nwalker = n;
+    // Now follow the dependencies as long as we see further such nodes:
+    auto nwalker = n;
 
-      while (true) {
-        if (!nwalker->hasDependency()) {
-          break;
+    while (true) {
+      if (!nwalker->hasDependency()) {
+        break;
+      }
+
+      auto dep = nwalker->getFirstDependency();
+
+      if (dep->getType() != EN::ENUMERATE_COLLECTION &&
+          dep->getType() != EN::ENUMERATE_LIST) {
+        break;
+      }
+
+      if (n->getType() == EN::ENUMERATE_LIST &&
+          dep->getType() == EN::ENUMERATE_LIST) {
+        break;
+      }
+
+      bool foundDependency = false;
+
+      if (dep->getType() == EN::ENUMERATE_LIST &&
+          nwalker->getType() == EN::ENUMERATE_COLLECTION) {
+        // now checking for the following case:
+        //   FOR a IN ... (EnumerateList) (dep)
+        //     FOR b IN collection (EnumerateCollection) (nwalker)
+        //       LET #1 = b.something == a.whatever
+        //       FILTER #1
+        // in this case the two FOR loops don't depend on each other,
+        // but can be executed as either `a -> b` or `b -> a`.
+        // we can simply decide for one order here, so we can save
+        // extra permutations
+        calculations.clear();
+
+        ExecutionNode* s = nwalker->getFirstParent();
+        while (s != nullptr && !foundDependency) {
+          if (s->getType() == EN::CALCULATION) {
+            auto cn = ExecutionNode::castTo<CalculationNode const*>(s);
+            calculations.emplace(cn->outVariable()->id, cn);
+          } else if (s->getType() == EN::FILTER) {
+            auto fn = ExecutionNode::castTo<FilterNode const*>(s);
+            Variable const* inVariable = fn->inVariable();
+            if (auto it = calculations.find(inVariable->id);
+                it != calculations.end()) {
+              filterVars.clear();
+              Ast::getReferencedVariables(it->second->expression()->node(),
+                                          filterVars);
+
+              for (auto const& outVar : dep->getVariablesSetHere()) {
+                if (filterVars.contains(outVar)) {
+                  // this means we will not consider this permutation and
+                  // save generating an extra plan, thus speeding up the
+                  // optimization phase
+                  foundDependency = true;
+                  break;
+                }
+              }
+            } else {
+              // we did not pick up the CalculationNode for the
+              // FilterNode we found. this is not necessarily a
+              // problem, but we can as well give up now.
+              // in the worst case, we create an extra permutation
+              // that could have been avoided under some circumstances.
+              break;
+            }
+          } else {
+            // found a node type that we don't handle. we currently
+            // only support CalculationNodes and FilterNodes
+            break;
+          }
+          s = s->getFirstParent();
         }
 
-        auto dep = nwalker->getFirstDependency();
+        if (foundDependency) {
+          break;
+        }
+      }
 
+      if (!foundDependency) {
         // track variables that we rely on
         nwalker->getVariablesUsedHere(inputVars);
-
-        if (dep->getType() != EN::ENUMERATE_COLLECTION &&
-            dep->getType() != EN::ENUMERATE_LIST) {
-          break;
-        }
-
-        if (n->getType() == EN::ENUMERATE_LIST &&
-            dep->getType() == EN::ENUMERATE_LIST) {
-          break;
-        }
 
         // check if nodes depend on each other (i.e. node C consumes a variable
         // introduced by node B or A):
@@ -3454,30 +3527,30 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
         // - FOR a IN A
         // -   FOR b IN ...
         // -     FOR c IN a.values
-        bool foundDependency = false;
         for (auto const& outVar : dep->getVariablesSetHere()) {
           if (inputVars.contains(outVar)) {
             foundDependency = true;
             break;
           }
         }
-        if (foundDependency) {
-          break;
-        }
-
-        nwalker = dep;
-        nn.emplace_back(nwalker);
-        nodesSet.erase(nwalker);
       }
 
-      if (nn.size() > 1) {
-        // Move it into the permutation tuple:
-        starts.emplace_back(permTuple.size());
+      if (foundDependency) {
+        break;
+      }
 
-        for (auto const& nnn : nn) {
-          nodesToPermute.emplace_back(nnn);
-          permTuple.emplace_back(permTuple.size());
-        }
+      nwalker = dep;
+      nn.emplace_back(nwalker);
+      nodesSet.erase(nwalker);
+    }
+
+    if (nn.size() > 1) {
+      // Move it into the permutation tuple:
+      starts.emplace_back(permTuple.size());
+
+      for (auto const& nnn : nn) {
+        nodesToPermute.emplace_back(nnn);
+        permTuple.emplace_back(permTuple.size());
       }
     }
   }
