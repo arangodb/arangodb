@@ -47,7 +47,7 @@ constexpr auto EXPECTED_TARGET_VERSION = "expectedTargetVersion";
 MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
                      std::string const& jobId, std::string const& creator,
                      std::string const& database, std::string const& collection,
-                     std::string const& shard, std::string const& from,
+                     ShardID const& shard, std::string const& from,
                      std::string const& to, bool isLeader, bool remainsFollower,
                      bool tryUndo)
     : Job(NOTFOUND, snapshot, agent, jobId, creator),
@@ -85,7 +85,7 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
     _collection = tmp_collection.value();
     _from = tmp_from.value();
     _to = tmp_to.value();
-    _shard = tmp_shard.value();
+    _shard = ShardID{tmp_shard.value()};
     _isLeader = *tmp_isLeader;
     _remainsFollower = tmp_remainsFollower.value_or(_isLeader);
     _toServerIsFollower = false;

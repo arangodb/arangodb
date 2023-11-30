@@ -543,8 +543,8 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
       // satellite collections and dirty-reads may break this assumption.
       // In that case we just proceed with regular cluster query
       if (shards->begin()->second.front() == ServerState::instance()->getId()) {
-        auto oneShardQueryString = aql::QueryString(
-            absl::StrCat("FOR d IN ", shards->begin()->first, " RETURN d"));
+        auto oneShardQueryString = aql::QueryString(absl::StrCat(
+            "FOR d IN ", std::string{shards->begin()->first}, " RETURN d"));
         auto query = aql::Query::create(
             transaction::StandaloneContext::create(vocbase, operationOrigin),
             std::move(oneShardQueryString), nullptr);

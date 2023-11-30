@@ -55,9 +55,18 @@ devel
   work. Furthermore, responses should only be compressed when they exceed a
   certain minimum size, e.g. 250 bytes. 
 
+* FE-372: Truncate long saved query names in UI.
+
+* EE Only: When creating a disjoint SmartGraph or a SmartJoin collection where
+  the list of shard names would go from a k digit number to a k+1 digit number,
+  some AQL queries would mismatch the shard list of one collection with the others.
+  The data is all in the correct place, this is an issue only in read operations.
+
+* Updated OpenSSL to 3.1.4.
+
 * Solve a potential blockage during hotbackup by not stopping read-only
-  transactions from committing during hotbackup. Furthermore, improve
-  behavior of authentication in the case that the user cache is outdated.
+  transactions from committing during hotbackup. Furthermore, improve behavior
+  of authentication in the case that the user cache is outdated.
 
 * Added metric `arangodb_aql_cursors_memory_usage` to show the memory usage of
   open, not yet fully consumed server-side query cursors.

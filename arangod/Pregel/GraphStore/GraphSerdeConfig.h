@@ -47,11 +47,11 @@ struct GraphSerdeConfig {
     return loadableVertexShards.at(pregelShard.value).collectionName;
   }
 
-  [[nodiscard]] auto shardID(PregelShard pregelShard) const -> ShardID {
+  [[nodiscard]] auto shardID(PregelShard pregelShard) const -> PregelShardID {
     ADB_PROD_ASSERT(pregelShard.value < loadableVertexShards.size());
     return loadableVertexShards.at(pregelShard.value).vertexShard;
   }
-  [[nodiscard]] auto pregelShard(ShardID responsibleShard) const
+  [[nodiscard]] auto pregelShard(PregelShardID responsibleShard) const
       -> PregelShard {
     for (auto const& lvs : loadableVertexShards) {
       if (lvs.vertexShard == responsibleShard) {
@@ -89,8 +89,9 @@ struct GraphSerdeConfig {
     return result;
   }
   //
-  [[nodiscard]] auto localShardIDs(ServerID server) const -> std::set<ShardID> {
-    auto result = std::set<ShardID>{};
+  [[nodiscard]] auto localShardIDs(ServerID server) const
+      -> std::set<PregelShardID> {
+    auto result = std::set<PregelShardID>{};
 
     for (auto&& loadableVertexShard : loadableVertexShards) {
       if (loadableVertexShard.responsibleServer == server) {

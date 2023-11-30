@@ -2226,8 +2226,8 @@ TEST_F(IResearchViewNodeTest, clone) {
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
     EXPECT_EQ(333, node.options().parallelism);
-    node.shards().emplace("abc", arangodb::LogicalView::Indexes{});
-    node.shards().emplace("def", arangodb::LogicalView::Indexes{});
+    node.shards().emplace("s1", arangodb::LogicalView::Indexes{});
+    node.shards().emplace("s2", arangodb::LogicalView::Indexes{});
 
     // clone without properties into the same plan
     {
@@ -2338,8 +2338,8 @@ TEST_F(IResearchViewNodeTest, clone) {
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
 
-    node.shards().emplace("abc", arangodb::LogicalView::Indexes{});
-    node.shards().emplace("def", arangodb::LogicalView::Indexes{});
+    node.shards().emplace("s1", arangodb::LogicalView::Indexes{});
+    node.shards().emplace("s2", arangodb::LogicalView::Indexes{});
 
     // clone without properties into the same plan
     {
