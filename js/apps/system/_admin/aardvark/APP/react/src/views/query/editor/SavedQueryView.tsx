@@ -6,6 +6,7 @@ import {
   IconButton,
   Spinner,
   Stack,
+  Text,
   useDisclosure
 } from "@chakra-ui/react";
 import { CellContext, createColumnHelper } from "@tanstack/react-table";
@@ -227,6 +228,12 @@ const SavedQueryTable = ({ savedQueries }: { savedQueries?: QueryType[] }) => {
         </Box>
         <ReactTable<QueryType>
           table={tableInstance}
+          layout="fixed"
+          getCellProps={() => {
+            return {
+              verticalAlign: "top"
+            };
+          }}
           onRowSelect={row => {
             if (!row.getIsSelected()) {
               row.toggleSelected();
@@ -245,8 +252,11 @@ const QueryPreview = ({ query }: { query: QueryType | null }) => {
   }
   return (
     <Stack height="full">
-      <Box fontWeight="medium" fontSize="md">
-        Preview: {query.name}
+      <Box fontWeight="medium" fontSize="sm">
+        Preview:{" "}
+        <Text isTruncated title={query.name} maxWidth="500px">
+          {query.name}
+        </Text>
       </Box>
       <Grid gridTemplateColumns="1fr 1fr" height="full">
         <Stack>

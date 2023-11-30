@@ -842,7 +842,11 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
         "getCollectionInfoCurrent(<database-id>, <collection-id>, <shardID>)");
   }
 
-  ShardID shardID = TRI_ObjectToString(isolate, args[2]);
+  auto maybeShardID =
+      ShardID::shardIdFromString(TRI_ObjectToString(isolate, args[2]));
+  if (maybeShardID.fail()) {
+    TRI_V8_THROW_EXCEPTION(maybeShardID.result());
+  }
 
   auto databaseID = TRI_ObjectToString(isolate, args[0]);
   auto collectionID = TRI_ObjectToString(isolate, args[1]);
@@ -880,6 +884,8 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "type"),
             v8::Number::New(isolate, (int)col->type()))
       .FromMaybe(false);
+
+  auto& shardID = maybeShardID.get();
 
   VPackSlice slice = cic->getIndexes(shardID);
   v8::Handle<v8::Value> indexes = TRI_VPackToV8(isolate, slice);
@@ -957,15 +963,24 @@ static void JS_GetResponsibleServerClusterInfo(
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
-  auto result = ci.getResponsibleServer(TRI_ObjectToString(isolate, args[0]));
-  v8::Handle<v8::Array> list = v8::Array::New(isolate, (int)result->size());
-  uint32_t count = 0;
-  for (auto const& s : *result) {
-    list->Set(context, count++, TRI_V8_STD_STRING(isolate, s.c_str()))
-        .FromMaybe(true);
+  auto maybeShardID =
+      ShardID::shardIdFromString(TRI_ObjectToString(isolate, args[0]));
+  if (maybeShardID.fail()) {
+    // Asking for non-shard name pattern.
+    // Compatibility with original API return empty array.
+    v8::Handle<v8::Array> list = v8::Array::New(isolate, 0);
+    TRI_V8_RETURN(list);
+  } else {
+    auto result = ci.getResponsibleServer(maybeShardID.get());
+    v8::Handle<v8::Array> list = v8::Array::New(isolate, (int)result->size());
+    uint32_t count = 0;
+    for (auto const& s : *result) {
+      list->Set(context, count++, TRI_V8_STD_STRING(isolate, s.c_str()))
+          .FromMaybe(true);
+    }
+    TRI_V8_RETURN(list);
   }
 
-  TRI_V8_RETURN(list);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -985,13 +1000,22 @@ static void JS_GetResponsibleServersClusterInfo(
     TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleServers(<shard-ids>)");
   }
 
-  containers::FlatHashSet<std::string> shardIds;
+  containers::FlatHashSet<ShardID> shardIds;
   v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(args[0]);
 
   uint32_t const n = array->Length();
   for (uint32_t i = 0; i < n; ++i) {
-    shardIds.emplace(TRI_ObjectToString(
-        isolate, array->Get(context, i).FromMaybe(v8::Local<v8::Value>())));
+    auto shardID = TRI_ObjectToString(
+        isolate, array->Get(context, i).FromMaybe(v8::Local<v8::Value>()));
+    auto maybeShard = ShardID::shardIdFromString(shardID);
+    if (maybeShard.fail()) {
+      // For API compatibility we throw DataSourceNotFound error here
+      // And ignore the parsing issue. (Illegally named shard cannot be found)
+      TRI_V8_THROW_EXCEPTION_MESSAGE(
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          absl::StrCat("no shard found with ID ", shardID));
+    }
+    shardIds.emplace(std::move(maybeShard.get()));
   }
 
   if (shardIds.empty()) {
@@ -1005,7 +1029,7 @@ static void JS_GetResponsibleServersClusterInfo(
   v8::Handle<v8::Object> responsible = v8::Object::New(isolate);
   for (auto const& it : result) {
     responsible
-        ->Set(context, TRI_V8_ASCII_STRING(isolate, it.first.data()),
+        ->Set(context, TRI_V8_ASCII_STD_STRING(isolate, std::string{it.first}),
               TRI_V8_STD_STRING(isolate, it.second))
         .FromMaybe(false);
   }
@@ -1048,7 +1072,6 @@ static void JS_GetResponsibleShardClusterInfo(
   VPackBuilder builder;
   TRI_V8ToVPack(isolate, builder, args[1], false);
 
-  ShardID shardId;
   CollectionID collectionId = TRI_ObjectToString(isolate, args[0]);
   auto& vocbase = GetContextVocBase(isolate);
   TRI_GET_SERVER_GLOBALS(ArangodServer);
@@ -1062,18 +1085,17 @@ static void JS_GetResponsibleShardClusterInfo(
 
   bool usesDefaultShardingAttributes;
 
-  auto res =
-      collInfo->getResponsibleShard(builder.slice(), documentIsComplete,
-                                    shardId, usesDefaultShardingAttributes);
+  auto maybeShard = collInfo->getResponsibleShard(
+      builder.slice(), documentIsComplete, usesDefaultShardingAttributes);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
+  if (maybeShard.fail()) {
+    TRI_V8_THROW_EXCEPTION(maybeShard.result());
   }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   result
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "shardId"),
-            TRI_V8_STD_STRING(isolate, shardId))
+            TRI_V8_STD_STRING(isolate, std::string{maybeShard.get()}))
       .FromMaybe(true);
   result
       ->Set(context,

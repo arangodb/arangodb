@@ -139,7 +139,7 @@ bool accessesCollectionVariable(arangodb::aql::ExecutionPlan const* plan,
   return false;
 }
 
-std::string getSingleShardId(
+std::optional<arangodb::ShardID> getSingleShardId(
     arangodb::aql::ExecutionPlan const* plan,
     arangodb::aql::ExecutionNode const* node,
     arangodb::aql::Collection const* collection,
@@ -213,7 +213,8 @@ void replaceGatherNodeVariables(
   }
 }
 
-void restrictToShard(arangodb::aql::ExecutionNode* node, std::string shardId) {
+void restrictToShard(arangodb::aql::ExecutionNode* node,
+                     arangodb::ShardID const& shardId) {
   auto* n = dynamic_cast<arangodb::aql::CollectionAccessingNode*>(node);
   if (n != nullptr) {
     return n->restrictToShard(shardId);
@@ -352,13 +353,17 @@ class RestrictToSingleShardChecker final
     : public arangodb::aql::WalkerWorker<
           arangodb::aql::ExecutionNode,
           arangodb::aql::WalkerUniqueness::NonUnique> {
+  struct AllShards {};
+
   arangodb::aql::ExecutionPlan* _plan;
   CollectionVariableTracker& _tracker;
-  std::unordered_map<arangodb::aql::Variable const*,
-                     std::unordered_set<std::string>>
+  std::unordered_map<
+      arangodb::aql::Variable const*,
+      std::variant<AllShards, std::unordered_set<arangodb::ShardID>>>
       _shardsUsed;
-  std::unordered_map<arangodb::aql::Variable const*,
-                     std::unordered_set<std::string>>
+  std::unordered_map<
+      arangodb::aql::Variable const*,
+      std::variant<AllShards, std::unordered_set<arangodb::ShardID>>>
       _shardsCleared;
   bool _stop;
   std::map<arangodb::aql::Collection const*, bool> _unsafe;
@@ -374,18 +379,20 @@ class RestrictToSingleShardChecker final
     return (!_stop && !_plan->getAst()->functionsMayAccessDocuments());
   }
 
-  std::string getShard(arangodb::aql::Variable const* variable) const {
+  arangodb::ShardID getShard(arangodb::aql::Variable const* variable) const {
     auto const& it = _shardsCleared.find(variable);
     if (it == _shardsCleared.end()) {
-      return "";
+      return arangodb::ShardID::invalidShard();
     }
 
     auto set = it->second;
-    if (set.size() != 1 || *set.begin() == "all") {
-      return "";
+    if (std::holds_alternative<AllShards>(set)) {
+      return arangodb::ShardID::invalidShard();
+    } else {
+      auto const& shardList =
+          std::get<std::unordered_set<arangodb::ShardID>>(set);
+      return *shardList.begin();
     }
-
-    return *set.begin();
   }
 
   bool isSafeForOptimization(
@@ -403,20 +410,15 @@ class RestrictToSingleShardChecker final
       return false;
     }
 
-    if ((*it).second.size() != 1) {
-      // more than one shard
-      return false;
-    }
-
     // check for "all" marker
-    auto it2 = (*it).second.find("all");
-    if (it2 != (*it).second.end()) {
-      // "all" included
+    if (std::holds_alternative<AllShards>(it->second)) {
+      // We do have ALL
       return false;
+    } else {
+      // If we have exactly one shard, we can optimize
+      return std::get<std::unordered_set<arangodb::ShardID>>(it->second)
+                 .size() == 1;
     }
-
-    // all good -> safe to optimize
-    return true;
   }
 
   bool enterSubquery(arangodb::aql::ExecutionNode*,
@@ -458,8 +460,8 @@ class RestrictToSingleShardChecker final
             ExecutionNode::castTo<arangodb::aql::ModificationNode const*>(en);
         // make sure we don't restrict this collection via a lower filter
         _shardsUsed.clear();
-        std::string shardId = ::getSingleShardId(_plan, en, node->collection());
-        if (shardId.empty()) {
+        auto shardId = ::getSingleShardId(_plan, en, node->collection());
+        if (!shardId.has_value()) {
           // mark the collection unsafe to restrict
           _unsafe[node->collection()] = true;
         }
@@ -477,6 +479,25 @@ class RestrictToSingleShardChecker final
   }
 
  private:
+  void handleShardOutput(std::optional<arangodb::ShardID> shardId,
+                         arangodb::aql::Variable const* variable) {
+    if (!shardId.has_value()) {
+      if (!_shardsUsed.contains(variable)) {
+        _shardsUsed.emplace(variable, AllShards{});
+      }
+    } else {
+      auto it = _shardsUsed.find(variable);
+      if (it == _shardsUsed.end() ||
+          std::holds_alternative<AllShards>(it->second)) {
+        _shardsUsed[variable] =
+            std::unordered_set<arangodb::ShardID>{std::move(shardId.value())};
+      } else {
+        std::get<std::unordered_set<arangodb::ShardID>>(it->second)
+            .emplace(std::move(shardId.value()));
+      }
+    }
+  }
+
   void handleInputVariable(arangodb::aql::ExecutionNode const* en,
                            arangodb::aql::Variable const* inputVariable) {
     auto dependencies = _tracker.getDependencies(inputVariable);
@@ -484,17 +505,7 @@ class RestrictToSingleShardChecker final
       auto variable = dep.first;
       auto collection = dep.second;
       auto shardId = ::getSingleShardId(_plan, en, collection, variable);
-      if (shardId.empty()) {
-        if (_shardsUsed[variable].empty()) {
-          _shardsUsed[variable].emplace("all");
-        }
-      } else {
-        if (1 == _shardsUsed[variable].size() &&
-            "all" == *_shardsUsed[variable].begin()) {
-          _shardsUsed[variable].clear();
-        }
-        _shardsUsed[variable].emplace(shardId);
-      }
+      handleShardOutput(std::move(shardId), variable);
     }
   }
 
@@ -505,17 +516,7 @@ class RestrictToSingleShardChecker final
     auto collection = arangodb::aql::utils::getCollection(en);
     auto variable = ::getOutVariable(en);
     auto shardId = ::getSingleShardId(_plan, en, collection, variable);
-    if (shardId.empty()) {
-      if (_shardsUsed[variable].empty()) {
-        _shardsUsed[variable].emplace("all");
-      }
-    } else {
-      if (1 == _shardsUsed[variable].size() &&
-          "all" == *_shardsUsed[variable].begin()) {
-        _shardsUsed[variable].clear();
-      }
-      _shardsUsed[variable].emplace(shardId);
-    }
+    handleShardOutput(std::move(shardId), variable);
   }
 
   void handleSourceNode(arangodb::aql::ExecutionNode const* en) {
@@ -648,7 +649,7 @@ std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
 /// shard keys are present and their values are fixed (constants), this
 /// function will try to figure out the target shard. If the operation cannot
 /// be restricted to a single shard, this function will return an empty string
-std::string getSingleShardId(
+std::optional<arangodb::ShardID> getSingleShardId(
     arangodb::aql::ExecutionPlan const* plan,
     arangodb::aql::ExecutionNode const* node,
     arangodb::aql::Collection const* collection,
@@ -659,7 +660,7 @@ std::string getSingleShardId(
   if (collection->isSmart() &&
       collection->getCollection()->type() == TRI_COL_TYPE_EDGE) {
     // no support for smart edge collections
-    return std::string();
+    return std::nullopt;
   }
 
   TRI_ASSERT(node->getType() == EN::INDEX ||
@@ -708,7 +709,7 @@ std::string getSingleShardId(
   if (setter == nullptr) {
     // oops!
     TRI_ASSERT(false);
-    return std::string();
+    return std::nullopt;
   }
 
   // note for which shard keys we need to look for
@@ -717,7 +718,7 @@ std::string getSingleShardId(
   for (auto const& it : shardKeys) {
     if (it.find('.') != std::string::npos) {
       // shard key containing a "." (sub-attribute). this is not yet supported
-      return std::string();
+      return std::nullopt;
     }
     toFind.emplace(it);
   }
@@ -730,13 +731,13 @@ std::string getSingleShardId(
         ExecutionNode::castTo<arangodb::aql::CalculationNode const*>(setter);
     auto n = c->expression()->node();
     if (n == nullptr) {
-      return std::string();
+      return std::nullopt;
     }
 
     if (n->isStringValue()) {
       if (!n->isConstant() || toFind.size() != 1 ||
           toFind.find(arangodb::StaticStrings::KeyString) == toFind.end()) {
-        return std::string();
+        return std::nullopt;
       }
 
       // the lookup value is a string, and the only shard key is _key: so we
@@ -782,7 +783,7 @@ std::string getSingleShardId(
 
     if (c->getIndexes().size() != 1) {
       // we can only handle a single index here
-      return std::string();
+      return std::nullopt;
     }
     auto const* condition = c->condition();
 
@@ -806,7 +807,7 @@ std::string getSingleShardId(
   builder.close();
 
   if (!toFind.empty()) {
-    return std::string();
+    return std::nullopt;
   }
 
   // all shard keys found!!
@@ -817,23 +818,24 @@ std::string getSingleShardId(
       builder.slice().get(arangodb::StaticStrings::KeyString).isNone()) {
     // insert into a collection with more than one shard or custom shard keys,
     // and _key is not given in inputs.
-    return std::string();
+    return std::nullopt;
   }
 
   // find the responsible shard for the data
   std::string shardId;
 
-  auto res = collection->getCollection()->getResponsibleShard(builder.slice(),
-                                                              true, shardId);
+  auto res =
+      collection->getCollection()->getResponsibleShard(builder.slice(), true);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.fail()) {
     // some error occurred. better do not use the
     // single shard optimization here
-    return std::string();
+    return std::nullopt;
   }
 
   // we will only need a single shard!
-  return shardId;
+  TRI_ASSERT(res.get().isValid());
+  return std::move(res.get());
 }
 
 bool shouldApplyHeapOptimization(arangodb::aql::SortNode& sortNode,
@@ -4981,14 +4983,14 @@ void arangodb::aql::restrictToSingleShardRule(
   plan->findNodesOfType(nodes, EN::REMOTE, true);
 
   ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
-  std::map<Collection const*, std::unordered_set<std::string>>
+  std::map<Collection const*, std::unordered_set<ShardID>>
       modificationRestrictions;
 
   // forward a shard key restriction from one collection to the other if the two
   // collections are used in a SmartJoin (and use distributeShardsLike on each
   // other)
   auto forwardRestrictionToPrototype = [&plan](ExecutionNode const* current,
-                                               std::string const& shardId) {
+                                               ShardID const& shardId) {
     auto collectionNode = dynamic_cast<CollectionAccessingNode const*>(current);
     if (collectionNode == nullptr) {
       return;
@@ -5035,17 +5037,17 @@ void arangodb::aql::restrictToSingleShardRule(
         auto collection =
             ExecutionNode::castTo<ModificationNode const*>(current)
                 ->collection();
-        std::string shardId =
-            ::getSingleShardId(plan.get(), current, collection);
+        auto shardId = ::getSingleShardId(plan.get(), current, collection);
 
-        if (!shardId.empty()) {
+        if (shardId.has_value()) {
+          TRI_ASSERT(shardId.value().isValid());
           wasModified = true;
           // we are on a single shard. we must not ignore not-found documents
           // now
           auto* modNode = ExecutionNode::castTo<ModificationNode*>(current);
           modNode->getOptions().ignoreDocumentNotFound = false;
-          modNode->restrictToShard(shardId);
-          modificationRestrictions[collection].emplace(shardId);
+          modNode->restrictToShard(shardId.value());
+          modificationRestrictions[collection].emplace(shardId.value());
 
           auto const& deps = current->getDependencies();
           if (deps.size() && deps[0]->getType() == ExecutionNode::REMOTE) {
@@ -5110,10 +5112,10 @@ void arangodb::aql::restrictToSingleShardRule(
         if (!disable) {
           auto collection = utils::getCollection(current);
           auto collectionVariable = ::getOutVariable(current);
-          std::string shardId = finder.getShard(collectionVariable);
+          auto shardId = finder.getShard(collectionVariable);
 
           if (finder.isSafeForOptimization(collectionVariable) &&
-              !shardId.empty()) {
+              shardId.isValid()) {
             wasModified = true;
             ::restrictToShard(current, shardId);
             forwardRestrictionToPrototype(current, shardId);

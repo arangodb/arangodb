@@ -55,7 +55,7 @@ namespace failed_follower_test {
 [[maybe_unused]] const std::string PREFIX = "arango";
 [[maybe_unused]] const std::string DATABASE = "database";
 [[maybe_unused]] const std::string COLLECTION = "collection";
-[[maybe_unused]] const std::string SHARD = "s99";
+[[maybe_unused]] const ShardID SHARD{99};
 [[maybe_unused]] const std::string SHARD_LEADER = "leader";
 [[maybe_unused]] const std::string SHARD_FOLLOWER1 = "follower1";
 [[maybe_unused]] const std::string SHARD_FOLLOWER2 = "follower2";
@@ -164,7 +164,7 @@ TEST_F(FailedFollowerTest, creating_a_job_should_create_a_job_in_todo) {
         EXPECT_EQ(std::string(job.get("collection").typeName()), "string");
         EXPECT_EQ(job.get("collection").copyString(), COLLECTION);
         EXPECT_EQ(std::string(job.get("shard").typeName()), "string");
-        EXPECT_EQ(job.get("shard").copyString(), SHARD);
+        EXPECT_EQ(job.get("shard").copyString(), std::string{SHARD});
         EXPECT_EQ(std::string(job.get("fromServer").typeName()), "string");
         EXPECT_EQ(job.get("fromServer").copyString(), SHARD_FOLLOWER1);
         EXPECT_EQ(std::string(job.get("jobId").typeName()), "string");
@@ -553,7 +553,7 @@ TEST_F(FailedFollowerTest, abort_any_moveshard_job_blocking) {
         }
       }
       if (path == "/arango/Supervision/Shards") {
-        builder->add(SHARD, VPackValue("2"));
+        builder->add(std::string{SHARD}, VPackValue("2"));
 
       } else if (path == "/arango/Target/ToDo") {
         builder->add("1", createJob().slice());
