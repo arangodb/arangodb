@@ -2,7 +2,7 @@ devel
 -----
 
 * BTS-1700: arangoimport parser should abort after a reasonable amount of parse 
-  errors without success.
+  errors.
 
   This introduces an option `--max-errors` for arangoimport. This option can
   be used to limit the amount of error messages displayed by arangoimport, and
