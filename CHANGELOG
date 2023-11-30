@@ -1,3 +1,9 @@
+v3.11.7 (XXXX-XX-XX)
+--------------------
+
+* Fixed BTS-1701: Assertion triggered in AQL Traversal on edge PRUNE.
+
+
 v3.11.6 (XXXX-XX-XX)
 --------------------
 
