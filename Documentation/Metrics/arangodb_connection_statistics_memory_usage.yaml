@@ -1,0 +1,24 @@
+name: arangodb_connection_statistics_memory_usage
+introducedIn: "3.12.0"
+help: |
+  Total memory usage of connection statistics.
+unit: bytes
+type: gauge
+category: Statistics
+complexity: advanced
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Total memory usage of connection statistics. 
+  If the startup option `--server.statistics` is set to `true`, then some
+  connection statistics are built up in memory for every connection that is
+  made to the arangod server.
+  It is expected that the memory usage reported by this metric remains
+  relatively constant over time. It should grow only when there are bursts of 
+  new connections.
+  Some memory is pre-allocated at startup for higher efficiency.
+  No memory will be allocated for connection statistics if the startup option
+  is set to `false`.

@@ -150,7 +150,7 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
   struct Locker {
     explicit Locker(RocksDBCollection* c) : _collection(c), _locked(false) {}
     ~Locker() { unlock(); }
-    bool lock();
+    futures::Future<bool> lock();
     void unlock();
     bool isLocked() const { return _locked; }
 
@@ -161,7 +161,7 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
 
   /// @brief fill the index, assume already locked exclusively
   /// @param locker locks and unlocks the collection
-  Result fillIndexBackground(
+  futures::Future<Result> fillIndexBackground(
       Locker& locker,
       std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr);
 

@@ -420,28 +420,24 @@ void LogicalCollection::setShardMap(std::shared_ptr<ShardMap> map) noexcept {
   _sharding->setShardMap(std::move(map));
 }
 
-ErrorCode LogicalCollection::getResponsibleShard(velocypack::Slice slice,
-                                                 bool docComplete,
-                                                 std::string& shardID) {
+ResultT<ShardID> LogicalCollection::getResponsibleShard(velocypack::Slice slice,
+                                                        bool docComplete) {
   bool usesDefaultShardKeys;
-  return getResponsibleShard(slice, docComplete, shardID, usesDefaultShardKeys);
+  return getResponsibleShard(slice, docComplete, usesDefaultShardKeys);
 }
 
-ErrorCode LogicalCollection::getResponsibleShard(std::string_view key,
-                                                 std::string& shardID) {
+ResultT<ShardID> LogicalCollection::getResponsibleShard(std::string_view key) {
   bool usesDefaultShardKeys;
-  return getResponsibleShard(VPackSlice::emptyObjectSlice(), false, shardID,
+  return getResponsibleShard(VPackSlice::emptyObjectSlice(), false,
                              usesDefaultShardKeys,
                              std::string_view(key.data(), key.size()));
 }
 
-ErrorCode LogicalCollection::getResponsibleShard(velocypack::Slice slice,
-                                                 bool docComplete,
-                                                 std::string& shardID,
-                                                 bool& usesDefaultShardKeys,
-                                                 std::string_view key) {
+ResultT<ShardID> LogicalCollection::getResponsibleShard(
+    velocypack::Slice slice, bool docComplete, bool& usesDefaultShardKeys,
+    std::string_view key) {
   TRI_ASSERT(_sharding != nullptr);
-  return _sharding->getResponsibleShard(slice, docComplete, shardID,
+  return _sharding->getResponsibleShard(slice, docComplete,
                                         usesDefaultShardKeys, key);
 }
 
@@ -1114,18 +1110,18 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(VPackSlice info) const {
   return getPhysical()->lookupIndex(info);
 }
 
-std::shared_ptr<Index> LogicalCollection::createIndex(
+futures::Future<std::shared_ptr<Index>> LogicalCollection::createIndex(
     VPackSlice info, bool& created,
     std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
-  auto idx = _physical->createIndex(info, /*restore*/ false, created,
-                                    std::move(progress));
+  auto idx = co_await _physical->createIndex(info, /*restore*/ false, created,
+                                             std::move(progress));
   if (idx) {
     auto& df = vocbase().server().getFeature<DatabaseFeature>();
     if (df.versionTracker() != nullptr) {
       df.versionTracker()->track("create index");
     }
   }
-  return idx;
+  co_return idx;
 }
 
 /// @brief drops an index, including index file removal and replication
@@ -1282,7 +1278,7 @@ void LogicalCollection::decorateWithInternalValidators() {
 }
 
 replication2::LogId LogicalCollection::shardIdToStateId(
-    std::string_view shardId) {
+    ShardID const& shardId) {
   auto logId = tryShardIdToStateId(shardId);
   ADB_PROD_ASSERT(logId.has_value())
       << " converting " << shardId << " to LogId failed";
@@ -1290,12 +1286,11 @@ replication2::LogId LogicalCollection::shardIdToStateId(
 }
 
 std::optional<replication2::LogId> LogicalCollection::tryShardIdToStateId(
-    std::string_view shardId) {
-  if (shardId.empty()) {
+    ShardID const& shardId) {
+  if (!shardId.isValid()) {
     return {};
   }
-  auto stateId = shardId.substr(1, shardId.size() - 1);
-  return replication2::LogId::fromString(stateId);
+  return replication2::LogId::fromString(std::to_string(shardId.id()));
 }
 
 auto LogicalCollection::getDocumentState()

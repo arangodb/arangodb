@@ -483,15 +483,14 @@ void BaseOptions::serializeVariables(VPackBuilder& builder) const {
 }
 
 void BaseOptions::setCollectionToShard(
-    std::unordered_map<std::string, std::string> const& in) {
+    std::unordered_map<std::string, ShardID> const& in) {
   _collectionToShard.clear();
   _collectionToShard.reserve(in.size());
   for (auto const& [key, value] : in) {
     ResourceUsageAllocator<MonitoredCollectionToShardMap, ResourceMonitor>
         alloc = {_query.resourceMonitor()};
-    auto myVec = MonitoredStringVector{alloc};
-    auto myString = MonitoredString{value, alloc};
-    myVec.emplace_back(std::move(myString));
+    auto myVec = MonitoredShardIDVector{alloc};
+    myVec.emplace_back(value);
     _collectionToShard.emplace(key, std::move(myVec));
   }
 }

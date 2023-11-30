@@ -274,11 +274,11 @@ class FloatingPoint {
 // We cannot use std::numeric_limits<T>::max() as it clashes with the max()
 // macro defined by <windows.h>.
 template<>
-inline float FloatingPoint<float>::Max() {
+[[maybe_unused]] inline float FloatingPoint<float>::Max() {
   return FLT_MAX;
 }
 template<>
-inline double FloatingPoint<double>::Max() {
+[[maybe_unused]] inline double FloatingPoint<double>::Max() {
   return DBL_MAX;
 }
 

@@ -810,3 +810,9 @@ bool IndexNode::isProduceResult() const {
   }
   return false;
 }
+
+std::pair<Variable const*, IndexNode::IndexValuesVars>
+IndexNode::getLateMaterializedInfo() const {
+  TRI_ASSERT(isLateMaterialized());
+  return std::make_pair(_outNonMaterializedDocId, _outNonMaterializedIndVars);
+}

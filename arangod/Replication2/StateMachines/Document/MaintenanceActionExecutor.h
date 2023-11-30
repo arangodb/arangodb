@@ -30,7 +30,8 @@
 struct TRI_vocbase_t;
 namespace arangodb {
 class MaintenanceFeature;
-}
+struct ShardID;
+}  // namespace arangodb
 
 namespace arangodb::replication2::replicated_state::document {
 
