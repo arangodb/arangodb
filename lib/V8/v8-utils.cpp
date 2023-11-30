@@ -5091,7 +5091,6 @@ static void JS_FishbowlSet(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("FISHBOWL_SET(<value>)");
   }
 
-  ISOLATE;
   auto builder = std::make_shared<VPackBuilder>();
   TRI_V8ToVPack(isolate, *builder, args[0], false);
 
@@ -5117,7 +5116,6 @@ static void JS_FishbowlGet(v8::FunctionCallbackInfo<v8::Value> const& args) {
     builder = ::fishbowlData;
   }
 
-  ISOLATE;
   v8::Handle<v8::Value> result;
   if (builder == nullptr) {
     result = v8::Array::New(isolate);

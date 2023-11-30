@@ -690,7 +690,7 @@ void IndexExecutor::initIndexes(InputAqlItemRow const& input) {
       _infos.query().enterV8Executor();
       auto sg = arangodb::scopeGuard([&]() noexcept { cleanup(); });
 
-      ISOLATE;
+      v8::Isolate* isolate = v8::Isolate::GetCurrent();
       v8::HandleScope scope(isolate);  // do not delete this!
 
       executeExpressions(input);

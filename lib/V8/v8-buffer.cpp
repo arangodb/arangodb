@@ -58,6 +58,14 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 
+/// @brief shortcut for current v8 globals and scope
+#define TRI_V8_CURRENT_GLOBALS_AND_SCOPE                            \
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(             \
+      isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT)); \
+  v8::HandleScope scope(isolate);                                   \
+  do {                                                              \
+  } while (0)
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief safety overhead for buffer allocations
 ////////////////////////////////////////////////////////////////////////////////

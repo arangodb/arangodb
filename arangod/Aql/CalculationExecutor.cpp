@@ -206,7 +206,7 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(
   enterContext();
   auto contextGuard = scopeGuard([this]() noexcept { exitContext(); });
 
-  ISOLATE;
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
   v8::HandleScope scope(isolate);  // do not delete this!
   // execute the expression
   ExecutorExpressionContext ctx(_trx, _infos.getQuery(),

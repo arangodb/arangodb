@@ -219,7 +219,10 @@ static void JS_WriteAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 void TRI_InitV8Agency(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
-  TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
+  v8::HandleScope scope(isolate);
+
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
+      isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
   TRI_ASSERT(v8g != nullptr);
 
   v8::Handle<v8::ObjectTemplate> rt;

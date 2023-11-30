@@ -38,15 +38,16 @@ namespace arangodb::aql {
 /// @brief checks if a V8 exception has occurred and throws an appropriate C++
 /// exception from it if so
 void handleV8Error(v8::TryCatch& tryCatch, v8::Handle<v8::Value>& result) {
-  ISOLATE;
-  auto context = TRI_IGETC;
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  v8::Handle<v8::Context> context = isolate->GetCurrentContext();
   bool failed = false;
 
   if (tryCatch.HasCaught()) {
     // caught a V8 exception
     if (!tryCatch.CanContinue()) {
       // request was canceled
-      TRI_GET_GLOBALS();
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
+          isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
       v8g->_canceled = true;
 
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
