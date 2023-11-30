@@ -1,6 +1,20 @@
 devel
 -----
 
+* BTS-1700: arangoimport parser should abort after a reasonable amount of parse 
+  errors without success.
+
+  This introduces an option `--max-errors` for arangoimport. This option can
+  be used to limit the amount of error messages displayed by arangoimport, and
+  to abort the import after at least this many errors have occurred.
+
+  The default value for the option is 20, so that imports will quickly stop in
+  case many errors occur.
+  This is a behavior change compared to previous versions, in which the import
+  would continue even when there were many errors.
+  To achive the same behavior with the new version, the value of the 
+  arangoimport startup option `--max-errors` can be set to a high value.
+
 * Make AQL optimizer rule "interchange-adjacent-enumerations" generate less
   plan permutations for the case the a non-collection FOR loop is followed
   by a collection-based FOR loop. This change can reduce the number of plans
