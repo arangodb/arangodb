@@ -12,10 +12,18 @@ parameters:
     # contains a branch with the same name as the arangodb repo. If this is the case
     # we use it, otherwise we fall back to "devel".
     default: ""
+  build-docker-image:
+    type: string
+    default: arangodb/build-alpine:3.16-gcc11.2-openssl3.1.4-f3c77755ece
   replication-two:
     type: boolean
-    # We use replication1 as default.
-    default: false
+    default: false # We use replication1 as default.
+  c-compiler:
+    type: string
+    default: "gcc"
+  cxx-compiler:
+    type: string
+    default: "g++"
 
 # our defined job, and its steps
 jobs:
@@ -78,7 +86,7 @@ jobs:
             fi
             ENTERPRISE_COMMIT=`git ls-remote --heads git@github.com:arangodb/enterprise.git $ENTERPRISE_BRANCH | cut -f1`
             echo "Using enterprise branch $ENTERPRISE_BRANCH (sha $ENTERPRISE_COMMIT)"
-            echo "{\"enterprise-commit\": \"$ENTERPRISE_COMMIT\"}" > parameters.json
+            echo "{\"enterprise-commit\": \"$ENTERPRISE_COMMIT\", \"build-docker-image\": \"<< pipeline.parameters.build-docker-image >>\"" "}" > parameters.json
             cat parameters.json
 
       - run:
