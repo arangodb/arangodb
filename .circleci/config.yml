@@ -16,6 +16,13 @@ parameters:
     type: boolean
     # We use replication1 as default.
     default: false
+  c-compiler:
+    type: string
+    default: "gcc"
+  cxx-compiler:
+    type: string
+    default: "g++"
+
 
 # our defined job, and its steps
 jobs:
