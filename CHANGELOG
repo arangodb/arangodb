@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed BTS-1701: Assertion triggered in AQL Traversal on edge PRUNE.
+
 * Make AQL optimizer rule "interchange-adjacent-enumerations" generate less
   plan permutations for the case the a non-collection FOR loop is followed
   by a collection-based FOR loop. This change can reduce the number of plans
