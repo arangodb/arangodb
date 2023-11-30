@@ -429,13 +429,13 @@ void TraversalNode::getVariablesUsedHere(VarSet& result) const {
 /// @brief getVariablesSetHere
 std::vector<Variable const*> TraversalNode::getVariablesSetHere() const {
   std::vector<Variable const*> vars;
-  if (isVertexOutVariableUsedLater()) {
+  if (isVertexOutVariableAccessed()) {
     vars.emplace_back(vertexOutVariable());
   }
-  if (isEdgeOutVariableUsedLater()) {
+  if (isEdgeOutVariableAccessed()) {
     vars.emplace_back(edgeOutVariable());
   }
-  if (isPathOutVariableUsedLater()) {
+  if (isPathOutVariableAccessed()) {
     vars.emplace_back(pathOutVariable());
   }
   return vars;
@@ -477,9 +477,17 @@ void TraversalNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   }
 
   // Out variables
-  if (isPathOutVariableUsedLater()) {
+  if (isPathOutVariableAccessed()) {
     nodes.add(VPackValue("pathOutVariable"));
     pathOutVariable()->toVelocyPack(nodes);
+  }
+  if (isVertexOutVariableAccessed()) {
+    nodes.add(VPackValue("vertexOutVariable"));
+    vertexOutVariable()->toVelocyPack(nodes);
+  }
+  if (isEdgeOutVariableAccessed()) {
+    nodes.add(VPackValue("edgeOutVariable"));
+    edgeOutVariable()->toVelocyPack(nodes);
   }
 
   // Traversal Filter Conditions
