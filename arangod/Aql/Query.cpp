@@ -394,13 +394,25 @@ void Query::prepareQuery() {
 
     enterState(QueryExecutionState::ValueType::EXECUTION);
   } catch (Exception const& ex) {
-    _resultCode.store(ex.code());
+    auto emptyResultCode = std::optional<ErrorCode>(std::nullopt);
+    if (_resultCode.compare_exchange_strong(emptyResultCode, ex.code())) {
+      ensureExecutionTime();
+    }
     throw;
   } catch (std::bad_alloc const&) {
+    auto emptyResultCode = std::optional<ErrorCode>(std::nullopt);
+    if (_resultCode.compare_exchange_strong(emptyResultCode,
+                                            TRI_ERROR_OUT_OF_MEMORY)) {
+      ensureExecutionTime();
+    }
     _resultCode.store(TRI_ERROR_OUT_OF_MEMORY);
     throw;
   } catch (...) {
-    _resultCode.store(TRI_ERROR_INTERNAL);
+    auto emptyResultCode = std::optional<ErrorCode>(std::nullopt);
+    if (_resultCode.compare_exchange_strong(emptyResultCode,
+                                            TRI_ERROR_INTERNAL)) {
+      ensureExecutionTime();
+    }
     throw;
   }
 }
