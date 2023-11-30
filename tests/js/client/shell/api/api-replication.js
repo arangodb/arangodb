@@ -193,6 +193,10 @@ const validateProperties = (overrides, colName, type, keepClusterSpecificAttribu
     // but is not part of the expected list. So let us add it
     expectedProps.minReplicationFactor = expectedProps.writeConcern;
   }
+  if (isCluster && db._properties().replicationVersion === "2") {
+    // Replication 2 always exposes the group id
+    assertTrue(props.hasOwnProperty("groupId"), `${JSON.stringify(props)} is missing groupId`);
+  }
   for (const [key, value] of Object.entries(expectedProps)) {
     assertEqual(props[key], value, `Differ on key ${key}, Returned: ${JSON.stringify(props)} , Expected: ${JSON.stringify(expectedProps)}`);
   }
@@ -203,6 +207,10 @@ const validateProperties = (overrides, colName, type, keepClusterSpecificAttribu
     // The globallyUniqueId is generated, so we cannot compare equality, we should make
     // sure it is always there.
     expectedKeys.push("globallyUniqueId");
+  }
+  if (isCluster && db._properties().replicationVersion === "2" && !overrides.hasOwnProperty("groupId")) {
+    // Replication 2 always exposes the group id
+    expectedKeys.push("groupId");
   }
   const foundKeys = Object.keys(props);
   assertEqual(expectedKeys.length, foundKeys.length, `Check that all properties are reported expected. Missing: ${JSON.stringify(_.difference(expectedKeys, foundKeys))} unexpected: ${JSON.stringify(_.difference(foundKeys, expectedKeys))}`);
@@ -1506,23 +1514,33 @@ function RestoreInOneShardSuite() {
         // all are numeric values. None of them can be modified in one shard.
         const res = tryRestore({name: collname, [v]: 2});
         try {
-          assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-          if (isCluster) {
-            if (v === "minReplicationFactor" || v === "writeConcern") {
-              // On Replication1 writeConcern is allowed to differ per Collection.
-              // On Replication2 it is not.
-              validateProperties({...getOneShardShardingValues(), writeConcern: 2, minReplicationFactor: 2}, collname, 2);
-            } else {
-              validateProperties(getOneShardShardingValues(), collname, 2);
-            }
+          if (isCluster && db._properties().replicationVersion === "2" && (v === "minReplicationFactor" || v === "writeConcern")) {
+            // For Replication2 the writeConcern is per CollectionGroup. We cannot create a follower with a different one.
+            assertTrue(res.error, `Result: ${JSON.stringify(res)}`);
+            isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {[v]: 2});
           } else {
-            // OneShard has no meaning in single server, just assert values are taken
-            if (v === "minReplicationFactor") {
-              // On Single Server only writeConcern is exposed.
-              // But can be configured with minReplicationFactor
-              validateProperties({writeConcern: 2}, collname, 2);
+            assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+            if (isCluster) {
+              if (v === "minReplicationFactor" || v === "writeConcern") {
+                // On Replication1 writeConcern is allowed to differ per Collection.
+                // On Replication2 it is not.
+                validateProperties({
+                  ...getOneShardShardingValues(),
+                  writeConcern: 2,
+                  minReplicationFactor: 2
+                }, collname, 2);
+              } else {
+                validateProperties(getOneShardShardingValues(), collname, 2);
+              }
             } else {
-              validateProperties({[v]: 2}, collname, 2);
+              // OneShard has no meaning in single server, just assert values are taken
+              if (v === "minReplicationFactor") {
+                // On Single Server only writeConcern is exposed.
+                // But can be configured with minReplicationFactor
+                validateProperties({writeConcern: 2}, collname, 2);
+              } else {
+                validateProperties({[v]: 2}, collname, 2);
+              }
             }
           }
         } finally {
