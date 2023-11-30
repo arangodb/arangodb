@@ -24,6 +24,7 @@
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 
 #include "Basics/application-exit.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 #include "Replication2/StateMachines/Document/DocumentStateErrorHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
