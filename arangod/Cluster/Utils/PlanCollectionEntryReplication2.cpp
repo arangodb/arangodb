@@ -24,7 +24,6 @@
 #include "Inspection/VPack.h"
 #include "Replication2/AgencyCollectionSpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
 #include "VocBase/LogicalCollection.h"
 
