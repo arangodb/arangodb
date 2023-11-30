@@ -235,11 +235,11 @@ bool Task::tryCompile(ArangodServer& server, v8::Isolate* isolate,
   TRI_ASSERT(isolate != nullptr);
 
   v8::HandleScope scope(isolate);
-  auto context = TRI_IGETC;
+  v8::Handle<v8::Context> context = isolate->GetCurrentContext();
   // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
-  auto current = isolate->GetCurrentContext()->Global();
+  v8::Handle<v8::Object> global = context->Global();
   auto ctor = v8::Local<v8::Function>::Cast(
-      current->Get(context, TRI_V8_ASCII_STRING(isolate, "Function"))
+      global->Get(context, TRI_V8_ASCII_STRING(isolate, "Function"))
           .FromMaybe(v8::Local<v8::Value>()));
 
   // Invoke Function constructor to create function with the given body and no
@@ -247,11 +247,11 @@ bool Task::tryCompile(ArangodServer& server, v8::Isolate* isolate,
   v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING(isolate, "params"),
                                    TRI_V8_STD_STRING(isolate, command)};
   v8::Local<v8::Object> function =
-      ctor->NewInstance(TRI_IGETC, 2, args).FromMaybe(v8::Local<v8::Object>());
+      ctor->NewInstance(context, 2, args).FromMaybe(v8::Local<v8::Object>());
 
   v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
 
-  return (!action.IsEmpty());
+  return !action.IsEmpty();
 }
 
 bool Task::databaseMatches(std::string const& name) const {

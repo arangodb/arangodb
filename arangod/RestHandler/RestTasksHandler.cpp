@@ -37,6 +37,7 @@
 #include "V8Server/V8Executor.h"
 #include "VocBase/Methods/Tasks.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 
 using namespace arangodb::basics;
@@ -237,7 +238,7 @@ void RestTasksHandler::registerTask(bool byId) {
         JavaScriptSecurityContext::createRestrictedContext();
     V8ExecutorGuard guard(&_vocbase, securityContext);
 
-    guard.runInContext([&](v8::Isolate* isolate) -> Result {
+    Result res = guard.runInContext([&](v8::Isolate* isolate) -> Result {
       v8::HandleScope scope(isolate);
 
       v8::Handle<v8::Context> context = isolate->GetCurrentContext();
@@ -248,17 +249,20 @@ void RestTasksHandler::registerTask(bool byId) {
               .FromMaybe(v8::Handle<v8::Value>())
               ->IsFunction()) {
         // need to add ( and ) around function because call will otherwise break
-        command = "(" + cmdSlice.copyString() + ")(params)";
+        command = absl::StrCat("(", cmdSlice.stringView(), ")(params)");
       } else {
         command = cmdSlice.copyString();
       }
 
       if (!Task::tryCompile(server(), isolate, command)) {
-        generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                      "cannot compile command");
+        return {TRI_ERROR_BAD_PARAMETER, "cannot compile command"};
       }
       return {};
     });
+    if (res.fail()) {
+      generateError(res);
+      return;
+    }
   } catch (arangodb::basics::Exception const& ex) {
     generateError(Result{ex.code(), ex.what()});
     return;
@@ -273,7 +277,7 @@ void RestTasksHandler::registerTask(bool byId) {
   // extract the parameters
   auto parameters = std::make_shared<VPackBuilder>(body.get("params"));
 
-  command = "(function (params) { " + command + " } )(params);";
+  command = absl::StrCat("(function (params) { ", command, " } )(params);");
 
   auto res = TRI_ERROR_NO_ERROR;
   std::shared_ptr<Task> task =
