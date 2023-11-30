@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-372: Truncate long saved query names in UI.
+
 * EE Only: When creating a disjoint SmartGraph or a SmartJoin collection where
   the list of shard names would go from a k digit number to a k+1 digit number,
   some AQL queries would mismatch the shard list of one collection with the others.
