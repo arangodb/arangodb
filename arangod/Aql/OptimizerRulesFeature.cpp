@@ -778,7 +778,7 @@ as possible if the involved attributes are covered by the View index.)");
                OptimizerRule::lateDocumentMaterializationRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
                R"(Try to read from collections as late as possible if the
-  involved attributes are covered by regular indexes.)");
+involved attributes are covered by regular indexes.)");
 
   // apply late materialization for index queries
   registerRule("batch-materialize-documents", batchMaterializeDocumentsRule,

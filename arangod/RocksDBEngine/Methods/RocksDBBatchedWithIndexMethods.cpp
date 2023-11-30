@@ -50,7 +50,6 @@ void RocksDBBatchedWithIndexMethods::MultiGet(
     rocksdb::Slice const* keys, rocksdb::PinnableSlice* values,
     rocksdb::Status* statuses, ReadOwnWrites readOwnWrites) {
   rocksdb::ReadOptions ro;
-  // Timestamps and multiple ColumnFamilies are not necessary for us
   if (readOwnWrites == ReadOwnWrites::yes) {
     _wb->MultiGetFromBatchAndDB(_db, ro, &family, count, keys, values, statuses,
                                 false);
