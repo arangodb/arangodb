@@ -348,7 +348,7 @@ class ClusterInfo::SyncerThread final
     : public arangodb::ServerThread<ArangodServer> {
  public:
   explicit SyncerThread(Server&, std::string const& section,
-                        std::function<void()> const&, AgencyCallbackRegistry*);
+                        std::function<void()> const&, AgencyCallbackRegistry&);
   ~SyncerThread() override;
   void beginShutdown() override;
   void run() override;
@@ -361,7 +361,7 @@ class ClusterInfo::SyncerThread final
   bool _news;
   std::string _section;
   std::function<void()> _f;
-  AgencyCallbackRegistry* _cr;
+  AgencyCallbackRegistry& _cr;
   std::shared_ptr<AgencyCallback> _acb;
 };
 
@@ -384,7 +384,7 @@ DECLARE_GAUGE(arangodb_internal_cluster_info_memory_usage, std::uint64_t,
               "Total memory used by internal cluster info data structures");
 
 ClusterInfo::ClusterInfo(ArangodServer& server,
-                         AgencyCallbackRegistry* agencyCallbackRegistry,
+                         AgencyCallbackRegistry& agencyCallbackRegistry,
                          ErrorCode syncerShutdownCode)
     : _server(server),
       _agency(server),
@@ -468,6 +468,8 @@ ClusterInfo::~ClusterInfo() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterInfo::cleanup() {
+  waitForSyncersToStop();
+
   while (true) {
     {
       std::lock_guard mutexLocker{_idLock};
@@ -2659,13 +2661,13 @@ Result ClusterInfo::waitForDatabaseInCurrent(
   auto agencyCallback = std::make_shared<AgencyCallback>(
       _server, "Current/Databases/" + database.getName(), dbServerChanged, true,
       false);
-  Result r = _agencyCallbackRegistry->registerCallback(agencyCallback);
+  Result r = _agencyCallbackRegistry.registerCallback(agencyCallback);
   if (r.fail()) {
     return r;
   }
   auto cbGuard = scopeGuard([&]() noexcept {
     try {
-      _agencyCallbackRegistry->unregisterCallback(agencyCallback);
+      _agencyCallbackRegistry.unregisterCallback(agencyCallback);
     } catch (std::exception const& ex) {
       LOG_TOPIC("e952f", ERR, Logger::CLUSTER)
           << "Failed to unregister agency callback: " << ex.what();
@@ -2962,14 +2964,14 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   // AgencyCallback for this.
   auto agencyCallback = std::make_shared<AgencyCallback>(
       _server, where, dbServerChanged, true, false);
-  Result r = _agencyCallbackRegistry->registerCallback(agencyCallback);
+  Result r = _agencyCallbackRegistry.registerCallback(agencyCallback);
   if (r.fail()) {
     return r;
   }
 
   auto cbGuard = scopeGuard([this, &agencyCallback]() noexcept {
     try {
-      _agencyCallbackRegistry->unregisterCallback(agencyCallback);
+      _agencyCallbackRegistry.unregisterCallback(agencyCallback);
     } catch (std::exception const& ex) {
       LOG_TOPIC("1ec9b", ERR, Logger::CLUSTER)
           << "Failed to unregister agency callback: " << ex.what();
@@ -3180,14 +3182,14 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   // AgencyCallback for this.
   auto agencyCallback = std::make_shared<AgencyCallback>(
       _server, where, dbServerChanged, true, false);
-  Result r = _agencyCallbackRegistry->registerCallback(agencyCallback);
+  Result r = _agencyCallbackRegistry.registerCallback(agencyCallback);
   if (r.fail()) {
     return r;
   }
 
   auto cbGuard = scopeGuard([this, &agencyCallback]() noexcept {
     try {
-      _agencyCallbackRegistry->unregisterCallback(agencyCallback);
+      _agencyCallbackRegistry.unregisterCallback(agencyCallback);
     } catch (std::exception const& ex) {
       LOG_TOPIC("be7da", ERR, Logger::CLUSTER)
           << "Failed to unregister agency callback: " << ex.what();
@@ -5351,8 +5353,7 @@ Result ClusterInfo::agencyHotBackupUnlock(std::string_view backupId,
 ArangodServer& ClusterInfo::server() const { return _server; }
 
 AgencyCallbackRegistry& ClusterInfo::agencyCallbackRegistry() const {
-  TRI_ASSERT(_agencyCallbackRegistry != nullptr);
-  return *_agencyCallbackRegistry;
+  return _agencyCallbackRegistry;
 }
 
 void ClusterInfo::startSyncers() {
@@ -5413,7 +5414,7 @@ void ClusterInfo::waitForSyncersToStop() {
 ClusterInfo::SyncerThread::SyncerThread(Server& server,
                                         std::string const& section,
                                         std::function<void()> const& f,
-                                        AgencyCallbackRegistry* cregistry)
+                                        AgencyCallbackRegistry& cregistry)
     : ServerThread<Server>(server, section + "Syncer"),
       _news(false),
       _section(section),
@@ -5467,7 +5468,7 @@ void ClusterInfo::SyncerThread::run() {
 
   auto acb = std::make_shared<AgencyCallback>(server(), _section + "/Version",
                                               update, true, false);
-  Result res = _cr->registerCallback(std::move(acb));
+  Result res = _cr.registerCallback(std::move(acb));
   if (res.fail()) {
     LOG_TOPIC("70e05", FATAL, Logger::CLUSTER)
         << "Failed to register callback with local registry: "
@@ -5514,7 +5515,7 @@ void ClusterInfo::SyncerThread::run() {
   }
 
   try {
-    _cr->unregisterCallback(acb);
+    _cr.unregisterCallback(acb);
   } catch (basics::Exception const& ex) {
     if (ex.code() != TRI_ERROR_SHUTTING_DOWN) {
       LOG_TOPIC("39336", WARN, Logger::CLUSTER)
