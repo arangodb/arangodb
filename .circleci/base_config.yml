@@ -9,17 +9,17 @@ parameters:
     default: ""
   build-docker-image:
     type: string
-    default: "arangodb/build-alpine:3.16-gcc11.2-openssl3.1.4-f3c77755ece"
+    default: "3.18-clang16.0-gcc12.2-openssl3.1.4-26c4da3c8"
   # Unused here, but it will be forwarded from config and will cause errors if not defined
   replication-two:
     type: boolean
     default: false
   c-compiler:
     type: string
-    default: "gcc"
+    default: "clang"
   cxx-compiler:
     type: string
-    default: "g++"
+    default: "clang++"
   # these are basically global constants
   build-targets:
     type: string
