@@ -1,6 +1,18 @@
 devel
 -----
 
+* Change default value for arangoimport's `--type` file type option from
+  "json" to "auto".
+  The default value of "auto" will guess the type of the import file based on
+  the file extension. The following file extensions will be automatically
+  detected:
+  - .json
+  - .jsonl
+  - .csv
+  - .tsv
+  If the file extension cannot be mapped to any of the above types, the import
+  will assume that the input is JSON.
+
 * BTS-1700: arangoimport parser should abort after a reasonable amount of parse 
   errors.
 
