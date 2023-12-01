@@ -273,15 +273,16 @@ class ClusterInfo final {
   /// @brief cleanup method which frees cluster-internal shared ptrs on shutdown
   //////////////////////////////////////////////////////////////////////////////
 
-  void cleanup();
+  void unprepare();
+
+  /**
+   * @brief begins shutdown of cluster info,
+   * begin shutting down plan and current syncers
+   */
+  void beginShutdown();
 
   /// @brief cancel all pending wait-for-syncer operations
   void drainSyncers();
-
-  /**
-   * @brief begin shutting down plan and current syncers
-   */
-  void shutdownSyncers();
 
   /**
    * @brief begin shutting down plan and current syncers

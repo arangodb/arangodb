@@ -467,7 +467,7 @@ ClusterInfo::~ClusterInfo() {
 /// @brief cleanup method which frees cluster-internal shared ptrs on shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterInfo::cleanup() {
+void ClusterInfo::unprepare() {
   waitForSyncersToStop();
 
   while (true) {
@@ -477,7 +477,7 @@ void ClusterInfo::cleanup() {
         break;
       }
     }
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 
   std::lock_guard mutexLocker{_planProt.mutex};
@@ -5384,7 +5384,7 @@ void ClusterInfo::drainSyncers() {
   clearWaitForMaps(_waitCurrentVersionLock, _waitCurrentVersion);
 }
 
-void ClusterInfo::shutdownSyncers() {
+void ClusterInfo::beginShutdown() {
   if (_planSyncer != nullptr) {
     _planSyncer->beginShutdown();
   }
@@ -5402,13 +5402,17 @@ void ClusterInfo::waitForSyncersToStop() {
   while ((_planSyncer != nullptr && _planSyncer->isRunning()) ||
          (_curSyncer != nullptr && _curSyncer->isRunning())) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    if (std::chrono::steady_clock::now() - start > std::chrono::seconds(30)) {
+    if (std::chrono::steady_clock::now() - start > std::chrono::seconds(60)) {
       LOG_TOPIC("b8a5d", FATAL, Logger::CLUSTER)
           << "exiting prematurely as we failed to end syncer threads in "
              "ClusterInfo";
       FATAL_ERROR_EXIT();
     }
   }
+
+  // make sure syncers threads must be gone
+  _planSyncer.reset();
+  _curSyncer.reset();
 }
 
 ClusterInfo::SyncerThread::SyncerThread(Server& server,
