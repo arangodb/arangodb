@@ -28,7 +28,6 @@
 #include "Basics/StaticStrings.h"
 #include "Inspection/Status.h"
 #include "Inspection/Transformers.h"
-#include "Inspection/VPack.h"
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
