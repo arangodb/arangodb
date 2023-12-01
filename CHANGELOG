@@ -1,6 +1,14 @@
 devel
 -----
 
+* Optimize equality lookups and prefix matches that use the AQL like function.
+  The optimization will turn `LIKE(doc.attribute, 'fixed string')` into an
+  equality lookup, and `LIKE(doc.attribute, 'prefix%')` into a range query.
+  That allows indexes to be used in case they are present on the underlying
+  attribute.
+  The optimization is applied only if the third parameter to the `LIKE`
+  function is either not set or set to a value of `false`.
+
 * Change default value for arangoimport's `--type` file type option from
   "json" to "auto".
   The default value of "auto" will guess the type of the import file based on
