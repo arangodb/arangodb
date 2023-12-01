@@ -59,14 +59,16 @@ using namespace std::literals::string_literals;
 /// this function is here to avoid usage of regexes, which are too slow
 namespace {
 
-bool isLineBreakCharacter(char const* c) { return *c == '\r' || *c == '\n'; }
+bool isLineBreakCharacter(char const* c) noexcept {
+  return *c == '\r' || *c == '\n';
+}
 
-bool isWhitespaceCharacter(char const* c) {
+bool isWhitespaceCharacter(char const* c) noexcept {
   return isLineBreakCharacter(c) || *c == ' ' || *c == '\t' || *c == '\f' ||
          *c == '\b';
 }
 
-bool isInteger(char const* field, size_t fieldLength) {
+bool isInteger(char const* field, size_t fieldLength) noexcept {
   char const* end = field + fieldLength;
 
   if (*field == '+' || *field == '-') {
@@ -86,7 +88,7 @@ bool isInteger(char const* field, size_t fieldLength) {
 /// @brief helper function to determine if a field value maybe is a decimal
 /// value. this function peeks into the first few bytes of the value only
 /// this function is here to avoid usage of regexes, which are too slow
-bool isDecimal(char const* field, size_t fieldLength) {
+bool isDecimal(char const* field, size_t fieldLength) noexcept {
   char const* ptr = field;
   char const* end = ptr + fieldLength;
 
@@ -140,25 +142,34 @@ bool isDecimal(char const* field, size_t fieldLength) {
 
 }  // namespace
 
-namespace arangodb {
-namespace import {
+namespace arangodb::import {
 
 ImportStatistics::ImportStatistics(
-    application_features::ApplicationServer& server)
-    : _histogram(server) {}
+    application_features::ApplicationServer& server, uint64_t maxErrors)
+    : _maxErrors(maxErrors), _histogram(server) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// initialize step value for progress reports
-////////////////////////////////////////////////////////////////////////////////
-
-double const ImportHelper::ProgressStep = 3.0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// the server has a built-in limit for the batch size
-///  and will reject bigger HTTP request bodies
-////////////////////////////////////////////////////////////////////////////////
-
-unsigned const ImportHelper::MaxBatchSize = 768 * 1024 * 1024;
+bool ImportStatistics::logError(std::string_view message) {
+  {
+    std::lock_guard guard{_mutex};
+    if (++_errorsLogged > _maxErrors) {
+      if (_errorsLogged == _maxErrors + 1) {
+        LOG_TOPIC("15a36", WARN, arangodb::Logger::FIXME)
+            << "display of further errors suppressed because of `--max-errors` "
+               "setting ("
+            << _maxErrors << ")";
+        LOG_TOPIC("a0197", WARN, Logger::FIXME)
+            << "stopping import because of `--max-errors` setting ("
+            << _maxErrors
+            << "). in case you want the import the continue, please adjust the "
+               "value of `--max-errors` to a higher value when invoking "
+               "arangooimport.";
+      }
+      return false;
+    }
+  }
+  LOG_TOPIC("e5a29", WARN, arangodb::Logger::FIXME) << message;
+  return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// constructor and destructor
@@ -169,13 +180,14 @@ ImportHelper::ImportHelper(EncryptionFeature* encryption,
                            std::string const& endpoint,
                            httpclient::SimpleHttpClientParams const& params,
                            uint64_t maxUploadSize, uint32_t threadCount,
-                           bool autoUploadSize)
+                           uint64_t maxErrors, bool autoUploadSize)
     : _encryption{encryption},
       _httpClient(client.createHttpClient(endpoint, params)),
       _maxUploadSize(maxUploadSize),
       _periodByteCount(0),
-      _autoUploadSize(autoUploadSize),
+      _maxErrors(maxErrors),
       _threadCount(threadCount),
+      _autoUploadSize(autoUploadSize),
       _tempBuffer(false),
       _separator(","),
       _quote("\""),
@@ -189,25 +201,22 @@ ImportHelper::ImportHelper(EncryptionFeature* encryption,
       _ignoreMissing(false),
       _skipValidation(false),
       _numberLines(0),
-      _stats(client.server()),
+      _stats(client.server(), _maxErrors),
       _rowsRead(0),
       _rowOffset(0),
       _rowsToSkip(0),
       _keyColumn(-1),
       _onDuplicateAction("error"),
-      _collectionName(),
       _overwriteCollectionPrefix(false),
       _lineBuffer(false),
       _outputBuffer(false),
-      _firstLine(""),
-      _columnNames(),
       _hasError(false),
       _headersSeen(false),
       _emittedField(false) {
   for (uint32_t i = 0; i < threadCount; i++) {
     auto http = client.createHttpClient(endpoint, params);
-    _senderThreads.emplace_back(
-        new SenderThread(client.server(), std::move(http), &_stats, [this]() {
+    _senderThreads.emplace_back(std::make_unique<SenderThread>(
+        client.server(), std::move(http), &_stats, [this]() {
           std::lock_guard guard{_threadsCondition.mutex};
           _threadsCondition.cv.notify_one();
         }));
@@ -284,8 +293,8 @@ bool ImportHelper::readHeadersFile(std::string const& headersFile,
   auto guard =
       scopeGuard([&parser]() noexcept { TRI_DestroyCsvParser(&parser); });
 
-  constexpr int BUFFER_SIZE = 16384;
-  char buffer[BUFFER_SIZE];
+  constexpr int kBufferSize = 16384;
+  char buffer[kBufferSize];
   while (!_hasError) {
     auto n = fd->read(buffer, sizeof(buffer));
 
@@ -407,7 +416,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   }
 
   // progress display control variables
-  double nextProgress = ProgressStep;
+  double nextProgress = kProgressStep;
 
   TRI_csv_parser_t parser;
   TRI_InitCsvParser(&parser, ProcessCsvBegin, ProcessCsvAdd, ProcessCsvEnd,
@@ -424,8 +433,8 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   }
   parser._dataAdd = this;
 
-  constexpr int BUFFER_SIZE = 262144;
-  char buffer[BUFFER_SIZE];
+  constexpr int kBufferSize = 262144;
+  char buffer[kBufferSize];
 
   while (!_hasError) {
     auto n = fd->read(buffer, sizeof(buffer));
@@ -506,20 +515,20 @@ bool ImportHelper::importJson(std::string const& collectionName,
   }
 
   // progress display control variables
-  double nextProgress = ProgressStep;
+  double nextProgress = kProgressStep;
 
-  constexpr int BUFFER_SIZE = 1048576;
+  constexpr int kBufferSize = 1048576;
 
   while (!_hasError) {
     // reserve enough room to read more data
-    if (_outputBuffer.reserve(BUFFER_SIZE) == TRI_ERROR_OUT_OF_MEMORY) {
+    if (_outputBuffer.reserve(kBufferSize) == TRI_ERROR_OUT_OF_MEMORY) {
       _errorMessages.emplace_back(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
 
       return false;
     }
 
     // read directly into string buffer
-    auto n = fd->read(_outputBuffer.end(), BUFFER_SIZE - 1);
+    auto n = fd->read(_outputBuffer.end(), kBufferSize - 1);
 
     if (n < 0) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
@@ -648,21 +657,21 @@ bool ImportHelper::importJsonWithRewrite(std::string const& collectionName,
   }
 
   // progress display control variables
-  double nextProgress = ProgressStep;
+  double nextProgress = kProgressStep;
 
-  constexpr int BUFFER_SIZE = 1048576;
+  constexpr int kBufferSize = 1048576;
   /**************
    * End of copy
    **************/
   arangodb::basics::StringBuffer tmpBuffer;
-  if (tmpBuffer.reserve(BUFFER_SIZE) == TRI_ERROR_OUT_OF_MEMORY) {
+  if (tmpBuffer.reserve(kBufferSize) == TRI_ERROR_OUT_OF_MEMORY) {
     _errorMessages.emplace_back(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
 
     return false;
   }
 
   // read into temporary buffer
-  auto n = fd->read(tmpBuffer.end(), BUFFER_SIZE - 1);
+  auto n = fd->read(tmpBuffer.end(), kBufferSize - 1);
   if (n < 0) {
     _errorMessages.emplace_back(TRI_LAST_ERROR_STR);
     return false;
@@ -718,7 +727,7 @@ bool ImportHelper::importJsonWithRewrite(std::string const& collectionName,
     }
     // Read the remainder of the file, we know that it fits
     while (n > 0) {
-      n = fd->read(tmpBuffer.end(), BUFFER_SIZE - 1);
+      n = fd->read(tmpBuffer.end(), kBufferSize - 1);
       if (n < 0) {
         _errorMessages.emplace_back(TRI_LAST_ERROR_STR);
         return false;
@@ -780,7 +789,7 @@ bool ImportHelper::importJsonWithRewrite(std::string const& collectionName,
               std::distance<char const*>(tmpBuffer.begin(), startOfNextLine));
         }
 
-        n = fd->read(tmpBuffer.end(), BUFFER_SIZE - 1);
+        n = fd->read(tmpBuffer.end(), kBufferSize - 1);
         if (n < 0) {
           _errorMessages.emplace_back(TRI_LAST_ERROR_STR);
           return false;
@@ -874,7 +883,7 @@ void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead,
       LOG_TOPIC("9ddf3", INFO, arangodb::Logger::FIXME)
           << "processed " << formatSize(totalRead) << " (" << (int)nextProgress
           << "%) of input file";
-      nextProgress = (double)((int)(pct + ProgressStep));
+      nextProgress = (double)((int)(pct + kProgressStep));
     }
   }
 }
@@ -1464,6 +1473,15 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
     return;
   }
 
+  {
+    std::lock_guard guard{_stats._mutex};
+    if (_stats._numberErrors >= _maxErrors) {
+      // stop early if we have reached --max-errors already
+      _hasError = true;
+      return;
+    }
+  }
+
   // build target url
   std::string url("/_api/import?" + getCollectionUrlPart() +
                   "&details=true&onDuplicate=" +
@@ -1544,5 +1562,5 @@ void ImportHelper::waitForSenders() {
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 }
-}  // namespace import
-}  // namespace arangodb
+
+}  // namespace arangodb::import
