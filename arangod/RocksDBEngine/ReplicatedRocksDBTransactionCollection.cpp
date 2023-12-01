@@ -24,6 +24,7 @@
 #include "ReplicatedRocksDBTransactionCollection.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RocksDBEngine/Methods/RocksDBReadOnlyMethods.h"
 #include "RocksDBEngine/Methods/RocksDBSingleOperationReadOnlyMethods.h"

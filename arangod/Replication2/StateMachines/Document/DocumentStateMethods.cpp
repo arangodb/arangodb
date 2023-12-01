@@ -24,8 +24,10 @@
 #include "Replication2/StateMachines/Document/DocumentStateMethods.h"
 
 #include "Cluster/ServerState.h"
+#include "Inspection/VPack.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshotInspectors.h"
 #include "VocBase/vocbase.h"
