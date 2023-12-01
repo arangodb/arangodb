@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Containers/FlatHashMap.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -47,7 +48,6 @@ class Builder;
 class Slice;
 }  // namespace velocypack
 typedef std::string ServerID;  // ID of a server
-typedef std::string ShardID;   // ID of a shard
 using ShardMap = containers::FlatHashMap<ShardID, std::vector<ServerID>>;
 
 struct UserInputCollectionProperties;
@@ -135,9 +135,9 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief current version for collections
   static constexpr Version currentVersion() { return Version::v37; }
 
-  static replication2::LogId shardIdToStateId(std::string_view shardId);
+  static replication2::LogId shardIdToStateId(ShardID const& shardId);
   static std::optional<replication2::LogId> tryShardIdToStateId(
-      std::string_view shardId);
+      ShardID const& shardId);
 
   // SECTION: Meta Information
   Version version() const noexcept { return _version; }
@@ -255,16 +255,22 @@ class LogicalCollection : public LogicalDataSource {
   void setShardMap(std::shared_ptr<ShardMap> map) noexcept;
 
   // query shard for a given document
-  ErrorCode getResponsibleShard(velocypack::Slice slice, bool docComplete,
-                                std::string& shardID);
-  ErrorCode getResponsibleShard(std::string_view key, std::string& shardID);
+  ResultT<ShardID> getResponsibleShard(velocypack::Slice slice,
+                                       bool docComplete);
+  ResultT<ShardID> getResponsibleShard(std::string_view key);
 
-  ErrorCode getResponsibleShard(velocypack::Slice slice, bool docComplete,
-                                std::string& shardID,
-                                bool& usesDefaultShardKeys,
-                                std::string_view key = std::string_view());
+  ResultT<ShardID> getResponsibleShard(
+      velocypack::Slice slice, bool docComplete, bool& usesDefaultShardKeys,
+      std::string_view key = std::string_view());
 
-  auto getDocumentState()
+  /**
+   * Test if this Logical collection is the leading shard.
+   * Will only return true on DBServers and Shards, and only
+   * if they are leading. Independent of the Replication version
+   */
+  auto isLeadingShard() const -> bool;
+
+  auto getDocumentState() const
       -> std::shared_ptr<replication2::replicated_state::ReplicatedState<
           replication2::replicated_state::document::DocumentState>>;
   auto getDocumentStateLeader() -> std::shared_ptr<

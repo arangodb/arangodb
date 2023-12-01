@@ -23,6 +23,7 @@
 
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 
+#include "Inspection/VPack.h"
 #include "Replication2/StateMachines/Document/DocumentCore.h"
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"

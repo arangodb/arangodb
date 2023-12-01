@@ -1629,7 +1629,8 @@ static void ClientConnection_importCsv(
 
   SimpleHttpClientParams params(client->requestTimeout(), client->getWarn());
   ImportHelper ih(encryption, *client, v8connection->endpointSpecification(),
-                  params, DefaultChunkSize, 1);
+                  params, DefaultChunkSize, /*threadCount*/ 1,
+                  /*maxErrors*/ UINT64_MAX);
 
   ih.setQuote(quote);
   ih.setSeparator(separator);
@@ -1723,7 +1724,8 @@ static void ClientConnection_importJson(
 
   SimpleHttpClientParams params(client->requestTimeout(), client->getWarn());
   ImportHelper ih(encryption, *client, v8connection->endpointSpecification(),
-                  params, DefaultChunkSize, 1);
+                  params, DefaultChunkSize, /*threadCount*/ 1,
+                  /*maxErrors*/ UINT64_MAX);
 
   std::string fileName = TRI_ObjectToString(isolate, args[0]);
   std::string collectionName = TRI_ObjectToString(isolate, args[1]);

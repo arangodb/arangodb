@@ -40,6 +40,8 @@
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Sharding/ShardingInfo.h"
@@ -420,28 +422,24 @@ void LogicalCollection::setShardMap(std::shared_ptr<ShardMap> map) noexcept {
   _sharding->setShardMap(std::move(map));
 }
 
-ErrorCode LogicalCollection::getResponsibleShard(velocypack::Slice slice,
-                                                 bool docComplete,
-                                                 std::string& shardID) {
+ResultT<ShardID> LogicalCollection::getResponsibleShard(velocypack::Slice slice,
+                                                        bool docComplete) {
   bool usesDefaultShardKeys;
-  return getResponsibleShard(slice, docComplete, shardID, usesDefaultShardKeys);
+  return getResponsibleShard(slice, docComplete, usesDefaultShardKeys);
 }
 
-ErrorCode LogicalCollection::getResponsibleShard(std::string_view key,
-                                                 std::string& shardID) {
+ResultT<ShardID> LogicalCollection::getResponsibleShard(std::string_view key) {
   bool usesDefaultShardKeys;
-  return getResponsibleShard(VPackSlice::emptyObjectSlice(), false, shardID,
+  return getResponsibleShard(VPackSlice::emptyObjectSlice(), false,
                              usesDefaultShardKeys,
                              std::string_view(key.data(), key.size()));
 }
 
-ErrorCode LogicalCollection::getResponsibleShard(velocypack::Slice slice,
-                                                 bool docComplete,
-                                                 std::string& shardID,
-                                                 bool& usesDefaultShardKeys,
-                                                 std::string_view key) {
+ResultT<ShardID> LogicalCollection::getResponsibleShard(
+    velocypack::Slice slice, bool docComplete, bool& usesDefaultShardKeys,
+    std::string_view key) {
   TRI_ASSERT(_sharding != nullptr);
-  return _sharding->getResponsibleShard(slice, docComplete, shardID,
+  return _sharding->getResponsibleShard(slice, docComplete,
                                         usesDefaultShardKeys, key);
 }
 
@@ -1282,7 +1280,7 @@ void LogicalCollection::decorateWithInternalValidators() {
 }
 
 replication2::LogId LogicalCollection::shardIdToStateId(
-    std::string_view shardId) {
+    ShardID const& shardId) {
   auto logId = tryShardIdToStateId(shardId);
   ADB_PROD_ASSERT(logId.has_value())
       << " converting " << shardId << " to LogId failed";
@@ -1290,15 +1288,36 @@ replication2::LogId LogicalCollection::shardIdToStateId(
 }
 
 std::optional<replication2::LogId> LogicalCollection::tryShardIdToStateId(
-    std::string_view shardId) {
-  if (shardId.empty()) {
+    ShardID const& shardId) {
+  if (!shardId.isValid()) {
     return {};
   }
-  auto stateId = shardId.substr(1, shardId.size() - 1);
-  return replication2::LogId::fromString(stateId);
+  return replication2::LogId::fromString(std::to_string(shardId.id()));
 }
 
-auto LogicalCollection::getDocumentState()
+auto LogicalCollection::isLeadingShard() const -> bool {
+  if (!ServerState::instance()->isDBServer()) {
+    // Only DBServers can be leaders of shards
+    return false;
+  }
+  if (isAStub()) {
+    // Stubs are no shards, they cannot be leaders
+    return false;
+  }
+  if (replicationVersion() == replication::Version::ONE) {
+    // Replication version 1 does not have leaders
+    auto const& followerInfo = followers();
+    // If the Leader is empty, we are the leader
+    return followerInfo->getLeader().empty();
+  } else {
+    auto const& maybeDocState =
+        basics::catchToResultT([&]() { return getDocumentState(); });
+    // We can only get the leader state if we are the leader
+    return maybeDocState.ok() && maybeDocState.get()->getLeader() != nullptr;
+  }
+}
+
+auto LogicalCollection::getDocumentState() const
     -> std::shared_ptr<replication2::replicated_state::ReplicatedState<
         replication2::replicated_state::document::DocumentState>> {
   using namespace replication2::replicated_state;

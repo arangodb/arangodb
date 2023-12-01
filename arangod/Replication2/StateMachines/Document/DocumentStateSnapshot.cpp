@@ -26,7 +26,6 @@
 
 #include "Assertions/ProdAssert.h"
 #include "Replication2/StateMachines/Document/CollectionReader.h"
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Logger/LogContextKeys.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -72,7 +71,12 @@ Snapshot::GuardedData::GuardedData(
     std::vector<std::shared_ptr<LogicalCollection>> shards)
     : databaseSnapshot(std::move(databaseSnapshot)) {
   for (auto&& shard : shards) {
-    statistics.shards.emplace(shard->name(),
+    auto maybeShardId = ShardID::shardIdFromString(shard->name());
+    ADB_PROD_ASSERT(maybeShardId.ok())
+        << "Tried to create a Snapshot on Database Server for a collection "
+           "that is not a shard "
+        << shard->name();
+    statistics.shards.emplace(maybeShardId.get(),
                               SnapshotStatistics::ShardStatistics{});
     this->shards.emplace_back(std::move(shard), nullptr);
   }
@@ -261,6 +265,12 @@ auto Snapshot::generateBatch(state::Ongoing const&) -> ResultT<SnapshotBatch> {
 
         reader = std::move(res.get());
 
+        auto maybeShardID = ShardID::shardIdFromString(shard->name());
+        ADB_PROD_ASSERT(maybeShardID.ok())
+            << "Tried to replicate an operation for a collection that is not a "
+               "shard "
+            << shard->name();
+
         operations.reserve(3);
         {
           auto properties = VPackBuilder();
@@ -278,7 +288,7 @@ auto Snapshot::generateBatch(state::Ongoing const&) -> ResultT<SnapshotBatch> {
           }
           operations.emplace_back(
               ReplicatedOperation::buildCreateShardOperation(
-                  shard->name(), shard->type(),
+                  maybeShardID.get(), shard->type(),
                   std::move(properties).sharedSlice()));
 
           LOG_CTX("c0864", DEBUG, loggerContext)
@@ -287,7 +297,7 @@ auto Snapshot::generateBatch(state::Ongoing const&) -> ResultT<SnapshotBatch> {
         }
 
         data.statistics.shards.emplace(
-            shard->name(),
+            std::move(maybeShardID.get()),
             SnapshotStatistics::ShardStatistics{reader->getDocCount()});
       } else {
         operations.reserve(2);
@@ -317,11 +327,15 @@ auto Snapshot::generateBatch(state::Ongoing const&) -> ResultT<SnapshotBatch> {
     auto payload = std::move(builder).sharedSlice();
     auto payloadLen = payload.slice().length();
     auto payloadSize = payload.byteSize();
-    auto shardId = shard->name();
+    auto maybeShardID = ShardID::shardIdFromString(shard->name());
+    ADB_PROD_ASSERT(maybeShardID.ok()) << "Tried to replicate an operation for "
+                                          "a collection that is not a shard "
+                                       << shard->name();
 
     auto tid = TransactionId::createFollower();
     operations.emplace_back(ReplicatedOperation::buildDocumentOperation(
-        TRI_VOC_DOCUMENT_OPERATION_INSERT, tid, shardId, std::move(payload)));
+        TRI_VOC_DOCUMENT_OPERATION_INSERT, tid, maybeShardID.get(),
+        std::move(payload)));
     operations.emplace_back(ReplicatedOperation::buildCommitOperation(tid));
 
     auto readerHasMore = reader->hasMore();
@@ -334,25 +348,25 @@ auto Snapshot::generateBatch(state::Ongoing const&) -> ResultT<SnapshotBatch> {
       data.databaseSnapshot->resetTransaction();
 
       LOG_CTX("c00b1", DEBUG, loggerContext)
-          << "Reading from shard " << shardId << " completed. "
+          << "Reading from shard " << maybeShardID.get() << " completed. "
           << data.shards.size() << " shards to go.";
     }
 
     ++data.statistics.batchesSent;
     data.statistics.bytesSent += payloadSize;
 
-    TRI_ASSERT(data.statistics.shards.contains(shardId))
-        << getId() << " " << shardId;
-    data.statistics.shards[shardId].docsSent += payloadLen;
+    TRI_ASSERT(data.statistics.shards.contains(maybeShardID.get()))
+        << getId() << " " << maybeShardID.get();
+    data.statistics.shards[maybeShardID.get()].docsSent += payloadLen;
 
     data.statistics.lastBatchSent = data.statistics.lastUpdated =
         std::chrono::system_clock::now();
 
     LOG_CTX("9d1b4", DEBUG, loggerContext)
         << "Trx " << tid << " reading " << payloadLen << " documents from "
-        << shardId << " in batch " << data.statistics.batchesSent << " with "
-        << payloadSize << " bytes. There is " << (readerHasMore ? "" : "no")
-        << " more data to read from this shard.";
+        << maybeShardID.get() << " in batch " << data.statistics.batchesSent
+        << " with " << payloadSize << " bytes. There is "
+        << (readerHasMore ? "" : "no") << " more data to read from this shard.";
 
     return SnapshotBatch{.snapshotId = getId(),
                          .hasMore = readerHasMore || !data.shards.empty(),

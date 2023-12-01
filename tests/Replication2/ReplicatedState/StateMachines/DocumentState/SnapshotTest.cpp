@@ -112,8 +112,8 @@ TEST_F(DocumentStateSnapshotTest,
   EXPECT_TRUE(res.isReady() && res.get().ok());
 
   // Acquire a new snapshot with a different set of shards
-  const ShardID shardId1 = "s123";
-  const ShardID shardId2 = "s345";
+  const ShardID shardId1{123};
+  const ShardID shardId2{345};
   ON_CALL(*leaderInterfaceMock, startSnapshot).WillByDefault([&]() {
     return futures::Future<ResultT<SnapshotBatch>>{
         std::in_place,
@@ -159,9 +159,9 @@ TEST_F(DocumentStateSnapshotTest, snapshot_fetch_multiple_shards) {
   using namespace testing;
 
   auto snapshotId = SnapshotId{1};
-  const ShardID shardId1 = "s1";
-  const ShardID shardId2 = "s2";
-  const ShardID shardId3 = "s3";
+  const ShardID shardId1{1};
+  const ShardID shardId2{2};
+  const ShardID shardId3{3};
 
   // The snapshot should fetch the shards in the reverse order of their
   // insertion. This way, we ensure the order looks natural (1, 2, 3).

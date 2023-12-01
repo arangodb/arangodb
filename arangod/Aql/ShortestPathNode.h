@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Aql/GraphNode.h"
-#include "Aql/Graphs.h"
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathValidatorOptions.h"
 #include "ShortestPathExecutor.h"
