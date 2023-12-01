@@ -53,7 +53,7 @@ const queryOptions = {
   optimizer: {
     rules: ["-late-document-materialization"], // turn off late materialization
   },
-  maxNumberOfPlans: 1
+  maxNumberOfPlans: 1,
 };
 
 const documentsA = Array.from({length: numDocuments})
@@ -196,6 +196,9 @@ const generateTestFunction = function (config) {
   return function () {
     const query = buildQuery(config);
 
+    const explainer = require("@arangodb/aql/explainer");
+    explainer.explainRegisters({query, options: queryOptions});
+    db._explain(query, null, queryOptions);
     const plan = db._createStatement({query, options: queryOptions}).explain().plan;
     const nodes = plan.nodes.map(x => x.type);
     if (nodes.indexOf("JoinNode") === -1) {

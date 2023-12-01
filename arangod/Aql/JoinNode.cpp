@@ -279,7 +279,7 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
     RegisterId documentOutputRegister = RegisterId::maxRegisterId;
     if (!p.hasOutputRegisters()) {
       documentOutputRegister = variableToRegisterId(idx.outVariable);
-      if (idx.producesOutput) {
+      if (idx.producesOutput && !idx.isLateMaterialized) {
         writableOutputRegisters.emplace(documentOutputRegister);
       }
     }
@@ -333,7 +333,6 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
   infos.varsToRegister = std::move(varsToRegs);
 
   auto registerInfos = createRegisterInfos({}, writableOutputRegisters);
-
   return std::make_unique<ExecutionBlockImpl<JoinExecutor>>(
       &engine, this, registerInfos, std::move(infos));
 }
@@ -502,9 +501,7 @@ std::vector<Variable const*> JoinNode::getVariablesSetHere() const {
 
     if (it.isLateMaterialized) {
       vars.emplace_back(it.outDocIdVariable);
-    }
-
-    if (!it.projections.hasOutputRegisters() || it.filter != nullptr) {
+    } else if (!it.projections.hasOutputRegisters() || it.filter != nullptr) {
       vars.emplace_back(it.outVariable);
     }
   }
