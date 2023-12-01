@@ -66,7 +66,7 @@ using namespace arangodb::aql;
 using namespace arangodb::containers;
 using EN = arangodb::aql::ExecutionNode;
 
-#define LOG_JOIN_OPTIMIZER_RULE LOG_DEVEL_IF(false)
+#define LOG_JOIN_OPTIMIZER_RULE LOG_DEVEL_IF(true)
 
 namespace {
 
@@ -393,6 +393,8 @@ bool constIndexConditionsMatches(
           // We've found another attribute here, which is not used and does not
           // match our current variable to check. Therefore, we need to stop
           // optimizing here.
+          LOG_JOIN_OPTIMIZER_RULE << "Variable: " << var->name
+                                  << " is not eligible!";
           return false;
         } else {
           // Match found between variable and index attribute. We can continue.
@@ -405,6 +407,8 @@ bool constIndexConditionsMatches(
       return true;
     } else {
       TRI_ASSERT(result == IndexUsage::NONE);
+      LOG_JOIN_OPTIMIZER_RULE << "Variable: " << var->name
+                              << " is not eligible, due to no IndexUsage.";
       return false;
     }
 
@@ -554,15 +558,15 @@ checkCandidatesEligible(
         return {false, {}};
       }
 
-      if (outerCandidateConstantVariables.contains(candidate->id()) &&
-          !outerCandidateConstantVariables[candidate->id()].empty()) {
+      if (!outerCandidateConstantVariables.empty()) {
+        // TODO: Check if this condition above is actually correct.
         bool eligible = constIndexConditionsMatches(
             candidates[0], candidate,
-            outerCandidateConstantVariables[candidate->id()]);
+            outerCandidateConstantVariables[candidates[0]->id()]);
         if (!eligible) {
           LOG_JOIN_OPTIMIZER_RULE
               << "IndexNode's outer loop has a condition, but inner loop "
-                 "does not match";
+                 "does not match, due to (constIndexConditionsMatches)";
           return {false, {}};
         }
       } else {
@@ -570,8 +574,8 @@ checkCandidatesEligible(
         auto* rhs = root->getMember(1);
         if (!joinConditionMatches(plan, lhs, rhs, candidate, candidates[0]) &&
             !joinConditionMatches(plan, lhs, rhs, candidates[0], candidate)) {
-          LOG_JOIN_OPTIMIZER_RULE
-              << "IndexNode's lookup condition does not match";
+          LOG_JOIN_OPTIMIZER_RULE << "IndexNode's lookup condition does not "
+                                     "match due to (joinConditionMatches)";
           return {false, {}};
         }
       }
@@ -629,6 +633,7 @@ checkCandidatesEligible(
         // TODO: Adjust this whole area.
         for (auto const& cV : constantValues) {
           for (auto const& constants : constantValues[cV.first]) {
+            std::ignore = constants;
             constantFieldsForVerification.push_back(
                 {0});  // just used as a dummy here for verification
           }
@@ -843,7 +848,8 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
             optimizeJoinNode(*plan, jn);
             modified = true;
           } else {
-            LOG_JOIN_OPTIMIZER_RULE << "Not eligible for index join";
+            LOG_JOIN_OPTIMIZER_RULE << "Not eligible for index join due to: "
+                                       "(checkCandidatesEligible)";
           }
         } else {
           LOG_JOIN_OPTIMIZER_RULE << "Not enough index nodes to join, size: "
