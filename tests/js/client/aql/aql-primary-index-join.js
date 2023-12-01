@@ -364,10 +364,9 @@ const IndexPrimaryJoinTestSuite = function () {
             FOR doc2 IN B
             FILTER doc1.y == doc2.y
             RETURN [doc1, doc2]`;
+      db._explain(queryStringEasy, null, queryOptions);
 
-      //db._explain(queryStringEasy, null, queryOptions);
-
-      const q = db._query(queryStringEasy, null, queryOptions);
+      let q = runAndCheckQuery(queryStringEasy, "generic");
       const qResult = q.toArray();
       qResult.forEach((docs) => {
         let first = docs[0];
