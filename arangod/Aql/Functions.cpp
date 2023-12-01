@@ -8818,6 +8818,7 @@ AqlValue functions::Position(ExpressionContext* expressionContext,
 AqlValue functions::Call(ExpressionContext* expressionContext,
                          AstNode const& node,
                          VPackFunctionParametersView parameters) {
+#ifdef USE_V8
   static char const* AFN = "CALL";
 
   AqlValue const& invokeFN = extractFunctionParameterValue(parameters, 0);
@@ -8838,7 +8839,6 @@ AqlValue functions::Call(ExpressionContext* expressionContext,
     }
   }
 
-#ifdef USE_V8
   return ::callApplyBackend(expressionContext, node, AFN, invokeFN,
                             invokeParams);
 #else

@@ -1253,10 +1253,13 @@ void Query::runInV8ExecutorContext(
   } else {
     TRI_ASSERT(!isolate->InContext());
     TRI_ASSERT(_v8Executor != nullptr);
-    _v8Executor->runInContext([&cb](v8::Isolate* isolate) -> Result {
-      cb(isolate);
-      return {};
-    });
+
+    _v8Executor->runInContext(
+        [&cb](v8::Isolate* isolate) -> Result {
+          cb(isolate);
+          return {};
+        },
+        /*executeGlobalMethods*/ false);
   }
 }
 #endif

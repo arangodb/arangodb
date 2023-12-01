@@ -1227,6 +1227,9 @@ void V8DealerFeature::prepareLockedExecutor(
 
   LOG_TOPIC("94226", TRACE, arangodb::Logger::V8)
       << "entering V8 context #" << executor->id();
+
+  executor->runInContext([&](v8::Isolate* isolate) -> Result { return {}; },
+                         /*executeGlobalMethods*/ true);
 }
 
 /// @brief enter a V8 executor
@@ -1684,109 +1687,115 @@ std::unique_ptr<V8Executor> V8DealerFeature::buildExecutor(
     // pass isolate to a new executor
     executor =
         std::make_unique<V8Executor>(id, isolate, [&](V8Executor& executor) {
-          executor.runInContext([&](v8::Isolate* isolate) -> Result {
-            v8::HandleScope scope(isolate);
+          executor.runInContext(
+              [&](v8::Isolate* isolate) -> Result {
+                v8::HandleScope scope(isolate);
 
-            v8::Handle<v8::Context> context = isolate->GetCurrentContext();
+                v8::Handle<v8::Context> context = isolate->GetCurrentContext();
 
-            auto* v8g = CreateV8Globals(server(), isolate, id);
+                auto* v8g = CreateV8Globals(server(), isolate, id);
 
-            v8::Handle<v8::Object> globalObj = context->Global();
-            globalObj
-                ->Set(context, TRI_V8_ASCII_STRING(isolate, "GLOBAL"),
-                      globalObj)
-                .FromMaybe(false);
-            globalObj
-                ->Set(context, TRI_V8_ASCII_STRING(isolate, "global"),
-                      globalObj)
-                .FromMaybe(false);
-            globalObj
-                ->Set(context, TRI_V8_ASCII_STRING(isolate, "root"), globalObj)
-                .FromMaybe(false);
+                v8::Handle<v8::Object> globalObj = context->Global();
+                globalObj
+                    ->Set(context, TRI_V8_ASCII_STRING(isolate, "GLOBAL"),
+                          globalObj)
+                    .FromMaybe(false);
+                globalObj
+                    ->Set(context, TRI_V8_ASCII_STRING(isolate, "global"),
+                          globalObj)
+                    .FromMaybe(false);
+                globalObj
+                    ->Set(context, TRI_V8_ASCII_STRING(isolate, "root"),
+                          globalObj)
+                    .FromMaybe(false);
 
-            std::string modules;
-            std::string sep;
+                std::string modules;
+                std::string sep;
 
-            std::vector<std::string> directories;
-            directories.insert(directories.end(), _moduleDirectories.begin(),
-                               _moduleDirectories.end());
-            directories.emplace_back(_startupDirectory);
-            if (!_nodeModulesDirectory.empty() &&
-                _nodeModulesDirectory != _startupDirectory) {
-              directories.emplace_back(_nodeModulesDirectory);
-            }
+                std::vector<std::string> directories;
+                directories.insert(directories.end(),
+                                   _moduleDirectories.begin(),
+                                   _moduleDirectories.end());
+                directories.emplace_back(_startupDirectory);
+                if (!_nodeModulesDirectory.empty() &&
+                    _nodeModulesDirectory != _startupDirectory) {
+                  directories.emplace_back(_nodeModulesDirectory);
+                }
 
-            for (auto const& directory : directories) {
-              modules += sep;
-              sep = ";";
+                for (auto const& directory : directories) {
+                  modules += sep;
+                  sep = ";";
 
-              modules += FileUtils::buildFilename(directory, "server/modules") +
-                         sep +
-                         FileUtils::buildFilename(directory, "common/modules") +
-                         sep + FileUtils::buildFilename(directory, "node");
-            }
+                  modules +=
+                      FileUtils::buildFilename(directory, "server/modules") +
+                      sep +
+                      FileUtils::buildFilename(directory, "common/modules") +
+                      sep + FileUtils::buildFilename(directory, "node");
+                }
 
-            TRI_InitV8UserFunctions(isolate, context);
-            TRI_InitV8UserStructures(isolate, context);
-            TRI_InitV8Buffer(isolate);
-            TRI_InitV8Utils(isolate, context, _startupDirectory, modules);
-            TRI_InitV8ServerUtils(isolate);
-            TRI_InitV8Shell(isolate);
-            TRI_InitV8Ttl(isolate);
+                TRI_InitV8UserFunctions(isolate, context);
+                TRI_InitV8UserStructures(isolate, context);
+                TRI_InitV8Buffer(isolate);
+                TRI_InitV8Utils(isolate, context, _startupDirectory, modules);
+                TRI_InitV8ServerUtils(isolate);
+                TRI_InitV8Shell(isolate);
+                TRI_InitV8Ttl(isolate);
 
-            {
-              v8::HandleScope scope(isolate);
+                {
+                  v8::HandleScope scope(isolate);
 
-              TRI_AddGlobalVariableVocbase(
-                  isolate, TRI_V8_ASCII_STRING(isolate, "APP_PATH"),
-                  TRI_V8_STD_STRING(isolate, _appPath));
+                  TRI_AddGlobalVariableVocbase(
+                      isolate, TRI_V8_ASCII_STRING(isolate, "APP_PATH"),
+                      TRI_V8_STD_STRING(isolate, _appPath));
 
-              for (auto const& j : _definedBooleans) {
-                context->Global()
-                    ->DefineOwnProperty(TRI_IGETC,
-                                        TRI_V8_STD_STRING(isolate, j.first),
-                                        v8::Boolean::New(isolate, j.second),
-                                        v8::ReadOnly)
-                    .FromMaybe(false);  // Ignore it...
-              }
+                  for (auto const& j : _definedBooleans) {
+                    context->Global()
+                        ->DefineOwnProperty(TRI_IGETC,
+                                            TRI_V8_STD_STRING(isolate, j.first),
+                                            v8::Boolean::New(isolate, j.second),
+                                            v8::ReadOnly)
+                        .FromMaybe(false);  // Ignore it...
+                  }
 
-              for (auto const& j : _definedDoubles) {
-                context->Global()
-                    ->DefineOwnProperty(
-                        TRI_IGETC, TRI_V8_STD_STRING(isolate, j.first),
-                        v8::Number::New(isolate, j.second), v8::ReadOnly)
-                    .FromMaybe(false);  // Ignore it...
-              }
+                  for (auto const& j : _definedDoubles) {
+                    context->Global()
+                        ->DefineOwnProperty(
+                            TRI_IGETC, TRI_V8_STD_STRING(isolate, j.first),
+                            v8::Number::New(isolate, j.second), v8::ReadOnly)
+                        .FromMaybe(false);  // Ignore it...
+                  }
 
-              for (auto const& j : _definedStrings) {
-                context->Global()
-                    ->DefineOwnProperty(TRI_IGETC,
-                                        TRI_V8_STD_STRING(isolate, j.first),
-                                        TRI_V8_STD_STRING(isolate, j.second),
-                                        v8::ReadOnly)
-                    .FromMaybe(false);  // Ignore it...
-              }
-            }
+                  for (auto const& j : _definedStrings) {
+                    context->Global()
+                        ->DefineOwnProperty(
+                            TRI_IGETC, TRI_V8_STD_STRING(isolate, j.first),
+                            TRI_V8_STD_STRING(isolate, j.second),
+                            v8::ReadOnly)
+                        .FromMaybe(false);  // Ignore it...
+                  }
+                }
 
-            auto queryRegistry = QueryRegistryFeature::registry();
-            TRI_ASSERT(queryRegistry != nullptr);
+                auto queryRegistry = QueryRegistryFeature::registry();
+                TRI_ASSERT(queryRegistry != nullptr);
 
-            JavaScriptSecurityContext old(v8g->_securityContext);
-            v8g->_securityContext =
-                JavaScriptSecurityContext::createInternalContext();
+                JavaScriptSecurityContext old(v8g->_securityContext);
+                v8g->_securityContext =
+                    JavaScriptSecurityContext::createInternalContext();
 
-            TRI_InitV8VocBridge(isolate, context, queryRegistry, *vocbase, id);
-            TRI_InitV8Queries(isolate, context);
-            TRI_InitV8Cluster(isolate, context);
-            TRI_InitV8Agency(isolate, context);
-            TRI_InitV8Dispatcher(isolate, context);
-            TRI_InitV8Actions(isolate);
+                TRI_InitV8VocBridge(isolate, context, queryRegistry, *vocbase,
+                                    id);
+                TRI_InitV8Queries(isolate, context);
+                TRI_InitV8Cluster(isolate, context);
+                TRI_InitV8Agency(isolate, context);
+                TRI_InitV8Dispatcher(isolate, context);
+                TRI_InitV8Actions(isolate);
 
-            // restore old security settings
-            v8g->_securityContext = old;
+                // restore old security settings
+                v8g->_securityContext = old;
 
-            return {};
-          });
+                return {};
+              },
+              /*executeGlobalMethods*/ true);
         });
 
   } catch (...) {

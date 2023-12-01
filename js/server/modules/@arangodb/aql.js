@@ -27,22 +27,22 @@
 // / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var INTERNAL = require('internal');
-var ArangoError = require('@arangodb').ArangoError;
+const INTERNAL = require('internal');
+const ArangoError = require('@arangodb').ArangoError;
 
 // / @brief user functions cache
-var UserFunctions = { };
+let UserFunctions = { };
 
 // / @brief throw a runtime exception
 function THROW (func, error, data, moreMessage) {
   'use strict';
 
-  var prefix = '';
+  let prefix = '';
   if (func !== null && func !== '') {
     prefix = "in function '" + func + "()': ";
   }
 
-  var err = new ArangoError();
+  let err = new ArangoError();
 
   err.errorNum = error.code;
   if (typeof data === 'string') {
@@ -66,22 +66,22 @@ function DB_PREFIX () {
 function reloadUserFunctions () {
   'use strict';
 
-  var prefix = DB_PREFIX();
-  var c = INTERNAL.db._collection('_aqlfunctions');
+  let prefix = DB_PREFIX();
+  let c = INTERNAL.db._collection('_aqlfunctions');
 
   if (c === null) {
     // collection not found. now reset all user functions
-    UserFunctions = { };
+    UserFunctions = {};
     UserFunctions[prefix] = { };
     return;
   }
 
-  var foundError = false;
-  var functions = { };
+  let foundError = false;
+  let functions = {};
 
   c.toArray().forEach(function (f) {
-    var key = f._key.replace(/:{1,}/g, '::');
-    var code;
+    let key = f._key.replace(/:{1,}/g, '::');
+    let code;
 
     if (f.code.match(/^\(?function\s+\(/)) {
       code = f.code;
@@ -90,7 +90,7 @@ function reloadUserFunctions () {
     }
 
     try {
-      var res = INTERNAL.executeScript(code, undefined, '(user function ' + key + ')');
+      let res = INTERNAL.executeScript(code, undefined, '(user function ' + key + ')');
       if (typeof res !== 'function') {
         foundError = true;
       }
@@ -111,7 +111,7 @@ function reloadUserFunctions () {
   // this ensures that functions of other databases will be reloaded next
   // time (the reload does not necessarily need to be carried out in the
   // database in which the function is registered)
-  UserFunctions = { };
+  UserFunctions = {};
   UserFunctions[prefix] = functions;
 
   if (foundError) {
@@ -123,7 +123,7 @@ function reloadUserFunctions () {
 function FIX_VALUE (value) {
   'use strict';
 
-  var type = typeof (value);
+  let type = typeof (value);
 
   if (value === undefined ||
     value === null ||
@@ -136,8 +136,8 @@ function FIX_VALUE (value) {
   }
 
   if (Array.isArray(value)) {
-    var i, n = value.length;
-    for (i = 0; i < n; ++i) {
+    const n = value.length;
+    for (let i = 0; i < n; ++i) {
       value[i] = FIX_VALUE(value[i]);
     }
 
@@ -145,7 +145,7 @@ function FIX_VALUE (value) {
   }
 
   if (type === 'object') {
-    var result = { };
+    let result = {};
 
     Object.keys(value).forEach(function (k) {
       if (typeof value[k] !== 'function') {
@@ -163,7 +163,8 @@ function FIX_VALUE (value) {
 exports.FCALL_USER = function (name, parameters, func) {
   'use strict';
 
-  var prefix = DB_PREFIX(), reloaded = false;
+  let prefix = DB_PREFIX();
+  let reloaded = false;
   if (!UserFunctions.hasOwnProperty(prefix)) {
     reloadUserFunctions();
     reloaded = true;

@@ -384,11 +384,11 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief set if we are inside a JS transaction
   bool const _embeddedQuery;
-#endif
 
   /// @brief whether or not the transaction executor was registered
   /// in a v8 executor
   bool _registeredInV8Executor;
+#endif
 
   /// @brief whether or not the hash was already calculated
   bool _queryHashCalculated;

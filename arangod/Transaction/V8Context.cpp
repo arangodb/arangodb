@@ -105,7 +105,7 @@ void transaction::V8Context::enterV8Context() {
   if (v8g == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
-        "no v8 context available to enter for current transaction context");
+        "no v8 executor available to enter for current transaction context");
   }
   TRI_ASSERT(v8g != nullptr);
 
@@ -157,7 +157,7 @@ transaction::V8Context::getParentState() {
 
 /// @brief check whether the transaction is embedded
 /*static*/ bool transaction::V8Context::isEmbedded() {
-  return (getParentState() != nullptr);
+  return getParentState() != nullptr;
 }
 
 /// @brief create a context, returned in a shared ptr

@@ -920,7 +920,9 @@ AqlValue Expression::invokeV8Function(
     ExpressionContext& ctx, std::string const& jsName, v8::Isolate* isolate,
     std::string const& ucInvokeFN, char const* AFN, bool rethrowV8Exception,
     size_t callArgs, v8::Handle<v8::Value>* args, bool& mustDestroy) {
+  TRI_ASSERT(isolate->InContext());
   v8::Handle<v8::Context> context = isolate->GetCurrentContext();
+  TRI_ASSERT(!context.IsEmpty());
   auto global = context->Global();
 
   v8::Handle<v8::Value> module =
