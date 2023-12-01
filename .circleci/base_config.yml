@@ -9,7 +9,7 @@ parameters:
     default: ""
   build-docker-image:
     type: string
-    default: "3.18-clang16.0-gcc12.2-openssl3.1.4-26c4da3c8"
+    default: "arangodb/build-alpine:3.18-clang16.0-gcc12.2-openssl3.1.4-26c4da3c8"
   # Unused here, but it will be forwarded from config and will cause errors if not defined
   replication-two:
     type: boolean
