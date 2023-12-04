@@ -260,7 +260,7 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
 
   explicit ClusterInfo(ArangodServer& server,
-                       AgencyCallbackRegistry* agencyCallbackRegistry,
+                       AgencyCallbackRegistry& agencyCallbackRegistry,
                        ErrorCode syncerShutdownCode);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -273,15 +273,16 @@ class ClusterInfo final {
   /// @brief cleanup method which frees cluster-internal shared ptrs on shutdown
   //////////////////////////////////////////////////////////////////////////////
 
-  void cleanup();
+  void unprepare();
+
+  /**
+   * @brief begins shutdown of cluster info,
+   * begin shutting down plan and current syncers
+   */
+  void beginShutdown();
 
   /// @brief cancel all pending wait-for-syncer operations
   void drainSyncers();
-
-  /**
-   * @brief begin shutting down plan and current syncers
-   */
-  void shutdownSyncers();
 
   /**
    * @brief begin shutting down plan and current syncers
@@ -951,7 +952,7 @@ class ClusterInfo final {
   /// @brief get an operation timeout
   //////////////////////////////////////////////////////////////////////////////
 
-  static double getTimeout(double timeout) {
+  static constexpr double getTimeout(double timeout) {
     if (timeout == 0.0) {
       return 24.0 * 3600.0;
     }
@@ -966,7 +967,7 @@ class ClusterInfo final {
   /// @brief get the poll interval
   //////////////////////////////////////////////////////////////////////////////
 
-  static double getPollInterval() { return 5.0; }
+  static constexpr double getPollInterval() { return 5.0; }
 
  private:
   /// @brief create a new collection object from the data, using the cache if
@@ -1022,7 +1023,7 @@ class ClusterInfo final {
 
   AgencyComm _agency;
 
-  AgencyCallbackRegistry* _agencyCallbackRegistry;
+  AgencyCallbackRegistry& _agencyCallbackRegistry;
 
   // Cached data from the agency, we reload whenever necessary:
 
