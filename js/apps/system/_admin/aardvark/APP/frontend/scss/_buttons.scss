@@ -1,9 +1,9 @@
 // Bootstrap Buttons
 %bare-btn {
-  @include border-radius(2px);
+  @include border-radius(6px);
   @include box-shadow(0);
-  font-size: 13px;
-  font-weight: 300 !important;
+  font-size: 14px;
+  font-weight: 600 !important;
 }
 
 %btn {
@@ -11,7 +11,8 @@
   border: 0;
   color: $c-white;
   margin-left: 10px;
-  padding: 4px 12px;
+  padding: 0 12px;
+  height: 32px;
 
   &:focus {
     outline: none;
@@ -79,11 +80,20 @@ button.disabled,
 .button-danger {
   @extend %btn;
   @extend %negative;
+
+  &:hover {
+    color: white !important;
+  }
 }
 
 .button-warning {
   @extend %btn;
   @extend %warning;
+  color: white !important;
+
+  &:hover {
+    color: white !important;
+  }
 }
 
 .button-inactive {
@@ -454,7 +464,7 @@ a.button-gui {
     border: 1px solid $c-cluster-button-grey-border;
     color: $c-cluster-button-grey-fg;
     font-size: 20px;
-    font-weight: 300;
+    font-weight: 600;
     margin: 0;
     padding: 12px 18px;
     text-align: center;
@@ -495,4 +505,14 @@ a.button-gui {
 .buttonBarInfo {
   top: 5px;
   position: relative;
+}
+
+
+.button-help-inline {
+  display: inline-flex;
+  align-items: center;
+
+  i {
+    margin-right: 8px;
+  }
 }

@@ -44,7 +44,7 @@
       margin-right: 10px;
 
       &.fa-check-circle {
-        color: $c-positive;
+        color: var(--green-500);
       }
     }
   }

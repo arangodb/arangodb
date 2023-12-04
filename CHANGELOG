@@ -9,6 +9,8 @@ devel
   The optimization is applied only if the third parameter to the `LIKE`
   function is either not set or set to a value of `false`.
 
+* FE-388: Update UI colors & fonts to new styles.
+
 * Change default value for arangoimport's `--type` file type option from
   "json" to "auto".
   The default value of "auto" will guess the type of the import file based on
