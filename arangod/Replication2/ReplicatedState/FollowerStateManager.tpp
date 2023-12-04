@@ -364,15 +364,20 @@ template<typename S>
 auto FollowerStateManager<S>::resign() && noexcept
     -> std::pair<std::unique_ptr<CoreType>,
                  std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>> {
-  auto guard = _guardedData.getLockedGuard();
-  auto core = std::move(*guard->_followerState).resign();
-  auto methods = std::move(*guard->_stream).resign();
-  guard->_followerState = nullptr;
-  guard->_stream.reset();
+  std::shared_ptr<IReplicatedFollowerState<S>> followerState;
+  std::shared_ptr<StreamImpl> stream;
+  _guardedData.doUnderLock([&](auto& data) {
+    followerState = std::move(data._followerState);
+    stream = std::move(data._stream);
+  });
+
+  auto core = std::move(*followerState).resign();
+  auto methods = std::move(*stream).resign();
+
   auto tryResult = futures::Try<LogIndex>(
       std::make_exception_ptr(replicated_log::ParticipantResignedException(
           TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE)));
-  guard->_waitQueue.resolveAllWith(
+  _guardedData.getLockedGuard()->_waitQueue.resolveAllWith(
       std::move(tryResult), [&scheduler = *_scheduler]<typename F>(F&& f) {
         static_assert(noexcept(std::decay_t<decltype(f)>(std::forward<F>(f))));
         scheduler.queue([f = std::forward<F>(f)]() mutable noexcept {
