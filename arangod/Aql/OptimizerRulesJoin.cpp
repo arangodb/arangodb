@@ -70,7 +70,7 @@ using EN = arangodb::aql::ExecutionNode;
 
 namespace {
 
-enum IndexUsage { LEFT, RIGHT, NONE };
+enum IndexUsage { FIRST, OTHER, NONE };
 
 bool indexNodeQualifies(IndexNode const& indexNode) {
   // not yet supported:
@@ -322,6 +322,8 @@ bool constIndexConditionsMatches(
         constants) {
   bool eligible = true;
 
+  // This method returns the ordered index attributes of any IndexNode and
+  // whether the attribute is used or not.
   auto buildOrderedIndexAttributes =
       [](IndexNode const* indexNode,
          std::map<Variable const*,
@@ -364,14 +366,16 @@ bool constIndexConditionsMatches(
   auto orderedIndexAttributesLHS =
       buildOrderedIndexAttributes(firstNode, constants);
 
+  // This method checks if the variable is covered by the index of the first
+  // node or the other node and returns the corresponding IndexUsage.
   auto checkVarCoveredByIndex = [&](Variable const* var) {
     LOG_JOIN_OPTIMIZER_RULE << "Checking index valid for var: " << var->name;
     if (var->isEqualTo(*firstNode->outVariable())) {
       LOG_JOIN_OPTIMIZER_RULE << "-> Var fits to first node's index";
-      return IndexUsage::LEFT;
+      return IndexUsage::FIRST;
     } else if (var->isEqualTo(*otherNode->outVariable())) {
       LOG_JOIN_OPTIMIZER_RULE << "-> Var fits to other node's index";
-      return IndexUsage::RIGHT;
+      return IndexUsage::OTHER;
     }
 
     LOG_JOIN_OPTIMIZER_RULE
@@ -387,7 +391,7 @@ bool constIndexConditionsMatches(
     // or to the index of the second node.
     auto result = checkVarCoveredByIndex(var);
 
-    if (result == IndexUsage::LEFT) {
+    if (result == IndexUsage::FIRST) {
       for (auto const& elem : orderedIndexAttributesLHS) {
         if (elem.first != var->name && !elem.second) {
           // We've found another attribute here, which is not used and does not
@@ -402,7 +406,7 @@ bool constIndexConditionsMatches(
         }
       }
       LOG_JOIN_OPTIMIZER_RULE << "Variable: " << var->name << " is eligible";
-    } else if (result == IndexUsage::RIGHT) {
+    } else if (result == IndexUsage::OTHER) {
       LOG_JOIN_OPTIMIZER_RULE << "Variable: " << var->name << " is eligible";
       return true;
     } else {
@@ -468,19 +472,23 @@ checkCandidatesEligible(
   // This flag is set to true if the first index node has a lookup condition
   // and all other indexes do match the order of conditions and the variables
   std::map<ExecutionNodeId, std::vector<AstNode*>> constantValues;
-  std::map<ExecutionNodeId,
-           std::map<Variable const*,
-                    std::vector<std::vector<arangodb::basics::AttributeName>>>>
-      outerCandidateConstantVariables = {};
+
+  std::map<Variable const*,
+           std::vector<std::vector<arangodb::basics::AttributeName>>>
+      firstCandidateConstantVariables = {};
 
   size_t candidatePosition = 0;
   for (auto* candidate : candidates) {
+    LOG_JOIN_OPTIMIZER_RULE
+        << "========= Checking candidate: " << candidatePosition << "("
+        << candidate->id() << ") =========";
     if (candidatePosition == 0) {
       // first FOR loop. I may have a lookup condition. In case it has, it needs
       // further checks later if the lookup conditions do match with the
       // upcoming FOR loops.
 
       auto const* root = candidate->condition()->root();
+      auto const& firstCandidateID = candidate->id();
       if (root != nullptr) {
         // TODO: candidate->getVarsValid() + "doc1 case"
         if (root->hasFlag(AstNodeFlagType::DETERMINED_CONSTANT)) {
@@ -502,21 +510,24 @@ checkCandidatesEligible(
                 // allowed here then
                 if (lhsi->type == NODE_TYPE_VALUE) {
                   LOG_JOIN_OPTIMIZER_RULE << "Setting constant value to lhsi";
-                  constantValues[candidate->id()].emplace_back(lhsi);
+                  constantValues[firstCandidateID].emplace_back(lhsi);
                 } else if (rhsi->type == NODE_TYPE_VALUE) {
                   LOG_JOIN_OPTIMIZER_RULE << "Setting constant value to rhsi";
-                  constantValues[candidate->id()].emplace_back(rhsi);
+                  constantValues[firstCandidateID].emplace_back(rhsi);
                 }
               }
             }
           }
-          if (constantValues.contains(candidate->id()) &&
-              !constantValues[candidate->id()].empty()) {
+          if (constantValues.contains(firstCandidateID) &&
+              !constantValues[firstCandidateID].empty()) {
             for (auto const* var : candidate->getVariablesSetHere()) {
-              outerCandidateConstantVariables[candidate->id()].try_emplace(
+              firstCandidateConstantVariables.try_emplace(
                   var, candidate->condition()->getConstAttributes(var, false));
             }
           }
+          LOG_DEVEL << "=> Amount of elemeents in "
+                       "outerCandidateConstantVariables for first index node: "
+                    << firstCandidateConstantVariables.size();
         } else {
           LOG_JOIN_OPTIMIZER_RULE << "Not eligible for index join: "
                                      "first index node has a lookup "
@@ -525,7 +536,7 @@ checkCandidatesEligible(
         }
       }
     } else {
-      // follow-up FOR loop. we expect it to have a lookup condition
+      // follow-up FOR loop(s). we expect it to have a lookup condition
       if (candidate->condition()->root() == nullptr) {
         LOG_JOIN_OPTIMIZER_RULE << "Not eligible for index join: "
                                    "index node does not have a "
@@ -558,11 +569,12 @@ checkCandidatesEligible(
         return {false, {}};
       }
 
-      if (!outerCandidateConstantVariables.empty()) {
-        // TODO: Check if this condition above is actually correct.
+      if (!firstCandidateConstantVariables.empty()) {
+        // If we've found at least one condition in the first index node, we
+        // need to check if the current index node matches the order of
+        // conditions and the variables.
         bool eligible = constIndexConditionsMatches(
-            candidates[0], candidate,
-            outerCandidateConstantVariables[candidates[0]->id()]);
+            candidates[0], candidate, firstCandidateConstantVariables);
         if (!eligible) {
           LOG_JOIN_OPTIMIZER_RULE
               << "IndexNode's outer loop has a condition, but inner loop "
@@ -620,7 +632,7 @@ checkCandidatesEligible(
     }
 
     // check if index does support constant values
-    {
+    /*{
       if (!constantValues.empty()) {
         size_t amountOfFields = candidate->getIndexes()[0]->fields().size();
         if (amountOfFields == 1 || constantValues.size() >= amountOfFields) {
@@ -644,12 +656,14 @@ checkCandidatesEligible(
           return {false, {}};
         }
       }
-    }
+    }*/
 
     ++candidatePosition;
   }
 
-  return {true, constantValues};
+  LOG_DEVEL << "==> Final Result: Can be optimized! Size: "
+            << constantValues.size();
+  return {true, std::move(constantValues)};
 }
 
 void findCandidates(IndexNode* indexNode,
@@ -769,7 +783,9 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
           LOG_JOIN_OPTIMIZER_RULE << "Found " << candidates.size()
                                   << " index nodes that qualify for joining";
 
-          // First: Eligible bool, Second: Vector of constant expressions
+          // First: Eligible bool
+          // Second: Vector of constant expressions
+          // Third: Vector of positions of keyFields and constantFields
           std::pair<bool, std::map<ExecutionNodeId, std::vector<AstNode*>>>
               candidatesResult = checkCandidatesEligible(*plan, candidates);
           bool eligible = candidatesResult.first;
@@ -803,6 +819,7 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                 computedConstantFields = {0};
               } else {
                 computedUseKeyFields = {0};
+                computedConstantFields = {};
               }
 
               auto info = JoinNode::IndexInfo{
