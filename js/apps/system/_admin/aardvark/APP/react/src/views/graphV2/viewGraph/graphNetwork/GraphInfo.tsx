@@ -20,13 +20,13 @@ export const GraphInfo = () => {
         spacing={4}
         paddingY="2"
       >
-        <Tag size={"md"} background="gray.800" color="white">
+        <Tag size={"md"} background="gray.900" color="white">
           {`${datasets.nodes.length} nodes`}
         </Tag>
-        <Tag size={"md"} background="gray.800" color="white">
+        <Tag size={"md"} background="gray.900" color="white">
           {`${datasets.edges.length} edges`}
         </Tag>
-        <Tag size={"md"} background="gray.800" color="white">
+        <Tag size={"md"} background="gray.900" color="white">
           {`Response time: ${fetchDuration} ms`}
         </Tag>
       </HStack>
@@ -64,7 +64,7 @@ const SelectedEntityInfo = () => {
     <HStack paddingX="3" background="white">
       <HStack>
         <Box>ID</Box>
-        <Tag size={"md"} background="gray.800" color="white">
+        <Tag size={"md"} background="gray.900" color="white">
           {entityData?._id}
         </Tag>
       </HStack>
@@ -97,7 +97,7 @@ const Attributes = ({
               marginY="2"
               marginLeft="2"
               size={"md"}
-              background="gray.800"
+              background="gray.900"
               color="white"
             >
               {attribute}
