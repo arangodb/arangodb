@@ -1103,7 +1103,7 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
   }
 
   if (_pruneExpression) {
-    c._pruneExpression = _pruneExpression->clone(plan.getAst());
+    c._pruneExpression = _pruneExpression->clone(plan.getAst(), true);
     c._pruneVariables.reserve(_pruneVariables.size());
     for (auto const& it : _pruneVariables) {
       if (withProperties) {
