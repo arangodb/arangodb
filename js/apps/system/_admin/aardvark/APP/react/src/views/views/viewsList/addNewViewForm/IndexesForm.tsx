@@ -31,7 +31,7 @@ export const IndexesForm = () => {
               );
             })}
             <Button
-              colorScheme="blue"
+              colorScheme="green"
               onClick={() => {
                 push({ collection: "", index: "" });
               }}

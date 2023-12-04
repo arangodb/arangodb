@@ -191,7 +191,7 @@ const ViewSwitch = ({
         onClick={() => {
           setCurrentDisplayType("json");
         }}
-        colorScheme={currentDisplayType === "json" ? "blue" : "gray"}
+        colorScheme={currentDisplayType === "json" ? "green" : "gray"}
       >
         JSON
       </Button>
@@ -202,7 +202,7 @@ const ViewSwitch = ({
             onClick={() => {
               setCurrentDisplayType(type);
             }}
-            colorScheme={currentDisplayType === type ? "blue" : "gray"}
+            colorScheme={currentDisplayType === type ? "green" : "gray"}
             textTransform="capitalize"
           >
             {type}
