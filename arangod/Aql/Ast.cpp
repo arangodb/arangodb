@@ -3790,6 +3790,77 @@ AstNode* Ast::optimizeFunctionCall(
                                    args->getMemberUnchecked(0),
                                    createNodeValueNull()));
     }
+  } else if (func->name == "LIKE") {
+    // optimize a LIKE(x, y) into a plain x == y or a range scan in case the
+    // search is case-sensitive and the pattern is either a full match or a
+    // left-most prefix.
+    // this is desirable in 99.999% of all cases, but would be incompatible for
+    // search terms that are non-strings.
+    // LIKE(1, '1') would behave differently when executed via the AQL LIKE
+    // function than would be 1 == '1'. for left-most prefix searches (e.g.
+    // LIKE(text, 'abc%')) we need to determine the upper bound for the range
+    // scan. We use the originally supplied string for the upper bound and
+    // append a \uFFFF character to it, which compares higher than other
+    // characters.
+    bool caseInsensitive = false;  // this is the default behavior of LIKE
+    auto args = node->getMember(0);
+    if (args->numMembers() >= 3) {
+      caseInsensitive =
+          true;  // we have 3 arguments, set case-sensitive to false now
+      auto caseArg = args->getMember(2);
+      if (caseArg->isConstant()) {
+        // ok, we can figure out at compile time if the parameter is true or
+        // false
+        caseInsensitive = caseArg->isTrue();
+      }
+    }
+
+    auto patternArg = args->getMember(1);
+
+    if (!caseInsensitive && patternArg->isStringValue() &&
+        args->getMember(0)->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // optimization only possible for case-sensitive LIKE
+      std::string unescapedPattern;
+      auto [wildcardFound, wildcardIsLastChar] =
+          AqlFunctionsInternalCache::inspectLikePattern(
+              unescapedPattern, patternArg->getStringView());
+
+      if (!wildcardFound) {
+        TRI_ASSERT(!wildcardIsLastChar);
+
+        // can turn LIKE into ==
+        char const* p = _resources.registerString(unescapedPattern.data(),
+                                                  unescapedPattern.size());
+        AstNode* pattern = createNodeValueString(p, unescapedPattern.size());
+
+        return createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
+                                        args->getMember(0), pattern);
+      }
+      if (!unescapedPattern.empty()) {
+        // can turn LIKE into >= && <=
+        char const* p = _resources.registerString(unescapedPattern.data(),
+                                                  unescapedPattern.size());
+        AstNode* pattern = createNodeValueString(p, unescapedPattern.size());
+        AstNode* lhs = createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_GE,
+                                                args->getMember(0), pattern);
+
+        // add a new end character \uFFFF that is expected to sort "higher" than
+        // anything else (note: \xef\xbf\xbf is equivalent to \uFFFF).
+        constexpr std::string_view upper = "\xef\xbf\xbf";
+        unescapedPattern.append(upper);
+        p = _resources.registerString(unescapedPattern.data(),
+                                      unescapedPattern.size());
+        pattern = createNodeValueString(p, unescapedPattern.size());
+        AstNode* rhs = createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_LT,
+                                                args->getMember(0), pattern);
+
+        AstNode* op =
+            createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, lhs, rhs);
+        // add >= && <=, but keep LIKE in place to properly handle case
+        return createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, op,
+                                        node);
+      }
+    }
   }
 
   if (!func->hasFlag(Function::Flags::Deterministic)) {
