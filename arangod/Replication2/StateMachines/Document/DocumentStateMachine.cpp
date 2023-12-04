@@ -53,8 +53,10 @@ DocumentFactory::DocumentFactory(
 auto DocumentFactory::constructFollower(std::unique_ptr<DocumentCore> core,
                                         std::shared_ptr<IScheduler> scheduler)
     -> std::shared_ptr<DocumentFollowerState> {
-  return std::make_shared<DocumentFollowerState>(std::move(core),
-                                                 _handlersFactory, scheduler);
+  auto result = std::make_shared<DocumentFollowerState>(
+      std::move(core), _handlersFactory, scheduler);
+  result->initialize();
+  return result;
 }
 
 auto DocumentFactory::constructLeader(std::unique_ptr<DocumentCore> core)

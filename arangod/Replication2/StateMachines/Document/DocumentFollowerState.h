@@ -64,6 +64,8 @@ struct DocumentFollowerState
 
   ~DocumentFollowerState() override;
 
+  void initialize();
+
   GlobalLogIdentifier const gid;
   LoggerContext const loggerContext;
 
@@ -103,41 +105,6 @@ struct DocumentFollowerState
     LoggerContext const& loggerContext;
 
     [[nodiscard]] bool didResign() const noexcept { return core == nullptr; }
-
-    auto applyEntry(Handlers const& handlers,
-                    ModifiesUserTransaction auto const&, LogIndex)
-        -> ResultT<std::optional<LogIndex>>;
-    auto applyEntry(Handlers const& handlers,
-                    ReplicatedOperation::IntermediateCommit const&, LogIndex)
-        -> ResultT<std::optional<LogIndex>>;
-    auto applyEntry(Handlers const& handlers,
-                    FinishesUserTransaction auto const&, LogIndex)
-        -> ResultT<std::optional<LogIndex>>;
-    auto applyEntry(Handlers const& handlers,
-                    ReplicatedOperation::AbortAllOngoingTrx const&, LogIndex)
-        -> ResultT<std::optional<LogIndex>>;
-    auto applyEntry(Handlers const& handlers,
-                    ReplicatedOperation::ModifyShard const&, LogIndex)
-        -> ResultT<std::optional<LogIndex>>;
-    auto applyEntry(Handlers const& handlers,
-                    ReplicatedOperation::DropShard const&, LogIndex)
-        -> ResultT<std::optional<LogIndex>>;
-    auto applyEntry(Handlers const& handlers,
-                    ReplicatedOperation::CreateShard const&, LogIndex)
-        -> ResultT<std::optional<LogIndex>>;
-    auto applyEntry(Handlers const& handlers,
-                    ReplicatedOperation::CreateIndex const&, LogIndex)
-        -> ResultT<std::optional<LogIndex>>;
-    auto applyEntry(Handlers const& handlers,
-                    ReplicatedOperation::DropIndex const&, LogIndex)
-        -> ResultT<std::optional<LogIndex>>;
-
-    template<class T>
-    auto applyAndRelease(
-        Handlers const& handlers, T const& op,
-        std::optional<LogIndex> index = std::nullopt,
-        std::optional<fu2::unique_function<void(Result&&)>> fun = std::nullopt)
-        -> ResultT<std::optional<LogIndex>>;
 
     std::unique_ptr<DocumentCore> core;
     std::uint64_t currentSnapshotVersion;
