@@ -1,11 +1,15 @@
 import { literal } from "arangojs/aql";
+import { uniqueId } from "lodash";
 import React, { useCallback } from "react";
 import {
   getApiRouteForCurrentDB,
   getCurrentDB
 } from "../../utils/arangoClient";
 import { QueryResultType } from "./ArangoQuery.types";
-import { QueryExecutionOptions } from "./QueryContextProvider";
+import {
+  QueryExecutionOptions,
+  QueryProfileOptions
+} from "./QueryContextProvider";
 
 export const useQueryExecutors = ({
   setQueryResults,
@@ -68,35 +72,30 @@ export const useQueryExecutors = ({
 
   const onProfile = async ({
     queryValue,
-    queryBindParams,
-    queryOptions,
-    disabledRules
-  }: QueryExecutionOptions) => {
+    queryBindParams
+  }: QueryProfileOptions) => {
     const currentDB = getCurrentDB();
     const literalValue = literal(queryValue);
     const path = `/_admin/aardvark/query/profile`;
     const route = currentDB.route(path);
+    const id = uniqueId();
     setQueryResults(queryResults => [
       {
         queryValue,
         queryBindParams,
         type: "profile",
-        status: "loading"
+        status: "loading",
+        asyncJobId: id
       },
       ...queryResults
     ]);
     try {
       const profile = await route.post({
         query: literalValue.toAQL(),
-        bindVars: queryBindParams,
-        options: {
-          ...queryOptions,
-          optimizer: {
-            rules: disabledRules
-          }
-        }
+        bindVars: queryBindParams
       });
       setQueryResultById({
+        asyncJobId: id,
         queryValue,
         queryBindParams,
         type: "profile",
@@ -106,6 +105,7 @@ export const useQueryExecutors = ({
     } catch (e: any) {
       const message = e.message || e.response.body.errorMessage;
       setQueryResultById({
+        asyncJobId: id,
         queryValue,
         queryBindParams,
         type: "profile",
@@ -118,37 +118,29 @@ export const useQueryExecutors = ({
     }
   };
   const onExplain = useCallback(
-    async ({
-      queryValue,
-      queryBindParams,
-      queryOptions,
-      disabledRules
-    }: QueryExecutionOptions) => {
+    async ({ queryValue, queryBindParams }: QueryProfileOptions) => {
       const currentDB = getCurrentDB();
       const literalValue = literal(queryValue);
       const path = `/_admin/aardvark/query/explain`;
       const route = currentDB.route(path);
+      const id = uniqueId();
       setQueryResults(queryResults => [
         {
           queryValue,
           queryBindParams,
           type: "explain",
-          status: "loading"
+          status: "loading",
+          asyncJobId: id
         },
         ...queryResults
       ]);
       try {
         const explainResult = await route.post({
           query: literalValue.toAQL(),
-          bindVars: queryBindParams,
-          options: {
-            ...queryOptions,
-            optimizer: {
-              rules: disabledRules
-            }
-          }
+          bindVars: queryBindParams
         });
         setQueryResultById({
+          asyncJobId: id,
           queryValue,
           queryBindParams,
           type: "explain",
@@ -158,6 +150,7 @@ export const useQueryExecutors = ({
       } catch (e: any) {
         const message = e.message || e.response.body.errorMessage;
         setQueryResultById({
+          asyncJobId: id,
           queryValue,
           queryBindParams,
           type: "profile",

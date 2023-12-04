@@ -318,7 +318,7 @@ class QueryOptimization : public QueryTestMulti {
                "version": $0,
                "includeAllFields": true })",
           version()));
-      logicalCollection1->createIndex(createJson->slice(), created);
+      logicalCollection1->createIndex(createJson->slice(), created).get();
       ASSERT_TRUE(created);
       auto const viewDefinition = absl::Substitute(R"({ "indexes": [
         { "collection": "collection_1", "index": "index_1"}

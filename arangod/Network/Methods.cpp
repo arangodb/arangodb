@@ -32,6 +32,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
 #include "Network/ConnectionPool.h"
@@ -146,11 +147,11 @@ Result Response::combinedResult() const {
 }
 
 /// @brief shardId or empty
-std::string Response::destinationShard() const {
+ResultT<ShardID> Response::destinationShard() const {
   if (this->destination.size() > 6 && this->destination.starts_with("shard:")) {
-    return this->destination.substr(6);
+    return ShardID::shardIdFromString(this->destination.substr(6));
   }
-  return StaticStrings::Empty;
+  return Result{TRI_ERROR_BAD_PARAMETER, "destination not a shard"};
 }
 
 std::string Response::serverId() const {
@@ -265,10 +266,15 @@ void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
 
         // We access the global SCHEDULER pointer here via an atomic
         // reference. This is to silence TSAN, which often detects a data
-        // race on this pointer, since this read access here can occasionally
-        // happen before the write in SchedulerFeature::unprepare, which
-        // invalidates the pointer. But even if the read here would happen
-        // later, we check for nullptr below, so all would be good.
+        // race on this pointer, which is actually totally harmless.
+        // What happens is that this access here occurs earlier in time
+        // than the write in SchedulerFeature::unprepare, which
+        // invalidates the pointer. TSAN does not see an official "happens
+        // before" relation between the two threads and complains.
+        // However, this is totally fine (and to some extent expected),
+        // since potentially network responses might come in later than
+        // the time when the scheduler has been shut down. Even in that
+        // case, all is fine, since we check for nullptr below.
         std::atomic_ref<Scheduler*> schedulerRef{SchedulerFeature::SCHEDULER};
         auto* sch = schedulerRef.load(std::memory_order_relaxed);
         // cppcheck-suppress accessMoved

@@ -397,7 +397,7 @@ MockV8Server::MockV8Server(bool start) : MockServer() {
 
 MockV8Server::~MockV8Server() {
   if (_server.hasFeature<ClusterFeature>()) {
-    _server.getFeature<ClusterFeature>().clusterInfo().shutdownSyncers();
+    _server.getFeature<ClusterFeature>().clusterInfo().beginShutdown();
     _server.getFeature<ClusterFeature>().clusterInfo().waitForSyncersToStop();
     _server.getFeature<ClusterFeature>().shutdownAgencyCache();
   }
@@ -414,7 +414,7 @@ MockAqlServer::MockAqlServer(bool start) : MockServer() {
 
 MockAqlServer::~MockAqlServer() {
   if (_server.hasFeature<ClusterFeature>()) {
-    _server.getFeature<ClusterFeature>().clusterInfo().shutdownSyncers();
+    _server.getFeature<ClusterFeature>().clusterInfo().beginShutdown();
     _server.getFeature<ClusterFeature>().clusterInfo().waitForSyncersToStop();
     _server.getFeature<ClusterFeature>().shutdownAgencyCache();
   }
@@ -531,7 +531,7 @@ MockClusterServer::MockClusterServer(bool useAgencyMockPool,
 
 MockClusterServer::~MockClusterServer() {
   auto& ci = _server.getFeature<ClusterFeature>().clusterInfo();
-  ci.shutdownSyncers();
+  ci.beginShutdown();
   ci.waitForSyncersToStop();
   _server.getFeature<ClusterFeature>().shutdownAgencyCache();
 }
@@ -917,7 +917,7 @@ void MockDBServer::createShard(std::string const& dbName,
       bool created = false;
       auto const idx = velocypack::Parser::fromJson(
           R"({"id":"1","type":"edge","name":"edge_from","fields":["_from"],"unique":false,"sparse":false})");
-      col->createIndex(idx->slice(), created);
+      col->createIndex(idx->slice(), created).get();
       TRI_ASSERT(created);
     }
 
@@ -925,7 +925,7 @@ void MockDBServer::createShard(std::string const& dbName,
       bool created = false;
       auto const idx = velocypack::Parser::fromJson(
           R"({"id":"2","type":"edge","name":"edge_to","fields":["_to"],"unique":false,"sparse":false})");
-      col->createIndex(idx->slice(), created);
+      col->createIndex(idx->slice(), created).get();
       TRI_ASSERT(created);
     }
   }

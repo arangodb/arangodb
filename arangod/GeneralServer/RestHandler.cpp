@@ -161,11 +161,11 @@ void RestHandler::trackTaskEnd() noexcept {
   }
 }
 
-RequestStatistics::Item&& RestHandler::stealStatistics() {
+RequestStatistics::Item&& RestHandler::stealRequestStatistics() {
   return std::move(_statistics);
 }
 
-void RestHandler::setStatistics(RequestStatistics::Item&& stat) {
+void RestHandler::setRequestStatistics(RequestStatistics::Item&& stat) {
   _statistics = std::move(stat);
 }
 
@@ -665,6 +665,31 @@ RestStatus RestHandler::waitForFuture(futures::Future<futures::Unit>&& f) {
         }
       }));
   return --_executionCounter == 0 ? RestStatus::DONE : RestStatus::WAITING;
+}
+
+RestStatus RestHandler::waitForFuture(futures::Future<RestStatus>&& f) {
+  if (f.isReady()) {             // fast-path out
+    f.result().throwIfFailed();  // just throw the error upwards
+    return f.get();
+  }
+  TRI_ASSERT(_executionCounter == 0);
+  _executionCounter = 2;
+  std::move(f).thenFinal(withLogContext(
+      [self = shared_from_this()](futures::Try<RestStatus>&& t) -> void {
+        if (t.hasException()) {
+          self->handleExceptionPtr(std::move(t).exception());
+          self->_followupRestStatus = RestStatus::DONE;
+        } else {
+          self->_followupRestStatus = t.get();
+          if (t.get() == RestStatus::WAITING) {
+            return;  // rest handler will be woken up externally
+          }
+        }
+        if (--self->_executionCounter == 0) {
+          self->wakeupHandler();
+        }
+      }));
+  return --_executionCounter == 0 ? _followupRestStatus : RestStatus::WAITING;
 }
 
 // -----------------------------------------------------------------------------

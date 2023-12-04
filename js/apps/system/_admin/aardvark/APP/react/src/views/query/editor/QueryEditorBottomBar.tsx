@@ -24,6 +24,8 @@ export const QueryEditorBottomBar = () => {
     existingQuery?.value !== queryValue ||
     JSON.stringify(existingQuery?.parameter) !==
       JSON.stringify(queryBindParams);
+  const queryName =
+    existingQuery && currentQueryName ? currentQueryName : "Untitled";
   return (
     <Flex
       direction="row"
@@ -36,8 +38,10 @@ export const QueryEditorBottomBar = () => {
       <SaveAsModal />
 
       <Text fontWeight="medium">
-        Query name:{" "}
-        {existingQuery && currentQueryName ? currentQueryName : "Untitled"}
+        Query name:
+        <Text isTruncated title={queryName} maxWidth="500px">
+          {queryName}
+        </Text>
       </Text>
       {existingQuery && currentQueryName && (
         <Button
@@ -66,9 +70,7 @@ export const QueryEditorBottomBar = () => {
           onClick={() =>
             onExplain({
               queryValue,
-              queryBindParams,
-              queryOptions,
-              disabledRules
+              queryBindParams
             })
           }
         >
@@ -80,9 +82,7 @@ export const QueryEditorBottomBar = () => {
           onClick={() =>
             onProfile({
               queryValue,
-              queryBindParams,
-              queryOptions,
-              disabledRules
+              queryBindParams
             })
           }
         >

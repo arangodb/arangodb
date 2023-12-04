@@ -206,6 +206,7 @@ class Methods {
   TEST_VIRTUAL velocypack::Options const& vpackOptions() const;
 
   /// @brief begin the transaction
+  [[nodiscard]] futures::Future<Result> beginAsync();
   Result begin();
 
   /// @deprecated use async variant
@@ -240,17 +241,16 @@ class Methods {
   /// @brief read many documents, using skip and limit in arbitrary order
   /// The result guarantees that all documents are contained exactly once
   /// as long as the collection is not modified.
-  ENTERPRISE_VIRT OperationResult any(std::string const& collectionName,
-                                      OperationOptions const& options);
+  ENTERPRISE_VIRT futures::Future<OperationResult> any(
+      std::string const& collectionName, OperationOptions const& options);
 
   /// @brief add a collection to the transaction for read, at runtime
-  DataSourceId addCollectionAtRuntime(DataSourceId cid,
-                                      std::string_view collectionName,
-                                      AccessMode::Type type);
+  futures::Future<DataSourceId> addCollectionAtRuntime(
+      DataSourceId cid, std::string_view collectionName, AccessMode::Type type);
 
   /// @brief add a collection to the transaction for read, at runtime
-  virtual DataSourceId addCollectionAtRuntime(std::string_view collectionName,
-                                              AccessMode::Type type);
+  virtual futures::Future<DataSourceId> addCollectionAtRuntime(
+      std::string_view collectionName, AccessMode::Type type);
 
   /// @brief return the type of a collection
   TRI_col_type_e getCollectionType(std::string_view collectionName) const;
@@ -263,7 +263,7 @@ class Methods {
   ///        revision handling! shouldLock indicates if the transaction should
   ///        lock the collection if set to false it will not lock it (make sure
   ///        it is already locked!)
-  ENTERPRISE_VIRT Result documentFastPath(
+  ENTERPRISE_VIRT futures::Future<Result> documentFastPath(
       std::string const& collectionName, arangodb::velocypack::Slice value,
       OperationOptions const& options, arangodb::velocypack::Builder& result);
 
@@ -273,9 +273,9 @@ class Methods {
   ///        TRI_ERROR_NO_ERROR. If there was an error the code is returned Does
   ///        not care for revision handling! Must only be called on a local
   ///        server, not in cluster case!
-  ENTERPRISE_VIRT Result
-  documentFastPathLocal(std::string_view collectionName, std::string_view key,
-                        IndexIterator::DocumentCallback const& cb);
+  ENTERPRISE_VIRT futures::Future<Result> documentFastPathLocal(
+      std::string_view collectionName, std::string_view key,
+      IndexIterator::DocumentCallback const& cb);
 
   /// @brief return one or multiple documents from a collection
   /// @deprecated use async variant
@@ -337,9 +337,9 @@ class Methods {
                                       OperationOptions const& options);
 
   /// @brief fetches all documents in a collection
-  ENTERPRISE_VIRT OperationResult all(std::string const& collectionName,
-                                      uint64_t skip, uint64_t limit,
-                                      OperationOptions const& options);
+  ENTERPRISE_VIRT futures::Future<OperationResult> all(
+      std::string const& collectionName, uint64_t skip, uint64_t limit,
+      OperationOptions const& options);
 
   /// @brief deprecated use async variant
   [[deprecated]] OperationResult truncate(std::string const& collectionName,
@@ -478,25 +478,26 @@ class Methods {
                                       VPackSlice value,
                                       OperationOptions& options);
 
-  OperationResult allCoordinator(std::string const& collectionName,
-                                 uint64_t skip, uint64_t limit,
-                                 OperationOptions& options);
+  futures::Future<OperationResult> allCoordinator(
+      std::string const& collectionName, uint64_t skip, uint64_t limit,
+      OperationOptions& options);
 
-  OperationResult allLocal(std::string const& collectionName, uint64_t skip,
-                           uint64_t limit, OperationOptions& options);
+  futures::Future<OperationResult> allLocal(std::string const& collectionName,
+                                            uint64_t skip, uint64_t limit,
+                                            OperationOptions& options);
 
   OperationResult anyCoordinator(std::string const& collectionName,
                                  OperationOptions const& options);
 
-  OperationResult anyLocal(std::string const& collectionName,
-                           OperationOptions const& options);
+  futures::Future<OperationResult> anyLocal(std::string const& collectionName,
+                                            OperationOptions const& options);
 
   Future<OperationResult> truncateCoordinator(std::string const& collectionName,
                                               OperationOptions& options,
                                               MethodsApi api);
 
-  Future<OperationResult> truncateLocal(std::string const& collectionName,
-                                        OperationOptions& options);
+  Future<OperationResult> truncateLocal(std::string collectionName,
+                                        OperationOptions options);
 
  protected:
   // The internal methods distinguish between the synchronous and asynchronous

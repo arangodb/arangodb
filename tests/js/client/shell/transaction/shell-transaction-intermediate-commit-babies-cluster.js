@@ -59,6 +59,8 @@ function assertInSync(leader, follower, shardId) {
 function transactionIntermediateCommitsBabiesFollowerSuite() {
   'use strict';
 
+  let isReplication2 = false;
+
   let collectionInfo = () => {
     let shards = db._collection(cn).shards(true);
     let shardId = Object.keys(shards)[0];
@@ -74,6 +76,7 @@ function transactionIntermediateCommitsBabiesFollowerSuite() {
       getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
       db._drop(cn);
       db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
+      isReplication2 = db._properties().replicationVersion === "2";
     },
 
     tearDown: function () {
@@ -164,11 +167,15 @@ function transactionIntermediateCommitsBabiesFollowerSuite() {
       } catch (err) {
       }
       assertFalse(didWork);
-      
-      // a follower will be dropped here because we abort the transaction on the leader,
-      // but have had intermediate commits on the follower
+
       let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_total");
-      assertEqual(droppedFollowersBefore + 1, droppedFollowersAfter);
+      if (isReplication2) {
+        assertEqual(droppedFollowersBefore, droppedFollowersAfter);
+      } else {
+        // a follower will be dropped here because we abort the transaction on the leader,
+        // but have had intermediate commits on the follower
+        assertEqual(droppedFollowersBefore + 1, droppedFollowersAfter);
+      }
     
       // some intermediate commit must have happened (not 100, but 9, because AQL insert operates
       // in batch sizes of 1000)

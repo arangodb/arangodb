@@ -1,6 +1,5 @@
 #include "CreateWorkersState.h"
 
-#include "Pregel/Conductor/ExecutionStates/CollectionLookup.h"
 #include "Pregel/Conductor/ExecutionStates/LoadingState.h"
 #include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
 #include "Pregel/Conductor/State.h"
@@ -43,7 +42,7 @@ auto CreateWorkers::messagesToServers()
   return workerSpecifications;
 }
 
-auto CreateWorkers::cancel(actor::ActorPID sender,
+auto CreateWorkers::cancel(actor::DistributedActorPID sender,
                            message::ConductorMessages message)
     -> std::optional<StateChange> {
   auto newState = std::make_unique<Canceled>(conductor);
@@ -55,7 +54,7 @@ auto CreateWorkers::cancel(actor::ActorPID sender,
       .newState = std::move(newState)};
 }
 
-auto CreateWorkers::receive(actor::ActorPID sender,
+auto CreateWorkers::receive(actor::DistributedActorPID sender,
                             message::ConductorMessages message)
     -> std::optional<StateChange> {
   if (not sentServers.contains(sender.server) or
@@ -66,9 +65,9 @@ auto CreateWorkers::receive(actor::ActorPID sender,
         .statusMessage =
             pregel::message::InFatalError{
                 .state = stateName,
-                .errorMessage =
-                    fmt::format("In {}: Received unexpected message {} from {}",
-                                name(), inspection::json(message), sender)},
+                .errorMessage = fmt::format(
+                    "In {}: Received unexpected message {} from {}", name(),
+                    inspection::json(message), inspection::json(sender))},
         .metricsMessage = pregel::metrics::message::ConductorFinished{},
         .newState = std::move(newState)};
   }
@@ -80,9 +79,10 @@ auto CreateWorkers::receive(actor::ActorPID sender,
         .statusMessage =
             pregel::message::InFatalError{
                 .state = stateName,
-                .errorMessage = fmt::format(
-                    "In {}: Received error {} from {}", name(),
-                    inspection::json(workerCreated.errorMessage()), sender)},
+                .errorMessage =
+                    fmt::format("In {}: Received error {} from {}", name(),
+                                inspection::json(workerCreated.errorMessage()),
+                                inspection::json(sender))},
         .metricsMessage = pregel::metrics::message::ConductorFinished{},
         .newState = std::move(newState)};
   }
@@ -105,8 +105,8 @@ auto CreateWorkers::receive(actor::ActorPID sender,
   return std::nullopt;
 };
 
-auto CreateWorkers::_updateResponsibleActorPerShard(actor::ActorPID actor)
-    -> void {
+auto CreateWorkers::_updateResponsibleActorPerShard(
+    actor::DistributedActorPID actor) -> void {
   auto vertexShards =
       conductor.specifications.graphSerdeConfig.localShardIDs(actor.server);
 

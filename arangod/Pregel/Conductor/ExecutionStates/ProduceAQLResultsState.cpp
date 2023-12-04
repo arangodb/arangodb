@@ -28,13 +28,13 @@
 #include "Pregel/Conductor/State.h"
 #include "CanceledState.h"
 
-using namespace arangodb::pregel::actor;
+using namespace arangodb::actor;
 using namespace arangodb::pregel::conductor;
 
 ProduceAQLResults::ProduceAQLResults(ConductorState& conductor)
     : conductor{conductor} {}
 
-auto ProduceAQLResults::cancel(ActorPID sender,
+auto ProduceAQLResults::cancel(DistributedActorPID sender,
                                message::ConductorMessages message)
     -> std::optional<StateChange> {
   auto newState = std::make_unique<Canceled>(conductor);
@@ -50,16 +50,17 @@ auto ProduceAQLResults::cancel(ActorPID sender,
 }
 
 auto ProduceAQLResults::messages()
-    -> std::unordered_map<actor::ActorPID, worker::message::WorkerMessages> {
-  auto out =
-      std::unordered_map<actor::ActorPID, worker::message::WorkerMessages>();
+    -> std::unordered_map<actor::DistributedActorPID,
+                          worker::message::WorkerMessages> {
+  auto out = std::unordered_map<actor::DistributedActorPID,
+                                worker::message::WorkerMessages>();
   for (auto const& worker : conductor.workers) {
     out.emplace(worker, worker::message::ProduceResults{});
   }
   return out;
 }
 
-auto ProduceAQLResults::receive(actor::ActorPID sender,
+auto ProduceAQLResults::receive(actor::DistributedActorPID sender,
                                 message::ConductorMessages message)
     -> std::optional<StateChange> {
   if (not std::holds_alternative<message::ResultCreated>(message)) {
@@ -69,9 +70,9 @@ auto ProduceAQLResults::receive(actor::ActorPID sender,
         .statusMessage =
             pregel::message::InFatalError{
                 .state = stateName,
-                .errorMessage =
-                    fmt::format("In {}: Received unexpected message {} from {}",
-                                name(), inspection::json(message), sender)},
+                .errorMessage = fmt::format(
+                    "In {}: Received unexpected message {} from {}", name(),
+                    inspection::json(message), inspection::json(sender))},
         .metricsMessage =
             pregel::metrics::message::ConductorFinished{
                 .previousState =

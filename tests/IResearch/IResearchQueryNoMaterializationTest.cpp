@@ -284,10 +284,10 @@ class QueryNoMaterialization : public QueryTestMulti {
                "version": $1, $2
                "includeAllFields": true })",
           index, version(), addition));
-      logicalCollection1->createIndex(createJson->slice(), created);
+      logicalCollection1->createIndex(createJson->slice(), created).get();
       ASSERT_TRUE(created);
       created = false;
-      logicalCollection2->createIndex(createJson->slice(), created);
+      logicalCollection2->createIndex(createJson->slice(), created).get();
       ASSERT_TRUE(created);
     };
 

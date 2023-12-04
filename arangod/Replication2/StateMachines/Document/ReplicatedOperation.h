@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Cluster/ClusterTypes.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Inspection/Format.h"
 #include "Inspection/Status.h"
 #include "Inspection/Types.h"
@@ -45,7 +46,10 @@ struct ReplicatedOperation {
     ShardID shard;
     velocypack::SharedSlice payload;
 
-    DocumentOperation() = default;
+    // TODO: This somehow seems to be needed for Inspection.
+    // Would like to remove it again though.
+    DocumentOperation() {}
+
     explicit DocumentOperation(TransactionId tid, ShardID shard,
                                velocypack::SharedSlice payload);
 
@@ -89,11 +93,15 @@ struct ReplicatedOperation {
 
   struct CreateShard {
     ShardID shard;
-    CollectionID collection;
-    std::shared_ptr<VPackBuilder> properties;
+    TRI_col_type_e collectionType;
+    velocypack::SharedSlice properties;
 
-    friend auto operator==(CreateShard const&, CreateShard const&)
-        -> bool = default;
+    friend auto operator==(CreateShard const& lhs, CreateShard const& rhs)
+        -> bool {
+      return lhs.shard == rhs.shard &&
+             lhs.collectionType == rhs.collectionType &&
+             lhs.properties.binaryEquals(rhs.properties.slice());
+    }
   };
 
   struct ModifyShard {
@@ -110,7 +118,6 @@ struct ReplicatedOperation {
 
   struct DropShard {
     ShardID shard;
-    CollectionID collection;
 
     friend auto operator==(DropShard const&, DropShard const&)
         -> bool = default;
@@ -118,7 +125,7 @@ struct ReplicatedOperation {
 
   struct CreateIndex {
     ShardID shard;
-    std::shared_ptr<VPackBuilder> properties;
+    velocypack::SharedSlice properties;
 
     // Parameters attached to the operation, but not replicated, because they
     // make sense only locally.
@@ -129,8 +136,11 @@ struct ReplicatedOperation {
           -> bool = default;
     } params;
 
-    friend auto operator==(CreateIndex const&, CreateIndex const&)
-        -> bool = default;
+    friend auto operator==(CreateIndex const& lhs, CreateIndex const& rhs)
+        -> bool {
+      return lhs.shard == rhs.shard &&
+             lhs.properties.binaryEquals(rhs.properties.slice());
+    }
   };
 
   struct DropIndex {
@@ -171,16 +181,15 @@ struct ReplicatedOperation {
   static auto buildTruncateOperation(TransactionId tid, ShardID shard) noexcept
       -> ReplicatedOperation;
   static auto buildCreateShardOperation(
-      ShardID shard, CollectionID collection,
-      std::shared_ptr<VPackBuilder> properties) noexcept -> ReplicatedOperation;
+      ShardID shard, TRI_col_type_e collectionType,
+      velocypack::SharedSlice properties) noexcept -> ReplicatedOperation;
   static auto buildModifyShardOperation(
       ShardID shard, CollectionID collection,
       velocypack::SharedSlice properties) noexcept -> ReplicatedOperation;
-  static auto buildDropShardOperation(ShardID shard,
-                                      CollectionID collection) noexcept
+  static auto buildDropShardOperation(ShardID shard) noexcept
       -> ReplicatedOperation;
   static auto buildCreateIndexOperation(
-      ShardID shard, std::shared_ptr<VPackBuilder> properties,
+      ShardID shard, velocypack::SharedSlice properties,
       std::shared_ptr<methods::Indexes::ProgressTracker> progress =
           nullptr) noexcept -> ReplicatedOperation;
   static auto buildDropIndexOperation(ShardID shard,
@@ -203,14 +212,6 @@ template<typename T, typename... U>
 concept IsAnyOf = (std::same_as<T, U> || ...);
 
 template<class T>
-concept ModifiesUserTransaction =
-    std::is_same_v<T, ReplicatedOperation::Truncate> ||
-    std::is_same_v<T, ReplicatedOperation::Insert> ||
-    std::is_same_v<T, ReplicatedOperation::Update> ||
-    std::is_same_v<T, ReplicatedOperation::Replace> ||
-    std::is_same_v<T, ReplicatedOperation::Remove>;
-
-template<class T>
 concept FinishesUserTransaction =
     std::is_same_v<T, ReplicatedOperation::Commit> ||
     std::is_same_v<T, ReplicatedOperation::Abort>;
@@ -223,6 +224,14 @@ template<class T>
 concept InsertsDocuments =
     IsAnyOf<T, ReplicatedOperation::Insert, ReplicatedOperation::Update,
             ReplicatedOperation::Replace>;
+
+template<class T>
+concept ModifiesUserTransaction =
+    std::is_same_v<T, ReplicatedOperation::Truncate> ||
+    std::is_same_v<T, ReplicatedOperation::Insert> ||
+    std::is_same_v<T, ReplicatedOperation::Update> ||
+    std::is_same_v<T, ReplicatedOperation::Replace> ||
+    std::is_same_v<T, ReplicatedOperation::Remove>;
 
 template<class T>
 concept UserTransaction =

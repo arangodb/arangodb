@@ -24,7 +24,7 @@
 
 #include <chrono>
 #include <memory>
-#include "Actor/ActorPID.h"
+#include "Actor/DistributedActorPID.h"
 #include "Actor/HandlerBase.h"
 #include "Logger/LogMacros.h"
 #include "Pregel/GraphStore/GraphLoader.h"
@@ -48,44 +48,47 @@
 namespace arangodb::pregel::worker {
 
 struct VerticesProcessed {
-  std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor;
+  std::unordered_map<actor::DistributedActorPID, uint64_t> sendCountPerActor;
   size_t activeCount;
 };
 
 template<typename V, typename E, typename M, typename Runtime>
 struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
+  using ActorPID = typename Runtime::ActorPID;
   DispatchStatus const& dispatchStatus =
       [this](pregel::message::StatusMessages message) -> void {
     this->template dispatch<pregel::message::StatusMessages>(
-        this->state->statusActor, message);
+        this->state->statusActor, std::move(message));
   };
   DispatchMetrics const& dispatchMetrics =
       [this](metrics::message::MetricsMessages message) -> void {
     this->template dispatch<metrics::message::MetricsMessages>(
-        this->state->metricsActor, message);
+        this->state->metricsActor, std::move(message));
   };
   DispatchConductor const& dispatchConductor =
       [this](conductor::message::ConductorMessages message) -> void {
     this->template dispatch<conductor::message::ConductorMessages>(
-        this->state->conductor, message);
+        this->state->conductor, std::move(message));
   };
   DispatchSelf const& dispatchSelf =
       [this](message::WorkerMessages message) -> void {
-    this->template dispatch<message::WorkerMessages>(this->self, message);
+    this->template dispatch<message::WorkerMessages>(this->self,
+                                                     std::move(message));
   };
   DispatchOther const& dispatchOther =
-      [this](actor::ActorPID other, message::WorkerMessages message) -> void {
-    this->template dispatch<message::WorkerMessages>(other, message);
+      [this](actor::DistributedActorPID other,
+             message::WorkerMessages message) -> void {
+    this->template dispatch<message::WorkerMessages>(other, std::move(message));
   };
   DispatchResult const& dispatchResult =
       [this](pregel::message::ResultMessages message) -> void {
     this->template dispatch<pregel::message::ResultMessages>(
-        this->state->resultActor, message);
+        this->state->resultActor, std::move(message));
   };
   DispatchSpawn const& dispatchSpawn =
       [this](pregel::message::SpawnMessages message) -> void {
     this->template dispatch<pregel::message::SpawnMessages>(
-        this->state->spawnActor, message);
+        this->state->spawnActor, std::move(message));
   };
 
   Dispatcher dispatcher{.dispatchStatus = dispatchStatus,
@@ -155,7 +158,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
   auto operator()([[maybe_unused]] message::Cleanup message)
       -> std::unique_ptr<WorkerState<V, E, M>> {
-    this->finish();
+    this->finish(actor::ExitReason::kFinished);
 
     LOG_TOPIC("664f5", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is cleaned", this->self);
@@ -169,14 +172,14 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     return std::move(this->state);
   }
 
-  auto operator()(actor::message::UnknownMessage unknown)
+  auto operator()(actor::message::UnknownMessage<ActorPID> unknown)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("7ee4d", INFO, Logger::PREGEL) << fmt::format(
         "Worker Actor: Error - sent unknown message to {}", unknown.receiver);
     return std::move(this->state);
   }
 
-  auto operator()(actor::message::ActorNotFound notFound)
+  auto operator()(actor::message::ActorNotFound<ActorPID> notFound)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("2d647", INFO, Logger::PREGEL) << fmt::format(
         "Worker Actor: Error - receiving actor {} not found", notFound.actor);

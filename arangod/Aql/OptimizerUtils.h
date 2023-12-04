@@ -102,6 +102,9 @@ NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
     Ast* ast, VarInfoMap const& varInfo, bool evaluateFCalls, Index* index,
     AstNode const* condition, Variable const* indexVariable);
 
+arangodb::aql::Collection const* getCollection(
+    arangodb::aql::ExecutionNode const* node);
+
 }  // namespace utils
 }  // namespace aql
 }  // namespace arangodb

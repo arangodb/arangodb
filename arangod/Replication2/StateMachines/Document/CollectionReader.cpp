@@ -46,7 +46,8 @@ auto SnapshotTransaction::options() -> transaction::Options {
 
 void SnapshotTransaction::addCollection(LogicalCollection const& collection) {
   transaction::Methods::addCollectionAtRuntime(
-      collection.id(), collection.name(), AccessMode::Type::READ);
+      collection.id(), collection.name(), AccessMode::Type::READ)
+      .get();
 }
 
 DatabaseSnapshot::DatabaseSnapshot(TRI_vocbase_t& vocbase)
@@ -64,15 +65,10 @@ DatabaseSnapshot::DatabaseSnapshot(TRI_vocbase_t& vocbase)
   }
 }
 
-auto DatabaseSnapshot::createCollectionReader(std::string_view collectionName)
+auto DatabaseSnapshot::createCollectionReader(
+    std::shared_ptr<LogicalCollection> shard)
     -> std::unique_ptr<ICollectionReader> {
-  auto logicalCollection = _vocbase.lookupCollection(collectionName);
-  if (logicalCollection == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                   collectionName);
-  }
-  return std::make_unique<CollectionReader>(std::move(logicalCollection),
-                                            *_trx);
+  return std::make_unique<CollectionReader>(std::move(shard), *_trx);
 }
 
 auto DatabaseSnapshot::resetTransaction() -> Result {

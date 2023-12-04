@@ -254,6 +254,10 @@ DECLARE_GAUGE(arangodb_v8_context_max, double,
               "Maximum number of concurrent V8 contexts");
 DECLARE_GAUGE(arangodb_v8_context_min, double,
               "Minimum number of concurrent V8 contexts");
+DECLARE_GAUGE(arangodb_request_statistics_memory_usage, uint64_t,
+              "Memory used by the internal request statistics");
+DECLARE_GAUGE(arangodb_connection_statistics_memory_usage, uint64_t,
+              "Memory used by the internal connection statistics");
 
 namespace {
 // local_name: {"prometheus_name", "type", "help"}
@@ -614,7 +618,13 @@ StatisticsFeature::StatisticsFeature(Server& server)
       _statisticsHistory(true),
       _statisticsHistoryTouched(false),
       _statisticsAllDatabases(true),
-      _descriptions(server) {
+      _descriptions(server),
+      _requestStatisticsMemoryUsage{
+          server.getFeature<metrics::MetricsFeature>().add(
+              arangodb_request_statistics_memory_usage{})},
+      _connectionStatisticsMemoryUsage{
+          server.getFeature<metrics::MetricsFeature>().add(
+              arangodb_connection_statistics_memory_usage{})} {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
   startsAfter<NetworkFeature>();
@@ -715,19 +725,17 @@ This is less intrusive than setting the `--server.statistics` option to
 
 void StatisticsFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
-  if (!_statistics) {
+  if (_statistics) {
+    // initialize counters for all HTTP request types
+    ConnectionStatistics::initialize();
+    RequestStatistics::initialize();
+  } else {
     // turn ourselves off
     disable();
   }
 
   _statisticsHistoryTouched =
       options->processingResult().touched("--server.statistics-history");
-}
-
-void StatisticsFeature::prepare() {
-  // initialize counters for all HTTP request types
-  ConnectionStatistics::initialize();
-  RequestStatistics::initialize();
 }
 
 void StatisticsFeature::start() {
@@ -881,6 +889,18 @@ void StatisticsFeature::appendMetric(std::string& result,
 void StatisticsFeature::toPrometheus(std::string& result, double now,
                                      std::string_view globals,
                                      bool ensureWhitespace) {
+  // these metrics should always be 0 if statistics are disabled
+  TRI_ASSERT(isEnabled() || (RequestStatistics::memoryUsage() == 0 &&
+                             ConnectionStatistics::memoryUsage() == 0));
+  if (isEnabled()) {
+    // update arangodb_request_statistics_memory_usage and
+    // arangodb_connection_statistics_memory_usage metrics
+    _requestStatisticsMemoryUsage.store(RequestStatistics::memoryUsage(),
+                                        std::memory_order_relaxed);
+    _connectionStatisticsMemoryUsage.store(ConnectionStatistics::memoryUsage(),
+                                           std::memory_order_relaxed);
+  }
+
   ProcessInfo info = TRI_ProcessInfoSelf();
   uint64_t rss = static_cast<uint64_t>(info._residentSize);
   double rssp = 0;

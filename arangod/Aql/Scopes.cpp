@@ -98,9 +98,7 @@ Variable const* Scope::getVariable(std::string_view name,
 }
 
 /// @brief create the scopes
-Scopes::Scopes() : _activeScopes(), _currentVariables() {
-  _activeScopes.reserve(4);
-}
+Scopes::Scopes() { _activeScopes.reserve(4); }
 
 /// @brief destroy the scopes
 Scopes::~Scopes() = default;

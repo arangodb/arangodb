@@ -99,7 +99,7 @@ static inline bool TestIsShardInSync(std::vector<ServerID> plannedServers,
 //////////////////////////////////////////////////////////////////////////////
 
 static void ReportShardNoProgress(
-    std::string_view shardId, std::vector<ServerID> const& respServers,
+    ShardID shardId, std::vector<ServerID> const& respServers,
     containers::FlatHashMap<ServerID, std::string> const& aliases,
     VPackBuilder& result) {
   TRI_ASSERT(result.isOpenObject());
@@ -201,14 +201,11 @@ static void ReportPartialNoProgress(
     VPackBuilder& result) {
   // create a sorted list of shards, so that the callers will get the
   // shard list in a deterministic order (this is very useful for the UI).
-  containers::SmallVector<std::string_view, 8> sortedShards;
-  sortedShards.reserve(shardIds.size());
+  std::set<ShardID> sortedShards;
 
   for (auto const& s : shardIds) {
-    sortedShards.emplace_back(s.first);
+    sortedShards.emplace(s.first);
   }
-  // sorts sortedShards in place in a deterministic order
-  ShardingInfo::sortShardNamesNumerically(sortedShards);
 
   TRI_ASSERT(result.isOpenObject());
 
@@ -359,9 +356,8 @@ void ShardDistributionReporter::helperDistributionForDatabase(
         } else {
           entry.followers = curServers;
           if (timeleft > 0.0) {
-            std::string path = "/_api/collection/" +
-                               basics::StringUtils::urlEncode(s.first) +
-                               "/count";
+            std::string path = absl::StrCat("/_api/collection/",
+                                            std::string{s.first}, "/count");
             VPackBuffer<uint8_t> body;
             network::RequestOptions reqOpts;
             reqOpts.database = dbName;

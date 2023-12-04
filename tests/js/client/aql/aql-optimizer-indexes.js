@@ -693,16 +693,12 @@ function optimizerIndexesTestSuite () {
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test index usage
-////////////////////////////////////////////////////////////////////////////////
-
     testValuePropagationSubquery : function () {
       var query = "FOR i IN " + c.name() + " FILTER i.value == 10 " +
-                  "LET sub1 = (FOR j IN " + c.name() + " FILTER j.value == i.value RETURN j.value) " +
-                  "LET sub2 = (FOR j IN " + c.name() + " FILTER j.value == i.value RETURN j.value) " +
-                  "LET sub3 = (FOR j IN " + c.name() + " FILTER j.value == i.value RETURN j.value) " +
-                  "RETURN [ i.value, sub1, sub2, sub3 ]";
+          "LET sub1 = (FOR j IN " + c.name() + " FILTER j.value == i.value RETURN j.value) " +
+          "LET sub2 = (FOR j IN " + c.name() + " FILTER j.value == i.value RETURN j.value) " +
+          "LET sub3 = (FOR j IN " + c.name() + " FILTER j.value == i.value RETURN j.value) " +
+          "RETURN [ i.value, sub1, sub2, sub3 ]";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
 
@@ -713,6 +709,37 @@ function optimizerIndexesTestSuite () {
       assertEqual(0, results.getExtra().stats.scannedFull);
       assertTrue(results.getExtra().stats.scannedIndex > 0);
     },
+
+    testValuePropagationNotOutsideSubquery : function () {
+      const query =`
+        FOR i IN ${c.name()}
+          LET sub = (FILTER i.value == 10 RETURN null)
+          RETURN [ i.value, sub ]
+      `;
+      var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
+
+      assertEqual(-1, plan.rules.indexOf("propagate-constant-attributes"));
+    },
+
+    testValuePropagationNotAboveLimit : function () {
+      const query =`
+        FOR i IN ${c.name()}
+        FOR j IN ${c.name()}
+          FILTER i.value == j.value
+          SORT i.value, j.value
+          LIMIT 10
+          FILTER i.value == 5
+          RETURN [ i.value ]
+      `;
+      db._explain(query);
+      var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
+
+      assertEqual(-1, plan.rules.indexOf("propagate-constant-attributes"));
+    },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
 
     testUseIndexSimpleNoDocuments : function () {
       var query = "FOR i IN " + c.name() + " FILTER i.value >= 10 SORT i.value LIMIT 10 RETURN 1";
