@@ -107,8 +107,8 @@ void AutoTuneThread::run() {
       newMax /= _importHelper.getThreadCount();
 
       // notes in Import mention an internal limit of 768MBytes
-      if ((arangodb::import::ImportHelper::MaxBatchSize) < newMax) {
-        newMax = arangodb::import::ImportHelper::MaxBatchSize;
+      if (arangodb::import::ImportHelper::kMaxBatchSize < newMax) {
+        newMax = arangodb::import::ImportHelper::kMaxBatchSize;
       }
 
       LOG_TOPIC("e815e", DEBUG, arangodb::Logger::FIXME)

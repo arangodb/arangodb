@@ -24,6 +24,7 @@
 #include "RestHandler/RestDocumentStateHandler.h"
 
 #include "Basics/ResultT.h"
+#include "Inspection/VPack.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/DocumentStateMethods.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
