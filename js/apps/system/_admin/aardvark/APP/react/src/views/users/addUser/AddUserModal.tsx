@@ -173,7 +173,7 @@ export const AddUserModal = ({
                     </Button>
 
                     <Button
-                      colorScheme="blue"
+                      colorScheme="green"
                       type="submit"
                       isLoading={isSubmitting}
                     >

@@ -2056,7 +2056,7 @@ void RestReplicationHandler::handleCommandRestoreView() {
   }
 
   LOG_TOPIC("f874e", TRACE, Logger::REPLICATION)
-      << "restoring view: " << nameSlice.copyString();
+      << "restoring view: " << nameSlice.stringView();
 
   try {
     CollectionNameResolver resolver(_vocbase);
@@ -2397,7 +2397,7 @@ RestReplicationHandler::handleCommandAddFollower() {
         uint64_t nr = nrSlice.getNumber<uint64_t>();
         LOG_TOPIC("533c3", DEBUG, Logger::REPLICATION)
             << "Compare with shortcut Leader: " << nr
-            << " == Follower: " << checksumSlice.copyString();
+            << " == Follower: " << checksumSlice.stringView();
         if (nr == 0 && checksumSlice.isEqualString("0")) {
           res = col->followers()->add(followerId);
 
