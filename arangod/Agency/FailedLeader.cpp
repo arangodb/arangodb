@@ -461,7 +461,7 @@ bool FailedLeader::start(bool& aborts) {
     if (!slice.isNone()) {
       LOG_TOPIC("aff11", INFO, Logger::SUPERVISION)
           << "Destination server " << _to << " meanwhile is blocked by job "
-          << slice.copyString();
+          << slice.stringView();
     }
 
     // This shard blocked by other job?
@@ -470,7 +470,7 @@ bool FailedLeader::start(bool& aborts) {
     if (!slice.isNone()) {
       LOG_TOPIC("71bb2", INFO, Logger::SUPERVISION)
           << "Shard  " << _shard << " meanwhile is blocked by job "
-          << slice.copyString();
+          << slice.stringView();
     }
   }
 

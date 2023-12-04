@@ -1,6 +1,36 @@
 devel
 -----
 
+* FE-388: Update UI colors & fonts to new styles.
+
+* Change default value for arangoimport's `--type` file type option from
+  "json" to "auto".
+  The default value of "auto" will guess the type of the import file based on
+  the file extension. The following file extensions will be automatically
+  detected:
+  - .json
+  - .jsonl
+  - .csv
+  - .tsv
+  If the file extension cannot be mapped to any of the above types, the import
+  will assume that the input is JSON.
+
+* BTS-1700: arangoimport parser should abort after a reasonable amount of parse 
+  errors.
+
+  This introduces an option `--max-errors` for arangoimport. This option can
+  be used to limit the amount of error messages displayed by arangoimport, and
+  to abort the import after at least this many errors have occurred.
+
+  The default value for the option is 20, so that imports will quickly stop in
+  case many errors occur.
+  This is a behavior change compared to previous versions, in which the import
+  would continue even when there were many errors.
+  To achive the same behavior with the new version, the value of the 
+  arangoimport startup option `--max-errors` can be set to a high value.
+
+* Fixed BTS-1701: Assertion triggered in AQL Traversal on edge PRUNE.
+
 * Make AQL optimizer rule "interchange-adjacent-enumerations" generate less
   plan permutations for the case the a non-collection FOR loop is followed
   by a collection-based FOR loop. This change can reduce the number of plans

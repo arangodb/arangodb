@@ -39,7 +39,8 @@
 #include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
 #include "Replication2/Methods.h"
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 
 using namespace arangodb;
 using namespace arangodb::cluster;
