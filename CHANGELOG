@@ -6,8 +6,9 @@ devel
   equality lookup, and `LIKE(doc.attribute, 'prefix%')` into a range query.
   That allows indexes to be used in case they are present on the underlying
   attribute.
-  The optimization is applied only if the third parameter to the `LIKE`
-  function is either not set or set to a value of `false`.
+  The optimization is applied only if the second parameter to the `LIKE`
+  function is a fixed string and if third parameter to the `LIKE` function 
+  is either not set or set to a value of `false`.
 
 * FE-388: Update UI colors & fonts to new styles.
 
