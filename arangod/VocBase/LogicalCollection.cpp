@@ -537,6 +537,11 @@ bool LogicalCollection::useSyncByRevision() const noexcept {
 
 bool LogicalCollection::determineSyncByRevision() const {
   if (version() >= LogicalCollection::Version::v37) {
+    if (replicationVersion() == replication::Version::TWO) {
+      // turn off revision trees for collections/shards in
+      // replication2
+      return false;
+    }
     auto& server = vocbase().server();
     if (server.hasFeature<ReplicationFeature>()) {
       auto& replication = server.getFeature<ReplicationFeature>();
