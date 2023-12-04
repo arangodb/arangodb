@@ -2160,17 +2160,25 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous,
                        "' cannot guarantee that own writes can be fully "
                        "observed. To opt out of this warning, set the "
                        "`readOwnWrites` option to `false` for the UPSERT"));
-    } else if (!_ast->query().vocbase().isOneShard()) {
-      // single-shard collection. if we are not in a OneShard
-      // database, the query will also use a DistributeNode, and
-      // the UPSERT cannot guarantee that its lookup part has
-      // observed all previous writes.
-      _ast->query().warnings().registerWarning(
-          TRI_ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE,
-          absl::StrCat("UPSERT operation on collection '", collection->name(),
-                       "' cannot guarantee that own writes can be fully "
-                       "observed. To opt out of this warning, set the "
-                       "`readOwnWrites` option to `false` for the UPSERT"));
+    } else {
+#ifdef USE_ENTERPRISE
+      bool warnAboutSingleShardCollections = false;
+#else
+      bool warnAboutSingleShardCollections =
+          !_ast->query().vocbase().isOneShard();
+#endif
+      if (warnAboutSingleShardCollections) {
+        // single-shard collection. if we are not in a OneShard
+        // database, the query will also use a DistributeNode, and
+        // the UPSERT cannot guarantee that its lookup part has
+        // observed all previous writes.
+        _ast->query().warnings().registerWarning(
+            TRI_ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE,
+            absl::StrCat("UPSERT operation on collection '", collection->name(),
+                         "' cannot guarantee that own writes can be fully "
+                         "observed. To opt out of this warning, set the "
+                         "`readOwnWrites` option to `false` for the UPSERT"));
+      }
     }
   }
 

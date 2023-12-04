@@ -30,10 +30,9 @@ const jsunity = require("jsunity");
 const errors = require("internal").errors;
 const isCluster = require("internal").isCluster();
 const isEnterprise = require("internal").isEnterprise();
+const cn = "UnitTestsCollection";
 
 function readOwnWritesSuite() {
-  const cn = "UnitTestsCollection";
-
   const fillCollection = () => {
     const docs = [];
     for (let i = 1; i <= 2001; ++i) {
@@ -56,7 +55,9 @@ function readOwnWritesSuite() {
       fillCollection();
 
       const q = `FOR doc IN ${cn} OPTIONS { disableIndex: true } UPSERT FILTER $CURRENT.value == doc.value INSERT { _key: 'nono' } UPDATE { updated: true } IN ${cn}`;
-      const plan = db._createStatement(q).explain().plan;
+      const explain = db._createStatement(q).explain();
+      assertEqual([], explain.warnings);
+      const plan = explain.plan;
 
       // default value for readOwnWrites is true
       let nodes = plan.nodes.filter((n) => n.type === 'UpsertNode');
@@ -80,7 +81,9 @@ function readOwnWritesSuite() {
       fillCollection();
 
       const q = `FOR doc IN ${cn} OPTIONS { disableIndex: true } UPSERT FILTER $CURRENT.value == doc.value INSERT { _key: 'nono' } UPDATE { updated: true } IN ${cn} OPTIONS { readOwnWrites: true }`;
-      const plan = db._createStatement(q).explain().plan;
+      const explain = db._createStatement(q).explain();
+      assertEqual([], explain.warnings);
+      const plan = explain.plan;
 
       let nodes = plan.nodes.filter((n) => n.type === 'UpsertNode');
       assertEqual(1, nodes.length);
@@ -104,7 +107,9 @@ function readOwnWritesSuite() {
       fillCollection();
 
       const q = `FOR doc IN ${cn} OPTIONS { disableIndex: true } UPSERT FILTER $CURRENT.value == doc.value INSERT { _key: 'nono' } UPDATE { updated: true } IN ${cn} OPTIONS { readOwnWrites: false }`;
-      const plan = db._createStatement(q).explain().plan;
+      const explain = db._createStatement(q).explain();
+      assertEqual([], explain.warnings);
+      const plan = explain.plan;
 
       let nodes = plan.nodes.filter((n) => n.type === 'UpsertNode');
       assertEqual(1, nodes.length);
@@ -131,7 +136,9 @@ function readOwnWritesSuite() {
         return;
       }
       const q = `FOR i IN 1..1000 UPSERT FILTER $CURRENT.value == 1 INSERT { inserted: true, value: 1 } UPDATE { updated: true } IN ${cn} OPTIONS { readOwnWrites: true }`;
-      const plan = db._createStatement(q).explain().plan;
+      const explain = db._createStatement(q).explain();
+      assertEqual([], explain.warnings);
+      const plan = explain.plan;
 
       let nodes = plan.nodes.filter((n) => n.type === 'UpsertNode');
       assertEqual(1, nodes.length);
@@ -157,7 +164,9 @@ function readOwnWritesSuite() {
       // as the readOwnWrites: false will lead to our own inserts
       // not being observed
       const q = `FOR i IN 1..1000 UPSERT FILTER $CURRENT.value == 1 INSERT { inserted: true, value: 1 } UPDATE { updated: true } IN ${cn} OPTIONS { readOwnWrites: false }`;
-      const plan = db._createStatement(q).explain().plan;
+      const explain = db._createStatement(q).explain();
+      assertEqual([], explain.warnings);
+      const plan = explain.plan;
 
       let nodes = plan.nodes.filter((n) => n.type === 'UpsertNode');
       assertEqual(1, nodes.length);
@@ -185,7 +194,9 @@ function readOwnWritesSuite() {
         return;
       }
       const q = `FOR j IN 1..10 FOR i IN 1..200 UPSERT FILTER $CURRENT.value == j INSERT { inserted: true, value: j, hits: 1 } UPDATE { updated: true, hits: OLD.hits + 1 } IN ${cn} OPTIONS { readOwnWrites: true }`;
-      const plan = db._createStatement(q).explain().plan;
+      const explain = db._createStatement(q).explain();
+      assertEqual([], explain.warnings);
+      const plan = explain.plan;
 
       let nodes = plan.nodes.filter((n) => n.type === 'UpsertNode');
       assertEqual(1, nodes.length);
@@ -213,7 +224,9 @@ function readOwnWritesSuite() {
     
     testReadOwnWritesFalseRepeatedUpdates: function () {
       const q = `FOR j IN 1..10 FOR i IN 1..200 UPSERT FILTER $CURRENT.value == j INSERT { inserted: true, value: j, hits: 1 } UPDATE { updated: true, hits: OLD.hits + 1 } IN ${cn} OPTIONS { readOwnWrites: false }`;
-      const plan = db._createStatement(q).explain().plan;
+      const explain = db._createStatement(q).explain();
+      assertEqual([], explain.warnings);
+      const plan = explain.plan;
 
       let nodes = plan.nodes.filter((n) => n.type === 'UpsertNode');
       assertEqual(1, nodes.length);
@@ -241,6 +254,82 @@ function readOwnWritesSuite() {
   };
 }
 
+function readOwnWritesMultipleShardsSuite() {
+  return {
+    tearDown: function () {
+      db._drop(cn);
+    },
+
+    testMultipleShardsReadOwnWritesFalse: function () {
+      [2, 5, 10].forEach((numberOfShards) => {
+        let c = db._create(cn, { numberOfShards });
+
+        try {
+          const q = `FOR doc IN ${cn} UPSERT FILTER $CURRENT.value == doc.value INSERT { _key: 'nono' } UPDATE { updated: true } IN ${cn} OPTIONS { readOwnWrites: false }`;
+          const explain = db._createStatement(q).explain();
+          assertEqual([], explain.warnings);
+        } finally {
+          db._drop(cn);
+        }
+      });
+    },
+    
+    testMultipleShardsReadOwnWritesTrue: function () {
+      [2, 5, 10].forEach((numberOfShards) => {
+        let c = db._create(cn, { numberOfShards });
+
+        try {
+          const q = `FOR doc IN ${cn} UPSERT FILTER $CURRENT.value == doc.value INSERT { _key: 'nono' } UPDATE { updated: true } IN ${cn} OPTIONS { readOwnWrites: true }`;
+          const explain = db._createStatement(q).explain();
+          assertEqual(1, explain.warnings.length);
+          assertEqual(errors.ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE.code, explain.warnings[0].code);
+        } finally {
+          db._drop(cn);
+        }
+      });
+    },
+    
+    testSingleShardReadOwnWritesTrue: function () {
+      if (isEnterprise) {
+        // does not apply in enterprise edition
+        return;
+      }
+
+      let c = db._create(cn, { numberOfShards: 1 });
+
+      const q = `FOR doc IN ${cn} UPSERT FILTER $CURRENT.value == doc.value INSERT { _key: 'nono' } UPDATE { updated: true } IN ${cn} OPTIONS { readOwnWrites: true }`;
+      const explain = db._createStatement(q).explain();
+      assertEqual(1, explain.warnings.length);
+      assertEqual(errors.ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE.code, explain.warnings[0].code);
+    },
+    
+    testOneShardReadOwnWritesTrue: function () {
+      if (!isEnterprise) {
+        // does not apply in community edition
+        return;
+      }
+
+      db._createDatabase(cn);
+      try {
+        db._useDatabase(cn);
+
+        let c = db._create(cn, { numberOfShards: 1 });
+
+        const q = `FOR doc IN ${cn} UPSERT FILTER $CURRENT.value == doc.value INSERT { _key: 'nono' } UPDATE { updated: true } IN ${cn} OPTIONS { readOwnWrites: true }`;
+        const explain = db._createStatement(q).explain();
+        assertEqual([], explain.warnings);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(cn);
+      }
+    },
+    
+  };
+}
+
 jsunity.run(readOwnWritesSuite);
+if (isCluster) {
+  jsunity.run(readOwnWritesMultipleShardsSuite);
+}
 
 return jsunity.done();
