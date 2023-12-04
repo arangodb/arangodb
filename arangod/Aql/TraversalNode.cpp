@@ -1070,7 +1070,7 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
   }
 
   if (_pruneExpression) {
-    c._pruneExpression = _pruneExpression->clone(plan.getAst());
+    c._pruneExpression = _pruneExpression->clone(plan.getAst(), true);
     c._pruneVariables.reserve(_pruneVariables.size());
     for (auto const& it : _pruneVariables) {
       if (withProperties) {
@@ -1097,12 +1097,12 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
   // Filter Condition Parts
   c._fromCondition = _fromCondition->clone(_plan->getAst());
   c._toCondition = _toCondition->clone(_plan->getAst());
-  c._globalEdgeConditions.insert(c._globalEdgeConditions.end(),
-                                 _globalEdgeConditions.begin(),
-                                 _globalEdgeConditions.end());
-  c._globalVertexConditions.insert(c._globalVertexConditions.end(),
-                                   _globalVertexConditions.begin(),
-                                   _globalVertexConditions.end());
+  for (auto const& it : _globalEdgeConditions) {
+    c._globalEdgeConditions.emplace_back(it->clone(_plan->getAst()));
+  }
+  for (auto const& it : _globalVertexConditions) {
+    c._globalVertexConditions.emplace_back(it->clone(_plan->getAst()));
+  }
 
   for (auto const& it : _edgeConditions) {
     // Copy the builder
