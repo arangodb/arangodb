@@ -326,7 +326,7 @@ Ast::SpecialNodes::SpecialNodes()
       NullNode{AstNodeValue(), AstNode::InternalNode{}},
       FalseNode{AstNodeValue(false), AstNode::InternalNode{}},
       TrueNode{AstNodeValue(true), AstNode::InternalNode{}},
-      ZeroNode{AstNodeValue(int64_t(0), AstNode::InternalNode{})},
+      ZeroNode{AstNodeValue(int64_t(0)), AstNode::InternalNode{}},
       EmptyStringNode{AstNodeValue("", uint32_t(0)), AstNode::InternalNode{}} {
   // the const-away casts are necessary API-wise. however, we are never ever
   // modifying the computed values for these special nodes.
