@@ -23,6 +23,15 @@ devel
   guaranteed that the input to the UPSERT will lead to disjoint documents 
   being inserted/updated/replaced.
 
+* Optimize equality lookups and prefix matches that use the AQL like function.
+  The optimization will turn `LIKE(doc.attribute, 'fixed string')` into an
+  equality lookup, and `LIKE(doc.attribute, 'prefix%')` into a range query.
+  That allows indexes to be used in case they are present on the underlying
+  attribute.
+  The optimization is applied only if the second parameter to the `LIKE`
+  function is a fixed string and if third parameter to the `LIKE` function 
+  is either not set or set to a value of `false`.
+
 * FE-388: Update UI colors & fonts to new styles.
 
 * Change default value for arangoimport's `--type` file type option from
