@@ -211,38 +211,21 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     TRI_ASSERT(_queue.hasProcessableElement());
   }
 
-  auto step = _queue.pop();
-  auto previous = _interior.append(step);
+  auto tmp = _queue.pop();
+  auto posPrevious = _interior.append(std::move(tmp));
+  auto& step = _interior.getStepReference(posPrevious);
 
-  // validatePath does the full validation of the path up to here including
-  // checking vertex/path document conditions.
-  //
-  // The full validation cannot be run during the expand step, because
-  // the vertex document has not been fetched yet.
-  auto validation = _validator.validatePath(step);
-  if (!validation.isPruned()) {
-    _provider.expand(step, previous, [&](Step n) -> void {
-      // this uniqueness check is all that can be done at this point, as
-      // all that is known about the edge is the edge and the vertex-id (but
-      // crucially not the vertex document.)
-      auto uniqueness = _validator.validatePathUniqueness(n);
+  auto res = _validator.validatePath(step);
 
-      // Check if other Ball knows this Vertex.
-      // Include it in results.
-      if ((getDepth() + other.getDepth() >= _minDepth) &&
-          !uniqueness.isFiltered()) {
-        // One side of the path is checked, the other side is unclear:
-        // We need to combine the test of both sides.
+  if (!res.isFiltered()) {
+    if (getDepth() + other.getDepth() >= _minDepth) {
+      other.matchResultsInShell(step, results, _validator);
+    }
+  }
 
-        // For GLOBAL: We ignore otherValidator, On FIRST match: Add this
-        // match as result, clear both sides. => This will give the shortest
-        // path.
-        other.matchResultsInShell(n, results, _validator);
-      }
-      if (!uniqueness.isPruned()) {
-        _shell.emplace(std::move(n));
-      }
-    });
+  if (!res.isPruned()) {
+    _provider.expand(step, posPrevious,
+                     [&](Step n) -> void { _shell.emplace(std::move(n)); });
   }
 }
 
