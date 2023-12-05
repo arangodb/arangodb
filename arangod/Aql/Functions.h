@@ -69,8 +69,8 @@ AqlValue const& extractFunctionParameterValue(
 namespace functions {
 
 /// @brief helper function. not callable as a "normal" AQL function
-void Stringify(velocypack::Options const* vopts,
-               arangodb::velocypack::StringSink& buffer,
+template<typename T>
+void Stringify(velocypack::Options const* vopts, T& buffer,
                arangodb::velocypack::Slice slice);
 
 AqlValue IsNull(arangodb::aql::ExpressionContext*, AstNode const&,

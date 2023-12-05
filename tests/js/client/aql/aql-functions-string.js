@@ -35,6 +35,55 @@ const assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
 
 function ahuacatlStringFunctionsTestSuite () {
   return {
+    testRepeat: function () {
+      const values = [
+        [ "a", 3, undefined, "aaa" ],
+        [ "abc", 3, undefined, "abcabcabc" ],
+        [ "", 3, undefined, "" ],
+        [ "ABC", 3, ",", "ABC,ABC,ABC" ],
+        [ "foxxFoxxFaxx", 0, undefined, "" ],
+        [ "foxxFoxxFaxx", 0, "abc", "" ],
+        [ "f", 1024, undefined, Array(1025).join("f") ],
+        [ "f", 2, "abc", "fabcf" ],
+        [ "ü", 10, undefined, "üüüüüüüüüü" ],
+        [ "ü", 10, "ä", "üäüäüäüäüäüäüäüäüäü" ],
+        [ "ü", 10, "äxö", "üäxöüäxöüäxöüäxöüäxöüäxöüäxöüäxöüäxöü" ],
+        [ "MÖTÖR", 3, "㗸", "MÖTÖR㗸MÖTÖR㗸MÖTÖR" ],
+      ];
+
+      values.forEach((v) => {
+        let query = 'RETURN REPEAT(' + JSON.stringify(v[0]) + ', ' + JSON.stringify(v[1]);
+        if (v[2] !== undefined) {
+          query += ', ' + JSON.stringify(v[2]);
+        }
+        query += ')';
+        assertEqual([ v[3] ], getQueryResults(query), v);
+      });
+    },
+    
+    testRepeatInvalidInputs: function () {
+      [-1, -1000].forEach((v) => {
+        const query = 'RETURN REPEAT("abc", ' + JSON.stringify(v) + ')';
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, query);
+      });
+    },
+    
+    testRepeatTooLongInput: function () {
+      [
+        ["abcdefghij", 1717986919],
+        ["a", 16384 * 1024 * 1024 + 1],
+        ["ab", 8192 * 1024 * 1024 + 1],
+      ].forEach((v) => {
+        const query = 'RETURN REPEAT(' + JSON.stringify(v[0]) + ', ' + JSON.stringify(v[1]) + ')';
+        assertQueryWarningAndNull(errors.ERROR_RESOURCE_LIMIT.code, query);
+      });
+    },
+    
+    testRepeatInvalidNumberOfParameters: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REPEAT()');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REPEAT(1)');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REPEAT(1, 2, 3, 4)');
+    },
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test to_char

@@ -729,7 +729,8 @@ void extractKeys(containers::FlatHashSet<std::string>& names,
 
 /// @brief append the VelocyPack value to a string buffer
 ///        Note: Backwards compatibility. Is different than Slice.toJson()
-void appendAsString(VPackOptions const& vopts, velocypack::StringSink& buffer,
+template<typename T>
+void appendAsString(VPackOptions const& vopts, T& buffer,
                     AqlValue const& value) {
   AqlValueMaterializer materializer(&vopts);
   VPackSlice slice = materializer.slice(value);
@@ -1472,8 +1473,9 @@ void registerInvalidArgumentWarning(ExpressionContext* expressionContext,
 }  // namespace arangodb
 
 /// @brief append the VelocyPack value to a string buffer
-void functions::Stringify(VPackOptions const* vopts,
-                          velocypack::StringSink& buffer, VPackSlice slice) {
+template<typename T>
+void functions::Stringify(VPackOptions const* vopts, T& buffer,
+                          VPackSlice slice) {
   if (slice.isNull()) {
     // null is the empty string
     return;
@@ -1493,6 +1495,16 @@ void functions::Stringify(VPackOptions const* vopts,
   VPackDumper dumper(&buffer, &adjustedOptions);
   dumper.dump(slice);
 }
+
+template void functions::Stringify<arangodb::velocypack::StringSink>(
+    velocypack::Options const* vopts, arangodb::velocypack::StringSink& buffer,
+    arangodb::velocypack::Slice slice);
+
+template void
+functions::Stringify<arangodb::velocypack::SizeConstrainedStringSink>(
+    velocypack::Options const* vopts,
+    arangodb::velocypack::SizeConstrainedStringSink& buffer,
+    arangodb::velocypack::Slice slice);
 
 /// @brief function IS_NULL
 AqlValue functions::IsNull(ExpressionContext*, AstNode const&,
@@ -1655,13 +1667,21 @@ AqlValue functions::Repeat(ExpressionContext* ctx, AstNode const&,
   }
 
   transaction::StringLeaser buffer(&trx);
-  velocypack::StringSink adapter(buffer.get());
+  velocypack::SizeConstrainedStringSink adapter(buffer.get(),
+                                                /*maxLength*/ 16 * 1024 * 1024);
 
   for (int64_t i = 0; i < r; ++i) {
     if (i > 0 && !separator.empty()) {
       buffer->append(separator);
     }
     ::appendAsString(trx.vpackOptions(), adapter, value);
+    if (adapter.overflowed()) {
+      registerWarning(
+          ctx, AFN,
+          Result{TRI_ERROR_RESOURCE_LIMIT,
+                 "Output string of AQL REPEAT function was limited to 16MB."});
+      return AqlValue(AqlValueHintNull());
+    }
   }
 
   // hand over string to AqlValue

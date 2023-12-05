@@ -1,6 +1,16 @@
 devel
 -----
 
+* Added AQL function `TO_CHAR(number)`, which produces a character from the
+  given character number.
+
+* Added AQL function `REPEAT(string, count, separator)`, which repeats a string
+  for a configurable number of times, with an optional separator.
+  Note that the maximum size of the output string is limited to 16 MB to avoid
+  very large outputs that would consume lots of memory. Exceeding the maximum
+  output string length will make the function return `null` and issue a 
+  warning.
+
 * Optimize equality lookups and prefix matches that use the AQL like function.
   The optimization will turn `LIKE(doc.attribute, 'fixed string')` into an
   equality lookup, and `LIKE(doc.attribute, 'prefix%')` into a range query.
