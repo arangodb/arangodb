@@ -56,7 +56,12 @@ function readOwnWritesSuite() {
 
       const q = `FOR doc IN ${cn} OPTIONS { disableIndex: true } UPSERT FILTER $CURRENT.value == doc.value INSERT { _key: 'nono' } UPDATE { updated: true } IN ${cn}`;
       const explain = db._createStatement(q).explain();
-      assertEqual([], explain.warnings);
+      if (!isCluster || isEnterprise) {
+        assertEqual([], explain.warnings);
+      } else {
+        assertEqual(1, explain.warnings.length);
+        assertEqual(errors.ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE.code, explain.warnings[0].code);
+      }
       const plan = explain.plan;
 
       // default value for readOwnWrites is true
@@ -82,7 +87,12 @@ function readOwnWritesSuite() {
 
       const q = `FOR doc IN ${cn} OPTIONS { disableIndex: true } UPSERT FILTER $CURRENT.value == doc.value INSERT { _key: 'nono' } UPDATE { updated: true } IN ${cn} OPTIONS { readOwnWrites: true }`;
       const explain = db._createStatement(q).explain();
-      assertEqual([], explain.warnings);
+      if (!isCluster || isEnterprise) {
+        assertEqual([], explain.warnings);
+      } else {
+        assertEqual(1, explain.warnings.length);
+        assertEqual(errors.ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE.code, explain.warnings[0].code);
+      }
       const plan = explain.plan;
 
       let nodes = plan.nodes.filter((n) => n.type === 'UpsertNode');
@@ -95,7 +105,12 @@ function readOwnWritesSuite() {
 
       let res = db._query(q);
       assertEqual(2001, res.getExtra().stats.writesExecuted);
-      assertEqual([], res.getExtra().warnings);
+      if (!isCluster || isEnterprise) {
+        assertEqual([], explain.warnings);
+      } else {
+        assertEqual(1, explain.warnings.length);
+        assertEqual(errors.ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE.code, explain.warnings[0].code);
+      }
 
       res = db._query(`FOR doc IN ${cn} FILTER doc.updated == true RETURN 1`).toArray();
       assertEqual(2001, res.length);
