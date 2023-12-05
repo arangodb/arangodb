@@ -295,6 +295,14 @@ void EnumeratePathsNode::doToVelocyPack(VPackBuilder& nodes,
     nodes.add(VPackValue("pathOutVariable"));
     pathOutVariable().toVelocyPack(nodes);
   }
+  if (isVertexOutVariableUsedLater()) {
+    nodes.add(VPackValue("vertexOutVariable"));
+    vertexOutVariable()->toVelocyPack(nodes);
+  }
+  if (isEdgeOutVariableUsedLater()) {
+    nodes.add(VPackValue("edgeOutVariable"));
+    edgeOutVariable()->toVelocyPack(nodes);
+  }
 
   // In variables
   if (usesStartInVariable()) {

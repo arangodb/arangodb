@@ -1,4 +1,17 @@
-v3.11.6 (XXXX-XX-XX)
+v3.11.7 (XXXX-XX-XX)
+--------------------
+
+* Fixed BTS-1701: Assertion triggered in AQL Traversal on edge PRUNE.
+
+* Fix an issue when forced index hints were used in a query, but the optimizer
+  selected a query execution plan that would not use the selected index.
+  Previously, the query failed with a "Could not serve index hint" error
+  message. With the fix, the optimizer will select the next best plan(s) until
+  all index hints are either satisfied, or there are no further plans to select
+  from. In the latter case, the query still aborts with said error.
+
+
+v3.11.6 (2023-11-29)
 --------------------
 
 * FE-403: Fix loader instantiation.
