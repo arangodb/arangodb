@@ -351,14 +351,6 @@ const IndexPrimaryJoinTestSuite = function () {
         });
       }
 
-      const queryOptions = {
-        optimizer: {
-          rules: ["+join-index-nodes"]
-        },
-        joinStrategyType: "generic",
-        maxNumberOfPlans: 1
-      };
-
       const queryStringEasy = `
         FOR doc1 IN A
           FILTER doc1.x == 5
@@ -376,13 +368,12 @@ const IndexPrimaryJoinTestSuite = function () {
       assertEqual(qResult.length, 5);
     },
 
-    /*
-    testJoinConstantValuesOneOuterMultipleInner: function () {
+    testJoinConstantValuesInvalid: function () {
       const collectionA = db._createDocumentCollection('A');
       collectionA.ensureIndex({type: "persistent", fields: ["x", "y"], unique: false});
 
       const collectionB = db._createDocumentCollection('B');
-      collectionB.ensureIndex({type: "persistent", fields: ["y", "z"], unique: false});
+      collectionB.ensureIndex({type: "persistent", fields: ["x", "y", "z"], unique: true});
 
       // insert some data. Every second document in A has x = 5.
       // Means, we do have five documents with x = 5 in this example.
@@ -395,31 +386,22 @@ const IndexPrimaryJoinTestSuite = function () {
         });
         collectionB.insert({
           _key: JSON.stringify(i),
-          x: 10,
           y: i,
-          z: i
         });
       }
 
-      const queryOptions = {
-        optimizer: {
-          rules: ["+join-index-nodes"]
-        },
-        maxNumberOfPlans: 1
-      };
-
-      const queryStringEasy = `
-        FOR doc1 IN A
-          FILTER doc1.x == 5
+      const queryString = `
+        FOR i in 1..5 
+          FOR doc1 IN A
+            FILTER doc1.x == i
             FOR doc2 IN B
-            FILTER doc1.y == doc2.y
-            FILTER doc2.z == 8
-            RETURN [doc1, doc2]`;
+              FILTER doc1.y == doc2.x
+              FILTER doc2.y == (2 * i)
+              FILTER doc2.z == 8
+              RETURN [doc1, doc2]
+      `;
 
-      db._explain(queryStringEasy, null, queryOptions);
-
-      const q = db._query(queryStringEasy, null, queryOptions);
-      const qResult = q.toArray();
+      const qResult = runAndCheckQuery(queryString, "generic");
       qResult.forEach((docs) => {
         let first = docs[0];
         let second = docs[1];
@@ -429,6 +411,86 @@ const IndexPrimaryJoinTestSuite = function () {
       assertEqual(qResult.length, 5);
     },
 
+    testJoinConstantValuesTwoOuterTwoInner: function () {
+      // TODO: LATER <WIP>
+      const collectionA = db._createDocumentCollection('A');
+      collectionA.ensureIndex({type: "persistent", fields: ["x", "y", "z"], unique: false});
+
+      const collectionB = db._createDocumentCollection('B');
+      collectionB.ensureIndex({type: "persistent", fields: ["y", "z"], unique: true});
+
+      for (let i = 0; i < 10; i++) {
+        collectionA.insert({
+          _key: JSON.stringify(i),
+          x: (i % 2 === 0) ? i : 5,
+          y: (i % 2 === 0) ? i : 10,
+          z: i
+        });
+        collectionB.insert({
+          _key: JSON.stringify(i),
+          y: (i % 2 === 0) ? i : 10,
+          z: i
+        });
+      }
+
+      const queryStringEasy = `
+        FOR doc1 IN A
+          FILTER doc1.x == 5 AND doc1.y == 10
+            FOR doc2 IN B
+            FILTER doc1.y == doc2.y
+            FILTER doc1.z == 10
+            RETURN [doc1, doc2]`;
+
+      const qResult = runAndCheckQuery(queryStringEasy, "generic");
+      qResult.forEach((docs) => {
+        let first = docs[0];
+        let second = docs[1];
+        assertEqual(first.x, 5, "Wrong value for 'x' in first document found");
+        assertEqual(first.y, second.y);
+      });
+      assertEqual(qResult.length, 5);
+    },
+
+    testJoinConstantValuesOneOuterTwoInner: function () {
+      const collectionA = db._createDocumentCollection('A');
+      collectionA.ensureIndex({type: "persistent", fields: ["x", "y"], unique: false});
+
+      const collectionB = db._createDocumentCollection('B');
+      collectionB.ensureIndex({type: "persistent", fields: ["x", "y", "z"], unique: true});
+
+      // insert some data. Every second document in A has x = 5.
+      // Means, we do have five documents with x = 5 in this example.
+      // Apart from that, just incrementing y from 0 to 10.
+      for (let i = 0; i < 10; i++) {
+        collectionA.insert({
+          _key: JSON.stringify(i),
+          x: (i % 2 === 0) ? i : 5,
+          y: i,
+        });
+        collectionB.insert({
+          _key: JSON.stringify(i),
+          y: i,
+        });
+      }
+
+      const queryStringEasy = `
+        FOR doc1 IN A
+          FILTER doc1.x == 5
+            FOR doc2 IN B
+            FILTER doc1.y == doc2.y
+            FILTER doc2.z == 8
+            RETURN [doc1, doc2]`;
+
+      const qResult = runAndCheckQuery(queryStringEasy, "generic");
+      qResult.forEach((docs) => {
+        let first = docs[0];
+        let second = docs[1];
+        assertEqual(first.x, 5, "Wrong value for 'x' in first document found");
+        assertEqual(first.y, second.y);
+      });
+      assertEqual(qResult.length, 5);
+    },
+    /*
     testJoinFixedValuesComplex: function () {
       const collectionA = db._createDocumentCollection('A');
       collectionA.ensureIndex({type: "persistent", fields: ["x", "y"], unique: false});
@@ -454,8 +516,8 @@ const IndexPrimaryJoinTestSuite = function () {
         FOR doc1 IN A
           FILTER doc1.x == i
             FOR doc2 IN B
-            FILTER doc1.y == doc2.y
-            FILTER doc2.x == (2 * i)
+            FILTER doc1.y == doc2.x
+            FILTER doc2.y == (2 * i)
             FILTER doc2.z == 8
             RETURN [doc1, doc2]`;
 

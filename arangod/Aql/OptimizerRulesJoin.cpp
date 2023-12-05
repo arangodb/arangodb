@@ -116,6 +116,14 @@ bool indexNodeQualifies(IndexNode const& indexNode) {
     return false;
   }
 
+  if (index->sparse()) {
+    // index is a sparse index, we cannot use it. We would otherwise generated
+    // incomplete results.
+    LOG_JOIN_OPTIMIZER_RULE << "IndexNode uses an sparse index, "
+                               "so we cannot join it";
+    return false;
+  }
+
   if (index->hasExpansion()) {
     // index uses expansion ([*]) operator
     LOG_JOIN_OPTIMIZER_RULE << "IndexNode uses an index with expansion, "
@@ -315,11 +323,177 @@ void optimizeJoinNode(ExecutionPlan& plan, JoinNode* jn) {
   removeUnnecessaryProjections(plan, jn);
 }
 
+bool createSpanPositionsForIndex(
+    AstNode const* attributeAccessNode,
+    std::map<ExecutionNodeId,
+             std::tuple<std::string, std::vector<size_t>, std::vector<size_t>>>&
+        keyFieldsAndConstantFields,
+    ExecutionNodeId candidateID,
+    std::vector<std::vector<basics::AttributeName>> indexFields) {
+  auto getAttributePosition = [](std::vector<std::string> const& vec,
+                                 std::string const& target) {
+    auto it = std::find(vec.begin(), vec.end(), target);
+
+    size_t position;
+    if (it != vec.end()) {
+      position = std::distance(vec.begin(), it);
+    } else {
+      // Element not found
+      position = std::numeric_limits<size_t>::max();
+    }
+    return position;
+  };
+
+  std::string attributeName = attributeAccessNode->getString();
+  if (!keyFieldsAndConstantFields.contains(candidateID)) {
+    // initialize the entry for this candidateID
+    LOG_DEVEL << "Stringy: " << attributeAccessNode->getString();
+    keyFieldsAndConstantFields.try_emplace(
+        candidateID,
+        std::make_tuple<std::string, std::vector<size_t>, std::vector<size_t>>(
+            std::string{attributeName}, {}, {}));
+  }
+  TRI_ASSERT(keyFieldsAndConstantFields.contains(candidateID));
+  std::vector<std::string> idxAttrFields = {};
+  for (auto iF : indexFields) {
+    idxAttrFields.push_back(iF[0].name);
+  }
+  size_t keyFieldPosition = getAttributePosition(idxAttrFields, attributeName);
+  LOG_DEVEL << "Attribute pos for stringify: " << keyFieldPosition;
+  if (keyFieldPosition != std::numeric_limits<size_t>::max()) {
+    // found the key field
+    if ((keyFieldPosition + 1) < indexFields.size()) {
+      // keyField
+      std::get<1>(keyFieldsAndConstantFields[candidateID])
+          .emplace_back((keyFieldPosition + 1));
+      // constantField
+      std::get<2>(keyFieldsAndConstantFields[candidateID])
+          .emplace_back(keyFieldPosition);
+    } else {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+[[nodiscard]] bool parseAndCheckNaryOr(
+    IndexNode const* indexNode, AstNode const* root,
+    std::map<ExecutionNodeId, std::vector<AstNode*>>& constantValues,
+    ExecutionNodeId candidateId,
+    std::map<ExecutionNodeId,
+             std::tuple<std::string, std::vector<size_t>, std::vector<size_t>>>&
+        keyFieldsAndConstantFields);
+
+[[nodiscard]] bool parseAndCheckBinaryEQ(
+    IndexNode const* indexNode, AstNode const* member,
+    std::map<ExecutionNodeId, std::vector<AstNode*>>& constantValues,
+    ExecutionNodeId candidateID,
+    std::map<ExecutionNodeId,
+             std::tuple<std::string, std::vector<size_t>, std::vector<size_t>>>&
+        keyAndConstantFields) {
+  LOG_JOIN_OPTIMIZER_RULE << "FOUND BINARY_EQ";
+  TRI_ASSERT(member->numMembers() == 2);
+
+  auto lhsi = member->getMember(0);
+  auto rhsi = member->getMember(1);
+  // LATER Improvement TODO: Check "flag" isDeterministic <-- all
+  // allowed here then
+  if (lhsi->type == NODE_TYPE_VALUE || lhsi->type == NODE_TYPE_REFERENCE) {
+    LOG_JOIN_OPTIMIZER_RULE << "Setting constant value to lhsi";
+    if (rhsi->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      constantValues[candidateID].emplace_back(lhsi);
+      bool valid =
+          createSpanPositionsForIndex(rhsi, keyAndConstantFields, candidateID,
+                                      indexNode->getIndexes()[0]->fields());
+      if (!valid) {
+        return false;
+      }
+    }
+  } else if (rhsi->type == NODE_TYPE_VALUE ||
+             rhsi->type == NODE_TYPE_REFERENCE) {
+    LOG_JOIN_OPTIMIZER_RULE << "Setting constant value to rhsi";
+    if (lhsi->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      constantValues[candidateID].emplace_back(rhsi);
+      bool valid =
+          createSpanPositionsForIndex(lhsi, keyAndConstantFields, candidateID,
+                                      indexNode->getIndexes()[0]->fields());
+      if (!valid) {
+        return false;
+      }
+    }
+  }
+
+  /*else if (lhsi->type == NODE_TYPE_OPERATOR_NARY_OR) {
+    LOG_DEVEL << "ELSE MATCH NARY OR HIT";
+    return parseAndCheckNaryOr(indexNode, lhsi, constantValues, candidateID,
+                               keyAndConstantFields);
+  } else if (rhsi->type == NODE_TYPE_OPERATOR_NARY_OR) {
+    LOG_DEVEL << "ELSE MATCH NARY OR HIT";
+    return parseAndCheckNaryOr(indexNode, rhsi, constantValues, candidateID,
+                               keyAndConstantFields);
+  } else if (rhsi->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    if (lhsi->type == NODE_TYPE_REFERENCE) {
+      LOG_DEVEL << "reference found";
+    }
+    LOG_DEVEL << "aha this one o0";
+  } else if (lhsi->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    LOG_DEVEL << "or tihs one o0";
+    if (rhsi->type == NODE_TYPE_REFERENCE) {
+      LOG_DEVEL << "reference found right";
+    }
+  }*/
+
+  return true;
+}
+
+[[nodiscard]] bool parseAndCheckNaryOr(
+    IndexNode const* indexNode, AstNode const* root,
+    std::map<ExecutionNodeId, std::vector<AstNode*>>& constantValues,
+    ExecutionNodeId candidateId,
+    std::map<ExecutionNodeId,
+             std::tuple<std::string, std::vector<size_t>, std::vector<size_t>>>&
+        keyFieldsAndConstantFields) {
+  if (root->type == NODE_TYPE_OPERATOR_NARY_OR) {
+    LOG_JOIN_OPTIMIZER_RULE << "FOUND NARY_OR";
+    TRI_ASSERT(root->numMembers() == 1);
+    auto member = root->getMember(0);
+    if (member->type == NODE_TYPE_OPERATOR_NARY_AND) {
+      LOG_JOIN_OPTIMIZER_RULE << "FOUND NARY_AND";
+      TRI_ASSERT(member->numMembers() == 1);
+      member = member->getMember(0);
+      if (member->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+        return parseAndCheckBinaryEQ(indexNode, member, constantValues,
+                                     candidateId, keyFieldsAndConstantFields);
+      } else if (member->type == NODE_TYPE_OPERATOR_NARY_OR) {
+        return parseAndCheckNaryOr(indexNode, member, constantValues,
+                                   candidateId, keyFieldsAndConstantFields);
+      } else {
+        LOG_DEVEL << "ELSEE";
+        // member->dump(30);
+      }
+    }
+  }
+  return true;
+}
+
+bool checkAndBuildConstantValues(
+    IndexNode const* indexNode, AstNode const* root,
+    ExecutionNodeId candidateID,
+    std::map<ExecutionNodeId, std::vector<AstNode*>>& constantValues,
+    std::map<ExecutionNodeId,
+             std::tuple<std::string, std::vector<size_t>, std::vector<size_t>>>&
+        keyFieldsAndConstantFields) {
+  return parseAndCheckNaryOr(indexNode, root, constantValues, candidateID,
+                             keyFieldsAndConstantFields);
+}
+
 bool constIndexConditionsMatches(
     IndexNode const* firstNode, IndexNode const* otherNode,
     std::map<Variable const*,
              std::vector<std::vector<arangodb::basics::AttributeName>>>
-        constants) {
+        firstConstants,
+    std::map<ExecutionNodeId, std::vector<AstNode*>>& constantValues) {
   bool eligible = true;
 
   // This method returns the ordered index attributes of any IndexNode and
@@ -362,13 +536,9 @@ bool constIndexConditionsMatches(
         return orderedIndexAttributes;
       };
 
-  LOG_JOIN_OPTIMIZER_RULE << "Index information for first node:";
-  auto orderedIndexAttributesLHS =
-      buildOrderedIndexAttributes(firstNode, constants);
-
   // This method checks if the variable is covered by the index of the first
   // node or the other node and returns the corresponding IndexUsage.
-  auto checkVarCoveredByIndex = [&](Variable const* var) {
+  auto checkVarUsedByIndexNode = [&](Variable const* var) {
     LOG_JOIN_OPTIMIZER_RULE << "Checking index valid for var: " << var->name;
     if (var->isEqualTo(*firstNode->outVariable())) {
       LOG_JOIN_OPTIMIZER_RULE << "-> Var fits to first node's index";
@@ -383,36 +553,78 @@ bool constIndexConditionsMatches(
     return IndexUsage::NONE;
   };
 
+  auto checkVarUsageAllowed =
+      [&](std::map<std::string_view, bool>& orderedIndexAttributes,
+          Variable const* var) {
+        // size_t offset = 0;
+        for (auto const& elem : orderedIndexAttributes) {
+          if (elem.first != var->name && !elem.second) {
+            // We've found another attribute here, which is not used and does
+            // not match our current variable to check. Therefore, we need to
+            // stop optimizing here.
+            LOG_DEVEL << "Variable: " << var->name
+                      << " is not eligible, because of: " << elem.first;
+            return false;
+          } else {
+            // Match found between variable and index attribute. We can
+            // continue.
+            LOG_JOIN_OPTIMIZER_RULE << "Variable: " << var->name
+                                    << " is eligible";
+            break;
+          }
+        }
+        return true;
+      };
+
   auto checkVariableEligible =
       [&](Variable const* var,
           std::vector<basics::AttributeName> const& attrs) -> bool {
     LOG_JOIN_OPTIMIZER_RULE << "Calling checkVariableEligible: ";
     // 1.) Check if the variable is related to the index of the first node
     // or to the index of the second node.
-    auto result = checkVarCoveredByIndex(var);
+    auto result = checkVarUsedByIndexNode(var);
 
     if (result == IndexUsage::FIRST) {
-      for (auto const& elem : orderedIndexAttributesLHS) {
-        if (elem.first != var->name && !elem.second) {
-          // We've found another attribute here, which is not used and does not
-          // match our current variable to check. Therefore, we need to stop
-          // optimizing here.
-          LOG_JOIN_OPTIMIZER_RULE << "Variable: " << var->name
-                                  << " is not eligible!";
-          return false;
-        } else {
-          // Match found between variable and index attribute. We can continue.
-          break;
+      auto orderedIndexAttributesLHS =
+          buildOrderedIndexAttributes(firstNode, firstConstants);
+      bool varUsageAllowed =
+          checkVarUsageAllowed(orderedIndexAttributesLHS, var);
+      if (!varUsageAllowed) {
+        LOG_JOIN_OPTIMIZER_RULE << "Variable: " << var->name
+                                << " is not eligible!";
+        return false;
+      }
+    } else if (result == IndexUsage::OTHER) {
+      /*checkAndBuildConstantValues(otherNode->condition()->root(),
+                                  otherNode->id(), constantValues);
+      std::map<Variable const*,
+               std::vector<std::vector<arangodb::basics::AttributeName>>>
+          otherConstants{};
+
+      if (constantValues.contains(otherNode->id()) &&
+          !constantValues[otherNode->id()].empty()) {
+        for (auto const* otherVar : otherNode->getVariablesSetHere()) {
+          otherConstants.try_emplace(
+              otherVar,
+              otherNode->condition()->getConstAttributes(otherVar, false));
         }
       }
-      LOG_JOIN_OPTIMIZER_RULE << "Variable: " << var->name << " is eligible";
-    } else if (result == IndexUsage::OTHER) {
+
+      auto orderedIndexAttributesRHS =
+          buildOrderedIndexAttributes(otherNode, otherConstants);
+      bool varUsageAllowed =
+          checkVarUsageAllowed(orderedIndexAttributesRHS, var);*/
+      bool varUsageAllowed = true;
+      if (!varUsageAllowed) {
+        LOG_JOIN_OPTIMIZER_RULE << "Variable: " << var->name
+                                << " is not eligible!";
+        return false;
+      }
       LOG_JOIN_OPTIMIZER_RULE << "Variable: " << var->name << " is eligible";
       return true;
     } else {
       TRI_ASSERT(result == IndexUsage::NONE);
-      LOG_JOIN_OPTIMIZER_RULE << "Variable: " << var->name
-                              << " is not eligible, due to no IndexUsage.";
+      LOG_DEVEL << "No index usage found";
       return false;
     }
 
@@ -422,42 +634,59 @@ bool constIndexConditionsMatches(
   auto* otherRoot = otherNode->condition()->root();
   if (otherRoot->type == NODE_TYPE_OPERATOR_NARY_OR) {
     auto member = otherRoot->getMember(0);
-    TRI_ASSERT(member->numMembers() == 1);
+    LOG_DEVEL << "Amount of total members is: " << member->numMembers();
+    // TRI_ASSERT(member->numMembers() == 1);
     if (member->type == NODE_TYPE_OPERATOR_NARY_AND) {
-      member = member->getMember(0);
-      size_t numMembers = member->numMembers();
+      size_t amountOfPotentialEQMembers = member->numMembers();
 
-      if (member->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-        TRI_ASSERT(numMembers == 2);
+      for (size_t memberPos = 0; memberPos < amountOfPotentialEQMembers;
+           member++) {
+        auto innerMember = member->getMember(memberPos);
+        size_t numMembers = innerMember->numMembers();
 
-        auto lhsi = member->getMember(0);
-        auto rhsi = member->getMember(1);
+        if (innerMember->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+          TRI_ASSERT(numMembers == 2);
 
-        std::pair<Variable const*, std::vector<basics::AttributeName>> lParts;
-        std::pair<Variable const*, std::vector<basics::AttributeName>> rParts;
+          auto lhsi = innerMember->getMember(0);
+          auto rhsi = innerMember->getMember(1);
 
-        if (lhsi->isAttributeAccessForVariable(lParts)) {
-          LOG_JOIN_OPTIMIZER_RULE << "attr name: " << lParts.first->name;
-          for (auto const& attr : lParts.second) {
-            LOG_JOIN_OPTIMIZER_RULE << " -> inner attr: " << attr.name;
+          std::pair<Variable const*, std::vector<basics::AttributeName>> lParts;
+          std::pair<Variable const*, std::vector<basics::AttributeName>> rParts;
+
+          if (lhsi->isAttributeAccessForVariable(lParts)) {
+            LOG_JOIN_OPTIMIZER_RULE << "attr name: " << lParts.first->name;
+            for (auto const& attr : lParts.second) {
+              LOG_JOIN_OPTIMIZER_RULE << " -> inner attr: " << attr.name;
+            }
+            eligible = checkVariableEligible(lParts.first, lParts.second);
+            if (!eligible) {
+              LOG_DEVEL << "1. Here not eligible";
+              return false;
+            }
           }
-          eligible = checkVariableEligible(lParts.first, lParts.second);
-          if (!eligible) {
-            return false;
-          }
-        }
 
-        if (rhsi->isAttributeAccessForVariable(rParts)) {
-          LOG_JOIN_OPTIMIZER_RULE << "attr name: " << rParts.first->name;
-          for (auto const& attr : rParts.second) {
-            LOG_JOIN_OPTIMIZER_RULE << " -> inner attr: " << attr.name;
+          if (rhsi->isAttributeAccessForVariable(rParts)) {
+            LOG_JOIN_OPTIMIZER_RULE << "attr name: " << rParts.first->name;
+            for (auto const& attr : rParts.second) {
+              LOG_JOIN_OPTIMIZER_RULE << " -> inner attr: " << attr.name;
+            }
+            eligible = checkVariableEligible(rParts.first, rParts.second);
+            if (!eligible) {
+              LOG_DEVEL << "2. Here not eligible";
+              return false;
+            }
           }
-          eligible = checkVariableEligible(rParts.first, rParts.second);
-          if (!eligible) {
-            return false;
-          }
+        } else if (innerMember->type == NODE_TYPE_REFERENCE) {
+          // TODO: This is not correct yet and needs more work.
+          // Example:
+          // - attribute access: x
+          // - reference: doc1
+          return true;
+        } else {
+          return false;
         }
       }
+      // end member
     }
   }
 
@@ -465,13 +694,19 @@ bool constIndexConditionsMatches(
   return eligible;
 }
 
-std::pair<bool, std::map<ExecutionNodeId, std::vector<AstNode*>>>
+std::tuple<
+    bool, std::map<ExecutionNodeId, std::vector<AstNode*>>,
+    std::map<ExecutionNodeId,
+             std::tuple<std::string, std::vector<size_t>, std::vector<size_t>>>>
 checkCandidatesEligible(
     ExecutionPlan& plan,
     containers::SmallVector<IndexNode*, 8> const& candidates) {
   // This flag is set to true if the first index node has a lookup condition
   // and all other indexes do match the order of conditions and the variables
   std::map<ExecutionNodeId, std::vector<AstNode*>> constantValues;
+  std::map<ExecutionNodeId,
+           std::tuple<std::string, std::vector<size_t>, std::vector<size_t>>>
+      keyFieldsAndConstantFields;
 
   std::map<Variable const*,
            std::vector<std::vector<arangodb::basics::AttributeName>>>
@@ -491,48 +726,38 @@ checkCandidatesEligible(
       auto const& firstCandidateID = candidate->id();
       if (root != nullptr) {
         // TODO: candidate->getVarsValid() + "doc1 case"
-        if (root->hasFlag(AstNodeFlagType::DETERMINED_CONSTANT)) {
-          if (root->type == NODE_TYPE_OPERATOR_NARY_OR) {
-            LOG_JOIN_OPTIMIZER_RULE << "FOUND NARY_OR";
-            TRI_ASSERT(root->numMembers() == 1);
-            auto member = root->getMember(0);
-            if (member->type == NODE_TYPE_OPERATOR_NARY_AND) {
-              LOG_JOIN_OPTIMIZER_RULE << "FOUND NARY_AND";
-              TRI_ASSERT(member->numMembers() == 1);
-              member = member->getMember(0);
-              if (member->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-                LOG_JOIN_OPTIMIZER_RULE << "FOUND BINARY_EQ";
-                TRI_ASSERT(member->numMembers() == 2);
+        auto vrsValid = candidate->getVarsValid();
+        for (auto var : vrsValid) {
+          LOG_DEVEL << "Var: " << var->name << " is valid";
+        }
 
-                auto lhsi = member->getMember(0);
-                auto rhsi = member->getMember(1);
-                // LATER Improvement TODO: Check "flag" isDeterministic <-- all
-                // allowed here then
-                if (lhsi->type == NODE_TYPE_VALUE) {
-                  LOG_JOIN_OPTIMIZER_RULE << "Setting constant value to lhsi";
-                  constantValues[firstCandidateID].emplace_back(lhsi);
-                } else if (rhsi->type == NODE_TYPE_VALUE) {
-                  LOG_JOIN_OPTIMIZER_RULE << "Setting constant value to rhsi";
-                  constantValues[firstCandidateID].emplace_back(rhsi);
-                }
-              }
-            }
+        bool valid = checkAndBuildConstantValues(
+            candidate, root, firstCandidateID, constantValues,
+            keyFieldsAndConstantFields);
+        if (!valid) {
+          LOG_JOIN_OPTIMIZER_RULE
+              << "Not eligible for index join: "
+                 "we've found a constant but the positions for key and "
+                 "constant fields do not match";
+          return {false, {}, {}};
+        }
+        if (constantValues.contains(firstCandidateID) &&
+            !constantValues[firstCandidateID].empty()) {
+          for (auto const* var : candidate->getVariablesSetHere()) {
+            firstCandidateConstantVariables.try_emplace(
+                var, candidate->condition()->getConstAttributes(var, false));
           }
-          if (constantValues.contains(firstCandidateID) &&
-              !constantValues[firstCandidateID].empty()) {
-            for (auto const* var : candidate->getVariablesSetHere()) {
-              firstCandidateConstantVariables.try_emplace(
-                  var, candidate->condition()->getConstAttributes(var, false));
-            }
-          }
-          LOG_DEVEL << "=> Amount of elemeents in "
-                       "outerCandidateConstantVariables for first index node: "
-                    << firstCandidateConstantVariables.size();
-        } else {
-          LOG_JOIN_OPTIMIZER_RULE << "Not eligible for index join: "
-                                     "first index node has a lookup "
-                                     "condition";
-          return {false, {}};
+        }
+        LOG_DEVEL << "=> Amount of elemeents in "
+                     "outerCandidateConstantVariables for first index node: "
+                  << firstCandidateConstantVariables.size();
+
+        if (firstCandidateConstantVariables.empty()) {
+          LOG_JOIN_OPTIMIZER_RULE
+              << "Not eligible for index join: "
+                 "first index node has a lookup "
+                 "condition - and we've not found any constants.";
+          return {false, {}, {}};
         }
       }
     } else {
@@ -541,7 +766,7 @@ checkCandidatesEligible(
         LOG_JOIN_OPTIMIZER_RULE << "Not eligible for index join: "
                                    "index node does not have a "
                                    "lookup condition";
-        return {false, {}};
+        return {false, {}, {}};
       }
       auto const* root = candidate->condition()->root();
       if (root == nullptr || root->type != NODE_TYPE_OPERATOR_NARY_OR ||
@@ -549,16 +774,19 @@ checkCandidatesEligible(
         LOG_JOIN_OPTIMIZER_RULE << "I. (NARY_OR) Not eligible for index join: "
                                    "index node's lookup condition "
                                    "does not match";
-        return {false, {}};
+        return {false, {}, {}};
       }
       root = root->getMember(0);
       if (root == nullptr || root->type != NODE_TYPE_OPERATOR_NARY_AND ||
           root->numMembers() != 1) {
-        LOG_JOIN_OPTIMIZER_RULE
-            << "II. (NARY_AND) Not eligible for index join: "
-               "index node's lookup condition "
-               "does not match";
-        return {false, {}};
+        if (firstCandidateConstantVariables.empty()) {
+          // TODO: Find a better place for this check.
+          LOG_JOIN_OPTIMIZER_RULE
+              << "II. (NARY_AND) Not eligible for index join: "
+                 "index node's lookup condition "
+                 "does not match";
+          return {false, {}, {}};
+        }
       }
       root = root->getMember(0);
       if (root == nullptr || root->type != NODE_TYPE_OPERATOR_BINARY_EQ ||
@@ -566,7 +794,7 @@ checkCandidatesEligible(
         LOG_JOIN_OPTIMIZER_RULE << "III. (BINARY_EQ) Not eligible for index "
                                    "join: index node's lookup "
                                    "condition does not match";
-        return {false, {}};
+        return {false, {}, {}};
       }
 
       if (!firstCandidateConstantVariables.empty()) {
@@ -574,12 +802,13 @@ checkCandidatesEligible(
         // need to check if the current index node matches the order of
         // conditions and the variables.
         bool eligible = constIndexConditionsMatches(
-            candidates[0], candidate, firstCandidateConstantVariables);
+            candidates[0], candidate, firstCandidateConstantVariables,
+            constantValues);
         if (!eligible) {
           LOG_JOIN_OPTIMIZER_RULE
               << "IndexNode's outer loop has a condition, but inner loop "
                  "does not match, due to (constIndexConditionsMatches)";
-          return {false, {}};
+          return {false, {}, {}};
         }
       } else {
         auto* lhs = root->getMember(0);
@@ -588,7 +817,7 @@ checkCandidatesEligible(
             !joinConditionMatches(plan, lhs, rhs, candidates[0], candidate)) {
           LOG_JOIN_OPTIMIZER_RULE << "IndexNode's lookup condition does not "
                                      "match due to (joinConditionMatches)";
-          return {false, {}};
+          return {false, {}, {}};
         }
       }
     }
@@ -605,7 +834,7 @@ checkCandidatesEligible(
                                      "accesses variables that are "
                                      "not available before all "
                                      "index nodes";
-          return {false, {}};
+          return {false, {}, {}};
         }
       }
     }
@@ -627,7 +856,7 @@ checkCandidatesEligible(
         LOG_JOIN_OPTIMIZER_RULE
             << "-> Index name: " << candidate->getIndexes()[0]->name()
             << ", id: " << candidate->getIndexes()[0]->id();
-        return {false, {}};
+        return {false, {}, {}};
       }
     }
 
@@ -653,7 +882,7 @@ checkCandidatesEligible(
         if (!candidate->getIndexes()[0]->supportsStreamInterface(opts)) {
           LOG_JOIN_OPTIMIZER_RULE << "IndexNode's index does not "
                                      "support constant values";
-          return {false, {}};
+          return {false, {}, {}};
         }
       }
     }*/
@@ -663,7 +892,11 @@ checkCandidatesEligible(
 
   LOG_DEVEL << "==> Final Result: Can be optimized! Size: "
             << constantValues.size();
-  return {true, std::move(constantValues)};
+  if (!constantValues.empty()) {
+    return {true, std::move(constantValues),
+            std::move(keyFieldsAndConstantFields)};
+  }
+  return {true, {}, {}};
 }
 
 void findCandidates(IndexNode* indexNode,
@@ -786,11 +1019,10 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
           // First: Eligible bool
           // Second: Vector of constant expressions
           // Third: Vector of positions of keyFields and constantFields
-          std::pair<bool, std::map<ExecutionNodeId, std::vector<AstNode*>>>
-              candidatesResult = checkCandidatesEligible(*plan, candidates);
-          bool eligible = candidatesResult.first;
-          std::map<ExecutionNodeId, std::vector<AstNode*>>
-              constExpressionNodes = std::move(candidatesResult.second);
+          auto candidatesResult = checkCandidatesEligible(*plan, candidates);
+          bool eligible = std::get<0>(candidatesResult);
+          auto constExpressionNodes = std::get<1>(candidatesResult);
+          auto keyFieldAndConstantFields = std::get<2>(candidatesResult);
 
           if (eligible) {
             // we will now replace all candidate IndexNodes with a JoinNode,
@@ -813,11 +1045,24 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                   constExpressions.push_back(std::move(e));
                 }
                 TRI_ASSERT(constExpressions.size() == 1);
+
+                auto const& keyFieldsAndConstantFieldsForIndex =
+                    keyFieldAndConstantFields[c->id()];
+                auto keyVec = std::get<1>(keyFieldsAndConstantFieldsForIndex);
+                auto offsetVec =
+                    std::get<2>(keyFieldsAndConstantFieldsForIndex);
+                for (auto const k : keyVec) {
+                  LOG_DEVEL << "-> Key: " << k;
+                }
+                for (auto const o : offsetVec) {
+                  LOG_DEVEL << "-> Offset: " << o;
+                }
                 // TODO: Only one expression is supported right now
                 // TODO: THIS NEEDS TO BE FIXED ASAP
-                computedUseKeyFields = {1};
-                computedConstantFields = {0};
+                computedUseKeyFields = std::move(keyVec);
+                computedConstantFields = std::move(offsetVec);
               } else {
+                // if no constants have been found, we'll stick to the defaults.
                 computedUseKeyFields = {0};
                 computedConstantFields = {};
               }
