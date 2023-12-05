@@ -1253,8 +1253,8 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief plan and current update threads
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<SyncerThread> _planSyncer;
-  std::shared_ptr<SyncerThread> _curSyncer;
+  std::unique_ptr<SyncerThread> _planSyncer;
+  std::unique_ptr<SyncerThread> _curSyncer;
 
   mutable std::mutex _waitPlanLock;
   AssocMultiMap<uint64_t, futures::Promise<Result>> _waitPlan;
