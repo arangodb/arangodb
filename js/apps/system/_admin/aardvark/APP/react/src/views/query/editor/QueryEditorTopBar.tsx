@@ -71,7 +71,7 @@ export const QueryEditorTopBar = () => {
         </Button>
       )}
       <Flex marginLeft="auto" gap="4" alignItems="center">
-        <ExternalLink href="https://www.arangodb.com/docs/stable/http/aql-query.html#create-a-cursor">
+        <ExternalLink href="https://docs.arangodb.com/3.11/develop/http-api/queries/aql-queries/#create-a-cursor">
           Docs
         </ExternalLink>
         <Tooltip label="Create debug package">

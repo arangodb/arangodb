@@ -41,7 +41,7 @@ export const AddAnalyzerForm = ({
             <ExternalLink
               marginLeft="2"
               marginBottom="2"
-              href={`https://www.arangodb.com/docs/stable/analyzers.html#${analyzerTypeValue}`}
+              href={`https://docs.arangodb.com/stable/index-and-search/analyzers/#${analyzerTypeValue}`}
             >
               Docs
             </ExternalLink>
