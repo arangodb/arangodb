@@ -1001,26 +1001,26 @@ void ClusterFeature::unprepare() {
 void ClusterFeature::shutdown() try {
   if (!_enableCluster) {
     shutdownHeartbeatThread();
-  } 
-    
+  }
+
   if (_clusterInfo != nullptr) {
     _clusterInfo->beginShutdown();
   }
 
-    // force shutdown of AgencyCache. under normal circumstances the cache will
-    // have been shut down already when we get here, but there are rare cases in
-    // which ClusterFeature::stop() isn't called (e.g. during testing or if
-    // something goes very wrong at startup)
-    shutdownAgencyCache();
+  // force shutdown of AgencyCache. under normal circumstances the cache will
+  // have been shut down already when we get here, but there are rare cases in
+  // which ClusterFeature::stop() isn't called (e.g. during testing or if
+  // something goes very wrong at startup)
+  shutdownAgencyCache();
 
-    // force shutdown of Plan/Current syncers. under normal circumstances they
-    // have been shut down already when we get here, but there are rare cases in
-    // which ClusterFeature::stop() isn't called (e.g. during testing or if
-    // something goes very wrong at startup)
-    waitForSyncersToStop();
+  // force shutdown of Plan/Current syncers. under normal circumstances they
+  // have been shut down already when we get here, but there are rare cases in
+  // which ClusterFeature::stop() isn't called (e.g. during testing or if
+  // something goes very wrong at startup)
+  waitForSyncersToStop();
 
-    // make sure agency cache is unreachable now
-    _agencyCache.reset();
+  // make sure agency cache is unreachable now
+  _agencyCache.reset();
 
   // must make sure that the HeartbeatThread is fully stopped before
   // we destroy the AgencyCallbackRegistry.
@@ -1098,7 +1098,6 @@ void ClusterFeature::shutdownAgencyCache() {
     auto start = std::chrono::steady_clock::now();
     size_t counter = 0;
     while (_agencyCache->isRunning()) {
-      LOG_DEVEL << "CHECK AG";
       if (std::chrono::steady_clock::now() - start > std::chrono::seconds(65)) {
         LOG_TOPIC("b5a8d", FATAL, Logger::CLUSTER)
             << "exiting prematurely as we failed terminating the agency cache";
