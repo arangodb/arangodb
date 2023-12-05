@@ -216,20 +216,22 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
 
   ValidationResult res = _validator.validatePath(step);
 
+  if (!res.isFiltered()) {
+    // Check if other Ball knows this Vertex.
+    // Include it in results.
+    if (getDepth() + other.getDepth() >= _minDepth) {
+      // One side of the path is checked, the other side is unclear:
+      // We need to combine the test of both sides.
+
+      // For GLOBAL: We ignore otherValidator, On FIRST match: Add this match
+      // as result, clear both sides. => This will give the shortest path.
+      // TODO: Check if the GLOBAL holds true for weightedEdges
+      other.matchResultsInShell(step, results, _validator);
+    }
+  }
+
   if (!res.isPruned()) {
     _provider.expand(step, previous, [&](Step n) -> void {
-      // Check if other Ball knows this Vertex.
-      // Include it in results.
-      if (getDepth() + other.getDepth() >= _minDepth) {
-        // One side of the path is checked, the other side is unclear:
-        // We need to combine the test of both sides.
-
-        // For GLOBAL: We ignore otherValidator, On FIRST match: Add this match
-        // as result, clear both sides. => This will give the shortest path.
-        // TODO: Check if the GLOBAL holds true for weightedEdges
-        other.matchResultsInShell(n, results, _validator);
-      }
-
       // Add the step to our shell
       _shell.emplace(std::move(n));
     });
