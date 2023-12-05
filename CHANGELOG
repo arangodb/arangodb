@@ -1,6 +1,8 @@
 v3.11.7 (XXXX-XX-XX)
 --------------------
 
+* Fixed BTS-1701: Assertion triggered in AQL Traversal on edge PRUNE.
+
 * Fix an issue when forced index hints were used in a query, but the optimizer
   selected a query execution plan that would not use the selected index.
   Previously, the query failed with a "Could not serve index hint" error

@@ -101,6 +101,37 @@ function PruneExpressionsSuite() {
         assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
       }
     },
+    
+    testVertexVariableUsedOnlyInPruneExpression: function () {
+      let q = `FOR m IN ${vn}
+                 FOR node, edge IN 1..1000 OUTBOUND m ${en}
+                 PRUNE node.value == 'test'
+                   OPTIONS {order: "bfs", uniqueVertices: "global", parallelism: 4}
+                   RETURN 1`;
+      let res = db._query(q).toArray();
+      assertEqual(3, res.length);
+    },
+    
+    testEdgeVariableUsedOnlyInPruneExpression: function () {
+      let q = `FOR m IN ${vn}
+                 FOR node, edge IN 1..1000 OUTBOUND m ${en}
+                 PRUNE edge != null
+                   OPTIONS {order: "bfs", uniqueVertices: "global", parallelism: 4}
+                   RETURN 1`;
+      let res = db._query(q).toArray();
+      assertEqual(2, res.length);
+    },
+    
+    testPathVariableUsedOnlyInPruneExpression: function () {
+      let q = `FOR m IN ${vn}
+                 FOR node, edge, path IN 1..1000 OUTBOUND m ${en}
+                 PRUNE path.vertices[*].value ALL == 'test'
+                   OPTIONS {order: "bfs", uniqueVertices: "global", parallelism: 4}
+                   RETURN 1`;
+      let res = db._query(q).toArray();
+      assertEqual(3, res.length);
+    },
+
   };
 }
 
