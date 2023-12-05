@@ -344,7 +344,8 @@ using namespace methods;
 namespace StringUtils = basics::StringUtils;
 
 class ClusterInfo::SyncerThread final
-    : public arangodb::ServerThread<ArangodServer> {
+    : public arangodb::ServerThread<ArangodServer>,
+      std::enable_shared_from_this<ClusterInfo::SyncerThread> {
  public:
   explicit SyncerThread(Server&, std::string const& section,
                         std::function<void()> const&, AgencyCallbackRegistry&);
@@ -5356,9 +5357,9 @@ AgencyCallbackRegistry& ClusterInfo::agencyCallbackRegistry() const {
 }
 
 void ClusterInfo::startSyncers() {
-  _planSyncer = std::make_unique<SyncerThread>(
+  _planSyncer = std::make_shared<SyncerThread>(
       _server, "Plan", [this] { loadPlan(); }, _agencyCallbackRegistry);
-  _curSyncer = std::make_unique<SyncerThread>(
+  _curSyncer = std::make_shared<SyncerThread>(
       _server, "Current", [this] { loadCurrent(); }, _agencyCallbackRegistry);
 
   if (!_planSyncer->start() || !_curSyncer->start()) {
@@ -5460,13 +5461,17 @@ bool ClusterInfo::SyncerThread::start() {
 void ClusterInfo::SyncerThread::run() {
   // Syncer thread is not destroyed. So we assume it is fine to capture this
   std::function<bool(VPackSlice result)> update =  // for format
-      [this](VPackSlice result) {
+      [self = weak_from_this()](VPackSlice result) {
         if (!result.isNumber()) {
           LOG_TOPIC("d068f", ERR, Logger::CLUSTER)
               << "Plan Version is not a number! " << result.toJson();
           return false;
         }
-        return notify();
+        if (auto syncer = self.lock()) {
+          return syncer->notify();
+        }
+        // syncer thread already stopped
+        return false;
       };
 
   auto acb = std::make_shared<AgencyCallback>(server(), _section + "/Version",
