@@ -214,7 +214,7 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
   auto step = _queue.pop();
   auto previous = _interior.append(step);
 
-  auto res = _validator.validatePath(step);
+  ValidationResult res = _validator.validatePath(step);
 
   if (!res.isPruned()) {
     _provider.expand(step, previous, [&](Step n) -> void {
@@ -229,6 +229,8 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
         // TODO: Check if the GLOBAL holds true for weightedEdges
         other.matchResultsInShell(n, results, _validator);
       }
+
+      // Add the step to our shell
       _shell.emplace(std::move(n));
     });
   }
