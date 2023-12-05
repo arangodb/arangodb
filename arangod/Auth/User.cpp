@@ -204,7 +204,7 @@ void auth::User::fromDocumentDatabases(auth::User& entry,
     } else {
       LOG_TOPIC("c4dd7", DEBUG, arangodb::Logger::CONFIG)
           << "updating deprecated access rights struct for user '"
-          << userSlice.copyString() << "'";
+          << userSlice.stringView() << "'";
       VPackValueLength length;
       char const* value = obj.value.getString(length);
 

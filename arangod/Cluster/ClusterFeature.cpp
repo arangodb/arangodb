@@ -944,19 +944,12 @@ void ClusterFeature::start() {
 
 void ClusterFeature::beginShutdown() {
   if (_enableCluster) {
-    _clusterInfo->shutdownSyncers();
+    _clusterInfo->beginShutdown();
 
     std::lock_guard<std::mutex> guard(_connectivityCheckMutex);
     _connectivityCheck.reset();
   }
   _agencyCache->beginShutdown();
-}
-
-void ClusterFeature::unprepare() {
-  if (!_enableCluster) {
-    return;
-  }
-  _clusterInfo->cleanup();
 }
 
 void ClusterFeature::stop() {
@@ -1014,6 +1007,12 @@ void ClusterFeature::stop() {
   // We try to actively cancel all open requests that may still be in the Agency
   // We cannot react to them anymore.
   _asyncAgencyCommPool->shutdownConnections();
+}
+
+void ClusterFeature::unprepare() {
+  if (_enableCluster) {
+    _clusterInfo->unprepare();
+  }
 }
 
 void ClusterFeature::setUnregisterOnShutdown(bool unregisterOnShutdown) {
@@ -1128,7 +1127,7 @@ void ClusterFeature::allocateMembers() {
   _agencyCallbackRegistry =
       std::make_unique<AgencyCallbackRegistry>(server(), agencyCallbacksPath());
   _clusterInfo = std::make_unique<ClusterInfo>(
-      server(), _agencyCallbackRegistry.get(), _syncerShutdownCode);
+      server(), *_agencyCallbackRegistry, _syncerShutdownCode);
   _agencyCache = std::make_unique<AgencyCache>(
       server(), *_agencyCallbackRegistry, _syncerShutdownCode);
 }

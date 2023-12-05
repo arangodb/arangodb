@@ -77,6 +77,7 @@ class ImportFeature final : public ArangoImportFeature {
   bool _ignoreMissing;
   std::string _onDuplicateAction;
   uint64_t _rowsToSkip;
+  uint64_t _maxErrors;
   int* _result;
   bool _skipValidation;
   bool _latencyStats;

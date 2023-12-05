@@ -400,7 +400,7 @@ static void handlePlanShard(
       LOG_TOPIC("52412", DEBUG, Logger::MAINTENANCE)
           << "Triggering TakeoverShardLeadership job for shard " << dbname
           << "/" << colname << "/" << shname
-          << ", local leader: " << lcol.get(THE_LEADER).copyString()
+          << ", local leader: " << lcol.get(THE_LEADER).stringView()
           << ", leader id: " << leaderId << ", my id: " << serverId
           << ", should be leader: ";
       description = std::make_shared<ActionDescription>(
