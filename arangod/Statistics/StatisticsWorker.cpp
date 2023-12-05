@@ -51,7 +51,9 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
+#endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
@@ -59,25 +61,27 @@
 #include <velocypack/Exception.h>
 #include <velocypack/Iterator.h>
 
+#include <string_view>
+
 namespace {
-std::string const garbageCollectionQuery(
+constexpr std::string_view garbageCollectionQuery(
     "FOR s in @@collection FILTER s.time < @start RETURN s._key");
 
-std::string const lastEntryQuery(
+constexpr std::string_view lastEntryQuery(
     "FOR s in @@collection FILTER s.time >= @start SORT s.time DESC LIMIT 1 "
     "RETURN s");
-std::string const filteredLastEntryQuery(
+constexpr std::string_view filteredLastEntryQuery(
     "FOR s in @@collection FILTER s.time >= @start FILTER s.clusterId == "
     "@clusterId SORT s.time DESC LIMIT 1 RETURN s");
 
-std::string const fifteenMinuteQuery(
+constexpr std::string_view fifteenMinuteQuery(
     "FOR s in _statistics FILTER s.time >= @start SORT s.time RETURN s");
 
-std::string const filteredFifteenMinuteQuery(
+constexpr std::string_view filteredFifteenMinuteQuery(
     "FOR s in _statistics FILTER s.time >= @start FILTER s.clusterId == "
     "@clusterId SORT s.time RETURN s");
 
-double extractNumber(VPackSlice slice, char const* attribute) {
+double extractNumber(VPackSlice slice, std::string_view attribute) {
   if (!slice.isObject()) {
     return 0.0;
   }
@@ -1019,6 +1023,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder,
 
   // export v8 statistics
   builder.add("v8Context", VPackValue(VPackValueType::Object));
+#ifdef USE_V8
   V8DealerFeature::Statistics v8Counters{};
   // std::vector<V8DealerFeature::MemoryStatistics> memoryStatistics;
   // V8 may be turned off on a server
@@ -1035,6 +1040,14 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder,
   builder.add("free", VPackValue(v8Counters.free));
   builder.add("min", VPackValue(v8Counters.min));
   builder.add("max", VPackValue(v8Counters.max));
+#else
+  builder.add("available", VPackValue(0));
+  builder.add("busy", VPackValue(0));
+  builder.add("dirty", VPackValue(0));
+  builder.add("free", VPackValue(0));
+  builder.add("min", VPackValue(0));
+  builder.add("max", VPackValue(0));
+#endif
   /* at the time being we don't want to write this into the database so the data
   volume doesn't increase.
   {
@@ -1105,7 +1118,8 @@ void StatisticsWorker::saveSlice(VPackSlice slice,
   // or abort if an error occured.
   // result stays valid!
   res = trx.finish(result.result);
-  if (res.fail()) {
+  if (res.fail() && res.isNot(TRI_ERROR_ARANGO_READ_ONLY)) {
+    // BTS-1696: suppress log spam when we are in read-only mode.
     LOG_TOPIC("82af5", WARN, Logger::STATISTICS)
         << "could not commit stats to " << collection << ": "
         << res.errorMessage();
@@ -1172,6 +1186,11 @@ void StatisticsWorker::run() {
       if (seconds % HISTORY_INTERVAL == 0) {
         // process every 15 minutes
         historianAverage();
+      }
+    } catch (basics::Exception const& ex) {
+      if (ex.code() != TRI_ERROR_ARANGO_READ_ONLY) {
+        LOG_TOPIC("2fbcb", WARN, Logger::STATISTICS)
+            << "caught exception in StatisticsWorker: " << ex.what();
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("92a40", WARN, Logger::STATISTICS)

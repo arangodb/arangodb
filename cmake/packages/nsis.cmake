@@ -90,7 +90,7 @@ configure_file(cmake/packages/client/nsis.txt ${CLIENT_BUILD_DIR}/CMakeLists.txt
 add_custom_target(package-arangodb-client-nsis
   COMMAND ${CMAKE_COMMAND} .
   COMMENT "configuring client package environment"
-  COMMAND ${CMAKE_CPACK_COMMAND} -G NSIS -C ${CMAKE_BUILD_TYPE}
+  COMMAND ${CMAKE_CPACK_COMMAND} -G NSIS -C ${CMAKE_BUILD_TYPE} -D USE_V8=${USE_V8}
   COMMENT "building client packages"
   COMMAND ${CMAKE_COMMAND} -E copy ${CLIENT_BUILD_DIR}/${ARANGODB_CLIENT_PACKAGE_FILE_NAME}.exe ${PROJECT_BINARY_DIR}
   COMMENT "uploading client packages"

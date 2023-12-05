@@ -433,7 +433,9 @@ void RocksDBIndexFactory::prepareIndexes(
   IndexId last = IndexId::primary();
 
   for (VPackSlice v : VPackArrayIterator(indexesSlice)) {
-    if (!validateFieldsDefinition(v, StaticStrings::IndexFields, 0, SIZE_MAX)
+    if (!validateFieldsDefinition(v, StaticStrings::IndexFields, 0, SIZE_MAX,
+                                  /*allowSubAttributes*/ true,
+                                  /*allowIdAttribute*/ false)
              .ok()) {
       continue;
     }

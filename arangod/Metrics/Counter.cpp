@@ -23,6 +23,7 @@
 
 #include "Metrics/Counter.h"
 
+#include <absl/strings/str_cat.h>
 #include <ostream>
 
 namespace arangodb::metrics {
@@ -39,10 +40,7 @@ void Counter::toPrometheus(std::string& result, std::string_view globals,
                            bool ensureWhitespace) const {
   _b.push();
   Metric::addMark(result, name(), globals, labels());
-  if (ensureWhitespace) {
-    result.push_back(' ');
-  }
-  result.append(std::to_string(load())) += '\n';
+  absl::StrAppend(&result, ensureWhitespace ? " " : "", load(), "\n");
 }
 
 uint64_t Counter::load() const noexcept {

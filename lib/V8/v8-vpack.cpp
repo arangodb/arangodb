@@ -23,14 +23,18 @@
 
 #include "v8-vpack.h"
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
-#include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
+#include "V8/V8PlatformFeature.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 

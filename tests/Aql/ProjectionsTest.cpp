@@ -43,11 +43,7 @@ using namespace arangodb::tests;
 namespace {
 auto createAttributeNamePath = [](std::vector<std::string>&& vec,
                                   arangodb::ResourceMonitor& resMonitor) {
-  arangodb::MonitoredStringVector myVector{resMonitor};
-  for (auto& s : vec) {
-    myVector.emplace_back(s);
-  }
-  return AttributeNamePath(std::move(myVector));
+  return AttributeNamePath(std::move(vec), resMonitor);
 };
 }
 
@@ -351,6 +347,55 @@ TEST(ProjectionsTest, buildOverlapping6) {
   EXPECT_EQ(createAttributeNamePath({{"a"}, {"c"}}, resMonitor), p[1].path);
 }
 
+TEST(ProjectionsTest, erase) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
+  std::vector<arangodb::aql::AttributeNamePath> attributes = {
+      createAttributeNamePath({"a"}, resMonitor),
+      createAttributeNamePath({"b"}, resMonitor),
+      createAttributeNamePath({"c"}, resMonitor),
+      createAttributeNamePath({"d"}, resMonitor),
+  };
+  Projections p(std::move(attributes));
+
+  EXPECT_EQ(4, p.size());
+  p.erase([](Projections::Projection& p) {
+    return (p.path.get().size() == 1 && p.path.get()[0] == "b");
+  });
+
+  EXPECT_EQ(3, p.size());
+  EXPECT_EQ(createAttributeNamePath({{"a"}}, resMonitor), p[0].path);
+  EXPECT_EQ(createAttributeNamePath({{"c"}}, resMonitor), p[1].path);
+  EXPECT_EQ(createAttributeNamePath({{"d"}}, resMonitor), p[2].path);
+
+  p.erase([](Projections::Projection& p) {
+    return (p.path.get().size() == 1 && p.path.get()[0] == "d");
+  });
+
+  EXPECT_EQ(2, p.size());
+  EXPECT_EQ(createAttributeNamePath({{"a"}}, resMonitor), p[0].path);
+  EXPECT_EQ(createAttributeNamePath({{"c"}}, resMonitor), p[1].path);
+
+  p.erase([](Projections::Projection& p) {
+    return (p.path.get().size() == 1 && p.path.get()[0] == "a");
+  });
+
+  EXPECT_EQ(1, p.size());
+  EXPECT_EQ(createAttributeNamePath({{"c"}}, resMonitor), p[0].path);
+
+  p.erase([](Projections::Projection& p) {
+    return (p.path.get().size() == 1 && p.path.get()[0] == "c");
+  });
+
+  EXPECT_EQ(0, p.size());
+
+  p.erase([](Projections::Projection& p) {
+    return (p.path.get().size() == 1 && p.path.get()[0] == "c");
+  });
+
+  EXPECT_EQ(0, p.size());
+}
+
 TEST(ProjectionsTest, toVelocyPackFromDocumentSimple1) {
   arangodb::GlobalResourceMonitor globalResourceMonitor{};
   arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
@@ -528,7 +573,8 @@ TEST(ProjectionsTest, toVelocyPackFromIndexSimple) {
   bool created;
   auto indexJson = velocypack::Parser::fromJson(
       "{\"type\":\"hash\", \"fields\":[\"a\", \"b\"]}");
-  auto index = logicalCollection->createIndex(indexJson->slice(), created);
+  auto index =
+      logicalCollection->createIndex(indexJson->slice(), created).get();
 
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
       createAttributeNamePath({"a"}, resMonitor),
@@ -578,7 +624,8 @@ TEST(ProjectionsTest, toVelocyPackFromIndexComplex1) {
   bool created;
   auto indexJson = velocypack::Parser::fromJson(
       "{\"type\":\"hash\", \"fields\":[\"sub.a\", \"sub.b\", \"c\"]}");
-  auto index = logicalCollection->createIndex(indexJson->slice(), created);
+  auto index =
+      logicalCollection->createIndex(indexJson->slice(), created).get();
 
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
       createAttributeNamePath({"sub", "a"}, resMonitor),
@@ -623,7 +670,8 @@ TEST(ProjectionsTest, toVelocyPackFromIndexComplex2) {
   bool created;
   auto indexJson = velocypack::Parser::fromJson(
       "{\"type\":\"hash\", \"fields\":[\"sub\", \"c\"]}");
-  auto index = logicalCollection->createIndex(indexJson->slice(), created);
+  auto index =
+      logicalCollection->createIndex(indexJson->slice(), created).get();
 
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
       createAttributeNamePath({"sub", "a"}, resMonitor),

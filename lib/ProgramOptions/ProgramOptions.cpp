@@ -421,6 +421,13 @@ bool ProgramOptions::require(std::string const& name) {
   auto it = _sections.find(parts.first);
 
   if (it == _sections.end()) {
+#ifndef USE_V8
+    if (modernized.starts_with("javascript.") ||
+        modernized.starts_with("--javascript.")) {
+      // hack: ignore all options starting with --javascript if V8 is disabled
+      return true;
+    }
+#endif
     unknownOption(modernized);
     return false;
   }
@@ -428,6 +435,13 @@ bool ProgramOptions::require(std::string const& name) {
   auto it2 = (*it).second.options.find(parts.second);
 
   if (it2 == (*it).second.options.end()) {
+#ifndef USE_V8
+    if (modernized.starts_with("javascript.") ||
+        modernized.starts_with("--javascript.")) {
+      // hack: ignore all options starting with --javascript if V8 is disabled
+      return true;
+    }
+#endif
     unknownOption(modernized);
     return false;
   }
@@ -449,6 +463,14 @@ bool ProgramOptions::setValue(std::string const& name,
   auto it = _sections.find(parts.first);
 
   if (it == _sections.end()) {
+#ifndef USE_V8
+    if (modernized.starts_with("javascript.") ||
+        modernized.starts_with("--javascript.")) {
+      // hack: ignore all options starting with --javascript if V8 is disabled
+      _processingResult.touch(modernized);
+      return true;
+    }
+#endif
     unknownOption(modernized);
     return false;
   }
@@ -461,6 +483,14 @@ bool ProgramOptions::setValue(std::string const& name,
   auto it2 = (*it).second.options.find(parts.second);
 
   if (it2 == (*it).second.options.end()) {
+#ifndef USE_V8
+    if (modernized.starts_with("javascript.") ||
+        modernized.starts_with("--javascript.")) {
+      // hack: ignore all options starting with --javascript if V8 is disabled
+      _processingResult.touch(modernized);
+      return true;
+    }
+#endif
     unknownOption(modernized);
     return false;
   }
@@ -581,6 +611,14 @@ Option& ProgramOptions::addObsoleteOption(std::string const& name,
 // check whether or not an option requires a value
 bool ProgramOptions::requiresValue(std::string const& name) {
   std::string const& modernized = modernize(name);
+
+#ifndef USE_V8
+  if (modernized.starts_with("javascript.") ||
+      modernized.starts_with("--javascript.")) {
+    // hack: make all options starting with --javascript not require a value
+    return false;
+  }
+#endif
 
   auto parts = Option::splitName(modernized);
   auto it = _sections.find(parts.first);

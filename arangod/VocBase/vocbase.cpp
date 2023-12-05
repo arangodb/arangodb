@@ -88,7 +88,9 @@
 #include "Utils/ExecContext.h"
 #include "Utils/VersionTracker.h"
 #include "Utilities/NameValidator.h"
+#ifdef USE_V8
 #include "V8Server/v8-user-structures.h"
+#endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
@@ -1377,12 +1379,19 @@ TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info)
     : _server(info.server()), _info(std::move(info)) {
   TRI_ASSERT(_info.valid());
 
+  metrics::Gauge<uint64_t>* numberOfCursorsMetric = nullptr;
+  metrics::Gauge<uint64_t>* memoryUsageMetric = nullptr;
+
   if (_info.server().hasFeature<QueryRegistryFeature>()) {
     QueryRegistryFeature& feature =
         _info.server().getFeature<QueryRegistryFeature>();
     _queries = std::make_unique<aql::QueryList>(feature);
+
+    numberOfCursorsMetric = feature.cursorsMetric();
+    memoryUsageMetric = feature.cursorsMemoryUsageMetric();
   }
-  _cursorRepository = std::make_unique<CursorRepository>(*this);
+  _cursorRepository = std::make_unique<CursorRepository>(
+      *this, numberOfCursorsMetric, memoryUsageMetric);
 
   if (_info.server().hasFeature<ReplicationFeature>()) {
     auto& rf = _info.server().getFeature<ReplicationFeature>();
@@ -1398,7 +1407,9 @@ TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info)
   _collections.reserve(32);
   _deadCollections.reserve(32);
 
+#ifdef USE_V8
   _cacheData = std::make_unique<DatabaseJavaScriptCache>();
+#endif
   _logManager = std::make_shared<VocBaseLogManager>(*this, name());
 }
 

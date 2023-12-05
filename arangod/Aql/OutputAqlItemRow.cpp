@@ -101,6 +101,10 @@ bool OutputAqlItemRow::isInitialized() const noexcept {
   return _block != nullptr;
 }
 
+void OutputAqlItemRow::handleEmptyRow(InputAqlItemRow const& sourceRow) {
+  copyRow(sourceRow);
+}
+
 template<class ItemRowType>
 void OutputAqlItemRow::cloneValueInto(RegisterId registerId,
                                       ItemRowType const& sourceRow,
@@ -114,7 +118,7 @@ void OutputAqlItemRow::cloneValueInto(RegisterId registerId,
 template<class ItemRowType, class ValueType>
 void OutputAqlItemRow::moveValueWithoutRowCopy(RegisterId registerId,
                                                ValueType value) {
-  TRI_ASSERT(isOutputRegister(registerId));
+  TRI_ASSERT(isOutputRegister(registerId)) << registerId.value();
   // This is already implicitly asserted by isOutputRegister:
   TRI_ASSERT(registerId.isRegularRegister());
   TRI_ASSERT(registerId < getNumRegisters());
@@ -124,12 +128,12 @@ void OutputAqlItemRow::moveValueWithoutRowCopy(RegisterId registerId,
   if constexpr (std::is_same_v<V, AqlValueGuard>) {
     block().setValue(_baseIndex, registerId, value->value());
     value->steal();
-  } else if constexpr (std::is_same_v<V, std::unique_ptr<std::string>>) {
+  } else if constexpr (std::is_same_v<V, aql::DocumentData>) {
     block().emplaceValue(_baseIndex, registerId.value(), *value);
   } else {
     block().emplaceValue(_baseIndex, registerId.value(), value);
   }
-  _numValuesWritten++;
+  ++_numValuesWritten;
 }
 
 template<class ItemRowType, class ValueType>
@@ -291,10 +295,8 @@ size_t OutputAqlItemRow::numRowsWritten() const noexcept {
 
 void OutputAqlItemRow::advanceRow() noexcept {
   // cppcheck-suppress ignoredReturnValue
-  TRI_ASSERT(produced());
-  // cppcheck-suppress ignoredReturnValue
-  TRI_ASSERT(allValuesWritten());
-  TRI_ASSERT(_inputRowCopied);
+  TRI_ASSERT(produced()) << "input row copied: " << _inputRowCopied
+                         << ", all values written: " << allValuesWritten();
   if (!_block->isShadowRow(_baseIndex)) {
     // We have written a data row into the output.
     // Need to count it.
@@ -484,7 +486,9 @@ void OutputAqlItemRow::doCopyOrMoveRow(ItemRowType& sourceRow,
   size_t const rowDepth = baseRowDepth + delta;
 
   auto const roffset = rowDepth + 1;
-  TRI_ASSERT(roffset <= registersToKeep().size());
+  TRI_ASSERT(roffset <= registersToKeep().size())
+      << "roffset: " << roffset << " size: " << registersToKeep().size()
+      << " baseRowDepth: " << baseRowDepth << " delta: " << delta;
   auto idx = registersToKeep().size() - roffset;
   auto const& regsToKeep = registersToKeep().at(idx);
 
@@ -590,9 +594,9 @@ template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueGuard*>(
 template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, VPackSlice>(
     RegisterId registerId, InputAqlItemRow const& sourceRow, VPackSlice slice);
 template void
-OutputAqlItemRow::moveValueInto<InputAqlItemRow, std::unique_ptr<std::string>*>(
+OutputAqlItemRow::moveValueInto<InputAqlItemRow, aql::DocumentData*>(
     RegisterId registerId, InputAqlItemRow const& sourceRow,
-    std::unique_ptr<std::string>*);
+    aql::DocumentData*);
 
 template void
 OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintBool>(
@@ -606,9 +610,6 @@ template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintInt>(
 template void
 OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintUInt>(
     RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintUInt);
-template void
-OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintZero>(
-    RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintZero);
 template void
 OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintNone>(
     RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintNone);

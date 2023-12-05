@@ -35,6 +35,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   ReplicatedLog/Integration/StorageEngineMethodsTest.cpp
   ReplicatedState/StateManagerTest.cpp
   ReplicatedState/StateMachines/DocumentState/CoreTest.cpp
+  ReplicatedState/StateMachines/DocumentState/ErrorHandlerTest.cpp
   ReplicatedState/StateMachines/DocumentState/FollowerTest.cpp
   ReplicatedState/StateMachines/DocumentState/LeaderTest.cpp
   ReplicatedState/StateMachines/DocumentState/ShardHandlerTest.cpp
@@ -77,13 +78,17 @@ target_link_libraries(arangodbtests_replication2 PRIVATE
   gtest
   arango_tests_basics
   arango_tests_replication2
+  arango_tests_replication2_pure
   arango_agency
   arango_cluster_engine
   arango_rocksdb
-  arango_v8server
   arangoserver
   boost_boost
   fmt)
+
+if (USE_V8)
+  target_link_libraries(arangodbtests_replication2 PRIVATE arango_v8server)
+endif()
 
 add_test(NAME replication2
   COMMAND arangodbtests_replication2)
@@ -142,3 +147,5 @@ target_link_libraries(arangodbtests_replication2_pure PRIVATE
 add_test(NAME replication2_pure
   COMMAND arangodbtests_replication2_pure)
 target_link_libraries(arangodbtests_replication2 PUBLIC arango_tests_replication2_pure)
+
+add_subdirectory(Storage)

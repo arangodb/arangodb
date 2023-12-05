@@ -82,7 +82,7 @@ function transactionReplication2Recovery() {
     }),
     tearDown: tearDownAnd(() => {
       if (c !== null) {
-        c.drop();
+        db._drop(c.name());
       }
       c = null;
     }),

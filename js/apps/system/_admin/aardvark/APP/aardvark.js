@@ -282,7 +282,8 @@ authRouter.post('/query/upload/:user', function (req, res) {
 .body(joi.array().items(joi.object({
   name: joi.string().required(),
   parameter: joi.any().optional(),
-  value: joi.any().optional()
+  value: joi.any().optional(),
+  created_at: joi.any().optional()
 }).required()).required(), 'User query array to import.')
 .error('not found', 'User does not exist.')
 .summary('Upload user queries')

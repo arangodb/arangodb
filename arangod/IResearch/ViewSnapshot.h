@@ -70,8 +70,6 @@ class ViewSnapshot : public irs::IndexReader {
   [[nodiscard]] virtual LogicalCollection const& collection(
       std::size_t i) const noexcept = 0;
 
-  [[nodiscard]] virtual ImmutablePartCache& immutablePartCache() noexcept = 0;
-
   [[nodiscard]] virtual StorageSnapshot const& snapshot(
       std::size_t i) const noexcept = 0;
 

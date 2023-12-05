@@ -652,6 +652,30 @@ TEST_F(VPackSaveInspectorTest, store_embedded_fields) {
   EXPECT_EQ(n.b, slice["b"].getInt());
 }
 
+struct EmbeddedTemporary {
+  friend inline auto inspect(auto& f, EmbeddedTemporary& x) {
+    return f.object(x).fields(f.field("a", 42),
+                              f.field("b", std::string("foobar")));
+  }
+};
+struct NestedEmbeddedTemporary {
+  friend inline auto inspect(auto& f, NestedEmbeddedTemporary& x) {
+    EmbeddedTemporary temp{};
+    return f.object(x).fields(f.embedFields(temp));
+  }
+};
+
+TEST_F(VPackSaveInspectorTest, store_embedded_temporary_fields) {
+  NestedEmbeddedTemporary const n{};
+  auto result = inspector.apply(n);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isObject());
+  EXPECT_EQ(42, slice["a"].getInt());
+  EXPECT_EQ("foobar", slice["b"].copyString());
+}
+
 TEST(VPackSaveInspectorContext, serialize_with_context) {
   struct Context {
     int defaultInt;

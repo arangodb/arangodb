@@ -87,12 +87,16 @@ using namespace arangodb::rest;
 
 #ifndef USE_ENTERPRISE
 auth::UserManager::UserManager(ArangodServer& server)
-    : _server(server), _globalVersion(1), _internalVersion(0) {}
+    : _server(server),
+      _globalVersion(1),
+      _internalVersion(0),
+      _usersInitialized(false) {}
 #else
 auth::UserManager::UserManager(ArangodServer& server)
     : _server(server),
       _globalVersion(1),
       _internalVersion(0),
+      _usersInitialized(false),
       _authHandler(nullptr) {}
 
 auth::UserManager::UserManager(ArangodServer& server,
@@ -100,6 +104,7 @@ auth::UserManager::UserManager(ArangodServer& server,
     : _server(server),
       _globalVersion(1),
       _internalVersion(0),
+      _usersInitialized(false),
       _authHandler(std::move(handler)) {}
 #endif
 
@@ -113,7 +118,7 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
     if (s.get("source").isString() && s.get("source").stringView() == "LDAP") {
       LOG_TOPIC("18ee8", TRACE, arangodb::Logger::CONFIG)
           << "LDAP: skip user in collection _users: "
-          << s.get("user").copyString();
+          << s.get("user").stringView();
       continue;
     }
 
@@ -210,9 +215,18 @@ void auth::UserManager::loadFromDB() {
   if (_internalVersion.load(std::memory_order_acquire) == globalVersion()) {
     return;
   }
-  std::lock_guard guard{_loadFromDBLock};
+  std::unique_lock guard{_loadFromDBLock, std::defer_lock};
+  if (!guard.try_lock()) {
+    // Somebody else is already reloading the data, use old state, unless
+    // we have never loaded the users before:
+    if (_usersInitialized.load(std::memory_order_relaxed)) {
+      return;
+    }
+    guard.lock();
+  }
   uint64_t tmp = globalVersion();
   if (_internalVersion.load(std::memory_order_acquire) == tmp) {
+    // Somebody else already did the work, forget about it.
     return;
   }
 
@@ -247,6 +261,7 @@ void auth::UserManager::loadFromDB() {
         }
       }
       _internalVersion.store(tmp);
+      _usersInitialized.store(true);
     }
   } catch (basics::Exception const& ex) {
     if (ex.code() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND &&
@@ -443,6 +458,8 @@ void auth::UserManager::setGlobalVersion(uint64_t version) noexcept {
 /// @brief reload user cache and token caches
 void auth::UserManager::triggerLocalReload() noexcept {
   _internalVersion.store(0, std::memory_order_release);
+  // We are not setting _usersInitialized to false here, since there is
+  // still the old data to work with.
 }
 
 /// @brief used for caching
@@ -456,6 +473,8 @@ void auth::UserManager::triggerGlobalReload() {
     // will reload users on next suitable query
     _globalVersion.fetch_add(1, std::memory_order_release);
     _internalVersion.fetch_add(1, std::memory_order_release);
+    // We are not setting _usersInitialized to false here, since there is
+    // still the old data to work with.
     return;
   }
 
@@ -473,6 +492,8 @@ void auth::UserManager::triggerGlobalReload() {
     if (result.successful()) {
       _globalVersion.fetch_add(1, std::memory_order_release);
       _internalVersion.store(0, std::memory_order_release);
+      // We are not setting _usersInitialized to false here, since there is
+      // still the old data to work with.
       return;
     }
   }
@@ -875,5 +896,6 @@ void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
   WRITE_LOCKER(writeGuard, _userCacheLock);  // must be second
   _userCache = newMap;
   _internalVersion.store(_globalVersion.load());
+  _usersInitialized.store(false);
 }
 #endif

@@ -308,10 +308,13 @@ Result CreateDatabaseInfo::checkOptions() {
            "and then restore the data.";
   }
 
-  bool isSystem = _name == StaticStrings::SystemDatabase;
-  bool extendedNames = _server.getFeature<DatabaseFeature>().extendedNames();
+  if (_validateNames) {
+    bool isSystem = _name == StaticStrings::SystemDatabase;
+    bool extendedNames = _server.getFeature<DatabaseFeature>().extendedNames();
 
-  return DatabaseNameValidator::validateName(isSystem, extendedNames, _name);
+    return DatabaseNameValidator::validateName(isSystem, extendedNames, _name);
+  }
+  return {};
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -319,11 +322,13 @@ CreateDatabaseInfo::CreateDatabaseInfo(CreateDatabaseInfo::MockConstruct,
                                        ArangodServer& server,
                                        ExecContext const& execContext,
                                        std::string const& name,
-                                       std::uint64_t id)
+                                       std::uint64_t id,
+                                       replication::Version version)
     : _server(server),
       _context(execContext),
       _id(id),
       _name(name),
+      _replicationVersion(version),
       _valid(true) {}
 #endif
 

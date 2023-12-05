@@ -29,6 +29,7 @@
 #include "Aql/OptimizerRules.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/Parameters.h"
@@ -50,7 +51,11 @@ std::unordered_map<std::string_view, int> OptimizerRulesFeature::_ruleLookup;
 OptimizerRulesFeature::OptimizerRulesFeature(Server& server)
     : ArangodFeature{server, *this} {
   setOptional(false);
+#ifdef USE_V8
   startsAfter<V8FeaturePhase>();
+#else
+  startsAfter<application_features::ClusterFeaturePhase>();
+#endif
 
   startsAfter<AqlFeature>();
 }
@@ -268,6 +273,19 @@ optimizations.)");
       R"(Try out permutations of `FOR` statements in queries that contain
 multiple loops, which may enable further optimizations by other rules.)");
 
+  // replace attribute accesses that are equal due to a filter statement
+  // with the same value. This might enable other optimizations later on.
+  // WARNING: THIS RULE HAS BEEN DISABLED because while it can lead to new
+  // optimizations it can do harm to other optimizations. Furthermore, the
+  // user can always rewrite the query to make this rule unnecessary.
+  registerRule(
+      "replace-equal-attribute-accesses", replaceEqualAttributeAccesses,
+      OptimizerRule::replaceEqualAttributeAccesses,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::DisabledByDefault,
+                               OptimizerRule::Flags::CanBeDisabled),
+      R"(Replace attribute accesses that are equal due to a filter statement
+with the same value. This might enable other optimizations later on.)");
+
   // "Pass 4": moving nodes "up" (potentially outside loops) (second try):
   // move calculations up the dependency chain (to pull them out of
   // inner loops etc.)
@@ -445,6 +463,13 @@ optimizations)");
                R"(Avoid computing the variables emitted by AQL traversals if
 they are declared but unused in the query, or only used in filters that are
 pulled into the traversal, significantly reducing overhead.)");
+
+  registerRule(
+      "optimize-projections", optimizeProjections,
+      OptimizerRule::optimizeProjectionsRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Remove projections that are no longer used and store projection
+results in separate output registers.)");
 
   registerRule("optimize-cluster-single-document-operations",
                substituteClusterSingleDocumentOperationsRule,
@@ -766,6 +791,21 @@ involved attributes are covered by regular indexes.)");
 avoid unnecessary reads.)");
 #endif
 
+  registerRule(
+      "immutable-search-condition", iresearch::immutableSearchCondition,
+      OptimizerRule::immutableSearchConditionRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Optimize immutable search condition for nested loops, we don't need to make real search many times, if we can cache results in bitset)");
+
+  // remove calculations that are never necessary
+  registerRule("remove-unnecessary-calculations-4",
+               removeUnnecessaryCalculationsRule,
+               OptimizerRule::removeUnnecessaryCalculationsRule4,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Fourth pass of removing all calculations whose result is not
+referenced in the query. This can be a consequence of applying other
+optimizations)");
+
   // add the storage-engine specific rules
   addStorageEngineRules();
 
@@ -796,27 +836,21 @@ optimizations.)");
 
   // replace adjacent index nodes with a join node if the indexes qualify
   // for it.
-  registerRule(
-      "join-index-nodes", joinIndexNodesRule, OptimizerRule::joinIndexNodesRule,
-      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                               OptimizerRule::Flags::DisabledByDefault),
-      R"(Join adjacent index nodes and replace them with a join node
+  registerRule("join-index-nodes", joinIndexNodesRule,
+               OptimizerRule::joinIndexNodesRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Join adjacent index nodes and replace them with a join node
 in case the indexes qualify for it.)");
 
   // allow nodes to asynchronously prefetch the next batch while processing the
   // current batch. this effectively allows parts of the query to run in
-  // parallel, but as some internal details are currently not guaranteed to be
-  // thread safe (e.g., TransactionState), this is currently disabled, and
-  // should only be activated for experimental usage at one's own risk.
+  // parallel. this is only supported by certain types of nodes and queries.
   registerRule("async-prefetch", asyncPrefetchRule,
-               OptimizerRule::asyncPrefetch,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::DisabledByDefault,
-                                        OptimizerRule::Flags::Hidden),
+               OptimizerRule::asyncPrefetchRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
                R"(Allow query execution nodes to asynchronously prefetch the
 next batch while processing the current batch, allowing parts of the query to
-run in parallel. This is an experimental option as not all operations are
-thread-safe.)");
+run in parallel. This is only possible for certain operations in a query.)");
 
   // finally sort all rules by their level
   std::sort(_rules.begin(), _rules.end(),

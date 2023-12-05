@@ -937,6 +937,19 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
       << ", waitForSync = " << req.waitForSync
       << ", lci = " << req.lowestIndexToKeep << ", msg-id = " << req.messageId;
 
+  // if prevLogTerm is not set, then the follower has to truncate its log and
+  // invalid its snapshot. otherwise we either have an empty append entries
+  // request (metadata), or the entries must be consecutive.
+  ADB_PROD_ASSERT(isEmptyAppendEntries || not prevLogTerm ||
+                  req.prevLogEntry.index + 1 ==
+                      req.entries.front().entry().logIndex())
+      << "isEmptyAppendEntries " << isEmptyAppendEntries
+      << "; follower.snapshotAvailable " << follower.snapshotAvailable
+      << "; prevLogEntry " << req.prevLogEntry.index << "; entries.front "
+      << (isEmptyAppendEntries
+              ? " nil "
+              : std::to_string(req.entries.front().entry().logIndex().value));
+
   return std::make_pair(std::move(req), lastIndex);
 }
 
@@ -1518,6 +1531,7 @@ auto replicated_log::LogLeader::ping(std::optional<std::string> message)
   triggerAsyncReplication();
   return index;
 }
+
 auto replicated_log::LogLeader::resign() && -> std::tuple<
     std::unique_ptr<storage::IStorageEngineMethods>,
     std::unique_ptr<IReplicatedStateHandle>, DeferredAction> {

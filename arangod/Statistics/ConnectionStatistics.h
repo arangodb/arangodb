@@ -31,6 +31,7 @@
 namespace arangodb {
 class ConnectionStatistics {
  public:
+  static uint64_t memoryUsage() noexcept;
   static void initialize();
 
   class Item {

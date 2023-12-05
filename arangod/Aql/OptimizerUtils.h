@@ -44,7 +44,7 @@ namespace aql {
 
 class Ast;
 struct AstNode;
-struct AttributeNamePath;
+class AttributeNamePath;
 struct Collection;
 class ExecutionNode;
 class IndexHint;
@@ -101,6 +101,9 @@ bool getIndexForSortCondition(aql::Collection const& coll,
 NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
     Ast* ast, VarInfoMap const& varInfo, bool evaluateFCalls, Index* index,
     AstNode const* condition, Variable const* indexVariable);
+
+arangodb::aql::Collection const* getCollection(
+    arangodb::aql::ExecutionNode const* node);
 
 }  // namespace utils
 }  // namespace aql

@@ -155,7 +155,7 @@ class Logger {
   friend class LoggerStream;
   friend class LogThread;
   friend class LogAppenderStream;
-  friend class LogAppenderFile;
+  friend struct LogAppenderFileFactory;
 
  public:
   static LogTopic AGENCY;
@@ -188,6 +188,7 @@ class Logger {
   static LogTopic REPLICATION;
   static LogTopic REPLICATION2;
   static LogTopic REPLICATED_STATE;
+  static LogTopic REPLICATED_WAL;
   static LogTopic REQUESTS;
   static LogTopic RESTORE;
   static LogTopic ROCKSDB;
@@ -305,7 +306,8 @@ class Logger {
                                    : topic.level());
   }
 
-  static void initialize(application_features::ApplicationServer&, bool);
+  static void initialize(application_features::ApplicationServer&, bool,
+                         uint32_t maxQueuedLogMessages);
   static void shutdown();
   static void flush() noexcept;
 

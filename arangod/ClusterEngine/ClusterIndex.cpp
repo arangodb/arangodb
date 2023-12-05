@@ -21,19 +21,21 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClusterIndex.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/AgencyCache.h"
-#include "ClusterEngine/ClusterEngine.h"
 #include "Cluster/ClusterFeature.h"
+#include "ClusterEngine/ClusterEngine.h"
+#include "ClusterIndex.h"
 #include "Futures/Utilities.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "Logger/LogMacros.h"
 #include "Network/NetworkFeature.h"
+#include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "RocksDBEngine/RocksDBVPackIndex.h"
 #include "RocksDBEngine/RocksDBZkdIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -80,8 +82,8 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
     } else if (_indexType == TRI_IDX_TYPE_PRIMARY_INDEX) {
       // The Primary Index on RocksDB can serve _key and _id when being asked.
       _coveredFields = {
-          {basics::AttributeName(StaticStrings::IdString, false)},
-          {basics::AttributeName(StaticStrings::KeyString, false)}};
+          {basics::AttributeName(StaticStrings::KeyString, false)},
+          {basics::AttributeName(StaticStrings::IdString, false)}};
     } else if (_indexType == TRI_IDX_TYPE_PERSISTENT_INDEX) {
       _coveredFields = Index::mergeFields(
           _fields,
@@ -310,8 +312,8 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
       }
       // other...
       std::vector<std::vector<basics::AttributeName>> fields{
-          {basics::AttributeName(StaticStrings::IdString, false)},
-          {basics::AttributeName(StaticStrings::KeyString, false)}};
+          {basics::AttributeName(StaticStrings::KeyString, false)},
+          {basics::AttributeName(StaticStrings::IdString, false)}};
       SimpleAttributeEqualityMatcher matcher(fields);
       return matcher.matchOne(this, node, reference, itemsInIndex);
     }
@@ -512,6 +514,31 @@ bool ClusterIndex::inProgress() const {
       }
     }
   } catch (...) {
+  }
+  return false;
+}
+
+bool ClusterIndex::supportsStreamInterface(
+    IndexStreamOptions const& opts) const noexcept {
+  switch (_indexType) {
+    case Index::TRI_IDX_TYPE_PERSISTENT_INDEX: {
+      if (_engineType == ClusterEngineType::RocksDBEngine) {
+        return RocksDBVPackIndex::checkSupportsStreamInterface(_coveredFields,
+                                                               opts);
+      }
+      [[fallthrough]];
+    }
+
+    case Index::TRI_IDX_TYPE_PRIMARY_INDEX: {
+      if (_engineType == ClusterEngineType::RocksDBEngine) {
+        return RocksDBPrimaryIndex::checkSupportsStreamInterface(_coveredFields,
+                                                                 opts);
+      }
+      [[fallthrough]];
+    }
+
+    default:
+      break;
   }
   return false;
 }

@@ -36,7 +36,7 @@ const database = "replication2_replicated_log_http_api_db";
 
 const logFunctions = require("@arangodb/testutils/replicated-logs-http-helper");
 
-const {setUpAll, tearDownAll, setUp, tearDown} = lh.testHelperFunctions(database);
+const {setUpAll, tearDownAll, setUp, tearDown} = lh.testHelperFunctions(database, {replicationVersion: "2"});
 
 const readFollowerLogsSuite = function () {
   const targetConfig = {

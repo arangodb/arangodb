@@ -237,7 +237,7 @@ void BaseOptions::LookupInfo::calculateIndexExpressions(
     AqlValueGuard guard(a, mustDestroy);
 
     AqlValueMaterializer materializer(&(ctx.trx().vpackOptions()));
-    VPackSlice slice = materializer.slice(a, false);
+    VPackSlice slice = materializer.slice(a);
     AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
 
     AstNode* tmp = indexCondition;
@@ -483,15 +483,14 @@ void BaseOptions::serializeVariables(VPackBuilder& builder) const {
 }
 
 void BaseOptions::setCollectionToShard(
-    std::unordered_map<std::string, std::string> const& in) {
+    std::unordered_map<std::string, ShardID> const& in) {
   _collectionToShard.clear();
   _collectionToShard.reserve(in.size());
   for (auto const& [key, value] : in) {
     ResourceUsageAllocator<MonitoredCollectionToShardMap, ResourceMonitor>
         alloc = {_query.resourceMonitor()};
-    auto myVec = MonitoredStringVector{alloc};
-    auto myString = MonitoredString{value, alloc};
-    myVec.emplace_back(std::move(myString));
+    auto myVec = MonitoredShardIDVector{alloc};
+    myVec.emplace_back(value);
     _collectionToShard.emplace(key, std::move(myVec));
   }
 }
@@ -702,8 +701,8 @@ void BaseOptions::parseShardIndependentFlags(arangodb::velocypack::Slice info) {
       _vertexProjections.clear();
     }
 
-    _vertexProjections = Projections::fromVelocyPack(info, "vertexProjections",
-                                                     resourceMonitor());
+    _vertexProjections = Projections::fromVelocyPack(
+        _query.ast(), info, "vertexProjections", resourceMonitor());
     try {
       resourceMonitor().increaseMemoryUsage(
           getVertexProjections().size() * sizeof(aql::Projections::Projection));
@@ -719,8 +718,8 @@ void BaseOptions::parseShardIndependentFlags(arangodb::velocypack::Slice info) {
           getEdgeProjections().size() * sizeof(aql::Projections::Projection));
       _edgeProjections.clear();
     }
-    _edgeProjections =
-        Projections::fromVelocyPack(info, "edgeProjections", resourceMonitor());
+    _edgeProjections = Projections::fromVelocyPack(
+        _query.ast(), info, "edgeProjections", resourceMonitor());
     try {
       resourceMonitor().increaseMemoryUsage(
           getEdgeProjections().size() * sizeof(aql::Projections::Projection));

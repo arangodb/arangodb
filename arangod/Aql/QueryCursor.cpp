@@ -31,14 +31,16 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/SharedQueryState.h"
 #include "Basics/ScopeGuard.h"
-#include "Basics/StringUtils.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
+
+#include <absl/strings/str_cat.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -57,6 +59,7 @@ QueryResultCursor::QueryResultCursor(TRI_vocbase_t& vocbase,
       _guard(vocbase),
       _result(std::move(result)),
       _iterator(_result.data->slice()),
+      _memoryUsageAtStart(_result.memoryUsage()),
       _cached(_result.cached) {
   TRI_ASSERT(_result.data->slice().isArray());
 }
@@ -78,6 +81,10 @@ VPackSlice QueryResultCursor::next() {
   VPackSlice slice = _iterator.value();
   _iterator.next();
   return slice;
+}
+
+uint64_t QueryResultCursor::memoryUsage() const noexcept {
+  return _memoryUsageAtStart;
 }
 
 /// @brief return the cursor size
@@ -218,6 +225,14 @@ void QueryStreamCursor::debugKillQuery() {
 #endif
 }
 
+uint64_t QueryStreamCursor::memoryUsage() const noexcept {
+  // while a stream AQL query is operating, its memory usage
+  // is tracked by the still-running query. the cursor does
+  // not use a lot of memory on its own.
+  uint64_t value = 2048 /* arbitrary fixed size value */;
+  return value;
+}
+
 std::pair<ExecutionState, Result> QueryStreamCursor::dump(
     VPackBuilder& builder) {
   TRI_IF_FAILURE("QueryCursor::directKillBeforeQueryIsGettingDumped") {
@@ -258,31 +273,32 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(
     return {writeResult(builder), TRI_ERROR_NO_ERROR};
   } catch (arangodb::basics::Exception const& ex) {
     this->setDeleted();
-    return {ExecutionState::DONE,
-            Result(ex.code(), "AQL: " + ex.message() +
-                                  QueryExecutionState::toStringWithPrefix(
-                                      _query->state()))};
+    return {
+        ExecutionState::DONE,
+        Result(ex.code(), absl::StrCat("AQL: ", ex.message(),
+                                       QueryExecutionState::toStringWithPrefix(
+                                           _query->state())))};
   } catch (std::bad_alloc const&) {
+    this->setDeleted();
+    return {ExecutionState::DONE,
+            Result(TRI_ERROR_OUT_OF_MEMORY,
+                   absl::StrCat(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
+                                QueryExecutionState::toStringWithPrefix(
+                                    _query->state())))};
+  } catch (std::exception const& ex) {
     this->setDeleted();
     return {
         ExecutionState::DONE,
-        Result(TRI_ERROR_OUT_OF_MEMORY,
-               StringUtils::concatT(
-                   TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
-                   QueryExecutionState::toStringWithPrefix(_query->state())))};
-  } catch (std::exception const& ex) {
-    this->setDeleted();
-    return {ExecutionState::DONE,
-            Result(TRI_ERROR_INTERNAL,
-                   ex.what() + QueryExecutionState::toStringWithPrefix(
-                                   _query->state()))};
+        Result(TRI_ERROR_INTERNAL,
+               absl::StrCat(ex.what(), QueryExecutionState::toStringWithPrefix(
+                                           _query->state())))};
   } catch (...) {
     this->setDeleted();
     return {ExecutionState::DONE,
             Result(TRI_ERROR_INTERNAL,
-                   StringUtils::concatT(TRI_errno_string(TRI_ERROR_INTERNAL),
-                                        QueryExecutionState::toStringWithPrefix(
-                                            _query->state())))};
+                   absl::StrCat(TRI_errno_string(TRI_ERROR_INTERNAL),
+                                QueryExecutionState::toStringWithPrefix(
+                                    _query->state())))};
   }
 }
 
@@ -338,27 +354,28 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
 
   } catch (arangodb::basics::Exception const& ex) {
     this->setDeleted();
-    return Result(ex.code(),
-                  "AQL: " + ex.message() +
-                      QueryExecutionState::toStringWithPrefix(_query->state()));
+    return Result(
+        ex.code(),
+        absl::StrCat("AQL: ", ex.message(),
+                     QueryExecutionState::toStringWithPrefix(_query->state())));
   } catch (std::bad_alloc const&) {
     this->setDeleted();
     return Result(
         TRI_ERROR_OUT_OF_MEMORY,
-        StringUtils::concatT(
-            TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
-            QueryExecutionState::toStringWithPrefix(_query->state())));
+        absl::StrCat(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
+                     QueryExecutionState::toStringWithPrefix(_query->state())));
   } catch (std::exception const& ex) {
     this->setDeleted();
     return Result(
         TRI_ERROR_INTERNAL,
-        ex.what() + QueryExecutionState::toStringWithPrefix(_query->state()));
+        absl::StrCat(ex.what(),
+                     QueryExecutionState::toStringWithPrefix(_query->state())));
   } catch (...) {
     this->setDeleted();
-    return Result(TRI_ERROR_INTERNAL,
-                  StringUtils::concatT(TRI_errno_string(TRI_ERROR_INTERNAL),
-                                       QueryExecutionState::toStringWithPrefix(
-                                           _query->state())));
+    return Result(
+        TRI_ERROR_INTERNAL,
+        absl::StrCat(TRI_errno_string(TRI_ERROR_INTERNAL),
+                     QueryExecutionState::toStringWithPrefix(_query->state())));
   }
 
   return Result();
@@ -416,8 +433,7 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
         if (!value.isEmpty()) {  // ignore empty blocks (e.g. from UpdateBlock)
           uint64_t oldCapacity = buffer.capacity();
 
-          value.toVelocyPack(&vopts, builder, /*resolveExternals*/ false,
-                             /*allowUnindexed*/ true);
+          value.toVelocyPack(&vopts, builder, /*allowUnindexed*/ true);
           ++rowsWritten;
 
           // track memory usage

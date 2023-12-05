@@ -210,8 +210,8 @@ ExecutionState SimpleModifier<ModifierCompletion, Enable>::transact(
   // available.
   guard.unlock();
 
-  auto self = this->shared_from_this();
-  std::move(result).thenFinal([self, sqs = _infos.engine()->sharedState()](
+  std::move(result).thenFinal([self = this->shared_from_this(),
+                               sqs = _infos.engine()->sharedState()](
                                   futures::Try<OperationResult>&& opRes) {
     sqs->executeAndWakeup([&]() noexcept {
       std::unique_lock<std::mutex> guard(self->_resultMutex);

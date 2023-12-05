@@ -52,11 +52,7 @@ using namespace arangodb::aql;
 namespace {
 auto createAttributeNamePath = [](std::vector<std::string>&& vec,
                                   arangodb::ResourceMonitor& resMonitor) {
-  arangodb::MonitoredStringVector myVector{resMonitor};
-  for (auto& s : vec) {
-    myVector.emplace_back(s);
-  }
-  return AttributeNamePath(std::move(myVector));
+  return AttributeNamePath(std::move(vec), resMonitor);
 };
 }
 
@@ -97,7 +93,7 @@ class IResearchInvertedIndexConditionTest
     auto builder = getInvertedIndexPropertiesSlice(id, fields, &storedFields,
                                                    nullptr, "unique_name2");
     bool created = false;
-    auto inverted = _collection->createIndex(builder.slice(), created);
+    auto inverted = _collection->createIndex(builder.slice(), created).get();
     ASSERT_TRUE(created);
     ASSERT_TRUE(inverted);
     auto* index = dynamic_cast<arangodb::iresearch::IResearchInvertedIndex*>(
@@ -130,7 +126,7 @@ class IResearchInvertedIndexConditionTest
     auto builder = getInvertedIndexPropertiesSlice(id, fields, nullptr, nullptr,
                                                    "unique_name3");
     bool created = false;
-    auto inverted = _collection->createIndex(builder.slice(), created);
+    auto inverted = _collection->createIndex(builder.slice(), created).get();
     ASSERT_TRUE(created);
     ASSERT_TRUE(inverted);
     auto* index = dynamic_cast<arangodb::iresearch::IResearchInvertedIndex*>(
@@ -210,7 +206,7 @@ class IResearchInvertedIndexConditionTest
     auto builder = getInvertedIndexPropertiesSlice(id, indexFields, nullptr,
                                                    &fields, "unique_name3");
     bool created = false;
-    auto inverted = _collection->createIndex(builder.slice(), created);
+    auto inverted = _collection->createIndex(builder.slice(), created).get();
     ASSERT_TRUE(created);
     ASSERT_TRUE(inverted);
     auto* index = dynamic_cast<arangodb::iresearch::IResearchInvertedIndex*>(

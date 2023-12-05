@@ -21,6 +21,10 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include "v8-vocindex.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
@@ -87,7 +91,8 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
 
   VPackBuilder output;
   auto res = methods::Indexes::ensureIndex(*collection, builder.slice(), create,
-                                           output);
+                                           output)
+                 .get();
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -144,7 +149,7 @@ static void JS_DropIndexVocbaseCol(
   VPackBuilder builder;
   TRI_V8ToVPack(isolate, builder, args[0], false, false);
 
-  auto res = methods::Indexes::drop(*collection, builder.slice());
+  auto res = methods::Indexes::drop(*collection, builder.slice()).get();
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -178,7 +183,8 @@ static void JS_GetIndexesVocbaseCol(
   }
 
   VPackBuilder output;
-  auto res = methods::Indexes::getAll(*collection, flags, withHidden, output);
+  auto res =
+      methods::Indexes::getAll(*collection, flags, withHidden, output).get();
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);

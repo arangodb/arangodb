@@ -162,6 +162,10 @@ const validateProperties = (overrides, colName, type, keepEnterpriseSimulationAt
     // This is a local property only exposed on dbServer and singleServer
     assertTrue(props.hasOwnProperty("objectId"));
   }
+  if (isCluster && db._properties().replicationVersion === "2") {
+    // Replication 2 always exposes the group id
+    assertTrue(props.hasOwnProperty("groupId"), `${JSON.stringify(props)} is missing groupId`);
+  }
   assertEqual(col.name(), colName);
   assertEqual(col.type(), type);
   const expectedProps = {...defaultProps, ...overrides};
@@ -185,6 +189,10 @@ const validateProperties = (overrides, colName, type, keepEnterpriseSimulationAt
     // The objectId is generated, so we cannot compare equality, we should make
     // sure it is always there.
     expectedKeys.push("objectId");
+  }
+  if (isCluster && db._properties().replicationVersion === "2" && !overrides.hasOwnProperty("groupId")) {
+    // Replication 2 always exposes the group id
+    expectedKeys.push("groupId");
   }
   if (isServer && isCluster && overrides.isSmart && type === 3) {
     // Special attribute for smartEdgeColelctions
@@ -225,7 +233,7 @@ const isAllowed = (res, collname, input, expectLogEntry = true) => {
 
 const validatePropertiesDoNotExist = (colName, illegalProperties) => {
   const col = db._collection(colName);
-  const props = col.properties(true);
+  const props = col.properties();
   for (const key of illegalProperties) {
     assertFalse(props.hasOwnProperty(key), `Property ${key} should not exist`);
   }
@@ -1710,23 +1718,32 @@ function CreateCollectionsInOneShardSuite() {
         const value = v === "replicationFactor" ? 3 : 2;
         const res = tryCreate({name: collname, [v]: value});
         try {
-          assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-          if (isCluster) {
-            if (v === "minReplicationFactor" || v === "writeConcern") {
-              // On Replication1 writeConcern is allowed to differ per Collection.
-              // On Replication2 it is not.
-              validateProperties({...getOneShardShardingValues(), writeConcern: value, minReplicationFactor: value}, collname, 2);
-            } else {
-              validateProperties(getOneShardShardingValues(), collname, 2);
-              validateDeprecationLogEntryWritten();
-            }
+          if (isCluster && db._properties().replicationVersion === "2" && (v === "minReplicationFactor" || v === "writeConcern")) {
+            // For Replication2 the writeConcern is per CollectionGroup. We cannot create a follower with a different one.
+            assertTrue(res.error, `Result: ${JSON.stringify(res)}`);
+            isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {[v]: value});
           } else {
-            // OneShard has no meaning in single server, just assert values are taken
-            if (v === "minReplicationFactor" || v === "writeConcern") {
-              validateProperties({writeConcern: value}, collname, 2);
+            assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+            if (isCluster) {
+              if (v === "minReplicationFactor" || v === "writeConcern") {
+                // On Replication1 writeConcern is allowed to differ per Collection.
+                validateProperties({
+                  ...getOneShardShardingValues(),
+                  writeConcern: value,
+                  minReplicationFactor: value
+                }, collname, 2);
+              } else {
+                validateProperties(getOneShardShardingValues(), collname, 2);
+                validateDeprecationLogEntryWritten();
+              }
             } else {
-              validateProperties({}, collname, 2);
-              validateDeprecationLogEntryWritten();
+              // OneShard has no meaning in single server, just assert values are taken
+              if (v === "minReplicationFactor" || v === "writeConcern") {
+                validateProperties({writeConcern: value}, collname, 2);
+              } else {
+                validateProperties({}, collname, 2);
+                validateDeprecationLogEntryWritten();
+              }
             }
           }
         } finally {

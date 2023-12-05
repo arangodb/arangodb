@@ -31,6 +31,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
+#include "Aql/IResearchViewNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/RegisterPlan.h"
@@ -1007,6 +1008,20 @@ bool findProjections(ExecutionNode* n, Variable const* v,
       if (!checkExpression(calculationNode, calculationNode->expression())) {
         return false;
       }
+    } else if (current->getType() == EN::ENUMERATE_IRESEARCH_VIEW) {
+      iresearch::IResearchViewNode const* viewNode =
+          ExecutionNode::castTo<iresearch::IResearchViewNode const*>(current);
+      // filter condition
+      if (!tryAndExtractProjectionsFromExpression(
+              viewNode, &viewNode->filterCondition())) {
+        return false;
+      }
+      // scorers
+      for (auto const& it : viewNode->scorers()) {
+        if (!tryAndExtractProjectionsFromExpression(viewNode, it.node)) {
+          return false;
+        }
+      }
     } else if (current->getType() == EN::GATHER) {
       // compare sort attributes of GatherNode
       auto gn = ExecutionNode::castTo<GatherNode const*>(current);
@@ -1019,7 +1034,8 @@ bool findProjections(ExecutionNode* n, Variable const* v,
           }
           // insert attribute name into the set of attributes that we need for
           // our projection
-          attributes.emplace(AttributeNamePath(it.attributePath));
+          attributes.emplace(it.attributePath,
+                             gn->plan()->getAst()->query().resourceMonitor());
         }
       }
     } else if (current->getType() == EN::ENUMERATE_COLLECTION) {
@@ -1073,7 +1089,7 @@ bool findProjections(ExecutionNode* n, Variable const* v,
       vars.clear();
       current->getVariablesUsedHere(vars);
 
-      if (vars.find(v) != vars.end()) {
+      if (vars.contains(v)) {
         // original variable is still used here
         return false;
       }
@@ -1322,6 +1338,32 @@ NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
   extractNonConstPartsOfJunctionCondition(ast, varInfo, evaluateFCalls, index,
                                           condition, indexVariable, {}, result);
   return result;
+}
+
+arangodb::aql::Collection const* getCollection(
+    arangodb::aql::ExecutionNode const* node) {
+  using EN = arangodb::aql::ExecutionNode;
+  using arangodb::aql::ExecutionNode;
+
+  switch (node->getType()) {
+    case EN::ENUMERATE_COLLECTION:
+      return ExecutionNode::castTo<
+                 arangodb::aql::EnumerateCollectionNode const*>(node)
+          ->collection();
+    case EN::INDEX:
+      return ExecutionNode::castTo<arangodb::aql::IndexNode const*>(node)
+          ->collection();
+    case EN::TRAVERSAL:
+    case EN::ENUMERATE_PATHS:
+    case EN::SHORTEST_PATH:
+      return ExecutionNode::castTo<arangodb::aql::GraphNode const*>(node)
+          ->collection();
+
+    default:
+      // note: modification nodes are not covered here yet
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "node type does not have a collection");
+  }
 }
 
 }  // namespace arangodb::aql::utils

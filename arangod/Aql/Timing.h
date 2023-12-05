@@ -23,8 +23,7 @@
 
 #pragma once
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 /// @brief returns the current value of the steady clock.
 /// note that values produced by this function are not necessarily
@@ -39,5 +38,4 @@ double currentSteadyClockValue();
 /// value, which must have been produced by a call to currentSteadyClockValue().
 double elapsedSince(double previous);
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

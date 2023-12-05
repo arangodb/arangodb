@@ -259,8 +259,8 @@ class RDBNearIterator final : public IndexIterator {
     return nextToken(
         [this, &cb](geo_index::Document const& gdoc) -> bool {
           bool result = true;  // this is updated by the callback
-          auto callback = makeDocumentCallbackF([&](LocalDocumentId,
-                                                    VPackSlice doc) {
+          auto callback = [&](LocalDocumentId, aql::DocumentData&& data,
+                              VPackSlice doc) {
             geo::FilterType const ft = _near.filterType();
             if (ft != geo::FilterType::NONE) {  // expensive test
               geo::ShapeContainer const& filter = _near.filterShape();
@@ -276,10 +276,10 @@ class RDBNearIterator final : public IndexIterator {
                 return false;
               }
             }
-            cb(gdoc.token, doc);  // return document
+            cb(gdoc.token, std::move(data), doc);  // return document
             result = true;
             return true;
-          });
+          };
           auto* physical = _collection->getPhysical();
           // geo index never needs to observe own writes
           if (!physical->lookup(_trx, gdoc.token, callback, {}).ok()) {
@@ -298,8 +298,8 @@ class RDBNearIterator final : public IndexIterator {
             geo::ShapeContainer const& filter = _near.filterShape();
             TRI_ASSERT(!filter.empty());
             bool result = true;  // this is updated by the callback
-            auto callback = makeDocumentCallbackF([&](LocalDocumentId,
-                                                      VPackSlice doc) {
+            auto callback = [&](LocalDocumentId, aql::DocumentData&&,
+                                VPackSlice doc) {
               geo::ShapeContainer test;
               Result res = _index->shape(doc, test);
               TRI_ASSERT(res.ok());  // this should never fail here
@@ -311,7 +311,7 @@ class RDBNearIterator final : public IndexIterator {
                 return false;
               }
               return true;
-            });
+            };
             auto* physical = _collection->getPhysical();
             // geo index never needs to observe own writes
             if (!physical->lookup(_trx, gdoc.token, callback, {}).ok()) {
@@ -472,8 +472,8 @@ class RDBCoveringIterator final : public IndexIterator {
     return nextToken(
         [this, &cb](LocalDocumentId docid) -> bool {
           bool result = true;  // this is updated by the callback
-          auto callback = makeDocumentCallbackF([&](LocalDocumentId,
-                                                    VPackSlice doc) {
+          auto callback = [&](LocalDocumentId, aql::DocumentData&& data,
+                              VPackSlice doc) {
             geo::FilterType const ft = _covering.filterType();
             geo::ShapeContainer const& filter = _covering.filterShape();
             TRI_ASSERT(filter.type() != geo::ShapeContainer::Type::EMPTY);
@@ -487,10 +487,10 @@ class RDBCoveringIterator final : public IndexIterator {
               result = false;
               return false;
             }
-            cb(docid, doc);  // return document
+            cb(docid, std::move(data), doc);  // return document
             result = true;
             return true;
-          });
+          };
           auto* physical = _collection->getPhysical();
           // geo index never needs to observe own writes
           if (!physical->lookup(_trx, docid, callback, {}).ok()) {
@@ -509,8 +509,8 @@ class RDBCoveringIterator final : public IndexIterator {
             geo::ShapeContainer const& filter = _covering.filterShape();
             TRI_ASSERT(!filter.empty());
             bool result = true;  // this is updated by the callback
-            auto callback = makeDocumentCallbackF([&](LocalDocumentId,
-                                                      VPackSlice doc) {
+            auto callback = [&](LocalDocumentId, aql::DocumentData&&,
+                                VPackSlice doc) {
               geo::ShapeContainer test;
               Result res = _index->shape(doc, test);
               TRI_ASSERT(res.ok());  // this should never fail here
@@ -522,7 +522,7 @@ class RDBCoveringIterator final : public IndexIterator {
                 return false;
               }
               return true;
-            });
+            };
             auto* physical = _collection->getPhysical();
             // geo index never needs to observe own writes
             if (!physical->lookup(_trx, docid, callback, {}).ok()) {

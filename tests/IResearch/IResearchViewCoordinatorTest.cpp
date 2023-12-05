@@ -54,7 +54,9 @@
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
+#ifdef USE_V8
 #include "FeaturePhases/V8FeaturePhase.h"
+#endif
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchCommon.h"
@@ -77,7 +79,9 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
+#endif
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
@@ -5945,6 +5949,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
                      *logicalCollection, arangodb::velocypack::Parser::fromJson(
                                              std::to_string(linkId.id()))
                                              ->slice())
+                     .get()
                      .ok()));
     EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(
                                   server.server()));  // plan version changed

@@ -32,7 +32,7 @@ const arangodb = require('@arangodb');
 const helper = require('@arangodb/aql-helper');
 const db = arangodb.db;
 const testHelper = require('@arangodb/test-helper').helper;
-const isCluster = require('@arangodb/cluster').isCluster();
+const isCluster = require("internal").isCluster();
 
 let compareStringIds = function (l, r) {
   'use strict';

@@ -23,6 +23,10 @@
 
 #pragma once
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include "Basics/Result.h"
 
 #include <string>
@@ -30,6 +34,10 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace futures {
+template<typename T>
+class Future;
+}
 namespace velocypack {
 class Builder;
 class Slice;

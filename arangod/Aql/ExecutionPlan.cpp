@@ -35,6 +35,7 @@
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IndexHint.h"
+#include "Aql/IndexNode.h"
 #include "Aql/EnumeratePathsNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
@@ -376,8 +377,8 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
 
   aql::QueryContext& query = ast->query();
   auto options = std::make_unique<graph::ShortestPathOptions>(query);
-  options->minDepth = minDepth;
-  options->maxDepth = maxDepth;
+  options->setMinDepth(minDepth);
+  options->setMaxDepth(maxDepth);
 
   if (optionsNode != nullptr && optionsNode->type == NODE_TYPE_OBJECT) {
     size_t n = optionsNode->numMembers();
@@ -1692,14 +1693,11 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
       // sort operand is a variable
       auto v = static_cast<Variable*>(expression->getData());
       TRI_ASSERT(v != nullptr);
-      auto elem = SortElement{v, isAscending, _ast->query().resourceMonitor()};
-      elements.emplace_back(std::move(elem));
+      elements.emplace_back(v, isAscending);
     } else {
       // sort operand is some misc expression
       auto calc = createTemporaryCalculation(expression, previous);
-      auto elem = SortElement{getOutVariable(calc), isAscending,
-                              _ast->query().resourceMonitor()};
-      elements.emplace_back(std::move(elem));
+      elements.emplace_back(getOutVariable(calc), isAscending);
       previous = calc;
     }
   }
@@ -2219,10 +2217,9 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous,
 
     // add a sort on rangeVariable in front of the WINDOW
     SortElementVector elements;
-    elements.emplace_back(SortElement{rangeVar, /*isAscending*/ true,
-                                      _ast->query().resourceMonitor()});
+    elements.emplace_back(rangeVar, /*isAscending*/ true);
     auto en = registerNode(
-        std::make_unique<SortNode>(this, nextId(), elements, false));
+        std::make_unique<SortNode>(this, nextId(), std::move(elements), false));
     previous = addDependency(previous, en);
   }
 
@@ -2457,7 +2454,8 @@ void ExecutionPlan::findEndNodes(
 
 /// @brief determine and set _varsUsedLater in all nodes
 /// as a side effect, count the different types of nodes in the plan
-/// and if there are any forced index hints left in the plan on collection nodes
+/// and if there are any forced index hints left in the plan on collection
+/// nodes
 void ExecutionPlan::findVarUsage() {
   if (varUsageComputed()) {
     return;
@@ -2508,8 +2506,8 @@ void ExecutionPlan::unlinkNode(ExecutionNode* node, bool allowUnlinkingRoot) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "Cannot unlink root node of plan");
     }
-    // adjust root node. the caller needs to make sure that a new root node gets
-    // inserted
+    // adjust root node. the caller needs to make sure that a new root node
+    // gets inserted
     if (node == _root) {
       _root = nullptr;
     }
@@ -2654,8 +2652,8 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
     }
 
     ret = ExecutionNode::fromVPackFactory(this, it);
-    // We need to adjust nextId here, otherwise we cannot add new nodes to this
-    // plan anymore
+    // We need to adjust nextId here, otherwise we cannot add new nodes to
+    // this plan anymore
     if (_nextId <= ret->id()) {
       _nextId = ExecutionNodeId{ret->id().id() + 1};
     }
@@ -2891,6 +2889,21 @@ struct Shower final
 
   static std::string detailedNodeType(ExecutionNode const& node) {
     switch (node.getType()) {
+      case ExecutionNode::CALCULATION: {
+        auto const& calcNode =
+            *ExecutionNode::castTo<CalculationNode const*>(&node);
+        auto type = std::string{node.getTypeString()};
+        type += " $" + std::to_string(calcNode.outVariable()->id) + " = ";
+        calcNode.expression()->stringify(type);
+        return type;
+      }
+      case ExecutionNode::FILTER: {
+        auto const& filterNode =
+            *ExecutionNode::castTo<FilterNode const*>(&node);
+        auto type = std::string{node.getTypeString()};
+        type += " $" + std::to_string(filterNode.inVariable()->id);
+        return type;
+      }
       case ExecutionNode::TRAVERSAL:
       case ExecutionNode::SHORTEST_PATH:
       case ExecutionNode::ENUMERATE_PATHS: {
@@ -2901,7 +2914,14 @@ struct Shower final
         }
         return type;
       }
-      case ExecutionNode::INDEX:
+      case ExecutionNode::INDEX: {
+        auto* indexNode = ExecutionNode::castTo<IndexNode const*>(&node);
+        auto type = std::string{node.getTypeString()};
+        type += " " + indexNode->collection()->name();
+        type += std::string{" -> "} + indexNode->outVariable()->name;
+        type += std::string{" "} + indexNode->condition()->root()->toString();
+        return type;
+      }
       case ExecutionNode::ENUMERATE_COLLECTION:
       case ExecutionNode::UPDATE:
       case ExecutionNode::INSERT:

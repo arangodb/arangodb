@@ -21,6 +21,10 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include "V8DealerFeature.h"
 
 #include <regex>
@@ -30,8 +34,6 @@
 #include "Agency/v8-agency.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
-#include "ApplicationFeatures/V8PlatformFeature.h"
-#include "V8/V8SecurityFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ScopeGuard.h"
@@ -63,6 +65,8 @@
 #include "Transaction/V8Context.h"
 #include "Utilities/NameValidator.h"
 #include "V8/JavaScriptSecurityContext.h"
+#include "V8/V8PlatformFeature.h"
+#include "V8/V8SecurityFeature.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"

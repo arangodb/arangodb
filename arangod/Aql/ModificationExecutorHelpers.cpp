@@ -30,6 +30,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationResult.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -53,8 +54,8 @@ Result ModificationExecutorHelpers::getKey(
 
   if (!value.isObject()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
-                  std::string{"Expected object or string, but got "} +
-                      value.slice().typeName());
+                  absl::StrCat("Expected object or string, but got ",
+                               value.slice().typeName()));
   }
 
   // not necessary to check if key exists in object, since AqlValue::get() will
@@ -67,9 +68,8 @@ Result ModificationExecutorHelpers::getKey(
   AqlValueGuard keyGuard(keyEntry, mustDestroyKey);
 
   if (!keyEntry.isString()) {
-    return Result{
-        TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING,
-        std::string{"Expected _key to be a string attribute in document."}};
+    return Result{TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING,
+                  "Expected _key to be a string attribute in document."};
   }
 
   // Key found and assigned, note rev is empty by assertion
@@ -86,7 +86,7 @@ Result ModificationExecutorHelpers::getRevision(
   if (!value.isObject()) {
     return Result(
         TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
-        std::string{"Expected object, but got "} + value.slice().typeName());
+        absl::StrCat("Expected object, but got ", value.slice().typeName()));
   }
 
   if (value.hasKey(StaticStrings::RevString)) {
@@ -97,8 +97,8 @@ Result ModificationExecutorHelpers::getRevision(
 
     if (!revEntry.isString()) {
       return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
-                    std::string{"Expected _rev as string, but got "} +
-                        value.slice().typeName());
+                    absl::StrCat("Expected _rev as string, but got ",
+                                 value.slice().typeName()));
     }
 
     // Rev found and assigned

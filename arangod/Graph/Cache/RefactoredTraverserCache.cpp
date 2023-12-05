@@ -120,65 +120,64 @@ bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
     TRI_ASSERT(col != nullptr);  // for maintainer mode
     return false;
   }
-  auto cb = IndexIterator::makeDocumentCallbackF(
-      [&](LocalDocumentId, VPackSlice edge) -> bool {
-        if (readType == EdgeReadType::ONLYID) {
-          if constexpr (std::is_same_v<ResultType, std::string>) {
-            // If we want to expose the ID, we need to translate the
-            // custom type Unfortunately we cannot do this in slice only
-            // manner, as there is no complete slice with the _id.
-            result = transaction::helpers::extractIdString(
-                _trx->resolver(), edge, VPackSlice::noneSlice());
-            return true;
-          }
-          edge = edge.get(StaticStrings::IdString).translate();
-        } else if (readType == EdgeReadType::ID_DOCUMENT) {
-          if constexpr (std::is_same_v<ResultType, velocypack::Builder>) {
-            TRI_ASSERT(result.isOpenObject());
-            TRI_ASSERT(edge.isObject());
-            // Extract and Translate the _key value
-            result.add(VPackValue(transaction::helpers::extractIdString(
-                _trx->resolver(), edge, VPackSlice::noneSlice())));
-            if (!_edgeProjections.empty()) {
-              VPackObjectBuilder guard(&result);
-              _edgeProjections.toVelocyPackFromDocument(result, edge, _trx);
-            } else {
-              result.add(edge);
-            }
-            return true;
-          } else {
-            // We can only inject key_value pairs into velocypack
-            TRI_ASSERT(false);
-          }
-        }
-        // NOTE: Do not count this as Primary Index Scan, we
-        // counted it in the edge Index before copying...
-        if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
-          // if (!_edgeProjections.empty()) {
-          //   // TODO: This does one unnecessary copy.
-          //   // We should be able to move the Projection into the
-          //   // AQL value.
-          //   transaction::BuilderLeaser builder(_trx);
-          //   {
-          //     VPackObjectBuilder guard(builder.get());
-          //     _edgeProjections.toVelocyPackFromDocument(*builder, edge,
-          //     _trx);
-          //   }
-          //   result = aql::AqlValue(builder->slice());
-          // } else {
-          //   result = aql::AqlValue(edge);
-          // }
-          result = aql::AqlValue(edge);
-        } else if constexpr (std::is_same_v<ResultType, velocypack::Builder>) {
-          if (!_edgeProjections.empty()) {
-            VPackObjectBuilder guard(&result);
-            _edgeProjections.toVelocyPackFromDocument(result, edge, _trx);
-          } else {
-            result.add(edge);
-          }
+  auto cb = [&](LocalDocumentId, aql::DocumentData&& data, VPackSlice edge) {
+    if (readType == EdgeReadType::ONLYID) {
+      if constexpr (std::is_same_v<ResultType, std::string>) {
+        // If we want to expose the ID, we need to translate the
+        // custom type Unfortunately we cannot do this in slice only
+        // manner, as there is no complete slice with the _id.
+        result = transaction::helpers::extractIdString(_trx->resolver(), edge,
+                                                       VPackSlice::noneSlice());
+        return true;
+      }
+      edge = edge.get(StaticStrings::IdString).translate();
+    } else if (readType == EdgeReadType::ID_DOCUMENT) {
+      if constexpr (std::is_same_v<ResultType, velocypack::Builder>) {
+        TRI_ASSERT(result.isOpenObject());
+        TRI_ASSERT(edge.isObject());
+        // Extract and Translate the _key value
+        result.add(VPackValue(transaction::helpers::extractIdString(
+            _trx->resolver(), edge, VPackSlice::noneSlice())));
+        if (!_edgeProjections.empty()) {
+          VPackObjectBuilder guard(&result);
+          _edgeProjections.toVelocyPackFromDocument(result, edge, _trx);
+        } else {
+          result.add(edge);
         }
         return true;
-      });
+      } else {
+        // We can only inject key_value pairs into velocypack
+        TRI_ASSERT(false);
+      }
+    }
+    // NOTE: Do not count this as Primary Index Scan, we
+    // counted it in the edge Index before copying...
+    if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
+      if (!_edgeProjections.empty()) {
+        // TODO: This does one unnecessary copy.
+        // We should be able to move the Projection into the
+        // AQL value.
+        transaction::BuilderLeaser builder(_trx);
+        {
+          VPackObjectBuilder guard(builder.get());
+          _edgeProjections.toVelocyPackFromDocument(*builder, edge, _trx);
+        }
+        result = aql::AqlValue(builder->slice());
+      } else if (data) {
+        result = aql::AqlValue(data);
+      } else {
+        result = aql::AqlValue(edge);
+      }
+    } else if constexpr (std::is_same_v<ResultType, velocypack::Builder>) {
+      if (!_edgeProjections.empty()) {
+        VPackObjectBuilder guard(&result);
+        _edgeProjections.toVelocyPackFromDocument(result, edge, _trx);
+      } else {
+        result.add(edge);
+      }
+    }
+    return true;
+  };
   auto res =
       col->getPhysical()->lookup(_trx, idToken.localDocumentId(), cb, {}).ok();
   if (ADB_UNLIKELY(!res)) {
@@ -217,8 +216,7 @@ bool RefactoredTraverserCache::appendVertex(
     THROW_ARANGO_EXCEPTION(collectionNameResult.result());
   }
 
-  auto findDocumentInShard =
-      [&](std::string_view const& collectionName) -> bool {
+  auto findDocumentInCollection = [&](std::string const& shardId) -> bool {
     if (!_produceVertices) {
       // we don't need any vertex data, return quickly
       result.add(VPackSlice::nullSlice());
@@ -228,8 +226,7 @@ bool RefactoredTraverserCache::appendVertex(
       transaction::AllowImplicitCollectionsSwitcher disallower(
           _trx->state()->options(), _allowImplicitCollections);
 
-      auto cb = IndexIterator::makeDocumentCallbackF([&](LocalDocumentId,
-                                                         VPackSlice doc) {
+      auto cb = [&](LocalDocumentId, aql::DocumentData&& data, VPackSlice doc) {
         stats.incrScannedIndex(1);
         // copying...
         if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
@@ -243,8 +240,9 @@ bool RefactoredTraverserCache::appendVertex(
               _vertexProjections.toVelocyPackFromDocument(*builder, doc, _trx);
             }
             result = aql::AqlValue(builder->slice());
+          } else if (data) {
+            result = aql::AqlValue(data);
           } else {
-            // TODO(MBkkt) speedup this case
             result = aql::AqlValue(doc);
           }
         } else if constexpr (std::is_same_v<ResultType, velocypack::Builder>) {
@@ -256,10 +254,13 @@ bool RefactoredTraverserCache::appendVertex(
           }
         }
         return true;
-      });
-      Result res = _trx->documentFastPathLocal(
-          collectionName,
-          id.substr(collectionNameResult.get().second + 1).stringView(), cb);
+      };
+      Result res =
+          _trx->documentFastPathLocal(
+                  shardId,
+                  id.substr(collectionNameResult.get().second + 1).stringView(),
+                  cb)
+              .get();
       if (res.ok()) {
         return true;
       }
@@ -271,10 +272,9 @@ bool RefactoredTraverserCache::appendVertex(
     } catch (basics::Exception const& ex) {
       if (isWithClauseMissing(ex)) {
         // turn the error into a different error
-        auto message =
-            absl::StrCat("collection not known to traversal: '", collectionName,
-                         "'. please add 'WITH ", collectionName,
-                         "' as the first line in your AQL");
+        auto message = absl::StrCat("collection not known to traversal: '",
+                                    shardId, "'. please add 'WITH ", shardId,
+                                    "' as the first line in your AQL");
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
                                        message);
       }
@@ -287,7 +287,7 @@ bool RefactoredTraverserCache::appendVertex(
   std::string const& collectionName = collectionNameResult.get().first;
   if (_collectionToShardMap.empty()) {
     TRI_ASSERT(!ServerState::instance()->isDBServer());
-    if (findDocumentInShard(collectionName)) {
+    if (findDocumentInCollection(collectionName)) {
       return true;
     }
   } else {
@@ -301,7 +301,7 @@ bool RefactoredTraverserCache::appendVertex(
               "' as the first line in your AQL");
     }
     for (auto const& shard : it->second) {
-      if (findDocumentInShard(shard)) {
+      if (findDocumentInCollection(shard)) {
         // Short circuit, as soon as one shard contains this document
         // we can return it.
         return true;

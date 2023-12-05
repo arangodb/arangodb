@@ -33,11 +33,18 @@
 #include "Aql/JoinNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/NonConstExpressionContainer.h"
+#include "Aql/RegisterId.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
+#include "Aql/Variable.h"
+#include "Containers/FlatHashMap.h"
 #include "Transaction/Methods.h"
 
+#include <velocypack/Builder.h>
+
 #include <memory>
+#include <optional>
+#include <vector>
 
 namespace arangodb {
 class IndexIterator;
@@ -64,16 +71,46 @@ struct JoinExecutorInfos {
   struct IndexInfo {
     // Register to load the document into
     RegisterId documentOutputRegister;
+    RegisterId docIdOutputRegister;
+    bool isLateMaterialized;
 
     // Associated document collection for this index
     Collection const* collection;
     // Index handle
     transaction::Methods::IndexHandle index;
+
+    // Values used for projection
+    Projections projections;
+
+    bool hasProjectionsForRegisters = false;
+    bool producesOutput = true;
+
+    struct FilterInformation {
+      // post filter expression
+      std::unique_ptr<Expression> expression;
+
+      // variable in the expression referring to the current document
+      Variable const* documentVariable;
+
+      // mapping of other variables to register in the input row
+      std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
+
+      // projections used for filtering
+      Projections projections;
+      std::vector<Variable const*> filterProjectionVars;
+    };
+
+    std::optional<FilterInformation> filter;
   };
 
+  RegisterId registerForVariable(VariableId id) const noexcept;
+  void determineProjectionsForRegisters();
+
   std::vector<IndexInfo> indexes;
-  std::vector<RegisterId> projectionOutputRegisters;
   QueryContext* query;
+  containers::FlatHashMap<VariableId, RegisterId> varsToRegister;
+  bool projectionsInitialized = false;
+  bool producesAnyOutput = true;
 };
 
 /**
@@ -89,7 +126,7 @@ class JoinExecutor {
 
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = JoinExecutorInfos;
-  using Stats = NoStats;
+  using Stats = JoinStats;
 
   JoinExecutor() = delete;
   JoinExecutor(JoinExecutor&&) = delete;
@@ -105,15 +142,22 @@ class JoinExecutor {
 
  private:
   void constructStrategy();
+  [[nodiscard]] ResourceMonitor& resourceMonitor();
 
+  aql::AqlFunctionsInternalCache _functionsCache;
   Fetcher& _fetcher;
   Infos& _infos;
   std::unique_ptr<AqlIndexJoinStrategy> _strategy;
 
   transaction::Methods _trx;
+  ResourceMonitor& _resourceMonitor;
 
   InputAqlItemRow _currentRow{CreateInvalidInputRowHint()};
   ExecutorState _currentRowState{ExecutorState::HASMORE};
+  velocypack::Builder _projectionsBuilder;
+  // first value holds the unique ptr to a string (obvious), second value holds
+  // the amount of bytes used by that string
+  std::vector<std::pair<std::unique_ptr<std::string>, size_t>> _documents;
 };
 
 }  // namespace aql

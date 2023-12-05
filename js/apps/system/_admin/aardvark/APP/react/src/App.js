@@ -18,10 +18,12 @@ require('./views/graphV2/listGraphs/GraphsListReactView');
 require('./views/databases/DatabasesReactView');
 require('./views/graphV2/viewGraph/GraphV2ReactView');
 require('./views/users/UserManagementReactView');
+require('./views/users/viewUser/UserPermissionsReactView');
 require('./views/views/ViewsReactView');
 require('./views/collections/indices/CollectionIndicesReactView');
 require('./views/query/QueryReactView');
 require('./views/shards/distribution/ShardDistributionReactView');
+require('./views/services/ServicesReactView');
 
 // old libraries
 const jQuery = require('jquery');

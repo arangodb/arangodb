@@ -22,6 +22,10 @@
 /// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include "v8-users.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -306,7 +310,8 @@ static void JS_AddEdgeDefinitions(
   auto ctx = transaction::V8Context::create(vocbase, origin, true);
   GraphOperations gops{*graph.get(), vocbase, origin, ctx};
   OperationResult r =
-      gops.addEdgeDefinition(edgeDefinition.slice(), options.slice(), false);
+      gops.addEdgeDefinition(edgeDefinition.slice(), options.slice(), false)
+          .get();
 
   if (r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
@@ -371,9 +376,11 @@ static void JS_EditEdgeDefinitions(
   auto origin = transaction::OperationOriginREST{::moduleName};
   auto ctx = transaction::V8Context::create(vocbase, origin, true);
   GraphOperations gops{*graph.get(), vocbase, origin, ctx};
-  OperationResult r = gops.editEdgeDefinition(
-      edgeDefinition.slice(), options.slice(), false,
-      edgeDefinition.slice().get("collection").copyString());
+  OperationResult r =
+      gops.editEdgeDefinition(
+              edgeDefinition.slice(), options.slice(), false,
+              edgeDefinition.slice().get("collection").copyString())
+          .get();
 
   if (r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
@@ -441,7 +448,7 @@ static void JS_RemoveVertexCollection(
   auto ctx = transaction::V8Context::create(vocbase, origin, true);
   GraphOperations gops{*graph.get(), vocbase, origin, ctx};
   OperationResult r =
-      gops.eraseOrphanCollection(false, vertexName, dropCollection);
+      gops.eraseOrphanCollection(false, vertexName, dropCollection).get();
 
   if (r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
@@ -519,7 +526,7 @@ static void JS_AddVertexCollection(
   builder.close();
 
   OperationResult r =
-      gops.addOrphanCollection(builder.slice(), false, createCollection);
+      gops.addOrphanCollection(builder.slice(), false, createCollection).get();
 
   if (r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
@@ -584,7 +591,8 @@ static void JS_DropEdgeDefinition(
   auto ctx = transaction::V8Context::create(vocbase, origin, true);
   GraphOperations gops{*graph.get(), vocbase, origin, ctx};
   OperationResult r =
-      gops.eraseEdgeDefinition(false, edgeDefinitionName, dropCollections);
+      gops.eraseEdgeDefinition(false, edgeDefinitionName, dropCollections)
+          .get();
 
   if (r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());

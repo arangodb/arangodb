@@ -1558,8 +1558,7 @@ void RocksDBOptionFeature::validateOptions(
         << "invalid value for '--rocksdb.total-write-buffer-size'";
     FATAL_ERROR_EXIT();
   }
-  if (_maxBackgroundJobs != -1 &&
-      (_maxBackgroundJobs < 1 || _maxBackgroundJobs > 128)) {
+  if (_maxBackgroundJobs != -1 && _maxBackgroundJobs < 1) {
     LOG_TOPIC("cfc5a", FATAL, arangodb::Logger::STARTUP)
         << "invalid value for '--rocksdb.max-background-jobs'";
     FATAL_ERROR_EXIT();
@@ -2081,9 +2080,6 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::getColumnFamilyOptions(
     result.enable_blob_files = _enableBlobFiles;
     result.min_blob_size = _minBlobSize;
     result.blob_file_size = _blobFileSize;
-#ifdef ARANGODB_ROCKSDB8
-    result.blob_file_starting_level = _blobFileStartingLevel;
-#endif
     result.blob_compression_type =
         ::compressionTypeFromString(_blobCompressionType);
     result.enable_blob_garbage_collection = _enableBlobGarbageCollection;
@@ -2091,6 +2087,7 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::getColumnFamilyOptions(
     result.blob_garbage_collection_force_threshold =
         _blobGarbageCollectionForceThreshold;
 #ifdef ARANGODB_ROCKSDB8
+    result.blob_file_starting_level = _blobFileStartingLevel;
     result.prepopulate_blob_cache =
         _prepopulateBlobCache ? rocksdb::PrepopulateBlobCache::kFlushOnly
                               : rocksdb::PrepopulateBlobCache::kDisable;
@@ -2098,12 +2095,12 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::getColumnFamilyOptions(
       // use whatever block cache we use for blobs as well
       result.blob_cache = getTableOptions().block_cache;
     }
+#endif
     if (_partitionFilesForDocumentsCf) {
       // partition .sst files by object id prefix
       result.sst_partitioner_factory =
           rocksdb::NewSstPartitionerFixedPrefixFactory(sizeof(uint64_t));
     }
-#endif
   }
 
   if (family == RocksDBColumnFamilyManager::Family::PrimaryIndex) {
