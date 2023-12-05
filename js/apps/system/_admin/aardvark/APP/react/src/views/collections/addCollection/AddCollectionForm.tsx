@@ -41,7 +41,7 @@ export const AddCollectionForm = () => {
               ]
             }}
             tooltip={
-              "Use the Document type to store json documents with unique _key attributes. Can be used as nodes in a graph. <br> Use the Edge type to store documents with special edge attributes (_to, _from), which represent relations. Can be used as edges in a graph."
+              "Use the Document type to store json documents with unique _key attributes. Can be used as nodes in a graph. Use the Edge type to store documents with special edge attributes (_to, _from), which represent relations. Can be used as edges in a graph."
             }
           />
         </Grid>
