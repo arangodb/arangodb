@@ -38,6 +38,8 @@ let reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 let { getEndpointById
     } = require('@arangodb/test-helper');
 
+const replicationVersion = db._properties().replicationVersion;
+
 function testSuite() {
   return {
     setUp: function() {
@@ -173,5 +175,12 @@ function testSuite() {
   };
 }
 
-jsunity.run(testSuite);
+if (replicationVersion === "1") {
+  jsunity.run(testSuite);
+} else {
+  // This test only makes sense for replication 1.
+  // In replication2, we are not "dropping" followers.
+  // In an insert fails on a follower, as it does in this test, the follower is expected to crash.
+  console.warn(`Skipping test because replicationVersion is set to ${replicationVersion}`);
+}
 return jsunity.done();
