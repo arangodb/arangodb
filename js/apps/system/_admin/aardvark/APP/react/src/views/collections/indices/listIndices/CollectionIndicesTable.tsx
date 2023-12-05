@@ -64,23 +64,33 @@ const TABLE_COLUMNS = [
       }
     }
   ),
-  columnHelper.accessor("selectivityEstimate", {
-    header: "Selectivity Estimate",
-    id: "selectivityEstimate",
-    meta: {
-      filterType: "text"
-    }
-  }),
   columnHelper.accessor("unique", {
     header: "Unique",
     id: "unique",
     cell: info => {
-      return info.cell.getValue() ? "Yes" : "No";
+      return `${info.cell.getValue()}`;
     },
     meta: {
-      filterType: "text"
+      filterType: "single-select",
     }
   }),
+  columnHelper.accessor(
+    row => {
+      if ((row as any).selectivityEstimate) {
+        const selectivityEstimate = (row as any).selectivityEstimate;
+        // percentage rounded to 2 decimal places
+        return `${(selectivityEstimate * 100).toFixed(2)}%`;
+      }
+      return "N/A";
+    },
+    {
+      header: "Selectivity Estimate",
+      id: "selectivityEstimate",
+      meta: {
+        filterType: "text"
+      }
+    }
+  ),
   columnHelper.display({
     header: "Actions",
     id: "actions",
