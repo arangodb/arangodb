@@ -68,6 +68,8 @@ class PathValidator {
                 PathValidatorOptions opts);
   ~PathValidator();
 
+  auto checkPathUniqueness(typename PathStore::Step& step) -> ValidationResult;
+
   auto validatePath(typename PathStore::Step& step) -> ValidationResult;
   auto validatePath(typename PathStore::Step const& step,
                     PathValidator<Provider, PathStore, vertexUniqueness,
