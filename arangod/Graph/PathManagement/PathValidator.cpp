@@ -66,8 +66,85 @@ template<class ProviderType, class PathStore,
          VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness>
 auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
-    checkPathUniqueness(typename PathStore::Step& step)
-        -> ValidationResult::Type {
+    checkPathUniqueness(typename PathStore::Step& step) -> ValidationResult {
+  auto res = ValidationResult(ValidationResult::Type::TAKE);
+
+#ifdef USE_ENTERPRISE
+  if (isDisjoint()) {
+    auto validDisjPathRes = checkValidDisjointPath(step);
+    if (validDisjPathRes == ValidationResult::Type::FILTER_AND_PRUNE ||
+        validDisjPathRes == ValidationResult::Type::FILTER) {
+      res.combine(validDisjPathRes);
+      return handleValidationResult(res, step);
+    }
+  }
+#endif
+
+  if constexpr (vertexUniqueness == VertexUniquenessLevel::PATH) {
+    reset();
+    // Reserving here is pointless, we will test paths that increase by at most
+    // 1 entry.
+
+    bool success = _store.visitReversePath(
+        step, [&](typename PathStore::Step const& step) -> bool {
+          auto const& [unusedV, addedVertex] =
+              _uniqueVertices.emplace(step.getVertexIdentifier());
+
+          // If this add fails, we need to exclude this path
+          return addedVertex;
+        });
+    if (!success) {
+      res.combine(ValidationResult::Type::FILTER_AND_PRUNE);
+    }
+  }
+  if constexpr (vertexUniqueness == VertexUniquenessLevel::GLOBAL) {
+    // In case we have VertexUniquenessLevel::GLOBAL, we do not have to take
+    // care about the EdgeUniquenessLevel.
+    auto const& [unusedV, addedVertex] =
+        _uniqueVertices.emplace(step.getVertexIdentifier());
+    // If this add fails, we need to exclude this path
+    if (!addedVertex) {
+      res.combine(ValidationResult::Type::FILTER_AND_PRUNE);
+    }
+  }
+  if constexpr (vertexUniqueness == VertexUniquenessLevel::NONE &&
+                edgeUniqueness == EdgeUniquenessLevel::PATH) {
+    if (step.getDepth() > 1) {
+      reset();
+
+      bool edgeSuccess = _store.visitReversePath(
+          step, [&](typename PathStore::Step const& step) -> bool {
+            if (step.isFirst()) {
+              return true;
+            }
+
+            auto const& [unusedE, addedEdge] =
+                _uniqueEdges.emplace(step.getEdgeIdentifier());
+            // If this add fails, we need to exclude this path
+            return addedEdge;
+          });
+
+      // If this add fails, we need to exclude this path
+      if (!edgeSuccess) {
+        res.combine(ValidationResult::Type::FILTER_AND_PRUNE);
+      }
+    }
+  }
+  return handleValidationResult(res, step);
+}
+
+template<class ProviderType, class PathStore,
+         VertexUniquenessLevel vertexUniqueness,
+         EdgeUniquenessLevel edgeUniqueness>
+auto PathValidator<ProviderType, PathStore, vertexUniqueness,
+                   edgeUniqueness>::validatePath(typename PathStore::Step& step)
+    -> ValidationResult {
+  auto res = evaluateVertexCondition(step);
+  if (res.isFiltered() && res.isPruned()) {
+    // Can give up here. This Value is not used
+    return handleValidationResult(res, step);
+  }
+
 #ifdef USE_ENTERPRISE
   if (isDisjoint()) {
     auto validDisjPathRes = checkValidDisjointPath(step);
