@@ -369,7 +369,7 @@ TEST_P(AllShortestPathsFinderTest, shortcut_paths) {
   {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup both vertices, and the edge
-    EXPECT_EQ(stats.getScannedIndex(), 15U);
+    EXPECT_EQ(stats.getScannedIndex(), 11U);
   }
 }
 
@@ -409,7 +409,7 @@ TEST_P(AllShortestPathsFinderTest, hexagon_path) {
   {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup both vertices, and the edge
-    EXPECT_EQ(stats.getScannedIndex(), 6U);
+    EXPECT_EQ(stats.getScannedIndex(), 4U);
   }
 }
 
@@ -449,7 +449,7 @@ TEST_P(AllShortestPathsFinderTest, binary_tree) {
   {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup both vertices, and the edge
-    EXPECT_EQ(stats.getScannedIndex(), 12U);
+    EXPECT_EQ(stats.getScannedIndex(), 11U);
   }
 }
 
@@ -489,7 +489,7 @@ TEST_P(AllShortestPathsFinderTest, binary_trees_connected) {
   {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup both vertices, and the edge
-    EXPECT_EQ(stats.getScannedIndex(), 8U);
+    EXPECT_EQ(stats.getScannedIndex(), 7U);
   }
 }
 
@@ -581,7 +581,7 @@ TEST_P(AllShortestPathsFinderTest, grid_paths) {
   {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup both vertices, and the edge
-    EXPECT_EQ(stats.getScannedIndex(), 48U);
+    EXPECT_EQ(stats.getScannedIndex(), 42U);
   }
 }
 
@@ -631,7 +631,7 @@ TEST_P(AllShortestPathsFinderTest, multiple_edges_between_pair) {
   {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup both vertices, and the edge
-    EXPECT_EQ(stats.getScannedIndex(), 8U);
+    EXPECT_EQ(stats.getScannedIndex(), 6U);
   }
 }
 
