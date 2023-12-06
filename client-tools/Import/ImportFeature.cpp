@@ -511,6 +511,8 @@ void ImportFeature::start() {
   }
 
   SimpleHttpClientParams params = _httpClient->params();
+  params.setCompressRequestThreshold(
+      client.compressTransfer() ? client.compressRequestThreshold() : 0);
   arangodb::import::ImportHelper ih(encryption, client, client.endpoint(),
                                     params, _chunkSize, _threadCount,
                                     _maxErrors, _autoChunkSize);
