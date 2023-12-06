@@ -162,7 +162,7 @@ struct TransactionHandler : HandlerBase<Runtime, TransactionState> {
   }
 
   auto operator()(auto&& msg) -> std::unique_ptr<TransactionState> {
-    LOG_CTX("3bc7f", FATAL, this->state->state.loggerContext)
+    LOG_CTX("6d904", FATAL, this->state->state.loggerContext)
         << "Transaction actor received unexpected message "
         << typeid(msg).name() << " " << inspection::json(msg);
     FATAL_ERROR_EXIT();
