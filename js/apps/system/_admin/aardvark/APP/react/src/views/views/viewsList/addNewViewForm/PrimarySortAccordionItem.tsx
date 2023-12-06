@@ -88,7 +88,7 @@ const PrimarySortFields = () => {
               );
             })}
             <Button
-              colorScheme="blue"
+              colorScheme="green"
               onClick={() => {
                 push({ field: "", direction: "asc" });
               }}

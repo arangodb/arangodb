@@ -54,6 +54,7 @@
 #include "Network/Utils.h"
 #include "Random/RandomGenerator.h"
 #include "Replication/ReplicationMetricsFeature.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/ReplicatedRocksDBTransactionCollection.h"
@@ -537,8 +538,7 @@ struct GetDocumentProcessor
                        OperationOptions const& options)
       : GenericProcessor(methods, trxColl, collection, value, options) {
     if (_methods.state()->isDBServer()) {
-      auto const& followerInfo = _collection.followers();
-      if (!followerInfo->getLeader().empty()) {
+      if (!_collection.isLeadingShard()) {
         // We believe to be a follower!
         if (!_options.allowDirtyReads) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);

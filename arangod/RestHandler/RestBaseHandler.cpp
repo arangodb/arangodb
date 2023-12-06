@@ -23,15 +23,14 @@
 
 #include "RestBaseHandler.h"
 
+#include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
+#include "Logger/LogMacros.h"
+#include "Transaction/Context.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Options.h>
-
-#include "Basics/Exceptions.h"
-#include "Basics/StaticStrings.h"
-#include "GeneralServer/AuthenticationFeature.h"
-#include "Logger/LogMacros.h"
-#include "Transaction/Context.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

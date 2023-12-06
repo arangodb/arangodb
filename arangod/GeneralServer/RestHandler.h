@@ -69,7 +69,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   virtual ~RestHandler();
 
   void assignHandlerId();
-  uint64_t handlerId() const { return _handlerId; }
+  uint64_t handlerId() const noexcept { return _handlerId; }
   uint64_t messageId() const;
 
   /// @brief called when the handler is queued for execution in the scheduler

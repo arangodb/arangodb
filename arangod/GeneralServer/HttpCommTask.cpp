@@ -80,7 +80,7 @@ bool HttpCommTask<T>::transferEncodingContainsChunked(
     commTask.sendErrorResponse(
         rest::ResponseCode::NOT_IMPLEMENTED, rest::ContentType::UNSET, 1,
         TRI_ERROR_NOT_IMPLEMENTED,
-        "Parsing for transfer-encoding of type chunked not implemented.");
+        "Support for Transfer-Encoding: chunked is not implemented.");
     return true;
   }
   return false;
@@ -183,10 +183,8 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) try {
   std::string const& encoding =
       me->_request->header(StaticStrings::TransferEncoding, found);
 
-  if (found) {
-    if (transferEncodingContainsChunked(*me, encoding)) {
-      return HPE_USER;
-    }
+  if (found && transferEncodingContainsChunked(*me, encoding)) {
+    return HPE_USER;
   }
 
   if ((p->http_major != 1 || p->http_minor != 0) &&
@@ -579,17 +577,18 @@ void HttpCommTask<T>::doProcessRequest() {
     return;  // prepareExecution sends the error message
   }
 
-  // unzip / deflate
-  if (!this->handleContentEncoding(*_request)) {
+  // gzip-uncompress / zlib-deflate
+  if (Result res = this->handleContentEncoding(*_request); res.fail()) {
     this->sendErrorResponse(rest::ResponseCode::BAD,
                             _request->contentTypeResponse(), 1,
-                            TRI_ERROR_BAD_PARAMETER, "decoding error");
+                            TRI_ERROR_BAD_PARAMETER, res.errorMessage());
     return;
   }
 
   // create a handler and execute
-  auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR,
-                                             1, nullptr);
+  auto resp = std::make_unique<HttpResponse>(
+      rest::ResponseCode::SERVER_ERROR, 1, nullptr,
+      rest::ResponseCompressionType::kUnset);
   resp->setContentType(_request->contentTypeResponse());
   this->executeRequest(std::move(_request), std::move(resp), mode);
 }
@@ -830,7 +829,8 @@ template<SocketType T>
 std::unique_ptr<GeneralResponse> HttpCommTask<T>::createResponse(
     rest::ResponseCode responseCode, uint64_t mid) {
   TRI_ASSERT(mid == 1);
-  return std::make_unique<HttpResponse>(responseCode, mid);
+  return std::make_unique<HttpResponse>(responseCode, mid, nullptr,
+                                        rest::ResponseCompressionType::kUnset);
 }
 
 template class arangodb::rest::HttpCommTask<SocketType::Tcp>;

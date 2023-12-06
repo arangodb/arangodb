@@ -27,6 +27,9 @@
 #include "Endpoint/ConnectionInfo.h"
 #include "Rest/GeneralRequest.h"
 
+#include <string_view>
+#include <unordered_map>
+
 namespace arangodb {
 class RestBatchHandler;
 
@@ -80,6 +83,7 @@ class HttpRequest final : public GeneralRequest {
   void parseHeader(char* buffer, size_t length);
   void parseCookies(char const* buffer, size_t length);
   void setValues(char* buffer, char* end);
+  EncodingType parseAcceptEncoding(std::string_view value) const;
 
   std::unordered_map<std::string, std::string> _cookies;
 

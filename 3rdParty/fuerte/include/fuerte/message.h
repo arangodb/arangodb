@@ -36,7 +36,9 @@
 #include <string_view>
 #include <vector>
 
-namespace arangodb { namespace fuerte { inline namespace v1 {
+namespace arangodb {
+namespace fuerte {
+inline namespace v1 {
 const std::string fu_accept_key("accept");
 const std::string fu_authorization_key("authorization");
 const std::string fu_content_length_key("content-length");
@@ -50,7 +52,7 @@ struct MessageHeader {
   void setVersion(short v) { _version = v; }
 
   // Header metadata helpers#
-  template <typename K, typename V>
+  template<typename K, typename V>
   void addMeta(K&& key, V&& value) {
     if (fu_accept_key == key) {
       _acceptType = to_ContentType(value);
@@ -78,7 +80,13 @@ struct MessageHeader {
   }
   std::string const& metaByKey(std::string const& key, bool& found) const;
 
+  void removeMeta(std::string const& key) { _meta.erase(key); }
+
   ContentEncoding contentEncoding() const { return _contentEncoding; }
+  void contentEncoding(ContentEncoding encoding) noexcept {
+    _contentEncoding = encoding;
+  }
+
   // content type accessors
   ContentType contentType() const { return _contentType; }
   void contentType(ContentType type) { _contentType = type; }
@@ -222,6 +230,7 @@ class Request final : public Message {
   /// @brief get velocypack slices contained in request
   /// only valid iff the data was added via addVPack
   std::vector<velocypack::Slice> slices() const override;
+  velocypack::Buffer<uint8_t>& payloadForModification() { return _payload; }
   asio_ns::const_buffer payload() const override;
   std::size_t payloadSize() const override;
   velocypack::Buffer<uint8_t>&& moveBuffer() && { return std::move(_payload); }
@@ -320,5 +329,7 @@ class Response : public Message {
   velocypack::Buffer<uint8_t> _payload;
   std::size_t _payloadOffset;
 };
-}}}  // namespace arangodb::fuerte::v1
+}  // namespace v1
+}  // namespace fuerte
+}  // namespace arangodb
 #endif

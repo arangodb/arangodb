@@ -32,58 +32,41 @@
 
 #include <velocypack/Parser.h>
 
+#include <string>
 #include <string_view>
 
+using namespace arangodb;
 using namespace arangodb::basics;
 
-namespace {
-constexpr std::string_view contentLength("content-length");
-constexpr std::string_view contentEncoding("content-encoding");
-constexpr std::string_view transferEncoding("transfer-encoding");
-constexpr std::string_view chunked("chunked");
-constexpr std::string_view deflate("deflate");
-}  // namespace
-
-namespace arangodb {
-namespace httpclient {
-
-////////////////////////////////////////////////////////////////////////////////
-/// constructor and destructor
-////////////////////////////////////////////////////////////////////////////////
+namespace arangodb::httpclient {
 
 SimpleHttpResult::SimpleHttpResult()
     : _returnMessage(),
       _contentLength(0),
       _returnCode(0),
+      _encodingType(rest::EncodingType::UNSET),
       _foundHeader(false),
       _hasContentLength(false),
       _chunked(false),
-      _deflated(false),
-      _haveSentRequestFully(false),
-      _requestResultType(UNKNOWN),
+      _requestResultType(ResultType::UNKNOWN),
       _resultBody(false) {
   _resultBody.ensureNullTerminated();
 }
 
 SimpleHttpResult::~SimpleHttpResult() = default;
 
-////////////////////////////////////////////////////////////////////////////////
-/// public methods
-////////////////////////////////////////////////////////////////////////////////
-
 void SimpleHttpResult::clear() {
-  _returnMessage = "";
+  _returnMessage.clear();
   _contentLength = 0;
   _returnCode = 0;
+  _encodingType = rest::EncodingType::UNSET;
   _foundHeader = false;
   _hasContentLength = false;
   _chunked = false;
-  _deflated = false;
-  _requestResultType = UNKNOWN;
+  _requestResultType = ResultType::UNKNOWN;
   _headerFields.clear();
   _resultBody.clear();
   _resultBody.ensureNullTerminated();
-  _haveSentRequestFully = false;
 }
 
 StringBuffer& SimpleHttpResult::getBody() { return _resultBody; }
@@ -91,6 +74,7 @@ StringBuffer& SimpleHttpResult::getBody() { return _resultBody; }
 StringBuffer const& SimpleHttpResult::getBody() const { return _resultBody; }
 
 std::shared_ptr<VPackBuilder> SimpleHttpResult::getBodyVelocyPack() const {
+#if 0
   std::string uncompressed;
   std::string_view data(_resultBody.c_str(), _resultBody.length());
 
@@ -108,7 +92,7 @@ std::shared_ptr<VPackBuilder> SimpleHttpResult::getBodyVelocyPack() const {
       data = uncompressed;
     } else if (encoding == StaticStrings::EncodingDeflate) {
       auto res =
-          encoding::gzipInflate(reinterpret_cast<uint8_t const*>(data.data()),
+          encoding::zlibInflate(reinterpret_cast<uint8_t const*>(data.data()),
                                 data.size(), uncompressed);
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
@@ -116,7 +100,8 @@ std::shared_ptr<VPackBuilder> SimpleHttpResult::getBodyVelocyPack() const {
       data = uncompressed;
     }
   }
-
+#endif
+  std::string_view data(_resultBody.c_str(), _resultBody.length());
   VPackParser parser(&VelocyPackHelper::looseRequestValidationOptions);
   parser.parse(data);
   return parser.steal();
@@ -163,65 +148,43 @@ void SimpleHttpResult::addHeaderField(char const* key, size_t keyLength,
     }
   }
 
-  if (keyString[0] == 'h') {
-    if (!_foundHeader && (keyString == "http/1.1" || keyString == "http/1.0")) {
-      if (valueLength > 2) {
-        _foundHeader = true;
+  if (!_foundHeader && (keyString == "http/1.1" || keyString == "http/1.0") &&
+      valueLength > 2) {
+    _foundHeader = true;
 
-        // we assume the status code is 3 chars long
-        if ((value[0] >= '0' && value[0] <= '9') &&
-            (value[1] >= '0' && value[1] <= '9') &&
-            (value[2] >= '0' && value[2] <= '9')) {
-          // set response code
-          setHttpReturnCode(100 * (value[0] - '0') + 10 * (value[1] - '0') +
-                            (value[2] - '0'));
+    // we assume the status code is 3 chars long
+    if ((value[0] >= '0' && value[0] <= '9') &&
+        (value[1] >= '0' && value[1] <= '9') &&
+        (value[2] >= '0' && value[2] <= '9')) {
+      // set response code
+      setHttpReturnCode(100 * (value[0] - '0') + 10 * (value[1] - '0') +
+                        (value[2] - '0'));
 
-          if (_returnCode == 204) {
-            // HTTP 204 = No content. Assume we will have a content-length of 0.
-            // note that the value can be overridden later if the response has
-            // the content-length header set to some other value
-            setContentLength(0);
-          }
-        }
-
-        if (valueLength >= 4) {
-          setHttpReturnMessage(std::string(value + 4, valueLength - 4));
-        }
+      if (_returnCode == 204) {
+        // HTTP 204 = No content. Assume we will have a content-length of 0.
+        // note that the value can be overridden later if the response has
+        // the content-length header set to some other value
+        setContentLength(0);
       }
     }
-  }
 
-  else if (keyString[0] == 'c') {
-    if (keyString == ::contentLength) {
-      setContentLength(
-          NumberUtils::atoi_zero<size_t>(value, value + valueLength));
-    } else if (keyString == ::contentEncoding) {
-      if (valueLength == ::deflate.size() &&
-          (value[0] == 'd' || value[0] == 'D') &&
-          (value[1] == 'e' || value[1] == 'E') &&
-          (value[2] == 'f' || value[2] == 'F') &&
-          (value[3] == 'l' || value[3] == 'L') &&
-          (value[4] == 'a' || value[4] == 'A') &&
-          (value[5] == 't' || value[5] == 'T') &&
-          (value[6] == 'e' || value[6] == 'E')) {
-        _deflated = true;
-      }
+    if (valueLength >= 4) {
+      setHttpReturnMessage(std::string(value + 4, valueLength - 4));
     }
-  }
-
-  else if (keyString[0] == 't') {
-    if (keyString == ::transferEncoding) {
-      if (valueLength == ::chunked.size() &&
-          (value[0] == 'c' || value[0] == 'C') &&
-          (value[1] == 'h' || value[1] == 'H') &&
-          (value[2] == 'u' || value[2] == 'U') &&
-          (value[3] == 'n' || value[3] == 'N') &&
-          (value[4] == 'k' || value[4] == 'K') &&
-          (value[5] == 'e' || value[5] == 'E') &&
-          (value[6] == 'd' || value[6] == 'D')) {
-        _chunked = true;
-      }
+  } else if (keyString == StaticStrings::ContentLength) {
+    setContentLength(
+        NumberUtils::atoi_zero<size_t>(value, value + valueLength));
+  } else if (keyString == StaticStrings::ContentEncoding) {
+    if (std::string_view(value, valueLength) ==
+        StaticStrings::EncodingDeflate) {
+      _encodingType = rest::EncodingType::DEFLATE;
+    } else if (std::string_view(value, valueLength) ==
+               StaticStrings::EncodingGzip) {
+      _encodingType = rest::EncodingType::GZIP;
     }
+  } else if (keyString == StaticStrings::TransferEncoding &&
+             std::string_view(value, valueLength) == StaticStrings::Chunked) {
+    _chunked = true;
   }
 
   _headerFields[std::move(keyString)] = std::string(value, valueLength);
@@ -244,5 +207,4 @@ bool SimpleHttpResult::hasHeaderField(std::string const& name) const {
   return _headerFields.contains(name);
 }
 
-}  // namespace httpclient
-}  // namespace arangodb
+}  // namespace arangodb::httpclient
