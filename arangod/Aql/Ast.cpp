@@ -322,19 +322,12 @@ std::unordered_map<int, AstNodeType> const Ast::ReversedOperators{
      NODE_TYPE_OPERATOR_BINARY_GE}};
 
 Ast::SpecialNodes::SpecialNodes()
-    : NopNode{NODE_TYPE_NOP},
-      NullNode{AstNodeValue()},
-      FalseNode{AstNodeValue(false)},
-      TrueNode{AstNodeValue(true)},
-      ZeroNode{AstNodeValue(int64_t(0))},
-      EmptyStringNode{AstNodeValue("", uint32_t(0))} {
-  NopNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
-  NullNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
-  FalseNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
-  TrueNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
-  ZeroNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
-  EmptyStringNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
-
+    : NopNode{NODE_TYPE_NOP, AstNode::InternalNode{}},
+      NullNode{AstNodeValue(), AstNode::InternalNode{}},
+      FalseNode{AstNodeValue(false), AstNode::InternalNode{}},
+      TrueNode{AstNodeValue(true), AstNode::InternalNode{}},
+      ZeroNode{AstNodeValue(int64_t(0)), AstNode::InternalNode{}},
+      EmptyStringNode{AstNodeValue("", uint32_t(0)), AstNode::InternalNode{}} {
   // the const-away casts are necessary API-wise. however, we are never ever
   // modifying the computed values for these special nodes.
   NullNode.setComputedValue(
@@ -451,7 +444,7 @@ AstNode* Ast::createNodeExample(AstNode const* variable,
 /// @brief create subquery node
 AstNode* Ast::createNodeSubquery() { return createNode(NODE_TYPE_SUBQUERY); }
 
-/// @brief create an AST for node as part of an UPSERT
+/// @brief create an AST FOR node as part of an UPSERT
 AstNode* Ast::createNodeForUpsert(char const* variableName, size_t nameLength,
                                   AstNode const* expression,
                                   bool isUserDefinedVariable) {
@@ -460,7 +453,6 @@ AstNode* Ast::createNodeForUpsert(char const* variableName, size_t nameLength,
   }
 
   AstNode* node = createNode(NODE_TYPE_FOR);
-  node->setFlag(AstNodeFlagType::FLAG_READ_OWN_WRITES);
   node->reserve(3);
 
   AstNode* variable = createNodeVariable(
@@ -700,11 +692,15 @@ AstNode* Ast::createNodeUpsert(AstNodeType type, AstNode const* docVariable,
                                AstNode const* insertExpression,
                                AstNode const* updateExpression,
                                AstNode const* collection,
-                               AstNode const* options) {
+                               AstNode const* options, bool canReadOwnWrites) {
   AstNode* node = createNode(NODE_TYPE_UPSERT);
   node->reserve(7);
 
   node->setIntValue(static_cast<int64_t>(type));
+
+  if (canReadOwnWrites) {
+    node->setFlag(AstNodeFlagType::FLAG_READ_OWN_WRITES);
+  }
 
   if (options == nullptr) {
     // no options given. now use default options
@@ -720,7 +716,7 @@ AstNode* Ast::createNodeUpsert(AstNodeType type, AstNode const* docVariable,
   node->addMember(createNodeReference(Variable::NAME_OLD));
   node->addMember(createNodeVariable(Variable::NAME_NEW, false));
 
-  this->setContainsUpsertNode();
+  setContainsUpsertNode();
 
   return node;
 }
