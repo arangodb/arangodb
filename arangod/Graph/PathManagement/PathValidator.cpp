@@ -68,16 +68,12 @@ template<class ProviderType, class PathStore,
 auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     checkPathUniqueness(typename PathStore::Step& step)
         -> ValidationResult::Type {
-  //  auto res = ValidationResult::Type::TAKE;
-
 #ifdef USE_ENTERPRISE
   if (isDisjoint()) {
     auto validDisjPathRes = checkValidDisjointPath(step);
     if (validDisjPathRes == ValidationResult::Type::FILTER_AND_PRUNE ||
         validDisjPathRes == ValidationResult::Type::FILTER) {
       return validDisjPathRes;
-      // res.combine(validDisjPathRes);
-      // return handleValidationResult(res, step);
     }
   }
 #endif
@@ -99,7 +95,6 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
       // Nothing is going to change this value later as
       // FILTER_AND_PRUNE is the TOP of the lattice ValidationResult::Type
       return ValidationResult::Type::FILTER_AND_PRUNE;
-      //      res.combine(ValidationResult::Type::FILTER_AND_PRUNE);
     }
   }
   if constexpr (vertexUniqueness == VertexUniquenessLevel::GLOBAL) {
@@ -110,7 +105,6 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     // If this add fails, we need to exclude this path
     if (!addedVertex) {
       return ValidationResult::Type::FILTER_AND_PRUNE;
-      //      res.combine(ValidationResult::Type::FILTER_AND_PRUNE);
     }
   }
   if constexpr (vertexUniqueness == VertexUniquenessLevel::NONE &&
@@ -133,13 +127,11 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
       // If this add fails, we need to exclude this path
       if (!edgeSuccess) {
         return ValidationResult::Type::FILTER_AND_PRUNE;
-        //        res.combine(ValidationResult::Type::FILTER_AND_PRUNE);
       }
     }
   }
-  // TODO justify why this is the correct thing to do (as opposed to ::UNKNOWN
+
   return ValidationResult::Type::TAKE;
-  //  return handleValidationResult(res, step);
 }
 
 template<class ProviderType, class PathStore,
