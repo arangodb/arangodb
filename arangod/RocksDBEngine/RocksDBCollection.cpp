@@ -767,7 +767,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx,
 
   if (state->isOnlyExclusiveTransaction() &&
       state->hasHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE) &&
-      this->canUseRangeDeleteInWal() && _meta.numberDocuments() >= 32 * 1024) {
+      _meta.numberDocuments() >= 32 * 1024) {
     // optimized truncate, using DeleteRange operations.
     // this can only be used if the truncate is performed as a standalone
     // operation (i.e. not part of a larger transaction)
@@ -1969,17 +1969,6 @@ void RocksDBCollection::invalidateCacheEntry(RocksDBKey const& k) const {
       }
     } while (true);
   }
-}
-
-/// @brief can use non transactional range delete in write ahead log
-bool RocksDBCollection::canUseRangeDeleteInWal() const {
-  if (ServerState::instance()->isSingleServer()) {
-    return true;
-  }
-  auto& selector =
-      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
-  return engine.useRangeDeleteInWal();
 }
 
 }  // namespace arangodb

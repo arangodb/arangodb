@@ -447,7 +447,6 @@ authRouter.get('/job', function (req, res) {
 //    0: No active replication found.
 //    1: Replication per Database found.
 //    2: Replication per Server found.
-//    3: Active-Failover replication found.
 authRouter.get('/replication/mode', function (req, res) {
   // this method is only allowed from within the _system database
   if (req.database !== '_system') {
@@ -470,11 +469,7 @@ authRouter.get('/replication/mode', function (req, res) {
 
   let mode = 0;
   let role = null;
-  // active failover
-  if (endpoints.statusCode === 200 && endpoints.json.endpoints.length) {
-    mode = 3;
-    role = 'leader';
-  } else {
+  {
     // check if global applier (ga) is running
     // if that is true, this node is replicating from another arangodb instance
     // (all databases)

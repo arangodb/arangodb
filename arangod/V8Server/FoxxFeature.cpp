@@ -114,8 +114,8 @@ faster Coordinator startup. Deployments relying on Foxx apps being available as
 soon as a Coordinator is integrated or responding should set this option to
 `true`.
 
-The option only has an effect for cluster setups. On single servers and in
-Active Failover mode, all Foxx apps are available from the very beginning.
+The option only has an effect for cluster setups. On single servers all
+Foxx apps are available from the very beginning.
 
 **Note**: ArangoDB 3.8 changes the default value to `false` for this option.
 In previous versions, this option had a default value of `true`.)");

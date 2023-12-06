@@ -635,11 +635,7 @@ static void JS_FailoverEnabledGlobalApplierReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
-  auto& replicationFeature = v8g->server().getFeature<ReplicationFeature>();
-  if (replicationFeature.isActiveFailoverEnabled()) {
-    TRI_V8_RETURN_TRUE();
-  }
+  // response is hard-coded to false since 3.12
   TRI_V8_RETURN_FALSE();
   TRI_V8_TRY_CATCH_END
 }

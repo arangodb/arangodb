@@ -502,7 +502,7 @@ bool Syncer::JobSynchronizer::hasJobInFlight() const noexcept {
  * case, we use the syncer ID with a server specific tick.
  *
  * Otherwise, we're doing some other kind of asynchronous replication (e.g.
- * active failover or dc2dc). In that case, the server specific tick would not
+ * dc2dc). In that case, the server specific tick would not
  * be unique among clients, and the server ID will be used instead.
  *
  * The server distinguishes between syncer and server IDs, which is why we don't

@@ -141,6 +141,8 @@ void TelemetricsHandler::fetchTelemetricsFromServer() {
           if (!deploymentSlice.isNone()) {
             auto deploymentType = deploymentSlice.get("type").stringView();
             if (deploymentType == "active_failover") {
+              // afo left here so that telemetrics can still handle it when
+              // connected to servers running previous versions of ArangoDB
               if (auto s = deploymentSlice.get("active_failover_leader");
                   s.isFalse()) {
                 _sendToEndpoint = false;

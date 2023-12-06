@@ -23,7 +23,6 @@
 
 #include "Supervision.h"
 
-#include "Agency/ActiveFailoverJob.h"
 #include "Agency/AddFollower.h"
 #include "Agency/Agent.h"
 #include "Agency/CleanOutServer.h"
@@ -500,10 +499,8 @@ void handleOnStatusSingle(Agent* agent, Node const& snapshot,
       persisted.status == Supervision::HEALTH_STATUS_BAD &&
       transisted.status == Supervision::HEALTH_STATUS_FAILED) {
     if (!snapshot.has(failedServerPath)) {
-      envelope = std::make_shared<VPackBuilder>();
-      ActiveFailoverJob(snapshot, agent, std::to_string(jobId), "supervision",
-                        serverID)
-          .create(envelope);
+      TRI_ASSERT(false) << "we should only get here in active failover case, "
+                           "which is disabled";
     }
   }
 }
@@ -923,11 +920,6 @@ bool Supervision::doChecks() {
              "Coordinators");
   LOG_TOPIC("aadeb", TRACE, Logger::SUPERVISION) << "Checking coordinators...";
   check(ServerState::roleToAgencyListKey(ServerState::ROLE_COORDINATOR));
-  TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_SINGLE) ==
-             "Singles");
-  LOG_TOPIC("aadec", TRACE, Logger::SUPERVISION)
-      << "Checking single servers (active failover)...";
-  check(ServerState::roleToAgencyListKey(ServerState::ROLE_SINGLE));
   LOG_TOPIC("aaded", TRACE, Logger::SUPERVISION) << "Server checks done.";
 
   return true;

@@ -71,10 +71,7 @@ class ServerState {
     STARTUP = 1,
     /// reject almost all requests
     MAINTENANCE = 2,
-    /// status unclear, client must try again
-    TRYAGAIN = 3,
-    /// redirect to lead server if possible
-    REDIRECT = 4,
+
     INVALID = 255,  // this mode is used to indicate shutdown
   };
 
@@ -109,10 +106,10 @@ class ServerState {
   static std::string modeToString(Mode);
 
   /// @brief convert a string representation to a mode
-  static Mode stringToMode(std::string_view);
+  static Mode stringToMode(std::string_view) noexcept;
 
   /// @brief atomically load current server mode
-  static Mode mode();
+  static Mode mode() noexcept;
 
   /// @brief sets server mode, returns previously held
   /// value (performs atomic read-modify-write operation)

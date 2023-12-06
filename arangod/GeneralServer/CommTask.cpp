@@ -182,7 +182,7 @@ CommTask::Flow CommTask::prepareExecution(
     }
   }
 
-  // Step 2: Handle server-modes, i.e. bootstrap/ Active-Failover / DC2DC stunts
+  // Step 2: Handle server-modes, i.e. bootstrap / DC2DC stunts
   std::string const& path = req.requestPath();
 
   bool allowEarlyConnections = _server.allowEarlyConnections();
@@ -248,64 +248,6 @@ CommTask::Flow CommTask::prepareExecution(
             ResponseCode::SERVICE_UNAVAILABLE, req.contentTypeResponse(),
             req.messageId(), TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
             "service unavailable due to startup or maintenance mode");
-        return Flow::Abort;
-      }
-      break;
-    }
-    case ServerState::Mode::REDIRECT: {
-      bool found = false;
-      std::string const& val =
-          req.header(StaticStrings::AllowDirtyReads, found);
-      if (found && StringUtils::boolean(val)) {
-        break;  // continue with auth check
-      }
-    }
-      [[fallthrough]];
-    case ServerState::Mode::TRYAGAIN: {
-      bool allowReconnect = false;
-      TRI_IF_FAILURE("CommTask::allowReconnectRequests") {
-        // allow special requests that are necessary to reconnect to an endpoint
-        // from inside tests. these are currently:
-        // - GET /_api/version
-        // - GET /_api/database/current
-        // we need to allow such requests from a specific test even in TRYAGAIN
-        // mode. these are normally disallowed even in TRYAGAIN mode.
-        allowReconnect = true;
-      }
-      // the following paths are allowed on followers in active failover
-      if (!path.starts_with("/_admin/shutdown") &&
-          !path.starts_with("/_admin/cluster/health") &&
-          !path.starts_with("/_admin/cluster/maintenance") &&
-          path != "/_admin/compact" && !path.starts_with("/_admin/license") &&
-          !path.starts_with("/_admin/debug/") &&
-          !path.starts_with("/_admin/log") &&
-          !path.starts_with("/_admin/metrics") &&
-          !path.starts_with("/_admin/server/") &&
-          !path.starts_with("/_admin/status") &&
-          !path.starts_with("/_admin/statistics") &&
-          !path.starts_with("/_admin/support-info") &&
-          !path.starts_with("/_admin/telemetrics") &&
-          !path.starts_with("/_api/agency/agency-callbacks") &&
-          !(req.requestType() == RequestType::GET &&
-            path.starts_with("/_api/collection")) &&
-          !path.starts_with("/_api/cluster/") &&
-          path != "/_api/database/current" &&
-          !path.starts_with("/_api/engine/stats") &&
-          !path.starts_with("/_api/replication") &&
-          !path.starts_with("/_api/ttl/statistics") &&
-          !(req.requestType() == RequestType::GET && path == "/_api/user") &&
-          (mode == ServerState::Mode::TRYAGAIN ||
-           !path.starts_with("/_api/version")) &&
-          !path.starts_with("/_api/wal") &&
-          !(allowReconnect && (path.starts_with("/_api/version") ||
-                               path.starts_with("/_api/database/current")))) {
-        LOG_TOPIC("a5119", TRACE, arangodb::Logger::FIXME)
-            << "Redirect/Try-again: refused path: " << path;
-        std::unique_ptr<GeneralResponse> res =
-            createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
-        auto& rf = _server.server().getFeature<ReplicationFeature>();
-        rf.prepareFollowerResponse(res.get(), mode);
-        sendResponse(std::move(res), RequestStatistics::Item());
         return Flow::Abort;
       }
       break;
@@ -396,15 +338,6 @@ CommTask::Flow CommTask::prepareExecution(
 /// Must be called from sendResponse, before response is rendered
 void CommTask::finishExecution(GeneralResponse& res,
                                std::string const& origin) const {
-  ServerState::Mode mode = ServerState::mode();
-  if (mode == ServerState::Mode::REDIRECT ||
-      mode == ServerState::Mode::TRYAGAIN) {
-    auto& rf = _server.server().getFeature<ReplicationFeature>();
-    rf.setEndpointHeader(&res, mode);
-  }
-  if (mode == ServerState::Mode::REDIRECT) {
-    res.setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
-  }
   if (res.transportType() == Endpoint::TransportType::HTTP &&
       ServerState::instance()->isSingleServerOrCoordinator()) {
     // CORS response handling

@@ -280,10 +280,6 @@ std::string ServerState::modeToString(Mode mode) {
       return "startup";
     case Mode::MAINTENANCE:
       return "maintenance";
-    case Mode::TRYAGAIN:
-      return "tryagain";
-    case Mode::REDIRECT:
-      return "redirect";
     case Mode::INVALID:
       return "invalid";
   }
@@ -296,26 +292,22 @@ std::string ServerState::modeToString(Mode mode) {
 /// @brief convert string to mode
 ////////////////////////////////////////////////////////////////////////////////
 
-ServerState::Mode ServerState::stringToMode(std::string_view value) {
+ServerState::Mode ServerState::stringToMode(std::string_view value) noexcept {
   if (value == "default") {
     return Mode::DEFAULT;
   } else if (value == "startup") {
     return Mode::STARTUP;
   } else if (value == "maintenance") {
     return Mode::MAINTENANCE;
-  } else if (value == "tryagain") {
-    return Mode::TRYAGAIN;
-  } else if (value == "redirect") {
-    return Mode::REDIRECT;
-  } else {
-    return Mode::INVALID;
   }
+  return Mode::INVALID;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief atomically load current server mode
 ////////////////////////////////////////////////////////////////////////////////
-ServerState::Mode ServerState::mode() {
+
+ServerState::Mode ServerState::mode() noexcept {
   return ::serverMode.load(std::memory_order_acquire);
 }
 

@@ -65,23 +65,10 @@ using namespace arangodb::basics;
   return;
 
 static void onlyInCluster() {
-  if (ServerState::instance()->isRunningInCluster()) {
-    return;
+  if (!ServerState::instance()->isRunningInCluster()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                   "ArangoDB is not running in cluster mode");
   }
-
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                 "ArangoDB is not running in cluster mode");
-}
-
-static void onlyInClusterOrActiveFailover(v8::Isolate* isolate) {
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
-  auto& replicationFeature = v8g->server().getFeature<ReplicationFeature>();
-  if (replicationFeature.isActiveFailoverEnabled()) {
-    // active failover enabled
-    return;
-  }
-
-  return onlyInCluster();
 }
 
 static void CreateAgencyException(
@@ -142,7 +129,7 @@ static void JS_CasAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  onlyInClusterOrActiveFailover(isolate);
+  onlyInCluster();
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
@@ -205,7 +192,7 @@ static void JS_CreateDirectoryAgency(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  onlyInClusterOrActiveFailover(isolate);
+  onlyInCluster();
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
@@ -262,7 +249,7 @@ static void JS_IncreaseVersionAgency(
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  onlyInClusterOrActiveFailover(isolate);
+  onlyInCluster();
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
@@ -297,7 +284,7 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
   auto context = TRI_IGETC;
 
-  onlyInClusterOrActiveFailover(isolate);
+  onlyInCluster();
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
@@ -349,7 +336,7 @@ static void JS_APIAgency(std::string const& envelope,
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  onlyInClusterOrActiveFailover(isolate);
+  onlyInCluster();
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
@@ -411,7 +398,7 @@ static void JS_RemoveAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  onlyInClusterOrActiveFailover(isolate);
+  onlyInCluster();
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
@@ -451,7 +438,7 @@ static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  onlyInClusterOrActiveFailover(isolate);
+  onlyInCluster();
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
@@ -494,7 +481,7 @@ static void JS_Agency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  onlyInClusterOrActiveFailover(isolate);
+  onlyInCluster();
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
@@ -535,7 +522,7 @@ static void JS_EndpointsAgency(
   v8::HandleScope scope(isolate);
   auto context = TRI_IGETC;
 
-  onlyInClusterOrActiveFailover(isolate);
+  onlyInCluster();
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
@@ -590,7 +577,7 @@ static void JS_UniqidAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  onlyInClusterOrActiveFailover(isolate);
+  onlyInCluster();
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
@@ -635,7 +622,7 @@ static void JS_VersionAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  onlyInClusterOrActiveFailover(isolate);
+  onlyInCluster();
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
@@ -1310,7 +1297,7 @@ static void JS_IdServerState(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  onlyInClusterOrActiveFailover(isolate);
+  onlyInCluster();
 
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("id()");

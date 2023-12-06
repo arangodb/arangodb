@@ -72,7 +72,6 @@ add_subdirectory(IResearch)
 set(ARANGODB_TESTS_SOURCES
   ${ARANGODB_IRESEARCH_TESTS_SOURCES}
   ${RCFILE}
-  Agency/ActiveFailoverTest.cpp
   Agency/AddFollowerTest.cpp
   Agency/CleanOutServerTest.cpp
   Agency/CleanUpLostCollectionTest.cpp
