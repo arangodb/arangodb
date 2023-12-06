@@ -63,10 +63,6 @@ struct TransactionState {
                   LogIndex index) {
     std::visit(
         [&](auto&& op) -> void {
-          LOG_DEVEL_CTX(state.loggerContext)
-              << "actor " << pid.id << " applying entry " << index
-              << " for transaction " << op.tid << " of type "
-              << typeid(op).name();
           using OpType = std::remove_cvref_t<decltype(op)>;
 
           if (skip) {
@@ -79,9 +75,6 @@ struct TransactionState {
                 state._handlers.transactionHandler->applyEntry(op);
             auto res =
                 state._handlers.errorHandler->handleOpResult(op, originalRes);
-            LOG_DEVEL_CTX(state.loggerContext)
-                << "actor " << pid.id << " finished entry " << index
-                << " with result " << res;
             if (res.fail()) {
               LOG_CTX("0aa2e", FATAL, state.loggerContext)
                   << "failed to apply entry " << op << " on follower: " << res;

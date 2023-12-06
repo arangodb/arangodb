@@ -42,9 +42,6 @@ using namespace arangodb::actor;
 
 struct ApplyEntriesState {
   explicit ApplyEntriesState(DocumentFollowerState& state) : _state(state) {}
-  ~ApplyEntriesState() {
-    LOG_DEVEL_CTX(_state.loggerContext) << "~ApplyEntriesState";
-  }
 
   void setBatch(std::unique_ptr<DocumentFollowerState::EntryIterator> entries,
                 futures::Promise<Result> promise);
@@ -167,16 +164,11 @@ struct ApplyEntriesHandler : HandlerBase<Runtime, ApplyEntriesState> {
 
   auto operator()(message::ApplyEntries&& msg) noexcept
       -> std::unique_ptr<ApplyEntriesState> {
+    // TODO - remove the try and make continueBatch noexcept
     try {
-      LOG_DEVEL_CTX(this->state->_state.loggerContext)
-          << "actor " << this->self.id << " received ApplyEntries message";
       this->state->myPid = this->self;
       this->state->setBatch(std::move(msg.entries), std::move(msg.promise));
       this->state->continueBatch();
-
-      LOG_DEVEL_CTX(this->state->_state.loggerContext)
-          << "actor " << this->self.id
-          << " finished processing ApplyEntries message";
     } catch (std::exception& e) {
       LOG_DEVEL_CTX(this->state->_state.loggerContext)
           << "caught exception while applying entries: " << e.what();
@@ -206,13 +198,9 @@ struct ApplyEntriesHandler : HandlerBase<Runtime, ApplyEntriesState> {
       ADB_PROD_ASSERT(msg.reason == ExitReason::kFinished)
           << inspection::json(msg);
     }
-    LOG_DEVEL_CTX(this->state->_state.loggerContext)
-        << "actor " << msg.actor.id << " finished";
     this->state->_pendingTransactions.erase(msg.actor);
     if (this->state->_pendingTransactions.empty() && this->state->_batch) {
-      LOG_DEVEL_CTX(this->state->_state.loggerContext)
-          << "all pending trx finished - continuing batch";
-
+      // all pending trx finished, so we can now continuing processing the batch
       this->state->continueBatch();
     }
     return std::move(this->state);

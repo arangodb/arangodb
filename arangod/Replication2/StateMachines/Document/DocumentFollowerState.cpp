@@ -73,9 +73,7 @@ DocumentFollowerState::DocumentFollowerState(
       _guardedData(std::move(core), loggerContext),
       _runtime(std::make_shared<actor::LocalRuntime>(
           "FollowerState-" + to_string(gid),
-          std::make_shared<actor::Scheduler>(std::move(scheduler)))) {
-  LOG_DEVEL << "DocumentFollowerState ctor " << (void*)this;
-}
+          std::make_shared<actor::Scheduler>(std::move(scheduler)))) {}
 
 void DocumentFollowerState::initialize() {
   // we have to do this here instead of the constructor, because in the
@@ -87,8 +85,6 @@ void DocumentFollowerState::initialize() {
 }
 
 DocumentFollowerState::~DocumentFollowerState() {
-  LOG_DEVEL << "~DocumentFollowerState " << _applyEntriesActor.id << " "
-            << (void*)this;
   _runtime->softShutdown();
   while (not _runtime->areAllActorsIdle()) {
     LOG_DEVEL << "waiting for actors to finish...\n"
@@ -407,6 +403,7 @@ auto DocumentFollowerState::applyEntries(
     std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
   futures::Promise<Result> promise;
   auto future = promise.getFuture();
+  LOG_DEVEL << __FUNCTION__;
 
   _runtime->dispatch<actor::message::ApplyEntriesMessages>(
       _applyEntriesActor, _applyEntriesActor,
