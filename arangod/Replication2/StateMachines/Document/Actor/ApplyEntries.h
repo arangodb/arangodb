@@ -41,7 +41,10 @@ namespace arangodb::replication2::replicated_state::document::actor {
 using namespace arangodb::actor;
 
 struct ApplyEntriesState {
-  explicit ApplyEntriesState(DocumentFollowerState& state) : _state(state) {}
+  explicit ApplyEntriesState(DocumentFollowerState& state)
+      : loggerContext(state.loggerContext),  // TODO - include pid in context
+        handlers(state._handlers),
+        _state(state) {}
 
   void setBatch(std::unique_ptr<DocumentFollowerState::EntryIterator> entries,
                 futures::Promise<Result> promise);
@@ -114,6 +117,8 @@ struct ApplyEntriesState {
                                  T const& op) -> Result;
 
   LocalActorPID myPid;
+  LoggerContext const loggerContext;
+  Handlers const handlers;
   DocumentFollowerState& _state;
   std::unique_ptr<Batch> _batch;
 
@@ -191,6 +196,9 @@ struct ApplyEntriesHandler : HandlerBase<Runtime, ApplyEntriesState> {
   auto operator()(
       arangodb::actor::message::ActorDown<typename Runtime::ActorPID>&&
           msg) noexcept -> std::unique_ptr<ApplyEntriesState> {
+    LOG_CTX("56a21", DEBUG, this->state->loggerContext)
+        << "applyEntries actor received actor down message "
+        << inspection::json(msg);
     if (msg.reason != ExitReason::kShutdown) {
       ADB_PROD_ASSERT(this->state->_pendingTransactions.contains(msg.actor))
           << inspection::json(this->state->_pendingTransactions) << " msg "

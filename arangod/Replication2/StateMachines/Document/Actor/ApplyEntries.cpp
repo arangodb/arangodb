@@ -90,8 +90,8 @@ auto ApplyEntriesState::processEntry(
   if (not _pendingTransactions.empty()) {
     return ProcessResult::kWaitForPendingTrx;
   }
-  auto originalRes = _state._handlers.transactionHandler->applyEntry(op);
-  auto res = _state._handlers.errorHandler->handleOpResult(op, originalRes);
+  auto originalRes = handlers.transactionHandler->applyEntry(op);
+  auto res = handlers.errorHandler->handleOpResult(op, originalRes);
   if (res.fail()) {
     return res;
   }
@@ -113,7 +113,7 @@ auto ApplyEntriesState::processEntry(UserTransaction auto& op, LogIndex index)
   } else {
     pid = _state._runtime->template spawn<actor::TransactionActor>(
         std::make_unique<actor::TransactionState>(_state));
-    LOG_DEVEL_CTX(_state.loggerContext)
+    LOG_CTX("8a74c", DEBUG, loggerContext)
         << "spawned transaction actor " << pid.id << " for trx " << op.tid;
     _state._runtime->monitorActor(myPid, pid);
     _activeTransactions.emplace(op.tid, pid);
@@ -168,11 +168,11 @@ auto ApplyEntriesState::applyDataDefinitionEntry(
   // replicating the "DropShard" operation first, "Abort" operations come later.
   // Hence, we need to abort transactions manually for now.
   for (auto const& tid :
-       _state._handlers.transactionHandler->getTransactionsForShard(op.shard)) {
-    auto abortRes = _state._handlers.transactionHandler->applyEntry(
+       handlers.transactionHandler->getTransactionsForShard(op.shard)) {
+    auto abortRes = handlers.transactionHandler->applyEntry(
         ReplicatedOperation::buildAbortOperation(tid));
     if (abortRes.fail()) {
-      LOG_CTX("aa36c", INFO, _state.loggerContext)
+      LOG_CTX("aa36c", INFO, loggerContext)
           << "Failed to abort transaction " << tid << " for shard " << op.shard
           << " before dropping the shard: " << abortRes.errorMessage();
       return abortRes;
@@ -189,11 +189,10 @@ auto ApplyEntriesState::applyDataDefinitionEntry(
   // However, we still do it for safety reasons.
   auto origin =
       transaction::OperationOriginREST{"follower collection properties update"};
-  auto trxLock = _state._handlers.shardHandler->lockShard(
+  auto trxLock = handlers.shardHandler->lockShard(
       op.shard, AccessMode::Type::EXCLUSIVE, std::move(origin));
   if (trxLock.fail()) {
-    auto res =
-        _state._handlers.errorHandler->handleOpResult(op, trxLock.result());
+    auto res = handlers.errorHandler->handleOpResult(op, trxLock.result());
 
     // If the shard was not found, we can ignore this operation and release it.
     if (res.ok()) {
@@ -217,8 +216,8 @@ auto ApplyEntriesState::applyDataDefinitionEntry(
 template<class T>
 auto ApplyEntriesState::applyEntryAndReleaseIndex(
     DocumentFollowerState::GuardedData& data, T const& op) -> Result {
-  auto originalRes = _state._handlers.transactionHandler->applyEntry(op);
-  auto res = _state._handlers.errorHandler->handleOpResult(op, originalRes);
+  auto originalRes = handlers.transactionHandler->applyEntry(op);
+  auto res = handlers.errorHandler->handleOpResult(op, originalRes);
   if (res.fail()) {
     return res;
   }
@@ -270,7 +269,7 @@ void ApplyEntriesState::releaseIndex(std::optional<LogIndex> index) {
       stream->release(index.value());
     });
     if (releaseRes.fail()) {
-      LOG_CTX("10f07", ERR, _state.loggerContext)
+      LOG_CTX("10f07", ERR, loggerContext)
           << "Failed to get stream! " << releaseRes;
     }
   }
@@ -302,13 +301,13 @@ void ApplyEntriesState::continueBatch() {
                           doc.getInnerOperation());
 
     if (res.fail()) {
-      TRI_ASSERT(_state._handlers.errorHandler
+      TRI_ASSERT(handlers.errorHandler
                      ->handleOpResult(doc.getInnerOperation(), res.result())
                      .fail())
           << res.result() << " should have been already handled for operation "
           << doc.getInnerOperation() << " during applyEntries of follower "
           << _state.gid;
-      LOG_CTX("0aa2e", FATAL, _state.loggerContext)
+      LOG_CTX("0aa2e", FATAL, loggerContext)
           << "failed to apply entry " << doc
           << " on follower: " << res.result();
       TRI_ASSERT(false) << res.result();

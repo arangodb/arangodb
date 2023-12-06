@@ -41,7 +41,10 @@ namespace arangodb::replication2::replicated_state::document::actor {
 using namespace arangodb::actor;
 
 struct TransactionState {
-  explicit TransactionState(DocumentFollowerState& state) : state(state) {}
+  explicit TransactionState(DocumentFollowerState& state)
+      : loggerContext(state.loggerContext),  // TODO - include pid in context
+        handlers(state._handlers),
+        state(state) {}
 
   friend inline auto inspect(auto& f, TransactionState& x) {
     return f.object(x).fields(f.field("type", "TransactionState"));
@@ -71,16 +74,13 @@ struct TransactionState {
           }
 
           try {
-            auto originalRes =
-                state._handlers.transactionHandler->applyEntry(op);
-            auto res =
-                state._handlers.errorHandler->handleOpResult(op, originalRes);
+            auto originalRes = handlers.transactionHandler->applyEntry(op);
+            auto res = handlers.errorHandler->handleOpResult(op, originalRes);
             if (res.fail()) {
-              TRI_ASSERT(
-                  state._handlers.errorHandler->handleOpResult(op, res).fail())
+              TRI_ASSERT(handlers.errorHandler->handleOpResult(op, res).fail())
                   << res << " should have been already handled for operation "
                   << op << " during applyEntry of follower " << state.gid;
-              LOG_CTX("88416", FATAL, state.loggerContext)
+              LOG_CTX("88416", FATAL, loggerContext)
                   << "failed to apply entry " << op << " with index " << index
                   << " on follower: " << res;
               TRI_ASSERT(false) << res;
@@ -91,7 +91,7 @@ struct TransactionState {
                 state._guardedData.doUnderLock([&](auto& data) {
                   data.activeTransactions.markAsInactive(op.tid);
                 });
-                state._handlers.transactionHandler->removeTransaction(op.tid);
+                handlers.transactionHandler->removeTransaction(op.tid);
                 skip = true;
                 return;
               }
@@ -105,12 +105,12 @@ struct TransactionState {
 
             maybeFinishActor<OpType>(pid);
           } catch (std::exception& e) {
-            LOG_CTX("013aa", FATAL, state.loggerContext)
+            LOG_CTX("013aa", FATAL, loggerContext)
                 << "caught exception while applying entry " << op << ": "
                 << e.what();
             FATAL_ERROR_EXIT();
           } catch (...) {
-            LOG_CTX("515fc", FATAL, state.loggerContext)
+            LOG_CTX("515fc", FATAL, loggerContext)
                 << "caught unknown exception while applying entry " << op;
             FATAL_ERROR_EXIT();
           }
@@ -119,6 +119,8 @@ struct TransactionState {
   }
 
   // private:
+  LoggerContext const loggerContext;
+  Handlers const handlers;
   DocumentFollowerState& state;
 
   // will be set to true if one of the modification operations fail (e.g.,
