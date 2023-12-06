@@ -213,8 +213,9 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
 
   auto step = _queue.pop();
   auto previous = _interior.append(step);
+
   _provider.expand(step, previous, [&](Step n) -> void {
-    ValidationResult res = _validator.checkPathUniqueness(n);
+    ValidationResult res = _validator.validatePathUniqueness(n);
 
     // Check if other Ball knows this Vertex.
     // Include it in results.
