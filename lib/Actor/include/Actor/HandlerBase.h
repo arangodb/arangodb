@@ -51,6 +51,12 @@ struct HandlerBase {
   }
 
   template<typename ActorConfig>
+  auto spawn(std::unique_ptr<typename ActorConfig::State> initialState)
+      -> ActorPID {
+    return runtime->template spawn<ActorConfig>(std::move(initialState));
+  }
+
+  template<typename ActorConfig>
   auto spawn(std::unique_ptr<typename ActorConfig::State> initialState,
              typename ActorConfig::Message initialMessage) -> ActorPID {
     return runtime->template spawn<ActorConfig>(std::move(initialState),
@@ -58,6 +64,10 @@ struct HandlerBase {
   }
 
   auto finish(ExitReason reason) -> void { runtime->finishActor(self, reason); }
+
+  auto monitor(typename Runtime::ActorPID pid) -> void {
+    runtime->monitorActor(self, pid);
+  }
 
  protected:
   ActorPID const self;
