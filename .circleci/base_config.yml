@@ -223,10 +223,10 @@ jobs:
       SCCACHE_ERROR_LOG: /tmp/sccache.log
       SCCACHE_LOG: info,sccache::cache=debug,sccache::compiler::compiler=debug
       SCCACHE_S3_KEY_PREFIX: << parameters.s3-prefix >>
-      ASAN_OPTIONS: << pipeline.parameters.asan-options >>
-      TSAN_OPTIONS: << pipeline.parameters.tsan-options >>
-      LSAN_OPTIONS: << pipeline.parameters.lsan-options >>
-      UBSAN_OPTIONS: << pipeline.parameters.ubsan-options >>
+      ASAN_OPTIONS: << parameters.asan-options >>
+      TSAN_OPTIONS: << parameters.tsan-options >>
+      LSAN_OPTIONS: << parameters.lsan-options >>
+      UBSAN_OPTIONS: << parameters.ubsan-options >>
     steps:
       - checkout-arangodb:
           with-submodules: true
@@ -246,9 +246,9 @@ jobs:
               -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> \
               -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> \
               -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" \
-              -DUSE_JEMALLOC=<< pipeline.parameters.jemalloc >> \
-              -DCMAKE_C_FLAGS=<< pipeline.parameters.c-compiler-flags >> \
-              -DCMAKE_CXX_FLAGS=<< pipeline.parameters.cpp-compiler-flags >> \
+              -DUSE_JEMALLOC=<< parameters.jemalloc >> \
+              -DCMAKE_C_FLAGS=<< parameters.c-compiler-flags >> \
+              -DCMAKE_CXX_FLAGS=<< parameters.cpp-compiler-flags >> \
               -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib
       - run:
           name: Build
