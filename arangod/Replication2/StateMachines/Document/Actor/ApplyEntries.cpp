@@ -265,6 +265,7 @@ void ApplyEntriesState::releaseIndex(std::optional<LogIndex> index) {
     // The follower might have resigned, so we need to be careful when
     // accessing the stream.
     auto releaseRes = basics::catchVoidToResult([&] {
+      // TODO - is this getStream call actually safe?
       auto const& stream = _state.getStream();
       stream->release(index.value());
     });
@@ -301,12 +302,17 @@ void ApplyEntriesState::continueBatch() {
                           doc.getInnerOperation());
 
     if (res.fail()) {
-      LOG_DEVEL_CTX(_state.loggerContext)
-          << "processEntry failed: " << res.errorMessage();
-      // TODO - resolve promise
-      // THROW_ARANGO_EXCEPTION(res.result());
-      resolveBatch(res.result());
-      return;
+      TRI_ASSERT(_state._handlers.errorHandler
+                     ->handleOpResult(doc.getInnerOperation(), res.result())
+                     .fail())
+          << res.result() << " should have been already handled for operation "
+          << doc.getInnerOperation() << " during applyEntries of follower "
+          << _state.gid;
+      LOG_CTX("0aa2e", FATAL, _state.loggerContext)
+          << "failed to apply entry " << doc
+          << " on follower: " << res.result();
+      TRI_ASSERT(false) << res.result();
+      FATAL_ERROR_EXIT();
     }
 
     if (res.get() == ProcessResult::kWaitForPendingTrx) {

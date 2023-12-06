@@ -76,8 +76,14 @@ struct TransactionState {
             auto res =
                 state._handlers.errorHandler->handleOpResult(op, originalRes);
             if (res.fail()) {
-              LOG_CTX("0aa2e", FATAL, state.loggerContext)
-                  << "failed to apply entry " << op << " on follower: " << res;
+              TRI_ASSERT(
+                  state._handlers.errorHandler->handleOpResult(op, res).fail())
+                  << res << " should have been already handled for operation "
+                  << op << " during applyEntry of follower " << state.gid;
+              LOG_CTX("88416", FATAL, state.loggerContext)
+                  << "failed to apply entry " << op << " with index " << index
+                  << " on follower: " << res;
+              TRI_ASSERT(false) << res;
               FATAL_ERROR_EXIT();
             }
             if constexpr (ModifiesUserTransaction<OpType>) {
