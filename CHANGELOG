@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-296: Update shard distribution UI.
+
 * Optimize equality lookups and prefix matches that use the AQL like function.
   The optimization will turn `LIKE(doc.attribute, 'fixed string')` into an
   equality lookup, and `LIKE(doc.attribute, 'prefix%')` into a range query.
