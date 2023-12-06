@@ -284,14 +284,32 @@ class StringBuffer {
     return TRI_ReserveStringBuffer(&_buffer, length);
   }
 
-  /// @brief compress the buffer in place, using zlib-deflate
-  ErrorCode deflate();
+  /// @brief compress the buffer in place, using zlib-deflate.
+  /// if onlyIfSmaller is true, then the buffer will only contain the
+  /// compressed version if the compressed buffer size is smaller than
+  /// the original size. if onlyIfSmaller is false, then the buffer
+  /// will be compressed unconditionally.
+  /// if compression works, then TRI_ERROR_NO_ERROR is returned.
+  /// in case onlyIfSmaller=true and the buffer is not smaller after
+  /// compression, the special error code TRI_ERROR_DISABLED is returned.
+  ErrorCode zlibDeflate(bool onlyIfSmaller);
 
   /// @brief compress the buffer in place, using gzip compression
-  ErrorCode gzip();
+  /// if onlyIfSmaller is true, then the buffer will only contain the
+  /// compressed version if the compressed buffer size is smaller than
+  /// the original size. if onlyIfSmaller is false, then the buffer
+  /// will be compressed unconditionally.
+  /// if compression works, then TRI_ERROR_NO_ERROR is returned.
+  /// in case onlyIfSmaller=true and the buffer is not smaller after
+  /// compression, the special error code TRI_ERROR_DISABLED is returned.
+  ErrorCode gzipCompress(bool onlyIfSmaller);
 
   /// @brief uncompress the buffer into StringBuffer out, using zlib-inflate
-  ErrorCode inflate(arangodb::basics::StringBuffer& out, size_t skip = 0);
+  ErrorCode zlibInflate(arangodb::basics::StringBuffer& out, size_t skip = 0);
+
+  /// @brief uncompress the buffer into StringBuffer out, using gzip uncompress
+  ErrorCode gzipUncompress(arangodb::basics::StringBuffer& out,
+                           size_t skip = 0);
 
   /// @brief returns the low level buffer
   TRI_string_buffer_t* stringBuffer() { return &_buffer; }
