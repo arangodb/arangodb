@@ -322,19 +322,12 @@ std::unordered_map<int, AstNodeType> const Ast::ReversedOperators{
      NODE_TYPE_OPERATOR_BINARY_GE}};
 
 Ast::SpecialNodes::SpecialNodes()
-    : NopNode{NODE_TYPE_NOP},
-      NullNode{AstNodeValue()},
-      FalseNode{AstNodeValue(false)},
-      TrueNode{AstNodeValue(true)},
-      ZeroNode{AstNodeValue(int64_t(0))},
-      EmptyStringNode{AstNodeValue("", uint32_t(0))} {
-  NopNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
-  NullNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
-  FalseNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
-  TrueNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
-  ZeroNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
-  EmptyStringNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
-
+    : NopNode{NODE_TYPE_NOP, AstNode::InternalNode{}},
+      NullNode{AstNodeValue(), AstNode::InternalNode{}},
+      FalseNode{AstNodeValue(false), AstNode::InternalNode{}},
+      TrueNode{AstNodeValue(true), AstNode::InternalNode{}},
+      ZeroNode{AstNodeValue(int64_t(0)), AstNode::InternalNode{}},
+      EmptyStringNode{AstNodeValue("", uint32_t(0)), AstNode::InternalNode{}} {
   // the const-away casts are necessary API-wise. however, we are never ever
   // modifying the computed values for these special nodes.
   NullNode.setComputedValue(

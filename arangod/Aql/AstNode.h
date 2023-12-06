@@ -231,6 +231,10 @@ static_assert(NODE_TYPE_ARRAY < NODE_TYPE_OBJECT, "incorrect node types order");
 struct AstNode {
   friend class Ast;
 
+  /// @brief a simple tag that marks the AstNode as a constant node
+  /// that will never change after being created
+  struct InternalNode {};
+
   /// @brief array values with at least this number of members that
   /// are in IN or NOT IN lookups will be sorted, so that we can use
   /// a binary sort to do lookups
@@ -239,8 +243,12 @@ struct AstNode {
   /// @brief create the node
   explicit AstNode(AstNodeType);
 
+  explicit AstNode(AstNodeType, InternalNode);
+
   /// @brief create a node, with defining a value
   explicit AstNode(AstNodeValue const& value);
+
+  explicit AstNode(AstNodeValue const& value, InternalNode);
 
   /// @brief create the node from VPack
   explicit AstNode(Ast*, arangodb::velocypack::Slice slice);
