@@ -167,7 +167,7 @@ static void JS_ServerStatistics(
 
   // v8 counters
   V8DealerFeature& dealer = v8g->server().getFeature<V8DealerFeature>();
-  auto v8Counters = dealer.getCurrentContextNumbers();
+  auto v8Counters = dealer.getCurrentExecutorStatistics();
   v8::Handle<v8::Object> v8CountersObj = v8::Object::New(isolate);
   v8CountersObj
       ->Set(
@@ -195,7 +195,7 @@ static void JS_ServerStatistics(
             v8::Number::New(isolate, static_cast<uint32_t>(v8Counters.min)))
       .FromMaybe(false);
 
-  auto memoryStatistics = dealer.getCurrentContextDetails();
+  auto memoryStatistics = dealer.getCurrentExecutorDetails();
 
   v8::Handle<v8::Array> v8ListOfMemory =
       v8::Array::New(isolate, static_cast<int>(memoryStatistics.size()));

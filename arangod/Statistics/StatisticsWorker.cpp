@@ -1025,13 +1025,11 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder,
   builder.add("v8Context", VPackValue(VPackValueType::Object));
 #ifdef USE_V8
   V8DealerFeature::Statistics v8Counters{};
-  // std::vector<V8DealerFeature::MemoryStatistics> memoryStatistics;
   // V8 may be turned off on a server
   if (server().hasFeature<V8DealerFeature>()) {
     V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
     if (dealer.isEnabled()) {
-      v8Counters = dealer.getCurrentContextNumbers();
-      // see below: memoryStatistics = dealer.getCurrentMemoryDetails();
+      v8Counters = dealer.getCurrentExecutorStatistics();
     }
   }
   builder.add("available", VPackValue(v8Counters.available));
@@ -1048,22 +1046,6 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder,
   builder.add("min", VPackValue(0));
   builder.add("max", VPackValue(0));
 #endif
-  /* at the time being we don't want to write this into the database so the data
-  volume doesn't increase.
-  {
-    builder.add("memory", VPackValue(VPackValueType::Array));
-    for (auto memStatistic : memoryStatistics) {
-      builder.add(VPackValue(VPackValueType::Object));
-      builder.add("contextId", VPackValue(memStatistic.id));
-      builder.add("tMax", VPackValue(memStatistic.tMax));
-      builder.add("countOfTimes", VPackValue(memStatistic.countOfTimes));
-      builder.add("heapMax", VPackValue(memStatistic.heapMax));
-      builder.add("heapMin", VPackValue(memStatistic.heapMin));
-      builder.close();
-    }
-    builder.close();
-  }
-  */
   builder.close();
 
   // export threads statistics

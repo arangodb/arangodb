@@ -1062,7 +1062,7 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
   if (server().hasFeature<V8DealerFeature>()) {
     V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
     if (dealer.isEnabled()) {
-      v8Counters = dealer.getCurrentContextNumbers();
+      v8Counters = dealer.getCurrentExecutorStatistics();
     }
   }
   appendMetric(result, std::to_string(v8Counters.available),

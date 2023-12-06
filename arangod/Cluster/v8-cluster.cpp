@@ -88,8 +88,9 @@ static void CreateAgencyException(
     v8::FunctionCallbackInfo<v8::Value> const& args,
     AgencyCommResult const& result) {
   v8::Isolate* isolate = args.GetIsolate();
-  TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
-  auto context = TRI_IGETC;
+  v8::HandleScope scope(isolate);
+
+  v8::Handle<v8::Context> context = isolate->GetCurrentContext();
 
   std::string const errorDetails = result.errorDetails();
   v8::Handle<v8::String> errorMessage =
@@ -99,7 +100,7 @@ static void CreateAgencyException(
     return;
   }
   v8::Handle<v8::Object> errorObject = v8::Exception::Error(errorMessage)
-                                           ->ToObject(TRI_IGETC)
+                                           ->ToObject(context)
                                            .FromMaybe(v8::Local<v8::Object>());
   if (errorObject.IsEmpty()) {
     isolate->ThrowException(v8::Object::New(isolate));
@@ -122,6 +123,9 @@ static void CreateAgencyException(
       ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::Error),
             v8::True(isolate))
       .FromMaybe(false);
+
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
+      isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
 
   TRI_GET_GLOBAL(ArangoErrorTempl, v8::ObjectTemplate);
   v8::Handle<v8::Value> proto =
@@ -1683,7 +1687,10 @@ static void JS_PropagateSelfHeal(
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
-  TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
+  v8::HandleScope scope(isolate);
+
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
+      isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
   TRI_ASSERT(v8g != nullptr);
 
   v8::Handle<v8::ObjectTemplate> rt;
