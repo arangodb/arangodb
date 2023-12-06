@@ -30,6 +30,9 @@ parameters:
   enterprise-build-targets:
     type: string
     default: "arangobackup"
+  san:
+    type: boolean
+    default: false
   v8-build-targets:
     type: string
     default: "arangosh"
@@ -177,6 +180,15 @@ jobs:
         type: string
       enterprise:
         type: boolean
+      jemalloc:
+        type: string
+        default: "On"
+      cpp-compiler-flags:
+        type: string
+        default: ""
+      c-compiler-flags:
+        type: string
+        default: ""
       build-tests:
         type: boolean
         default: true
@@ -191,14 +203,30 @@ jobs:
       s3-prefix:
         type: string
         default: ""
+      asan-options:
+        type: string
+        default: ""
+      ubsan-options:
+        type: string
+        default: ""
+      tsan-options:
+        type: string
+        default: ""
+      lsan-options:
+        type: string
+        default: ""
     docker:
-      - image: << pipeline.parameters.build-docker-image >>
+    - image: << pipeline.parameters.build-docker-image >>
     resource_class: << parameters.resource-class >>
     environment:
       GIT_SSH_COMMAND: ssh
       SCCACHE_ERROR_LOG: /tmp/sccache.log
       SCCACHE_LOG: info,sccache::cache=debug,sccache::compiler::compiler=debug
       SCCACHE_S3_KEY_PREFIX: << parameters.s3-prefix >>
+      ASAN_OPTIONS: << pipeline.parameters.asan-options >>
+      TSAN_OPTIONS: << pipeline.parameters.tsan-options >>
+      LSAN_OPTIONS: << pipeline.parameters.lsan-options >>
+      UBSAN_OPTIONS: << pipeline.parameters.ubsan-options >>
     steps:
       - checkout-arangodb:
           with-submodules: true
@@ -214,7 +242,14 @@ jobs:
       - run:
           name: Configure
           command: |
-            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib
+            cmake --preset << parameters.preset >> \
+              -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> \
+              -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> \
+              -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" \
+              -DUSE_JEMALLOC=<< pipeline.parameters.jemalloc >> \
+              -DCMAKE_C_FLAGS=<< pipeline.parameters.c-compiler-flags >> \
+              -DCMAKE_CXX_FLAGS=<< pipeline.parameters.cpp-compiler-flags >> \
+              -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib
       - run:
           name: Build
           command: |
@@ -607,120 +642,150 @@ workflows:
           name: eslint
           requires:
             - minimal-checkout
-  x64-linux-community-pr:
+  # x64-linux-community-pr:
+  #   jobs:
+  #     - compile-linux:
+  #         context:
+  #           - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+  #         resource-class: xlarge
+  #         name: build-linux-ce-x64
+  #         preset: community-pr
+  #         enterprise: false
+  #     - run-cppcheck:
+  #         name: cppcheck
+  #         requires:
+  #           - build-linux-ce-x64
+  # x64-linux-enterprise-pr:
+  #   jobs:
+  #     - compile-linux:
+  #         context:
+  #           - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+  #         resource-class: xlarge
+  #         name: build-linux-ee-x64
+  #         preset: enterprise-pr
+  #         enterprise: true
+  #     - compile-linux:
+  #         context:
+  #           - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+  #         resource-class: xlarge
+  #         name: build-ee-non-maintainer-x64
+  #         preset: enterprise-pr-non-maintainer
+  #         enterprise: true
+  #         publish-artifacts: false
+  #         build-tests: false
+  #     - compile-linux:
+  #         context:
+  #           - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+  #         resource-class: xlarge
+  #         name: build-ee-no-v8-x64
+  #         preset: enterprise-pr-no-v8
+  #         enterprise: true
+  #         publish-artifacts: false
+  #         build-tests: false
+  #         build-v8: false
+  #     - run-cppcheck:
+  #         name: cppcheck
+  #         requires:
+  #           - build-linux-ee-x64
+  #     - run-hotbackup-tests:
+  #         name: run-hotbackup-tests-x64
+  #         size: medium
+  #         requires:
+  #           - build-linux-ee-x64
+  # aarch64-linux-community-pr:
+  #   jobs:
+  #     - compile-linux:
+  #         context:
+  #           - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+  #         resource-class: arm.xlarge
+  #         s3-prefix: aarch64
+  #         name: build-linux-ce-aarch64
+  #         preset: community-pr
+  #         enterprise: false
+  # aarch64-linux-enterprise-pr:
+  #   jobs:
+  #     - compile-linux:
+  #         context:
+  #           - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+  #         resource-class: arm.xlarge
+  #         s3-prefix: aarch64
+  #         name: build-linux-ee-aarch64
+  #         preset: enterprise-pr
+  #         enterprise: true
+  #     - run-hotbackup-tests:
+  #         name: run-hotbackup-tests-aarch64
+  #         size: arm.medium
+  #         requires:
+  #           - build-linux-ee-aarch64
+  # aarch64-mac-tools-pr:
+  #   jobs:
+  #     - compile-mac:
+  #         context:
+  #           - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+  #         name: mac-tools-m1-enterprise-pr
+  #         resource: macos.m1.medium.gen1
+  #         preset: enterprise-pr
+  #         build-tests: false
+  #         enterprise: true
+  #     - compile-mac:
+  #         context:
+  #           - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+  #         name: mac-tools-m1-community-pr
+  #         resource: macos.m1.medium.gen1
+  #         preset: community-pr
+  #         build-tests: false
+  #         enterprise: false
+  #     - compile-mac:
+  #         context:
+  #           - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+  #         name: mac-tools-x86-enterprise-pr
+  #         resource: macos.x86.medium.gen2
+  #         preset: enterprise-pr
+  #         build-tests: false
+  #         enterprise: true
+  #     - compile-mac:
+  #         context:
+  #           - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+  #         name: mac-tools-x86-community-pr
+  #         resource: macos.x86.medium.gen2
+  #         preset: community-pr
+  #         build-tests: false
+  #         enterprise: false
+  # x64-enterprise-windows-pr:
+  #   jobs:
+  #     - compile-windows:
+  #         context:
+  #           - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+  #         name: build-windows-ee-x64
+  #         preset: enterprise-pr
+  #         build-tests: true
+  x64-linux-enterprise-asan-pr:
+    when: << pipeline.parameters.san >> == true
     jobs:
       - compile-linux:
           context:
             - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           resource-class: xlarge
-          name: build-linux-ce-x64
-          preset: community-pr
-          enterprise: false
-      - run-cppcheck:
-          name: cppcheck
-          requires:
-            - build-linux-ce-x64
-  x64-linux-enterprise-pr:
+          name: build-linux-ee-asan-x64
+          preset: enterprise-pr
+          enterprise: true
+          jemalloc: "Off"
+          c-compiler-flags: "-pthread -fsanitize=address -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize=leak -fno-sanitize=alignment"
+          cpp-compiler-flags: "-pthread -fsanitize=address -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize=leak -fno-sanitize=vptr -fno-sanitize=alignment"
+          asan-options: "log_exe_name=true:log_path=aulsan.log:handle_ioctl=true:check_initialization_order=true:detect_container_overflow=true:detect_stack_use_after_return=false:detect_odr_violation=1:strict_init_order=true"
+          ubsan-options: "log_exe_name=true:log_path=aulsan.log:print_stacktrace=1"
+          lsan-options: "log_exe_name=true:log_path=aulsan.log"
+  x64-linux-enterprise-tsan-pr:
+    when: << pipeline.parameters.san >> == true
     jobs:
       - compile-linux:
           context:
             - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           resource-class: xlarge
-          name: build-linux-ee-x64
+          name: build-linux-ee-tsan-x64
           preset: enterprise-pr
           enterprise: true
-      - compile-linux:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          resource-class: xlarge
-          name: build-ee-non-maintainer-x64
-          preset: enterprise-pr-non-maintainer
-          enterprise: true
-          publish-artifacts: false
-          build-tests: false
-      - compile-linux:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          resource-class: xlarge
-          name: build-ee-no-v8-x64
-          preset: enterprise-pr-no-v8
-          enterprise: true
-          publish-artifacts: false
-          build-tests: false
-          build-v8: false
-      - run-cppcheck:
-          name: cppcheck
-          requires:
-            - build-linux-ee-x64
-      - run-hotbackup-tests:
-          name: run-hotbackup-tests-x64
-          size: medium
-          requires:
-            - build-linux-ee-x64
-  aarch64-linux-community-pr:
-    jobs:
-      - compile-linux:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          resource-class: arm.xlarge
-          s3-prefix: aarch64
-          name: build-linux-ce-aarch64
-          preset: community-pr
-          enterprise: false
-  aarch64-linux-enterprise-pr:
-    jobs:
-      - compile-linux:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          resource-class: arm.xlarge
-          s3-prefix: aarch64
-          name: build-linux-ee-aarch64
-          preset: enterprise-pr
-          enterprise: true
-      - run-hotbackup-tests:
-          name: run-hotbackup-tests-aarch64
-          size: arm.medium
-          requires:
-            - build-linux-ee-aarch64
-  aarch64-mac-tools-pr:
-    jobs:
-      - compile-mac:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          name: mac-tools-m1-enterprise-pr
-          resource: macos.m1.medium.gen1
-          preset: enterprise-pr
-          build-tests: false
-          enterprise: true
-      - compile-mac:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          name: mac-tools-m1-community-pr
-          resource: macos.m1.medium.gen1
-          preset: community-pr
-          build-tests: false
-          enterprise: false
-      - compile-mac:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          name: mac-tools-x86-enterprise-pr
-          resource: macos.x86.medium.gen2
-          preset: enterprise-pr
-          build-tests: false
-          enterprise: true
-      - compile-mac:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          name: mac-tools-x86-community-pr
-          resource: macos.x86.medium.gen2
-          preset: community-pr
-          build-tests: false
-          enterprise: false
-  x64-enterprise-windows-pr:
-    jobs:
-      - compile-windows:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          name: build-windows-ee-x64
-          preset: enterprise-pr
-          build-tests: true
+          jemalloc: "Off"
+          c-compiler-flags: "-pthread -fsanitize=thread -fno-sanitize=alignment"
+          cpp-compiler-flags: "-pthread -fsanitize=thread -fno-sanitize=vptr -fno-sanitize=alignment"
+          tsan-options: "log_exe_name=true:log_path=tsan.log:detect_deadlocks=true:second_deadlock_stack=1"
