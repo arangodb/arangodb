@@ -437,6 +437,9 @@ TEST_F(DocumentStateFollowerTest, follower_ignores_invalid_transactions) {
   EXPECT_CALL(*transactionHandlerMock,
               applyEntry(entries[0].getInnerOperation()))
       .Times(0);
+  // we do not actually commit anything, because the transaction is invalid, but
+  // we still release the entry!
+  EXPECT_CALL(*stream, release(LogIndex{1})).Times(1);
   res = follower->applyEntries(std::move(entryIterator));
   ASSERT_TRUE(res.get().ok());
   Mock::VerifyAndClearExpectations(transactionHandlerMock.get());

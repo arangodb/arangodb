@@ -125,9 +125,9 @@ auto ApplyEntriesState::processEntry(UserTransaction auto& op, LogIndex index)
     return ResultT<ProcessResult>::success(ProcessResult::kContinue);
   }
 
-  if constexpr (FinishesUserTransaction<OpType> ||
-                std::is_same_v<OpType,
-                               ReplicatedOperation::IntermediateCommit>) {
+  constexpr bool isIntermediateCommit =
+      std::is_same_v<OpType, ReplicatedOperation::IntermediateCommit>;
+  if constexpr (FinishesUserTransaction<OpType> || isIntermediateCommit) {
     // this is either a commit or an abort - we remove the transaction from the
     // active transaction map and instead insert it in the pending transactions,
     // so other operations can wait for it to finish
@@ -135,7 +135,9 @@ auto ApplyEntriesState::processEntry(UserTransaction auto& op, LogIndex index)
     // because subsequent operations that belong to the same transaction will
     // simply start a new transaction actor with the same transaction id
     _activeTransactions.erase(op.tid);
-    _pendingTransactions.emplace(pid);
+    _pendingTransactions.emplace(
+        pid, TransactionInfo{.tid = op.tid,
+                             .intermediateCommit = isIntermediateCommit});
   }
 
   if constexpr (FinishesUserTransaction<OpType>) {
@@ -333,13 +335,11 @@ void ApplyEntriesState::continueBatch() {
     }
   } while (_batch->_currentEntry.has_value());
 
-  if (not _pendingTransactions.empty()) {
-    // we have processed all entries, but there are still pending transactions
-    // that need to finish before we can continue
-    return;
+  if (_pendingTransactions.empty()) {
+    resolveBatch(Result{});
   }
-
-  resolveBatch(Result{});
+  // we have processed all entries, but there are still pending transactions
+  // that we need to wait for, before we can resolve the batch
 }
 
 }  // namespace arangodb::replication2::replicated_state::document::actor

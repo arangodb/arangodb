@@ -88,19 +88,9 @@ struct TransactionState {
             }
             if constexpr (ModifiesUserTransaction<OpType>) {
               if (originalRes.fail()) {
-                state._guardedData.doUnderLock([&](auto& data) {
-                  data.activeTransactions.markAsInactive(op.tid);
-                });
-                handlers.transactionHandler->removeTransaction(op.tid);
                 skip = true;
                 return;
               }
-            }
-
-            if constexpr (FinishesUserTransaction<OpType>) {
-              state._guardedData.doUnderLock([&](auto& data) {
-                data.activeTransactions.markAsInactive(op.tid);
-              });
             }
 
             maybeFinishActor<OpType>(pid);
@@ -164,7 +154,7 @@ struct TransactionHandler : HandlerBase<Runtime, TransactionState> {
   }
 
   auto operator()(auto&& msg) -> std::unique_ptr<TransactionState> {
-    LOG_CTX("6d904", FATAL, this->state->state.loggerContext)
+    LOG_CTX("6d904", FATAL, this->state->loggerContext)
         << "Transaction actor received unexpected message "
         << typeid(msg).name() << " " << inspection::json(msg);
     FATAL_ERROR_EXIT();

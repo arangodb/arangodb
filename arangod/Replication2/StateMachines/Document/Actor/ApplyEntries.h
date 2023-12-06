@@ -32,9 +32,11 @@
 #include "Actor/ExitReason.h"
 #include "Actor/LocalActorPID.h"
 #include "Basics/application-exit.h"
+#include "Inspection/Transformers.h"
 #include "Replication2/LoggerContext.h"
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
+#include "VocBase/Identifiers/TransactionId.h"
 
 namespace arangodb::replication2::replicated_state::document::actor {
 
@@ -55,7 +57,13 @@ struct ApplyEntriesState {
   void resign();
 
   friend inline auto inspect(auto& f, ApplyEntriesState& x) {
-    return f.object(x).fields(f.field("type", "ApplyEntriesState"));
+    return f.object(x).fields(
+        f.field("activeTransactions", x._activeTransactions)
+            .transformWith(
+                inspection::mapToListTransformer(x._activeTransactions)),
+        f.field("pendingTransactions", x._pendingTransactions)
+            .transformWith(
+                inspection::mapToListTransformer(x._pendingTransactions)));
   }
 
  private:
@@ -124,9 +132,24 @@ struct ApplyEntriesState {
 
   // list of currently active, i.e., still ongoing transactions.
   std::unordered_map<TransactionId, LocalActorPID> _activeTransactions;
+
+  struct TransactionInfo {
+    TransactionId tid;
+    bool intermediateCommit;
+
+    friend inline auto inspect(auto& f, TransactionInfo& x) {
+      return f.object(x).fields(
+          f.field("tid", x.tid),
+          f.field("intermediateCommit", x.intermediateCommit));
+    }
+  };
   // list of pending transactions - these are transactions which have been
   // sent a commit message, but have not yet finished
-  std::unordered_set<LocalActorPID> _pendingTransactions;
+  // We keep the transaction id and the information whether this actor was
+  // finished with in intermediate commit or not, because for completed
+  // transaction this actor is responsible to remove the transaction from the
+  // transaction handler
+  std::unordered_map<LocalActorPID, TransactionInfo> _pendingTransactions;
 
   template<typename Runtime>
   friend struct ApplyEntriesHandler;
@@ -201,15 +224,36 @@ struct ApplyEntriesHandler : HandlerBase<Runtime, ApplyEntriesState> {
         << inspection::json(msg);
     if (msg.reason != ExitReason::kShutdown) {
       ADB_PROD_ASSERT(this->state->_pendingTransactions.contains(msg.actor))
-          << inspection::json(this->state->_pendingTransactions) << " msg "
-          << inspection::json(msg);
+          << inspection::json(this->state) << " msg " << inspection::json(msg);
       ADB_PROD_ASSERT(msg.reason == ExitReason::kFinished)
           << inspection::json(msg);
     }
-    this->state->_pendingTransactions.erase(msg.actor);
-    if (this->state->_pendingTransactions.empty() && this->state->_batch) {
-      // all pending trx finished, so we can now continuing processing the batch
-      this->state->continueBatch();
+    auto it = this->state->_pendingTransactions.find(msg.actor);
+    ADB_PROD_ASSERT(it != this->state->_pendingTransactions.end() ||
+                    msg.reason == ExitReason::kShutdown)
+        << "received down message for unknown actor "
+        << inspection::json(this->state) << " msg " << inspection::json(msg);
+
+    if (it != this->state->_pendingTransactions.end()) {
+      if (!it->second.intermediateCommit) {
+        this->state->_state._guardedData.doUnderLock([&](auto& data) {
+          data.activeTransactions.markAsInactive(it->second.tid);
+        });
+        // this transaction has finished, so we can remove it from the
+        // transaction handler
+        // normally this is already done when the transaction is committed or
+        // aborted, but in case the transaction is broken and all operations are
+        // skipped, we need to remove it here
+        // For details about this special case see the Transaction actor
+        this->state->handlers.transactionHandler->removeTransaction(
+            it->second.tid);
+      }
+      this->state->_pendingTransactions.erase(it);
+      if (this->state->_pendingTransactions.empty() && this->state->_batch) {
+        // all pending trx finished, so we can now continuing processing the
+        // batch
+        this->state->continueBatch();
+      }
     }
     return std::move(this->state);
   }

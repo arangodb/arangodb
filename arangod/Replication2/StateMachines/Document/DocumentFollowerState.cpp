@@ -403,7 +403,6 @@ auto DocumentFollowerState::applyEntries(
     std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
   futures::Promise<Result> promise;
   auto future = promise.getFuture();
-  LOG_DEVEL << __FUNCTION__;
 
   _runtime->dispatch<actor::message::ApplyEntriesMessages>(
       _applyEntriesActor, _applyEntriesActor,
