@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Replication2/StateMachines/Document/ActiveTransactionsQueue.h"
 #include "Replication2/StateMachines/Document/DocumentCore.h"
 #include "Replication2/StateMachines/Document/DocumentStateErrorHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
@@ -108,7 +107,6 @@ struct DocumentFollowerState
 
     std::unique_ptr<DocumentCore> core;
     std::uint64_t currentSnapshotVersion;
-    ActiveTransactionsQueue activeTransactions;
   };
 
   std::shared_ptr<IDocumentStateNetworkHandler> const _networkHandler;

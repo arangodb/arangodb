@@ -34,6 +34,7 @@
 #include "Basics/application-exit.h"
 #include "Inspection/Transformers.h"
 #include "Replication2/LoggerContext.h"
+#include "Replication2/StateMachines/Document/ActiveTransactionsQueue.h"
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 #include "VocBase/Identifiers/TransactionId.h"
@@ -58,9 +59,8 @@ struct ApplyEntriesState {
 
   friend inline auto inspect(auto& f, ApplyEntriesState& x) {
     return f.object(x).fields(
-        f.field("activeTransactions", x._activeTransactions)
-            .transformWith(
-                inspection::mapToListTransformer(x._activeTransactions)),
+        f.field("transactionMap", x._transactionMap)
+            .transformWith(inspection::mapToListTransformer(x._transactionMap)),
         f.field("pendingTransactions", x._pendingTransactions)
             .transformWith(
                 inspection::mapToListTransformer(x._pendingTransactions)));
@@ -107,22 +107,18 @@ struct ApplyEntriesState {
   auto beforeApplyEntry(FinishesUserTransaction auto const& op, LogIndex index)
       -> bool;
 
-  auto applyDataDefinitionEntry(DocumentFollowerState::GuardedData& data,
-                                ReplicatedOperation::DropShard const& op)
+  auto applyDataDefinitionEntry(ReplicatedOperation::DropShard const& op)
       -> Result;
-  auto applyDataDefinitionEntry(DocumentFollowerState::GuardedData& data,
-                                ReplicatedOperation::ModifyShard const& op)
+  auto applyDataDefinitionEntry(ReplicatedOperation::ModifyShard const& op)
       -> Result;
   template<class T>
   requires IsAnyOf<T, ReplicatedOperation::CreateShard,
                    ReplicatedOperation::CreateIndex,
                    ReplicatedOperation::DropIndex>
-  auto applyDataDefinitionEntry(DocumentFollowerState::GuardedData& data,
-                                T const& op) -> Result;
+  auto applyDataDefinitionEntry(T const& op) -> Result;
 
   template<class T>
-  auto applyEntryAndReleaseIndex(DocumentFollowerState::GuardedData& data,
-                                 T const& op) -> Result;
+  auto applyEntryAndReleaseIndex(T const& op) -> Result;
 
   LocalActorPID myPid;
   LoggerContext const loggerContext;
@@ -130,8 +126,10 @@ struct ApplyEntriesState {
   DocumentFollowerState& _state;
   std::unique_ptr<Batch> _batch;
 
-  // list of currently active, i.e., still ongoing transactions.
-  std::unordered_map<TransactionId, LocalActorPID> _activeTransactions;
+  // map of currently ongoing transactions to their respective actor pids
+  std::unordered_map<TransactionId, LocalActorPID> _transactionMap;
+
+  ActiveTransactionsQueue activeTransactions;
 
   struct TransactionInfo {
     TransactionId tid;
@@ -236,9 +234,7 @@ struct ApplyEntriesHandler : HandlerBase<Runtime, ApplyEntriesState> {
 
     if (it != this->state->_pendingTransactions.end()) {
       if (!it->second.intermediateCommit) {
-        this->state->_state._guardedData.doUnderLock([&](auto& data) {
-          data.activeTransactions.markAsInactive(it->second.tid);
-        });
+        this->state->activeTransactions.markAsInactive(it->second.tid);
         // this transaction has finished, so we can remove it from the
         // transaction handler
         // normally this is already done when the transaction is committed or

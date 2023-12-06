@@ -59,11 +59,9 @@ void ApplyEntriesState::resign() {
 void ApplyEntriesState::resolveBatch(Result result) {
   _batch->promise.setValue(result);
   if (result.ok() && _batch->lastIndex.has_value()) {
-    _state._guardedData.doUnderLock([&](auto& data) {
-      auto releaseIdx = data.activeTransactions.getReleaseIndex().value_or(
-          _batch->lastIndex.value());
-      releaseIndex(releaseIdx);
-    });
+    auto releaseIdx = activeTransactions.getReleaseIndex().value_or(
+        _batch->lastIndex.value());
+    releaseIndex(releaseIdx);
   }
   _batch.reset();
 }
@@ -73,15 +71,12 @@ auto ApplyEntriesState::processEntry(DataDefinition auto& op, LogIndex index)
   if (not _pendingTransactions.empty()) {
     return ProcessResult::kWaitForPendingTrx;
   }
-  return _state._guardedData.doUnderLock(
-      [&](auto& data) -> ResultT<ProcessResult> {
-        auto res = applyDataDefinitionEntry(data, op);
-        if (res.fail()) {
-          return res;
-        }
-        _batch->lastIndex = index;
-        return ProcessResult::kContinue;
-      });
+  auto res = applyDataDefinitionEntry(op);
+  if (res.fail()) {
+    return res;
+  }
+  _batch->lastIndex = index;
+  return ProcessResult::kContinue;
 }
 
 auto ApplyEntriesState::processEntry(
@@ -97,18 +92,16 @@ auto ApplyEntriesState::processEntry(
   }
 
   _batch->lastIndex = index;
-  return _state._guardedData.doUnderLock([&](auto& data) {
-    data.activeTransactions.clear();
-    return ProcessResult::kContinue;
-  });
+  activeTransactions.clear();
+  return ProcessResult::kContinue;
 }
 
 auto ApplyEntriesState::processEntry(UserTransaction auto& op, LogIndex index)
     -> ResultT<ProcessResult> {
   using OpType = std::remove_cvref_t<decltype(op)>;
   LocalActorPID pid;
-  auto it = _activeTransactions.find(op.tid);
-  if (it != _activeTransactions.end()) {
+  auto it = _transactionMap.find(op.tid);
+  if (it != _transactionMap.end()) {
     pid = it->second;
   } else {
     pid = _state._runtime->template spawn<actor::TransactionActor>(
@@ -116,7 +109,7 @@ auto ApplyEntriesState::processEntry(UserTransaction auto& op, LogIndex index)
     LOG_CTX("8a74c", DEBUG, loggerContext)
         << "spawned transaction actor " << pid.id << " for trx " << op.tid;
     _state._runtime->monitorActor(myPid, pid);
-    _activeTransactions.emplace(op.tid, pid);
+    _transactionMap.emplace(op.tid, pid);
   }
 
   if (not beforeApplyEntry(op, index)) {
@@ -134,7 +127,7 @@ auto ApplyEntriesState::processEntry(UserTransaction auto& op, LogIndex index)
     // Note: we handle intermediate commits the same way as regular commits,
     // because subsequent operations that belong to the same transaction will
     // simply start a new transaction actor with the same transaction id
-    _activeTransactions.erase(op.tid);
+    _transactionMap.erase(op.tid);
     _pendingTransactions.emplace(
         pid, TransactionInfo{.tid = op.tid,
                              .intermediateCommit = isIntermediateCommit});
@@ -162,7 +155,6 @@ auto ApplyEntriesState::processEntry(UserTransaction auto& op, LogIndex index)
 }
 
 auto ApplyEntriesState::applyDataDefinitionEntry(
-    DocumentFollowerState::GuardedData& data,
     ReplicatedOperation::DropShard const& op) -> Result {
   // We first have to abort all transactions for this shard.
   // This stunt may seem unnecessary, as the leader counterpart takes care of
@@ -179,13 +171,12 @@ auto ApplyEntriesState::applyDataDefinitionEntry(
           << " before dropping the shard: " << abortRes.errorMessage();
       return abortRes;
     }
-    data.activeTransactions.markAsInactive(tid);
+    activeTransactions.markAsInactive(tid);
   }
-  return applyEntryAndReleaseIndex(data, op);
+  return applyEntryAndReleaseIndex(op);
 }
 
 auto ApplyEntriesState::applyDataDefinitionEntry(
-    DocumentFollowerState::GuardedData& data,
     ReplicatedOperation::ModifyShard const& op) -> Result {
   // Note that locking the shard is not necessary on the follower.
   // However, we still do it for safety reasons.
@@ -203,21 +194,19 @@ auto ApplyEntriesState::applyDataDefinitionEntry(
 
     return res;
   }
-  return applyEntryAndReleaseIndex(data, op);
+  return applyEntryAndReleaseIndex(op);
 }
 
 template<class T>
 requires IsAnyOf<T, ReplicatedOperation::CreateShard,
                  ReplicatedOperation::CreateIndex,
                  ReplicatedOperation::DropIndex>
-auto ApplyEntriesState::applyDataDefinitionEntry(
-    DocumentFollowerState::GuardedData& data, T const& op) -> Result {
-  return applyEntryAndReleaseIndex(data, op);
+auto ApplyEntriesState::applyDataDefinitionEntry(T const& op) -> Result {
+  return applyEntryAndReleaseIndex(op);
 }
 
 template<class T>
-auto ApplyEntriesState::applyEntryAndReleaseIndex(
-    DocumentFollowerState::GuardedData& data, T const& op) -> Result {
+auto ApplyEntriesState::applyEntryAndReleaseIndex(T const& op) -> Result {
   auto originalRes = handlers.transactionHandler->applyEntry(op);
   auto res = handlers.errorHandler->handleOpResult(op, originalRes);
   if (res.fail()) {
@@ -228,37 +217,31 @@ auto ApplyEntriesState::applyEntryAndReleaseIndex(
 
 auto ApplyEntriesState::beforeApplyEntry(ModifiesUserTransaction auto const& op,
                                          LogIndex index) -> bool {
-  return _state._guardedData.doUnderLock([&](auto& data) {
-    data.activeTransactions.markAsActive(op.tid, index);
-    return true;
-  });
+  activeTransactions.markAsActive(op.tid, index);
+  return true;
 }
 
 auto ApplyEntriesState::beforeApplyEntry(
     ReplicatedOperation::IntermediateCommit const& op, LogIndex) -> bool {
-  return _state._guardedData.doUnderLock([&](auto& data) {
-    if (!data.activeTransactions.getTransactions().contains(op.tid)) {
-      LOG_CTX("b41dc", INFO, data.core->loggerContext)
-          << "will not apply intermediate commit for transaction " << op.tid
-          << " because it is not active";
-      return false;
-    }
-    return true;
-  });
+  if (!activeTransactions.getTransactions().contains(op.tid)) {
+    LOG_CTX("b41dc", INFO, loggerContext)
+        << "will not apply intermediate commit for transaction " << op.tid
+        << " because it is not active";
+    return false;
+  }
+  return true;
 }
 
 auto ApplyEntriesState::beforeApplyEntry(FinishesUserTransaction auto const& op,
                                          LogIndex index) -> bool {
-  return _state._guardedData.doUnderLock([&](auto& data) {
-    if (!data.activeTransactions.getTransactions().contains(op.tid)) {
-      // Single commit/abort operations are possible.
-      LOG_CTX("cf7ea", INFO, data.core->loggerContext)
-          << "will not finish transaction " << op.tid
-          << " because it is not active";
-      return false;
-    }
-    return true;
-  });
+  if (!activeTransactions.getTransactions().contains(op.tid)) {
+    // Single commit/abort operations are possible.
+    LOG_CTX("cf7ea", INFO, loggerContext)
+        << "will not finish transaction " << op.tid
+        << " because it is not active";
+    return false;
+  }
+  return true;
 }
 
 void ApplyEntriesState::releaseIndex(std::optional<LogIndex> index) {
