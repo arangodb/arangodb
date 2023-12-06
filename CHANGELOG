@@ -1,6 +1,93 @@
 devel
 -----
 
+* Added option `--http.handle-content-encoding-for-unauthenticated-requests`
+  for arangod. If set to `true`, the arangod server will automatically
+  uncompress incoming HTTP requests with Content-Encodings gzip and deflate
+  even if the request is not authenticated.
+  If the option is set to `false`, any unauthenticated request that has a 
+  Content-Encoding header set will be rejected. This is the default setting.
+
+* Added options `--compress-transfer` and `--compress-request-threshold` to 
+  all client tools.
+  These options can be used to enable transparent compression of the data
+  that is sent between the client tools and the ArangoDB server.
+
+  If the option `--compress-transfer` is set to `true`, the client-tools
+  will add an extra HTTP header `Accept-Encoding: deflate` to all requests
+  they make to the server. This allows the server to compress its responses
+  before sending them back to the client tools.
+
+  If the option is set to `true`, the client will also transparently compress
+  their own requests to the server if the size of the request body (in bytes)
+  is at least the value of the startup option `--compress-request-treshold`. 
+  The default value for this option is `0`, which disables compression of the
+  request bodies in the client tools. To opt in to sending compressed data,
+  the option must be set to a value greater than zero. 
+  Request body compression will be performed using the deflate compression
+  algorithm. The client tools will also add a `Content-Encoding: deflate`
+  header to the request when the request body was compressed.
+  As compression will use CPU cycles, it should be activated only in case the
+  network communication between the client tools and the server is slow and
+  there is enough CPU capacity left for the extra compression/decompression
+  work. Furthermore, requests should only be compressed when they exceed a
+  certain minimum size, e.g. 250 bytes. 
+  Too small requests are typically not compressible very well.
+
+* Added startup option `--http.compress-response-threshold` to the ArangoDB
+  server. The value of this specifies the threshold value (in bytes) from
+  which on response bodies will be sent out compressed by the server.
+
+  The default value for this option is `0`, which disables sending out
+  compressed response bodies. To enable compression, the option should be
+  set to a value greater than 0. The selected value should be large enough
+  to justify the compression overhead. Too small response bodies are typically
+  not well compressible.
+
+  Regardless of the value of this option, response body compression will only
+  happen in case the client advertised that it expects a compressed response
+  body by sending an `Accept-Encoding: gzip` or `Accept-Encoding: deflate`
+  header with its request. If that header is missing, no response compression
+  will be performed by the server.
+  As compression will use CPU cycles, it should be activated only in case the
+  network communication between the server and clients is slow and there is 
+  enough CPU capacity left for the extra compression/decompression work.
+  work. Furthermore, responses should only be compressed when they exceed a
+  certain minimum size, e.g. 250 bytes. 
+
+* Fixed BTS-1698: Inverted index can be hinted/forced for UPSERT, which is 
+  invalid.
+
+* Issue a warning when an UPSERT is used on a collection with multiple shards
+  or on a single-shard collection when a DistributeNode is used. In these
+  cases, the UPSERT cannot guarantee it has observed its own writes. The
+  warning can be opted-out from explicitly by setting the `readOwnWrites` 
+  option of the UPSERT operation to `false`.
+
+* Added "readOwnWrites" option for AQL UPSERT operations.
+
+  If set to `true` (which is the default), an UPSERT operation will process
+  its inputs one by one. That way an UPSERT can observe its own writes and can
+  handle modifying the same target document multiple times in the same query.
+
+  When the "readOwnWrite" option is set to `false`, an UPSERT can process its
+  input in batches (a batch is normally 1000 inputs), so it can execute a lot
+  faster. However, when using batches, an UPSERT cannot observe its own writes.
+  So the "readOwnWrite" option should only be set to `false` if it can be
+  guaranteed that the input to the UPSERT will lead to disjoint documents 
+  being inserted/updated/replaced.
+
+* Optimize equality lookups and prefix matches that use the AQL like function.
+  The optimization will turn `LIKE(doc.attribute, 'fixed string')` into an
+  equality lookup, and `LIKE(doc.attribute, 'prefix%')` into a range query.
+  That allows indexes to be used in case they are present on the underlying
+  attribute.
+  The optimization is applied only if the second parameter to the `LIKE`
+  function is a fixed string and if third parameter to the `LIKE` function 
+  is either not set or set to a value of `false`.
+
+* FE-388: Update UI colors & fonts to new styles.
+
 * Change default value for arangoimport's `--type` file type option from
   "json" to "auto".
   The default value of "auto" will guess the type of the import file based on

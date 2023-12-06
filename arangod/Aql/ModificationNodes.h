@@ -407,19 +407,7 @@ class UpsertNode : public ModificationNode {
              Collection const* collection, ModificationOptions const& options,
              Variable const* inDocVariable, Variable const* insertVariable,
              Variable const* updateVariable, Variable const* outVariableNew,
-             bool isReplace)
-      : ModificationNode(plan, id, collection, options, nullptr,
-                         outVariableNew),
-        _inDocVariable(inDocVariable),
-        _insertVariable(insertVariable),
-        _updateVariable(updateVariable),
-        _isReplace(isReplace) {
-    TRI_ASSERT(_inDocVariable != nullptr);
-    TRI_ASSERT(_insertVariable != nullptr);
-    TRI_ASSERT(_updateVariable != nullptr);
-
-    TRI_ASSERT(_outVariableOld == nullptr);
-  }
+             bool isReplace, bool canReadOwnWrites);
 
   UpsertNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -482,6 +470,8 @@ class UpsertNode : public ModificationNode {
 
   /// @brief whether to perform a REPLACE (or an UPDATE alternatively)
   bool _isReplace;
+
+  bool _canReadOwnWrites;
 };
 
 }  // namespace aql

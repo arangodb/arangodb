@@ -132,7 +132,7 @@ export const PipelineConfig = () => {
               isDisabled={isDisabled}
               onClick={() => push({ type: "identity" })}
               variant="ghost"
-              colorScheme="blue"
+              colorScheme="green"
               leftIcon={<AddIcon />}
             >
               Add analyzer

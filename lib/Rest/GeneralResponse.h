@@ -85,8 +85,9 @@ class GeneralResponse {
     _contentType = ContentType::CUSTOM;
   }
 
-  virtual void setAllowCompression(bool allowed) noexcept = 0;
-  virtual bool isCompressionAllowed() const noexcept = 0;
+  virtual void setAllowCompression(
+      rest::ResponseCompressionType rct) noexcept = 0;
+  virtual rest::ResponseCompressionType compressionAllowed() const noexcept = 0;
 
   void setContentTypeRequested(ContentType type) noexcept {
     _contentTypeRequested = type;
@@ -162,16 +163,18 @@ class GeneralResponse {
     return TRI_ERROR_NO_ERROR;
   }
 
+  virtual size_t bodySize() const = 0;
+
   /// used for head
-  bool generateBody() const { return _generateBody; }
+  bool generateBody() const noexcept { return _generateBody; }
 
   /// used for head-responses
-  bool setGenerateBody(bool generateBody) {
+  bool setGenerateBody(bool generateBody) noexcept {
     return _generateBody = generateBody;
   }
 
-  virtual ErrorCode deflate() { return TRI_ERROR_NO_ERROR; }
-  virtual ErrorCode gzip() { return TRI_ERROR_NO_ERROR; }
+  virtual ErrorCode zlibDeflate(bool onlyIfSmaller) = 0;
+  virtual ErrorCode gzipCompress(bool onlyIfSmaller) = 0;
 
  protected:
   std::unordered_map<std::string, std::string>

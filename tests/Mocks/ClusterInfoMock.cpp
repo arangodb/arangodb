@@ -351,7 +351,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       std::lock_guard lock{*cacheMutex};
       *isCleaned = true;
       for (auto& cb : agencyCallbacks) {
-        _agencyCallbackRegistry->unregisterCallback(cb);
+        _agencyCallbackRegistry.unregisterCallback(cb);
       }
     } catch (std::exception const&) {
     }
@@ -539,7 +539,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         "Current/Collections/" + databaseName + "/" + info.collectionID,
         closure, true, false);
 
-    Result r = _agencyCallbackRegistry->registerCallback(agencyCallback);
+    Result r = _agencyCallbackRegistry.registerCallback(agencyCallback);
     if (r.fail()) {
       return r;
     }

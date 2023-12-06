@@ -1011,7 +1011,8 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
 
     SimpleHttpClientParams params(timeout, false, addContentLength);
-    params.setSupportDeflate(false);
+    // turn off transparent compression/decompression
+    params.setCompressRequestThreshold(0);
     // security by obscurity won't work. Github requires a useragent nowadays.
     params.setExposeArangoDB(true);
     if (!jwtToken.empty()) {
