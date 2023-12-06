@@ -182,7 +182,6 @@ tests/js/client/wal_cleanup
 tests/js/client/restart
 tests/js/client/assets
 tests/js/client/assets/queuetest
-tests/js/client/active-failover
 tests/js/client/load-balancing
 tests/js/client/communication
 tests/js/client/chaos
