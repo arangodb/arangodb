@@ -15,6 +15,9 @@ parameters:
   build-docker-image:
     type: string
     default: ""
+  san:
+    type: boolean
+    default: false
   replication-two:
     type: boolean
     default: false # We use replication1 as default.
