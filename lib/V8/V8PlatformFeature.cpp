@@ -122,7 +122,7 @@ void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
 // terminate the entire process
 #ifdef V8_UPGRADE
 void oomCallback(char const* location, v8::OOMDetails const& details) {
-  LOG_TOPIC("fd5c4", FATAL, arangodb::Logger::V8)
+  LOG_TOPIC("cfa4b", FATAL, arangodb::Logger::V8)
       << "out of " << (details.is_heap_oom ? "heap " : "") << "memory in V8 ("
       << location << ")" << (details.detail == nullptr ? "" : ": ")
       << (details.detail == nullptr ? "" : details.detail);
