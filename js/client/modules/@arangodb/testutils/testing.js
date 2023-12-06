@@ -144,9 +144,6 @@ let optionsDocumentation = [
   '   - `sanitizer`: if set the programs are run with enabled sanitizer',
   '     and need longer timeouts',
   '',
-  '   - `activefailover` starts active failover single server setup (active/passive)',
-  '   -  `singles` the number of servers in an active failover test, defaults to 2',
-  '',
   '   - `valgrind`: if set the programs are run with the valgrind',
   '     memory checker; should point to the valgrind executable',
   '   - `valgrindFileBase`: string to prepend to the report filename',
@@ -219,7 +216,6 @@ const optionsDefaults = {
   'exceptionFilter': null,
   'exceptionCount': 1,
   'sanitizer': isSan,
-  'activefailover': false,
   'singles': 1,
   'setInterruptable': ! internal.isATTy(),
   'sniff': false,
@@ -622,9 +618,6 @@ function unitTest (cases, options) {
   }
   if (options.setInterruptable) {
     internal.SetSignalToImmediateDeadline();
-  }
-  if (options.activefailover && (options.singles === 1)) {
-    options.singles =  2;
   }
   if (options.isSan) {
     ['ASAN_OPTIONS',
