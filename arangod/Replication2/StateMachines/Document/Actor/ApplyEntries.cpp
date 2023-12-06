@@ -24,6 +24,7 @@
 #include "ApplyEntries.h"
 
 #include <memory>
+#include <optional>
 #include <type_traits>
 
 #include "Actor/LocalActorPID.h"
@@ -31,6 +32,7 @@
 
 #include "Assertions/ProdAssert.h"
 
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/Actor/Transaction.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 #include "Replication2/StateMachines/Document/ReplicatedOperation.h"
@@ -41,75 +43,152 @@ namespace arangodb::replication2::replicated_state::document::actor {
 
 using namespace arangodb::actor;
 
-void ApplyEntriesState::setBatch(
-    std::unique_ptr<DocumentFollowerState::EntryIterator> entries,
-    futures::Promise<Result> promise) {
-  ADB_PROD_ASSERT(_batch == nullptr);
-  _batch = std::make_unique<Batch>(std::move(entries), std::move(promise));
+template<typename Runtime>
+auto ApplyEntriesHandler<Runtime>::operator()(
+    message::ApplyEntries&& msg) noexcept
+    -> std::unique_ptr<ApplyEntriesState> {
+  // TODO - remove the try and make continueBatch noexcept
+  try {
+    ADB_PROD_ASSERT(this->state->_batch == nullptr);
+    this->state->_batch = std::make_unique<ApplyEntriesState::Batch>(
+        std::move(msg.entries), std::move(msg.promise));
+    continueBatch();
+  } catch (std::exception& e) {
+    LOG_DEVEL_CTX(this->state->_state.loggerContext)
+        << "caught exception while applying entries: " << e.what();
+    throw;
+  } catch (...) {
+    LOG_DEVEL_CTX(this->state->_state.loggerContext)
+        << "caught unknown exception while applying entries";
+    throw;
+  }
+  return std::move(this->state);
 }
 
-void ApplyEntriesState::resign() {
-  if (_batch) {
-    _batch->promise.setValue(
+template<typename Runtime>
+auto ApplyEntriesHandler<Runtime>::operator()(message::Resign&& msg) noexcept
+    -> std::unique_ptr<ApplyEntriesState> {
+  resign();
+  this->finish(ExitReason::kFinished);
+  return std::move(this->state);
+}
+
+template<typename Runtime>
+auto ApplyEntriesHandler<Runtime>::operator()(
+    arangodb::actor::message::ActorDown<typename Runtime::ActorPID>&&
+        msg) noexcept -> std::unique_ptr<ApplyEntriesState> {
+  LOG_CTX("56a21", DEBUG, this->state->loggerContext)
+      << "applyEntries actor received actor down message "
+      << inspection::json(msg);
+  if (msg.reason != ExitReason::kShutdown) {
+    ADB_PROD_ASSERT(this->state->_pendingTransactions.contains(msg.actor))
+        << inspection::json(this->state) << " msg " << inspection::json(msg);
+    ADB_PROD_ASSERT(msg.reason == ExitReason::kFinished)
+        << inspection::json(msg);
+  }
+  auto it = this->state->_pendingTransactions.find(msg.actor);
+  ADB_PROD_ASSERT(it != this->state->_pendingTransactions.end() ||
+                  msg.reason == ExitReason::kShutdown)
+      << "received down message for unknown actor "
+      << inspection::json(this->state) << " msg " << inspection::json(msg);
+
+  if (it != this->state->_pendingTransactions.end()) {
+    if (!it->second.intermediateCommit) {
+      this->state->activeTransactions.markAsInactive(it->second.tid);
+      // this transaction has finished, so we can remove it from the
+      // transaction handler
+      // normally this is already done when the transaction is committed or
+      // aborted, but in case the transaction is broken and all operations are
+      // skipped, we need to remove it here
+      // For details about this special case see the Transaction actor
+      this->state->handlers.transactionHandler->removeTransaction(
+          it->second.tid);
+    }
+    this->state->_pendingTransactions.erase(it);
+    if (this->state->_pendingTransactions.empty() && this->state->_batch) {
+      // all pending trx finished, so we can now continuing processing the
+      // batch
+      continueBatch();
+    }
+  }
+  return std::move(this->state);
+}
+
+template<typename Runtime>
+void ApplyEntriesHandler<Runtime>::resign() {
+  if (this->state->_batch) {
+    resolveBatch(
         Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED});
-    _batch.reset();
   }
 }
 
-void ApplyEntriesState::resolveBatch(Result result) {
-  _batch->promise.setValue(result);
-  if (result.ok() && _batch->lastIndex.has_value()) {
-    auto releaseIdx = activeTransactions.getReleaseIndex().value_or(
-        _batch->lastIndex.value());
-    releaseIndex(releaseIdx);
+template<typename Runtime>
+void ApplyEntriesHandler<Runtime>::resolveBatch(Result result) {
+  if (result.ok()) {
+    std::optional<LogIndex> releaseIdx;
+    if (this->state->_batch->lastIndex.has_value()) {
+      releaseIdx = this->state->activeTransactions.getReleaseIndex().value_or(
+          this->state->_batch->lastIndex.value());
+    }
+    this->state->_batch->promise.setValue(releaseIdx);
+  } else {
+    this->state->_batch->promise.setValue(result);
   }
-  _batch.reset();
+  this->state->_batch.reset();
 }
 
-auto ApplyEntriesState::processEntry(DataDefinition auto& op, LogIndex index)
+template<typename Runtime>
+auto ApplyEntriesHandler<Runtime>::processEntry(DataDefinition auto& op,
+                                                LogIndex index)
     -> ResultT<ProcessResult> {
-  if (not _pendingTransactions.empty()) {
+  if (not this->state->_pendingTransactions.empty()) {
     return ProcessResult::kWaitForPendingTrx;
   }
   auto res = applyDataDefinitionEntry(op);
   if (res.fail()) {
     return res;
   }
-  _batch->lastIndex = index;
+  this->state->_batch->lastIndex = index;
   return ProcessResult::kContinue;
 }
 
-auto ApplyEntriesState::processEntry(
+template<typename Runtime>
+auto ApplyEntriesHandler<Runtime>::processEntry(
     ReplicatedOperation::AbortAllOngoingTrx& op, LogIndex index)
     -> ResultT<ProcessResult> {
-  if (not _pendingTransactions.empty()) {
+  if (not this->state->_pendingTransactions.empty()) {
     return ProcessResult::kWaitForPendingTrx;
   }
-  auto originalRes = handlers.transactionHandler->applyEntry(op);
-  auto res = handlers.errorHandler->handleOpResult(op, originalRes);
+  auto originalRes = this->state->handlers.transactionHandler->applyEntry(op);
+  auto res =
+      this->state->handlers.errorHandler->handleOpResult(op, originalRes);
   if (res.fail()) {
     return res;
   }
 
-  _batch->lastIndex = index;
-  activeTransactions.clear();
+  this->state->_batch->lastIndex = index;
+  this->state->activeTransactions.clear();
   return ProcessResult::kContinue;
 }
 
-auto ApplyEntriesState::processEntry(UserTransaction auto& op, LogIndex index)
+template<typename Runtime>
+auto ApplyEntriesHandler<Runtime>::processEntry(UserTransaction auto& op,
+                                                LogIndex index)
     -> ResultT<ProcessResult> {
   using OpType = std::remove_cvref_t<decltype(op)>;
   LocalActorPID pid;
-  auto it = _transactionMap.find(op.tid);
-  if (it != _transactionMap.end()) {
+  auto it = this->state->_transactionMap.find(op.tid);
+  if (it != this->state->_transactionMap.end()) {
     pid = it->second;
   } else {
-    pid = _state._runtime->template spawn<actor::TransactionActor>(
-        std::make_unique<actor::TransactionState>(_state));
-    LOG_CTX("8a74c", DEBUG, loggerContext)
+    pid = this->template spawn<actor::TransactionActor>(
+        std::make_unique<actor::TransactionState>(this->state->loggerContext,
+                                                  this->state->handlers,
+                                                  this->state->gid));
+    LOG_CTX("8a74c", DEBUG, this->state->loggerContext)
         << "spawned transaction actor " << pid.id << " for trx " << op.tid;
-    _state._runtime->monitorActor(myPid, pid);
-    _transactionMap.emplace(op.tid, pid);
+    this->monitor(pid);
+    this->state->_transactionMap.emplace(op.tid, pid);
   }
 
   if (not beforeApplyEntry(op, index)) {
@@ -127,18 +206,18 @@ auto ApplyEntriesState::processEntry(UserTransaction auto& op, LogIndex index)
     // Note: we handle intermediate commits the same way as regular commits,
     // because subsequent operations that belong to the same transaction will
     // simply start a new transaction actor with the same transaction id
-    _transactionMap.erase(op.tid);
-    _pendingTransactions.emplace(
-        pid, TransactionInfo{.tid = op.tid,
-                             .intermediateCommit = isIntermediateCommit});
+    this->state->_transactionMap.erase(op.tid);
+    this->state->_pendingTransactions.emplace(
+        pid, ApplyEntriesState::TransactionInfo{
+                 .tid = op.tid, .intermediateCommit = isIntermediateCommit});
   }
 
   if constexpr (FinishesUserTransaction<OpType>) {
-    _batch->lastIndex = index;
+    this->state->_batch->lastIndex = index;
   }
 
-  _state._runtime->dispatch<message::TransactionMessages>(
-      pid, pid, message::ProcessEntry{.op = std::move(op), .index = index});
+  this->template dispatch<message::TransactionMessages>(
+      pid, message::ProcessEntry{.op = std::move(op), .index = index});
 
   if constexpr (FinishesUserTransaction<OpType> ||
                 std::is_same_v<OpType,
@@ -154,7 +233,8 @@ auto ApplyEntriesState::processEntry(UserTransaction auto& op, LogIndex index)
   }
 }
 
-auto ApplyEntriesState::applyDataDefinitionEntry(
+template<typename Runtime>
+auto ApplyEntriesHandler<Runtime>::applyDataDefinitionEntry(
     ReplicatedOperation::DropShard const& op) -> Result {
   // We first have to abort all transactions for this shard.
   // This stunt may seem unnecessary, as the leader counterpart takes care of
@@ -162,30 +242,33 @@ auto ApplyEntriesState::applyDataDefinitionEntry(
   // replicating the "DropShard" operation first, "Abort" operations come later.
   // Hence, we need to abort transactions manually for now.
   for (auto const& tid :
-       handlers.transactionHandler->getTransactionsForShard(op.shard)) {
-    auto abortRes = handlers.transactionHandler->applyEntry(
+       this->state->handlers.transactionHandler->getTransactionsForShard(
+           op.shard)) {
+    auto abortRes = this->state->handlers.transactionHandler->applyEntry(
         ReplicatedOperation::buildAbortOperation(tid));
     if (abortRes.fail()) {
-      LOG_CTX("aa36c", INFO, loggerContext)
+      LOG_CTX("aa36c", INFO, this->state->loggerContext)
           << "Failed to abort transaction " << tid << " for shard " << op.shard
           << " before dropping the shard: " << abortRes.errorMessage();
       return abortRes;
     }
-    activeTransactions.markAsInactive(tid);
+    this->state->activeTransactions.markAsInactive(tid);
   }
   return applyEntryAndReleaseIndex(op);
 }
 
-auto ApplyEntriesState::applyDataDefinitionEntry(
+template<typename Runtime>
+auto ApplyEntriesHandler<Runtime>::applyDataDefinitionEntry(
     ReplicatedOperation::ModifyShard const& op) -> Result {
   // Note that locking the shard is not necessary on the follower.
   // However, we still do it for safety reasons.
   auto origin =
       transaction::OperationOriginREST{"follower collection properties update"};
-  auto trxLock = handlers.shardHandler->lockShard(
+  auto trxLock = this->state->handlers.shardHandler->lockShard(
       op.shard, AccessMode::Type::EXCLUSIVE, std::move(origin));
   if (trxLock.fail()) {
-    auto res = handlers.errorHandler->handleOpResult(op, trxLock.result());
+    auto res = this->state->handlers.errorHandler->handleOpResult(
+        op, trxLock.result());
 
     // If the shard was not found, we can ignore this operation and release it.
     if (res.ok()) {
@@ -197,34 +280,41 @@ auto ApplyEntriesState::applyDataDefinitionEntry(
   return applyEntryAndReleaseIndex(op);
 }
 
+template<typename Runtime>
 template<class T>
 requires IsAnyOf<T, ReplicatedOperation::CreateShard,
                  ReplicatedOperation::CreateIndex,
                  ReplicatedOperation::DropIndex>
-auto ApplyEntriesState::applyDataDefinitionEntry(T const& op) -> Result {
+auto ApplyEntriesHandler<Runtime>::applyDataDefinitionEntry(T const& op)
+    -> Result {
   return applyEntryAndReleaseIndex(op);
 }
 
+template<typename Runtime>
 template<class T>
-auto ApplyEntriesState::applyEntryAndReleaseIndex(T const& op) -> Result {
-  auto originalRes = handlers.transactionHandler->applyEntry(op);
-  auto res = handlers.errorHandler->handleOpResult(op, originalRes);
+auto ApplyEntriesHandler<Runtime>::applyEntryAndReleaseIndex(T const& op)
+    -> Result {
+  auto originalRes = this->state->handlers.transactionHandler->applyEntry(op);
+  auto res =
+      this->state->handlers.errorHandler->handleOpResult(op, originalRes);
   if (res.fail()) {
     return res;
   }
   return {};
 }
 
-auto ApplyEntriesState::beforeApplyEntry(ModifiesUserTransaction auto const& op,
-                                         LogIndex index) -> bool {
-  activeTransactions.markAsActive(op.tid, index);
+template<typename Runtime>
+auto ApplyEntriesHandler<Runtime>::beforeApplyEntry(
+    ModifiesUserTransaction auto const& op, LogIndex index) -> bool {
+  this->state->activeTransactions.markAsActive(op.tid, index);
   return true;
 }
 
-auto ApplyEntriesState::beforeApplyEntry(
+template<typename Runtime>
+auto ApplyEntriesHandler<Runtime>::beforeApplyEntry(
     ReplicatedOperation::IntermediateCommit const& op, LogIndex) -> bool {
-  if (!activeTransactions.getTransactions().contains(op.tid)) {
-    LOG_CTX("b41dc", INFO, loggerContext)
+  if (!this->state->activeTransactions.getTransactions().contains(op.tid)) {
+    LOG_CTX("b41dc", INFO, this->state->loggerContext)
         << "will not apply intermediate commit for transaction " << op.tid
         << " because it is not active";
     return false;
@@ -232,11 +322,12 @@ auto ApplyEntriesState::beforeApplyEntry(
   return true;
 }
 
-auto ApplyEntriesState::beforeApplyEntry(FinishesUserTransaction auto const& op,
-                                         LogIndex index) -> bool {
-  if (!activeTransactions.getTransactions().contains(op.tid)) {
+template<typename Runtime>
+auto ApplyEntriesHandler<Runtime>::beforeApplyEntry(
+    FinishesUserTransaction auto const& op, LogIndex index) -> bool {
+  if (!this->state->activeTransactions.getTransactions().contains(op.tid)) {
     // Single commit/abort operations are possible.
-    LOG_CTX("cf7ea", INFO, loggerContext)
+    LOG_CTX("cf7ea", INFO, this->state->loggerContext)
         << "will not finish transaction " << op.tid
         << " because it is not active";
     return false;
@@ -244,55 +335,31 @@ auto ApplyEntriesState::beforeApplyEntry(FinishesUserTransaction auto const& op,
   return true;
 }
 
-void ApplyEntriesState::releaseIndex(std::optional<LogIndex> index) {
-  if (index.has_value()) {
-    // The follower might have resigned, so we need to be careful when
-    // accessing the stream.
-    auto releaseRes = basics::catchVoidToResult([&] {
-      // TODO - is this getStream call actually safe?
-      auto const& stream = _state.getStream();
-      stream->release(index.value());
-    });
-    if (releaseRes.fail()) {
-      LOG_CTX("10f07", ERR, loggerContext)
-          << "Failed to get stream! " << releaseRes;
-    }
-  }
-}
-
-void ApplyEntriesState::continueBatch() {
-  ADB_PROD_ASSERT(_batch != nullptr);
-  ADB_PROD_ASSERT(_pendingTransactions.empty());
-  if (not _batch->_currentEntry.has_value()) {
+template<typename Runtime>
+void ApplyEntriesHandler<Runtime>::continueBatch() {
+  ADB_PROD_ASSERT(this->state->_batch != nullptr);
+  ADB_PROD_ASSERT(this->state->_pendingTransactions.empty());
+  if (not this->state->_batch->_currentEntry.has_value()) {
     resolveBatch(Result{});
     return;
   }
 
   // TODO - exception handling
   do {
-    if (_state._resigning) {
-      // We have not officially resigned yet, but we are about to. So,
-      // we can just stop here.
-      resolveBatch(
-          Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED});
-      _state._runtime->finishActor(myPid, ExitReason::kFinished);
-      return;
-    }
-
-    auto& e = _batch->_currentEntry.value();
+    auto& e = this->state->_batch->_currentEntry.value();
     LogIndex index = e.first;
     auto& doc = e.second;
     auto res = std::visit([&](auto&& op) { return processEntry(op, index); },
                           doc.getInnerOperation());
 
     if (res.fail()) {
-      TRI_ASSERT(handlers.errorHandler
+      TRI_ASSERT(this->state->handlers.errorHandler
                      ->handleOpResult(doc.getInnerOperation(), res.result())
                      .fail())
           << res.result() << " should have been already handled for operation "
           << doc.getInnerOperation() << " during applyEntries of follower "
-          << _state.gid;
-      LOG_CTX("0aa2e", FATAL, loggerContext)
+          << this->state->gid;
+      LOG_CTX("0aa2e", FATAL, this->state->loggerContext)
           << "failed to apply entry " << doc
           << " on follower: " << res.result();
       TRI_ASSERT(false) << res.result();
@@ -300,29 +367,31 @@ void ApplyEntriesState::continueBatch() {
     }
 
     if (res.get() == ProcessResult::kWaitForPendingTrx) {
-      ADB_PROD_ASSERT(not _pendingTransactions.empty());
+      ADB_PROD_ASSERT(not this->state->_pendingTransactions.empty());
       // the current entry requires all pending transactions to have finished,
       // so we return here and wait for the transactions's finish message before
       // we continue
       return;
     }
 
-    _batch->_currentEntry = _batch->entries->next();
+    this->state->_batch->_currentEntry = this->state->_batch->entries->next();
     if (res.get() == ProcessResult::kMoveToNextEntryAndWaitForPendingTrx) {
       // we successfully processed the last entry and moved on, but the last
       // entry indicated that we have to wait for pending transactions to finish
       // before processing the next entry, so we return here and wait for the
       // transactions's finish message before we continue
-      ADB_PROD_ASSERT(not _pendingTransactions.empty());
+      ADB_PROD_ASSERT(not this->state->_pendingTransactions.empty());
       return;
     }
-  } while (_batch->_currentEntry.has_value());
+  } while (this->state->_batch->_currentEntry.has_value());
 
-  if (_pendingTransactions.empty()) {
+  if (this->state->_pendingTransactions.empty()) {
     resolveBatch(Result{});
   }
   // we have processed all entries, but there are still pending transactions
   // that we need to wait for, before we can resolve the batch
 }
+
+template struct ApplyEntriesHandler<LocalRuntime>;
 
 }  // namespace arangodb::replication2::replicated_state::document::actor

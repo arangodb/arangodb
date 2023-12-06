@@ -24,6 +24,7 @@
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 
 #include "Replication2/LoggerContext.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/Actor/Scheduler.h"
 #include "Replication2/StateMachines/Document/Actor/ApplyEntries.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
@@ -401,7 +402,7 @@ auto DocumentFollowerState::handleSnapshotTransfer(
 
 auto DocumentFollowerState::applyEntries(
     std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
-  futures::Promise<Result> promise;
+  futures::Promise<ResultT<std::optional<LogIndex>>> promise;
   auto future = promise.getFuture();
 
   _runtime->dispatch<actor::message::ApplyEntriesMessages>(
@@ -409,17 +410,29 @@ auto DocumentFollowerState::applyEntries(
       actor::message::ApplyEntries{.entries = std::move(ptr),
                                    .promise = std::move(promise)});
 
-  return future;
+  return std::move(future).thenValue(
+      [&](ResultT<std::optional<LogIndex>> res) -> Result {
+        if (res.fail()) {
+          return res.result();
+        }
+        auto index = res.get();
+        if (index.has_value()) {
+          // The follower might have resigned, so we need to be careful when
+          // accessing the stream.
+          auto releaseRes = basics::catchVoidToResult([&] {
+            // TODO - is this getStream call actually safe?
+            auto const& stream = getStream();
+            stream->release(index.value());
+          });
+          if (releaseRes.fail()) {
+            LOG_CTX("10f07", ERR, loggerContext)
+                << "Failed to get stream! " << releaseRes;
+          }
+        }
+        return Result{};
+      });
 }
 
 }  // namespace arangodb::replication2::replicated_state::document
 
 #include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
-
-namespace arangodb::replication2::replicated_state {
-// we need to instantiate this explicitly here, so the Transaction actor can use
-// it
-template std::shared_ptr<
-    typename IReplicatedFollowerState<document::DocumentState>::Stream> const&
-IReplicatedFollowerState<document::DocumentState>::getStream() const noexcept;
-}  // namespace arangodb::replication2::replicated_state

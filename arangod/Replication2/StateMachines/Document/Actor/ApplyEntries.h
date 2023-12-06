@@ -47,15 +47,8 @@ struct ApplyEntriesState {
   explicit ApplyEntriesState(DocumentFollowerState& state)
       : loggerContext(state.loggerContext),  // TODO - include pid in context
         handlers(state._handlers),
+        gid(state.gid),
         _state(state) {}
-
-  void setBatch(std::unique_ptr<DocumentFollowerState::EntryIterator> entries,
-                futures::Promise<Result> promise);
-  void continueBatch();
-
-  void releaseIndex(std::optional<LogIndex> index);
-
-  void resign();
 
   friend inline auto inspect(auto& f, ApplyEntriesState& x) {
     return f.object(x).fields(
@@ -64,6 +57,102 @@ struct ApplyEntriesState {
         f.field("pendingTransactions", x._pendingTransactions)
             .transformWith(
                 inspection::mapToListTransformer(x._pendingTransactions)));
+  }
+
+  struct Batch {
+    Batch(std::unique_ptr<DocumentFollowerState::EntryIterator>&& entries,
+          futures::Promise<ResultT<std::optional<LogIndex>>>&& promise)
+        : entries(std::move(entries)),
+          promise(std::move(promise)),
+          _currentEntry(this->entries->next()) {}
+
+    std::unique_ptr<DocumentFollowerState::EntryIterator> entries;
+    futures::Promise<ResultT<std::optional<LogIndex>>> promise;
+
+    std::optional<std::pair<LogIndex, DocumentLogEntry>> _currentEntry;
+    std::optional<LogIndex> lastIndex;
+  };
+
+  LoggerContext const loggerContext;
+  Handlers const handlers;
+  GlobalLogIdentifier const gid;
+
+  DocumentFollowerState& _state;
+  std::unique_ptr<Batch> _batch;
+
+  // map of currently ongoing transactions to their respective actor pids
+  std::unordered_map<TransactionId, LocalActorPID> _transactionMap;
+
+  ActiveTransactionsQueue activeTransactions;
+
+  struct TransactionInfo {
+    TransactionId tid;
+    bool intermediateCommit;
+
+    friend inline auto inspect(auto& f, TransactionInfo& x) {
+      return f.object(x).fields(
+          f.field("tid", x.tid),
+          f.field("intermediateCommit", x.intermediateCommit));
+    }
+  };
+  // list of pending transactions - these are transactions which have been
+  // sent a commit message, but have not yet finished
+  // We keep the transaction id and the information whether this actor was
+  // finished with in intermediate commit or not, because for completed
+  // transaction this actor is responsible to remove the transaction from the
+  // transaction handler
+  std::unordered_map<LocalActorPID, TransactionInfo> _pendingTransactions;
+};
+
+namespace message {
+
+struct ApplyEntries {
+  std::unique_ptr<DocumentFollowerState::EntryIterator> entries;
+  futures::Promise<ResultT<std::optional<LogIndex>>> promise;
+
+  friend inline auto inspect(auto& f, ApplyEntries& x) {
+    return f.object(x).fields();
+  }
+};
+
+struct Resign {
+  friend inline auto inspect(auto& f, Resign& x) {
+    return f.object(x).fields();
+  }
+};
+
+struct ApplyEntriesMessages : std::variant<ApplyEntries, Resign> {
+  using std::variant<ApplyEntries, Resign>::variant;
+
+  friend inline auto inspect(auto& f, ApplyEntriesMessages& x) {
+    return f.variant(x).unqualified().alternatives(
+        arangodb::inspection::type<ApplyEntries>("applyEntries"),
+        arangodb::inspection::type<Resign>("resign"));
+  }
+};
+
+}  // namespace message
+
+template<typename Runtime>
+struct ApplyEntriesHandler : HandlerBase<Runtime, ApplyEntriesState> {
+  using ActorPID = typename Runtime::ActorPID;
+
+  auto operator()(message::ApplyEntries&& msg) noexcept
+      -> std::unique_ptr<ApplyEntriesState>;
+
+  auto operator()(message::Resign&& msg) noexcept
+      -> std::unique_ptr<ApplyEntriesState>;
+
+  auto operator()(
+      arangodb::actor::message::ActorDown<typename Runtime::ActorPID>&&
+          msg) noexcept -> std::unique_ptr<ApplyEntriesState>;
+
+  auto operator()(auto&& msg) noexcept -> std::unique_ptr<ApplyEntriesState> {
+    LOG_CTX("0bc2e", FATAL, this->state->_state.loggerContext)
+        << "ApplyEntries actor received unexpected message "
+        << typeid(msg).name() << " " << inspection::json(msg);
+    FATAL_ERROR_EXIT();
+    return std::move(this->state);
   }
 
  private:
@@ -78,19 +167,10 @@ struct ApplyEntriesState {
                                           // next entry
   };
 
-  struct Batch {
-    Batch(std::unique_ptr<DocumentFollowerState::EntryIterator>&& entries,
-          futures::Promise<Result>&& promise)
-        : entries(std::move(entries)),
-          promise(std::move(promise)),
-          _currentEntry(this->entries->next()) {}
+  void continueBatch();
 
-    std::unique_ptr<DocumentFollowerState::EntryIterator> entries;
-    futures::Promise<Result> promise;
+  void resign();
 
-    std::optional<std::pair<LogIndex, DocumentLogEntry>> _currentEntry;
-    std::optional<LogIndex> lastIndex;
-  };
   void resolveBatch(Result result);
 
   auto processEntry(DataDefinition auto& op, LogIndex)
@@ -119,148 +199,6 @@ struct ApplyEntriesState {
 
   template<class T>
   auto applyEntryAndReleaseIndex(T const& op) -> Result;
-
-  LocalActorPID myPid;
-  LoggerContext const loggerContext;
-  Handlers const handlers;
-  DocumentFollowerState& _state;
-  std::unique_ptr<Batch> _batch;
-
-  // map of currently ongoing transactions to their respective actor pids
-  std::unordered_map<TransactionId, LocalActorPID> _transactionMap;
-
-  ActiveTransactionsQueue activeTransactions;
-
-  struct TransactionInfo {
-    TransactionId tid;
-    bool intermediateCommit;
-
-    friend inline auto inspect(auto& f, TransactionInfo& x) {
-      return f.object(x).fields(
-          f.field("tid", x.tid),
-          f.field("intermediateCommit", x.intermediateCommit));
-    }
-  };
-  // list of pending transactions - these are transactions which have been
-  // sent a commit message, but have not yet finished
-  // We keep the transaction id and the information whether this actor was
-  // finished with in intermediate commit or not, because for completed
-  // transaction this actor is responsible to remove the transaction from the
-  // transaction handler
-  std::unordered_map<LocalActorPID, TransactionInfo> _pendingTransactions;
-
-  template<typename Runtime>
-  friend struct ApplyEntriesHandler;
-};
-
-namespace message {
-
-struct ApplyEntries {
-  std::unique_ptr<DocumentFollowerState::EntryIterator> entries;
-  futures::Promise<Result> promise;
-
-  friend inline auto inspect(auto& f, ApplyEntries& x) {
-    std::string type = "ApplyEntries";
-    return f.object(x).fields(f.field("type", type));
-  }
-};
-
-struct Resign {
-  friend inline auto inspect(auto& f, Resign& x) {
-    std::string type = "Resign";
-    return f.object(x).fields(f.field("type", type));
-  }
-};
-
-struct ApplyEntriesMessages : std::variant<ApplyEntries, Resign> {
-  using std::variant<ApplyEntries, Resign>::variant;
-
-  friend inline auto inspect(auto& f, ApplyEntriesMessages& x) {
-    return f.variant(x).unqualified().alternatives(
-        arangodb::inspection::type<ApplyEntries>("applyEntries"),
-        arangodb::inspection::type<Resign>("resign"));
-  }
-};
-
-}  // namespace message
-
-template<typename Runtime>
-struct ApplyEntriesHandler : HandlerBase<Runtime, ApplyEntriesState> {
-  using ActorPID = typename Runtime::ActorPID;
-
-  auto operator()(message::ApplyEntries&& msg) noexcept
-      -> std::unique_ptr<ApplyEntriesState> {
-    // TODO - remove the try and make continueBatch noexcept
-    try {
-      this->state->myPid = this->self;
-      this->state->setBatch(std::move(msg.entries), std::move(msg.promise));
-      this->state->continueBatch();
-    } catch (std::exception& e) {
-      LOG_DEVEL_CTX(this->state->_state.loggerContext)
-          << "caught exception while applying entries: " << e.what();
-      throw;
-    } catch (...) {
-      LOG_DEVEL_CTX(this->state->_state.loggerContext)
-          << "caught unknown exception while applying entries";
-      throw;
-    }
-    return std::move(this->state);
-  }
-
-  auto operator()(message::Resign&& msg) noexcept
-      -> std::unique_ptr<ApplyEntriesState> {
-    this->state->resign();
-    this->finish(ExitReason::kFinished);
-    return std::move(this->state);
-  }
-
-  auto operator()(
-      arangodb::actor::message::ActorDown<typename Runtime::ActorPID>&&
-          msg) noexcept -> std::unique_ptr<ApplyEntriesState> {
-    LOG_CTX("56a21", DEBUG, this->state->loggerContext)
-        << "applyEntries actor received actor down message "
-        << inspection::json(msg);
-    if (msg.reason != ExitReason::kShutdown) {
-      ADB_PROD_ASSERT(this->state->_pendingTransactions.contains(msg.actor))
-          << inspection::json(this->state) << " msg " << inspection::json(msg);
-      ADB_PROD_ASSERT(msg.reason == ExitReason::kFinished)
-          << inspection::json(msg);
-    }
-    auto it = this->state->_pendingTransactions.find(msg.actor);
-    ADB_PROD_ASSERT(it != this->state->_pendingTransactions.end() ||
-                    msg.reason == ExitReason::kShutdown)
-        << "received down message for unknown actor "
-        << inspection::json(this->state) << " msg " << inspection::json(msg);
-
-    if (it != this->state->_pendingTransactions.end()) {
-      if (!it->second.intermediateCommit) {
-        this->state->activeTransactions.markAsInactive(it->second.tid);
-        // this transaction has finished, so we can remove it from the
-        // transaction handler
-        // normally this is already done when the transaction is committed or
-        // aborted, but in case the transaction is broken and all operations are
-        // skipped, we need to remove it here
-        // For details about this special case see the Transaction actor
-        this->state->handlers.transactionHandler->removeTransaction(
-            it->second.tid);
-      }
-      this->state->_pendingTransactions.erase(it);
-      if (this->state->_pendingTransactions.empty() && this->state->_batch) {
-        // all pending trx finished, so we can now continuing processing the
-        // batch
-        this->state->continueBatch();
-      }
-    }
-    return std::move(this->state);
-  }
-
-  auto operator()(auto&& msg) -> std::unique_ptr<ApplyEntriesState> {
-    LOG_CTX("0bc2e", FATAL, this->state->_state.loggerContext)
-        << "ApplyEntries actor received unexpected message "
-        << typeid(msg).name() << " " << inspection::json(msg);
-    FATAL_ERROR_EXIT();
-    return std::move(this->state);
-  }
 };
 
 struct ApplyEntriesActor {

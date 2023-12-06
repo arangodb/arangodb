@@ -41,77 +41,20 @@ namespace arangodb::replication2::replicated_state::document::actor {
 using namespace arangodb::actor;
 
 struct TransactionState {
-  explicit TransactionState(DocumentFollowerState& state)
-      : loggerContext(state.loggerContext),  // TODO - include pid in context
-        handlers(state._handlers),
-        state(state) {}
+  explicit TransactionState(LoggerContext const& loggerContext,
+                            Handlers const& handlers,
+                            GlobalLogIdentifier gid)
+      : loggerContext(loggerContext),  // TODO - include pid in context
+        handlers(handlers),
+        gid(gid) {}
 
   friend inline auto inspect(auto& f, TransactionState& x) {
-    return f.object(x).fields(f.field("type", "TransactionState"));
+    return f.object(x).fields(f.field("gid", x.gid), f.field("skip", x.skip));
   }
 
-  template<class OpType>
-  void maybeFinishActor(LocalActorPID pid) {
-    // we also have to finish the actor in case of an intermediate
-    // commit, because for the later operations in this transaction
-    // we will start a separate actor
-    if constexpr (FinishesUserTransaction<OpType> ||
-                  std::is_same_v<OpType,
-                                 ReplicatedOperation::IntermediateCommit>) {
-      state._runtime->finishActor(pid, ExitReason::kFinished);
-    }
-  }
-
-  void applyEntry(LocalActorPID pid, UserTransactionOperation const& op,
-                  LogIndex index) {
-    std::visit(
-        [&](auto&& op) -> void {
-          using OpType = std::remove_cvref_t<decltype(op)>;
-
-          if (skip) {
-            maybeFinishActor<OpType>(pid);
-            return;
-          }
-
-          try {
-            auto originalRes = handlers.transactionHandler->applyEntry(op);
-            auto res = handlers.errorHandler->handleOpResult(op, originalRes);
-            if (res.fail()) {
-              TRI_ASSERT(handlers.errorHandler->handleOpResult(op, res).fail())
-                  << res << " should have been already handled for operation "
-                  << op << " during applyEntry of follower " << state.gid;
-              LOG_CTX("88416", FATAL, loggerContext)
-                  << "failed to apply entry " << op << " with index " << index
-                  << " on follower: " << res;
-              TRI_ASSERT(false) << res;
-              FATAL_ERROR_EXIT();
-            }
-            if constexpr (ModifiesUserTransaction<OpType>) {
-              if (originalRes.fail()) {
-                skip = true;
-                return;
-              }
-            }
-
-            maybeFinishActor<OpType>(pid);
-          } catch (std::exception& e) {
-            LOG_CTX("013aa", FATAL, loggerContext)
-                << "caught exception while applying entry " << op << ": "
-                << e.what();
-            FATAL_ERROR_EXIT();
-          } catch (...) {
-            LOG_CTX("515fc", FATAL, loggerContext)
-                << "caught unknown exception while applying entry " << op;
-            FATAL_ERROR_EXIT();
-          }
-        },
-        op);
-  }
-
-  // private:
   LoggerContext const loggerContext;
   Handlers const handlers;
-  DocumentFollowerState& state;
+  GlobalLogIdentifier const gid;
 
   // will be set to true if one of the modification operations fail (e.g.,
   // because the shard does not exist, or we have a unique constraint violation,
@@ -149,7 +92,7 @@ struct TransactionHandler : HandlerBase<Runtime, TransactionState> {
 
   auto operator()(message::ProcessEntry&& msg)
       -> std::unique_ptr<TransactionState> {
-    this->state->applyEntry(this->self, msg.op, msg.index);
+    applyEntry(msg.op, msg.index);
     return std::move(this->state);
   }
 
@@ -159,6 +102,69 @@ struct TransactionHandler : HandlerBase<Runtime, TransactionState> {
         << typeid(msg).name() << " " << inspection::json(msg);
     FATAL_ERROR_EXIT();
     return std::move(this->state);
+  }
+
+ private:
+  template<class OpType>
+  void maybeFinishActor() {
+    // we also have to finish the actor in case of an intermediate
+    // commit, because for the later operations in this transaction
+    // we will start a separate actor
+    if constexpr (FinishesUserTransaction<OpType> ||
+                  std::is_same_v<OpType,
+                                 ReplicatedOperation::IntermediateCommit>) {
+      this->finish(ExitReason::kFinished);
+    }
+  }
+
+  void applyEntry(UserTransactionOperation const& op, LogIndex index) {
+    std::visit(
+        [&](auto&& op) -> void {
+          using OpType = std::remove_cvref_t<decltype(op)>;
+
+          if (this->state->skip) {
+            maybeFinishActor<OpType>();
+            return;
+          }
+
+          try {
+            auto originalRes =
+                this->state->handlers.transactionHandler->applyEntry(op);
+            auto res = this->state->handlers.errorHandler->handleOpResult(
+                op, originalRes);
+            if (res.fail()) {
+              TRI_ASSERT(
+                  this->state->handlers.errorHandler->handleOpResult(op, res)
+                      .fail())
+                  << res << " should have been already handled for operation "
+                  << op << " during applyEntry of follower "
+                  << this->state->gid;
+              LOG_CTX("88416", FATAL, this->state->loggerContext)
+                  << "failed to apply entry " << op << " with index " << index
+                  << " on follower: " << res;
+              TRI_ASSERT(false) << res;
+              FATAL_ERROR_EXIT();
+            }
+            if constexpr (ModifiesUserTransaction<OpType>) {
+              if (originalRes.fail()) {
+                this->state->skip = true;
+                return;
+              }
+            }
+
+            maybeFinishActor<OpType>();
+          } catch (std::exception& e) {
+            LOG_CTX("013aa", FATAL, this->state->loggerContext)
+                << "caught exception while applying entry " << op << ": "
+                << e.what();
+            FATAL_ERROR_EXIT();
+          } catch (...) {
+            LOG_CTX("515fc", FATAL, this->state->loggerContext)
+                << "caught unknown exception while applying entry " << op;
+            FATAL_ERROR_EXIT();
+          }
+        },
+        op);
   }
 };
 
