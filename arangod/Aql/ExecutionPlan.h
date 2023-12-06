@@ -36,6 +36,8 @@
 #include "Containers/HashSet.h"
 #include "Containers/SmallVector.h"
 
+#include <string_view>
+
 namespace arangodb {
 namespace velocypack {
 class Slice;
@@ -297,16 +299,15 @@ class ExecutionPlan {
   bool fullCount() const noexcept;
 
   /// @brief parses modification options from an AST node
-  static ModificationOptions parseModificationOptions(QueryContext& query,
-                                                      char const* operationNode,
-                                                      AstNode const*,
-                                                      bool addWarnings);
+  static ModificationOptions parseModificationOptions(
+      QueryContext& query, std::string_view operationNode, AstNode const* node,
+      bool addWarnings);
 
   /// @brief registers a warning for an invalid OPTIONS attribute
   static void invalidOptionAttribute(QueryContext& query,
-                                     char const* errorReason,
-                                     char const* operationName,
-                                     char const* name, size_t length);
+                                     std::string_view errorReason,
+                                     std::string_view operationName,
+                                     std::string_view name);
 
  private:
   template<WalkerUniqueness U>
@@ -330,7 +331,7 @@ class ExecutionPlan {
 
   /// @brief create modification options by parsing an AST node
   /// and adding plan specific options.
-  ModificationOptions createModificationOptions(char const* operationName,
+  ModificationOptions createModificationOptions(std::string_view operationName,
                                                 AstNode const*);
 
   /// @brief create COLLECT options from an AST node

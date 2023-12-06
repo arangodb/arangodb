@@ -70,9 +70,7 @@ export const QueryEditorBottomBar = () => {
           onClick={() =>
             onExplain({
               queryValue,
-              queryBindParams,
-              queryOptions,
-              disabledRules
+              queryBindParams
             })
           }
         >
@@ -84,9 +82,7 @@ export const QueryEditorBottomBar = () => {
           onClick={() =>
             onProfile({
               queryValue,
-              queryBindParams,
-              queryOptions,
-              disabledRules
+              queryBindParams
             })
           }
         >

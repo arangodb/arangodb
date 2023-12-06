@@ -484,7 +484,7 @@ div {
       z-index: 10;
 
       p {
-        color: $c-dark-grey;
+        color: var(--gray-900);
         font-size: 12px;
         font-weight: 100;
         margin: 0;

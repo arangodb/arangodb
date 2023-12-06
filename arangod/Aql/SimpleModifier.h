@@ -113,8 +113,8 @@ class SimpleModifier : public std::enable_shared_from_this<
 
   explicit SimpleModifier(ModificationExecutorInfos& infos)
       : _infos(infos),
-        _completion(infos),
-        _batchSize(ExecutionBlock::DefaultBatchSize),
+        _completion(_infos),
+        _batchSize(_infos._batchSize),
         _results(NoResult{}) {
     TRI_ASSERT(_infos.engine() != nullptr);
   }

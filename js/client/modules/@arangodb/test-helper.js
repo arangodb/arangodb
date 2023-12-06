@@ -208,7 +208,7 @@ exports.getRawMetric = function (endpoint, tags) {
     if (endpoint !== primaryEndpoint) {
       reconnectRetry(endpoint, db._name(), "root", "");
     }
-    return arango.GET_RAW('/_admin/metrics' + tags);
+    return arango.GET_RAW('/_admin/metrics' + tags, { 'accept-encoding': 'identity' });
   } finally {
     if (endpoint !== primaryEndpoint) {
       reconnectRetry(primaryEndpoint, db._name(), "root", "");
