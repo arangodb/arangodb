@@ -167,6 +167,9 @@ auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries(
     auto promise = futures::Promise<Result>();
     auto future = promise.getFuture();
     auto rttGuard = MeasureTimeGuard(*metrics->replicatedStateApplyEntriesRtt);
+    // TODO - applyEntries is not longer synchronous, so we could call it
+    // directly now
+
     // As applyEntries is currently synchronous, we have to post it on the
     // scheduler to avoid blocking the current appendEntries request from
     // returning. By using _applyEntriesPositionInFlight we make sure not to
@@ -185,6 +188,7 @@ auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries(
         auto logIter = methods->getCommittedLogIterator(range);
         return std::make_unique<IterType>(std::move(logIter));
       }();
+      // TODO - do not call applyEntries for empty iterators
       if (iter != nullptr) {
         // cppcheck-suppress accessMoved ; iter is accessed only once - bogus
         followerState->applyEntries(std::move(iter))
