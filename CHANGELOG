@@ -1,6 +1,28 @@
 devel
 -----
 
+* Fixed BTS-1698: Inverted index can be hinted/forced for UPSERT, which is 
+  invalid.
+
+* Issue a warning when an UPSERT is used on a collection with multiple shards
+  or on a single-shard collection when a DistributeNode is used. In these
+  cases, the UPSERT cannot guarantee it has observed its own writes. The
+  warning can be opted-out from explicitly by setting the `readOwnWrites` 
+  option of the UPSERT operation to `false`.
+
+* Added "readOwnWrites" option for AQL UPSERT operations.
+
+  If set to `true` (which is the default), an UPSERT operation will process
+  its inputs one by one. That way an UPSERT can observe its own writes and can
+  handle modifying the same target document multiple times in the same query.
+
+  When the "readOwnWrite" option is set to `false`, an UPSERT can process its
+  input in batches (a batch is normally 1000 inputs), so it can execute a lot
+  faster. However, when using batches, an UPSERT cannot observe its own writes.
+  So the "readOwnWrite" option should only be set to `false` if it can be
+  guaranteed that the input to the UPSERT will lead to disjoint documents 
+  being inserted/updated/replaced.
+
 * Optimize equality lookups and prefix matches that use the AQL like function.
   The optimization will turn `LIKE(doc.attribute, 'fixed string')` into an
   equality lookup, and `LIKE(doc.attribute, 'prefix%')` into a range query.
