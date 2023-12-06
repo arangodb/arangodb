@@ -24,6 +24,7 @@
 #pragma once
 #include <string>
 #include <chrono>
+#include <vector>
 #include "Basics/TimeString.h"
 #include "Basics/ErrorCode.h"
 #include "Inspection/Status.h"
@@ -91,6 +92,42 @@ struct ErrorCodeTransformer {
     return {};
   }
 };
+
+template<class Map>
+struct MapToListTransformer {
+  struct Entry {
+    typename Map::key_type key;
+    typename Map::mapped_type value;
+
+    friend inline auto inspect(auto& f, Entry& x) {
+      return f.object(x).fields(f.field("key", x.key),
+                                f.field("value", x.value));
+    }
+  };
+  using SerializedType = std::vector<Entry>;
+
+  auto toSerialized(Map const& source, SerializedType& target) const
+      -> inspection::Status {
+    target.reserve(source.size());
+    target.clear();
+    for (auto const& [key, value] : source) {
+      target.push_back({key, value});
+    }
+    return {};
+  }
+  auto fromSerialized(SerializedType const& source, Map& target) const
+      -> inspection::Status {
+    target.clear();
+    for (auto const& entry : source) {
+      target.emplace(entry.key, entry.value);
+    }
+    return {};
+  }
+};
+template<class Map>
+auto mapToListTransformer(Map const&) {
+  return MapToListTransformer<Map>{};
+}
 
 template<class Inspector>
 auto inspect(Inspector& f, ErrorCodeTransformer::ErrorCodeWithMessage& x) {
