@@ -454,16 +454,24 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
             if (r != TRI_ERROR_NO_ERROR) {
               THROW_ARANGO_EXCEPTION(r);
             }
+            // replace response body and remove "content-encoding"
+            // handler to prevent duplicate uncompression
             res->setPayload(std::move(uncompressed), 0);
+            res->header.contentEncoding(fuerte::ContentEncoding::Identity);
+            res->header.removeMeta(StaticStrings::ContentEncoding);
           } else if (encoding == StaticStrings::EncodingDeflate) {
             velocypack::Buffer<uint8_t> uncompressed;
-            auto r = encoding::gzipInflate(
+            auto r = encoding::zlibInflate(
                 reinterpret_cast<uint8_t const*>(res->payload().data()),
                 res->payload().size(), uncompressed);
             if (r != TRI_ERROR_NO_ERROR) {
               THROW_ARANGO_EXCEPTION(r);
             }
+            // replace response body and remove "content-encoding"
+            // handler to prevent duplicate uncompression
             res->setPayload(std::move(uncompressed), 0);
+            res->header.contentEncoding(fuerte::ContentEncoding::Identity);
+            res->header.removeMeta(StaticStrings::ContentEncoding);
           }
         }
         cb(err, std::move(req), std::move(res), isFromPool);

@@ -92,8 +92,8 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) {
             // indexHint: string
             if (_type == HintType::Disabled) {
               // disableIndex vs. indexHint is contradicting...
-              ExecutionPlan::invalidOptionAttribute(
-                  query, "contradicting", "FOR", name.data(), name.size());
+              ExecutionPlan::invalidOptionAttribute(query, "contradicting",
+                                                    "FOR", name);
             }
             _type = HintType::Simple;
             _hint.simple.emplace_back(value->getStringValue(),
@@ -102,8 +102,8 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) {
             // indexHint: string: array
             if (_type == HintType::Disabled) {
               // disableIndex vs. indexHint is contradicting...
-              ExecutionPlan::invalidOptionAttribute(
-                  query, "contradicting", "FOR", name.data(), name.size());
+              ExecutionPlan::invalidOptionAttribute(query, "contradicting",
+                                                    "FOR", name);
             }
             _type = HintType::Simple;
             for (size_t j = 0; j < value->numMembers(); j++) {
@@ -136,8 +136,8 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) {
               _type = HintType::Disabled;
               if (!_hint.simple.empty()) {
                 // disableIndex vs. indexHint is contradicting...
-                ExecutionPlan::invalidOptionAttribute(
-                    query, "contradicting", "FOR", name.data(), name.size());
+                ExecutionPlan::invalidOptionAttribute(query, "contradicting",
+                                                      "FOR", name);
                 _hint.simple.clear();
               }
               TRI_ASSERT(_hint.simple.empty());
@@ -157,12 +157,11 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) {
             _lookahead = value->getIntValue();
           } else {
             ExecutionPlan::invalidOptionAttribute(query, "invalid", "FOR",
-                                                  name.data(), name.size());
+                                                  name);
           }
           handled = true;
         } else {
-          ExecutionPlan::invalidOptionAttribute(query, "unknown", "FOR",
-                                                name.data(), name.size());
+          ExecutionPlan::invalidOptionAttribute(query, "unknown", "FOR", name);
           handled = true;
         }
 
@@ -170,8 +169,7 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) {
           VPackBuilder builder;
           child->getMember(0)->toVelocyPackValue(builder);
           std::string msg = "invalid value " + builder.toJson() + " in ";
-          ExecutionPlan::invalidOptionAttribute(query, msg.data(), "FOR",
-                                                name.data(), name.size());
+          ExecutionPlan::invalidOptionAttribute(query, msg, "FOR", name);
         }
       }
     }
