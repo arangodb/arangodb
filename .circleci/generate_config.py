@@ -258,7 +258,7 @@ def get_size(size, arch, dist):
     return x86_sizes[size]
 
 
-def create_test_job(test, cluster, edition, arch, dist, replication_version=1):
+def create_test_job(test, cluster, edition, arch, dist, type, replication_version=1):
     """creates the test job definition to be put into the config yaml"""
     params = test["params"]
     suite_name = test["name"]
@@ -272,12 +272,12 @@ def create_test_job(test, cluster, edition, arch, dist, replication_version=1):
     deployment_variant = f"cluster{'-repl2' if replication_version==2 else ''}" if cluster else "single"
 
     result = {
-        "name": f"test-{edition}-{deployment_variant}-{suite_name}-{arch}",
+        "name": f"test-{edition}-{deployment_variant}-{suite_name}-{arch}-{type}",
         "suiteName": suite_name,
         "suites": test["suites"],
         "size": get_size(test["size"], arch, dist),
         "cluster": cluster,
-        "requires": [f"build-{dist}-{edition}-{arch}"],
+        "requires": [f"build-{dist}-{edition}-{arch}-{type}"],
     }
 
     extra_args = test["args"].copy()
@@ -295,31 +295,32 @@ def create_test_job(test, cluster, edition, arch, dist, replication_version=1):
 
 def add_test_jobs_to_workflow(config, tests, workflow, edition, arch, dist, repl2):
     jobs = config["workflows"][workflow]["jobs"]
+    type = get_type(workflow)
     for test in tests:
         if "!" + dist in test["flags"]:
             continue
         if "cluster" in test["flags"]:
             jobs.append(
-                {f"run-{dist}-tests": create_test_job(test, True, edition, arch, dist)}
+                {f"run-{dist}-tests": create_test_job(test, True, edition, arch, dist, type)}
             )
             if repl2:
                 jobs.append(
-                    {f"run-{dist}-tests": create_test_job(test, True, edition, arch, dist, 2)}
+                    {f"run-{dist}-tests": create_test_job(test, True, edition, arch, dist, type, 2)}
                 )
         elif "single" in test["flags"]:
             jobs.append(
-                {f"run-{dist}-tests": create_test_job(test, False, edition, arch, dist)}
+                {f"run-{dist}-tests": create_test_job(test, False, edition, arch, dist, type)}
             )
         else:
             jobs.append(
-                {f"run-{dist}-tests": create_test_job(test, True, edition, arch, dist)}
+                {f"run-{dist}-tests": create_test_job(test, True, edition, arch, dist, type)}
             )
             if repl2:
                 jobs.append(
-                    {f"run-{dist}-tests": create_test_job(test, True, edition, arch, dist, 2)}
+                    {f"run-{dist}-tests": create_test_job(test, True, edition, arch, dist, type, 2)}
                 )
             jobs.append(
-                {f"run-{dist}-tests": create_test_job(test, False, edition, arch, dist)}
+                {f"run-{dist}-tests": create_test_job(test, False, edition, arch, dist, type)}
             )
 
 
@@ -330,6 +331,12 @@ def get_arch(workflow):
         return "x64"
     raise Exception(f"Cannot extract architecture from workflow {workflow}")
 
+def get_type(workflow):
+    if "asan" in workflow:
+        return "asan"
+    if "tsan" in workflow:
+        return "tsan"
+    return "standard"
 
 def generate_output(config, tests, enterprise, repl2):
     """generate output"""

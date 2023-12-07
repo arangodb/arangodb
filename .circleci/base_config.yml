@@ -648,7 +648,7 @@ workflows:
   #         context:
   #           - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
   #         resource-class: xlarge
-  #         name: build-linux-ce-x64
+  #         name: build-linux-ce-x64-standard
   #         preset: community-pr
   #         enterprise: false
   #     - run-cppcheck:
@@ -661,7 +661,7 @@ workflows:
   #         context:
   #           - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
   #         resource-class: xlarge
-  #         name: build-linux-ee-x64
+  #         name: build-linux-ee-x64-standard
   #         preset: enterprise-pr
   #         enterprise: true
   #     - compile-linux:
@@ -699,7 +699,7 @@ workflows:
   #           - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
   #         resource-class: arm.xlarge
   #         s3-prefix: aarch64
-  #         name: build-linux-ce-aarch64
+  #         name: build-linux-ce-aarch64-standard
   #         preset: community-pr
   #         enterprise: false
   # aarch64-linux-enterprise-pr:
@@ -709,7 +709,7 @@ workflows:
   #           - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
   #         resource-class: arm.xlarge
   #         s3-prefix: aarch64
-  #         name: build-linux-ee-aarch64
+  #         name: build-linux-ee-aarch64-standard
   #         preset: enterprise-pr
   #         enterprise: true
   #     - run-hotbackup-tests:
@@ -756,7 +756,7 @@ workflows:
   #     - compile-windows:
   #         context:
   #           - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-  #         name: build-windows-ee-x64
+  #         name: build-windows-ee-x64-standard
   #         preset: enterprise-pr
   #         build-tests: true
   x64-linux-enterprise-asan-pr:
@@ -766,7 +766,7 @@ workflows:
           context:
             - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           resource-class: xlarge
-          name: build-linux-ee-asan-x64
+          name: build-linux-ee-x64-asan
           preset: enterprise-pr
           enterprise: true
           jemalloc: "Off"
@@ -782,7 +782,7 @@ workflows:
           context:
             - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           resource-class: xlarge
-          name: build-linux-ee-tsan-x64
+          name: build-linux-ee-x64-tsan
           preset: enterprise-pr
           enterprise: true
           jemalloc: "Off"
