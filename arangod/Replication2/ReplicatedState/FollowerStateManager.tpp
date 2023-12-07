@@ -375,6 +375,12 @@ auto FollowerStateManager<S>::resign() && noexcept
     stream = std::move(data._stream);
   });
 
+  // we must not call resign under the lock to prevent a deadlock with
+  // applyEntries. resign has to wait until it is guaranteed that all
+  // transaction have finished (committed or aborted). However, when the future
+  // returned by applyEntries is resolved, we are acquiring the
+  // FollowerStateManager lock to update the commit index. So we must not hold
+  // the lock while waiting in resign.
   auto core = std::move(*followerState).resign();
   auto methods = std::move(*stream).resign();
 
