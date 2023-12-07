@@ -94,7 +94,7 @@ set(V8_VERSION
   FORCE
 )
 set(V8_VERSION ${V8_VERSION} PARENT_SCOPE)
-set(V8_SUB_DIR "v8-build/v8")
+set(V8_SUB_DIR "v8")
 add_subdirectory(v8-build)
 add_library(v8_interface INTERFACE)
 target_include_directories(v8_interface SYSTEM INTERFACE ${V8_INCLUDE_DIR})
