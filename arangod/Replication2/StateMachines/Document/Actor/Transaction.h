@@ -31,6 +31,7 @@
 #include "Actor/LocalActorPID.h"
 #include "Actor/LocalRuntime.h"
 #include "Basics/application-exit.h"
+#include "Logger/LogContextKeys.h"
 #include "Replication2/LoggerContext.h"
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
@@ -43,18 +44,20 @@ using namespace arangodb::actor;
 struct TransactionState {
   explicit TransactionState(LoggerContext const& loggerContext,
                             Handlers const& handlers,
-                            GlobalLogIdentifier gid)
-      : loggerContext(loggerContext),  // TODO - include pid in context
+                            TransactionId trxId)
+      : loggerContext(loggerContext.with<logContextKeyTrxId>(
+            trxId)),  // TODO - include pid in context
         handlers(handlers),
-        gid(gid) {}
+        trxId(trxId) {}
 
   friend inline auto inspect(auto& f, TransactionState& x) {
-    return f.object(x).fields(f.field("gid", x.gid), f.field("skip", x.skip));
+    return f.object(x).fields(f.field("trxId", x.trxId),
+                              f.field("skip", x.skip));
   }
 
   LoggerContext const loggerContext;
   Handlers const handlers;
-  GlobalLogIdentifier const gid;
+  TransactionId trxId;
 
   // will be set to true if one of the modification operations fail (e.g.,
   // because the shard does not exist, or we have a unique constraint violation,
@@ -113,6 +116,8 @@ struct TransactionHandler : HandlerBase<Runtime, TransactionState> {
     if constexpr (FinishesUserTransaction<OpType> ||
                   std::is_same_v<OpType,
                                  ReplicatedOperation::IntermediateCommit>) {
+      LOG_CTX("cddab", DEBUG, this->state->loggerContext)
+          << "finishing actor " << this->self.id;
       this->finish(ExitReason::kFinished);
     }
   }
@@ -123,11 +128,17 @@ struct TransactionHandler : HandlerBase<Runtime, TransactionState> {
           using OpType = std::remove_cvref_t<decltype(op)>;
 
           if (this->state->skip) {
+            LOG_CTX("61fbb", TRACE, this->state->loggerContext)
+                << "skipping entry " << op << " with index " << index
+                << " on follower";
             maybeFinishActor<OpType>();
             return;
           }
 
           try {
+            LOG_CTX("165a1", TRACE, this->state->loggerContext)
+                << "applying entry " << op << " with index " << index
+                << " on follower";
             auto originalRes =
                 this->state->handlers.transactionHandler->applyEntry(op);
             auto res = this->state->handlers.errorHandler->handleOpResult(
@@ -138,7 +149,7 @@ struct TransactionHandler : HandlerBase<Runtime, TransactionState> {
                       .fail())
                   << res << " should have been already handled for operation "
                   << op << " during applyEntry of follower "
-                  << this->state->gid;
+                  << this->state->loggerContext;
               LOG_CTX("88416", FATAL, this->state->loggerContext)
                   << "failed to apply entry " << op << " with index " << index
                   << " on follower: " << res;
@@ -147,6 +158,10 @@ struct TransactionHandler : HandlerBase<Runtime, TransactionState> {
             }
             if constexpr (ModifiesUserTransaction<OpType>) {
               if (originalRes.fail()) {
+                LOG_CTX("583b4", DEBUG, this->state->loggerContext)
+                    << "failed to apply entry " << op << " with index " << index
+                    << " on follower: " << res
+                    << " - ignoring this error and going into skip mode";
                 this->state->skip = true;
                 return;
               }

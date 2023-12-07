@@ -47,7 +47,6 @@ struct ApplyEntriesState {
   explicit ApplyEntriesState(DocumentFollowerState& state)
       : loggerContext(state.loggerContext),  // TODO - include pid in context
         handlers(state._handlers),
-        gid(state.gid),
         _state(state) {}
 
   friend inline auto inspect(auto& f, ApplyEntriesState& x) {
@@ -56,7 +55,8 @@ struct ApplyEntriesState {
             .transformWith(inspection::mapToListTransformer(x._transactionMap)),
         f.field("pendingTransactions", x._pendingTransactions)
             .transformWith(
-                inspection::mapToListTransformer(x._pendingTransactions)));
+                inspection::mapToListTransformer(x._pendingTransactions)),
+        f.field("batch", x._batch));
   }
 
   struct Batch {
@@ -71,11 +71,15 @@ struct ApplyEntriesState {
 
     std::optional<std::pair<LogIndex, DocumentLogEntry>> _currentEntry;
     std::optional<LogIndex> lastIndex;
+
+    friend inline auto inspect(auto& f, Batch& x) {
+      return f.object(x).fields(f.field("currentEntry", x._currentEntry),
+                                f.field("lastIndex", x.lastIndex));
+    }
   };
 
   LoggerContext const loggerContext;
   Handlers const handlers;
-  GlobalLogIdentifier const gid;
 
   DocumentFollowerState& _state;
   std::unique_ptr<Batch> _batch;

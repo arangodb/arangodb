@@ -173,9 +173,8 @@ auto ApplyEntriesHandler<Runtime>::processEntry(UserTransaction auto& op,
     pid = it->second;
   } else {
     pid = this->template spawn<actor::TransactionActor>(
-        std::make_unique<actor::TransactionState>(this->state->loggerContext,
-                                                  this->state->handlers,
-                                                  this->state->gid));
+        std::make_unique<actor::TransactionState>(
+            this->state->loggerContext, this->state->handlers, op.tid));
     LOG_CTX("8a74c", DEBUG, this->state->loggerContext)
         << "spawned transaction actor " << pid.id << " for trx " << op.tid;
     this->monitor(pid);
@@ -340,8 +339,11 @@ void ApplyEntriesHandler<Runtime>::continueBatch() noexcept {
     LogIndex index = e.first;
     auto& doc = e.second;
     auto res = basics::catchToResultT([&]() {
-      return std::visit([&](auto&& op) { return processEntry(op, index); },
-                        doc.getInnerOperation());
+      return std::visit(
+          [&](auto&& op) -> ResultT<ProcessResult> {
+            return processEntry(op, index);
+          },
+          doc.getInnerOperation());
     });
 
     if (res.fail()) {
@@ -350,7 +352,7 @@ void ApplyEntriesHandler<Runtime>::continueBatch() noexcept {
                      .fail())
           << res.result() << " should have been already handled for operation "
           << doc.getInnerOperation() << " during applyEntries of follower "
-          << this->state->gid;
+          << this->state->loggerContext;
       LOG_CTX("0aa2e", FATAL, this->state->loggerContext)
           << "failed to apply entry " << doc
           << " on follower: " << res.result();
