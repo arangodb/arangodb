@@ -94,7 +94,7 @@ std::shared_ptr<ClusterQuery> ClusterQuery::create(
 void ClusterQuery::prepareClusterQuery(
     VPackSlice querySlice, VPackSlice collections, VPackSlice variables,
     VPackSlice snippets, VPackSlice traverserSlice, VPackBuilder& answerBuilder,
-    QueryAnalyzerRevisions const& analyzersRevision) {
+    QueryAnalyzerRevisions const& analyzersRevision, bool fastPathLocking) {
   LOG_TOPIC("9636f", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " ClusterQuery::prepareClusterQuery"
       << " this: " << (uintptr_t)this;
@@ -149,10 +149,17 @@ void ClusterQuery::prepareClusterQuery(
     _trx->state()->acceptAnalyzersRevision(analyzersRevision);
   }
 
+  double origLockTimeout = _queryOptions.transactionOptions.lockTimeout;
+  if (fastPathLocking) {
+    _queryOptions.transactionOptions.lockTimeout = 2;
+  }
+
   Result res = _trx->begin();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+
+  _queryOptions.transactionOptions.lockTimeout = origLockTimeout;
 
   TRI_IF_FAILURE("Query::setupLockTimeout") {
     if (!_trx->state()->isReadOnlyTransaction() &&
