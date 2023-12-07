@@ -869,6 +869,8 @@
       'includes': ['inspector.gypi'],
       'direct_dependent_settings': {
         'include_dirs': [
+          '<(ABSL_INCLUDE_DIR)/',
+          '<(generate_bytecode_output_root)',
           '<(generate_bytecode_output_root)',
           '<(SHARED_INTERMEDIATE_DIR)',
         ],
@@ -1066,11 +1068,11 @@
                   }],
                ],
              }],
-            ['OS=="win"', {
-              'dependencies': [
-                '<(icu_gyp_path):icudata#target',
-              ],
-            }],
+#            ['OS=="win"', {
+#              'dependencies': [
+#                '<(icu_gyp_path):icudata#target',
+#              ],
+#            }],
           ],
         }, {  # v8_enable_i18n_support==0
            'sources!': [

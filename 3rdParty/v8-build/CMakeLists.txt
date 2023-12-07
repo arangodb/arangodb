@@ -90,6 +90,7 @@ file(RELATIVE_PATH V8_REL_TARGET_PATH ${V8_DIR} ${V8_TARGET_DIR})
 list(APPEND V8_GYP_ARGS
   --generator-output=${V8_TARGET_DIR}
   -DV8_ROOT=${V8_RELATIVE_SOURCE_DIR}
+  -DABSL_INCLUDE_DIR=${CMAKE_SOURCE_DIR}/3rdParty/abseil-cpp
   -Dicu_path=${V8_RELATIVE_SOURCE_DIR}/third_party/icu/
   #$ ${V8_REL_TARGET_PATH}
   -Dv8_target_arch=${V8_PROC_ARCH}
@@ -199,7 +200,6 @@ if (WIN32)
     -Dembedded_builtins_snapshot_src=
     -Dv8_enable_handle_zapping=0
     -Dv8_use_snapshot=1
-    -Dpython="${PYTHON_EXECUTABLE}"
     -Dv8_enable_webassembly=0
     -Dnode_use_pch=false
     -Dcomponent=shared_library
@@ -209,10 +209,10 @@ if (WIN32)
     -Dos_posix=1
     -Dicu_small=false
     -Dlibrary=static_library #icu
-    -Dicu_ver_major="74"
-    -Dicu_data_in="../../deps/icu-tmp/icudt74l.dat"
-    -Dicu_endianness="l"
-
+    -Dicu_ver_major=73
+    -Dicu_data_in=${CMAKE_BINARY_DIR}/bin/icudt73l.dat
+    -Dicu_endianness=l
+    -Dpython=${PYTHON_EXECUTABLE}
   )
 
   list(APPEND V8_TARGETS
@@ -413,10 +413,10 @@ else ()
     -Denable_lto=0
     -Dlibrary=static_library #icu
     -Dicu_small=false
-    -Dicu_ver_major="74"
-    -Dicu_data_in="../../deps/icu-tmp/icudt74l.dat" #todo in build dir
-    -Dicu_endianness="l"
-    -Dpython="${PYTHON_EXECUTABLE}"
+    -Dicu_ver_major=73
+    -Dicu_data_in=${CMAKE_BINARY_DIR}/bin/icudt73l.dat
+    -Dicu_endianness=l
+    -Dpython=${PYTHON_EXECUTABLE}
   )
 
   if (USE_DEBUG_V8)
@@ -437,15 +437,9 @@ else ()
     LDFLAGS=${V8_LDFLAGS}
   )
 
-  list(APPEND V8_COMPILE_TARGETS icui18n icuuc)
+  list(APPEND V8_COMPILE_TARGETS icui18n icuuc icustubdata)
   list(APPEND V8_COMPILE_TARGETS v8_libbase
     v8_libplatform
-    v8_base
-    v8_libsampler
-    v8_init
-    v8_initializers
-    v8_nosnapshot
-    mksnapshot
     v8_snapshot
   )
   message(${V8_GYP_ARGS})
@@ -459,7 +453,7 @@ else ()
     BUILD_COMMAND
       $(MAKE) ${V8_COMPILE_TARGETS} ${V8_COMPILE_ARGS}
     STEP_TARGETS
-      v8_libbase v8_libplatform icui18n icuuc v8_base v8_libsampler v8_init v8_initializers v8_nosnapshot mksnapshot v8_snapshot
+      icui18n icuuc v8_libbase v8_libplatform v8_snapshot
     INSTALL_COMMAND
       ""
   )
@@ -467,7 +461,7 @@ else ()
   list(APPEND LINK_DIRECTORIES "${V8_LIBRARY_DIR}")
 
   set(V8_LIBS
-    "v8_base_without_compiler;v8_compiler;v8_base_without_compiler;torque_base;v8_libplatform;v8_libsampler;v8_libbase;v8_init;;v8_initializers;v8_snapshot"
+    "torque_base;v8_libbase;v8_libplatform;v8_snapshot"
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
   )
