@@ -234,8 +234,9 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
         // One side of the path is checked, the other side is unclear:
         // We need to combine the test of both sides.
 
-        // For GLOBAL: We ignore otherValidator, On FIRST match: Add this match
-        // as result, clear both sides. => This will give the shortest path.
+        // For GLOBAL: We ignore otherValidator, On FIRST match: Add this
+        // match as result, clear both sides. => This will give the shortest
+        // path.
         other.matchResultsInShell(n, results, _validator);
       }
       if (!uniqueness.isPruned()) {
