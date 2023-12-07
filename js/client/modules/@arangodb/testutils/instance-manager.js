@@ -78,7 +78,7 @@ class instanceManager {
     this.tmpDir = tmpDir || fs.getTempPath();
     this.rootDir = fs.join(this.tmpDir, testname);
     process.env['ARANGOTEST_ROOT_DIR'] = this.rootDir;
-    this.options.agency = this.options.agency || this.options.cluster || this.options.activefailover;
+    this.options.agency = this.options.agency || this.options.cluster;
     this.agencyConfig = new inst.agencyConfig(options, this);
     this.dumpedAgency = false;
     this.leader = null;
@@ -192,10 +192,6 @@ class instanceManager {
         this.memlayout[instanceRole.agent] = Math.round(this.options.memory * (8/100) / this.options.agencySize);
         this.memlayout[instanceRole.dbServer] = Math.round(this.options.memory * (69/100) / this.options.dbServers);
         this.memlayout[instanceRole.coordinator] = Math.round(this.options.memory * (23/100) / this.options.coordinators);
-      } else if (this.options.activefailover) {
-        // Distribute 20% agency, 80% singles
-        this.memlayout[instanceRole.agent] = Math.round(this.options.memory * (20/100) / this.options.agencySize);
-        this.memlayout[instanceRole.failover] = Math.round(this.options.memory * (80/100) / this.options.singles);
       } else if (this.options.agency) {
         this.memlayout[instanceRole.agent] = Math.round(this.options.memory / this.options.agencySize);
       } else {
@@ -207,9 +203,6 @@ class instanceManager {
         this.memlayout[instanceRole.agent] = 0;
         this.memlayout[instanceRole.dbServer] = 0;
         this.memlayout[instanceRole.coordinator] = 0;
-      } else if (this.options.activefailover) {
-        this.memlayout[instanceRole.agent] = 0;
-        this.memlayout[instanceRole.failover] = 0;
       } else if (this.options.agency) {
         this.memlayout[instanceRole.agent] = 0;
       } else {
@@ -282,24 +275,6 @@ class instanceManager {
       }
       
       for (let count = 0;
-           this.options.activefailover && count < this.options.singles;
-           count ++) {
-        this.arangods.push(new inst.instance(this.options,
-                                             instanceRole.failover,
-                                             this.addArgs,
-                                             this.httpAuthOptions,
-                                             this.protocol,
-                                             fs.join(this.rootDir, instanceRole.failover + "_" + count),
-                                             this.restKeyFile,
-                                             this.agencyConfig,
-                                             this.tmpDir,
-                                             this.memlayout[instanceRole.failover]));
-        this.urls.push(this.arangods[this.arangods.length -1].url);
-        this.endpoints.push(this.arangods[this.arangods.length -1].endpoint);
-        frontendCount ++;
-      }
-
-      for (let count = 0;
            !this.options.agency && count < this.options.singles;
            count ++) {
          // Single server...
@@ -354,10 +329,6 @@ class instanceManager {
       });
       if (this.options.cluster) {
         this.checkClusterAlive();
-      } else if (this.options.activefailover) {
-        if (this.urls !== []) {
-          this.detectCurrentLeader();
-        }
       }
       this.launchFinalize(startTime);
       return true;
@@ -715,20 +686,6 @@ class instanceManager {
       this.cleanup = false;
       return this._forceTerminate("Abort during Health Check SUT netstat gathering " + moreReason);
     }
-    if (this.options.activefailover &&
-        this.hasOwnProperty('authOpts') &&
-        (this.url !== this.agencyConfig.urls[0])
-       ) {
-      // only detect a leader after we actually know one has been started.
-      // the agency won't tell us anything about leaders.
-      let d = this.detectCurrentLeader();
-      if (this.endpoint !== d.endpoint) {
-        print(Date() + ' failover has happened, leader is no more! Marking Crashy!');
-        d.serverCrashedLocal = true;
-        this.dumpAgency();
-        return false;
-      }
-    }
 
     let rc = this.arangods.reduce((previous, arangod) => {
       let ret = arangod.checkArangoAlive();
@@ -925,16 +882,6 @@ class instanceManager {
       }});
     if (!allAlive) {
       return this._forceTerminate("not all instances are alive!");
-    }
-    if (this.options.activefailover) {
-      let d = this.detectCurrentLeader();
-      if (this.endpoint !== d.endpoint) {
-        print(Date() + ' failover has happened, leader is no more! Marking Crashy!');
-        moreReason += "failover has happened, leader is no more!";
-        d.serverCrashedLocal = true;
-        forceTerminate = true;
-        shutdownSuccess = false;
-      }
     }
 
     if (!forceTerminate && !this.checkInstanceAlive()) {
@@ -1357,17 +1304,6 @@ class instanceManager {
   }
   reconnect()
   {
-    // we need to find the leading server
-    if (this.options.activefailover) {
-      internal.wait(5.0, false);
-      let d = this.detectCurrentLeader();
-      if (d === undefined) {
-        throw new Error("failed to detect a leader");
-      }
-      this.endpoint = d.endpoint;
-      this.url = d.url;
-    }
-
     if (this.options.hasOwnProperty('server')) {
       arango.reconnect(this.endpoint, '_system', 'root', '');
       return true;
@@ -1476,7 +1412,7 @@ class instanceManager {
       });
       this.endpoints = [this.endpoint];
       this.urls = [this.url];
-    } else if (this.options.agency && !this.options.cluster && !this.options.activefailover) {
+    } else if (this.options.agency && !this.options.cluster) {
       this.arangods.forEach(arangod => {
         this.urls.push(arangod.url);
         this.endpoints.push(arangod.endpoint);

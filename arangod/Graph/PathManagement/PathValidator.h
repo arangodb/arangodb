@@ -68,6 +68,8 @@ class PathValidator {
                 PathValidatorOptions opts);
   ~PathValidator();
 
+  auto validatePathUniqueness(typename PathStore::Step& step)
+      -> ValidationResult;
   auto validatePath(typename PathStore::Step& step) -> ValidationResult;
   auto validatePath(typename PathStore::Step const& step,
                     PathValidator<Provider, PathStore, vertexUniqueness,
@@ -123,15 +125,19 @@ class PathValidator {
       -> ValidationResult;
   auto evaluateVertexRestriction(typename PathStore::Step const& step) -> bool;
 
+  [[nodiscard]] auto checkPathUniqueness(typename PathStore::Step& step)
+      -> ValidationResult::Type;
+
+  [[nodiscard]] auto checkValidDisjointPath(
+      typename PathStore::Step const& lastStep)
+      -> arangodb::graph::ValidationResult::Type;
+
   [[nodiscard]] auto exposeUniqueVertices() const
       -> ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
                                          std::equal_to<VertexRef>> const&;
 
   auto evaluateExpression(arangodb::aql::Expression* expression,
                           arangodb::velocypack::Slice value) -> bool;
-
-  auto checkValidDisjointPath(typename PathStore::Step const& lastStep)
-      -> arangodb::graph::ValidationResult::Type;
 
   auto isDisjoint() const { return _options.isDisjoint(); }
   auto isSatelliteLeader() const {
