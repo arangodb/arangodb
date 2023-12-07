@@ -1,6 +1,9 @@
 devel
 -----
 
+* BTS-1633: One Shard databases would incorrectly not be indicated as being
+  One Shard databases in the new database view in the frontend.
+
 * Added option `--http.handle-content-encoding-for-unauthenticated-requests`
   for arangod. If set to `true`, the arangod server will automatically
   uncompress incoming HTTP requests with Content-Encodings gzip and deflate
