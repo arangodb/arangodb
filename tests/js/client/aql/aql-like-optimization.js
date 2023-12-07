@@ -81,6 +81,8 @@ function likeOptimizationSuite () {
       const queries = [
         `FOR doc IN ${cn} OPTIONS { indexHint: 'inv', forceIndexHint: true } FILTER LIKE(doc.name, 'a%') RETURN doc`,
         `FOR doc IN ${cn} OPTIONS { indexHint: 'inv', forceIndexHint: true } FILTER LIKE(doc.name, 'a') RETURN doc`,
+        `FOR doc IN ${cn} OPTIONS { indexHint: 'inv', forceIndexHint: false } FILTER LIKE(doc.name, 'a%') RETURN doc`,
+        `FOR doc IN ${cn} OPTIONS { indexHint: 'inv', forceIndexHint: false } FILTER LIKE(doc.name, 'a') RETURN doc`,
       ];
       
       try {
@@ -248,6 +250,7 @@ function likeOptimizationSuite () {
         [`FOR doc IN ${cn} FILTER LIKE(doc.value1, 'C') RETURN doc.value1`, ["C"] ],
         
         [`FOR doc IN ${cn} OPTIONS { indexHint: 'per', forceIndexHint: true } FILTER LIKE(doc.value1, 'a') RETURN doc.value1`, ["a"] ],
+        [`FOR doc IN ${cn} OPTIONS { indexHint: 'per', forceIndexHint: false } FILTER LIKE(doc.value1, 'a') RETURN doc.value1`, ["a"] ],
       ];
 
       queries.forEach((q) => {
