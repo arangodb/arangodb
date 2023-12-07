@@ -23,7 +23,10 @@
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
 
+#include "Containers/FlatHashSet.h"
 #include "Logger/LogMacros.h"
+
+#include "Containers/FlatHashMap.h"
 
 namespace arangodb::aql {
 
@@ -56,8 +59,9 @@ struct EnumeratePathsFilterMatcher final
 
  private:
   ExecutionPlan* _plan;
-  std::unique_ptr<Condition> _condition;
-  ::arangodb::containers::HashSet<VariableId> _filterVariables;
+  ::arangodb::containers::FlatHashMap<VariableId, AstNode const*>
+      _filterConditions;
+  ::arangodb::containers::FlatHashMap<VariableId, ExecutionNode*> _filterNodes;
 
   bool _appliedChange = false;
 };
