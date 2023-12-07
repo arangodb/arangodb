@@ -50,7 +50,7 @@ set(V8_VERSION
 )
 
 
-SET(V8_RELATIVE_SOURCE_DIR "../${V8_SUB_DIR}")
+set(V8_RELATIVE_SOURCE_DIR "../${V8_SUB_DIR}")
 file(MAKE_DIRECTORY ${V8_TARGET_DIR})
 
 # detect endianess, and translate to gyp/v8 proper string
@@ -90,7 +90,7 @@ file(RELATIVE_PATH V8_REL_TARGET_PATH ${V8_DIR} ${V8_TARGET_DIR})
 list(APPEND V8_GYP_ARGS
   --generator-output=${V8_TARGET_DIR}
   -DV8_ROOT=${V8_RELATIVE_SOURCE_DIR}
-  -Dicu_path=${V8_RELATIVE_SOURCE_DIR}/third_party/icu/',
+  -Dicu_path=${V8_RELATIVE_SOURCE_DIR}/third_party/icu/
   #$ ${V8_REL_TARGET_PATH}
   -Dv8_target_arch=${V8_PROC_ARCH}
   -Dtarget_arch=${V8_PROC_ARCH}
@@ -388,7 +388,7 @@ else ()
 
   list(APPEND V8_GYP_ARGS
 #     -I../gypfiles/standalone.gypi
--Dicu_path=${V8_RELATIVE_SOURCE_DIR}/third_party/icu/',
+    -Dicu_path=${V8_RELATIVE_SOURCE_DIR}/third_party/icu/
     -Dmac_deployment_target=${CMAKE_OSX_DEPLOYMENT_TARGET}
     --depth=.
     -Dos_posix=1
