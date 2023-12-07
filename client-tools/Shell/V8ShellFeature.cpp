@@ -503,9 +503,6 @@ ErrorCode V8ShellFeature::runShell(
 
   v8LineEditor.open(console.autoComplete());
 
-  v8::Local<v8::String> name(
-      TRI_V8_ASCII_STRING(_isolate, TRI_V8_SHELL_COMMAND_NAME));
-
   uint64_t nrCommands = 0;
 
   ClientFeature* client = nullptr;
@@ -558,7 +555,7 @@ ErrorCode V8ShellFeature::runShell(
     double t1 = TRI_microtime();
 
     v8::Handle<v8::Value> v = TRI_ExecuteJavaScriptString(
-        _isolate, context, TRI_V8_STD_STRING(_isolate, input), name, true);
+        _isolate, input, TRI_V8_SHELL_COMMAND_NAME, true);
 
     lastDuration = TRI_microtime() - t1;
 
@@ -798,9 +795,8 @@ bool V8ShellFeature::runString(std::vector<std::string> const& strings,
   for (auto const& script : strings) {
     v8::TryCatch tryCatch(_isolate);
 
-    v8::Handle<v8::Value> result = TRI_ExecuteJavaScriptString(
-        _isolate, context, TRI_V8_STD_STRING(_isolate, script),
-        TRI_V8_ASCII_STRING(_isolate, "(command-line)"), false);
+    v8::Handle<v8::Value> result =
+        TRI_ExecuteJavaScriptString(_isolate, script, "(command-line)", false);
 
     if (tryCatch.HasCaught()) {
       std::string exception(TRI_StringifyV8Exception(_isolate, &tryCatch));
@@ -875,13 +871,10 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
       .FromMaybe(false);
 
   // run tests
-  auto input = TRI_V8_ASCII_STRING(
-      _isolate, "require(\"@arangodb/testrunner\").runCommandLineTests();");
-
-  auto name = TRI_V8_ASCII_STRING(_isolate, TRI_V8_SHELL_COMMAND_NAME);
-
   v8::TryCatch tryCatch(isolate);
-  TRI_ExecuteJavaScriptString(_isolate, context, input, name, true);
+  TRI_ExecuteJavaScriptString(
+      _isolate, "require(\"@arangodb/testrunner\").runCommandLineTests();",
+      TRI_V8_SHELL_COMMAND_NAME, true);
 
   if (tryCatch.HasCaught()) {
     std::string exception(TRI_StringifyV8Exception(_isolate, &tryCatch));
@@ -1253,8 +1246,6 @@ void V8ShellFeature::initMode(ShellFeature::RunMode runMode,
 }
 
 void V8ShellFeature::loadModules(ShellFeature::RunMode runMode) {
-  auto context = _isolate->GetCurrentContext();
-
   JSLoader loader;
   loader.setDirectory(_startupDirectory);
 
@@ -1284,7 +1275,7 @@ void V8ShellFeature::loadModules(ShellFeature::RunMode runMode) {
   files.push_back("client/" + _clientModule);  // needs internal
 
   for (auto const& file : files) {
-    switch (loader.loadScript(_isolate, context, file, nullptr)) {
+    switch (loader.loadScript(_isolate, file, nullptr)) {
       case JSLoader::eSuccess:
         LOG_TOPIC("edc8d", TRACE, arangodb::Logger::FIXME)
             << "loaded JavaScript file '" << file << "'";

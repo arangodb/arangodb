@@ -18,24 +18,35 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
-
-#pragma once
 
 #ifndef USE_V8
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
-#include "Basics/Common.h"
+#include "GlobalExecutorMethods.h"
 
-#include <v8.h>
+using namespace arangodb;
 
-namespace arangodb::aql {
-class V8Executor {
- public:
-  /// @brief checks if a V8 exception has occurred and throws an appropriate C++
-  /// exception from it if so
-  static void handleV8Error(v8::TryCatch&, v8::Handle<v8::Value>&);
-};
-}  // namespace arangodb::aql
+std::string_view GlobalExecutorMethods::name(
+    GlobalExecutorMethods::MethodType type) noexcept {
+  switch (type) {
+    case MethodType::kReloadRouting:
+      return "reloadRouting";
+    case MethodType::kReloadAql:
+      return "reloadAql";
+  }
+  return "unknown";
+}
+
+std::string_view GlobalExecutorMethods::code(
+    GlobalExecutorMethods::MethodType type) noexcept {
+  switch (type) {
+    case MethodType::kReloadRouting:
+      return "require(\"@arangodb/actions\").reloadRouting();";
+    case MethodType::kReloadAql:
+      return "try { require(\"@arangodb/aql\").reload(); } catch (err) {}";
+  }
+  return "";
+}

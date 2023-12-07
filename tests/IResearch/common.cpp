@@ -520,7 +520,11 @@ void v8Init() {
     }
     ~V8Init() {
       v8::V8::Dispose();
+#ifdef V8_UPGRADE
+      v8::V8::DisposePlatform();
+#else
       v8::V8::ShutdownPlatform();
+#endif
     }
 
    private:
