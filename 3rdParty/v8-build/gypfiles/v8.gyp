@@ -3,7 +3,8 @@
 # found in the LICENSE file.
 {
   'variables': {
-    'V8_ROOT': '../../deps/v8',
+    # 'V8_ROOT': '../../deps/v8',
+    'icu_gyp_path': './<(V8_ROOT)/third_party/icu/icu-generic.gyp',
     'v8_code': 1,
     'v8_random_seed%': 314159265,
     'v8_vector_stores%': 0,

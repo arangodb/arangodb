@@ -90,6 +90,7 @@ file(RELATIVE_PATH V8_REL_TARGET_PATH ${V8_DIR} ${V8_TARGET_DIR})
 list(APPEND V8_GYP_ARGS
   --generator-output=${V8_TARGET_DIR}
   -DV8_ROOT=${V8_RELATIVE_SOURCE_DIR}
+  -Dicu_path=${V8_RELATIVE_SOURCE_DIR}/third_party/icu/',
   #$ ${V8_REL_TARGET_PATH}
   -Dv8_target_arch=${V8_PROC_ARCH}
   -Dtarget_arch=${V8_PROC_ARCH}
@@ -199,7 +200,19 @@ if (WIN32)
     -Dv8_enable_handle_zapping=0
     -Dv8_use_snapshot=1
     -Dpython="${PYTHON_EXECUTABLE}"
+    -Dv8_enable_webassembly=0
     -Dnode_use_pch=false
+    -Dcomponent=shared_library
+    -Dv8_optimized_debug=1
+    -Dicu_use_data_file_flag=1
+    -Denable_lto=0
+    -Dos_posix=1
+    -Dicu_small=false
+    -Dlibrary=static_library #icu
+    -Dicu_ver_major="74"
+    -Dicu_data_in="../../deps/icu-tmp/icudt74l.dat"
+    -Dicu_endianness="l"
+
   )
 
   list(APPEND V8_TARGETS
@@ -375,8 +388,10 @@ else ()
 
   list(APPEND V8_GYP_ARGS
 #     -I../gypfiles/standalone.gypi
+-Dicu_path=${V8_RELATIVE_SOURCE_DIR}/third_party/icu/',
     -Dmac_deployment_target=${CMAKE_OSX_DEPLOYMENT_TARGET}
     --depth=.
+    -Dos_posix=1
     -Dstandalone_static_library=1
     -Dlinux_use_bundled_gold=0
     -Dlinux_use_gold_flags=0
@@ -391,6 +406,16 @@ else ()
     -Dembedded_builtins_snapshot_src=
     -Dv8_enable_handle_zapping=0
     -Dv8_use_snapshot=1
+    -Dv8_enable_webassembly=0
+    -Dcomponent=shared_library
+    -Dv8_optimized_debug=1
+    -Dicu_use_data_file_flag=1
+    -Denable_lto=0
+    -Dlibrary=static_library #icu
+    -Dicu_small=false
+    -Dicu_ver_major="74"
+    -Dicu_data_in="../../deps/icu-tmp/icudt74l.dat" #todo in build dir
+    -Dicu_endianness="l"
     -Dpython="${PYTHON_EXECUTABLE}"
   )
 
