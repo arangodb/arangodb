@@ -288,7 +288,7 @@
 
     # Compile V8 using zlib as dependency.
     # Sets -DV8_USE_ZLIB
-    'v8_use_zlib%': 1,
+    'v8_use_zlib%': 0, #1,
 
     # Whether custom embedder snapshots may extend (= allocate new objects in)
     # ReadOnlySpace.

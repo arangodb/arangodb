@@ -863,10 +863,11 @@
         'run_torque',
         'v8_internal_headers',
         'v8_maybe_icu',
-        'v8_zlib',
+#        'v8_zlib',
         'v8_pch',
       ],
       'includes': ['inspector.gypi'],
+      'include_dirs': [ '<(ABSL_INCLUDE_DIR)/' ],
       'direct_dependent_settings': {
         'include_dirs': [
           '<(ABSL_INCLUDE_DIR)/',

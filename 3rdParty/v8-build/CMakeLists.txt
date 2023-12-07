@@ -200,6 +200,7 @@ if (WIN32)
     -Dembedded_builtins_snapshot_src=
     -Dv8_enable_handle_zapping=0
     -Dv8_use_snapshot=1
+    -Dv8_use_zlib=0
     -Dv8_enable_webassembly=0
     -Dnode_use_pch=false
     -Dcomponent=shared_library
@@ -406,6 +407,7 @@ else ()
     -Dembedded_builtins_snapshot_src=
     -Dv8_enable_handle_zapping=0
     -Dv8_use_snapshot=1
+    -Dv8_use_zlib=0
     -Dv8_enable_webassembly=0
     -Dcomponent=shared_library
     -Dv8_optimized_debug=1
