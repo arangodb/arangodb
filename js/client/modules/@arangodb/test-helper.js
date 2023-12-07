@@ -46,6 +46,7 @@ const inst = require('@arangodb/testutils/instance');
 const request = require('@arangodb/request');
 const arangosh = require('@arangodb/arangosh');
 const jsunity = require('jsunity');
+const { isCluster } = require('../../bootstrap/modules/internal');
 const arango = internal.arango;
 const db = internal.db;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
@@ -625,11 +626,35 @@ exports.triggerMetrics = function () {
 };
 
 exports.activateFailure = function (name) {
-  exports.getEndpointsByType("dbserver").forEach(ep => exports.debugSetFailAt(ep, name));
+  const isCluster = require("internal").isCluster();
+  let roles = [];
+  if (isCluster) {
+    roles.push("dbserver");
+    roles.push("coordinator");
+  } else {
+    roles.push("single");
+  }
+  
+  print(roles);
+  roles.forEach(role => {
+    exports.getEndpointsByType(role).forEach(ep => exports.debugSetFailAt(ep, name));
+  });
+
 };
 
 exports.deactivateFailure = function (name) {
-  exports.getEndpointsByType("dbserver").forEach(ep => exports.debugClearFailAt(ep, name));
+  const isCluster = require("internal").isCluster();
+  let roles = [];
+  if (isCluster) {
+    roles.push("dbserver");
+    roles.push("coordinator");
+  } else {
+    roles.push("single");
+  }
+
+  roles.forEach(role => {
+    exports.getEndpointsByType(role).forEach(ep => exports.debugClearFailAt(ep, name));
+  });
 };
 
 exports.getAllMetricsFromEndpoints = function (roles = "") {

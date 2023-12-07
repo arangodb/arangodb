@@ -31,6 +31,7 @@ const internal = require('internal');
 const arangodb = require('@arangodb');
 const db = arangodb.db;
 const testHelper = require('@arangodb/test-helper').helper;
+const {activateFailure} = require('@arangodb/test-helper');
 const isCluster = require("internal").isCluster();
 
 let compareStringIds = function (l, r) {
@@ -84,7 +85,7 @@ function transactionFailuresSuite () {
     testCommitEmptyTransactionFailure : function () {
       c.insert({ _key: "foobar", value: "baz" });
       assertEqual(1, c.count());
-      internal.debugSetFailAt("TransactionCommitFail");
+      activateFailure("TransactionCommitFail");
       try {
         db._executeTransaction({
           collections: {
@@ -111,7 +112,7 @@ function transactionFailuresSuite () {
       c.insert(docs);
       assertEqual(100, c.count());
       
-      internal.debugSetFailAt("TransactionCommitFail");
+      activateFailure("TransactionCommitFail");
       try {
         db._executeTransaction({ 
           collections: {
@@ -141,7 +142,7 @@ function transactionFailuresSuite () {
     testCommitTransactionWithFailuresInsideFailure : function () {
       c.insert({ _key: "foobar", value: "baz" });
 
-      internal.debugSetFailAt("TransactionCommitFail");
+      activateFailure("TransactionCommitFail");
       try {
         db._executeTransaction({ 
           collections: {
