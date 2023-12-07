@@ -435,7 +435,7 @@ bool equalAnalyzer(AnalyzerPool const& pool, std::string_view type,
                                 pool.properties()))) {
     // failed to re-normalize definition - strange. It was already normalized
     // once. Some bug in load/store?
-    TRI_ASSERT(FALSE);
+    TRI_ASSERT(false);
     LOG_TOPIC("a4073", WARN, arangodb::iresearch::TOPIC)
         << "failed to re-normalize properties for analyzer type '"
         << pool.type() << "' properties '" << pool.properties().toString()
@@ -518,7 +518,7 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
 
       auto shards = collection->shardIds();
       if (ADB_UNLIKELY(!shards)) {
-        TRI_ASSERT(FALSE);
+        TRI_ASSERT(false);
         return {};  // treat missing collection as if there are no analyzers
       }
 
@@ -543,8 +543,8 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
       // satellite collections and dirty-reads may break this assumption.
       // In that case we just proceed with regular cluster query
       if (shards->begin()->second.front() == ServerState::instance()->getId()) {
-        auto oneShardQueryString = aql::QueryString(
-            absl::StrCat("FOR d IN ", shards->begin()->first, " RETURN d"));
+        auto oneShardQueryString = aql::QueryString(absl::StrCat(
+            "FOR d IN ", std::string{shards->begin()->first}, " RETURN d"));
         auto query = aql::Query::create(
             transaction::StandaloneContext::create(vocbase, operationOrigin),
             std::move(oneShardQueryString), nullptr);
@@ -2993,7 +2993,7 @@ bool IResearchAnalyzerFeature::visit(
 
 void IResearchAnalyzerFeature::cleanupAnalyzers(std::string_view database) {
   if (ADB_UNLIKELY(database.empty())) {
-    TRI_ASSERT(FALSE);
+    TRI_ASSERT(false);
     return;
   }
   for (auto itr = _analyzers.begin(), end = _analyzers.end(); itr != end;) {

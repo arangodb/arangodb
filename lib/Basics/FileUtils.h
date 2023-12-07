@@ -66,6 +66,12 @@ void spit(std::string const& filename, char const* ptr, size_t len,
 void spit(std::string const& filename, std::string const& content,
           bool sync = false);
 
+// appends to an existing file
+void appendToFile(std::string const& filename, char const* ptr, size_t len,
+                  bool sync = false);
+void appendToFile(std::string const& filename, std::string_view s,
+                  bool sync = false);
+
 // if a file could be removed returns TRI_ERROR_NO_ERROR.
 // otherwise, returns TRI_ERROR_SYS_ERROR and sets LastError.
 [[nodiscard]] ErrorCode remove(std::string const& fileName);

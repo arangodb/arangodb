@@ -154,6 +154,8 @@ class Ast {
   bool containsUpsertNode() const noexcept;
   void setContainsUpsertNode() noexcept;
   void setContainsParallelNode() noexcept;
+  bool containsAsyncPrefetch() const noexcept;
+  void setContainsAsyncPrefetch() noexcept;
 
   bool canApplyParallelism() const noexcept {
     return _containsParallelNode && !_willUseV8 && !_containsModificationNode;
@@ -226,8 +228,11 @@ class Ast {
                              AstNode const*);
 
   /// @brief create an AST upsert node
-  AstNode* createNodeUpsert(AstNodeType, AstNode const*, AstNode const*,
-                            AstNode const*, AstNode const*, AstNode const*);
+  AstNode* createNodeUpsert(AstNodeType type, AstNode const* docVariable,
+                            AstNode const* insertExpression,
+                            AstNode const* updateExpression,
+                            AstNode const* collection, AstNode const* options,
+                            bool canReadOwnWrites);
 
   /// @brief create an AST distinct node
   AstNode* createNodeDistinct(AstNode const*);
@@ -472,6 +477,8 @@ class Ast {
   /// @brief determines the variables referenced in an expression
   static void getReferencedVariables(AstNode const*, VarSet&);
 
+  static bool isVarsUsed(AstNode const*, VarSet const&);
+
   /// @brief count how many times a variable is referenced in an expression
   static size_t countReferences(AstNode const*, Variable const*);
 
@@ -688,13 +695,17 @@ class Ast {
   /// @brief whether or not the query contains bind parameters
   bool _containsBindParameters;
 
-  /// @brief contains INSERT / UPDATE / REPLACE / REMOVE
+  /// @brief contains INSERT / UPDATE / REPLACE / REMOVE / UPSERT
   bool _containsModificationNode;
 
-  bool _containsUpsertNode{false};
+  /// @brief contains UPSERT
+  bool _containsUpsertNode;
 
   /// @brief contains a parallel traversal
   bool _containsParallelNode;
+
+  /// @brief whether or not a part of the query uses async prefetching
+  bool _containsAsyncPrefetch;
 
   /// @brief query makes use of V8 function(s)
   bool _willUseV8;

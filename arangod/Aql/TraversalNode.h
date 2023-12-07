@@ -23,8 +23,8 @@
 
 #pragma once
 
+#include "Aql/EdgeConditionBuilder.h"
 #include "Aql/GraphNode.h"
-#include "Aql/Graphs.h"
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/TraversalExecutor.h"
 #include "Graph/Types/UniquenessLevel.h"
@@ -149,6 +149,12 @@ class TraversalNode : public virtual GraphNode {
 
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
+
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable,
+                              size_t index) override;
 
   /// @brief getVariablesUsedHere
   void getVariablesUsedHere(VarSet& result) const override final;

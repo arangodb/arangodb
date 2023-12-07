@@ -76,6 +76,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include "Containers/Enumerate.h"
+
 using namespace arangodb;
 
 namespace {
@@ -900,6 +902,9 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
           return false;
         }
 
+        TRI_ASSERT(_index->objectId() ==
+                   RocksDBKey::objectId(_iterator->key()));
+
         TRI_ASSERT(limit > 0);
 
         fillResultBuilder();
@@ -930,6 +935,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
     // cannot get here if we have a cache
     do {
+      TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
       consumeIteratorValue();
 
       if (!advance()) {
@@ -1087,12 +1093,30 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       _iterator =
           mthds->NewIterator(_index->columnFamily(), [&](ReadOptions& options) {
             TRI_ASSERT(options.prefix_same_as_start);
-            // we need to have a pointer to a slice for the upper bound
-            // so we need to assign the slice to an instance variable here
-            if constexpr (reverse) {
-              options.iterate_lower_bound = &_rangeBound;
-            } else {
-              options.iterate_upper_bound = &_rangeBound;
+            // note: iterate_lower_bound/iterate_upper_bound should only be
+            // set if the iterator is not supposed to check the bounds
+            // for every operation.
+            // when the iterator is a db snapshot-based iterator, it is ok
+            // to set iterate_lower_bound/iterate_upper_bound, because this
+            // is well supported by RocksDB.
+            // if the iterator is a multi-level iterator that merges data from
+            // the db snapshot with data from an ongoing in-memory transaction
+            // (contained in a WriteBatchWithIndex, WBWI), then RocksDB does
+            // not properly support the bounds checking using
+            // iterate_lower_bound/ iterate_upper_bound. in this case we must
+            // avoid setting the bounds here and rely on our own bounds checking
+            // using the comparator. at least one underlying issue was fixed in
+            // RocksDB in version 8.8.0 via
+            // https://github.com/facebook/rocksdb/pull/11680. we can revisit
+            // the issue once we have upgraded to RocksDB >= 8.8.0.
+            if constexpr (!mustCheckBounds) {
+              // we need to have a pointer to a slice for the upper bound
+              // so we need to assign the slice to an instance variable here
+              if constexpr (reverse) {
+                options.iterate_lower_bound = &_rangeBound;
+              } else {
+                options.iterate_upper_bound = &_rangeBound;
+              }
             }
             options.readOwnWrites = static_cast<bool>(canReadOwnWrites());
           });
@@ -2876,8 +2900,16 @@ namespace {
 
 struct RocksDBVPackStreamOptions {
   std::size_t keyPrefixSize;
-  std::vector<std::size_t> projectedKeyValues;
-  std::vector<std::size_t> projectedStoredValues;
+  struct ProjectedValuePair {
+    explicit ProjectedValuePair(std::size_t resultOffset,
+                                std::size_t indexOffset)
+        : resultOffset(resultOffset), indexOffset(indexOffset) {}
+    std::size_t resultOffset;
+    std::size_t indexOffset;
+  };
+
+  std::vector<ProjectedValuePair> projectedKeyValues;
+  std::vector<ProjectedValuePair> projectedStoredValues;
 };
 
 template<bool isUnique>
@@ -2954,21 +2986,20 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
 
   LocalDocumentId load(std::span<VPackSlice> projections) const override {
     TRI_ASSERT(_iterator->Valid());
-    std::size_t idx = 0;
     TRI_ASSERT(projections.size() == _options.projectedKeyValues.size() +
                                          _options.projectedStoredValues.size());
 
-    auto keySlice = RocksDBKey::indexedVPack(_iterator->key());
-    for (auto pos : _options.projectedKeyValues) {
-      projections[idx++] = keySlice.at(pos);
-    }
     if (!_options.projectedStoredValues.empty()) {
       auto valueSlice =
           isUnique ? RocksDBValue::uniqueIndexStoredValues(_iterator->value())
                    : RocksDBValue::indexStoredValues(_iterator->value());
       for (auto pos : _options.projectedStoredValues) {
-        projections[idx++] = valueSlice.at(pos);
+        projections[pos.resultOffset] = valueSlice.at(pos.indexOffset);
       }
+    }
+    auto keySlice = RocksDBKey::indexedVPack(_iterator->key());
+    for (auto pos : _options.projectedKeyValues) {
+      projections[pos.resultOffset] = keySlice.at(pos.indexOffset);
     }
 
     if constexpr (isUnique) {
@@ -3013,11 +3044,12 @@ std::unique_ptr<AqlIndexStreamIterator> RocksDBVPackIndex::streamForCondition(
 
   RocksDBVPackStreamOptions streamOptions;
   streamOptions.keyPrefixSize = opts.usedKeyFields.size();
-  for (auto idx : opts.projectedFields) {
+  for (auto [offset, idx] : enumerate(opts.projectedFields)) {
     if (idx < _fields.size()) {
-      streamOptions.projectedKeyValues.push_back(idx);
+      streamOptions.projectedKeyValues.emplace_back(offset, idx);
     } else if (idx < _fields.size() + _storedValues.size()) {
-      streamOptions.projectedStoredValues.push_back(idx - _fields.size());
+      streamOptions.projectedStoredValues.emplace_back(offset,
+                                                       idx - _fields.size());
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL, "index does not cover field with given index");

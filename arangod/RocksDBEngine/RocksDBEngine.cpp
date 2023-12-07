@@ -51,6 +51,11 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/Metric.h"
+#include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationClients.h"
@@ -62,10 +67,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
-#include "Metrics/CounterBuilder.h"
-#include "Metrics/GaugeBuilder.h"
-#include "Metrics/HistogramBuilder.h"
-#include "Metrics/MetricsFeature.h"
 #include "RestServer/DumpLimitsFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
 #include "RestServer/ServerIdFeature.h"
@@ -151,7 +152,7 @@
 // correct sequence numbers for the files without gaps
 #undef USE_SST_INGESTION
 
-#define USE_CUSTOM_WAL
+// #define USE_CUSTOM_WAL
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -1908,7 +1909,8 @@ void RocksDBEngine::processTreeRebuilds() {
                   << candidate.first << "/" << collection->name();
               Result res =
                   static_cast<RocksDBCollection*>(collection->getPhysical())
-                      ->rebuildRevisionTree();
+                      ->rebuildRevisionTree()
+                      .get();
               if (res.ok()) {
                 ++_metricsTreeRebuildsSuccess;
                 LOG_TOPIC("2f997", INFO, Logger::ENGINES)
@@ -2085,7 +2087,7 @@ Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   bool const prefixSameAsStart = true;
   bool const useRangeDelete = rcoll->meta().numberDocuments() >= 32 * 1024;
 
-  auto resLock = rcoll->lockWrite();  // technically not necessary
+  auto resLock = rcoll->lockWrite().get();  // technically not necessary
   if (resLock != TRI_ERROR_NO_ERROR) {
     return resLock;
   }
@@ -3129,6 +3131,21 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   // scan the database path for "arangosearch" views
   scanViews(iresearch::StaticStrings::ViewArangoSearchType);
 
+  // replicated states should be loaded before their respective shards
+  if (vocbase->replicationVersion() == replication::Version::TWO) {
+    try {
+      loadReplicatedStates(*vocbase);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("554c1", ERR, arangodb::Logger::ENGINES)
+          << "error while opening database: " << ex.what();
+      throw;
+    } catch (...) {
+      LOG_TOPIC("5f33d", ERR, arangodb::Logger::ENGINES)
+          << "error while opening database: unknown exception";
+      throw;
+    }
+  }
+
   // scan the database path for collections
   try {
     VPackBuilder builder;
@@ -3172,12 +3189,6 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       LOG_TOPIC("39404", DEBUG, arangodb::Logger::ENGINES)
           << "added collection '" << vocbase->name() << "/"
           << collection->name() << "'";
-
-      if (collection->replicationVersion() ==
-          arangodb::replication::Version::TWO) {
-        vocbase->_logManager->_initCollections.emplace(
-            collection->replicatedStateId(), collection);
-      }
     }
   } catch (std::exception const& ex) {
     LOG_TOPIC("8d427", ERR, arangodb::Logger::ENGINES)
@@ -3188,18 +3199,6 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     LOG_TOPIC("0268e", ERR, arangodb::Logger::ENGINES)
         << "error while opening database '" << vocbase->name()
         << "': unknown exception";
-    throw;
-  }
-
-  try {
-    loadReplicatedStates(*vocbase);
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("554c1", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: " << ex.what();
-    throw;
-  } catch (...) {
-    LOG_TOPIC("5f33d", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: unknown exception";
     throw;
   }
 
@@ -3430,7 +3429,8 @@ void RocksDBEngine::getCapabilities(velocypack::Builder& builder) const {
   VPackCollection::merge(builder, main.slice(), own.slice(), false);
 }
 
-void RocksDBEngine::getStatistics(std::string& result) const {
+void RocksDBEngine::toPrometheus(std::string& result, std::string_view globals,
+                                 bool ensureWhitespace) const {
   VPackBuffer<uint8_t> buffer;
   VPackBuilder stats(buffer);
   getStatistics(stats);
@@ -3446,17 +3446,12 @@ void RocksDBEngine::getStatistics(std::string& result) const {
         // prepend name with "rocksdb_"
         name = absl::StrCat(kEngineName, "_", name);
       }
-      if (name.ends_with("_total")) {
-        // counter
-        result += absl::StrCat("\n# HELP ", name, " ", name, "\n# TYPE ", name,
-                               " counter\n", name, " ",
-                               a.value.getNumber<uint64_t>(), "\n");
-      } else {
-        // gauge
-        result += absl::StrCat("\n# HELP ", name, " ", name, "\n# TYPE ", name,
-                               " gauge\n", name, " ",
-                               a.value.getNumber<uint64_t>(), "\n");
-      }
+
+      metrics::Metric::addInfo(result, name, /*help*/ name,
+                               name.ends_with("_total") ? "counter" : "gauge");
+      metrics::Metric::addMark(result, name, globals, "");
+      absl::StrAppend(&result, ensureWhitespace ? " " : "",
+                      a.value.getNumber<uint64_t>(), "\n");
     }
   }
 }

@@ -39,7 +39,8 @@
 #include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
 #include "Replication2/Methods.h"
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 
 using namespace arangodb;
 using namespace arangodb::cluster;
@@ -90,7 +91,7 @@ arangodb::AgencyOperation CreateCollectionSuccess(std::string_view dbName,
                                    info};
 }
 
-auto createDocumentStateSpec(std::string const& shardId,
+auto createDocumentStateSpec(ShardID const& shardId,
                              std::vector<std::string> const& serverIds,
                              ClusterCollectionCreationInfo const& info,
                              std::string const& databaseName)
@@ -350,7 +351,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       std::lock_guard lock{*cacheMutex};
       *isCleaned = true;
       for (auto& cb : agencyCallbacks) {
-        _agencyCallbackRegistry->unregisterCallback(cb);
+        _agencyCallbackRegistry.unregisterCallback(cb);
       }
     } catch (std::exception const&) {
     }
@@ -382,7 +383,7 @@ Result ClusterInfo::createCollectionsCoordinator(
 
     std::map<ShardID, std::vector<ServerID>> shardServers;
     for (auto pair : VPackObjectIterator(info.json.get("shards"))) {
-      ShardID shardID = pair.key.copyString();
+      ShardID shardID{pair.key.copyString()};
       std::vector<ServerID> serverIds;
 
       for (auto const& serv : VPackArrayIterator(pair.value)) {
@@ -450,7 +451,7 @@ Result ClusterInfo::createCollectionsCoordinator(
             // plannedServers
             {
               READ_LOCKER(readLocker, _planProt.lock);
-              auto it = shardServers.find(p.key.copyString());
+              auto it = shardServers.find(ShardID{p.key.copyString()});
               if (it != shardServers.end()) {
                 plannedServers = (*it).second;
               } else {
@@ -538,7 +539,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         "Current/Collections/" + databaseName + "/" + info.collectionID,
         closure, true, false);
 
-    Result r = _agencyCallbackRegistry->registerCallback(agencyCallback);
+    Result r = _agencyCallbackRegistry.registerCallback(agencyCallback);
     if (r.fail()) {
       return r;
     }

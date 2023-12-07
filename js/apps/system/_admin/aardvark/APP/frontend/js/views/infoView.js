@@ -18,7 +18,7 @@
       var self = this;
       this.breadcrumb();
       window.arangoHelper.buildCollectionSubNav(this.collectionName, 'Info');
-
+      window.arangoHelper.disableSubNavBar();
       if (frontendConfig.isCluster) {
         let clusterData = {};
         let callbackShardCount = function (error, data) {
@@ -76,6 +76,7 @@
             null, null,
             null, 'content'
           );
+          window.arangoHelper.enableSubNavBar();
         }
       }.bind(this);
 

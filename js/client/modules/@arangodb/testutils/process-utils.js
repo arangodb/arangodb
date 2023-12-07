@@ -228,14 +228,14 @@ class ConfigBuilder {
       this.config['--compress-output'] = false;
     }
   }
-  setUseParallelDump() {
+  setUseParallelDump(value = true) {
     if (this.type === 'dump') {
-      this.config['parallel-dump'] = true;
+      this.config['parallel-dump'] = value;
     }
   }
-  setUseSplitFiles() {
+  setUseSplitFiles(value = false) {
     if (this.type === 'dump') {
-      this.config['split-files'] = true;
+      this.config['split-files'] = value;
     }
   }
   setRootDir(dir) { this.rootDir = dir; }

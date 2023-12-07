@@ -351,7 +351,11 @@ void visitReferencedVariables(
   aql::Ast::traverseReadOnly(&root, preVisitor, postVisitor);
 }
 
-aql::AstNode const ScopedAqlValue::INVALID_NODE(aql::NODE_TYPE_ROOT);
+// create the node as an InternalNode. this will already properly initialized
+// the relevant node flags, so there are no races when multiple threads try to
+// read and mutate the node's flags concurrently.
+aql::AstNode const ScopedAqlValue::INVALID_NODE(aql::NODE_TYPE_ROOT,
+                                                aql::AstNode::InternalNode{});
 
 bool ScopedAqlValue::execute(iresearch::QueryContext const& ctx) {
   if (_executed && _node->isDeterministic()) {

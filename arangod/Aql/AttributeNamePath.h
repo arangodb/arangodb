@@ -100,6 +100,8 @@ class AttributeNamePath {
   void pop();
 #endif
 
+  bool isPrefixOf(AttributeNamePath const& other) const noexcept;
+
   /// @brief reverse the attributes in the path
   AttributeNamePath& reverse();
 

@@ -437,6 +437,20 @@ void RestVocbaseBaseHandler::generateTransactionError(
     std::string_view key, RevisionId rev) {
   auto const code = result.errorNumber();
   switch (static_cast<int>(code)) {
+    case static_cast<int>(
+        TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE): {
+      // Can only show up in Replication2. But uncritical if ever changed.
+      TRI_ASSERT(_vocbase.replicationVersion() == replication::Version::TWO);
+      auto const& res = result.result;
+      auto const& opOptions = result.options;
+      // The Not_Acceptable response is just for compatibility.
+      // In Replication2 we do never send the isSynchronousReplication header.
+      auto respCode = opOptions.isSynchronousReplicationFrom.empty()
+                          ? ResponseCode::MISDIRECTED_REQUEST
+                          : ResponseCode::NOT_ACCEPTABLE;
+      generateError(respCode, res.errorNumber(), res.errorMessage());
+      return;
+    }
     case static_cast<int>(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND):
       if (collectionName.empty()) {
         // no collection name specified
@@ -559,7 +573,8 @@ void RestVocbaseBaseHandler::extractStringParameter(std::string const& name,
   }
 }
 
-std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
+futures::Future<std::unique_ptr<transaction::Methods>>
+RestVocbaseBaseHandler::createTransaction(
     std::string const& collectionName, AccessMode::Type type,
     OperationOptions const& opOptions,
     transaction::OperationOrigin operationOrigin,
@@ -580,7 +595,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     if (isFollower) {
       tmp->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
     }
-    return tmp;
+    co_return tmp;
   }
 
   TransactionId tid = TransactionId::none();
@@ -614,8 +629,8 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
           _request->header(StaticStrings::TransactionBody, found);
       if (found) {
         auto trxOpts = VPackParser::fromJson(trxDef);
-        Result res = mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(),
-                                           operationOrigin, isFollower);
+        Result res = co_await mgr->ensureManagedTrx(
+            _vocbase, tid, trxOpts->slice(), operationOrigin, isFollower);
         if (res.fail()) {
           THROW_ARANGO_EXCEPTION(res);
         }
@@ -663,19 +678,19 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     }
     trx = std::make_unique<transaction::Methods>(std::move(ctx));
   }
-  return trx;
+  co_return trx;
 }
 
 /// @brief create proper transaction context, including the proper IDs
-std::shared_ptr<transaction::Context>
+futures::Future<std::shared_ptr<transaction::Context>>
 RestVocbaseBaseHandler::createTransactionContext(
     AccessMode::Type mode, transaction::OperationOrigin operationOrigin) const {
   bool found = false;
   std::string const& value =
       _request->header(StaticStrings::TransactionId, found);
   if (!found) {
-    return std::make_shared<transaction::StandaloneContext>(_vocbase,
-                                                            operationOrigin);
+    co_return std::make_shared<transaction::StandaloneContext>(_vocbase,
+                                                               operationOrigin);
   }
 
   TransactionId tid = TransactionId::none();
@@ -704,7 +719,7 @@ RestVocbaseBaseHandler::createTransactionContext(
       // standalone AQL query on DB server
       auto ctx = std::make_shared<transaction::AQLStandaloneContext>(
           _vocbase, tid, operationOrigin);
-      return ctx;
+      co_return ctx;
     }
 
     if (value.compare(pos, std::string::npos, " begin") == 0) {
@@ -718,8 +733,8 @@ RestVocbaseBaseHandler::createTransactionContext(
         // transaction when we get here.
         auto origin = transaction::OperationOriginREST{
             "streaming transaction on DB server"};
-        Result res = mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(),
-                                           origin, false);
+        Result res = co_await mgr->ensureManagedTrx(
+            _vocbase, tid, trxOpts->slice(), origin, false);
         if (res.fail()) {
           THROW_ARANGO_EXCEPTION(res);
         }
@@ -736,5 +751,5 @@ RestVocbaseBaseHandler::createTransactionContext(
         absl::StrCat("transaction '", tid.id(), "' not found"));
   }
   ctx->setStreaming();
-  return ctx;
+  co_return ctx;
 }

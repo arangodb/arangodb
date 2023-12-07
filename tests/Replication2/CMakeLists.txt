@@ -35,6 +35,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   ReplicatedLog/Integration/StorageEngineMethodsTest.cpp
   ReplicatedState/StateManagerTest.cpp
   ReplicatedState/StateMachines/DocumentState/CoreTest.cpp
+  ReplicatedState/StateMachines/DocumentState/ErrorHandlerTest.cpp
   ReplicatedState/StateMachines/DocumentState/FollowerTest.cpp
   ReplicatedState/StateMachines/DocumentState/LeaderTest.cpp
   ReplicatedState/StateMachines/DocumentState/ShardHandlerTest.cpp

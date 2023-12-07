@@ -226,8 +226,8 @@ void Query::destroy() {
   }
 
   // log to audit log
-  if (!_queryOptions.skipAudit && (ServerState::instance()->isCoordinator() ||
-                                   ServerState::instance()->isSingleServer())) {
+  if (!_queryOptions.skipAudit &&
+      ServerState::instance()->isSingleServerOrCoordinator()) {
     try {
       events::AqlQuery(*this);
     } catch (...) {
@@ -235,9 +235,14 @@ void Query::destroy() {
     }
   }
 
+  ErrorCode resultCode = TRI_ERROR_INTERNAL;
+  if (killed()) {
+    resultCode = TRI_ERROR_QUERY_KILLED;
+  }
+
   // this will reset _trx, so _trx is invalid after here
   try {
-    auto state = cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/ true);
+    auto state = cleanupPlanAndEngine(resultCode, /*sync*/ true);
     TRI_ASSERT(state != ExecutionState::WAITING);
   } catch (...) {
     // unfortunately we cannot do anything here, as we are in the destructor
@@ -435,11 +440,11 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   }
 #endif
 
+  // create the transaction object
   _trx = AqlTransaction::create(_transactionContext, _collections,
                                 _queryOptions.transactionOptions,
                                 std::move(inaccessibleCollections));
 
-  // create the transaction object, but do not start it yet
   _trx->addHint(
       transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
 
@@ -590,7 +595,6 @@ ExecutionState Query::execute(QueryResult& queryResult) {
 
               if (!val.isEmpty()) {
                 val.toVelocyPack(&vpackOpts, resultBuilder,
-                                 /*resolveExternals*/ useQueryCache,
                                  /*allowUnindexed*/ true);
               }
             }
@@ -797,6 +801,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
         std::tie(state, skipped, value) = engine->execute(::defaultStack);
         // We cannot trigger a skip operation from here
         TRI_ASSERT(skipped.nothingSkipped());
+
         while (state == ExecutionState::WAITING) {
           ss->waitForAsyncWakeup();
           std::tie(state, skipped, value) = engine->execute(::defaultStack);
@@ -827,9 +832,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
                   .FromMaybe(false);
 
               if (useQueryCache) {
-                val.toVelocyPack(&vpackOpts, *builder,
-                                 /*resolveExternals*/ true,
-                                 /*allowUnindexed*/ true);
+                val.toVelocyPack(&vpackOpts, *builder, /*allowUnindexed*/ true);
               }
               memoryUsage += sizeof(v8::Value);
               if (val.requiresDestruction()) {
@@ -1023,11 +1026,10 @@ QueryResult Query::explain() {
     // optimize and validate the ast
     enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);
 
-    // create the transaction object, but do not start it yet
+    // create the transaction object
     _trx = AqlTransaction::create(_transactionContext, _collections,
                                   _queryOptions.transactionOptions);
 
-    // we have an AST
     Result res = _trx->begin();
 
     if (!res.ok()) {
@@ -1524,10 +1526,15 @@ std::shared_ptr<transaction::Context> Query::newTrxContext() const {
   TRI_ASSERT(_transactionContext != nullptr);
   TRI_ASSERT(_trx != nullptr);
 
-  if (_ast->canApplyParallelism()) {
+  if (_ast->canApplyParallelism() || _ast->containsAsyncPrefetch()) {
+    // some degree of parallel execution. nodes should better not
+    // share the transaction context, but create their own, non-shared
+    // objects.
     TRI_ASSERT(!_ast->containsModificationNode());
     return _transactionContext->clone();
   }
+  // no parallelism in this query. all parts can use the same
+  // transaction context
   return _transactionContext;
 }
 
@@ -1587,9 +1594,15 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
 
   auto& server = query.vocbase().server();
 
-  auto* manager = server.getFeature<transaction::ManagerFeature>().manager();
   // used by hotbackup to prevent commits
-  auto commitGuard = manager->getTransactionCommitGuard();
+  std::optional<arangodb::transaction::Manager::TransactionCommitGuard>
+      commitGuard;
+  // If the query is not read-only, we want to acquire the transaction
+  // commit lock as read lock, read-only queries can just proceed:
+  if (query.isModificationQuery()) {
+    auto* manager = server.getFeature<transaction::ManagerFeature>().manager();
+    commitGuard.emplace(manager->getTransactionCommitGuard());
+  }
 
   NetworkFeature const& nf = server.getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
@@ -1764,18 +1777,19 @@ ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     TRI_IF_FAILURE("Query::finalize_error_on_finish_db_servers") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
     }
-    ::finishDBServerParts(*this, errorCode)
-        .thenValue([ss = _sharedState, this](Result r) {
-          LOG_TOPIC_IF("fd31e", INFO, Logger::QUERIES,
-                       r.fail() && r.isNot(TRI_ERROR_HTTP_NOT_FOUND))
-              << "received error from DBServer on query finalization: "
-              << r.errorNumber() << ", '" << r.errorMessage() << "'";
-          _sharedState->executeAndWakeup([&] {
-            _shutdownState.store(ShutdownState::Done,
-                                 std::memory_order_relaxed);
-            return true;
-          });
-        });
+    std::ignore =
+        ::finishDBServerParts(*this, errorCode)
+            .thenValue([ss = _sharedState, this](Result r) {
+              LOG_TOPIC_IF("fd31e", INFO, Logger::QUERIES,
+                           r.fail() && r.isNot(TRI_ERROR_HTTP_NOT_FOUND))
+                  << "received error from DBServer on query finalization: "
+                  << r.errorNumber() << ", '" << r.errorMessage() << "'";
+              _sharedState->executeAndWakeup([&] {
+                _shutdownState.store(ShutdownState::Done,
+                                     std::memory_order_relaxed);
+                return true;
+              });
+            });
 
     TRI_IF_FAILURE("Query::directKillAfterDBServerFinishRequests") {
       debugKillQuery();

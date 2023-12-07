@@ -25,6 +25,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <span>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -42,9 +43,12 @@ class Slice;
 }  // namespace velocypack
 namespace aql {
 
+class ExecutionNode;
 class ExecutionPlan;
 class Expression;
 struct Variable;
+
+enum class AsyncPrefetchEligibility;
 
 class DocumentProducingNode {
  public:
@@ -61,8 +65,15 @@ class DocumentProducingNode {
   void replaceVariables(
       std::unordered_map<VariableId, Variable const*> const& replacements);
 
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable);
+
   /// @brief return the out variable
   Variable const* outVariable() const;
+
+  std::vector<Variable const*> getVariablesSetHere() const;
 
   Projections const& projections() const noexcept;
 
@@ -105,6 +116,8 @@ class DocumentProducingNode {
   size_t maxProjections() const noexcept { return _maxProjections; }
 
   void setMaxProjections(size_t value) noexcept { _maxProjections = value; }
+
+  AsyncPrefetchEligibility canUseAsyncPrefetching() const noexcept;
 
   // arbitrary default value for the maximum number of projected attributes
   static constexpr size_t kMaxProjections = 5;

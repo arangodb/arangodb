@@ -1,5 +1,5 @@
 .loginFixedWindow {
-  background: $c-test-green;
+  background: var(--gray-400);
   height: 100%;
   left: 0;
   position: fixed;
@@ -35,10 +35,8 @@
 }
 
 .login-window {
-  //background-color: $c-white;
-  background-color: rgba(255, 255, 255, .75);
-  border: 1px solid $c-content-border;
-  border-radius: 3px;
+  background-color: white;
+  border-radius: 8px;
   height: auto;
   margin: 0 auto;
 
@@ -129,13 +127,10 @@
 
   .login-input {
     @extend %inputs;
-    background: $c-login-grey !important;
-    background-color: $c-login-grey !important;
-    border: 2px $c-login-grey !important;
-    border-bottom-left-radius: 3px;
-    border-bottom-right-radius: 3px;
-    border-top-left-radius: 3px;
-    border-top-right-radius: 3px;
+    background: var(--gray-100) !important;
+    background-color: var(--gray-100) !important;
+    border: 2px solid var(--gray-100) !important;
+    border-radius: 6px;
     box-sizing: border-box;
     font-size: 14px;
     height: 40px;
@@ -144,6 +139,11 @@
     padding: 10px;
     padding-left: 35px;
     width: 100%;
+
+    &:focus {
+      border: 2px solid var(--blue-600) !important;
+      box-shadow: none !important;
+    }
   }
 
   .databaseInput {

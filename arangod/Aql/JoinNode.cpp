@@ -44,6 +44,7 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -79,7 +80,6 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
   _options.limit = basics::VelocyPackHelper::getNumericValue(base, "limit", 0);
   _options.lookahead = basics::VelocyPackHelper::getNumericValue(
       base, StaticStrings::IndexLookahead, IndexIteratorOptions{}.lookahead);
-
   if (_options.sorted && base.isObject() && base.get("reverse").isBool()) {
     // legacy
     _options.sorted = true;
@@ -128,6 +128,7 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
                                     plan->getAst()->query().resourceMonitor());
 
     bool const usedAsSatellite = it.get("usedAsSatellite").isTrue();
+    bool const producesOutput = it.get("producesOutput").isTrue();
 
     std::unique_ptr<Expression> filter = nullptr;
     if (auto fs = it.get("filter"); !fs.isNone()) {
@@ -141,30 +142,40 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
                   .condition = Condition::fromVPack(plan, condition),
                   .filter = std::move(filter),
                   .index = coll->indexByIdentifier(iid),
-                  .projections = projections,
+                  .projections = std::move(projections),
                   .filterProjections = filterProjections,
-                  .usedAsSatellite = usedAsSatellite});
+                  .usedAsSatellite = usedAsSatellite,
+                  .producesOutput = producesOutput});
+
+    idx.isLateMaterialized = it.get("isLateMaterialized").isTrue();
+    if (idx.isLateMaterialized) {
+      idx.outDocIdVariable =
+          Variable::varFromVPack(plan->getAst(), it, "outDocIdVariable");
+    }
 
     VPackSlice usedShard = it.get("usedShard");
     if (usedShard.isString()) {
       idx.usedShard = usedShard.copyString();
     }
 
-    auto const prepareProjections = [&](aql::Projections& proj,
+    auto const prepareProjections = [&](aql::Projections& proj, bool prohibited,
                                         bool expectation) {
       if (!proj.empty()) {
-        if (idx.index->covers(proj)) {
+        if (!prohibited && idx.index->covers(proj)) {
           proj.setCoveringContext(coll->id(), idx.index);
         }
         TRI_ASSERT(proj.usesCoveringIndex(idx.index) == expectation)
-            << "expectation = " << std::boolalpha << expectation;
+            << "expectation = " << std::boolalpha << expectation
+            << " prohibited = " << prohibited;
       }
     };
 
-    prepareProjections(idx.projections,
-                       it.get("indexCoversProjections").isTrue());
-    prepareProjections(idx.filterProjections,
+    prepareProjections(idx.filterProjections, false,
                        it.get("indexCoversFilterProjections").isTrue());
+    prepareProjections(
+        idx.projections,
+        idx.filter != nullptr && !idx.filterProjections.usesCoveringIndex(),
+        it.get("indexCoversProjections").isTrue());
   }
 
   TRI_ASSERT(_indexInfos.size() >= 2);
@@ -178,8 +189,6 @@ void JoinNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
 
   for (auto const& it : _indexInfos) {
     builder.openObject();
-    // TODO: check if this works in cluster, where we likely need shards and not
-    // collections
     if (!it.usedShard.empty()) {
       builder.add("collection", VPackValue(it.usedShard));
       builder.add("usedShard", VPackValue(it.usedShard));
@@ -187,9 +196,16 @@ void JoinNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
       builder.add("collection", VPackValue(it.collection->name()));
     }
 
+    builder.add("producesOutput", VPackValue(it.producesOutput));
     // out variable
     builder.add(VPackValue("outVariable"));
     it.outVariable->toVelocyPack(builder);
+
+    if (it.isLateMaterialized) {
+      builder.add("isLateMaterialized", VPackValue(true));
+      builder.add(VPackValue("outDocIdVariable"));
+      it.outDocIdVariable->toVelocyPack(builder);
+    }
     // condition
     builder.add(VPackValue("condition"));
     it.condition->toVelocyPack(builder, flags);
@@ -237,20 +253,49 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
 
   RegIdSet writableOutputRegisters;
+  containers::FlatHashMap<VariableId, RegisterId> varsToRegs;
 
   JoinExecutorInfos infos;
   infos.query = &engine.getQuery();
   infos.indexes.reserve(_indexInfos.size());
   for (auto const& idx : _indexInfos) {
-    auto documentOutputRegister = variableToRegisterId(idx.outVariable);
-    writableOutputRegisters.emplace(documentOutputRegister);
+    auto const& p = idx.projections;
+    // create one register per projection.
+    for (size_t i = 0; i < p.size(); ++i) {
+      Variable const* var = p[i].variable;
+      if (var == nullptr) {
+        // the output register can be a nullptr if the "optimize-projections"
+        // rule was not executed (potentially because it was disabled).
+        continue;
+      }
+      TRI_ASSERT(var != nullptr);
+      auto regId = variableToRegisterId(var);
+      varsToRegs.emplace(var->id, regId);
+      if (idx.producesOutput) {
+        writableOutputRegisters.emplace(regId);
+      }
+    }
 
-    // TODO probably those data structures can become one
+    RegisterId documentOutputRegister = RegisterId::maxRegisterId;
+    if (!p.hasOutputRegisters()) {
+      documentOutputRegister = variableToRegisterId(idx.outVariable);
+      if (idx.producesOutput) {
+        writableOutputRegisters.emplace(documentOutputRegister);
+      }
+    }
+
     auto& data = infos.indexes.emplace_back();
     data.documentOutputRegister = documentOutputRegister;
     data.index = idx.index;
     data.collection = idx.collection;
     data.projections = idx.projections;
+    data.producesOutput = idx.producesOutput;
+
+    data.isLateMaterialized = idx.isLateMaterialized;
+    if (data.isLateMaterialized) {
+      data.docIdOutputRegister = variableToRegisterId(idx.outDocIdVariable);
+      writableOutputRegisters.emplace(data.docIdOutputRegister);
+    }
 
     if (idx.filter) {
       auto& filter = data.filter.emplace();
@@ -263,7 +308,7 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
 
       filter.filterVarsToRegs.reserve(inVars.size());
 
-      for (auto& var : inVars) {
+      for (auto const& var : inVars) {
         TRI_ASSERT(var != nullptr);
         auto regId = variableToRegisterId(var);
         filter.filterVarsToRegs.emplace_back(var->id, regId);
@@ -285,6 +330,8 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
     }
   }
 
+  infos.varsToRegister = std::move(varsToRegs);
+
   auto registerInfos = createRegisterInfos({}, writableOutputRegisters);
 
   return std::make_unique<ExecutionBlockImpl<JoinExecutor>>(
@@ -298,16 +345,25 @@ ExecutionNode* JoinNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   for (auto const& it : _indexInfos) {
     auto outVariable = it.outVariable;
+    auto outDocIdVariable = it.outDocIdVariable;
     if (withProperties) {
       outVariable = plan->getAst()->variables()->createVariable(outVariable);
+      if (outDocIdVariable) {
+        outDocIdVariable =
+            plan->getAst()->variables()->createVariable(outDocIdVariable);
+      }
     }
-    indexInfos.emplace_back(IndexInfo{.collection = it.collection,
-                                      .usedShard = it.usedShard,
-                                      .outVariable = outVariable,
-                                      .condition = it.condition->clone(),
-                                      .index = it.index,
-                                      .projections = it.projections,
-                                      .usedAsSatellite = it.usedAsSatellite});
+    indexInfos.emplace_back(
+        IndexInfo{.collection = it.collection,
+                  .usedShard = it.usedShard,
+                  .outVariable = outVariable,
+                  .condition = it.condition->clone(),
+                  .index = it.index,
+                  .projections = it.projections,
+                  .usedAsSatellite = it.usedAsSatellite,
+                  .producesOutput = it.producesOutput,
+                  .isLateMaterialized = it.isLateMaterialized,
+                  .outDocIdVariable = outDocIdVariable});
   }
 
   auto c =
@@ -320,8 +376,33 @@ ExecutionNode* JoinNode::clone(ExecutionPlan* plan, bool withDependencies,
 /// replacements are { old variable id => new variable }
 void JoinNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
-  // TODO: replace variables inside index conditions.
-  // IndexNode doesn't do this either, which seems questionable
+  for (auto& it : _indexInfos) {
+    if (it.condition) {
+      it.condition->replaceVariables(replacements);
+    }
+    if (it.filter != nullptr) {
+      it.filter->replaceVariables(replacements);
+    }
+  }
+}
+
+void JoinNode::replaceAttributeAccess(ExecutionNode const* self,
+                                      Variable const* searchVariable,
+                                      std::span<std::string_view> attribute,
+                                      Variable const* replaceVariable,
+                                      size_t index) {
+  size_t i = 0;
+  for (auto& it : _indexInfos) {
+    if (it.condition && (self != this || i > index)) {
+      it.condition->replaceAttributeAccess(searchVariable, attribute,
+                                           replaceVariable);
+    }
+    if (it.filter && (self != this || i > index)) {
+      it.filter->replaceAttributeAccess(searchVariable, attribute,
+                                        replaceVariable);
+    }
+    ++i;
+  }
 }
 
 /// @brief the cost of an join node is a multiple of the cost of
@@ -335,9 +416,8 @@ CostEstimate JoinNode::estimateCost() const {
 
   for (auto const& it : _indexInfos) {
     Index::FilterCosts costs = costsForIndexInfo(it);
-    // TODO: perhaps we should multiply here
     totalItems *= costs.estimatedItems;
-    totalCost *= costs.estimatedCosts;
+    totalCost += costs.estimatedCosts;
   }
 
   estimate.estimatedNrItems *= totalItems;
@@ -345,15 +425,59 @@ CostEstimate JoinNode::estimateCost() const {
   return estimate;
 }
 
+AsyncPrefetchEligibility JoinNode::canUseAsyncPrefetching() const noexcept {
+  for (auto const& it : _indexInfos) {
+    if (it.filter != nullptr &&
+        (!it.filter->isDeterministic() || it.filter->willUseV8())) {
+      // we cannot use prefetching if the filter employs V8, because the
+      // Query object only has a single V8 context, which it can enter and exit.
+      // with prefetching, multiple threads can execute calculations in the same
+      // Query instance concurrently, and when using V8, they could try to
+      // enter/exit the V8 context of the query concurrently. this is currently
+      // not thread-safe, so we don't use prefetching.
+      // the constraint for determinism is there because we could produce
+      // different query results when prefetching is enabled, at least in
+      // streaming queries.
+      return AsyncPrefetchEligibility::kDisableForNode;
+    }
+    if (it.condition != nullptr && it.condition->root() != nullptr &&
+        (!it.condition->root()->isDeterministic() ||
+         it.condition->root()->willUseV8())) {
+      // we cannot use prefetching if the lookup employs V8, because the
+      // Query object only has a single V8 context, which it can enter and exit.
+      // with prefetching, multiple threads can execute calculations in the same
+      // Query instance concurrently, and when using V8, they could try to
+      // enter/exit the V8 context of the query concurrently. this is currently
+      // not thread-safe, so we don't use prefetching.
+      // the constraint for determinism is there because we could produce
+      // different query results when prefetching is enabled, at least in
+      // streaming queries.
+      return AsyncPrefetchEligibility::kDisableForNode;
+    }
+  }
+  return AsyncPrefetchEligibility::kEnableForNode;
+}
+
 /// @brief getVariablesUsedHere, modifying the set in-place
 void JoinNode::getVariablesUsedHere(VarSet& vars) const {
   for (auto const& it : _indexInfos) {
-    if (it.condition->root() != nullptr) {
+    if (it.condition != nullptr && it.condition->root() != nullptr) {
+      // lookup condition
       Ast::getReferencedVariables(it.condition->root(), vars);
+    }
+    if (it.filter != nullptr && it.filter->node() != nullptr) {
+      // lookup condition
+      Ast::getReferencedVariables(it.filter->node(), vars);
     }
   }
   for (auto const& it : _indexInfos) {
     vars.erase(it.outVariable);
+    // projection output variables.
+    for (size_t i = 0; i < it.projections.size(); ++i) {
+      if (it.projections[i].variable != nullptr) {
+        vars.erase(it.projections[i].variable);
+      }
+    }
   }
 }
 
@@ -368,8 +492,23 @@ std::vector<Variable const*> JoinNode::getVariablesSetHere() const {
   vars.reserve(_indexInfos.size());
 
   for (auto const& it : _indexInfos) {
-    vars.emplace_back(it.outVariable);
+    // projection output variables
+    for (size_t i = 0; i < it.projections.size(); ++i) {
+      // output registers are not necessarily set yet
+      if (it.projections[i].variable != nullptr) {
+        vars.push_back(it.projections[i].variable);
+      }
+    }
+
+    if (it.isLateMaterialized) {
+      vars.emplace_back(it.outDocIdVariable);
+    }
+
+    if (!it.projections.hasOutputRegisters() || it.filter != nullptr) {
+      vars.emplace_back(it.outVariable);
+    }
   }
+
   return vars;
 }
 
@@ -379,6 +518,19 @@ std::vector<JoinNode::IndexInfo> const& JoinNode::getIndexInfos() const {
 
 std::vector<JoinNode::IndexInfo>& JoinNode::getIndexInfos() {
   return _indexInfos;
+}
+
+bool JoinNode::isDeterministic() {
+  for (auto const& it : _indexInfos) {
+    if (it.condition != nullptr && it.condition->root() != nullptr &&
+        !it.condition->root()->isDeterministic()) {
+      return false;
+    }
+    if (it.filter != nullptr && !it.filter->isDeterministic()) {
+      return false;
+    }
+  }
+  return true;
 }
 
 Index::FilterCosts JoinNode::costsForIndexInfo(

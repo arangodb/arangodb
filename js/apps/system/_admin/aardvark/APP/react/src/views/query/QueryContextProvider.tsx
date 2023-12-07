@@ -17,6 +17,11 @@ export type QueryExecutionOptions = {
   queryOptions?: { [key: string]: any };
   disabledRules?: string[];
 };
+
+export type QueryProfileOptions = {
+  queryValue: string;
+  queryBindParams?: { [key: string]: string };
+};
 type QueryContextType = {
   queryValue: string;
   queryBindParams: { [key: string]: string };
@@ -28,7 +33,7 @@ type QueryContextType = {
     name?: string;
   }) => void;
   onExecute: (options: QueryExecutionOptions) => void;
-  onProfile: (options: QueryExecutionOptions) => void;
+  onProfile: (options: QueryProfileOptions) => void;
   onExplain: (options: QueryExecutionOptions) => void;
   queryResults: QueryResultType[];
   onRemoveResult: (index: number) => void;
@@ -40,7 +45,15 @@ type QueryContextType = {
   onSave: (queryName: string) => Promise<void>;
   onDelete: (queryName: string) => Promise<void>;
   onSaveAs: (queryName: string) => Promise<void>;
-  onSaveQueryList: (queries: QueryType[]) => Promise<void>;
+  onSaveQueryList: ({
+    sanitizedQueries,
+    onSuccess,
+    onFailure
+  }: {
+    sanitizedQueries: QueryType[];
+    onSuccess: () => void;
+    onFailure: (e: any) => void;
+  }) => Promise<void>;
   isSaveAsModalOpen: boolean;
   onOpenSaveAsModal: () => void;
   onCloseSaveAsModal: () => void;

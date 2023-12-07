@@ -46,10 +46,6 @@ namespace basics {
 class StringBuffer;
 }
 
-namespace httpclient {
-class SimpleHttpResult;
-}
-
 class ManagedDirectory;
 
 class RestoreFeature final : public ArangoRestoreFeature {
@@ -97,6 +93,7 @@ class RestoreFeature final : public ArangoRestoreFeature {
     uint64_t maxUnusedBufferSize{1024 * 1024 * 512};
     std::vector<std::string> numberOfShards;
     std::vector<std::string> replicationFactor;
+    std::vector<std::string> writeConcern;
     uint32_t threadCount{2};
     uint32_t initialConnectRetries{3};
     bool clusterMode{false};

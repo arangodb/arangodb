@@ -42,6 +42,7 @@ class LogicalCollection;
 struct CollectionCreationInfo;
 class CollectionNameResolver;
 struct CreateCollectionBody;
+struct ShardID;
 
 namespace transaction {
 class Methods;
@@ -60,7 +61,8 @@ struct Collections {
 
     ~Context();
 
-    transaction::Methods* trx(AccessMode::Type const& type, bool embeddable);
+    futures::Future<transaction::Methods*> trx(AccessMode::Type const& type,
+                                               bool embeddable);
 
     std::shared_ptr<LogicalCollection> coll() const;
 
@@ -108,7 +110,7 @@ struct Collections {
   [[nodiscard]] static arangodb::Result createShard(
       TRI_vocbase_t& vocbase,  // shard database
       OperationOptions const& options,
-      std::string const& name,                 // shard name
+      ShardID const& name,                     // shard name
       TRI_col_type_e collectionType,           // shard type
       velocypack::Slice properties,            // shard properties
       std::shared_ptr<LogicalCollection>& ret  // ReturnValue: created Shard
@@ -125,10 +127,11 @@ struct Collections {
       CreateCollectionBody& col, TRI_vocbase_t const& vocbase,
       DatabaseConfiguration const& config, bool isLegacyDatabase);
 
-  static Result properties(Context& ctxt, velocypack::Builder&);
-  static Result updateProperties(LogicalCollection& collection,
-                                 velocypack::Slice props,
-                                 OperationOptions const& options);
+  static futures::Future<Result> properties(Context& ctxt,
+                                            velocypack::Builder&);
+  static futures::Future<Result> updateProperties(
+      LogicalCollection& collection, velocypack::Slice props,
+      OperationOptions const& options);
 
   static Result rename(LogicalCollection& collection,
                        std::string const& newName, bool doOverride);
@@ -146,9 +149,10 @@ struct Collections {
   static futures::Future<OperationResult> revisionId(
       Context& ctxt, OperationOptions const& options);
 
-  static arangodb::Result checksum(LogicalCollection& collection,
-                                   bool withRevisions, bool withData,
-                                   uint64_t& checksum, RevisionId& revId);
+  static futures::Future<Result> checksum(LogicalCollection& collection,
+                                          bool withRevisions, bool withData,
+                                          uint64_t& checksum,
+                                          RevisionId& revId);
 
   /// @brief filters properties for collection creation
   static arangodb::velocypack::Builder filterInput(

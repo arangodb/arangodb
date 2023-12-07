@@ -25,6 +25,7 @@
 #pragma once
 
 #include "Auth/TokenCache.h"
+#include "Basics/Result.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashMap.h"
 #include "Endpoint/ConnectionInfo.h"
@@ -121,9 +122,11 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
                       std::unique_ptr<GeneralResponse> response,
                       ServerState::Mode mode);
 
-  RequestStatistics::Item const& acquireStatistics(uint64_t id);
-  RequestStatistics::Item const& statistics(uint64_t id);
-  RequestStatistics::Item stealStatistics(uint64_t id);
+  [[nodiscard]] ConnectionStatistics::Item acquireConnectionStatistics();
+  [[nodiscard]] RequestStatistics::Item const& acquireRequestStatistics(
+      uint64_t id);
+  [[nodiscard]] RequestStatistics::Item const& requestStatistics(uint64_t id);
+  [[nodiscard]] RequestStatistics::Item stealRequestStatistics(uint64_t id);
 
   /// @brief send response including error response body
   void sendErrorResponse(rest::ResponseCode, rest::ContentType,
@@ -151,7 +154,7 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
                                           ServerState::Mode mode);
 
   /// decompress content
-  bool handleContentEncoding(GeneralRequest&);
+  Result handleContentEncoding(GeneralRequest&);
 
  private:
   void handleRequestStartup(std::shared_ptr<RestHandler>);

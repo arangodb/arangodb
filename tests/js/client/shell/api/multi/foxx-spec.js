@@ -109,6 +109,7 @@ describe('FoxxApi commit', function () {
       { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third", 'accept-encoding': 'identity'},
       { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third", 'accept-encoding': 'deflate'},
       { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third", 'accept-encoding': 'gzip'},
+      { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third", 'accept-encoding': 'none'},
       { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third"},
       { accept: 'application/json; charset=utf-8', test: "fourth", "content-type": "image/jpg"}
     ].forEach(headers => {
@@ -133,8 +134,8 @@ describe('FoxxApi commit', function () {
         expect(body[key]).to.equal(headers[key]);
         
       });
-      if (!headers.hasOwnProperty('accept-encoding')) {
-        expect(body['accept-encoding']).to.equal(undefined);
+      if (headers.hasOwnProperty('accept-encoding')) {
+        expect(body['accept-encoding']).to.equal(headers['accept-encoding']);
       }
     });
 
@@ -1197,7 +1198,7 @@ describe('Foxx service', () => {
 
   it('should be downloadable', () => {
     installFoxx(mount, {type: 'dir', buffer: minimalWorkingServicePath});
-    const resp = arango.POST('/_api/foxx/download?mount=' + mount, '');
+    const resp = arango.POST_RAW('/_api/foxx/download?mount=' + mount, '', { "accept-encoding": "" }).body;
     // expect(resp.headers['content-type']).to.equal('application/zip');
     expect(util.isZipBuffer(resp)).to.equal(true);
   });
@@ -1433,7 +1434,7 @@ describe('Foxx service', () => {
   it('idiomatic tests reporter should return string', () => {
     const testPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-tests');
     FoxxManager.install(testPath, mount);
-    const resp = arango.POST('/_api/foxx/tests?reporter=xunit&idiomatic=true&mount=' + mount, '');
+    const resp = arango.POST_RAW('/_api/foxx/tests?reporter=xunit&idiomatic=true&mount=' + mount, '', { "accept-encoding": "" }).body;
     expect(resp).to.be.instanceof(Buffer);
     expect(resp.toString("utf-8").startsWith("<?xml")).to.equal(true);
   });

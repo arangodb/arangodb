@@ -23,7 +23,6 @@
 #include "AppendEntriesManager.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Futures/Future.h"
-#include "Replication2/coro-helper.h"
 #include "Replication2/ReplicatedLog/Components/IStorageManager.h"
 #include "Replication2/ReplicatedLog/Components/ISnapshotManager.h"
 #include "Replication2/ReplicatedLog/Components/ICompactionManager.h"

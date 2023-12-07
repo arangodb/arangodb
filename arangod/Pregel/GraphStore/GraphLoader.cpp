@@ -198,7 +198,7 @@ auto GraphLoader<V, E>::loadVertices(LoadableVertexShard loadableVertexShard)
       edgeCollectionInfos;
   edgeCollectionInfos.reserve(edgeShards.size());
 
-  for (ShardID const& edgeShard : edgeShards) {
+  for (auto const& edgeShard : edgeShards) {
     edgeCollectionInfos.emplace_back(
         std::make_unique<traverser::EdgeCollectionInfo>(resourceMonitor, &trx,
                                                         edgeShard));

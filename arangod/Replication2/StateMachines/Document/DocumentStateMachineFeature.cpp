@@ -27,11 +27,14 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Logger/LogContextKeys.h"
 #include "Network/NetworkFeature.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "RestServer/DatabaseFeature.h"
 
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachineFeature.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
@@ -46,11 +49,15 @@ void DocumentStateMachineFeature::prepare() {
   auto& replicatedStateFeature = s.getFeature<ReplicatedStateAppFeature>();
   auto& networkFeature = s.getFeature<NetworkFeature>();
   auto& maintenanceFeature = s.getFeature<MaintenanceFeature>();
+  auto defaultLoggerContext =
+      LoggerContext(Logger::REPLICATED_STATE)
+          .with<logContextKeyStateImpl>(DocumentState::NAME);
 
   replicatedStateFeature.registerStateType<DocumentState>(
       std::string{DocumentState::NAME},
-      std::make_shared<DocumentStateHandlersFactory>(networkFeature.pool(),
-                                                     maintenanceFeature),
+      std::make_shared<DocumentStateHandlersFactory>(
+          networkFeature.pool(), maintenanceFeature,
+          std::move(defaultLoggerContext)),
       *transaction::ManagerFeature::manager());
 }
 
