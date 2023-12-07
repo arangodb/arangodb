@@ -44,7 +44,6 @@
 #include "win-utils.h"
 
 #include <VersionHelpers.h>
-#include <atlstr.h>
 #include <crtdbg.h>
 #include <malloc.h>
 #include <string.h>
@@ -266,8 +265,7 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
     return -1;
   }
 
-  fileDescriptor = _open_osfhandle((intptr_t)(fileHandle),
-                                   (openFlags & O_ACCMODE) | _O_BINARY);
+  fileDescriptor = _open_osfhandle((intptr_t)(fileHandle), openFlags);
   return fileDescriptor;
 }
 
@@ -808,7 +806,8 @@ std::string getFileNameFromHandle(HANDLE fileHandle) {
                                     sizeof(buff))) {
     return std::string();
   }
-  return std::string((LPCTSTR)CString(FileInformation->FileName));
+  return fromWString(FileInformation->FileName,
+                     FileInformation->FileNameLength);
 }
 
 static std::vector<std::string> argVec;

@@ -214,7 +214,7 @@ class AgencyCache final : public ServerThread<ArangodServer> {
   std::multimap<consensus::index_t, futures::Promise<arangodb::Result>>
       _waiting;
 
-  /// @ brief changes of index to plan and current
+  /// @brief changes of index to plan and current
   std::multimap<consensus::index_t, std::string> _planChanges;
   std::multimap<consensus::index_t, std::string> _currentChanges;
 

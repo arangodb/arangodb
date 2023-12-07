@@ -196,7 +196,7 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
   auto executorInfos = SortExecutorInfos(
       registerInfos.numberOfInputRegisters(),
       registerInfos.numberOfOutputRegisters(), registerInfos.registersToClear(),
-      std::move(sortRegs), _limit, engine.itemBlockManager(),
+      std::move(sortRegs), _limit, engine.itemBlockManager(), engine.getQuery(),
       engine.getQuery()
           .vocbase()
           .server()
@@ -224,6 +224,10 @@ CostEstimate SortNode::estimateCost() const {
         std::log2(static_cast<double>(estimate.estimatedNrItems));
   }
   return estimate;
+}
+
+AsyncPrefetchEligibility SortNode::canUseAsyncPrefetching() const noexcept {
+  return AsyncPrefetchEligibility::kEnableForNode;
 }
 
 void SortNode::replaceVariables(

@@ -27,6 +27,8 @@
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 
 namespace arangodb {
+struct ResourceMonitor;
+
 namespace futures {
 template<class T>
 class Future;
@@ -54,7 +56,7 @@ class ReplicatedRocksDBTransactionCollection final
     return _rocksMethods.get();
   }
 
-  void beginQuery(bool isModificationQuery);
+  void beginQuery(ResourceMonitor* resourceMonitor, bool isModificationQuery);
   void endQuery(bool isModificationQuery) noexcept;
 
   /// @returns tick of last operation in a transaction

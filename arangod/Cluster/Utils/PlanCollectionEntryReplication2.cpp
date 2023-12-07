@@ -24,7 +24,6 @@
 #include "Inspection/VPack.h"
 #include "Replication2/AgencyCollectionSpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -38,7 +37,7 @@ using namespace arangodb;
 namespace {
 auto transform(UserInputCollectionProperties col)
     -> replication2::agency::CollectionTargetSpecification {
-  // TODO Maybe we can kind a better way than this for transformation.
+  // TODO Maybe we can find a better way than this for transformation.
   replication2::agency::CollectionTargetSpecification spec;
   spec.groupId = col.groupId.value();
   spec.mutableProperties = {std::move(col.computedValues),
@@ -51,6 +50,7 @@ auto transform(UserInputCollectionProperties col)
                               col.isSmart,
                               col.isDisjoint,
                               col.cacheEnabled,
+                              col.shardingStrategy.value(),
                               col.shardKeys.value(),
                               col.smartJoinAttribute,
                               col.smartGraphAttribute,

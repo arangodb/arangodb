@@ -25,6 +25,7 @@
 
 #include "Basics/ScopeGuard.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -230,6 +231,10 @@ static_assert(NODE_TYPE_ARRAY < NODE_TYPE_OBJECT, "incorrect node types order");
 struct AstNode {
   friend class Ast;
 
+  /// @brief a simple tag that marks the AstNode as a constant node
+  /// that will never change after being created
+  struct InternalNode {};
+
   /// @brief array values with at least this number of members that
   /// are in IN or NOT IN lookups will be sorted, so that we can use
   /// a binary sort to do lookups
@@ -238,8 +243,12 @@ struct AstNode {
   /// @brief create the node
   explicit AstNode(AstNodeType);
 
+  explicit AstNode(AstNodeType, InternalNode);
+
   /// @brief create a node, with defining a value
   explicit AstNode(AstNodeValue const& value);
+
+  explicit AstNode(AstNodeValue const& value, InternalNode);
 
   /// @brief create the node from VPack
   explicit AstNode(Ast*, arangodb::velocypack::Slice slice);
@@ -469,9 +478,15 @@ struct AstNode {
   /// @brief return a member of the node
   AstNode* getMemberUnchecked(size_t i) const noexcept;
 
-  /// @brief sort members with a custom comparison function
-  void sortMembers(
-      std::function<bool(AstNode const*, AstNode const*)> const& func);
+  template<typename Func>
+  void sortMembers(Func&& func) {
+    std::sort(members.begin(), members.end(), std::forward<Func>(func));
+  }
+
+  template<typename Func>
+  void partitionMembers(Func&& func) {
+    std::partition(members.begin(), members.end(), std::forward<Func>(func));
+  }
 
   /// @brief reduces the number of members of the node
   void reduceMembers(size_t i);

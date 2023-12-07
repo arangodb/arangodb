@@ -82,8 +82,10 @@ class PhysicalCollection {
 
   void drop();
 
+  virtual void freeMemory() noexcept;
+
   /// recalculate counts for collection in case of failure, blocking
-  virtual uint64_t recalculateCounts();
+  virtual futures::Future<uint64_t> recalculateCounts();
 
   /// @brief whether or not the collection contains any documents. this
   /// function is allowed to return true even if there are no documents
@@ -144,7 +146,7 @@ class PhysicalCollection {
 
   /// @brief create or restore an index
   /// @param restore utilize specified ID, assume index has to be created
-  virtual std::shared_ptr<Index> createIndex(
+  virtual futures::Future<std::shared_ptr<Index>> createIndex(
       velocypack::Slice info, bool restore, bool& created,
       std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr) = 0;
 
@@ -190,28 +192,20 @@ class PhysicalCollection {
       transaction::Methods*, std::string_view,
       std::pair<LocalDocumentId, RevisionId>&) const = 0;
 
-  virtual Result read(transaction::Methods*, std::string_view key,
-                      IndexIterator::DocumentCallback const& cb,
-                      ReadOwnWrites readOwnWrites) const = 0;
+  struct LookupOptions {
+    bool readCache = true;
+    bool fillCache = true;
+    bool readOwnWrites = false;
+  };
 
-  virtual Result readFromSnapshot(transaction::Methods* trx,
-                                  LocalDocumentId const& token,
-                                  IndexIterator::DocumentCallback const& cb,
-                                  ReadOwnWrites readOwnWrites,
-                                  StorageSnapshot const& snapshot) const {
-    TRI_ASSERT(false);
-    return {TRI_ERROR_NOT_IMPLEMENTED};
-  }
+  virtual Result lookup(transaction::Methods* trx, std::string_view key,
+                        IndexIterator::DocumentCallback const& cb,
+                        LookupOptions options) const = 0;
 
-  virtual Result read(transaction::Methods* trx, LocalDocumentId const& token,
-                      IndexIterator::DocumentCallback const& cb,
-                      ReadOwnWrites readOwnWrites) const = 0;
-
-  virtual Result lookupDocument(transaction::Methods& trx,
-                                LocalDocumentId token,
-                                velocypack::Builder& builder, bool readCache,
-                                bool fillCache,
-                                ReadOwnWrites readOwnWrites) const = 0;
+  virtual Result lookup(transaction::Methods* trx, LocalDocumentId token,
+                        IndexIterator::DocumentCallback const& cb,
+                        LookupOptions options,
+                        StorageSnapshot const* snapshot = nullptr) const = 0;
 
   virtual Result insert(transaction::Methods& trx,
                         IndexesSnapshot const& indexesSnapshot,
@@ -246,7 +240,7 @@ class PhysicalCollection {
   virtual std::unique_ptr<containers::RevisionTree> computeRevisionTree(
       uint64_t batchId);
 
-  virtual Result rebuildRevisionTree();
+  virtual futures::Future<Result> rebuildRevisionTree();
 
   virtual uint64_t placeRevisionTreeBlocker(TransactionId transactionId);
   virtual void removeRevisionTreeBlocker(TransactionId transactionId);

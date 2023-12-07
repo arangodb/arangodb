@@ -29,9 +29,12 @@
 #include "Aql/types.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Containers/HashSet.h"
+#include "Containers/SmallVector.h"
 #include "Graph/PathType.h"
-#include "Transaction/Context.h"
 #include "VocBase/AccessMode.h"
+
+#include <absl/strings/str_cat.h>
 
 #include <algorithm>
 #include <cstdint>
@@ -72,6 +75,34 @@ bool caseInsensitiveEqual(std::string_view lhs, std::string_view rhs) noexcept {
   return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), [](char l, char r) {
     return arangodb::basics::StringUtils::tolower(l) == arangodb::basics::StringUtils::tolower(r);
   });
+}
+
+void handleUpsertOptions(AstNode const* options, AstNode* forNode, AstNode* forOptionsNode, AstNode* upsertOptionsNode, bool& canReadOwnWrites) {
+  TRI_ASSERT(canReadOwnWrites);
+  if (options != nullptr && options->type == NODE_TYPE_OBJECT) {
+    for (size_t i = 0; i < options->numMembers(); ++i) {
+      auto nodeMember = options->getMember(i);
+      if (nodeMember->type == NODE_TYPE_OBJECT_ELEMENT) {
+        std::string_view nodeMemberName = nodeMember->getStringView();
+        if (nodeMemberName == arangodb::StaticStrings::IndexHintOption || 
+          nodeMemberName == arangodb::StaticStrings::IndexHintOptionForce ||
+          nodeMemberName == arangodb::StaticStrings::IndexHintDisableIndex ||
+          nodeMemberName == arangodb::StaticStrings::UseCache) {
+          forOptionsNode->addMember(nodeMember);
+        } else {
+          upsertOptionsNode->addMember(nodeMember);
+        }
+
+        if (nodeMemberName == arangodb::StaticStrings::ReadOwnWrites) {
+          canReadOwnWrites = nodeMember->getMember(0)->isTrue();
+        }
+      }
+    }
+    forNode->changeMember(2, forOptionsNode);
+  }
+  if (canReadOwnWrites) {
+    forNode->setFlag(AstNodeFlagType::FLAG_READ_OWN_WRITES);
+  }
 }
 
 AstNode* buildShortestPathInfo(Parser* parser,
@@ -131,15 +162,40 @@ void checkCollectVariables(Parser* parser, char const* context,
     return;
   }
 
-  VarSet varsInAssignment{};
-  Ast::getReferencedVariables(expression, varsInAssignment);
+  arangodb::containers::SmallVector<AstNode const*, 4> toTraverse = { expression };
+ 
+  // recursively find all variables in expression
+  auto preVisitor = [](AstNode const* node) -> bool {
+    // ignore constant nodes, as they can't contain variables
+    return !node->isConstant();
+  };
+  auto visitor = [&](AstNode const* node) {
+    // reference to a variable
+    if (node != nullptr && node->type == NODE_TYPE_REFERENCE) {
+      auto variable = static_cast<Variable const*>(node->getData());
 
-  for (auto const& it : varsInAssignment) {
-    if (variablesIntroduced.find(it) != variablesIntroduced.end()) {
-      std::string msg("use of COLLECT variable '" + it->name + "' inside same COLLECT's " + context + " expression");
-      parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, msg.c_str(), it->name, line, column);
-      return;
+      if (variable == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "invalid reference in AST");
+      }
+
+      if (variable->needsRegister()) {
+        if (variablesIntroduced.contains(variable)) {
+          auto msg = absl::StrCat("use of COLLECT variable '", variable->name, "' inside same COLLECT's expression");
+          parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, msg.c_str(), variable->name, line, column);
+        }
+        if (auto subquery = parser->ast()->getSubqueryForVariable(variable); subquery != nullptr) {
+          toTraverse.push_back(subquery);
+        }
+      }
     }
+  };
+
+  size_t pos = 0;
+  while (pos < toTraverse.size()) {
+    AstNode const* node = toTraverse[pos++];
+    // note: the traverseReadOnly may add to the toTraverse vector!
+    Ast::traverseReadOnly(node, preVisitor, visitor);
   }
 }
 
@@ -183,16 +239,14 @@ bool validateAggregates(Parser* parser, AstNode const* aggregates,
       auto func = member->getMember(1);
       if (func->type != NODE_TYPE_FCALL) {
         // aggregate expression must be a function call
-        char const* error = "aggregate expression must be a function call";
+        constexpr std::string_view error = "aggregate expression must be a function call";
         parser->registerParseError(TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION, error, line, column);
-        return false;
       } else {
         auto f = static_cast<arangodb::aql::Function*>(func->getData());
         if (!Aggregator::isValid(f->name)) {
           // aggregate expression must be a call to MIN|MAX|LENGTH...
-          char const* error = "unknown aggregate function used";
+          constexpr std::string_view error = "unknown aggregate function used";
           parser->registerParseError(TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION, error, line, column);
-          return false;
         }
       }
       
@@ -201,10 +255,9 @@ bool validateAggregates(Parser* parser, AstNode const* aggregates,
       varsInAssignment.clear();
       Ast::getReferencedVariables(member->getMember(1), varsInAssignment);
       for (auto const& it : varsInAssignment) {
-        if (variablesIntroduced.find(it) != variablesIntroduced.end()) {
-          std::string msg("use of COLLECT variable '" + it->name + "' inside same COLLECT");
+        if (variablesIntroduced.contains(it)) {
+          auto msg = absl::StrCat("use of COLLECT variable '", it->name, "' inside same COLLECT");
           parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, msg.c_str(), it->name, line, column);
-          return false;
         }
       }
     }
@@ -223,7 +276,6 @@ bool validateWindowSpec(Parser* parser, AstNode const* spec,
   size_t const n = spec->numMembers();
   if (n == 0) {
     parser->registerParseError(TRI_ERROR_QUERY_PARSE, "At least one WINDOW bound must be specified ('preceding'/'following')", line, column);
-    return false;
   }
   
   for (size_t i = 0; i < n; ++i) {
@@ -240,13 +292,11 @@ bool validateWindowSpec(Parser* parser, AstNode const* spec,
       } else  {
         char const* error = "Invalid WINDOW attribute '%s'; only \"preceding\" and \"following\" are supported";
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, error, name, line, column);
-        return false;
       }
       
       if (*attr) {
         char const* error = "WINDOW attribute '%s' is specified multiple times";
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, error, name, line, column);
-        return false;
       }
       
       // mark this attribute as "seen"
@@ -502,6 +552,7 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %type <node> numeric_value;
 %type <intval> update_or_replace;
 %type <node> quantifier;
+%type <node> upsert_input;
 
 
 /* define start token of language */
@@ -815,7 +866,7 @@ for_statement:
         TRI_ASSERT(prune->numMembers() == 2);
         Ast::traverseReadOnly(prune->getMember(1), [&](AstNode const* node) {
           if (node->type == NODE_TYPE_REFERENCE && node->hasFlag(AstNodeFlagType::FLAG_SUBQUERY_REFERENCE)) {
-            parser->registerParseError(TRI_ERROR_QUERY_PARSE, "prune condition must not use a subquery", yylloc.first_line, yylloc.first_column);
+            parser->registerParseError(TRI_ERROR_QUERY_PARSE, "PRUNE condition must not use a subquery", yylloc.first_line, yylloc.first_column);
           }
         });
         graphInfoNode->changeMember(3, prune->getMember(1));
@@ -830,7 +881,7 @@ for_statement:
   | T_FOR for_output_variables T_IN shortest_path_graph_info {
       // Shortest Path
       auto variableNamesNode = static_cast<AstNode*>($2);
-      ::checkOutVariables(parser, variableNamesNode, 1, 2, "SHORTEST_PATH only has one or two return variables", yyloc);
+      ::checkOutVariables(parser, variableNamesNode, 1, 2, "SHORTEST_PATH must have one or two return variables", yyloc);
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       auto variablesNode = ::transformOutputVariables(parser, variableNamesNode);
       auto graphInfoNode = static_cast<AstNode*>($4);
@@ -1015,10 +1066,9 @@ collect_statement:
           Ast::getReferencedVariables(member->getMember(1), variablesUsed);
 
           for (auto& it : groupVars) {
-            if (variablesUsed.find(it) != variablesUsed.end()) {
+            if (variablesUsed.contains(it)) {
               parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN,
                 "use of unknown variable '%s' in AGGREGATE expression", it->name, yylloc.first_line, yylloc.first_column);
-              break;
             }
           }
         }
@@ -1111,7 +1161,7 @@ collect_optional_into:
 variable_list:
     variable_name {
       std::string_view variableName($1.value, $1.length);
-      if (! parser->ast()->scopes()->existsVariable(variableName)) {
+      if (!parser->ast()->scopes()->existsVariable(variableName)) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of unknown variable '%s' for KEEP", variableName, yylloc.first_line, yylloc.first_column);
       }
 
@@ -1124,7 +1174,7 @@ variable_list:
     }
   | variable_list T_COMMA variable_name {
       std::string_view variableName($3.value, $3.length);
-      if (! parser->ast()->scopes()->existsVariable(variableName)) {
+      if (!parser->ast()->scopes()->existsVariable(variableName)) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of unknown variable '%s' for KEEP", variableName, yylloc.first_line, yylloc.first_column);
       }
 
@@ -1368,13 +1418,83 @@ update_or_replace:
     }
   ;
 
+upsert_input:
+    object {
+      $$ = $1;
+    }
+  | bind_parameter {
+      $$ = $1;
+    }
+  ;
+
 upsert_statement:
-    T_UPSERT {
+    T_UPSERT T_FILTER {
       // reserve a variable named "$OLD", we might need it in the update expression
       // and in a later return thing
-      parser->pushStack(parser->ast()->createNodeVariable(Variable::NAME_OLD, true));
+      AstNode* variableNode = parser->ast()->createNodeVariable(Variable::NAME_OLD, true);
+      parser->pushStack(variableNode);
+
+      auto scopes = parser->ast()->scopes();
+
+      scopes->start(arangodb::aql::AQL_SCOPE_SUBQUERY);
+      parser->ast()->startSubQuery();
+
+      scopes->start(arangodb::aql::AQL_SCOPE_FOR);
+      auto forNode = parser->ast()->createNodeForUpsert(Variable::NAME_CURRENT.data(), Variable::NAME_CURRENT.size(), parser->ast()->createNodeArray(), false);
+      scopes->stackCurrentVariable(scopes->getVariable(Variable::NAME_CURRENT));
+      parser->ast()->addOperation(forNode);
+      parser->pushStack(forNode);
     } expression {
+      AstNode* forNode = static_cast<AstNode*>(parser->popStack());
       AstNode* variableNode = static_cast<AstNode*>(parser->popStack());
+      auto filterNode = parser->ast()->createNodeFilter($4);
+      parser->ast()->addOperation(filterNode);
+      
+      auto scopes = parser->ast()->scopes();
+      scopes->unstackCurrentVariable();
+
+      auto offsetValue = parser->ast()->createNodeValueInt(0);
+      auto limitValue = parser->ast()->createNodeValueInt(1);
+      auto limitNode = parser->ast()->createNodeLimit(offsetValue, limitValue);
+      parser->ast()->addOperation(limitNode);
+
+      auto refNode = parser->ast()->createNodeReference(static_cast<Variable const*>(forNode->getMember(0)->getData()));
+      auto returnNode = parser->ast()->createNodeReturn(refNode);
+      parser->ast()->addOperation(returnNode);
+      scopes->endNested();
+
+      AstNode* subqueryNode = parser->ast()->endSubQuery();
+      scopes->endCurrent();
+
+      std::string const subqueryName = parser->ast()->variables()->nextName();
+      auto subQuery = parser->ast()->createNodeLet(subqueryName.data(), subqueryName.size(), subqueryNode, false);
+      parser->ast()->addOperation(subQuery);
+
+      auto index = parser->ast()->createNodeValueInt(0);
+      auto firstDoc = parser->ast()->createNodeLet(variableNode, parser->ast()->createNodeIndexedAccess(parser->ast()->createNodeReference(subqueryName), index));
+      parser->ast()->addOperation(firstDoc);
+
+      parser->pushStack(forNode);
+    } T_INSERT expression update_or_replace expression in_or_into_collection options {
+      AstNode* forNode = static_cast<AstNode*>(parser->popStack());
+      forNode->changeMember(1, $10);
+      bool canReadOwnWrites = true;
+      auto* forOptionsNode = parser->ast()->createNodeObject();
+      auto* upsertOptionsNode = parser->ast()->createNodeObject();
+      handleUpsertOptions($11, forNode, forOptionsNode, upsertOptionsNode, canReadOwnWrites);
+      TRI_ASSERT(forNode->hasFlag(AstNodeFlagType::FLAG_READ_OWN_WRITES) || !canReadOwnWrites);
+
+      if (!parser->configureWriteQuery($10, $11)) {
+        YYABORT;
+      }
+
+      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($8), parser->ast()->createNodeReference(Variable::NAME_OLD), $7, $9, $10, upsertOptionsNode, canReadOwnWrites);
+      parser->ast()->addOperation(node);
+    }
+  | T_UPSERT upsert_input {
+      // reserve a variable named "$OLD", we might need it in the update expression
+      // and in a later return thing
+      AstNode* variableNode = parser->ast()->createNodeVariable(Variable::NAME_OLD, true);
 
       auto scopes = parser->ast()->scopes();
 
@@ -1386,7 +1506,7 @@ upsert_statement:
       auto forNode = parser->ast()->createNodeForUpsert(variableName.c_str(), variableName.size(), parser->ast()->createNodeArray(), false);
       parser->ast()->addOperation(forNode);
 
-      auto filterNode = parser->ast()->createNodeUpsertFilter(parser->ast()->createNodeReference(variableName), $3);
+      auto filterNode = parser->ast()->createNodeUpsertFilter(parser->ast()->createNodeReference(variableName), $2);
       parser->ast()->addOperation(filterNode);
 
       auto offsetValue = parser->ast()->createNodeValueInt(0);
@@ -1413,31 +1533,18 @@ upsert_statement:
       parser->pushStack(forNode);
     } T_INSERT expression update_or_replace expression in_or_into_collection options {
       AstNode* forNode = static_cast<AstNode*>(parser->popStack());
-      forNode->changeMember(1, $9);
+      forNode->changeMember(1, $8);
+      bool canReadOwnWrites = true;
       auto* forOptionsNode = parser->ast()->createNodeObject();
       auto* upsertOptionsNode = parser->ast()->createNodeObject();
-      if ($10 != nullptr && $10->type == NODE_TYPE_OBJECT) {
-        for (size_t i = 0; i < $10->numMembers(); ++i) {
-          auto nodeMember = $10->getMember(i);
-          if (nodeMember->type == NODE_TYPE_OBJECT_ELEMENT) {
-            std::string_view nodeMemberName = nodeMember->getStringView();
-            if (nodeMemberName == arangodb::StaticStrings::IndexHintOption || 
-                nodeMemberName == arangodb::StaticStrings::IndexHintOptionForce ||
-                nodeMemberName == arangodb::StaticStrings::IndexHintDisableIndex ||
-                nodeMemberName == arangodb::StaticStrings::UseCache) {
-              forOptionsNode->addMember(nodeMember);
-            } else {
-              upsertOptionsNode->addMember(nodeMember);
-            }
-          }
-        }
-        forNode->changeMember(2, forOptionsNode);
-      }
-      if (!parser->configureWriteQuery($9, $10)) {
+      handleUpsertOptions($9, forNode, forOptionsNode, upsertOptionsNode, canReadOwnWrites);
+      TRI_ASSERT(forNode->hasFlag(AstNodeFlagType::FLAG_READ_OWN_WRITES) || !canReadOwnWrites);
+
+      if (!parser->configureWriteQuery($8, $9)) {
         YYABORT;
       }
 
-      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($7), parser->ast()->createNodeReference(Variable::NAME_OLD), $6, $8, $9, upsertOptionsNode);
+      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($6), parser->ast()->createNodeReference(Variable::NAME_OLD), $5, $7, $8, upsertOptionsNode, canReadOwnWrites);
       parser->ast()->addOperation(node);
     }
   ;
@@ -1712,7 +1819,7 @@ expression_or_query:
       auto subQuery = parser->ast()->createNodeLet(variableName.c_str(), variableName.size(), node, false);
       parser->ast()->addOperation(subQuery);
 
-      $$ = parser->ast()->createNodeSubqueryReference(variableName);
+      $$ = parser->ast()->createNodeSubqueryReference(variableName, node);
     }
   ;
 
@@ -2098,7 +2205,7 @@ reference:
       auto subQuery = parser->ast()->createNodeLet(variableName.c_str(), variableName.size(), node, false);
       parser->ast()->addOperation(subQuery);
 
-      $$ = parser->ast()->createNodeSubqueryReference(variableName);
+      $$ = parser->ast()->createNodeSubqueryReference(variableName, node);
     }
   | reference '.' T_STRING %prec REFERENCE {
       std::string_view name($3.value, $3.length);

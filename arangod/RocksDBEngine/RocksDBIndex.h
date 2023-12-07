@@ -34,6 +34,7 @@
 #include <rocksdb/status.h>
 #include <rocksdb/slice.h>
 
+#include <atomic>
 #include <memory>
 #include <mutex>
 
@@ -102,20 +103,17 @@ class RocksDBIndex : public Index {
   /// compact the index, should reduce read amplification
   void compact();
 
-  void setCacheEnabled(bool enable) {
-    // allow disabling and enabling of caches for the primary index
-    _cacheEnabled = enable;
-  }
+  void setCacheEnabled(bool enable) noexcept;
 
   void setupCache();
-  void destroyCache();
+  void destroyCache() noexcept;
 
   /// performs a preflight check for an insert operation, not carrying out any
   /// modifications to the index.
   /// the default implementation does nothing. indexes can override this and
   /// perform useful checks (uniqueness checks etc.) here
   virtual Result checkInsert(transaction::Methods& trx, RocksDBMethods* methods,
-                             LocalDocumentId const& documentId,
+                             LocalDocumentId documentId,
                              arangodb::velocypack::Slice doc,
                              OperationOptions const& options);
 
@@ -125,28 +123,27 @@ class RocksDBIndex : public Index {
   /// checks etc.) here
   virtual Result checkReplace(transaction::Methods& trx,
                               RocksDBMethods* methods,
-                              LocalDocumentId const& documentId,
+                              LocalDocumentId documentId,
                               arangodb::velocypack::Slice doc,
                               OperationOptions const& options);
 
   /// insert index elements into the specified write batch.
   virtual Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                        LocalDocumentId const& documentId,
+                        LocalDocumentId documentId,
                         arangodb::velocypack::Slice doc,
                         OperationOptions const& options,
                         bool performChecks) = 0;
 
   /// remove index elements and put it in the specified write batch.
   virtual Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                        LocalDocumentId const& documentId,
+                        LocalDocumentId documentId,
                         arangodb::velocypack::Slice doc,
                         OperationOptions const& options) = 0;
 
   virtual Result update(transaction::Methods& trx, RocksDBMethods* methods,
-                        LocalDocumentId const& oldDocumentId,
+                        LocalDocumentId oldDocumentId,
                         arangodb::velocypack::Slice oldDoc,
-                        LocalDocumentId const& newDocumentId,
-                        velocypack::Slice newDoc,
+                        LocalDocumentId newDocumentId, velocypack::Slice newDoc,
                         OperationOptions const& options, bool performChecks);
 
   virtual void refillCache(transaction::Methods& trx,
@@ -184,22 +181,21 @@ class RocksDBIndex : public Index {
                rocksdb::ColumnFamilyHandle* cf, bool useCache,
                cache::Manager* cacheManager, RocksDBEngine& engine);
 
-  bool hasCache() const noexcept {
-    return _cacheEnabled && (_cache != nullptr);
-  }
+  // note: this can return a nullptr. the caller has to check the result
+  std::shared_ptr<cache::Cache> useCache() const noexcept;
 
   bool canWarmup() const noexcept override;
 
   virtual std::shared_ptr<cache::Cache> makeCache() const;
 
-  void invalidateCacheEntry(char const* data, std::size_t len);
+  bool invalidateCacheEntry(char const* data, std::size_t len);
 
-  void invalidateCacheEntry(std::string_view ref) {
-    invalidateCacheEntry(ref.data(), ref.size());
+  bool invalidateCacheEntry(std::string_view ref) {
+    return invalidateCacheEntry(ref.data(), ref.size());
   }
 
-  void invalidateCacheEntry(rocksdb::Slice ref) {
-    invalidateCacheEntry(ref.data(), ref.size());
+  bool invalidateCacheEntry(rocksdb::Slice ref) {
+    return invalidateCacheEntry(ref.data(), ref.size());
   }
 
   rocksdb::ColumnFamilyHandle* _cf;
@@ -210,11 +206,7 @@ class RocksDBIndex : public Index {
 
   // user-side request for caching. will effectively be followed only if
   // _cacheManager != nullptr.
-  bool _cacheEnabled;
-
-  // the actual cache object. can be a nullptr, and can only be set if
-  // _cacheManager != nullptr.
-  mutable std::shared_ptr<cache::Cache> _cache;
+  std::atomic_bool _cacheEnabled;
 
   // we have to store references to the engine because the
   // vocbase might already be destroyed at the time the destructor is executed
@@ -222,5 +214,10 @@ class RocksDBIndex : public Index {
 
  private:
   uint64_t const _objectId;
+
+  // the actual cache object. can be a nullptr, and can only be set if
+  // _cacheManager != nullptr.
+  // access only with std::atomic_load|store_explicit()!
+  mutable std::shared_ptr<cache::Cache> _cache;
 };
 }  // namespace arangodb

@@ -368,8 +368,8 @@ _Enterprise Edition only_
 ### jemalloc
 
 * Name: jemalloc
-* Version: 5.3.0, commit 54eaed1d8b56b1aa528be3bdd1877e59c56fa90c
-* Date: 2022-05-06 11:28:25 -0700
+* Version: 5.3.0, commit e4817c8d89a2a413e835c4adeab5c5c4412f9235
+* Date: 2023-10-24 13:51:14 -0700
 * Project Home: https://github.com/jemalloc/jemalloc
 * License: https://raw.githubusercontent.com/jemalloc/jemalloc/dev/COPYING
 * License Comment: free as-is license
@@ -387,8 +387,8 @@ _Enterprise Edition only_
 ### libunwind
 
 * Name: libunwind
-* Version: 1.7
-* Date: 2023-01-11 09:00:00 -0800
+* Version: 1.7.2
+* Date: 2023-07-29 11:04:36 -0400
 * Project Home: https://github.com/libunwind/libunwind
 * License: https://raw.githubusercontent.com/libunwind/libunwind/master/LICENSE
 * License Name: MIT License
@@ -894,7 +894,7 @@ License Id: -
 #### Swagger UI
 
 * Name: swagger-ui
-* Version: 3.25.1
+* Version: 5.4.1
 * Project Home: http://swagger.io
 * GitHub: https://github.com/swagger-api/swagger-ui
 * License: https://raw.githubusercontent.com/swagger-api/swagger-ui/master/LICENSE

@@ -77,7 +77,8 @@ class QueryTraversal : public QueryTest {
       arangodb::OperationOptions options;
       options.returnNew = true;
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
@@ -108,7 +109,8 @@ class QueryTraversal : public QueryTest {
       arangodb::OperationOptions options;
       options.returnNew = true;
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
@@ -130,12 +132,14 @@ class QueryTraversal : public QueryTest {
       auto createIndexJson =
           arangodb::velocypack::Parser::fromJson("{ \"type\": \"edge\" }");
       bool created = false;
-      auto index = collection->createIndex(createIndexJson->slice(), created);
+      auto index =
+          collection->createIndex(createIndexJson->slice(), created).get();
       EXPECT_TRUE(index);
       EXPECT_TRUE(created);
 
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
@@ -362,7 +366,7 @@ TEST_P(QueryTraversalSearch, Test) {
         version()));
     auto collection = _vocbase.lookupCollection("edges");
     ASSERT_TRUE(collection);
-    collection->createIndex(createJson->slice(), created);
+    collection->createIndex(createJson->slice(), created).get();
     ASSERT_TRUE(created);
   }
   // create view on edge collection

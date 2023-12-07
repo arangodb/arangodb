@@ -135,7 +135,8 @@ Result IResearchRocksDBInvertedIndexFactory::normalize(
   TRI_ASSERT(normalized.isOpenObject());
 
   auto res = IndexFactory::validateFieldsDefinition(
-      definition, arangodb::StaticStrings::IndexFields, 0, SIZE_MAX, true);
+      definition, arangodb::StaticStrings::IndexFields, 0, SIZE_MAX,
+      /*allowSubAttributes*/ true, /*allowIdAttribute*/ false);
   if (res.fail()) {
     return res;
   }
@@ -250,6 +251,15 @@ void IResearchRocksDBInvertedIndex::insertMetrics() {
   auto& metric = Index::_collection.vocbase()
                      .server()
                      .getFeature<metrics::MetricsFeature>();
+  _writersMemory =
+      &metric.add(getMetric<arangodb_search_writers_memory_usage>(*this));
+  _readersMemory =
+      &metric.add(getMetric<arangodb_search_readers_memory_usage>(*this));
+  _consolidationsMemory = &metric.add(
+      getMetric<arangodb_search_consolidations_memory_usage>(*this));
+  _fileDescriptorsCount =
+      &metric.add(getMetric<arangodb_search_file_descriptors>(*this));
+  _mappedMemory = &metric.add(getMetric<arangodb_search_mapped_memory>(*this));
   _numFailedCommits =
       &metric.add(getMetric<arangodb_search_num_failed_commits>(*this));
   _numFailedCleanups =
@@ -268,6 +278,27 @@ void IResearchRocksDBInvertedIndex::removeMetrics() {
   auto& metric = Index::_collection.vocbase()
                      .server()
                      .getFeature<metrics::MetricsFeature>();
+  if (_writersMemory != &irs::IResourceManager::kNoop) {
+    _writersMemory = &irs::IResourceManager::kNoop;
+    metric.remove(getMetric<arangodb_search_writers_memory_usage>(*this));
+  }
+  if (_readersMemory != &irs::IResourceManager::kNoop) {
+    _readersMemory = &irs::IResourceManager::kNoop;
+    metric.remove(getMetric<arangodb_search_readers_memory_usage>(*this));
+  }
+  if (_consolidationsMemory != &irs::IResourceManager::kNoop) {
+    _consolidationsMemory = &irs::IResourceManager::kNoop;
+    metric.remove(
+        getMetric<arangodb_search_consolidations_memory_usage>(*this));
+  }
+  if (_fileDescriptorsCount != &irs::IResourceManager::kNoop) {
+    _fileDescriptorsCount = &irs::IResourceManager::kNoop;
+    metric.remove(getMetric<arangodb_search_file_descriptors>(*this));
+  }
+  if (_mappedMemory) {
+    _mappedMemory = nullptr;
+    metric.remove(getMetric<arangodb_search_mapped_memory>(*this));
+  }
   if (_numFailedCommits) {
     _numFailedCommits = nullptr;
     metric.remove(getMetric<arangodb_search_num_failed_commits>(*this));

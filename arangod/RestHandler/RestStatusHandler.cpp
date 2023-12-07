@@ -50,6 +50,8 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
+#include <absl/strings/escaping.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -307,13 +309,13 @@ RestStatus RestStatusHandler::executeOverview() {
     }
   }
 
-  auto const res = buffer.deflate();
+  auto const res = buffer.zlibDeflate(/*onlyIfSmaller*/ false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     result.add("hash", VPackValue(buffer.c_str()));
   } else {
-    std::string deflated(buffer.c_str(), buffer.size());
-    auto encoded = StringUtils::encodeBase64(deflated);
+    auto encoded =
+        absl::Base64Escape(std::string_view{buffer.c_str(), buffer.size()});
     result.add("hash", VPackValue(encoded));
   }
 

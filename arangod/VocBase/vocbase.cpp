@@ -25,7 +25,6 @@
 
 #include <algorithm>
 #include <chrono>
-#include <cinttypes>
 #include <exception>
 #include <memory>
 #include <type_traits>
@@ -34,7 +33,6 @@
 
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
-#include <velocypack/Utf8Helper.h>
 #include <velocypack/Value.h>
 #include <velocypack/ValueType.h>
 
@@ -42,57 +40,42 @@
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
 #include "Auth/Common.h"
-#include "Basics/application-exit.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Exceptions.tpp"
-#include "Basics/HybridLogicalClock.h"
 #include "Basics/Locking.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/DownCast.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/Result.h"
-#include "Basics/Result.tpp"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
-#include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/debugging.h"
-#include "Basics/error.h"
-#include "Basics/system-functions.h"
 #include "Basics/voc-errors.h"
-#include "Containers/Helpers.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterInfo.h"
-#include "Indexes/Index.h"
-#include "Logger/LogContextKeys.h"
+#include "Containers/Helpers.h"
 #include "Logger/LogMacros.h"
-#include "Replication/DatabaseReplicationApplier.h"
-#include "Replication/ReplicationClients.h"
-#include "Replication2/LoggerContext.h"
-#include "Replication2/ReplicatedLog/ILogInterfaces.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/LogLeader.h"
-#include "Replication2/ReplicatedLog/LogStatus.h"
-#include "Replication2/ReplicatedLog/NetworkAttachedFollower.h"
-#include "Replication2/ReplicatedLog/ReplicatedLog.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
-#include "Replication2/ReplicatedState/ReplicatedState.h"
-#include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
-#include "Replication2/Storage/IStorageEngineMethods.h"
-#include "Replication2/IScheduler.h"
-#include "Replication2/Version.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
 #include "Network/ConnectionPool.h"
 #include "Network/NetworkFeature.h"
+#include "Replication/DatabaseReplicationApplier.h"
+#include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
+#include "Replication2/ReplicatedLog/ILogInterfaces.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/LogLeader.h"
+#include "Replication2/ReplicatedLog/LogStatus.h"
+#include "Replication2/ReplicatedLog/ReplicatedLog.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
+#include "Replication2/ReplicatedState/ReplicatedState.h"
+#include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
+#include "Replication2/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -105,7 +88,9 @@
 #include "Utils/ExecContext.h"
 #include "Utils/VersionTracker.h"
 #include "Utilities/NameValidator.h"
+#ifdef USE_V8
 #include "V8Server/v8-user-structures.h"
+#endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
@@ -519,7 +504,7 @@ Result TRI_vocbase_t::dropCollectionWorker(LogicalCollection& collection) {
 
 void TRI_vocbase_t::stop() {
   try {
-    _logManager->resignAll();
+    shutdownReplicatedLogs();
 
     // stop replication
     if (_replicationApplier != nullptr) {
@@ -560,14 +545,14 @@ void TRI_vocbase_t::shutdown() {
     RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
 
     checkCollectionInvariants();
-    _dataSourceByName.clear();
-    _dataSourceById.clear();
-    _dataSourceByUuid.clear();
+    _dataSourceByName = {};
+    _dataSourceById = {};
+    _dataSourceByUuid = {};
     checkCollectionInvariants();
   }
 
-  _deadCollections.clear();
-  _collections.clear();
+  _deadCollections = {};
+  _collections = {};
 }
 
 std::vector<std::string> TRI_vocbase_t::collectionNames() const {
@@ -825,9 +810,6 @@ ResultT<std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
 TRI_vocbase_t::createCollections(
     std::vector<arangodb::CreateCollectionBody> const& collections,
     bool allowEnterpriseCollectionsOnSingleServer) {
-  // TODO: Need to get rid of this collection. Distribute Shards like
-  // is now denoted inside the CreateCollectionBody
-  std::shared_ptr<LogicalCollection> colToDistributeShardsLike;
   /// Code from here is copy pasted from original create and
   /// has not been refacored yet.
   VPackBuilder builder =
@@ -1381,16 +1363,22 @@ TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info)
     : _server(info.server()),
       _engine(_server.getFeature<arangodb::EngineSelectorFeature>().engine()),
       _databaseFeature(_server.getFeature<arangodb::DatabaseFeature>()),
-      _info(std::move(info)),
-      _deadlockDetector(false) {
+      _info(std::move(info)) {
   TRI_ASSERT(_info.valid());
+
+  metrics::Gauge<uint64_t>* numberOfCursorsMetric = nullptr;
+  metrics::Gauge<uint64_t>* memoryUsageMetric = nullptr;
 
   if (_info.server().hasFeature<QueryRegistryFeature>()) {
     QueryRegistryFeature& feature =
         _info.server().getFeature<QueryRegistryFeature>();
     _queries = std::make_unique<aql::QueryList>(feature);
+
+    numberOfCursorsMetric = feature.cursorsMetric();
+    memoryUsageMetric = feature.cursorsMemoryUsageMetric();
   }
-  _cursorRepository = std::make_unique<CursorRepository>(*this);
+  _cursorRepository = std::make_unique<CursorRepository>(
+      *this, numberOfCursorsMetric, memoryUsageMetric);
 
   if (_info.server().hasFeature<ReplicationFeature>()) {
     auto& rf = _info.server().getFeature<ReplicationFeature>();
@@ -1406,7 +1394,9 @@ TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info)
   _collections.reserve(32);
   _deadCollections.reserve(32);
 
+#ifdef USE_V8
   _cacheData = std::make_unique<DatabaseJavaScriptCache>();
+#endif
   _logManager = std::make_shared<VocBaseLogManager>(*this, name());
 }
 
@@ -1417,8 +1407,7 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_t::MockConstruct,
       _engine(_server.getFeature<arangodb::EngineSelectorFeature>().engine()),
       _databaseFeature(_server.getFeature<arangodb::DatabaseFeature>()),
       _info(std::move(info)),
-      _logManager(std::make_shared<VocBaseLogManager>(*this, name())),
-      _deadlockDetector(false) {}
+      _logManager(std::make_shared<VocBaseLogManager>(*this, name())) {}
 #endif
 
 TRI_vocbase_t::~TRI_vocbase_t() {
@@ -1477,6 +1466,10 @@ void TRI_vocbase_t::toVelocyPack(VPackBuilder& result) const {
 
 void TRI_vocbase_t::setShardingPrototype(ShardingPrototype type) {
   _info.shardingPrototype(type);
+}
+
+void TRI_vocbase_t::setSharding(std::string_view sharding) {
+  _info.setSharding(sharding);
 }
 
 ShardingPrototype TRI_vocbase_t::shardingPrototype() const {
@@ -1697,6 +1690,7 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
     }
   });
 
+  config.isSystemDB = isSystem();
   config.maxNumberOfShards = cl.maxNumberOfShards();
   config.allowExtendedNames = db.extendedNames();
   config.shouldValidateClusterSettings = true;
@@ -1714,6 +1708,8 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
   } else {
     config.defaultDistributeShardsLike = "";
   }
+
+  config.replicationVersion = replicationVersion();
 
   return config;
 }

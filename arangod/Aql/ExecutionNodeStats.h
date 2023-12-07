@@ -25,19 +25,32 @@
 
 #include <cstdint>
 
+namespace arangodb::aql {
+
 /// @brief statistics per ExecutionNode
 struct ExecutionNodeStats {
+  // number of calls, total
   uint64_t calls = 0;
+  // number of parallel calls
+  uint64_t parallel = 0;
+  // number of items produced
   uint64_t items = 0;
   // filtered is only populated by some nodes
   uint64_t filtered = 0;
+  // runtime, including time spent in fetchers
   double runtime = 0.0;
+  // time spent in fetchers
+  double fetching = 0.0;
 
-  ExecutionNodeStats& operator+=(ExecutionNodeStats const& other) {
+  ExecutionNodeStats& operator+=(ExecutionNodeStats const& other) noexcept {
     calls += other.calls;
+    parallel += other.parallel;
     items += other.items;
     filtered += other.filtered;
     runtime += other.runtime;
+    fetching += other.fetching;
     return *this;
   }
 };
+
+}  // namespace arangodb::aql

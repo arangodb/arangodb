@@ -51,6 +51,11 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/Metric.h"
+#include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationClients.h"
@@ -61,10 +66,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
-#include "Metrics/CounterBuilder.h"
-#include "Metrics/GaugeBuilder.h"
-#include "Metrics/HistogramBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include "RestServer/DumpLimitsFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "Replication2/Storage/LogStorageMethods.h"
@@ -74,6 +76,10 @@
 #include "Replication2/Storage/RocksDB/StatePersistor.h"
 #include "Replication2/Storage/RocksDB/Metrics.h"
 #include "Replication2/Storage/RocksDB/ReplicatedStateInfo.h"
+#include "Replication2/Storage/WAL/IFileManager.h"
+#include "Replication2/Storage/WAL/IFileWriter.h"
+#include "Replication2/Storage/WAL/LogPersistor.h"
+#include "Replication2/Storage/WAL/WalManager.h"
 #include "RocksDBEngine/Listeners/RocksDBBackgroundErrorListener.h"
 #include "RocksDBEngine/Listeners/RocksDBMetricsListener.h"
 #include "RocksDBEngine/Listeners/RocksDBThrottle.h"
@@ -85,6 +91,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBDumpManager.h"
+#include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBIncrementalSync.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
@@ -132,6 +139,7 @@
 
 #include <absl/strings/str_cat.h>
 
+#include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 
 #include <iomanip>
@@ -142,6 +150,8 @@
 // file ingestion until rocksdb external file ingestion is fixed to have
 // correct sequence numbers for the files without gaps
 #undef USE_SST_INGESTION
+
+// #define USE_CUSTOM_WAL
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -172,7 +182,7 @@ DECLARE_GAUGE(arangodb_revision_tree_memory_usage, uint64_t,
 DECLARE_GAUGE(
     arangodb_revision_tree_buffered_memory_usage, uint64_t,
     "Total memory consumed by buffered updates for all revision trees");
-DECLARE_GAUGE(arangodb_internal_index_estimates_memory, uint64_t,
+DECLARE_GAUGE(arangodb_index_estimates_memory_usage, uint64_t,
               "Total memory consumed by all index selectivity estimates");
 DECLARE_COUNTER(arangodb_revision_tree_rebuilds_success_total,
                 "Number of successful revision tree rebuilds");
@@ -182,15 +192,22 @@ DECLARE_COUNTER(arangodb_revision_tree_hibernations_total,
                 "Number of revision tree hibernations");
 DECLARE_COUNTER(arangodb_revision_tree_resurrections_total,
                 "Number of revision tree resurrections");
-DECLARE_GAUGE(rocksdb_cache_edge_uncompressed_entries_size, uint64_t,
-              "Total gross memory size of all edge cache entries ever stored "
-              "in memory");
-DECLARE_GAUGE(rocksdb_cache_edge_effective_entries_size, uint64_t,
-              "Total effective memory size of all edge cache entries ever "
-              "stored in memory (after compression)");
+DECLARE_COUNTER(rocksdb_cache_edge_inserts_uncompressed_entries_size_total,
+                "Total gross memory size of all edge cache entries ever stored "
+                "in memory");
+DECLARE_COUNTER(rocksdb_cache_edge_inserts_effective_entries_size_total,
+                "Total effective memory size of all edge cache entries ever "
+                "stored in memory (after compression)");
 DECLARE_GAUGE(rocksdb_cache_edge_compression_ratio, double,
               "Overall compression ratio for all edge cache entries ever "
               "stored in memory");
+DECLARE_COUNTER(rocksdb_cache_edge_inserts_total,
+                "Number of inserts into the edge cache");
+DECLARE_COUNTER(rocksdb_cache_edge_compressed_inserts_total,
+                "Number of compressed inserts into the edge cache");
+DECLARE_COUNTER(
+    rocksdb_cache_edge_empty_inserts_total,
+    "Number of inserts into the edge cache that were an empty array");
 
 // global flag to cancel all compactions. will be flipped to true on shutdown
 static std::atomic<bool> cancelCompactions{false};
@@ -262,8 +279,6 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _intermediateCommitCount(
           transaction::Options::defaultIntermediateCommitCount),
       _maxParallelCompactions(2),
-      _minValueSizeForEdgeCompression(1073741824ULL),
-      _accelerationFactorForEdgeCompression(1),
       _pruneWaitTime(10.0),
       _pruneWaitTimeInitial(60.0),
       _maxWalArchiveSizeLimit(0),
@@ -289,9 +304,10 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _runningCompactions(0),
       _autoFlushCheckInterval(60.0 * 30.0),
       _autoFlushMinWalFiles(20),
+      _forceLittleEndianKeys(false),
       _metricsIndexEstimatorMemoryUsage(
           server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_internal_index_estimates_memory{})),
+              arangodb_index_estimates_memory_usage{})),
       _metricsWalReleasedTickFlush(
           metrics.add(rocksdb_wal_released_tick_flush{})),
       _metricsWalSequenceLowerBound(
@@ -315,10 +331,15 @@ RocksDBEngine::RocksDBEngine(Server& server,
           metrics.add(arangodb_revision_tree_hibernations_total{})),
       _metricsTreeResurrections(
           metrics.add(arangodb_revision_tree_resurrections_total{})),
-      _metricsEdgeCacheEntriesSizeInitial(
-          metrics.add(rocksdb_cache_edge_uncompressed_entries_size{})),
-      _metricsEdgeCacheEntriesSizeEffective(
-          metrics.add(rocksdb_cache_edge_effective_entries_size{})) {
+      _metricsEdgeCacheEntriesSizeInitial(metrics.add(
+          rocksdb_cache_edge_inserts_uncompressed_entries_size_total{})),
+      _metricsEdgeCacheEntriesSizeEffective(metrics.add(
+          rocksdb_cache_edge_inserts_effective_entries_size_total{})),
+      _metricsEdgeCacheInserts(metrics.add(rocksdb_cache_edge_inserts_total{})),
+      _metricsEdgeCacheCompressedInserts(
+          metrics.add(rocksdb_cache_edge_compressed_inserts_total{})),
+      _metricsEdgeCacheEmptyInserts(
+          metrics.add(rocksdb_cache_edge_empty_inserts_total{})) {
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is
   // used to configure this engine
@@ -469,11 +490,9 @@ RAM than this threshold value are aborted automatically with error 32
                      "transaction, and a new transaction is started.",
                      new UInt64Parameter(&_intermediateCommitCount));
 
-  options
-      ->addOption("--rocksdb.max-parallel-compactions",
-                  "The maximum number of parallel compactions jobs.",
-                  new UInt64Parameter(&_maxParallelCompactions))
-      .setIntroducedIn(30711);
+  options->addOption("--rocksdb.max-parallel-compactions",
+                     "The maximum number of parallel compactions jobs.",
+                     new UInt64Parameter(&_maxParallelCompactions));
 
   options
       ->addOption(
@@ -490,20 +509,17 @@ write-ahead logs to disk is only performed for not-yet synchronized data, and
 only for operations that have been executed without the `waitForSync`
 attribute.)");
 
-  options
-      ->addOption(
-          "--rocksdb.sync-delay-threshold",
-          "The threshold for self-observation of WAL disk syncs "
-          "(in milliseconds, 0 = no warnings). Any WAL disk sync longer ago "
-          "than this threshold triggers a warning ",
-          new UInt64Parameter(&_syncDelayThreshold),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle,
-              arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30608)
-      .setIntroducedIn(30705);
+  options->addOption(
+      "--rocksdb.sync-delay-threshold",
+      "The threshold for self-observation of WAL disk syncs "
+      "(in milliseconds, 0 = no warnings). Any WAL disk sync longer ago "
+      "than this threshold triggers a warning ",
+      new UInt64Parameter(&_syncDelayThreshold),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle,
+          arangodb::options::Flags::Uncommon));
 
   options
       ->addOption("--rocksdb.wal-file-timeout",
@@ -699,7 +715,6 @@ RocksDB internals and performance.)");
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30604)
       .setDeprecatedIn(31000);
 
   options
@@ -785,45 +800,27 @@ when disk size is very constrained and no replication is used.)");
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31005);
 
-  options
-      ->addOption("--cache.min-value-size-for-edge-compression",
-                  "The size threshold (in bytes) from which on payloads in the "
-                  "edge index cache transparently get LZ4-compressed.",
-                  new SizeTParameter(&_minValueSizeForEdgeCompression, 1, 0,
-                                     1073741824ULL),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnSingle))
-      .setLongDescription(
-          R"(By transparently compressing values in the in-memory
-edge index cache, more data can be held in memory than without compression.  
-Storing compressed values can increase CPU usage for the on-the-fly compression 
-and decompression. In case compression is undesired, this option can be set to a 
-very high value, which will effectively disable it. To use compression, set the
-option to a value that is lower than medium-to-large average payload sizes.
-It is normally not that useful to compress values that are smaller than 100 bytes.)")
-      .setIntroducedIn(31102);
-
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   options
       ->addOption(
-          "--cache.acceleration-factor-for-edge-compression",
-          "The acceleration factor for the LZ4 compression of in-memory "
-          "edge cache entries.",
-          new UInt32Parameter(&_accelerationFactorForEdgeCompression, 1, 1,
-                              65537),
+          "--rocksdb.force-legacy-little-endian-keys",
+          "Force usage of legacy little endian key encoding when creating "
+          "a new RocksDB database directory. DO NOT USE IN PRODUCTION.",
+          new BooleanParameter(&_forceLittleEndianKeys),
           arangodb::options::makeFlags(
-              arangodb::options::Flags::Uncommon,
               arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::Experimental,
+              arangodb::options::Flags::OnAgent,
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle))
-      .setLongDescription(
-          R"(This value controls the LZ4-internal acceleration factor for the 
-LZ4 compression. Higher values typically yield less compression in exchange
-for faster compression and decompression speeds. An increase of 1 commonly leads
-to a compression speed increase of 3%, and could slightly increase decompression
-speed.)")
-      .setIntroducedIn(31102);
+      .setIntroducedIn(31200)
+      .setLongDescription(R"(If enabled and a new RocksDB database
+is generated, the legacy little endian key encoding is used.
+
+Only use this option for testing purposes! It is bad for performance and
+disables a few features like parallel index generation!)");
+#endif
 
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
@@ -922,26 +919,6 @@ void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
 }
 
 namespace {
-
-auto makeLogStorageMethods(
-    replication2::LogId logId, uint64_t objectId, std::uint64_t vocbaseId,
-    ::rocksdb::DB* const db, ::rocksdb::ColumnFamilyHandle* const logCf,
-    ::rocksdb::ColumnFamilyHandle* const metaCf,
-    std::shared_ptr<replication2::storage::rocksdb::IAsyncLogWriteBatcher>
-        batcher,
-    std::shared_ptr<replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics>
-        metrics)
-    -> std::unique_ptr<replication2::storage::IStorageEngineMethods> {
-  auto logPersistor =
-      std::make_unique<replication2::storage::rocksdb::LogPersistor>(
-          logId, objectId, vocbaseId, db, logCf, std::move(batcher),
-          std::move(metrics));
-  auto statePersistor =
-      std::make_unique<replication2::storage::rocksdb::StatePersistor>(
-          logId, objectId, vocbaseId, db, metaCf);
-  return std::make_unique<replication2::storage::LogStorageMethods>(
-      std::move(logPersistor), std::move(statePersistor));
-}
 
 struct RocksDBAsyncLogWriteBatcherMetricsImpl
     : replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics {
@@ -1222,7 +1199,8 @@ void RocksDBEngine::start() {
                  ->GetID() == 0);
 
   // will crash the process if version does not match
-  arangodb::rocksdbStartupVersionCheck(server(), _db, dbExisted);
+  arangodb::rocksdbStartupVersionCheck(server(), _db, dbExisted,
+                                       _forceLittleEndianKeys);
 
   _dbExisted = dbExisted;
 
@@ -1265,7 +1243,11 @@ void RocksDBEngine::start() {
   TRI_ASSERT(_db != nullptr);
   _settingsManager = std::make_unique<RocksDBSettingsManager>(*this);
   _replicationManager = std::make_unique<RocksDBReplicationManager>(*this);
-  _dumpManager = std::make_unique<RocksDBDumpManager>(*this);
+  _dumpManager = std::make_unique<RocksDBDumpManager>(
+      *this, server().getFeature<metrics::MetricsFeature>(),
+      server().getFeature<DumpLimitsFeature>().limits());
+  _walManager = std::make_shared<replication2::storage::wal::WalManager>(
+      databasePathFeature.subdirectoryName("replicated-logs"));
 
   struct SchedulerExecutor
       : replication2::storage::rocksdb::AsyncLogWriteBatcher::IAsyncExecutor {
@@ -1294,7 +1276,7 @@ void RocksDBEngine::start() {
   _logPersistor = logPersistor;
 
   if (auto* syncer = syncThread(); syncer != nullptr) {
-    syncer->registerSyncListener(logPersistor);
+    syncer->registerSyncListener(std::move(logPersistor));
   } else {
     LOG_TOPIC("0a5df", WARN, Logger::REPLICATION2)
         << "In replication2 databases, setting waitForSync to false will not "
@@ -1342,9 +1324,8 @@ void RocksDBEngine::beginShutdown() {
     _replicationManager->beginShutdown();
   }
 
-  // block the creation of new dump contexts
   if (_dumpManager != nullptr) {
-    _dumpManager->beginShutdown();
+    _dumpManager->garbageCollect(/*force*/ true);
   }
 
   // from now on, all started compactions can be canceled.
@@ -1359,6 +1340,10 @@ void RocksDBEngine::stop() {
   // in case we missed the beginShutdown somehow, call it again
   replicationManager()->beginShutdown();
   replicationManager()->dropAll();
+
+  if (_dumpManager != nullptr) {
+    _dumpManager->garbageCollect(/*force*/ true);
+  }
 
   if (_backgroundThread) {
     // stop the press
@@ -1441,15 +1426,16 @@ std::unique_ptr<transaction::Manager> RocksDBEngine::createTransactionManager(
 
 std::shared_ptr<TransactionState> RocksDBEngine::createTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
-    transaction::Options const& options) {
+    transaction::Options const& options, transaction::OperationOrigin trxType) {
   if (vocbase.replicationVersion() == replication::Version::TWO &&
       (tid.isLeaderTransactionId() || tid.isLegacyTransactionId()) &&
       ServerState::instance()->isRunningInCluster() &&
       !options.allowDirtyReads && options.requiresReplication) {
-    return std::make_shared<ReplicatedRocksDBTransactionState>(vocbase, tid,
-                                                               options);
+    return std::make_shared<ReplicatedRocksDBTransactionState>(
+        vocbase, tid, options, trxType);
   }
-  return std::make_shared<SimpleRocksDBTransactionState>(vocbase, tid, options);
+  return std::make_shared<SimpleRocksDBTransactionState>(vocbase, tid, options,
+                                                         trxType);
 }
 
 void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
@@ -1906,7 +1892,8 @@ void RocksDBEngine::processTreeRebuilds() {
                   << candidate.first << "/" << collection->name();
               Result res =
                   static_cast<RocksDBCollection*>(collection->getPhysical())
-                      ->rebuildRevisionTree();
+                      ->rebuildRevisionTree()
+                      .get();
               if (res.ok()) {
                 ++_metricsTreeRebuildsSuccess;
                 LOG_TOPIC("2f997", INFO, Logger::ENGINES)
@@ -2077,13 +2064,13 @@ void RocksDBEngine::prepareDropCollection(TRI_vocbase_t& /*vocbase*/,
   replicationManager()->drop(coll);
 }
 
-arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
-                                               LogicalCollection& coll) {
+Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
+                                     LogicalCollection& coll) {
   auto* rcoll = static_cast<RocksDBMetaCollection*>(coll.getPhysical());
   bool const prefixSameAsStart = true;
   bool const useRangeDelete = rcoll->meta().numberDocuments() >= 32 * 1024;
 
-  auto resLock = rcoll->lockWrite();  // technically not necessary
+  auto resLock = rcoll->lockWrite().get();  // technically not necessary
   if (resLock != TRI_ERROR_NO_ERROR) {
     return resLock;
   }
@@ -2142,32 +2129,28 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   }
 
   // remove from map
-  {
-    WRITE_LOCKER(guard, _mapLock);
-    _collectionMap.erase(rcoll->objectId());
-  }
+  removeCollectionMapping(rcoll->objectId());
 
   // delete indexes, RocksDBIndex::drop() has its own check
-  std::vector<std::shared_ptr<Index>> vecShardIndex = rcoll->getIndexes();
-  TRI_ASSERT(!vecShardIndex.empty());
+  auto indexes = rcoll->getIndexes();
+  TRI_ASSERT(!indexes.empty());
 
-  for (auto& index : vecShardIndex) {
-    RocksDBIndex* ridx = static_cast<RocksDBIndex*>(index.get());
-    res = RocksDBMetadata::deleteIndexEstimate(db, ridx->objectId());
+  for (auto const& idx : indexes) {
+    auto* rIdx = basics::downCast<RocksDBIndex>(idx.get());
+    res = RocksDBMetadata::deleteIndexEstimate(db, rIdx->objectId());
     if (res.fail()) {
       LOG_TOPIC("f2d51", WARN, Logger::ENGINES)
           << "could not delete index estimate: " << res.errorMessage();
     }
 
-    auto dropRes = index->drop().errorNumber();
+    auto dropRes = idx->drop();
 
-    if (dropRes != TRI_ERROR_NO_ERROR) {
+    if (dropRes.fail()) {
       // We try to remove all indexed values.
       // If it does not work they cannot be accessed any more and leaked.
       // User View remains consistent.
       LOG_TOPIC("97176", ERR, Logger::ENGINES)
-          << "unable to drop index: " << TRI_errno_string(dropRes);
-      //      return TRI_ERROR_NO_ERROR;
+          << "unable to drop index: " << dropRes.errorMessage();
     }
   }
 
@@ -2181,7 +2164,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
     // We try to remove all documents.
     // If it does not work they cannot be accessed any more and leaked.
     // User View remains consistent.
-    return TRI_ERROR_NO_ERROR;
+    return {};
   }
 
   // run compaction for data only if collection contained a considerable
@@ -2207,7 +2190,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
 
   // if we get here all documents / indexes are gone.
   // We have no data garbage left.
-  return Result();
+  return {};
 }
 
 void RocksDBEngine::changeCollection(TRI_vocbase_t& vocbase,
@@ -2224,9 +2207,9 @@ void RocksDBEngine::changeCollection(TRI_vocbase_t& vocbase,
   }
 }
 
-arangodb::Result RocksDBEngine::renameCollection(
-    TRI_vocbase_t& vocbase, LogicalCollection const& collection,
-    std::string const& oldName) {
+Result RocksDBEngine::renameCollection(TRI_vocbase_t& vocbase,
+                                       LogicalCollection const& collection,
+                                       std::string const& oldName) {
   auto builder = collection.toVelocyPackIgnore(
       {"path", "statusString"},
       LogicalDataSource::Serialization::PersistenceWithInProgress);
@@ -2239,7 +2222,7 @@ arangodb::Result RocksDBEngine::renameCollection(
 }
 
 Result RocksDBEngine::createView(TRI_vocbase_t& vocbase, DataSourceId id,
-                                 arangodb::LogicalView const& view) {
+                                 LogicalView const& view) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC("0bad8", DEBUG, Logger::ENGINES) << "RocksDBEngine::createView";
 #endif
@@ -2273,8 +2256,8 @@ Result RocksDBEngine::createView(TRI_vocbase_t& vocbase, DataSourceId id,
   return rocksutils::convertStatus(res);
 }
 
-arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t const& vocbase,
-                                         LogicalView const& view) {
+Result RocksDBEngine::dropView(TRI_vocbase_t const& vocbase,
+                               LogicalView const& view) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC("fa6e5", DEBUG, Logger::ENGINES) << "RocksDBEngine::dropView";
 #endif
@@ -2352,11 +2335,13 @@ void RocksDBEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
   RocksDBOptimizerRules::registerResources(feature);
 }
 
+#ifdef USE_V8
 /// @brief Add engine-specific V8 functions
 void RocksDBEngine::addV8Functions() {
   // there are no specific V8 functions here
   RocksDBV8Functions::registerResources(*this);
 }
+#endif
 
 /// @brief Add engine-specific REST handlers
 void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {
@@ -2391,12 +2376,19 @@ void RocksDBEngine::addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
   }
 }
 
-std::vector<std::pair<TRI_voc_tick_t, DataSourceId>>
+void RocksDBEngine::removeCollectionMapping(uint64_t objectId) {
+  WRITE_LOCKER(guard, _mapLock);
+  _collectionMap.erase(objectId);
+}
+
+std::vector<std::tuple<uint64_t, TRI_voc_tick_t, DataSourceId>>
 RocksDBEngine::collectionMappings() const {
-  std::vector<std::pair<TRI_voc_tick_t, DataSourceId>> res;
+  std::vector<std::tuple<uint64_t, TRI_voc_tick_t, DataSourceId>> res;
+
   READ_LOCKER(guard, _mapLock);
+  res.reserve(_collectionMap.size());
   for (auto const& it : _collectionMap) {
-    res.emplace_back(it.second.first, it.second.second);
+    res.emplace_back(it.first, it.second.first, it.second.second);
   }
   return res;
 }
@@ -2502,29 +2494,23 @@ Result RocksDBEngine::flushWal(bool waitForSync, bool flushColumnFamilies) {
   return res;
 }
 
-void RocksDBEngine::waitForEstimatorSync(
-    std::chrono::milliseconds maxWaitTime) {
-  auto start = std::chrono::high_resolution_clock::now();
-  auto beginSeq = _db->GetLatestSequenceNumber();
+void RocksDBEngine::waitForEstimatorSync() {
+  // release all unused ticks from flush feature
+  server().getFeature<FlushFeature>().releaseUnusedTicks();
 
-  while (std::chrono::high_resolution_clock::now() - start < maxWaitTime) {
-    if (_settingsManager->earliestSeqNeeded() >= beginSeq) {
-      // all synced up!
-      break;
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-  }
+  // force-flush
+  _settingsManager->sync(/*force*/ true);
 }
 
 Result RocksDBEngine::registerRecoveryHelper(
     std::shared_ptr<RocksDBRecoveryHelper> helper) {
   try {
-    _recoveryHelpers.emplace_back(helper);
+    _recoveryHelpers.emplace_back(std::move(helper));
   } catch (std::bad_alloc const&) {
     return {TRI_ERROR_OUT_OF_MEMORY};
   }
 
-  return {TRI_ERROR_NO_ERROR};
+  return {};
 }
 
 std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const&
@@ -2778,23 +2764,10 @@ void RocksDBEngine::pruneWalFiles() {
   for (auto it = _prunableWalFiles.begin(); it != _prunableWalFiles.end();
        /* no hoisting */) {
     // check if WAL file is expired
-    bool deleteFile = false;
-
-    if ((*it).second <= 0.0) {
-      // file can be deleted because we outgrew the configured max archive
-      // size, but only if there are no other threads currently inside the WAL
-      // tailing section
-      deleteFile = purgeEnabler.canPurge();
-      LOG_TOPIC("817bc", TRACE, Logger::ENGINES)
-          << "pruneWalFiles checking overflowed file '" << (*it).first
-          << "', canPurge: " << deleteFile;
-    } else if ((*it).second < TRI_microtime()) {
-      // file has expired, and it is always safe to delete it
-      deleteFile = true;
-      LOG_TOPIC("e7674", TRACE, Logger::ENGINES)
-          << "pruneWalFiles checking expired file '" << (*it).first
-          << "', canPurge: " << deleteFile;
-    }
+    auto deleteFile = purgeEnabler.canPurge();
+    LOG_TOPIC("e7674", TRACE, Logger::ENGINES)
+        << "pruneWalFiles checking file '" << (*it).first
+        << "', canPurge: " << deleteFile;
 
     if (deleteFile) {
       LOG_TOPIC("68e4a", DEBUG, Logger::ENGINES)
@@ -2866,9 +2839,8 @@ Result RocksDBEngine::dropReplicatedStates(TRI_voc_tick_t databaseId) {
     auto* cfLogs = RocksDBColumnFamilyManager::get(
         RocksDBColumnFamilyManager::Family::ReplicatedLogs);
 
-    auto methods =
-        makeLogStorageMethods(info.stateId, info.objectId, databaseId, _db,
-                              cfLogs, cfDefs, _logPersistor, _logMetrics);
+    auto methods = makeLogStorageMethods(info.stateId, info.objectId,
+                                         databaseId, cfLogs, cfDefs);
     auto res = methods->drop();
     // Save the first error we encounter, but try to drop the rest.
     if (rv.ok() && res.fail()) {
@@ -2886,13 +2858,12 @@ Result RocksDBEngine::dropReplicatedStates(TRI_voc_tick_t databaseId) {
 
 Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   using namespace rocksutils;
-  arangodb::Result res;
   rocksdb::WriteOptions wo;
   rocksdb::DB* db = _db->GetRootDB();
 
   // remove view definitions
-  res = rocksutils::removeLargeRange(db, RocksDBKeyBounds::DatabaseViews(id),
-                                     true, /*rangeDel*/ false);
+  Result res = rocksutils::removeLargeRange(
+      db, RocksDBKeyBounds::DatabaseViews(id), true, /*rangeDel*/ false);
   if (res.fail()) {
     return res;
   }
@@ -2933,7 +2904,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         }
 
         TRI_ASSERT(it.get(StaticStrings::IndexType).isString());
-        auto type = Index::type(it.get(StaticStrings::IndexType).copyString());
+        auto type = Index::type(it.get(StaticStrings::IndexType).stringView());
         bool unique = basics::VelocyPackHelper::getBooleanValue(
             it, StaticStrings::IndexUnique, false);
 
@@ -3014,12 +2985,11 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (numDocsLeft > 0) {
-    std::string errorMsg(
-        "deletion check in drop database failed - not all documents have "
-        "been "
-        "deleted. remaining: ");
-    errorMsg.append(std::to_string(numDocsLeft));
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, absl::StrCat("deletion check in drop database "
+                                         "failed - not all documents have been "
+                                         "deleted. remaining: ",
+                                         numDocsLeft));
   }
 #endif
 
@@ -3063,8 +3033,7 @@ void RocksDBEngine::addSystemDatabase() {
 
 /// @brief open an existing database. internal function
 std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
-    arangodb::CreateDatabaseInfo&& info, bool wasCleanShutdown,
-    bool isUpgrade) {
+    CreateDatabaseInfo&& info, bool wasCleanShutdown, bool isUpgrade) {
   auto vocbase = std::make_unique<TRI_vocbase_t>(std::move(info));
 
   LOG_TOPIC("26c21", TRACE, arangodb::Logger::ENGINES)
@@ -3145,6 +3114,21 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   // scan the database path for "arangosearch" views
   scanViews(iresearch::StaticStrings::ViewArangoSearchType);
 
+  // replicated states should be loaded before their respective shards
+  if (vocbase->replicationVersion() == replication::Version::TWO) {
+    try {
+      loadReplicatedStates(*vocbase);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("554c1", ERR, arangodb::Logger::ENGINES)
+          << "error while opening database: " << ex.what();
+      throw;
+    } catch (...) {
+      LOG_TOPIC("5f33d", ERR, arangodb::Logger::ENGINES)
+          << "error while opening database: unknown exception";
+      throw;
+    }
+  }
+
   // scan the database path for collections
   try {
     VPackBuilder builder;
@@ -3188,12 +3172,6 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       LOG_TOPIC("39404", DEBUG, arangodb::Logger::ENGINES)
           << "added collection '" << vocbase->name() << "/"
           << collection->name() << "'";
-
-      if (collection->replicationVersion() ==
-          arangodb::replication::Version::TWO) {
-        vocbase->_logManager->_initCollections.emplace(
-            collection->replicatedStateId(), collection);
-      }
     }
   } catch (std::exception const& ex) {
     LOG_TOPIC("8d427", ERR, arangodb::Logger::ENGINES)
@@ -3204,18 +3182,6 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     LOG_TOPIC("0268e", ERR, arangodb::Logger::ENGINES)
         << "error while opening database '" << vocbase->name()
         << "': unknown exception";
-    throw;
-  }
-
-  try {
-    loadReplicatedStates(*vocbase);
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("554c1", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: " << ex.what();
-    throw;
-  } catch (...) {
-    LOG_TOPIC("5f33d", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: unknown exception";
     throw;
   }
 
@@ -3254,12 +3220,11 @@ void RocksDBEngine::loadReplicatedStates(TRI_vocbase_t& vocbase) {
     auto info = velocypack::deserialize<
         replication2::storage::rocksdb::ReplicatedStateInfo>(slice);
     auto methods = makeLogStorageMethods(
-        info.stateId, info.objectId, vocbase.id(), _db,
+        info.stateId, info.objectId, vocbase.id(),
         RocksDBColumnFamilyManager::get(
             RocksDBColumnFamilyManager::Family::ReplicatedLogs),
         RocksDBColumnFamilyManager::get(
-            RocksDBColumnFamilyManager::Family::Definitions),
-        _logPersistor, _logMetrics);
+            RocksDBColumnFamilyManager::Family::Definitions));
     registerReplicatedState(vocbase, info.stateId, std::move(methods));
   }
 }
@@ -3291,6 +3256,27 @@ void RocksDBEngine::syncIndexCaches() {
   f.waitForCatchup();
 }
 
+auto RocksDBEngine::makeLogStorageMethods(
+    replication2::LogId logId, uint64_t objectId, std::uint64_t vocbaseId,
+    ::rocksdb::ColumnFamilyHandle* const logCf,
+    ::rocksdb::ColumnFamilyHandle* const metaCf)
+    -> std::unique_ptr<replication2::storage::IStorageEngineMethods> {
+#if defined(USE_CUSTOM_WAL)
+  auto logPersistor =
+      std::make_unique<replication2::storage::wal::LogPersistor>(
+          logId, _walManager->createFileManager(logId));
+#else
+  auto logPersistor =
+      std::make_unique<replication2::storage::rocksdb::LogPersistor>(
+          logId, objectId, vocbaseId, _db, logCf, _logPersistor, _logMetrics);
+#endif
+  auto statePersistor =
+      std::make_unique<replication2::storage::rocksdb::StatePersistor>(
+          logId, objectId, vocbaseId, _db, metaCf);
+  return std::make_unique<replication2::storage::LogStorageMethods>(
+      std::move(logPersistor), std::move(statePersistor));
+}
+
 DECLARE_GAUGE(rocksdb_cache_active_tables, uint64_t,
               "rocksdb_cache_active_tables");
 DECLARE_GAUGE(rocksdb_cache_allocated, uint64_t, "rocksdb_cache_allocated");
@@ -3305,6 +3291,14 @@ DECLARE_GAUGE(rocksdb_cache_unused_memory, uint64_t,
               "rocksdb_cache_unused_memory");
 DECLARE_GAUGE(rocksdb_cache_unused_tables, uint64_t,
               "rocksdb_cache_unused_tables");
+DECLARE_COUNTER(rocksdb_cache_migrate_tasks_total,
+                "rocksdb_cache_migrate_tasks_total");
+DECLARE_COUNTER(rocksdb_cache_free_memory_tasks_total,
+                "rocksdb_cache_free_memory_tasks_total");
+DECLARE_COUNTER(rocksdb_cache_migrate_tasks_duration_total,
+                "rocksdb_cache_migrate_tasks_duration_total");
+DECLARE_COUNTER(rocksdb_cache_free_memory_tasks_duration_total,
+                "rocksdb_cache_free_memory_tasks_duration_total");
 DECLARE_GAUGE(rocksdb_actual_delayed_write_rate, uint64_t,
               "rocksdb_actual_delayed_write_rate");
 DECLARE_GAUGE(rocksdb_background_errors, uint64_t, "rocksdb_background_errors");
@@ -3403,8 +3397,24 @@ DECLARE_GAUGE(rocksdb_engine_throttle_bps, uint64_t,
 DECLARE_GAUGE(rocksdb_read_only, uint64_t, "rocksdb_read_only");
 DECLARE_GAUGE(rocksdb_total_sst_files, uint64_t, "rocksdb_total_sst_files");
 
-void RocksDBEngine::getStatistics(std::string& result) const {
-  VPackBuilder stats;
+void RocksDBEngine::getCapabilities(velocypack::Builder& builder) const {
+  // get generic capabilities
+  VPackBuilder main;
+  StorageEngine::getCapabilities(main);
+
+  VPackBuilder own;
+  own.openObject();
+  own.add("endianness", VPackValue(rocksDBEndiannessString(
+                            rocksutils::getRocksDBKeyFormatEndianness())));
+  own.close();
+
+  VPackCollection::merge(builder, main.slice(), own.slice(), false);
+}
+
+void RocksDBEngine::toPrometheus(std::string& result, std::string_view globals,
+                                 bool ensureWhitespace) const {
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder stats(buffer);
   getStatistics(stats);
   VPackSlice sslice = stats.slice();
 
@@ -3415,11 +3425,15 @@ void RocksDBEngine::getStatistics(std::string& result) const {
       std::replace(name.begin(), name.end(), '.', '_');
       std::replace(name.begin(), name.end(), '-', '_');
       if (!name.empty() && name.front() != 'r') {
+        // prepend name with "rocksdb_"
         name = absl::StrCat(kEngineName, "_", name);
       }
-      result += absl::StrCat("\n# HELP ", name, " ", name, "\n# TYPE ", name,
-                             " gauge\n", name, " ",
-                             a.value.getNumber<uint64_t>(), "\n");
+
+      metrics::Metric::addInfo(result, name, /*help*/ name,
+                               name.ends_with("_total") ? "counter" : "gauge");
+      metrics::Metric::addMark(result, name, globals, "");
+      absl::StrAppend(&result, ensureWhitespace ? " " : "",
+                      a.value.getNumber<uint64_t>(), "\n");
     }
   }
 }
@@ -3490,7 +3504,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     builder.close();
   };
 
-  builder.openObject();
+  builder.openObject(/*unindexed*/ true);
   int64_t numSstFilesOnAllLevels = 0;
   for (int i = 0; i < _optionsProvider.getOptions().num_levels; ++i) {
     numSstFilesOnAllLevels += addIntAllCf(
@@ -3584,23 +3598,36 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     cache::Manager* manager =
         server().getFeature<CacheManagerFeature>().manager();
 
-    std::optional<cache::Manager::MemoryStats> stats;
+    std::pair<double, double> rates;
+    cache::Manager::MemoryStats stats;
     if (manager != nullptr) {
       // cache turned on
       stats = manager->memoryStats(cache::Cache::triesFast);
+      rates = manager->globalHitRates();
     }
-    if (!stats.has_value()) {
-      stats = cache::Manager::MemoryStats{};
-    }
-    TRI_ASSERT(stats.has_value());
 
-    builder.add("cache.limit", VPackValue(stats->globalLimit));
-    builder.add("cache.allocated", VPackValue(stats->globalAllocation));
-    builder.add("cache.peak-allocated",
-                VPackValue(stats->peakGlobalAllocation));
-    builder.add("cache.active-tables", VPackValue(stats->activeTables));
-    builder.add("cache.unused-memory", VPackValue(stats->spareAllocation));
-    builder.add("cache.unused-tables", VPackValue(stats->spareTables));
+    builder.add("cache.limit", VPackValue(stats.globalLimit));
+    builder.add("cache.allocated", VPackValue(stats.globalAllocation));
+    builder.add("cache.peak-allocated", VPackValue(stats.peakGlobalAllocation));
+    builder.add("cache.active-tables", VPackValue(stats.activeTables));
+    builder.add("cache.unused-memory", VPackValue(stats.spareAllocation));
+    builder.add("cache.unused-tables", VPackValue(stats.spareTables));
+    builder.add("cache.migrate-tasks-total", VPackValue(stats.migrateTasks));
+    builder.add("cache.free-memory-tasks-total",
+                VPackValue(stats.freeMemoryTasks));
+    builder.add("cache.migrate-tasks-duration-total",
+                VPackValue(stats.migrateTasksDuration));
+    builder.add("cache.free-memory-tasks-duration-total",
+                VPackValue(stats.freeMemoryTasksDuration));
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // only here for debugging. the value is not exposed in non-maintainer
+    // mode builds. the reason for this is to make calls to the `table` function
+    // more lightweight, and because we would need to put a metrics
+    // description into Documentation/Metrics for an optional metric.
+
+    // builder.add("cache.table-calls", VPackValue(stats.tableCalls));
+    // builder.add("cache.term-calls", VPackValue(stats.termCalls));
+#endif
 
     // edge cache compression ratio
     double compressionRatio = 0.0;
@@ -3612,10 +3639,6 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     }
     builder.add("cache.edge-compression-ratio", VPackValue(compressionRatio));
 
-    std::pair<double, double> rates;
-    if (manager != nullptr) {
-      rates = manager->globalHitRates();
-    }
     // handle NaN
     builder.add("cache.hit-rate-lifetime",
                 VPackValue(rates.first >= 0.0 ? rates.first : 0.0));
@@ -4077,12 +4100,11 @@ auto RocksDBEngine::createReplicatedState(
     -> ResultT<std::unique_ptr<replication2::storage::IStorageEngineMethods>> {
   auto objectId = TRI_NewTickServer();
   auto methods = makeLogStorageMethods(
-      id, objectId, vocbase.id(), _db,
+      id, objectId, vocbase.id(),
       RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::ReplicatedLogs),
       RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::Definitions),
-      _logPersistor, _logMetrics);
+          RocksDBColumnFamilyManager::Family::Definitions));
   auto res = methods->updateMetadata(info);
   if (res.fail()) {
     return res;
@@ -4098,18 +4120,26 @@ std::shared_ptr<StorageSnapshot> RocksDBEngine::currentSnapshot() {
   }
 }
 
-void RocksDBEngine::addCacheMetrics(uint64_t initial,
-                                    uint64_t effective) noexcept {
-  _metricsEdgeCacheEntriesSizeInitial.fetch_add(initial);
-  _metricsEdgeCacheEntriesSizeEffective.fetch_add(effective);
+std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t>
+RocksDBEngine::getCacheMetrics() {
+  return {_metricsEdgeCacheEntriesSizeInitial.load(),
+          _metricsEdgeCacheEntriesSizeEffective.load(),
+          _metricsEdgeCacheInserts.load(),
+          _metricsEdgeCacheCompressedInserts.load(),
+          _metricsEdgeCacheEmptyInserts.load()};
 }
 
-size_t RocksDBEngine::minValueSizeForEdgeCompression() const noexcept {
-  return _minValueSizeForEdgeCompression;
-}
-
-int RocksDBEngine::accelerationFactorForEdgeCompression() const noexcept {
-  return static_cast<int>(_accelerationFactorForEdgeCompression);
+void RocksDBEngine::addCacheMetrics(uint64_t initial, uint64_t effective,
+                                    uint64_t totalInserts,
+                                    uint64_t totalCompressedInserts,
+                                    uint64_t totalEmptyInserts) noexcept {
+  if (totalInserts > 0) {
+    _metricsEdgeCacheEntriesSizeInitial.count(initial);
+    _metricsEdgeCacheEntriesSizeEffective.count(effective);
+    _metricsEdgeCacheInserts.count(totalInserts);
+    _metricsEdgeCacheCompressedInserts.count(totalCompressedInserts);
+    _metricsEdgeCacheEmptyInserts.count(totalEmptyInserts);
+  }
 }
 
 }  // namespace arangodb

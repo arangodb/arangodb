@@ -58,13 +58,10 @@ RegisterInfos MakeBaseInfos(RegisterCount numRegs, size_t subqueryDepth = 2) {
 }
 }  // namespace
 
-using SubqueryStartSplitType = ExecutorTestHelper<1, 1>::SplitType;
-
 class SubqueryStartExecutorTest
-    : public AqlExecutorTestCaseWithParam<std::tuple<SubqueryStartSplitType>,
-                                          false> {
+    : public AqlExecutorTestCaseWithParam<std::tuple<SplitType>, false> {
  protected:
-  auto GetSplit() const -> SubqueryStartSplitType {
+  auto GetSplit() const -> SplitType {
     auto const [split] = GetParam();
     return split;
   }
@@ -82,10 +79,9 @@ class SubqueryStartExecutorTest
 };
 
 template<size_t... vs>
-const SubqueryStartSplitType splitIntoBlocks =
-    SubqueryStartSplitType{std::vector<std::size_t>{vs...}};
+const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
 template<size_t step>
-const SubqueryStartSplitType splitStep = SubqueryStartSplitType{step};
+const SplitType splitStep = SplitType{step};
 
 INSTANTIATE_TEST_CASE_P(SubqueryStartExecutorTest, SubqueryStartExecutorTest,
                         ::testing::Values(splitIntoBlocks<2, 3>,
@@ -98,9 +94,6 @@ TEST_P(SubqueryStartExecutorTest, check_properties) {
   EXPECT_EQ(SubqueryStartExecutor::Properties::allowsBlockPassthrough,
             ::arangodb::aql::BlockPassthrough::Disable)
       << "The block cannot be passThrough, as it increases the number of rows.";
-  EXPECT_TRUE(SubqueryStartExecutor::Properties::inputSizeRestrictsOutputSize)
-      << "The block is restricted by input, it will atMost produce 2 times the "
-         "input. (Might be less if input contains shadowRows";
 }
 
 TEST_P(SubqueryStartExecutorTest, empty_input_does_not_add_shadow_rows) {

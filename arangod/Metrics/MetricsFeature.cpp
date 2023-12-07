@@ -29,6 +29,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Agency/Node.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Cluster/ServerState.h"
@@ -60,21 +61,16 @@ void MetricsFeature::collectOptions(
   _serverStatistics =
       std::make_unique<ServerStatistics>(*this, StatisticsFeature::time());
 
-  options
-      ->addOption("--server.export-metrics-api",
-                  "Whether to enable the metrics API.",
-                  new options::BooleanParameter(&_export),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30600);
+  options->addOption(
+      "--server.export-metrics-api", "Whether to enable the metrics API.",
+      new options::BooleanParameter(&_export),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
-  options
-      ->addOption("--server.export-read-write-metrics",
-                  "Whether to enable metrics for document reads and writes.",
-                  new options::BooleanParameter(&_exportReadWriteMetrics),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30707);
+  options->addOption(
+      "--server.export-read-write-metrics",
+      "Whether to enable metrics for document reads and writes.",
+      new options::BooleanParameter(&_exportReadWriteMetrics),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
       ->addOption(
@@ -96,15 +92,14 @@ std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder) {
   MetricKeyView key{metric->name(), metric->labels()};
   std::lock_guard lock{_mutex};
   if (!_registry.try_emplace(key, metric).second) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   std::string{builder.type()} + " " +
-                                       std::string{builder.name()} +
-                                       " already exists");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        absl::StrCat(builder.type(), " ", builder.name(), " already exists"));
   }
   return metric;
 }
 
-Metric* MetricsFeature::get(MetricKeyView const& key) {
+Metric* MetricsFeature::get(MetricKeyView const& key) const {
   std::shared_lock lock{_mutex};
   auto it = _registry.find(key);
   if (it == _registry.end()) {
@@ -133,7 +128,7 @@ void MetricsFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
 
 void MetricsFeature::toPrometheus(std::string& result, CollectMode mode) const {
   // minimize reallocs
-  result.reserve(32768);
+  result.reserve(64 * 1024);
 
   // QueryRegistryFeature
   auto& q = server().getFeature<QueryRegistryFeature>();
@@ -162,15 +157,16 @@ void MetricsFeature::toPrometheus(std::string& result, CollectMode mode) const {
   auto& sf = server().getFeature<StatisticsFeature>();
   auto time = std::chrono::duration<double, std::milli>(
       std::chrono::system_clock::now().time_since_epoch());
-  sf.toPrometheus(result, time.count(), _ensureWhitespace);
+  sf.toPrometheus(result, time.count(), _globals, _ensureWhitespace);
   auto& es = server().getFeature<EngineSelectorFeature>().engine();
   if (es.typeName() == RocksDBEngine::kEngineName) {
-    es.getStatistics(result);
+    es.toPrometheus(result, _globals, _ensureWhitespace);
   }
   auto& cm = server().getFeature<ClusterMetricsFeature>();
   if (hasGlobals && cm.isEnabled() && mode != CollectMode::Local) {
     cm.toPrometheus(result, _globals, _ensureWhitespace);
   }
+  consensus::Node::toPrometheus(result, _globals, _ensureWhitespace);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -227,15 +223,15 @@ std::shared_lock<std::shared_mutex> MetricsFeature::initGlobalLabels() const {
     // isn't yet known. This check here is to prevent that the label is
     // permanently empty if metrics are requested too early.
     if (auto shortname = instance->getShortName(); !shortname.empty()) {
-      auto label = "shortname=\"" + shortname + "\"";
-      _globals = label + (_globals.empty() ? "" : "," + _globals);
+      _globals = absl::StrCat("shortname=\"", shortname, "\"",
+                              (_globals.empty() ? "" : ","), _globals);
       hasShortname = true;
     }
   }
   if (!hasRole) {
     if (auto role = instance->getRole(); role != ServerState::ROLE_UNDEFINED) {
-      auto label = "role=\"" + ServerState::roleToString(role) + "\"";
-      _globals += (_globals.empty() ? "" : ",") + label;
+      absl::StrAppend(&_globals, (_globals.empty() ? "" : ","), "role=\"",
+                      ServerState::roleToString(role), "\"");
       hasRole = true;
     }
   }

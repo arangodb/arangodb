@@ -86,9 +86,10 @@ class QueryNumericTerm : public QueryTest {
     arangodb::OperationOptions opt;
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
-        {logicalCollection1->name(), logicalCollection2->name()}, kEmpty,
-        arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        kEmpty, {logicalCollection1->name(), logicalCollection2->name()},
+        kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections
@@ -3191,7 +3192,7 @@ class QueryNumericTermSearch : public QueryNumericTerm {
       auto collection =
           _vocbase.lookupCollection(absl::Substitute("collection_$0", name));
       ASSERT_TRUE(collection);
-      collection->createIndex(createJson->slice(), created);
+      collection->createIndex(createJson->slice(), created).get();
       ASSERT_TRUE(created);
     };
     createIndex(1);

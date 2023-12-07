@@ -49,8 +49,10 @@ using namespace arangodb;
 /// @brief transaction type
 ClusterTransactionState::ClusterTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
-    transaction::Options const& options)
-    : TransactionState(vocbase, tid, options), _numIntermediateCommits(0) {
+    transaction::Options const& options,
+    transaction::OperationOrigin operationOrigin)
+    : TransactionState(vocbase, tid, options, operationOrigin),
+      _numIntermediateCommits(0) {
   // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isCoordinator());
   // we have to read revisions here as validateAndOptimize is executed before
@@ -63,8 +65,11 @@ ClusterTransactionState::ClusterTransactionState(
                               .getQueryAnalyzersRevision(vocbase.name()));
 }
 
+ClusterTransactionState::~ClusterTransactionState() = default;
+
 /// @brief start a transaction
-Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
+futures::Future<Result> ClusterTransactionState::beginTransaction(
+    transaction::Hints hints) {
   LOG_TRX("03dec", TRACE, this)
       << "beginning " << AccessMode::typeString(_type) << " transaction";
 
@@ -82,9 +87,9 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
     ++stats._transactionsAborted;
   });
 
-  Result res = useCollections();
+  Result res = co_await useCollections();
   if (res.fail()) {  // something is wrong
-    return res;
+    co_return res;
   }
 
   // all valid
@@ -99,10 +104,13 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
     ++stats._transactionsStarted;
   }
 
-  transaction::ManagerFeature::manager()->registerTransaction(
-      id(), isReadOnlyTransaction(), false /* isFollowerTransaction */);
-  setRegistered();
-  if (AccessMode::isWriteOrExclusive(this->_type) &&
+  transaction::Manager* mgr = transaction::ManagerFeature::manager();
+  TRI_ASSERT(mgr != nullptr);
+
+  _counterGuard = mgr->registerTransaction(id(), isReadOnlyTransaction(),
+                                           isFollowerTransaction());
+
+  if (AccessMode::isWriteOrExclusive(_type) &&
       hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     // cppcheck-suppress ignoredReturnValue
     TRI_ASSERT(isCoordinator());
@@ -116,7 +124,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
           TRI_ASSERT(realCol != nullptr);
           auto shardIds = realCol->shardIds();
           for (auto const& pair : *shardIds) {
-            std::vector<arangodb::ShardID> const& servers = pair.second;
+            std::vector<arangodb::ServerID> const& servers = pair.second;
             if (!servers.empty()) {
               leaders.emplace(servers[0]);
             }
@@ -125,7 +133,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
       } else {
         auto shardIds = c.collection()->shardIds();
         for (auto const& pair : *shardIds) {
-          std::vector<arangodb::ShardID> const& servers = pair.second;
+          std::vector<arangodb::ServerID> const& servers = pair.second;
           if (!servers.empty()) {
             leaders.emplace(servers[0]);
           }
@@ -141,13 +149,13 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
                 *this, leaders, transaction::MethodsApi::Synchronous)
                 .get();
       if (res.fail()) {  // something is wrong
-        return res;
+        co_return res;
       }
     }
   }
 
   cleanup.cancel();
-  return res;
+  co_return res;
 }
 
 /// @brief commit a transaction

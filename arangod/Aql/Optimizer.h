@@ -50,7 +50,7 @@ class Optimizer {
     using Entry =
         std::pair<std::unique_ptr<ExecutionPlan>, RuleDatabase::iterator>;
 
-    std::deque<Entry, ResourceUsageAllocator<Entry>> list;
+    std::deque<Entry, ResourceUsageAllocator<Entry, ResourceMonitor>> list;
 
     explicit PlanList(ResourceMonitor& monitor) : list(monitor) {}
 
@@ -124,10 +124,7 @@ class Optimizer {
                        bool wasModified);
 
   /// @brief getPlans, ownership of the plans remains with the optimizer
-  std::deque<PlanList::Entry, ResourceUsageAllocator<PlanList::Entry>> const&
-  getPlans() noexcept {
-    return _plans.list;
-  }
+  auto const& getPlans() noexcept { return _plans.list; }
 
   /// @brief stealBest, ownership of the plan is handed over to the caller,
   /// all other plans are deleted

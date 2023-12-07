@@ -5,10 +5,12 @@ target_sources(arangodbtests
   datetime.cpp
   FilesTest.cpp
   FpConvTest.cpp
+  FutureSharedLockTest.cpp
   HashesTest.cpp
   HybridLogicalClockTest.cpp
+  InputProcessorsTest.cpp
   OverloadTest.cpp
-  PriorityQueueTest.cpp
+  SizeLimitedStringTest.cpp
   StringBufferTest.cpp
   StringBufferInternalTest.cpp
   StringTest.cpp
@@ -27,6 +29,7 @@ target_sources(arangodbtests
   RandomTest.cpp
   ReadWriteLockTest.cpp
   RecursiveLockerTest.cpp
+  ResourceUsageAllocatorTest.cpp
   SpinLockTest.cpp
   StringBufferTest.cpp
   StringUtilsTest.cpp

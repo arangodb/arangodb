@@ -129,7 +129,6 @@ RestStatus RestLogHandler::handlePostRequest(
                 generateError(result);
               }
             }));
-    return RestStatus::DONE;
   } else if (std::string_view logIdStr, newLeaderStr;
              rest::Match(suffixes).against(&logIdStr, "leader",
                                            &newLeaderStr)) {
@@ -296,6 +295,13 @@ RestStatus RestLogHandler::handlePostCompact(
 
 RestStatus RestLogHandler::handlePost(ReplicatedLogMethods const& methods,
                                       velocypack::Slice specSlice) {
+  if (_vocbase.replicationVersion() != replication::Version::TWO) {
+    generateError(
+        Result{TRI_ERROR_HTTP_FORBIDDEN,
+               "Replicated logs available only in replication2 databases!"});
+    return RestStatus::DONE;
+  }
+
   // create a new log
   auto spec =
       velocypack::deserialize<ReplicatedLogMethods::CreateOptions>(specSlice);

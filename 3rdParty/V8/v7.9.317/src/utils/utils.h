@@ -329,8 +329,20 @@ class BitField final {
   static constexpr int kLastUsedBit = kShift + kSize - 1;
   static constexpr U kNumValues = U{1} << kSize;
 
+  // clang 16 complains here about out of range values
+#if defined(__clang__)
+#if __has_warning("-Wenum-constexpr-conversion")
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wenum-constexpr-conversion"
+#endif
+#endif
   // Value for the field with all bits set.
   static constexpr T kMax = static_cast<T>(kNumValues - 1);
+#if defined(__clang__)
+#if __has_warning("-Wenum-constexpr-conversion")
+#pragma clang diagnostic pop
+#endif
+#endif
 
   template <class T2, int size2>
   using Next = BitField<T2, kShift + kSize, size2, U>;

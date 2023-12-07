@@ -16,7 +16,7 @@ import { useAnalyzersContext } from "../../AnalyzersContext";
 const ANALYZER_TYPE_OPTIONS = TYPE_TO_LABEL_MAP
   ? (Object.keys(TYPE_TO_LABEL_MAP)
       .map(type => {
-        const excludedTypes = ["pipeline", "geo_s2", "geojson", "geopoint"];
+        const excludedTypes = ["pipeline", "geo_s2", "geojson", "geopoint", "minhash"];
         if (excludedTypes.includes(type)) return null;
         return {
           value: type,
@@ -132,7 +132,7 @@ export const PipelineConfig = () => {
               isDisabled={isDisabled}
               onClick={() => push({ type: "identity" })}
               variant="ghost"
-              colorScheme="blue"
+              colorScheme="green"
               leftIcon={<AddIcon />}
             >
               Add analyzer

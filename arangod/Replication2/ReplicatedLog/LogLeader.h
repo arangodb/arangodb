@@ -145,7 +145,6 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
   [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const&;
 
-  [[nodiscard]] auto release(LogIndex doneWithIdx) -> Result override;
   [[nodiscard]] auto compact() -> ResultT<CompactionResult> override;
   [[nodiscard]] auto getLogConsumerIterator(std::optional<LogRange> bounds)
       const -> std::unique_ptr<LogViewRangeIterator>;
@@ -362,6 +361,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   [[nodiscard]] auto insertInternal(
       std::variant<LogMetaPayload, LogPayload> payload, bool waitForSync)
       -> LogIndex;
+
+  void updateReleaseIndex(LogIndex doneWithIdx);
 
   [[nodiscard]] static auto instantiateFollowers(
       LoggerContext const& logContext,

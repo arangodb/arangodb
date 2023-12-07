@@ -33,6 +33,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/ProfileLevel.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/SharedQueryState.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -49,18 +50,13 @@
 #include "Random/RandomGenerator.h"
 #include "Transaction/Context.h"
 
+#include <absl/strings/str_cat.h>
+
 #include <velocypack/Iterator.h>
 
 using namespace arangodb;
 using namespace arangodb::rest;
 using namespace arangodb::aql;
-
-using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
-
-namespace {
-constexpr std::string_view writeKey("write");
-constexpr std::string_view exclusiveKey("exclusive");
-}  // namespace
 
 RestAqlHandler::RestAqlHandler(ArangodServer& server, GeneralRequest* request,
                                GeneralResponse* response, QueryRegistry* qr)
@@ -95,7 +91,7 @@ RestAqlHandler::RestAqlHandler(ArangodServer& server, GeneralRequest* request,
 //    traverserEngines: [ <infos for traverser engines> ],
 //    variables: [ <variables> ]
 //  }
-void RestAqlHandler::setupClusterQuery() {
+futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
   // We should not intentionally call this method
   // on the wrong server. So fail during maintanence.
   // On user setup reply gracefully.
@@ -103,7 +99,7 @@ void RestAqlHandler::setupClusterQuery() {
   if (ADB_UNLIKELY(!ServerState::instance()->isDBServer())) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
-    return;
+    co_return;
   }
 
   TRI_IF_FAILURE("Query::setupTimeout") {
@@ -131,7 +127,7 @@ void RestAqlHandler::setupClusterQuery() {
         << "Failed to setup query. Could not "
            "parse the transmitted plan. "
            "Aborting query.";
-    return;
+    co_return;
   }
 
   QueryId clusterQueryId = 0;
@@ -151,7 +147,7 @@ void RestAqlHandler::setupClusterQuery() {
         << "Invalid VelocyPack: \"lockInfo\" is required but not an object.";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"lockInfo\"");
-    return;
+    co_return;
   }
 
   VPackSlice optionsSlice = querySlice.get("options");
@@ -160,7 +156,7 @@ void RestAqlHandler::setupClusterQuery() {
         << "Invalid VelocyPack: \"options\" attribute missing.";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"options\"");
-    return;
+    co_return;
   }
 
   VPackSlice snippetsSlice = querySlice.get("snippets");
@@ -169,7 +165,7 @@ void RestAqlHandler::setupClusterQuery() {
         << "Invalid VelocyPack: \"snippets\" attribute missing.";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"snippets\"");
-    return;
+    co_return;
   }
 
   VPackSlice traverserSlice = querySlice.get("traverserEngines");
@@ -180,7 +176,7 @@ void RestAqlHandler::setupClusterQuery() {
     generateError(
         rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
         "if \"traverserEngines\" is set in the body, it has to be an array");
-    return;
+    co_return;
   }
 
   VPackSlice variablesSlice = querySlice.get("variables");
@@ -189,7 +185,7 @@ void RestAqlHandler::setupClusterQuery() {
         << "Invalid VelocyPack: \"variables\" attribute missing.";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"variables\"");
-    return;
+    co_return;
   }
 
   LOG_TOPIC("f9e30", DEBUG, arangodb::Logger::AQL)
@@ -219,11 +215,12 @@ void RestAqlHandler::setupClusterQuery() {
           << "\" needs to be a positive number and \""
           << StaticStrings::AttrCoordinatorId
           << "\" needs to be a non-empty string";
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
-                    "body must be an object with attribute \"" +
-                        StaticStrings::AttrCoordinatorRebootId + "\" and \"" +
-                        StaticStrings::AttrCoordinatorId + "\"");
-      return;
+      generateError(
+          rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
+          absl::StrCat("body must be an object with attribute \"",
+                       StaticStrings::AttrCoordinatorRebootId, "\" and \"",
+                       StaticStrings::AttrCoordinatorId, "\""));
+      co_return;
     }
   }
   // Valid to not exist for upgrade scenarios!
@@ -251,48 +248,56 @@ void RestAqlHandler::setupClusterQuery() {
   // Build the collection information
   VPackBuilder collectionBuilder;
   collectionBuilder.openArray();
-  for (auto const& lockInf : VPackObjectIterator(lockInfoSlice)) {
+  for (auto lockInf : VPackObjectIterator(lockInfoSlice)) {
     if (!lockInf.value.isArray()) {
       LOG_TOPIC("1dc00", WARN, arangodb::Logger::AQL)
-          << "Invalid VelocyPack: \"lockInfo." << lockInf.key.copyString()
+          << "Invalid VelocyPack: \"lockInfo." << lockInf.key.stringView()
           << "\" is required but not an array.";
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
-                    "body must be an object with attribute: \"lockInfo." +
-                        lockInf.key.copyString() +
-                        "\" is required but not an array.");
-      return;
+      generateError(
+          rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
+          absl::StrCat("body must be an object with attribute: \"lockInfo.",
+                       lockInf.key.stringView(),
+                       "\" is required but not an array."));
+      co_return;
     }
     for (VPackSlice col : VPackArrayIterator(lockInf.value)) {
       if (!col.isString()) {
         LOG_TOPIC("9e29f", WARN, arangodb::Logger::AQL)
-            << "Invalid VelocyPack: \"lockInfo." << lockInf.key.copyString()
+            << "Invalid VelocyPack: \"lockInfo." << lockInf.key.stringView()
             << "\" is required but not an array.";
-        generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
-                      "body must be an object with attribute: \"lockInfo." +
-                          lockInf.key.copyString() +
-                          "\" is required but not an array.");
-        return;
+        generateError(
+            rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
+            absl::StrCat("body must be an object with attribute: \"lockInfo.",
+                         lockInf.key.stringView(),
+                         "\" is required but not an array."));
+        co_return;
       }
       collectionBuilder.openObject();
       collectionBuilder.add("name", col);
       collectionBuilder.add("type", lockInf.key);
       collectionBuilder.close();
 
+      constexpr std::string_view writeKey("write");
+      constexpr std::string_view exclusiveKey("exclusive");
+
       if (!AccessMode::isWriteOrExclusive(access) &&
-          lockInf.key.isEqualString(::writeKey)) {
+          lockInf.key.isEqualString(writeKey)) {
         access = AccessMode::Type::WRITE;
       } else if (!AccessMode::isExclusive(access) &&
-                 lockInf.key.isEqualString(::exclusiveKey)) {
+                 lockInf.key.isEqualString(exclusiveKey)) {
         access = AccessMode::Type::EXCLUSIVE;
       }
     }
   }
   collectionBuilder.close();
 
+  auto origin = transaction::OperationOriginAQL{"running AQL query"};
+
   double const ttl = options.ttl;
   // creates a StandaloneContext or a leased context
   auto q = ClusterQuery::create(
-      clusterQueryId, createTransactionContext(access), std::move(options));
+      clusterQueryId, co_await createTransactionContext(access, origin),
+      std::move(options));
   TRI_ASSERT(clusterQueryId == 0 || clusterQueryId == q->id());
 
   VPackBufferUInt8 buffer;
@@ -321,7 +326,7 @@ void RestAqlHandler::setupClusterQuery() {
         << "Failed to read ArangoSearch analyzers revision "
         << revisionRes.errorMessage();
     generateError(revisionRes);
-    return;
+    co_return;
   }
   q->prepareClusterQuery(querySlice, collectionBuilder.slice(), variablesSlice,
                          snippetsSlice, traverserSlice, answerBuilder,
@@ -378,12 +383,11 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
         // engine is still in use, but we have enqueued a callback to be woken
         // up once it is free again
         return RestStatus::WAITING;
-      } else {
-        TRI_ASSERT(res.is(TRI_ERROR_QUERY_NOT_FOUND));
-        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND,
-                      "query ID " + idString + " not found");
-        return RestStatus::DONE;
       }
+      TRI_ASSERT(res.is(TRI_ERROR_QUERY_NOT_FOUND));
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND,
+                    absl::StrCat("query ID ", idString, " not found"));
+      return RestStatus::DONE;
     }
     std::shared_ptr<SharedQueryState> ss = _engine->sharedState();
     ss->setWakeupHandler(withLogContext(
@@ -418,6 +422,7 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                   "an unknown exception occurred");
   }
+
   return RestStatus::DONE;
 }
 
@@ -441,10 +446,10 @@ RestStatus RestAqlHandler::execute() {
       if (suffixes.size() != 1) {
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       } else if (suffixes[0] == "setup") {
-        setupClusterQuery();
+        return waitForFuture(setupClusterQuery());
       } else {
-        std::string msg("Unknown POST API: ");
-        msg += arangodb::basics::StringUtils::join(suffixes, '/');
+        auto msg = absl::StrCat("Unknown POST API: ",
+                                basics::StringUtils::join(suffixes, '/'));
         LOG_TOPIC("b7507", ERR, arangodb::Logger::AQL) << msg;
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                       std::move(msg));
@@ -453,8 +458,8 @@ RestStatus RestAqlHandler::execute() {
     }
     case rest::RequestType::PUT: {
       if (suffixes.size() != 2) {
-        std::string msg("Unknown PUT API: ");
-        msg += arangodb::basics::StringUtils::join(suffixes, '/');
+        auto msg = absl::StrCat("Unknown PUT API: ",
+                                basics::StringUtils::join(suffixes, '/'));
         LOG_TOPIC("9880a", ERR, arangodb::Logger::AQL) << msg;
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                       std::move(msg));
@@ -468,8 +473,8 @@ RestStatus RestAqlHandler::execute() {
     }
     case rest::RequestType::DELETE_REQ: {
       if (suffixes.size() != 2) {
-        std::string msg("Unknown DELETE API: ");
-        msg += arangodb::basics::StringUtils::join(suffixes, '/');
+        auto msg = absl::StrCat("Unknown DELETE API: ",
+                                basics::StringUtils::join(suffixes, '/'));
         LOG_TOPIC("f1993", ERR, arangodb::Logger::AQL) << msg;
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                       std::move(msg));
@@ -477,11 +482,10 @@ RestStatus RestAqlHandler::execute() {
       }
       if (suffixes[0] == "finish") {
         return handleFinishQuery(suffixes[1]);
-      } else {
-        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND,
-                      "query with id " + suffixes[1] + " not found");
       }
 
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND,
+                    absl::StrCat("query with id ", suffixes[1], " not found"));
       break;
     }
 
@@ -505,9 +509,11 @@ RestStatus RestAqlHandler::continueExecute() {
     // This cannot be changed!
     TRI_ASSERT(suffixes.size() == 2);
     return useQuery(suffixes[0], suffixes[1]);
-  } else if (type == rest::RequestType::DELETE_REQ && suffixes[0] == "finish") {
+  }
+  if (type == rest::RequestType::DELETE_REQ && suffixes[0] == "finish") {
     return RestStatus::DONE;  // uses futures
   }
+
   generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                 "continued non-continuable method for /_api/aql");
 
@@ -619,14 +625,6 @@ class AqlExecuteCall {
   AqlCallStack _callStack;
 };
 
-namespace {
-// hack for MSVC
-auto getStringView(velocypack::Slice slice) -> std::string_view {
-  std::string_view ref = slice.stringView();
-  return std::string_view(ref.data(), ref.size());
-}
-}  // namespace
-
 // TODO Use the deserializer when available
 auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice)
     -> ResultT<AqlExecuteCall> {
@@ -638,38 +636,32 @@ auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice)
             slice.typeName());
   }
 
-  auto expectedPropertiesFound = std::map<std::string_view, bool>{};
-  expectedPropertiesFound.emplace(StaticStrings::AqlRemoteCallStack, false);
+  auto expectedPropertiesFound =
+      std::array<std::pair<std::string_view, bool>, 1>{
+          {{StaticStrings::AqlRemoteCallStack, false}}};
 
   std::optional<AqlCallStack> callStack;
 
-  for (auto const it : VPackObjectIterator(slice)) {
-    auto const keySlice = it.key;
-    if (ADB_UNLIKELY(!keySlice.isString())) {
-      return Result(TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
-                    "When deserializating AqlExecuteCall: Key is not a string");
-    }
-    auto const key = getStringView(keySlice);
+  for (auto it : VPackObjectIterator(slice, /*useSequentialIteration*/ true)) {
+    auto key = it.key.stringView();
 
-    if (auto propIt = expectedPropertiesFound.find(key);
+    if (auto propIt = std::find_if(
+            expectedPropertiesFound.begin(), expectedPropertiesFound.end(),
+            [&key](auto const& epf) { return epf.first == key; });
         ADB_LIKELY(propIt != expectedPropertiesFound.end())) {
-      if (ADB_UNLIKELY(propIt->second)) {
-        return Result(
-            TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
-            "When deserializating AqlExecuteCall: Encountered duplicate key");
-      }
+      TRI_ASSERT(!propIt->second);
       propIt->second = true;
     }
 
     if (key == StaticStrings::AqlRemoteCallStack) {
       auto maybeCallStack = AqlCallStack::fromVelocyPack(it.value);
       if (ADB_UNLIKELY(maybeCallStack.fail())) {
-        auto message = std::string{
-            "When deserializating AqlExecuteCall: failed to deserialize "};
-        message += StaticStrings::AqlRemoteCallStack;
-        message += ": ";
-        message += maybeCallStack.errorMessage();
-        return Result(TRI_ERROR_CLUSTER_AQL_COMMUNICATION, std::move(message));
+        return Result(
+            TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+            absl::StrCat(
+                "When deserializating AqlExecuteCall: failed to deserialize ",
+                StaticStrings::AqlRemoteCallStack, ": ",
+                maybeCallStack.errorMessage()));
       }
 
       callStack = maybeCallStack.get();
@@ -685,10 +677,10 @@ auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice)
 
   for (auto const& it : expectedPropertiesFound) {
     if (ADB_UNLIKELY(!it.second)) {
-      auto message =
-          std::string{"When deserializating AqlExecuteCall: missing key "};
-      message += it.first;
-      return Result(TRI_ERROR_CLUSTER_AQL_COMMUNICATION, std::move(message));
+      return Result(
+          TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+          absl::StrCat("When deserializating AqlExecuteCall: missing key ",
+                       it.first));
     }
   }
 
@@ -700,11 +692,10 @@ auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice)
 // handle for useQuery
 RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
                                           VPackSlice querySlice) {
-  bool found;
-  std::string const& shardId =
-      _request->header(StaticStrings::AqlShardIdHeader, found);
-
-  auto const rootNodeType = _engine->root()->getPlanNode()->getType();
+  VPackOptions const* opts = &VPackOptions::Defaults;
+  if (_engine) {  // might be destroyed on shutdown
+    opts = &_engine->getQuery().vpackOptions();
+  }
 
   VPackBuffer<uint8_t> answerBuffer;
   VPackBuilder answerBuilder(answerBuffer);
@@ -724,6 +715,11 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     auto items = SharedAqlItemBlockPtr{};
     auto skipped = SkipResult{};
     auto state = ExecutionState::HASMORE;
+
+    std::string const& shardId =
+        _request->header(StaticStrings::AqlShardIdHeader);
+
+    auto const rootNodeType = _engine->root()->getPlanNode()->getType();
 
     // shardId is set IFF the root node is scatter or distribute
     TRI_ASSERT(shardId.empty() != (rootNodeType == ExecutionNode::SCATTER ||
@@ -749,39 +745,24 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
 
     auto result = AqlExecuteResult{state, skipped, std::move(items)};
     answerBuilder.add(VPackValue(StaticStrings::AqlRemoteResult));
-    result.toVelocyPack(answerBuilder, &_engine->getQuery().vpackOptions());
+    result.toVelocyPack(answerBuilder, opts);
     answerBuilder.add(StaticStrings::Code, VPackValue(TRI_ERROR_NO_ERROR));
   } else if (operation == "initializeCursor") {
-    auto pos = VelocyPackHelper::getNumericValue<size_t>(querySlice, "pos", 0);
-    Result res;
-    if (VelocyPackHelper::getBooleanValue(querySlice, "done", true)) {
-      auto tmpRes = _engine->initializeCursor(nullptr, 0);
-      if (tmpRes.first == ExecutionState::WAITING) {
-        return RestStatus::WAITING;
-      }
-      res = tmpRes.second;
-    } else {
-      auto items = _engine->itemBlockManager().requestAndInitBlock(
-          querySlice.get("items"));
-      auto tmpRes = _engine->initializeCursor(std::move(items), pos);
-      if (tmpRes.first == ExecutionState::WAITING) {
-        return RestStatus::WAITING;
-      }
-      res = tmpRes.second;
+    auto items = _engine->itemBlockManager().requestAndInitBlock(
+        querySlice.get("items"));
+    auto tmpRes = _engine->initializeCursor(std::move(items), /*pos*/ 0);
+    if (tmpRes.first == ExecutionState::WAITING) {
+      return RestStatus::WAITING;
     }
-    answerBuilder.add(StaticStrings::Error, VPackValue(res.fail()));
-    answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
+    answerBuilder.add(StaticStrings::Error, VPackValue(tmpRes.second.fail()));
+    answerBuilder.add(StaticStrings::Code,
+                      VPackValue(tmpRes.second.errorNumber()));
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
     return RestStatus::DONE;
   }
 
   answerBuilder.close();
-
-  VPackOptions const* opts = &VPackOptions::Defaults;
-  if (_engine) {  // might be destroyed on shutdown
-    opts = &_engine->getQuery().vpackOptions();
-  }
 
   generateResult(rest::ResponseCode::OK, std::move(answerBuffer), opts);
 
@@ -797,8 +778,10 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
     return RestStatus::DONE;
   }
 
-  auto errorCode = VelocyPackHelper::getNumericValue<ErrorCode>(
-      querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
+  auto errorCode =
+      basics::VelocyPackHelper::getNumericValue<ErrorCode,
+                                                ErrorCode::ValueType>(
+          querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
 
   auto f =
       _queryRegistry->finishQuery(qid, errorCode)

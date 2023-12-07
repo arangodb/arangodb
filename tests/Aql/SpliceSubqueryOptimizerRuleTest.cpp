@@ -25,7 +25,6 @@
 
 #include "QueryHelper.h"
 
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
@@ -138,12 +137,12 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
         << "query string: " << querystring;
 
     auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
-        server.getSystemDatabase());
+        server.getSystemDatabase(), transaction::OperationOriginTestCase{});
     auto const bindParamVpack = VPackParser::fromJson(bindParameters);
     auto splicedQuery = arangodb::aql::Query::create(
-        ctx, arangodb::aql::QueryString(querystring), bindParamVpack,
+        std::move(ctx), arangodb::aql::QueryString(querystring), bindParamVpack,
         arangodb::aql::QueryOptions(ruleOptions(additionalOptions)->slice()));
-    splicedQuery->prepareQuery(SerializationFormat::SHADOWROWS);
+    splicedQuery->prepareQuery();
     ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0)
         << "query string: " << querystring;
 
@@ -497,21 +496,23 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_upsert) {
   auto const noCollections = std::vector<std::string>{};
   auto const readCollection = std::vector<std::string>{"UnitTestCollection"};
   transaction::Options opts;
-  auto ctx = transaction::StandaloneContext::Create(server.getSystemDatabase());
+  auto ctx = transaction::StandaloneContext::create(
+      server.getSystemDatabase(),
+      arangodb::transaction::OperationOriginTestCase{});
   auto trx = std::make_unique<arangodb::transaction::Methods>(
-      ctx, readCollection, noCollections, noCollections, opts);
+      std::move(ctx), readCollection, noCollections, noCollections, opts);
   ASSERT_EQ(1, collection->getPhysical()->numberDocuments(trx.get()));
   bool called = false;
-  auto result = collection->getPhysical()->read(
-      trx.get(), std::string_view{"myKey"},
-      [&](LocalDocumentId const&, VPackSlice document) {
-        called = true;
-        EXPECT_TRUE(document.isObject());
-        EXPECT_TRUE(document.get("_key").isString());
-        EXPECT_EQ(std::string{"myKey"}, document.get("_key").copyString());
-        return true;
-      },
-      arangodb::ReadOwnWrites::no);
+  auto cb = [&](LocalDocumentId, arangodb::aql::DocumentData&&,
+                VPackSlice document) {
+    called = true;
+    EXPECT_TRUE(document.isObject());
+    EXPECT_TRUE(document.get("_key").isString());
+    EXPECT_EQ(std::string{"myKey"}, document.get("_key").copyString());
+    return true;
+  };
+  auto result = collection->getPhysical()->lookup(
+      trx.get(), std::string_view{"myKey"}, cb, {});
   ASSERT_TRUE(called);
   ASSERT_TRUE(result.ok());
 }

@@ -79,19 +79,22 @@ class GeneralResponse {
     _contentType = ContentType::CUSTOM;
   }
 
-  void setContentType(std::string&& contentType) {
+  void setContentType(std::string&& contentType) noexcept {
     _headers[arangodb::StaticStrings::ContentTypeHeader] =
         std::move(contentType);
     _contentType = ContentType::CUSTOM;
   }
 
-  void setAllowCompression(bool allowed) { _allowCompression = allowed; }
-  virtual bool isCompressionAllowed() { return _allowCompression; }
+  virtual void setAllowCompression(
+      rest::ResponseCompressionType rct) noexcept = 0;
+  virtual rest::ResponseCompressionType compressionAllowed() const noexcept = 0;
 
-  void setContentTypeRequested(ContentType type) {
+  void setContentTypeRequested(ContentType type) noexcept {
     _contentTypeRequested = type;
   }
-  ContentType contentTypeRequested() const { return _contentTypeRequested; }
+  ContentType contentTypeRequested() const noexcept {
+    return _contentTypeRequested;
+  }
 
   virtual arangodb::Endpoint::TransportType transportType() = 0;
 
@@ -131,7 +134,7 @@ class GeneralResponse {
     _headers.emplace(key, value);
   }
 
-  virtual bool isResponseEmpty() const = 0;
+  virtual bool isResponseEmpty() const noexcept = 0;
 
   uint64_t messageId() const { return _messageId; }
   void setMessageId(uint64_t msgId) { _messageId = msgId; }
@@ -160,16 +163,18 @@ class GeneralResponse {
     return TRI_ERROR_NO_ERROR;
   }
 
+  virtual size_t bodySize() const = 0;
+
   /// used for head
-  bool generateBody() const { return _generateBody; }
+  bool generateBody() const noexcept { return _generateBody; }
 
   /// used for head-responses
-  bool setGenerateBody(bool generateBody) {
+  bool setGenerateBody(bool generateBody) noexcept {
     return _generateBody = generateBody;
   }
 
-  virtual ErrorCode deflate() { return TRI_ERROR_NO_ERROR; }
-  virtual ErrorCode gzip() { return TRI_ERROR_NO_ERROR; }
+  virtual ErrorCode zlibDeflate(bool onlyIfSmaller) = 0;
+  virtual ErrorCode gzipCompress(bool onlyIfSmaller) = 0;
 
  protected:
   std::unordered_map<std::string, std::string>
@@ -179,6 +184,5 @@ class GeneralResponse {
   ContentType _contentType;
   ContentType _contentTypeRequested;
   bool _generateBody;
-  bool _allowCompression;
 };
 }  // namespace arangodb

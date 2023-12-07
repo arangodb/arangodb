@@ -32,7 +32,6 @@
 
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ConstFetcher.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
@@ -62,9 +61,7 @@ using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
 using namespace arangodb::basics;
 
-using SubqueryExecutorTestHelper = ExecutorTestHelper<1, 1>;
-using SubqueryExecutorSplitType = SubqueryExecutorTestHelper::SplitType;
-using SubqueryExecutorParamType = std::tuple<SubqueryExecutorSplitType>;
+using SubqueryExecutorParamType = std::tuple<SplitType>;
 
 using RegisterSet = std::unordered_set<RegisterId>;
 using LambdaExePassThrough = TestLambdaExecutor;
@@ -183,7 +180,7 @@ class SplicedSubqueryIntegrationTest
   auto createSkipCall() -> SkipCall {
     return [](AqlItemBlockInputRange& input, AqlCall& call)
                -> std::tuple<ExecutorState, LambdaExe::Stats, size_t, AqlCall> {
-      while (call.shouldSkip() && input.skippedInFlight() > 0) {
+      while (call.needSkipMore() && input.skippedInFlight() > 0) {
         if (call.getOffset() > 0) {
           call.didSkip(input.skip(call.getOffset()));
         } else {
@@ -194,7 +191,7 @@ class SplicedSubqueryIntegrationTest
         }
       }
       // If we overfetched and have data, throw it away
-      while (input.hasDataRow() && call.shouldSkip()) {
+      while (input.hasDataRow() && call.needSkipMore()) {
         auto const& [state, inputRow] = input.nextDataRow();
         EXPECT_TRUE(inputRow.isInitialized());
         call.didSkip(1);
@@ -241,17 +238,16 @@ class SplicedSubqueryIntegrationTest
       return {input.upstreamState(), stats, call};
     };
   }
-  auto getSplit() -> SubqueryExecutorSplitType {
+  auto getSplit() -> SplitType {
     auto [split] = GetParam();
     return split;
   }
 };
 
 template<size_t... vs>
-const SubqueryExecutorSplitType splitIntoBlocks =
-    SubqueryExecutorSplitType{std::vector<std::size_t>{vs...}};
+const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
 template<size_t step>
-const SubqueryExecutorSplitType splitStep = SubqueryExecutorSplitType{step};
+const SplitType splitStep = SplitType{step};
 
 INSTANTIATE_TEST_CASE_P(SplicedSubqueryIntegrationTest,
                         SplicedSubqueryIntegrationTest,

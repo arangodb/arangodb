@@ -120,6 +120,7 @@ auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
               LOG_PREGEL("8682a", WARN)
                   << fmt::format("vertex loader number {} caught exception: {}",
                                  futureN, ex.what());
+
               break;
             } catch (std::exception const& ex) {
               LOG_PREGEL("c87c9", WARN)
@@ -170,7 +171,8 @@ auto GraphLoader<V, E>::loadVertices(LoadableVertexShard loadableVertexShard)
   transaction::Options trxOpts;
   trxOpts.waitForSync = false;
   trxOpts.allowImplicitCollectionsForRead = true;
-  auto ctx = transaction::StandaloneContext::Create(*config->vocbase());
+  auto origin = transaction::OperationOriginREST{"loading Pregel vertices"};
+  auto ctx = transaction::StandaloneContext::create(*config->vocbase(), origin);
   transaction::Methods trx(ctx, {}, {}, {}, trxOpts);
   Result res = trx.begin();
 
@@ -196,14 +198,14 @@ auto GraphLoader<V, E>::loadVertices(LoadableVertexShard loadableVertexShard)
       edgeCollectionInfos;
   edgeCollectionInfos.reserve(edgeShards.size());
 
-  for (ShardID const& edgeShard : edgeShards) {
+  for (auto const& edgeShard : edgeShards) {
     edgeCollectionInfos.emplace_back(
         std::make_unique<traverser::EdgeCollectionInfo>(resourceMonitor, &trx,
                                                         edgeShard));
   }
 
   std::string documentId;  // temp buffer for _id of vertex
-  auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
+  auto cb = [&](LocalDocumentId token, aql::DocumentData&&, VPackSlice slice) {
     Vertex<V, E> ventry;
     auto keySlice = transaction::helpers::extractKeyFromDocument(slice);
     auto key = keySlice.copyString();
@@ -267,8 +269,7 @@ void GraphLoader<V, E>::loadEdges(transaction::Methods& trx,
   if (graphFormat->estimatedEdgeSize() == 0) {
     // use covering index optimization
     while (cursor->nextCovering(
-        [&](LocalDocumentId const& /*token*/,
-            IndexIteratorCoveringData& covering) {
+        [&](LocalDocumentId /*token*/, IndexIteratorCoveringData& covering) {
           TRI_ASSERT(covering.isArray());
           std::string_view toValue =
               covering.at(info.coveringPosition()).stringView();
@@ -280,20 +281,19 @@ void GraphLoader<V, E>::loadEdges(transaction::Methods& trx,
         1000)) { /* continue loading */
     }
   } else {
-    while (cursor->nextDocument(
-        [&](LocalDocumentId const& /*token*/, VPackSlice slice) {
-          slice = slice.resolveExternal();
-          std::string_view toValue =
-              transaction::helpers::extractToFromDocument(slice).stringView();
-          auto toVertexID = config->documentIdToPregel(toValue);
+    auto cb = [&](LocalDocumentId, aql::DocumentData&&, VPackSlice slice) {
+      slice = slice.resolveExternal();
+      std::string_view toValue =
+          transaction::helpers::extractToFromDocument(slice).stringView();
+      auto toVertexID = config->documentIdToPregel(toValue);
 
-          auto edge = Edge<E>(toVertexID, {});
-          graphFormat->copyEdgeData(
-              *trx.transactionContext()->getVPackOptions(), slice, edge.data());
-          vertex.addEdge(std::move(edge));
-          return true;
-        },
-        1000)) { /* continue loading */
+      auto edge = Edge<E>(toVertexID, {});
+      graphFormat->copyEdgeData(*trx.transactionContext()->getVPackOptions(),
+                                slice, edge.data());
+      vertex.addEdge(std::move(edge));
+      return true;
+    };
+    while (cursor->nextDocument(cb, 1000)) { /* continue loading */
       // Might overcount a bit;
     }
   }

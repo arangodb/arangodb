@@ -380,11 +380,9 @@ IndexId IndexFactory::validateSlice(velocypack::Slice info, bool generateKey,
   return IndexId::none();
 }
 
-Result IndexFactory::validateFieldsDefinition(VPackSlice definition,
-                                              std::string const& attributeName,
-                                              size_t minFields,
-                                              size_t maxFields,
-                                              bool allowSubAttributes) {
+Result IndexFactory::validateFieldsDefinition(
+    VPackSlice definition, std::string const& attributeName, size_t minFields,
+    size_t maxFields, bool allowSubAttributes, bool allowIdAttribute) {
   if (basics::VelocyPackHelper::getBooleanValue(definition,
                                                 StaticStrings::Error, false)) {
     // We have an error here.
@@ -428,7 +426,7 @@ Result IndexFactory::validateFieldsDefinition(VPackSlice definition,
                       "cannot index a sub-attribute in this type of index");
       }
 
-      if (!isInverted) {
+      if (!isInverted && !allowIdAttribute) {
         static std::regex const idRegex(
             "^(.+\\.)?" + StaticStrings::IdString + "$",
             std::regex::ECMAScript);
@@ -456,12 +454,13 @@ Result IndexFactory::processIndexFields(VPackSlice definition,
                                         VPackBuilder& builder, size_t minFields,
                                         size_t maxFields, bool create,
                                         bool allowExpansion,
-                                        bool allowSubAttributes) {
+                                        bool allowSubAttributes,
+                                        bool allowIdAttribute) {
   TRI_ASSERT(builder.isOpenObject());
 
-  Result res =
-      validateFieldsDefinition(definition, StaticStrings::IndexFields,
-                               minFields, maxFields, allowSubAttributes);
+  Result res = validateFieldsDefinition(definition, StaticStrings::IndexFields,
+                                        minFields, maxFields,
+                                        allowSubAttributes, allowIdAttribute);
 
   if (res.ok()) {
     auto fieldsSlice = definition.get(StaticStrings::IndexFields);
@@ -501,9 +500,9 @@ Result IndexFactory::processIndexStoredValues(VPackSlice definition,
   // storedValues are fully optional
   if (!fieldsSlice.isNone()) {
     if (fieldsSlice.isArray()) {
-      res =
-          validateFieldsDefinition(definition, StaticStrings::IndexStoredValues,
-                                   minFields, maxFields, allowSubAttributes);
+      res = validateFieldsDefinition(
+          definition, StaticStrings::IndexStoredValues, minFields, maxFields,
+          allowSubAttributes, /*allowIdAttribute*/ true);
       if (res.ok() && fieldsSlice.length() > 0) {
         std::unordered_set<std::string_view> fields;
         for (VPackSlice it : VPackArrayIterator(fieldsSlice)) {
@@ -630,7 +629,8 @@ Result IndexFactory::enhanceJsonIndexGeneric(VPackSlice definition,
   // "fields"
   Result res =
       processIndexFields(definition, builder, 1, INT_MAX, create,
-                         /*allowExpansion*/ true, /*allowSubAttributes*/ true);
+                         /*allowExpansion*/ true, /*allowSubAttributes*/ true,
+                         /*allowIdAttribute*/ false);
 
   if (res.ok()) {
     // "storedValues"
@@ -663,7 +663,8 @@ Result IndexFactory::enhanceJsonIndexTtl(VPackSlice definition,
                                          VPackBuilder& builder, bool create) {
   Result res = processIndexFields(definition, builder, 1, 1, create,
                                   /*allowExpansion*/ false,
-                                  /*allowSubAttributes*/ false);
+                                  /*allowSubAttributes*/ false,
+                                  /*allowIdAttribute*/ false);
 
   auto value = definition.get(StaticStrings::IndexUnique);
   if (value.isBoolean() && value.getBoolean()) {
@@ -698,7 +699,8 @@ Result IndexFactory::enhanceJsonIndexGeo(VPackSlice definition,
                                          int minFields, int maxFields) {
   Result res =
       processIndexFields(definition, builder, minFields, maxFields, create,
-                         /*allowExpansion*/ false, /*allowSubAttributes*/ true);
+                         /*allowExpansion*/ false, /*allowSubAttributes*/ true,
+                         /*allowIdAttribute*/ false);
 
   if (res.ok()) {
     builder.add(StaticStrings::IndexSparse, velocypack::Value(true));
@@ -718,7 +720,8 @@ Result IndexFactory::enhanceJsonIndexFulltext(VPackSlice definition,
                                               bool create) {
   Result res =
       processIndexFields(definition, builder, 1, 1, create,
-                         /*allowExpansion*/ false, /*allowSubAttributes*/ true);
+                         /*allowExpansion*/ false, /*allowSubAttributes*/ true,
+                         /*allowIdAttribute*/ false);
 
   if (res.ok()) {
     // hard-coded defaults
@@ -760,7 +763,8 @@ Result IndexFactory::enhanceJsonIndexZkd(VPackSlice definition,
   builder.add("fieldValueTypes", VPackValue("double"));
   Result res =
       processIndexFields(definition, builder, 1, INT_MAX, create,
-                         /*allowExpansion*/ false, /*allowSubAttributes*/ true);
+                         /*allowExpansion*/ false, /*allowSubAttributes*/ true,
+                         /*allowIdAttribute*/ false);
 
   if (res.ok()) {
     if (auto isSparse = definition.get(StaticStrings::IndexSparse).isTrue();

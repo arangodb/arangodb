@@ -29,9 +29,12 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Collection.h>
@@ -39,6 +42,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
+
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -281,10 +286,6 @@ ErrorCode RestImportHandler::handleSingleDocument(
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_import_json
-////////////////////////////////////////////////////////////////////////////////
-
 bool RestImportHandler::createFromJson(std::string const& type) {
   RestImportResult result;
 
@@ -353,9 +354,23 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   }
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
+  auto origin = transaction::OperationOriginREST{"importing documents"};
+  auto ctx = transaction::StandaloneContext::create(_vocbase, origin);
+  SingleCollectionTransaction trx(std::move(ctx), collectionName,
+                                  AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+
+  bool isEdgeCollection = false;
+  if (auto collection = trx.resolver()->getCollection(collectionName);
+      collection != nullptr) {
+    isEdgeCollection = collection->type() == TRI_COL_TYPE_EDGE;
+    if (isEdgeCollection && collection->isSmart()) {
+      // must wrap imports into a smart edge collection into a GLOBAL_MANAGED
+      // transaction, so that the different parts (_from, _to, _local) either
+      // all get inserted or not at all
+      trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+    }
+  }
 
   // .............................................................................
   // inside write transaction
@@ -368,8 +383,6 @@ bool RestImportHandler::createFromJson(std::string const& type) {
                              "");
     return false;
   }
-
-  bool const isEdgeCollection = trx.isEdgeCollection(collectionName);
 
   if (overwrite) {
     OperationOptions truncateOpts(_context);
@@ -547,8 +560,22 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
   }
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
+  auto origin = transaction::OperationOriginREST{"importing documents"};
+  auto ctx = transaction::StandaloneContext::create(_vocbase, origin);
+  SingleCollectionTransaction trx(std::move(ctx), collectionName,
+                                  AccessMode::Type::WRITE);
+
+  bool isEdgeCollection = false;
+  if (auto collection = trx.resolver()->getCollection(collectionName);
+      collection != nullptr) {
+    isEdgeCollection = collection->type() == TRI_COL_TYPE_EDGE;
+    if (isEdgeCollection && collection->isSmart()) {
+      // must wrap imports into a smart edge collection into a GLOBAL_MANAGED
+      // transaction, so that the different parts (_from, _to, _local) either
+      // all get inserted or not at all
+      trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+    }
+  }
 
   // .............................................................................
   // inside write transaction
@@ -562,8 +589,6 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
 
     return false;
   }
-
-  bool const isEdgeCollection = trx.isEdgeCollection(collectionName);
 
   if (overwrite) {
     OperationOptions truncateOpts;
@@ -626,10 +651,6 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
   }
   return true;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_import_document
-////////////////////////////////////////////////////////////////////////////////
 
 bool RestImportHandler::createFromKeyValueList() {
   if (_request == nullptr) {
@@ -736,8 +757,23 @@ bool RestImportHandler::createFromKeyValueList() {
   current = next + 1;
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
+  auto origin = transaction::OperationOriginREST{"importing documents"};
+  auto ctx = transaction::StandaloneContext::create(_vocbase, origin);
+  SingleCollectionTransaction trx(std::move(ctx), collectionName,
+                                  AccessMode::Type::WRITE);
+  trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+
+  bool isEdgeCollection = false;
+  if (auto collection = trx.resolver()->getCollection(collectionName);
+      collection != nullptr) {
+    isEdgeCollection = collection->type() == TRI_COL_TYPE_EDGE;
+    if (isEdgeCollection && collection->isSmart()) {
+      // must wrap imports into a smart edge collection into a GLOBAL_MANAGED
+      // transaction, so that the different parts (_from, _to, _local) either
+      // all get inserted or not at all
+      trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+    }
+  }
 
   // .............................................................................
   // inside write transaction
@@ -750,8 +786,6 @@ bool RestImportHandler::createFromKeyValueList() {
                              "");
     return false;
   }
-
-  bool const isEdgeCollection = trx.isEdgeCollection(collectionName);
 
   if (overwrite) {
     OperationOptions truncateOpts(_context);
@@ -1028,9 +1062,7 @@ void RestImportHandler::createVelocyPackObject(VPackBuilder& result,
     VPackSlice const value = itValues.value();
 
     if (key.isString() && !value.isNone() && !value.isNull()) {
-      VPackValueLength l;
-      char const* p = key.getString(l);
-      result.add(p, l, value);
+      result.add(key.stringView(), value);
     }
 
     itKeys.next();

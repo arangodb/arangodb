@@ -31,6 +31,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/GraphNode.h"
 #include "Aql/IResearchViewNode.h"
+#include "Aql/JoinNode.h"
 #include "Aql/ShardLocking.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/StringUtils.h"
@@ -183,6 +184,20 @@ void CloneWorker::setUsedShardsOnClone(ExecutionNode* node,
         TRI_ASSERT(false);
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
       }
+    } else if (clone->getType() == ExecutionNode::JOIN) {
+      // JoinNodes handles multiple collections
+      auto joinNode = dynamic_cast<JoinNode*>(clone);
+      if (joinNode != nullptr) {
+        // found a JoinNode, now add the `i` th shard for used collections
+        for (auto& idx : joinNode->getIndexInfos()) {
+          auto const& shards = permuter->second.at(idx.collection->name());
+          idx.usedShard = *std::next(shards.begin(), _shardId);
+        }
+
+      } else {
+        TRI_ASSERT(false);
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+      }
     } else {
       auto collectionAccessingNode =
           dynamic_cast<CollectionAccessingNode*>(clone);
@@ -310,6 +325,10 @@ void QuerySnippet::addNode(ExecutionNode* node) {
       auto* graphNode = ExecutionNode::castTo<GraphNode*>(node);
       bool const isSatellite = graphNode->isUsedAsSatellite();
       _expansions.emplace_back(node, !isSatellite, isSatellite);
+      break;
+    }
+    case ExecutionNode::JOIN: {
+      _expansions.emplace_back(node, false, false);
       break;
     }
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
@@ -603,7 +622,42 @@ auto QuerySnippet::prepareFirstBranch(
   std::unordered_map<std::string, std::set<ShardID>> myExpFinal;
 
   for (auto const& exp : _expansions) {
-    if (exp.node->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
+    if (exp.node->getType() == ExecutionNode::JOIN) {
+      // the same translation is copied to all servers
+      // there are no local expansions
+      auto* joinNode = ExecutionNode::castTo<JoinNode*>(exp.node);
+
+      for (auto& idx : joinNode->getIndexInfos()) {
+        // It is of utmost importance that this is an ordered set of Shards.
+        // We can only join identical indexes of shards for each collection
+        // locally.
+        std::set<ShardID> myExp;
+
+        auto const& shards =
+            shardLocking.shardsForSnippet(id(), idx.collection);
+        TRI_ASSERT(!shards.empty());
+        for (auto const& s : shards) {
+          auto check = shardMapping.find(s);
+          // If we find a shard here that is not in this mapping,
+          // we have 1) a problem with locking before that should have thrown
+          // 2) a problem with shardMapping lookup that should have thrown
+          // before
+          TRI_ASSERT(check != shardMapping.end());
+          if (check->second == server || idx.usedAsSatellite) {
+            // add all shards on satellites.
+            // and all shards where this server is the leader
+            myExp.emplace(s);
+          }
+        }
+        if (myExp.empty()) {
+          return {TRI_ERROR_CLUSTER_NOT_LEADER};
+        }
+
+        idx.usedShard = *myExp.begin();
+        myExpFinal.insert({idx.collection->name(), std::move(myExp)});
+      }
+
+    } else if (exp.node->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
       // Special case, VIEWs can serve more than 1 shard per Node.
       // We need to inject them all at once.
       auto* viewNode =
@@ -728,7 +782,8 @@ auto QuerySnippet::prepareFirstBranch(
             // to serve later lookups for this collection, we insert an empty
             // string into the collection->shard map. on lookup, we will react
             // to this.
-            localGraphNode->addCollectionToShard(aqlCollection->name(), "");
+            localGraphNode->addCollectionToShard(aqlCollection->name(),
+                                                 ShardID::invalidShard());
           }
         }
       }
@@ -832,7 +887,6 @@ auto QuerySnippet::prepareFirstBranch(
         }
       }
     }
-
     if (exp.doExpand) {
       auto collectionAccessingNode =
           dynamic_cast<CollectionAccessingNode*>(exp.node);

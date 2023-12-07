@@ -48,6 +48,7 @@
 #include "RestServer/FlushFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/Hints.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
@@ -228,7 +229,9 @@ void StorageEngineMock::addRestHandlers(
   TRI_ASSERT(false);
 }
 
+#ifdef USE_V8
 void StorageEngineMock::addV8Functions() { TRI_ASSERT(false); }
+#endif
 
 void StorageEngineMock::changeCollection(
     TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection) {
@@ -275,8 +278,10 @@ StorageEngineMock::createTransactionManager(
 std::shared_ptr<arangodb::TransactionState>
 StorageEngineMock::createTransactionState(
     TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
-    arangodb::transaction::Options const& options) {
-  return std::make_shared<TransactionStateMock>(vocbase, tid, options, *this);
+    arangodb::transaction::Options const& options,
+    arangodb::transaction::OperationOrigin operationOrigin) {
+  return std::make_shared<TransactionStateMock>(vocbase, tid, options,
+                                                operationOrigin, *this);
 }
 
 arangodb::Result StorageEngineMock::createView(
@@ -489,9 +494,7 @@ std::string StorageEngineMock::versionFilename(TRI_voc_tick_t) const {
   return versionFilenameResult;
 }
 
-void StorageEngineMock::waitForEstimatorSync(std::chrono::milliseconds) {
-  TRI_ASSERT(false);
-}
+void StorageEngineMock::waitForEstimatorSync() { TRI_ASSERT(false); }
 
 std::vector<std::string> StorageEngineMock::currentWalFiles() const {
   return std::vector<std::string>();
@@ -526,10 +529,11 @@ class TransactionCollectionMock : public arangodb::TransactionCollection {
   bool canAccess(arangodb::AccessMode::Type accessType) const override;
   bool hasOperations() const override;
   void releaseUsage() override;
-  arangodb::Result lockUsage() override;
+  arangodb::futures::Future<arangodb::Result> lockUsage() override;
 
  private:
-  arangodb::Result doLock(arangodb::AccessMode::Type type) override;
+  arangodb::futures::Future<arangodb::Result> doLock(
+      arangodb::AccessMode::Type type) override;
   arangodb::Result doUnlock(arangodb::AccessMode::Type type) override;
 };
 
@@ -557,12 +561,13 @@ void TransactionCollectionMock::releaseUsage() {
   }
 }
 
-arangodb::Result TransactionCollectionMock::lockUsage() {
+arangodb::futures::Future<arangodb::Result>
+TransactionCollectionMock::lockUsage() {
   bool shouldLock = !arangodb::AccessMode::isNone(_accessType);
 
   if (shouldLock && !isLocked()) {
     // r/w lock the collection
-    arangodb::Result res = doLock(_accessType);
+    arangodb::Result res = co_await doLock(_accessType);
 
     if (res.is(TRI_ERROR_LOCKED)) {
       // TRI_ERROR_LOCKED is not an error, but it indicates that the lock
@@ -570,7 +575,7 @@ arangodb::Result TransactionCollectionMock::lockUsage() {
       // been held before)
       res.reset();
     } else if (res.fail()) {
-      return res;
+      co_return res;
     }
   }
 
@@ -587,19 +592,20 @@ arangodb::Result TransactionCollectionMock::lockUsage() {
     }
   }
 
-  return arangodb::Result(_collection ? TRI_ERROR_NO_ERROR
-                                      : TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  co_return arangodb::Result(_collection
+                                 ? TRI_ERROR_NO_ERROR
+                                 : TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
-arangodb::Result TransactionCollectionMock::doLock(
+arangodb::futures::Future<arangodb::Result> TransactionCollectionMock::doLock(
     arangodb::AccessMode::Type type) {
   if (_lockType > _accessType) {
-    return {TRI_ERROR_INTERNAL};
+    co_return {TRI_ERROR_INTERNAL};
   }
 
   _lockType = type;
 
-  return {};
+  co_return {};
 }
 
 arangodb::Result TransactionCollectionMock::doUnlock(
@@ -620,8 +626,11 @@ std::atomic_size_t TransactionStateMock::commitTransactionCount{0};
 // ensure each transaction state has a unique ID
 TransactionStateMock::TransactionStateMock(
     TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
-    arangodb::transaction::Options const& options, StorageEngineMock& engine)
-    : TransactionState(vocbase, tid, options), _engine{engine} {}
+    arangodb::transaction::Options const& options,
+    arangodb::transaction::OperationOrigin operationOrigin,
+    StorageEngineMock& engine)
+    : TransactionState(vocbase, tid, options, operationOrigin),
+      _engine{engine} {}
 
 arangodb::Result TransactionStateMock::abortTransaction(
     arangodb::transaction::Methods* trx) {
@@ -633,23 +642,23 @@ arangodb::Result TransactionStateMock::abortTransaction(
   return arangodb::Result();
 }
 
-arangodb::Result TransactionStateMock::beginTransaction(
-    arangodb::transaction::Hints hints) {
+arangodb::futures::Future<arangodb::Result>
+TransactionStateMock::beginTransaction(arangodb::transaction::Hints hints) {
   ++beginTransactionCount;
   _hints = hints;
 
-  arangodb::Result res = useCollections();
+  arangodb::Result res = co_await useCollections();
   if (res.fail()) {  // something is wrong
-    return res;
+    co_return res;
   }
 
   if (!res.ok()) {
     updateStatus(arangodb::transaction::Status::ABORTED);
     resetTransactionId();
-    return res;
+    co_return res;
   }
   updateStatus(arangodb::transaction::Status::RUNNING);
-  return arangodb::Result();
+  co_return arangodb::Result();
 }
 
 arangodb::futures::Future<arangodb::Result>

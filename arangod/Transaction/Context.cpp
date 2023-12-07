@@ -23,8 +23,8 @@
 
 #include "Context.h"
 
-#include "Cluster/ClusterInfo.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ClusterInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
@@ -65,21 +65,15 @@ struct CustomTypeHandler final : public VPackCustomTypeHandler {
 }  // namespace
 
 /// @brief create the context
-transaction::Context::Context(TRI_vocbase_t& vocbase)
+transaction::Context::Context(TRI_vocbase_t& vocbase,
+                              OperationOrigin operationOrigin)
     : _vocbase(vocbase),
       _customTypeHandler(),
       _options(velocypack::Options::Defaults),
-      _transaction{TransactionId::none(), false, false} {}
+      _operationOrigin(operationOrigin) {}
 
 /// @brief destroy the context
 transaction::Context::~Context() {
-  // unregister the transaction from the logfile manager
-  if (_transaction.id.isSet()) {
-    transaction::ManagerFeature::manager()->unregisterTransaction(
-        _transaction.id, _transaction.isReadOnlyTransaction,
-        _transaction.isFollowerTransaction);
-  }
-
   // call the actual cleanup routine which frees all
   // hogged resources
   cleanup();
@@ -189,21 +183,7 @@ std::shared_ptr<TransactionState> transaction::Context::createState(
     transaction::Options const& options) {
   // now start our own transaction
   return vocbase().engine().createTransactionState(_vocbase, generateId(),
-                                                   options);
-}
-
-/// @brief unregister the transaction
-/// this will save the transaction's id and status locally
-void transaction::Context::storeTransactionResult(
-    TransactionId id, bool wasRegistered, bool isReadOnlyTransaction,
-    bool isFollowerTransaction) noexcept {
-  TRI_ASSERT(_transaction.id.empty());
-
-  if (wasRegistered) {
-    _transaction.id = id;
-    _transaction.isReadOnlyTransaction = isReadOnlyTransaction;
-    _transaction.isFollowerTransaction = isFollowerTransaction;
-  }
+                                                   options, _operationOrigin);
 }
 
 TransactionId transaction::Context::generateId() const {
@@ -215,6 +195,11 @@ std::shared_ptr<transaction::Context> transaction::Context::clone() const {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED,
       "transaction::Context::clone() is not implemented");
+}
+
+void transaction::Context::setCounterGuard(
+    std::shared_ptr<transaction::CounterGuard> guard) noexcept {
+  _counterGuard = std::move(guard);
 }
 
 /*static*/ TransactionId transaction::Context::makeTransactionId() {

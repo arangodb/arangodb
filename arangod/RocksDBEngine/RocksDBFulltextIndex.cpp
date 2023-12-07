@@ -226,7 +226,7 @@ bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
 
 Result RocksDBFulltextIndex::insert(transaction::Methods& trx,
                                     RocksDBMethods* mthd,
-                                    LocalDocumentId const& documentId,
+                                    LocalDocumentId documentId,
                                     velocypack::Slice doc,
                                     OperationOptions const& /*options*/,
                                     bool /*performChecks*/) {
@@ -262,7 +262,7 @@ Result RocksDBFulltextIndex::insert(transaction::Methods& trx,
 
 Result RocksDBFulltextIndex::remove(transaction::Methods& trx,
                                     RocksDBMethods* mthd,
-                                    LocalDocumentId const& documentId,
+                                    LocalDocumentId documentId,
                                     velocypack::Slice doc,
                                     OperationOptions const& /*options*/) {
   Result res;
@@ -482,8 +482,12 @@ Result RocksDBFulltextIndex::applyQueryToken(
   rocksdb::Slice end = bounds.end();
   rocksdb::Comparator const* cmp = this->comparator();
 
-  std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator(
-      _cf, [&](rocksdb::ReadOptions& ro) { ro.iterate_upper_bound = &end; });
+  std::unique_ptr<rocksdb::Iterator> iter =
+      mthds->NewIterator(_cf, [&](rocksdb::ReadOptions& ro) {
+        if (!mthds->iteratorMustCheckBounds(ReadOwnWrites::no)) {
+          ro.iterate_upper_bound = &end;
+        }
+      });
 
   // set is used to perform an intersection with the result set
   std::set<LocalDocumentId> intersect;

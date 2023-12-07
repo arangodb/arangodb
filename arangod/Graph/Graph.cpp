@@ -32,7 +32,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
-#include "Aql/Graphs.h"
 #include "Aql/Query.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
@@ -46,6 +45,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Properties/CreateCollectionBody.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"

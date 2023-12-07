@@ -123,7 +123,7 @@ class QueryTest : public IResearchQueryTest {
 
     size_t errorCount = 0;
     VPackArrayIterator it{slice};
-    EXPECT_EQ(it.size(), expectedCount);
+    EXPECT_EQ(it.size(), expectedCount) << slice.toString();
     for (size_t i = 0; it.valid() && i < expectedCount; ++it, ++i, ++expected) {
       auto const resolved = it.value().resolveExternals();
       if constexpr (std::is_same_v<

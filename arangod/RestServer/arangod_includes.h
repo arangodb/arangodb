@@ -31,6 +31,7 @@
 #include "Actions/ActionFeature.h"
 #include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/BumpFileDescriptorsFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/FileSystemFeature.h"
@@ -41,8 +42,10 @@
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/V8PlatformFeature.h"
+#ifdef USE_V8
+#include "V8/V8PlatformFeature.h"
 #include "V8/V8SecurityFeature.h"
+#endif
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
@@ -53,6 +56,7 @@
 #include "Basics/operating-system.h"
 #include "Basics/tri-strings.h"
 #include "Cache/CacheManagerFeature.h"
+#include "Cache/CacheOptionsFeature.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterUpgradeFeature.h"
 #include "Cluster/MaintenanceFeature.h"
@@ -66,9 +70,13 @@
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
 #include "FeaturePhases/FinalFeaturePhase.h"
+#ifdef USE_V8
 #include "FeaturePhases/FoxxFeaturePhase.h"
+#endif
 #include "FeaturePhases/ServerFeaturePhase.h"
+#ifdef USE_V8
 #include "FeaturePhases/V8FeaturePhase.h"
+#endif
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
@@ -91,17 +99,22 @@
 #include "RestServer/AqlFeature.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/CheckVersionFeature.h"
+#ifdef USE_V8
 #include "RestServer/ConsoleFeature.h"
+#endif
 #include "RestServer/CpuUsageFeature.h"
 #include "RestServer/DaemonFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/DumpLimitsFeature.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/EnvironmentFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/FortuneFeature.h"
+#ifdef USE_V8
 #include "RestServer/FrontendFeature.h"
+#endif
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
 #include "RestServer/LockfileFeature.h"
@@ -111,7 +124,9 @@
 #include "RestServer/PrivilegeFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/RestartAction.h"
+#ifdef USE_V8
 #include "RestServer/ScriptFeature.h"
+#endif
 #include "RestServer/ServerFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/SharedPRNGFeature.h"
@@ -135,8 +150,10 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/ManagerFeature.h"
+#ifdef USE_V8
 #include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"
+#endif
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"

@@ -154,11 +154,18 @@ class ResultT {
   // cppcheck-suppress noExplicitConstructor
   /* implicit */ ResultT(T const& val) : ResultT(val, TRI_ERROR_NO_ERROR) {}
 
+  template<typename U>
+  ResultT(U&& val) requires(std::is_convertible_v<U, T> &&
+                            !std::is_same_v<std::decay_t<U>, std::nullopt_t> &&
+                            !std::is_convertible_v<U, Result>)
+      : ResultT(std::forward<U>(val), TRI_ERROR_NO_ERROR) {
+    TRI_ASSERT(_val.has_value());
+  }
+
   // Default constructor calls default constructor of T
   // If T is not default constructable, ResultT cannot be default constructable
-  ResultT() requires(std::is_nothrow_default_constructible<T>::value)
-      : _val{T{}} {}
-  ResultT() requires(!std::is_nothrow_default_constructible<T>::value) = delete;
+  ResultT() requires(std::is_nothrow_default_constructible_v<T>) : _val{T{}} {}
+  ResultT() requires(!std::is_nothrow_default_constructible_v<T>) = delete;
 
   ResultT& operator=(T const& val_) {
     _val = val_;

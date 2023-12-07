@@ -27,8 +27,9 @@
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Indexes/IndexFactory.h"
-#include "StorageEngine/HealthData.h"
 #include "RestServer/arangod.h"
+#include "StorageEngine/HealthData.h"
+#include "Transaction/OperationOrigin.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -111,7 +112,8 @@ class StorageEngine : public ArangodFeature {
       transaction::ManagerFeature&) = 0;
   virtual std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId,
-      transaction::Options const& options) = 0;
+      transaction::Options const& options,
+      transaction::OperationOrigin operationOrigin) = 0;
 
   // when a new collection is created, this method is called to augment the
   // collection creation data with engine-specific information
@@ -171,7 +173,7 @@ class StorageEngine : public ArangodFeature {
   virtual Result flushWal(bool waitForSync = false,
                           bool flushColumnFamilies = false) = 0;
 
-  virtual void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) = 0;
+  virtual void waitForEstimatorSync() = 0;
 
   //// operations on databases
 
@@ -316,8 +318,10 @@ class StorageEngine : public ArangodFeature {
   /// @brief Add engine-specific optimizer rules
   virtual void addOptimizerRules(aql::OptimizerRulesFeature&);
 
+#ifdef USE_V8
   /// @brief Add engine-specific V8 functions
   virtual void addV8Functions();
+#endif
 
   /// @brief Add engine-specific REST handlers
   virtual void addRestHandlers(rest::RestHandlerFactory& handlerFactory);
@@ -351,11 +355,12 @@ class StorageEngine : public ArangodFeature {
                             uint64_t tickEnd, velocypack::Builder& builder) = 0;
   virtual WalAccess const* walAccess() const = 0;
 
-  void getCapabilities(velocypack::Builder& builder) const;
+  virtual void getCapabilities(velocypack::Builder& builder) const;
 
   virtual void getStatistics(velocypack::Builder& builder) const;
 
-  virtual void getStatistics(std::string& result) const;
+  virtual void toPrometheus(std::string& result, std::string_view globals,
+                            bool ensureWhitespace) const;
 
   // management methods for synchronizing with external persistent stores
   virtual TRI_voc_tick_t currentTick() const = 0;

@@ -45,7 +45,9 @@
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SupervisedScheduler.h"
+#ifdef USE_V8
 #include "VocBase/Methods/Tasks.h"
+#endif
 
 #ifdef _WIN32
 #include <stdio.h>
@@ -211,8 +213,6 @@ requests.)");
           "0 = disable)",
           new DoubleParameter(&_unavailabilityQueueFillGrade, /*base*/ 1.0,
                               /*minValue*/ 0.0, /*maxValue*/ 1.0))
-      .setIntroducedIn(30610)
-      .setIntroducedIn(30706)
       .setLongDescription(R"(You can use this option to set a high-watermark
 for the scheduler's queue fill grade, from which onwards the server starts
 reporting unavailability via its availability API.
@@ -250,6 +250,17 @@ return HTTP 503 instead of HTTP 200 when their availability API is probed.)");
       "--server.prio1-size", "The size of the priority 1 FIFO.",
       new UInt64Parameter(&_fifo1Size),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+
+  options
+      ->addOption("--server.max-number-detached-threads",
+                  "The maximum number of detached scheduler threads.",
+                  new UInt64Parameter(&_nrMaximalDetachedThreads),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Default,
+                      arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31200)
+      .setLongDescription(
+          R"(If a scheduler thread performs a potentially long running operation like waiting for a lock, it can detach itself from the scheduler. This allows a new scheduler thread to be started and avoids blocking all threads with long-running operations, thereby avoiding deadlock situations. The default should normally be OK.)");
 
   // obsolete options
   options->addObsoleteOption("--server.threads", "number of threads", true);
@@ -339,7 +350,8 @@ void SchedulerFeature::prepare() {
   auto sched = std::make_unique<SupervisedScheduler>(
       server(), _nrMinimalThreads, _nrMaximalThreads, _queueSize, _fifo1Size,
       _fifo2Size, _fifo3Size, ongoingLowPriorityLimit,
-      _unavailabilityQueueFillGrade, _metricsFeature);
+      _unavailabilityQueueFillGrade, _nrMaximalDetachedThreads,
+      _metricsFeature);
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif
@@ -363,13 +375,25 @@ void SchedulerFeature::start() {
 
 void SchedulerFeature::stop() {
   // shutdown user jobs again, in case new ones appear
+#ifdef USE_V8
   arangodb::Task::shutdownTasks();
+#endif
   signalStuffDeinit();
   _scheduler->shutdown();
 }
 
 void SchedulerFeature::unprepare() {
-  SCHEDULER = nullptr;
+  // SCHEDULER = nullptr;
+  // This is to please the TSAN sanitizer: On shutdown, we set this global
+  // pointer to nullptr. Other threads read the pointer, but the logic of
+  // ApplicationFeatures should ensure that nobody will read the pointer
+  // out after the SchedulerFeature has run its unprepare method.
+  // Sometimes the TSAN sanitizer cannot recognize this indirect
+  // synchronization and complains about reads that have happened before
+  // this write here, but are not officially inter-thread synchronized.
+  // We use the atomic reference here and in these places to silence TSAN.
+  std::atomic_ref<Scheduler*> schedulerRef{SCHEDULER};
+  schedulerRef.store(nullptr, std::memory_order_relaxed);
   _scheduler.reset();
 }
 

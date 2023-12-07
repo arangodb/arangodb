@@ -95,7 +95,7 @@ auto SkipResult::fromVelocyPack(VPackSlice slice)
         message += slice.typeName();
         return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
       }
-      if (!it.isFirst()) {
+      if (it.index() != 0) {
         res.incrementSubquery();
       }
       res.didSkip(val.getNumber<std::size_t>());

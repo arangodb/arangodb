@@ -29,7 +29,6 @@
 #include "Agency/Supervision.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
-#include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
 #include "Endpoint/Endpoint.h"
@@ -40,10 +39,13 @@
 #include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#ifdef USE_V8
 #include "RestServer/FrontendFeature.h"
 #include "RestServer/ScriptFeature.h"
+#include "V8/V8PlatformFeature.h"
 #include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"
+#endif
 
 #include <limits>
 
@@ -74,7 +76,11 @@ AgencyFeature::AgencyFeature(Server& server)
       _supervisionDelayFailedFollower(0),
       _failedLeaderAddsFollower(true) {
   setOptional(true);
+#ifdef USE_V8
   startsAfter<application_features::FoxxFeaturePhase>();
+#else
+  startsAfter<application_features::ServerFeaturePhase>();
+#endif
 }
 
 AgencyFeature::~AgencyFeature() = default;
@@ -347,10 +353,13 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     server().disableFeatures(std::array{
         ArangodServer::id<iresearch::IResearchFeature>(),
         ArangodServer::id<iresearch::IResearchAnalyzerFeature>(),
-        ArangodServer::id<ActionFeature>(), ArangodServer::id<FoxxFeature>(),
-        ArangodServer::id<FrontendFeature>()});
+#ifdef USE_V8
+        ArangodServer::id<FoxxFeature>(), ArangodServer::id<FrontendFeature>(),
+#endif
+        ArangodServer::id<ActionFeature>()});
   }
 
+#ifdef USE_V8
   if (!V8DealerFeature::javascriptRequestedViaOptions(options)) {
     // specifying --console requires JavaScript, so we can only turn Javascript
     // off if not requested
@@ -360,6 +369,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
                                         ArangodServer::id<V8PlatformFeature>(),
                                         ArangodServer::id<V8DealerFeature>()});
   }
+#endif
 }
 
 void AgencyFeature::prepare() {

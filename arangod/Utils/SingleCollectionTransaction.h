@@ -40,13 +40,13 @@ class SingleCollectionTransaction final : public transaction::Methods {
  public:
   /// @brief create the transaction, using a data-source
   SingleCollectionTransaction(
-      std::shared_ptr<transaction::Context> const& transactionContext,
+      std::shared_ptr<transaction::Context> ctx,
       LogicalDataSource const& collection, AccessMode::Type accessType,
       transaction::Options const& options = transaction::Options());
 
   /// @brief create the transaction, using a collection name
   SingleCollectionTransaction(
-      std::shared_ptr<transaction::Context> const&, std::string const&,
+      std::shared_ptr<transaction::Context> ctx, std::string const& name,
       AccessMode::Type,
       transaction::Options const& options = transaction::Options());
 
@@ -59,15 +59,15 @@ class SingleCollectionTransaction final : public transaction::Methods {
   LogicalCollection* documentCollection();
 
   /// @brief get the underlying collection's id
-  inline DataSourceId cid() const { return _cid; }
+  DataSourceId cid() const noexcept { return _cid; }
 
 #ifdef USE_ENTERPRISE
   using transaction::Methods::addCollectionAtRuntime;
 #endif
   /// @brief add a collection to the transaction for read, at runtime
   /// note that this can only be ourselves
-  DataSourceId addCollectionAtRuntime(std::string const& name,
-                                      AccessMode::Type type) override final;
+  futures::Future<DataSourceId> addCollectionAtRuntime(
+      std::string_view name, AccessMode::Type type) override final;
 
   /// @brief get the underlying collection's name
   std::string name();

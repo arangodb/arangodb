@@ -49,6 +49,7 @@
 #include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
+#include "VocBase/Properties/CreateCollectionBody.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/vocbase.h"
 
@@ -87,8 +88,9 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
   }
 
   bool created = false;
-  auto newIndex = collection.getPhysical()->createIndex(
-      newDesc.slice(), /*restore*/ true, created);
+  auto newIndex = collection.getPhysical()
+                      ->createIndex(newDesc.slice(), /*restore*/ true, created)
+                      .get();
 
   if (!created) {
     res.reset(TRI_ERROR_INTERNAL);
@@ -316,40 +318,22 @@ Result createSystemStatisticsCollections(
     };
     std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> buffers;
     Result res;
+    OperationOptions options{};
     for (auto const& collection : systemCollections) {
+      // No need to batch this.
+      // Fresh databases will have a batch run for those collections already.
+      // We only hit this on databases that do not have statistics collections
+      // yet. Which have to be somewhere from the 2.X series, and never had an
+      // upgrade task.
       std::shared_ptr<LogicalCollection> col;
-      res = methods::Collections::lookup(vocbase, collection, col);
-      if (col) {
-        createdCollections.emplace_back(std::move(col));
-      }
-      if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-        // if not found, create it
-        VPackBuilder options;
-        options.openObject();
-        options.add(StaticStrings::DataSourceSystem, VPackSlice::trueSlice());
-        options.add(StaticStrings::WaitForSyncString, VPackSlice::falseSlice());
-        options.close();
-
-        systemCollectionsToCreate.emplace_back(CollectionCreationInfo{
-            collection, TRI_COL_TYPE_DOCUMENT, options.slice()});
-        buffers.emplace_back(options.steal());
-      }
-    }
-
-    // We capture the vector of created LogicalCollections here
-    // to use it to create indices later.
-    if (!systemCollectionsToCreate.empty()) {
-      std::vector<std::shared_ptr<LogicalCollection>> cols;
-      OperationOptions options(ExecContext::current());
-      res = methods::Collections::create(
-          vocbase, options, systemCollectionsToCreate, true, false, false,
-          nullptr, cols, true /* allow system collection creation */);
+      res = methods::Collections::createSystem(vocbase, options, collection,
+                                               false, col);
       if (res.fail()) {
         return res;
       }
-      // capture created collection vector
-      createdCollections.insert(std::end(createdCollections), std::begin(cols),
-                                std::end(cols));
+      TRI_ASSERT(col) << "Create system collection did not fail but also did "
+                         "not create a collection.";
+      createdCollections.emplace_back(std::move(col));
     }
   }
   return {TRI_ERROR_NO_ERROR};
@@ -358,27 +342,8 @@ Result createSystemStatisticsCollections(
 Result createSystemPregelCollection(TRI_vocbase_t& vocbase) {
   auto const& cname = StaticStrings::PregelCollection;
   std::shared_ptr<LogicalCollection> col;
-  auto res = methods::Collections::lookup(vocbase, cname, col);
-
-  if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-    // if not found, create it
-
-    VPackBuilder options;
-    methods::Collections::createSystemCollectionProperties(cname, options,
-                                                           vocbase);
-    CollectionCreationInfo info{cname, TRI_COL_TYPE_DOCUMENT, options.slice()};
-    std::vector<std::shared_ptr<LogicalCollection>> cols;
-
-    OperationOptions operationOptions(ExecContext::current());
-    return methods::Collections::create(
-        vocbase, operationOptions, {info}, true, true, true,
-        nullptr /*nullptr on purpose, distributeShardsLike is defined by
-                   createSystemCollectionProperties */
-        ,
-        cols, true /* allow system collection creation */);
-  }
-
-  return {TRI_ERROR_NO_ERROR};
+  OperationOptions options{};
+  return Collections::createSystem(vocbase, options, cname, true, col);
 }
 
 Result createIndex(
@@ -399,7 +364,8 @@ Result createIndex(
             "Collection " + name + " not found"};
   }
   return methods::Indexes::createIndex(*(*colIt), type, fields, unique, sparse,
-                                       false /*estimates*/);
+                                       false /*estimates*/)
+      .get();
 }
 
 Result createSystemStatisticsIndices(

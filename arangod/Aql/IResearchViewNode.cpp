@@ -21,7 +21,6 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
-#include "Basics/DownCast.h"
 
 #include "IResearchViewNode.h"
 
@@ -40,6 +39,7 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/SortCondition.h"
 #include "Aql/types.h"
+#include "Basics/DownCast.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
@@ -51,6 +51,7 @@
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchInvertedIndex.h"
 #include "IResearch/IResearchViewCoordinator.h"
+#include "IResearch/IResearchFeature.h"
 #include "IResearch/Search.h"
 #include "IResearch/ViewSnapshot.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -59,6 +60,8 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 #include "types.h"
+
+#include "utils/misc.hpp"
 
 #include <absl/strings/str_cat.h>
 #include <frozen/map.h>
@@ -183,6 +186,10 @@ void toVelocyPack(velocypack::Builder& builder,
     builder.add("filterOptimization",
                 VPackValue(static_cast<int64_t>(options.filterOptimization)));
   }
+
+  if (options.parallelism != 1) {
+    builder.add("parallelism", VPackValue(options.parallelism));
+  }
 }
 
 bool fromVelocyPack(velocypack::Slice optionsSlice,
@@ -272,6 +279,15 @@ bool fromVelocyPack(velocypack::Slice optionsSlice,
       }
       options.filterOptimization = static_cast<iresearch::FilterOptimization>(
           filterOptimizationSlice.getNumber<int>());
+    }
+  }
+  {  // parallelism
+    auto const parallelismSlice = optionsSlice.get("parallelism");
+    if (!parallelismSlice.isNone()) {
+      if (!parallelismSlice.isNumber<size_t>()) {
+        return false;
+      }
+      options.parallelism = parallelismSlice.getNumber<size_t>();
     }
   }
   return true;
@@ -424,6 +440,22 @@ constexpr auto kHandlers = frozen::make_map<std::string_view, OptionHandler>(
         options.filterOptimization =
             static_cast<iresearch::FilterOptimization>(value.getIntValue());
         return true;
+      }},
+     {"parallelism",
+      [](aql::QueryContext& /*query*/, LogicalView const& /*view*/,
+         aql::AstNode const& value, IResearchViewNode::Options& options,
+         std::string& error) {
+        if (!value.isValueType(aql::VALUE_TYPE_INT)) {
+          error = "int value expected for option 'parallelism'";
+          return false;
+        }
+        auto intValue = value.getIntValue();
+        if (intValue <= 0) {
+          error = "positive value expected for option 'parallelism'";
+          return false;
+        }
+        options.parallelism = static_cast<size_t>(intValue);
+        return true;
       }}});
 
 bool parseOptions(aql::QueryContext& query, LogicalView const& view,
@@ -448,8 +480,8 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view,
                                                 attribute->getStringLength()};
     auto const handler = kHandlers.find(attributeName);
     if (handler == kHandlers.end()) {  // no handler found for attribute
-      aql::ExecutionPlan::invalidOptionAttribute(
-          query, "unknown", "FOR", attributeName.data(), attributeName.size());
+      aql::ExecutionPlan::invalidOptionAttribute(query, "unknown", "FOR",
+                                                 attributeName);
       continue;
     }
     auto const* value = attribute->getMemberUnchecked(0);
@@ -471,70 +503,6 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view,
   return true;
 }
 
-// in loop or non-deterministic
-bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
-                     aql::Variable const& ref, aql::VarSet& vars) {
-  vars.clear();
-  aql::Ast::getReferencedVariables(&node, vars);
-  vars.erase(&ref);  // remove "our" variable
-  for (auto const* var : vars) {
-    auto* setter = plan.getVarSetBy(var->id);
-    if (!setter) {
-      // unable to find setter
-      continue;
-    }
-    switch (setter->getType()) {
-      case aql::ExecutionNode::ENUMERATE_COLLECTION:
-      case aql::ExecutionNode::ENUMERATE_LIST:
-      case aql::ExecutionNode::SUBQUERY:
-      case aql::ExecutionNode::SUBQUERY_END:
-      case aql::ExecutionNode::COLLECT:
-      case aql::ExecutionNode::TRAVERSAL:
-      case aql::ExecutionNode::INDEX:
-      case aql::ExecutionNode::SHORTEST_PATH:
-      case aql::ExecutionNode::ENUMERATE_PATHS:
-      case aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
-        // we're in the loop with dependent context
-        return true;
-      default:
-        break;
-    }
-    if (!setter->isDeterministic() || setter->getLoop() != nullptr) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/// @returns true if a given node is located inside a loop or subquery
-bool isInInnerLoopOrSubquery(aql::ExecutionNode const& node) {
-  auto* cur = &node;
-  while (true) {
-    auto const* dep = cur->getFirstDependency();
-    if (!dep) {
-      break;
-    }
-    switch (dep->getType()) {
-      case aql::ExecutionNode::ENUMERATE_COLLECTION:
-      case aql::ExecutionNode::INDEX:
-      case aql::ExecutionNode::TRAVERSAL:
-      case aql::ExecutionNode::ENUMERATE_LIST:
-      case aql::ExecutionNode::SHORTEST_PATH:
-      case aql::ExecutionNode::ENUMERATE_PATHS:
-      case aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
-        // we're in a loop
-        return true;
-      default:
-        break;
-    }
-    cur = dep;
-  }
-  TRI_ASSERT(cur);
-  // SINGLETON nodes in subqueries have id != 1
-  return cur->getType() == aql::ExecutionNode::SINGLETON &&
-         cur->id() != aql::ExecutionNodeId{1};
-}
-
 /// negative value - value is dirty
 /// _volatilityMask & 1 == volatile filter
 /// _volatilityMask & 2 == volatile sort
@@ -547,7 +515,8 @@ int evaluateVolatility(IResearchViewNode const& node) {
   // evaluate filter condition volatility
   auto& filterCondition = node.filterCondition();
   if (!isFilterConditionEmpty(&filterCondition) && inDependentScope) {
-    irs::set_bit<0>(hasDependencies(plan, filterCondition, outVariable, vars),
+    irs::set_bit<0>(hasDependencies(plan, filterCondition, outVariable, vars,
+                                    [](Variable const*) { return true; }),
                     mask);
   }
   // evaluate sort condition volatility
@@ -555,7 +524,8 @@ int evaluateVolatility(IResearchViewNode const& node) {
   if (!scorers.empty() && inDependentScope) {
     vars.clear();
     for (auto const& scorer : scorers) {
-      if (hasDependencies(plan, *scorer.node, outVariable, vars)) {
+      if (hasDependencies(plan, *scorer.node, outVariable, vars,
+                          [](Variable const*) { return true; })) {
         irs::set_bit<1>(mask);
         break;
       }
@@ -638,11 +608,12 @@ ViewSnapshotPtr snapshotDBServer(IResearchViewNode const& node,
     linksLock = searchLinksLock;
   }
   for (auto const& [shard, indexes] : shards) {
-    auto const& collection = resolver->getCollection(shard);
+    auto const& collection = resolver->getCollection(std::string{shard});
     if (!collection) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-          absl::StrCat("failed to find shard by id '", shard, "'"));
+          absl::StrCat("failed to find shard by id '", std::string{shard},
+                       "'"));
     }
     if (options.restrictSources &&
         !options.sources.contains(collection->planId())) {
@@ -773,59 +744,65 @@ IResearchViewStoredValues const& storedValues(
   return viewImpl.storedValues();
 }
 
-char const* NODE_DATABASE_PARAM = "database";
-char const* NODE_VIEW_NAME_PARAM = "view";
-char const* NODE_VIEW_ID_PARAM = "viewId";
-char const* NODE_OUT_VARIABLE_PARAM = "outVariable";
-char const* NODE_OUT_SEARCH_DOC_PARAM = "outSearchDocId";
-char const* NODE_OUT_NM_DOC_PARAM = "outNmDocId";
-char const* NODE_CONDITION_PARAM = "condition";
-char const* NODE_SCORERS_PARAM = "scorers";
-char const* NODE_SHARDS_PARAM = "shards";
-char const* NODE_INDEXES_PARAM = "indexes";
-char const* NODE_OPTIONS_PARAM = "options";
-char const* NODE_VOLATILITY_PARAM = "volatility";
-char const* NODE_PRIMARY_SORT_BUCKETS_PARAM = "primarySortBuckets";
-char const* NODE_VIEW_VALUES_VARS = "viewValuesVars";
-char const* NODE_VIEW_STORED_VALUES_VARS = "viewStoredValuesVars";
-char const* NODE_VIEW_VALUES_VAR_COLUMN_NUMBER = "columnNumber";
-char const* NODE_VIEW_VALUES_VAR_FIELD_NUMBER = "fieldNumber";
-char const* NODE_VIEW_VALUES_VAR_ID = "id";
-char const* NODE_VIEW_VALUES_VAR_NAME = "name";
-char const* NODE_VIEW_VALUES_VAR_FIELD = "field";
-char const* NODE_VIEW_NO_MATERIALIZATION = "noMaterialization";
-char const* NODE_VIEW_SCORERS_SORT = "scorersSort";
-char const* NODE_VIEW_SCORERS_SORT_INDEX = "index";
-char const* NODE_VIEW_SCORERS_SORT_ASC = "asc";
-char const* NODE_VIEW_SCORERS_SORT_LIMIT = "scorersSortLimit";
-char const* NODE_VIEW_META_FIELDS = "metaFields";
-char const* NODE_VIEW_META_SORT = "metaSort";
-char const* NODE_VIEW_META_STORED = "metaStored";
+char const* kNodeViewNameParam = "view";
+char const* kNodeViewIdParam = "viewId";
+char const* kNodeOutVariableParam = "outVariable";
+char const* kNodeOutSearchDocParam = "outSearchDocId";
+char const* kNodeOutNmDocParam = "outNmDocId";
+char const* kNodeConditionParam = "condition";
+char const* kNodeScorersParam = "scorers";
+char const* kNodeShardsParam = "shards";
+char const* kNodeIndexesParam = "indexes";
+char const* kNodeOptionsParam = "options";
+char const* kNodeVolatilityParam = "volatility";
+char const* kNodePrimarySortBucketsParam = "primarySortBuckets";
+char const* kNodeViewValuesVars = "viewValuesVars";
+char const* kNodeViewStoredValuesVars = "viewStoredValuesVars";
+char const* kNodeViewValuesVarColumnNumber = "columnNumber";
+char const* kNodeViewValuesVarFieldNumber = "fieldNumber";
+char const* kNodeViewValuesVarId = "id";
+char const* kNodeViewValuesVarName = "name";
+char const* kNodeViewValuesVarField = "field";
+char const* kNodeViewNoMaterialization = "noMaterialization";
+char const* kNodeViewScorersSort = "scorersSort";
+char const* kNodeViewScorersSortIndex = "index";
+char const* kNodeViewScorersSortAsc = "asc";
+char const* kNodeViewScorersSortLimit = "scorersSortLimit";
+char const* kNodeViewHeapSortLimit = "heapSortLimit";
+char const* kNodeViewHeapSort = "heapSort";
+char const* kNodeViewHeapSortField = "field";
+char const* kNodeViewHeapSortSource = "source";
+char const* kNodeViewHeapSortPostfix = "postfix";
+char const* kNodeViewMetaFields = "metaFields";
+char const* kNodeViewMetaSort = "metaSort";
+char const* kNodeViewMetaStored = "metaStored";
 #ifdef USE_ENTERPRISE
-char const* NODE_VIEW_META_TOPK = "metaTopK";
+char const* kNodeViewMetaTopK = "metaTopK";
 #endif
+// it serialization optimized for transfer 0 and uint32_t::max
+char const* kNodeViewImmutableParts = "immutableParts";
 
 void toVelocyPack(velocypack::Builder& node, SearchMeta const& meta,
-                  bool needSort, [[maybe_unused]] bool needScorerSort) {
+                  bool needSort, [[maybe_unused]] bool needHeapSort) {
   if (needSort) {
-    VPackObjectBuilder objectScope{&node, NODE_VIEW_META_SORT};
+    VPackObjectBuilder objectScope{&node, kNodeViewMetaSort};
     [[maybe_unused]] bool const result = meta.primarySort.toVelocyPack(node);
     TRI_ASSERT(result);
   }
 #ifdef USE_ENTERPRISE
-  if (needScorerSort) {
-    VPackArrayBuilder arrayScope{&node, NODE_VIEW_META_TOPK};
+  if (needHeapSort) {
+    VPackArrayBuilder arrayScope{&node, kNodeViewMetaTopK};
     [[maybe_unused]] bool const result = meta.optimizeTopK.toVelocyPack(node);
     TRI_ASSERT(result);
   }
 #endif
   {
-    VPackArrayBuilder arrayScope{&node, NODE_VIEW_META_STORED};
+    VPackArrayBuilder arrayScope{&node, kNodeViewMetaStored};
     [[maybe_unused]] bool const result = meta.storedValues.toVelocyPack(node);
     TRI_ASSERT(result);
   }
   {
-    VPackArrayBuilder arrayScope{&node, NODE_VIEW_META_FIELDS};
+    VPackArrayBuilder arrayScope{&node, kNodeViewMetaFields};
     for (auto const& [name, field] : meta.fieldToAnalyzer) {
       node.add(velocypack::Value{name});
       node.add(velocypack::Value{field.analyzer});
@@ -836,7 +813,7 @@ void toVelocyPack(velocypack::Builder& node, SearchMeta const& meta,
 
 void fromVelocyPack(velocypack::Slice node, SearchMeta& meta) {
   std::string error;
-  auto slice = node.get(NODE_VIEW_META_SORT);
+  auto slice = node.get(kNodeViewMetaSort);
   auto checkError = [&](std::string_view key) {
     if (!error.empty()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -847,32 +824,32 @@ void fromVelocyPack(velocypack::Slice node, SearchMeta& meta) {
   };
   if (!slice.isNone()) {
     meta.primarySort.fromVelocyPack(slice, error);
-    checkError(NODE_VIEW_META_SORT);
+    checkError(kNodeViewMetaSort);
   }
 
 #ifdef USE_ENTERPRISE
-  slice = node.get(NODE_VIEW_META_TOPK);
+  slice = node.get(kNodeViewMetaTopK);
   if (!slice.isNone()) {
     meta.optimizeTopK.fromVelocyPack(slice, error);
-    checkError(NODE_VIEW_META_TOPK);
+    checkError(kNodeViewMetaTopK);
   }
 #endif
 
-  slice = node.get(NODE_VIEW_META_STORED);
+  slice = node.get(kNodeViewMetaStored);
   meta.storedValues.fromVelocyPack(slice, error);
-  checkError(NODE_VIEW_META_STORED);
+  checkError(kNodeViewMetaStored);
 
-  slice = node.get(NODE_VIEW_META_FIELDS);
+  slice = node.get(kNodeViewMetaFields);
   if (!slice.isArray() || slice.length() % 3 != 0) {
     error = "should be an array and its length must be a multiple of 3";
-    checkError(NODE_VIEW_META_FIELDS);
+    checkError(kNodeViewMetaFields);
   }
   velocypack::Slice value;
   for (velocypack::ArrayIterator it{slice}; it.valid();) {
     value = it.value();
     if (!value.isString()) {
       error = "field name must be a string";
-      checkError(NODE_VIEW_META_FIELDS);
+      checkError(kNodeViewMetaFields);
     }
     auto field = value.stringView();
     ++it;
@@ -880,7 +857,7 @@ void fromVelocyPack(velocypack::Slice node, SearchMeta& meta) {
     value = it.value();
     if (!value.isString()) {
       error = "analyzer name must be a string";
-      checkError(NODE_VIEW_META_FIELDS);
+      checkError(kNodeViewMetaFields);
     }
     auto analyzer = value.stringView();
     ++it;
@@ -888,7 +865,7 @@ void fromVelocyPack(velocypack::Slice node, SearchMeta& meta) {
     value = it.value();
     if (!value.isBool()) {
       error = "includeAllFields must be a boolean value";
-      checkError(NODE_VIEW_META_FIELDS);
+      checkError(kNodeViewMetaFields);
     }
     auto includeAllFields = value.getBool();
     ++it;
@@ -900,11 +877,11 @@ void fromVelocyPack(velocypack::Slice node, SearchMeta& meta) {
 
 void addViewValuesVar(VPackBuilder& nodes, std::string& fieldName,
                       IResearchViewNode::ViewVariable const& fieldVar) {
-  nodes.add(NODE_VIEW_VALUES_VAR_FIELD_NUMBER, VPackValue(fieldVar.fieldNum));
-  nodes.add(NODE_VIEW_VALUES_VAR_ID, VPackValue(fieldVar.var->id));
-  nodes.add(NODE_VIEW_VALUES_VAR_NAME,
+  nodes.add(kNodeViewValuesVarFieldNumber, VPackValue(fieldVar.fieldNum));
+  nodes.add(kNodeViewValuesVarId, VPackValue(fieldVar.var->id));
+  nodes.add(kNodeViewValuesVarName,
             VPackValue(fieldVar.var->name));  // for explainer.js
-  nodes.add(NODE_VIEW_VALUES_VAR_FIELD,
+  nodes.add(kNodeViewValuesVarField,
             VPackValue(fieldName));  // for explainer.js
 }
 
@@ -912,7 +889,7 @@ void extractViewValuesVar(aql::VariableGenerator const* vars,
                           IResearchViewNode::ViewValuesVars& viewValuesVars,
                           ptrdiff_t const columnNumber,
                           velocypack::Slice fieldVar) {
-  auto const fieldNumberSlice = fieldVar.get(NODE_VIEW_VALUES_VAR_FIELD_NUMBER);
+  auto const fieldNumberSlice = fieldVar.get(kNodeViewValuesVarFieldNumber);
   if (!fieldNumberSlice.isNumber<size_t>()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -920,7 +897,7 @@ void extractViewValuesVar(aql::VariableGenerator const* vars,
                      fieldNumberSlice.toString(), " should be a number"));
   }
   auto const fieldNumber = fieldNumberSlice.getNumber<size_t>();
-  auto const varIdSlice = fieldVar.get(NODE_VIEW_VALUES_VAR_ID);
+  auto const varIdSlice = fieldVar.get(kNodeViewValuesVarId);
   if (!varIdSlice.isNumber<aql::VariableId>()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -1094,6 +1071,75 @@ bool isFilterConditionEmpty(aql::AstNode const* filterCondition) noexcept {
   return filterCondition == &kAll;
 }
 
+bool isInInnerLoopOrSubquery(aql::ExecutionNode const& node) {
+  auto* cur = &node;
+  while (true) {
+    auto const* dep = cur->getFirstDependency();
+    if (!dep) {
+      break;
+    }
+    switch (dep->getType()) {
+      case aql::ExecutionNode::ENUMERATE_COLLECTION:
+      case aql::ExecutionNode::INDEX:
+      case aql::ExecutionNode::JOIN:
+      case aql::ExecutionNode::TRAVERSAL:
+      case aql::ExecutionNode::ENUMERATE_LIST:
+      case aql::ExecutionNode::SHORTEST_PATH:
+      case aql::ExecutionNode::ENUMERATE_PATHS:
+      case aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+        // we're in a loop
+        return true;
+      default:
+        break;
+    }
+    cur = dep;
+  }
+  TRI_ASSERT(cur);
+  // SINGLETON nodes in subqueries have id != 1
+  return cur->getType() == aql::ExecutionNode::SINGLETON &&
+         cur->id() != aql::ExecutionNodeId{1};
+}
+
+bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
+                     aql::Variable const& ref, aql::VarSet& vars,
+                     std::function<bool(aql::Variable const*)> callback) {
+  vars.clear();
+  aql::Ast::getReferencedVariables(&node, vars);
+  vars.erase(&ref);  // remove "our" variable
+  for (auto const* var : vars) {
+    auto* setter = plan.getVarSetBy(var->id);
+    if (!setter) {
+      // unable to find setter
+      continue;
+    }
+    switch (setter->getType()) {
+      case aql::ExecutionNode::ENUMERATE_COLLECTION:
+      case aql::ExecutionNode::ENUMERATE_LIST:
+      case aql::ExecutionNode::SUBQUERY:
+      case aql::ExecutionNode::SUBQUERY_END:
+      case aql::ExecutionNode::COLLECT:
+      case aql::ExecutionNode::TRAVERSAL:
+      case aql::ExecutionNode::INDEX:
+      case aql::ExecutionNode::JOIN:
+      case aql::ExecutionNode::SHORTEST_PATH:
+      case aql::ExecutionNode::ENUMERATE_PATHS:
+      case aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+        // we're in the loop with dependent context
+        if (callback(var)) {
+          return true;
+        }
+        break;
+      default:
+        if ((!setter->isDeterministic() || setter->getLoop() != nullptr) &&
+            callback(var)) {
+          return true;
+        }
+        break;
+    }
+  }
+  return false;
+}
+
 IResearchViewNode* IResearchViewNode::getByVar(
     aql::ExecutionPlan const& plan, aql::Variable const& var) noexcept {
   auto* varOwner = plan.getVarSetBy(var.id);
@@ -1132,6 +1178,11 @@ IResearchViewNode::IResearchViewNode(
   std::string error;
   TRI_ASSERT(_view);
   TRI_ASSERT(_meta || _view->type() != ViewType::kSearchAlias);
+  _options.parallelism = ast->query()
+                             .vocbase()
+                             .server()
+                             .getFeature<IResearchFeature>()
+                             .defaultParallelism();
   if (!parseOptions(ast->query(), *_view, options, _options, error)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -1144,19 +1195,19 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
     : aql::ExecutionNode{&plan, base},
       _vocbase{plan.getAst()->query().vocbase()},
       _outSearchDocId{aql::Variable::varFromVPack(
-          plan.getAst(), base, NODE_OUT_SEARCH_DOC_PARAM, true)},
+          plan.getAst(), base, kNodeOutSearchDocParam, true)},
       _outVariable{aql::Variable::varFromVPack(plan.getAst(), base,
-                                               NODE_OUT_VARIABLE_PARAM)},
+                                               kNodeOutVariableParam)},
       _outNonMaterializedDocId{aql::Variable::varFromVPack(
-          plan.getAst(), base, NODE_OUT_NM_DOC_PARAM, true)},
+          plan.getAst(), base, kNodeOutNmDocParam, true)},
       // in case if filter is not specified
       // set it to surrogate 'RETURN ALL' node
       _filterCondition{&kAll},
-      _scorers{fromVelocyPack(plan, base.get(NODE_SCORERS_PARAM))} {
-  auto const viewNameSlice = base.get(NODE_VIEW_NAME_PARAM);
+      _scorers{fromVelocyPack(plan, base.get(kNodeScorersParam))} {
+  auto const viewNameSlice = base.get(kNodeViewNameParam);
   auto const viewName =
       viewNameSlice.isNone() ? "" : viewNameSlice.stringView();
-  auto const viewIdSlice = base.get(NODE_VIEW_ID_PARAM);
+  auto const viewIdSlice = base.get(kNodeViewIdParam);
 
   if (base.hasKey("outNmColPtr")) {
     // Old coordinator tries to run query on
@@ -1174,7 +1225,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
   } else if (!viewIdSlice.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        absl::StrCat("invalid vpack format, '", NODE_VIEW_ID_PARAM,
+        absl::StrCat("invalid vpack format, '", kNodeViewIdParam,
                      "' attribute is intended to be a string"));
   } else {  // handle arangosearch view
     auto const viewIdOrName = viewIdSlice.stringView();
@@ -1196,13 +1247,13 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
     }
   }
   // filter condition
-  auto const conditionSlice = base.get(NODE_CONDITION_PARAM);
+  auto const conditionSlice = base.get(kNodeConditionParam);
   if (conditionSlice.isObject() && !conditionSlice.isEmptyObject()) {
     // AST will own the node
     setFilterCondition(plan.getAst()->createNode(conditionSlice));
   }
   // shards
-  auto const shardsSlice = base.get(NODE_SHARDS_PARAM);
+  auto const shardsSlice = base.get(kNodeShardsParam);
   if (shardsSlice.isArray()) {
     TRI_ASSERT(plan.getAst());
     auto const& collections = plan.getAst()->query().collections();
@@ -1216,10 +1267,10 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
             << viewName << "'";
         continue;
       }
-      _shards[shard->name()];
+      _shards[ShardID{shard->name()}];
     }
     if (_meta) {  // handle search-alias view
-      auto const indexesSlice = base.get(NODE_INDEXES_PARAM);
+      auto const indexesSlice = base.get(kNodeIndexesParam);
       if (!indexesSlice.isArray() || indexesSlice.length() % 2 != 0) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER,
@@ -1235,7 +1286,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
         if (!shard) {
           continue;
         }
-        _shards[shard->name()].emplace_back(indexId);
+        _shards[ShardID{shard->name()}].emplace_back(indexId);
       }
     }
   } else {
@@ -1245,19 +1296,25 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
   }
   // options
   TRI_ASSERT(plan.getAst());
-  auto const options = base.get(NODE_OPTIONS_PARAM);
+  auto const options = base.get(kNodeOptionsParam);
   if (!fromVelocyPack(options, _options)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         "failed to parse 'IResearchViewNode' options: " + options.toString());
   }
   // volatility mask
-  auto const volatilityMaskSlice = base.get(NODE_VOLATILITY_PARAM);
+  auto const volatilityMaskSlice = base.get(kNodeVolatilityParam);
   if (volatilityMaskSlice.isNumber()) {
     _volatilityMask = volatilityMaskSlice.getNumber<int>();
   }
+
+  auto const immutablePartsSlice = base.get(kNodeViewImmutableParts);
+  if (immutablePartsSlice.isInteger()) {
+    _immutableParts = immutablePartsSlice.getNumber<uint32_t>() - 1U;
+  }
+
   // parse sort buckets and set them and sort
-  auto const sortBucketsSlice = base.get(NODE_PRIMARY_SORT_BUCKETS_PARAM);
+  auto const sortBucketsSlice = base.get(kNodePrimarySortBucketsParam);
   if (!sortBucketsSlice.isNone()) {
     auto const& sort = primarySort(_meta, _view);
     if (!sortBucketsSlice.isNumber<size_t>()) {
@@ -1280,7 +1337,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
     setSort(sort, sortBuckets);
   }
 
-  auto const noMaterializationSlice = base.get(NODE_VIEW_NO_MATERIALIZATION);
+  auto const noMaterializationSlice = base.get(kNodeViewNoMaterialization);
   if (!noMaterializationSlice.isNone()) {
     if (!noMaterializationSlice.isBool()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1297,7 +1354,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
   if (isLateMaterialized() || isNoMaterialization()) {
     auto const* vars = plan.getAst()->variables();
     TRI_ASSERT(vars);
-    auto const viewValuesVarsSlice = base.get(NODE_VIEW_VALUES_VARS);
+    auto const viewValuesVarsSlice = base.get(kNodeViewValuesVars);
     if (!viewValuesVarsSlice.isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
@@ -1307,7 +1364,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
     for (auto const columnFieldsVars :
          velocypack::ArrayIterator(viewValuesVarsSlice)) {
       auto const columnNumberSlice =
-          columnFieldsVars.get(NODE_VIEW_VALUES_VAR_COLUMN_NUMBER);
+          columnFieldsVars.get(kNodeViewValuesVarColumnNumber);
       if (columnNumberSlice.isNone()) {
         extractViewValuesVar(vars, viewValuesVars, kSortColumnNumber,
                              columnFieldsVars);
@@ -1321,7 +1378,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
       }  // TODO Why check size_t but get ptrdiff_t
       auto const columnNumber = columnNumberSlice.getNumber<ptrdiff_t>();
       auto const viewStoredValuesVarsSlice =
-          columnFieldsVars.get(NODE_VIEW_STORED_VALUES_VARS);
+          columnFieldsVars.get(kNodeViewStoredValuesVars);
       if (!viewStoredValuesVarsSlice.isArray()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER,
@@ -1337,53 +1394,110 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
       _outNonMaterializedViewVars = std::move(viewValuesVars);
     }
   }
-  if ((base.hasKey(NODE_VIEW_SCORERS_SORT) ^
-       base.hasKey(NODE_VIEW_SCORERS_SORT_LIMIT))) {
+  if ((base.hasKey(kNodeViewScorersSort) ^
+       base.hasKey(kNodeViewScorersSortLimit))) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         "'scorersSort' and 'scorersSortLimit' attributes should be both "
         "present or both absent");
   }
-  auto const scorersSortSlice = base.get(NODE_VIEW_SCORERS_SORT);
-  if (!scorersSortSlice.isNone()) {
-    if (!scorersSortSlice.isArray()) {
+  auto const heapSortSlice = base.get(kNodeViewHeapSort);
+  if (!heapSortSlice.isNone()) {
+    if (!heapSortSlice.isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "'scorersSort' should be an array");
+                                     "'heapSort' should be an array");
     }
-    auto itr = velocypack::ArrayIterator(scorersSortSlice);
-    for (auto const scorersSortElement : itr) {
-      if (!scorersSortElement.isObject()) {
+    auto itr = velocypack::ArrayIterator(heapSortSlice);
+    for (auto const heapSortElement : itr) {
+      if (!heapSortElement.isObject()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER,
-            absl::StrCat("'scorersSort[", itr.index(),
+            absl::StrCat("'heapSort[", itr.index(),
                          "]' attribute should be an object"));
       }
-      auto index = scorersSortElement.get(NODE_VIEW_SCORERS_SORT_INDEX);
-      auto asc = scorersSortElement.get(NODE_VIEW_SCORERS_SORT_ASC);
-      if (index.isNumber() && asc.isBoolean()) {
-        auto indexVal = index.getNumber<size_t>();
-        if (indexVal >= _scorers.size()) {
+      auto source = heapSortElement.get(kNodeViewHeapSortSource);
+      auto asc = heapSortElement.get(kNodeViewScorersSortAsc);
+      auto field = heapSortElement.get(kNodeViewHeapSortField);
+      auto postfix = heapSortElement.get(kNodeViewHeapSortPostfix);
+      if (source.isNumber() && asc.isBoolean() && field.isNumber() &&
+          postfix.isString()) {
+        auto sourceVal = source.getNumber<ptrdiff_t>();
+        auto fieldVal = field.getNumber<size_t>();
+        auto postfixVal = postfix.copyString();
+        _heapSort.emplace_back(HeapSortElement{.postfix = std::move(postfixVal),
+                                               .source = sourceVal,
+                                               .fieldNumber = fieldVal,
+                                               .ascending = asc.getBool()});
+        if (_heapSort.back().isScore() &&
+            static_cast<size_t>(_heapSort.back().source) >= _scorers.size()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_BAD_PARAMETER,
-              absl::StrCat("'scorersSort[", itr.index(),
-                           "].index' attribute is out of range"));
+              absl::StrCat("'heapSort[", itr.index(),
+                           "].source' attribute is out of range"));
         }
-        _scorersSort.emplace_back(index.getNumber<size_t>(), asc.getBool());
       } else {
         THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_BAD_PARAMETER, absl::StrCat("'scorersSort[", itr.index(),
+            TRI_ERROR_BAD_PARAMETER, absl::StrCat("'heapSort[", itr.index(),
                                                   "]' attribute is invalid "));
       }
     }
-  }
-  auto const scorersSortLimitSlice = base.get(NODE_VIEW_SCORERS_SORT_LIMIT);
-  if (!scorersSortLimitSlice.isNone()) {
-    if (!scorersSortLimitSlice.isNumber()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          "'scorersSortLimit' attribute should be a numeric");
+    auto const heapSortLimitSlice = base.get(kNodeViewHeapSortLimit);
+    if (!heapSortLimitSlice.isNone()) {
+      if (!heapSortLimitSlice.isNumber()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "'heapSortLimit' attribute should be a numeric");
+      }
+      _heapSortLimit = heapSortLimitSlice.getNumber<size_t>();
     }
-    _scorersSortLimit = scorersSortLimitSlice.getNumber<size_t>();
+  } else {
+    // TODO remove when 3.11 is deprecated
+    auto const scorersSortSlice = base.get(kNodeViewScorersSort);
+    if (!scorersSortSlice.isNone()) {
+      if (!scorersSortSlice.isArray()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                       "'scorersSort' should be an array");
+      }
+      auto itr = velocypack::ArrayIterator(scorersSortSlice);
+      for (auto const scorersSortElement : itr) {
+        if (!scorersSortElement.isObject()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_BAD_PARAMETER,
+              absl::StrCat("'scorersSort[", itr.index(),
+                           "]' attribute should be an object"));
+        }
+        auto index = scorersSortElement.get(kNodeViewScorersSortIndex);
+        auto asc = scorersSortElement.get(kNodeViewScorersSortAsc);
+        if (index.isNumber<size_t>() && asc.isBoolean()) {
+          auto indexVal = index.getNumber<size_t>();
+          if (indexVal >= _scorers.size()) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(
+                TRI_ERROR_BAD_PARAMETER,
+                absl::StrCat("'scorersSort[", itr.index(),
+                             "].index' attribute is out of range"));
+          }
+          _heapSort.emplace_back(
+              HeapSortElement{.postfix = "",
+                              .source = index.getNumber<ptrdiff_t>(),
+                              .fieldNumber = std::numeric_limits<size_t>::max(),
+                              .ascending = asc.getBool()});
+        } else {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_BAD_PARAMETER,
+              absl::StrCat("'scorersSort[", itr.index(),
+                           "]' attribute is invalid "));
+        }
+      }
+    }
+    auto const scorersSortLimitSlice = base.get(kNodeViewScorersSortLimit);
+    if (!scorersSortLimitSlice.isNone()) {
+      if (!scorersSortLimitSlice.isNumber()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "'scorersSortLimit' attribute should be a numeric");
+      }
+      _heapSortLimit = scorersSortLimitSlice.getNumber<size_t>();
+    }
   }
 }
 
@@ -1395,6 +1509,31 @@ std::pair<bool, bool> IResearchViewNode::volatility(
 
   return std::make_pair(irs::check_bit<0>(_volatilityMask),   // filter
                         irs::check_bit<1>(_volatilityMask));  // sort
+}
+
+aql::Collection const* IResearchViewNode::collection() const {
+  auto c = collections();
+  if (c.size() == 1) {
+    return &c.front().first.get();
+  }
+  // this API should not be used for multicollection views
+  // doing so might break satellite join assumptions
+  TRI_ASSERT(c.empty());
+  return nullptr;
+}
+
+bool IResearchViewNode::isUsedAsSatellite() const { return _isUsedAsSatellite; }
+void IResearchViewNode::useAsSatelliteOf(aql::ExecutionNodeId) {
+  _isUsedAsSatellite = true;
+}
+
+aql::Collection const* IResearchViewNode::prototypeCollection() const {
+  return _prototypeCollection;
+}
+
+void IResearchViewNode::setPrototype(aql::Collection const* prototypeCollection,
+                                     aql::Variable const*) {
+  _prototypeCollection = prototypeCollection;
 }
 
 void const* IResearchViewNode::getSnapshotKey() const noexcept {
@@ -1415,42 +1554,43 @@ void const* IResearchViewNode::getSnapshotKey() const noexcept {
 void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
                                        unsigned flags) const {
   // system info
-  nodes.add(NODE_DATABASE_PARAM, VPackValue(_vocbase.name()));
   TRI_ASSERT(_view);
   TRI_ASSERT(_meta || _view->type() != ViewType::kSearchAlias);
   // need 'view' field to correctly print view name in JS explanation
-  nodes.add(NODE_VIEW_NAME_PARAM, VPackValue(_view->name()));
+  nodes.add(kNodeViewNameParam, VPackValue(_view->name()));
   if (!_meta) {
     absl::AlphaNum viewId{_view->id().id()};
-    nodes.add(NODE_VIEW_ID_PARAM, VPackValue(viewId.Piece()));
+    nodes.add(kNodeViewIdParam, VPackValue(viewId.Piece()));
   }
 
   // our variable
-  nodes.add(VPackValue(NODE_OUT_VARIABLE_PARAM));
+  nodes.add(VPackValue(kNodeOutVariableParam));
   _outVariable->toVelocyPack(nodes);
 
   if (_outSearchDocId != nullptr) {
-    nodes.add(VPackValue(NODE_OUT_SEARCH_DOC_PARAM));
+    nodes.add(VPackValue(kNodeOutSearchDocParam));
     _outSearchDocId->toVelocyPack(nodes);
   }
 
   if (_outNonMaterializedDocId != nullptr) {
-    nodes.add(VPackValue(NODE_OUT_NM_DOC_PARAM));
+    nodes.add(VPackValue(kNodeOutNmDocParam));
     _outNonMaterializedDocId->toVelocyPack(nodes);
   }
 
   if (_noMaterialization) {
-    nodes.add(NODE_VIEW_NO_MATERIALIZATION, VPackValue(_noMaterialization));
+    nodes.add(kNodeViewNoMaterialization, VPackValue(_noMaterialization));
   }
 
-  bool const needScorerSort = !_scorersSort.empty() && _scorersSortLimit;
-  if (needScorerSort) {
-    nodes.add(NODE_VIEW_SCORERS_SORT_LIMIT, VPackValue(_scorersSortLimit));
-    VPackArrayBuilder scorersSort(&nodes, NODE_VIEW_SCORERS_SORT);
-    for (auto const& s : _scorersSort) {
+  bool const needHeapSort = !_heapSort.empty() && _heapSortLimit;
+  if (needHeapSort) {
+    nodes.add(kNodeViewHeapSortLimit, VPackValue(_heapSortLimit));
+    VPackArrayBuilder scorersSort(&nodes, kNodeViewHeapSort);
+    for (auto const& s : _heapSort) {
       VPackObjectBuilder scorer(&nodes);
-      nodes.add(NODE_VIEW_SCORERS_SORT_INDEX, VPackValue(s.first));
-      nodes.add(NODE_VIEW_SCORERS_SORT_ASC, VPackValue(s.second));
+      nodes.add(kNodeViewHeapSortSource, VPackValue(s.source));
+      nodes.add(kNodeViewHeapSortField, VPackValue(s.fieldNumber));
+      nodes.add(kNodeViewScorersSortAsc, VPackValue(s.ascending));
+      nodes.add(kNodeViewHeapSortPostfix, VPackValue(s.postfix));
     }
   }
 
@@ -1458,7 +1598,7 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
   {
     auto const& values = storedValues(_meta, _view);
     auto const& sort = primarySort(_meta, _view);
-    VPackArrayBuilder arrayScope(&nodes, NODE_VIEW_VALUES_VARS);
+    VPackArrayBuilder arrayScope(&nodes, kNodeViewValuesVars);
     std::string fieldName;
     for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
       if (columnFieldsVars.first != kSortColumnNumber) {
@@ -1467,9 +1607,9 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
         auto const storedColumnNumber =
             static_cast<size_t>(columnFieldsVars.first);
         TRI_ASSERT(storedColumnNumber < columns.size());
-        nodes.add(NODE_VIEW_VALUES_VAR_COLUMN_NUMBER,
+        nodes.add(kNodeViewValuesVarColumnNumber,
                   VPackValue(static_cast<size_t>(columnFieldsVars.first)));
-        VPackArrayBuilder arrayScope(&nodes, NODE_VIEW_STORED_VALUES_VARS);
+        VPackArrayBuilder arrayScope(&nodes, kNodeViewStoredValuesVars);
         for (auto const& fieldVar : columnFieldsVars.second) {
           VPackObjectBuilder objectScope(&nodes);
           fieldName.clear();
@@ -1494,7 +1634,7 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
   }
 
   // filter condition
-  nodes.add(VPackValue(NODE_CONDITION_PARAM));
+  nodes.add(VPackValue(kNodeConditionParam));
   if (!isFilterConditionEmpty(_filterCondition)) {
     _filterCondition->toVelocyPack(nodes, flags != 0);
   } else {
@@ -1503,19 +1643,19 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
   }
 
   // sort condition
-  nodes.add(VPackValue(NODE_SCORERS_PARAM));
+  nodes.add(VPackValue(kNodeScorersParam));
   iresearch::toVelocyPack(nodes, _scorers, flags != 0);
   // TODO object<shard, array<index>>
   // shards
   {
-    VPackArrayBuilder arrayScope(&nodes, NODE_SHARDS_PARAM);
+    VPackArrayBuilder arrayScope(&nodes, kNodeShardsParam);
     for (auto const& [shard, _] : _shards) {
       nodes.add(VPackValue(shard));
     }
   }
   // indexes
   {
-    VPackArrayBuilder arrayScope(&nodes, NODE_INDEXES_PARAM, true);
+    VPackArrayBuilder arrayScope(&nodes, kNodeIndexesParam, true);
     uint64_t i = 0;
     for (auto const& [_, indexes] : _shards) {
       for (auto const& index : indexes) {
@@ -1528,19 +1668,23 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
   }
 
   // options
-  nodes.add(VPackValue(NODE_OPTIONS_PARAM));
+  nodes.add(VPackValue(kNodeOptionsParam));
   iresearch::toVelocyPack(nodes, _options);
 
   // volatility mask
-  nodes.add(NODE_VOLATILITY_PARAM, VPackValue(_volatilityMask));
+  nodes.add(kNodeVolatilityParam, VPackValue(_volatilityMask));
+
+  if (_immutableParts != 0) {
+    nodes.add(kNodeViewImmutableParts, VPackValue{_immutableParts + 1U});
+  }
 
   // primary sort buckets
   bool const needSort = _sort && !_sort->empty();
   if (needSort) {
-    nodes.add(NODE_PRIMARY_SORT_BUCKETS_PARAM, VPackValue(_sortBuckets));
+    nodes.add(kNodePrimarySortBucketsParam, VPackValue(_sortBuckets));
   }
   if (_meta) {
-    iresearch::toVelocyPack(nodes, *_meta, needSort, needScorerSort);
+    iresearch::toVelocyPack(nodes, *_meta, needSort, needHeapSort);
   }
 }
 
@@ -1603,6 +1747,7 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
   node->_shards = _shards;
   node->_options = _options;
   node->_volatilityMask = _volatilityMask;
+  node->_immutableParts = _immutableParts;
   node->_sort = _sort;
   node->_optState = _optState;
   if (outSearchDocId != nullptr) {
@@ -1613,8 +1758,8 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
   }
   node->_noMaterialization = _noMaterialization;
   node->_outNonMaterializedViewVars = std::move(outNonMaterializedViewVars);
-  node->_scorersSort = _scorersSort;
-  node->_scorersSortLimit = _scorersSortLimit;
+  node->_heapSort = _heapSort;
+  node->_heapSortLimit = _heapSortLimit;
   return cloneHelper(std::move(node), withDependencies, withProperties);
 }
 
@@ -1663,33 +1808,65 @@ aql::CostEstimate IResearchViewNode::estimateCost() const {
   return estimate;
 }
 
+aql::AsyncPrefetchEligibility IResearchViewNode::canUseAsyncPrefetching()
+    const noexcept {
+  return aql::AsyncPrefetchEligibility::kEnableForNode;
+}
+
 // Replaces variables in the internals of the execution node
 // replacements are { old variable id => new variable }.
 void IResearchViewNode::replaceVariables(
     std::unordered_map<aql::VariableId, aql::Variable const*> const&
         replacements) {
+  Ast* ast = plan()->getAst();
+  // replace in filter condition
   aql::AstNode const& search = filterCondition();
-  if (isFilterConditionEmpty(&search)) {
-    return;
-  }
-  aql::VarSet variables;
-  aql::Ast::getReferencedVariables(&search, variables);
-  // check if the search condition uses any of the variables that we want to
-  // replace
-  aql::AstNode* cloned = nullptr;
-  for (auto const& it : variables) {
-    if (replacements.find(it->id) != replacements.end()) {
-      if (cloned == nullptr) {
-        // only clone the original search condition once
-        cloned = plan()->getAst()->clone(&search);
+  if (!isFilterConditionEmpty(&search)) {
+    aql::VarSet variables;
+    aql::Ast::getReferencedVariables(&search, variables);
+    // check if the search condition uses any of the variables that we want to
+    // replace
+    aql::AstNode* cloned = nullptr;
+    for (auto const& it : variables) {
+      if (replacements.contains(it->id)) {
+        if (cloned == nullptr) {
+          // only clone the original search condition once
+          cloned = ast->clone(&search);
+        }
+        ast->replaceVariables(cloned, replacements, true);
       }
-      plan()->getAst()->replaceVariables(cloned, replacements);
+    }
+
+    if (cloned != nullptr) {
+      // exchange the filter condition
+      setFilterCondition(cloned);
     }
   }
 
-  if (cloned != nullptr) {
-    // exchange the filter condition
+  // replace in scorers
+  for (auto& it : _scorers) {
+    it.node = ast->replaceVariables(ast->clone(it.node), replacements);
+  }
+}
+
+void IResearchViewNode::replaceAttributeAccess(
+    aql::ExecutionNode const* self, aql::Variable const* searchVariable,
+    std::span<std::string_view> attribute, aql::Variable const* replaceVariable,
+    size_t /*index*/) {
+  Ast* ast = plan()->getAst();
+  // replace in filter condition
+  aql::AstNode const& search = filterCondition();
+  if (!isFilterConditionEmpty(&search)) {
+    AstNode* cloned = ast->clone(&search);
+    cloned = Ast::replaceAttributeAccess(ast, cloned, searchVariable, attribute,
+                                         replaceVariable);
     setFilterCondition(cloned);
+  }
+
+  // replace in scorers
+  for (auto& it : _scorers) {
+    it.node = ast->replaceAttributeAccess(
+        ast, ast->clone(it.node), searchVariable, attribute, replaceVariable);
   }
 }
 
@@ -1720,7 +1897,7 @@ std::vector<aql::Variable const*> IResearchViewNode::getVariablesSetHere()
   } else if (!isNoMaterialization()) {
     ++reserve;
   }
-  if (searchDocIdVar()) {
+  if (_outSearchDocId != nullptr) {
     ++reserve;
   }
   vars.reserve(reserve);
@@ -1739,7 +1916,7 @@ std::vector<aql::Variable const*> IResearchViewNode::getVariablesSetHere()
   } else {
     vars.emplace_back(_outVariable);
   }
-  if (searchDocIdVar()) {
+  if (_outSearchDocId != nullptr) {
     vars.emplace_back(_outSearchDocId);
   }
   return vars;
@@ -1942,14 +2119,17 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         outVariable(),
         filterCondition(),
         volatility(),
+        _immutableParts,
         getRegisterPlan()->varInfo,  // ??? do we need this?
         getDepth(),
         std::move(outNonMaterializedViewRegs),
         _options.countApproximate,
         filterOptimization(),
-        _scorersSort,
-        _scorersSortLimit,
-        _meta.get()};
+        _heapSort,
+        _heapSortLimit,
+        _meta.get(),
+        _options.parallelism,
+        _vocbase.server().getFeature<IResearchFeature>().getSearchPool()};
     return std::make_tuple(materializeType, std::move(executorInfos),
                            std::move(registerInfos));
   };
@@ -1964,13 +2144,19 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     return createNoResultsExecutor(engine);
   }
 
-  auto [materializeType, executorInfos, registerInfos] =
-      buildExecutorInfo(engine, std::move(reader));
+  // auto [materializeType, executorInfos, registerInfos] =
+  //    buildExecutorInfo(engine, std::move(reader));
+  // Workaround for using clang15 during asan build.
+  // FIXME: remove it as soon as we switch to clang16 or higher
+  auto infosTuple = buildExecutorInfo(engine, std::move(reader));
+  auto& materializeType = std::get<0>(infosTuple);
+  auto& executorInfos = std::get<1>(infosTuple);
+  auto& registerInfos = std::get<2>(infosTuple);
   // guaranteed by optimizer rule
   TRI_ASSERT(_sort == nullptr || !_sort->empty());
   bool const ordered = !_scorers.empty();
   bool const sorted = _sort != nullptr;
-  bool const heapsort = !_scorersSort.empty();
+  bool const heapsort = !_heapSort.empty();
   bool const emitSearchDoc = executorInfos.searchDocIdRegId().isValid();
 #ifdef USE_ENTERPRISE
   auto& engineSelectorFeature =
@@ -1982,46 +2168,52 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   auto const executorIdx =
       getExecutorIndex(sorted, ordered, heapsort, emitSearchDoc);
-
-  switch (materializeType) {
-    case MaterializeType::NotMaterialize:
-      return kExecutors<false, MaterializeType::NotMaterialize>[executorIdx](
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
-    case MaterializeType::LateMaterialize:
-      return kExecutors<false, MaterializeType::LateMaterialize>[executorIdx](
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
-    case MaterializeType::Materialize:
-      return kExecutors<false, MaterializeType::Materialize>[executorIdx](
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
-    case MaterializeType::NotMaterialize | MaterializeType::UseStoredValues:
+  return irs::ResolveBool(_options.parallelism > 1, [&]<bool copyStored>() {
+    switch (materializeType) {
+      case MaterializeType::NotMaterialize:
+        return kExecutors<copyStored,
+                          MaterializeType::NotMaterialize>[executorIdx](
+            &engine, this, std::move(registerInfos), std::move(executorInfos));
+      case MaterializeType::LateMaterialize:
+        return kExecutors<copyStored,
+                          MaterializeType::LateMaterialize>[executorIdx](
+            &engine, this, std::move(registerInfos), std::move(executorInfos));
+      case MaterializeType::Materialize:
+        return kExecutors<copyStored,
+                          MaterializeType::Materialize>[executorIdx](
+            &engine, this, std::move(registerInfos), std::move(executorInfos));
+      case MaterializeType::NotMaterialize | MaterializeType::UseStoredValues:
 #ifdef USE_ENTERPRISE
-      if (encrypted) {
-        return kExecutors<true,
+        if (encrypted) {
+          return kExecutors<true,
+                            MaterializeType::NotMaterialize |
+                                MaterializeType::UseStoredValues>[executorIdx](
+              &engine, this, std::move(registerInfos),
+              std::move(executorInfos));
+        }
+#endif
+        return kExecutors<copyStored,
                           MaterializeType::NotMaterialize |
                               MaterializeType::UseStoredValues>[executorIdx](
             &engine, this, std::move(registerInfos), std::move(executorInfos));
-      }
-#endif
-      return kExecutors<false,
-                        MaterializeType::NotMaterialize |
-                            MaterializeType::UseStoredValues>[executorIdx](
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
-    case MaterializeType::LateMaterialize | MaterializeType::UseStoredValues:
+      case MaterializeType::LateMaterialize | MaterializeType::UseStoredValues:
 #ifdef USE_ENTERPRISE
-      if (encrypted) {
-        return kExecutors<true,
+        if (encrypted) {
+          return kExecutors<true,
+                            MaterializeType::LateMaterialize |
+                                MaterializeType::UseStoredValues>[executorIdx](
+              &engine, this, std::move(registerInfos),
+              std::move(executorInfos));
+        }
+#endif
+        return kExecutors<copyStored,
                           MaterializeType::LateMaterialize |
                               MaterializeType::UseStoredValues>[executorIdx](
             &engine, this, std::move(registerInfos), std::move(executorInfos));
-      }
-#endif
-      return kExecutors<false,
-                        MaterializeType::LateMaterialize |
-                            MaterializeType::UseStoredValues>[executorIdx](
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
-    default:
-      ADB_UNREACHABLE;
-  }
+      default:
+        ADB_UNREACHABLE;
+    }
+  });
 }
 
 #if defined(__GNUC__)
@@ -2212,10 +2404,24 @@ bool IResearchViewNode::isBuilding() const {
 
 size_t IResearchViewNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
+std::pair<ptrdiff_t, size_t> IResearchViewNode::getSourceColumnInfo(
+    aql::VariableId id) const noexcept {
+  for (auto const& column : _outNonMaterializedViewVars) {
+    for (auto const& var : column.second) {
+      if (var.var->id == id) {
+        return {column.first, var.fieldNum};
+      }
+    }
+  }
+  return {std::numeric_limits<ptrdiff_t>::max(), 0};
+}
+
 }  // namespace arangodb::iresearch
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 // need this variant for tests only
 template class ::arangodb::aql::IResearchViewMergeExecutor<
-    ExecutionTraits<false, false, false, MaterializeType::NotMaterialize>>;
+    ::arangodb::aql::ExecutionTraits<
+        false, false, false,
+        ::arangodb::iresearch::MaterializeType::NotMaterialize>>;
 #endif

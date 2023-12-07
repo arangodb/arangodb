@@ -25,18 +25,23 @@
 
 #include "Replication2/StateMachines/Document/ActiveTransactionsQueue.h"
 #include "Replication2/StateMachines/Document/DocumentCore.h"
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentStateErrorHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
 #include "Replication2/StateMachines/Document/ReplicatedOperation.h"
+
+#include "VocBase/Methods/Indexes.h"
 
 #include "Basics/UnshackledMutex.h"
 
 #include <atomic>
 #include <memory>
 
-namespace arangodb::transaction {
+namespace arangodb {
+class LogicalCollection;
+namespace transaction {
 struct IManager;
 }
+}  // namespace arangodb
 
 namespace arangodb::replication2::replicated_state::document {
 
@@ -63,12 +68,24 @@ struct DocumentLeaderState
       -> futures::Future<ResultT<LogIndex>>;
 
   auto release(LogIndex index) -> Result;
+
   auto release(TransactionId tid, LogIndex index) -> Result;
 
-  auto createShard(ShardID shard, CollectionID collectionId,
-                   std::shared_ptr<VPackBuilder> properties)
+  auto createShard(ShardID shard, TRI_col_type_e collectionType,
+                   velocypack::SharedSlice properties)
       -> futures::Future<Result>;
-  auto dropShard(ShardID shard, CollectionID collectionId)
+
+  auto modifyShard(ShardID shard, CollectionID collectionId,
+                   velocypack::SharedSlice properties)
+      -> futures::Future<Result>;
+
+  auto dropShard(ShardID shard) -> futures::Future<Result>;
+
+  auto createIndex(ShardID shard, VPackSlice indexInfo,
+                   std::shared_ptr<methods::Indexes::ProgressTracker> progress)
+      -> futures::Future<Result>;
+
+  auto dropIndex(ShardID shard, velocypack::SharedSlice indexInfo)
       -> futures::Future<Result>;
 
   auto getActiveTransactionsCount() const noexcept -> std::size_t {
@@ -77,12 +94,16 @@ struct DocumentLeaderState
 
   auto getAssociatedShardList() const -> std::vector<ShardID>;
 
+  auto snapshotStatus(SnapshotId id) -> ResultT<SnapshotStatus>;
+
   auto snapshotStart(SnapshotParams::Start const& params)
-      -> ResultT<SnapshotConfig>;
+      -> ResultT<SnapshotBatch>;
+
   auto snapshotNext(SnapshotParams::Next const& params)
       -> ResultT<SnapshotBatch>;
+
   auto snapshotFinish(SnapshotParams::Finish const& params) -> Result;
-  auto snapshotStatus(SnapshotId id) -> ResultT<SnapshotStatus>;
+
   auto allSnapshotsStatus() -> ResultT<AllSnapshotsStatus>;
 
   GlobalLogIdentifier const gid;
@@ -93,6 +114,7 @@ struct DocumentLeaderState
     explicit GuardedData(
         std::unique_ptr<DocumentCore> core,
         std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory);
+
     [[nodiscard]] bool didResign() const noexcept { return core == nullptr; }
 
     std::unique_ptr<DocumentCore> core;
@@ -104,11 +126,16 @@ struct DocumentLeaderState
                                 ProcessFunc processSnapshot) -> ResultType;
 
   std::shared_ptr<IDocumentStateHandlersFactory> _handlersFactory;
+  std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
   Guarded<std::shared_ptr<IDocumentStateSnapshotHandler>,
           basics::UnshackledMutex>
       _snapshotHandler;
+  std::shared_ptr<IDocumentStateErrorHandler> _errorHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
   Guarded<ActiveTransactionsQueue, std::mutex> _activeTransactions;
   transaction::IManager& _transactionManager;
+
+  std::atomic<bool> _resigning{false};  // Allows for a quicker shutdown of the
+                                        // state machine upon resigning
 };
 }  // namespace arangodb::replication2::replicated_state::document

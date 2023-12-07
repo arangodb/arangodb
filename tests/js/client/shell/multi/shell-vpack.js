@@ -30,11 +30,12 @@
 
 'use strict';
 
-var jsunity = require('jsunity');
-var expect = require('chai').expect;
+const jsunity = require('jsunity');
+const expect = require('chai').expect;
 
 function RequestSuite() {
   return {
+    testCursorAPI: cursorAPI,
     testVersionJsonJson: versionJsonJson,
     testVersionVpackJson: versionVpackJson,
     testVersionJsonVpack: versionJsonVpack,
@@ -46,12 +47,49 @@ function RequestSuite() {
   };
 };
 
+function cursorAPI() {
+  const cn = "UnitTestsCollection";
+
+  const path = '/_api/cursor';
+  const headers = {
+    'content-type': 'application/x-velocypack',
+    'accept': 'application/x-velocypack',
+    'accept-encoding': 'identity',
+  };
+
+  let db = require("@arangodb").db;
+
+  let c = db._create(cn);
+  c.insert({ _key: "test", value: 1 });
+
+  try {
+    [
+      "doc", "ATTRIBUTES(doc)", 
+      "UNSET(doc, ['_key'])", 
+      "UNSET(doc, ['_id'])", 
+      "UNSET(doc, ['_key', '_rev'])", 
+      "UNSET (doc, ['_key', '_id'])"
+    ].forEach((what) => {
+      const body = V8_TO_VPACK({
+        query: "FOR doc IN " + cn + " RETURN " + what
+      });
+      const res = arango.POST_RAW(path, body, headers);
+
+      expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
+      const obj = VPACK_TO_V8(res.body);
+      expect(obj.result).to.be.instanceOf(Array);
+    });
+  } finally {
+    db._drop(cn);
+  }
+};
 
 function versionJsonJson() {
   const path = '/_api/version';
   const headers = {
     'content-type': 'application/json',
-    'accept': 'application/json'
+    'accept': 'application/json',
+    'accept-encoding': 'identity',
   };
 
   const res = arango.POST_RAW(path, "", headers);
@@ -74,7 +112,8 @@ function versionVpackJson() {
   const path = '/_api/version';
   const headers = {
     'content-type': 'application/x-velocypack',
-    'accept': 'application/json'
+    'accept': 'application/json',
+    'accept-encoding': 'identity',
   };
 
   const res = arango.POST_RAW(path, "", headers);
@@ -97,7 +136,8 @@ function versionJsonVpack() {
   const path = '/_api/version';
   const headers = {
     'content-type': 'application/json',
-    'accept': 'application/x-velocypack'
+    'accept': 'application/x-velocypack',
+    'accept-encoding': 'identity',
   };
 
   const res = arango.POST_RAW(path, "", headers);
@@ -119,7 +159,8 @@ function versionVpackVpack() {
   const path = '/_api/version';
   const headers = {
     'content-type': 'application/x-velocypack',
-    'accept': 'application/x-velocypack'
+    'accept': 'application/x-velocypack',
+    'accept-encoding': 'identity',
   };
 
   const res = arango.POST_RAW(path, "", headers);
@@ -141,7 +182,8 @@ function echoVpackVpack() {
   const path = '/_admin/echo';
   const headers = {
     'content-type': 'application/x-velocypack',
-    'accept': 'application/x-velocypack'
+    'accept': 'application/x-velocypack',
+    'accept-encoding': 'identity',
   };
 
   const obj = {"server": "arango", "version": "3.0.devel"};
@@ -166,6 +208,7 @@ function adminExecuteWithHeaderVpack() {
   const path = '/_admin/execute';
   const headers = {
     'content-type': 'application/x-velocypack',
+    'accept-encoding': 'identity',
   };
 
   const obj = "require(\"console\").log(\"abc\");";
@@ -182,6 +225,7 @@ function adminExecuteWithHeaderVpack2() {
   const path = '/_admin/execute';
   const headers = {
     'content-type': 'application/x-velocypack',
+    'accept-encoding': 'identity',
   };
 
   const obj = "return \"abc\"";

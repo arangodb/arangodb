@@ -34,7 +34,6 @@
 #include "MockGraph.h"
 
 #include "Aql/AqlFunctionFeature.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
@@ -52,6 +51,7 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -113,8 +113,9 @@ struct MockGraphDatabase {
     arangodb::OperationOptions options;
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *vertices,
-        arangodb::AccessMode::Type::WRITE);
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, transaction::OperationOriginTestCase{}),
+        *vertices, arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE((trx.begin().ok()));
 
     std::vector<velocypack::Builder> insertedDocs;
@@ -167,8 +168,8 @@ struct MockGraphDatabase {
     arangodb::OperationOptions options;
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, transaction::OperationOriginTestCase{}),
         *edges, arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE((trx.begin().ok()));
 
@@ -199,7 +200,7 @@ struct MockGraphDatabase {
 
     auto indexJson = velocypack::Parser::fromJson("{ \"type\": \"edge\" }");
     bool created = false;
-    auto index = edges->createIndex(indexJson->slice(), created);
+    auto index = edges->createIndex(indexJson->slice(), created).get();
     TRI_ASSERT(index);
     TRI_ASSERT(created);
     return edges;
@@ -223,14 +224,14 @@ struct MockGraphDatabase {
       std::string qry, std::vector<std::string> collections) {
     auto queryString = arangodb::aql::QueryString(qry);
 
-    auto ctx =
-        std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
-    auto query = std::make_shared<MockQuery>(ctx, queryString);
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+        vocbase, transaction::OperationOriginTestCase{});
+    auto query = std::make_shared<MockQuery>(std::move(ctx), queryString);
     for (auto const& c : collections) {
       query->collections().add(c, AccessMode::Type::READ,
                                arangodb::aql::Collection::Hint::Collection);
     }
-    query->prepareQuery(SerializationFormat::SHADOWROWS);
+    query->prepareQuery();
 
     return query;
   }

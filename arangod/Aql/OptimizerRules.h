@@ -46,7 +46,6 @@ Collection* addCollectionToQuery(QueryContext& query, std::string const& cname,
 
 void insertDistributeInputCalculation(ExecutionPlan& plan);
 
-void enableAsyncPrefetching(ExecutionPlan& plan);
 void activateCallstackSplit(ExecutionPlan& plan);
 
 /// @brief adds a SORT operation for IN right-hand side operands
@@ -384,6 +383,15 @@ GatherNode* createGatherNodeFor(ExecutionPlan& plan, DistributeNode* node);
 DistributeNode* insertDistributeGatherSnippet(ExecutionPlan& plan,
                                               ExecutionNode* at,
                                               SubqueryNode* snode);
+
+void joinIndexNodesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                        OptimizerRule const&);
+
+void optimizeProjections(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                         OptimizerRule const&);
+
+void replaceEqualAttributeAccesses(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                   OptimizerRule const&);
 
 }  // namespace aql
 }  // namespace arangodb

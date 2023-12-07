@@ -28,27 +28,21 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var arangodb = require("@arangodb");
-var ERRORS = arangodb.errors;
-var db = arangodb.db;
+const jsunity = require("jsunity");
+const arangodb = require("@arangodb");
+const ERRORS = arangodb.errors;
+const db = arangodb.db;
 
-var createCollection = function (properties) {
+const createCollection = function (properties) {
   'use strict';
-  try {
-    db._drop("UnitTestsClusterCrud");
-  }
-  catch (err) {
-  }
+  db._drop("UnitTestsClusterCrud");
 
   if (properties === undefined) {
-    properties = { };
+    properties = {};
   }
 
   return db._create("UnitTestsClusterCrud", properties);
 };
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for save
@@ -61,10 +55,8 @@ function ClusterCrudSaveSuite () {
 /// @brief helper function to execute save tests
 ////////////////////////////////////////////////////////////////////////////////
 
-  var executeSave = function (c) {
-    var doc;
-
-    doc = c.save({ "a" : 1, "b" : "2", "c" : true });
+  let executeSave = function (c) {
+    let doc = c.save({ "a" : 1, "b" : "2", "c" : true });
     assertEqual(doc._id, c.document(doc._id)._id);
     assertEqual(doc._id, c.document(doc._key)._id);
     assertEqual(doc._key, c.document(doc._id)._key);
@@ -95,8 +87,7 @@ function ClusterCrudSaveSuite () {
     try {
       doc = c.save({ _key : "  foo  .kmnh" });
       fail();
-    }
-    catch (err) {
+    } catch (err) {
       assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code, err.errorNum);
     }
   };
@@ -105,10 +96,8 @@ function ClusterCrudSaveSuite () {
 /// @brief helper function to execute save tests
 ////////////////////////////////////////////////////////////////////////////////
 
-  var executeSaveShardKeys = function (c) {
-    var doc;
-
-    doc = c.save({ "a" : 1, "b" : "2", "c" : true });
+  let executeSaveShardKeys = function (c) {
+    let doc = c.save({ "a" : 1, "b" : "2", "c" : true });
     assertEqual(doc._id, c.document(doc._id)._id);
     assertEqual(doc._id, c.document(doc._key)._id);
     assertEqual(doc._key, c.document(doc._id)._key);
@@ -156,8 +145,7 @@ function ClusterCrudSaveSuite () {
     try {
       doc = c.save({ _key : "test" });
       fail();
-    }
-    catch (err) {
+    } catch (err) {
       assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY.code, err.errorNum);
     }
   };
@@ -165,23 +153,8 @@ function ClusterCrudSaveSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
     tearDown : function () {
-      try {
-        db._drop("UnitTestsClusterCrud");
-      }
-      catch (err) {
-      }
+      db._drop("UnitTestsClusterCrud");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -189,7 +162,7 @@ function ClusterCrudSaveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSaveOneShard : function () {
-      var c = createCollection({ numberOfShards: 1 });
+      let c = createCollection({ numberOfShards: 1 });
       executeSave(c);
     },
 
@@ -198,7 +171,7 @@ function ClusterCrudSaveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSaveMultipleShards : function () {
-      var c = createCollection({ numberOfShards: 5 });
+      let c = createCollection({ numberOfShards: 5 });
       executeSave(c);
     },
 
@@ -208,7 +181,7 @@ function ClusterCrudSaveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSaveShardKeysOneShard : function () {
-      var c = createCollection({ numberOfShards: 1, shardKeys: [ "a", "b" ] });
+      let c = createCollection({ numberOfShards: 1, shardKeys: [ "a", "b" ] });
       executeSaveShardKeys(c);
     },
 
@@ -217,7 +190,7 @@ function ClusterCrudSaveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSaveShardKeysMultipleShards : function () {
-      var c = createCollection({ numberOfShards: 7, shardKeys: [ "a", "b" ] });
+      let c = createCollection({ numberOfShards: 7, shardKeys: [ "a", "b" ] });
       executeSaveShardKeys(c);
     }
 
@@ -235,12 +208,10 @@ function ClusterCrudReplaceSuite () {
 /// @brief helper function for replace
 ////////////////////////////////////////////////////////////////////////////////
 
-  var executeReplace = function (c) {
-    var old, doc;
+  let executeReplace = function (c) {
+    let old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
 
-    old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
-
-    doc = c.replace(old._key, { "a" : 4, "b" : "5", "c" : true });
+    let doc = c.replace(old._key, { "a" : 4, "b" : "5", "c" : true });
     assertEqual(old._id, doc._id);
     assertEqual(old._key, doc._key);
     assertNotEqual(old._rev, doc._rev);
@@ -273,16 +244,14 @@ function ClusterCrudReplaceSuite () {
     try {
       doc = c.replace(old, { "b" : null, "c" : "foo" });
       fail();
-    }
-    catch (err1) {
+    } catch (err1) {
       assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err1.errorNum);
     }
 
     try {
       doc = c.replace("foobar", { "value" : 1 });
       fail();
-    }
-    catch (err2) {
+    } catch (err2) {
       assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err2.errorNum);
     }
   };
@@ -291,12 +260,10 @@ function ClusterCrudReplaceSuite () {
 /// @brief helper function for replace
 ////////////////////////////////////////////////////////////////////////////////
 
-  var executeReplaceShardKeys = function (c) {
-    var old, doc;
+  let executeReplaceShardKeys = function (c) {
+    let old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
 
-    old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
-
-    doc = c.replace(old._key, { "a" : 1, "b" : "2", "c" : false });
+    let doc = c.replace(old._key, { "a" : 1, "b" : "2", "c" : false });
     assertEqual(old._id, doc._id);
     assertEqual(old._key, doc._key);
     assertNotEqual(old._rev, doc._rev);
@@ -318,8 +285,7 @@ function ClusterCrudReplaceSuite () {
     try {
       doc = c.replace(old, { "a" : 1, "b" : "2", "c" : "fail" });
       fail();
-    }
-    catch (err1) {
+    } catch (err1) {
       assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err1.errorNum);
     }
 
@@ -327,13 +293,11 @@ function ClusterCrudReplaceSuite () {
     try {
       doc = c.replace(doc._key, { "a" : 2, "b" : "2", "c" : false });
       fail();
-    }
-    catch (err2) {
+    } catch (err2) {
       if (err2.errorNum !== ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
         assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err2.errorNum);
       }
     }
-
 
     // don't specify any values for shard keys, but update later
     old = c.save({ "value" : 1 });
@@ -364,8 +328,7 @@ function ClusterCrudReplaceSuite () {
     try {
       doc = c.replace(doc._key, { "a" : 2, "b" : "2", "c" : false });
       fail();
-    }
-    catch (err3) {
+    } catch (err3) {
       // We cannot determine if it is SHARDING_ATTRIBUTES_CHANGED or NOT_FOUND using one round-trip only.
       if (err3.errorNum !== ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err3.errorNum);
@@ -377,39 +340,22 @@ function ClusterCrudReplaceSuite () {
     try {
       doc = c.replace("foobar", { "value" : 1, a: 1, b: 2 });
       fail();
-    }
-    catch (err4) {
+    } catch (err4) {
       assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err4.errorNum);
     }
 
     try {
       doc = c.replace("foobar", { "value" : 1 });
       fail();
-    }
-    catch (err9) {
+    } catch (err9) {
       assertEqual(ERRORS.ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN.code, err9.errorNum);
     }
   };
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
     tearDown : function () {
-      try {
-        db._drop("UnitTestsClusterCrud");
-      }
-      catch (err) {
-      }
+      db._drop("UnitTestsClusterCrud");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -417,7 +363,7 @@ function ClusterCrudReplaceSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReplaceOneShard : function () {
-      var c = createCollection({ numberOfShards: 1 });
+      let c = createCollection({ numberOfShards: 1 });
       executeReplace(c);
     },
 
@@ -426,7 +372,7 @@ function ClusterCrudReplaceSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReplaceMultipleShards : function () {
-      var c = createCollection({ numberOfShards: 7 });
+      let c = createCollection({ numberOfShards: 7 });
       executeReplace(c);
     },
 
@@ -435,7 +381,7 @@ function ClusterCrudReplaceSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReplaceShardKeysOneShard : function () {
-      var c = createCollection({ numberOfShards: 1, shardKeys: [ "a", "b" ] });
+      let c = createCollection({ numberOfShards: 1, shardKeys: [ "a", "b" ] });
       executeReplaceShardKeys(c);
     },
 
@@ -444,7 +390,7 @@ function ClusterCrudReplaceSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReplaceShardKeysMultipleShards : function () {
-      var c = createCollection({ numberOfShards: 5, shardKeys: [ "a", "b" ] });
+      let c = createCollection({ numberOfShards: 5, shardKeys: [ "a", "b" ] });
       executeReplaceShardKeys(c);
     }
 
@@ -462,12 +408,10 @@ function ClusterCrudUpdateSuite () {
 /// @brief helper function for update
 ////////////////////////////////////////////////////////////////////////////////
 
-  var executeUpdate = function (c) {
-    var old, doc;
+  let executeUpdate = function (c) {
+    let old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
 
-    old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
-
-    doc = c.update(old._key, { "a" : 4, "b" : "5", "c" : false, "e" : "foo" });
+    let doc = c.update(old._key, { "a" : 4, "b" : "5", "c" : false, "e" : "foo" });
     assertEqual(old._id, doc._id);
     assertEqual(old._key, doc._key);
     assertNotEqual(old._rev, doc._rev);
@@ -523,16 +467,14 @@ function ClusterCrudUpdateSuite () {
     try {
       doc = c.update(old, { "b" : null, "c" : "foo" });
       fail();
-    }
-    catch (err1) {
+    } catch (err1) {
       assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err1.errorNum);
     }
 
     try {
       doc = c.update("foobar", { "value" : 1 });
       fail();
-    }
-    catch (err2) {
+    } catch (err2) {
       assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err2.errorNum);
     }
   };
@@ -541,12 +483,10 @@ function ClusterCrudUpdateSuite () {
 /// @brief helper function for update
 ////////////////////////////////////////////////////////////////////////////////
 
-  var executeUpdateShardKeys = function (c) {
-    var old, doc;
+  let executeUpdateShardKeys = function (c) {
+    let old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
 
-    old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
-
-    doc = c.update(old._key, { "a" : 1, "b" : "2", "c" : false, "e" : "foo" });
+    let doc = c.update(old._key, { "a" : 1, "b" : "2", "c" : false, "e" : "foo" });
     assertEqual(old._id, doc._id);
     assertEqual(old._key, doc._key);
     assertNotEqual(old._rev, doc._rev);
@@ -602,16 +542,14 @@ function ClusterCrudUpdateSuite () {
     try {
       doc = c.update(old, { "c" : "food" });
       fail();
-    }
-    catch (err1) {
+    } catch (err1) {
       assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err1.errorNum);
     }
 
     try {
       doc = c.update("foobar", { "value" : 1 });
       fail();
-    }
-    catch (err2) {
+    } catch (err2) {
       assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err2.errorNum);
     }
 
@@ -619,8 +557,7 @@ function ClusterCrudUpdateSuite () {
     try {
       doc = c.update(doc._key, { "a" : 2, "b" : "2", "c" : false });
       fail();
-    }
-    catch (err2) {
+    } catch (err2) {
       if (err2.errorNum !== ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
         assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err2.errorNum);
       }
@@ -629,8 +566,7 @@ function ClusterCrudUpdateSuite () {
     try {
       doc = c.update(doc._key, { "b" : "1", "c" : false });
       fail();
-    }
-    catch (err3) {
+    } catch (err3) {
       assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err3.errorNum);
     }
 
@@ -657,23 +593,8 @@ function ClusterCrudUpdateSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
     tearDown : function () {
-      try {
-        db._drop("UnitTestsClusterCrud");
-      }
-      catch (err) {
-      }
+      db._drop("UnitTestsClusterCrud");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -681,7 +602,7 @@ function ClusterCrudUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateOneShard : function () {
-      var c = createCollection({ numberOfShards: 1 });
+      let c = createCollection({ numberOfShards: 1 });
       executeUpdate(c);
     },
 
@@ -690,7 +611,7 @@ function ClusterCrudUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateMultipleShards : function () {
-      var c = createCollection({ numberOfShards: 7 });
+      let c = createCollection({ numberOfShards: 7 });
       executeUpdate(c);
     },
 
@@ -699,7 +620,7 @@ function ClusterCrudUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateShardKeysOneShard : function () {
-      var c = createCollection({ numberOfShards: 1, shardKeys: [ "a", "b" ] });
+      let c = createCollection({ numberOfShards: 1, shardKeys: [ "a", "b" ] });
       executeUpdateShardKeys(c);
     },
 
@@ -708,7 +629,7 @@ function ClusterCrudUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateShardKeysMultipleShards : function () {
-      var c = createCollection({ numberOfShards: 5, shardKeys: [ "a", "b" ] });
+      let c = createCollection({ numberOfShards: 5, shardKeys: [ "a", "b" ] });
       executeUpdateShardKeys(c);
     }
 
@@ -726,11 +647,9 @@ function ClusterCrudDeleteSuite () {
 /// @brief helper function for delete
 ////////////////////////////////////////////////////////////////////////////////
 
-  var executeDelete = function (c) {
-    var old, doc;
-
+  let executeDelete = function (c) {
     // remove by id
-    old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
+    let old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
     assertTrue(c.remove(old._id));
 
     // remove by key
@@ -745,29 +664,27 @@ function ClusterCrudDeleteSuite () {
     try {
       c.remove(old);
       fail();
-    }
-    catch (err1) {
+    } catch (err1) {
       assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err1.errorNum);
     }
 
     // remove a non-existing revision
     old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
-    doc = c.update(old._key, { "foo" : "bar" });
+    let doc = c.update(old._key, { "foo" : "bar" });
     assertTrue(old._rev !== doc._rev);
 
     try {
       c.remove(old);
       fail();
-    }
-    catch (err2) {
+    } catch (err2) {
       assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err2.errorNum);
     }
 
     // remove non-existing
     try {
       c.document("foobarbaz");
-    }
-    catch (err3) {
+      fail();
+    } catch (err3) {
       assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err3.errorNum);
     }
   };
@@ -776,11 +693,9 @@ function ClusterCrudDeleteSuite () {
 /// @brief helper function for delete
 ////////////////////////////////////////////////////////////////////////////////
 
-  var executeDeleteShardKeys = function (c) {
-    var old, doc;
-
+  let executeDeleteShardKeys = function (c) {
     // remove by id
-    old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
+    let old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
     assertTrue(c.remove(old._id));
 
     // remove by key
@@ -795,51 +710,34 @@ function ClusterCrudDeleteSuite () {
     try {
       c.remove(old);
       fail();
-    }
-    catch (err1) {
+    } catch (err1) {
       assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err1.errorNum);
     }
 
     // remove a non-existing revision
     old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
-    doc = c.update(old._key, { "foo" : "bar" });
+    let doc = c.update(old._key, { "foo" : "bar" });
 
     try {
       c.remove(old);
       fail();
-    }
-    catch (err2) {
+    } catch (err2) {
       assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err2.errorNum);
     }
 
     // remove non-existing
     try {
       c.document("foobarbaz");
-    }
-    catch (err3) {
+      fail();
+    } catch (err3) {
       assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err3.errorNum);
     }
   };
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
     tearDown : function () {
-      try {
-        db._drop("UnitTestsClusterCrud");
-      }
-      catch (err) {
-      }
+      db._drop("UnitTestsClusterCrud");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -847,7 +745,7 @@ function ClusterCrudDeleteSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDeleteOneShard : function () {
-      var c = createCollection({ numberOfShards: 1 });
+      let c = createCollection({ numberOfShards: 1 });
       executeDelete(c);
     },
 
@@ -856,7 +754,7 @@ function ClusterCrudDeleteSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDeleteMultipleShards : function () {
-      var c = createCollection({ numberOfShards: 5 });
+      let c = createCollection({ numberOfShards: 5 });
       executeDelete(c);
     },
 
@@ -865,7 +763,7 @@ function ClusterCrudDeleteSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDeleteShardKeysOneShard : function () {
-      var c = createCollection({ numberOfShards: 1, shardKeys: [ "a", "b" ] });
+      let c = createCollection({ numberOfShards: 1, shardKeys: [ "a", "b" ] });
       executeDeleteShardKeys(c);
     },
 
@@ -874,7 +772,7 @@ function ClusterCrudDeleteSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDeleteShardKeysMultipleShards : function () {
-      var c = createCollection({ numberOfShards: 5, shardKeys: [ "a", "b" ] });
+      let c = createCollection({ numberOfShards: 5, shardKeys: [ "a", "b" ] });
       executeDeleteShardKeys(c);
     }
 
@@ -891,29 +789,25 @@ function ClusterCrudDocumentSuite () {
 /// @brief helper function for document
 ////////////////////////////////////////////////////////////////////////////////
 
-  var executeDocument = function (c) {
-    var old, doc;
-
+  let executeDocument = function (c) {
     try {
       c.document(c.name() + "/foobar");
       fail();
-    }
-    catch (err1) {
+    } catch (err1) {
       assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err1.errorNum);
     }
 
     try {
       c.document("foobar");
       fail();
-    }
-    catch (err2) {
+    } catch (err2) {
       assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err2.errorNum);
     }
 
-    old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
+    let old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
 
     // fetch by id
-    doc = c.document(old._id);
+    let doc = c.document(old._id);
     assertEqual(old._id, doc._id);
     assertEqual(old._key, doc._key);
     assertEqual(old._rev, doc._rev);
@@ -948,8 +842,7 @@ function ClusterCrudDocumentSuite () {
     try {
       c.document(old);
       fail();
-    }
-    catch (err3) {
+    } catch (err3) {
       assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err3.errorNum);
     }
 
@@ -958,31 +851,15 @@ function ClusterCrudDocumentSuite () {
     try {
       c.document(doc._key);
       fail();
-    }
-    catch (err4) {
+    } catch (err4) {
       assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err4.errorNum);
     }
   };
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
     tearDown : function () {
-      try {
-        db._drop("UnitTestsClusterCrud");
-      }
-      catch (err) {
-      }
+      db._drop("UnitTestsClusterCrud");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -990,13 +867,12 @@ function ClusterCrudDocumentSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDocumentOneShard : function () {
-      var c = createCollection({ numberOfShards: 1 });
+      let c = createCollection({ numberOfShards: 1 });
       executeDocument(c);
 
       // use a user-defined key
-      var doc, old;
-      old = c.save({ "_key" : "meow", "a" : 1, "b" : "2", "c" : false });
-      doc = c.document(old);
+      let old = c.save({ "_key" : "meow", "a" : 1, "b" : "2", "c" : false });
+      let doc = c.document(old);
       assertEqual(c.name() + "/meow", doc._id);
       assertEqual("meow", doc._key);
       assertEqual(old._rev, doc._rev);
@@ -1010,13 +886,12 @@ function ClusterCrudDocumentSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDocumentMultipleShards : function () {
-      var c = createCollection({ numberOfShards: 5 });
+      let c = createCollection({ numberOfShards: 5 });
       executeDocument(c);
 
       // use a user-defined key
-      var doc, old;
-      old = c.save({ "_key" : "meow", "a" : 1, "b" : "2", "c" : false });
-      doc = c.document(old);
+      let old = c.save({ "_key" : "meow", "a" : 1, "b" : "2", "c" : false });
+      let doc = c.document(old);
       assertEqual(c.name() + "/meow", doc._id);
       assertEqual("meow", doc._key);
       assertEqual(old._rev, doc._rev);
@@ -1030,7 +905,7 @@ function ClusterCrudDocumentSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDocumentShardKeysOneShard : function () {
-      var c = createCollection({ numberOfShards: 1, shardKeys: [ "a", "b" ] });
+      let c = createCollection({ numberOfShards: 1, shardKeys: [ "a", "b" ] });
       executeDocument(c);
     },
 
@@ -1039,7 +914,7 @@ function ClusterCrudDocumentSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDocumentShardKeysMultipleShards : function () {
-      var c = createCollection({ numberOfShards: 5, shardKeys: [ "a", "b" ] });
+      let c = createCollection({ numberOfShards: 5, shardKeys: [ "a", "b" ] });
       executeDocument(c);
     }
 
@@ -1056,13 +931,11 @@ function ClusterCrudExistsSuite () {
 /// @brief helper function for exists
 ////////////////////////////////////////////////////////////////////////////////
 
-  var executeExists = function (c) {
-    var old, doc;
-
+  let executeExists = function (c) {
     assertFalse(c.exists(c.name() + "/foobar"));
     assertFalse(c.exists("foobar"));
 
-    old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
+    let old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
 
     // fetch by id
     assertTrue(c.exists(old._id));
@@ -1070,7 +943,7 @@ function ClusterCrudExistsSuite () {
     assertTrue(c.exists(old));
 
     // fetch by doc, wrong revision
-    doc = c.update(old._key, { "a" : 1, "b" : "2", "c" : false });
+    let doc = c.update(old._key, { "a" : 1, "b" : "2", "c" : false });
     assertTrue(c.exists(old._id));
     assertTrue(c.exists(old._key));
     try {
@@ -1089,23 +962,8 @@ function ClusterCrudExistsSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
     tearDown : function () {
-      try {
-        db._drop("UnitTestsClusterCrud");
-      }
-      catch (err) {
-      }
+      db._drop("UnitTestsClusterCrud");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1113,7 +971,7 @@ function ClusterCrudExistsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExistsOneShard : function () {
-      var c = createCollection({ numberOfShards: 1 });
+      let c = createCollection({ numberOfShards: 1 });
       executeExists(c);
     },
 
@@ -1122,7 +980,7 @@ function ClusterCrudExistsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExistsMultipleShards : function () {
-      var c = createCollection({ numberOfShards: 5 });
+      let c = createCollection({ numberOfShards: 5 });
       executeExists(c);
     },
 
@@ -1131,7 +989,7 @@ function ClusterCrudExistsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExistsShardKeysOneShard : function () {
-      var c = createCollection({ numberOfShards: 1, shardKeys: [ "a", "b" ] });
+      let c = createCollection({ numberOfShards: 1, shardKeys: [ "a", "b" ] });
       executeExists(c);
     },
 
@@ -1140,17 +998,12 @@ function ClusterCrudExistsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExistsShardKeysMultipleShards : function () {
-      var c = createCollection({ numberOfShards: 5, shardKeys: [ "a", "b" ] });
+      let c = createCollection({ numberOfShards: 5, shardKeys: [ "a", "b" ] });
       executeExists(c);
     }
 
   };
 }
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ClusterCrudSaveSuite);
 jsunity.run(ClusterCrudReplaceSuite);
@@ -1160,4 +1013,3 @@ jsunity.run(ClusterCrudDocumentSuite);
 jsunity.run(ClusterCrudExistsSuite);
 
 return jsunity.done();
-

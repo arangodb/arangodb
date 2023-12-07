@@ -39,9 +39,9 @@ class VstResponse : public GeneralResponse {
  public:
   VstResponse(ResponseCode code, uint64_t mid);
 
-  bool isResponseEmpty() const override { return _payload.empty(); }
+  bool isResponseEmpty() const noexcept override { return _payload.empty(); }
 
-  virtual Endpoint::TransportType transportType() override {
+  Endpoint::TransportType transportType() override {
     return Endpoint::TransportType::VST;
   }
 
@@ -55,9 +55,15 @@ class VstResponse : public GeneralResponse {
 
   velocypack::Buffer<uint8_t>& payload() { return _payload; }
 
-  bool isCompressionAllowed() override { return false; }
-  ErrorCode deflate() override;
-  ErrorCode gzip() override;
+  size_t bodySize() const override { return _payload.size(); }
+
+  void setAllowCompression(
+      rest::ResponseCompressionType /*rct*/) noexcept override {}
+  rest::ResponseCompressionType compressionAllowed() const noexcept override {
+    return rest::ResponseCompressionType::kNoCompression;
+  }
+  ErrorCode zlibDeflate(bool onlyIfSmaller) override;
+  ErrorCode gzipCompress(bool onlyIfSmaller) override;
 
   /// write VST response message header
   void writeMessageHeader(velocypack::Buffer<uint8_t>&) const;

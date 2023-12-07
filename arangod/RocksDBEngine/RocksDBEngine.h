@@ -31,6 +31,7 @@
 #include <mutex>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <unordered_map>
 #include <vector>
 
@@ -62,10 +63,16 @@ class TransactionDB;
 
 namespace arangodb {
 
-namespace replication2::storage::rocksdb {
+namespace replication2::storage {
+namespace rocksdb {
 struct AsyncLogWriteBatcherMetrics;
 struct IAsyncLogWriteBatcher;
-}  // namespace replication2::storage::rocksdb
+}  // namespace rocksdb
+
+namespace wal {
+struct WalManager;
+}
+}  // namespace replication2::storage
 
 class PhysicalCollection;
 class RocksDBBackgroundErrorListener;
@@ -176,14 +183,17 @@ class RocksDBEngine final : public StorageEngine {
       transaction::ManagerFeature&) override;
   std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId,
-      transaction::Options const& options) override;
+      transaction::Options const& options,
+      transaction::OperationOrigin operationOrigin) override;
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
       LogicalCollection& collection, velocypack::Slice info) override;
 
+  void getCapabilities(velocypack::Builder& builder) const override;
   void getStatistics(velocypack::Builder& builder) const override;
-  void getStatistics(std::string& result) const override;
+  void toPrometheus(std::string& result, std::string_view globals,
+                    bool ensureWhitespace) const override;
 
   // inventory functionality
   // -----------------------
@@ -249,7 +259,7 @@ class RocksDBEngine final : public StorageEngine {
   /// flushing column families becomes a separate API.
   Result flushWal(bool waitForSync = false,
                   bool flushColumnFamilies = false) override;
-  void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
+  void waitForEstimatorSync() override;
 
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(CreateDatabaseInfo&& info,
                                                       bool isUpgrade) override;
@@ -318,8 +328,10 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
 
+#ifdef USE_V8
   /// @brief Add engine-specific V8 functions
   void addV8Functions() override;
+#endif
 
   /// @brief Add engine-specific REST handlers
   void addRestHandlers(rest::RestHandlerFactory& handlerFactory) override;
@@ -335,18 +347,20 @@ class RocksDBEngine final : public StorageEngine {
                                      velocypack::Slice slice,
                                      RocksDBLogValue&& logValue);
 
-  void addCollectionMapping(uint64_t, TRI_voc_tick_t, DataSourceId);
-  std::vector<std::pair<TRI_voc_tick_t, DataSourceId>> collectionMappings()
-      const;
-  void addIndexMapping(uint64_t objectId, TRI_voc_tick_t, DataSourceId,
-                       IndexId);
-  void removeIndexMapping(uint64_t);
+  void addCollectionMapping(uint64_t objectId, TRI_voc_tick_t dbId,
+                            DataSourceId cid);
+  std::vector<std::tuple<uint64_t, TRI_voc_tick_t, DataSourceId>>
+  collectionMappings() const;
+  void addIndexMapping(uint64_t objectId, TRI_voc_tick_t dbId, DataSourceId cid,
+                       IndexId iid);
+  void removeIndexMapping(uint64_t objectId);
 
   // Identifies a collection
-  typedef std::pair<TRI_voc_tick_t, DataSourceId> CollectionPair;
-  typedef std::tuple<TRI_voc_tick_t, DataSourceId, IndexId> IndexTriple;
-  CollectionPair mapObjectToCollection(uint64_t) const;
-  IndexTriple mapObjectToIndex(uint64_t) const;
+  using CollectionPair = std::pair<TRI_voc_tick_t, DataSourceId>;
+  using IndexTriple = std::tuple<TRI_voc_tick_t, DataSourceId, IndexId>;
+  CollectionPair mapObjectToCollection(uint64_t objectId) const;
+  IndexTriple mapObjectToIndex(uint64_t objectId) const;
+  void removeCollectionMapping(uint64_t objectId);
 
   /// @brief determine how many archived WAL files are available. this is called
   /// during the first few minutes after the instance start, when we don't want
@@ -498,11 +512,12 @@ class RocksDBEngine final : public StorageEngine {
 
   std::shared_ptr<StorageSnapshot> currentSnapshot() override;
 
-  void addCacheMetrics(uint64_t initial, uint64_t effective) noexcept;
+  void addCacheMetrics(uint64_t initial, uint64_t effective,
+                       uint64_t totalInserts, uint64_t totalCompressedInserts,
+                       uint64_t totalEmptyInserts) noexcept;
 
-  size_t minValueSizeForEdgeCompression() const noexcept;
-
-  int accelerationFactorForEdgeCompression() const noexcept;
+  std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t>
+  getCacheMetrics();
 
  private:
   void loadReplicatedStates(TRI_vocbase_t& vocbase);
@@ -548,6 +563,12 @@ class RocksDBEngine final : public StorageEngine {
   bool checkExistingDB(
       std::vector<rocksdb::ColumnFamilyDescriptor> const& cfFamilies);
 
+  auto makeLogStorageMethods(replication2::LogId logId, uint64_t objectId,
+                             std::uint64_t vocbaseId,
+                             ::rocksdb::ColumnFamilyHandle* const logCf,
+                             ::rocksdb::ColumnFamilyHandle* const metaCf)
+      -> std::unique_ptr<replication2::storage::IStorageEngineMethods>;
+
   RocksDBOptionsProvider const& _optionsProvider;
 
   /// single rocksdb database used in this storage engine
@@ -579,13 +600,11 @@ class RocksDBEngine final : public StorageEngine {
 
   uint64_t _maxParallelCompactions;
 
-  size_t _minValueSizeForEdgeCompression;
-  uint32_t _accelerationFactorForEdgeCompression;
-
   // hook-ins for recovery process
   static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> _recoveryHelpers;
 
   mutable basics::ReadWriteLock _mapLock;
+  // object id (of collection) => { database id, data source id }
   std::unordered_map<uint64_t, CollectionPair> _collectionMap;
   std::unordered_map<uint64_t, IndexTriple> _indexMap;
 
@@ -735,6 +754,8 @@ class RocksDBEngine final : public StorageEngine {
   // an auto-flush
   uint64_t _autoFlushMinWalFiles;
 
+  bool _forceLittleEndianKeys;  // force new database to use old format
+
   metrics::Gauge<uint64_t>& _metricsIndexEstimatorMemoryUsage;
   metrics::Gauge<uint64_t>& _metricsWalReleasedTickFlush;
   metrics::Gauge<uint64_t>& _metricsWalSequenceLowerBound;
@@ -752,10 +773,17 @@ class RocksDBEngine final : public StorageEngine {
   metrics::Counter& _metricsTreeResurrections;
 
   // total size of uncompressed values for the edge cache
-  metrics::Gauge<uint64_t>& _metricsEdgeCacheEntriesSizeInitial;
+  metrics::Counter& _metricsEdgeCacheEntriesSizeInitial;
   // total size of values stored in the edge cache (can be smaller than the
   // initial size because of compression)
-  metrics::Gauge<uint64_t>& _metricsEdgeCacheEntriesSizeEffective;
+  metrics::Counter& _metricsEdgeCacheEntriesSizeEffective;
+
+  // total number of inserts into edge cache
+  metrics::Counter& _metricsEdgeCacheInserts;
+  // total number of inserts into edge cache that were compressed
+  metrics::Counter& _metricsEdgeCacheCompressedInserts;
+  // total number of inserts into edge cache that stored an empty array
+  metrics::Counter& _metricsEdgeCacheEmptyInserts;
 
   // @brief persistor for replicated logs
   std::shared_ptr<replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics>
@@ -769,6 +797,8 @@ class RocksDBEngine final : public StorageEngine {
   std::unique_ptr<rocksdb::Env> _checksumEnv;
 
   std::unique_ptr<RocksDBDumpManager> _dumpManager;
+
+  std::shared_ptr<replication2::storage::wal::WalManager> _walManager;
 };
 
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";

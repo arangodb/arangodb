@@ -31,30 +31,32 @@
 #include "Basics/StringUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/application-exit.h"
+#include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
-#include "Rest/GeneralRequest.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
+#include "Rest/GeneralRequest.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/HealthData.h"
 #include "StorageEngine/StorageEngine.h"
 
 #include <memory>
-#include <set>
 #include <thread>
 
-#include <velocypack/Iterator.h>
+#include <absl/strings/str_cat.h>
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
+
+#include <velocypack/Iterator.h>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -67,7 +69,7 @@ static void addEmptyVPackObject(std::string const& name,
 
 static std::string const writeURL{"/_api/agency/write"};
 
-const std::vector<std::string> AgencyTransaction::TypeUrl({"/read", "/write",
+std::vector<std::string> const AgencyTransaction::TypeUrl({"/read", "/write",
                                                            "/transact",
                                                            "/transient"});
 
@@ -346,7 +348,7 @@ std::string AgencyWriteTransaction::randomClientId() {
 
   auto ss = ServerState::instance();
   if (ss != nullptr && !ss->getId().empty()) {
-    return ss->getId() + ":" + uuid;
+    return absl::StrCat(ss->getId(), ":", uuid);
   }
   return uuid;
 }
@@ -374,7 +376,7 @@ void AgencyTransientTransaction::toVelocyPack(VPackBuilder& builder) const {
 bool AgencyTransientTransaction::validate(
     AgencyCommResult const& result) const {
   return (result.slice().isArray() && result.slice().length() > 0 &&
-          result.slice()[0].isBool() && result.slice()[0].getBool() == true);
+          result.slice()[0].isTrue());
 }
 
 // -----------------------------------------------------------------------------
@@ -489,45 +491,43 @@ std::string AgencyCommResult::errorDetails() const {
     return _message;
   }
 
-  return _message + " (" + errorMessage + ")";
+  return absl::StrCat(_message, " (", errorMessage, ")");
 }
 
 std::string AgencyCommResult::body() const {
   if (_vpack != nullptr) {
     return slice().toJson();
-  } else {
-    return "";
   }
+  return "";
 }
 
 Result AgencyCommResult::asResult() const {
   if (successful()) {
     return Result{};
-  } else {
-    auto const err = parseBodyError();
-    auto const errorCode = std::invoke([&]() -> ErrorCode {
-      if (err.first) {
-        return *err.first;
-      } else if (_statusCode != rest::ResponseCode{}) {
-        return ErrorCode{static_cast<int>(_statusCode)};
-      } else {
-        return TRI_ERROR_INTERNAL;
-      }
-    });
-    auto const errorMessage = std::invoke([&]() -> std::string_view {
-      if (err.second) {
-        return *err.second;
-      } else if (!_message.empty()) {
-        return _message;
-      } else if (!_connected) {
-        return "unable to connect to agency";
-      } else {
-        return TRI_errno_string(errorCode);
-      }
-    });
-
-    return Result(errorCode, errorMessage);
   }
+  auto err = parseBodyError();
+  auto errorCode = std::invoke([&]() -> ErrorCode {
+    if (err.first) {
+      return *err.first;
+    } else if (_statusCode != rest::ResponseCode{}) {
+      return ErrorCode{static_cast<int>(_statusCode)};
+    } else {
+      return TRI_ERROR_INTERNAL;
+    }
+  });
+  auto errorMessage = std::invoke([&]() -> std::string_view {
+    if (err.second) {
+      return *err.second;
+    } else if (!_message.empty()) {
+      return _message;
+    } else if (!_connected) {
+      return "unable to connect to agency";
+    } else {
+      return TRI_errno_string(errorCode);
+    }
+  });
+
+  return Result(errorCode, std::move(errorMessage));
 }
 
 void AgencyCommResult::clear() {
@@ -617,13 +617,13 @@ void AgencyCommHelper::initialize(std::string const& prefix) {
 std::string const& AgencyCommHelper::path() noexcept { return PREFIX; }
 
 std::string AgencyCommHelper::path(std::string const& p1) {
-  return PREFIX + "/" + basics::StringUtils::trim(p1, "/");
+  return absl::StrCat(PREFIX, "/", basics::StringUtils::trim(p1, "/"));
 }
 
 std::string AgencyCommHelper::path(std::string const& p1,
                                    std::string const& p2) {
-  return PREFIX + "/" + basics::StringUtils::trim(p1, "/") + "/" +
-         basics::StringUtils::trim(p2, "/");
+  return absl::StrCat(PREFIX, "/", basics::StringUtils::trim(p1, "/"), "/",
+                      basics::StringUtils::trim(p2, "/"));
 }
 
 std::vector<std::string> AgencyCommHelper::slicePath(std::string const& p1) {
@@ -1308,15 +1308,23 @@ bool AgencyComm::tryInitializeStructure() {
       builder.add(VPackValue("Databases"));
       {
         VPackObjectBuilder d(&builder);
-        builder.add(VPackValue("_system"));
+        builder.add(VPackValue(StaticStrings::SystemDatabase));
         {
           VPackObjectBuilder d2(&builder);
-          builder.add("name", VPackValue("_system"));
-          builder.add("id", VPackValue("1"));
-          builder.add("replicationVersion",
+          builder.add(StaticStrings::DatabaseName,
+                      VPackValue(StaticStrings::SystemDatabase));
+          builder.add(StaticStrings::DatabaseId, VPackValue("1"));
+          builder.add(StaticStrings::ReplicationVersion,
                       arangodb::replication::versionToString(
                           _server.getFeature<DatabaseFeature>()
                               .defaultReplicationVersion()));
+          // We need to also take care of the `cluster.force-one-shard` option
+          // here. If set, the entire cluster is forced to be a OneShard
+          // deployment.
+          if (_server.getFeature<ClusterFeature>().forceOneShard()) {
+            builder.add(StaticStrings::Sharding,
+                        VPackValue(StaticStrings::ShardingSingle));
+          }
         }
       }
       builder.add("Lock", VPackValue("UNLOCKED"));
@@ -1462,7 +1470,7 @@ bool AgencyComm::shouldInitializeStructure() {
       }
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(250));
+    ADB_UNREACHABLE;
   }
 
   return false;

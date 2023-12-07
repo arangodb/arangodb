@@ -36,6 +36,8 @@
 #include "Containers/HashSet.h"
 #include "Containers/SmallVector.h"
 
+#include <string_view>
+
 namespace arangodb {
 namespace velocypack {
 class Slice;
@@ -99,7 +101,7 @@ class ExecutionPlan {
                     unsigned flags) const;
 
   /// @brief check if the plan is empty
-  inline bool empty() const { return (_root == nullptr); }
+  bool empty() const { return (_root == nullptr); }
 
   /// @brief note that an optimizer rule was applied
   void addAppliedRule(int level);
@@ -128,16 +130,16 @@ class ExecutionPlan {
       const;
 
   /// @brief check if the node is the root node
-  inline bool isRoot(ExecutionNode const* node) const { return _root == node; }
+  bool isRoot(ExecutionNode const* node) const { return _root == node; }
 
   /// @brief get the root node
-  inline ExecutionNode* root() const {
+  ExecutionNode* root() const {
     TRI_ASSERT(_root != nullptr);
     return _root;
   }
 
   /// @brief set the root node
-  inline void root(ExecutionNode* node, bool force = false) {
+  void root(ExecutionNode* node, bool force = false) {
     if (!force) {
       TRI_ASSERT(_root == nullptr);
     }
@@ -145,7 +147,7 @@ class ExecutionPlan {
   }
 
   /// @brief invalidate all cost estimations in the plan
-  inline void invalidateCost() {
+  void invalidateCost() {
     TRI_ASSERT(_root != nullptr);
     _root->invalidateCost();
   }
@@ -161,7 +163,7 @@ class ExecutionPlan {
 
   /// @brief this can be called by the optimizer to tell that the
   /// plan is temporarily in an invalid state
-  inline void setValidity(bool value) { _planValid = value; }
+  void setValidity(bool value) { _planValid = value; }
 
 /// @brief show an overview over the plan
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -177,12 +179,6 @@ class ExecutionPlan {
   bool shouldExcludeFromScatterGather(ExecutionNode const* node) const {
     return (_excludeFromScatterGather.find(node) !=
             _excludeFromScatterGather.end());
-  }
-
-  void enableAsyncPrefetching() noexcept { _isAsyncPrefetchEnabled = true; }
-
-  bool isAsyncPrefetchEnabled() const noexcept {
-    return _isAsyncPrefetchEnabled;
   }
 
   /// @brief get the node where variable with id <id> is introduced . . .
@@ -278,7 +274,7 @@ class ExecutionPlan {
   void insertBefore(ExecutionNode* current, ExecutionNode* newNode);
 
   /// @brief get ast
-  inline Ast* getAst() const { return _ast; }
+  Ast* getAst() const { return _ast; }
 
   /// @brief resolves a variable alias, e.g. fn(tmp) -> "a.b" for the following:
   ///  LET tmp = a.b
@@ -303,16 +299,15 @@ class ExecutionPlan {
   bool fullCount() const noexcept;
 
   /// @brief parses modification options from an AST node
-  static ModificationOptions parseModificationOptions(QueryContext& query,
-                                                      char const* operationNode,
-                                                      AstNode const*,
-                                                      bool addWarnings);
+  static ModificationOptions parseModificationOptions(
+      QueryContext& query, std::string_view operationNode, AstNode const* node,
+      bool addWarnings);
 
   /// @brief registers a warning for an invalid OPTIONS attribute
   static void invalidOptionAttribute(QueryContext& query,
-                                     char const* errorReason,
-                                     char const* operationName,
-                                     char const* name, size_t length);
+                                     std::string_view errorReason,
+                                     std::string_view operationName,
+                                     std::string_view name);
 
  private:
   template<WalkerUniqueness U>
@@ -336,7 +331,7 @@ class ExecutionPlan {
 
   /// @brief create modification options by parsing an AST node
   /// and adding plan specific options.
-  ModificationOptions createModificationOptions(char const* operationName,
+  ModificationOptions createModificationOptions(std::string_view operationName,
                                                 AstNode const*);
 
   /// @brief create COLLECT options from an AST node
@@ -430,10 +425,6 @@ class ExecutionPlan {
 
   /// @brief flag to indicate whether the variable usage is computed
   bool _varUsageComputed;
-
-  /// @brief flag to indicate whether the postprocessing step to enable async
-  /// prefetching on the node level should be executed.
-  bool _isAsyncPrefetchEnabled{false};
 
   // Flag there are collection nodes with forceIndexHint:true
   bool _hasForcedIndexHints{false};

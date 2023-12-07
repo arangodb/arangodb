@@ -26,7 +26,11 @@
 #include "Aql/Query.h"
 #include "Basics/StaticStrings.h"
 #include "Transaction/Hints.h"
+#include "Transaction/OperationOrigin.h"
+#include "Transaction/StandaloneContext.h"
+#ifdef USE_V8
 #include "Transaction/V8Context.h"
+#endif
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/AccessMode.h"
@@ -78,8 +82,10 @@ auto CollectionStatusWriter::createResult(velocypack::Slice data)
   OperationData opData(_executionNumber.value, data);
 
   auto accessModeType = AccessMode::Type::WRITE;
-  SingleCollectionTransaction trx(ctx(), StaticStrings::PregelCollection,
-                                  accessModeType);
+  auto operationOrigin =
+      transaction::OperationOriginInternal{"storing Pregel run status"};
+  SingleCollectionTransaction trx(
+      ctx(operationOrigin), StaticStrings::PregelCollection, accessModeType);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   OperationOptions options(ExecContext::current());
   options.waitForSync = false;
@@ -194,8 +200,10 @@ auto CollectionStatusWriter::updateResult(velocypack::Slice data)
   OperationData opData(_executionNumber.value, data);
 
   auto accessModeType = AccessMode::Type::WRITE;
-  SingleCollectionTransaction trx(ctx(), StaticStrings::PregelCollection,
-                                  accessModeType);
+  auto operationOrigin =
+      transaction::OperationOriginInternal{"updating Pregel run status"};
+  SingleCollectionTransaction trx(
+      ctx(operationOrigin), StaticStrings::PregelCollection, accessModeType);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   OperationOptions options(ExecContext::current());
 
@@ -216,8 +224,10 @@ auto CollectionStatusWriter::deleteResult() -> OperationResult {
   OperationData opData(_executionNumber.value);
 
   auto accessModeType = AccessMode::Type::WRITE;
-  SingleCollectionTransaction trx(ctx(), StaticStrings::PregelCollection,
-                                  accessModeType);
+  auto operationOrigin =
+      transaction::OperationOriginInternal{"removing Pregel run status"};
+  SingleCollectionTransaction trx(
+      ctx(operationOrigin), StaticStrings::PregelCollection, accessModeType);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   OperationOptions options(ExecContext::current());
 
@@ -233,8 +243,10 @@ auto CollectionStatusWriter::deleteResult() -> OperationResult {
 
 auto CollectionStatusWriter::deleteAllResults() -> OperationResult {
   auto accessModeType = AccessMode::Type::WRITE;
-  SingleCollectionTransaction trx(ctx(), StaticStrings::PregelCollection,
-                                  accessModeType);
+  auto operationOrigin =
+      transaction::OperationOriginInternal{"removing Pregel run statuses"};
+  SingleCollectionTransaction trx(
+      ctx(operationOrigin), StaticStrings::PregelCollection, accessModeType);
   trx.addHint(transaction::Hints::Hint::NONE);
   OperationOptions options(ExecContext::current());
 
@@ -256,8 +268,11 @@ auto CollectionStatusWriter::executeQuery(
     bindParams = bindParameters.value();
   }
 
+  auto operationOrigin =
+      transaction::OperationOriginInternal{"retrieving Pregel run statuses"};
   auto query = arangodb::aql::Query::create(
-      ctx(), arangodb::aql::QueryString(std::move(queryString)), bindParams);
+      ctx(operationOrigin), arangodb::aql::QueryString(std::move(queryString)),
+      bindParams);
   query->queryOptions().skipAudit = true;
   aql::QueryResult queryResult = query->executeSync();
   if (queryResult.result.fail()) {
@@ -283,10 +298,15 @@ auto CollectionStatusWriter::handleOperationResult(
   return opRes;
 };
 
-auto CollectionStatusWriter::ctx()
+auto CollectionStatusWriter::ctx(transaction::OperationOrigin operationOrigin)
     -> std::shared_ptr<transaction::Context> const {
-  return transaction::V8Context::CreateWhenRequired(_vocbaseGuard.database(),
-                                                    false);
+#ifdef USE_V8
+  return transaction::V8Context::createWhenRequired(_vocbaseGuard.database(),
+                                                    operationOrigin, false);
+#else
+  return transaction::StandaloneContext::create(_vocbaseGuard.database(),
+                                                operationOrigin);
+#endif
 }
 
 }  // namespace arangodb::pregel::statuswriter

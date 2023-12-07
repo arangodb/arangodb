@@ -46,12 +46,16 @@ auto SnapshotTransaction::options() -> transaction::Options {
 
 void SnapshotTransaction::addCollection(LogicalCollection const& collection) {
   transaction::Methods::addCollectionAtRuntime(
-      collection.id(), collection.name(), AccessMode::Type::READ);
+      collection.id(), collection.name(), AccessMode::Type::READ)
+      .get();
 }
 
 DatabaseSnapshot::DatabaseSnapshot(TRI_vocbase_t& vocbase)
     : _vocbase(vocbase),
-      _ctx(transaction::StandaloneContext::Create(vocbase)),
+      _ctx(transaction::StandaloneContext::create(
+          vocbase,
+          transaction::OperationOriginInternal{
+              "snapshotting collection for replication"})),
       _trx(std::make_unique<SnapshotTransaction>(_ctx)) {
   // We call begin here so that rocksMethods are initialized
   if (auto res = _trx->begin(); res.fail()) {
@@ -61,20 +65,17 @@ DatabaseSnapshot::DatabaseSnapshot(TRI_vocbase_t& vocbase)
   }
 }
 
-auto DatabaseSnapshot::createCollectionReader(std::string_view collectionName)
+auto DatabaseSnapshot::createCollectionReader(
+    std::shared_ptr<LogicalCollection> shard)
     -> std::unique_ptr<ICollectionReader> {
-  auto logicalCollection = _vocbase.lookupCollection(collectionName);
-  if (logicalCollection == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                   collectionName);
-  }
-  return std::make_unique<CollectionReader>(std::move(logicalCollection),
-                                            *_trx);
+  return std::make_unique<CollectionReader>(std::move(shard), *_trx);
 }
 
 auto DatabaseSnapshot::resetTransaction() -> Result {
   _trx.reset();
-  _ctx = transaction::StandaloneContext::Create(_vocbase);
+  _ctx = transaction::StandaloneContext::create(
+      _vocbase, transaction::OperationOriginInternal{
+                    "snapshotting collection for replication"});
   _trx = std::make_unique<SnapshotTransaction>(_ctx);
   return _trx->begin();
 }

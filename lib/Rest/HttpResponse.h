@@ -40,10 +40,9 @@ class HttpResponse : public GeneralResponse {
   friend class RestBatchHandler;  // TODO must be removed
 
  public:
-  static bool HIDE_PRODUCT_HEADER;
-
   HttpResponse(ResponseCode code, uint64_t mid,
-               std::unique_ptr<basics::StringBuffer> = nullptr);
+               std::unique_ptr<basics::StringBuffer> buffer,
+               rest::ResponseCompressionType rct);
   ~HttpResponse() = default;
 
   void setCookie(std::string const& name, std::string const& value,
@@ -65,7 +64,7 @@ class HttpResponse : public GeneralResponse {
     return *_body;
   }
 
-  size_t bodySize() const;
+  size_t bodySize() const override;
 
   void sealBody() { _bodySize = _body->length(); }
 
@@ -86,7 +85,15 @@ class HttpResponse : public GeneralResponse {
                   bool resolve_externals = true) override final;
   void addRawPayload(std::string_view payload) override final;
 
-  bool isResponseEmpty() const override final { return _body->empty(); }
+  void setAllowCompression(
+      rest::ResponseCompressionType rct) noexcept override final;
+
+  rest::ResponseCompressionType compressionAllowed()
+      const noexcept override final;
+
+  bool isResponseEmpty() const noexcept override final {
+    return _body->empty();
+  }
 
   ErrorCode reservePayload(std::size_t size) override final {
     return _body->reserve(size);
@@ -103,11 +110,11 @@ class HttpResponse : public GeneralResponse {
 
  private:
   // the body must already be set. deflate is then run on the existing body
-  ErrorCode deflate() override { return _body->deflate(); }
+  ErrorCode zlibDeflate(bool onlyIfSmaller) override;
 
   // the body must already be set. gzip compression is then run on the existing
   // body
-  ErrorCode gzip() override { return _body->gzip(); }
+  ErrorCode gzipCompress(bool onlyIfSmaller) override;
 
   void addPayloadInternal(uint8_t const* data, size_t length,
                           velocypack::Options const* options,
@@ -116,5 +123,6 @@ class HttpResponse : public GeneralResponse {
   std::vector<std::string> _cookies;
   std::unique_ptr<basics::StringBuffer> _body;
   size_t _bodySize;
+  rest::ResponseCompressionType _allowCompression;
 };
 }  // namespace arangodb

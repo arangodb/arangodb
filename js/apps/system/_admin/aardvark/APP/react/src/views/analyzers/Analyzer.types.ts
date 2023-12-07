@@ -14,7 +14,8 @@ export type AnalyzerTypes =
   | "pipeline"
   | "geojson"
   | "geopoint"
-  | "geo_s2";
+  | "geo_s2"
+  | "minhash";
 
 type Feature = "frequency" | "norm" | "position";
 type Features = Feature[];
@@ -197,6 +198,26 @@ export type GeoPointState = GeoOptionsProperty & {
   };
 };
 
+export type MinHashState = {
+  type: "minhash";
+  properties?: {
+    analyzer:
+      | IdentityState
+      | DelimiterState
+      | StemState
+      | NormState
+      | NGramState
+      | TextState
+      | AqlState
+      | StopwordsState
+      | CollationState
+      | SegmentationState
+      | NearestNeighborsState
+      | ClassificationState;
+    numHashes?: number;
+  };
+};
+
 export type AnalyzerTypeState =
   | IdentityState
   | DelimiterState
@@ -213,6 +234,7 @@ export type AnalyzerTypeState =
   | PipelineStates
   | GeoJsonState
   | GeoPointState
-  | GeoS2State;
+  | GeoS2State
+  | MinHashState;
 
 export type AnalyzerState = BaseAnalyzerState & AnalyzerTypeState;

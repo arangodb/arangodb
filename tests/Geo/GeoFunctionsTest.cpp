@@ -938,6 +938,11 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
+    fakeit::When(Method(expressionContextMock, registerWarning))
+        .Do([&](ErrorCode code, std::string_view) -> void {
+          ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+        });
+
     containers::SmallVector<AqlValue, 7> params{
         AqlValue{lhs->slice()},
         AqlValue{rhs->slice()},
@@ -961,6 +966,11 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
+    fakeit::When(Method(expressionContextMock, registerWarning))
+        .Do([&](ErrorCode code, std::string_view) -> void {
+          ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+        });
+
     containers::SmallVector<AqlValue, 7> params{
         AqlValue{rhs->slice()},
         AqlValue{lhs->slice()},
@@ -984,6 +994,11 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
+    fakeit::When(Method(expressionContextMock, registerWarning))
+        .Do([&](ErrorCode code, std::string_view) -> void {
+          ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+        });
+
     containers::SmallVector<AqlValue, 7> params{
         AqlValue{lhs->slice()},
         AqlValue{rhs->slice()},
@@ -1007,6 +1022,11 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
+    fakeit::When(Method(expressionContextMock, registerWarning))
+        .Do([&](ErrorCode code, std::string_view) -> void {
+          ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+        });
+
     containers::SmallVector<AqlValue, 7> params{
         AqlValue{lhs->slice()},
         AqlValue{rhs->slice()},
@@ -1072,6 +1092,11 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
+    fakeit::When(Method(expressionContextMock, registerWarning))
+        .Do([&](ErrorCode code, std::string_view) -> void {
+          ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+        });
+
     containers::SmallVector<AqlValue, 7> params{
         AqlValue{lhs->slice()},
         AqlValue{rhs->slice()},

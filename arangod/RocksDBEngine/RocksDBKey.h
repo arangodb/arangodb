@@ -31,6 +31,7 @@
 #include "VocBase/voc-types.h"
 #include "Zkd/ZkdHelper.h"
 
+#include <iosfwd>
 #include <string>
 #include <string_view>
 
@@ -64,7 +65,7 @@ class RocksDBKey {
   RocksDBKey& operator=(RocksDBKey&& other) = delete;
 
   /// @brief verify that a key actually contains the given local document id
-  bool containsLocalDocumentId(LocalDocumentId const& id) const;
+  bool containsLocalDocumentId(LocalDocumentId id) const;
 
   /// @brief construct a RocksDB key from another, already filled buffer
   void constructFromBuffer(std::string_view buffer);

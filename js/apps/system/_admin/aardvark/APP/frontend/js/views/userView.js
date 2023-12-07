@@ -1,6 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global CryptoJS, frontendConfig, _, arangoHelper, Backbone, window, $ */
+/* global frontendConfig */
 
 (function () {
   'use strict';
@@ -354,7 +352,7 @@
         $('#subNavigationBar .breadcrumb').html(
           'User: ' + _.escape(this.username)
         );
-        arangoHelper.buildUserSubNav(self.currentUser.get('user'), 'General');
+        arangoHelper.buildUserSubNav(encodeURIComponent(self.currentUser.get('user')), 'General');
       } else {
         window.setTimeout(function () {
           self.breadcrumb();

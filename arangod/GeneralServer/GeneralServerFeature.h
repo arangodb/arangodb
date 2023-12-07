@@ -58,28 +58,29 @@ class GeneralServerFeature final : public ArangodFeature {
   void unprepare() override final;
 
   double keepAliveTimeout() const noexcept;
+  bool handleContentEncodingForUnauthenticatedRequests() const noexcept;
   bool proxyCheck() const noexcept;
   bool returnQueueTimeHeader() const noexcept;
   std::vector<std::string> trustedProxies() const;
-  bool allowMethodOverride() const noexcept;
   std::vector<std::string> const& accessControlAllowOrigins() const;
   Result reloadTLS();
   bool permanentRootRedirect() const noexcept;
   std::string redirectRootTo() const;
   std::string const& supportInfoApiPolicy() const noexcept;
+  uint64_t compressResponseThreshold() const noexcept;
 
   std::shared_ptr<rest::RestHandlerFactory> handlerFactory() const;
   rest::AsyncJobManager& jobManager();
 
-  void countHttp1Request(uint64_t bodySize) {
+  void countHttp1Request(uint64_t bodySize) noexcept {
     _requestBodySizeHttp1.count(bodySize);
   }
 
-  void countHttp2Request(uint64_t bodySize) {
+  void countHttp2Request(uint64_t bodySize) noexcept {
     _requestBodySizeHttp2.count(bodySize);
   }
 
-  void countVstRequest(uint64_t bodySize) {
+  void countVstRequest(uint64_t bodySize) noexcept {
     _requestBodySizeVst.count(bodySize);
   }
 
@@ -94,7 +95,7 @@ class GeneralServerFeature final : public ArangodFeature {
     return _telemetricsMaxRequestsPerInterval;
   }
 
-  metrics::Gauge<std::uint64_t>& _requestBodySize;
+  metrics::Gauge<std::uint64_t>& _currentRequestsSize;
 
  private:
   // build HTTP server(s)
@@ -112,11 +113,12 @@ class GeneralServerFeature final : public ArangodFeature {
   bool _startedListening;
 #endif
   bool _allowEarlyConnections;
-  bool _allowMethodOverride;
+  bool _handleContentEncodingForUnauthenticatedRequests;
   bool _enableTelemetrics;
   bool _proxyCheck;
   bool _returnQueueTimeHeader;
   bool _permanentRootRedirect;
+  uint64_t _compressResponseThreshold;
   std::vector<std::string> _trustedProxies;
   std::vector<std::string> _accessControlAllowOrigins;
   std::string _redirectRootTo;

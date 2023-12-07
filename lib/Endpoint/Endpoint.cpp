@@ -95,8 +95,16 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
 
   std::string copy = specification;
   StringUtils::trimInPlace(copy);
+  if (copy.starts_with("https://")) {
+    // turn https:// into ssl:// for convenience
+    copy = "ssl://" + copy.substr(8);
+  }
+  if (copy.starts_with("http://")) {
+    // turn http:// into tcp:// for convenience
+    copy = "tcp://" + copy.substr(7);
+  }
 
-  if (specification.back() == '/') {
+  if (copy.ends_with('/')) {
     // address ends with a slash => remove
     copy.pop_back();
   }

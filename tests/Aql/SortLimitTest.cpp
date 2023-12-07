@@ -36,6 +36,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
+#include "Aql/SharedQueryState.h"
 #include "Basics/VelocyPackHelper.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Logger/LogTopic.h"
@@ -49,6 +50,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#include "Transaction/OperationOrigin.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -107,8 +109,8 @@ class SortLimitTest
   std::string sorterType(TRI_vocbase_t& vocbase, std::string const& queryString,
                          std::string rules = "") {
     auto options = buildOptions(rules);
-    auto ctx =
-        std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+        vocbase, arangodb::transaction::OperationOriginTestCase{});
     auto query = arangodb::aql::Query::create(
         ctx, arangodb::aql::QueryString(queryString), nullptr,
         arangodb::aql::QueryOptions(options->slice()));
@@ -136,8 +138,8 @@ class SortLimitTest
                              std::vector<size_t> const& expected,
                              size_t fullCount, std::string rules = "") {
     auto options = buildOptions(rules);
-    auto ctx =
-        std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+        vocbase, arangodb::transaction::OperationOriginTestCase{});
     auto query = arangodb::aql::Query::create(
         ctx, arangodb::aql::QueryString(queryString), nullptr,
         arangodb::aql::QueryOptions(options->slice()));
@@ -169,8 +171,9 @@ class SortLimitTest
     }
     auto actualFullCount =
         arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
-            result.extra->slice(),
-            std::vector<std::string>{"stats", "fullCount"}, 0);
+            result.extra->slice().get(
+                std::vector<std::string_view>{"stats", "fullCount"}),
+            0);
     if (doFullCount()) {
       EXPECT_EQ(actualFullCount, fullCount);
     } else {
@@ -197,8 +200,9 @@ class SortLimitTest
     arangodb::OperationOptions options;
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(*vocbase), *collection,
-        arangodb::AccessMode::Type::WRITE);
+        arangodb::transaction::StandaloneContext::create(
+            *vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        *collection, arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {

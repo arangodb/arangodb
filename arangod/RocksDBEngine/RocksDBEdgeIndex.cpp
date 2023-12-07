@@ -54,6 +54,7 @@
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -68,6 +69,7 @@
 
 #include <array>
 #include <cmath>
+#include <tuple>
 
 #include <lz4.h>
 
@@ -99,7 +101,7 @@ size_t resizeCompressionBuffer(std::string& scratch, size_t value) {
   return 0;
 }
 
-std::pair<char const*, size_t> tryCompress(
+std::tuple<char const*, size_t, bool> tryCompress(
     velocypack::Slice slice, size_t size, size_t minValueSizeForCompression,
     int accelerationFactor, std::string& scratch,
     std::function<void(size_t)> const& memoryUsageCallback) {
@@ -107,14 +109,14 @@ std::pair<char const*, size_t> tryCompress(
 
   if (size < minValueSizeForCompression || size > maxValueSizeForCompression) {
     // value too big or too small. return original value
-    return {data, size};
+    return {data, size, /*didCompress*/ false};
   }
 
   // determine maximum size for output buffer
   int maxLength = LZ4_compressBound(static_cast<int>(size));
   if (maxLength <= 0) {
     // error. return original value
-    return {data, size};
+    return {data, size, /*didCompress*/ false};
   }
 
   // resize output buffer if necessary
@@ -137,6 +139,8 @@ std::pair<char const*, size_t> tryCompress(
   // copy length of uncompressed data into bytes 1-4.
   memcpy(scratch.data() + 1, &uncompressedSize, sizeof(uncompressedSize));
 
+  bool didCompress = false;
+
   // compress data into output buffer, starting at byte 5.
   int compressedSize = LZ4_compress_fast(
       data, scratch.data() + compressedHeaderLength, static_cast<int>(size),
@@ -149,9 +153,10 @@ std::pair<char const*, size_t> tryCompress(
     size = static_cast<size_t>(compressedSize + compressedHeaderLength);
     TRI_ASSERT(reinterpret_cast<uint8_t const*>(data)[0] == 0xffU);
     TRI_ASSERT(size <= scratch.size());
+    didCompress = true;
   }
   // return compressed or uncompressed value
-  return {data, size};
+  return {data, size, didCompress};
 }
 
 template<std::size_t N>
@@ -246,7 +251,10 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
         _lastKey(VPackSlice::nullSlice()),
         _memoryUsage(0),
         _totalCachedSizeInitial(0),
-        _totalCachedSizeEffective(0) {
+        _totalCachedSizeEffective(0),
+        _totalInserts(0),
+        _totalCompressed(0),
+        _totalEmptyInserts(0) {
     TRI_ASSERT(_keys.slice().isArray());
     TRI_ASSERT(_cache == nullptr || _cache->hasherName() == "BinaryKeyHasher");
     TRI_ASSERT(_builder.size() == 0);
@@ -264,7 +272,8 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
         .server()
         .getFeature<EngineSelectorFeature>()
         .engine<RocksDBEngine>()
-        .addCacheMetrics(_totalCachedSizeInitial, _totalCachedSizeEffective);
+        .addCacheMetrics(_totalCachedSizeInitial, _totalCachedSizeEffective,
+                         _totalInserts, _totalCompressed, _totalEmptyInserts);
   }
 
   std::string_view typeName() const noexcept final {
@@ -432,7 +441,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
         if (!cacheKey.empty()) {
           TRI_ASSERT(cacheKey == fromTo || fromTo.ends_with(cacheKey));
-          // only look up a key in the cache if the key is syntactially valid.
+          // only look up a key in the cache if the key is syntactically valid.
           // this is important because we can only tell syntactically valid keys
           // apart from prefix-compressed keys.
           auto finding = _cache->find(cacheKey.data(),
@@ -558,7 +567,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       std::unique_ptr<rocksdb::Iterator> iterator =
           mthds->NewIterator(_index->columnFamily(), [this](ReadOptions& ro) {
             ro.fill_cache = EdgeIndexFillBlockCache;
-            ro.readOwnWrites = canReadOwnWrites() == ReadOwnWrites::yes;
+            ro.readOwnWrites = static_cast<bool>(canReadOwnWrites());
           });
 
       TRI_ASSERT(iterator != nullptr);
@@ -574,6 +583,8 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
            iterator->Next()) {
         LocalDocumentId const docId =
             RocksDBKey::edgeDocumentId(iterator->key());
+
+        TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(iterator->key()));
 
         // adding documentId and _from or _to value
         _builder.add(VPackValue(docId.id()));
@@ -612,25 +623,22 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
   void insertIntoCache(std::string_view key, velocypack::Slice slice) {
     TRI_ASSERT(_cache != nullptr);
+    TRI_ASSERT(slice.isArray());
+
+    bool const isEmpty = slice.length() == 0;
+
+    auto& cmf =
+        _collection->vocbase().server().getFeature<CacheManagerFeature>();
 
     // values >= this size will be stored LZ4-compressed in the in-memory
     // edge cache
     size_t const minValueSizeForCompression =
-        _collection->vocbase()
-            .server()
-            .getFeature<EngineSelectorFeature>()
-            .engine<RocksDBEngine>()
-            .minValueSizeForEdgeCompression();
-
-    int const accelerationFactor = _collection->vocbase()
-                                       .server()
-                                       .getFeature<EngineSelectorFeature>()
-                                       .engine<RocksDBEngine>()
-                                       .accelerationFactorForEdgeCompression();
+        cmf.minValueSizeForEdgeCompression();
+    int const accelerationFactor = cmf.accelerationFactorForEdgeCompression();
 
     size_t const originalSize = slice.byteSize();
 
-    auto [data, size] = tryCompress(
+    auto [data, size, didCompress] = tryCompress(
         slice, originalSize, minValueSizeForCompression, accelerationFactor,
         _lz4CompressBuffer, [this](size_t memoryUsage) {
           _resourceMonitor.increaseMemoryUsage(memoryUsage);
@@ -645,6 +653,9 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
         cache::kCachedValueHeaderSize + key.size() + originalSize;
     _totalCachedSizeEffective +=
         cache::kCachedValueHeaderSize + key.size() + size;
+    ++_totalInserts;
+    _totalEmptyInserts += static_cast<uint64_t>(isEmpty);
+    _totalCompressed += didCompress ? 1 : 0;
   }
 
   // expected number of bytes that a RocksDB iterator will use.
@@ -675,6 +686,12 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   uint64_t _totalCachedSizeInitial;
   // total size of values stored in the cache (compressed/uncompressed)
   uint64_t _totalCachedSizeEffective;
+  // total cache inserts
+  uint64_t _totalInserts;
+  // total cache compressions
+  uint64_t _totalCompressed;
+  // total cache inserts that contained an empty array
+  uint64_t _totalEmptyInserts;
 };
 
 }  // namespace arangodb
@@ -742,7 +759,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, LogicalCollection& collection,
   TRI_ASSERT(iid.isEdge());
   TRI_ASSERT(objectId() != 0);
 
-  if (_cacheEnabled) {
+  if (_cacheEnabled.load(std::memory_order_relaxed)) {
     setupCache();
   }
 }
@@ -780,7 +797,7 @@ void RocksDBEdgeIndex::toVelocyPack(
 }
 
 Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
-                                LocalDocumentId const& documentId,
+                                LocalDocumentId documentId,
                                 velocypack::Slice doc,
                                 OperationOptions const& options,
                                 bool /*performChecks*/) {
@@ -807,7 +824,9 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
     RocksDBTransactionState::toState(&trx)->trackIndexInsert(_collection.id(),
                                                              id(), hash);
 
-    handleCacheInvalidation(trx, options, fromToRef);
+    if (auto cache = useCache()) {
+      handleCacheInvalidation(*cache, trx, options, fromToRef);
+    }
   } else {
     res.reset(rocksutils::convertStatus(s));
     addErrorMsg(res);
@@ -817,7 +836,7 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
 }
 
 Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
-                                LocalDocumentId const& documentId,
+                                LocalDocumentId documentId,
                                 velocypack::Slice doc,
                                 OperationOptions const& options) {
   VPackSlice fromTo = doc.get(_directionAttr);
@@ -841,7 +860,9 @@ Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
     RocksDBTransactionState::toState(&trx)->trackIndexRemove(_collection.id(),
                                                              id(), hash);
-    handleCacheInvalidation(trx, options, fromToRef);
+    if (auto cache = useCache()) {
+      handleCacheInvalidation(*cache, trx, options, fromToRef);
+    }
   } else {
     res.reset(rocksutils::convertStatus(s));
     addErrorMsg(res);
@@ -852,7 +873,12 @@ Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
 
 void RocksDBEdgeIndex::refillCache(transaction::Methods& trx,
                                    std::vector<std::string> const& keys) {
-  if (_cache == nullptr || keys.empty()) {
+  if (keys.empty()) {
+    return;
+  }
+
+  auto cache = useCache();
+  if (cache == nullptr) {
     return;
   }
 
@@ -863,7 +889,7 @@ void RocksDBEdgeIndex::refillCache(transaction::Methods& trx,
 
   ResourceMonitor monitor(GlobalResourceMonitor::instance());
   RocksDBEdgeIndexLookupIterator it(monitor, &_collection, &trx, this,
-                                    std::move(keysBuilder), _cache,
+                                    std::move(keysBuilder), cache,
                                     ReadOwnWrites::no);
 
   std::string const* cacheKeyCollection = nullptr;
@@ -878,7 +904,8 @@ void RocksDBEdgeIndex::refillCache(transaction::Methods& trx,
   }
 }
 
-void RocksDBEdgeIndex::handleCacheInvalidation(transaction::Methods& trx,
+void RocksDBEdgeIndex::handleCacheInvalidation(cache::Cache& cache,
+                                               transaction::Methods& trx,
                                                OperationOptions const& options,
                                                std::string_view fromToRef) {
   // always invalidate cache entry for all edges with same _from / _to
@@ -888,12 +915,14 @@ void RocksDBEdgeIndex::handleCacheInvalidation(transaction::Methods& trx,
   std::string_view cacheKey =
       buildCompressedCacheKey(cacheKeyCollection, fromToRef);
   if (!cacheKey.empty()) {
-    invalidateCacheEntry(cacheKey);
+    if (!invalidateCacheEntry(cacheKey)) {
+      // shutdown or document not found. no need to auto-reload
+      return;
+    }
 
-    if (_cache != nullptr &&
-        ((_forceCacheRefill &&
-          options.refillIndexCaches != RefillIndexCaches::kDontRefill) ||
-         options.refillIndexCaches == RefillIndexCaches::kRefill)) {
+    if ((_forceCacheRefill &&
+         options.refillIndexCaches != RefillIndexCaches::kDontRefill) ||
+        options.refillIndexCaches == RefillIndexCaches::kRefill) {
       RocksDBTransactionState::toState(&trx)->trackIndexCacheRefill(
           _collection.id(), id(), fromToRef);
     }
@@ -958,11 +987,14 @@ aql::AstNode* RocksDBEdgeIndex::specializeCondition(
 }
 
 Result RocksDBEdgeIndex::warmup() {
-  if (!hasCache()) {
+  auto cache = useCache();
+  if (cache == nullptr) {
     return {};
   }
 
-  auto ctx = transaction::StandaloneContext::Create(_collection.vocbase());
+  auto origin = transaction::OperationOriginREST{"warming up edge index"};
+  auto ctx =
+      transaction::StandaloneContext::create(_collection.vocbase(), origin);
   SingleCollectionTransaction trx(ctx, _collection, AccessMode::Type::READ);
   Result res = trx.begin();
 
@@ -974,7 +1006,7 @@ Result RocksDBEdgeIndex::warmup() {
   // Prepare the cache to be resized for this amount of objects to be inserted.
   uint64_t expectedCount = rocksColl->meta().numberDocuments();
   expectedCount = static_cast<uint64_t>(expectedCount * selectivityEstimate());
-  _cache->sizeHint(expectedCount);
+  cache->sizeHint(expectedCount);
 
   auto bounds = RocksDBKeyBounds::EdgeIndex(objectId());
 
@@ -986,20 +1018,15 @@ Result RocksDBEdgeIndex::warmup() {
 void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
                                       rocksdb::Slice lower,
                                       rocksdb::Slice upper) {
-  cache::Cache* cc = _cache.get();
-  TRI_ASSERT(cc != nullptr);
+  auto cache = useCache();
+  if (cache == nullptr) {
+    return;
+  }
+  auto& cmf = _collection.vocbase().server().getFeature<CacheManagerFeature>();
 
   size_t const minValueSizeForCompression =
-      _collection.vocbase()
-          .server()
-          .getFeature<EngineSelectorFeature>()
-          .engine<RocksDBEngine>()
-          .minValueSizeForEdgeCompression();
-  int const accelerationFactor = _collection.vocbase()
-                                     .server()
-                                     .getFeature<EngineSelectorFeature>()
-                                     .engine<RocksDBEngine>()
-                                     .accelerationFactorForEdgeCompression();
+      cmf.minValueSizeForEdgeCompression();
+  int const accelerationFactor = cmf.accelerationFactorForEdgeCompression();
 
   auto rocksColl = toRocksDBCollection(_collection);
 
@@ -1011,7 +1038,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
   options.prefix_same_as_start = false;  // key-prefix includes edge
   options.total_order_seek = true;  // otherwise full-index-scan does not work
   options.verify_checksums = false;
-  options.fill_cache = EdgeIndexFillBlockCache;
+  options.fill_cache = false;
   std::unique_ptr<rocksdb::Iterator> it(
       _engine.db()->NewIterator(options, _cf));
 
@@ -1019,23 +1046,30 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
   std::string previous;
   VPackBuilder builder;
   velocypack::Builder docBuilder;
+  auto callback = IndexIterator::makeDocumentCallback(docBuilder);
   std::string lz4CompressBuffer;
   std::string const* cacheKeyCollection = nullptr;
   std::string_view cacheKey;
+  // byte size of values attempted to store in cache (before compression)
   uint64_t totalCachedSizeInitial = 0;
+  // byte size of values effectively stored in cache (after compression)
   uint64_t totalCachedSizeEffective = 0;
+  // total cache inserts
+  uint64_t totalInserts = 0;
+  // total cache compressions
+  uint64_t totalCompressed = 0;
 
   auto storeInCache = [&](velocypack::Builder& b, std::string_view cacheKey) {
     builder.close();
 
     size_t const originalSize = b.slice().byteSize();
 
-    auto [data, size] = tryCompress(
+    auto [data, size, didCompress] = tryCompress(
         b.slice(), originalSize, minValueSizeForCompression, accelerationFactor,
         lz4CompressBuffer, [](size_t /*memoryUsage*/) {});
 
     cache::Cache::SimpleInserter<EdgeIndexCacheType>{
-        static_cast<EdgeIndexCacheType&>(*cc), cacheKey.data(),
+        static_cast<EdgeIndexCacheType&>(*cache), cacheKey.data(),
         static_cast<uint32_t>(cacheKey.size()), data,
         static_cast<uint64_t>(size)};
     builder.clear();
@@ -1044,6 +1078,8 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
         cache::kCachedValueHeaderSize + cacheKey.size() + originalSize;
     totalCachedSizeEffective +=
         cache::kCachedValueHeaderSize + cacheKey.size() + size;
+    ++totalInserts;
+    totalCompressed += didCompress ? 1 : 0;
   };
 
   size_t n = 0;
@@ -1078,8 +1114,8 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
 
       bool shouldTry = true;
       while (shouldTry) {
-        auto finding =
-            cc->find(cacheKey.data(), static_cast<uint32_t>(cacheKey.size()));
+        auto finding = cache->find(cacheKey.data(),
+                                   static_cast<uint32_t>(cacheKey.size()));
         if (finding.found()) {
           shouldTry = false;
           needsInsert = false;
@@ -1107,7 +1143,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
       TRI_ASSERT(!cacheKey.empty() && previous.ends_with(cacheKey));
 
       auto finding =
-          cc->find(cacheKey.data(), static_cast<uint32_t>(cacheKey.size()));
+          cache->find(cacheKey.data(), static_cast<uint32_t>(cacheKey.size()));
       if (finding.found()) {
         needsInsert = false;
       } else {
@@ -1119,10 +1155,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
       docBuilder.clear();
       LocalDocumentId const docId = RocksDBKey::edgeDocumentId(key);
       // warmup does not need to observe own writes
-      if (rocksColl
-              ->lookupDocument(*trx, docId, docBuilder, /*readCache*/ true,
-                               /*fillCache*/ true, ReadOwnWrites::no)
-              .fail()) {
+      if (!rocksColl->lookup(trx, docId, callback, {}).ok()) {
         // Data Inconsistency. revision id without a document...
         TRI_ASSERT(false);
         continue;
@@ -1152,7 +1185,8 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
       .server()
       .getFeature<EngineSelectorFeature>()
       .engine<RocksDBEngine>()
-      .addCacheMetrics(totalCachedSizeInitial, totalCachedSizeEffective);
+      .addCacheMetrics(totalCachedSizeInitial, totalCachedSizeEffective,
+                       totalInserts, totalCompressed, /*totalEmpty*/ 0);
 }
 
 // ===================== Helpers ==================
@@ -1161,25 +1195,25 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
 std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createEqIterator(
     ResourceMonitor& monitor, transaction::Methods* trx,
     aql::AstNode const* /*attrNode*/, aql::AstNode const* valNode,
-    bool useCache, ReadOwnWrites readOwnWrites) const {
+    bool withCache, ReadOwnWrites readOwnWrites) const {
   VPackBuilder keys;
   fillLookupValue(keys, valNode);
   return std::make_unique<RocksDBEdgeIndexLookupIterator>(
       monitor, &_collection, trx, this, std::move(keys),
-      useCache ? _cache : nullptr, readOwnWrites);
+      withCache ? useCache() : nullptr, readOwnWrites);
 }
 
 /// @brief create the iterator
 std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createInIterator(
     ResourceMonitor& monitor, transaction::Methods* trx,
     aql::AstNode const* /*attrNode*/, aql::AstNode const* valNode,
-    bool useCache) const {
+    bool withCache) const {
   VPackBuilder keys;
   fillInLookupValues(trx, keys, valNode);
   // "in"-checks never need to observe own writes.
   return std::make_unique<RocksDBEdgeIndexLookupIterator>(
       monitor, &_collection, trx, this, std::move(keys),
-      useCache ? _cache : nullptr, ReadOwnWrites::no);
+      withCache ? useCache() : nullptr, ReadOwnWrites::no);
 }
 
 void RocksDBEdgeIndex::fillLookupValue(VPackBuilder& keys,

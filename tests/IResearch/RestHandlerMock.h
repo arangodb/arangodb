@@ -59,7 +59,9 @@ struct GeneralRequestMock : public arangodb::GeneralRequest {
 
 struct GeneralResponseMock : public arangodb::GeneralResponse {
   arangodb::velocypack::Builder _payload;
-  virtual bool isResponseEmpty() const override { return _payload.isEmpty(); }
+  virtual bool isResponseEmpty() const noexcept override {
+    return _payload.isEmpty();
+  }
 
   GeneralResponseMock(arangodb::ResponseCode code = arangodb::ResponseCode::OK);
   virtual void addPayload(
@@ -73,6 +75,13 @@ struct GeneralResponseMock : public arangodb::GeneralResponse {
   virtual void addRawPayload(std::string_view payload) override;
   virtual void reset(arangodb::ResponseCode code) override;
   virtual arangodb::Endpoint::TransportType transportType() override;
-  ErrorCode deflate() override;
-  bool isCompressionAllowed() override { return false; }
+  void setAllowCompression(
+      arangodb::rest::ResponseCompressionType rct) noexcept override {}
+  arangodb::rest::ResponseCompressionType compressionAllowed()
+      const noexcept override {
+    return arangodb::rest::ResponseCompressionType::kNoCompression;
+  }
+  virtual size_t bodySize() const override { return _payload.size(); }
+  virtual ErrorCode zlibDeflate(bool onlyIfSmaller) override;
+  virtual ErrorCode gzipCompress(bool onlyIfSmaller) override;
 };

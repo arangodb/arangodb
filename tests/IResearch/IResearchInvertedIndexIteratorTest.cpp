@@ -135,7 +135,7 @@ class IResearchInvertedIndexIteratorTestBase
                                                    &storedFields, &sortedFields,
                                                    "unique_name");
     bool created = false;
-    _inverted = _collection->createIndex(builder.slice(), created);
+    _inverted = _collection->createIndex(builder.slice(), created).get();
     EXPECT_TRUE(created);
     EXPECT_TRUE(_inverted);
     _index = dynamic_cast<arangodb::iresearch::IResearchInvertedIndex*>(
@@ -147,8 +147,9 @@ class IResearchInvertedIndexIteratorTestBase
     auto doc = _docs.begin();
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-          collections, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase(), arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, collections, EMPTY, arangodb::transaction::Options());
       trx.begin();
       for (size_t i = 0; i < _docs.size() / 2; ++i) {
         // MSVC fails to compile if EXPECT_TRUE  is called directly
@@ -167,8 +168,9 @@ class IResearchInvertedIndexIteratorTestBase
     }
     // second transaction to have more than one segment in the index
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-        collections, EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase(), arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, collections, EMPTY, arangodb::transaction::Options());
     trx.begin();
     while (doc != _docs.end()) {
       // MSVC fails to compile if EXPECT_TRUE  is called directly
@@ -202,12 +204,10 @@ class IResearchInvertedIndexIteratorTestBase
       int mutableConditionIdx = -1, bool forLateMaterialization = false) {
     SCOPED_TRACE(testing::Message("ExecuteIteratorTest failed for query ")
                  << queryString);
-    auto ctx =
-        std::make_shared<arangodb::transaction::StandaloneContext>(vocbase());
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+        vocbase(), arangodb::transaction::OperationOriginTestCase{});
     auto query = arangodb::aql::Query::create(
-        ctx,
-        arangodb::aql::QueryString(queryString.data(), queryString.length()),
-        bindVars);
+        ctx, arangodb::aql::QueryString(queryString), bindVars);
     ASSERT_NE(query.get(), nullptr);
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -288,7 +288,7 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_next) {
     ASSERT_TRUE(iterator->hasMore());
 
     std::vector<arangodb::LocalDocumentId> docs;
-    auto docCallback = [&docs](arangodb::LocalDocumentId const& token) {
+    auto docCallback = [&docs](arangodb::LocalDocumentId token) {
       docs.push_back(token);
       return true;
     };
@@ -316,7 +316,7 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_next_skip) {
     ASSERT_EQ(1, skipped);
     ASSERT_TRUE(iterator->hasMore());
     std::vector<arangodb::LocalDocumentId> docs;
-    auto docCallback = [&docs](arangodb::LocalDocumentId const& token) {
+    auto docCallback = [&docs](arangodb::LocalDocumentId token) {
       docs.push_back(token);
       return true;
     };
@@ -337,13 +337,18 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_next_skip) {
 }
 
 TEST_F(IResearchInvertedIndexIteratorTest, test_skip_nextCovering) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
+
   std::string queryString{
       R"(FOR d IN col FILTER d.a == "1" OR d.b == "2" RETURN d)"};
   auto expectedDocs = data();
-  auto test = [&expectedDocs, this](arangodb::IndexIterator* iterator) {
+  auto test = [&expectedDocs, this,
+               &resMonitor](arangodb::IndexIterator* iterator) {
     arangodb::aql::Projections projections(
         std::vector<arangodb::aql::AttributeNamePath>(
-            {std::string("a"), std::string("b")}));
+            {arangodb::aql::AttributeNamePath(std::string("a"), resMonitor),
+             arangodb::aql::AttributeNamePath(std::string("b"), resMonitor)}));
     ASSERT_TRUE(index().covers(projections));
 
     ASSERT_NE(iterator, nullptr);
@@ -408,12 +413,16 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_nextCovering) {
 
 TEST_F(IResearchInvertedIndexIteratorTest,
        test_skip_nextCovering_LateMaterialized) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
+
   std::string queryString{
       R"(FOR d IN col FILTER d.a == "1" OR d.b == "2" RETURN d)"};
-  auto test = [this](arangodb::IndexIterator* iterator) {
+  auto test = [this, &resMonitor](arangodb::IndexIterator* iterator) {
     arangodb::aql::Projections projections(
         std::vector<arangodb::aql::AttributeNamePath>(
-            {std::string("a"), std::string("b")}));
+            {arangodb::aql::AttributeNamePath(std::string("a"), resMonitor),
+             arangodb::aql::AttributeNamePath(std::string("b"), resMonitor)}));
     ASSERT_TRUE(index().covers(projections));
 
     ASSERT_NE(iterator, nullptr);
@@ -458,12 +467,16 @@ TEST_F(IResearchInvertedIndexIteratorTest,
 }
 
 TEST_F(IResearchInvertedIndexIteratorTest, test_next_array) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   std::string queryString{R"(FOR d IN col FILTER d.arr[*] == 1 RETURN d)"};
   auto expectedDocs = data();
-  auto test = [&expectedDocs, this](arangodb::IndexIterator* iterator) {
+  auto test = [&expectedDocs, this,
+               &resMonitor](arangodb::IndexIterator* iterator) {
     arangodb::aql::Projections projections(
         std::vector<arangodb::aql::AttributeNamePath>(
-            {std::string("a"), std::string("b")}));
+            {arangodb::aql::AttributeNamePath(std::string("a"), resMonitor),
+             arangodb::aql::AttributeNamePath(std::string("b"), resMonitor)}));
     ASSERT_TRUE(index().covers(projections));
 
     ASSERT_NE(iterator, nullptr);
@@ -522,13 +535,18 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_next_array) {
 }
 
 TEST_F(IResearchInvertedIndexIteratorTest, test_next_subarray) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
+
   std::string queryString{
       R"(FOR d IN col FILTER d.subarr[*].val == 1 RETURN d)"};
   auto expectedDocs = data();
-  auto test = [&expectedDocs, this](arangodb::IndexIterator* iterator) {
+  auto test = [&expectedDocs, this,
+               &resMonitor](arangodb::IndexIterator* iterator) {
     arangodb::aql::Projections projections(
         std::vector<arangodb::aql::AttributeNamePath>(
-            {std::string("a"), std::string("b")}));
+            {arangodb::aql::AttributeNamePath(std::string("a"), resMonitor),
+             arangodb::aql::AttributeNamePath(std::string("b"), resMonitor)}));
     ASSERT_TRUE(index().covers(projections));
 
     ASSERT_NE(iterator, nullptr);
@@ -588,13 +606,17 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_next_subarray) {
 }
 
 TEST_F(IResearchInvertedIndexIteratorTest, test_skip_nextCovering_skip) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   std::string queryString{
       R"(FOR d IN col FILTER d.a == "1" OR d.b == "2" OR d.b == "3" RETURN d)"};
   auto expectedDocs = data();
-  auto test = [&expectedDocs, this](arangodb::IndexIterator* iterator) {
+  auto test = [&expectedDocs, this,
+               &resMonitor](arangodb::IndexIterator* iterator) {
     arangodb::aql::Projections projections(
         std::vector<arangodb::aql::AttributeNamePath>(
-            {std::string("a"), std::string("b")}));
+            {arangodb::aql::AttributeNamePath(std::string("a"), resMonitor),
+             arangodb::aql::AttributeNamePath(std::string("b"), resMonitor)}));
     ASSERT_TRUE(index().covers(projections));
 
     ASSERT_NE(iterator, nullptr);
@@ -705,15 +727,19 @@ TEST_F(IResearchInvertedIndexIteratorSortedTest, test_next_full) {
 }
 
 TEST_F(IResearchInvertedIndexIteratorSortedTest, test_nextCovering_full) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   std::string queryString{R"(FOR d IN col
                               FILTER (d.a == "1" OR d.b == "2" OR d.b == "3")
                               SORT d.a ASC, d.b DESC
                               RETURN d)"};
   auto expectedDocs = data();
-  auto test = [&expectedDocs, this](arangodb::IndexIterator* iterator) {
-    arangodb::aql::Projections projections(
-        std::vector<arangodb::aql::AttributeNamePath>(
-            {std::string("a"), std::string("b")}));
+  auto test = [&expectedDocs, this,
+               &resMonitor](arangodb::IndexIterator* iterator) {
+    std::vector<arangodb::aql::AttributeNamePath> p{
+        arangodb::aql::AttributeNamePath({std::string("a"), resMonitor}),
+        arangodb::aql::AttributeNamePath({std::string("b"), resMonitor})};
+    arangodb::aql::Projections projections(std::move(p));
     ASSERT_TRUE(index().covers(projections));
 
     std::vector<arangodb::LocalDocumentId> orderedDocs = {

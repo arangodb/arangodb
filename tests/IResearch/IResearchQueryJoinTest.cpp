@@ -84,9 +84,10 @@ class QueryJoin : public QueryTest {
     {
       OperationOptions opt;
 
-      transaction::Methods trx(transaction::StandaloneContext::Create(_vocbase),
-                               collections, collections, collections,
-                               transaction::Options());
+      transaction::Methods trx(
+          transaction::StandaloneContext::create(
+              _vocbase, transaction::OperationOriginTestCase{}),
+          collections, collections, collections, transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into entities collection
@@ -229,7 +230,9 @@ class QueryJoin : public QueryTest {
       OperationOptions opt;
 
       transaction::Methods trx(
-          transaction::StandaloneContext::Create(_vocbase), EMPTY,
+          transaction::StandaloneContext::create(
+              _vocbase, transaction::OperationOriginTestCase{}),
+          EMPTY,
           {logicalCollection1->name(), logicalCollection2->name(),
            logicalCollection3->name()},
           EMPTY, transaction::Options());
@@ -328,7 +331,9 @@ class QueryJoin : public QueryTest {
       OperationOptions opt;
 
       transaction::Methods trx(
-          transaction::StandaloneContext::Create(_vocbase), EMPTY,
+          transaction::StandaloneContext::create(
+              _vocbase, transaction::OperationOriginTestCase{}),
+          EMPTY,
           {logicalCollection1->name(), logicalCollection2->name(),
            logicalCollection3->name()},
           EMPTY, transaction::Options());
@@ -1437,7 +1442,8 @@ class QueryJoin : public QueryTest {
       ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
       ASSERT_TRUE(std::regex_search(
           std::string(queryResult.errorMessage()),
-          std::regex("variable 'x' is used in search function.*CUSTOMSCORER")));
+          std::regex(
+              "variable '.+' is used in search function.*CUSTOMSCORER")));
 
       queryResult = executeQuery(_vocbase, query);
       ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
@@ -1656,7 +1662,8 @@ class QueryJoin : public QueryTest {
       ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
       ASSERT_TRUE(std::regex_search(
           std::string(queryResult.errorMessage()),
-          std::regex("variable 'x' is used in search function.*CUSTOMSCORER")));
+          std::regex(
+              "variable '.+' is used in search function.*CUSTOMSCORER")));
 
       queryResult = executeQuery(_vocbase, query);
       ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
@@ -1675,7 +1682,8 @@ class QueryJoin : public QueryTest {
       ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
       ASSERT_TRUE(std::regex_search(
           std::string(queryResult.errorMessage()),
-          std::regex("variable 'x' is used in search function.*CUSTOMSCORER")));
+          std::regex(
+              "variable '.+' is used in search function.*CUSTOMSCORER")));
 
       queryResult = executeQuery(_vocbase, query);
       ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
@@ -1766,7 +1774,7 @@ class QueryJoinSearch : public QueryJoin {
           version(), name));
       auto collection = _vocbase.lookupCollection(name);
       EXPECT_TRUE(collection);
-      collection->createIndex(createJson->slice(), created);
+      collection->createIndex(createJson->slice(), created).get();
       ASSERT_TRUE(created);
     };
     auto createSearchName = [&](std::string_view name) {

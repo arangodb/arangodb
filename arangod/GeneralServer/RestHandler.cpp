@@ -23,9 +23,6 @@
 
 #include "RestHandler.h"
 
-#include <fuerte/jwt.h>
-#include <velocypack/Exception.h>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/debugging.h"
@@ -35,6 +32,7 @@
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogStructuredParamsAllowList.h"
 #include "Network/Methods.h"
@@ -46,7 +44,10 @@
 #include "Statistics/RequestStatistics.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
-#include "GeneralServerFeature.h"
+
+#include <absl/strings/str_cat.h>
+#include <fuerte/jwt.h>
+#include <velocypack/Exception.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -70,8 +71,8 @@ RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
       _canceled(false) {
   if (server.hasFeature<GeneralServerFeature>() &&
       server.isEnabled<GeneralServerFeature>()) {
-    _requestBodySizeTracker = metrics::GaugeCounterGuard<std::uint64_t>{
-        server.getFeature<GeneralServerFeature>()._requestBodySize,
+    _currentRequestsSizeTracker = metrics::GaugeCounterGuard<std::uint64_t>{
+        server.getFeature<GeneralServerFeature>()._currentRequestsSize,
         _request->memoryUsage()};
   }
 }
@@ -160,11 +161,11 @@ void RestHandler::trackTaskEnd() noexcept {
   }
 }
 
-RequestStatistics::Item&& RestHandler::stealStatistics() {
+RequestStatistics::Item&& RestHandler::stealRequestStatistics() {
   return std::move(_statistics);
 }
 
-void RestHandler::setStatistics(RequestStatistics::Item&& stat) {
+void RestHandler::setRequestStatistics(RequestStatistics::Item&& stat) {
   _statistics = std::move(stat);
 }
 
@@ -173,6 +174,12 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   if (!ServerState::instance()->isCoordinator()) {
     return futures::makeFuture(Result());
   }
+
+  // we must use the request's permissions here and set them in the
+  // thread-local variable when calling forwardingTarget().
+  // this is because forwardingTarget() may run permission checks.
+  ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
+  ExecContextScope scope(exec);
 
   ResultT forwardResult = forwardingTarget();
   if (forwardResult.fail()) {
@@ -325,54 +332,46 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
 }
 
 void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept try {
+  auto buildException = [this](ErrorCode code, std::string message,
+                               char const* file, int line) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG_TOPIC("b6302", WARN, arangodb::Logger::FIXME)
+        << "maintainer mode: " << message;
+#endif
+    Exception err(code, std::move(message), file, line);
+    handleError(err);
+  };
+
   try {
     if (eptr) {
       std::rethrow_exception(eptr);
     }
   } catch (Exception const& ex) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC("11929", WARN, arangodb::Logger::FIXME)
-        << "maintainer mode: caught exception in " << name() << ": "
-        << ex.what();
-#endif
-    handleError(ex);
-  } catch (arangodb::velocypack::Exception const& ex) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC("fdcbc", WARN, arangodb::Logger::FIXME)
-        << "maintainer mode: caught velocypack exception in " << name() << ": "
-        << ex.what();
-#endif
+    std::string message =
+        absl::StrCat("caught exception in ", name(), ": ", ex.what());
+    buildException(ex.code(), std::move(message), __FILE__, __LINE__);
+  } catch (velocypack::Exception const& ex) {
     bool const isParseError =
         (ex.errorCode() == arangodb::velocypack::Exception::ParseError ||
          ex.errorCode() ==
              arangodb::velocypack::Exception::UnexpectedControlCharacter);
-    Exception err(
+    std::string message =
+        absl::StrCat("caught velocypack error in ", name(), ": ", ex.what());
+    buildException(
         isParseError ? TRI_ERROR_HTTP_CORRUPTED_JSON : TRI_ERROR_INTERNAL,
-        std::string("VPack error: ") + ex.what(), __FILE__, __LINE__);
-    handleError(err);
+        std::move(message), __FILE__, __LINE__);
   } catch (std::bad_alloc const& ex) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC("5c9f6", WARN, arangodb::Logger::FIXME)
-        << "maintainer mode: caught memory exception in " << name() << ": "
-        << ex.what();
-#endif
-    Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
-    handleError(err);
+    std::string message =
+        absl::StrCat("caught memory exception in ", name(), ": ", ex.what());
+    buildException(TRI_ERROR_OUT_OF_MEMORY, std::move(message), __FILE__,
+                   __LINE__);
   } catch (std::exception const& ex) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC("252ea", WARN, arangodb::Logger::FIXME)
-        << "maintainer mode: caught exception in " << name() << ": "
-        << ex.what();
-#endif
-    Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
-    handleError(err);
+    std::string message =
+        absl::StrCat("caught exception in ", name(), ": ", ex.what());
+    buildException(TRI_ERROR_INTERNAL, std::move(message), __FILE__, __LINE__);
   } catch (...) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC("f729d", WARN, arangodb::Logger::FIXME)
-        << "maintainer mode: caught unknown exception in " << name();
-#endif
-    Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
-    handleError(err);
+    std::string message = absl::StrCat("caught unknown exception in ", name());
+    buildException(TRI_ERROR_INTERNAL, std::move(message), __FILE__, __LINE__);
   }
 } catch (...) {
   // we can only get here if putting together an error response or an
@@ -381,8 +380,8 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept try {
 }
 
 void RestHandler::runHandlerStateMachine() {
+  std::lock_guard lock{_executionMutex};
   TRI_ASSERT(_callback);
-  RECURSIVE_MUTEX_LOCKER(_executionMutex, _executionMutexOwner);
 
   while (true) {
     switch (_state) {
@@ -457,8 +456,7 @@ void RestHandler::prepareEngine() {
   if (_canceled) {
     _state = HandlerState::FAILED;
 
-    Exception err(TRI_ERROR_REQUEST_CANCELED,
-                  "request has been canceled by user", __FILE__, __LINE__);
+    Exception err(TRI_ERROR_REQUEST_CANCELED, __FILE__, __LINE__);
     handleError(err);
     return;
   }
@@ -491,7 +489,7 @@ void RestHandler::shutdownExecute(bool isFinalized) noexcept {
 /// Execute the rest handler state machine. Retry the wakeup,
 /// returns true if _state == PAUSED, false otherwise
 bool RestHandler::wakeupHandler() {
-  RECURSIVE_MUTEX_LOCKER(_executionMutex, _executionMutexOwner);
+  std::lock_guard lock{_executionMutex};
   if (_state == HandlerState::PAUSED) {
     runHandlerStateMachine();  // may change _state
     return _state == HandlerState::PAUSED;
@@ -605,23 +603,75 @@ void RestHandler::generateError(rest::ResponseCode code, ErrorCode errorNumber,
 }
 
 void RestHandler::compressResponse() {
-  if (!_isAsyncRequest && _response->isCompressionAllowed()) {
-    switch (_request->acceptEncoding()) {
-      case rest::EncodingType::DEFLATE:
-        _response->deflate();
+  if (_isAsyncRequest) {
+    // responses to async requests are currently not compressed
+    return;
+  }
+
+  rest::ResponseCompressionType rct = _response->compressionAllowed();
+  if (rct == rest::ResponseCompressionType::kNoCompression) {
+    // compression explicitly disabled for the response
+    return;
+  }
+
+  if (_request->acceptEncoding() == rest::EncodingType::UNSET) {
+    // client hasn't asked for compression
+    return;
+  }
+
+  size_t bodySize = _response->bodySize();
+  if (bodySize == 0) {
+    // response body size of 0 does not need any compression
+    return;
+  }
+
+  uint64_t threshold =
+      server().getFeature<GeneralServerFeature>().compressResponseThreshold();
+
+  if (threshold == 0) {
+    // opted out of compression by configuration
+    return;
+  }
+
+  // check if response is eligible for compression
+  if (bodySize < threshold) {
+    // compression not necessary
+    return;
+  }
+
+  if (_response->headers().contains(StaticStrings::ContentEncoding)) {
+    // response is already content-encoded
+    return;
+  }
+
+  TRI_ASSERT(bodySize > 0);
+  TRI_ASSERT(_request->acceptEncoding() != rest::EncodingType::UNSET);
+
+  switch (_request->acceptEncoding()) {
+    case rest::EncodingType::DEFLATE:
+      // the resulting compressed response body may be larger than the
+      // uncompressed input size. in this case we are not returning the
+      // compressed response body, but the original, uncompressed body.
+      if (_response->zlibDeflate(/*onlyIfSmaller*/ true) ==
+          TRI_ERROR_NO_ERROR) {
         _response->setHeaderNC(StaticStrings::ContentEncoding,
                                StaticStrings::EncodingDeflate);
-        break;
+      }
+      break;
 
-      case rest::EncodingType::GZIP:
-        _response->gzip();
+    case rest::EncodingType::GZIP:
+      // the resulting compressed response body may be larger than the
+      // uncompressed input size. in this case we are not returning the
+      // compressed response body, but the original, uncompressed body.
+      if (_response->gzipCompress(/*onlyIfSmaller*/ true) ==
+          TRI_ERROR_NO_ERROR) {
         _response->setHeaderNC(StaticStrings::ContentEncoding,
                                StaticStrings::EncodingGzip);
-        break;
+      }
+      break;
 
-      default:
-        break;
-    }
+    default:
+      break;
   }
 }
 
@@ -651,20 +701,43 @@ RestStatus RestHandler::waitForFuture(futures::Future<futures::Unit>&& f) {
     f.result().throwIfFailed();  // just throw the error upwards
     return RestStatus::DONE;
   }
-  bool done = false;
-  std::move(f).thenFinal(
-      withLogContext([self = shared_from_this(),
-                      &done](futures::Try<futures::Unit>&& t) -> void {
+  TRI_ASSERT(_executionCounter == 0);
+  _executionCounter = 2;
+  std::move(f).thenFinal(withLogContext(
+      [self = shared_from_this()](futures::Try<futures::Unit>&& t) -> void {
         if (t.hasException()) {
           self->handleExceptionPtr(std::move(t).exception());
         }
-        if (std::this_thread::get_id() == self->_executionMutexOwner.load()) {
-          done = true;
-        } else {
+        if (--self->_executionCounter == 0) {
           self->wakeupHandler();
         }
       }));
-  return done ? RestStatus::DONE : RestStatus::WAITING;
+  return --_executionCounter == 0 ? RestStatus::DONE : RestStatus::WAITING;
+}
+
+RestStatus RestHandler::waitForFuture(futures::Future<RestStatus>&& f) {
+  if (f.isReady()) {             // fast-path out
+    f.result().throwIfFailed();  // just throw the error upwards
+    return f.get();
+  }
+  TRI_ASSERT(_executionCounter == 0);
+  _executionCounter = 2;
+  std::move(f).thenFinal(withLogContext(
+      [self = shared_from_this()](futures::Try<RestStatus>&& t) -> void {
+        if (t.hasException()) {
+          self->handleExceptionPtr(std::move(t).exception());
+          self->_followupRestStatus = RestStatus::DONE;
+        } else {
+          self->_followupRestStatus = t.get();
+          if (t.get() == RestStatus::WAITING) {
+            return;  // rest handler will be woken up externally
+          }
+        }
+        if (--self->_executionCounter == 0) {
+          self->wakeupHandler();
+        }
+      }));
+  return --_executionCounter == 0 ? _followupRestStatus : RestStatus::WAITING;
 }
 
 // -----------------------------------------------------------------------------

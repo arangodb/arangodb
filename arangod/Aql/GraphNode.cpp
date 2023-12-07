@@ -31,12 +31,14 @@
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/OptimizerRule.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortCondition.h"
 #include "Aql/TraversalExecutor.h"
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/Exceptions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Graph/BaseOptions.h"
@@ -205,7 +207,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
     _edgeColls.reserve(edgeCollectionCount);
     _directions.reserve(edgeCollectionCount);
 
-    determineEnterpriseFlags(graph);
+    determineEnterpriseFlags(graph, plan->getAst()->query().operationOrigin());
 
     std::unordered_map<std::string, TRI_edge_direction_e> seenCollections;
     CollectionNameResolver const& resolver = plan->getAst()->query().resolver();
@@ -477,7 +479,12 @@ GraphNode::GraphNode(ExecutionPlan* plan,
         "graph needs a translation from collection to shard names");
   }
   for (auto const& item : VPackObjectIterator(collectionToShard)) {
-    _collectionToShard.insert({item.key.copyString(), item.value.copyString()});
+    auto maybeShardID = ShardID::shardIdFromString(item.value.stringView());
+    if (ADB_UNLIKELY(maybeShardID.fail())) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
+                                     maybeShardID.errorMessage());
+    }
+    _collectionToShard.insert({item.key.copyString(), maybeShardID.get()});
   }
 
   // Out variables
@@ -559,7 +566,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
 }
 
 #ifndef USE_ENTERPRISE
-void GraphNode::determineEnterpriseFlags(AstNode const*) {
+void GraphNode::determineEnterpriseFlags(
+    AstNode const*, transaction::OperationOrigin /*operationOrigin*/) {
   _isSmart = false;
   _isDisjoint = false;
   _enabledClusterOneShardRule = false;
@@ -572,7 +580,11 @@ void GraphNode::setGraphInfoAndCopyColls(
   if (_graphObj == nullptr) {
     _graphInfo.openArray();
     for (auto const& it : edgeColls) {
-      TRI_ASSERT(it != nullptr);
+      if (it == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "access to non-existing edge collection in AQL graph traversal");
+      }
       _edgeColls.emplace_back(it);
       _graphInfo.add(VPackValue(it->name()));
     }
@@ -580,13 +592,21 @@ void GraphNode::setGraphInfoAndCopyColls(
   } else {
     _graphInfo.add(VPackValue(_graphObj->name()));
     for (auto const& it : edgeColls) {
-      TRI_ASSERT(it != nullptr);
+      if (it == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "access to non-existing edge collection in AQL graph traversal");
+      }
       _edgeColls.emplace_back(it);
     }
   }
 
   for (auto& it : vertexColls) {
-    TRI_ASSERT(it != nullptr);
+    if (it == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "access to non-existing vertex collection in AQL graph traversal");
+    }
     addVertexCollection(*it);
   }
 }
@@ -619,25 +639,7 @@ GraphNode::GraphNode(THIS_THROWS_WHEN_CALLED)
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
-std::string const& GraphNode::collectionToShardName(
-    std::string const& collName) const {
-  if (_collectionToShard.empty()) {
-    return collName;
-  }
-
-  auto found = _collectionToShard.find(collName);
-  if (found == _collectionToShard.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL_AQL,
-        "unable to find shard '" + collName + "' in query shard map");
-  }
-  return found->second;
-}
-
 void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
-  // Vocbase
-  nodes.add("database", VPackValue(_vocbase->name()));
-
   // TODO We need Both?!
   // Graph definition
   nodes.add("graph", _graphInfo.slice());
@@ -662,19 +664,34 @@ void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
     }
   }
 
+  auto appendCollectionOrShard = [&](Collection const* col,
+                                     VPackBuilder& builder) {
+    TRI_ASSERT(builder.isOpenArray());
+    // if the mapped shard for a collection is empty, it means that
+    // we have a collection that is only relevant on some of the
+    // target servers
+    TRI_ASSERT(col != nullptr);
+
+    if (_collectionToShard.empty()) {
+      builder.add(VPackValue(col->name()));
+    } else {
+      auto found = _collectionToShard.find(col->name());
+      if (found == _collectionToShard.end()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL_AQL,
+            "unable to find shard '" + col->name() + "' in query shard map");
+      }
+      if (found->second.isValid()) {
+        builder.add(VPackValue(found->second));
+      }
+    }
+  };
   // Collections
   nodes.add(VPackValue("edgeCollections"));
   {
     VPackArrayBuilder guard(&nodes);
     for (auto const& e : _edgeColls) {
-      TRI_ASSERT(e != nullptr);
-      auto const& shard = collectionToShardName(e->name());
-      // if the mapped shard for a collection is empty, it means that
-      // we have an edge collection that is only relevant on some of the
-      // target servers
-      if (!shard.empty()) {
-        nodes.add(VPackValue(shard));
-      }
+      appendCollectionOrShard(e, nodes);
     }
   }
 
@@ -682,14 +699,7 @@ void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   {
     VPackArrayBuilder guard(&nodes);
     for (auto const& v : _vertexColls) {
-      TRI_ASSERT(v != nullptr);
-      // if the mapped shard for a collection is empty, it means that
-      // we have a vertex collection that is only relevant on some of the
-      // target servers
-      auto const& shard = collectionToShardName(v->name());
-      if (!shard.empty()) {
-        nodes.add(VPackValue(shard));
-      }
+      appendCollectionOrShard(v, nodes);
     }
   }
 
@@ -700,16 +710,6 @@ void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
     for (auto const& item : _collectionToShard) {
       nodes.add(item.first, VPackValue(item.second));
     }
-  }
-
-  // Out variables
-  if (isVertexOutVariableUsedLater()) {
-    nodes.add(VPackValue("vertexOutVariable"));
-    vertexOutVariable()->toVelocyPack(nodes);
-  }
-  if (isEdgeOutVariableUsedLater()) {
-    nodes.add(VPackValue("edgeOutVariable"));
-    edgeOutVariable()->toVelocyPack(nodes);
   }
 
   nodes.add(VPackValue("optimizedOutVariables"));
@@ -791,6 +791,30 @@ CostEstimate GraphNode::estimateCost() const {
   return estimate;
 }
 
+AsyncPrefetchEligibility GraphNode::canUseAsyncPrefetching() const noexcept {
+  if (_options->parallelism() == 1) {
+    if (ServerState::instance()->isSingleServer()) {
+      // in single server mode, we allow async prefetching if the
+      // traversal itself does not use parallelism
+      return AsyncPrefetchEligibility::kEnableForNode;
+    } else if (ServerState::instance()->isCoordinator()) {
+#ifdef USE_ENTERPRISE
+      if (plan()->hasAppliedRule(OptimizerRule::clusterOneShardRule)) {
+        // we can also allow async prefetching when we already applied
+        // the "cluster-one-shard" rule. when this rule triggers, all
+        // traversals are on the DB server and we do not use any
+        // TraverserEngines.
+        return AsyncPrefetchEligibility::kEnableForNode;
+      }
+#endif
+      // fallthrough intentional
+    }
+  }
+  // in cluster mode, we have to disallow prefetching because we may
+  // have TraverserEngines.
+  return AsyncPrefetchEligibility::kDisableGlobally;
+}
+
 void GraphNode::addEngine(aql::EngineId engineId, ServerID const& server) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   _engines.try_emplace(server, engineId);
@@ -825,8 +849,19 @@ void GraphNode::getConditionVariables(std::vector<Variable const*>& res) const {
 
 Collection const* GraphNode::getShardingPrototype() const {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
+  if (_edgeColls.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "AQL graph traversal without edge collections");
+  }
+
   TRI_ASSERT(!_edgeColls.empty());
   for (auto const* c : _edgeColls) {
+    if (c == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "access to non-existing collection in AQL graph traversal");
+    }
     // We are required to valuate non-satellites above
     // satellites, as the collection is used as the prototype
     // for this graphs sharding.
@@ -931,33 +966,36 @@ void GraphNode::addEdgeCollection(Collections const& collections,
 
 void GraphNode::addEdgeCollection(aql::Collection& collection,
                                   TRI_edge_direction_e dir) {
-  auto const& n = collection.name();
+  auto add = [this](aql::Collection& collection, TRI_edge_direction_e dir) {
+    _directions.emplace_back(dir);
+    _edgeColls.emplace_back(&collection);
+  };
+
   if (_isSmart) {
+    auto const& n = collection.name();
     if (n.starts_with(StaticStrings::FullFromPrefix)) {
       if (dir != TRI_EDGE_IN) {
-        _directions.emplace_back(TRI_EDGE_OUT);
-        _edgeColls.emplace_back(&collection);
+        add(collection, TRI_EDGE_OUT);
       }
       return;
     } else if (n.starts_with(StaticStrings::FullToPrefix)) {
       if (dir != TRI_EDGE_OUT) {
-        _directions.emplace_back(TRI_EDGE_IN);
-        _edgeColls.emplace_back(&collection);
+        add(collection, TRI_EDGE_IN);
       }
       return;
     }
+    // fallthrough intentional
   }
 
   if (dir == TRI_EDGE_ANY) {
-    _directions.emplace_back(TRI_EDGE_OUT);
-    _edgeColls.emplace_back(&collection);
-
-    _directions.emplace_back(TRI_EDGE_IN);
-    _edgeColls.emplace_back(&collection);
+    // ANY = OUT + IN
+    add(collection, TRI_EDGE_OUT);
+    add(collection, TRI_EDGE_IN);
   } else {
-    _directions.emplace_back(dir);
-    _edgeColls.emplace_back(&collection);
+    add(collection, dir);
   }
+
+  TRI_ASSERT(_directions.size() == _edgeColls.size());
 }
 
 void GraphNode::addEdgeAlias(std::string const& name) {

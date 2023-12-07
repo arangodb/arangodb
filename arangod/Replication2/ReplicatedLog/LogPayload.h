@@ -33,7 +33,8 @@ namespace arangodb::replication2 {
 struct LogPayload {
   using BufferType = velocypack::UInt8Buffer;
 
-  explicit LogPayload(BufferType dummy);
+  explicit LogPayload(BufferType const& dummy);
+  explicit LogPayload(BufferType&& dummy);
 
   // Named constructors, have to make copies.
   [[nodiscard]] static auto createFromSlice(velocypack::Slice slice)

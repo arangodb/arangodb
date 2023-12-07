@@ -193,7 +193,7 @@ auto MakeSkipResult(size_t const i) -> SkipResult {
 TEST(DeSerializeAqlExecuteResultTest, test) {
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor resourceMonitor{global};
-  AqlItemBlockManager manager{resourceMonitor, SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager manager{resourceMonitor};
 
   auto const testingAqlExecuteResults = std::array{
       AqlExecuteResult{ExecutionState::DONE, MakeSkipResult(0), nullptr},

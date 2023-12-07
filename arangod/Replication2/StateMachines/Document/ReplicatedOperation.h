@@ -23,10 +23,12 @@
 #pragma once
 
 #include "Cluster/ClusterTypes.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Inspection/Format.h"
 #include "Inspection/Status.h"
 #include "Inspection/Types.h"
 #include "VocBase/Identifiers/TransactionId.h"
+#include "VocBase/Methods/Indexes.h"
 
 #include <variant>
 
@@ -44,7 +46,10 @@ struct ReplicatedOperation {
     ShardID shard;
     velocypack::SharedSlice payload;
 
-    DocumentOperation() = default;
+    // TODO: This somehow seems to be needed for Inspection.
+    // Would like to remove it again though.
+    DocumentOperation() {}
+
     explicit DocumentOperation(TransactionId tid, ShardID shard,
                                velocypack::SharedSlice payload);
 
@@ -88,19 +93,64 @@ struct ReplicatedOperation {
 
   struct CreateShard {
     ShardID shard;
-    CollectionID collection;
-    std::shared_ptr<VPackBuilder> properties;
+    TRI_col_type_e collectionType;
+    velocypack::SharedSlice properties;
 
-    friend auto operator==(CreateShard const&, CreateShard const&)
-        -> bool = default;
+    friend auto operator==(CreateShard const& lhs, CreateShard const& rhs)
+        -> bool {
+      return lhs.shard == rhs.shard &&
+             lhs.collectionType == rhs.collectionType &&
+             lhs.properties.binaryEquals(rhs.properties.slice());
+    }
+  };
+
+  struct ModifyShard {
+    ShardID shard;
+    CollectionID collection;
+    velocypack::SharedSlice properties;
+
+    friend auto operator==(ModifyShard const& lhs, ModifyShard const& rhs)
+        -> bool {
+      return lhs.shard == rhs.shard && lhs.collection == rhs.collection &&
+             lhs.properties.binaryEquals(rhs.properties.slice());
+    }
   };
 
   struct DropShard {
     ShardID shard;
-    CollectionID collection;
 
     friend auto operator==(DropShard const&, DropShard const&)
         -> bool = default;
+  };
+
+  struct CreateIndex {
+    ShardID shard;
+    velocypack::SharedSlice properties;
+
+    // Parameters attached to the operation, but not replicated, because they
+    // make sense only locally.
+    struct Parameters {
+      std::shared_ptr<methods::Indexes::ProgressTracker> progress;
+
+      friend auto operator==(Parameters const&, Parameters const&)
+          -> bool = default;
+    } params;
+
+    friend auto operator==(CreateIndex const& lhs, CreateIndex const& rhs)
+        -> bool {
+      return lhs.shard == rhs.shard &&
+             lhs.properties.binaryEquals(rhs.properties.slice());
+    }
+  };
+
+  struct DropIndex {
+    ShardID shard;
+    velocypack::SharedSlice index;
+
+    friend auto operator==(DropIndex const& lhs, DropIndex const& rhs) -> bool {
+      return lhs.shard == rhs.shard &&
+             lhs.index.binaryEquals(rhs.index.slice());
+    }
   };
 
   struct Insert : DocumentOperation {};
@@ -114,8 +164,8 @@ struct ReplicatedOperation {
  public:
   using OperationType =
       std::variant<AbortAllOngoingTrx, Commit, IntermediateCommit, Abort,
-                   Truncate, CreateShard, DropShard, Insert, Update, Replace,
-                   Remove>;
+                   Truncate, CreateShard, ModifyShard, DropShard, CreateIndex,
+                   DropIndex, Insert, Update, Replace, Remove>;
   OperationType operation;
 
   static auto fromOperationType(OperationType op) noexcept
@@ -131,10 +181,19 @@ struct ReplicatedOperation {
   static auto buildTruncateOperation(TransactionId tid, ShardID shard) noexcept
       -> ReplicatedOperation;
   static auto buildCreateShardOperation(
+      ShardID shard, TRI_col_type_e collectionType,
+      velocypack::SharedSlice properties) noexcept -> ReplicatedOperation;
+  static auto buildModifyShardOperation(
       ShardID shard, CollectionID collection,
-      std::shared_ptr<VPackBuilder> properties) noexcept -> ReplicatedOperation;
-  static auto buildDropShardOperation(ShardID shard,
-                                      CollectionID collection) noexcept
+      velocypack::SharedSlice properties) noexcept -> ReplicatedOperation;
+  static auto buildDropShardOperation(ShardID shard) noexcept
+      -> ReplicatedOperation;
+  static auto buildCreateIndexOperation(
+      ShardID shard, velocypack::SharedSlice properties,
+      std::shared_ptr<methods::Indexes::ProgressTracker> progress =
+          nullptr) noexcept -> ReplicatedOperation;
+  static auto buildDropIndexOperation(ShardID shard,
+                                      velocypack::SharedSlice index) noexcept
       -> ReplicatedOperation;
   static auto buildDocumentOperation(TRI_voc_document_operation_e const& op,
                                      TransactionId tid, ShardID shard,
@@ -153,14 +212,6 @@ template<typename T, typename... U>
 concept IsAnyOf = (std::same_as<T, U> || ...);
 
 template<class T>
-concept ModifiesUserTransaction =
-    std::is_same_v<T, ReplicatedOperation::Truncate> ||
-    std::is_same_v<T, ReplicatedOperation::Insert> ||
-    std::is_same_v<T, ReplicatedOperation::Update> ||
-    std::is_same_v<T, ReplicatedOperation::Replace> ||
-    std::is_same_v<T, ReplicatedOperation::Remove>;
-
-template<class T>
 concept FinishesUserTransaction =
     std::is_same_v<T, ReplicatedOperation::Commit> ||
     std::is_same_v<T, ReplicatedOperation::Abort>;
@@ -173,6 +224,14 @@ template<class T>
 concept InsertsDocuments =
     IsAnyOf<T, ReplicatedOperation::Insert, ReplicatedOperation::Update,
             ReplicatedOperation::Replace>;
+
+template<class T>
+concept ModifiesUserTransaction =
+    std::is_same_v<T, ReplicatedOperation::Truncate> ||
+    std::is_same_v<T, ReplicatedOperation::Insert> ||
+    std::is_same_v<T, ReplicatedOperation::Update> ||
+    std::is_same_v<T, ReplicatedOperation::Replace> ||
+    std::is_same_v<T, ReplicatedOperation::Remove>;
 
 template<class T>
 concept UserTransaction =

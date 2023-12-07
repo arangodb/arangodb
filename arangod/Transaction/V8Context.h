@@ -23,6 +23,10 @@
 
 #pragma once
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include "Basics/Common.h"
 #include "Context.h"
 
@@ -40,7 +44,8 @@ namespace transaction {
 class V8Context final : public Context {
  public:
   /// @brief create the context
-  V8Context(TRI_vocbase_t& vocbase, bool embeddable);
+  V8Context(TRI_vocbase_t& vocbase, OperationOrigin operationOrigin,
+            bool embeddable);
 
   /// @brief destroy the context
   ~V8Context() noexcept;
@@ -72,13 +77,13 @@ class V8Context final : public Context {
   static bool isEmbedded();
 
   /// @brief create a context
-  static std::shared_ptr<transaction::V8Context> Create(TRI_vocbase_t& vocbase,
-                                                        bool embeddable);
+  static std::shared_ptr<transaction::V8Context> create(
+      TRI_vocbase_t& vocbase, OperationOrigin operationOrigin, bool embeddable);
 
   /// @brief create a V8 transaction context if we are in a V8 isolate, and a
   /// standlone transaction context otherwise
-  static std::shared_ptr<transaction::Context> CreateWhenRequired(
-      TRI_vocbase_t& vocbase, bool embeddable);
+  static std::shared_ptr<transaction::Context> createWhenRequired(
+      TRI_vocbase_t& vocbase, OperationOrigin operationOrigin, bool embeddable);
 
  private:
   static TRI_v8_global_t* getV8State() noexcept;

@@ -1,4 +1,4 @@
-target_sources(arango_replication2 PRIVATE
+target_sources(arango_replication2_pure PRIVATE
   ILogPersistor.h
   IStatePersistor.h
   IStorageEngineMethods.h
@@ -7,3 +7,4 @@ target_sources(arango_replication2 PRIVATE
   )
 
 add_subdirectory(RocksDB)
+add_subdirectory(WAL)

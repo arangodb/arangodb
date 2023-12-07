@@ -30,12 +30,14 @@
 #include "Agency/FailedLeader.h"
 #include "Agency/FailedServer.h"
 #include "Agency/MoveShard.h"
+#include "Agency/Node.h"
 #include "Agency/ReconfigureReplicatedLog.h"
 #include "Agency/RemoveFollower.h"
 #include "Agency/ResignLeadership.h"
 #include "Logger/LogMacros.h"
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 JobContext::JobContext(JOB_STATUS status, std::string const& id,
                        Node const& snapshot, AgentInterface* agent)

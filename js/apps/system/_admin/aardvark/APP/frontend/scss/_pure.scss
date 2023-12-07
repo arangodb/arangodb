@@ -95,7 +95,7 @@
     border-bottom: 1px solid $c-content-border;
     color: $c-pure-text;
     display: inline-block;
-    font-weight: 100;
+    font-weight: 400;
     line-height: 40px;
     width: 100%;
 
@@ -171,7 +171,7 @@
 
     .fa {
       &.fa-check-circle {
-        color: $c-positive;
+        color: var(--green-500);
       }
 
       &.fa-exclamation-circle {
@@ -185,4 +185,17 @@
     margin-bottom: 10px;
   }
 
+}
+
+
+.pure-g [class*=pure-u] {
+  font-family: var(--font-family);
+}
+
+.pure-table .pure-table-row {
+  color: black;
+}
+
+.pure-table .pure-table-row:hover {
+  background-color: var(--gray-100);
 }

@@ -58,7 +58,7 @@ class Scope {
   static std::string typeName(ScopeType);
 
   /// @brief return the scope type
-  inline ScopeType type() const { return _type; }
+  ScopeType type() const { return _type; }
 
   /// @brief adds a variable to the scope
   void addVariable(Variable*);
@@ -90,9 +90,8 @@ class Scopes {
   /// @brief destroy the scopes
   ~Scopes();
 
- public:
   /// @brief number of currently active scopes
-  inline size_t numActive() const { return _activeScopes.size(); }
+  size_t numActive() const noexcept { return _activeScopes.size(); }
 
   /// @brief return the type of the currently active scope
   ScopeType type() const {
@@ -102,7 +101,7 @@ class Scopes {
 
   /// @brief whether or not the $CURRENT variable can be used at the caller's
   /// current position
-  inline bool canUseCurrentVariable() const {
+  bool canUseCurrentVariable() const noexcept {
     return (!_currentVariables.empty());
   }
 

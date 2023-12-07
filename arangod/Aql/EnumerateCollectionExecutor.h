@@ -29,17 +29,17 @@
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Transaction/Methods.h"
 #include "Aql/RegisterInfos.h"
-#include "DocumentProducingHelper.h"
+#include "Transaction/Methods.h"
 
 #include <memory>
 #include <string>
-#include <unordered_set>
 #include <vector>
 
 namespace arangodb {
 class IndexIterator;
+struct ResourceMonitor;
+
 namespace transaction {
 class Methods;
 }
@@ -82,6 +82,7 @@ class EnumerateCollectionExecutorInfos {
   Variable const* getOutVariable() const;
   QueryContext& getQuery() const;
   Expression* getFilter() const noexcept;
+  ResourceMonitor& getResourceMonitor() noexcept;
   arangodb::aql::Projections const& getProjections() const noexcept;
   arangodb::aql::Projections const& getFilterProjections() const noexcept;
   bool getProduceResult() const noexcept;
@@ -118,9 +119,6 @@ class EnumerateCollectionExecutor {
     static constexpr bool preservesOrder = true;
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Disable;
-    /* With some more modifications this could be turned to true. Actually the
-   output of this block is input * itemsInCollection */
-    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = EnumerateCollectionExecutorInfos;
@@ -144,8 +142,8 @@ class EnumerateCollectionExecutor {
    * @brief This Executor in some cases knows how many rows it will produce and
    * most by itself
    */
-  [[nodiscard]] auto expectedNumberOfRowsNew(
-      AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+  [[nodiscard]] auto expectedNumberOfRows(AqlItemBlockInputRange const& input,
+                                          AqlCall const& call) const noexcept
       -> size_t;
 
   /**
@@ -172,6 +170,7 @@ class EnumerateCollectionExecutor {
  private:
   transaction::Methods _trx;
   Infos& _infos;
+  IndexIterator::LocalDocumentIdCallback _documentNonProducer;
   IndexIterator::DocumentCallback _documentProducer;
   IndexIterator::DocumentCallback _documentSkipper;
   DocumentProducingFunctionContext _documentProducingFunctionContext;

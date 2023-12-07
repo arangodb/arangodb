@@ -33,12 +33,15 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
+
+#include <absl/strings/str_cat.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -64,7 +67,7 @@ RestStatus RestIndexHandler::execute() {
   if (type == rest::RequestType::GET) {
     if (_request->suffixes().size() == 1 &&
         _request->suffixes()[0] == "selectivity") {
-      return getSelectivityEstimates();
+      return waitForFuture(getSelectivityEstimates());
     }
     return getIndexes();
   } else if (type == rest::RequestType::POST) {
@@ -176,7 +179,8 @@ RestStatus RestIndexHandler::getIndexes() {
     bool withHidden = _request->parsedValue("withHidden", false);
 
     VPackBuilder indexes;
-    Result res = methods::Indexes::getAll(*coll, flags, withHidden, indexes);
+    Result res =
+        methods::Indexes::getAll(*coll, flags, withHidden, indexes).get();
     if (!res.ok()) {
       generateError(rest::ResponseCode::BAD, res.errorNumber(),
                     res.errorMessage());
@@ -193,9 +197,7 @@ RestStatus RestIndexHandler::getIndexes() {
     tmp.add("identifiers", VPackValue(VPackValueType::Object));
     for (VPackSlice const& index : VPackArrayIterator(indexes.slice())) {
       VPackSlice id = index.get("id");
-      VPackValueLength l = 0;
-      char const* str = id.getString(l);
-      tmp.add(str, l, index);
+      tmp.add(id.stringView(), index);
     }
     tmp.close();
     tmp.close();
@@ -219,7 +221,7 @@ RestStatus RestIndexHandler::getIndexes() {
     tmp.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
 
     VPackBuilder output;
-    Result res = methods::Indexes::getIndex(*coll, tmp.slice(), output);
+    Result res = methods::Indexes::getIndex(*coll, tmp.slice(), output).get();
     if (res.ok()) {
       VPackBuilder b;
       b.openObject();
@@ -238,7 +240,7 @@ RestStatus RestIndexHandler::getIndexes() {
   return RestStatus::DONE;
 }
 
-RestStatus RestIndexHandler::getSelectivityEstimates() {
+futures::Future<futures::Unit> RestIndexHandler::getSelectivityEstimates() {
   // .............................................................................
   // /_api/index/selectivity?collection=<collection-name>
   // .............................................................................
@@ -248,14 +250,18 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
   if (cName.empty()) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-    return RestStatus::DONE;
+    co_return;
   }
+
+  auto origin =
+      transaction::OperationOriginREST{"fetching selectivity estimates"};
 
   // transaction protects access onto selectivity estimates
   std::unique_ptr<transaction::Methods> trx;
 
   try {
-    trx = createTransaction(cName, AccessMode::Type::READ, OperationOptions());
+    trx = co_await createTransaction(cName, AccessMode::Type::READ,
+                                     OperationOptions(), origin);
   } catch (basics::Exception const& ex) {
     if (ex.code() == TRI_ERROR_TRANSACTION_NOT_FOUND) {
       // this will happen if the tid of a managed transaction is passed in,
@@ -263,7 +269,7 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
       // this case, we create an ad-hoc transaction on the underlying
       // collection
       trx = std::make_unique<SingleCollectionTransaction>(
-          transaction::StandaloneContext::Create(_vocbase), cName,
+          transaction::StandaloneContext::create(_vocbase, origin), cName,
           AccessMode::Type::READ);
     } else {
       throw;
@@ -275,7 +281,7 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
   Result res = trx->begin();
   if (res.fail()) {
     generateError(res);
-    return RestStatus::DONE;
+    co_return;
   }
 
   LogicalCollection* coll = trx->documentCollection(cName);
@@ -292,18 +298,17 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
     if (idx->inProgress() || idx->isHidden()) {
       continue;
     }
-    std::string name = coll->name();
-    name.push_back(TRI_INDEX_HANDLE_SEPARATOR_CHR);
-    name.append(std::to_string(idx->id().id()));
     if (idx->hasSelectivityEstimate() || idx->unique()) {
-      builder.add(name, VPackValue(idx->selectivityEstimate()));
+      builder.add(absl::StrCat(coll->name(), TRI_INDEX_HANDLE_SEPARATOR_STR,
+                               idx->id().id()),
+                  VPackValue(idx->selectivityEstimate()));
     }
   }
   builder.close();
   builder.close();
 
   generateResult(rest::ResponseCode::OK, std::move(buffer));
-  return RestStatus::DONE;
+  co_return;
 }
 
 RestStatus RestIndexHandler::createIndex() {
@@ -317,8 +322,8 @@ RestStatus RestIndexHandler::createIndex() {
     events::CreateIndexEnd(_vocbase.name(), "(unknown)", body,
                            TRI_ERROR_BAD_PARAMETER);
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting POST " + _request->requestPath() +
-                      "?collection=<collection-name>");
+                  absl::StrCat("expecting POST ", _request->requestPath(),
+                               "?collection=<collection-name>"));
     return RestStatus::DONE;
   }
 
@@ -372,8 +377,10 @@ RestStatus RestIndexHandler::createIndex() {
       std::unique_lock<std::mutex> locker(_mutex);
 
       try {
-        _createInBackgroundData.result = methods::Indexes::ensureIndex(
-            *collection, body.slice(), true, _createInBackgroundData.response);
+        _createInBackgroundData.result =
+            methods::Indexes::ensureIndex(*collection, body.slice(), true,
+                                          _createInBackgroundData.response)
+                .get();
 
         if (_createInBackgroundData.result.ok()) {
           VPackSlice created =
@@ -433,10 +440,11 @@ RestStatus RestIndexHandler::dropIndex() {
   if (iid.starts_with(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR)) {
     idBuilder.add(VPackValue(iid));
   } else {
-    idBuilder.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
+    idBuilder.add(
+        VPackValue(absl::StrCat(cName, TRI_INDEX_HANDLE_SEPARATOR_STR, iid)));
   }
 
-  Result res = methods::Indexes::drop(*coll, idBuilder.slice());
+  Result res = methods::Indexes::drop(*coll, idBuilder.slice()).get();
   if (res.ok()) {
     VPackBuilder b;
     b.openObject();

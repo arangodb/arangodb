@@ -48,9 +48,9 @@ struct SingleRemoteModificationInfos : ModificationExecutorInfos {
             engine, inputRegister, RegisterPlan::MaxRegisterId,
             RegisterPlan::MaxRegisterId, outputNewRegisterId,
             outputOldRegisterId, outputRegisterId, query, std::move(options),
-            aqlCollection, ProducesResults(false), consultAqlWriteFilter,
-            ignoreErrors, DoCount(true), IsReplace(false),
-            ignoreDocumentNotFound),
+            aqlCollection, /*batchSize*/ 1, ProducesResults(false),
+            consultAqlWriteFilter, ignoreErrors, DoCount(true),
+            IsReplace(false), ignoreDocumentNotFound),
         _key(std::move(key)),
         _hasParent(hasParent),
         _replaceIndex(replaceIndex) {}
@@ -79,7 +79,6 @@ struct SingleRemoteModificationExecutor {
     static constexpr bool preservesOrder = true;
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Disable;
-    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Infos = SingleRemoteModificationInfos;
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;

@@ -24,12 +24,19 @@
 
 #include "Basics/Guarded.h"
 #include "Basics/UnshackledMutex.h"
+#include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/StateMachines/Document/ShardProperties.h"
+#include "VocBase/AccessMode.h"
+#include "VocBase/Methods/Indexes.h"
+#include "Transaction/OperationOrigin.h"
 
 #include <shared_mutex>
 
 struct TRI_vocbase_t;
+
+namespace arangodb {
+struct ShardID;
+}
 
 namespace arangodb::replication2::replicated_state::document {
 
@@ -37,43 +44,77 @@ struct IMaintenanceActionExecutor;
 
 struct IDocumentStateShardHandler {
   virtual ~IDocumentStateShardHandler() = default;
-  virtual auto ensureShard(ShardID shard, CollectionID collection,
-                           std::shared_ptr<VPackBuilder> properties)
-      -> ResultT<bool> = 0;
-  virtual auto dropShard(ShardID const& shard) -> ResultT<bool> = 0;
-  virtual auto dropAllShards() -> Result = 0;
-  virtual auto isShardAvailable(ShardID const& shard) -> bool = 0;
-  virtual auto getShardMap() -> ShardMap = 0;
+  virtual auto ensureShard(ShardID const& shard, TRI_col_type_e collectionType,
+                           velocypack::SharedSlice const& properties) noexcept
+      -> Result = 0;
+
+  virtual auto modifyShard(ShardID shard, CollectionID colId,
+                           velocypack::SharedSlice properties) noexcept
+      -> Result = 0;
+
+  virtual auto dropShard(ShardID const& shard) noexcept -> Result = 0;
+
+  virtual auto dropAllShards() noexcept -> Result = 0;
+
+  virtual auto getAvailableShards()
+      -> std::vector<std::shared_ptr<LogicalCollection>> = 0;
+
+  virtual auto ensureIndex(
+      ShardID shard, velocypack::SharedSlice properties,
+      std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
+      -> Result = 0;
+
+  virtual auto dropIndex(ShardID shard, velocypack::SharedSlice index)
+      -> Result = 0;
+
+  virtual auto lookupShard(ShardID const& shard) noexcept
+      -> ResultT<std::shared_ptr<LogicalCollection>> = 0;
+
+  virtual auto lockShard(ShardID const& shard, AccessMode::Type accessType,
+                         transaction::OperationOrigin origin)
+      -> ResultT<std::unique_ptr<transaction::Methods>> = 0;
 };
 
 class DocumentStateShardHandler : public IDocumentStateShardHandler {
-#ifdef ARANGODB_USE_GOOGLE_TESTS
- public:
-  explicit DocumentStateShardHandler(
-      GlobalLogIdentifier gid,
-      std::shared_ptr<IMaintenanceActionExecutor> maintenance)
-      : _gid(std::move(gid)), _maintenance(std::move(maintenance)) {}
-#endif
-
  public:
   explicit DocumentStateShardHandler(
       TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
       std::shared_ptr<IMaintenanceActionExecutor> maintenance);
-  auto ensureShard(ShardID shard, CollectionID collection,
-                   std::shared_ptr<VPackBuilder> properties)
-      -> ResultT<bool> override;
-  auto dropShard(ShardID const& shard) -> ResultT<bool> override;
-  auto dropAllShards() -> Result override;
-  auto isShardAvailable(ShardID const& shardId) -> bool override;
-  auto getShardMap() -> ShardMap override;
+
+  auto ensureShard(ShardID const& shard, TRI_col_type_e collectionType,
+                   velocypack::SharedSlice const& properties) noexcept
+      -> Result override;
+
+  auto modifyShard(ShardID shard, CollectionID colId,
+                   velocypack::SharedSlice properties) noexcept
+      -> Result override;
+
+  auto dropShard(ShardID const& shard) noexcept -> Result override;
+
+  auto dropAllShards() noexcept -> Result override;
+
+  auto getAvailableShards()
+      -> std::vector<std::shared_ptr<LogicalCollection>> override;
+
+  auto ensureIndex(
+      ShardID shard, velocypack::SharedSlice properties,
+      std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
+      -> Result override;
+
+  auto dropIndex(ShardID shard, velocypack::SharedSlice index) noexcept
+      -> Result override;
+
+  auto lookupShard(ShardID const& shard) noexcept
+      -> ResultT<std::shared_ptr<LogicalCollection>> override;
+
+  auto lockShard(ShardID const& shard, AccessMode::Type accessType,
+                 transaction::OperationOrigin origin)
+      -> ResultT<std::unique_ptr<transaction::Methods>> override;
 
  private:
   GlobalLogIdentifier _gid;
   std::shared_ptr<IMaintenanceActionExecutor> _maintenance;
-  struct {
-    ShardMap shards;
-    std::shared_mutex mutex;
-  } _shardMap;
+  TRI_vocbase_t& _vocbase;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

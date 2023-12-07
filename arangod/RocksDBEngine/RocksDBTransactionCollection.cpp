@@ -45,6 +45,8 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <absl/strings/str_cat.h>
+
 using namespace arangodb;
 
 RocksDBTransactionCollection::RocksDBTransactionCollection(
@@ -90,14 +92,14 @@ bool RocksDBTransactionCollection::canAccess(
   return true;
 }
 
-Result RocksDBTransactionCollection::lockUsage() {
+futures::Future<Result> RocksDBTransactionCollection::lockUsage() {
   Result res;
 
   bool doSetup = false;
   if (_collection == nullptr) {
     res = ensureCollection();
     if (res.fail()) {
-      return res;
+      co_return res;
     }
     doSetup = true;
   }
@@ -106,13 +108,13 @@ Result RocksDBTransactionCollection::lockUsage() {
 
   if (/*AccessMode::isWriteOrExclusive(_accessType) &&*/ !isLocked()) {
     // r/w lock the collection
-    res = doLock(_accessType);
+    res = co_await doLock(_accessType);
 
     // TRI_ERROR_LOCKED is not an error, but it indicates that the lock
     // operation has actually acquired the lock (and that the lock has not
     // been held before)
     if (res.fail() && !res.is(TRI_ERROR_LOCKED)) {
-      return res;
+      co_return res;
     }
   }
 
@@ -123,7 +125,7 @@ Result RocksDBTransactionCollection::lockUsage() {
     _revision = rc->meta().revisionId();
   }
 
-  return {};
+  co_return {};
 }
 
 void RocksDBTransactionCollection::releaseUsage() {
@@ -324,7 +326,8 @@ void RocksDBTransactionCollection::handleIndexCacheRefills() {
 /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
 /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and
 /// no other error occurred returns any other error code otherwise
-Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
+futures::Future<Result> RocksDBTransactionCollection::doLock(
+    AccessMode::Type type) {
   if (AccessMode::Type::WRITE == type && _exclusiveWrites) {
     type = AccessMode::Type::EXCLUSIVE;
   }
@@ -332,12 +335,12 @@ Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
   if (!AccessMode::isWriteOrExclusive(type)) {
     // read operations do not require any locks in RocksDB
     _lockType = type;
-    return {};
+    co_return {};
   }
 
   if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER)) {
     // never lock
-    return {};
+    co_return {};
   }
 
   TRI_ASSERT(_collection != nullptr);
@@ -355,11 +358,11 @@ Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
   if (AccessMode::isExclusive(type)) {
     // exclusive locking means we'll be acquiring the collection's RW lock in
     // write mode
-    res = physical->lockWrite(timeout);
+    res = co_await physical->lockWrite(timeout);
   } else {
     // write locking means we'll be acquiring the collection's RW lock in read
     // mode
-    res = physical->lockRead(timeout);
+    res = co_await physical->lockRead(timeout);
   }
 
   if (res.ok()) {
@@ -368,13 +371,11 @@ Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
     // acquired the lock ourselves
     res.reset(TRI_ERROR_LOCKED);
   } else if (res.is(TRI_ERROR_LOCK_TIMEOUT) && timeout >= 0.1) {
-    char const* actor = _transaction->actorName();
-    TRI_ASSERT(actor != nullptr);
-    std::string message = "timed out after " + std::to_string(timeout) +
-                          " s waiting for " + AccessMode::typeString(type) +
-                          "-lock on collection " +
-                          _transaction->vocbase().name() + "/" +
-                          _collection->name() + " on " + actor;
+    std::string message =
+        absl::StrCat("timed out after ", timeout, " s waiting for ",
+                     AccessMode::typeString(type), "-lock on collection ",
+                     _transaction->vocbase().name(), "/", _collection->name(),
+                     " on ", _transaction->actorName());
     LOG_TOPIC("4512c", WARN, Logger::QUERIES) << message;
     res.reset(TRI_ERROR_LOCK_TIMEOUT, std::move(message));
 
@@ -387,7 +388,7 @@ Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
     }
   }
 
-  return res;
+  co_return res;
 }
 
 /// @brief unlock a collection

@@ -229,14 +229,14 @@ void RocksDBReplicationContext::releaseIterators(TRI_vocbase_t& vocbase,
 }
 
 /// Bind collection for incremental sync
-std::tuple<Result, DataSourceId, uint64_t>
+futures::Future<std::tuple<Result, DataSourceId, uint64_t>>
 RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
                                                      std::string const& cname) {
   std::shared_ptr<LogicalCollection> logical{vocbase.lookupCollection(cname)};
 
   if (!logical) {
-    return std::make_tuple(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                           DataSourceId::none(), 0);
+    co_return std::make_tuple(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                              DataSourceId::none(), 0);
   }
   DataSourceId cid = logical->id();
 
@@ -248,8 +248,8 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
 
   auto it = _iterators.find(cid);
   if (it != _iterators.end()) {  // nothing to do here
-    return std::make_tuple(Result{}, it->second->logical->id(),
-                           it->second->numberDocuments);
+    co_return std::make_tuple(Result{}, it->second->logical->id(),
+                              it->second->numberDocuments);
   }
 
   uint64_t numberDocuments;
@@ -260,7 +260,7 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
     const double to = ServerState::instance()->isDBServer() ? 10.0 : 1.0;
     auto lockGuard = scopeGuard([rcoll]() noexcept { rcoll->unlockWrite(); });
     if (!_patchCount.empty() && _patchCount == cname &&
-        rcoll->lockWrite(to) == TRI_ERROR_NO_ERROR) {
+        co_await rcoll->lockWrite(to) == TRI_ERROR_NO_ERROR) {
       // fetch number docs and snapshot under exclusive lock
       // this should enable us to correct the count later
       documentCountAdjustmentTicket =
@@ -286,7 +286,7 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
   CollectionIterator* cIter = result.first->second.get();
   if (nullptr == cIter->iter) {
     _iterators.erase(cid);
-    return std::make_tuple(
+    co_return std::make_tuple(
         Result(TRI_ERROR_INTERNAL, "could not create db iterators"),
         DataSourceId::none(), 0);
   }
@@ -311,7 +311,7 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
 
   // we should have a valid iterator if there are documents in here
   TRI_ASSERT(numberDocuments == 0 || cIter->hasMore());
-  return std::make_tuple(Result{}, cid, numberDocuments);
+  co_return std::make_tuple(Result{}, cid, numberDocuments);
 }
 
 void RocksDBReplicationContext::removeBlocker(
@@ -493,7 +493,8 @@ std::string const& RocksDBReplicationContext::patchCount() const {
 // creating a new iterator if one does not exist for this collection
 RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
     TRI_vocbase_t& vocbase, std::string const& cname,
-    basics::StringBuffer& buff, uint64_t chunkSize, bool useEnvelope) {
+    basics::StringBuffer& buff, size_t docsPerBatch, uint64_t chunkSize,
+    bool useEnvelope) {
   CollectionIterator* cIter{nullptr};
   auto guard = scopeGuard([&]() noexcept {
     try {
@@ -528,7 +529,8 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
   basics::VPackStringBufferAdapter adapter(buff.stringBuffer());
   velocypack::Dumper dumper(&adapter, &cIter->vpackOptions);
   TRI_ASSERT(cIter->iter && !cIter->sorted());
-  while (cIter->hasMore() && buff.length() < chunkSize) {
+  size_t i = 0;
+  while (cIter->hasMore() && buff.length() < chunkSize && ++i <= docsPerBatch) {
     if (useEnvelope) {
       buff.appendText("{\"type\":");
       buff.appendInteger(REPLICATION_MARKER_DOCUMENT);  // set type
@@ -563,8 +565,8 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
 // creating a new iterator if one does not exist for this collection
 RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
     TRI_vocbase_t& vocbase, std::string const& cname,
-    VPackBuffer<uint8_t>& buffer, uint64_t chunkSize, bool useEnvelope,
-    bool singleArray) {
+    VPackBuffer<uint8_t>& buffer, size_t docsPerBatch, uint64_t chunkSize,
+    bool useEnvelope, bool singleArray) {
   TRI_ASSERT(!useEnvelope || !singleArray);
 
   CollectionIterator* cIter{nullptr};
@@ -605,7 +607,9 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
     builder.openArray(true);
   }
   TRI_ASSERT(cIter->iter && !cIter->sorted());
-  while (cIter->hasMore() && buffer.length() < chunkSize) {
+  size_t i = 0;
+  while (cIter->hasMore() && buffer.length() < chunkSize &&
+         ++i <= docsPerBatch) {
     if (useEnvelope) {
       builder.openObject();
       builder.add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));

@@ -129,12 +129,6 @@ TEST_F(CollectionConstantPropertiesTest, test_collection_type) {
   GenerateFailsOnObject(type);
 }
 
-TEST_F(CollectionConstantPropertiesTest,
-       test_smartGraphAttribtueRequiresIsSmart) {
-  // Setting only SmartGraphAttribut is disallowed
-  __HELPER_assertParsingThrows(smartGraphAttribute, "test");
-}
-
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isSystem);
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isSmart);
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isDisjoint);

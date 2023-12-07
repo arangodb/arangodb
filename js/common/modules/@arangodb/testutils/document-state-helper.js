@@ -22,6 +22,7 @@
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
+const internal = require("internal");
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const request = require("@arangodb/request");
 const jsunity = require('jsunity');
@@ -40,6 +41,29 @@ const getLocalValue = function (endpoint, db, col, key) {
   lh.checkRequestResult(res, true);
   return res.json;
 };
+
+/**
+ * Lookup a particular index on a server.
+ */
+const getLocalIndex = function (endpoint, db, indexId) {
+  let res = request.get({
+    url: `${endpoint}/_db/${db}/_api/index/${indexId}`,
+  });
+  lh.checkRequestResult(res, true);
+  return res.json;
+};
+
+/**
+ * Returns all indexes available locally on a server.
+ */
+const getAllLocalIndexes = function (endpoint, db, shard) {
+  let res = request.get({
+    url: `${endpoint}/_db/${db}/_api/index?collection=${shard}`,
+  });
+  lh.checkRequestResult(res, true);
+  return res.json;
+};
+
 
 /**
  * Verify that a key is available (or not) on a server.
@@ -169,6 +193,10 @@ const getOperationPayload = function(entry) {
   return op.payload;
 };
 
+const getOperationsByType = function(entries, opType) {
+  return entries.filter(entry => getOperationType(entry) === opType);
+};
+
 /**
  * Returns the first entry with the same key and type as provided.
  * If no key is provided, all entries of the specified type are returned.
@@ -249,7 +277,85 @@ const finishSnapshot = function (endpoint, db, logId, snapshotId) {
   return request.delete(`${endpoint}/_db/${db}/_api/document-state/${logId}/snapshot/finish/${snapshotId}`);
 };
 
+/*
+ * Useful for getting the log id of a single shard collection.
+ */
+const getSingleLogId = function (database, collection) {
+  const shards = collection.shards();
+  const shardsToLogs = lh.getShardsToLogsMapping(database, collection._id);
+  const shardId = shards[0];
+  const logId = shardsToLogs[shardId];
+  return {logId, shardId};
+};
+
+const getCollectionShardsAndLogs = function (db, collection) {
+  const shards = collection.shards();
+  const shardsToLogs = lh.getShardsToLogsMapping(db._name(), collection._id);
+  const logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
+  return {shards, shardsToLogs, logs};
+};
+
+const isIndexInCurrent = function (database, collectionId, indexId) {
+  const shards = lh.readAgencyValueAt(`Current/Collections/${database}/${collectionId}`);
+  return Object.values(shards).some(shard => shard.indexes.some(index => index.id === indexId));
+};
+
+const computedValuesAppliedPredicate = function (collection, attribute) {
+  return function () {
+    if (collection.properties().computedValues === null) {
+      return Error(`Computed values not applied to collection ${collection.name()}, ` +
+        `properties: ${JSON.stringify(collection.properties())}`);
+    }
+    let doc = collection.insert({_key: "computedValuesAppliedPredicateTest"}, {waitForSync: true, returnNew: true});
+    collection.remove(doc);
+    if (doc.new.hasOwnProperty(attribute) === false) {
+      return Error(`Computed values not applied to collection ${collection.name()}`);
+    }
+    return true;
+  };
+};
+
+const logIfFailure = function (fun, msg, dumpObjects) {
+  try {
+    fun();
+  } catch (e) {
+    let dumpMsg = {};
+    if (dumpObjects !== undefined) {
+      // dump collections
+      if (dumpObjects.hasOwnProperty('collections')) {
+        let collections = {};
+        for (const collection of dumpObjects.collections) {
+          try {
+            collections[collection.name()] = collection.toArray();
+          } catch (e) {
+            collections[collection.name()] = e;
+          }
+        }
+        dumpMsg['collections'] = collections;
+      }
+
+      // dump logs
+      if (dumpObjects.hasOwnProperty('logs')) {
+        let logs = {};
+        for (const log of dumpObjects.logs) {
+          try {
+            logs[log.id()] = log.head(1000);
+          } catch (e) {
+            logs[log.id()] = e;
+          }
+        }
+        dumpMsg['logs'] = logs;
+      }
+    }
+
+    internal.print(`${msg}: ${JSON.stringify(e)}. Dump: ${JSON.stringify(dumpMsg)}`);
+    throw e;
+  }
+};
+
 exports.getLocalValue = getLocalValue;
+exports.getLocalIndex = getLocalIndex;
+exports.getAllLocalIndexes = getAllLocalIndexes;
 exports.localKeyStatus = localKeyStatus;
 exports.checkFollowersValue = checkFollowersValue;
 exports.getBulkDocuments = getBulkDocuments;
@@ -257,6 +363,7 @@ exports.mergeLogs = mergeLogs;
 exports.getOperation = getOperation;
 exports.getOperationType = getOperationType;
 exports.getOperationPayload = getOperationPayload;
+exports.getOperationsByType = getOperationsByType;
 exports.getDocumentEntries = getDocumentEntries;
 exports.searchDocs = searchDocs;
 exports.getArrayElements = getArrayElements;
@@ -266,3 +373,8 @@ exports.getSnapshotStatus = getSnapshotStatus;
 exports.getNextSnapshotBatch = getNextSnapshotBatch;
 exports.finishSnapshot = finishSnapshot;
 exports.allSnapshotsStatus = allSnapshotsStatus;
+exports.getSingleLogId = getSingleLogId;
+exports.getCollectionShardsAndLogs = getCollectionShardsAndLogs;
+exports.isIndexInCurrent = isIndexInCurrent;
+exports.computedValuesAppliedPredicate = computedValuesAppliedPredicate;
+exports.logIfFailure = logIfFailure;

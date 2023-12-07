@@ -19,7 +19,8 @@ import { CopyAnalyzerDropdown } from "./CopyAnalyzerDropdown";
 const INITIAL_VALUES = {
   name: "",
   type: "identity",
-  features: []
+  features: [],
+  properties: {}
 } as AnalyzerDescription;
 
 export const AddAnalyzerModal = ({
@@ -116,7 +117,7 @@ const AddAnalyzerModalInner = ({
           <Button colorScheme="gray" onClick={onClose}>
             Close
           </Button>
-          <Button isLoading={isSubmitting} colorScheme="blue" type="submit">
+          <Button isLoading={isSubmitting} colorScheme="green" type="submit">
             Create
           </Button>
         </Stack>

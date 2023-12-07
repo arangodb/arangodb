@@ -25,16 +25,16 @@
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
-#include "Aql/Graphs.h"
 #include "Aql/types.h"
 #include "Cluster/ClusterTypes.h"
+#include "Transaction/OperationOrigin.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
 
-#include <map>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -98,8 +98,6 @@ class GraphNode : public ExecutionNode {
   struct THIS_THROWS_WHEN_CALLED {};
   explicit GraphNode(THIS_THROWS_WHEN_CALLED);
 
-  std::string const& collectionToShardName(std::string const& collName) const;
-
  public:
   ~GraphNode() override = default;
 
@@ -112,6 +110,8 @@ class GraphNode : public ExecutionNode {
 
   /// @brief the cost of a graph node
   CostEstimate estimateCost() const override;
+
+  AsyncPrefetchEligibility canUseAsyncPrefetching() const noexcept override;
 
   /// @brief flag, if smart traversal (Enterprise Edition only!) is done
   bool isSmart() const;
@@ -194,7 +194,7 @@ class GraphNode : public ExecutionNode {
 
   std::vector<aql::Collection const*> collections() const;
   void resetCollectionToShard() { _collectionToShard.clear(); }
-  void addCollectionToShard(std::string const& coll, std::string const& shard) {
+  void addCollectionToShard(std::string const& coll, ShardID const& shard) {
     // NOTE: Do not replace this by emplace or insert.
     // This is also used to overwrite the existing entry.
     _collectionToShard[coll] = shard;
@@ -241,7 +241,8 @@ class GraphNode : public ExecutionNode {
 
   Collection const* getShardingPrototype() const;
 
-  void determineEnterpriseFlags(AstNode const* edgeCollectionList);
+  void determineEnterpriseFlags(AstNode const* edgeCollectionList,
+                                transaction::OperationOrigin operationOrigin);
 
  protected:
   /// @brief the database
@@ -304,14 +305,14 @@ class GraphNode : public ExecutionNode {
   /// @brief The directions edges are followed
   std::vector<TRI_edge_direction_e> _directions;
 
-  /// @brief Options for traversals
+  /// @brief Options for traversals (monitored)
   std::unique_ptr<graph::BaseOptions> _options;
 
   /// @brief The list of traverser engines grouped by server.
   std::unordered_map<ServerID, aql::EngineId> _engines;
 
   /// @brief list of shards involved, required for one-shard-databases
-  std::unordered_map<std::string, std::string> _collectionToShard;
+  std::unordered_map<std::string, ShardID> _collectionToShard;
 };
 
 }  // namespace aql

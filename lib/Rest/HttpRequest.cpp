@@ -70,11 +70,8 @@ std::string urlDecode(char const* begin, char const* end) {
 }
 }  // namespace
 
-HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo, uint64_t mid,
-                         bool allowMethodOverride)
-    : GeneralRequest(connectionInfo, mid),
-      _allowMethodOverride(allowMethodOverride),
-      _validatedPayload(false) {
+HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo, uint64_t mid)
+    : GeneralRequest(connectionInfo, mid), _validatedPayload(false) {
   _contentType = ContentType::UNSET;
   _contentTypeResponse = ContentType::JSON;
   TRI_ASSERT(_memoryUsage == 0);
@@ -597,7 +594,7 @@ void HttpRequest::setHeader(std::string key, std::string value) {
   } else if (_contentType == ContentType::UNSET &&
              key == StaticStrings::ContentTypeHeader) {
     auto res = rest::stringToContentType(value, /*default*/ ContentType::UNSET);
-    // simon: the "@arangodb/requests" module by default the "text/plain"
+    // simon: the "@arangodb/requests" module by default uses the "text/plain"
     // content-types for JSON in most tests. As soon as someone fixes all the
     // tests we can enable these again.
     if (res == ContentType::JSON || res == ContentType::VPACK ||
@@ -606,37 +603,17 @@ void HttpRequest::setHeader(std::string key, std::string value) {
       return;
     }
   } else if (key == StaticStrings::AcceptEncoding) {
-    // This can be much more elaborated as the can specify weights on encodings
-    // However, for now just toggle on deflate if deflate is requested
-    if (StaticStrings::EncodingDeflate == value) {
-      // FXIME: cannot use substring search, Java driver chokes on deflated
-      // response
-      _acceptEncoding = EncodingType::DEFLATE;
-    } else if (StaticStrings::EncodingGzip == value) {
-      _acceptEncoding = EncodingType::GZIP;
-    }
-  } else if (key == "cookie") {
+    _acceptEncoding = parseAcceptEncoding(value);
+  } else if (key == StaticStrings::Cookie) {
     parseCookies(value.c_str(), value.size());
     return;
-  }
-
-  if (_allowMethodOverride && key.starts_with("x-")) {
-    // handle x-... headers
-
-    // override HTTP method?
-    if (key == "x-http-method" || key == "x-method-override" ||
-        key == "x-http-method-override") {
-      StringUtils::tolowerInPlace(value);
-      _type = findRequestType(value.c_str(), value.size());
-      // don't insert this header!!
-      return;
-    }
   }
 
   auto memoryUsage = key.size() + value.size();
   auto it = _headers.try_emplace(std::move(key), std::move(value));
   if (!it.second) {
     auto old = it.first->first.size() + it.first->second.size();
+    // cppcheck-suppress accessMoved
     _headers[std::move(key)] = std::move(value);
     _memoryUsage -= old;
   }
@@ -759,6 +736,7 @@ void HttpRequest::setCookie(std::string key, std::string value) {
   auto it = _cookies.try_emplace(std::move(key), std::move(value));
   if (!it.second) {
     auto old = it.first->first.size() + it.first->second.size();
+    // cppcheck-suppress accessMoved
     _cookies[std::move(key)] = std::move(value);
     _memoryUsage -= old;
   }
@@ -927,4 +905,45 @@ VPackSlice HttpRequest::payload(bool strictValidation) {
   }
 
   return VPackSlice::noneSlice();
+}
+
+EncodingType HttpRequest::parseAcceptEncoding(std::string_view value) const {
+  // parse Accept-Encoding header
+  size_t pos = 0;
+  while (pos < value.size()) {
+    std::string_view current;
+    // split multiple specified encodings at ','
+    size_t next = value.find(',', pos);
+    if (next == std::string::npos) {
+      current = {value.data() + pos, value.size() - pos};
+      pos = value.size();
+    } else {
+      current = {value.data() + pos, next - pos};
+      pos = next + 1;
+    }
+
+    // each encoding can have a "quality"/weight value attached.
+    // strip it.
+    next = current.find(';');
+    if (next != std::string_view::npos) {
+      current = current.substr(0, next);
+    }
+    // ltrim the result value
+    while (!current.empty() && current.front() == ' ') {
+      current = current.substr(1);
+    }
+    // rtrim the result value
+    while (!current.empty() && current.back() == ' ') {
+      current = current.substr(0, current.size() - 1);
+    }
+    if (current == StaticStrings::EncodingDeflate) {
+      // if we find "deflate", we return it
+      return EncodingType::DEFLATE;
+    }
+    if (current == StaticStrings::EncodingGzip) {
+      // if we find "gzip", we return it
+      return EncodingType::GZIP;
+    }
+  }
+  return EncodingType::UNSET;
 }

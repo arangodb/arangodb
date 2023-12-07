@@ -32,7 +32,6 @@
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/AqlFunctionFeature.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/ProfileLevel.h"
@@ -52,7 +51,9 @@
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
+#ifdef USE_V8
 #include "FeaturePhases/V8FeaturePhase.h"
+#endif
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "IResearch/AgencyMock.h"
@@ -94,8 +95,10 @@
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#ifdef USE_V8
 #include "V8/V8SecurityFeature.h"
 #include "V8Server/V8DealerFeature.h"
+#endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "utils/log.hpp"
@@ -184,10 +187,12 @@ static void SetupCommunicationFeaturePhase(MockServer& server) {
 
 static void SetupV8Phase(MockServer& server) {
   SetupCommunicationFeaturePhase(server);
+#ifdef USE_V8
   server.addFeature<V8FeaturePhase>(false);
   server.addFeature<V8DealerFeature>(
       false, server.template getFeature<arangodb::metrics::MetricsFeature>());
   server.addFeature<V8SecurityFeature>(false);
+#endif
 }
 
 static void SetupAqlPhase(MockServer& server) {
@@ -399,9 +404,7 @@ MockV8Server::MockV8Server(bool start) : MockServer() {
 
 MockV8Server::~MockV8Server() {
   if (_server.hasFeature<ClusterFeature>()) {
-    _server.getFeature<ClusterFeature>().clusterInfo().shutdownSyncers();
-    _server.getFeature<ClusterFeature>().clusterInfo().waitForSyncersToStop();
-    _server.getFeature<ClusterFeature>().shutdownAgencyCache();
+    _server.getFeature<ClusterFeature>().shutdown();
   }
 }
 
@@ -416,9 +419,7 @@ MockAqlServer::MockAqlServer(bool start) : MockServer() {
 
 MockAqlServer::~MockAqlServer() {
   if (_server.hasFeature<ClusterFeature>()) {
-    _server.getFeature<ClusterFeature>().clusterInfo().shutdownSyncers();
-    _server.getFeature<ClusterFeature>().clusterInfo().waitForSyncersToStop();
-    _server.getFeature<ClusterFeature>().shutdownAgencyCache();
+    _server.getFeature<ClusterFeature>().shutdown();
   }
   AqlFeature(_server).stop();  // unset singleton instance
 }
@@ -427,7 +428,8 @@ std::shared_ptr<transaction::Methods> MockAqlServer::createFakeTransaction()
     const {
   std::vector<std::string> noCollections{};
   transaction::Options opts;
-  auto ctx = transaction::StandaloneContext::Create(getSystemDatabase());
+  auto ctx = transaction::StandaloneContext::create(
+      getSystemDatabase(), transaction::OperationOriginTestCase{});
   return std::make_shared<transaction::Methods>(
       ctx, noCollections, noCollections, noCollections, opts);
 }
@@ -453,11 +455,12 @@ std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
   }
 
   auto query = aql::Query::create(
-      transaction::StandaloneContext::Create(getSystemDatabase()),
+      transaction::StandaloneContext::create(
+          getSystemDatabase(), transaction::OperationOriginTestCase{}),
       aql::QueryString(queryString), nullptr,
       aql::QueryOptions(queryOptions.slice()), scheduler);
   callback(*query);
-  query->prepareQuery(aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
 
   return query;
 }
@@ -537,10 +540,7 @@ MockClusterServer::MockClusterServer(bool useAgencyMockPool,
 }
 
 MockClusterServer::~MockClusterServer() {
-  auto& ci = _server.getFeature<ClusterFeature>().clusterInfo();
-  ci.shutdownSyncers();
-  ci.waitForSyncersToStop();
-  _server.getFeature<ClusterFeature>().shutdownAgencyCache();
+  _server.getFeature<ClusterFeature>().shutdown();
 }
 
 void MockClusterServer::startFeatures() {
@@ -596,11 +596,12 @@ std::shared_ptr<aql::Query> MockClusterServer::createFakeQuery(
   }
 
   auto query = aql::Query::create(
-      transaction::StandaloneContext::Create(getSystemDatabase()),
+      transaction::StandaloneContext::create(
+          getSystemDatabase(), transaction::OperationOriginTestCase{}),
       aql::QueryString(queryString), nullptr,
       aql::QueryOptions(queryOptions.slice()));
   callback(*query);
-  query->prepareQuery(aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
 
   return query;
 }
@@ -923,7 +924,7 @@ void MockDBServer::createShard(std::string const& dbName,
       bool created = false;
       auto const idx = velocypack::Parser::fromJson(
           R"({"id":"1","type":"edge","name":"edge_from","fields":["_from"],"unique":false,"sparse":false})");
-      col->createIndex(idx->slice(), created);
+      col->createIndex(idx->slice(), created).get();
       TRI_ASSERT(created);
     }
 
@@ -931,7 +932,7 @@ void MockDBServer::createShard(std::string const& dbName,
       bool created = false;
       auto const idx = velocypack::Parser::fromJson(
           R"({"id":"2","type":"edge","name":"edge_to","fields":["_to"],"unique":false,"sparse":false})");
-      col->createIndex(idx->slice(), created);
+      col->createIndex(idx->slice(), created).get();
       TRI_ASSERT(created);
     }
   }

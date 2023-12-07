@@ -24,76 +24,53 @@
 #include "RocksDBTrxBaseMethods.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Containers/SmallVector.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
 #include <absl/cleanup/cleanup.h>
+#include <absl/strings/str_cat.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
 
 using namespace arangodb;
 
-// dummy implementation to track memory allocations during a
-// transaction. currently only counts memory. will be replaced
-// with an alternative implementation that will count memory
-// against different sinks (depending on transaction invocation type),
-// e.g. the current AQL query's ResourceMonitor instance or different
-// metrics for non-AQL transactions.
-class TrxMemoryTracker final : public RocksDBMethodsMemoryTracker {
- public:
-  TrxMemoryTracker() : _memoryUsage(0) {}
-  ~TrxMemoryTracker() { TRI_ASSERT(_memoryUsage == 0); }
+namespace {
+metrics::Gauge<std::uint64_t>* determineMetric(
+    RocksDBTransactionState const* state) noexcept {
+  TRI_ASSERT(state != nullptr);
 
-  void reset() noexcept override {
-    _memoryUsage = 0;
-    _savePoints.clear();
+  switch (state->operationOrigin().type) {
+    case transaction::OperationOrigin::Type::kAQL:
+      return nullptr;
+    case transaction::OperationOrigin::Type::kREST:
+      return &state->statistics()._restTransactionsMemoryUsage;
+    case transaction::OperationOrigin::Type::kInternal:
+      return &state->statistics()._internalTransactionsMemoryUsage;
   }
-
-  void increaseMemoryUsage(std::uint64_t value) override {
-    _memoryUsage += value;
-  }
-
-  void decreaseMemoryUsage(std::uint64_t value) noexcept override {
-    TRI_ASSERT(_memoryUsage >= value);
-    _memoryUsage -= value;
-  }
-
-  void setSavePoint() override { _savePoints.push_back(_memoryUsage); }
-
-  void rollbackToSavePoint() noexcept override {
-    TRI_ASSERT(!_savePoints.empty());
-    _memoryUsage = _savePoints.back();
-    _savePoints.pop_back();
-  }
-
-  void popSavePoint() noexcept override {
-    TRI_ASSERT(!_savePoints.empty());
-    _savePoints.pop_back();
-  }
-
-  size_t memoryUsage() const noexcept override { return _memoryUsage; }
-
- private:
-  std::uint64_t _memoryUsage;
-  containers::SmallVector<std::uint64_t, 4> _savePoints;
-};
+  // we should not get here at all
+  return nullptr;
+}
+}  // namespace
 
 RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
     RocksDBTransactionState* state, IRocksDBTransactionCallback& callback,
     rocksdb::TransactionDB* db)
-    : RocksDBTransactionMethods(state), _callback(callback), _db(db) {
+    : RocksDBTransactionMethods(state),
+      _callback(callback),
+      _db(db),
+      _memoryTracker(_state, ::determineMetric(_state),
+                     /*reportGranularity*/
+                     RocksDBMethodsMemoryTracker::kDefaultGranularity) {
+  TRI_ASSERT(_state != nullptr);
+
   TRI_ASSERT(!_state->isReadOnlyTransaction());
   _readOptions.prefix_same_as_start = true;  // should always be true
   _readOptions.fill_cache = _state->options().fillBlockCache;
-
-  _memoryTracker = std::make_unique<TrxMemoryTracker>();
 }
 
 RocksDBTrxBaseMethods::~RocksDBTrxBaseMethods() {
@@ -186,18 +163,15 @@ rocksdb::SequenceNumber RocksDBTrxBaseMethods::GetSequenceNumber()
 /// @brief add an operation for a transaction
 Result RocksDBTrxBaseMethods::addOperation(
     TRI_voc_document_operation_e operationType) {
-  TRI_IF_FAILURE("addOperationSizeError") {
-    return Result(TRI_ERROR_RESOURCE_LIMIT);
-  }
+  TRI_IF_FAILURE("addOperationSizeError") { return {TRI_ERROR_RESOURCE_LIMIT}; }
 
-  size_t currentSize = currentWriteBatchSize();
-  if (currentSize > _state->options().maxTransactionSize) {
+  if (_memoryTracker.memoryUsage() > _state->options().maxTransactionSize) {
     // we hit the transaction size limit
-    std::string message =
-        "aborting transaction because maximal transaction size limit of " +
-        std::to_string(_state->options().maxTransactionSize) +
-        " bytes is reached";
-    return Result(TRI_ERROR_RESOURCE_LIMIT, std::move(message));
+    return {
+        TRI_ERROR_RESOURCE_LIMIT,
+        absl::StrCat(
+            "aborting transaction because maximal transaction size limit of ",
+            _state->options().maxTransactionSize, " bytes is reached")};
   }
 
   switch (operationType) {
@@ -240,7 +214,8 @@ rocksdb::Status RocksDBTrxBaseMethods::GetForUpdate(
   TRI_ASSERT(ro.snapshot != nullptr || _state->options().delaySnapshot);
   rocksdb::Status s = _rocksTransaction->GetForUpdate(ro, cf, key, val);
   if (s.ok()) {
-    _memoryTracker->increaseMemoryUsage(lockOverhead(key.size()));
+    _memoryTracker.increaseMemoryUsage(
+        lockOverhead(!_state->isOnlyExclusiveTransaction(), key.size()));
   }
   return s;
 }
@@ -257,9 +232,11 @@ rocksdb::Status RocksDBTrxBaseMethods::Put(rocksdb::ColumnFamilyHandle* cf,
   if (s.ok()) {
     // size of WriteBatch got increased. track memory usage of WriteBatch
     // plus potential overhead of locking and indexing
-    _memoryTracker->increaseMemoryUsage((currentWriteBatchSize() - beforeSize) +
-                                        lockOverhead(key.string().size()) +
-                                        indexingOverhead(key.string().size()));
+    _memoryTracker.increaseMemoryUsage(
+        (currentWriteBatchSize() - beforeSize) +
+        lockOverhead(!_state->isOnlyExclusiveTransaction(),
+                     key.string().size()) +
+        indexingOverhead(!_indexingDisabled, key.string().size()));
   }
   return s;
 }
@@ -274,9 +251,11 @@ rocksdb::Status RocksDBTrxBaseMethods::PutUntracked(
   if (s.ok()) {
     // size of WriteBatch got increased. track memory usage of WriteBatch
     // plus potential overhead of locking and indexing
-    _memoryTracker->increaseMemoryUsage((currentWriteBatchSize() - beforeSize) +
-                                        lockOverhead(key.string().size()) +
-                                        indexingOverhead(key.string().size()));
+    _memoryTracker.increaseMemoryUsage(
+        (currentWriteBatchSize() - beforeSize) +
+        lockOverhead(!_state->isOnlyExclusiveTransaction(),
+                     key.string().size()) +
+        indexingOverhead(!_indexingDisabled, key.string().size()));
   }
   return s;
 }
@@ -290,9 +269,11 @@ rocksdb::Status RocksDBTrxBaseMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
   if (s.ok()) {
     // size of WriteBatch got increased. track memory usage of WriteBatch
     // plus potential overhead of locking and indexing
-    _memoryTracker->increaseMemoryUsage((currentWriteBatchSize() - beforeSize) +
-                                        lockOverhead(key.string().size()) +
-                                        indexingOverhead(key.string().size()));
+    _memoryTracker.increaseMemoryUsage(
+        (currentWriteBatchSize() - beforeSize) +
+        lockOverhead(!_state->isOnlyExclusiveTransaction(),
+                     key.string().size()) +
+        indexingOverhead(!_indexingDisabled, key.string().size()));
   }
   return s;
 }
@@ -306,9 +287,11 @@ rocksdb::Status RocksDBTrxBaseMethods::SingleDelete(
   if (s.ok()) {
     // size of WriteBatch got increased. track memory usage of WriteBatch
     // plus potential overhead of locking and indexing
-    _memoryTracker->increaseMemoryUsage((currentWriteBatchSize() - beforeSize) +
-                                        lockOverhead(key.string().size()) +
-                                        indexingOverhead(key.string().size()));
+    _memoryTracker.increaseMemoryUsage(
+        (currentWriteBatchSize() - beforeSize) +
+        lockOverhead(!_state->isOnlyExclusiveTransaction(),
+                     key.string().size()) +
+        indexingOverhead(!_indexingDisabled, key.string().size()));
   }
   return s;
 }
@@ -320,20 +303,20 @@ void RocksDBTrxBaseMethods::PutLogData(rocksdb::Slice const& blob) {
   std::uint64_t beforeSize = currentWriteBatchSize();
   _rocksTransaction->PutLogData(blob);
   // size of WriteBatch got increased. track memory usage
-  _memoryTracker->increaseMemoryUsage(currentWriteBatchSize() - beforeSize);
+  _memoryTracker.increaseMemoryUsage(currentWriteBatchSize() - beforeSize);
 }
 
 void RocksDBTrxBaseMethods::SetSavePoint() {
   TRI_ASSERT(_rocksTransaction);
   _rocksTransaction->SetSavePoint();
-  _memoryTracker->setSavePoint();
+  _memoryTracker.setSavePoint();
 }
 
 rocksdb::Status RocksDBTrxBaseMethods::RollbackToSavePoint() {
   TRI_ASSERT(_rocksTransaction);
   rocksdb::Status s = _rocksTransaction->RollbackToSavePoint();
   if (s.ok()) {
-    _memoryTracker->rollbackToSavePoint();
+    _memoryTracker.rollbackToSavePoint();
   }
   return s;
 }
@@ -370,14 +353,23 @@ void RocksDBTrxBaseMethods::PopSavePoint() {
   rocksdb::Status s = _rocksTransaction->PopSavePoint();
   TRI_ASSERT(s.ok());
   if (s.ok()) {
-    _memoryTracker->popSavePoint();
+    _memoryTracker.popSavePoint();
   }
+}
+
+void RocksDBTrxBaseMethods::beginQuery(ResourceMonitor* resourceMonitor,
+                                       bool /*isModificationQuery*/) {
+  _memoryTracker.beginQuery(resourceMonitor);
+}
+
+void RocksDBTrxBaseMethods::endQuery(bool /*isModificationQuery*/) noexcept {
+  _memoryTracker.endQuery();
 }
 
 void RocksDBTrxBaseMethods::cleanupTransaction() {
   delete _rocksTransaction;
   _rocksTransaction = nullptr;
-  _memoryTracker->reset();
+  _memoryTracker.reset();
 }
 
 void RocksDBTrxBaseMethods::createTransaction() {
@@ -406,8 +398,6 @@ void RocksDBTrxBaseMethods::createTransaction() {
     trxOpts.lock_timeout = 1;
   }
 
-  // unclear performance implications do not use for now
-  // trxOpts.deadlock_detect = !hasHint(transaction::Hints::Hint::NO_DLD);
   if (_state->isOnlyExclusiveTransaction()) {
     // we are exclusively modifying collection data here, so we can turn off
     // all concurrency control checks to save time
@@ -524,7 +514,7 @@ Result RocksDBTrxBaseMethods::doCommitImpl() {
     return rocksutils::convertStatus(s);
   }
 
-  _memoryTracker->reset();
+  _memoryTracker.reset();
 
   TRI_ASSERT(numOps > 0);  // simon: should hold unless we're being stupid
   // the transaction id that is returned here is the seqno of the transaction's
@@ -570,47 +560,32 @@ Result RocksDBTrxBaseMethods::doCommitImpl() {
   return {};
 }
 
-rocksdb::Status RocksDBTrxBaseMethods::GetFromSnapshot(
-    rocksdb::ColumnFamilyHandle* family, rocksdb::Slice const& slice,
-    rocksdb::PinnableSlice* pinnable, ReadOwnWrites rw,
-    rocksdb::Snapshot const* snapshot) {
-  auto oldSnapshot = _readOptions.snapshot;
-  auto restoreSnapshot = absl::Cleanup{
-      [oldSnapshot, this]() { _readOptions.snapshot = oldSnapshot; }};
+rocksdb::Status RocksDBTrxBaseMethods::SingleGet(
+    rocksdb::Snapshot const* snapshot, rocksdb::ColumnFamilyHandle& family,
+    rocksdb::Slice const& key, rocksdb::PinnableSlice& value) {
+  absl::Cleanup restore = [&, was = _readOptions.snapshot] {
+    _readOptions.snapshot = was;
+  };
   _readOptions.snapshot = snapshot;
-  return Get(family, slice, pinnable, rw);
+
+  return _db->Get(_readOptions, &family, key, &value);
 }
 
-size_t RocksDBTrxBaseMethods::indexingOverhead(size_t keySize) const noexcept {
-  if (_indexingDisabled) {
-    return 0;
-  }
-  return keySize + fixedIndexingEntryOverhead;
-}
+void RocksDBTrxBaseMethods::MultiGet(rocksdb::Snapshot const* snapshot,
+                                     rocksdb::ColumnFamilyHandle& family,
+                                     size_t count, rocksdb::Slice const* keys,
+                                     rocksdb::PinnableSlice* values,
+                                     rocksdb::Status* statuses) {
+  absl::Cleanup restore = [&, was = _readOptions.snapshot] {
+    _readOptions.snapshot = was;
+  };
+  _readOptions.snapshot = snapshot;
 
-size_t RocksDBTrxBaseMethods::lockOverhead(size_t keySize) const noexcept {
-  if (_state->isOnlyExclusiveTransaction()) {
-    // current transaction is exclusive and thus does not acquire
-    // per-key locks
-    return 0;
-  }
-  // assumed overhead of the lock we acquired. note that RocksDB does not
-  // report back here whether the current transaction had already
-  // acquired the lock before. in that case it will still return ok().
-  // because we do not want to track the acquired locks here in addition,
-  // we simply assume here that for every invocation of this function we
-  // acquire an additional lock.
-  // each lock entry contains at least the string with the key. the
-  // string may use SSO to store the key, but we don't want to dive into
-  // the internals of std::string here. for storing the key, we assume
-  // that we need to store at least the size of an std::string, or the
-  // size of the key, whatever is larger. as locked keys are stored in a
-  // hash table, we also need to assume overhead (as the hash table will
-  // always have a load factor < 100%).
-  return std::max(sizeof(std::string), keySize) + fixedLockEntryOverhead;
+  // Timestamps and multiple ColumnFamilies are not necessary for us
+  _db->MultiGet(_readOptions, &family, count, keys, values, statuses, false);
 }
 
 size_t RocksDBTrxBaseMethods::currentWriteBatchSize() const noexcept {
   TRI_ASSERT(_rocksTransaction);
-  return _rocksTransaction->GetWriteBatch()->GetWriteBatch()->GetDataSize();
+  return _rocksTransaction->GetWriteBatch()->GetWriteBatch()->Data().capacity();
 }

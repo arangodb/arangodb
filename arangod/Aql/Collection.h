@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Cluster/ClusterTypes.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Transaction/CountCache.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/vocbase.h"
@@ -85,18 +86,18 @@ struct Collection {
   std::unordered_set<std::string> responsibleServers() const;
 
   /// @brief returns the "distributeShardsLike" attribute for the collection
-  std::string const& distributeShardsLike() const;
+  std::string distributeShardsLike() const;
 
   /// @brief fills the set with the responsible servers for the collection
   /// returns the number of responsible servers found for the collection
   size_t responsibleServers(std::unordered_set<std::string>&) const;
 
   /// @brief returns the shard ids of a collection
-  std::shared_ptr<std::vector<std::string>> shardIds() const;
+  std::shared_ptr<std::vector<ShardID> const> shardIds() const;
 
   /// @brief returns the filtered list of shard ids of a collection
-  std::shared_ptr<std::vector<std::string>> shardIds(
-      std::unordered_set<std::string> const& includedShards) const;
+  std::shared_ptr<std::vector<ShardID> const> shardIds(
+      std::unordered_set<ShardID> const& includedShards) const;
 
   /// @brief returns the shard keys of a collection
   /// if "normalize" is true, then the shard keys for a smart vertex collection

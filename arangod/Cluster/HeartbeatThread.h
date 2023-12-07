@@ -156,6 +156,7 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
   //////////////////////////////////////////////////////////////////////////////
 
   bool sendServerState();
+  void sendServerStateAsync();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get some regular news from the agency, a closure which calls this
@@ -182,9 +183,11 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
   // handle changes of user version (Sync/UserVersion)
   void handleUserVersionChange(arangodb::velocypack::Slice userVersion);
 
+#ifdef USE_V8
   // handle changes of foxx queue version (Sync/FoxxQueueVersion)
   void handleFoxxQueueVersionChange(
       arangodb::velocypack::Slice foxxQueueVersion);
+#endif
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -245,7 +248,7 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
   /// @brief current number of fails in a row
   //////////////////////////////////////////////////////////////////////////////
 
-  uint64_t _numFails;
+  std::atomic<uint64_t> _numFails;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief last successfully dispatched version

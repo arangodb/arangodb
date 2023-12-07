@@ -32,23 +32,28 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <absl/strings/str_cat.h>
+
 using namespace arangodb;
 
 SimpleRocksDBTransactionState::SimpleRocksDBTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
-    transaction::Options const& options)
-    : RocksDBTransactionState(vocbase, tid, options) {}
+    transaction::Options const& options,
+    transaction::OperationOrigin operationOrigin)
+    : RocksDBTransactionState(vocbase, tid, options, operationOrigin) {}
 
 SimpleRocksDBTransactionState::~SimpleRocksDBTransactionState() {}
 
-Result SimpleRocksDBTransactionState::beginTransaction(
+futures::Future<Result> SimpleRocksDBTransactionState::beginTransaction(
     transaction::Hints hints) {
-  auto res = RocksDBTransactionState::beginTransaction(hints);
+  auto res = co_await RocksDBTransactionState::beginTransaction(hints);
   if (!res.ok()) {
-    return res;
+    co_return res;
   }
 
   rocksdb::TransactionDB* db = vocbase().engine<RocksDBEngine>().db();
+
+  TRI_ASSERT(_rocksMethods == nullptr);
 
   if (isReadOnlyTransaction()) {
     if (isSingleOperation()) {
@@ -66,12 +71,14 @@ Result SimpleRocksDBTransactionState::beginTransaction(
     }
   }
 
+  TRI_ASSERT(_rocksMethods != nullptr);
+
   res = _rocksMethods->beginTransaction();
   if (res.ok()) {
     maybeDisableIndexing();
   }
 
-  return res;
+  co_return res;
 }
 
 void SimpleRocksDBTransactionState::maybeDisableIndexing() {
@@ -90,22 +97,25 @@ void SimpleRocksDBTransactionState::maybeDisableIndexing() {
   // here, as it wouldn't be safe
   bool disableIndexing = true;
 
-  for (auto& trxCollection : _collections) {
-    if (!AccessMode::isWriteOrExclusive(trxCollection->accessType())) {
-      continue;
-    }
-    auto indexes = trxCollection->collection()->getIndexes();
-    for (auto const& idx : indexes) {
-      if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
-        // primary index is unique, but we can ignore it here.
-        // we are only looking for secondary indexes
+  {
+    RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
+    for (auto& trxCollection : _collections) {
+      if (!AccessMode::isWriteOrExclusive(trxCollection->accessType())) {
         continue;
       }
-      if (idx->unique()) {
-        // found secondary unique index. we need to turn off the
-        // NO_INDEXING optimization now
-        disableIndexing = false;
-        break;
+      auto indexes = trxCollection->collection()->getIndexes();
+      for (auto const& idx : indexes) {
+        if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+          // primary index is unique, but we can ignore it here.
+          // we are only looking for secondary indexes
+          continue;
+        }
+        if (idx->unique()) {
+          // found secondary unique index. we need to turn off the
+          // NO_INDEXING optimization now
+          disableIndexing = false;
+          break;
+        }
       }
     }
   }
@@ -126,10 +136,11 @@ Result SimpleRocksDBTransactionState::doAbort() {
   return _rocksMethods->abortTransaction();
 }
 
-void SimpleRocksDBTransactionState::beginQuery(bool isModificationQuery) {
+void SimpleRocksDBTransactionState::beginQuery(ResourceMonitor* resourceMonitor,
+                                               bool isModificationQuery) {
   auto* trxMethods = dynamic_cast<RocksDBTrxMethods*>(_rocksMethods.get());
   if (trxMethods) {
-    trxMethods->beginQuery(isModificationQuery);
+    trxMethods->beginQuery(resourceMonitor, isModificationQuery);
   }
 }
 
@@ -183,6 +194,29 @@ rocksdb::SequenceNumber SimpleRocksDBTransactionState::beginSeq() const {
   return _rocksMethods->GetSequenceNumber();
 }
 
+std::string SimpleRocksDBTransactionState::debugInfo() const {
+  // serialize transaction options
+  velocypack::Builder builder;
+  builder.openObject();
+  options().toVelocyPack(builder);
+  builder.close();
+
+  return absl::StrCat(
+      "num operations: ", numOperations(), ", tid: ", id().id(),
+      ", transaction options: ", builder.slice().toJson(),
+      ", transaction hints: ", _hints.toString(), ", actor: ", actorName(),
+      ", num collections: ", numCollections(),
+      ", num primitive operations: ", numPrimitiveOperations(),
+      ", num commits: ", numCommits(),
+      ", num intermediate commits: ", numIntermediateCommits(),
+      ", is follower trx: ", (isFollowerTransaction() ? "yes" : "no"),
+      ", is read only trx: ", (isReadOnlyTransaction() ? "yes" : "no"),
+      ", is single: ", (isSingleOperation() ? "yes" : "no"),
+      ", is only exclusive: ", (isOnlyExclusiveTransaction() ? "yes" : "no"),
+      ", is indexing disabled: ",
+      (_rocksMethods->isIndexingDisabled() ? "yes" : "no"));
+}
+
 std::unique_ptr<TransactionCollection>
 SimpleRocksDBTransactionState::createTransactionCollection(
     DataSourceId cid, AccessMode::Type accessType) {
@@ -195,6 +229,7 @@ rocksdb::SequenceNumber SimpleRocksDBTransactionState::prepare() {
 
   rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
 
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   for (auto& trxColl : _collections) {
     auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
 
@@ -208,6 +243,7 @@ rocksdb::SequenceNumber SimpleRocksDBTransactionState::prepare() {
 void SimpleRocksDBTransactionState::commit(
     rocksdb::SequenceNumber lastWritten) {
   TRI_ASSERT(lastWritten > 0);
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   for (auto& trxColl : _collections) {
     auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
     // we need this in case of an intermediate commit. The number of
@@ -218,6 +254,7 @@ void SimpleRocksDBTransactionState::commit(
 }
 
 void SimpleRocksDBTransactionState::cleanup() {
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   for (auto& trxColl : _collections) {
     auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
     coll->abortCommit(id());

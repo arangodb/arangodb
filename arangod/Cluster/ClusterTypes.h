@@ -30,6 +30,7 @@
 
 #include "Basics/Result.h"
 #include "Basics/RebootId.h"
+#include "Basics/ResourceUsage.h"
 #include "Containers/FlatHashMap.h"
 
 namespace arangodb {
@@ -37,8 +38,6 @@ namespace arangodb {
 typedef std::string ServerID;         // ID of a server
 typedef std::string DatabaseID;       // ID/name of a database
 typedef std::string CollectionID;     // ID of a collection
-typedef std::string ViewID;           // ID of a view
-typedef std::string ShardID;          // ID of a shard
 typedef uint32_t ServerShortID;       // Short ID of a server
 typedef std::string ServerShortName;  // Short name of a server
 

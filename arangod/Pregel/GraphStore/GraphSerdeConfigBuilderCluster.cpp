@@ -72,8 +72,11 @@ GraphSerdeConfigBuilderCluster::GraphSerdeConfigBuilderCluster(
       if (!coll->isSmart()) {
         std::vector<std::string> eKeys = coll->shardKeys();
 
-        if (eKeys.size() != 1 ||
-            eKeys[0] != graphByCollections.shardKeyAttribute) {
+        // In a OneShard database sharding is acceptable
+        // for pregel by default.
+        if (!vocbase.isOneShard() &&
+            (eKeys.size() != 1 ||
+             eKeys[0] != graphByCollections.shardKeyAttribute)) {
           return Result{
               TRI_ERROR_BAD_PARAMETER,
               "Edge collection needs to be sharded "
@@ -111,17 +114,15 @@ GraphSerdeConfigBuilderCluster::GraphSerdeConfigBuilderCluster(
     for (auto shardIdx = size_t{0}; shardIdx < shardmap.content.at(0).size();
          ++shardIdx) {
       auto vertexShard = shardmap.at(shardIdx).at(0);
-
       auto responsibleServers = clusterInfo.getResponsibleServer(vertexShard);
 
       ADB_PROD_ASSERT(not responsibleServers->empty());
-
-      auto loadableVertexShard =
-          LoadableVertexShard{.pregelShard = PregelShard(result.size()),
-                              .vertexShard = vertexShard,
-                              .responsibleServer = responsibleServers->at(0),
-                              .collectionName = vertexCollection,
-                              .edgeShards = {}};
+      auto loadableVertexShard = LoadableVertexShard{
+          .pregelShard = PregelShard(result.size()),
+          .vertexShard = vertexShard,
+          .responsibleServer = ServerID{responsibleServers->at(0)},
+          .collectionName = vertexCollection,
+          .edgeShards = {}};
 
       for (auto&& edgeCollection : graphByCollections.edgeCollections) {
         if (not graphByCollections.isRestricted(vertexCollection,

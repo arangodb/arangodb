@@ -19,12 +19,15 @@ add_library(arango_rocksdb STATIC
   RocksDBIndexCacheRefillFeature.cpp
   RocksDBIndexCacheRefillThread.cpp
   RocksDBIndexFactory.cpp
+  RocksDBIndexingDisabler.cpp
   RocksDBIterators.cpp
   RocksDBKey.cpp
   RocksDBKeyBounds.cpp
   RocksDBLogValue.cpp
   RocksDBMetaCollection.cpp
   RocksDBMetadata.cpp
+  RocksDBMethods.cpp
+  RocksDBMethodsMemoryTracker.cpp
   RocksDBOptimizerRules.cpp
   RocksDBOptionFeature.cpp
   RocksDBOptionsProvider.cpp
@@ -51,7 +54,6 @@ add_library(arango_rocksdb STATIC
   RocksDBTtlIndex.cpp
   RocksDBTypes.cpp
   RocksDBUpgrade.cpp
-  RocksDBV8Functions.cpp
   RocksDBVPackIndex.cpp
   RocksDBValue.cpp
   RocksDBWalAccess.cpp
@@ -60,6 +62,11 @@ add_library(arango_rocksdb STATIC
   ReplicatedRocksDBTransactionState.cpp
   SimpleRocksDBTransactionState.cpp
   SortedRowsStorageBackendRocksDB.cpp)
+
+if (USE_V8) 
+  target_sources(arango_rocksdb PRIVATE
+    RocksDBV8Functions.cpp)
+endif()
 
 target_link_libraries(arango_rocksdb
   arango_cache

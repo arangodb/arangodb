@@ -728,16 +728,14 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
   struct MethodsImpl : IReplicatedLogLeaderMethods {
     explicit MethodsImpl(LogLeader& log) : _log(log) {}
     auto releaseIndex(LogIndex index) -> void override {
-      if (auto res = _log.release(index); res.fail()) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
+      return _log.updateReleaseIndex(index);
     }
     auto getCommittedLogIterator(std::optional<LogRange> range)
         -> std::unique_ptr<LogViewRangeIterator> override {
       return _log.getLogConsumerIterator(range);
     }
-    auto insert(LogPayload payload) -> LogIndex override {
-      return _log.insert(std::move(payload));
+    auto insert(LogPayload payload, bool waitForSync) -> LogIndex override {
+      return _log.insert(std::move(payload), waitForSync);
     }
     auto waitFor(LogIndex index) -> WaitForFuture override {
       return _log.waitFor(index);
@@ -938,6 +936,19 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
       << ", leaderCommit = " << req.leaderCommit
       << ", waitForSync = " << req.waitForSync
       << ", lci = " << req.lowestIndexToKeep << ", msg-id = " << req.messageId;
+
+  // if prevLogTerm is not set, then the follower has to truncate its log and
+  // invalid its snapshot. otherwise we either have an empty append entries
+  // request (metadata), or the entries must be consecutive.
+  ADB_PROD_ASSERT(isEmptyAppendEntries || not prevLogTerm ||
+                  req.prevLogEntry.index + 1 ==
+                      req.entries.front().entry().logIndex())
+      << "isEmptyAppendEntries " << isEmptyAppendEntries
+      << "; follower.snapshotAvailable " << follower.snapshotAvailable
+      << "; prevLogEntry " << req.prevLogEntry.index << "; entries.front "
+      << (isEmptyAppendEntries
+              ? " nil "
+              : std::to_string(req.entries.front().entry().logIndex().value));
 
   return std::make_pair(std::move(req), lastIndex);
 }
@@ -1190,7 +1201,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
   LOG_CTX_IF("fbc23", TRACE, _self._logContext,
              newCommitIndex == currentCommitIndex)
       << "commit fail reason = " << to_string(commitFailReason)
-      << " follower-states = " << indexes;
+      << "; follower-states = " << indexes;
   if (newCommitIndex > currentCommitIndex) {
     auto const quorum_data = std::make_shared<QuorumData>(
         newCommitIndex, _self._currentTerm, std::move(quorum));
@@ -1219,9 +1230,8 @@ replicated_log::LogLeader::GuardedLeaderData::GuardedLeaderData(
     std::unique_ptr<IReplicatedStateHandle> stateHandle, LogIndex firstIndex)
     : _self(self), _stateHandle(std::move(stateHandle)) {}
 
-auto replicated_log::LogLeader::release(LogIndex doneWithIdx) -> Result {
-  _compactionManager->updateReleaseIndex(doneWithIdx);
-  return {};
+void replicated_log::LogLeader::updateReleaseIndex(LogIndex doneWithIdx) {
+  return _compactionManager->updateReleaseIndex(doneWithIdx);
 }
 
 auto replicated_log::LogLeader::compact() -> ResultT<CompactionResult> {
@@ -1521,6 +1531,7 @@ auto replicated_log::LogLeader::ping(std::optional<std::string> message)
   triggerAsyncReplication();
   return index;
 }
+
 auto replicated_log::LogLeader::resign() && -> std::tuple<
     std::unique_ptr<storage::IStorageEngineMethods>,
     std::unique_ptr<IReplicatedStateHandle>, DeferredAction> {

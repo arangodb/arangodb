@@ -31,6 +31,7 @@
 #include "Aql/ProfileLevel.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Transaction/Options.h"
 
 namespace arangodb {
@@ -47,6 +48,8 @@ struct QueryOptions {
   QueryOptions(QueryOptions&&) noexcept = default;
   QueryOptions(QueryOptions const&) = default;
   TEST_VIRTUAL ~QueryOptions() = default;
+
+  enum JoinStrategyType { DEFAULT, GENERIC };
 
   void fromVelocyPack(velocypack::Slice slice);
   void toVelocyPack(velocypack::Builder& builder,
@@ -98,11 +101,14 @@ struct QueryOptions {
   /// to a single server
   std::string forceOneShardAttributeValue;
 
+  /// @brief desired join strategy used by the JoinNode (if available)
+  JoinStrategyType desiredJoinStrategy = JoinStrategyType::DEFAULT;
+
   /// @brief optimizer rules to turn off/on manually
   std::vector<std::string> optimizerRules;
 
   /// @brief manual restriction to certain shards
-  std::unordered_set<std::string> restrictToShards;
+  std::unordered_set<ShardID> restrictToShards;
 
 #ifdef USE_ENTERPRISE
   // TODO: remove as soon as we have cluster wide transactions

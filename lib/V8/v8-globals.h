@@ -23,6 +23,10 @@
 
 #pragma once
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include <string.h>
 #include <cstdint>
 #include <memory>
@@ -33,11 +37,11 @@
 
 #include <v8.h>
 
-#include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/Common.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/operating-system.h"
 #include "V8/JavaScriptSecurityContext.h"
+#include "V8/V8PlatformFeature.h"
 
 struct TRI_v8_global_t;
 struct TRI_vocbase_t;

@@ -196,6 +196,25 @@ if (STATIC_EXECUTABLES)
   endif ()
 endif()
 
+# enable V8/JavaScript in executables. 
+# note that V8 will always be built, regardless of the value of this option.
+# this is required because the V8 build step also builds ICU, which is needed
+# in all programs.
+# if set to OFF, V8 will not be linked to arangod and the client-tools, 
+# and V8 integration code for arangod will not be compiled. 
+# additionally, arangosh will not be built.
+# setting the option to OFF will further disable all JavaScript support in
+# arangod, rendering the web UI, JavaScript transactions, AQL user-defined
+# functions (UDFs), Foxx and some other smaller features unusable.
+# setting this option to OFF also renders many tests unusable as many tests
+# depend on JavaScript.
+# setting the option to OFF is highly experimental option and not well tested.
+# use at your own risk!
+option(USE_V8 "build with V8/JavaScript support" ON)
+if (USE_V8)
+  add_definitions("-DUSE_V8=1")
+endif ()
+
 # enable dtrace
 option(USE_DTRACE "enable dtrace probes" OFF)
 if (USE_DTRACE)
@@ -223,19 +242,10 @@ set(ARANGODB_PACKAGE_VENDOR  "ArangoDB GmbH")
 set(ARANGODB_PACKAGE_CONTACT "info@arangodb.com")
 set(ARANGODB_DISPLAY_NAME    "ArangoDB")
 set(ARANGODB_URL_INFO_ABOUT  "https://www.arangodb.com")
-set(ARANGODB_HELP_LINK       "https://www.arangodb.com/docs/${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}/")
+set(ARANGODB_HELP_LINK       "https://docs.arangodb.com/${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}/")
 set(ARANGODB_CONTACT         "hackers@arangodb.com")
 set(ARANGODB_FRIENDLY_STRING "ArangoDB - the native multi-model NoSQL database")
 
-# MSVC
-set(ARANGO_BENCH_FRIENDLY_STRING   "arangobench - stress test tool")
-set(ARANGO_BACKUP_FRIENDLY_STRING  "arangobackup - hot backup tool")
-set(ARANGO_DUMP_FRIENDLY_STRING    "arangodump - data and configuration dumping tool")
-set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - data and configuration restoration tool")
-set(ARANGO_EXPORT_FRIENDLY_STRING  "arangoexport - data exporter")
-set(ARANGO_IMPORT_FRIENDLY_STRING  "arangoimport - data importer")
-set(ARANGOSH_FRIENDLY_STRING       "arangosh - commandline client")
-set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - VelocyPack formatter")
 
 # binaries
 set(BIN_ARANGOBENCH   arangobench)
@@ -289,46 +299,64 @@ configure_file(
 ## Find the git revision
 ################################################################################
 
+function(determine_repository_version source_dir build_repository have_build_repository)
+  # Get commit hash 
+  execute_process(
+    WORKING_DIRECTORY ${source_dir}
+    COMMAND ${GIT_EXE} rev-parse --short HEAD
+    OUTPUT_VARIABLE COMMIT_RAW
+  )
+  if (NOT COMMIT_RAW)
+    message(FATAL_ERROR "Can't extract current commit with the command: 'git rev-parse --short HEAD'")
+  endif()
+
+  string(STRIP ${COMMIT_RAW} COMMIT_SHORT)
+
+  if (NOT DEFINED BUILD_REPO_INFO OR BUILD_REPO_INFO STREQUAL "default")
+    execute_process(
+      WORKING_DIRECTORY ${source_dir}
+      COMMAND ${GIT_EXE} branch --show-current
+      OUTPUT_VARIABLE BRANCH_NAME_RAW)
+    if (NOT BRANCH_NAME_RAW)
+      # For example, in docker we do 'checkout'. Hence, it is impossible to detect branch
+      set(${build_repository} "${COMMIT_SHORT}" PARENT_SCOPE)
+      set(${have_build_repository} "1" PARENT_SCOPE)
+    else()
+      string(STRIP ${BRANCH_NAME_RAW} BRANCH_NAME)
+      set(${build_repository} "refs/${BRANCH_NAME} ${COMMIT_SHORT}" PARENT_SCOPE)
+      set(${have_build_repository} "1" PARENT_SCOPE)
+    endif()
+  elseif(BUILD_REPO_INFO STREQUAL "release")
+    execute_process(
+      WORKING_DIRECTORY ${source_dir}
+      COMMAND ${GIT_EXE} describe --all --tags --match v${ARANGODB_PLAIN_VERSION}
+      OUTPUT_VARIABLE TAG_RAW)
+    if (NOT TAG_RAW)
+      message(FATAL_ERROR "Can't extract tag using the command: 'git describe --all --tags --match v${ARANGODB_PLAIN_VERSION}")
+    else()
+      string(STRIP ${TAG_RAW} TAG)
+      set(${build_repository} "refs/${TAG} ${COMMIT_SHORT}" PARENT_SCOPE)
+      set(${have_build_repository} "1" PARENT_SCOPE)
+    endif()
+  elseif(BUILD_REPO_INFO STREQUAL "nightly")
+    set(${build_repository} "refs/head/${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR} ${COMMIT_SHORT}" PARENT_SCOPE)
+    set(${have_build_repository} "1" PARENT_SCOPE)
+  else ()
+    set(${build_repository} "GIT FAILED TO RETRIEVE THE VERSION - UNSUPPORTED BUILD MODE" PARENT_SCOPE)
+    set(${have_build_repository} "1" PARENT_SCOPE)
+  endif()
+endfunction()
+
 find_program (GIT_EXE git)
 if (DEFINED GIT_EXE AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/.git")
-  execute_process(
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-
-    COMMAND ${GIT_EXE} describe --all --tags --long --dirty=-dirty
-    OUTPUT_VARIABLE GIT_OUTPUT)
-
-  # this may fail on shallow clones that only knows about a limited number of commits.
-  # if there is an older merged revision the head, it may not be available to git.
-  if (NOT GIT_OUTPUT)
-      set(ARANGODB_BUILD_REPOSITORY "GIT FAILED TO RETRIEVE THE VERSION - SHALLOW CLONE?")
-      set(HAVE_ARANGODB_BUILD_REPOSITORY "1")
-    else()
-      string(STRIP ${GIT_OUTPUT} REPOSITORY_VERSION)
-      set(ARANGODB_BUILD_REPOSITORY ${REPOSITORY_VERSION})
-      set(HAVE_ARANGODB_BUILD_REPOSITORY "1")
-    endif()
-else ()
+  determine_repository_version(${CMAKE_SOURCE_DIR} ARANGODB_BUILD_REPOSITORY HAVE_ARANGODB_BUILD_REPOSITORY)
+else()
   set(ARANGODB_BUILD_REPOSITORY "")
   set(HAVE_ARANGODB_BUILD_REPOSITORY "0")
 endif()
 
 if (DEFINED GIT_EXE AND USE_ENTERPRISE AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/enterprise/.git")
-  execute_process(
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/enterprise
-
-    COMMAND ${GIT_EXE} describe --all --tags --long --dirty=-dirty
-    OUTPUT_VARIABLE GIT_OUTPUT)
-
-  # this may fail on shallow clones that only knows about a limited number of commits.
-  # if there is an older merged revision the head, it may not be available to git.
-  if (NOT GIT_OUTPUT)
-      set(ENTERPRISE_BUILD_REPOSITORY "GIT FAILED TO RETRIEVE THE VERSION - SHALLOW CLONE?")
-      set(HAVE_ENTERPRISE_BUILD_REPOSITORY "1")
-    else()
-      string(STRIP ${GIT_OUTPUT} REPOSITORY_VERSION)
-      set(ENTERPRISE_BUILD_REPOSITORY ${REPOSITORY_VERSION})
-      set(HAVE_ENTERPRISE_BUILD_REPOSITORY "1")
-    endif()
+  determine_repository_version(${CMAKE_SOURCE_DIR}/enterprise ENTERPRISE_BUILD_REPOSITORY HAVE_ENTERPRISE_BUILD_REPOSITORY)
 else ()
   set(ENTERPRISE_BUILD_REPOSITORY "")
   set(HAVE_ENTERPRISE_BUILD_REPOSITORY "0")
@@ -349,6 +377,7 @@ configure_file(
 
 if (VERBOSE)
   message(STATUS "ARANGODB_BUILD_REPOSITORY=\"${ARANGODB_BUILD_REPOSITORY}\"")
+  message(STATUS "ENTERPRISE_BUILD_REPOSITORY=\"${ENTERPRISE_BUILD_REPOSITORY}\"")
 endif ()
 
 ################################################################################
@@ -421,6 +450,38 @@ if (LINUX)
   )
 else ()
   SET(USE_LIBUNWIND OFF)
+endif ()
+
+if (LINUX)
+   option(USE_BUILD_ID_READER "Add code to read arangod's build-id from within arangod" ON)
+else ()
+   set(USE_BUILD_ID_READER OFF)
+endif ()
+
+if (USE_BUILD_ID_READER)
+  add_definitions(-DUSE_BUILD_ID_READER=true)
+else ()
+  add_definitions(-DUSE_BUILD_ID_READER=false)
+endif ()
+
+if (NOT MSVC)
+# Guess whether we're using mold
+  execute_process(
+    COMMAND ${CMAKE_CXX_COMPILER} ${CMAKE_EXE_LINKER_FLAGS} -Wl,--version
+    OUTPUT_VARIABLE LINKER_VERSION_OUT)
+  if (LINKER_VERSION_OUT MATCHES ^mold)
+    SET(LINKER_IS_MOLD TRUE)
+  else ()
+    SET(LINKER_IS_MOLD FALSE)
+  endif ()
+endif ()
+
+# mold doesn't support the linker scripts currently used for the build id reader, and will result in the error
+#   mold: fatal: /home/tobias/Documents/ArangoDB/arangodb/arangodb/lib/BuildId/BuildId.ld:1: build_id_start = ADDR(.note.gnu.build-id);
+#                                                                                    ^ unknown linker script token
+# . Let's warn about this early, and how to work around it:
+if (LINKER_IS_MOLD AND USE_BUILD_ID_READER)
+  message(SEND_ERROR "It looks like you're using mold as a linker. That doesn't work together with USE_BUILD_ID_READER. Either disable USE_BUILD_ID_READER, or use another linker.")
 endif ()
 
 if (CROSS_COMPILING)
@@ -848,6 +909,8 @@ function(add_compile_warnings_flags)
       if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         # This option has too many false positives
         add_compile_options(-Wno-error=maybe-uninitialized)
+        # This prevents useful partial initializations
+        add_compile_options(-Wno-missing-field-initializers)
       endif()
     endif ()
   endif ()
@@ -899,6 +962,18 @@ else () # NOT MSVC
     set(EXTRA_CXX_FLAGS "-Wsuggest-override -Wnon-virtual-dtor")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL "11.1.0")
       set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=nonnull")
+    endif()
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "13.0.0")
+      # the following warning types need to be suppressed with newer
+      # versions of g++, as they produce a lot of false positives.
+      # if the no-error directives are removed, a lot 3rdParty libraries
+      # such as date, fmt, and immer cannot be compiled anymore.
+      # https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=__open__&content=stringop-overread&no_redirect=1&product=gcc
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=dangling-reference")
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=array-bounds")
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=overloaded-virtual")
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=stringop-overflow")
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=stringop-overread")
     endif()
   elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
@@ -1267,48 +1342,6 @@ if (USE_GOOGLE_TESTS)
   add_subdirectory(tests)
 endif ()
 
-add_dependencies(arangobench   zlibstatic)
-if (USE_ENTERPRISE)
-  add_dependencies(arangobackup  zlibstatic)
-endif ()
-add_dependencies(arangod       zlibstatic)
-add_dependencies(arangodump    zlibstatic)
-add_dependencies(arangoexport  zlibstatic)
-add_dependencies(arangoimport  zlibstatic)
-add_dependencies(arangorestore zlibstatic)
-add_dependencies(arangosh      zlibstatic)
-
-if (UNIX)
-  add_dependencies(arangobench   man)
-  if (USE_ENTERPRISE)
-    add_dependencies(arangobackup  man)
-  endif ()
-  add_dependencies(arangod       man)
-  add_dependencies(arangodump    man)
-  add_dependencies(arangoexport  man)
-  add_dependencies(arangoimport  man)
-  add_dependencies(arangorestore man)
-  add_dependencies(arangosh      man)
-endif ()
-
-if (NOT USE_PRECOMPILED_V8)
-  # all binaries depend on v8_build because it contains ICU as well
-  add_dependencies(arangobench   v8_build)
-
-  if (USE_ENTERPRISE)
-    add_dependencies(arangobackup  v8_build)
-  endif ()
-  add_dependencies(arangod       v8_build)
-  add_dependencies(arangodump    v8_build)
-  add_dependencies(arangoexport  v8_build)
-  add_dependencies(arangoimport  v8_build)
-  add_dependencies(arangorestore v8_build)
-  add_dependencies(arangosh      v8_build)
-  if (USE_GOOGLE_TESTS)
-    add_dependencies(arangodbtests v8_build)
-  endif ()
-endif ()
-
 add_custom_target(packages
   DEPENDS ${PACKAGES_LIST}
 )
@@ -1328,13 +1361,11 @@ add_custom_target(clean_autogenerated_files
 message(STATUS "building for git revision: ${ARANGODB_BUILD_REPOSITORY}")
 
 if (USE_ENTERPRISE)
-  add_custom_target(arangodb
-    DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore arangobench arangobackup)
   add_definitions("-DUSE_ENTERPRISE=1")
   add_subdirectory(enterprise)
-else ()
-  add_custom_target(arangodb
-    DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore arangobench)
 endif ()
+
+add_custom_target(arangodb
+   DEPENDS arangod client-tools)
 
 add_subdirectory(utils/gdb-pretty-printers/immer/test)

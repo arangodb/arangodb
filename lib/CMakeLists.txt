@@ -50,6 +50,7 @@ add_library(arango_lightweight STATIC
         Basics/FileUtils.cpp
         Basics/Guarded.h
         Basics/Identifier.cpp
+        Basics/InputProcessors.cpp
         Basics/NumberOfCores.cpp
         Basics/PageSize.cpp
         Basics/PhysicalMemory.cpp
@@ -149,6 +150,7 @@ add_library(arango STATIC
   ${LIB_ARANGO_DATE}
   ${LIB_ASM_SOURCES}
   ApplicationFeatures/ApplicationFeaturePhase.cpp
+  ApplicationFeatures/BumpFileDescriptorsFeature.cpp
   ApplicationFeatures/CommunicationFeaturePhase.cpp
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/FileSystemFeature.cpp
@@ -157,7 +159,6 @@ add_library(arango STATIC
   ApplicationFeatures/OptionsCheckFeature.cpp
   ApplicationFeatures/ShutdownFeature.cpp
   ApplicationFeatures/TempFeature.cpp
-  ApplicationFeatures/V8PlatformFeature.cpp
   ApplicationFeatures/VersionFeature.cpp
   Assertions/AssertionConditionalLogger.cpp
   Assertions/AssertionLogger.cpp
@@ -166,8 +167,10 @@ add_library(arango STATIC
   Basics/DebugRaceController.cpp
   Basics/EncodingUtils.cpp
   Basics/FeatureFlags.cpp
+  Basics/FileDescriptors.cpp
   Basics/FunctionUtils.cpp
   Basics/GlobalResourceMonitor.cpp
+  Basics/GlobalSerialization.cpp
   Basics/HybridLogicalClock.cpp
   Basics/IndexIter.h
   Basics/LdapUrlParser.cpp
@@ -198,6 +201,7 @@ add_library(arango STATIC
   Endpoint/EndpointList.cpp
   Maskings/AttributeMasking.cpp
   Maskings/Collection.cpp
+  Maskings/MaskingFunction.cpp
   Maskings/Maskings.cpp
   Maskings/Path.cpp
   Maskings/RandomMask.cpp
@@ -232,6 +236,7 @@ add_library(arango STATIC
 
 target_link_libraries(arango
   PUBLIC s2
+         arango_build_id
          boost_system
          boost_boost
          arango_futures
@@ -240,7 +245,6 @@ target_link_libraries(arango
          velocypack
          linenoise-ng
          date_interface
-         ${V8_LIBS}
          ${SYSTEM_LIBRARIES}
          ${ICU_LIBS}
          absl::crc32c
@@ -251,6 +255,10 @@ target_link_libraries(arango
          absl::synchronization
          absl::strings
          arango_lightweight)
+
+if (USE_V8)
+  target_link_libraries(arango PUBLIC ${V8_LIBS})
+endif()
 
 target_link_libraries(arango PUBLIC fmt::fmt)
 
@@ -266,7 +274,9 @@ target_include_directories(arango SYSTEM PUBLIC ${ICU_INCLUDE_DIR})
 
 target_link_libraries(arango PUBLIC rocksdb_interface)
 target_link_libraries(arango PUBLIC zlib_interface)
-target_link_libraries(arango PUBLIC v8_interface)
+if (USE_V8)
+  target_link_libraries(arango PUBLIC v8_interface)
+endif()
 
 add_dependencies(arango v8_build)
 
@@ -292,10 +302,14 @@ if (USE_ENTERPRISE)
   target_include_directories(arango PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
+add_subdirectory(Actor)
 add_subdirectory(Futures)
 add_subdirectory(Geo)
-add_subdirectory(V8)
+if (USE_V8)
+  add_subdirectory(V8)
+endif()
 add_subdirectory(VelocypackUtils)
 add_subdirectory(CrashHandler)
 add_subdirectory(Assertions)
 add_subdirectory(Inspection)
+add_subdirectory(BuildId)

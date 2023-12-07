@@ -1,7 +1,7 @@
 import { JSONSchemaType } from "ajv";
 import { useEffect, useState } from "react";
 import { useEditViewContext } from "../editView/EditViewContext";
-import { ArangoSearchViewPropertiesType } from "../searchView.types";
+import { ArangoSearchViewPropertiesType } from "../View.types";
 
 const extendedNames = window.frontendConfig.extendedNames;
 
@@ -45,6 +45,18 @@ export const arangoSearchViewJSONSchema: JSONSchemaType<ArangoSearchViewProperti
                 }
               },
               fields: {
+                type: "object",
+                nullable: true,
+                required: [],
+                patternProperties: {
+                  "^[a-zA-Z0-9-_]+$": {
+                    type: "object",
+                    nullable: true,
+                    $ref: "linkProperties.json"
+                  }
+                }
+              },
+              nested: {
                 type: "object",
                 nullable: true,
                 required: [],

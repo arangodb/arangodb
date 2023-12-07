@@ -37,6 +37,7 @@
 #include <thread>
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 namespace {
 void handleGossipResponse(arangodb::network::Response const& r,
@@ -184,11 +185,11 @@ void Inception::gossip() {
           return;
         }
 
-        network::sendRequest(cp, p, fuerte::RestVerb::Post, path, buffer,
-                             reqOpts)
-            .thenValue([=, this](network::Response r) {
-              ::handleGossipResponse(r, p, &_agent, version);
-            });
+        std::ignore = network::sendRequest(cp, p, fuerte::RestVerb::Post, path,
+                                           buffer, reqOpts)
+                          .thenValue([=, this](network::Response r) {
+                            ::handleGossipResponse(r, p, &_agent, version);
+                          });
       }
     }
 
@@ -215,11 +216,12 @@ void Inception::gossip() {
           return;
         }
 
-        network::sendRequest(cp, pair.second, fuerte::RestVerb::Post, path,
-                             buffer, reqOpts)
-            .thenValue([=, this](network::Response r) {
-              ::handleGossipResponse(r, pair.second, &_agent, version);
-            });
+        std::ignore =
+            network::sendRequest(cp, pair.second, fuerte::RestVerb::Post, path,
+                                 buffer, reqOpts)
+                .thenValue([=, this](network::Response r) {
+                  ::handleGossipResponse(r, pair.second, &_agent, version);
+                });
       }
     }
 

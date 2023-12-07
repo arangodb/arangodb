@@ -27,7 +27,6 @@
 #include <velocypack/Iterator.h>
 
 #include "Aql/AqlFunctionFeature.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerRulesFeature.h"
@@ -94,6 +93,7 @@ class QueryTestMulti
     auto res = analyzers.emplace(
         result, "testVocbase::test_analyzer", "TestAnalyzer",
         VPackParser::fromJson("\"abc\"")->slice(),
+        arangodb::transaction::OperationOriginTestCase{},
         arangodb::iresearch::Features(
             {}, irs::IndexFeatures::FREQ |
                     irs::IndexFeatures::POS));  // required for PHRASE
@@ -101,7 +101,8 @@ class QueryTestMulti
 
     res = analyzers.emplace(
         result, "testVocbase::test_csv_analyzer", "TestDelimAnalyzer",
-        VPackParser::fromJson("\",\"")->slice());  // cache analyzer
+        VPackParser::fromJson("\",\"")->slice(),
+        arangodb::transaction::OperationOriginTestCase{});  // cache analyzer
     EXPECT_TRUE(res.ok());
 
     res = analyzers.emplace(
@@ -109,6 +110,7 @@ class QueryTestMulti
         VPackParser::fromJson(
             "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }")
             ->slice(),
+        arangodb::transaction::OperationOriginTestCase{},
         arangodb::iresearch::Features{
             arangodb::iresearch::FieldFeatures::NORM,
             irs::IndexFeatures::FREQ |
@@ -125,6 +127,7 @@ class QueryTestMulti
     res =
         analyzers.emplace(result, "_system::test_analyzer", "TestAnalyzer",
                           VPackParser::fromJson("\"abc\"")->slice(),
+                          arangodb::transaction::OperationOriginTestCase{},
                           arangodb::iresearch::Features{
                               irs::IndexFeatures::FREQ |
                               irs::IndexFeatures::POS});  // required for PHRASE
@@ -134,6 +137,7 @@ class QueryTestMulti
         VPackParser::fromJson("{\"min\":1, \"max\":3, \"streamType\":\"utf8\", "
                               "\"preserveOriginal\":false}")
             ->slice(),
+        arangodb::transaction::OperationOriginTestCase{},
         arangodb::iresearch::Features{
             irs::IndexFeatures::FREQ |
             irs::IndexFeatures::POS});  // required for PHRASE
@@ -143,6 +147,7 @@ class QueryTestMulti
         VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
                               "\"preserveOriginal\":false}")
             ->slice(),
+        arangodb::transaction::OperationOriginTestCase{},
         arangodb::iresearch::Features{
             irs::IndexFeatures::FREQ |
             irs::IndexFeatures::POS});  // required for PHRASE
@@ -151,7 +156,8 @@ class QueryTestMulti
 
     res = analyzers.emplace(
         result, "_system::test_csv_analyzer", "TestDelimAnalyzer",
-        VPackParser::fromJson("\",\"")->slice());  // cache analyzer
+        VPackParser::fromJson("\",\"")->slice(),
+        arangodb::transaction::OperationOriginTestCase{});  // cache analyzer
     EXPECT_TRUE(res.ok());
 
     auto& functions = server.getFeature<arangodb::aql::AqlFunctionFeature>();
@@ -229,11 +235,12 @@ bool findEmptyNodes(
       "{ }");
 
   auto query = arangodb::aql::Query::create(
-      arangodb::transaction::StandaloneContext::Create(vocbase),
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
       arangodb::aql::QueryString(queryString), bindVars,
       arangodb::aql::QueryOptions(options->slice()));
 
-  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
 
   arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
@@ -311,7 +318,7 @@ class QueryOptimization : public QueryTestMulti {
                "version": $0,
                "includeAllFields": true })",
           version()));
-      logicalCollection1->createIndex(createJson->slice(), created);
+      logicalCollection1->createIndex(createJson->slice(), created).get();
       ASSERT_TRUE(created);
       auto const viewDefinition = absl::Substitute(R"({ "indexes": [
         { "collection": "collection_1", "index": "index_1"}
@@ -326,8 +333,9 @@ class QueryOptimization : public QueryTestMulti {
       arangodb::OperationOptions opt;
       static std::vector<std::string> const EMPTY;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-          {logicalCollection1->name()}, EMPTY,
+          arangodb::transaction::StandaloneContext::create(
+              vocbase(), arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, {logicalCollection1->name()}, EMPTY,
           arangodb::transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 

@@ -197,7 +197,8 @@ TEST_F(IResearchLinkTest, test_defaults) {
     ASSERT_NE(nullptr, logicalView);
 
     bool created;
-    auto link = logicalCollection->createIndex(linkJson->slice(), created);
+    auto link =
+        logicalCollection->createIndex(linkJson->slice(), created).get();
     ASSERT_TRUE(nullptr != link && created);
     EXPECT_TRUE(link->canBeDropped());
     EXPECT_EQ(logicalCollection.get(), &(link->collection()));
@@ -274,7 +275,8 @@ TEST_F(IResearchLinkTest, test_defaults) {
     ASSERT_NE(nullptr, logicalView);
 
     bool created;
-    auto link = logicalCollection->createIndex(linkJson->slice(), created);
+    auto link =
+        logicalCollection->createIndex(linkJson->slice(), created).get();
     ASSERT_TRUE(nullptr != link && created);
     EXPECT_TRUE(link->canBeDropped());
     EXPECT_EQ(logicalCollection.get(), &(link->collection()));
@@ -351,7 +353,8 @@ TEST_F(IResearchLinkTest, test_defaults) {
     ASSERT_TRUE((false == !logicalView));
 
     bool created;
-    auto link = logicalCollection->createIndex(linkJson->slice(), created);
+    auto link =
+        logicalCollection->createIndex(linkJson->slice(), created).get();
     ASSERT_TRUE(nullptr != link && created);
     EXPECT_TRUE(link->canBeDropped());
     EXPECT_EQ(logicalCollection.get(), &(link->collection()));
@@ -875,14 +878,15 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_0) {
                  .string();
   irs::FSDirectory directory(dataPath);
   bool created;
-  auto link = logicalCollection->createIndex(linkJson->slice(), created);
+  auto link = logicalCollection->createIndex(linkJson->slice(), created).get();
   ASSERT_TRUE((false == !link && created));
   auto reader = irs::DirectoryReader(directory);
   EXPECT_EQ(0, reader.Reopen().live_docs_count());
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
-        kEmpty, kEmpty, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        kEmpty, kEmpty, kEmpty, arangodb::transaction::Options());
     trx.addHint(arangodb::transaction::Hints::Hint::INDEX_CREATION);
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
@@ -940,14 +944,15 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_1) {
                  .string();
   irs::FSDirectory directory(dataPath);
   bool created;
-  auto link = logicalCollection->createIndex(linkJson->slice(), created);
+  auto link = logicalCollection->createIndex(linkJson->slice(), created).get();
   ASSERT_TRUE((false == !link && created));
   auto reader = irs::DirectoryReader(directory);
   EXPECT_EQ(0, reader.Reopen().live_docs_count());
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
-        kEmpty, kEmpty, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        kEmpty, kEmpty, kEmpty, arangodb::transaction::Options());
     trx.addHint(arangodb::transaction::Hints::Hint::INDEX_CREATION);
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
@@ -1007,14 +1012,15 @@ TEST_F(IResearchLinkTest, test_write) {
                  .string();
   irs::FSDirectory directory(dataPath);
   bool created;
-  auto link = logicalCollection->createIndex(linkJson->slice(), created);
+  auto link = logicalCollection->createIndex(linkJson->slice(), created).get();
   ASSERT_TRUE((false == !link && created));
   auto reader = irs::DirectoryReader(directory);
   EXPECT_EQ(0, reader.Reopen().live_docs_count());
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
-        kEmpty, kEmpty, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        kEmpty, kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
@@ -1031,8 +1037,9 @@ TEST_F(IResearchLinkTest, test_write) {
 
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
-        kEmpty, kEmpty, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        kEmpty, kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
@@ -1046,8 +1053,9 @@ TEST_F(IResearchLinkTest, test_write) {
 
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
-        kEmpty, kEmpty, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        kEmpty, kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
@@ -1118,14 +1126,15 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
                  .string();
   irs::FSDirectory directory(dataPath);
   bool created;
-  auto link = logicalCollection->createIndex(linkJson->slice(), created);
+  auto link = logicalCollection->createIndex(linkJson->slice(), created).get();
   ASSERT_TRUE((false == !link && created));
   auto reader = irs::DirectoryReader(directory);
   EXPECT_EQ(0, reader.Reopen().live_docs_count());
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
-        kEmpty, kEmpty, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        kEmpty, kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
@@ -1142,8 +1151,9 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
 
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
-        kEmpty, kEmpty, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        kEmpty, kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
@@ -1225,14 +1235,15 @@ TEST_F(IResearchLinkTest,
                  .string();
   irs::FSDirectory directory(dataPath);
   bool created;
-  auto link = logicalCollection->createIndex(linkJson->slice(), created);
+  auto link = logicalCollection->createIndex(linkJson->slice(), created).get();
   ASSERT_TRUE((false == !link && created));
   auto reader = irs::DirectoryReader(directory);
   EXPECT_EQ(0, reader.Reopen().live_docs_count());
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
-        kEmpty, kEmpty, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        kEmpty, kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
@@ -1249,8 +1260,9 @@ TEST_F(IResearchLinkTest,
 
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
-        kEmpty, kEmpty, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        kEmpty, kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
@@ -1338,14 +1350,15 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
                  .string();
   irs::FSDirectory directory(dataPath);
   bool created;
-  auto link = logicalCollection->createIndex(linkJson->slice(), created);
+  auto link = logicalCollection->createIndex(linkJson->slice(), created).get();
   ASSERT_TRUE((false == !link && created));
   auto reader = irs::DirectoryReader(directory);
   EXPECT_EQ(0, reader.Reopen().live_docs_count());
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
-        kEmpty, kEmpty, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        kEmpty, kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
@@ -1362,8 +1375,9 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
 
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
-        kEmpty, kEmpty, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        kEmpty, kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
@@ -1449,14 +1463,15 @@ TEST_F(IResearchLinkTest,
                  .string();
   irs::FSDirectory directory(dataPath);
   bool created;
-  auto link = logicalCollection->createIndex(linkJson->slice(), created);
+  auto link = logicalCollection->createIndex(linkJson->slice(), created).get();
   ASSERT_TRUE((false == !link && created));
   auto reader = irs::DirectoryReader(directory);
   EXPECT_EQ(0, reader.Reopen().live_docs_count());
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
-        kEmpty, kEmpty, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        kEmpty, kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
@@ -1473,8 +1488,9 @@ TEST_F(IResearchLinkTest,
 
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
-        kEmpty, kEmpty, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        kEmpty, kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
@@ -1576,14 +1592,15 @@ TEST_F(
           std::make_unique<irs::mock::test_encryption>(kEncBlockSize)});
 
   bool created;
-  auto link = logicalCollection->createIndex(linkJson->slice(), created);
+  auto link = logicalCollection->createIndex(linkJson->slice(), created).get();
   ASSERT_TRUE((false == !link && created));
   auto reader = irs::DirectoryReader(directory);
   EXPECT_EQ(0, reader.Reopen().live_docs_count());
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
-        kEmpty, kEmpty, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        kEmpty, kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
@@ -1600,8 +1617,9 @@ TEST_F(
 
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
-        kEmpty, kEmpty, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        kEmpty, kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
@@ -1689,7 +1707,7 @@ TEST_F(IResearchLinkTest, test_maintenance_disabled_at_creation) {
     ASSERT_TRUE(feature.queue(ThreadGroup::_1, 0ms, blockQueue));
 
     bool created;
-    link = logicalCollection->createIndex(linkJson->slice(), created);
+    link = logicalCollection->createIndex(linkJson->slice(), created).get();
     ASSERT_TRUE(created);
     ASSERT_NE(nullptr, link);
 
@@ -1790,7 +1808,8 @@ TEST_F(IResearchLinkTest, test_maintenance_consolidation) {
     waitForBlocker();
 
     bool created;
-    auto link = logicalCollection->createIndex(linkJson->slice(), created);
+    auto link =
+        logicalCollection->createIndex(linkJson->slice(), created).get();
     ASSERT_TRUE(created);
     ASSERT_NE(nullptr, link);
     auto linkImpl = std::dynamic_pointer_cast<IResearchLink>(link);
@@ -2020,7 +2039,8 @@ TEST_F(IResearchLinkTest, test_maintenance_commit) {
     waitForBlocker();
 
     bool created;
-    auto link = logicalCollection->createIndex(linkJson->slice(), created);
+    auto link =
+        logicalCollection->createIndex(linkJson->slice(), created).get();
     ASSERT_TRUE(created);
     ASSERT_NE(nullptr, link);
     auto linkImpl = std::dynamic_pointer_cast<IResearchLink>(link);
@@ -2268,7 +2288,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
       "view": "42",
       "includeAllFields": true
     })");
-    _link = _logicalCollection->createIndex(linkJson->slice(), created);
+    _link = _logicalCollection->createIndex(linkJson->slice(), created).get();
     EXPECT_TRUE(created);
     EXPECT_NE(_link, nullptr);
     auto label = getLinkMetricLabel();
@@ -2317,8 +2337,9 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
                 bool commit = true) {
     auto* l = getLink();
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
-        kEmpty, kEmpty, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        kEmpty, kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     for (; begin != end; ++begin) {
       EXPECT_TRUE(l->insert(trx, arangodb::LocalDocumentId(begin),
@@ -2339,8 +2360,9 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
   double remove(uint64_t begin, uint64_t end) {
     auto* l = getLink();
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
-        kEmpty, kEmpty, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        kEmpty, kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     for (; begin != end; ++begin) {
       EXPECT_TRUE(l->remove(trx, arangodb::LocalDocumentId(begin)).ok());

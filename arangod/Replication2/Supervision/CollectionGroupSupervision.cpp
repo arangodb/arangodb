@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "Agency/TransactionBuilder.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/Utils/EvenDistribution.h"
 #include "CollectionGroupSupervision.h"
 #include "Replication2/AgencyCollectionSpecification.h"
@@ -29,6 +30,8 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/ParticipantsHealth.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include <random>
 
@@ -69,14 +72,26 @@ auto computeEvenDistributionForServers(
     std::size_t numberOfShards, std::size_t replicationFactor,
     replicated_log::ParticipantsHealth const& health)
     -> ResultT<EvenDistribution> {
-  auto servers = getHealthyParticipants(health);
-  {
-    // TODO reuse random device?
-    std::random_device rd;
-    std::mt19937 g(rd());
-    std::shuffle(servers.begin(), servers.end(), g);
+  if (replicationFactor == 0) {
+    // Satellite collection case.
+    // Replicate everywhere
+    std::vector<ParticipantId> allParticipants;
+    allParticipants.reserve(health._health.size());
+    for (auto const& [p, h] : health._health) {
+      allParticipants.push_back(p);
+    }
+    EvenDistribution distribution{
+        numberOfShards, allParticipants.size(), {}, false};
+    std::unordered_set<ParticipantId> plannedServers;
+    auto res =
+        distribution.planShardsOnServers(allParticipants, plannedServers);
+    if (res.fail()) {
+      return res;
+    }
+    return distribution;
   }
 
+  auto servers = getHealthyParticipants(health);
   EvenDistribution distribution{numberOfShards, replicationFactor, {}, false};
   std::unordered_set<ParticipantId> plannedServers;
   auto res = distribution.planShardsOnServers(servers, plannedServers);
@@ -137,11 +152,15 @@ auto createCollectionPlanSpec(
     std::unordered_map<LogId, ag::Log> const& logs, UniqueIdProvider& uniqid)
     -> ag::CollectionPlanSpecification {
   std::vector<ShardID> shardList;
+  if (collection.immutableProperties.shadowCollections.has_value()) {
+    auto mapping = PlanShardToServerMapping{};
+    return ag::CollectionPlanSpecification{collection, std::move(shardList),
+                                           std::move(mapping)};
+  }
   shardList.reserve(target.attributes.immutableAttributes.numberOfShards);
   std::generate_n(std::back_inserter(shardList),
-                  target.attributes.immutableAttributes.numberOfShards, [&] {
-                    return basics::StringUtils::concatT("s", uniqid.next());
-                  });
+                  target.attributes.immutableAttributes.numberOfShards,
+                  [&] { return ShardID{uniqid.next()}; });
 
   auto mapping = computeShardList(logs, shardSheaves, shardList);
   return ag::CollectionPlanSpecification{collection, std::move(shardList),
@@ -185,6 +204,7 @@ auto createCollectionGroupTarget(
   ag::CollectionGroupPlanSpecification spec;
   spec.attributes = group.target.attributes;
   spec.id = group.target.id;
+  spec.groupLeader = group.target.groupLeader;
 
   std::transform(
       replicatedLogs.begin(), replicatedLogs.end(),
@@ -196,30 +216,30 @@ auto createCollectionGroupTarget(
   std::unordered_map<CollectionID, ag::CollectionPlanSpecification> collections;
   for (auto const& [cid, collection] : group.target.collections) {
     std::vector<ShardID> shardList;
-    std::generate_n(std::back_inserter(shardList),
-                    attributes.immutableAttributes.numberOfShards, [&] {
-                      return basics::StringUtils::concatT("s", uniqid.next());
-                    });
-
-    ADB_PROD_ASSERT(group.targetCollections.contains(cid))
-        << "collection " << cid << " is listed in collection group "
-        << group.target.id << " but not in Target/Collections";
     PlanShardToServerMapping mapping{};
-    for (size_t k = 0; k < shardList.size(); ++k) {
-      ResponsibleServerList serverids{};
-      auto const& log = replicatedLogs[spec.shardSheaves[k].replicatedLog];
-      serverids.servers.emplace_back(log.leader.value());
-      for (auto const& p : log.participants) {
-        if (p.first != log.leader) {
-          serverids.servers.emplace_back(p.first);
+    auto const& targetCollection = group.targetCollections.at(cid);
+
+    // If we have shadow collections we do not have any shards
+    if (!targetCollection.immutableProperties.shadowCollections.has_value()) {
+      std::generate_n(std::back_inserter(shardList),
+                      attributes.immutableAttributes.numberOfShards,
+                      [&] { return ShardID{uniqid.next()}; });
+
+      for (size_t k = 0; k < shardList.size(); ++k) {
+        ResponsibleServerList serverids{};
+        auto const& log = replicatedLogs[spec.shardSheaves[k].replicatedLog];
+        serverids.servers.emplace_back(log.leader.value());
+        for (auto const& p : log.participants) {
+          if (p.first != log.leader) {
+            serverids.servers.emplace_back(p.first);
+          }
         }
+        ADB_PROD_ASSERT(serverids.getLeader() == log.leader);
+        mapping.shards[shardList[k]] = std::move(serverids);
       }
-      ADB_PROD_ASSERT(serverids.getLeader() == log.leader);
-      mapping.shards[shardList[k]] = std::move(serverids);
     }
     collections[cid] = ag::CollectionPlanSpecification{
-        group.targetCollections.at(cid), std::move(shardList),
-        std::move(mapping)};
+        targetCollection, std::move(shardList), std::move(mapping)};
     spec.collections[cid];
   }
 
@@ -255,7 +275,7 @@ auto pickBestServerToRemoveFromLog(
   }
 
   auto const compareTuple = [&](auto const& server) {
-    bool const isHealthy = not health.notIsFailed(server);
+    bool const isHealthy = health.notIsFailed(server);
     bool const isPlanLeader = leader == server;
     bool const isTargetLeader = log.target.leader == server;
 
@@ -272,9 +292,17 @@ auto pickBestServerToRemoveFromLog(
                      // then remove leaders that are not Target leaders
                      return compareTuple(left) < compareTuple(right);
                    });
-  ADB_PROD_ASSERT(not log.target.leader or
-                  servers.front() != log.target.leader);
   return servers.front();
+}
+auto checkCollectionGroupAttributes(
+    ag::CollectionGroupTargetSpecification const& target,
+    ag::CollectionGroupPlanSpecification const& plan) -> Action {
+  if (target.attributes.mutableAttributes !=
+      plan.attributes.mutableAttributes) {
+    return UpdateCollectionGroupInPlan{target.id,
+                                       target.attributes.mutableAttributes};
+  }
+  return NoActionRequired{};
 }
 
 auto checkAssociatedReplicatedLogs(
@@ -295,16 +323,22 @@ auto checkAssociatedReplicatedLogs(
         << " is in plan, but the replicated log " << sheaf.replicatedLog
         << " is missing.";
     auto const& log = logs.at(sheaf.replicatedLog);
-    auto const& wantedConfig =
-        createLogConfigFromGroupAttributes(target.attributes);
+    auto wantedConfig = createLogConfigFromGroupAttributes(target.attributes);
+    auto expectedReplicationFactor =
+        target.attributes.mutableAttributes.replicationFactor;
+
+    if (expectedReplicationFactor == 0) {
+      // 0 is Satellite, replicate everywhere, even to non-healthy servers
+      expectedReplicationFactor = health._health.size();
+      wantedConfig.softWriteConcern = expectedReplicationFactor;
+      wantedConfig.writeConcern = expectedReplicationFactor / 2 + 1;
+    }
 
     if (log.target.config != wantedConfig) {
       // we have to update this replicated log
       return UpdateReplicatedLogConfig{sheaf.replicatedLog, wantedConfig};
     }
 
-    auto expectedReplicationFactor =
-        target.attributes.mutableAttributes.replicationFactor;
     auto currentReplicationFactor = log.target.participants.size();
     if (currentReplicationFactor < expectedReplicationFactor) {
       // add a new server to the replicated log
@@ -351,6 +385,20 @@ auto checkCollectionGroupConverged(CollectionGroup const& group) -> Action {
 
     // check collection is in current
     for (auto const& [cid, coll] : group.target.collections) {
+      {
+        auto it = group.targetCollections.find(cid);
+        // It should be guaranteed that the collection is in targetCollections
+        // as we are iterating over the target collections.
+        // Nevertheless, handle this gratefully here
+        if (ADB_LIKELY(it != group.targetCollections.end())) {
+          if (it->second.immutableProperties.shadowCollections.has_value()) {
+            // This Collection is virtual and does not need to be in current
+            // Go to next collection.
+            continue;
+          }
+        }
+      }
+
       if (not group.currentCollections.contains(cid)) {
         return NoActionPossible{basics::StringUtils::concatT(
             "collection  ", cid, " not yet in current.")};
@@ -383,8 +431,8 @@ auto checkCollectionsOfGroup(CollectionGroup const& group,
         << "the collection " << cid << " is listed in Target/CollectionGroups/"
         << group.target.id.id() << " but does not exist in Target/Collections";
 
-    if (not group.planCollections.contains(cid)) {
-      ADB_PROD_ASSERT(not group.plan->collections.contains(cid))
+    if (not group.plan->collections.contains(cid)) {
+      ADB_PROD_ASSERT(not group.planCollections.contains(cid))
           << "the target collection " << cid
           << " is not listed in Plan/CollectionGroup/" << group.target.id.id()
           << ", but exists in Plan/Collections.";
@@ -404,9 +452,96 @@ auto checkCollectionsOfGroup(CollectionGroup const& group,
       return DropCollectionPlan{cid};
     }
 
-    // TODO compare mutable properties and update if necessary
+    if (collection.mutableProperties != iter->second.mutableProperties) {
+      return UpdateCollectionPlan{cid, iter->second.mutableProperties};
+    }
 
-    {  // TODO remove deprecatedShardMap comparison
+    {
+      // Compare Indexes
+      auto const& targetIndexes = iter->second.indexes.indexes;
+      auto const& planIndexes = collection.indexes.indexes;
+
+      // NOTE/TODO: Maybe we want to make the Target entry for Indexes an Object
+      // where the keys are the IndexIds, this way we already have the
+      // lookupList here.
+
+      // This lookup set should map indexId -> foundInPlan
+      // It will be seeded with all indexes from the target.
+      // If an index is found in plan it is supposed to erase
+      // it's entry. => Whatever is left is missing in Plan.
+      std::unordered_set<std::string> lookupTargetIndexes;
+      lookupTargetIndexes.reserve(targetIndexes.size());
+      for (auto const& it : targetIndexes) {
+        auto idx = it.slice().get(StaticStrings::IndexId);
+        TRI_ASSERT(idx.isString());
+        lookupTargetIndexes.emplace(idx.copyString());
+      }
+
+      // Now check what we have in Plan
+      for (auto const& it : planIndexes) {
+        auto idx = it.slice();
+        auto idxId = idx.get(StaticStrings::IndexId);
+        TRI_ASSERT(idxId.isString());
+        auto indexId = idxId.copyString();
+        auto removedCount = lookupTargetIndexes.erase(indexId);
+        if (removedCount == 0) {
+          // This is an Index that is in Plan but not in Target
+          return RemoveCollectionIndexPlan{cid, it.sharedSlice()};
+        }
+        if (arangodb::basics::VelocyPackHelper::getBooleanValue(
+                idx, StaticStrings::IndexIsBuilding, false)) {
+          // Index is still Flagged as isBuilding. Let us test if it converged
+
+          // TODO: We do not yet implement errors that could appear during
+          // creation of a UniqueIndex
+          auto const& currentCollection = group.currentCollections.find(cid);
+          // Let us protect against Collection not created, although it should
+          // be, as we are trying to add an index to it right now.
+          if (currentCollection != group.currentCollections.end()) {
+            auto const& currentShards = currentCollection->second.shards;
+            bool allConverged = true;
+            for (auto const& [shardId, shard] : currentShards) {
+              bool foundLocalIndex = false;
+              for (auto const& index : shard.indexes) {
+                if (index.get(StaticStrings::IndexId).isEqualString(indexId)) {
+                  foundLocalIndex = true;
+                  break;
+                }
+              }
+              if (!foundLocalIndex) {
+                allConverged = false;
+                break;
+              }
+            }
+            if (allConverged) {
+              return IndexConvergedCurrent{cid, it.sharedSlice()};
+            }
+          }
+        }
+      }
+
+      if (!lookupTargetIndexes.empty()) {
+        // This is at least one Index that is in Target but not yet in Plan
+        // Create an action to create the first one
+        auto const& missingIndex = lookupTargetIndexes.begin();
+        // We need to find the index again in the list of all Indexes in Target
+        for (auto const& it : targetIndexes) {
+          if (it.slice()
+                  .get(StaticStrings::IndexId)
+                  .isEqualString(*missingIndex)) {
+            // If we do have shards, we need to create the isBuilding Flag,
+            // otherwise index is already converged
+            return AddCollectionIndexPlan{cid, it.buffer(),
+                                          !collection.shardList.empty()};
+          }
+        }
+        TRI_ASSERT(false) << "We discovered a missing index, it has to be part "
+                             "of the list of indexes";
+      }
+    }
+
+    if (!collection.immutableProperties.shadowCollections.has_value()) {
+      // TODO remove deprecatedShardMap comparison
       auto expectedShardMap = computeShardList(
           group.logs, group.plan->shardSheaves, collection.shardList);
       if (collection.deprecatedShardMap.shards != expectedShardMap.shards) {
@@ -433,6 +568,11 @@ auto document::supervision::checkCollectionGroup(
   if (not group.plan.has_value()) {
     // create collection group in plan
     return createCollectionGroupTarget(database, group, uniqid, health);
+  }
+  // Check CollectionGroupAttributes
+  if (auto action = checkCollectionGroupAttributes(group.target, *group.plan);
+      not std::holds_alternative<NoActionRequired>(action)) {
+    return action;
   }
 
   // check replicated logs
@@ -563,6 +703,101 @@ struct TransactionBuilder {
               .end();
   }
 
+  void operator()(UpdateCollectionPlan const& action) {
+    auto tmp = env.write();
+    auto allProps = velocypack::serialize(action.spec);
+    ADB_PROD_ASSERT(allProps.isObject());
+    for (auto const& it : VPackObjectIterator(allProps.slice())) {
+      tmp = std::move(tmp).emplace_object(
+          basics::StringUtils::concatT("/arango/Plan/Collections/", database,
+                                       "/", action.cid, "/",
+                                       it.key.stringView()),
+          [&](VPackBuilder& builder) {
+            velocypack::serialize(builder, it.value);
+          });
+    }
+    // Special handling for Schema, which can be nullopt and should be removed
+    if (!action.spec.schema.has_value()) {
+      tmp = std::move(tmp).remove(basics::StringUtils::concatT(
+          "/arango/Plan/Collections/", database, "/", action.cid, "/schema"));
+    }
+    env = std::move(tmp)
+              .inc("/arango/Plan/Version")
+              .precs()
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Plan/Collections/", database, "/", action.cid))
+              .end();
+  }
+
+  void operator()(RemoveCollectionIndexPlan const& action) {
+    auto tmp = env.write();
+    // Just overwrite all indexes as defined by the Action
+    tmp = std::move(tmp).erase_object(
+        basics::StringUtils::concatT("/arango/Plan/Collections/", database, "/",
+                                     action.cid, "/indexes"),
+        [&](VPackBuilder& builder) { builder.add(action.index.slice()); });
+    env = std::move(tmp)
+              .inc("/arango/Plan/Version")
+              .precs()
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Plan/Collections/", database, "/", action.cid))
+              .end();
+  }
+
+  void operator()(AddCollectionIndexPlan const& action) {
+    auto tmp = env.write();
+    // Just overwrite all indexes as defined by the Action
+    tmp = std::move(tmp).push_object(
+        basics::StringUtils::concatT("/arango/Plan/Collections/", database, "/",
+                                     action.cid, "/indexes"),
+        [&](VPackBuilder& builder) {
+          arangodb::velocypack::Slice indexData{action.index->data()};
+          // We need to add the isBuildingFlag
+          TRI_ASSERT(indexData.isObject());
+          VPackObjectBuilder guard{&builder};
+          builder.add(VPackObjectIterator(indexData));
+          if (action.useIsBuilding) {
+            builder.add(StaticStrings::IndexIsBuilding, VPackValue(true));
+          }
+        });
+    env = std::move(tmp)
+              .inc("/arango/Plan/Version")
+              .precs()
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Plan/Collections/", database, "/", action.cid))
+              .end();
+  }
+
+  void operator()(IndexConvergedCurrent const& action) {
+    auto tmp = env.write();
+    // Just overwrite all indexes as defined by the Action
+    tmp = std::move(tmp).replace(
+        basics::StringUtils::concatT("/arango/Plan/Collections/", database, "/",
+                                     action.cid, "/indexes"),
+        [&](VPackBuilder& builder) {
+          // Old value, take from the Action
+          builder.add(action.index.slice());
+        },
+        [&](VPackBuilder& builder) {
+          // New value, take everything from the action, but remove the
+          // isBuilding Flag
+          TRI_ASSERT(action.index.slice().isObject());
+          VPackObjectBuilder guard{&builder};
+          for (auto const& [key, value] :
+               VPackObjectIterator(action.index.slice())) {
+            if (!key.isEqualString(StaticStrings::IndexIsBuilding)) {
+              builder.add(key.copyString(), value);
+            }
+          }
+        });
+    env = std::move(tmp)
+              .inc("/arango/Plan/Version")
+              .precs()
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Plan/Collections/", database, "/", action.cid))
+              .end();
+  }
+
   void operator()(UpdateCollectionShardMap const& action) {
     env = env.write()
               .emplace_object(
@@ -639,6 +874,22 @@ struct TransactionBuilder {
     env = write.precs()
               .isNotEmpty(basics::StringUtils::concatT(
                   "/arango/Target/CollectionGroups/", database, "/", gid.id()))
+              .end();
+  }
+
+  void operator()(UpdateCollectionGroupInPlan const& action) {
+    auto write = env.write().emplace_object(
+        basics::StringUtils::concatT("/arango/Plan/CollectionGroups/", database,
+                                     "/", action.id.id(),
+                                     "/attributes/mutable"),
+        [&](VPackBuilder& builder) {
+          velocypack::serialize(builder, action.spec);
+        });
+    env = write.precs()
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Target/CollectionGroups/", database, "/", gid.id()))
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Plan/CollectionGroups/", database, "/", gid.id()))
               .end();
   }
 

@@ -27,6 +27,9 @@
 #include "Endpoint/ConnectionInfo.h"
 #include "Rest/GeneralRequest.h"
 
+#include <string_view>
+#include <unordered_map>
+
 namespace arangodb {
 class RestBatchHandler;
 
@@ -41,7 +44,7 @@ class HttpRequest final : public GeneralRequest {
   HttpRequest(HttpRequest&&) = delete;
 
  public:
-  HttpRequest(ConnectionInfo const&, uint64_t mid, bool allowMethodOverride);
+  HttpRequest(ConnectionInfo const&, uint64_t mid);
 
   ~HttpRequest();
 
@@ -80,11 +83,9 @@ class HttpRequest final : public GeneralRequest {
   void parseHeader(char* buffer, size_t length);
   void parseCookies(char const* buffer, size_t length);
   void setValues(char* buffer, char* end);
+  EncodingType parseAcceptEncoding(std::string_view value) const;
 
   std::unordered_map<std::string, std::string> _cookies;
-  //  whether or not overriding the HTTP method via custom headers
-  // (x-http-method, x-method-override or x-http-method-override) is allowed
-  bool const _allowMethodOverride = false;
 
   /// @brief was VPack payload validated
   bool _validatedPayload = false;

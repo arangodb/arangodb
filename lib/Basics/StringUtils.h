@@ -407,27 +407,6 @@ static bool toNumber(std::string const& key, T& val) noexcept {
 }
 
 // -----------------------------------------------------------------------------
-// BASE64
-// -----------------------------------------------------------------------------
-
-/// @brief converts to base64
-std::string encodeBase64(char const* value, size_t length);
-std::string encodeBase64(std::string_view value);
-
-/// @brief converts from base64
-std::string decodeBase64(std::string_view);
-
-/// @brief converts to base64, URL friendly
-///
-/// '-' and '_' are used instead of '+' and '/'
-std::string encodeBase64U(std::string_view);
-
-/// @brief converts from base64, URL friendly
-///
-/// '-' and '_' are used instead of '+' and '/'
-std::string decodeBase64U(std::string_view);
-
-// -----------------------------------------------------------------------------
 // ADDITIONAL STRING UTILITIES
 // -----------------------------------------------------------------------------
 

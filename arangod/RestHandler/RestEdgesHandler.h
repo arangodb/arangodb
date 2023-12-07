@@ -69,7 +69,7 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
                          std::string const& collectionName,
                          TRI_edge_direction_e direction,
                          transaction::Methods& trx,
-                         std::function<void(LocalDocumentId const&)> const& cb);
+                         std::function<void(LocalDocumentId)> const& cb);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Parse the direction parameter

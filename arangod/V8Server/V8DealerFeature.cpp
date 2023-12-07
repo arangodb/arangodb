@@ -21,6 +21,10 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include "V8DealerFeature.h"
 
 #include <regex>
@@ -30,8 +34,6 @@
 #include "Agency/v8-agency.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
-#include "ApplicationFeatures/V8PlatformFeature.h"
-#include "V8/V8SecurityFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ScopeGuard.h"
@@ -63,6 +65,8 @@
 #include "Transaction/V8Context.h"
 #include "Utilities/NameValidator.h"
 #include "V8/JavaScriptSecurityContext.h"
+#include "V8/V8PlatformFeature.h"
+#include "V8/V8SecurityFeature.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -124,7 +128,8 @@ DECLARE_COUNTER(arangodb_v8_context_enter_failures_total,
 DECLARE_COUNTER(arangodb_v8_context_entered_total, "V8 context enter events");
 DECLARE_COUNTER(arangodb_v8_context_exited_total, "V8 context exit events");
 
-V8DealerFeature::V8DealerFeature(Server& server, metrics::MetricsFeature& metrics)
+V8DealerFeature::V8DealerFeature(Server& server,
+                                 metrics::MetricsFeature& metrics)
     : ArangodFeature{server, *this},
       _gcFrequency(60.0),
       _gcInterval(2000),
@@ -143,18 +148,14 @@ V8DealerFeature::V8DealerFeature(Server& server, metrics::MetricsFeature& metric
       _stopping(false),
       _gcFinished(false),
       _dynamicContextCreationBlockers(0),
-      _contextsCreationTime(metrics.add(
-          arangodb_v8_context_creation_time_msec_total{})),
-      _contextsCreated(metrics.add(
-          arangodb_v8_context_created_total{})),
-      _contextsDestroyed(metrics.add(
-          arangodb_v8_context_destroyed_total{})),
-      _contextsEntered(metrics.add(
-          arangodb_v8_context_entered_total{})),
-      _contextsExited(metrics.add(
-          arangodb_v8_context_exited_total{})),
-      _contextsEnterFailures(metrics.add(
-          arangodb_v8_context_enter_failures_total{})) {
+      _contextsCreationTime(
+          metrics.add(arangodb_v8_context_creation_time_msec_total{})),
+      _contextsCreated(metrics.add(arangodb_v8_context_created_total{})),
+      _contextsDestroyed(metrics.add(arangodb_v8_context_destroyed_total{})),
+      _contextsEntered(metrics.add(arangodb_v8_context_entered_total{})),
+      _contextsExited(metrics.add(arangodb_v8_context_exited_total{})),
+      _contextsEnterFailures(
+          metrics.add(arangodb_v8_context_enter_failures_total{})) {
   static_assert(
       Server::isCreatedAfter<V8DealerFeature, metrics::MetricsFeature>());
 
@@ -360,16 +361,14 @@ or teardown commands for execution on the server.)");
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle,
                       arangodb::options::Flags::Uncommon))
-      .setLongDescription(R"(For certain types of ArangoDB instances, you can
-completely disable the V8 JavaScript engine. Be aware that this is an
-**highly experimental** feature and it is to be expected that certain
-functionality (e.g. API endpoints, the web interface, AQL functions, etc.) may
-be unavailable or dysfunctional. Nevertheless, you may wish to reduce the
-footprint of ArangoDB by disabling V8.
+      .setLongDescription(R"(By default, the V8 engine is enabled on single
+servers and Coordinators. It is disabled by default on Agents and DB-Servers.
 
-This option is expected to **only** work reliably on single servers, DB-Servers,
-and Agents. Do not try to use this feature on Coordinators or in Active Failover
-setups.)");
+It is possible to turn the V8 engine off also on the latter instance types to 
+reduce the footprint of ArangoDB. Turning the V8 engine off on single servers or
+Coordinators will automatically render certain functionality unavailable or
+dysfunctional. The affected functionality includes JavaScript transactions, Foxx, 
+AQL user-defined functions, the built-in web interface and some server APIs.)");
 }
 
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -1967,12 +1966,10 @@ void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file,
         LOG_TOPIC("0f13b", FATAL, arangodb::Logger::V8)
             << "cannot load JavaScript file '" << file << "'";
         FATAL_ERROR_EXIT();
-        break;
       case JSLoader::eFailExecute:
         LOG_TOPIC("69ac3", FATAL, arangodb::Logger::V8)
             << "error during execution of JavaScript file '" << file << "'";
         FATAL_ERROR_EXIT();
-        break;
     }
   }
 

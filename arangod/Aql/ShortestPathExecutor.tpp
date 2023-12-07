@@ -123,12 +123,6 @@ RegisterId ShortestPathExecutorInfos<FinderType>::getOutputRegister(
 }
 
 template<class FinderType>
-graph::TraverserCache* ShortestPathExecutorInfos<FinderType>::cache() const {
-  TRI_ASSERT(false);  // TODO [GraphRefactor]:remove me later
-  return nullptr;
-}
-
-template<class FinderType>
 ShortestPathExecutor<FinderType>::ShortestPathExecutor(Fetcher&, Infos& infos)
     : _infos(infos),
       _trx(infos.query().newTrxContext()),
@@ -207,7 +201,7 @@ auto ShortestPathExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output)
 
       output.moveValueInto(_infos.getOutputRegister(
                                ShortestPathExecutorInfos<FinderType>::VERTEX),
-                           _inputRow, vertexGuard);
+                           _inputRow, &vertexGuard);
     }
     if (_infos.usesOutputRegister(
             ShortestPathExecutorInfos<FinderType>::EDGE)) {
@@ -217,14 +211,14 @@ auto ShortestPathExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output)
         AqlValueGuard edgeGuard{e, true};
         output.moveValueInto(_infos.getOutputRegister(
                                  ShortestPathExecutorInfos<FinderType>::EDGE),
-                             _inputRow, edgeGuard);
+                             _inputRow, &edgeGuard);
       } else {
-        AqlValue e{edgesSlice.at(_posInPath - 1)};
+        AqlValue e{edgesSlice.at(_posInPath - 1).resolveExternal()};
         AqlValueGuard edgeGuard{e, true};
 
         output.moveValueInto(_infos.getOutputRegister(
                                  ShortestPathExecutorInfos<FinderType>::EDGE),
-                             _inputRow, edgeGuard);
+                             _inputRow, &edgeGuard);
       }
     }
     output.advanceRow();

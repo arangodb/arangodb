@@ -26,13 +26,12 @@
 
 #include "Dump/arangodump.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
-
+#include "Basics/BoundedChannel.h"
 #include "Basics/Result.h"
 #include "Maskings/Maskings.h"
 #include "Utils/ClientManager.h"
 #include "Utils/ClientTaskQueue.h"
 #include "Utils/ManagedDirectory.h"
-#include "Basics/BoundedChannel.h"
 
 #include <memory>
 #include <mutex>
@@ -64,14 +63,16 @@ class DumpFeature final : public ArangoDumpFeature {
   /// @brief Holds configuration data to pass between methods
   struct Options {
     std::vector<std::string> collections{};
+    // Collections in here, will be ignored during the dump
+    std::vector<std::string> collectionsToBeIgnored{};
     std::vector<std::string> shards{};
     std::string outputPath{};
     std::string maskingsFile{};
+    uint64_t docsPerBatch{1000 * 10};
     uint64_t initialChunkSize{1024 * 1024 * 8};
     uint64_t maxChunkSize{1024 * 1024 * 64};
+    // actual default value depends on the number of available cores
     uint32_t threadCount{2};
-    uint64_t tickStart{0};
-    uint64_t tickEnd{0};
     bool allDatabases{false};
     bool clusterMode{false};
     bool dumpData{true};
@@ -81,10 +82,9 @@ class DumpFeature final : public ArangoDumpFeature {
     bool includeSystemCollections{false};
     bool overwrite{false};
     bool progress{true};
-    bool useGzip{true};
-    bool useEnvelope{false};
-
-    bool useExperimentalDump{false};
+    bool useGzipForStorage{true};
+    bool useVPack{false};
+    bool useParalleDump{true};
     bool splitFiles{false};
     std::uint64_t dbserverWorkerThreads{5};
     std::uint64_t dbserverPrefetchBatches{5};
@@ -95,6 +95,7 @@ class DumpFeature final : public ArangoDumpFeature {
   /// @brief Stores stats about the overall dump progress
   struct Stats {
     std::atomic<uint64_t> totalBatches{0};
+    std::atomic<uint64_t> totalReceived{0};
     std::atomic<uint64_t> totalCollections{0};
     std::atomic<uint64_t> totalWritten{0};
   };
@@ -153,7 +154,7 @@ class DumpFeature final : public ArangoDumpFeature {
     explicit DumpFileProvider(
         ManagedDirectory& directory,
         std::map<std::string, arangodb::velocypack::Slice>& collectionInfo,
-        bool splitFiles);
+        bool splitFiles, bool useVPack);
     std::shared_ptr<ManagedDirectory::File> getFile(
         std::string const& collection);
 
@@ -164,6 +165,7 @@ class DumpFeature final : public ArangoDumpFeature {
     };
 
     bool const _splitFiles;
+    bool const _useVPack;
     std::mutex _mutex;
     std::unordered_map<std::string, CollectionFiles> _filesByCollection;
     ManagedDirectory& _directory;
@@ -188,7 +190,7 @@ class DumpFeature final : public ArangoDumpFeature {
         std::optional<std::uint64_t> lastBatch);
 
     void runNetworkThread(size_t threadId) noexcept;
-    void runWriterThread() noexcept;
+    void runWriterThread();
 
     void createDumpContext(httpclient::SimpleHttpClient& client);
     void finishDumpContext(httpclient::SimpleHttpClient& client);

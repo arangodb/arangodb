@@ -58,7 +58,7 @@ void Table::GenericBucket::clear() {
   _state.lock(std::numeric_limits<std::uint64_t>::max(),
               [this]() noexcept -> void {
                 _state.clear();
-                for (size_t i = 0; i < paddingSize; i++) {
+                for (size_t i = 0; i < kPaddingSize; i++) {
                   _padding[i] = static_cast<std::uint8_t>(0);
                 }
                 _state.unlock();
@@ -181,14 +181,14 @@ void Table::BucketLocker::steal(Table::BucketLocker&& other) noexcept {
 }
 
 Table::Table(std::uint32_t logSize, Manager* manager)
-    : _lock(),
+    : _logSize(std::min(logSize, kMaxLogSize)),
       _disabled(true),
       _evictions(false),
-      _logSize(std::min(logSize, kMaxLogSize)),
       _size(static_cast<std::uint64_t>(1) << _logSize),
-      _shift(32 - _logSize),
+      _shift(kMaxLogSize - _logSize),
       _mask(static_cast<std::uint32_t>((_size - 1) << _shift)),
-      _buffer(new std::uint8_t[(_size * kBucketSizeInBytes) + Table::padding]),
+      _buffer(std::make_unique<std::uint8_t[]>((_size * kBucketSizeInBytes) +
+                                               kPadding)),
       _buckets(reinterpret_cast<GenericBucket*>(
           reinterpret_cast<std::uint64_t>(
               (_buffer.get() + (kBucketSizeInBytes - 1))) &
@@ -197,6 +197,10 @@ Table::Table(std::uint32_t logSize, Manager* manager)
       _bucketClearer(defaultClearer),
       _slotsTotal(_size),
       _slotsUsed(static_cast<std::uint64_t>(0)) {
+  TRI_ASSERT(_logSize <= kMaxLogSize);
+  TRI_ASSERT(_size == (std::uint64_t(1) << _logSize));
+  TRI_ASSERT(_size <= std::numeric_limits<std::uint32_t>::max());
+
   for (std::size_t i = 0; i < _size; i++) {
     // use placement new in order to properly initialize the bucket
     new (_buckets + i) GenericBucket();

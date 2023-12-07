@@ -91,6 +91,9 @@ class SortNode : public ExecutionNode {
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
+
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
 

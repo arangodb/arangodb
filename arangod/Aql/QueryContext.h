@@ -24,17 +24,20 @@
 #pragma once
 
 #include "Aql/Collections.h"
-#include "Aql/Graphs.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryOptions.h"
-#include "Aql/QueryString.h"
 #include "Aql/QueryWarnings.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/ResultT.h"
+#include "Transaction/OperationOrigin.h"
 #include "VocBase/voc-types.h"
-#include <velocypack/Builder.h>
+
+#include <atomic>
+#include <mutex>
+#include <string>
+#include <unordered_map>
 
 struct TRI_vocbase_t;
 
@@ -48,7 +51,7 @@ class Methods;
 }  // namespace transaction
 
 namespace velocypack {
-class Builder;
+struct Options;
 }
 
 namespace graph {
@@ -66,7 +69,9 @@ class QueryContext {
   QueryContext& operator=(QueryContext const&) = delete;
 
  public:
-  explicit QueryContext(TRI_vocbase_t& vocbase, QueryId id = 0);
+  explicit QueryContext(TRI_vocbase_t& vocbase,
+                        transaction::OperationOrigin operationOrigin,
+                        QueryId id = 0);
 
   virtual ~QueryContext();
 
@@ -77,7 +82,9 @@ class QueryContext {
   }
 
   /// @brief get the vocbase
-  inline TRI_vocbase_t& vocbase() const { return _vocbase; }
+  TRI_vocbase_t& vocbase() const noexcept;
+
+  transaction::OperationOrigin operationOrigin() const noexcept;
 
   Collections& collections();
   Collections const& collections() const;
@@ -89,7 +96,7 @@ class QueryContext {
   virtual std::string const& user() const;
 
   /// warnings access is thread safe
-  QueryWarnings& warnings() { return _warnings; }
+  QueryWarnings& warnings();
 
   /// @brief look up a graph in the _graphs collection
   ResultT<graph::Graph const*> lookupGraphByName(std::string const& name);
@@ -97,9 +104,9 @@ class QueryContext {
   /// @brief note that the query uses the DataSource
   void addDataSource(std::shared_ptr<arangodb::LogicalDataSource> const& ds);
 
-  QueryExecutionState::ValueType state() const { return _execState; }
+  QueryExecutionState::ValueType state() const noexcept { return _execState; }
 
-  TRI_voc_tick_t id() const { return _queryId; }
+  TRI_voc_tick_t id() const noexcept { return _queryId; }
 
   aql::Ast* ast();
 
@@ -109,7 +116,7 @@ class QueryContext {
     return std::lock_guard{_mutex};
   }
 
-  void incHttpRequests(unsigned i) {
+  void incHttpRequests(unsigned i) noexcept {
     _numRequests.fetch_add(i, std::memory_order_relaxed);
   }
 
@@ -181,10 +188,13 @@ class QueryContext {
   /// messages)
   std::atomic<QueryExecutionState::ValueType> _execState;
 
+  transaction::OperationOrigin const _operationOrigin;
+
   /// @brief _ast, we need an ast to manage the memory for AstNodes, even
   /// if we do not have a parser, because AstNodes occur in plans and engines
   std::unique_ptr<Ast> _ast;
 
+  /// @brief number of HTTP requests executed by the query
   std::atomic<unsigned> _numRequests;
 
   /// @brief this mutex is used to serialize execution of potentially concurrent

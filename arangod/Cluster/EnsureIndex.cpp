@@ -34,11 +34,12 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
-#include "VocBase/Methods/Collections.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
-#include "VocBase/Methods/Indexes.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -102,8 +103,6 @@ bool EnsureIndex::first() {
   auto const& shard = _description.get(SHARD);
   auto const& id = properties().get(ID).copyString();
 
-  VPackBuilder body;
-
   try {  // now try to guard the database
     auto& df = _feature.server().getFeature<DatabaseFeature>();
     DatabaseGuard guard(df, database);
@@ -120,6 +119,7 @@ bool EnsureIndex::first() {
       return false;
     }
 
+    VPackBuilder body;
     {
       VPackObjectBuilder b(&body);
       body.add(COLLECTION, VPackValue(shard));
@@ -156,20 +156,26 @@ bool EnsureIndex::first() {
       // continue with the job normally
     }
 
-    auto lambda = std::make_shared<std::function<arangodb::Result(double d)>>(
-        [this](double d) { return setProgress(d); });
-    VPackBuilder index;
-    auto res = methods::Indexes::ensureIndex(*col, body.slice(), true, index,
-                                             std::move(lambda));
+    auto res = std::invoke([&]() -> Result {
+      auto lambda = std::make_shared<Indexes::ProgressTracker>(
+          [this](double d) { return setProgress(d); });
+
+      if (vocbase->replicationVersion() == replication::Version::TWO) {
+        return ensureIndexReplication2(col, body.slice(), std::move(lambda));
+      }
+      auto index = VPackBuilder();
+      auto res = methods::Indexes::ensureIndex(*col, body.slice(), true, index,
+                                               std::move(lambda))
+                     .get();
+      if (res.ok()) {
+        indexCreationLogging(index.slice());
+      }
+      return res;
+    });
+
     result(res);
 
-    if (res.ok()) {
-      VPackSlice created = index.slice().get("isNewlyCreated");
-      std::string log = std::string("Index ") + id;
-      log += (created.isBool() && created.getBool() ? std::string(" created")
-                                                    : std::string(" updated"));
-      LOG_TOPIC("6e2cd", DEBUG, Logger::MAINTENANCE) << log;
-    } else {
+    if (res.fail()) {
       std::stringstream error;
       error << "failed to ensure index " << body.slice().toJson() << " "
             << res.errorMessage();
@@ -201,7 +207,15 @@ bool EnsureIndex::first() {
       // then, if you are missing components, such as database name, will
       // you be able to produce an IndexError?
 
-      _feature.storeIndexError(database, collection, shard, id, eb.steal());
+      // Temporary unavailability of the replication2 leader should not stop
+      // this server from creating the index eventually.
+      if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER) ||
+          res.is(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND)) {
+        // TODO prevent busy loop and wait for log to become ready (CINFRA-831).
+        std::this_thread::sleep_for(std::chrono::milliseconds{50});
+      } else {
+        _feature.storeIndexError(database, collection, shard, id, eb.steal());
+      }
       result(TRI_ERROR_INTERNAL, error.str());
       return false;
     }
@@ -216,4 +230,31 @@ bool EnsureIndex::first() {
   }
 
   return false;
+}
+
+void EnsureIndex::indexCreationLogging(VPackSlice index) {
+  VPackSlice created = index.get("isNewlyCreated");
+  std::string log = std::string("Index ") + index.get(ID).copyString();
+  log += (created.isBool() && created.getBool() ? std::string(" created")
+                                                : std::string(" updated"));
+  LOG_TOPIC("6e2cd", DEBUG, Logger::MAINTENANCE) << log;
+}
+
+auto EnsureIndex::ensureIndexReplication2(
+    std::shared_ptr<LogicalCollection> coll, VPackSlice indexInfo,
+    std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
+    -> Result {
+  auto maybeShardID = ShardID::shardIdFromString(coll->name());
+  if (ADB_UNLIKELY(maybeShardID.fail())) {
+    // This will only throw if we take a real collection here and not a shard.
+    TRI_ASSERT(false) << "Tried to ensure index on Collection " << coll->name()
+                      << " which is not considered a shard.";
+    return maybeShardID.result();
+  }
+  return basics::catchToResult([&coll, shard = maybeShardID.get(), indexInfo,
+                                progress = std::move(progress)]() mutable {
+    return coll->getDocumentStateLeader()
+        ->createIndex(shard, indexInfo, std::move(progress))
+        .get();
+  });
 }

@@ -35,7 +35,6 @@
 #include <vector>
 
 #include "Basics/Common.h"
-#include "Basics/DeadlockDetector.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
@@ -47,9 +46,6 @@
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/voc-types.h"
-
-// TODO: We can split out DBConfig from CreateBody and get away with forward
-#include "VocBase/Properties/CreateCollectionBody.h"
 
 #include <velocypack/Slice.h>
 
@@ -234,15 +230,14 @@ struct TRI_vocbase_t {
       -> arangodb::DatabaseConfiguration;
 
  public:
-  arangodb::basics::DeadlockDetector<arangodb::TransactionId,
-                                     arangodb::LogicalCollection>
-      _deadlockDetector;
   arangodb::basics::ReadWriteLock _inventoryLock;  // object lock needed when
                                                    // replication is assessing
                                                    // the state of the vocbase
 
   // structures for volatile cache data (used from JavaScript)
+#ifdef USE_V8
   std::unique_ptr<arangodb::DatabaseJavaScriptCache> _cacheData;
+#endif
 
   arangodb::ArangodServer& server() const noexcept { return _server; }
 
@@ -301,6 +296,9 @@ struct TRI_vocbase_t {
 
   /// @brief sets prototype collection for sharding (_users or _graphs)
   void setShardingPrototype(ShardingPrototype type);
+
+  /// @brief sets sharding property for sharding (e.g. single, flexible);
+  void setSharding(std::string_view sharding);
 
   /// @brief gets prototype collection for sharding (_users or _graphs)
   ShardingPrototype shardingPrototype() const;
@@ -454,6 +452,9 @@ struct TRI_vocbase_t {
   std::shared_ptr<arangodb::LogicalCollection> createCollectionObjectForStorage(
       arangodb::velocypack::Slice parameters);
 
+  /// @brief callback for collection dropping
+  static bool dropCollectionCallback(arangodb::LogicalCollection& collection);
+
  private:
   /// @brief adds further SmartGraph-specific sub-collections to the vector of
   /// collections if collection is a SmartGraph edge collection that requires
@@ -472,9 +473,6 @@ struct TRI_vocbase_t {
   /// so it can later be looked up and found by name, guid etc.
   void persistCollection(
       std::shared_ptr<arangodb::LogicalCollection> const& collection);
-
-  /// @brief callback for collection dropping
-  static bool dropCollectionCallback(arangodb::LogicalCollection& collection);
 
   /// @brief check some invariants on the various lists of collections
   void checkCollectionInvariants() const noexcept;

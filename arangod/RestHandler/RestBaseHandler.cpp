@@ -23,15 +23,14 @@
 
 #include "RestBaseHandler.h"
 
+#include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
+#include "Logger/LogMacros.h"
+#include "Transaction/Context.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Options.h>
-
-#include "Basics/Exceptions.h"
-#include "Basics/StaticStrings.h"
-#include "GeneralServer/AuthenticationFeature.h"
-#include "Logger/LogMacros.h"
-#include "Transaction/Context.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -54,7 +53,7 @@ velocypack::Slice RestBaseHandler::parseVPackBody(bool& success) {
     // before making a call to payload() and after.
     auto old = _request->memoryUsage();
     auto slice = _request->payload(true);
-    this->_requestBodySizeTracker.add(_request->memoryUsage() - old);
+    _currentRequestsSizeTracker.add(_request->memoryUsage() - old);
     return slice;
   } catch (VPackException const& e) {
     // simon: do not mess with the error message format, tests break
@@ -83,6 +82,9 @@ template<typename Payload>
 void RestBaseHandler::generateResult(rest::ResponseCode code,
                                      Payload&& payload) {
   resetResponse(code);
+  if (_potentialDirtyReads) {
+    _response->setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
+  }
   writeResult(std::forward<Payload>(payload), VPackOptions::Defaults);
 }
 
@@ -90,6 +92,9 @@ template<typename Payload>
 void RestBaseHandler::generateResult(rest::ResponseCode code, Payload&& payload,
                                      VPackOptions const* options) {
   resetResponse(code);
+  if (_potentialDirtyReads) {
+    _response->setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
+  }
   writeResult(std::forward<Payload>(payload), *options);
 }
 ////////////////////////////////////////////////////////////////////////////////

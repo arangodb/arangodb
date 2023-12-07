@@ -36,6 +36,14 @@ class PrimaryKeysFilterBase : public irs::filter,
                               public irs::filter::prepared,
                               public irs::doc_iterator {
  public:
+  PrimaryKeysFilterBase(irs::IResourceManager& rm) noexcept : _pks{{rm}} {
+    rm.Increase(sizeof(*this));
+  }
+
+  ~PrimaryKeysFilterBase() {
+    _pks.get_allocator().ResourceManager().Decrease(sizeof(*this));
+  }
+
   void clear() noexcept { return _pks.clear(); }
 
   void emplace(LocalDocumentId value) {
@@ -53,9 +61,7 @@ class PrimaryKeysFilterBase : public irs::filter,
     return irs::type<PrimaryKeysFilterBase>::id();
   }
 
-  filter::prepared::ptr prepare(
-      irs::IndexReader const& rdr, irs::Scorers const& ord, irs::score_t boost,
-      irs::attribute_provider const* ctx) const final {
+  filter::prepared::ptr prepare(irs::PrepareContext const& ctx) const final {
     if (_pks.empty()) {
       return irs::filter::prepared::empty();
     }
@@ -89,7 +95,9 @@ class PrimaryKeysFilterBase : public irs::filter,
     return _doc.value = irs::doc_limits::eof();
   }
 
-  mutable std::vector<LocalDocumentId::BaseType> _pks;
+  mutable std::vector<LocalDocumentId::BaseType,
+                      irs::ManagedTypedAllocator<LocalDocumentId::BaseType>>
+      _pks;
 
   // Iterator over different LocalDocumentId
   mutable irs::SubReader const* _segment{};  // TODO(MBkkt) maybe doc_mask?
@@ -104,18 +112,18 @@ class PrimaryKeysFilterBase : public irs::filter,
 template<bool Nested>
 class PrimaryKeysFilter final : public PrimaryKeysFilterBase {
  public:
-  PrimaryKeysFilter() = default;
+  using PrimaryKeysFilterBase::PrimaryKeysFilterBase;
 
  private:
   bool next() final;
 };
 
 inline std::shared_ptr<PrimaryKeysFilterBase> makePrimaryKeysFilter(
-    bool nested) {
+    bool nested, irs::IResourceManager& rm) {
   if (nested) {
-    return std::make_shared<PrimaryKeysFilter<true>>();
+    return std::make_shared<PrimaryKeysFilter<true>>(rm);
   }
-  return std::make_shared<PrimaryKeysFilter<false>>();
+  return std::make_shared<PrimaryKeysFilter<false>>(rm);
 }
 
 }  // namespace arangodb::iresearch

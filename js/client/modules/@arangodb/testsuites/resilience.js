@@ -36,7 +36,6 @@ const functionsDocumentation = {
   'resilience_sharddist': 'resilience "sharddist" tests',
   'resilience_analyzers': 'resilience analyzers tests',
   'client_resilience': 'client resilience tests',
-  'active_failover': 'active failover tests'
 };
 const optionsDocumentation = [
 ];
@@ -55,7 +54,6 @@ const testPaths = {
   'resilience_sharddist': [tu.pathForTesting('server/resilience/sharddist')],
   'resilience_analyzers': [tu.pathForTesting('server/resilience/analyzers')],
   'client_resilience': [tu.pathForTesting('client/resilience')],
-  'active_failover': [tu.pathForTesting('client/active-failover')]
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -123,35 +121,6 @@ function clientResilience (options) {
   return rc;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: active failover
-// //////////////////////////////////////////////////////////////////////////////
-
-function activeFailover (options) {
-  if (options.cluster) {
-    return {
-      'active_failover': {
-        'status': true,
-        'message': 'skipped because of cluster',
-        'skipped': true
-      }
-    };
-  }
-  let localOptions = _.clone(options);
-  localOptions.activefailover = true;
-  localOptions.singles = 4;
-  localOptions.disableMonitor = true;
-  localOptions.Agency = true;
-  let testCases = tu.scanTestPaths(testPaths.active_failover, localOptions);
-  let rc = new tu.runLocalInArangoshRunner(localOptions, 'active_failover',  Object.assign({}, {
-      'javascript.allow-external-process-control': 'true',
-      'javascript.allow-port-testing': 'true',
-      'javascript.allow-admin-execute': 'true',
-    }, tu.testServerAuthInfo)).run(testCases);
-  options.cleanup = options.cleanup && localOptions.cleanup;
-  return rc;
-}
-
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['resilience_move'] = resilienceMove;
@@ -164,7 +133,6 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['resilience_sharddist'] = resilienceSharddist;
   testFns['resilience_analyzers'] = resilienceAnalyzers;
   testFns['client_resilience'] = clientResilience;
-  testFns['active_failover'] = activeFailover;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
 };

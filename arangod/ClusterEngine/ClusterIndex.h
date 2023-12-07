@@ -110,6 +110,9 @@ class ClusterIndex : public Index {
   std::vector<std::vector<basics::AttributeName>> const& coveredFields()
       const override;
 
+  bool supportsStreamInterface(
+      IndexStreamOptions const&) const noexcept override;
+
  protected:
   ClusterEngineType _engineType;
   Index::IndexType _indexType;

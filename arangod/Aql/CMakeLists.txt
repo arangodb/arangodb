@@ -29,12 +29,12 @@ add_library(arango_aql STATIC
   CalculationNodeVarFinder.cpp
   ClusterNodes.cpp
   ClusterQuery.cpp
-  CollectionAccess.cpp
-  CollectionAccessingNode.cpp
-  Collection.cpp
-  Collections.cpp
   CollectNode.cpp
   CollectOptions.cpp
+  Collection.cpp
+  CollectionAccess.cpp
+  CollectionAccessingNode.cpp
+  Collections.cpp
   Condition.cpp
   ConditionFinder.cpp
   ConstFetcher.cpp
@@ -49,6 +49,8 @@ add_library(arango_aql STATIC
   DocumentExpressionContext.cpp
   DocumentProducingHelper.cpp
   DocumentProducingNode.cpp
+  EdgeConditionBuilder.cpp
+  EdgeConditionBuilderContainer.cpp
   EngineInfoContainerCoordinator.cpp
   EngineInfoContainerDBServerServerBased.cpp
   EnumerateCollectionExecutor.cpp
@@ -68,21 +70,22 @@ add_library(arango_aql STATIC
   FixedVarExpressionContext.cpp
   Function.cpp
   Functions.cpp
-  grammar.cpp
   GraphNode.cpp
   GraphOptimizerRules.cpp
-  Graphs.cpp
   HashedCollectExecutor.cpp
+  IResearchViewNode.cpp
+  IResearchViewOptimizerRules.cpp
   IdExecutor.cpp
   InAndOutRowExpressionContext.cpp
   IndexExecutor.cpp
   IndexHint.cpp
+  IndexJoinStrategy.cpp
   IndexNode.cpp
   IndexNodeOptimizerRules.cpp
   InputAqlItemRow.cpp
   InsertModifier.cpp
-  IResearchViewNode.cpp
-  IResearchViewOptimizerRules.cpp
+  JoinExecutor.cpp
+  JoinNode.cpp
   LateMaterializedExpressionContext.cpp
   LateMaterializedOptimizerRulesCommon.cpp
   LimitExecutor.cpp
@@ -95,18 +98,21 @@ add_library(arango_aql STATIC
   ModificationOptions.cpp
   MultiAqlItemBlockInputRange.cpp
   MultiDependencySingleRowFetcher.cpp
-  MultipleRemoteModificationNode.cpp
   MultipleRemoteModificationExecutor.cpp
+  MultipleRemoteModificationNode.cpp
   MutexExecutor.cpp
   MutexNode.cpp
-  NodeFinder.cpp
-  NonConstExpressionContainer.cpp
-  NonConstExpression.cpp
   NoResultsExecutor.cpp
+  NodeFinder.cpp
+  NonConstExpression.cpp
+  NonConstExpressionContainer.cpp
   Optimizer.cpp
-  OptimizerRulesCluster.cpp
+  OptimizerRulePropagateConstantAttributes.cpp
+  OptimizerRuleReplaceEqualAttributeAccess.cpp
   OptimizerRules.cpp
+  OptimizerRulesCluster.cpp
   OptimizerRulesFeature.cpp
+  OptimizerRulesJoin.cpp
   OptimizerRulesReplaceFunctions.cpp
   OptimizerUtils.cpp
   OutputAqlItemRow.cpp
@@ -115,9 +121,9 @@ add_library(arango_aql STATIC
   Projections.cpp
   PruneExpressionEvaluator.cpp
   Quantifier.cpp
+  Query.cpp
   QueryCache.cpp
   QueryContext.cpp
-  Query.cpp
   QueryExecutionState.cpp
   QueryExpressionContext.cpp
   QueryList.cpp
@@ -141,27 +147,26 @@ add_library(arango_aql STATIC
   ShardLocking.cpp
   SharedAqlItemBlockPtr.cpp
   SharedQueryState.cpp
+  ShortStringStorage.cpp
   ShortestPathExecutor.cpp
   ShortestPathNode.cpp
-  ShortStringStorage.cpp
   SimpleModifier.cpp
   SingleRemoteModificationExecutor.cpp
   SingleRowFetcher.cpp
   SkipResult.cpp
   SortCondition.cpp
+  SortExecutor.cpp
+  SortNode.cpp
+  SortRegister.cpp
   SortedCollectExecutor.cpp
   SortedRowsStorageBackendMemory.cpp
   SortedRowsStorageBackendStaged.cpp
-  SortExecutor.cpp
   SortingGatherExecutor.cpp
-  SortNode.cpp
-  SortRegister.cpp
   SubqueryEndExecutionNode.cpp
   SubqueryEndExecutor.cpp
   SubqueryStartExecutionNode.cpp
   SubqueryStartExecutor.cpp
   Timing.cpp
-  tokens.cpp
   TraversalConditionFinder.cpp
   TraversalExecutor.cpp
   TraversalNode.cpp
@@ -169,12 +174,19 @@ add_library(arango_aql STATIC
   UnsortedGatherExecutor.cpp
   UpdateReplaceModifier.cpp
   UpsertModifier.cpp
-  V8Executor.cpp
+  VarUsageFinder.cpp
   Variable.cpp
   VariableGenerator.cpp
-  VarUsageFinder.cpp
   WindowExecutor.cpp
-  WindowNode.cpp)
+  WindowNode.cpp
+  grammar.cpp
+  tokens.cpp
+)
+
+if (USE_V8) 
+  target_sources(arango_aql PRIVATE
+    V8Executor.cpp)
+endif()
 
 target_link_libraries(arango_aql
   arango_geo

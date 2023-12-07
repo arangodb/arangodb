@@ -35,6 +35,8 @@
 #include <fuerte/message.h>
 
 #include <chrono>
+#include <cstdint>
+#include <string>
 #include <memory>
 
 namespace arangodb {
@@ -43,6 +45,8 @@ template<typename T>
 class Buffer;
 class Slice;
 }  // namespace velocypack
+
+struct ShardID;
 
 namespace network {
 class ConnectionPool;
@@ -113,7 +117,7 @@ struct Response {
   ///   - the fuerte error, if there was a connectivity error.
   [[nodiscard]] Result combinedResult() const;
 
-  [[nodiscard]] std::string destinationShard()
+  [[nodiscard]] ResultT<ShardID> destinationShard()
       const;                                   /// @brief shardId or empty
   [[nodiscard]] std::string serverId() const;  /// @brief server ID
 
@@ -138,8 +142,14 @@ struct RequestOptions {
   std::string acceptType;   // uses vpack by default
   fuerte::StringMap parameters;
   Timeout timeout = TimeoutDefault;
-  bool retryNotFound = false;  // retry if answers is "datasource not found"
-  bool skipScheduler = false;  // do not use Scheduler queue
+  // retry if answer is "datasource not found"
+  bool retryNotFound = false;
+  // do not use Scheduler queue
+  bool skipScheduler = false;
+  // transparently handle content-encoding. enabling this will automatically
+  // uncompress responses that have the `Content-Encoding: gzip|deflate` header
+  // set.
+  bool handleContentEncoding = true;
   RequestLane continuationLane = RequestLane::CONTINUATION;
 
   // Normally this is empty, if it is set to the ID of a server in the

@@ -89,8 +89,11 @@ RestStatus RestDatabaseHandler::getDatabases() {
       }
     }
 
+    // return database names in sorted order
+    std::sort(names.begin(), names.end());
+
     builder.openArray();
-    for (std::string const& name : names) {
+    for (auto const& name : names) {
       builder.add(VPackValue(name));
     }
     builder.close();
@@ -118,9 +121,6 @@ RestStatus RestDatabaseHandler::getDatabases() {
   return RestStatus::DONE;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_get_api_database_create
-// //////////////////////////////////////////////////////////////////////////////
 RestStatus RestDatabaseHandler::createDatabase() {
   if (!_vocbase.isSystem()) {
     generateError(
@@ -164,9 +164,6 @@ RestStatus RestDatabaseHandler::createDatabase() {
   return RestStatus::DONE;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_get_api_database_delete
-// //////////////////////////////////////////////////////////////////////////////
 RestStatus RestDatabaseHandler::deleteDatabase() {
   if (!_vocbase.isSystem()) {
     generateError(

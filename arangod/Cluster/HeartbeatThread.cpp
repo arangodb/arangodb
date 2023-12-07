@@ -23,15 +23,10 @@
 
 #include "HeartbeatThread.h"
 
-#include <map>
-
-#include <Agency/AsyncAgencyComm.h>
-#include <Basics/application-exit.h>
-#include <date/date.h>
-#include <velocypack/Iterator.h>
-
+#include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/application-exit.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallbackRegistry.h"
@@ -39,11 +34,12 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/DBServerAgencySync.h"
 #include "Cluster/ServerState.h"
+#include "Containers/FlatHashSet.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
-#include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
@@ -57,12 +53,20 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/HealthData.h"
+#include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/ClusterUtils.h"
 #include "Utils/Events.h"
-#include "VocBase/vocbase.h"
+#ifdef USE_V8
 #include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"
+#endif
+#include "VocBase/vocbase.h"
+
+#include <date/date.h>
+#include <velocypack/Iterator.h>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -224,7 +228,6 @@ HeartbeatThread::HeartbeatThread(Server& server,
       _desiredVersions(std::make_shared<AgencyVersions>(0, 0)),
       _backgroundJobsPosted(0),
       _lastSyncTime(0),
-      _maintenanceThread(nullptr),
       _failedVersionUpdates(0),
       _invalidateCoordinators(true),
       _lastPlanVersionNoticed(0),
@@ -509,7 +512,7 @@ void HeartbeatThread::runDBServer() {
     try {
       auto const start = std::chrono::steady_clock::now();
       // send our state to the agency.
-      sendServerState();
+      sendServerStateAsync();
 
       if (isStopping()) {
         break;
@@ -662,8 +665,10 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
     // handle global changes to Sync/UserVersion
     handleUserVersionChange(result);
 
+#ifdef USE_V8
     // handle global changes to Sync/FoxxQueueVersion
     handleFoxxQueueVersionChange(result);
+#endif
 
     versionSlice = result[0].get(std::vector<std::string>(
         {AgencyCommHelper::path(), "Current", "Version"}));
@@ -744,6 +749,7 @@ void HeartbeatThread::handleUserVersionChange(VPackSlice userVersion) {
   }
 }
 
+#ifdef USE_V8
 void HeartbeatThread::handleFoxxQueueVersionChange(
     VPackSlice foxxQueueVersion) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
@@ -768,6 +774,7 @@ void HeartbeatThread::handleFoxxQueueVersionChange(
     }
   }
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief heartbeat main loop, single server version
@@ -1027,6 +1034,7 @@ void HeartbeatThread::runSingleServer() {
 
         // ensure everyone has server access
         ServerState::instance()->setFoxxmaster(_myId);
+#ifdef USE_V8
         auto prv = ServerState::setServerMode(ServerState::Mode::DEFAULT);
         if (prv == ServerState::Mode::REDIRECT) {
           auto& sysDbFeature =
@@ -1040,6 +1048,9 @@ void HeartbeatThread::runSingleServer() {
               << "Successful leadership takeover: "
               << "All your base are belong to us";
         }
+#else
+        ServerState::setServerMode(ServerState::Mode::DEFAULT);
+#endif
 
         // server is now responsible for expiring outdated documents
         ttlFeature.allowRunning(true);
@@ -1201,13 +1212,13 @@ void HeartbeatThread::runCoordinator() {
   // operation run in a scheduler thread and a the heartbeat
   // thread. If it is zero, the heartbeat schedules another
   // run, which at its end, sets it back to 0:
-  std::shared_ptr<std::atomic<int>> getNewsRunning(new std::atomic<int>(0));
+  auto getNewsRunning = std::make_shared<std::atomic<int>>(0);
 
   while (!isStopping()) {
     try {
       auto const start = std::chrono::steady_clock::now();
       // send our state to the agency.
-      sendServerState();
+      sendServerStateAsync();
 
       if (isStopping()) {
         break;
@@ -1277,7 +1288,9 @@ void HeartbeatThread::beginShutdown() {
     size_t counter = 0;
     auto start = std::chrono::steady_clock::now();
     while (_maintenanceThread->isRunning()) {
-      if (std::chrono::steady_clock::now() - start > std::chrono::seconds(65)) {
+      double timeout = agencySync().requestTimeout() + 5.0;
+      if (std::chrono::steady_clock::now() - start >
+          std::chrono::duration<double>(timeout)) {
         LOG_TOPIC("d8a5c", FATAL, Logger::CLUSTER)
             << "exiting prematurely as we failed terminating the maintenance "
                "thread";
@@ -1334,117 +1347,97 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
       AgencyCommHelper::path(prefixPlanChangeCoordinator)});
   auto result = acb->slice();
 
-  if (result.isArray()) {
-    std::vector<TRI_voc_tick_t> ids;
-    velocypack::Slice databases = result[0].get(std::vector<std::string>(
-        {AgencyCommHelper::path(), "Plan", "Databases"}));
-    if (!databases.isObject()) {
-      return false;
-    }
-
-    for (VPackObjectIterator::ObjectPair options :
-         VPackObjectIterator(databases)) {
-      try {
-        ids.push_back(std::stoul(options.value.get("id").copyString()));
-      } catch (std::invalid_argument& e) {
-        LOG_TOPIC("a9233", ERR, Logger::CLUSTER)
-            << "Number conversion for planned database id for "
-            << options.key.stringView() << " failed: " << e.what();
-      } catch (std::out_of_range const& e) {
-        LOG_TOPIC("a9243", ERR, Logger::CLUSTER)
-            << "Number conversion for planned database id for "
-            << options.key.stringView() << " failed: " << e.what();
-      } catch (std::bad_alloc const&) {
-        LOG_TOPIC("a9234", FATAL, Logger::CLUSTER)
-            << "Failed to allocate memory to enumerate planned databases from "
-               "agency";
-        FATAL_ERROR_EXIT();
-      } catch (std::exception const& e) {
-        LOG_TOPIC("a9235", FATAL, Logger::CLUSTER)
-            << "Failed to read planned databases " << options.key.stringView()
-            << " from agency: " << e.what();
-      }
-    }
-
-    // get the list of databases that we know about locally
-    std::vector<TRI_voc_tick_t> localIds =
-        databaseFeature.getDatabaseIds(false);
-    for (auto id : localIds) {
-      auto r = std::find(ids.begin(), ids.end(), id);
-
-      if (r == ids.end()) {
-        // local database not found in the plan...
-        std::string dbName;
-        if (auto db = databaseFeature.useDatabase(id); db) {
-          dbName = db->name();
-        } else {
-          TRI_ASSERT(false);
-          dbName = "n/a";
-        }
-        Result res = databaseFeature.dropDatabase(id);
-        events::DropDatabase(dbName, res, ExecContext::current());
-      }
-    }
-
-    // loop over all database names we got and create a local database
-    // instance if not yet present:
-    for (VPackObjectIterator::ObjectPair options :
-         VPackObjectIterator(databases)) {
-      if (!options.value.isObject()) {
-        continue;
-      }
-
-      TRI_ASSERT(options.value.get("name").isString());
-      CreateDatabaseInfo info(server(), ExecContext::current());
-      // set strict validation for database options to false.
-      // we don't want the heartbeat thread to fail here in case some
-      // invalid settings are present
-      info.strictValidation(false);
-      // when loading we allow system database names
-      auto infoResult = info.load(options.value, VPackSlice::emptyArraySlice());
-      if (infoResult.fail()) {
-        LOG_TOPIC("3fa12", ERR, Logger::HEARTBEAT)
-            << "in agency database plan for database " << options.value.toJson()
-            << ": " << infoResult.errorMessage();
-        TRI_ASSERT(false);
-      }
-
-      auto const dbName = info.getName();
-
-      if (auto vocbase = databaseFeature.useDatabase(dbName);
-          vocbase == nullptr) {
-        // database does not yet exist, create it now
-
-        // create a local database object...
-        [[maybe_unused]] TRI_vocbase_t* unused{};
-        Result res = databaseFeature.createDatabase(std::move(info), unused);
-
-        events::CreateDatabase(dbName, res, ExecContext::current());
-
-        if (res.fail()) {
-          LOG_TOPIC("ca877", ERR, arangodb::Logger::HEARTBEAT)
-              << "creating local database '" << dbName
-              << "' failed: " << res.errorMessage();
-        } else {
-          _hasRunOnce.store(true, std::memory_order_release);
-        }
-      } else {
-        if (vocbase->isSystem()) {
-          // workaround: _system collection already exists now on every
-          // coordinator setting _hasRunOnce lets coordinator startup continue
-          TRI_ASSERT(vocbase->id() == 1);
-          _hasRunOnce.store(true, std::memory_order_release);
-        }
-      }
-    }
-
-  } else {
+  if (!result.isArray()) {
+    return false;
+  }
+  velocypack::Slice databases = result[0].get(std::vector<std::string>(
+      {AgencyCommHelper::path(), "Plan", "Databases"}));
+  if (!databases.isObject()) {
     return false;
   }
 
-  // invalidate our local cache
-  auto& ci = _clusterFeature.clusterInfo();
-  ci.flush();
+  containers::FlatHashSet<TRI_voc_tick_t> ids;
+  for (auto options : VPackObjectIterator(databases)) {
+    try {
+      ids.emplace(std::stoul(options.value.get("id").copyString()));
+    } catch (std::exception const& e) {
+      LOG_TOPIC("a9235", ERR, Logger::CLUSTER)
+          << "Failed to read planned databases " << options.key.stringView()
+          << " from agency: " << e.what();
+      // we cannot continue from here, because otherwise we may be
+      // deleting databases we are not clear about
+      return false;
+    }
+  }
+
+  // get the list of databases that we know about locally
+  for (auto id : databaseFeature.getDatabaseIds(false)) {
+    if (ids.contains(id)) {
+      continue;
+    }
+
+    // local database not found in the plan...
+    std::string dbName;
+    if (auto db = databaseFeature.useDatabase(id); db) {
+      dbName = db->name();
+    } else {
+      TRI_ASSERT(false);
+      dbName = "n/a";
+    }
+    Result res = databaseFeature.dropDatabase(id);
+    events::DropDatabase(dbName, res, ExecContext::current());
+  }
+
+  // loop over all database names we got and create a local database
+  // instance if not yet present:
+  for (auto options : VPackObjectIterator(databases)) {
+    if (!options.value.isObject()) {
+      continue;
+    }
+
+    TRI_ASSERT(options.value.get("name").isString());
+    CreateDatabaseInfo info(server(), ExecContext::current());
+    // set strict validation for database options to false.
+    // we don't want the heartbeat thread to fail here in case some
+    // invalid settings are present
+    info.strictValidation(false);
+    // do not validate database names for existing databases.
+    // the rationale is that if a database was already created with
+    // an extended name, we should not declare it invalid and abort
+    // the startup once the extended names option is turned off.
+    info.validateNames(false);
+    // when loading we allow system database names
+    auto infoResult = info.load(options.value, VPackSlice::emptyArraySlice());
+    if (infoResult.fail()) {
+      LOG_TOPIC("3fa12", ERR, Logger::HEARTBEAT)
+          << "in agency database plan for database " << options.value.toJson()
+          << ": " << infoResult.errorMessage();
+      TRI_ASSERT(false);
+    }
+
+    auto const dbName = info.getName();
+
+    if (auto vocbase = databaseFeature.useDatabase(dbName);
+        vocbase == nullptr) {
+      // database does not yet exist, create it now
+
+      // create a local database object...
+      [[maybe_unused]] TRI_vocbase_t* unused{};
+      Result res = databaseFeature.createDatabase(std::move(info), unused);
+      events::CreateDatabase(dbName, res, ExecContext::current());
+
+      // note: it is possible that we race with the PlanSyncer thread here,
+      // which can also create local databases upon changes in the agency
+      // Plan. if so, we don't log an error message.
+      if (res.fail() && res.isNot(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
+        LOG_TOPIC("ca877", ERR, arangodb::Logger::HEARTBEAT)
+            << "creating local database '" << dbName
+            << "' failed: " << res.errorMessage();
+      }
+    }
+  }
+
+  _hasRunOnce.store(true, std::memory_order_release);
 
   return true;
 }
@@ -1514,6 +1507,88 @@ bool HeartbeatThread::sendServerState() {
   }
 
   return false;
+}
+
+void HeartbeatThread::sendServerStateAsync() {
+  auto const start = std::chrono::steady_clock::now();
+
+  // construct JSON value { "status": "...", "time": "...", "healthy": ... }
+  VPackBuilder builder;
+
+  try {
+    builder.openObject();
+    std::string const status =
+        ServerState::stateToString(ServerState::instance()->getState());
+    builder.add("status", VPackValue(status));
+    std::string const stamp = AgencyCommHelper::generateStamp();
+    builder.add("time", VPackValue(stamp));
+
+    if (ServerState::instance()->isDBServer()) {
+      // use storage engine health self-assessment and send it to agency too
+      arangodb::HealthData hd =
+          server().getFeature<EngineSelectorFeature>().engine().healthCheck();
+      hd.toVelocyPack(builder);
+    }
+
+    builder.close();
+  } catch (std::exception const& e) {
+    LOG_TOPIC("b109f", WARN, Logger::HEARTBEAT)
+        << "failed to construct heartbeat agency transaction: " << e.what();
+    return;
+  } catch (...) {
+    LOG_TOPIC("06781", WARN, Logger::HEARTBEAT)
+        << "failed to construct heartbeat agency transaction";
+    return;
+  }
+
+  network::Timeout timeout = std::chrono::seconds{20};
+  if (isStopping()) {
+    timeout = std::chrono::seconds{5};
+  }
+
+  AsyncAgencyComm ac;
+  auto f = ac.setTransientValue(
+      "arango/Sync/ServerStates/" + ServerState::instance()->getId(),
+      builder.slice(), {.skipScheduler = true, .timeout = timeout});
+
+  std::move(f).thenFinal(
+      [self = shared_from_this(),
+       start](futures::Try<AsyncAgencyCommResult> const& tryResult) noexcept {
+        auto timeDiff = std::chrono::steady_clock::now() - start;
+        self->_heartbeat_send_time_ms.count(
+            std::chrono::duration_cast<std::chrono::milliseconds>(timeDiff)
+                .count());
+
+        if (timeDiff > std::chrono::seconds(2) && !self->isStopping()) {
+          LOG_TOPIC("776a5", WARN, Logger::HEARTBEAT)
+              << "ATTENTION: Sending a heartbeat took longer than 2 seconds, "
+                 "this might be causing trouble with health checks. Please "
+                 "contact ArangoDB Support.";
+        }
+
+        try {
+          auto const& result = tryResult.get().asResult();
+          if (result.fail()) {
+            if (++self->_numFails % self->_maxFailsBeforeWarning == 0) {
+              self->_heartbeat_failure_counter.count();
+              std::string const endpoints =
+                  AsyncAgencyCommManager::INSTANCE->endpointsString();
+              LOG_TOPIC("4e2f5", WARN, Logger::HEARTBEAT)
+                  << "heartbeat could not be sent to agency endpoints ("
+                  << endpoints << "): error code: " << result.errorMessage();
+              self->_numFails = 0;
+            }
+          } else {
+            self->_numFails = 0;
+          }
+        } catch (std::exception const& e) {
+          LOG_TOPIC("cfd83", WARN, Logger::HEARTBEAT)
+              << "failed to send heartbeat - exception occurred: " << e.what();
+        } catch (...) {
+          LOG_TOPIC("cfe83", WARN, Logger::HEARTBEAT)
+              << "failed to send heartbeat - unknown exception occurred.";
+        }
+      });
 }
 
 void HeartbeatThread::updateAgentPool(VPackSlice const& agentPool) {

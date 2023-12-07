@@ -46,14 +46,14 @@ template<typename V, typename E, typename M>
 Loading<V, E, M>::Loading(WorkerState<V, E, M>& worker) : worker{worker} {}
 
 template<typename V, typename E, typename M>
-auto Loading<V, E, M>::receive(actor::ActorPID const& sender,
-                               actor::ActorPID const& self,
+auto Loading<V, E, M>::receive(actor::DistributedActorPID const& sender,
+                               actor::DistributedActorPID const& self,
                                worker::message::WorkerMessages const& message,
                                Dispatcher dispatcher)
     -> std::unique_ptr<ExecutionState> {
   if (std::holds_alternative<worker::message::LoadGraph>(message)) {
     LOG_TOPIC("cd69c", INFO, Logger::PREGEL)
-        << fmt::format("Worker Actor {} is loading", self);
+        << fmt::format("Worker Actor {} is loading", inspection::json(self));
 
     auto msg = std::get<worker::message::LoadGraph>(message);
     worker.responsibleActorPerShard = msg.responsibleActorPerShard;
@@ -71,8 +71,8 @@ auto Loading<V, E, M>::receive(actor::ActorPID const& sender,
                     -> void { dispatcher.dispatchStatus(update); }});
         worker.magazine = loader->load().get();
 
-        LOG_TOPIC("5206c", WARN, Logger::PREGEL)
-            << fmt::format("Worker {} has finished loading.", self);
+        LOG_TOPIC("5206c", WARN, Logger::PREGEL) << fmt::format(
+            "Worker {} has finished loading.", inspection::json(self));
         return {conductor::message::GraphLoaded{
             .executionNumber = worker.config->executionNumber(),
             .vertexCount = worker.magazine.numberOfVertices(),

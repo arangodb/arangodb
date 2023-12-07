@@ -30,6 +30,7 @@
 #include <vector>
 
 #include "Basics/VelocyPackHelper.h"
+#include "Cache/CacheOptionsProvider.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/Transaction.h"
@@ -50,7 +51,9 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   auto postFn = [](std::function<void()>) -> bool { return false; };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 4 * cacheLimit, true, 0.04, 0.25);
+  CacheOptions co;
+  co.cacheSize = 4 * cacheLimit;
+  Manager manager(sharedPRNG, postFn, co);
   auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional,
                                                    false, cacheLimit);
 
@@ -91,7 +94,7 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     }
   }
 
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
 }
 
 TEST(CacheTransactionalCacheVPackKeyHasherTest,
@@ -100,7 +103,9 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   auto postFn = [](std::function<void()>) -> bool { return false; };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 4 * cacheLimit, true, 0.04, 0.25);
+  CacheOptions co;
+  co.cacheSize = 4 * cacheLimit;
+  Manager manager(sharedPRNG, postFn, co);
   auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional,
                                                    false, cacheLimit);
 
@@ -234,7 +239,7 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     }
   }
 
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
 }
 
 TEST(CacheTransactionalCacheVPackKeyHasherTest,
@@ -243,7 +248,9 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   auto postFn = [](std::function<void()>) -> bool { return false; };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 4 * cacheLimit, true, 0.04, 0.25);
+  CacheOptions co;
+  co.cacheSize = 4 * cacheLimit;
+  Manager manager(sharedPRNG, postFn, co);
   auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional,
                                                    false, cacheLimit);
 
@@ -418,7 +425,7 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     }
   }
 
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
 }
 
 TEST(CacheTransactionalCacheVPackKeyHasherTest,
@@ -427,11 +434,14 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   auto postFn = [](std::function<void()>) -> bool { return false; };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 4 * cacheLimit, true, 0.04, 0.25);
+  CacheOptions co;
+  co.cacheSize = 4 * cacheLimit;
+  Manager manager(sharedPRNG, postFn, co);
   auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional,
                                                    false, cacheLimit);
 
-  Transaction* tx = manager.beginTransaction(false);
+  Transaction tx;
+  manager.beginTransaction(tx, false);
 
   VPackBuilder builder;
   for (std::uint64_t i = 0; i < 1024; i++) {
@@ -458,7 +468,8 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     ::ErrorCode status = TRI_ERROR_INTERNAL;
     do {
       status = cache->banish(s.start(), static_cast<uint32_t>(s.byteSize()));
-    } while (status != TRI_ERROR_NO_ERROR);
+    } while (status != TRI_ERROR_NO_ERROR &&
+             status != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     ASSERT_EQ(TRI_ERROR_NO_ERROR, status);
 
     while (true) {
@@ -488,7 +499,7 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   }
 
   manager.endTransaction(tx);
-  tx = manager.beginTransaction(false);
+  manager.beginTransaction(tx, false);
 
   for (std::uint64_t i = 512; i < 1024; i++) {
     builder.clear();
@@ -521,5 +532,5 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   }
 
   manager.endTransaction(tx);
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
 }

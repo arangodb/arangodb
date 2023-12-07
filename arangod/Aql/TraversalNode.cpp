@@ -68,12 +68,14 @@ using namespace arangodb::traverser;
 TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
     TraversalNode const* tn)
     : EdgeConditionBuilder(tn->_plan->getAst()->createNodeNaryOperator(
-          NODE_TYPE_OPERATOR_NARY_AND)),
+                               NODE_TYPE_OPERATOR_NARY_AND),
+                           tn->_plan->getAst()->query().resourceMonitor()),
       _tn(tn) {}
 
 TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
     TraversalNode const* tn, arangodb::velocypack::Slice const& condition)
-    : EdgeConditionBuilder(tn->_plan->getAst()->createNode(condition)),
+    : EdgeConditionBuilder(tn->_plan->getAst()->createNode(condition),
+                           tn->_plan->getAst()->query().resourceMonitor()),
       _tn(tn) {}
 
 TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
@@ -350,6 +352,8 @@ void TraversalNode::replaceVariables(
   // this is an important assertion: if options are already built,
   // we would need to carry out the replacements in several other
   // places as well
+  // we are explicitly not trying to replace inside the _options
+  // LookupInfos
   TRI_ASSERT(!_optionsBuilt);
 
   _inVariable = Variable::replace(_inVariable, replacements);
@@ -359,17 +363,39 @@ void TraversalNode::replaceVariables(
     VarSet variables;
     _pruneExpression->variables(variables);
     for (auto const& it : variables) {
-      if (replacements.find(it->id) != replacements.end()) {
+      if (replacements.contains(it->id)) {
         _pruneExpression->replaceVariables(replacements);
 
         // and need to recalculate the set of variables used
         // by the prune expression
         variables.clear();
         _pruneExpression->variables(variables);
-        _pruneVariables = variables;
+        _pruneVariables = std::move(variables);
         break;
       }
     }
+  }
+}
+
+void TraversalNode::replaceAttributeAccess(
+    ExecutionNode const* self, Variable const* searchVariable,
+    std::span<std::string_view> attribute, Variable const* replaceVariable,
+    size_t /*index*/) {
+  // this is an important assertion: if options are already built,
+  // we would need to carry out the replacements in several other
+  // places as well
+  // we are explicitly not trying to replace inside the _options
+  // LookupInfos
+  TRI_ASSERT(!_optionsBuilt);
+
+  if (_inVariable != nullptr && searchVariable == _inVariable &&
+      attribute.size() == 1 && attribute[0] == StaticStrings::IdString) {
+    _inVariable = replaceVariable;
+  }
+
+  if (_pruneExpression != nullptr) {
+    _pruneExpression->replaceAttributeAccess(searchVariable, attribute,
+                                             replaceVariable);
   }
 }
 
@@ -403,13 +429,13 @@ void TraversalNode::getVariablesUsedHere(VarSet& result) const {
 /// @brief getVariablesSetHere
 std::vector<Variable const*> TraversalNode::getVariablesSetHere() const {
   std::vector<Variable const*> vars;
-  if (isVertexOutVariableUsedLater()) {
+  if (isVertexOutVariableAccessed()) {
     vars.emplace_back(vertexOutVariable());
   }
-  if (isEdgeOutVariableUsedLater()) {
+  if (isEdgeOutVariableAccessed()) {
     vars.emplace_back(edgeOutVariable());
   }
-  if (isPathOutVariableUsedLater()) {
+  if (isPathOutVariableAccessed()) {
     vars.emplace_back(pathOutVariable());
   }
   return vars;
@@ -451,9 +477,17 @@ void TraversalNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   }
 
   // Out variables
-  if (isPathOutVariableUsedLater()) {
+  if (isPathOutVariableAccessed()) {
     nodes.add(VPackValue("pathOutVariable"));
     pathOutVariable()->toVelocyPack(nodes);
+  }
+  if (isVertexOutVariableAccessed()) {
+    nodes.add(VPackValue("vertexOutVariable"));
+    vertexOutVariable()->toVelocyPack(nodes);
+  }
+  if (isEdgeOutVariableAccessed()) {
+    nodes.add(VPackValue("edgeOutVariable"));
+    edgeOutVariable()->toVelocyPack(nodes);
   }
 
   // Traversal Filter Conditions
@@ -612,7 +646,8 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
     auto& trx = plan()->getAst()->query().trxForOptimization();
     bool res = aql::utils::getBestIndexHandleForFilterCondition(
         trx, *_edgeColls[i], indexCondition, options()->tmpVar(),
-        itemsInCollection, aql::IndexHint(), indexToUse, onlyEdgeIndexes);
+        itemsInCollection, aql::IndexHint(), indexToUse, ReadOwnWrites::no,
+        onlyEdgeIndexes);
     if (!res) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "expected edge index not found");
@@ -735,7 +770,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
                                                   // SingleServer, Cluster...
         outputRegisterMapping, getStartVertex(), inputRegister,
         plan()->getAst(), opts->uniqueVertices, opts->uniqueEdges, opts->mode,
-        opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
+        opts->defaultWeight, opts->weightAttribute, opts->query(),
         std::move(validatorOptions), std::move(options),
         std::move(clusterBaseProviderOptions), isSmart);
 
@@ -749,7 +784,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
                                                   // SingleServer, Cluster...
         outputRegisterMapping, getStartVertex(), inputRegister,
         plan()->getAst(), opts->uniqueVertices, opts->uniqueEdges, opts->mode,
-        opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
+        opts->defaultWeight, opts->weightAttribute, opts->query(),
         std::move(validatorOptions), std::move(options),
         std::move(singleServerBaseProviderOptions), isSmart);
 
@@ -1069,7 +1104,7 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
   }
 
   if (_pruneExpression) {
-    c._pruneExpression = _pruneExpression->clone(plan.getAst());
+    c._pruneExpression = _pruneExpression->clone(plan.getAst(), true);
     c._pruneVariables.reserve(_pruneVariables.size());
     for (auto const& it : _pruneVariables) {
       if (withProperties) {
@@ -1096,12 +1131,12 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
   // Filter Condition Parts
   c._fromCondition = _fromCondition->clone(_plan->getAst());
   c._toCondition = _toCondition->clone(_plan->getAst());
-  c._globalEdgeConditions.insert(c._globalEdgeConditions.end(),
-                                 _globalEdgeConditions.begin(),
-                                 _globalEdgeConditions.end());
-  c._globalVertexConditions.insert(c._globalVertexConditions.end(),
-                                   _globalVertexConditions.begin(),
-                                   _globalVertexConditions.end());
+  for (auto const& it : _globalEdgeConditions) {
+    c._globalEdgeConditions.emplace_back(it->clone(_plan->getAst()));
+  }
+  for (auto const& it : _globalVertexConditions) {
+    c._globalVertexConditions.emplace_back(it->clone(_plan->getAst()));
+  }
 
   for (auto const& it : _edgeConditions) {
     // Copy the builder
@@ -1218,7 +1253,7 @@ void TraversalNode::prepareOptions() {
     for (auto const& it : _globalVertexConditions) {
       cond->addMember(it);
     }
-    opts->_baseVertexExpression.reset(new Expression(ast, cond));
+    opts->_baseVertexExpression = std::make_unique<Expression>(ast, cond);
   }
   // If we use the path output the cache should activate document
   // caching otherwise it is not worth it.

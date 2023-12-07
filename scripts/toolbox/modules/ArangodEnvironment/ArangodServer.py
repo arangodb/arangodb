@@ -18,9 +18,7 @@ class ArangodServer:
         self._port = environment.get_next_port()
 
     def __del__(self):
-        if self._proc is not None:
-            self._proc.terminate()
-            self._proc.wait()
+        self.shutdown()
 
     def collect_parameters(self, param):
         param["-c"] = "none"
@@ -45,3 +43,9 @@ class ArangodServer:
         else:
             print(json.dumps(param, indent=4))
             self._proc = subprocess.Popen([self._environment.binary] + flatten_dict(param))
+
+    def shutdown(self):
+        if self._proc is not None:
+            self._proc.terminate()
+            self._proc.wait()
+            self._proc = None

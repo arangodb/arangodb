@@ -45,7 +45,9 @@ constexpr auto kNonServerFeatures =
                ArangodServer::id<SupervisorFeature>(),
                ArangodServer::id<DaemonFeature>(),
 #endif
+#ifdef USE_V8
                ArangodServer::id<FoxxFeature>(),
+#endif
                ArangodServer::id<GeneralServerFeature>(),
                ArangodServer::id<GreetingsFeature>(),
                ArangodServer::id<HttpEndpointProvider>(),
@@ -70,6 +72,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
 
     server.addReporter(
         {[&](ArangodServer::State state) {
+           CrashHandler::setState(ArangodServer::stringifyState(state));
+
            if (state == ArangodServer::State::IN_START) {
              // drop priveleges before starting features
              server.getFeature<PrivilegeFeature>().dropPrivilegesPermanently();
@@ -81,6 +85,12 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         []<typename T>(auto& server, TypeTag<T>) {
           return std::make_unique<T>(server);
         },
+#ifdef TRI_HAVE_GETRLIMIT
+        [](auto& server, TypeTag<BumpFileDescriptorsFeature>) {
+          return std::make_unique<BumpFileDescriptorsFeature>(
+              server, "--server.descriptors-minimum");
+        },
+#endif
         [](auto& server, TypeTag<GreetingsFeaturePhase>) {
           return std::make_unique<GreetingsFeaturePhase>(server,
                                                          std::false_type{});
@@ -135,15 +145,27 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
               server,
               server.template getFeature<arangodb::metrics::MetricsFeature>());
         },
+#ifdef USE_V8
         [&ret](auto& server, TypeTag<ScriptFeature>) {
           return std::make_unique<ScriptFeature>(server, &ret);
         },
+#endif
         [&ret](auto& server, TypeTag<ServerFeature>) {
           return std::make_unique<ServerFeature>(server, &ret);
         },
+        [](auto& server, TypeTag<CacheManagerFeature>) {
+          return std::make_unique<CacheManagerFeature>(
+              server, server.template getFeature<CacheOptionsFeature>());
+        },
         [](auto& server, TypeTag<ShutdownFeature>) {
           return std::make_unique<ShutdownFeature>(
-              server, std::array{ArangodServer::id<ScriptFeature>()});
+              server,
+#ifdef USE_V8
+              std::array { ArangodServer::id<ScriptFeature>() }
+#else
+              std::array { ArangodServer::id<AgencyFeaturePhase>() }
+#endif
+          );
         },
         [&name](auto& server, TypeTag<TempFeature>) {
           return std::make_unique<TempFeature>(server, name);

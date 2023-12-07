@@ -51,7 +51,7 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   static std::function<void()> before;
 
   PhysicalCollectionMock(arangodb::LogicalCollection& collection);
-  std::shared_ptr<arangodb::Index> createIndex(
+  arangodb::futures::Future<std::shared_ptr<arangodb::Index>> createIndex(
       arangodb::velocypack::Slice info, bool restore, bool& created,
       std::shared_ptr<std::function<arangodb::Result(double)>> =
           nullptr) override;
@@ -88,26 +88,15 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   arangodb::IndexEstMap clusterIndexEstimates(
       bool allowUpdating, arangodb::TransactionId tid) override;
 
-  arangodb::Result readFromSnapshot(
-      arangodb::transaction::Methods* trx,
-      arangodb::LocalDocumentId const& token,
+  arangodb::Result lookup(arangodb::transaction::Methods* trx,
+                          std::string_view key,
+                          arangodb::IndexIterator::DocumentCallback const& cb,
+                          LookupOptions options) const final;
+  arangodb::Result lookup(
+      arangodb::transaction::Methods* trx, arangodb::LocalDocumentId token,
       arangodb::IndexIterator::DocumentCallback const& cb,
-      arangodb::ReadOwnWrites readOwnWrites,
-      arangodb::StorageSnapshot const&) const override {
-    return read(trx, token, cb, readOwnWrites);
-  }
-
-  arangodb::Result read(arangodb::transaction::Methods*, std::string_view key,
-                        arangodb::IndexIterator::DocumentCallback const& cb,
-                        arangodb::ReadOwnWrites) const override;
-  arangodb::Result read(arangodb::transaction::Methods* trx,
-                        arangodb::LocalDocumentId const& token,
-                        arangodb::IndexIterator::DocumentCallback const& cb,
-                        arangodb::ReadOwnWrites) const override;
-  arangodb::Result lookupDocument(
-      arangodb::transaction::Methods& trx, arangodb::LocalDocumentId token,
-      arangodb::velocypack::Builder& builder, bool readCache, bool fillCache,
-      arangodb::ReadOwnWrites readOwnWrites) const override;
+      LookupOptions options,
+      arangodb::StorageSnapshot const* snapshot) const final;
   arangodb::Result remove(arangodb::transaction::Methods& trx,
                           arangodb::IndexesSnapshot const& indexesSnapshot,
                           arangodb::LocalDocumentId previousDocumentId,

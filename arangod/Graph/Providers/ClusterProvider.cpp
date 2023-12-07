@@ -26,18 +26,16 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryContext.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
+#include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Transaction/Helpers.h"
-
-#include "Basics/ScopeGuard.h"
-#include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
-
-#include "Logger/LogMacros.h"
 
 #include <utility>
 #include <vector>
@@ -532,12 +530,6 @@ auto ClusterProvider<StepImpl>::addEdgeToBuilder(
     typename Step::Edge const& edge, arangodb::velocypack::Builder& builder)
     -> void {
   builder.add(_opts.getCache()->getCachedEdge(edge.getID()));
-}
-
-template<class StepImpl>
-auto ClusterProvider<StepImpl>::getEdgeDocumentToken(
-    typename Step::Edge const& edge) -> EdgeDocumentToken {
-  return EdgeDocumentToken{_opts.getCache()->getCachedEdge(edge.getID())};
 }
 
 template<class StepImpl>

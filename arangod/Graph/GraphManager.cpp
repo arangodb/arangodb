@@ -33,7 +33,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
-#include "Aql/Graphs.h"
 #include "Aql/Query.h"
 #include "Aql/QueryOptions.h"
 #include "Basics/ReadLocker.h"
@@ -49,8 +48,11 @@
 #include "Logger/LoggerStream.h"
 #include "Sharding/ShardingInfo.h"
 #include "Transaction/Methods.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
+#ifdef USE_V8
 #include "Transaction/V8Context.h"
+#endif
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
@@ -58,6 +60,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/Methods/Collections.h"
+#include "VocBase/Properties/CreateCollectionBody.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
 using namespace arangodb;
@@ -78,45 +81,13 @@ static bool arrayContainsCollection(VPackSlice array,
 }  // namespace
 
 std::shared_ptr<transaction::Context> GraphManager::ctx() const {
+#ifdef USE_V8
   // we must use v8
-  return transaction::V8Context::CreateWhenRequired(_vocbase, true);
-}
-
-Result GraphManager::createEdgeCollection(std::string const& name,
-                                          bool waitForSyncReplication,
-                                          VPackSlice options) {
-  return createCollection(name, TRI_COL_TYPE_EDGE, waitForSyncReplication,
-                          options);
-}
-
-Result GraphManager::createVertexCollection(std::string const& name,
-                                            bool waitForSyncReplication,
-                                            VPackSlice options) {
-  return createCollection(name, TRI_COL_TYPE_DOCUMENT, waitForSyncReplication,
-                          options);
-}
-
-Result GraphManager::createCollection(std::string const& name,
-                                      TRI_col_type_e colType,
-                                      bool waitForSyncReplication,
-                                      VPackSlice options) {
-  TRI_ASSERT(colType == TRI_COL_TYPE_DOCUMENT || colType == TRI_COL_TYPE_EDGE);
-
-  auto& vocbase = ctx()->vocbase();
-
-  std::shared_ptr<LogicalCollection> coll;
-  OperationOptions opOptions(ExecContext::current());
-  auto res = arangodb::methods::Collections::create(  // create collection
-      vocbase,                                        // collection vocbase
-      opOptions,
-      name,     // collection name
-      colType,  // collection type
-      options,  // collection properties
-      /*createWaitsForSyncReplication*/ waitForSyncReplication,
-      /*enforceReplicationFactor*/ true,
-      /*isNewDatabase*/ false, coll);
-
-  return res;
+  return transaction::V8Context::createWhenRequired(_vocbase, _operationOrigin,
+                                                    true);
+#else
+  return transaction::StandaloneContext::create(_vocbase, _operationOrigin);
+#endif
 }
 
 bool GraphManager::renameGraphCollection(std::string const& oldName,
@@ -455,7 +426,7 @@ Result GraphManager::applyOnAllGraphs(
     std::function<Result(std::unique_ptr<Graph>)> const& callback) const {
   std::string const queryStr{"FOR g IN _graphs RETURN g"};
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(_vocbase),
+      transaction::StandaloneContext::create(_vocbase, _operationOrigin),
       arangodb::aql::QueryString{queryStr}, nullptr);
   query->queryOptions().skipAudit = true;
   aql::QueryResult queryResult = query->executeSync();
@@ -581,7 +552,7 @@ Result GraphManager::ensureCollections(
       return resolver.getCollectionNameCluster(
           DataSourceId{basics::StringUtils::uint64(distLike)});
     }
-    return col.distributeShardsLike();
+    return distLike;
   };
 
   auto anyExistingCollection =
@@ -964,11 +935,10 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
     OperationOptions options(ExecContext::current());
     options.waitForSync = waitForSync;
 
-    Result res;
     SingleCollectionTransaction trx{ctx(), StaticStrings::GraphCollection,
                                     AccessMode::Type::WRITE};
 
-    res = trx.begin();
+    Result res = trx.begin();
     if (res.fail()) {
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, options);
     }
@@ -1170,7 +1140,7 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(
     if (options.isObject()) {
       VPackSlice s = options.get(StaticStrings::ReplicationFactor);
       return ((s.isNumber() && s.getNumber<int>() == 0) ||
-              (s.isString() && s.stringRef() == "satellite"));
+              (s.isString() && s.stringView() == "satellite"));
     }
     return false;
   };

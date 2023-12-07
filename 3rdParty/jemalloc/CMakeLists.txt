@@ -3,13 +3,9 @@
 project(jemalloc C)
 include(ExternalProject)
 
-# set version and paths
 set(JEMALLOC_VERSION "5.3.0")
-set(JEMALLOC_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/v${JEMALLOC_VERSION}")
-set(JEMALLOC_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/v${JEMALLOC_VERSION}")
-
-# export to paths to parent scope
-set(JEMALLOC_VERSION "${JEMALLOC_VERSION}" PARENT_SCOPE)
+set(JEMALLOC_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/jemalloc")
+set(JEMALLOC_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/jemalloc")
 
 # copy files into binary directory
 file(
@@ -22,20 +18,22 @@ file(
 # generate external project
 if (LINUX OR DARWIN)
   if (DARWIN)
-    set(JEMALLOC_CC_TMP "cc")
-    set(JEMALLOC_CXX_TMP "c++}")
+    set(JEMALLOC_CC "cc")
+    set(JEMALLOC_CXX "c++}")
     set(JEMALLOC_CONFIG "background_thread:false")
   else ()
-    set(JEMALLOC_CC_TMP "${CMAKE_C_COMPILER}")
-    set(JEMALLOC_CXX_TMP "${CMAKE_CXX_COMPILER}")
+    set(JEMALLOC_CC "${CMAKE_C_COMPILER}")
+    set(JEMALLOC_CXX "${CMAKE_CXX_COMPILER}")
     set(JEMALLOC_CONFIG "background_thread:true,cache_oblivious:false")
   endif ()
 
-  SET(JEMALLOC_C_FLAGS ${CMAKE_C_FLAGS})
   if (USE_JEMALLOC_PROF)
       if (USE_LIBUNWIND)
-          SET(JEMALLOC_PROF "--enable-prof" "--enable-prof-libunwind" "--with-static-libunwind=${LIBUNWIND_LIB}")
-          SET(JEMALLOC_C_FLAGS "${CMAKE_C_FLAGS} -isystem ${LIBUNWIND_HOME}/include")
+        # Note that CPPFLAGS are passed by jemalloc to both C and C++ compilers,
+        # and to the preprocessor, and to dependency file generation. This is the
+        # right place for includes.
+        SET(JEMALLOC_CPPFLAGS "-I${LIBUNWIND_HOME}/include")
+        SET(JEMALLOC_PROF "--enable-prof" "--enable-prof-libunwind" "--with-static-libunwind=${LIBUNWIND_LIB}")
       else ()
           SET(JEMALLOC_PROF "--enable-prof")
       endif()
@@ -45,6 +43,8 @@ if (LINUX OR DARWIN)
   ExternalProject_Add(
     jemalloc_build
     SOURCE_DIR
+      ${JEMALLOC_SOURCE_DIR}
+    BINARY_DIR
       ${JEMALLOC_BINARY_DIR}
     PREFIX
       ${JEMALLOC_BINARY_DIR}
@@ -53,22 +53,26 @@ if (LINUX OR DARWIN)
         ${JEMALLOC_BINARY_DIR}/doc/jemalloc.html
         ${JEMALLOC_BINARY_DIR}/doc/jemalloc.3
     CONFIGURE_COMMAND
-      "${JEMALLOC_SOURCE_DIR}/configure" CC=${JEMALLOC_CC_TMP}
-                  CXX=${JEMALLOC_CXX_TMP}
-                  CFLAGS=${JEMALLOC_C_FLAGS}
-                  CXXFLAGS=${CMAKE_CXX_FLAGS}
-                  --prefix=${CMAKE_CURRENT_BINARY_DIR}
-                  --with-malloc-conf=${JEMALLOC_CONFIG}
-                  --with-version=${JEMALLOC_VERSION}-0-g0
-		  ${JEMALLOC_PROF}
+# One could run autogen.sh (which is needed if jemalloc becomes a submodule), otherwise
+# it's fine to just commit the configure script to the arangodb repository.
+#      ./autogen.sh
+#      COMMAND
+      ./configure
+        CC=${JEMALLOC_CC}
+        CXX=${JEMALLOC_CXX}
+        CFLAGS=${CMAKE_C_FLAGS}
+        CXXFLAGS=${CMAKE_CXX_FLAGS}
+        CPPFLAGS=${JEMALLOC_CPPFLAGS}
+        --prefix=${CMAKE_CURRENT_BINARY_DIR}
+        --with-malloc-conf=${JEMALLOC_CONFIG}
+        --with-version=${JEMALLOC_VERSION}-0-g0
+        ${JEMALLOC_PROF}
     BUILD_COMMAND
       $(MAKE) build_lib_static
-    BUILD_IN_SOURCE
-      1
     INSTALL_COMMAND
       $(MAKE) install_include
-           && ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
-           && ${CMAKE_COMMAND} -E copy ${JEMALLOC_BINARY_DIR}/lib/libjemalloc.a ${CMAKE_CURRENT_BINARY_DIR}/lib
+        && ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
+        && ${CMAKE_COMMAND} -E copy ${JEMALLOC_BINARY_DIR}/lib/libjemalloc.a ${CMAKE_CURRENT_BINARY_DIR}/lib
     STEP_TARGETS
       ${JEMALLOC_LIB} jemalloc
   )

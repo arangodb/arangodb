@@ -22,6 +22,10 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include "v8-dispatcher.h"
 
 #include <velocypack/Builder.h>
@@ -53,14 +57,16 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include <string>
+#include <string_view>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          private helper
-// functions
-// -----------------------------------------------------------------------------
+namespace {
+constexpr std::string_view moduleName("Foxx queues management");
+}
 
 static std::string GetTaskId(v8::Isolate* isolate, v8::Handle<v8::Value> arg) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
@@ -358,7 +364,8 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   LOG_TOPIC("aeb56", TRACE, Logger::FIXME) << "Adding queue " << key;
   ExecContextSuperuserScope exscope;
-  auto ctx = transaction::V8Context::Create(*vocbase, true);
+  auto origin = transaction::OperationOriginREST{::moduleName};
+  auto ctx = transaction::V8Context::create(*vocbase, origin, true);
   SingleCollectionTransaction trx(ctx, StaticStrings::QueuesCollection,
                                   AccessMode::Type::EXCLUSIVE);
   Result res = trx.begin();
@@ -409,7 +416,8 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   LOG_TOPIC("2cef9", TRACE, Logger::FIXME) << "Removing queue " << key;
   ExecContextSuperuserScope exscope;
-  auto ctx = transaction::V8Context::Create(*vocbase, true);
+  auto origin = transaction::OperationOriginREST{::moduleName};
+  auto ctx = transaction::V8Context::create(*vocbase, origin, true);
   SingleCollectionTransaction trx(ctx, StaticStrings::QueuesCollection,
                                   AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
