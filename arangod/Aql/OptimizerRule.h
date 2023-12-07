@@ -105,6 +105,8 @@ struct OptimizerRule {
 
     inlineSubqueriesRule,
 
+    replaceLikeWithRange,
+
     /// simplify some conditions in CalculationNodes
     simplifyConditionsRule,
 
