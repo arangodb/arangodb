@@ -108,18 +108,18 @@ if (CROSS_COMPILING)
   -DGYP_CROSSCOMPILE=1
   -DEXECUTABLE_PREFIX=${V8_PROC_ARCH}.
   )
-  configure_file (
-    "${CMAKE_SOURCE_DIR}/lib/V8/v8-mkpeephole.in"
-    "${V8_TARGET_DIR}/${V8_PROC_ARCH}.release/${V8_PROC_ARCH}.mkpeephole"
-    NEWLINE_STYLE UNIX
-    @ONLY
-  )
-  configure_file (
-    "${CMAKE_SOURCE_DIR}/lib/V8/v8-mksnapshot.in"
-    "${V8_TARGET_DIR}/${V8_PROC_ARCH}.release/${V8_PROC_ARCH}.mksnapshot"
-    NEWLINE_STYLE UNIX
-    @ONLY
-  )
+  #  configure_file (
+  #  "${CMAKE_SOURCE_DIR}/lib/V8/v8-mkpeephole.in"
+  #  "${V8_TARGET_DIR}/${V8_PROC_ARCH}.release/${V8_PROC_ARCH}.mkpeephole"
+  #  NEWLINE_STYLE UNIX
+  #  @ONLY
+  #)
+  #configure_file (
+  #  "${CMAKE_SOURCE_DIR}/lib/V8/v8-mksnapshot.in"
+  #  "${V8_TARGET_DIR}/${V8_PROC_ARCH}.release/${V8_PROC_ARCH}.mksnapshot"
+  #  NEWLINE_STYLE UNIX
+  #  @ONLY
+  #)
 endif()
 
 option(USE_DEBUG_V8 "compile V8 in DEBUG mode" OFF)
@@ -187,7 +187,6 @@ if (WIN32)
   set(GYP_MSVS_OVERRIDE_PATH "${CMAKE_CXX_COMPILER}")
 
   list(APPEND V8_GYP_ARGS
-    #     -I../gypfiles/standalone.gypi
     -Dcomponent=static_library
     -Dlibrary=static_library
     -Dgenerator_output=${V8_TARGET_DIR}
@@ -342,9 +341,20 @@ else ()
 ## UNIX
 ################################################################################
 
-  set(V8_CFLAGS   "$ENV{V8_CFLAGS}")
-  set(V8_CXXFLAGS "$ENV{V8_CXXFLAGS}")
-  set(V8_LDFLAGS  "$ENV{V8_LDFLAGS}")
+  if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(V8_CFLAGS   "${CMAKE_C_FLAGS}   ${CMAKE_C_FLAGS_DEBUG} $ENV{V8_CFLAGS}")
+    set(V8_CXXFLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG} $ENV{V8_CXXFLAGS}")
+  elseif (CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
+    set(V8_CFLAGS   "${CMAKE_C_FLAGS}   ${CMAKE_C_FLAGS_MINSIZEREL} $ENV{V8_CFLAGS}")
+    set(V8_CXXFLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_MINSIZEREL} $ENV{V8_CXXFLAGS}")
+  elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(V8_CFLAGS   "${CMAKE_C_FLAGS}   ${CMAKE_C_FLAGS_RELEASE} $ENV{V8_CFLAGS}")
+    set(V8_CXXFLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE} $ENV{V8_CXXFLAGS}")
+  elseif (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    set(V8_CFLAGS   "${CMAKE_C_FLAGS}   ${CMAKE_C_FLAGS_RELWITHDEBINFO} $ENV{V8_CFLAGS}")
+    set(V8_CXXFLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELWITHDEBINFO} $ENV{V8_CXXFLAGS}")
+  endif ()
+  set(V8_LDFLAGS  "${CMAKE_EXE_LINKER_FLAGS} $ENV{V8_LDFLAGS}")
 
   # build V8 without debug information
   if (USE_MINIMAL_DEBUGINFO)
@@ -388,7 +398,6 @@ else ()
   endif ()
 
   list(APPEND V8_GYP_ARGS
-#     -I../gypfiles/standalone.gypi
     -Dicu_path=${V8_RELATIVE_SOURCE_DIR}/third_party/icu/
     -Dmac_deployment_target=${CMAKE_OSX_DEPLOYMENT_TARGET}
     --depth=.
@@ -440,10 +449,7 @@ else ()
   )
 
   list(APPEND V8_COMPILE_TARGETS icui18n icuuc icustubdata)
-  list(APPEND V8_COMPILE_TARGETS v8_libbase
-    v8_libplatform
-    v8_snapshot
-  )
+  list(APPEND V8_COMPILE_TARGETS v8_libbase v8_libplatform v8_snapshot)
   message(${V8_GYP_ARGS})
   ExternalProject_Add(v8_build
     BUILD_IN_SOURCE
