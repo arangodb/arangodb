@@ -4,7 +4,7 @@
 # V8 / ICU
 # ------------------------------------------------------------------------------
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.16)
 
 if (POLICY CMP0048)
   cmake_policy(SET CMP0048 NEW)
@@ -172,7 +172,7 @@ if (WIN32)
   endif ()
 
   list(APPEND V8_GYP_ARGS -Dtarget_arch=${V8_PROC_ARCH} -Dhost_arch=${V8_PROC_ARCH})
-  list(APPEND V8_GYP_ARGS ../gypfiles/all.gyp)
+  list(APPEND V8_GYP_ARGS ../gypfiles/v8.gyp)
 
   list(APPEND V8_TARGET_ARCHS "Release")
   
@@ -185,7 +185,7 @@ if (WIN32)
   set(GYP_MSVS_OVERRIDE_PATH "${CMAKE_CXX_COMPILER}")
 
   list(APPEND V8_GYP_ARGS
-    -I../gypfiles/standalone.gypi
+    #     -I../gypfiles/standalone.gypi
     -Dcomponent=static_library
     -Dlibrary=static_library
     -Dgenerator_output=${V8_TARGET_DIR}
@@ -198,7 +198,7 @@ if (WIN32)
     -Dembedded_builtins_snapshot_src=
     -Dv8_enable_handle_zapping=0
     -Dv8_use_snapshot=1
-    -DPYTHON_EXECUTABLE="${PYTHON_EXECUTABLE}"
+    -Dpython="${PYTHON_EXECUTABLE}"
     -Dnode_use_pch=false
   )
 
@@ -360,7 +360,7 @@ else ()
   set(V8_LIBRARY_DIR "${V8_TARGET_DIR}/${V8_TARGET_ARCH}/")
   set(ICU_LIBRARY_DIR "${V8_LIBRARY_DIR}")
 
-  list(APPEND V8_GYP_ARGS ../gypfiles/all.gyp)
+  list(APPEND V8_GYP_ARGS ../gypfiles/v8.gyp)
   list(APPEND V8_GYP_ARGS --format make)
   list(APPEND V8_GYP_ARGS -S.${V8_TARGET_ARCH})
 
@@ -374,7 +374,7 @@ else ()
   endif ()
 
   list(APPEND V8_GYP_ARGS
-    -I../gypfiles/standalone.gypi
+#     -I../gypfiles/standalone.gypi
     -Dmac_deployment_target=${CMAKE_OSX_DEPLOYMENT_TARGET}
     --depth=.
     -Dstandalone_static_library=1
@@ -391,6 +391,7 @@ else ()
     -Dembedded_builtins_snapshot_src=
     -Dv8_enable_handle_zapping=0
     -Dv8_use_snapshot=1
+    -Dpython="${PYTHON_EXECUTABLE}"
   )
 
   if (USE_DEBUG_V8)
