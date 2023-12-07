@@ -14,7 +14,12 @@ parameters:
   replication-two:
     type: boolean
     default: false
-  # these are basically global constants
+  c-compiler:
+    type: string
+    default: "clang"
+  cxx-compiler:
+    type: string
+    default: "clang++"  # these are basically global constants
   build-targets:
     type: string
     default: "arangod arangoimport arangoexport arangodump arangorestore arangobench"
