@@ -207,7 +207,8 @@ void RestDumpHandler::handleCommandDumpNext() {
   }
 
   // output the batch value
-  _response->setAllowCompression(true);
+  _response->setAllowCompression(
+      rest::ResponseCompressionType::kAllowCompression);
   _response->setHeaderNC(StaticStrings::DumpShardId, std::string{batch->shard});
   _response->setHeaderNC(StaticStrings::DumpBlockCounts,
                          std::to_string(counts));
@@ -297,7 +298,12 @@ Result RestDumpHandler::validateRequest() {
           if (ServerState::instance()->isSingleServer()) {
             collectionName = it;
           } else {
-            collectionName = _clusterInfo.getCollectionNameForShard(it);
+            if (auto maybeShardID = ShardID::shardIdFromString(it);
+                maybeShardID.ok()) {
+              // If we are called without a shard, leave collectionName empty.
+              collectionName =
+                  _clusterInfo.getCollectionNameForShard(maybeShardID.get());
+            }
           }
           if (!ExecContext::current().canUseCollection(
                   _request->databaseName(), collectionName, auth::Level::RO)) {

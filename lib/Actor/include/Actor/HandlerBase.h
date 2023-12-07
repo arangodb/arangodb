@@ -39,24 +39,25 @@ struct HandlerBase {
       : self(self), sender(sender), state{std::move(state)}, runtime(runtime){};
 
   template<typename ActorMessage>
-  auto dispatch(ActorPID receiver, ActorMessage message) -> void {
-    runtime->dispatch(self, receiver, message);
+  auto dispatch(ActorPID receiver, ActorMessage&& message) -> void {
+    runtime->dispatch(self, receiver, std::forward<ActorMessage>(message));
   }
 
   template<typename ActorMessage>
   auto dispatchDelayed(std::chrono::seconds delay, ActorPID receiver,
-                       ActorMessage const& message) -> void {
-    runtime->dispatchDelayed(delay, self, receiver, message);
+                       ActorMessage&& message) -> void {
+    runtime->dispatchDelayed(delay, self, receiver,
+                             std::forward<ActorMessage>(message));
   }
 
   template<typename ActorConfig>
   auto spawn(std::unique_ptr<typename ActorConfig::State> initialState,
-             typename ActorConfig::Message initialMessage) -> ActorID {
+             typename ActorConfig::Message initialMessage) -> ActorPID {
     return runtime->template spawn<ActorConfig>(std::move(initialState),
-                                                initialMessage);
+                                                std::move(initialMessage));
   }
 
-  auto finish() -> void { runtime->finish(self); }
+  auto finish(ExitReason reason) -> void { runtime->finishActor(self, reason); }
 
  protected:
   ActorPID const self;

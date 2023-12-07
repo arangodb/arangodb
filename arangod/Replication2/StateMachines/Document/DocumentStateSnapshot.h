@@ -28,7 +28,6 @@
 #include "Basics/StaticStrings.h"
 #include "Inspection/Status.h"
 #include "Inspection/Transformers.h"
-#include "Inspection/VPack.h"
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -60,6 +59,11 @@ class SnapshotId : public arangodb::basics::Identifier {
   static SnapshotId create();
 
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
+
+#ifdef _WIN32
+  explicit SnapshotId(BaseType id) noexcept
+      : arangodb::basics::Identifier(id) {}
+#endif
 };
 
 auto to_string(SnapshotId snapshotId) -> std::string;

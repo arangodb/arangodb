@@ -23,6 +23,7 @@
 
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 #include "Replication2/StateMachines/Document/DocumentStateErrorHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
@@ -93,7 +94,12 @@ auto DocumentFollowerState::getAssociatedShardList() const
   std::vector<ShardID> shardIds;
   shardIds.reserve(collections.size());
   for (auto const& shard : collections) {
-    shardIds.emplace_back(shard->name());
+    auto maybeShardId = ShardID::shardIdFromString(shard->name());
+    ADB_PROD_ASSERT(maybeShardId.ok())
+        << "Tried to produce shard list on Database Server for a collection "
+           "that is not a shard "
+        << shard->name();
+    shardIds.emplace_back(maybeShardId.get());
   }
   return shardIds;
 }

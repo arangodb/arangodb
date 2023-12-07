@@ -32,8 +32,7 @@
 
 #include <velocypack/Slice.h>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 class ExecutionEngine;
 class QueryContext;
@@ -70,7 +69,7 @@ struct ModificationExecutorInfos {
       RegisterId outputNewRegisterId, RegisterId outputOldRegisterId,
       RegisterId outputRegisterId, arangodb::aql::QueryContext& query,
       OperationOptions options, aql::Collection const* aqlCollection,
-      ProducesResults producesResults,
+      size_t batchSize, ProducesResults producesResults,
       ConsultAqlWriteFilter consultAqlWriteFilter, IgnoreErrors ignoreErrors,
       DoCount doCount, IsReplace isReplace,
       IgnoreDocumentNotFound ignoreDocumentNotFound);
@@ -87,6 +86,7 @@ struct ModificationExecutorInfos {
   arangodb::aql::QueryContext& _query;
   OperationOptions _options;
   aql::Collection const* _aqlCollection;
+  size_t _batchSize;
   ProducesResults _producesResults;
   ConsultAqlWriteFilter _consultAqlWriteFilter;
   IgnoreErrors _ignoreErrors;
@@ -107,5 +107,4 @@ struct ModificationExecutorInfos {
   RegisterId _outputRegisterId;  // single remote
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

@@ -97,6 +97,11 @@ struct Actor : ActorBase<typename Runtime::ActorPID> {
         m != nullptr) {
       push(sender, std::move(m->payload));
     } else if (auto* n =
+                   dynamic_cast<MessagePayload<message::ActorDown<ActorPID>>*>(
+                       &msg);
+               n != nullptr) {
+      push(sender, std::move(n->payload));
+    } else if (auto* n =
                    dynamic_cast<MessagePayload<message::ActorError<ActorPID>>*>(
                        &msg);
                n != nullptr) {
@@ -127,12 +132,19 @@ struct Actor : ActorBase<typename Runtime::ActorPID> {
     }
   }
 
-  auto finish() -> void override { finished.store(true); }
-  auto isFinishedAndIdle() -> bool override {
-    return finished.load() and idle.load();
+  auto finish(ExitReason reason) -> void override {
+    exitReason = reason;
+    auto s = status.fetch_or(Status::kFinished);
+    if (s & Status::kIdle) {
+      runtime->stopActor(pid, exitReason);
+    }
   }
 
-  auto isIdle() -> bool override { return idle.load(); }
+  auto isFinishedAndIdle() -> bool override {
+    return status.load() == (Status::kFinished | Status::kIdle);
+  }
+
+  auto isIdle() -> bool override { return status.load() & Status::kIdle; }
 
   auto serialize() -> velocypack::SharedSlice override {
     auto res = inspection::serializeWithErrorT(*this);
@@ -152,17 +164,16 @@ struct Actor : ActorBase<typename Runtime::ActorPID> {
   friend auto inspect(Inspector& f, Actor<R, C>& x);
 
  private:
-  void push(ActorPID sender, typename Config::Message&& msg) {
+  template<typename Msg>
+  requires(std::is_same_v<Msg, typename Config::Message> ||
+           std::is_same_v<Msg, message::ActorDown<ActorPID>> ||
+           std::is_same_v<Msg, message::ActorError<ActorPID>>)  //
+      void push(ActorPID sender, Msg&& msg) {
     pushToQueueAndKick(std::make_unique<InternalMessage>(
         sender,
         std::make_unique<
-            message::MessageOrError<typename Config::Message, ActorPID>>(msg)));
-  }
-  void push(ActorPID sender, message::ActorError<ActorPID>&& msg) {
-    pushToQueueAndKick(std::make_unique<InternalMessage>(
-        sender,
-        std::make_unique<
-            message::MessageOrError<typename Config::Message, ActorPID>>(msg)));
+            message::MessageOrError<typename Config::Message, ActorPID>>(
+            std::move(msg))));
   }
 
   void kick() {
@@ -177,7 +188,7 @@ struct Actor : ActorBase<typename Runtime::ActorPID> {
       state = std::visit(
           typename Config::template Handler<Runtime>{
               {pid, msg->sender, std::move(state), runtime}},
-          msg->payload->item);
+          std::move(msg->payload->item));
       if (--i == 0) {
         break;
       }
@@ -189,13 +200,21 @@ struct Actor : ActorBase<typename Runtime::ActorPID> {
       return;
     }
 
-    idle.store(true);
+    auto s = status.fetch_or(Status::kIdle);
+    if (s & Status::kFinished) {
+      runtime->stopActor(pid, exitReason);
+      return;
+    }
 
     // push more work to scheduler if a message was added to queue after
     // previous inbox.empty check and set idle to false
-    auto isIdle = true;
-    if (not inbox.empty() and idle.compare_exchange_strong(isIdle, false)) {
-      kick();
+    s = Status::kIdle;
+    if (not inbox.empty()) {
+      if (status.compare_exchange_strong(s, 0)) {
+        kick();
+      }
+    } else if (status.load() & Status::kFinished) {
+      runtime->stopActor(pid, exitReason);
     }
   }
 
@@ -211,24 +230,33 @@ struct Actor : ActorBase<typename Runtime::ActorPID> {
 
   auto pushToQueueAndKick(std::unique_ptr<InternalMessage> msg) -> void {
     // don't add new messages when actor is finished
-    if (finished.load()) {
+    auto s = status.load();
+    if (s & Status::kFinished) {
+      // finished actors no longer accept new messages
       return;
     }
 
     inbox.push(std::move(msg));
 
     // only push work to scheduler if actor is idle (meaning no work is waiting
-    // on the scheduler and no work is currently processed in work())
-    // and set idle to false
-    auto isIdle = idle.load();
-    if (isIdle and idle.compare_exchange_strong(isIdle, false)) {
+    // on the scheduler and no work is currently processed in work()) and set
+    // idle to false
+    s = status.load();
+    // it is possible that the finished flag has been set in the meantime.
+    // in that case finish has already stopped the actor, so we do not want to
+    // kick it again!
+    if (s == Status::kIdle && status.compare_exchange_strong(s, 0)) {
       kick();
     }
   }
 
   ActorPID pid;
-  std::atomic<bool> idle{true};
-  std::atomic<bool> finished{false};
+  struct Status {
+    static constexpr std::uint8_t kIdle = 1;
+    static constexpr std::uint8_t kFinished = 2;
+  };
+  std::atomic<std::uint8_t> status{Status::kIdle};
+  ExitReason exitReason = ExitReason::kFinished;
   arangodb::actor::MPSCQueue<InternalMessage> inbox;
   std::shared_ptr<Runtime> runtime;
   // tunable parameter: maximal number of processed messages per work() call

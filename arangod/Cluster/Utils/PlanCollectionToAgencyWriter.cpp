@@ -27,7 +27,7 @@
 #include "Cluster/Utils/CurrentWatcher.h"
 #include "Cluster/Utils/CurrentCollectionEntry.h"
 #include "Cluster/Utils/PlanCollectionEntry.h"
-#include "Cluster/Utils/PlanShardToServerMappping.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Inspection/VPack.h"
 
 using namespace arangodb;

@@ -1531,6 +1531,7 @@ auto replicated_log::LogLeader::ping(std::optional<std::string> message)
   triggerAsyncReplication();
   return index;
 }
+
 auto replicated_log::LogLeader::resign() && -> std::tuple<
     std::unique_ptr<storage::IStorageEngineMethods>,
     std::unique_ptr<IReplicatedStateHandle>, DeferredAction> {

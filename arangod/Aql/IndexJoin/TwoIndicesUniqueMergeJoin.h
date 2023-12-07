@@ -74,8 +74,8 @@ struct TwoIndicesUniqueMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
     bool operator()(IndexStreamData* left, IndexStreamData* right) const;
   };
 
-  std::vector<SliceType> keyCache;
-  std::vector<DocIdType> documentCache;
+  std::array<SliceType, 2> keyCache;
+  std::array<DocIdType, 2> documentCache;
 
   std::vector<SliceType> sliceBuffer;
   std::span<SliceType> projectionsSpan;
@@ -148,10 +148,7 @@ template<typename SliceType, typename DocIdType, typename KeyCompare>
 TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::
     TwoIndicesUniqueMergeJoin(std::vector<Descriptor> descs,
                               std::size_t numKeyComponents) {
-  TRI_ASSERT(descs.size() == 2);
-  keyCache.resize(FIXED_INDEX_SIZE_VAR);
-  documentCache.resize(FIXED_INDEX_SIZE_VAR);
-
+  TRI_ASSERT(descs.size() == FIXED_INDEX_SIZE_VAR);
   std::size_t bufferSize = 0;
   for (auto const& desc : descs) {
     bufferSize += desc.numProjections + numKeyComponents;

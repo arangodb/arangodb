@@ -266,7 +266,11 @@ OperationResult handleResponsesFromAllShards(
       result = res.combinedResult();
       if (result.ok()) {
         TRI_ASSERT(res.error == fuerte::Error::NoError);
-        handler(result, builder, res.destinationShard(), res.slice());
+        auto maybeShardID = res.destinationShard();
+        if (ADB_UNLIKELY(maybeShardID.fail())) {
+          THROW_ARANGO_EXCEPTION(maybeShardID.result());
+        }
+        handler(result, builder, maybeShardID.get(), res.slice());
       }
 
       if (result.fail()) {
@@ -351,7 +355,6 @@ void mergeResultsAllShards(
   }
 }
 
-const ShardID LocalErrorsShard = "#ERRORS";
 struct InsertOperationCtx;
 
 /// @brief handle CRUD api shard responses, fast path
@@ -376,7 +379,11 @@ OperationResult handleCRUDShardResponsesFast(
 
   for (Try<arangodb::network::Response> const& tryRes : results) {
     network::Response const& res = tryRes.get();  // throws exceptions upwards
-    ShardID sId = res.destinationShard();
+    auto maybeShardID = res.destinationShard();
+    if (ADB_UNLIKELY(maybeShardID.fail())) {
+      THROW_ARANGO_EXCEPTION(maybeShardID.result());
+    }
+    auto sId = std::move(maybeShardID.get());
 
     auto commError = network::fuerteToArangoErrorCode(res);
     if (commError != TRI_ERROR_NO_ERROR) {
@@ -417,7 +424,7 @@ OperationResult handleCRUDShardResponsesFast(
   for (auto const& pair : opCtx.reverseMapping) {
     ShardID const& sId = pair.first;
     if constexpr (std::is_same_v<CT, InsertOperationCtx>) {
-      if (sId == LocalErrorsShard) {
+      if (sId == ShardID::invalidShard()) {
         Result const& res = opCtx.localErrors[pair.second];
         resultBody.openObject(
             /*unindexed*/ true);
@@ -550,20 +557,21 @@ struct CrudOperationCtx {
     // However we can work with the other babies.
     // This is for compatibility with single server
     // We just assign it to any shard and pretend the user has given a key
-    shardID = collinfo.shardingInfo()->shardListAsShardID()->at(0);
+    shardID = *collinfo.shardingInfo()->shardListAsShardID().begin();
   } else {
     // Now find the responsible shard:
     [[maybe_unused]] bool usesDefaultShardingAttributes;
-    auto res = collinfo.getResponsibleShard(
-        value, /*docComplete*/ false, shardID, usesDefaultShardingAttributes);
+    auto maybeShardID = collinfo.getResponsibleShard(
+        value, /*docComplete*/ false, usesDefaultShardingAttributes);
 
-    if (res == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
-      return TRI_ERROR_CLUSTER_SHARD_GONE;
+    if (maybeShardID.fail()) {
+      if (maybeShardID.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+        // Rewrite error response
+        return TRI_ERROR_CLUSTER_SHARD_GONE;
+      }
+      return maybeShardID.result().errorNumber();
     }
-    if (res != TRI_ERROR_NO_ERROR) {
-      // We can not find a responsible shard
-      return res;
-    }
+    shardID = std::move(maybeShardID.get());
   }
 
   // We found the responsible shard. Add it to the list.
@@ -595,86 +603,96 @@ struct InsertOperationCtx {
   TRI_ASSERT(collinfo.type() != TRI_COL_TYPE_EDGE || !collinfo.isSmart());
 
   bool isRestore = opCtx.options.isRestore;
-  ShardID shardID;
   std::string key;
 
   auto addLocalError = [&](Result err) {
     TRI_ASSERT(err.fail());
     auto idx = opCtx.localErrors.size();
     opCtx.localErrors.emplace_back(std::move(err));
-    opCtx.reverseMapping.emplace_back(LocalErrorsShard, idx);
+    opCtx.reverseMapping.emplace_back(ShardID::invalidShard(), idx);
   };
 
-  if (!value.isObject()) {
-    // We have invalid input at this point.
-    // However we can work with the other babies.
-    // This is for compatibility with single server
-    // We just assign it to any shard and pretend the user has given a key
-    shardID = collinfo.shardingInfo()->shardListAsShardID()->at(0);
-  } else {
-    // Sort out the _key attribute:
-    // The user is allowed to specify _key, provided that _key is the one
-    // and only sharding attribute, because in this case we can delegate
-    // the responsibility to make _key attributes unique to the responsible
-    // shard. Otherwise, we ensure uniqueness here and now by taking a
-    // cluster-wide unique number. Note that we only know the sharding
-    // attributes a bit further down the line when we have determined
-    // the responsible shard.
-
-    bool userSpecifiedKey = false;
-    VPackSlice keySlice = value.get(StaticStrings::KeyString);
-    if (keySlice.isNone()) {
-      // The user did not specify a key, let's (probably) create one...
-
-      // if we only have a single shard, we can let the DB server generate
-      // the key. this is beneficial so that the key generators can generate
-      // an increasing sequence of keys, regardless of how many coordinators
-      // there are.
-      if (collinfo.mustCreateKeyOnCoordinator()) {
-        key = collinfo.keyGenerator().generate(value);
-      }
+  ResultT<ShardID> maybeShardID = std::invoke([&]() -> ResultT<ShardID> {
+    if (!value.isObject()) {
+      // We have invalid input at this point.
+      // However we can work with the other babies.
+      // This is for compatibility with single server
+      // We just assign it to any shard and pretend the user has given a key
+      return *collinfo.shardingInfo()->shardListAsShardID().begin();
     } else {
-      userSpecifiedKey = true;
-      if (keySlice.isString()) {
-        if (!keySlice.stringView().empty()) {
-          // validate the key provided by the user
-          auto res = collinfo.keyGenerator().validate(keySlice.stringView(),
-                                                      value, isRestore);
-          if (res != TRI_ERROR_NO_ERROR) {
-            addLocalError(res);
-            return TRI_ERROR_NO_ERROR;
+      // Sort out the _key attribute:
+      // The user is allowed to specify _key, provided that _key is the one
+      // and only sharding attribute, because in this case we can delegate
+      // the responsibility to make _key attributes unique to the responsible
+      // shard. Otherwise, we ensure uniqueness here and now by taking a
+      // cluster-wide unique number. Note that we only know the sharding
+      // attributes a bit further down the line when we have determined
+      // the responsible shard.
+
+      bool userSpecifiedKey = false;
+      VPackSlice keySlice = value.get(StaticStrings::KeyString);
+      if (keySlice.isNone()) {
+        // The user did not specify a key, let's (probably) create one...
+
+        // if we only have a single shard, we can let the DB server generate
+        // the key. this is beneficial so that the key generators can generate
+        // an increasing sequence of keys, regardless of how many coordinators
+        // there are.
+        if (collinfo.mustCreateKeyOnCoordinator()) {
+          key = collinfo.keyGenerator().generate(value);
+        }
+      } else {
+        userSpecifiedKey = true;
+        if (keySlice.isString()) {
+          if (!keySlice.stringView().empty()) {
+            // validate the key provided by the user
+            auto res = collinfo.keyGenerator().validate(keySlice.stringView(),
+                                                        value, isRestore);
+            if (res != TRI_ERROR_NO_ERROR) {
+              addLocalError(res);
+              return ShardID::invalidShard();
+            }
           }
         }
       }
-    }
 
-    // Now find the responsible shard:
-    bool usesDefaultShardingAttributes;
-    auto error = TRI_ERROR_NO_ERROR;
-    if (userSpecifiedKey) {
-      error = collinfo.getResponsibleShard(value, /*docComplete*/ true, shardID,
-                                           usesDefaultShardingAttributes);
-    } else {
-      // we pass in the generated _key so we do not need to rebuild the input
-      // slice
-      TRI_ASSERT(!key.empty() || !collinfo.mustCreateKeyOnCoordinator());
-      error = collinfo.getResponsibleShard(value, /*docComplete*/ true, shardID,
-                                           usesDefaultShardingAttributes,
-                                           std::string_view(key));
+      // Now find the responsible shard:
+      bool usesDefaultShardingAttributes;
+      ResultT<ShardID> result;
+      if (userSpecifiedKey) {
+        result = collinfo.getResponsibleShard(value, /*docComplete*/ true,
+                                              usesDefaultShardingAttributes);
+      } else {
+        // we pass in the generated _key so we do not need to rebuild the input
+        // slice
+        TRI_ASSERT(!key.empty() || !collinfo.mustCreateKeyOnCoordinator());
+        result = collinfo.getResponsibleShard(value, /*docComplete*/ true,
+                                              usesDefaultShardingAttributes,
+                                              std::string_view(key));
+      }
+      if (result.fail()) {
+        return result;
+      }
+      // Now perform the above mentioned check:
+      if (userSpecifiedKey &&
+          (!usesDefaultShardingAttributes || !collinfo.allowUserKeys()) &&
+          !isRestore) {
+        addLocalError(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
+        return ShardID::invalidShard();
+      }
+      return result;
     }
-    if (error == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
+  });
+  if (maybeShardID.fail()) {
+    if (maybeShardID.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return TRI_ERROR_CLUSTER_SHARD_GONE;
     }
-
-    // Now perform the above mentioned check:
-    if (userSpecifiedKey &&
-        (!usesDefaultShardingAttributes || !collinfo.allowUserKeys()) &&
-        !isRestore) {
-      addLocalError(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
-      return TRI_ERROR_NO_ERROR;
-    }
+    return maybeShardID.result().errorNumber();
   }
-
+  if (maybeShardID.get() == ShardID::invalidShard()) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  auto shardID = std::move(maybeShardID.get());
   // We found the responsible shard. Add it to the list.
   auto it = opCtx.shardMap.find(shardID);
   if (it == opCtx.shardMap.end()) {
@@ -873,8 +891,8 @@ futures::Future<OperationResult> revisionOnCoordinator(
   for (auto const& p : *shards) {
     auto future = network::sendRequestRetry(
         pool, "shard:" + p.first, fuerte::RestVerb::Get,
-        "/_api/collection/" + StringUtils::urlEncode(p.first) + "/revision",
-        VPackBuffer<uint8_t>(), reqOpts);
+        "/_api/collection/" + p.first + "/revision", VPackBuffer<uint8_t>(),
+        reqOpts);
     futures.emplace_back(std::move(future));
   }
 
@@ -934,8 +952,8 @@ futures::Future<OperationResult> checksumOnCoordinator(
   for (auto const& p : *shards) {
     auto future = network::sendRequestRetry(
         pool, "shard:" + p.first, fuerte::RestVerb::Get,
-        "/_api/collection/" + StringUtils::urlEncode(p.first) + "/checksum",
-        VPackBuffer<uint8_t>(), reqOpts);
+        "/_api/collection/" + p.first + "/checksum", VPackBuffer<uint8_t>(),
+        reqOpts);
     futures.emplace_back(std::move(future));
   }
 
@@ -1005,9 +1023,9 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
   if (collinfo == nullptr) {
     return futures::makeFuture(Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
-  std::vector<std::string> shards;
+  std::vector<ShardID> shards;
 
-  auto addShards = [](std::vector<std::string>& result,
+  auto addShards = [](std::vector<ShardID>& result,
                       std::shared_ptr<LogicalCollection> const& collection) {
     if (collection == nullptr) {
       return;
@@ -1064,9 +1082,8 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
 
     auto future = network::sendRequestRetry(
         pool, "shard:" + p, fuerte::RestVerb::Put,
-        "/_api/collection/" + StringUtils::urlEncode(p) +
-            "/loadIndexesIntoMemory",
-        std::move(buffer), opts);
+        "/_api/collection/" + p + "/loadIndexesIntoMemory", std::move(buffer),
+        opts);
     futures.emplace_back(std::move(future));
   }
 
@@ -1120,8 +1137,8 @@ futures::Future<OperationResult> figuresOnCoordinator(
   for (auto const& p : *shards) {
     auto future = network::sendRequestRetry(
         pool, "shard:" + p.first, fuerte::RestVerb::Get,
-        "/_api/collection/" + StringUtils::urlEncode(p.first) + "/figures",
-        VPackBuffer<uint8_t>(), reqOpts);
+        "/_api/collection/" + p.first + "/figures", VPackBuffer<uint8_t>(),
+        reqOpts);
     futures.emplace_back(std::move(future));
   }
 
@@ -1211,8 +1228,8 @@ futures::Future<OperationResult> countOnCoordinator(
 
     futures.emplace_back(network::sendRequestRetry(
         pool, "shard:" + p.first, fuerte::RestVerb::Get,
-        "/_api/collection/" + StringUtils::urlEncode(p.first) + "/count",
-        VPackBuffer<uint8_t>(), reqOpts, std::move(headers)));
+        "/_api/collection/" + p.first + "/count", VPackBuffer<uint8_t>(),
+        reqOpts, std::move(headers)));
   }
 
   auto cb = [options](std::vector<Try<network::Response>>&& results) mutable
@@ -1374,7 +1391,7 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature,
                           std::to_string(tid.id()));
     }
 
-    reqOpts.param("collection", p.first);
+    reqOpts.param("collection", std::string{p.first});
     futures.emplace_back(network::sendRequestRetry(
         pool, "shard:" + p.first, fuerte::RestVerb::Get,
         "/_api/index/selectivity", VPackBufferUInt8(), reqOpts,
@@ -1583,8 +1600,8 @@ futures::Future<OperationResult> insertDocumentOnCoordinator(
       addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first, headers);
       auto future = network::sendRequestRetry(
           pool, "shard:" + it.first, fuerte::RestVerb::Post,
-          absl::StrCat(baseUrl, StringUtils::urlEncode(it.first)),
-          std::move(reqBuffer), reqOpts, std::move(headers));
+          absl::StrCat(baseUrl, std::string{it.first}), std::move(reqBuffer),
+          reqOpts, std::move(headers));
       futures.emplace_back(std::move(future));
     }
 
@@ -1701,68 +1718,69 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
                                         api);
     }
 
-    return std::move(f).thenValue([=, &trx,
-                                   opCtx(std::move(opCtx))](Result&& r) mutable
-                                  -> Future<OperationResult> {
-      if (r.fail()) {
-        return OperationResult(std::move(r), options);
-      }
-
-      // Now prepare the requests:
-      auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
-      std::vector<Future<network::Response>> futures;
-      futures.reserve(opCtx.shardMap.size());
-
-      for (auto const& it : opCtx.shardMap) {
-        VPackBuffer<uint8_t> buffer;
-        if (!useMultiple) {
-          TRI_ASSERT(it.second.size() == 1);
-          buffer.append(slice.begin(), slice.byteSize());
-        } else {
-          VPackBuilder reqBuilder(buffer);
-          reqBuilder.openArray(/*unindexed*/ true);
-          for (VPackSlice value : it.second) {
-            reqBuilder.add(value);
+    return std::move(f).thenValue(
+        [=, &trx, opCtx(std::move(opCtx))](
+            Result&& r) mutable -> Future<OperationResult> {
+          if (r.fail()) {
+            return OperationResult(std::move(r), options);
           }
-          reqBuilder.close();
-        }
 
-        network::Headers headers;
-        // Just make sure that no dirty read flag makes it here, since we
-        // are writing and then `addTransactionHeaderForShard` might
-        // misbehave!
-        TRI_ASSERT(!trx.state()->options().allowDirtyReads);
-        addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first,
-                                     headers);
-        futures.emplace_back(network::sendRequestRetry(
-            pool, "shard:" + it.first, fuerte::RestVerb::Delete,
-            absl::StrCat("/_api/document/", StringUtils::urlEncode(it.first)),
-            std::move(buffer), reqOpts, std::move(headers)));
-      }
+          // Now prepare the requests:
+          auto* pool =
+              trx.vocbase().server().getFeature<NetworkFeature>().pool();
+          std::vector<Future<network::Response>> futures;
+          futures.reserve(opCtx.shardMap.size());
 
-      // Now listen to the results:
-      if (!useMultiple) {
-        TRI_ASSERT(futures.size() == 1);
-        auto cb = [options](network::Response&& res) -> OperationResult {
-          if (res.error != fuerte::Error::NoError) {
-            return OperationResult(network::fuerteToArangoErrorCode(res),
-                                   options);
+          for (auto const& it : opCtx.shardMap) {
+            VPackBuffer<uint8_t> buffer;
+            if (!useMultiple) {
+              TRI_ASSERT(it.second.size() == 1);
+              buffer.append(slice.begin(), slice.byteSize());
+            } else {
+              VPackBuilder reqBuilder(buffer);
+              reqBuilder.openArray(/*unindexed*/ true);
+              for (VPackSlice value : it.second) {
+                reqBuilder.add(value);
+              }
+              reqBuilder.close();
+            }
+
+            network::Headers headers;
+            // Just make sure that no dirty read flag makes it here, since we
+            // are writing and then `addTransactionHeaderForShard` might
+            // misbehave!
+            TRI_ASSERT(!trx.state()->options().allowDirtyReads);
+            addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first,
+                                         headers);
+            futures.emplace_back(network::sendRequestRetry(
+                pool, "shard:" + it.first, fuerte::RestVerb::Delete,
+                absl::StrCat("/_api/document/", std::string{it.first}),
+                std::move(buffer), reqOpts, std::move(headers)));
           }
-          return network::clusterResultRemove(res.statusCode(),
-                                              res.response().stealPayload(),
-                                              std::move(options), {});
-        };
-        return std::move(futures[0]).thenValue(cb);
-      }
 
-      return futures::collectAll(std::move(futures))
-          .thenValue([opCtx = std::move(opCtx)](
-                         std::vector<Try<network::Response>>&& results)
-                         -> OperationResult {
-            return handleCRUDShardResponsesFast(network::clusterResultRemove,
-                                                opCtx, results);
-          });
-    });
+          // Now listen to the results:
+          if (!useMultiple) {
+            TRI_ASSERT(futures.size() == 1);
+            auto cb = [options](network::Response&& res) -> OperationResult {
+              if (res.error != fuerte::Error::NoError) {
+                return OperationResult(network::fuerteToArangoErrorCode(res),
+                                       options);
+              }
+              return network::clusterResultRemove(res.statusCode(),
+                                                  res.response().stealPayload(),
+                                                  std::move(options), {});
+            };
+            return std::move(futures[0]).thenValue(cb);
+          }
+
+          return futures::collectAll(std::move(futures))
+              .thenValue([opCtx = std::move(opCtx)](
+                             std::vector<Try<network::Response>>&& results)
+                             -> OperationResult {
+                return handleCRUDShardResponsesFast(
+                    network::clusterResultRemove, opCtx, results);
+              });
+        });
   }
 
   // Not all shard keys are known in all documents.
@@ -1806,7 +1824,7 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
           addTransactionHeaderForShard(trx, *shardIds, shard, headers);
           futures.emplace_back(network::sendRequestRetry(
               pool, "shard:" + shard, fuerte::RestVerb::Delete,
-              absl::StrCat("/_api/document/", StringUtils::urlEncode(shard)),
+              absl::StrCat("/_api/document/", std::string{shard}),
               /*cannot move*/ buffer, reqOpts, std::move(headers)));
         }
 
@@ -1882,8 +1900,8 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
     addTransactionHeaderForShard(trx, *shardIds, /*shard*/ p.first, headers);
     auto future = network::sendRequestRetry(
         pool, "shard:" + p.first, fuerte::RestVerb::Put,
-        "/_api/collection/" + StringUtils::urlEncode(p.first) + "/truncate",
-        std::move(buffer), reqOpts, std::move(headers));
+        "/_api/collection/" + p.first + "/truncate", std::move(buffer), reqOpts,
+        std::move(headers));
     futures.emplace_back(std::move(future));
   }
 
@@ -2003,14 +2021,11 @@ Future<OperationResult> getDocumentOnCoordinator(
           }
           std::string_view ref = keySlice.stringView();
           // We send to single endpoint
-          url.append("/_api/document/")
-              .append(StringUtils::urlEncode(it.first))
-              .push_back('/');
+          url.append("/_api/document/").append(it.first).push_back('/');
           url.append(StringUtils::urlEncode(ref.data(), ref.length()));
         } else {
           // We send to Babies endpoint
-          url.append("/_api/document/")
-              .append(StringUtils::urlEncode(it.first));
+          url.append("/_api/document/").append(it.first);
 
           VPackBuilder builder(buffer);
           builder.openArray(/*unindexed*/ true);
@@ -2102,7 +2117,7 @@ Future<OperationResult> getDocumentOnCoordinator(
 
       futures.emplace_back(network::sendRequestRetry(
           pool, "shard:" + shard, restVerb,
-          "/_api/document/" + StringUtils::urlEncode(shard) + "/" +
+          "/_api/document/" + shard + "/" +
               StringUtils::urlEncode(key.data(), key.size()),
           VPackBuffer<uint8_t>(), reqOpts, std::move(headers)));
     }
@@ -2121,8 +2136,7 @@ Future<OperationResult> getDocumentOnCoordinator(
       }
 
       futures.emplace_back(network::sendRequestRetry(
-          pool, "shard:" + shard, restVerb,
-          "/_api/document/" + StringUtils::urlEncode(shard),
+          pool, "shard:" + shard, restVerb, "/_api/document/" + shard,
           /*cannot move*/ buffer, reqOpts, std::move(headers)));
     }
   }
@@ -2464,8 +2478,6 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
   //     are given, we first try the fast path, but might, as above,
   //     have to use the slow path after all.
 
-  ShardID shardID;
-
   CrudOperationCtx opCtx;
   opCtx.options = options;
   bool useMultiple = slice.isArray();
@@ -2575,15 +2587,13 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
           std::string_view const ref(
               slice.get(StaticStrings::KeyString).stringView());
           // We send to single endpoint
-          url =
-              absl::StrCat("/_api/document/", StringUtils::urlEncode(it.first),
-                           "/", StringUtils::urlEncode(ref.data(), ref.size()));
+          url = absl::StrCat("/_api/document/", std::string{it.first}, "/",
+                             StringUtils::urlEncode(ref.data(), ref.size()));
           buffer.append(slice.begin(), slice.byteSize());
 
         } else {
           // We send to Babies endpoint
-          url =
-              absl::StrCat("/_api/document/", StringUtils::urlEncode(it.first));
+          url = absl::StrCat("/_api/document/", std::string{it.first});
 
           VPackBuilder builder(buffer);
           builder.clear();
@@ -2662,11 +2672,11 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
       if (!useMultiple) {
         // send to single document API
         std::string_view key(slice.get(StaticStrings::KeyString).stringView());
-        url = absl::StrCat("/_api/document/", StringUtils::urlEncode(shard),
-                           "/", StringUtils::urlEncode(key.data(), key.size()));
+        url = absl::StrCat("/_api/document/", std::string{shard}, "/",
+                           StringUtils::urlEncode(key.data(), key.size()));
       } else {
         // send to batch API
-        url = absl::StrCat("/_api/document/", StringUtils::urlEncode(shard));
+        url = absl::StrCat("/_api/document/", std::string{shard});
       }
       futures.emplace_back(network::sendRequestRetry(
           pool, "shard:" + shard, restVerb, std::move(url),
@@ -2754,8 +2764,7 @@ Result recalculateCountsOnAllDBServers(ClusterFeature& feature,
   std::vector<network::FutureRes> futures;
   for (auto const& shard : *shardList) {
     for (ServerID const& serverId : shard.second) {
-      std::string uri = baseUrl + basics::StringUtils::urlEncode(shard.first) +
-                        "/recalculateCount";
+      std::string uri = baseUrl + shard.first + "/recalculateCount";
       auto f = network::sendRequestRetry(pool, "server:" + serverId,
                                          fuerte::RestVerb::Put, std::move(uri),
                                          body, options, headers);
@@ -3715,7 +3724,7 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
 
     LOG_TOPIC("b370d", DEBUG, Logger::BACKUP)
         << r.destination << " created local backup "
-        << resSlice.get(BackupMeta::ID).copyString();
+        << resSlice.get(BackupMeta::ID).stringView();
   }
 
   // remove duplicate hashes

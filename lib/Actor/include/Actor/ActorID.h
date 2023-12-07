@@ -35,6 +35,11 @@ struct ActorID {
   auto operator<=>(ActorID const& other) const = default;
 };
 
+inline std::ostream& operator<<(std::ostream& o, ActorID const& id) {
+  o << "ActorID(" << id.id << ")";
+  return o;
+}
+
 template<typename Inspector>
 auto inspect(Inspector& f, ActorID& x) {
   if constexpr (Inspector::isLoading) {

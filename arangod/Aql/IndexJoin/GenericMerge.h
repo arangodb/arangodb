@@ -237,9 +237,7 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::next(
   while (true) {
     if (positionAligned) {
       auto result = produceCrossProduct(cb);
-      if (result.seeks > 0) {
-        amountOfSeeks += result.seeks;
-      }
+      amountOfSeeks += result.seeks;
       if (!result.hasMore) {
         positionAligned = false;
         updateHeap();
@@ -373,8 +371,7 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
                      << " exhausted = " << std::boolalpha
                      << minIndex->exhausted;
     LOG_INDEX_MERGER << "max is " << maxIter->_position[0]
-                     << " exhausted = " << std::boolalpha
-                     << minIndex->exhausted;
+                     << " exhausted = " << std::boolalpha << maxIter->exhausted;
 
     if (maxIter->exhausted) {
       return {false, amountOfSeeks};

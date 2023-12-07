@@ -33,7 +33,6 @@
 #include "Aql/Expression.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/Function.h"
-#include "Aql/Graphs.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/Quantifier.h"
 #include "Aql/QueryContext.h"
@@ -323,19 +322,12 @@ std::unordered_map<int, AstNodeType> const Ast::ReversedOperators{
      NODE_TYPE_OPERATOR_BINARY_GE}};
 
 Ast::SpecialNodes::SpecialNodes()
-    : NopNode{NODE_TYPE_NOP},
-      NullNode{AstNodeValue()},
-      FalseNode{AstNodeValue(false)},
-      TrueNode{AstNodeValue(true)},
-      ZeroNode{AstNodeValue(int64_t(0))},
-      EmptyStringNode{AstNodeValue("", uint32_t(0))} {
-  NopNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
-  NullNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
-  FalseNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
-  TrueNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
-  ZeroNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
-  EmptyStringNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
-
+    : NopNode{NODE_TYPE_NOP, AstNode::InternalNode{}},
+      NullNode{AstNodeValue(), AstNode::InternalNode{}},
+      FalseNode{AstNodeValue(false), AstNode::InternalNode{}},
+      TrueNode{AstNodeValue(true), AstNode::InternalNode{}},
+      ZeroNode{AstNodeValue(int64_t(0)), AstNode::InternalNode{}},
+      EmptyStringNode{AstNodeValue("", uint32_t(0)), AstNode::InternalNode{}} {
   // the const-away casts are necessary API-wise. however, we are never ever
   // modifying the computed values for these special nodes.
   NullNode.setComputedValue(
@@ -452,7 +444,7 @@ AstNode* Ast::createNodeExample(AstNode const* variable,
 /// @brief create subquery node
 AstNode* Ast::createNodeSubquery() { return createNode(NODE_TYPE_SUBQUERY); }
 
-/// @brief create an AST for node as part of an UPSERT
+/// @brief create an AST FOR node as part of an UPSERT
 AstNode* Ast::createNodeForUpsert(char const* variableName, size_t nameLength,
                                   AstNode const* expression,
                                   bool isUserDefinedVariable) {
@@ -461,7 +453,6 @@ AstNode* Ast::createNodeForUpsert(char const* variableName, size_t nameLength,
   }
 
   AstNode* node = createNode(NODE_TYPE_FOR);
-  node->setFlag(AstNodeFlagType::FLAG_READ_OWN_WRITES);
   node->reserve(3);
 
   AstNode* variable = createNodeVariable(
@@ -701,11 +692,15 @@ AstNode* Ast::createNodeUpsert(AstNodeType type, AstNode const* docVariable,
                                AstNode const* insertExpression,
                                AstNode const* updateExpression,
                                AstNode const* collection,
-                               AstNode const* options) {
+                               AstNode const* options, bool canReadOwnWrites) {
   AstNode* node = createNode(NODE_TYPE_UPSERT);
   node->reserve(7);
 
   node->setIntValue(static_cast<int64_t>(type));
+
+  if (canReadOwnWrites) {
+    node->setFlag(AstNodeFlagType::FLAG_READ_OWN_WRITES);
+  }
 
   if (options == nullptr) {
     // no options given. now use default options
@@ -721,7 +716,7 @@ AstNode* Ast::createNodeUpsert(AstNodeType type, AstNode const* docVariable,
   node->addMember(createNodeReference(Variable::NAME_OLD));
   node->addMember(createNodeVariable(Variable::NAME_NEW, false));
 
-  this->setContainsUpsertNode();
+  setContainsUpsertNode();
 
   return node;
 }
@@ -3790,6 +3785,77 @@ AstNode* Ast::optimizeFunctionCall(
           createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
                                    args->getMemberUnchecked(0),
                                    createNodeValueNull()));
+    }
+  } else if (func->name == "LIKE") {
+    // optimize a LIKE(x, y) into a plain x == y or a range scan in case the
+    // search is case-sensitive and the pattern is either a full match or a
+    // left-most prefix.
+    // this is desirable in 99.999% of all cases, but would be incompatible for
+    // search terms that are non-strings.
+    // LIKE(1, '1') would behave differently when executed via the AQL LIKE
+    // function than would be 1 == '1'. for left-most prefix searches (e.g.
+    // LIKE(text, 'abc%')) we need to determine the upper bound for the range
+    // scan. We use the originally supplied string for the upper bound and
+    // append a \uFFFF character to it, which compares higher than other
+    // characters.
+    bool caseInsensitive = false;  // this is the default behavior of LIKE
+    auto args = node->getMember(0);
+    if (args->numMembers() >= 3) {
+      caseInsensitive =
+          true;  // we have 3 arguments, set case-sensitive to false now
+      auto caseArg = args->getMember(2);
+      if (caseArg->isConstant()) {
+        // ok, we can figure out at compile time if the parameter is true or
+        // false
+        caseInsensitive = caseArg->isTrue();
+      }
+    }
+
+    auto patternArg = args->getMember(1);
+
+    if (!caseInsensitive && patternArg->isStringValue() &&
+        args->getMember(0)->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // optimization only possible for case-sensitive LIKE
+      std::string unescapedPattern;
+      auto [wildcardFound, wildcardIsLastChar] =
+          AqlFunctionsInternalCache::inspectLikePattern(
+              unescapedPattern, patternArg->getStringView());
+
+      if (!wildcardFound) {
+        TRI_ASSERT(!wildcardIsLastChar);
+
+        // can turn LIKE into ==
+        char const* p = _resources.registerString(unescapedPattern.data(),
+                                                  unescapedPattern.size());
+        AstNode* pattern = createNodeValueString(p, unescapedPattern.size());
+
+        return createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
+                                        args->getMember(0), pattern);
+      }
+      if (!unescapedPattern.empty()) {
+        // can turn LIKE into >= && <=
+        char const* p = _resources.registerString(unescapedPattern.data(),
+                                                  unescapedPattern.size());
+        AstNode* pattern = createNodeValueString(p, unescapedPattern.size());
+        AstNode* lhs = createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_GE,
+                                                args->getMember(0), pattern);
+
+        // add a new end character \uFFFF that is expected to sort "higher" than
+        // anything else (note: \xef\xbf\xbf is equivalent to \uFFFF).
+        constexpr std::string_view upper = "\xef\xbf\xbf";
+        unescapedPattern.append(upper);
+        p = _resources.registerString(unescapedPattern.data(),
+                                      unescapedPattern.size());
+        pattern = createNodeValueString(p, unescapedPattern.size());
+        AstNode* rhs = createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_LT,
+                                                args->getMember(0), pattern);
+
+        AstNode* op =
+            createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, lhs, rhs);
+        // add >= && <=, but keep LIKE in place to properly handle case
+        return createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, op,
+                                        node);
+      }
     }
   }
 

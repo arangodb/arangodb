@@ -44,11 +44,11 @@ SimpleRocksDBTransactionState::SimpleRocksDBTransactionState(
 
 SimpleRocksDBTransactionState::~SimpleRocksDBTransactionState() {}
 
-Result SimpleRocksDBTransactionState::beginTransaction(
+futures::Future<Result> SimpleRocksDBTransactionState::beginTransaction(
     transaction::Hints hints) {
-  auto res = RocksDBTransactionState::beginTransaction(hints);
+  auto res = co_await RocksDBTransactionState::beginTransaction(hints);
   if (!res.ok()) {
-    return res;
+    co_return res;
   }
 
   auto& selector = vocbase().server().getFeature<EngineSelectorFeature>();
@@ -80,7 +80,7 @@ Result SimpleRocksDBTransactionState::beginTransaction(
     maybeDisableIndexing();
   }
 
-  return res;
+  co_return res;
 }
 
 void SimpleRocksDBTransactionState::maybeDisableIndexing() {

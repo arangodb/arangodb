@@ -34,8 +34,20 @@ function getStats() {
 
 function checkMetricsMoveSuite() {
   'use strict';
+  let compressTransfer;
 
   return {
+    setUpAll: function () {
+      // fetch compress transfer value
+      compressTransfer = arango.compressTransfer();
+      // turn off request/response compression
+      arango.compressTransfer(false);
+    },
+    
+    tearDownAll: function () {
+      // restore previous default
+      arango.compressTransfer(compressTransfer);
+    },
     
     testByProtocol: function () {
       // Note that this test is "-noncluster", since in the cluster

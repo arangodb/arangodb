@@ -251,7 +251,7 @@ struct DocumentStateMachineTest : testing::Test {
   static constexpr LogId logId = LogId{1};
   const std::string dbName = "testDB";
   const GlobalLogIdentifier globalId{dbName, logId};
-  const ShardID shardId = "s1";
+  const ShardID shardId{1};
   const replicated_state::document::DocumentCoreParameters coreParams{dbName, 0,
                                                                       0};
   const velocypack::SharedSlice coreParamsSlice = coreParams.toSharedSlice();

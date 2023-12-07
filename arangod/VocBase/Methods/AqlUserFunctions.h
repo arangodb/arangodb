@@ -34,6 +34,10 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace futures {
+template<typename T>
+class Future;
+}
 namespace velocypack {
 class Builder;
 class Slice;

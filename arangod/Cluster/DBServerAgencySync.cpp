@@ -136,8 +136,15 @@ Result DBServerAgencySync::getLocalCollections(
 
     if (vocbase.replicationVersion() == replication::Version::TWO) {
       for (auto const& collection : cols) {
+        auto maybeShardID = ShardID::shardIdFromString(collection->name());
+        if (ADB_UNLIKELY(maybeShardID.fail())) {
+          TRI_ASSERT(false) << "Try to add a Shard->LogID entry for a "
+                               "collection that is not a shard: "
+                            << collection->name();
+          return maybeShardID.result();
+        }
         auto [it, created] = shardIdToLogId[dbname].try_emplace(
-            collection->name(), collection->replicatedStateId());
+            maybeShardID.get(), collection->replicatedStateId());
         if (!created) {
           LOG_TOPIC("0aacc", WARN, Logger::MAINTENANCE)
               << "Failed to emplace new shard entry in local ShardId-to-LogId "

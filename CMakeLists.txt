@@ -246,15 +246,6 @@ set(ARANGODB_HELP_LINK       "https://docs.arangodb.com/${ARANGODB_VERSION_MAJOR
 set(ARANGODB_CONTACT         "hackers@arangodb.com")
 set(ARANGODB_FRIENDLY_STRING "ArangoDB - the native multi-model NoSQL database")
 
-# MSVC
-set(ARANGO_BENCH_FRIENDLY_STRING   "arangobench - stress test tool")
-set(ARANGO_BACKUP_FRIENDLY_STRING  "arangobackup - hot backup tool")
-set(ARANGO_DUMP_FRIENDLY_STRING    "arangodump - data and configuration dumping tool")
-set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - data and configuration restoration tool")
-set(ARANGO_EXPORT_FRIENDLY_STRING  "arangoexport - data exporter")
-set(ARANGO_IMPORT_FRIENDLY_STRING  "arangoimport - data importer")
-set(ARANGOSH_FRIENDLY_STRING       "arangosh - commandline client")
-set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - VelocyPack formatter")
 
 # binaries
 set(BIN_ARANGOBENCH   arangobench)
@@ -978,6 +969,7 @@ else () # NOT MSVC
       # if the no-error directives are removed, a lot 3rdParty libraries
       # such as date, fmt, and immer cannot be compiled anymore.
       # https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=__open__&content=stringop-overread&no_redirect=1&product=gcc
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=dangling-reference")
       set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=array-bounds")
       set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=overloaded-virtual")
       set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=stringop-overflow")
