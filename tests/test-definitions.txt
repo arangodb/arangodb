@@ -67,7 +67,6 @@ gtest_arangodb priority=1000 parallelity=3 size=large single
 fuerte priority=500 single
 
 rta_makedata single
-rta_makedata single suffix=afo -- --activeFailover true
 
 
 # Cluster Tests
