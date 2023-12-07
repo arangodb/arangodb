@@ -1942,9 +1942,6 @@ void V8DealerFeature::shutdownExecutor(V8Executor* executor) {
 
   delete v8g;
 
-#if 0
-  executor->_context.Reset();
-#endif
   server().getFeature<V8PlatformFeature>().disposeIsolate(isolate);
 
   LOG_TOPIC("34c28", TRACE, arangodb::Logger::V8)
