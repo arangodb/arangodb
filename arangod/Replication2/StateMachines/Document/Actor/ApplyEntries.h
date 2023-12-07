@@ -167,7 +167,7 @@ struct ApplyEntriesHandler : HandlerBase<Runtime, ApplyEntriesState> {
                                           // next entry
   };
 
-  void continueBatch();
+  void continueBatch() noexcept;
 
   void resign();
 

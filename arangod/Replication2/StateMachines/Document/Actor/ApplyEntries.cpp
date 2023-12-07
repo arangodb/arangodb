@@ -34,6 +34,8 @@
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/Actor/Transaction.h"
+// for some reason MSVC requires this include to compile
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 #include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 #include "Transaction/Methods.h"
@@ -47,21 +49,10 @@ template<typename Runtime>
 auto ApplyEntriesHandler<Runtime>::operator()(
     message::ApplyEntries&& msg) noexcept
     -> std::unique_ptr<ApplyEntriesState> {
-  // TODO - remove the try and make continueBatch noexcept
-  try {
-    ADB_PROD_ASSERT(this->state->_batch == nullptr);
-    this->state->_batch = std::make_unique<ApplyEntriesState::Batch>(
-        std::move(msg.entries), std::move(msg.promise));
-    continueBatch();
-  } catch (std::exception& e) {
-    LOG_DEVEL_CTX(this->state->_state.loggerContext)
-        << "caught exception while applying entries: " << e.what();
-    throw;
-  } catch (...) {
-    LOG_DEVEL_CTX(this->state->_state.loggerContext)
-        << "caught unknown exception while applying entries";
-    throw;
-  }
+  ADB_PROD_ASSERT(this->state->_batch == nullptr);
+  this->state->_batch = std::make_unique<ApplyEntriesState::Batch>(
+      std::move(msg.entries), std::move(msg.promise));
+  continueBatch();
   return std::move(this->state);
 }
 
@@ -336,7 +327,7 @@ auto ApplyEntriesHandler<Runtime>::beforeApplyEntry(
 }
 
 template<typename Runtime>
-void ApplyEntriesHandler<Runtime>::continueBatch() {
+void ApplyEntriesHandler<Runtime>::continueBatch() noexcept {
   ADB_PROD_ASSERT(this->state->_batch != nullptr);
   ADB_PROD_ASSERT(this->state->_pendingTransactions.empty());
   if (not this->state->_batch->_currentEntry.has_value()) {
@@ -344,13 +335,14 @@ void ApplyEntriesHandler<Runtime>::continueBatch() {
     return;
   }
 
-  // TODO - exception handling
   do {
     auto& e = this->state->_batch->_currentEntry.value();
     LogIndex index = e.first;
     auto& doc = e.second;
-    auto res = std::visit([&](auto&& op) { return processEntry(op, index); },
-                          doc.getInnerOperation());
+    auto res = basics::catchToResultT([&]() {
+      return std::visit([&](auto&& op) { return processEntry(op, index); },
+                        doc.getInnerOperation());
+    });
 
     if (res.fail()) {
       TRI_ASSERT(this->state->handlers.errorHandler
