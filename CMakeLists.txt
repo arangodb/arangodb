@@ -296,6 +296,26 @@ configure_file(
 )
 
 ################################################################################
+## Sanitizer options
+################################################################################
+
+option(SANITIZER
+  "Select which sanitizer to enable: asan/tsan"
+  ""
+)
+
+if (SANITIZER MATCHES "asan")
+  set(SANITIZER_C_FLAGS "-fsanitize=address -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize=leak -fno-sanitize=alignment")
+  set(SANITIZER_CXX_FLAGS "-fsanitize=address -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize=leak -fno-sanitize=vptr -fno-sanitize=alignment")
+elseif(SANITIZER MATCHES "tsan")
+  set(SANITIZER_C_FLAGS "-fsanitize=thread -fno-sanitize=alignment")
+  set(SANITIZER_CXX_FLAGS "-fsanitize=thread -fno-sanitize=vptr -fno-sanitize=alignment")
+else()
+  set(SANITIZER_C_FLAGS "")
+  set(SANITIZER_CXX_FLAGS "")
+endif()
+
+################################################################################
 ## Find the git revision
 ################################################################################
 
@@ -1047,8 +1067,8 @@ else () # NOT MSVC
 endif ()
 
 # put together the final flags
-set(CMAKE_C_FLAGS    "${BASE_FLAGS} ${BASE_C_FLAGS} ${CMAKE_C_FLAGS} ${EXTRA_C_FLAGS}")
-set(CMAKE_CXX_FLAGS  "${BASE_FLAGS} ${BASE_CXX_FLAGS} ${CMAKE_CXX_FLAGS} ${EXTRA_CXX_FLAGS}")
+set(CMAKE_C_FLAGS    "${BASE_FLAGS} ${BASE_C_FLAGS} ${CMAKE_C_FLAGS} ${EXTRA_C_FLAGS} ${SANITIZER_C_FLAGS}")
+set(CMAKE_CXX_FLAGS  "${BASE_FLAGS} ${BASE_CXX_FLAGS} ${CMAKE_CXX_FLAGS} ${EXTRA_CXX_FLAGS} ${SANITIZER_CXX_FLAGS}")
 
 if (VERBOSE)
   message(STATUS "Info BASE_FLAGS:     ${BASE_FLAGS}")
@@ -1060,6 +1080,10 @@ if (VERBOSE)
 
   message(STATUS "Info EXTRA_C_FLAGS:   ${EXTRA_C_FLAGS}")
   message(STATUS "Info EXTRA_CXX_FLAGS: ${EXTRA_CXX_FLAGS}")
+  message(STATUS)
+
+  message(STATUS "Info SANITIZER_C_FLAGS:   ${SANITIZER_C_FLAGS}")
+  message(STATUS "Info SANITIZER_CXX_FLAGS: ${SANITIZER_CXX_FLAGS}")
   message(STATUS)
 
   if (NOT CMAKE_BUILD_TYPE STREQUAL "None")

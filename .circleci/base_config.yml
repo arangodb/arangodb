@@ -14,12 +14,6 @@ parameters:
   replication-two:
     type: boolean
     default: false
-  c-compiler:
-    type: string
-    default: "clang"
-  cxx-compiler:
-    type: string
-    default: "clang++"
   # these are basically global constants
   build-targets:
     type: string
@@ -183,10 +177,7 @@ jobs:
       jemalloc:
         type: string
         default: "On"
-      cpp-compiler-flags:
-        type: string
-        default: ""
-      c-compiler-flags:
+      sanitizer:
         type: string
         default: ""
       build-tests:
@@ -247,8 +238,7 @@ jobs:
               -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> \
               -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" \
               -DUSE_JEMALLOC=<< parameters.jemalloc >> \
-              -DCMAKE_C_FLAGS=<< parameters.c-compiler-flags >> \
-              -DCMAKE_CXX_FLAGS=<< parameters.cpp-compiler-flags >> \
+              -DSANITIZER="<< parameters.sanitizer >>" \
               -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib
       - run:
           name: Build
@@ -770,8 +760,7 @@ workflows:
           preset: enterprise-pr
           enterprise: true
           jemalloc: "Off"
-          c-compiler-flags: "-pthread -fsanitize=address -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize=leak -fno-sanitize=alignment"
-          cpp-compiler-flags: "-pthread -fsanitize=address -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize=leak -fno-sanitize=vptr -fno-sanitize=alignment"
+          sanitizer: "asan"
           asan-options: "log_exe_name=true:log_path=aulsan.log:handle_ioctl=true:check_initialization_order=true:detect_container_overflow=true:detect_stack_use_after_return=false:detect_odr_violation=1:strict_init_order=true"
           ubsan-options: "log_exe_name=true:log_path=aulsan.log:print_stacktrace=1"
           lsan-options: "log_exe_name=true:log_path=aulsan.log"
@@ -786,6 +775,5 @@ workflows:
           preset: enterprise-pr
           enterprise: true
           jemalloc: "Off"
-          c-compiler-flags: "-pthread -fsanitize=thread -fno-sanitize=alignment"
-          cpp-compiler-flags: "-pthread -fsanitize=thread -fno-sanitize=vptr -fno-sanitize=alignment"
+          sanitizer: "tsan"
           tsan-options: "log_exe_name=true:log_path=tsan.log:detect_deadlocks=true:second_deadlock_stack=1"
