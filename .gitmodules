@@ -28,4 +28,4 @@
 	url = https://github.com/arangodb/feed.git
 [submodule "3rdParty/v8-build/v8"]
 	path = 3rdParty/v8-build/v8
-	url = git@github.com:jsteemann/v8
+	url = https://github.com/jsteemann/v8.git
