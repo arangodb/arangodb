@@ -585,7 +585,6 @@ function ClusterCollectionSuite () {
 
     testCreateAsManyShardsAsAllowed : function () {
       let max = maxNumberOfShards;
-      print(max);
       if (max > 0) {
         db._create("UnitTestsClusterCrud", { numberOfShards : max });
         let properties = db["UnitTestsClusterCrud"].properties();
