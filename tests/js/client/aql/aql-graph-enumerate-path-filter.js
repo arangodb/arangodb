@@ -197,8 +197,7 @@ function enumeratePathsFilter() {
         FOR path IN ANY K_PATHS "${vName}/0" TO "${vName}/2" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
           FILTER path.vertices[* RETURN CURRENT.colour == "green"] ALL == false && x.y == 0
           RETURN path`;
-      assertRuleFires(query);
-      assertSameResults(query);
+      assertRuleDoesNotFire(query);
     },
     testFiresWithNesting: function() {
       const query = `
@@ -226,10 +225,11 @@ function enumeratePathsFilter() {
             LIMIT 1
             RETURN path`;
 
+      assertRuleFires(restrictedQuery);
       const rr = db._query(restrictedQuery).toArray();
       assertEqual(rr.length, 1, "expecting precisely one result");
       const longPath = getVerticesAndEdgesFromPath(rr[0]);
-      assertEqual(longPath.vertices.length, 5);
+      assertEqual(longPath.vertices.length, 5, `found path ${JSON.stringify(longPath)}`);
     },
   };
 
