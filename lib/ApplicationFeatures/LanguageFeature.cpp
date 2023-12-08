@@ -23,8 +23,6 @@
 
 #include "LanguageFeature.h"
 
-#include <stdlib.h>
-
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/application-exit.h"
@@ -40,10 +38,25 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
+#include <absl/strings/str_cat.h>
+#include <cstdlib>
+
 namespace {
 void setCollator(std::string_view language, void* icuDataPtr,
                  arangodb::basics::LanguageType type) {
   using arangodb::basics::Utf8Helper;
+
+  switch (type) {
+    case arangodb::basics::LanguageType::DEFAULT:
+      LOG_DEVEL << "SETTING COLLECTOR FOR DEFAULT LANGUAGE TO '" << language
+                << "'";
+      break;
+    case arangodb::basics::LanguageType::ICU:
+      LOG_DEVEL << "SETTING COLLECTOR FOR ICU LANGUAGE TO '" << language << "'";
+      break;
+    default:
+      break;
+  }
 
   if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(language, type,
                                                          icuDataPtr)) {
@@ -59,10 +72,10 @@ void setLocale(icu::Locale& locale) {
   using arangodb::basics::Utf8Helper;
   std::string languageName;
 
-  if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
+  if (!Utf8Helper::DefaultUtf8Helper.getCollatorCountry().empty()) {
     languageName =
-        std::string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" +
-                    Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
+        absl::StrCat(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage(), "_",
+                     Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
     locale =
         icu::Locale(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage().c_str(),
                     Utf8Helper::DefaultUtf8Helper.getCollatorCountry().c_str()
@@ -77,19 +90,21 @@ void setLocale(icu::Locale& locale) {
     languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
   }
 
+  LOG_DEVEL << "SETTING LOCALE '" << languageName << "'";
+
   LOG_TOPIC("f6e04", DEBUG, arangodb::Logger::CONFIG)
       << "using default language '" << languageName << "'";
 }
 
-arangodb::basics::LanguageType getLanguageType(std::string_view default_lang,
-                                               std::string_view icu_lang) {
+arangodb::basics::LanguageType getLanguageType(
+    std::string_view default_lang, std::string_view icu_lang) noexcept {
   if (icu_lang.empty()) {
     return arangodb::basics::LanguageType::DEFAULT;
-  } else if (default_lang.empty()) {
-    return arangodb::basics::LanguageType::ICU;
-  } else {
-    return arangodb::basics::LanguageType::INVALID;
   }
+  if (default_lang.empty()) {
+    return arangodb::basics::LanguageType::ICU;
+  }
+  return arangodb::basics::LanguageType::INVALID;
 }
 
 }  // namespace
@@ -187,16 +202,16 @@ std::string LanguageFeature::prepareIcu(std::string const& binaryPath,
     }
 
     if (!TRI_IsRegularFile(path.c_str())) {
-      std::string msg =
-          std::string("failed to initialize ICU library. Could not locate '") +
-          path +
+      std::string msg = absl::StrCat(
+          "failed to initialize ICU library. Could not locate '", path,
           "'. Please make sure it is available. "
-          "The environment variable ICU_DATA";
+          "The environment variable ICU_DATA");
       std::string icupath;
       if (TRI_GETENV("ICU_DATA", icupath)) {
-        msg += "='" + icupath + "'";
+        absl::StrAppend(&msg, "='", icupath, "'");
       }
-      msg += " should point to the directory containing '" + fn + "'";
+      absl::StrAppend(&msg, " should point to the directory containing '", fn,
+                      "'");
 
       LOG_TOPIC("0de77", FATAL, arangodb::Logger::FIXME) << msg;
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_ICU_INITIALIZATION_FAILED);
@@ -222,6 +237,8 @@ std::string LanguageFeature::prepareIcu(std::string const& binaryPath,
         << TRI_last_error();
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_ICU_INITIALIZATION_FAILED);
   }
+
+  LOG_DEVEL << "LOADED ICU_DATA FROM PATH '" << path << "'";
 
   return icuData;
 }
@@ -258,11 +275,10 @@ std::tuple<std::string_view, LanguageType> LanguageFeature::getLanguage()
     const {
   if (LanguageType::ICU == _langType) {
     return {_icuLanguage, _langType};
-  } else {
-    TRI_ASSERT(LanguageType::DEFAULT == _langType);
-    // If it is invalid type just returning _defaultLanguage
-    return {_defaultLanguage, _langType};
   }
+  TRI_ASSERT(LanguageType::DEFAULT == _langType);
+  // If it is invalid type just returning _defaultLanguage
+  return {_defaultLanguage, _langType};
 }
 
 bool LanguageFeature::forceLanguageCheck() const { return _forceLanguageCheck; }
