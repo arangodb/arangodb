@@ -209,12 +209,6 @@ jobs:
             - checkout-enterprise:
                 destination: "/root/project/enterprise"
       - run:
-          # needed for V8 build
-          name: Install python packages
-          when: always
-          command: |
-            pip install markupsafe
-      - run:
           name: Print SCCache Settings
           command: sccache -s
       - run:
