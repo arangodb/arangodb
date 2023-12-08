@@ -33,10 +33,12 @@
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Aql/Quantifier.h"
+#include "Aql/Query.h"
 #include "Aql/QueryContext.h"
+#include "Aql/QueryExpressionContext.h"
 #include "Aql/Range.h"
 #ifdef USE_V8
-#include "Aql/V8Executor.h"
+#include "Aql/V8ErrorHandler.h"
 #endif
 #include "Aql/Variable.h"
 #include "Aql/AqlValueMaterializer.h"
@@ -915,15 +917,16 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(ExpressionContext& ctx,
 
 #ifdef USE_V8
 AqlValue Expression::invokeV8Function(
-    ExpressionContext& ctx, std::string const& jsName,
+    ExpressionContext& ctx, std::string const& jsName, v8::Isolate* isolate,
     std::string const& ucInvokeFN, char const* AFN, bool rethrowV8Exception,
     size_t callArgs, v8::Handle<v8::Value>* args, bool& mustDestroy) {
-  ISOLATE;
-  auto current = isolate->GetCurrentContext()->Global();
-  auto context = TRI_IGETC;
+  TRI_ASSERT(isolate->InContext());
+  v8::Handle<v8::Context> context = isolate->GetCurrentContext();
+  TRI_ASSERT(!context.IsEmpty());
+  auto global = context->Global();
 
   v8::Handle<v8::Value> module =
-      current->Get(context, TRI_V8_ASCII_STRING(isolate, "_AQL"))
+      global->Get(context, TRI_V8_ASCII_STRING(isolate, "_AQL"))
           .FromMaybe(v8::Local<v8::Value>());
   if (module.IsEmpty() || !module->IsObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -937,24 +940,24 @@ AqlValue Expression::invokeV8Function(
   if (function.IsEmpty() || !function->IsFunction()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
-        std::string("unable to find AQL function '") + jsName + "'");
+        absl::StrCat("unable to find AQL function '", jsName, "'"));
   }
 
   // actually call the V8 function
   v8::TryCatch tryCatch(isolate);
   v8::Handle<v8::Value> result =
       v8::Handle<v8::Function>::Cast(function)
-          ->Call(context, current, static_cast<int>(callArgs), args)
+          ->Call(context, global, static_cast<int>(callArgs), args)
           .FromMaybe(v8::Local<v8::Value>());
 
   try {
-    V8Executor::handleV8Error(tryCatch, result);
+    handleV8Error(tryCatch, result);
   } catch (basics::Exception const& ex) {
     if (rethrowV8Exception || ex.code() == TRI_ERROR_QUERY_FUNCTION_NOT_FOUND) {
       throw;
     }
-    std::string message("while invoking '");
-    message += ucInvokeFN + "' via '" + AFN + "': " + ex.message();
+    std::string message = absl::StrCat("while invoking '", ucInvokeFN,
+                                       "' via '", AFN, "': ", ex.message());
     ctx.registerWarning(ex.code(), message.c_str());
     return AqlValue(AqlValueHintNull());
   }
@@ -993,9 +996,8 @@ AqlValue Expression::executeSimpleExpressionFCallJS(ExpressionContext& ctx,
   mustDestroy = false;
 
   {
-    ISOLATE;
+    v8::Isolate* isolate = v8::Isolate::GetCurrent();
     TRI_ASSERT(isolate != nullptr);
-    TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
 
     std::string jsName;
     if (node->type == NODE_TYPE_FCALL_USER) {
@@ -1004,15 +1006,30 @@ AqlValue Expression::executeSimpleExpressionFCallJS(ExpressionContext& ctx,
       auto func = static_cast<Function*>(node->getData());
       TRI_ASSERT(func != nullptr);
       TRI_ASSERT(func->hasV8Implementation());
-      jsName = "AQL_" + func->name;
+      jsName = absl::StrCat("AQL_", func->name);
     }
 
+    TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
+        isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
+
+    TRI_ASSERT(v8g != nullptr);
     if (v8g == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
-          absl::StrCat(
-              "no V8 context available when executing call to function ",
-              jsName));
+          absl::StrCat("no V8 available when executing call to function ",
+                       jsName));
+    }
+
+    auto queryCtx = dynamic_cast<QueryExpressionContext*>(&ctx);
+    if (queryCtx == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, "unable to cast into QueryExpressionContext");
+    }
+
+    auto query = dynamic_cast<Query*>(&queryCtx->query());
+    if (query == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unable to cast into Query");
     }
 
     VPackOptions const& options = ctx.trx().vpackOptions();
@@ -1022,59 +1039,68 @@ AqlValue Expression::executeSimpleExpressionFCallJS(ExpressionContext& ctx,
     auto sg =
         arangodb::scopeGuard([&]() noexcept { v8g->_expressionContext = old; });
 
-    size_t const n = member->numMembers();
-    size_t callArgs = (node->type == NODE_TYPE_FCALL_USER ? 2 : n);
-    auto args = std::make_unique<v8::Handle<v8::Value>[]>(callArgs);
+    AqlValue funcRes;
+    query->runInV8ExecutorContext([&](v8::Isolate* isolate) {
+      v8::HandleScope scope(isolate);
 
-    if (node->type == NODE_TYPE_FCALL_USER) {
-      // a call to a user-defined function
-      auto context = TRI_IGETC;
-      v8::Handle<v8::Array> params =
-          v8::Array::New(isolate, static_cast<int>(n));
+      size_t const n = member->numMembers();
+      size_t callArgs = (node->type == NODE_TYPE_FCALL_USER ? 2 : n);
+      auto args = std::make_unique<v8::Handle<v8::Value>[]>(callArgs);
 
-      for (size_t i = 0; i < n; ++i) {
-        auto arg = member->getMemberUnchecked(i);
+      if (node->type == NODE_TYPE_FCALL_USER) {
+        // a call to a user-defined function
+        v8::Handle<v8::Context> context = isolate->GetCurrentContext();
 
-        bool localMustDestroy;
-        AqlValue a = executeSimpleExpression(ctx, arg, localMustDestroy, false);
-        AqlValueGuard guard(a, localMustDestroy);
+        v8::Handle<v8::Array> params =
+            v8::Array::New(isolate, static_cast<int>(n));
 
-        params
-            ->Set(context, static_cast<uint32_t>(i), a.toV8(isolate, &options))
-            .FromMaybe(false);
-      }
+        for (size_t i = 0; i < n; ++i) {
+          auto arg = member->getMemberUnchecked(i);
 
-      // function name
-      args[0] = TRI_V8_STD_STRING(isolate, node->getString());
-      // call parameters
-      args[1] = params;
-      // args[2] will be null
-    } else {
-      // a call to a built-in V8 function
-      auto func = static_cast<Function*>(node->getData());
-      TRI_ASSERT(func != nullptr);
-      TRI_ASSERT(func->hasV8Implementation());
-
-      for (size_t i = 0; i < n; ++i) {
-        auto arg = member->getMemberUnchecked(i);
-
-        if (arg->type == NODE_TYPE_COLLECTION) {
-          // parameter conversion for NODE_TYPE_COLLECTION here
-          args[i] = TRI_V8_ASCII_PAIR_STRING(isolate, arg->getStringValue(),
-                                             arg->getStringLength());
-        } else {
           bool localMustDestroy;
           AqlValue a =
               executeSimpleExpression(ctx, arg, localMustDestroy, false);
           AqlValueGuard guard(a, localMustDestroy);
 
-          args[i] = a.toV8(isolate, &options);
+          params
+              ->Set(context, static_cast<uint32_t>(i),
+                    a.toV8(isolate, &options))
+              .FromMaybe(false);
+        }
+
+        // function name
+        args[0] = TRI_V8_STD_STRING(isolate, node->getString());
+        // call parameters
+        args[1] = params;
+        // args[2] will be null
+      } else {
+        // a call to a built-in V8 function
+        auto func = static_cast<Function*>(node->getData());
+        TRI_ASSERT(func != nullptr);
+        TRI_ASSERT(func->hasV8Implementation());
+
+        for (size_t i = 0; i < n; ++i) {
+          auto arg = member->getMemberUnchecked(i);
+
+          if (arg->type == NODE_TYPE_COLLECTION) {
+            // parameter conversion for NODE_TYPE_COLLECTION here
+            args[i] = TRI_V8_ASCII_PAIR_STRING(isolate, arg->getStringValue(),
+                                               arg->getStringLength());
+          } else {
+            bool localMustDestroy;
+            AqlValue a =
+                executeSimpleExpression(ctx, arg, localMustDestroy, false);
+            AqlValueGuard guard(a, localMustDestroy);
+
+            args[i] = a.toV8(isolate, &options);
+          }
         }
       }
-    }
 
-    return invokeV8Function(ctx, jsName, "", "", true, callArgs, args.get(),
-                            mustDestroy);
+      funcRes = invokeV8Function(ctx, jsName, isolate, "", "", true, callArgs,
+                                 args.get(), mustDestroy);
+    });
+    return funcRes;
   }
 #else
   THROW_ARANGO_EXCEPTION_MESSAGE(
