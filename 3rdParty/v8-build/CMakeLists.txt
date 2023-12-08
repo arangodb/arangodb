@@ -469,7 +469,7 @@ else ()
   list(APPEND LINK_DIRECTORIES "${V8_LIBRARY_DIR}")
 
   set(V8_LIBS
-    "torque_base;v8_libbase;v8_libplatform;v8_snapshot"
+    "torque_base;v8_base_without_compiler;v8_compiler;v8_init;v8_initializers;v8_turboshaft;v8_libbase;v8_libplatform;v8_snapshot"
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
   )
@@ -477,7 +477,7 @@ else ()
   list(APPEND LINK_DIRECTORIES "${ICU_LIBRARY_DIR}")
 
   set(ICU_LIBS
-    "icui18n;icuuc"
+    "icui18n;icuucx;icustubdata"
     CACHE INTERNAL
     "ICU: Libraries"
   )
