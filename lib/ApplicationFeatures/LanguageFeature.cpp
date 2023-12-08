@@ -48,11 +48,12 @@ void setCollator(std::string_view language, void* icuDataPtr,
 
   switch (type) {
     case arangodb::basics::LanguageType::DEFAULT:
-      LOG_DEVEL << "SETTING COLLECTOR FOR DEFAULT LANGUAGE TO '" << language
-                << "'";
+      LOG_TOPIC("e5954", DEBUG, arangodb::Logger::CONFIG)
+          << "setting collator language for default to '" << language << "'";
       break;
     case arangodb::basics::LanguageType::ICU:
-      LOG_DEVEL << "SETTING COLLECTOR FOR ICU LANGUAGE TO '" << language << "'";
+      LOG_TOPIC("a4667", DEBUG, arangodb::Logger::CONFIG)
+          << "setting collator language for ICU to '" << language << "'";
       break;
     default:
       break;
@@ -89,8 +90,6 @@ void setLocale(icu::Locale& locale) {
         Utf8Helper::DefaultUtf8Helper.getCollatorLanguage().c_str());
     languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
   }
-
-  LOG_DEVEL << "SETTING LOCALE '" << languageName << "'";
 
   LOG_TOPIC("f6e04", DEBUG, arangodb::Logger::CONFIG)
       << "using default language '" << languageName << "'";
@@ -229,6 +228,9 @@ std::string LanguageFeature::prepareIcu(std::string const& binaryPath,
     }
   }
 
+  LOG_TOPIC("c247a", DEBUG, arangodb::Logger::CONFIG)
+      << "loading ICU data from path '" << path << "'";
+
   std::string icuData = basics::FileUtils::slurp(path);
 
   if (icuData.empty()) {
@@ -237,8 +239,6 @@ std::string LanguageFeature::prepareIcu(std::string const& binaryPath,
         << TRI_last_error();
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_ICU_INITIALIZATION_FAILED);
   }
-
-  LOG_DEVEL << "LOADED ICU_DATA FROM PATH '" << path << "'";
 
   return icuData;
 }
