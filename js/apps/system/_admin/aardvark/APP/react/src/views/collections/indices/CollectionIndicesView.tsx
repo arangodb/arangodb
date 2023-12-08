@@ -58,7 +58,7 @@ const IndexViewHeader = ({ onOpen }: { onOpen: () => void }) => {
       <Button
         size="sm"
         leftIcon={<AddIcon />}
-        colorScheme="blue"
+        colorScheme="green"
         onClick={() => {
           onOpen();
         }}

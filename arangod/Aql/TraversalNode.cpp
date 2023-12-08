@@ -429,13 +429,13 @@ void TraversalNode::getVariablesUsedHere(VarSet& result) const {
 /// @brief getVariablesSetHere
 std::vector<Variable const*> TraversalNode::getVariablesSetHere() const {
   std::vector<Variable const*> vars;
-  if (isVertexOutVariableUsedLater()) {
+  if (isVertexOutVariableAccessed()) {
     vars.emplace_back(vertexOutVariable());
   }
-  if (isEdgeOutVariableUsedLater()) {
+  if (isEdgeOutVariableAccessed()) {
     vars.emplace_back(edgeOutVariable());
   }
-  if (isPathOutVariableUsedLater()) {
+  if (isPathOutVariableAccessed()) {
     vars.emplace_back(pathOutVariable());
   }
   return vars;
@@ -477,9 +477,17 @@ void TraversalNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   }
 
   // Out variables
-  if (isPathOutVariableUsedLater()) {
+  if (isPathOutVariableAccessed()) {
     nodes.add(VPackValue("pathOutVariable"));
     pathOutVariable()->toVelocyPack(nodes);
+  }
+  if (isVertexOutVariableAccessed()) {
+    nodes.add(VPackValue("vertexOutVariable"));
+    vertexOutVariable()->toVelocyPack(nodes);
+  }
+  if (isEdgeOutVariableAccessed()) {
+    nodes.add(VPackValue("edgeOutVariable"));
+    edgeOutVariable()->toVelocyPack(nodes);
   }
 
   // Traversal Filter Conditions
@@ -638,7 +646,8 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
     auto& trx = plan()->getAst()->query().trxForOptimization();
     bool res = aql::utils::getBestIndexHandleForFilterCondition(
         trx, *_edgeColls[i], indexCondition, options()->tmpVar(),
-        itemsInCollection, aql::IndexHint(), indexToUse, onlyEdgeIndexes);
+        itemsInCollection, aql::IndexHint(), indexToUse, ReadOwnWrites::no,
+        onlyEdgeIndexes);
     if (!res) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "expected edge index not found");
@@ -1095,7 +1104,7 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
   }
 
   if (_pruneExpression) {
-    c._pruneExpression = _pruneExpression->clone(plan.getAst());
+    c._pruneExpression = _pruneExpression->clone(plan.getAst(), true);
     c._pruneVariables.reserve(_pruneVariables.size());
     for (auto const& it : _pruneVariables) {
       if (withProperties) {
@@ -1122,12 +1131,12 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
   // Filter Condition Parts
   c._fromCondition = _fromCondition->clone(_plan->getAst());
   c._toCondition = _toCondition->clone(_plan->getAst());
-  c._globalEdgeConditions.insert(c._globalEdgeConditions.end(),
-                                 _globalEdgeConditions.begin(),
-                                 _globalEdgeConditions.end());
-  c._globalVertexConditions.insert(c._globalVertexConditions.end(),
-                                   _globalVertexConditions.begin(),
-                                   _globalVertexConditions.end());
+  for (auto const& it : _globalEdgeConditions) {
+    c._globalEdgeConditions.emplace_back(it->clone(_plan->getAst()));
+  }
+  for (auto const& it : _globalVertexConditions) {
+    c._globalVertexConditions.emplace_back(it->clone(_plan->getAst()));
+  }
 
   for (auto const& it : _edgeConditions) {
     // Copy the builder

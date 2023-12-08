@@ -48,9 +48,9 @@ struct MultipleRemoteModificationInfos : ModificationExecutorInfos {
             engine, inputRegister, RegisterPlan::MaxRegisterId,
             RegisterPlan::MaxRegisterId, outputNewRegisterId,
             outputOldRegisterId, outputRegisterId, query, std::move(options),
-            aqlCollection, ProducesResults(false), consultAqlWriteFilter,
-            ignoreErrors, DoCount(true), IsReplace(false),
-            ignoreDocumentNotFound),
+            aqlCollection, ExecutionBlock::DefaultBatchSize,
+            ProducesResults(false), consultAqlWriteFilter, ignoreErrors,
+            DoCount(true), IsReplace(false), ignoreDocumentNotFound),
         _hasParent(hasParent),
         _isExclusive(isExclusive) {}
 

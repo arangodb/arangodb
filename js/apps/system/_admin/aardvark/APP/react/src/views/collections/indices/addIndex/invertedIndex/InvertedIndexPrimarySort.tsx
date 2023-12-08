@@ -122,7 +122,7 @@ const PrimarySortFields = ({ field }: { field: FormFieldProps }) => {
               <Button
                 isDisabled={field.isDisabled}
                 marginTop="4"
-                colorScheme="blue"
+                colorScheme="green"
                 onClick={() => {
                   push({ field: "", direction: "asc" });
                 }}

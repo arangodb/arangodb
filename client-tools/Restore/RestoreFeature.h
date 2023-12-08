@@ -46,10 +46,6 @@ namespace basics {
 class StringBuffer;
 }
 
-namespace httpclient {
-class SimpleHttpResult;
-}
-
 class ManagedDirectory;
 
 class RestoreFeature final : public ArangoRestoreFeature {

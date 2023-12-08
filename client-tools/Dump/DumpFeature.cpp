@@ -41,6 +41,7 @@
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
+#include "Logger/LogMacros.h"
 #include "Logger/LogTimeFormat.h"
 #include "Maskings/Maskings.h"
 #include "ProgramOptions/Parameters.h"
@@ -427,11 +428,6 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
   } else {
     headers.emplace(arangodb::StaticStrings::Accept,
                     arangodb::StaticStrings::MimeTypeDump);
-  }
-
-  if (job.options.useGzipForTransport) {
-    headers.emplace(arangodb::StaticStrings::AcceptEncoding,
-                    arangodb::StaticStrings::EncodingGzip);
   }
 
   while (true) {
@@ -914,14 +910,6 @@ void DumpFeature::collectOptions(
                      "Compress files containing collection contents using the "
                      "gzip format.",
                      new BooleanParameter(&_options.useGzipForStorage));
-
-  options
-      ->addOption("--compress-transfer",
-                  "Compress data for transport using the gzip format.",
-                  new BooleanParameter(&_options.useGzipForTransport),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31200);
 
   options
       ->addOption("--dump-vpack",
@@ -1639,11 +1627,11 @@ bool shouldRetryRequest(httpclient::SimpleHttpResult const* response,
   if (response != nullptr) {
     // check for retryable errors in simple http client
     switch (response->getResultType()) {
-      case httpclient::SimpleHttpResult::COULD_NOT_CONNECT:
+      case httpclient::SimpleHttpResult::ResultType::COULD_NOT_CONNECT:
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
         return true;
-      case httpclient::SimpleHttpResult::WRITE_ERROR:
-      case httpclient::SimpleHttpResult::READ_ERROR:
+      case httpclient::SimpleHttpResult::ResultType::WRITE_ERROR:
+      case httpclient::SimpleHttpResult::ResultType::READ_ERROR:
         return true;  // retry loop
       default:
         break;
@@ -1789,7 +1777,8 @@ Result DumpFeature::ParallelDumpServer::run(
 
   printBlockStats();
 
-  LOG_TOPIC("1b7fe", INFO, Logger::DUMP) << "all data received for " << server;
+  LOG_TOPIC("1b7fe", INFO, Logger::DUMP)
+      << "all data received from " << (server.empty() ? "server" : server);
 
   return {};
 }
@@ -1870,18 +1859,11 @@ DumpFeature::ParallelDumpServer::receiveNextBatch(
     url += "&lastBatch=" + std::to_string(*lastBatch);
   }
 
-  std::unordered_map<std::string, std::string> headers;
-  if (options.useGzipForTransport) {
-    headers.emplace(arangodb::StaticStrings::AcceptEncoding,
-                    arangodb::StaticStrings::EncodingGzip);
-  }
-
   std::size_t retryCounter = 100;
 
   while (true) {
     std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
-        client.request(arangodb::rest::RequestType::POST, url, nullptr, 0,
-                       headers));
+        client.request(arangodb::rest::RequestType::POST, url, nullptr, 0, {}));
     auto check = ::arangodb::HttpResponseChecker::check(
         client.getErrorMessage(), response.get());
     if (check.fail()) {
@@ -1997,20 +1979,6 @@ void DumpFeature::ParallelDumpServer::runWriterThread() {
 
     std::string_view body = {response->getBody().c_str(),
                              response->getBody().size()};
-
-    // transparently uncompress gzip-encoded data
-    std::string uncompressed;
-    auto header = response->getHeaderField(
-        arangodb::StaticStrings::ContentEncoding, headerExtracted);
-    if (headerExtracted && header == arangodb::StaticStrings::EncodingGzip) {
-      auto res = arangodb::encoding::gzipUncompress(
-          reinterpret_cast<uint8_t const*>(body.data()), body.size(),
-          uncompressed);
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
-      body = uncompressed;
-    }
 
     auto [file, collectionName] = getDataForShard(shardId);
     arangodb::Result result = dumpData(stats, maskings, *file, body,

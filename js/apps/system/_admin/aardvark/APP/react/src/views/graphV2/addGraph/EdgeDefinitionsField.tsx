@@ -83,7 +83,7 @@ export const EdgeDefinitionsField = ({
                   });
                 }}
                 variant="ghost"
-                colorScheme="blue"
+                colorScheme="green"
                 leftIcon={<AddIcon />}
               >
                 Add relation

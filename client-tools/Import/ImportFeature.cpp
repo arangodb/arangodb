@@ -56,20 +56,16 @@ namespace arangodb {
 
 ImportFeature::ImportFeature(Server& server, int* result)
     : ArangoImportFeature{server, *this},
-      _filename(""),
       _useBackslash(false),
       _convert(true),
       _autoChunkSize(false),
       _chunkSize(1024 * 1024 * 8),
       _threadCount(2),
-      _collectionName(""),
-      _fromCollectionPrefix(""),
-      _toCollectionPrefix(""),
       _overwriteCollectionPrefix(false),
       _createCollection(false),
       _createDatabase(false),
       _createCollectionType("document"),
-      _typeImport("json"),
+      _typeImport("auto"),
       _overwrite(false),
       _quote("\""),
       _separator(""),
@@ -77,6 +73,7 @@ ImportFeature::ImportFeature(Server& server, int* result)
       _ignoreMissing(false),
       _onDuplicateAction("error"),
       _rowsToSkip(0),
+      _maxErrors(20),
       _result(result),
       _skipValidation(false),
       _latencyStats(false) {
@@ -153,6 +150,21 @@ void ImportFeature::collectOptions(
       "--skip-lines",
       "The number of lines to skip of the input file (CSV and TSV only).",
       new UInt64Parameter(&_rowsToSkip));
+
+  options
+      ->addOption(
+          "--max-errors",
+          "The maxium number of errors after which the import will stop.",
+          new UInt64Parameter(&_maxErrors))
+      .setIntroducedIn(31200)
+      .setLongDescription(R"(The maximum number of errors after which the
+import is stopped. 
+
+Note that this is not an exact limit for the number of errors.
+arangoimport will send data to the server in batches, and likely also in parallel. 
+The server will process these in-flight batches regardless of the maximum number
+of errors configured here. arangoimport will however stop processing more input
+data once the server reported at least this many errors back.)");
 
   options->addOption(
       "--convert",
@@ -270,14 +282,14 @@ void ImportFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
-  if (_chunkSize > arangodb::import::ImportHelper::MaxBatchSize) {
+  if (_chunkSize > arangodb::import::ImportHelper::kMaxBatchSize) {
     // it's not sensible to raise the batch size beyond this value
     // because the server has a built-in limit for the batch size too
     // and will reject bigger HTTP request bodies
     LOG_TOPIC("e6d71", WARN, arangodb::Logger::FIXME)
         << "capping --batch-size value to "
-        << arangodb::import::ImportHelper::MaxBatchSize;
-    _chunkSize = arangodb::import::ImportHelper::MaxBatchSize;
+        << arangodb::import::ImportHelper::kMaxBatchSize;
+    _chunkSize = arangodb::import::ImportHelper::kMaxBatchSize;
   }
 
   if (_threadCount < 1) {
@@ -374,17 +386,17 @@ void ImportFeature::start() {
       if (extension == "json" || extension == "jsonl" || extension == "csv" ||
           extension == "tsv") {
         _typeImport = extension;
-      } else {
-        LOG_TOPIC("cb067", FATAL, arangodb::Logger::FIXME)
-            << "Unsupported file extension '" << extension << "'";
-        FATAL_ERROR_EXIT();
+        LOG_TOPIC("4271d", INFO, arangodb::Logger::FIXME)
+            << "Aauto-detected file type '" << _typeImport
+            << "' from filename '" << _filename << "'";
       }
-    } else {
-      LOG_TOPIC("0ee99", WARN, arangodb::Logger::FIXME)
-          << "Unable to auto-detect file type from filename '" << _filename
-          << "'. using filetype 'json'";
-      _typeImport = "json";
     }
+  }
+  if (_typeImport == "auto") {
+    LOG_TOPIC("0ee99", WARN, arangodb::Logger::FIXME)
+        << "Unable to auto-detect file type from filename '" << _filename
+        << "'. using filetype 'json'";
+    _typeImport = "json";
   }
 
   try {
@@ -499,9 +511,11 @@ void ImportFeature::start() {
   }
 
   SimpleHttpClientParams params = _httpClient->params();
+  params.setCompressRequestThreshold(
+      client.compressTransfer() ? client.compressRequestThreshold() : 0);
   arangodb::import::ImportHelper ih(encryption, client, client.endpoint(),
                                     params, _chunkSize, _threadCount,
-                                    _autoChunkSize);
+                                    _maxErrors, _autoChunkSize);
 
   // create colletion
   if (_createCollection) {

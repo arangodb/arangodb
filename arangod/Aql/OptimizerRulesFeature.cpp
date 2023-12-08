@@ -177,6 +177,10 @@ void OptimizerRulesFeature::addRules() {
                R"(Replace deprecated index functions such as `FULLTEXT()`,
 `NEAR()`, `WITHIN()`, or `WITHIN_RECTANGLE()` with a regular subquery.)");
 
+  registerRule("replace-like-with-range", replaceLikeWithRangeRule,
+               OptimizerRule::replaceLikeWithRange, OptimizerRule::makeFlags(),
+               R"(Replace LIKE() function with range scans where possible.)");
+
   // inline subqueries one level higher
   registerRule("inline-subqueries", inlineSubqueriesRule,
                OptimizerRule::inlineSubqueriesRule,
