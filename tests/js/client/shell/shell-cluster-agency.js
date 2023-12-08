@@ -37,12 +37,6 @@ var jsunity = require("jsunity");
 
 function AgencySuite () {
   'use strict';
-
-  var cleanupLocks = function () {
-    arango.POST("/_admin/execute", `return global.ArangoAgency.set("UnitTestsAgency/Target/Lock", "UNLOCKED");`);
-    arango.POST("/_admin/execute", `return global.ArangoAgency.set("UnitTestsAgency/Plan/Lock", "UNLOCKED");`);
-    arango.POST("/_admin/execute", `return global.ArangoAgency.set("UnitTestsAgency/Current/Lock", "UNLOCKED");`);
-  };
   
   return {
 

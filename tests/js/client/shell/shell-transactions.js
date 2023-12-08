@@ -2321,7 +2321,6 @@ function transactionGraphSuite () {
         G._drop('UnitTestsGraph');
       } catch (err) {
       }
-      arango.POST("/_admin/execute", "require('internal').wait(0);");
     },
 
     // //////////////////////////////////////////////////////////////////////////////
