@@ -28,34 +28,28 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-
-var arangodb = require("@arangodb");
-var internal = require("internal");
-var db = arangodb.db;
-var tasks = require("@arangodb/tasks");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+const jsunity = require("jsunity");
+const arangodb = require("@arangodb");
+const internal = require("internal");
+const db = arangodb.db;
+const tasks = require("@arangodb/tasks");
 
 function TaskSuite () {
-  var cn = "UnitTestsTasks";
+  const cn = "UnitTestsTasks";
 
-  var cleanTasks = function () {
+  const cleanTasks = function () {
     tasks.get().forEach(function(task) {
       if (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/)) {
         try {
           tasks.unregister(task);
-        }
-        catch (err) {
+        } catch (err) {
         }
       }
     });
   };
 
-  var getTasks = function (sortAttribute = 'id') {
-    var sorter = function (l, r) {
+  const getTasks = function (sortAttribute = 'id') {
+    let sorter = function (l, r) {
       if (l[sortAttribute] !== r[sortAttribute]) {
         return (l[sortAttribute] < r[sortAttribute] ? -1 : 1);
       }
@@ -68,22 +62,12 @@ function TaskSuite () {
   };
 
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
     setUp : function () {
       cleanTasks();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
     tearDown : function () {
       cleanTasks();
-
       db._drop(cn);
     },
 
@@ -95,8 +79,7 @@ function TaskSuite () {
       try {
         tasks.register({ });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
@@ -109,8 +92,7 @@ function TaskSuite () {
       try {
         tasks.register({ name: "UnitTestsNoPeriod", period: -1, command: "1+1;" });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
@@ -123,8 +105,7 @@ function TaskSuite () {
       try {
         tasks.register({ name: "UnitTestsNoPeriod", period: 0, command: "1+1;" });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
@@ -137,8 +118,7 @@ function TaskSuite () {
       try {
         tasks.register({ name: "UnitTestsNoCommand", period: 1 });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
@@ -148,7 +128,7 @@ function TaskSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateTaskAutomaticId : function () {
-      var task = tasks.register({ name: "UnitTestsTaskAutoId", command: "1+1;", period: 1 });
+      let task = tasks.register({ name: "UnitTestsTaskAutoId", command: "1+1;", period: 1 });
 
       assertMatch(/^\d+$/, task.id);
       assertEqual("UnitTestsTaskAutoId", task.name);
@@ -161,7 +141,7 @@ function TaskSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateTaskDuplicateId : function () {
-      var task = tasks.register({ id: "UnitTestsTaskDuplicateId", name: "UnitTests1", command: "1+1;", period: 1 });
+      let task = tasks.register({ id: "UnitTestsTaskDuplicateId", name: "UnitTests1", command: "1+1;", period: 1 });
 
       assertEqual("UnitTestsTaskDuplicateId", task.id);
       assertEqual("UnitTests1", task.name);
@@ -172,8 +152,7 @@ function TaskSuite () {
       try {
         tasks.register({ id: "UnitTestsTaskDuplicateId", name: "UnitTests2", command: "1+1;", period: 1 });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(internal.errors.ERROR_TASK_DUPLICATE_ID.code, err.errorNum);
       }
     },
@@ -186,8 +165,7 @@ function TaskSuite () {
       try {
         tasks.unregister();
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
@@ -197,7 +175,7 @@ function TaskSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateTaskRemoveByTask : function () {
-      var task = tasks.register({ name: "UnitTests1", command: "1+1;", period: 1 });
+      let task = tasks.register({ name: "UnitTests1", command: "1+1;", period: 1 });
 
       assertEqual("UnitTests1", task.name);
       assertEqual("periodic", task.type);
@@ -209,8 +187,7 @@ function TaskSuite () {
         // deleting again should fail
         tasks.unregister(task);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(internal.errors.ERROR_TASK_NOT_FOUND.code, err.errorNum);
       }
     },
@@ -220,7 +197,7 @@ function TaskSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateTaskRemoveById : function () {
-      var task = tasks.register({ id: "UnitTests" + Date.now(), name: "UnitTests1", command: "1+1;", period: 1 });
+      let task = tasks.register({ id: "UnitTests" + Date.now(), name: "UnitTests1", command: "1+1;", period: 1 });
 
       assertEqual("UnitTests1", task.name);
       assertEqual("periodic", task.type);
@@ -232,8 +209,7 @@ function TaskSuite () {
         // deleting again should fail
         tasks.unregister(task.id);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(internal.errors.ERROR_TASK_NOT_FOUND.code, err.errorNum);
       }
     },
@@ -243,13 +219,13 @@ function TaskSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetTask : function () {
-      var task = tasks.register({
+      let task = tasks.register({
         name: "UnitTests1",
         command: "1+1;",
         period: 1
       });
 
-      var t = tasks.get(task);
+      let t = tasks.get(task);
 
       assertEqual(task.id, t.id);
       assertEqual(task.name, t.name);
@@ -263,14 +239,14 @@ function TaskSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetTaskById : function () {
-      var task = tasks.register({
+      let task = tasks.register({
         id: "UnitTests" + Date.now(),
         name: "UnitTests1",
         command: "1+1;",
         period: 1
       });
 
-      var t = tasks.get(task.id);
+      let t = tasks.get(task.id);
 
       assertEqual(task.id, t.id);
       assertEqual(task.name, t.name);
@@ -284,25 +260,25 @@ function TaskSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetTasks : function () {
-      var task1 = tasks.register({
+      let task1 = tasks.register({
         name: "UnitTests1",
         command: "1+1;",
         period: 1
       });
 
-      var task2 = tasks.register({
+      let task2 = tasks.register({
         name: "UnitTests2",
         command: "2+2;",
         period: 2
       });
 
-      var task3 = tasks.register({
+      let task3 = tasks.register({
         name: "UnitTests3",
         command: "3+3;",
         offset: 30
       });
 
-      var t = getTasks('name');
+      let t = getTasks('name');
 
       assertEqual(3, t.length);
       assertEqual(task1.id, t[0].id);
@@ -337,14 +313,14 @@ function TaskSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetTasksPrePost : function () {
-      var task1 = tasks.register({
+      let task1 = tasks.register({
         id: "UnitTests" + Date.now() + "1",
         name: "UnitTests1",
         command: "1+1;",
         period: 1
       });
 
-      var t = getTasks('id');
+      let t = getTasks('id');
 
       assertEqual(1, t.length);
       assertEqual(task1.id, t[0].id);
@@ -353,7 +329,7 @@ function TaskSuite () {
       assertEqual(task1.period, t[0].period);
       assertEqual(task1.database, t[0].database);
 
-      var task2 = tasks.register({
+      let task2 = tasks.register({
         id: "UnitTests" + Date.now() + "2",
         name: "UnitTests2",
         command: "2+2;",
@@ -402,9 +378,9 @@ function TaskSuite () {
 
       assertEqual(0, db[cn].count());
 
-      var command = "require('internal').db." + cn + ".save({ value: params });";
+      let command = "require('internal').db." + cn + ".save({ value: params });";
 
-      var task = tasks.register({
+      let task = tasks.register({
         name: "UnitTests1",
         command: command,
         offset: 10,
@@ -416,7 +392,7 @@ function TaskSuite () {
       assertEqual(10, task.offset);
       assertEqual("_system", task.database);
 
-      var t = getTasks();
+      let t = getTasks();
       assertEqual(1, t.length);
 
       internal.wait(2);
@@ -436,9 +412,9 @@ function TaskSuite () {
 
       assertEqual(0, db[cn].count());
 
-      var command = "require('internal').db." + cn + ".save({ value: params });";
+      let command = "require('internal').db." + cn + ".save({ value: params });";
 
-      var task = tasks.register({
+      let task = tasks.register({
         name: "UnitTests1",
         command: command,
         offset: 2,
@@ -450,10 +426,10 @@ function TaskSuite () {
       assertEqual(2, task.offset);
       assertEqual("_system", task.database);
 
-      var t = getTasks();
+      let t = getTasks();
       assertEqual(1, t.length);
 
-      var tries = 0;
+      let tries = 0;
       while (tries++ < 150) {
         if (db[cn].count() === 1) {
           return; // alright
@@ -475,9 +451,9 @@ function TaskSuite () {
 
       assertEqual(0, db[cn].count());
 
-      var command = "require('internal').db." + cn + ".save({ value: params });";
+      let command = "require('internal').db." + cn + ".save({ value: params });";
 
-      var task = tasks.register({
+      let task = tasks.register({
         name: "UnitTests1",
         command: command,
         offset: 0,
@@ -489,7 +465,7 @@ function TaskSuite () {
       assertEqual(0, Math.round(task.offset, 3));
       assertEqual("_system", task.database);
 
-      var tries = 0;
+      let tries = 0;
       while (tries++ < 150) {
         if (db[cn].count() === 1) {
           return; // alright
@@ -511,9 +487,9 @@ function TaskSuite () {
 
       assertEqual(0, db[cn].count());
 
-      var command = "require('internal').db." + cn + ".save({ value: params });";
+      let command = "require('internal').db." + cn + ".save({ value: params });";
 
-      var task = tasks.register({
+      let task = tasks.register({
         name: "UnitTests1",
         command: command,
         offset: 2,
@@ -527,7 +503,7 @@ function TaskSuite () {
 
       internal.wait(2);
 
-      var tries = 0;
+      let tries = 0;
       while (tries++ < 150) {
         if (db[cn].count() === 1) {
           return; // alright
@@ -550,9 +526,9 @@ function TaskSuite () {
 
       assertEqual(0, db[cn].count());
 
-      var command = "require('internal').db." + cn + ".save({ value: params });";
+      let command = "require('internal').db." + cn + ".save({ value: params });";
 
-      var task = tasks.register({
+      let task = tasks.register({
         name: "UnitTests1",
         command: command,
         offset: 15,
@@ -571,7 +547,7 @@ function TaskSuite () {
       assertEqual(0, db[cn].count());
       assertEqual(0, db[cn].byExample({ value: 23 }).toArray().length);
 
-      var t = getTasks();
+      let t = getTasks();
       assertEqual(0, t.length);
     },
 
@@ -585,9 +561,9 @@ function TaskSuite () {
 
       assertEqual(0, db[cn].count());
 
-      var command = "require('internal').db." + cn + ".save({ value: params });";
+      let command = "require('internal').db." + cn + ".save({ value: params });";
 
-      var task = tasks.register({
+      let task = tasks.register({
         name: "UnitTests1",
         command: command,
         period: 1,
@@ -600,7 +576,7 @@ function TaskSuite () {
       assertEqual(1, task.period);
       assertEqual("_system", task.database);
 
-      var tries = 0;
+      let tries = 0;
       while (tries++ < 150) {
         if (db[cn].count() > 0) {
           assertTrue(db[cn].byExample({ value: 17 }).toArray().length > 0);
@@ -623,11 +599,11 @@ function TaskSuite () {
 
       assertEqual(0, db[cn].count());
 
-      var command = function (params) {
+      let command = function (params) {
         require('internal').db[params.cn].save({ value: params.val });
       };
 
-      var task = tasks.register({
+      let task = tasks.register({
         name: "UnitTests1",
         command: command,
         period: 1,
@@ -640,7 +616,7 @@ function TaskSuite () {
       assertEqual(1, task.period);
       assertEqual("_system", task.database);
 
-      var tries = 0;
+      let tries = 0;
       while (tries++ < 150) {
         if (db[cn].count() > 0) {
           assertTrue(db[cn].byExample({ value: 42 }).toArray().length > 0);
@@ -665,8 +641,7 @@ function TaskSuite () {
           offset: 0
         });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     }
@@ -674,11 +649,5 @@ function TaskSuite () {
   };
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(TaskSuite);
-
 return jsunity.done();

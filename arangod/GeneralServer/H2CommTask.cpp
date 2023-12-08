@@ -68,7 +68,8 @@ namespace rest {
 
 struct H2Response : public HttpResponse {
   H2Response(ResponseCode code, uint64_t mid)
-      : HttpResponse(code, mid, nullptr) {}
+      : HttpResponse(code, mid, nullptr,
+                     rest::ResponseCompressionType::kUnset) {}
 
   RequestStatistics::Item statistics;
 };
@@ -652,10 +653,10 @@ void H2CommTask<T>::processRequest(Stream& stream,
     return;  // prepareExecution sends the error message
   }
 
-  // unzip / deflate
-  if (!this->handleContentEncoding(*req)) {
+  // gzip-uncompress / zlib-deflate
+  if (Result res = this->handleContentEncoding(*req); res.fail()) {
     this->sendErrorResponse(rest::ResponseCode::BAD, req->contentTypeResponse(),
-                            1, TRI_ERROR_BAD_PARAMETER, "decoding error");
+                            1, TRI_ERROR_BAD_PARAMETER, res.errorMessage());
     return;
   }
 
@@ -667,9 +668,9 @@ void H2CommTask<T>::processRequest(Stream& stream,
 }
 
 namespace {
-bool expectResponseBody(int status_code) {
-  return status_code == 101 ||
-         (status_code / 100 != 1 && status_code != 304 && status_code != 204);
+bool expectResponseBody(int statusCode) {
+  return statusCode == 101 ||
+         (statusCode / 100 != 1 && statusCode != 304 && statusCode != 204);
 }
 }  // namespace
 

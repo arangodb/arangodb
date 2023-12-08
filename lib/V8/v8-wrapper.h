@@ -64,9 +64,8 @@
 template<typename STRUCT, uint16_t CID>
 class V8Wrapper {
  public:
-  V8Wrapper(v8::Isolate* isolate, STRUCT* object, void (*free)(STRUCT* object),
-            v8::Handle<v8::Object> result)
-      : _refs(0), _object(object), _free(free), _isolate(isolate) {
+  V8Wrapper(v8::Isolate* isolate, STRUCT* object, v8::Handle<v8::Object> result)
+      : _refs(0), _object(object), _isolate(isolate) {
     TRI_ASSERT(_handle.IsEmpty());
     TRI_ASSERT(result->InternalFieldCount() > 0);
 
@@ -83,18 +82,9 @@ class V8Wrapper {
   virtual ~V8Wrapper() {
     if (!_handle.IsEmpty()) {
       _handle.ClearWeak();
-      v8::Local<v8::Object> data =
-          v8::Local<v8::Object>::New(_isolate, _handle);
-      data->SetInternalField(0, v8::Undefined(_isolate));
-      _handle.Reset();
-
-      if (_free != nullptr) {
-        _free(_object);
-      }
     }
   }
 
- public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unwraps a structure
   //////////////////////////////////////////////////////////////////////////////
@@ -106,13 +96,6 @@ class V8Wrapper {
         ->_object;
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief deletes a structure
-  //////////////////////////////////////////////////////////////////////////////
-
-  static void deleteObject(STRUCT* object) { delete object; }
-
- public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief increases reference count
   ///
@@ -149,7 +132,6 @@ class V8Wrapper {
     }
   }
 
- public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief persistent handle for V8 object
   //////////////////////////////////////////////////////////////////////////////
@@ -162,19 +144,10 @@ class V8Wrapper {
   //////////////////////////////////////////////////////////////////////////////
 
   static void weakCallback(
-      const v8::WeakCallbackInfo<v8::Persistent<v8::Object>>& data) {
-    auto isolate = data.GetIsolate();
-    auto persistent = data.GetParameter();
-    auto myPointer = v8::Local<v8::Object>::New(isolate, *persistent);
-
-    TRI_ASSERT(myPointer->InternalFieldCount() > 0);
-    auto obj = static_cast<V8Wrapper*>(
-                   myPointer->GetAlignedPointerFromInternalField(0))
-                   ->_object;
-
-    TRI_ASSERT(persistent == &obj->_handle);
-    TRI_ASSERT(!obj->_refs);
-    delete obj;
+      v8::WeakCallbackInfo<V8Wrapper<STRUCT, CID>> const& data) {
+    auto wrapper = static_cast<V8Wrapper<STRUCT, CID>*>(data.GetParameter());
+    wrapper->_handle.Reset();
+    delete wrapper;
   }
 
  protected:
@@ -183,10 +156,9 @@ class V8Wrapper {
   //////////////////////////////////////////////////////////////////////////////
 
   void makeWeak() {
-    _handle.SetWeak(&_handle, weakCallback, v8::WeakCallbackType::kFinalizer);
+    _handle.SetWeak(this, weakCallback, v8::WeakCallbackType::kParameter);
   }
 
- protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief reference count
   //////////////////////////////////////////////////////////////////////////////
@@ -199,13 +171,6 @@ class V8Wrapper {
 
   STRUCT* _object;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief free function for stored object
-  //////////////////////////////////////////////////////////////////////////////
-
-  void (*_free)(STRUCT* object);
-
- public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief isolate
   //////////////////////////////////////////////////////////////////////////////

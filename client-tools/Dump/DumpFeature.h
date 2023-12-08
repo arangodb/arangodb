@@ -83,7 +83,6 @@ class DumpFeature final : public ArangoDumpFeature {
     bool overwrite{false};
     bool progress{true};
     bool useGzipForStorage{true};
-    bool useGzipForTransport{false};
     bool useVPack{false};
     bool useParalleDump{true};
     bool splitFiles{false};

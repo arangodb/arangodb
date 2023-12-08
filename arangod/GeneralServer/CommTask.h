@@ -25,6 +25,7 @@
 #pragma once
 
 #include "Auth/TokenCache.h"
+#include "Basics/Result.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashMap.h"
 #include "Endpoint/ConnectionInfo.h"
@@ -153,7 +154,7 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
                                           ServerState::Mode mode);
 
   /// decompress content
-  bool handleContentEncoding(GeneralRequest&);
+  Result handleContentEncoding(GeneralRequest&);
 
  private:
   void handleRequestStartup(std::shared_ptr<RestHandler>);

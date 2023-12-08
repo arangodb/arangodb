@@ -2134,8 +2134,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   ArangoNS->SetHandler(v8::NamedPropertyHandlerConfiguration(MapGetVocBase));
 
-  //  ArangoNS->SetNamedPropertyHandler(MapGetVocBase);
-
   // for any database function added here, be sure to add it to in function
   // JS_CompletionsVocbase, too for the auto-completion
   TRI_AddMethodVocbase(isolate, ArangoNS,
