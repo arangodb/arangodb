@@ -531,8 +531,9 @@ auto extractStoredValues(
       // again upon retrieval
       s = transaction::helpers::extractKeyFromDocument(doc);
     } else {
+      s = doc;
       for (auto const& part : it) {
-        s = doc.get(part.name);
+        s = s.get(part.name);
         if (s.isNone()) {
           break;
         }

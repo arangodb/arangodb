@@ -771,6 +771,9 @@ Result IndexFactory::enhanceJsonIndexZkd(VPackSlice definition,
 
   if (res.ok()) {
     // "storedValues"
+    // Since the indexed attributes are encoded and then bit interleaves
+    // they can not be used for projections. Thus, we allow the same fields
+    // to appear in the stored values for them to be projected out of the index.
     res = processIndexStoredValues(definition, builder, 1, 32, create,
                                    /*allowSubAttributes*/ true,
                                    /* allowOverlappingFields */ true);
