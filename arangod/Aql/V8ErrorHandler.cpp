@@ -25,7 +25,7 @@
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
-#include "V8Executor.h"
+#include "V8ErrorHandler.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "V8/v8-conv.h"
@@ -33,21 +33,21 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 /// @brief checks if a V8 exception has occurred and throws an appropriate C++
 /// exception from it if so
-void V8Executor::handleV8Error(v8::TryCatch& tryCatch,
-                               v8::Handle<v8::Value>& result) {
-  ISOLATE;
-  auto context = TRI_IGETC;
+void handleV8Error(v8::TryCatch& tryCatch, v8::Handle<v8::Value>& result) {
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  v8::Handle<v8::Context> context = isolate->GetCurrentContext();
   bool failed = false;
 
   if (tryCatch.HasCaught()) {
     // caught a V8 exception
     if (!tryCatch.CanContinue()) {
       // request was canceled
-      TRI_GET_GLOBALS();
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
+          isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
       v8g->_canceled = true;
 
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
@@ -114,10 +114,12 @@ void V8Executor::handleV8Error(v8::TryCatch& tryCatch,
   }
 
   if (failed) {
-    std::string msg("unknown error in scripting");
     // we can't figure out what kind of error occurred and throw a generic error
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_SCRIPT, msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_SCRIPT,
+                                   "unknown error in scripting");
   }
 
   // if we get here, no exception has been raised
 }
+
+}  // namespace arangodb::aql

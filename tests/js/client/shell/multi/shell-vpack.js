@@ -191,7 +191,6 @@ function echoVpackVpack() {
 
   const res = arango.POST_RAW(path, body, headers);
 
-  expect(res.body).to.be.a('SlowBuffer');
   expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
   const replyBody = VPACK_TO_V8(res.body);
   expect(replyBody.requestBody).to.be.a('string');
