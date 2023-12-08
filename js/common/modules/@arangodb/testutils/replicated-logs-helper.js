@@ -726,6 +726,11 @@ const unsetLeader = (database, logId) => {
  * Causes underlying replicated logs to trigger leader recovery.
  */
 const bumpTermOfLogsAndWaitForConfirmation = function (dbn, col) {
+  const {numberOfShards, isSmart} = col.properties();
+  if (isSmart && numberOfShards === 0) {
+    // Adjust for SmartEdgeCollections
+    col = db._collection(`_local_${col.name()}`);
+  }
   const shards = col.shards();
   const shardsToLogs = getShardsToLogsMapping(dbn, col._id);
   const stateMachineIds = shards.map(s => shardsToLogs[s]);

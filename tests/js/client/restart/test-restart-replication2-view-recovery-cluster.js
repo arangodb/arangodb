@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global assertEqual, assertIdentical */
+/* global assertEqual, assertIdentical, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Arango View Recovery Tests
@@ -30,8 +30,16 @@ const jsunity = require('jsunity');
 const db = require('@arangodb').db;
 const lh = require('@arangodb/testutils/replicated-logs-helper');
 const rh = require('@arangodb/testutils/restart-helper');
+const dh = require("@arangodb/testutils/document-state-helper");
+const lp = require("@arangodb/testutils/replicated-logs-predicates");
 const {getCtrlDBServers} = require('@arangodb/test-helper');
+const lhttp = require('@arangodb/testutils/replicated-logs-http-helper');
+const isEnterprise = require("internal").isEnterprise();
 
+const smartGraphs = isEnterprise ? require('@arangodb/smart-graph') : null;
+const eeGraphs = isEnterprise ? require('@arangodb/enterprise-graph') : null;
+
+const dbn = 'UnitTestsDatabase';
 
 const testSuite = (config) => {
   const documentCount = 100;
@@ -85,7 +93,6 @@ const testSuite = (config) => {
 
   const {setupCollection, dropCollection, genDoc, namePostfix} = config;
 
-  const dbn = 'UnitTestsDatabase';
   const viewName = 'UnitTestView';
   const {
     setUpAll,
@@ -95,8 +102,51 @@ const testSuite = (config) => {
   } = lh.testHelperFunctions(dbn, {replicationVersion: '2'});
 
   const compactLogs = () => {
+
+    const waitForLogToBeCompacted = (log) => {
+      const coordinator = lh.coordinators[0];
+      const logId = log.id();
+
+      const participants = lhttp.listLogs(coordinator, dbn).result[logId];
+      assertTrue(participants !== undefined, `No participants found for log ${logId}`);
+      let leader = participants[0];
+      let status = log.status();
+      const commitIndexAfterCompaction = status.participants[leader].response.local.commitIndex + 1;
+
+
+      let logContents = log.head(1000);
+
+      // We need to make sure that the CreateShard entries are being compacted before doing recovery.
+      // Otherwise, the recovery procedure will try to create the shards again. The point is to test how
+      // the recovery procedure handles operations referring to non-existing shards.
+      // By waiting for lowestIndexToKeep to be greater than the current commitIndex, and for the index to be released,
+      // we make sure the CreateShard operation is going to be compacted.
+      lh.waitFor(lp.lowestIndexToKeepReached(log, leader, commitIndexAfterCompaction));
+      // Wait for all participants to have called release on the CreateShard entry.
+      lh.waitFor(() => {
+        log.ping();
+        status = log.status();
+        for (const [pid, value] of Object.entries(status.participants)) {
+          if (value.response.local.releaseIndex <= commitIndexAfterCompaction) {
+            return Error(`Participant ${pid} cannot compact enough, status: ${JSON.stringify(status)}, ` +
+              `log contents: ${JSON.stringify(logContents)}`);
+          }
+        }
+        return true;
+      });
+
+      // Trigger compaction intentionally. We aim to clear a prefix of the log here, removing the CreateShard entries.
+      // This way, the recovery procedure will be forced to handle entries referring to an unknown shard.
+      log.compact();
+    };
+
+
+    // This is not too impartant, we try to get into an
+    // "empty" and "filled" log with this.
+    // However the filled one is the problemeatic one.
+    // So this was more to proof that empty log is not a problem
     for (const l of logs) {
-      l.compact();
+      // waitForLogToBeCompacted(l);
     }
   };
 
@@ -152,7 +202,6 @@ const testSuite = (config) => {
     if (result.length !== expectedResult.length) {
       {
         const dh = require("@arangodb/testutils/document-state-helper");
-        const {logs} = dh.getCollectionShardsAndLogs(db, collection);
         let intermediateCommitEntries = dh.getDocumentEntries(dh.mergeLogs(logs), "Insert");
         require("console").error(JSON.stringify(intermediateCommitEntries));
       }
@@ -183,10 +232,11 @@ const testSuite = (config) => {
     tearDownAll,
 
     setUp: setUpAnd(() => {
-      collection = setupCollection();
-      shards = collection.shards();
-      shardsToLogs = lh.getShardsToLogsMapping(dbn, collection._id);
-      logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
+      const setupInfo = setupCollection();
+      collection = setupInfo.collection;
+      shards = setupInfo.shards;
+      shardsToLogs = setupInfo.shardsToLogs;
+      logs = setupInfo.logs;
 
       db._dropView(viewName);
       db._createView(viewName, 'arangosearch', {});
@@ -273,7 +323,7 @@ const testSuite = (config) => {
     * Recover the view if the log is empty
     */
     [`testRecoverEmptyLogReplaces_${namePostfix}`]() {
-      insertDummyUpdates(documentCount / 10, 10);
+      insertDummyReplaces(documentCount / 10, 10);
       compactLogs();
       require("console").error("Unsetting the leader");
       lh.bumpTermOfLogsAndWaitForConfirmation(dbn, collection);
@@ -285,7 +335,7 @@ const testSuite = (config) => {
     */
     [`testRecoverReplacesInLog_${namePostfix}`]() {
       compactLogs();
-      insertDummyUpdates(documentCount / 10, 10);
+      insertDummyReplaces(documentCount / 10, 10);
       lh.bumpTermOfLogsAndWaitForConfirmation(dbn, collection);
       assertViewInSync();
     },
@@ -295,7 +345,7 @@ const testSuite = (config) => {
     */
     [`testRecoverReplacesInLogSwitchLeader_${namePostfix}`]() {
       compactLogs();
-      insertDummyUpdates(documentCount / 10, 10);
+      insertDummyReplaces(documentCount / 10, 10);
       // Try to switch the leader
       for (const l of logs) {
         lh.unsetLeader(dbn, l.id());
@@ -363,7 +413,7 @@ const testSuite = (config) => {
     * Recover the view if the log is empty on reboot
     */
     [`testRecoverEmptyLogReplaces_${namePostfix}`]() {
-      insertDummyUpdates(documentCount / 10, 10);
+      insertDummyReplaces(documentCount / 10, 10);
       compactLogs();
       // Reboot
       restartServers();
@@ -376,7 +426,7 @@ const testSuite = (config) => {
     */
     [`testRecoverReplacesInLogReboot_${namePostfix}`]() {
       compactLogs();
-      insertDummyUpdates(documentCount / 10, 10);
+      insertDummyReplaces(documentCount / 10, 10);
       // Reboot
       restartServers();
       assertViewInSync();
@@ -388,7 +438,11 @@ function recoveryViewOnCollection() {
   "use strict";
   const namePostfix = "collection";
   const setupCollection = () => {
-    return db._create("UnitTestCollection", {replicationFactor: 3});
+    const collection = db._create("UnitTestCollection", {replicationFactor: 3, waitForSync: true});
+    const shards = collection.shards();
+    const shardsToLogs = lh.getShardsToLogsMapping(dbn, collection._id);
+    const logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
+    return {collection, shards, shardsToLogs, logs};
   };
   const dropCollection = () => {
     db._drop("UnitTestCollection");
@@ -407,6 +461,85 @@ function recoveryViewOnCollection() {
   return testSuite({namePostfix, setupCollection, dropCollection, genDoc});
 }
 
+function recoveryViewOnSmartGraph() {
+  "use strict";
+  const namePostfix = "SmartGraph";
+  const sgName = "UnitTestSmartGraph";
+
+  const edgeName = "UnitTestSmartEdge";
+  const vertexName = "UnitTestSmartVertex";
+
+  const setupCollection = () => {
+    smartGraphs._create(sgName, [smartGraphs._relation(edgeName, vertexName, vertexName)], [], {replicationFactor: 2, numberOfShards: 2, isSmart: true, smartGraphAttribute: "sga",  waitForSync: true});
+    const collection = db._collection(edgeName);
+    const localCol = db._collection(`_local_${edgeName}`);
+    const shards = localCol.shards();
+    const shardsToLogs = lh.getShardsToLogsMapping(dbn, localCol._id);
+    const logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
+    return {collection, shards, shardsToLogs, logs};
+  };
+  const dropCollection = () => {
+    smartGraphs._drop(sgName);
+  };
+  function* DocGenerator() {
+    let i = 0;
+    while (true) {
+      ++i;
+      // Local
+      yield {_from: `${vertexName}/1:${i}`,  _to: `${vertexName}/1:${i}`, c: 1, value: i};
+      // Remote
+      yield {_from: `${vertexName}/1:${i}`,  _to: `${vertexName}/2:${i}`, c: 1, value: i};
+    }
+  }
+  const generator = DocGenerator();
+  const genDoc = () => {
+    return generator.next().value;
+  };
+  return testSuite({namePostfix, setupCollection, dropCollection, genDoc});
+}
+
+function recoveryViewOnEnterpriseGraph() {
+  "use strict";
+  const namePostfix = "EEGraph";
+  const sgName = "UnitTestEEGraph";
+
+  const edgeName = "UnitTestEEEdge";
+  const vertexName = "UnitTestEEVertex";
+
+  const setupCollection = () => {
+    eeGraphs._create(sgName, [eeGraphs._relation(edgeName, vertexName, vertexName)], [], {replicationFactor: 2, numberOfShards: 2, isSmart: true,  waitForSync: true});
+    const collection = db._collection(edgeName);
+    const localCol = db._collection(`_local_${edgeName}`);
+    const shards = localCol.shards();
+    const shardsToLogs = lh.getShardsToLogsMapping(dbn, localCol._id);
+    const logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
+    return {collection, shards, shardsToLogs, logs};
+  };
+  const dropCollection = () => {
+    eeGraphs._drop(sgName);
+  };
+  function* DocGenerator() {
+    let i = 0;
+    while (true) {
+      ++i;
+      // Local
+      yield {_from: `${vertexName}/${i}`,  _to: `${vertexName}/${i}`, c: 1, value: i};
+      // Remote
+      yield {_from: `${vertexName}/${i}`,  _to: `${vertexName}/${i + 1}`, c: 1, value: i};
+    }
+  }
+  const generator = DocGenerator();
+  const genDoc = () => {
+    const doc= generator.next().value;
+    return doc;
+  };
+  return testSuite({namePostfix, setupCollection, dropCollection, genDoc});
+}
+
 jsunity.run(recoveryViewOnCollection);
+if (isEnterprise) {
+  jsunity.run(recoveryViewOnSmartGraph);
+  jsunity.run(recoveryViewOnEnterpriseGraph);
+}
 
 return jsunity.done();

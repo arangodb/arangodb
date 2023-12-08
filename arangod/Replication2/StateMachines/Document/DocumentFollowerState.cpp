@@ -62,7 +62,10 @@ DocumentFollowerState::DocumentFollowerState(
           handlersFactory->createShardHandler(core->getVocbase(), core->gid)),
       _errorHandler(handlersFactory->createErrorHandler(core->gid)),
       _guardedData(std::move(core), handlersFactory, loggerContext,
-                   _errorHandler) {}
+                   _errorHandler) {
+  // Get ready to replay the log
+  _shardHandler->prepareShardsForLogReplay();
+}
 
 DocumentFollowerState::~DocumentFollowerState() = default;
 

@@ -62,7 +62,10 @@ DocumentLeaderState::DocumentLeaderState(
           _handlersFactory->createSnapshotHandler(core->getVocbase(), gid)),
       _errorHandler(_handlersFactory->createErrorHandler(gid)),
       _guardedData(std::move(core), _handlersFactory),
-      _transactionManager(transactionManager) {}
+      _transactionManager(transactionManager) {
+  // Get ready to replay the log
+  _shardHandler->prepareShardsForLogReplay();
+}
 
 auto DocumentLeaderState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {

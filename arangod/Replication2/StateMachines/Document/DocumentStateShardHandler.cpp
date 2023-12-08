@@ -24,6 +24,10 @@
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 
 #include "Replication2/StateMachines/Document/MaintenanceActionExecutor.h"
+#include "Indexes/Index.h"
+#include "IResearch/IResearchDataStore.h"
+#include "IResearch/IResearchInvertedIndex.h"
+#include "IResearch/IResearchRocksDBLink.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/VocBaseLogManager.h"
@@ -213,6 +217,29 @@ auto DocumentStateShardHandler::lockShard(ShardID const& shard,
                               res.errorMessage())};
   }
   return trx;
+}
+
+auto DocumentStateShardHandler::prepareShardsForLogReplay() noexcept -> void {
+  for (auto const& shard : getAvailableShards()) {
+    // The inverted indexes cannot work with duplicate LocalDocumentIDs within the same
+    // commit interval. They however can if we have a commit in between the two.
+    // If we replay one log we know there can never be a duplicate LocalDocumentID.
+    for (auto const& index : shard->getIndexes()) {
+      {
+        auto maybeInvertedIndex =
+            std::dynamic_pointer_cast<iresearch::IResearchInvertedIndex>(index);
+        if (maybeInvertedIndex) {
+          maybeInvertedIndex->commit(true);
+        }
+      }
+      {
+        auto maybeSearchLink = std::dynamic_pointer_cast<iresearch::IResearchRocksDBLink>(index);
+        if (maybeSearchLink) {
+          maybeSearchLink->commit(true);
+        }
+      }
+    }
+  }
 }
 
 }  // namespace arangodb::replication2::replicated_state::document
