@@ -236,16 +236,16 @@ auto DocumentFollowerState::acquireSnapshot(
                   << " finished: " << snapshotTransferResult.res;
               return Result{};
             })
-        .then([self](auto&& tryRes) {
-          auto res = basics::catchToResult([&] { return tryRes.get(); });
-          if (res.ok()) {
-            // If we replayed a snapshot, we need to wait for views to settle
-            // before we can continue.
-            // Otherwise, we would get into issues with duplicate document ids
-            self->_shardHandler->prepareShardsForLogReplay();
-          }
-          return res;
-        });
+            .then([self](auto&& tryRes) {
+              auto res = basics::catchToResult([&] { return tryRes.get(); });
+              if (res.ok()) {
+                // If we replayed a snapshot, we need to wait for views to
+                // settle before we can continue. Otherwise, we would get into
+                // issues with duplicate document ids
+                self->_shardHandler->prepareShardsForLogReplay();
+              }
+              return res;
+            });
       });
 }
 

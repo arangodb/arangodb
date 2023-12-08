@@ -221,9 +221,10 @@ auto DocumentStateShardHandler::lockShard(ShardID const& shard,
 
 auto DocumentStateShardHandler::prepareShardsForLogReplay() noexcept -> void {
   for (auto const& shard : getAvailableShards()) {
-    // The inverted indexes cannot work with duplicate LocalDocumentIDs within the same
-    // commit interval. They however can if we have a commit in between the two.
-    // If we replay one log we know there can never be a duplicate LocalDocumentID.
+    // The inverted indexes cannot work with duplicate LocalDocumentIDs within
+    // the same commit interval. They however can if we have a commit in between
+    // the two. If we replay one log we know there can never be a duplicate
+    // LocalDocumentID.
     for (auto const& index : shard->getIndexes()) {
       if (index->type() == Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX) {
         auto maybeInvertedIndex =

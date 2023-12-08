@@ -444,7 +444,7 @@ function recoveryViewOnEnterpriseGraph() {
         // server listed. This happens if it fetches AgencyStatus exactly at the point
         // where the servers are restarted, and did not yet update it since.
         // So we simply give it some time and then retry.
-        if (e.errorNum === ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code) {
+        if (e.errorNum === errors.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code) {
           waitForServersToBeInCurrent();
         } else {
           throw e;
