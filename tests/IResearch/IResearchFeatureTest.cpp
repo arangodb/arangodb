@@ -2484,7 +2484,7 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
     // simulate heartbeat thread (create index in current)
     {
       auto const value = arangodb::velocypack::Parser::fromJson(
-          "{ \"shard-id\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
+          "{ \"s998\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
       EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(currentCollectionPath, value->slice(), 0.0)
                       .successful());
@@ -2524,7 +2524,7 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
     auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                       std::to_string(logicalCollection->id().id());
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"2\" } "
+        "{ \"s999\": { \"indexes\" : [ { \"id\": \"2\" } "
         "] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(path, value->slice(), 0.0)
