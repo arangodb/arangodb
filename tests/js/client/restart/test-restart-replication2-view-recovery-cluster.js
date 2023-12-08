@@ -255,7 +255,6 @@ const testSuite = (config) => {
     [`testRecoverEmptyLog_${namePostfix}`]() {
       insertDummyData(documentCount);
       compactLogs();
-      require("console").error("Unsetting the leader");
       lh.bumpTermOfLogsAndWaitForConfirmation(dbn, collection);
       assertViewInSync();
     },
@@ -290,7 +289,6 @@ const testSuite = (config) => {
     [`testRecoverEmptyLogUpdates_${namePostfix}`]() {
       insertDummyUpdates(documentCount / 10, 10);
       compactLogs();
-      require("console").error("Unsetting the leader");
       lh.bumpTermOfLogsAndWaitForConfirmation(dbn, collection);
       assertViewInSync();
     },
@@ -325,7 +323,6 @@ const testSuite = (config) => {
     [`testRecoverEmptyLogReplaces_${namePostfix}`]() {
       insertDummyReplaces(documentCount / 10, 10);
       compactLogs();
-      require("console").error("Unsetting the leader");
       lh.bumpTermOfLogsAndWaitForConfirmation(dbn, collection);
       assertViewInSync();
     },
