@@ -355,7 +355,13 @@ else ()
   if (USE_MINIMAL_DEBUGINFO)
     set(V8_CFLAGS   "${V8_CFLAGS} -g0")
     set(V8_CXXFLAGS "${V8_CXXFLAGS} -g0")
-  endif()
+  endif ()
+  
+  # remove -march=... from Apple builds
+  if (APPLE)
+    string(REGEX REPLACE "-march=[^ ]+" "" V8_CFLAGS ${V8_CFLAGS})
+    string(REGEX REPLACE "-march=[^ ]+" "" V8_CXXFLAGS ${V8_CXXFLAGS})
+  endif ()
 
   list(APPEND V8_GYP_ARGS "-Dv8_use_snapshot=true")
 
