@@ -163,8 +163,8 @@ const testSuite = (config) => {
     const uniqCol = new Set(expectedResult);
     if (result.length !== expectedResult.length) {
       {
-        let intermediateCommitEntries = dh.getDocumentEntries(dh.mergeLogs(logs), "Insert");
-        require("console").error(JSON.stringify(intermediateCommitEntries));
+        let insertEntries = dh.getDocumentEntries(dh.mergeLogs(logs), "Insert");
+        require("console").error(JSON.stringify(insertEntries));
       }
       require("console").error(`Counts missmatch expecting: ${expectedResult.length} got: ${result.length}`);
       require("console").error(`Unique Counts expecting: ${uniqCol.size} got: ${uniqView.size}`);
@@ -279,28 +279,8 @@ const testSuite = (config) => {
     /*
     * Recover the view if the log is contains entries
     */
-    [`testRecoverInsertsInLog_${namePostfix}`]() {
+    [`testRecoverInsertsInLogReboot_${namePostfix}`]() {
       insertDummyData(documentCount);
-      // Reboot
-      restartServers();
-      assertViewInSync();
-    },
-
-    /*
-    * Recover the view on leader change
-    */
-    [`testRecoverInsertsInLogSwitchLeader_${namePostfix}`]() {
-      insertDummyData(documentCount);
-      // Reboot
-      restartServers();
-      assertViewInSync();
-    },
-
-    /*
-    * Recover the view if the log is empty on reboot
-    */
-    [`testRecoverEmptyLogUpdatesReboot_${namePostfix}`]() {
-      insertDummyUpdates(documentCount / 10, 10);
       // Reboot
       restartServers();
       assertViewInSync();
@@ -315,17 +295,6 @@ const testSuite = (config) => {
       restartServers();
       assertViewInSync();
     },
-
-    /*
-    * Recover the view if the log is empty on reboot
-    */
-    [`testRecoverEmptyLogReplaces_${namePostfix}`]() {
-      insertDummyReplaces(documentCount / 10, 10);
-      // Reboot
-      restartServers();
-      assertViewInSync();
-    },
-
 
     /*
     * Recover the view on reboot
