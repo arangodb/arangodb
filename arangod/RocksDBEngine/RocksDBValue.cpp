@@ -82,13 +82,13 @@ RocksDBValue RocksDBValue::VPackIndexValue(VPackSlice data) {
   return RocksDBValue(RocksDBEntryType::VPackIndexValue, data);
 }
 
-RocksDBValue RocksDBValue::ZkdIndexValue() {
-  return RocksDBValue(RocksDBEntryType::ZkdIndexValue);
+RocksDBValue RocksDBValue::ZkdIndexValue(VPackSlice data) {
+  return RocksDBValue(RocksDBEntryType::ZkdIndexValue, data);
 }
 
-RocksDBValue RocksDBValue::UniqueZkdIndexValue(LocalDocumentId docId) {
-  return RocksDBValue(RocksDBEntryType::UniqueZkdIndexValue, docId,
-                      RevisionId::none());
+RocksDBValue RocksDBValue::UniqueZkdIndexValue(LocalDocumentId docId,
+                                               VPackSlice data) {
+  return RocksDBValue(RocksDBEntryType::UniqueZkdIndexValue, docId, data);
 }
 
 RocksDBValue RocksDBValue::UniqueVPackIndexValue(LocalDocumentId docId) {
@@ -258,6 +258,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice data)
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::VPackIndexValue:
+    case RocksDBEntryType::ZkdIndexValue:
       TRI_ASSERT(data.isArray());
       [[fallthrough]];
 
