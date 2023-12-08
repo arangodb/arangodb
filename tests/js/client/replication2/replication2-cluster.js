@@ -51,20 +51,23 @@ function ddlSuite() {
   return {
     testCreateDatabaseReplicationVersion: function () {
       const dbName = 'replicationVersionDb';
+      // The _system database is always created with the default
+      // version. This should be passed through all databases.
+      const defaultReplicationVersion = db._properties().replicationVersion;
 
       const tests = [
         // default to v1
         { params: undefined,
-          expected: {properties: {replicationVersion: "1"}},
+          expected: {properties: {replicationVersion: defaultReplicationVersion}},
         },
         { params: null,
-          expected: {properties: {replicationVersion: "1"}},
+          expected: {properties: {replicationVersion: defaultReplicationVersion}},
         },
         { params: {replicationVersion: undefined},
-          expected: {properties: {replicationVersion: "1"}},
+          expected: {properties: {replicationVersion: defaultReplicationVersion}},
         },
         { params: {},
-          expected: {properties: {replicationVersion: "1"}},
+          expected: {properties: {replicationVersion: defaultReplicationVersion}},
         },
         // set v1 explicitly
         { params: {replicationVersion: "1"},
