@@ -18,35 +18,19 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
+
+#pragma once
 
 #ifndef USE_V8
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
-#include "GlobalContextMethods.h"
+#include <v8.h>
 
-using namespace arangodb;
-
-std::string_view GlobalContextMethods::name(
-    GlobalContextMethods::MethodType type) noexcept {
-  switch (type) {
-    case MethodType::kReloadRouting:
-      return "reloadRouting";
-    case MethodType::kReloadAql:
-      return "reloadAql";
-  }
-  return "unknown";
-}
-
-std::string_view GlobalContextMethods::code(
-    GlobalContextMethods::MethodType type) noexcept {
-  switch (type) {
-    case MethodType::kReloadRouting:
-      return "require(\"@arangodb/actions\").reloadRouting();";
-    case MethodType::kReloadAql:
-      return "try { require(\"@arangodb/aql\").reload(); } catch (err) {}";
-  }
-  return "";
-}
+namespace arangodb::aql {
+/// @brief checks if a V8 exception has occurred and throws an appropriate C++
+/// exception from it if so
+void handleV8Error(v8::TryCatch&, v8::Handle<v8::Value>&);
+}  // namespace arangodb::aql

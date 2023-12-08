@@ -1,3 +1,4 @@
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -17,25 +18,21 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-#ifndef USE_V8
-#error this file is not supposed to be used in builds with -DUSE_V8=Off
-#endif
-
-#include "Basics/Common.h"
-
-#include <v8.h>
+#include <memory>
 
 namespace arangodb::aql {
-class V8Executor {
- public:
-  /// @brief checks if a V8 exception has occurred and throws an appropriate C++
-  /// exception from it if so
-  static void handleV8Error(v8::TryCatch&, v8::Handle<v8::Value>&);
-};
+
+class Optimizer;
+class ExecutionPlan;
+struct OptimizerRule;
+
+/// @brief replaces the last element on path access with the direct output of
+/// vertex/edge
+void optimizeEnumeratePathsFilterRule(Optimizer* opt,
+                                      std::unique_ptr<ExecutionPlan> plan,
+                                      OptimizerRule const&);
+
 }  // namespace arangodb::aql

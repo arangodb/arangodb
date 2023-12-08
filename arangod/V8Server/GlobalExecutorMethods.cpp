@@ -21,25 +21,32 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
-
 #ifndef USE_V8
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
-#include <string_view>
+#include "GlobalExecutorMethods.h"
 
-namespace arangodb {
-class GlobalContextMethods {
- public:
-  enum class MethodType {
-    kReloadRouting,
-    kReloadAql,
-  };
+using namespace arangodb;
 
-  static std::string_view name(MethodType type) noexcept;
+std::string_view GlobalExecutorMethods::name(
+    GlobalExecutorMethods::MethodType type) noexcept {
+  switch (type) {
+    case MethodType::kReloadRouting:
+      return "reloadRouting";
+    case MethodType::kReloadAql:
+      return "reloadAql";
+  }
+  return "unknown";
+}
 
-  static std::string_view code(MethodType type) noexcept;
-};
-
-}  // namespace arangodb
+std::string_view GlobalExecutorMethods::code(
+    GlobalExecutorMethods::MethodType type) noexcept {
+  switch (type) {
+    case MethodType::kReloadRouting:
+      return "require(\"@arangodb/actions\").reloadRouting();";
+    case MethodType::kReloadAql:
+      return "try { require(\"@arangodb/aql\").reload(); } catch (err) {}";
+  }
+  return "";
+}
