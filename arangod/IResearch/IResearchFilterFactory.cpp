@@ -65,6 +65,8 @@
 #include "IResearch/AqlHelper.h"
 #include "IResearch/GeoAnalyzer.h"
 #include "IResearch/GeoFilter.h"
+#include "IResearch/Wildcard/Analyzer.h"
+#include "IResearch/Wildcard/Filter.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchFilterFactoryCommon.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -3855,14 +3857,21 @@ Result fromFuncLike(char const* funcName, irs::boolean_filter* filter,
     if (!analyzer) {
       return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
     }
-
-    auto& wildcardFilter = append<irs::by_wildcard>(*filter, filterCtx);
     kludge::mangleField(name, ctx.isOldMangling, analyzer);
-    *wildcardFilter.mutable_field() = std::move(name);
-    wildcardFilter.boost(filterCtx.boost);
-    auto* opts = wildcardFilter.mutable_options();
-    opts->scored_terms_limit = scoringLimit;
-    opts->term.assign(irs::ViewCast<irs::byte_type>(pattern));
+    if (analyzer->type() == wildcard::Analyzer::type_name()) {
+      auto& wildcardFilter = append<wildcard::Filter>(*filter, filterCtx);
+      wildcardFilter.boost(filterCtx.boost);
+      *wildcardFilter.mutable_field() = std::move(name);
+      *wildcardFilter.mutable_options() = {pattern, *analyzer._pool,
+                                           filterCtx.query.ctx};
+    } else {
+      auto& wildcardFilter = append<irs::by_wildcard>(*filter, filterCtx);
+      wildcardFilter.boost(filterCtx.boost);
+      *wildcardFilter.mutable_field() = std::move(name);
+      auto* opts = wildcardFilter.mutable_options();
+      opts->scored_terms_limit = scoringLimit;
+      opts->term = irs::ViewCast<irs::byte_type>(pattern);
+    }
   }
 
   return {};
@@ -4201,13 +4210,13 @@ Result makeFilter(irs::boolean_filter* filter, FilterContext const& filterCtx,
   switch (node.type) {
     case aql::NODE_TYPE_FILTER:  // FILTER
       return fromFilter(filter, filterCtx, node);
-    case aql::NODE_TYPE_VARIABLE:  // variable
-      return fromExpression(filter, filterCtx, node);
     case aql::NODE_TYPE_OPERATOR_UNARY_NOT:  // unary minus
       return fromNegation(filter, filterCtx, node);
     case aql::NODE_TYPE_OPERATOR_BINARY_AND:  // logical and
+    case aql::NODE_TYPE_OPERATOR_NARY_AND:    // n-ary and
       return fromGroup<irs::And>(filter, filterCtx, node);
     case aql::NODE_TYPE_OPERATOR_BINARY_OR:  // logical or
+    case aql::NODE_TYPE_OPERATOR_NARY_OR:    // n-ary or
       return fromGroup<irs::Or>(filter, filterCtx, node);
     case aql::NODE_TYPE_OPERATOR_BINARY_EQ:  // compare ==
     case aql::NODE_TYPE_OPERATOR_BINARY_NE:  // compare !=
@@ -4220,24 +4229,12 @@ Result makeFilter(irs::boolean_filter* filter, FilterContext const& filterCtx,
     case aql::NODE_TYPE_OPERATOR_BINARY_IN:   // compare in
     case aql::NODE_TYPE_OPERATOR_BINARY_NIN:  // compare not in
       return fromIn(filter, filterCtx, node);
-    case aql::NODE_TYPE_OPERATOR_TERNARY:  // ternary
-    case aql::NODE_TYPE_ATTRIBUTE_ACCESS:  // attribute access
-    case aql::NODE_TYPE_VALUE:             // value
-    case aql::NODE_TYPE_ARRAY:             // array
-    case aql::NODE_TYPE_OBJECT:            // object
-    case aql::NODE_TYPE_REFERENCE:         // reference
-    case aql::NODE_TYPE_PARAMETER:         // bind parameter
-      return fromExpression(filter, filterCtx, node);
     case aql::NODE_TYPE_FCALL:  // function call
       return fromFCall(filter, filterCtx, node);
     case aql::NODE_TYPE_FCALL_USER:  // user function call
       return fromFCallUser(filter, filterCtx, node);
     case aql::NODE_TYPE_RANGE:  // range
       return fromRange(filter, filterCtx, node);
-    case aql::NODE_TYPE_OPERATOR_NARY_AND:  // n-ary and
-      return fromGroup<irs::And>(filter, filterCtx, node);
-    case aql::NODE_TYPE_OPERATOR_NARY_OR:  // n-ary or
-      return fromGroup<irs::Or>(filter, filterCtx, node);
     case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:   // compare ARRAY in
     case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:  // compare ARRAY not in
     // for iresearch filters IN and EQ queries will be actually the same
@@ -4253,6 +4250,14 @@ Result makeFilter(irs::boolean_filter* filter, FilterContext const& filterCtx,
                                                           node);
     case aql::NODE_TYPE_EXPANSION:  // [?|* ...]
       return fromExpansion(filter, filterCtx, node);
+    case aql::NODE_TYPE_VARIABLE:          // variable
+    case aql::NODE_TYPE_OPERATOR_TERNARY:  // ternary
+    case aql::NODE_TYPE_ATTRIBUTE_ACCESS:  // attribute access
+    case aql::NODE_TYPE_VALUE:             // value
+    case aql::NODE_TYPE_ARRAY:             // array
+    case aql::NODE_TYPE_OBJECT:            // object
+    case aql::NODE_TYPE_REFERENCE:         // reference
+    case aql::NODE_TYPE_PARAMETER:         // bind parameter
     default:
       return fromExpression(filter, filterCtx, node);
   }
