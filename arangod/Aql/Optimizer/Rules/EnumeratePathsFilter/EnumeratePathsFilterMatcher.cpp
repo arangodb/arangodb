@@ -50,7 +50,7 @@ struct Match {
 //
 // or
 //
-// pathVariable.edges[* RETURN ...] ALL == $literal_value
+//  pathVariable.edges[* RETURN ...] ALL == $literal_value
 //
 // such that the map in RETURN does not access *any* variables
 // in the environment. This can be extended to variables that are
@@ -167,6 +167,8 @@ auto matchExpression(Ast* ast, AstNode const* expression,
 // the temporary variable used by the EnumeratePathsNode to evaluate
 // vertex/edge conditions, and assembles a new expression with one
 // "free" variable (the temporary) evaluating map == rhs
+//
+// TODO: Use the Expression wrapper class?
 auto assembleCondition(Ast* ast, AstNode* tmpVar, AstNode const* map,
                        AstNode const* rhs) -> AstNode const* {
   auto mapClone = map->clone(ast);
@@ -193,12 +195,19 @@ auto processFilter(Ast* ast, EnumeratePathsNode* enumeratePathsNode,
     return false;
   }
 
-  // TODO: still have to check that `map` does not refer to any variables other
-  // than CURRENT
-  // *OR* as a true generalisation, does only refer to CURRENT and any
-  // variables that are valid in the path enumeration.
-  // auto const& varsValidInPathEnumeration =
-  //      enumeratePathsNode->getVarsValid();
+  /* check that the condition does not reference variables that are not valid
+     inside the path enumeration */
+  auto variablesReferenced = VarSet{};
+  Ast::getReferencedVariables(match->map, variablesReferenced);
+
+  auto const& variablesValid = enumeratePathsNode->getVarsValid();
+
+  if (!std::includes(std::begin(variablesValid), std::end(variablesValid),
+                     std::begin(variablesReferenced),
+                     std::end(variablesReferenced))) {
+    return false;
+  }
+
   auto* tmpVar = enumeratePathsNode->getTemporaryRefNode();
   auto condition = assembleCondition(ast, tmpVar, match->map, match->rhs);
 

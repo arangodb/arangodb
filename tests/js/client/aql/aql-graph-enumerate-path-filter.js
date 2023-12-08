@@ -141,8 +141,6 @@ function assertSameResults(query) {
   assertEqual(resultWithPaths, resultWithoutPaths);
 }
 
-
-
 function queryFilterVerticesByType(pathQueryType) {
   return `
       FOR path IN ANY ${pathQueryType} "${vName}/0" TO "${vName}/2" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
@@ -172,6 +170,14 @@ function enumeratePathsFilter() {
       createGraph();
     },
     tearDownAll,
+
+    testDoesNotFireWhenInvalidVariableReferenced: function () {
+      assertRuleDoesNotFire(`
+        FOR path IN ANY K_PATHS "${vName}/0" TO "${vName}/2" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
+          FOR x IN [1,2,3]
+            FILTER path.vertices[* RETURN CURRENT.colour + x == "green"] ANY == false
+            RETURN path`);
+    },
 
     testDoesNotFireWhenANY: function () {
       assertRuleDoesNotFire(`
