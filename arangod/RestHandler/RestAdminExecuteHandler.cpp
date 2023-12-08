@@ -36,7 +36,7 @@
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/V8Context.h"
+#include "V8Server/V8Executor.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-actions.h"
 
@@ -111,14 +111,13 @@ RestStatus RestAdminExecuteHandler::execute() {
     JavaScriptSecurityContext securityContext =
         JavaScriptSecurityContext::createRestAdminScriptActionContext(
             allowUseDatabase);
-    V8ContextGuard guard(&_vocbase, securityContext);
+    V8ExecutorGuard guard(&_vocbase, securityContext);
 
-    {
-      v8::Isolate* isolate = guard.isolate();
+    guard.runInContext([&](v8::Isolate* isolate) -> Result {
       v8::HandleScope scope(isolate);
-      auto context = TRI_IGETC;
 
-      v8::Handle<v8::Object> current = isolate->GetCurrentContext()->Global();
+      v8::Handle<v8::Context> context = isolate->GetCurrentContext();
+      v8::Handle<v8::Object> current = context->Global();
       v8::TryCatch tryCatch(isolate);
 
       // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
@@ -140,13 +139,16 @@ RestStatus RestAdminExecuteHandler::execute() {
 
         TRI_fake_action_t adminExecuteAction("_admin/execute", 2);
 
-        v8g->_currentRequest = TRI_RequestCppToV8(isolate, v8g, _request.get(),
-                                                  &adminExecuteAction);
-        v8g->_currentResponse = v8::Object::New(isolate);
+        v8::Handle<v8::Object> req = TRI_RequestCppToV8(
+            isolate, v8g, _request.get(), &adminExecuteAction);
+        v8g->_currentRequest.Reset(isolate, req);
 
-        auto guard = scopeGuard([&v8g, &isolate]() noexcept {
-          v8g->_currentRequest = v8::Undefined(isolate);
-          v8g->_currentResponse = v8::Undefined(isolate);
+        v8::Handle<v8::Object> res = v8::Object::New(isolate);
+        v8g->_currentResponse.Reset(isolate, res);
+
+        auto guard = scopeGuard([&v8g]() noexcept {
+          v8g->_currentRequest.Reset();
+          v8g->_currentResponse.Reset();
         });
 
         v8::Handle<v8::Value> args[] = {v8::Null(isolate)};
@@ -221,7 +223,8 @@ RestStatus RestAdminExecuteHandler::execute() {
 
         generateResult(rest::ResponseCode::OK, result.slice());
       }
-    }
+      return {};
+    });
 
   } catch (basics::Exception const& ex) {
     generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
