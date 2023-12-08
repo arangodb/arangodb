@@ -1,4 +1,13 @@
-import { Divider, Grid, Stack, Text } from "@chakra-ui/react";
+import {
+  Accordion,
+  AccordionButton,
+  AccordionIcon,
+  AccordionItem,
+  AccordionPanel,
+  Box, Flex,
+  Grid,
+  Stack
+} from "@chakra-ui/react";
 import { useField } from "formik";
 import React from "react";
 import { CreatableMultiSelectControl } from "../../../components/form/CreatableMultiSelectControl";
@@ -26,27 +35,68 @@ export const AddCollectionForm = () => {
   return (
     <Grid templateColumns={"1fr"} gap="6">
       <Stack>
-        <Text>Basic</Text>
-        <Divider borderColor="gray.400" />
-        <Grid templateColumns={"1fr 1fr"} columnGap="4" alignItems="start">
-          <InputControl isDisabled={isDisabled} name="name" label="Name" />
-          <SelectControl
-            isDisabled={isDisabled}
-            name={"type"}
-            label="Type"
-            selectProps={{
-              options: [
-                { label: "Document", value: "document" },
-                { label: "Edge", value: "edge" }
-              ]
-            }}
-            tooltip={
-              "Use the Document type to store json documents with unique _key attributes. Can be used as nodes in a graph. Use the Edge type to store documents with special edge attributes (_to, _from), which represent relations. Can be used as edges in a graph."
-            }
-          />
-        </Grid>
-        <Text>Configuration</Text>
-        <Divider borderColor="gray.400" />
+        <Accordion
+          borderColor={"gray.200"}
+          borderRightWidth="1px solid"
+          borderLeftWidth="1px solid"
+          marginTop="4"
+          allowMultiple
+          allowToggle
+          defaultIndex={[0]}
+        >
+          <AccordionItem>
+            <AccordionButton>
+              <Box flex="1" textAlign="left">
+                Basic
+              </Box>
+              <AccordionIcon />
+            </AccordionButton>
+            <AccordionPanel pb={4}>
+              <Grid
+                templateColumns={"1fr 1fr"}
+                columnGap="4"
+                alignItems="start"
+              >
+                <InputControl
+                  isDisabled={isDisabled}
+                  name="name"
+                  label="Name"
+                />
+                <SelectControl
+                  isDisabled={isDisabled}
+                  name={"type"}
+                  label="Type"
+                  selectProps={{
+                    options: [
+                      { label: "Document", value: "document" },
+                      { label: "Edge", value: "edge" }
+                    ]
+                  }}
+                  tooltip={
+                    "Use the Document type to store json documents with unique _key attributes. Can be used as nodes in a graph. Use the Edge type to store documents with special edge attributes (_to, _from), which represent relations. Can be used as edges in a graph."
+                  }
+                />
+              </Grid>
+            </AccordionPanel>
+          </AccordionItem>
+          <AdvancedFields isOneShard={isOneShard} />
+        </Accordion>
+      </Stack>
+    </Grid>
+  );
+};
+
+const AdvancedFields = ({ isOneShard }: { isOneShard: boolean }) => {
+  const { isFormDisabled: isDisabled } = useCollectionsContext();
+  return (
+    <AccordionItem>
+      <AccordionButton>
+        <Box flex="1" textAlign="left">
+          Advanced
+        </Box>
+        <AccordionIcon />
+      </AccordionButton>
+      <AccordionPanel pb={4}>
         <Grid
           templateColumns={"1fr 1fr"}
           rowGap="5"
@@ -55,22 +105,23 @@ export const AddCollectionForm = () => {
           maxWidth="full"
         >
           <ClusterFields isOneShard={isOneShard} />
-          <SwitchControl
-            isDisabled={isDisabled}
-            name={"waitForSync"}
-            label="Wait for sync"
-            tooltip={
-              "Synchronize to disk before returning from a create or update of a document."
-            }
-          />
+          <Flex alignItems="end">
+            <Box>
+              <SwitchControl
+                label="Wait for sync"
+                isDisabled={isDisabled}
+                name={"waitForSync"}
+                tooltip="Synchronize to disk before returning from a create or update of a document."
+              />
+            </Box>
+          </Flex>
         </Grid>
-      </Stack>
-    </Grid>
+      </AccordionPanel>
+    </AccordionItem>
   );
 };
-
 const ClusterFields = ({ isOneShard }: { isOneShard: boolean }) => {
-  const { collections, isFormDisabled: isDisabled } = useCollectionsContext();
+  const { isFormDisabled: isDisabled } = useCollectionsContext();
   const [distributeShardsLike] = useField<string>("distributeShardsLike");
   const [isSatellite] = useField<boolean>("isSatellite");
 
@@ -124,47 +175,67 @@ const ClusterFields = ({ isOneShard }: { isOneShard: boolean }) => {
           "Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created. Must be smaller or equal compared to the replication factor."
         }
       />
-      {window.frontendConfig.isEnterprise && (
-        <>
-          {!isOneShard && (
-            <>
-              <SelectControl
-                isDisabled={isDisabled}
-                name={"distributeShardsLike"}
-                label="Distribute shards like"
-                selectProps={{
-                  options: [
-                    { label: "N/A", value: "" },
-                    ...(collections?.map(collection => ({
-                      label: collection.name,
-                      value: collection.name
-                    })) ?? [])
-                  ]
-                }}
-                tooltip={
-                  "Name of another collection that should be used as a prototype for sharding this collection."
-                }
-              />
-              <InputControl
-                isDisabled={isDisabled || isSatellite.value}
-                name={"smartJoinAttribute"}
-                label="SmartJoin attribute"
-                tooltip={
-                  "String attribute name. Can be left empty if SmartJoins are not used."
-                }
-              />
-            </>
-          )}
-          <SwitchControl
-            isDisabled={isDisabled || distributeShardsLike.value !== ""}
-            name={"isSatellite"}
-            label="SatelliteCollection"
-            tooltip={
-              "If enabled, every collection in this collection will be replicated to every DB-Server."
-            }
-          />
-        </>
-      )}
+      <ClusterEnterpriseFields isOneShard={isOneShard} />
+    </>
+  );
+};
+
+const ClusterEnterpriseFields = ({ isOneShard }: { isOneShard: boolean }) => {
+  const { isFormDisabled: isDisabled } = useCollectionsContext();
+  const [distributeShardsLike] = useField<string>("distributeShardsLike");
+
+  if (!window.frontendConfig.isEnterprise) {
+    return null;
+  }
+  return (
+    <>
+      <ShardFields isOneShard={isOneShard} />
+      <SwitchControl
+        isDisabled={isDisabled || distributeShardsLike.value !== ""}
+        name={"isSatellite"}
+        label="SatelliteCollection"
+        tooltip={
+          "If enabled, every collection in this collection will be replicated to every DB-Server."
+        }
+      />
+    </>
+  );
+};
+
+const ShardFields = ({ isOneShard }: { isOneShard: boolean }) => {
+  const { collections, isFormDisabled: isDisabled } = useCollectionsContext();
+  const [isSatellite] = useField<boolean>("isSatellite");
+  if (isOneShard) {
+    return null;
+  }
+
+  return (
+    <>
+      <SelectControl
+        isDisabled={isDisabled}
+        name={"distributeShardsLike"}
+        label="Distribute shards like"
+        selectProps={{
+          options: [
+            { label: "N/A", value: "" },
+            ...(collections?.map(collection => ({
+              label: collection.name,
+              value: collection.name
+            })) ?? [])
+          ]
+        }}
+        tooltip={
+          "Name of another collection that should be used as a prototype for sharding this collection."
+        }
+      />
+      <InputControl
+        isDisabled={isDisabled || isSatellite.value}
+        name={"smartJoinAttribute"}
+        label="SmartJoin attribute"
+        tooltip={
+          "String attribute name. Can be left empty if SmartJoins are not used."
+        }
+      />
     </>
   );
 };
