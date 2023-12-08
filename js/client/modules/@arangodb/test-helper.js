@@ -657,6 +657,18 @@ exports.deactivateFailure = function (name) {
   });
 };
 
+exports.getMaxNumberOfShards = function () {
+  return arango.POST("/_admin/execute", "return require('internal').maxNumberOfShards;");
+};
+
+exports.getMaxReplicationFactor = function () {
+  return arango.POST("/_admin/execute", "return require('internal').maxReplicationFactor;");
+};
+
+exports.getMinReplicationFactor = function () {
+  return arango.POST("/_admin/execute", "return require('internal').minReplicationFactor;");
+};
+
 exports.getAllMetricsFromEndpoints = function (roles = "") {
   
   const isCluster = require("internal").isCluster();

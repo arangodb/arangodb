@@ -33,7 +33,11 @@ var arangodb = require("@arangodb");
 var db = arangodb.db;
 var graph = require("@arangodb/general-graph");
 var ERRORS = arangodb.errors;
-let internal = require("internal");
+let {
+  getMaxNumberOfShards,
+  getMaxReplicationFactor,
+  getMinReplicationFactor
+} = require("@arangodb/test-helper");
 
 function GeneralGraphClusterCreationSuite() {
   'use strict';
@@ -41,9 +45,9 @@ function GeneralGraphClusterCreationSuite() {
   const en = "UnitTestEdges";
   const gn = "UnitTestGraph";
   const edgeDef = [graph._relation(en, vn, vn)];
-  const maxNumberOfShards = arango.POST("/_admin/execute", "return require('internal').maxNumberOfShards;"); 
-  const maxReplicationFactor = arango.POST("/_admin/execute", "return require('internal').maxReplicationFactor;"); 
-  const minReplicationFactor = arango.POST("/_admin/execute", "return require('internal').minReplicationFactor;"); 
+  const maxNumberOfShards = getMaxNumberOfShards();
+  const maxReplicationFactor = getMaxReplicationFactor();
+  const minReplicationFactor = getMinReplicationFactor(); 
 
   return {
 
