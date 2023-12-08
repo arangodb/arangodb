@@ -88,7 +88,7 @@ endif ()
 option(USE_PRECOMPILED_V8 "use a precompiled V8" OFF)
 
 set(V8_VERSION
-  "12.1.195"
+  "12.1.165"
   CACHE INTERNAL
   "${PROJECT_NAME}: Version"
   FORCE
