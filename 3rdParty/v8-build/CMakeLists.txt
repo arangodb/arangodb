@@ -70,6 +70,7 @@ if ("${CMAKE_TARGET_ARCHITECTURES}" STREQUAL "armv7")
   set(V8_PROC_ARCH "arm")
   set(QEMU_ARCH "qemu-arm")
   list(APPEND V8_GYP_ARGS -Darm_version=7 -Darm_fpu=default -Darm_float_abi=default)
+  # TODO: should we handle armv8 here?
 elseif("${CMAKE_TARGET_ARCHITECTURES}" STREQUAL "aarch64")
   set(V8_PROC_ARCH "arm64")
   set(QEMU_ARCH "qemu-aarch64")
@@ -92,7 +93,6 @@ list(APPEND V8_GYP_ARGS
   -DV8_ROOT=${V8_RELATIVE_SOURCE_DIR}
   -DABSL_INCLUDE_DIR=${CMAKE_SOURCE_DIR}/3rdParty/abseil-cpp
   -Dicu_path=${V8_RELATIVE_SOURCE_DIR}/third_party/icu/
-  #$ ${V8_REL_TARGET_PATH}
   -Dv8_target_arch=${V8_PROC_ARCH}
   -Dtarget_arch=${V8_PROC_ARCH}
   -Dv8_host_arch=${V8_PROC_ARCH}
@@ -108,18 +108,6 @@ if (CROSS_COMPILING)
   -DGYP_CROSSCOMPILE=1
   -DEXECUTABLE_PREFIX=${V8_PROC_ARCH}.
   )
-  #  configure_file (
-  #  "${CMAKE_SOURCE_DIR}/lib/V8/v8-mkpeephole.in"
-  #  "${V8_TARGET_DIR}/${V8_PROC_ARCH}.release/${V8_PROC_ARCH}.mkpeephole"
-  #  NEWLINE_STYLE UNIX
-  #  @ONLY
-  #)
-  #configure_file (
-  #  "${CMAKE_SOURCE_DIR}/lib/V8/v8-mksnapshot.in"
-  #  "${V8_TARGET_DIR}/${V8_PROC_ARCH}.release/${V8_PROC_ARCH}.mksnapshot"
-  #  NEWLINE_STYLE UNIX
-  #  @ONLY
-  #)
 endif()
 
 option(USE_DEBUG_V8 "compile V8 in DEBUG mode" OFF)
@@ -187,11 +175,11 @@ if (WIN32)
   set(GYP_MSVS_OVERRIDE_PATH "${CMAKE_CXX_COMPILER}")
 
   list(APPEND V8_GYP_ARGS
-    -Dcomponent=static_library
-    -Dlibrary=static_library
+    -Dnode_use_pch=false
     -Dgenerator_output=${V8_TARGET_DIR}
     -Ggenerator_output=${V8_TARGET_DIR}
     --depth=.
+    -Dos_posix=1 # why are we actually setting this on Windows?
     -Dwerror=
     -Dembed_script=
     -Dwarmup_script=
@@ -201,14 +189,12 @@ if (WIN32)
     -Dv8_use_snapshot=1
     -Dv8_use_zlib=0
     -Dv8_enable_webassembly=0
-    -Dnode_use_pch=false
     -Dcomponent=shared_library
     -Dv8_optimized_debug=1
     -Dicu_use_data_file_flag=1
     -Denable_lto=0
-    -Dos_posix=1
+    -Dlibrary=static_library
     -Dicu_small=false
-    -Dlibrary=static_library #icu
     -Dicu_ver_major=73
     -Dicu_data_in=${CMAKE_BINARY_DIR}/bin/icudt73l.dat
     -Dicu_endianness=l
@@ -219,10 +205,8 @@ if (WIN32)
     torque
     run_torque
     generate_bytecode_builtins_list
-    v8_libsampler
     v8_initializers
     v8_libplatform
-    v8_nosnapshot
     mksnapshot
     v8_snapshot
     v8
@@ -230,7 +214,7 @@ if (WIN32)
 
   add_custom_target(v8_build)
   set(V8_LIBS
-    "v8_base_without_compiler;v8_compiler;v8_base_without_compiler;torque_base;v8_libplatform;v8_libsampler;v8_libbase;v8_init;v8_initializers;v8_nosnapshot"
+    "torque_base;v8_base_without_compiler;v8_compiler;v8_init;v8_initializers;v8_turboshaft;v8_libbase;v8_libplatform;v8_snapshot"
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
   )
@@ -276,8 +260,11 @@ if (WIN32)
     debug "${ICU_LIBRARY_DEBUG}/lib/icui18n.lib"
     optimized "${ICU_LIBRARY_RELEASE}/lib/icui18n.lib"
 
-    debug "${ICU_LIBRARY_DEBUG}/lib/icuuc.lib"
-    optimized "${ICU_LIBRARY_RELEASE}/lib/icuuc.lib"
+    debug "${ICU_LIBRARY_DEBUG}/lib/icuucx.lib"
+    optimized "${ICU_LIBRARY_RELEASE}/lib/icuucx.lib"
+    
+    debug "${ICU_LIBRARY_DEBUG}/lib/icustubdata.lib"
+    optimized "${ICU_LIBRARY_RELEASE}/lib/icustubdata.lib"
 
     CACHE INTERNAL
     "ICU: Libraries"
@@ -285,7 +272,7 @@ if (WIN32)
   )
   
   set(V8_LIBRARY_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/gypfiles/Debug")
-  set(V8_LIBRARY_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/gypfiles//Release")
+  set(V8_LIBRARY_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/gypfiles/Release")
 
   message("V8_LIBRARY_DEBUG ${V8_LIBRARY_DEBUG} CMAKE_CURRENT_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}")
   set(V8_LIBS
@@ -298,9 +285,6 @@ if (WIN32)
     debug "${V8_LIBRARY_DEBUG}/lib/v8_libbase.lib"
     optimized "${V8_LIBRARY_RELEASE}/lib/v8_libbase.lib"
 
-    debug "${V8_LIBRARY_DEBUG}/lib/v8_libsampler.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/v8_libsampler.lib"
-
     debug "${V8_LIBRARY_DEBUG}/lib/torque_base.lib"
     optimized "${V8_LIBRARY_RELEASE}/lib/torque_base.lib"
 
@@ -309,9 +293,15 @@ if (WIN32)
 
     debug "${V8_LIBRARY_DEBUG}/lib/v8_initializers.lib"
     optimized "${V8_LIBRARY_RELEASE}/lib/v8_initializers.lib"
+    
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_init.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_init.lib"
 
     debug "${V8_LIBRARY_DEBUG}/lib/v8_snapshot.lib"
     optimized "${V8_LIBRARY_RELEASE}/lib/v8_snapshot.lib"
+    
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_turboshaft.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_turboshaft.lib"
 
     debug "DbgHelp.lib"
     optimized "DbgHelp.lib"
@@ -422,7 +412,7 @@ else ()
     -Dv8_optimized_debug=1
     -Dicu_use_data_file_flag=1
     -Denable_lto=0
-    -Dlibrary=static_library #icu
+    -Dlibrary=static_library
     -Dicu_small=false
     -Dicu_ver_major=73
     -Dicu_data_in=${CMAKE_BINARY_DIR}/bin/icudt73l.dat
