@@ -262,7 +262,6 @@ jobs:
                   - tests/js
                   - enterprise/tests/js
                   - utils
-                  - UnitTests
                   - 3rdParty/iresearch/tests/resources
                   - 3rdParty/rta-makedata
 
