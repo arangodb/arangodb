@@ -123,11 +123,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
       _resultCode(std::nullopt),
 #ifdef USE_V8
       _executorOwnedByExterior(_transactionContext->isV8Context() &&
-#ifdef V8_UPGRADE
                                v8::Isolate::TryGetCurrent() != nullptr),
-#else
-                               v8::Isolate::GetCurrent() != nullptr),
-#endif
       _embeddedQuery(_transactionContext->isV8Context() &&
                      transaction::V8Context::isEmbedded()),
       _registeredInV8Executor(false),

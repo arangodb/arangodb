@@ -120,7 +120,6 @@ void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
 // this callback is executed by V8 when it runs out of memory.
 // after the callback returns, V8 will call std::abort() and
 // terminate the entire process
-#ifdef V8_UPGRADE
 void oomCallback(char const* location, v8::OOMDetails const& details) {
   LOG_TOPIC("cfa4b", FATAL, arangodb::Logger::V8)
       << "out of " << (details.is_heap_oom ? "heap " : "") << "memory in V8 ("
@@ -128,18 +127,6 @@ void oomCallback(char const* location, v8::OOMDetails const& details) {
       << (details.detail == nullptr ? "" : details.detail);
   FATAL_ERROR_EXIT();
 }
-#else
-static void oomCallback(char const* location, bool isHeapOOM) {
-  if (isHeapOOM) {
-    LOG_TOPIC("fd5c4", FATAL, arangodb::Logger::V8)
-        << "out of heap hemory in V8 (" << location << ")";
-  } else {
-    LOG_TOPIC("5d980", FATAL, arangodb::Logger::V8)
-        << "out of memory in V8 (" << location << ")";
-  }
-  FATAL_ERROR_EXIT();
-}
-#endif
 
 // this callback is executed by V8 when it encounters a fatal error.
 // after the callback returns, V8 will call std::abort() and
@@ -234,11 +221,7 @@ void V8PlatformFeature::start() {
 
 void V8PlatformFeature::unprepare() {
   v8::V8::Dispose();
-#ifdef V8_UPGRADE
   v8::V8::DisposePlatform();
-#else
-  v8::V8::ShutdownPlatform();
-#endif
   _platform.reset();
   _allocator.reset();
 }

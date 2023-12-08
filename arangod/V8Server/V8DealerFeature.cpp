@@ -1247,11 +1247,7 @@ V8Executor* V8DealerFeature::enterExecutor(
   }
 
   double const startTime = TRI_microtime();
-#ifdef V8_UPGRADE
   TRI_ASSERT(v8::Isolate::TryGetCurrent() == nullptr);
-#else
-  TRI_ASSERT(v8::Isolate::GetCurrent() == nullptr);
-#endif
   V8Executor* executor = nullptr;
 
   // look for a free executor
@@ -1998,11 +1994,7 @@ Result V8ExecutorGuard::runInContext(
 V8ConditionalExecutorGuard::V8ConditionalExecutorGuard(
     TRI_vocbase_t* vocbase, JavaScriptSecurityContext const& securityContext)
     : _vocbase(vocbase),
-#ifdef V8_UPGRADE
       _isolate(v8::Isolate::TryGetCurrent()),
-#else
-      _isolate(v8::Isolate::GetCurrent()),
-#endif
       _executor(nullptr) {
   TRI_ASSERT(vocbase != nullptr);
   if (_isolate == nullptr) {

@@ -252,11 +252,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase,
   }
 
   {
-#ifdef V8_UPGRADE
     bool throwV8Exception = (v8::Isolate::TryGetCurrent() != nullptr);
-#else
-    bool throwV8Exception = (v8::Isolate::GetCurrent() != nullptr);
-#endif
 
     JavaScriptSecurityContext securityContext =
         JavaScriptSecurityContext::createRestrictedContext();
