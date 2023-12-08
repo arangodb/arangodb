@@ -77,6 +77,10 @@ const getServerRebootId = function (serverId) {
   return readAgencyValueAt(`Current/ServersKnown/${serverId}/rebootId`);
 };
 
+const isDBServerInCurrent = function (serverId) {
+  return readAgencyValueAt(`Current/DBServers/${serverId}`);
+};
+
 const bumpServerRebootId = function (serverId) {
   const response = clientHelper.agency.increaseVersion(`Current/ServersKnown/${serverId}/rebootId`);
   if (response !== true) {
@@ -792,6 +796,7 @@ exports.getReplicatedLogLeaderPlan = getReplicatedLogLeaderPlan;
 exports.getReplicatedLogLeaderTarget = getReplicatedLogLeaderTarget;
 exports.getServerHealth = getServerHealth;
 exports.getServerRebootId = getServerRebootId;
+exports.isDBServerInCurrent = isDBServerInCurrent;
 exports.bumpServerRebootId = bumpServerRebootId;
 exports.getServerUrl = getServerUrl;
 exports.getSupervisionActionTypes = getSupervisionActionTypes;

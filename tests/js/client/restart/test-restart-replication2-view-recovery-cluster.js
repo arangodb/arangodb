@@ -27,19 +27,30 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-const db = require('@arangodb').db;
+const {db, errors} = require('@arangodb');
 const lh = require('@arangodb/testutils/replicated-logs-helper');
 const rh = require('@arangodb/testutils/restart-helper');
 const dh = require("@arangodb/testutils/document-state-helper");
-const lp = require("@arangodb/testutils/replicated-logs-predicates");
 const {getCtrlDBServers} = require('@arangodb/test-helper');
-const lhttp = require('@arangodb/testutils/replicated-logs-http-helper');
 const isEnterprise = require("internal").isEnterprise();
 
 const smartGraphs = isEnterprise ? require('@arangodb/smart-graph') : null;
 const eeGraphs = isEnterprise ? require('@arangodb/enterprise-graph') : null;
 
 const dbn = 'UnitTestsDatabase';
+
+const waitForServersToBeInCurrent = () => {
+  const dbServers = getCtrlDBServers();
+  lh.waitFor(function () {
+    for (const server of dbServers) {
+      if (!lh.isDBServerInCurrent(server.id)) {
+        return Error(`server ${server.id} not in current`);
+      }
+    }
+  });
+  // Sleep a bit, to let AgencyCache see the update
+  require("internal").wait(0.2);
+};
 
 const testSuite = (config) => {
   const documentCount = 100;
@@ -101,55 +112,6 @@ const testSuite = (config) => {
     tearDownAnd,
   } = lh.testHelperFunctions(dbn, {replicationVersion: '2'});
 
-  const compactLogs = () => {
-
-    const waitForLogToBeCompacted = (log) => {
-      const coordinator = lh.coordinators[0];
-      const logId = log.id();
-
-      const participants = lhttp.listLogs(coordinator, dbn).result[logId];
-      assertTrue(participants !== undefined, `No participants found for log ${logId}`);
-      let leader = participants[0];
-      let status = log.status();
-      const commitIndexAfterCompaction = status.participants[leader].response.local.commitIndex + 1;
-
-
-      let logContents = log.head(1000);
-
-      // We need to make sure that the CreateShard entries are being compacted before doing recovery.
-      // Otherwise, the recovery procedure will try to create the shards again. The point is to test how
-      // the recovery procedure handles operations referring to non-existing shards.
-      // By waiting for lowestIndexToKeep to be greater than the current commitIndex, and for the index to be released,
-      // we make sure the CreateShard operation is going to be compacted.
-      lh.waitFor(lp.lowestIndexToKeepReached(log, leader, commitIndexAfterCompaction));
-      // Wait for all participants to have called release on the CreateShard entry.
-      lh.waitFor(() => {
-        log.ping();
-        status = log.status();
-        for (const [pid, value] of Object.entries(status.participants)) {
-          if (value.response.local.releaseIndex <= commitIndexAfterCompaction) {
-            return Error(`Participant ${pid} cannot compact enough, status: ${JSON.stringify(status)}, ` +
-              `log contents: ${JSON.stringify(logContents)}`);
-          }
-        }
-        return true;
-      });
-
-      // Trigger compaction intentionally. We aim to clear a prefix of the log here, removing the CreateShard entries.
-      // This way, the recovery procedure will be forced to handle entries referring to an unknown shard.
-      log.compact();
-    };
-
-
-    // This is not too impartant, we try to get into an
-    // "empty" and "filled" log with this.
-    // However the filled one is the problemeatic one.
-    // So this was more to proof that empty log is not a problem
-    for (const l of logs) {
-      // waitForLogToBeCompacted(l);
-    }
-  };
-
   const insertDummyData = (number) => {
     // NOTE: This is on purpose single calls.
     // We need those to be different entries in the replicated log
@@ -201,7 +163,6 @@ const testSuite = (config) => {
     const uniqCol = new Set(expectedResult);
     if (result.length !== expectedResult.length) {
       {
-        const dh = require("@arangodb/testutils/document-state-helper");
         let intermediateCommitEntries = dh.getDocumentEntries(dh.mergeLogs(logs), "Insert");
         require("console").error(JSON.stringify(intermediateCommitEntries));
       }
@@ -250,20 +211,9 @@ const testSuite = (config) => {
     }),
 
     /*
-     * Recover the view if the log is empty
-     */
-    [`testRecoverEmptyLog_${namePostfix}`]() {
-      insertDummyData(documentCount);
-      compactLogs();
-      lh.bumpTermOfLogsAndWaitForConfirmation(dbn, collection);
-      assertViewInSync();
-    },
-
-    /*
     * Recover the view if the log is contains entries
     */
     [`testRecoverInsertsInLog_${namePostfix}`]() {
-      compactLogs();
       insertDummyData(documentCount);
       lh.bumpTermOfLogsAndWaitForConfirmation(dbn, collection);
       assertViewInSync();
@@ -273,7 +223,6 @@ const testSuite = (config) => {
     * Recover the view on leader change
     */
     [`testRecoverInsertsInLogSwitchLeader_${namePostfix}`]() {
-      compactLogs();
       insertDummyData(documentCount);
       // Try to switch the leader
       for (const l of logs) {
@@ -284,20 +233,9 @@ const testSuite = (config) => {
     },
 
     /*
-    * Recover the view if the log is empty
-    */
-    [`testRecoverEmptyLogUpdates_${namePostfix}`]() {
-      insertDummyUpdates(documentCount / 10, 10);
-      compactLogs();
-      lh.bumpTermOfLogsAndWaitForConfirmation(dbn, collection);
-      assertViewInSync();
-    },
-
-    /*
     * Recover the view if the log is contains entries
     */
     [`testRecoverUpdatesInLog_${namePostfix}`]() {
-      compactLogs();
       insertDummyUpdates(documentCount / 10, 10);
       lh.bumpTermOfLogsAndWaitForConfirmation(dbn, collection);
       assertViewInSync();
@@ -307,7 +245,6 @@ const testSuite = (config) => {
     * Recover the view on leader change
     */
     [`testRecoverUpdatesInLogSwitchLeader_${namePostfix}`]() {
-      compactLogs();
       insertDummyUpdates(documentCount / 10, 10);
       // Try to switch the leader
       for (const l of logs) {
@@ -318,20 +255,9 @@ const testSuite = (config) => {
     },
 
     /*
-    * Recover the view if the log is empty
-    */
-    [`testRecoverEmptyLogReplaces_${namePostfix}`]() {
-      insertDummyReplaces(documentCount / 10, 10);
-      compactLogs();
-      lh.bumpTermOfLogsAndWaitForConfirmation(dbn, collection);
-      assertViewInSync();
-    },
-
-    /*
     * Recover the view if the log is contains entries
     */
     [`testRecoverReplacesInLog_${namePostfix}`]() {
-      compactLogs();
       insertDummyReplaces(documentCount / 10, 10);
       lh.bumpTermOfLogsAndWaitForConfirmation(dbn, collection);
       assertViewInSync();
@@ -341,7 +267,6 @@ const testSuite = (config) => {
     * Recover the view on leader change
     */
     [`testRecoverReplacesInLogSwitchLeader_${namePostfix}`]() {
-      compactLogs();
       insertDummyReplaces(documentCount / 10, 10);
       // Try to switch the leader
       for (const l of logs) {
@@ -352,21 +277,9 @@ const testSuite = (config) => {
     },
 
     /*
- * Recover the view if the log is empty
- */
-    [`testRecoverEmptyLog_${namePostfix}`]() {
-      insertDummyData(documentCount);
-      compactLogs();
-      // Reboot
-      restartServers();
-      assertViewInSync();
-    },
-
-    /*
     * Recover the view if the log is contains entries
     */
     [`testRecoverInsertsInLog_${namePostfix}`]() {
-      compactLogs();
       insertDummyData(documentCount);
       // Reboot
       restartServers();
@@ -377,7 +290,6 @@ const testSuite = (config) => {
     * Recover the view on leader change
     */
     [`testRecoverInsertsInLogSwitchLeader_${namePostfix}`]() {
-      compactLogs();
       insertDummyData(documentCount);
       // Reboot
       restartServers();
@@ -389,7 +301,6 @@ const testSuite = (config) => {
     */
     [`testRecoverEmptyLogUpdatesReboot_${namePostfix}`]() {
       insertDummyUpdates(documentCount / 10, 10);
-      compactLogs();
       // Reboot
       restartServers();
       assertViewInSync();
@@ -399,7 +310,6 @@ const testSuite = (config) => {
     * Recover the view on reboot
     */
     [`testRecoverUpdatesInLogReboot_${namePostfix}`]() {
-      compactLogs();
       insertDummyUpdates(documentCount / 10, 10);
       // Reboot
       restartServers();
@@ -411,7 +321,6 @@ const testSuite = (config) => {
     */
     [`testRecoverEmptyLogReplaces_${namePostfix}`]() {
       insertDummyReplaces(documentCount / 10, 10);
-      compactLogs();
       // Reboot
       restartServers();
       assertViewInSync();
@@ -422,7 +331,6 @@ const testSuite = (config) => {
     * Recover the view on reboot
     */
     [`testRecoverReplacesInLogReboot_${namePostfix}`]() {
-      compactLogs();
       insertDummyReplaces(documentCount / 10, 10);
       // Reboot
       restartServers();
@@ -467,7 +375,27 @@ function recoveryViewOnSmartGraph() {
   const vertexName = "UnitTestSmartVertex";
 
   const setupCollection = () => {
-    smartGraphs._create(sgName, [smartGraphs._relation(edgeName, vertexName, vertexName)], [], {replicationFactor: 2, numberOfShards: 2, isSmart: true, smartGraphAttribute: "sga",  waitForSync: true});
+    let created = false;
+    for (let i = 0; i < 5; i++) {
+      try {
+        smartGraphs._create(sgName, [smartGraphs._relation(edgeName, vertexName, vertexName)], [], {replicationFactor: 2, numberOfShards: 2, isSmart: true, smartGraphAttribute: "sga",  waitForSync: true});
+        // One success is enough
+        created = true;
+        break;
+      } catch (e) {
+        // There is a chance that the Local AgencyCache of the Coordinator still has a dead
+        // server listed. This happens if it fetches AgencyStatus exactly at the point
+        // where the servers are restarted, and did not yet update it since.
+        // So we simply give it some time and then retry.
+        if (e.errorNum === errors.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code) {
+          waitForServersToBeInCurrent();
+        } else {
+          throw e;
+        }
+      }
+    }
+    assertTrue(created);
+
     const collection = db._collection(edgeName);
     const localCol = db._collection(`_local_${edgeName}`);
     const shards = localCol.shards();
@@ -504,7 +432,26 @@ function recoveryViewOnEnterpriseGraph() {
   const vertexName = "UnitTestEEVertex";
 
   const setupCollection = () => {
-    eeGraphs._create(sgName, [eeGraphs._relation(edgeName, vertexName, vertexName)], [], {replicationFactor: 2, numberOfShards: 2, isSmart: true,  waitForSync: true});
+    let created = false;
+    for (let i = 0; i < 5; i++) {
+      try {
+        eeGraphs._create(sgName, [eeGraphs._relation(edgeName, vertexName, vertexName)], [], {replicationFactor: 2, numberOfShards: 2, isSmart: true,  waitForSync: true});
+        // One success is enough
+        created = true;
+        break;
+      } catch (e) {
+        // There is a chance that the Local AgencyCache of the Coordinator still has a dead
+        // server listed. This happens if it fetches AgencyStatus exactly at the point
+        // where the servers are restarted, and did not yet update it since.
+        // So we simply give it some time and then retry.
+        if (e.errorNum === ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code) {
+          waitForServersToBeInCurrent();
+        } else {
+          throw e;
+        }
+      }
+    }
+    assertTrue(created);
     const collection = db._collection(edgeName);
     const localCol = db._collection(`_local_${edgeName}`);
     const shards = localCol.shards();
