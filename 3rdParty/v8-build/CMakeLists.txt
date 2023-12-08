@@ -12,6 +12,8 @@ endif ()
 
 project(V8)
 
+set(CMAKE_CXX_STANDARD 20)
+
 # create target directory
 
 set(V8_DIR "${PROJECT_SOURCE_DIR}/${V8_SUB_DIR}")
@@ -224,28 +226,28 @@ if (WIN32)
     string(TOLOWER ${MS_TARGET_CONF} MS_TARGET_CONF_LOWER)
     ExternalProject_Add(v8_build_${MS_TARGET_CONF_LOWER}
       BUILD_IN_SOURCE
-      TRUE
+        TRUE
       WORKING_DIRECTORY
-      ${V8_DIR}/gypfiles
+        ${V8_DIR}/gypfiles
       SOURCE_DIR
-      "${V8_DIR}"
+        "${V8_DIR}"
       CONFIGURE_COMMAND
         ${CMAKE_COMMAND} -E env GYP_MSVS_VERSION=${GYP_MSVS_VERSION} GYP_GENERATORS=${GYP_GENERATORS} GYP_MSVS_OVERRIDE_PATH=${GYP_MSVS_OVERRIDE_PATH} DEPOT_TOOLS_WIN_TOOLCHAIN=${DEPOT_TOOLS_WIN_TOOLCHAIN} "${PYTHON_EXECUTABLE}" ${GYP_MAIN} ${V8_GYP_ARGS} -Dmode=${MS_TARGET_CONF_LOWER}
       BUILD_COMMAND
-      ""
+        ""
       INSTALL_COMMAND
         ""
     )
 
     add_dependencies(v8_build v8_build_${MS_TARGET_CONF_LOWER})
 
-    foreach(V8_ONE_TARGET ${V8_TARGETS})
+    foreach (V8_ONE_TARGET ${V8_TARGETS})
       # cmake eats semicolons or quotes them or, or, or so we can't use /t:a;b;c
       ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} v8_build_${V8_ONE_TARGET}_${MS_TARGET_CONF_LOWER}
         WORKING_DIRECTORY
           ${V8_TARGET_DIR}/../gypfiles
         COMMAND
-          msbuild ${V8_ONE_TARGET}.vcxproj /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
+          msbuild ${V8_ONE_TARGET}.vcxproj /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM} /std:c++20
         DEPENDEES
           configure
         DEPENDERS
