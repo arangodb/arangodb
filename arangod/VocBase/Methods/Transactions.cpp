@@ -25,7 +25,6 @@
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
-#include <v8.h>
 #include "Transactions.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -42,11 +41,13 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-helper.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
+#include "V8Server/V8Executor.h"
 #include "V8Server/v8-vocbaseprivate.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <v8.h>
 
 namespace arangodb {
 
@@ -65,14 +66,10 @@ bool allowTransactions(v8::Isolate* isolate) {
           v8security.isAdminScriptContext(isolate));
 }
 
-Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
+Result executeTransaction(V8Executor* executor, basics::ReadWriteLock& lock,
                           std::atomic<bool>& canceled, VPackSlice slice,
                           std::string const& portType, VPackBuilder& builder) {
-  // YOU NEED A TRY CATCH BLOCK like:
-  //    TRI_V8_TRY_CATCH_BEGIN(isolate);
-  //    TRI_V8_TRY_CATCH_END
-  // outside of this function!
-
+  v8::Isolate* isolate = executor->isolate();
   Result rv;
 
   if (!allowTransactions(isolate)) {
@@ -80,74 +77,80 @@ Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
                     "JavaScript transactions are disabled");
   }
 
-  READ_LOCKER(readLock, lock);
-  if (canceled) {
-    return rv.reset(TRI_ERROR_REQUEST_CANCELED);
-  }
+  rv = executor->runInContext([&](v8::Isolate* isolate) {
+    Result rv;
 
-  v8::HandleScope scope(isolate);
-  auto context = TRI_IGETC;
-  v8::Handle<v8::Value> in = TRI_VPackToV8(isolate, slice);
-
-  v8::Handle<v8::Value> result;
-  v8::TryCatch tryCatch(isolate);
-
-  v8::Handle<v8::Object> request = v8::Object::New(isolate);
-  v8::Handle<v8::Value> jsPortTypeKey =
-      TRI_V8_ASCII_STRING(isolate, "portType");
-  v8::Handle<v8::Value> jsPortTypeValue =
-      TRI_V8_ASCII_STD_STRING(isolate, portType);
-  if (!request->Set(context, jsPortTypeKey, jsPortTypeValue).FromMaybe(false)) {
-    rv.reset(TRI_ERROR_INTERNAL, "could not set portType");
-    return rv;
-  }
-  {
-    auto requestVal = v8::Handle<v8::Value>::Cast(request);
-    auto responseVal = v8::Handle<v8::Value>::Cast(v8::Undefined(isolate));
-    v8gHelper globalVars(isolate, tryCatch, requestVal, responseVal);
-    readLock.unlock();  // unlock
-    rv = executeTransactionJS(isolate, in, result, tryCatch);
-    globalVars.cancel(canceled);
-  }
-
-  // do not allow the manipulation of the isolate while we are messing here
-  READ_LOCKER(readLock2, lock);
-
-  if (canceled) {  // if it was ok we would already have committed
-    return rv.reset(TRI_ERROR_REQUEST_CANCELED);
-  }
-
-  if (rv.fail()) {
-    return rv;
-  }
-
-  if (tryCatch.HasCaught()) {
-    // we have some javascript error that is not an arangoError
-    std::string msg;
-    if (!tryCatch.Message().IsEmpty()) {
-      v8::String::Utf8Value m(isolate, tryCatch.Message()->Get());
-      if (*m != nullptr) {
-        msg = *m;
-      }
+    READ_LOCKER(readLock, lock);
+    if (canceled) {
+      return rv.reset(TRI_ERROR_REQUEST_CANCELED);
     }
-    rv.reset(TRI_ERROR_HTTP_SERVER_ERROR, msg);
-  }
 
-  if (rv.fail()) {
+    v8::HandleScope scope(isolate);
+    v8::Handle<v8::Value> in = TRI_VPackToV8(isolate, slice);
+
+    v8::Handle<v8::Value> result;
+    v8::TryCatch tryCatch(isolate);
+
+    v8::Handle<v8::Object> request = v8::Object::New(isolate);
+    v8::Handle<v8::Value> jsPortTypeKey =
+        TRI_V8_ASCII_STRING(isolate, "portType");
+    v8::Handle<v8::Value> jsPortTypeValue =
+        TRI_V8_ASCII_STD_STRING(isolate, portType);
+    if (!request
+             ->Set(isolate->GetCurrentContext(), jsPortTypeKey, jsPortTypeValue)
+             .FromMaybe(false)) {
+      rv.reset(TRI_ERROR_INTERNAL, "could not set portType");
+      return rv;
+    }
+
+    {
+      auto requestVal = v8::Handle<v8::Value>::Cast(request);
+      auto responseVal = v8::Handle<v8::Value>::Cast(v8::Undefined(isolate));
+      v8gHelper globalVars(isolate, tryCatch, requestVal, responseVal);
+      readLock.unlock();  // unlock
+      rv = executeTransactionJS(isolate, in, result, tryCatch);
+      globalVars.cancel(canceled);
+    }
+
+    // do not allow the manipulation of the isolate while we are messing here
+    readLock.lock();
+
+    if (canceled) {  // if it was ok we would already have committed
+      return rv.reset(TRI_ERROR_REQUEST_CANCELED);
+    }
+
+    if (rv.fail()) {
+      return rv;
+    }
+
+    if (tryCatch.HasCaught()) {
+      // we have some javascript error that is not an arangoError
+      std::string msg;
+      if (!tryCatch.Message().IsEmpty()) {
+        v8::String::Utf8Value m(isolate, tryCatch.Message()->Get());
+        if (*m != nullptr) {
+          msg = *m;
+        }
+      }
+      rv.reset(TRI_ERROR_HTTP_SERVER_ERROR, msg);
+    }
+
+    if (rv.fail()) {
+      return rv;
+    }
+
+    if (result.IsEmpty() || result->IsUndefined()) {
+      // turn undefined to none
+      builder.add(VPackSlice::noneSlice());
+    } else {
+      TRI_V8ToVPack(isolate, builder, result, false);
+    }
     return rv;
-  }
-
-  if (result.IsEmpty() || result->IsUndefined()) {
-    // turn undefined to none
-    builder.add(VPackSlice::noneSlice());
-  } else {
-    TRI_V8ToVPack(isolate, builder, result, false);
-  }
+  });
   return rv;
 }
 
-Result executeTransactionJS(v8::Isolate* isolate,
-                            v8::Handle<v8::Value> const& arg,
+Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> arg,
                             v8::Handle<v8::Value>& result,
                             v8::TryCatch& tryCatch) {
   Result rv;
@@ -457,7 +460,7 @@ Result executeTransactionJS(v8::Isolate* isolate,
 
   rv = trx.finish(rv);
 
-  // if we do not remove unused V8Cursors, V8Context might not reset global
+  // if we do not remove unused V8Cursors, V8Executor might not reset global
   // state
   vocbase.cursorRepository()->garbageCollect(/*force*/ false);
 

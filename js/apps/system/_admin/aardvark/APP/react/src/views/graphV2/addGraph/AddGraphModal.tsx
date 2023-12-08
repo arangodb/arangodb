@@ -82,7 +82,7 @@ export const AddGraphModal = ({
         </Flex>
       </ModalHeader>
       <ModalBody>
-        <Tabs size="md" variant="enclosed-colored" defaultIndex={defaultIndex}>
+        <Tabs size="md" defaultIndex={defaultIndex}>
           <TabsInner onClose={onClose} />
         </Tabs>
       </ModalBody>

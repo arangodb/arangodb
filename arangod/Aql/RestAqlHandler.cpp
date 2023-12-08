@@ -251,7 +251,7 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
   for (auto lockInf : VPackObjectIterator(lockInfoSlice)) {
     if (!lockInf.value.isArray()) {
       LOG_TOPIC("1dc00", WARN, arangodb::Logger::AQL)
-          << "Invalid VelocyPack: \"lockInfo." << lockInf.key.copyString()
+          << "Invalid VelocyPack: \"lockInfo." << lockInf.key.stringView()
           << "\" is required but not an array.";
       generateError(
           rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
@@ -263,7 +263,7 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
     for (VPackSlice col : VPackArrayIterator(lockInf.value)) {
       if (!col.isString()) {
         LOG_TOPIC("9e29f", WARN, arangodb::Logger::AQL)
-            << "Invalid VelocyPack: \"lockInfo." << lockInf.key.copyString()
+            << "Invalid VelocyPack: \"lockInfo." << lockInf.key.stringView()
             << "\" is required but not an array.";
         generateError(
             rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,

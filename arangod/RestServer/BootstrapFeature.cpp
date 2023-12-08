@@ -230,7 +230,7 @@ void runCoordinatorJS(TRI_vocbase_t* vocbase) {
     VPackBuilder builder;
     vocbase->server()
         .getFeature<V8DealerFeature>()
-        .loadJavaScriptFileInAllContexts(
+        .loadJavaScriptFileInAllExecutors(
             vocbase, "server/bootstrap/coordinator.js", &builder);
 
     auto slice = builder.slice();
@@ -377,7 +377,7 @@ void BootstrapFeature::start() {
       // will run foxx/manager.js::_startup() and more (start queues, load
       // routes, etc)
       LOG_TOPIC("e0c8b", DEBUG, Logger::STARTUP) << "Running server/server.js";
-      server().getFeature<V8DealerFeature>().loadJavaScriptFileInAllContexts(
+      server().getFeature<V8DealerFeature>().loadJavaScriptFileInAllExecutors(
           vocbase.get(), "server/server.js", nullptr);
     }
 #endif

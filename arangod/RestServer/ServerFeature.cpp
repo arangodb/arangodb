@@ -194,9 +194,9 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (v8dealer.isEnabled()) {
     if (_operationMode == OperationMode::MODE_SCRIPT) {
-      v8dealer.setMinimumContexts(2);
+      v8dealer.setMinimumExecutors(2);
     } else {
-      v8dealer.setMinimumContexts(1);
+      v8dealer.setMinimumExecutors(1);
     }
     supportsV8 = true;
   }
@@ -239,7 +239,7 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 #ifdef USE_V8
   if (_operationMode == OperationMode::MODE_CONSOLE) {
     disableDeamonAndSupervisor();
-    v8dealer.setMinimumContexts(2);
+    v8dealer.setMinimumExecutors(2);
   }
 #endif
 

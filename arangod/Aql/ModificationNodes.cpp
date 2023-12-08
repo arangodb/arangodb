@@ -151,7 +151,8 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
       &engine, inDocRegister, RegisterPlan::MaxRegisterId,
       RegisterPlan::MaxRegisterId, outputNew, outputOld,
       RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
-      std::move(options), collection(), ProducesResults(producesResults()),
+      std::move(options), collection(), ExecutionBlock::DefaultBatchSize,
+      ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(false) /*(needed by upsert)*/,
@@ -232,7 +233,8 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
       &engine, inputRegister, RegisterPlan::MaxRegisterId,
       RegisterPlan::MaxRegisterId, outputNew, outputOld,
       RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
-      std::move(options), collection(), ProducesResults(producesResults()),
+      std::move(options), collection(), ExecutionBlock::DefaultBatchSize,
+      ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(false) /*(needed by upsert)*/,
@@ -385,7 +387,7 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
       &engine, inDocRegister, inKeyRegister, RegisterPlan::MaxRegisterId,
       outputNew, outputOld, RegisterPlan::MaxRegisterId /*output*/,
       _plan->getAst()->query(), std::move(options), collection(),
-      ProducesResults(producesResults()),
+      ExecutionBlock::DefaultBatchSize, ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(false) /*(needed by upsert)*/,
@@ -492,7 +494,7 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
       &engine, inDocRegister, inKeyRegister, RegisterPlan::MaxRegisterId,
       outputNew, outputOld, RegisterPlan::MaxRegisterId /*output*/,
       _plan->getAst()->query(), std::move(options), collection(),
-      ProducesResults(producesResults()),
+      ExecutionBlock::DefaultBatchSize, ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(true), IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
@@ -540,6 +542,24 @@ size_t ReplaceNode::getMemoryUsedBytes() const { return sizeof(*this); }
 using SingleRowUpsertExecutionBlock = ExecutionBlockImpl<ModificationExecutor<
     SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;
 
+UpsertNode::UpsertNode(
+    ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
+    ModificationOptions const& options, Variable const* inDocVariable,
+    Variable const* insertVariable, Variable const* updateVariable,
+    Variable const* outVariableNew, bool isReplace, bool canReadOwnWrites)
+    : ModificationNode(plan, id, collection, options, nullptr, outVariableNew),
+      _inDocVariable(inDocVariable),
+      _insertVariable(insertVariable),
+      _updateVariable(updateVariable),
+      _isReplace(isReplace),
+      _canReadOwnWrites(canReadOwnWrites) {
+  TRI_ASSERT(_inDocVariable != nullptr);
+  TRI_ASSERT(_insertVariable != nullptr);
+  TRI_ASSERT(_updateVariable != nullptr);
+
+  TRI_ASSERT(_outVariableOld == nullptr);
+}
+
 UpsertNode::UpsertNode(ExecutionPlan* plan,
                        arangodb::velocypack::Slice const& base)
     : ModificationNode(plan, base),
@@ -549,7 +569,15 @@ UpsertNode::UpsertNode(ExecutionPlan* plan,
           Variable::varFromVPack(plan->getAst(), base, "insertVariable")),
       _updateVariable(
           Variable::varFromVPack(plan->getAst(), base, "updateVariable")),
-      _isReplace(base.get("isReplace").getBoolean()) {}
+      _isReplace(base.get("isReplace").isTrue()),
+      _canReadOwnWrites(true) {
+  if (auto s = base.get(StaticStrings::ReadOwnWrites); !s.isNone()) {
+    // "readOwnWrites" attribute was introduced in 3.12.
+    // older coordinators will not send it. thus we make it default
+    // to true.
+    _canReadOwnWrites = s.isTrue();
+  }
+}
 
 /// @brief toVelocyPack
 void UpsertNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
@@ -562,6 +590,7 @@ void UpsertNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   nodes.add(VPackValue("updateVariable"));
   _updateVariable->toVelocyPack(nodes);
   nodes.add("isReplace", VPackValue(_isReplace));
+  nodes.add(StaticStrings::ReadOwnWrites, VPackValue(_canReadOwnWrites));
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -597,10 +626,19 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
   // a non-unique secondary index
   options.canDisableIndexing = false;
 
+  // if we do not need to observe our own writes, we can turn on batching
+  // for the UpsertNode. otherwise, the Upsert will execute with a batch
+  // size of just 1.
+  size_t batchSize = 1;
+  if (!_canReadOwnWrites) {
+    batchSize = ExecutionBlock::DefaultBatchSize;
+  }
+
   auto executorInfos = ModificationExecutorInfos(
       &engine, inDoc, insert, update, outputNew, outputOld,
       RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
-      std::move(options), collection(), ProducesResults(producesResults()),
+      std::move(options), collection(), batchSize,
+      ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(_isReplace) /*(needed by upsert)*/,
@@ -631,7 +669,7 @@ ExecutionNode* UpsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   auto c = std::make_unique<UpsertNode>(
       plan, _id, collection(), _options, inDocVariable, insertVariable,
-      updateVariable, outVariableNew, _isReplace);
+      updateVariable, outVariableNew, _isReplace, _canReadOwnWrites);
   ModificationNode::cloneCommon(c.get());
 
   return cloneHelper(std::move(c), withDependencies, withProperties);

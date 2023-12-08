@@ -106,7 +106,13 @@ arangodb::Endpoint::TransportType GeneralResponseMock::transportType() {
   return arangodb::Endpoint::TransportType::HTTP;  // arbitrary value
 }
 
-ErrorCode GeneralResponseMock::deflate() {
+ErrorCode GeneralResponseMock::zlibDeflate(bool /*onlyIfSmaller*/) {
+  // we should never get here
+  TRI_ASSERT(false);
+  return TRI_ERROR_INTERNAL;
+}
+
+ErrorCode GeneralResponseMock::gzipCompress(bool /*onlyIfSmaller*/) {
   // we should never get here
   TRI_ASSERT(false);
   return TRI_ERROR_INTERNAL;

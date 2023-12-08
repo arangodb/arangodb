@@ -186,7 +186,7 @@ add_library(arango_aql STATIC
 
 if (USE_V8) 
   target_sources(arango_aql PRIVATE
-    V8Executor.cpp)
+    V8ErrorHandler.cpp)
 endif()
 
 target_link_libraries(arango_aql
