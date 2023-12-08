@@ -1842,6 +1842,8 @@
           'conditions': [
             ['OS=="mac"', {
               'xcode_settings': {
+                'MACOSX_DEPLOYMENT_TARGET': '<(mac_deployment_target)',
+                'CLANG_CXX_LANGUAGE_STANDARD': 'c++20',
                 'OTHER_LDFLAGS': ['-dynamiclib', '-all_load']
               },
             }],
