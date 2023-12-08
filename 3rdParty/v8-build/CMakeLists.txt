@@ -335,18 +335,21 @@ else ()
 ################################################################################
 
   if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(V8_CFLAGS   "${CMAKE_C_FLAGS}   ${CMAKE_C_FLAGS_DEBUG} $ENV{V8_CFLAGS}")
-    set(V8_CXXFLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG} $ENV{V8_CXXFLAGS}")
+    set(V8_CFLAGS   "${CMAKE_C_FLAGS}   ${CMAKE_C_FLAGS_DEBUG}")
+    set(V8_CXXFLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG}")
   elseif (CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
-    set(V8_CFLAGS   "${CMAKE_C_FLAGS}   ${CMAKE_C_FLAGS_MINSIZEREL} $ENV{V8_CFLAGS}")
-    set(V8_CXXFLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_MINSIZEREL} $ENV{V8_CXXFLAGS}")
+    set(V8_CFLAGS   "${CMAKE_C_FLAGS}   ${CMAKE_C_FLAGS_MINSIZEREL}")
+    set(V8_CXXFLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_MINSIZEREL}")
   elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
-    set(V8_CFLAGS   "${CMAKE_C_FLAGS}   ${CMAKE_C_FLAGS_RELEASE} $ENV{V8_CFLAGS}")
-    set(V8_CXXFLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE} $ENV{V8_CXXFLAGS}")
+    set(V8_CFLAGS   "${CMAKE_C_FLAGS}   ${CMAKE_C_FLAGS_RELEASE}")
+    set(V8_CXXFLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE}")
   elseif (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    set(V8_CFLAGS   "${CMAKE_C_FLAGS}   ${CMAKE_C_FLAGS_RELWITHDEBINFO} $ENV{V8_CFLAGS}")
-    set(V8_CXXFLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELWITHDEBINFO} $ENV{V8_CXXFLAGS}")
+    set(V8_CFLAGS   "${CMAKE_C_FLAGS}   ${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+    set(V8_CXXFLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
   endif ()
+  set(V8_CFLAGS     "${CMAKE_C_FLAGS}   $ENV{V8_CFLAGS}")
+  set(V8_CXXFLAGS   "${CMAKE_CXX_FLAGS} $ENV{V8_CXXFLAGS} -std=c++20")
+
   set(V8_LDFLAGS  "${CMAKE_EXE_LINKER_FLAGS} $ENV{V8_LDFLAGS}")
 
   # build V8 without debug information
@@ -357,11 +360,6 @@ else ()
 
   list(APPEND V8_GYP_ARGS "-Dv8_use_snapshot=true")
 
-  # TODO: verify if we still need those
-  if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    set(V8_CFLAGS   "${V8_CFLAGS} -fno-delete-null-pointer-checks")
-    set(V8_CXXFLAGS "${V8_CXXFLAGS} -fno-delete-null-pointer-checks")
-  endif()
   # TODO: verify if we still need those
   add_c_flags_if_supported(V8_CFLAGS -Wno-suggest-override -Wno-implicit-const-int-float-conversion -Wno-non-virtual-dtor -Wno-final-dtor-non-final-class -Wno-implicit-const-int-float-conversion)
   add_cxx_flags_if_supported(V8_CXXFLAGS -Wno-suggest-override -Wno-implicit-const-int-float-conversion -Wno-non-virtual-dtor -Wno-final-dtor-non-final-class -Wno-implicit-const-int-float-conversion)
@@ -403,7 +401,6 @@ else ()
     -Dv8_no_strict_aliasing=1
     -Dwerror=
     -Dclang=0
-    -Dhost_clang=
     -Dv8_embed_script=
     -Dembed_script=
     -Dwarmup_script=
