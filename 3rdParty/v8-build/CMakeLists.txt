@@ -197,6 +197,7 @@ if (WIN32)
     -Dicu_small=false
     -Dicu_ver_major=73
     -Dicu_data_in=${CMAKE_BINARY_DIR}/bin/icudt73l.dat
+    -Dicu_path=${V8_RELATIVE_SOURCE_DIR}/third_party/icu/
     -Dicu_endianness=l
     -Dpython=${PYTHON_EXECUTABLE}
   )
@@ -354,10 +355,12 @@ else ()
 
   list(APPEND V8_GYP_ARGS "-Dv8_use_snapshot=true")
 
+  # TODO: verify if we still need those
   if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(V8_CFLAGS   "${V8_CFLAGS} -fno-delete-null-pointer-checks")
     set(V8_CXXFLAGS "${V8_CXXFLAGS} -fno-delete-null-pointer-checks")
   endif()
+  # TODO: verify if we still need those
   add_c_flags_if_supported(V8_CFLAGS -Wno-suggest-override -Wno-implicit-const-int-float-conversion -Wno-non-virtual-dtor -Wno-final-dtor-non-final-class -Wno-implicit-const-int-float-conversion)
   add_cxx_flags_if_supported(V8_CXXFLAGS -Wno-suggest-override -Wno-implicit-const-int-float-conversion -Wno-non-virtual-dtor -Wno-final-dtor-non-final-class -Wno-implicit-const-int-float-conversion)
 
@@ -388,7 +391,7 @@ else ()
   endif ()
 
   list(APPEND V8_GYP_ARGS
-    -Dicu_path=${V8_RELATIVE_SOURCE_DIR}/third_party/icu/
+    -Dclang_cxx_language_standard=c++20
     -Dmac_deployment_target=${CMAKE_OSX_DEPLOYMENT_TARGET}
     --depth=.
     -Dos_posix=1
@@ -416,6 +419,7 @@ else ()
     -Dicu_small=false
     -Dicu_ver_major=73
     -Dicu_data_in=${CMAKE_BINARY_DIR}/bin/icudt73l.dat
+    -Dicu_path=${V8_RELATIVE_SOURCE_DIR}/third_party/icu/
     -Dicu_endianness=l
     -Dpython=${PYTHON_EXECUTABLE}
   )
