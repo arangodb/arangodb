@@ -4,7 +4,7 @@
 # V8 / ICU
 # ------------------------------------------------------------------------------
 
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.21)
 
 if (POLICY CMP0048)
   cmake_policy(SET CMP0048 NEW)
@@ -25,7 +25,7 @@ set(GYP_FILES_DIR "${PROJECT_SOURCE_DIR}/gypfiles")
 ################################################################################
 
 set(ICU_COMPACT_VERSION
-  "64.2"
+  "73"
   CACHE INTERNAL
   "ICU: compact Version"
 )
@@ -173,7 +173,6 @@ if (WIN32)
   endif()
   
   set(GYP_GENERATORS "msvs")
-  set(DEPOT_TOOLS_WIN_TOOLCHAIN "0")
   set(GYP_MSVS_OVERRIDE_PATH "${CMAKE_CXX_COMPILER}")
 
   list(APPEND V8_GYP_ARGS
@@ -232,7 +231,7 @@ if (WIN32)
       SOURCE_DIR
         "${V8_DIR}"
       CONFIGURE_COMMAND
-        ${CMAKE_COMMAND} -E env GYP_MSVS_VERSION=${GYP_MSVS_VERSION} GYP_GENERATORS=${GYP_GENERATORS} GYP_MSVS_OVERRIDE_PATH=${GYP_MSVS_OVERRIDE_PATH} DEPOT_TOOLS_WIN_TOOLCHAIN=${DEPOT_TOOLS_WIN_TOOLCHAIN} "${PYTHON_EXECUTABLE}" ${GYP_MAIN} ${V8_GYP_ARGS} -Dmode=${MS_TARGET_CONF_LOWER} -DCMAKE_CXX_STANDARD=c++20
+        ${CMAKE_COMMAND} -E env GYP_MSVS_VERSION=${GYP_MSVS_VERSION} GYP_GENERATORS=${GYP_GENERATORS} GYP_MSVS_OVERRIDE_PATH=${GYP_MSVS_OVERRIDE_PATH} "${PYTHON_EXECUTABLE}" ${GYP_MAIN} ${V8_GYP_ARGS} -Dmode=${MS_TARGET_CONF_LOWER} -DCMAKE_CXX_STANDARD=c++20
       BUILD_COMMAND
         ""
       INSTALL_COMMAND
@@ -347,8 +346,8 @@ else ()
     set(V8_CFLAGS   "${CMAKE_C_FLAGS}   ${CMAKE_C_FLAGS_RELWITHDEBINFO}")
     set(V8_CXXFLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
   endif ()
-  set(V8_CFLAGS     "${CMAKE_C_FLAGS}   $ENV{V8_CFLAGS}")
-  set(V8_CXXFLAGS   "${CMAKE_CXX_FLAGS} $ENV{V8_CXXFLAGS} -std=c++20")
+  set(V8_CFLAGS     "${V8_CFLAGS}   $ENV{V8_CFLAGS}")
+  set(V8_CXXFLAGS   "${V8_CXXFLAGS} $ENV{V8_CXXFLAGS} -std=c++20")
 
   set(V8_LDFLAGS  "${CMAKE_EXE_LINKER_FLAGS} $ENV{V8_LDFLAGS}")
 
@@ -440,6 +439,14 @@ else ()
     CXXFLAGS=${V8_CXXFLAGS}
     LDFLAGS=${V8_LDFLAGS}
   )
+
+  message("V8 cc: ${CMAKE_C_COMPILER}")
+  message("V8 cxx: ${CMAKE_CXX_COMPILER}")
+  message("V8 gyp args: ${V8_GYP_ARGS}")
+  message("V8 cflags: ${V8_CFLAGS}")
+  message("V8 cxxflags: ${V8_CXXFLAGS}")
+  message("V8 compile args: ${V8_COMPILE_ARGS}")
+  message("V8 ldflags: ${V8_LDFLAGS}")
 
   list(APPEND V8_COMPILE_TARGETS icui18n icuuc icustubdata)
   list(APPEND V8_COMPILE_TARGETS v8_libbase v8_libplatform v8_snapshot)
