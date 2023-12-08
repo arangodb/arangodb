@@ -23,10 +23,11 @@
 
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 
+#include "Basics/DownCast.h"
 #include "Replication2/StateMachines/Document/MaintenanceActionExecutor.h"
 #include "Indexes/Index.h"
 #include "IResearch/IResearchDataStore.h"
-#include "IResearch/IResearchInvertedIndex.h"
+#include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "IResearch/IResearchRocksDBLink.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/LogicalCollection.h"
@@ -226,6 +227,12 @@ auto DocumentStateShardHandler::prepareShardsForLogReplay() noexcept -> void {
     // the two. If we replay one log we know there can never be a duplicate
     // LocalDocumentID.
     for (auto const& index : shard->getIndexes()) {
+      if (index->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+        basics::downCast<iresearch::IResearchRocksDBInvertedIndex>(*index)
+            .commit(true);
+      } else if (index->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+        basics::downCast<iresearch::IResearchRocksDBLink>(*index).commit(true);
+      }
       if (index->type() == Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX) {
         auto maybeInvertedIndex =
             std::dynamic_pointer_cast<iresearch::IResearchInvertedIndex>(index);
