@@ -46,6 +46,9 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+// Wait 2s to get the Lock in FastPath, otherwise assume dead-lock.
+const double FAST_PATH_LOCK_TIMEOUT = 2.0;
+
 ClusterQuery::ClusterQuery(QueryId id,
                            std::shared_ptr<transaction::Context> ctx,
                            QueryOptions options)
@@ -149,9 +152,9 @@ void ClusterQuery::prepareClusterQuery(
     _trx->state()->acceptAnalyzersRevision(analyzersRevision);
   }
 
-  double origLockTimeout = _queryOptions.transactionOptions.lockTimeout;
+  double origLockTimeout = _trx->state()->options().lockTimeout;
   if (fastPathLocking) {
-    _queryOptions.transactionOptions.lockTimeout = 2;
+    _trx->state()->options().lockTimeout = FAST_PATH_LOCK_TIMEOUT;
   }
 
   Result res = _trx->begin();
@@ -159,7 +162,7 @@ void ClusterQuery::prepareClusterQuery(
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  _queryOptions.transactionOptions.lockTimeout = origLockTimeout;
+  _trx->state()->options().lockTimeout = origLockTimeout;
 
   TRI_IF_FAILURE("Query::setupLockTimeout") {
     if (!_trx->state()->isReadOnlyTransaction() &&
