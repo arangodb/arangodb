@@ -697,7 +697,8 @@ Result RocksDBUniqueZkdIndex::insert(transaction::Methods& trx,
   }
 
   auto storedValues = extractStoredValues(trx, _storedValues, doc);
-  auto value = RocksDBValue::ZkdIndexValue(storedValues->slice());
+  auto value =
+      RocksDBValue::UniqueZkdIndexValue(documentId, storedValues->slice());
 
   if (auto s = methods->PutUntracked(_cf, rocks_key, value.string()); !s.ok()) {
     return rocksutils::convertStatus(s);

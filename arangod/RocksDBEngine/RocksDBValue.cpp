@@ -241,7 +241,8 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId docId,
                            VPackSlice data)
     : _type(type), _buffer() {
   switch (_type) {
-    case RocksDBEntryType::UniqueVPackIndexValue: {
+    case RocksDBEntryType::UniqueVPackIndexValue:
+    case RocksDBEntryType::UniqueZkdIndexValue: {
       size_t byteSize = static_cast<size_t>(data.byteSize());
       _buffer.reserve(sizeof(uint64_t) + byteSize);
       uint64ToPersistent(_buffer, docId.id());  // LocalDocumentId
