@@ -401,10 +401,11 @@ static void JS_CollectionRevisionTreePendingUpdates(
 #endif
 
 void RocksDBV8Functions::registerResources(RocksDBEngine& engine) {
-  ISOLATE;
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
   v8::HandleScope scope(isolate);
 
-  TRI_GET_GLOBALS();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
+      isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
 
   // patch ArangoCollection object
   v8::Handle<v8::ObjectTemplate> rt =

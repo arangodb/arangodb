@@ -44,7 +44,7 @@
 #include "Utils/ExecContext.h"
 #ifdef USE_V8
 #include "V8/JavaScriptSecurityContext.h"
-#include "V8Server/V8Context.h"
+#include "V8Server/V8Executor.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Transactions.h"
 #endif
@@ -357,7 +357,7 @@ void RestTransactionHandler::executeJSTransaction() {
       server().getFeature<ActionFeature>().allowUseDatabase();
   JavaScriptSecurityContext securityContext =
       JavaScriptSecurityContext::createRestActionContext(allowUseDatabase);
-  V8Context* v8Context = server().getFeature<V8DealerFeature>().enterContext(
+  V8Executor* v8Context = server().getFeature<V8DealerFeature>().enterExecutor(
       &_vocbase, securityContext);
 
   if (!v8Context) {
@@ -365,13 +365,13 @@ void RestTransactionHandler::executeJSTransaction() {
     return;
   }
 
-  // register a function to release the V8Context whenever we exit from this
+  // register a function to release the V8Executor whenever we exit from this
   // scope
   auto guard = scopeGuard([this]() noexcept {
     try {
       WRITE_LOCKER(lock, _lock);
       if (_v8Context != nullptr) {
-        server().getFeature<V8DealerFeature>().exitContext(_v8Context);
+        server().getFeature<V8DealerFeature>().exitExecutor(_v8Context);
         _v8Context = nullptr;
       }
     } catch (std::exception const& ex) {
@@ -382,7 +382,7 @@ void RestTransactionHandler::executeJSTransaction() {
   });
 
   {
-    // make our V8Context available to the cancel function
+    // make our V8Executor available to the cancel function
     WRITE_LOCKER(lock, _lock);
     _v8Context = v8Context;
     if (_canceled) {
@@ -396,8 +396,8 @@ void RestTransactionHandler::executeJSTransaction() {
 
   VPackBuilder result;
   try {
-    Result res = executeTransaction(v8Context->_isolate, _lock, _canceled,
-                                    slice, portType, result);
+    Result res = executeTransaction(v8Context, _lock, _canceled, slice,
+                                    portType, result);
     if (res.ok()) {
       VPackSlice slice = result.slice();
       if (slice.isNone()) {
@@ -428,7 +428,7 @@ void RestTransactionHandler::cancel() {
   _canceled.store(true);
 #ifdef USE_V8
   if (_v8Context != nullptr) {
-    auto isolate = _v8Context->_isolate;
+    v8::Isolate* isolate = _v8Context->isolate();
     if (!isolate->IsExecutionTerminating()) {
       isolate->TerminateExecution();
     }

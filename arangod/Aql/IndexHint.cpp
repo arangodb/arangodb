@@ -35,8 +35,7 @@
 
 #include <ostream>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 namespace {
 std::string_view constexpr kTypeDisabled("disabled");
 std::string_view constexpr kTypeIllegal("illegal");
@@ -253,5 +252,4 @@ std::ostream& operator<<(std::ostream& stream, IndexHint const& hint) {
   return stream;
 }
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

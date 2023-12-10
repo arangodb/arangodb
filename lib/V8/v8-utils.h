@@ -27,13 +27,15 @@
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
-#include <stddef.h>
+#include "Basics/ErrorCode.h"
+
+#include <cstddef>
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <tuple>
-#include <v8.h>
 
-#include "Basics/ErrorCode.h"
+#include <v8.h>
 
 namespace arangodb {
 class Result;
@@ -103,12 +105,12 @@ static T* TRI_UnwrapClass(v8::Handle<v8::Object> obj, int32_t type,
   if (obj->InternalFieldCount() <= SLOT_CLASS) {
     return nullptr;
   }
-  auto slot = obj->GetInternalField(SLOT_CLASS_TYPE);
+  auto slot = obj->GetInternalField(SLOT_CLASS_TYPE).As<v8::Value>();
   if (slot->Int32Value(context).ToChecked() != type) {
     return nullptr;
   }
 
-  auto slotc = obj->GetInternalField(SLOT_CLASS);
+  auto slotc = obj->GetInternalField(SLOT_CLASS).As<v8::Value>();
   auto slotp = v8::Handle<v8::External>::Cast(slotc);
   auto val = slotp->Value();
   auto ret = static_cast<T*>(val);
@@ -131,26 +133,28 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch*);
 /// @brief reads a file into the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteGlobalJavaScriptFile(v8::Isolate* isolate, char const*);
+bool TRI_ExecuteGlobalJavaScriptFile(v8::Isolate* isolate,
+                                     char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ParseJavaScriptFile(v8::Isolate* isolate, char const*);
+bool TRI_ParseJavaScriptFile(v8::Isolate* isolate, char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a string within a V8 context, optionally print the result
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(
-    v8::Isolate* isolate, v8::Handle<v8::Context> context,
-    v8::Handle<v8::String> const source, v8::Handle<v8::String> const name,
-    bool printResult);
+v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
+                                                  std::string_view source,
+                                                  std::string_view name,
+                                                  bool printResult);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object, based on arangodb::Result
 ////////////////////////////////////////////////////////////////////////////////
+///
 void TRI_CreateErrorObject(v8::Isolate* isolate, arangodb::Result const&);
 
 ////////////////////////////////////////////////////////////////////////////////
