@@ -32,7 +32,7 @@ const internal = require('internal');
 
 function SynchronousReplicationFailLeaderSuite () {
   'use strict';
-  const suite = internal.load(fs.join(internal.pathForTesting('server'), 'resilience', 'failover', 'resilience-synchronous-repl-cluster.inc'));
+  const suite = internal.load(fs.join(internal.pathForTesting('client'), 'resilience', 'failover', 'resilience-synchronous-repl-cluster.inc'));
 
   return {
     setUp : suite.setUp,
