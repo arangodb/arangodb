@@ -158,11 +158,6 @@
     });
   };
   
-  exports.debugTerminate = function() {
-    // NOOP. Terminate should be executed
-    // by tests framework not by client
-  };
-  
   exports.debugTerminateInstance = function(endpoint) {
     const request = require('@arangodb/request');
     let res = request.put({
@@ -170,6 +165,11 @@
       body: ""
     });
   };
+
+  exports.debugTerminate = function(endpoint) {
+    return exports.debugTerminateInstance(endpoint);
+  };
+  
   
   exports.debugCanUseFailAt = function() {
     const request = require('@arangodb/request');

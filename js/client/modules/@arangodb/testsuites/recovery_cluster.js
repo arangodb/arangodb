@@ -50,7 +50,7 @@ const BLUE = require('internal').COLORS.COLOR_BLUE;
 const termSignal = 15;
 
 const testPaths = {
-  'recovery_cluster': [tu.pathForTesting('server/recovery')]
+  'recovery_cluster': [tu.pathForTesting('client/recovery')]
 };
 
 /// ensure that we have enough db servers in cluster tests

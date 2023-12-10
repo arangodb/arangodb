@@ -46,7 +46,7 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 const BLUE = require('internal').COLORS.COLOR_BLUE;
 
 const testPaths = {
-  'recovery': [tu.pathForTesting('server/recovery')]
+  'recovery': [tu.pathForTesting('client/recovery')]
 };
 
 // //////////////////////////////////////////////////////////////////////////////
