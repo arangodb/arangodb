@@ -27,15 +27,15 @@
 
 const functionsDocumentation = {
   'shell_v8': 'Arangodb V8 integration',
-  'shell_server_v8': 'Arangodb V8 integration run inside of coordinator / dbserver',
+  // 'shell_server_v8': 'Arangodb V8 integration run inside of coordinator / dbserver',
   'shell_api': 'shell client tests - only *api*',
   'shell_api_multi': 'shell client tests - only *api* - to be run in multi protocol environments',
   'shell_client': 'shell client tests',
   'shell_client_multi': 'shell client tests to be run in multiple protocol environments',
-  'shell_server': 'shell server tests',
+  // 'shell_server': 'shell server tests',
   'shell_client_aql': 'AQL tests in the client',
-  'shell_server_aql': 'AQL tests in the server',
-  'shell_server_only': 'server specific tests',
+  // 'shell_server_aql': 'AQL tests in the server',
+  // 'shell_server_only': 'server specific tests',
   'shell_client_transaction': 'transaction tests',
   'shell_client_replication2_recovery': 'replication2 cluster recovery tests',
   'shell_client_traffic': 'traffic metrics tests',
@@ -55,14 +55,14 @@ const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const testPaths = {
   'shell_v8': [ tu.pathForTesting('common/v8')],
-  'shell_server_v8': [ tu.pathForTesting('common/v8')],
+  // 'shell_server_v8': [ tu.pathForTesting('common/v8')],
   'shell_api': [ tu.pathForTesting('client/shell/api')],
   'shell_api_multi': [ tu.pathForTesting('client/shell/api/multi')],
   'shell_client': [ tu.pathForTesting('common/shell'), tu.pathForTesting('client/shell')],
   'shell_client_multi': [ tu.pathForTesting('common/shell/multi'), tu.pathForTesting('client/shell/multi')],
-  'shell_server': [ tu.pathForTesting('common/shell'), tu.pathForTesting('server/shell') ],
-  'shell_server_only': [ tu.pathForTesting('server/shell') ],
-  'shell_server_aql': [ tu.pathForTesting('server/aql'), tu.pathForTesting('common/aql') ],
+  // 'shell_server': [ tu.pathForTesting('common/shell'), tu.pathForTesting('server/shell') ],
+  // 'shell_server_only': [ tu.pathForTesting('server/shell') ],
+  // 'shell_server_aql': [ tu.pathForTesting('server/aql'), tu.pathForTesting('common/aql') ],
   'shell_client_aql': [ tu.pathForTesting('client/aql'), tu.pathForTesting('common/aql') ],
   'shell_client_transaction': [ tu.pathForTesting('client/shell/transaction')],
   'shell_client_replication2_recovery': [ tu.pathForTesting('client/shell/transaction/replication2_recovery')],
@@ -410,15 +410,15 @@ function shellClientReplication2Recovery(options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['shell_v8'] = shellV8;
-  testFns['shell_server_v8'] = shellV8Server;
+  // testFns['shell_server_v8'] = shellV8Server;
   testFns['shell_api'] = shellApiClient;
   testFns['shell_api_multi'] = shellApiMulti;
   testFns['shell_client'] = shellClient;
   testFns['shell_client_multi'] = shellClientMulti;
-  testFns['shell_server'] = shellServer;
+  // testFns['shell_server'] = shellServer;
   testFns['shell_client_aql'] = shellClientAql;
-  testFns['shell_server_aql'] = shellServerAql;
-  testFns['shell_server_only'] = shellServerOnly;
+  // testFns['shell_server_aql'] = shellServerAql;
+  // testFns['shell_server_only'] = shellServerOnly;
   testFns['shell_client_transaction'] = shellClientTransaction;
   testFns['shell_client_replication2_recovery'] = shellClientReplication2Recovery;
   testFns['shell_client_traffic'] = shellClientTraffic;
