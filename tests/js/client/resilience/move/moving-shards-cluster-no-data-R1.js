@@ -31,15 +31,15 @@ const jsunity = require("jsunity");
 const fs = require('fs');
 const { deriveTestSuite } = require('@arangodb/test-helper-common');
 // for some reason we have to prefix the path with "./", otherwise it complains that the module cannot be located
-const { MovingShardsSuite } = require('./' + fs.join('tests', 'js', 'server', 'resilience', 'move', 'moving-shards-cluster.inc'));
+const { MovingShardsSuite } = require('./' + fs.join('tests', 'js', 'client', 'resilience', 'move', 'moving-shards-cluster.inc'));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(function MovingShardsSuite_data_R2() {
+jsunity.run(function MovingShardsSuite_nodata_R1() {
   let derivedSuite = {};
-  deriveTestSuite(MovingShardsSuite({useData: true, replVersion: "2"}), derivedSuite, "_data_R2");
+  deriveTestSuite(MovingShardsSuite({ useData: false, replVersion: "1" }), derivedSuite, "_nodata_R1");
   return derivedSuite;
 });
 

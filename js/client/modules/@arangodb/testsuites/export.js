@@ -46,7 +46,7 @@ const toArgv = internal.toArgv;
 const isEnterprise = require("@arangodb/test-helper").isEnterprise;
 
 const testPaths = {
-  'export': [tu.pathForTesting('server/export')] // we have to be fuzzy...
+  'export': [tu.pathForTesting('client/export')] // we have to be fuzzy...
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -107,7 +107,7 @@ class exportRunner extends tu.runInArangoshRunner {
 
     let results = {failed: 0};
 
-    results.setup = this.runOneTest(tu.makePathUnix(tu.pathForTesting('server/export/export-setup.js')));
+    results.setup = this.runOneTest(tu.makePathUnix(tu.pathForTesting('client/export/export-setup.js')));
     results.setup.failed = 0;
     if (!this.instanceManager.checkInstanceAlive() || results.setup.status !== true) {
       results.setup.failed = 1;
