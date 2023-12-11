@@ -531,6 +531,11 @@
         'msvs_configuration_attributes': {
           'CharacterSet': '1',
         },
+        'msvs_settings': {
+          'VCCLCompilerTool': {
+            'AdditionalOptions': ['/std:c++20'],
+          },
+        },
       }],
       ['OS=="win" and v8_target_arch=="ia32"', {
         'msvs_settings': {
