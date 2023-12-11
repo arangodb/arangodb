@@ -346,13 +346,6 @@ else ()
     set(V8_CXXFLAGS "${V8_CXXFLAGS} -g0")
   endif ()
   
-  # remove -march=... from Apple builds
-  # TODO: check if this can be removed
-  if (APPLE AND FALSE)
-    string(REGEX REPLACE "-march=[^ ]+" "-march=armv8" V8_CFLAGS ${V8_CFLAGS})
-    string(REGEX REPLACE "-march=[^ ]+" "-march=armv8" V8_CXXFLAGS ${V8_CXXFLAGS})
-  endif ()
-
   list(APPEND V8_GYP_ARGS "-Dv8_use_snapshot=true")
 
   # TODO: verify if we still need those
