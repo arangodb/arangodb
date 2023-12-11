@@ -94,18 +94,20 @@ auto DocumentFollowerState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
   LOG_CTX("7289e", DEBUG, loggerContext) << "resigning follower state";
   _resigning = true;
-  // TODO - find a better way to wait for all the actors to finish
-  _runtime->dispatch<actor::message::ApplyEntriesMessages>(
-      _applyEntriesActor, _applyEntriesActor, actor::message::Resign{});
-
-  _runtime->softShutdown();
-  while (not _runtime->areAllActorsIdle()) {
-    LOG_DEVEL << "waiting for actors to finish...\n"
-              << inspection::json(*_runtime);
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  }
 
   return _guardedData.doUnderLock([&](auto& data) {
+    // TODO - find a better way to wait for all the actors to finish
+    _runtime->dispatch<actor::message::ApplyEntriesMessages>(
+        _applyEntriesActor, _applyEntriesActor, actor::message::Resign{});
+
+    _runtime->softShutdown();
+    while (not _runtime->areAllActorsIdle()) {
+      LOG_DEVEL << "waiting for actors to finish...\n"
+                << inspection::json(*_runtime);
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    LOG_CTX("7289f", DEBUG, loggerContext) << "all actors finished";
+
     ADB_PROD_ASSERT(!data.didResign())
         << "Follower " << gid << " already resigned!";
 
@@ -401,32 +403,37 @@ auto DocumentFollowerState::applyEntries(
   futures::Promise<ResultT<std::optional<LogIndex>>> promise;
   auto future = promise.getFuture();
 
-  _runtime->dispatch<actor::message::ApplyEntriesMessages>(
-      _applyEntriesActor, _applyEntriesActor,
-      actor::message::ApplyEntries{.entries = std::move(ptr),
-                                   .promise = std::move(promise)});
+  return _guardedData.doUnderLock([&](auto& data) -> futures::Future<Result> {
+    LOG_DEVEL_CTX(loggerContext)
+        << "promise state " << (void*)(&promise.getState());
+    _runtime->dispatch<actor::message::ApplyEntriesMessages>(
+        _applyEntriesActor, _applyEntriesActor,
+        actor::message::ApplyEntries{.entries = std::move(ptr),
+                                     .promise = std::move(promise)});
 
-  return std::move(future).thenValue(
-      [&](ResultT<std::optional<LogIndex>> res) -> Result {
-        if (res.fail()) {
-          return res.result();
-        }
-        auto index = res.get();
-        if (index.has_value()) {
-          // The follower might have resigned, so we need to be careful when
-          // accessing the stream.
-          auto releaseRes = basics::catchVoidToResult([&] {
-            // TODO - is this getStream call actually safe?
-            auto const& stream = getStream();
-            stream->release(index.value());
-          });
-          if (releaseRes.fail()) {
-            LOG_CTX("10f07", ERR, loggerContext)
-                << "Failed to get stream! " << releaseRes;
+    return std::move(future).thenValue(
+        // TODO - capture a weak ptr?
+        [&](ResultT<std::optional<LogIndex>> res) -> Result {
+          if (res.fail()) {
+            return res.result();
           }
-        }
-        return Result{};
-      });
+          auto index = res.get();
+          if (index.has_value()) {
+            // The follower might have resigned, so we need to be careful when
+            // accessing the stream.
+            auto releaseRes = basics::catchVoidToResult([&] {
+              // TODO - is this getStream call actually safe?
+              auto const& stream = getStream();
+              stream->release(index.value());
+            });
+            if (releaseRes.fail()) {
+              LOG_CTX("10f07", ERR, loggerContext)
+                  << "Failed to get stream! " << releaseRes;
+            }
+          }
+          return Result{};
+        });
+  });
 }
 
 }  // namespace arangodb::replication2::replicated_state::document
