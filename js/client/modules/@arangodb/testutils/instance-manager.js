@@ -614,6 +614,22 @@ class instanceManager {
     return ret;
   }
 
+  getFromPlan(path) {
+    let plan = this.agencyConfig.agencyInstances[0].getAgent('/_api/agency/read', 'POST')["body"];
+    plan = JSON.parse(plan)[0]
+    let current_part_of_plan = plan;
+    let splitted_path = path.split('/');
+    splitted_path.forEach(p => {
+      if (current_part_of_plan.hasOwnProperty(p) ) {
+        print(p)
+        current_part_of_plan = current_part_of_plan[p];
+      } else {
+        return NaN;
+      }
+    });
+    return current_part_of_plan;
+  }
+
   _checkServersGOOD() {
     let name = '';
     try {

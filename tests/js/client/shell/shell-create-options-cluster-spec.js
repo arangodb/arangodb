@@ -32,6 +32,7 @@
 const expect = require('chai').expect;
 
 var internal = require("internal");
+const { instanceManager } = require('../../../../js/client/modules/@arangodb/testutils/instance-manager');
 var db = require("org/arangodb").db;
 
 describe('Cluster collection creation options', function() {
@@ -40,8 +41,9 @@ describe('Cluster collection creation options', function() {
     });
     it('should wait for all followers to get in sync when waiting for replication', function() {
         db._create("testi", {replicationFactor: 2, numberOfShards: 32}, {waitForSyncReplication: true});
-        let current = arango.POST("/_admin/execute", `return global.ArangoAgency.get('Current/Collections/_system')`);
-        let plan = arango.POST("/_admin/execute", `return global.ArangoAgency.get('Plan/Collections/_system')`);
+        let current = global.instanceManager.getFromPlan('Current/Collections/_system');
+        let plan = global.instanceManager.getFromPlan('Plan/Collections/_system');
+        
         let collectionId = Object.values(plan.arango.Plan.Collections['_system']).reduce((result, collectionDef) => {
             if (result) {
                 return result;
