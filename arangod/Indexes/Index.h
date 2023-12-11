@@ -225,6 +225,28 @@ class Index {
     return false;
   }
 
+  /// @brief whether or not the given attribute vector matches any of the index
+  /// fields In case it does, the position will be returned as well.
+  std::pair<bool, size_t> attributeMatchesWithPos(
+      std::vector<basics::AttributeName> const& attribute,
+      bool isPrimary = false) const {
+    size_t pos = 0;
+    for (auto const& it : _fields) {
+      if (basics::AttributeName::isIdentical(attribute, it, true)) {
+        return {true, pos};
+      }
+      pos++;
+    }
+    if (isPrimary) {
+      static std::vector<basics::AttributeName> const vec_id{
+          {StaticStrings::IdString, false}};
+      return basics::AttributeName::isIdentical(attribute, vec_id, true)
+                 ? std::pair<bool, size_t>(true, pos)
+                 : std::pair<bool, size_t>(false, -1);
+    }
+    return {false, -1};
+  }
+
   /// @brief whether or not any attribute is expanded
   bool hasExpansion() const { return _useExpansion; }
 
