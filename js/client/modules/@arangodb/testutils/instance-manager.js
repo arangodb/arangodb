@@ -615,7 +615,7 @@ class instanceManager {
   }
 
   getFromPlan(path) {
-    let req = this.agencyConfig.agencyInstances[0].getAgent('/_api/agency/read', 'POST', `[["/arango/${path}"]]`)
+    let req = this.agencyConfig.agencyInstances[0].getAgent('/_api/agency/read', 'POST', `[["/arango/${path}"]]`);
     if (req.code !== 200) {
       throw new Error(`Failed to query agency [["/arango/${path}"]] : ${JSON.stringify(req)}`);
     }
