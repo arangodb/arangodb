@@ -59,6 +59,8 @@ auto ApplyEntriesHandler<Runtime>::operator()(
 template<typename Runtime>
 auto ApplyEntriesHandler<Runtime>::operator()(message::Resign&& msg) noexcept
     -> std::unique_ptr<ApplyEntriesState> {
+  LOG_CTX("b0788", DEBUG, this->state->loggerContext)
+      << "AppliesEntry actor received resign message";
   resign();
   this->finish(ExitReason::kFinished);
   return std::move(this->state);
@@ -209,9 +211,7 @@ auto ApplyEntriesHandler<Runtime>::processEntry(UserTransaction auto& op,
   this->template dispatch<message::TransactionMessages>(
       pid, message::ProcessEntry{.op = std::move(op), .index = index});
 
-  if constexpr (FinishesUserTransaction<OpType> ||
-                std::is_same_v<OpType,
-                               ReplicatedOperation::IntermediateCommit>) {
+  if constexpr (FinishesUserTransaction<OpType> || isIntermediateCommit) {
     // we need to wait for the transaction to be committed before we can
     // continue
     // TODO - once we have proper dependency tracking in place this can be
