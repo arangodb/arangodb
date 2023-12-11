@@ -171,8 +171,10 @@ bool Analyzer::reset(std::string_view data) {
     }
     // TODO(MBkkt) We can add offsets here
     auto const idx = _terms.size();
-    absl::StrAppend(&_terms, fill(irs::bytes_io<uint32_t>::vsize(size) + 1),
-                    irs::ViewCast<char>(_term->value), fill(1));
+    absl::StrAppend(
+        &_terms,
+        fill(irs::bytes_io<uint32_t>::vsize(static_cast<uint32_t>(size)) + 1),
+        irs::ViewCast<char>(_term->value), fill(1));
     auto* data = begin() + idx;
     irs::vwrite<uint32_t>(data, size);
   }
