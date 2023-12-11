@@ -146,7 +146,8 @@ class IndexFactory {
   static Result processIndexStoredValues(velocypack::Slice definition,
                                          velocypack::Builder& builder,
                                          size_t minFields, size_t maxFields,
-                                         bool create, bool allowSubAttributes);
+                                         bool create, bool allowSubAttributes,
+                                         bool allowOverlappingFields);
 
   /// @brief process the "cacheEnabled" flag and add it to the json
   static void processIndexCacheEnabled(velocypack::Slice definition,
