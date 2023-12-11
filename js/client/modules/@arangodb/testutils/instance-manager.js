@@ -616,7 +616,7 @@ class instanceManager {
 
   getFromPlan(path) {
     let plan = this.agencyConfig.agencyInstances[0].getAgent('/_api/agency/read', 'POST')["body"];
-    plan = JSON.parse(plan)[0]
+    plan = JSON.parse(plan)[0];
     let current_part_of_plan = plan;
     let splitted_path = path.split('/');
     splitted_path.forEach(p => {
