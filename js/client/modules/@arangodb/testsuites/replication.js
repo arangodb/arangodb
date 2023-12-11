@@ -47,15 +47,15 @@ const tu = require('@arangodb/testutils/test-utils');
 
 const testPaths = {
   'shell_replication': [tu.pathForTesting('common/replication')],
-  'replication_aql': [tu.pathForTesting('server/replication/aql')],
-  'replication_fuzz': [tu.pathForTesting('server/replication/fuzz')],
-  'replication_random': [tu.pathForTesting('server/replication/random')],
-  'replication_ongoing': [tu.pathForTesting('server/replication/ongoing')],
-  'replication_ongoing_global': [tu.pathForTesting('server/replication/ongoing/global')],
-  'replication_ongoing_global_spec': [tu.pathForTesting('server/replication/ongoing/global/spec')],
-  'replication_ongoing_frompresent': [tu.pathForTesting('server/replication/ongoing/frompresent')],
-  'replication_static': [tu.pathForTesting('server/replication/static')],
-  'replication_sync': [tu.pathForTesting('server/replication/sync')],
+  'replication_aql': [tu.pathForTesting('client/replication/aql')],
+  'replication_fuzz': [tu.pathForTesting('client/replication/fuzz')],
+  'replication_random': [tu.pathForTesting('client/replication/random')],
+  'replication_ongoing': [tu.pathForTesting('client/replication/ongoing')],
+  'replication_ongoing_global': [tu.pathForTesting('client/replication/ongoing/global')],
+  'replication_ongoing_global_spec': [tu.pathForTesting('client/replication/ongoing/global/spec')],
+  'replication_ongoing_frompresent': [tu.pathForTesting('client/replication/ongoing/frompresent')],
+  'replication_static': [tu.pathForTesting('client/replication/static')],
+  'replication_sync': [tu.pathForTesting('client/replication/sync')],
   'http_replication': [tu.pathForTesting('common/replication_api')]
 };
 
