@@ -1399,6 +1399,12 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
                 cflags_cc = self.xcode_settings.GetCflagsCC(configname)
                 cflags_objc = self.xcode_settings.GetCflagsObjC(configname)
                 cflags_objcc = self.xcode_settings.GetCflagsObjCC(configname)
+
+                # intentional change: do not use above cflags/cxxflags, but
+                # use the ones from the environment
+                cflags = config.get("cflags")
+                cflags_c = config.get("cflags_c")
+                cflags_cc = config.get("cflags_cc")
             else:
                 cflags = config.get("cflags")
                 cflags_c = config.get("cflags_c")

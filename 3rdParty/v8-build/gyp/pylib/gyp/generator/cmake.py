@@ -991,6 +991,7 @@ def WriteTarget(
         cflags = config.get("cflags", [])
         cflags_c = config.get("cflags_c", [])
         cflags_cxx = config.get("cflags_cc", [])
+
         if xcode_settings:
             cflags = xcode_settings.GetCflags(config_to_use)
             cflags_c = xcode_settings.GetCflagsC(config_to_use)
