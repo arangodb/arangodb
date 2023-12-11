@@ -176,7 +176,7 @@ bool Analyzer::reset(std::string_view data) {
         fill(irs::bytes_io<uint32_t>::vsize(static_cast<uint32_t>(size)) + 1),
         irs::ViewCast<char>(_term->value), fill(1));
     auto* data = begin() + idx;
-    irs::vwrite<uint32_t>(data, size);
+    irs::vwrite<uint32_t>(data, static_cast<uint32_t>(size));
   }
   _termsBegin = begin();
   _termsEnd = _termsBegin + _terms.size();
