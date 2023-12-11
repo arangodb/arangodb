@@ -615,18 +615,11 @@ class instanceManager {
   }
 
   getFromPlan(path) {
-    let plan = this.agencyConfig.agencyInstances[0].getAgent('/_api/agency/read', 'POST')["body"];
-    plan = JSON.parse(plan)[0];
-    let current_part_of_plan = plan;
-    let splitted_path = path.split('/');
-    splitted_path.forEach(p => {
-      if (current_part_of_plan.hasOwnProperty(p) ) {
-        current_part_of_plan = current_part_of_plan[p];
-      } else {
-        return NaN;
-      }
-    });
-    return current_part_of_plan;
+    let req = this.agencyConfig.agencyInstances[0].getAgent('/_api/agency/read', 'POST', `[["/arango/${path}"]]`)
+    if (req.code !== 200) {
+      throw new Error(`Failed to query agency [["/arango/${path}"]] : ${JSON.stringify(req)}`);
+    }
+    return JSON.parse(req["body"])[0];
   }
 
   _checkServersGOOD() {
