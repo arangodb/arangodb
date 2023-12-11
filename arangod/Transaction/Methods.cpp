@@ -3197,8 +3197,41 @@ Future<Result> Methods::replicateOperations(
 
   TRI_IF_FAILURE("replicateOperations::skip") { return Result(); }
 
+  // index cache refilling...
+  bool const refill = std::invoke([&]() {
+    if (options.refillIndexCaches == RefillIndexCaches::kDontRefill) {
+      // index cache refilling opt-out
+      return false;
+    }
+
+    // this attribute can have 3 values: default, true and false. only
+    // expose it when it is not set to "default"
+    auto& engine = vocbase()
+                       .server()
+                       .template getFeature<EngineSelectorFeature>()
+                       .engine();
+
+    return engine.autoRefillIndexCachesOnFollowers() &&
+           ((options.refillIndexCaches == RefillIndexCaches::kRefill) ||
+            (options.refillIndexCaches == RefillIndexCaches::kDefault &&
+             engine.autoRefillIndexCaches()));
+  });
+
+  TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfTrue") {
+    if (refill) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  }
+  TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfFalse") {
+    if (!refill) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  }
+
   // replication2 is handled here
   if (collection->replicationVersion() == replication::Version::TWO) {
+    using namespace replication2::replicated_state::document;
+
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(
         transactionCollection);
     auto leaderState = rtc.leaderState();
@@ -3207,10 +3240,11 @@ Future<Result> Methods::replicateOperations(
         << "Tried to replicate an operation for a collection that is not a "
            "shard."
         << rtc.collectionName();
-    auto replicatedOp = replication2::replicated_state::document::
-        ReplicatedOperation::buildDocumentOperation(
-            operation, state()->id().asFollowerTransactionId(),
-            maybeShardID.get(), replicationData.sharedSlice());
+    auto operationOptions = ReplicatedOperation::DocumentOperation::Options{
+        .refillIndexCaches = refill};
+    auto replicatedOp = ReplicatedOperation::buildDocumentOperation(
+        operation, state()->id().asFollowerTransactionId(), maybeShardID.get(),
+        replicationData.sharedSlice(), operationOptions);
     // Should finish immediately
     auto replicationFut = leaderState->replicateOperation(
         std::move(replicatedOp),
@@ -3234,41 +3268,8 @@ Future<Result> Methods::replicateOperations(
   reqOpts.database = vocbase().name();
   reqOpts.param(StaticStrings::IsRestoreString, "true");
 
-  // index cache refilling...
-  if (options.refillIndexCaches == RefillIndexCaches::kDontRefill) {
-    // index cache refilling opt-out
-    reqOpts.param(StaticStrings::RefillIndexCachesString, "false");
-
-    TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfFalse") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-  } else {
-    // this attribute can have 3 values: default, true and false. only
-    // expose it when it is not set to "default"
-    auto& engine = vocbase()
-                       .server()
-                       .template getFeature<EngineSelectorFeature>()
-                       .engine();
-
-    bool const refill =
-        engine.autoRefillIndexCachesOnFollowers() &&
-        ((options.refillIndexCaches == RefillIndexCaches::kRefill) ||
-         (options.refillIndexCaches == RefillIndexCaches::kDefault &&
-          engine.autoRefillIndexCaches()));
-
-    TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfTrue") {
-      if (refill) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-    }
-    TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfFalse") {
-      if (!refill) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-    }
-    reqOpts.param(StaticStrings::RefillIndexCachesString,
-                  refill ? "true" : "false");
-  }
+  reqOpts.param(StaticStrings::RefillIndexCachesString,
+                refill ? "true" : "false");
 
   std::string url = "/_api/document/";
   url.append(arangodb::basics::StringUtils::urlEncode(collection->name()));
