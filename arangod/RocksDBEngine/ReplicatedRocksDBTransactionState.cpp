@@ -189,6 +189,10 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
                 return r.is(
                     TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
               })) {
+        // Although on this server, the transaction has not made any progress
+        // locally, it may have been committed by other replicated log leaders,
+        // if they are located on other servers. This problem could be fixed by
+        // distributed transactions.
         return Result{
             TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
             fmt::format(
@@ -217,7 +221,7 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
         << partialResults;
     TRI_ASSERT(false) << partialResults;
     // The leader is out of sync.
-    // It makes sense to crash here, because the  in the hopes that this server
+    // It makes sense to crash here, in the hopes that this server
     // becomes a follower and it re-applies the transaction successfully.
     FATAL_ERROR_EXIT();
   });
