@@ -372,7 +372,7 @@ def _BuildCommandLineForRuleRaw(
     else:
         input_dir_preamble = ""
 
-    if cygwin_shell:
+    if False: #cygwin_shell:
         # Find path to cygwin.
         cygwin_dir = _FixPath(spec.get("msvs_cygwin_dirs", ["."])[0])
         # Prepare command.
