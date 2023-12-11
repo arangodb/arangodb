@@ -1,6 +1,11 @@
 v3.11.7 (XXXX-XX-XX)
 --------------------
 
+* BTS-1714: Within writing AQL queries the lock timeout was accidentally
+  set to 2 seconds for all write operations on followers. This could lead
+  to dropped followers when an index of a large shard was finalized on an
+  follower.
+
 * Fixed BTS-1701: Assertion triggered in AQL Traversal on edge PRUNE.
 
 * Fix an issue when forced index hints were used in a query, but the optimizer
