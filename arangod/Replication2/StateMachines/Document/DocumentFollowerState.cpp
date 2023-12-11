@@ -404,8 +404,6 @@ auto DocumentFollowerState::applyEntries(
   auto future = promise.getFuture();
 
   return _guardedData.doUnderLock([&](auto& data) -> futures::Future<Result> {
-    LOG_DEVEL_CTX(loggerContext)
-        << "promise state " << (void*)(&promise.getState());
     _runtime->dispatch<actor::message::ApplyEntriesMessages>(
         _applyEntriesActor, _applyEntriesActor,
         actor::message::ApplyEntries{.entries = std::move(ptr),
