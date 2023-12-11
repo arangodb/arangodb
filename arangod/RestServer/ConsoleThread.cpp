@@ -49,6 +49,10 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
+namespace {
+struct UserAbortedException {};
+}  // namespace
+
 V8LineEditor* ConsoleThread::serverConsole = nullptr;
 std::mutex ConsoleThread::serverConsoleMutex;
 
@@ -58,8 +62,6 @@ ConsoleThread::ConsoleThread(Server& applicationServer, TRI_vocbase_t* vocbase)
       _userAborted(false) {}
 
 ConsoleThread::~ConsoleThread() { shutdown(); }
-
-static char const* USER_ABORTED = "user aborted";
 
 void ConsoleThread::run() {
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -73,18 +75,16 @@ void ConsoleThread::run() {
     FATAL_ERROR_EXIT();
   }
 
-  // enter V8 context
-  JavaScriptSecurityContext securityContext =
-      JavaScriptSecurityContext::createAdminScriptContext();
-  V8ContextGuard guard(_vocbase, securityContext);
-
   // work
   try {
+    // enter V8 context
+    JavaScriptSecurityContext securityContext =
+        JavaScriptSecurityContext::createAdminScriptContext();
+    V8ExecutorGuard guard(_vocbase, securityContext);
+
     inner(guard);
-  } catch (char const* error) {
-    if (strcmp(error, USER_ABORTED) != 0) {
-      LOG_TOPIC("6e7fd", ERR, arangodb::Logger::FIXME) << error;
-    }
+  } catch (UserAbortedException const&) {
+    LOG_TOPIC("6e7fd", TRACE, arangodb::Logger::FIXME) << "user aborted";
   } catch (...) {
     _server.beginShutdown();
     throw;
@@ -94,26 +94,17 @@ void ConsoleThread::run() {
   _server.beginShutdown();
 }
 
-void ConsoleThread::inner(V8ContextGuard const& guard) {
+void ConsoleThread::inner(V8ExecutorGuard& guard) {
   // flush all log output before we print the console prompt
   Logger::flush();
-
-  v8::Isolate* isolate = guard.isolate();
-  v8::HandleScope globalScope(isolate);
 
   // run the shell
   std::cout << "arangod console (" << rest::Version::getVerboseVersionString()
             << ")" << std::endl;
   std::cout << "Copyright (c) ArangoDB GmbH" << std::endl;
 
-  v8::Local<v8::String> name(
-      TRI_V8_ASCII_STRING(isolate, TRI_V8_SHELL_COMMAND_NAME));
-
-  auto localContext =
-      v8::Local<v8::Context>::New(isolate, guard.context()->_context);
-  localContext->Enter();
-  {
-    v8::Context::Scope contextScope(localContext);
+  guard.runInContext([this](v8::Isolate* isolate) -> Result {
+    v8::HandleScope globalScope(isolate);
 
     // .............................................................................
     // run console
@@ -123,7 +114,7 @@ void ConsoleThread::inner(V8ContextGuard const& guard) {
     uint64_t nrCommands = 0;
 
     // read and eval .arangod.rc from home directory if it exists
-    char const* startupScript = R"SCRIPT(
+    std::string_view startupScript = R"SCRIPT(
 start_pretty_print(true);
 start_color_print('arangodb', true);
 
@@ -142,9 +133,7 @@ start_color_print('arangodb', true);
 })();
 )SCRIPT";
 
-    TRI_ExecuteJavaScriptString(
-        isolate, localContext, TRI_V8_ASCII_STRING(isolate, startupScript),
-        TRI_V8_ASCII_STRING(isolate, "(startup)"), false);
+    TRI_ExecuteJavaScriptString(isolate, startupScript, "startup", false);
 
 #ifndef _WIN32
     // allow SIGINT in this particular thread... otherwise we cannot CTRL-C the
@@ -159,7 +148,8 @@ start_color_print('arangodb', true);
     }
 #endif
 
-    V8LineEditor console(isolate, localContext, ".arangod.history");
+    v8::Handle<v8::Context> context = isolate->GetCurrentContext();
+    V8LineEditor console(isolate, context, ".arangod.history");
 
     console.open(true);
 
@@ -213,9 +203,8 @@ start_color_print('arangodb', true);
         v8::HandleScope scope(isolate);
 
         console.setExecutingCommand(true);
-        TRI_ExecuteJavaScriptString(isolate, localContext,
-                                    TRI_V8_STD_STRING(isolate, input), name,
-                                    true);
+        TRI_ExecuteJavaScriptString(
+            isolate, input, std::string_view(TRI_V8_SHELL_COMMAND_NAME), true);
         console.setExecutingCommand(false);
 
         if (_userAborted.load()) {
@@ -234,8 +223,9 @@ start_color_print('arangodb', true);
       std::lock_guard mutexLocker{serverConsoleMutex};
       serverConsole = nullptr;
     }
-  }
 
-  localContext->Exit();
-  throw USER_ABORTED;
+    return {};
+  });
+
+  throw UserAbortedException{};
 }

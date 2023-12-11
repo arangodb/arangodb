@@ -66,16 +66,15 @@ inline std::string stringify(v8::Isolate* isolate,
 class v8gHelper {
   // raii helper
   TRI_v8_global_t* _v8g;
-  v8::Isolate* _isolate;
   v8::TryCatch& _tryCatch;
 
  public:
   v8gHelper(v8::Isolate* isolate, v8::TryCatch& tryCatch,
-            v8::Handle<v8::Value>& request, v8::Handle<v8::Value>& response)
-      : _isolate(isolate), _tryCatch(tryCatch) {
+            v8::Handle<v8::Value> request, v8::Handle<v8::Value> response)
+      : _tryCatch(tryCatch) {
     TRI_GET_GLOBALS();
     _v8g = v8g;
-    _v8g->_currentRequest = request;
+    _v8g->_currentRequest.Reset(isolate, request);
   }
 
   void cancel(bool doCancel) {
@@ -92,8 +91,8 @@ class v8gHelper {
     if (_tryCatch.HasCaught() && !_tryCatch.CanContinue()) {
       _v8g->_canceled = true;
     } else {
-      _v8g->_currentRequest = v8::Undefined(_isolate);
-      _v8g->_currentResponse = v8::Undefined(_isolate);
+      _v8g->_currentRequest.Reset();
+      _v8g->_currentResponse.Reset();
     }
   }
 };

@@ -731,8 +731,7 @@ function optimizerIndexesTestSuite () {
           FILTER i.value == 5
           RETURN [ i.value ]
       `;
-      db._explain(query);
-      var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
+      let plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
 
       assertEqual(-1, plan.rules.indexOf("propagate-constant-attributes"));
     },

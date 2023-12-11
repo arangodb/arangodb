@@ -21,6 +21,7 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "IResearchViewNode.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -60,8 +61,9 @@
 #include "VocBase/LogicalCollection.h"
 #include "types.h"
 
-#include <absl/strings/str_cat.h>
 #include "utils/misc.hpp"
+
+#include <absl/strings/str_cat.h>
 #include <frozen/map.h>
 #include <velocypack/Iterator.h>
 
@@ -478,8 +480,8 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view,
                                                 attribute->getStringLength()};
     auto const handler = kHandlers.find(attributeName);
     if (handler == kHandlers.end()) {  // no handler found for attribute
-      aql::ExecutionPlan::invalidOptionAttribute(
-          query, "unknown", "FOR", attributeName.data(), attributeName.size());
+      aql::ExecutionPlan::invalidOptionAttribute(query, "unknown", "FOR",
+                                                 attributeName);
       continue;
     }
     auto const* value = attribute->getMemberUnchecked(0);

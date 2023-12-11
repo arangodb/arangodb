@@ -71,8 +71,9 @@ TEST(MaintenanceRestHandler, parse_rest_put) {
   dummyRequest->setPayload(buffer);
   dummyRequest->setRequestType(arangodb::rest::RequestType::PUT);
 
-  auto* dummyResponse =
-      new arangodb::HttpResponse(arangodb::rest::ResponseCode::OK, 1, nullptr);
+  auto* dummyResponse = new arangodb::HttpResponse(
+      arangodb::rest::ResponseCode::OK, 1, nullptr,
+      arangodb::rest::ResponseCompressionType::kNoCompression);
   arangodb::ArangodServer dummyServer{nullptr, nullptr};
   TestHandler dummyHandler(dummyServer, dummyRequest, dummyResponse);
 
