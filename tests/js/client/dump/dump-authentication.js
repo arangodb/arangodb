@@ -33,7 +33,7 @@ var internal = require("internal");
 var jsunity = require("jsunity");
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const base = require("fs").join(
-  internal.pathForTesting('server'),
+  internal.pathForTesting('client'),
   'dump',
   'dump-test.inc');
 const baseTests = require("internal").load(base);
