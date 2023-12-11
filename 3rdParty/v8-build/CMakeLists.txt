@@ -68,12 +68,7 @@ endif()
 
 # detect 32bit or 64bit
 
-if ("${CMAKE_TARGET_ARCHITECTURES}" STREQUAL "armv7")
-  set(V8_PROC_ARCH "arm")
-  set(QEMU_ARCH "qemu-arm")
-  list(APPEND V8_GYP_ARGS -Darm_version=7 -Darm_fpu=default -Darm_float_abi=default)
-  # TODO: should we handle armv8 here?
-elseif("${CMAKE_TARGET_ARCHITECTURES}" STREQUAL "aarch64")
+if("${CMAKE_TARGET_ARCHITECTURES}" STREQUAL "aarch64")
   set(V8_PROC_ARCH "arm64")
   set(QEMU_ARCH "qemu-aarch64")
   list(APPEND V8_GYP_ARGS -Darm_fpu=default -Darm_float_abi=default)
@@ -195,6 +190,7 @@ if (WIN32)
     -Dpython=${PYTHON_EXECUTABLE}
   )
 
+  # TODO: targets list must be finalized
   list(APPEND V8_TARGETS
     #torque
     #run_torque
@@ -342,7 +338,7 @@ else ()
   set(V8_CFLAGS     "${V8_CFLAGS}   $ENV{V8_CFLAGS}")
   set(V8_CXXFLAGS   "${V8_CXXFLAGS} $ENV{V8_CXXFLAGS} -std=c++20")
 
-  set(V8_LDFLAGS  "${CMAKE_EXE_LINKER_FLAGS} $ENV{V8_LDFLAGS}")
+  set(V8_LDFLAGS    "${CMAKE_EXE_LINKER_FLAGS} $ENV{V8_LDFLAGS}")
 
   # build V8 without debug information
   if (USE_MINIMAL_DEBUGINFO)
@@ -351,7 +347,8 @@ else ()
   endif ()
   
   # remove -march=... from Apple builds
-  if (APPLE)
+  # TODO: check if this can be removed
+  if (APPLE AND FALSE)
     string(REGEX REPLACE "-march=[^ ]+" "-march=armv8" V8_CFLAGS ${V8_CFLAGS})
     string(REGEX REPLACE "-march=[^ ]+" "-march=armv8" V8_CXXFLAGS ${V8_CXXFLAGS})
   endif ()
@@ -439,17 +436,17 @@ else ()
     LDFLAGS=${V8_LDFLAGS}
   )
 
-  message("V8 cc: ${CMAKE_C_COMPILER}")
-  message("V8 cxx: ${CMAKE_CXX_COMPILER}")
-  message("V8 gyp args: ${V8_GYP_ARGS}")
-  message("V8 cflags: ${V8_CFLAGS}")
-  message("V8 cxxflags: ${V8_CXXFLAGS}")
-  message("V8 compile args: ${V8_COMPILE_ARGS}")
-  message("V8 ldflags: ${V8_LDFLAGS}")
+  # only here for debugging. enable when needed
+  # message("V8 cc: ${CMAKE_C_COMPILER}")
+  # message("V8 cxx: ${CMAKE_CXX_COMPILER}")
+  # message("V8 gyp args: ${V8_GYP_ARGS}")
+  # message("V8 cflags: ${V8_CFLAGS}")
+  # message("V8 cxxflags: ${V8_CXXFLAGS}")
+  # message("V8 compile args: ${V8_COMPILE_ARGS}")
+  # message("V8 ldflags: ${V8_LDFLAGS}")
 
   list(APPEND V8_COMPILE_TARGETS icui18n icuuc icustubdata)
   list(APPEND V8_COMPILE_TARGETS v8_libbase v8_libplatform v8_snapshot)
-  message(${V8_GYP_ARGS})
   ExternalProject_Add(v8_build
     BUILD_IN_SOURCE
       TRUE
