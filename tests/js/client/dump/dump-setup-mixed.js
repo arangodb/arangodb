@@ -29,7 +29,7 @@
 
 
 const base = require("fs").join(
-  require('internal').pathForTesting('server'),
+  require('internal').pathForTesting('client'),
   'dump',
   'dump-setup-common.inc');
 

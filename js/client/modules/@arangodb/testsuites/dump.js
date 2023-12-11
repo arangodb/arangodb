@@ -75,18 +75,18 @@ if (versionHas('asan') || versionHas('tsan') || (platform.substr(0, 3) === 'win'
 }
 
 const testPaths = {
-  'dump': [tu.pathForTesting('server/dump')],
-  'dump_mixed_cluster_single': [tu.pathForTesting('server/dump')],
-  'dump_mixed_single_cluster': [tu.pathForTesting('server/dump')],
-  'dump_authentication': [tu.pathForTesting('server/dump')],
-  'dump_jwt': [tu.pathForTesting('server/dump')],
-  'dump_encrypted': [tu.pathForTesting('server/dump')],
-  'dump_maskings': [tu.pathForTesting('server/dump')],
-  'dump_multiple': [tu.pathForTesting('server/dump')],
-  'dump_with_crashes': [tu.pathForTesting('server/dump')],
-  'dump_with_crashes_parallel': [tu.pathForTesting('server/dump')],
-  'dump_parallel': [tu.pathForTesting('server/dump')],
-  'hot_backup': [tu.pathForTesting('server/dump')]
+  'dump': [tu.pathForTesting('client/dump')],
+  'dump_mixed_cluster_single': [tu.pathForTesting('client/dump')],
+  'dump_mixed_single_cluster': [tu.pathForTesting('client/dump')],
+  'dump_authentication': [tu.pathForTesting('client/dump')],
+  'dump_jwt': [tu.pathForTesting('client/dump')],
+  'dump_encrypted': [tu.pathForTesting('client/dump')],
+  'dump_maskings': [tu.pathForTesting('client/dump')],
+  'dump_multiple': [tu.pathForTesting('client/dump')],
+  'dump_with_crashes': [tu.pathForTesting('client/dump')],
+  'dump_with_crashes_parallel': [tu.pathForTesting('client/dump')],
+  'dump_parallel': [tu.pathForTesting('client/dump')],
+  'hot_backup': [tu.pathForTesting('client/dump')]
 };
 
 class DumpRestoreHelper extends tu.runInArangoshRunner {
@@ -800,7 +800,7 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAu
 
     if (tstFiles.hasOwnProperty("dumpCheckGraph")) {
       const notCluster = getClusterStrings(secondRunOptions).notCluster;
-      const restoreDir = tu.makePathUnix(tu.pathForTesting('server/dump/dump' + notCluster));
+      const restoreDir = tu.makePathUnix(tu.pathForTesting('client/dump/dump' + notCluster));
       const oldTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckGraph));
       if (!helper.restoreOld(restoreDir) ||
           !helper.testRestoreOld(oldTestFile)) {
@@ -1212,7 +1212,7 @@ function hotBackup (options) {
 
     if (tstFiles.hasOwnProperty("dumpCheckGraph")) {
       const notCluster = getClusterStrings(options).notCluster;
-      const restoreDir = tu.makePathUnix(tu.pathForTesting('server/dump/dump' + notCluster));
+      const restoreDir = tu.makePathUnix(tu.pathForTesting('client/dump/dump' + notCluster));
       const oldTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckGraph));
       if (!helper.restoreOld(restoreDir) ||
           !helper.testRestoreOld(oldTestFile)) {

@@ -23,13 +23,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Jan Steemann
 /// @author Wilfried Goesgens
 /// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 
 const base = require("fs").join(
-  require('internal').pathForTesting('server'),
+  require('internal').pathForTesting('client'),
   'dump',
   'dump-setup-common.inc');
 const setup = require(base);
@@ -37,42 +38,13 @@ const setup = require(base);
 (function () {
   setup.cleanup();
   setup.createEmpty();
+  setup.createExtendedName();
+  setup.createAutoIncKeyGen();
+  setup.createUsers();
   setup.createMany();
   setup.createOrder();
-  setup.createModifyCollection();
-  setup.createExtendedName();
-  setup.createComputedValues();
-  setup.createAutoIncKeyGen();
-  setup.createPaddedKeyGen();
-  setup.createUUIDKeyGen();
-  setup.createStrings();
-  setup.createTransactional();
-  setup.createPersistent();
-  setup.createView();
-  setup.createSearch();
-  setup.createInvertedIndex();
-  setup.createJobs();
+  
   setup.createFoxx();
-  setup.createAnalyzers();
-
-  // those two are related to each other as createSmartArangoSearch depends on createSmartGraph
-  setup.createSmartGraph();
-  setup.createSmartArangoSearch();
-
-  setup.createEmptySmartGraph();
-  setup.createEmptyEnterpriseGraph();
-  setup.createEmptySatelliteGraph();
-  setup.createEmptyDisjointGraph();
-  setup.createSmartGraphWithoutData();
-  setup.createEnterpriseGraphWithoutData();
-  setup.createSatelliteGraphWithoutData();
-  setup.createDisjointGraphWithoutData();
-  setup.createSmartGraphSingleServer();
-  setup.createEnterpriseGraphSingleServer();
-  setup.createSatelliteGraphSingleServer();
-  setup.createDisjointGraphSingleServer();
-  setup.createHybridSmartGraphSingleServer();
-  setup.createHybridDisjointSmartGraphSingleServer();
 })();
 
 return {

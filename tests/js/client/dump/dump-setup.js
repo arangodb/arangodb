@@ -29,13 +29,12 @@
 
 
 const base = require("fs").join(
-  require('internal').pathForTesting('server'),
+  require('internal').pathForTesting('client'),
   'dump',
   'dump-setup-common.inc');
-
 const setup = require(base);
 
-(function() {
+(function () {
   setup.cleanup();
   setup.createEmpty();
   setup.createMany();
@@ -60,19 +59,14 @@ const setup = require(base);
   setup.createSmartGraph();
   setup.createSmartArangoSearch();
 
-  // Enterprise-Only backbone graph creation tests
   setup.createEmptySmartGraph();
   setup.createEmptyEnterpriseGraph();
   setup.createEmptySatelliteGraph();
   setup.createEmptyDisjointGraph();
-
-  // Enterprise-Only graph creation tests without data
   setup.createSmartGraphWithoutData();
   setup.createEnterpriseGraphWithoutData();
   setup.createSatelliteGraphWithoutData();
   setup.createDisjointGraphWithoutData();
-
-  // Enterprise-Only graph creation tests on single-server
   setup.createSmartGraphSingleServer();
   setup.createEnterpriseGraphSingleServer();
   setup.createSatelliteGraphSingleServer();
