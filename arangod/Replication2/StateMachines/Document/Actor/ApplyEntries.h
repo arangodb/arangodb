@@ -44,10 +44,10 @@ namespace arangodb::replication2::replicated_state::document::actor {
 using namespace arangodb::actor;
 
 struct ApplyEntriesState {
-  explicit ApplyEntriesState(DocumentFollowerState& state)
-      : loggerContext(state.loggerContext),  // TODO - include pid in context
-        handlers(state._handlers),
-        _state(state) {}
+  explicit ApplyEntriesState(LoggerContext const& loggerContext,
+                             Handlers const& handlers)
+      : loggerContext(loggerContext),  // TODO - include pid in context
+        handlers(handlers) {}
 
   friend inline auto inspect(auto& f, ApplyEntriesState& x) {
     return f.object(x).fields(
@@ -81,7 +81,6 @@ struct ApplyEntriesState {
   LoggerContext const loggerContext;
   Handlers const handlers;
 
-  DocumentFollowerState& _state;
   std::unique_ptr<Batch> _batch;
 
   // map of currently ongoing transactions to their respective actor pids
@@ -152,7 +151,7 @@ struct ApplyEntriesHandler : HandlerBase<Runtime, ApplyEntriesState> {
           msg) noexcept -> std::unique_ptr<ApplyEntriesState>;
 
   auto operator()(auto&& msg) noexcept -> std::unique_ptr<ApplyEntriesState> {
-    LOG_CTX("0bc2e", FATAL, this->state->_state.loggerContext)
+    LOG_CTX("0bc2e", FATAL, this->state->loggerContext)
         << "ApplyEntries actor received unexpected message "
         << typeid(msg).name() << " " << inspection::json(msg);
     FATAL_ERROR_EXIT();

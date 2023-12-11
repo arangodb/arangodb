@@ -63,8 +63,6 @@ struct DocumentFollowerState
 
   ~DocumentFollowerState() override;
 
-  void initialize();
-
   GlobalLogIdentifier const gid;
   LoggerContext const loggerContext;
 

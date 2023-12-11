@@ -74,13 +74,9 @@ DocumentFollowerState::DocumentFollowerState(
       _guardedData(std::move(core), loggerContext),
       _runtime(std::make_shared<actor::LocalRuntime>(
           "FollowerState-" + to_string(gid),
-          std::make_shared<actor::Scheduler>(std::move(scheduler)))) {}
-
-void DocumentFollowerState::initialize() {
-  // we have to do this here instead of the constructor, because in the
-  // constructor the weak_ptr used by shared_from_this is not yet initialized
+          std::make_shared<actor::Scheduler>(std::move(scheduler)))) {
   _applyEntriesActor = _runtime->template spawn<actor::ApplyEntriesActor>(
-      std::make_unique<actor::ApplyEntriesState>(*this));
+      std::make_unique<actor::ApplyEntriesState>(loggerContext, _handlers));
   LOG_CTX("de019", INFO, loggerContext)
       << "Spawned ApplyEntries actor " << _applyEntriesActor.id;
 }

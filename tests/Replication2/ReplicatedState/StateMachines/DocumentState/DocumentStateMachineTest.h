@@ -130,11 +130,9 @@ struct DocumentStateMachineTest : testing::Test {
   auto createFollower() -> std::shared_ptr<DocumentFollowerStateWrapper> {
     auto factory = replicated_state::document::DocumentFactory(
         handlersFactoryMock, transactionManagerMock);
-    auto result = std::make_shared<DocumentFollowerStateWrapper>(
+    return std::make_shared<DocumentFollowerStateWrapper>(
         factory.constructCore(vocbaseMock, globalId, coreParams),
         handlersFactoryMock, schedulerMock);
-    result->initialize();
-    return result;
   }
 
   void SetUp() override {
