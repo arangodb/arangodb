@@ -6,6 +6,16 @@ devel
   to dropped followers when an index of a large shard was finalized on an
   follower.
 
+* Added an optimizer rule `optimize-enumerate-paths` that pulls filters
+	of the form
+   FILTER pathVar.vertices[* RETURN ...] ALL == value
+	or
+	 FILTER pathVar.edges[* RETURN ...] ALL == value
+
+  inside path searches (ALL_SHORTEST_PATHS, K_SHORTEST_PATHS, K_PATHS)
+	into the path search itself. this should lead to better path searches
+	if the filter is selective enough.
+
 * BTS-1633: One Shard databases would incorrectly not be indicated as being
   One Shard databases in the new database view in the frontend.
 
