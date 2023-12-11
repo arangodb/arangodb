@@ -23,7 +23,12 @@
 
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 
+#include "Basics/DownCast.h"
 #include "Replication2/StateMachines/Document/MaintenanceActionExecutor.h"
+#include "Indexes/Index.h"
+#include "IResearch/IResearchDataStore.h"
+#include "IResearch/IResearchRocksDBInvertedIndex.h"
+#include "IResearch/IResearchRocksDBLink.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/VocBaseLogManager.h"
@@ -213,6 +218,43 @@ auto DocumentStateShardHandler::lockShard(ShardID const& shard,
                               res.errorMessage())};
   }
   return trx;
+}
+
+auto DocumentStateShardHandler::prepareShardsForLogReplay() noexcept -> void {
+  for (auto const& shard : getAvailableShards()) {
+    // The inverted indexes cannot work with duplicate LocalDocumentIDs within
+    // the same commit interval. They however can if we have a commit in between
+    // the two. If we replay one log we know there can never be a duplicate
+    // LocalDocumentID.
+    for (auto const& index : shard->getIndexes()) {
+      if (index->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+        basics::downCast<iresearch::IResearchRocksDBInvertedIndex>(*index)
+            .commit(true);
+      } else if (index->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+        basics::downCast<iresearch::IResearchRocksDBLink>(*index).commit(true);
+      }
+      if (index->type() == Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX) {
+        auto maybeInvertedIndex =
+            std::dynamic_pointer_cast<iresearch::IResearchInvertedIndex>(index);
+        // Assert here is good enough, if this fails the index will be ignored.
+        TRI_ASSERT(maybeInvertedIndex) << "Failed to downcast an index that "
+                                          "claims to be an inverted index";
+        if (maybeInvertedIndex) {
+          maybeInvertedIndex->commit(true);
+        }
+      }
+      if (index->type() == Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
+        auto maybeSearchLink =
+            std::dynamic_pointer_cast<iresearch::IResearchRocksDBLink>(index);
+        // Assert here is good enough, if this fails the index will be ignored.
+        TRI_ASSERT(maybeSearchLink)
+            << "Failed to downcast an index that claims to be a link index";
+        if (maybeSearchLink) {
+          maybeSearchLink->commit(true);
+        }
+      }
+    }
+  }
 }
 
 }  // namespace arangodb::replication2::replicated_state::document
