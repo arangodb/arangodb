@@ -303,19 +303,14 @@ function lockTimeoutSuite() {
   const cn = 'UnitTestsLockTimeout';
   let collInfo = {};
 
-  const endpointMap = getEndpointMap();
-  const info = { endpointMap, coordinator: "Coordinator0001" };
-
   return {
     setUp: function () {
-      switchConnectionToCoordinator(info);
       getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
       db._drop(cn);
       collInfo = createCollectionWithTwoShardsSameLeaderAndFollower(cn);
     },
 
     tearDown: function () {
-      switchConnectionToCoordinator(info);
       getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
       db._drop(cn);
     },
