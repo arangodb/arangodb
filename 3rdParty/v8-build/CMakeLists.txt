@@ -204,14 +204,15 @@ if (WIN32)
   )
 
   list(APPEND V8_TARGETS
-    torque
-    run_torque
-    generate_bytecode_builtins_list
-    v8_initializers
+    #torque
+    #run_torque
+    #generate_bytecode_builtins_list
+    #v8_initializers
+    v8_libbase
     v8_libplatform
-    mksnapshot
+    #mksnapshot
     v8_snapshot
-    v8
+    #v8
   )
 
   add_custom_target(v8_build)
