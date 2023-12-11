@@ -216,7 +216,7 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
            "commits detected): "
         << partialResults;
     TRI_ASSERT(false) << partialResults;
-    // The leader is our of sync.
+    // The leader is out of sync.
     // It makes sense to crash here, because the  in the hopes that this server
     // becomes a follower and it re-applies the transaction successfully.
     FATAL_ERROR_EXIT();
