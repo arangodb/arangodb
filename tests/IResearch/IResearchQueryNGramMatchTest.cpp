@@ -653,7 +653,8 @@ class QueryNGramMatch : public QueryTest {
     // test via default analyzer
     if (flags & kAnalyzerIdentity) {
       std::vector<arangodb::velocypack::Slice> expected = {
-          // no results  will be found as identity analyzer has no positions
+          // exact match because fallback to term query in case of single ngram
+          _insertedDocs[0].slice(),
       };
       auto result = arangodb::tests::executeQuery(
           vocbase,
@@ -666,7 +667,7 @@ class QueryNGramMatch : public QueryTest {
 
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
-        EXPECT_TRUE(i < expected.size());
+        ASSERT_TRUE(i < expected.size()) << slice.toJson();
         EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                               expected[i++], resolved, true)));
       }
@@ -1142,7 +1143,8 @@ class QueryNGramMatch : public QueryTest {
     // test via default analyzer
     if (flags & kAnalyzerIdentity) {
       std::vector<arangodb::velocypack::Slice> expected = {
-          // no results  will be found as identity analyzer has no positions
+          // exact match because fallback to term query in case of single ngram
+          _insertedDocs[0].slice(),
       };
       auto result = arangodb::tests::executeQuery(
           vocbase,
@@ -1155,7 +1157,7 @@ class QueryNGramMatch : public QueryTest {
 
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
-        EXPECT_TRUE(i < expected.size());
+        ASSERT_TRUE(i < expected.size()) << slice.toJson();
         EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                               expected[i++], resolved, true)));
       }
