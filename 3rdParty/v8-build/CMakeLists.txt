@@ -104,14 +104,6 @@ list(APPEND V8_GYP_ARGS
   -DV8_SRC_ROOT=${GYP_FILES_DIR}/
 )
 
-if (CROSS_COMPILING)
-  list(APPEND V8_GYP_ARGS
-  -Dhost_arch=${V8_PROC_ARCH}
-  -DGYP_CROSSCOMPILE=1
-  -DEXECUTABLE_PREFIX=${V8_PROC_ARCH}.
-  )
-endif()
-
 option(USE_DEBUG_V8 "compile V8 in DEBUG mode" OFF)
   
 ################################################################################
