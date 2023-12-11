@@ -481,16 +481,16 @@ exports.killingParallel = function (opts) {
   // start worker
   const w = [
     function (params) {
-      require('./' + pathForTesting('server/stress/killingQueries')).inserter(params);
+      require('./' + pathForTesting('client/stress/killingQueries')).inserter(params);
     },
     function (params) {
-      require('./' + pathForTesting('server/stress/killingQueries')).updater(params);
+      require('./' + pathForTesting('client/stress/killingQueries')).updater(params);
     },
     function (params) {
-      require('./' + pathForTesting('server/stress/killingQueries')).remover(params);
+      require('./' + pathForTesting('client/stress/killingQueries')).remover(params);
     },
     function (params) {
-      require('./' + pathForTesting('server/stress/killingQueries')).killer(params);
+      require('./' + pathForTesting('client/stress/killingQueries')).killer(params);
     }
   ];
 

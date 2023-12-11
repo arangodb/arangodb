@@ -79,7 +79,7 @@ var _resilience = function(path, enableAliveMonitor) {
     }
     let testCases = tu.scanTestPaths(testPaths[path], localOptions);
     testCases = tu.splitBuckets(options, testCases);
-    let rc = new tu.runOnArangodRunner(localOptions, suiteName, {
+    let rc = new tu.runInArangoshRunner(localOptions, suiteName, {
       'javascript.allow-external-process-control': 'true',
       'javascript.allow-port-testing': 'true',
       'javascript.allow-admin-execute': 'true',

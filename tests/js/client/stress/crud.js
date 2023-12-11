@@ -295,7 +295,7 @@ exports.createDeleteUpdateParallel = function (opts) {
   print('Starting', n, 'worker');
 
   const cmd = function (params) {
-    require('./' + pathForTesting('server/stress/crud')).createDeleteUpdateRaw(params);
+    require('./' + pathForTesting('client/stress/crud')).createDeleteUpdateRaw(params);
   };
 
   for (let i = 0; i < n; ++i) {

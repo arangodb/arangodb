@@ -63,16 +63,16 @@ const testPaths = {
 // / @brief TEST: shell_replication
 // //////////////////////////////////////////////////////////////////////////////
 
-function shellReplication (options) {
-  let testCases = tu.scanTestPaths(testPaths.shell_replication, options);
+// function shellReplication (options) {
+//   let testCases = tu.scanTestPaths(testPaths.shell_replication, options);
 
-  var opts = {
-    'replication': true
-  };
-  _.defaults(opts, options);
+//   var opts = {
+//     'replication': true
+//   };
+//   _.defaults(opts, options);
 
-  return new tu.runOnArangodRunner(opts, 'shell_replication').run(testCases);
-}
+//   return new tu.runOnArangodRunner(opts, 'shell_replication').run(testCases);
+// }
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: shell_replication
@@ -213,7 +213,7 @@ function replicationSync (options) {
 
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
-  testFns['shell_replication'] = shellReplication;
+  // testFns['shell_replication'] = shellReplication;
   testFns['replication_aql'] = replicationAql;
   testFns['replication_fuzz'] = replicationFuzz;
   testFns['replication_random'] = replicationRandom;
