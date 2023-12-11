@@ -101,8 +101,8 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
     return _lookahead;
   }
 
-  bool nextImpl(LocalDocumentIdCallback const& callback,
-                uint64_t limit) override {
+  template<typename F>
+  bool findNext(F&& callback, uint64_t limit) {
     for (uint64_t i = 0; i < limit;) {
       switch (_iterState) {
         case IterState::SEEK_ITER_TO_CUR: {
@@ -153,14 +153,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
               _iterState = IterState::SEEK_ITER_TO_CUR;
             }
           } else {
-            auto const documentId = std::invoke([&] {
-              if constexpr (isUnique) {
-                return RocksDBValue::documentId(_iter->value());
-              } else {
-                return RocksDBKey::indexDocumentId(rocksKey);
-              }
-            });
-            std::ignore = callback(documentId);
+            callback(rocksKey, _iter->value());
             ++i;
             _iter->Next();
             if (!_iter->Valid()) {
@@ -179,6 +172,55 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
     }
 
     return true;
+  }
+
+  bool nextImpl(LocalDocumentIdCallback const& callback,
+                uint64_t limit) override {
+    return findNext(
+        [&](rocksdb::Slice key, rocksdb::Slice value) {
+          auto const documentId = std::invoke([&] {
+            if constexpr (isUnique) {
+              return RocksDBValue::documentId(value);
+            } else {
+              return RocksDBKey::indexDocumentId(key);
+            }
+          });
+          std::ignore = callback(documentId);
+        },
+        limit);
+  }
+
+  bool nextCoveringImpl(CoveringCallback const& callback,
+                        uint64_t limit) override {
+    struct CoveringData : IndexIteratorCoveringData {
+      explicit CoveringData(const velocypack::Slice& data) : _data(data) {}
+      VPackSlice at(size_t i) const override { return _data.at(i); }
+      bool isArray() const noexcept override { return true; }
+      velocypack::ValueLength length() const override { return _data.length(); }
+
+      velocypack::Slice _data;
+    };
+    return findNext(
+        [&](rocksdb::Slice key, rocksdb::Slice value) {
+          auto const documentId = std::invoke([&] {
+            if constexpr (isUnique) {
+              return RocksDBValue::documentId(value);
+            } else {
+              return RocksDBKey::indexDocumentId(key);
+            }
+          });
+
+          auto storedValues = std::invoke([&] {
+            if constexpr (isUnique) {
+              return RocksDBValue::uniqueIndexStoredValues(value);
+            } else {
+              return RocksDBValue::indexStoredValues(value);
+            }
+          });
+          CoveringData coveringData{storedValues};
+          std::ignore = callback(documentId, coveringData);
+        },
+        limit);
   }
 
  private:
@@ -474,6 +516,40 @@ auto zkd::specializeCondition(Index const* index, aql::AstNode* condition,
   return condition;
 }
 
+namespace {
+auto extractStoredValues(
+    transaction::Methods& trx,
+    std::vector<std::vector<basics::AttributeName>> const& storedValues,
+    velocypack::Slice doc) {
+  transaction::BuilderLeaser leased(&trx);
+  leased->openArray(true);
+  for (auto const& it : storedValues) {
+    VPackSlice s;
+    if (it.size() == 1 && it[0].name == StaticStrings::IdString) {
+      // instead of storing the value of _id, we instead store the
+      // value of _key. we will retranslate the value to an _id later
+      // again upon retrieval
+      s = transaction::helpers::extractKeyFromDocument(doc);
+    } else {
+      s = doc;
+      for (auto const& part : it) {
+        s = s.get(part.name);
+        if (s.isNone()) {
+          break;
+        }
+      }
+    }
+    if (s.isNone()) {
+      s = VPackSlice::nullSlice();
+    }
+    leased->add(s);
+  }
+  leased->close();
+
+  return leased;
+}
+}  // namespace
+
 Result RocksDBZkdIndexBase::insert(transaction::Methods& trx,
                                    RocksDBMethods* methods,
                                    LocalDocumentId documentId,
@@ -490,7 +566,8 @@ Result RocksDBZkdIndexBase::insert(transaction::Methods& trx,
   RocksDBKey rocks_key;
   rocks_key.constructZkdIndexValue(objectId(), key_value, documentId);
 
-  auto value = RocksDBValue::ZkdIndexValue();
+  auto storedValues = extractStoredValues(trx, _storedValues, doc);
+  auto value = RocksDBValue::ZkdIndexValue(storedValues->slice());
   auto s = methods->PutUntracked(_cf, rocks_key, value.string());
   if (!s.ok()) {
     return rocksutils::convertStatus(s);
@@ -531,13 +608,29 @@ RocksDBZkdIndexBase::RocksDBZkdIndexBase(IndexId iid, LogicalCollection& coll,
                    coll.vocbase()
                        .server()
                        .getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>()) {}
+                       .engine<RocksDBEngine>()),
+      _storedValues(
+          Index::parseFields(info.get(StaticStrings::IndexStoredValues),
+                             /*allowEmpty*/ true, /*allowExpansion*/ false)) {}
 
 void RocksDBZkdIndexBase::toVelocyPack(
     velocypack::Builder& builder,
     std::underlying_type<Index::Serialize>::type type) const {
   VPackObjectBuilder ob(&builder);
   RocksDBIndex::toVelocyPack(builder, type);
+
+  if (!_storedValues.empty()) {
+    builder.add(velocypack::Value(StaticStrings::IndexStoredValues));
+    builder.openArray();
+
+    for (auto const& field : _storedValues) {
+      std::string fieldString;
+      TRI_AttributeNamesToString(field, fieldString);
+      builder.add(VPackValue(fieldString));
+    }
+
+    builder.close();
+  }
 }
 
 Index::FilterCosts RocksDBZkdIndexBase::supportsFilterCondition(
@@ -603,7 +696,9 @@ Result RocksDBUniqueZkdIndex::insert(transaction::Methods& trx,
     }
   }
 
-  auto value = RocksDBValue::UniqueZkdIndexValue(documentId);
+  auto storedValues = extractStoredValues(trx, _storedValues, doc);
+  auto value =
+      RocksDBValue::UniqueZkdIndexValue(documentId, storedValues->slice());
 
   if (auto s = methods->PutUntracked(_cf, rocks_key, value.string()); !s.ok()) {
     return rocksutils::convertStatus(s);
