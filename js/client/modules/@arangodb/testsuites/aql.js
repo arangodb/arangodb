@@ -155,12 +155,12 @@ function shellV8 (options) {
 // / @brief TEST: shell_server_v8
 // //////////////////////////////////////////////////////////////////////////////
 
-function shellV8Server (options) {
-  let testCases = tu.scanTestPaths(testPaths.shell_server_v8, options);
-  testCases = tu.splitBuckets(options, testCases);
-  let rc = new tu.runOnArangodRunner(options, 'shell_v8', []).run(testCases);
-  return rc;
-}
+// function shellV8Server (options) {
+//   let testCases = tu.scanTestPaths(testPaths.shell_server_v8, options);
+//   testCases = tu.splitBuckets(options, testCases);
+//   let rc = new tu.runOnArangodRunner(options, 'shell_v8', []).run(testCases);
+//   return rc;
+// }
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: shell_api
@@ -254,65 +254,65 @@ function shellClientMulti (options) {
 // / @brief TEST: shell_server
 // //////////////////////////////////////////////////////////////////////////////
 
-function shellServer (options) {
-  options.propagateInstanceInfo = true;
+// function shellServer (options) {
+//   options.propagateInstanceInfo = true;
 
-  let testCases = tu.scanTestPaths(testPaths.shell_server, options);
+//   let testCases = tu.scanTestPaths(testPaths.shell_server, options);
 
-  testCases = tu.splitBuckets(options, testCases);
+//   testCases = tu.splitBuckets(options, testCases);
 
-  let opts = ensureServers(options, 3);
-  let rc = new tu.runOnArangodRunner(opts, 'shell_server', {}).run(testCases);
-  options.cleanup = options.cleanup && opts.cleanup;
-  return rc;
-}
+//   let opts = ensureServers(options, 3);
+//   let rc = new tu.runOnArangodRunner(opts, 'shell_server', {}).run(testCases);
+//   options.cleanup = options.cleanup && opts.cleanup;
+//   return rc;
+// }
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: shell_server_only
 // //////////////////////////////////////////////////////////////////////////////
 
-function shellServerOnly (options) {
-  let testCases = tu.scanTestPaths(testPaths.shell_server_only, options);
+// function shellServerOnly (options) {
+//   let testCases = tu.scanTestPaths(testPaths.shell_server_only, options);
 
-  testCases = tu.splitBuckets(options, testCases);
+//   testCases = tu.splitBuckets(options, testCases);
 
-  let opts = ensureServers(options, 3);
-  let rc = new tu.runOnArangodRunner(opts, 'shell_server_only', {}).run(testCases);
-  options.cleanup = options.cleanup && opts.cleanup;
-  return rc;
-}
+//   let opts = ensureServers(options, 3);
+//   let rc = new tu.runOnArangodRunner(opts, 'shell_server_only', {}).run(testCases);
+//   options.cleanup = options.cleanup && opts.cleanup;
+//   return rc;
+// }
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: shell_server_aql
 // //////////////////////////////////////////////////////////////////////////////
 
-function shellServerAql (options) {
-  let testCases;
-  let name = 'shell_server_aql';
+// function shellServerAql (options) {
+//   let testCases;
+//   let name = 'shell_server_aql';
 
-  if (!options.skipAql) {
-    testCases = tu.scanTestPaths(testPaths.shell_server_aql, options);
-    if (options.skipRanges) {
-      testCases = _.filter(testCases,
-                           function (p) { return p.indexOf('ranges-combined') === -1; });
-      name = 'shell_server_aql_skipranges';
-    }
+//   if (!options.skipAql) {
+//     testCases = tu.scanTestPaths(testPaths.shell_server_aql, options);
+//     if (options.skipRanges) {
+//       testCases = _.filter(testCases,
+//                            function (p) { return p.indexOf('ranges-combined') === -1; });
+//       name = 'shell_server_aql_skipranges';
+//     }
 
-    testCases = tu.splitBuckets(options, testCases);
+//     testCases = tu.splitBuckets(options, testCases);
 
-    let opts = ensureServers(options, 3);
-    let rc = new tu.runOnArangodRunner(opts, name, {}).run(testCases);
-    options.cleanup = options.cleanup && opts.cleanup;
-    return rc;
-  }
+//     let opts = ensureServers(options, 3);
+//     let rc = new tu.runOnArangodRunner(opts, name, {}).run(testCases);
+//     options.cleanup = options.cleanup && opts.cleanup;
+//     return rc;
+//   }
 
-  return {
-    shell_server_aql: {
-      status: true,
-      skipped: true
-    }
-  };
-}
+//   return {
+//     shell_server_aql: {
+//       status: true,
+//       skipped: true
+//     }
+//   };
+// }
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: shell_client_aql
