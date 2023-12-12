@@ -43,6 +43,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
+#include <limits>
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -240,7 +241,7 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 
   ValidationResult res = _validator.validatePath(step);
 
-  double matchPathWeight = -1.0;
+  auto matchPathWeight = std::numeric_limits<double>::infinity();
 
   if (!res.isFiltered()) {
     _visitedNodes[step.getVertex().getID()].emplace_back(posPrevious);
@@ -407,7 +408,7 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   // Order is important here, please do not change.
   // 1.) Remove current results & state
   _candidatesStore.clear();
-  _bestCandidateLength = -1.0;
+  _bestCandidateWeight = std::numeric_limits<double>::infinity();
   _resultsCache.clear();
   _results.clear();
   _leftInitialFetch = false;
@@ -621,11 +622,11 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   while (!searchDone()) {
     _resultsFetched = false;
 
-    double matchPathLength = -1.0;
+    auto matchPathWeight = std::numeric_limits<double>::infinity();
     auto searchLocation = getBallToContinueSearch();
     if (searchLocation == BallSearchLocation::LEFT) {
       // might need special case depth == 0
-      matchPathLength =
+      matchPathWeight =
           _left.computeNeighbourhoodOfNextVertex(_right, _candidatesStore);
     } else if (searchLocation == BallSearchLocation::RIGHT) {
       // special case for initial step expansion
@@ -637,7 +638,7 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
         setInitialFetchVerified();
       }
 
-      matchPathLength =
+      matchPathWeight =
           _right.computeNeighbourhoodOfNextVertex(_left, _candidatesStore);
     } else {
       TRI_ASSERT(searchLocation == BallSearchLocation::FINISH);
@@ -645,11 +646,11 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       setAlgorithmFinished();
     }
 
-    if (matchPathLength > 0) {
+    if (std::isfinite(matchPathWeight)) {
       // means we've found a match (-1.0 means no match)
-      if (_bestCandidateLength < 0 || matchPathLength < _bestCandidateLength) {
-        _bestCandidateLength = matchPathLength;
-      } else if (matchPathLength > _bestCandidateLength) {
+      if (matchPathWeight < _bestCandidateWeight) {
+        _bestCandidateWeight = matchPathWeight;
+      } else if (matchPathWeight > _bestCandidateWeight) {
         // If a candidate has been found, we insert it into the store and only
         // return the length of that path. As soon as we insert in into the
         // store we sort that internal vector, therefore it might re-balance. If
@@ -664,7 +665,7 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
         // Not only one candidate needs to be verified, but all candidates
         // which do have lower weights as the current found (match).
 
-        while (std::get<0>(_candidatesStore.peek()) < matchPathLength) {
+        while (std::get<0>(_candidatesStore.peek()) < matchPathWeight) {
           bool foundShortestPath = false;
           CalculatedCandidate potentialCandidate = _candidatesStore.pop();
 
@@ -686,20 +687,20 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
               break;
             }
 
-            // Setting _bestCandidateLength to -1.0 (double) will perform an
+            // Setting _bestCandidateWeight to +inf (double) will perform an
             // initialize / reset. This means we need to find at least two new
             // paths to prove that we've found the next proven and valid
             // shortest path.
             auto [weight, nextStepLeft, nextStepRight] =
                 _candidatesStore.peek();
-            _bestCandidateLength = weight;
+            _bestCandidateWeight = weight;
           }
         }
       }
     }
   }
 
-  if (_options.onlyProduceOnePath() && _bestCandidateLength >= 0) {
+  if (_options.onlyProduceOnePath() && std::isfinite(_bestCandidateWeight)) {
     fetchResult();
   } else {
     fetchResults();
