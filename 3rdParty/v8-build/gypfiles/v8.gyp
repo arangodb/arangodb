@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 {
   'variables': {
-    # 'V8_ROOT': '../../deps/v8',
     'icu_gyp_path': './<(V8_ROOT)/third_party/icu/icu-generic.gyp',
     'v8_code': 1,
     'v8_random_seed%': 314159265,
@@ -15,7 +14,8 @@
     'generate_bytecode_builtins_list_output': '<(generate_bytecode_output_root)/builtins-generated/bytecodes-builtins-list.h',
     'torque_files': ['<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "torque_files = ")'],
     # Torque and V8 expect the files to be named relative to V8's root.
-    'torque_files_without_v8_root': ['<!@pymod_do_main(ForEachReplace "<@(V8_ROOT)/" "" <@(torque_files))'],
+    #'torque_files_without_v8_root': ['<!@pymod_do_main(ForEachReplace "<@(V8_ROOT)/" "" <@(torque_files))'],
+    'torque_files_without_v8_root': ['<!@pymod_do_main(ForEachReplaceRegex "^([A-Za-z]:[/\/])?((\.\.)[/\/])*v8[/\/]?" "" <@(torque_files))'],
     'torque_files_replaced': ['<!@pymod_do_main(ForEachReplace ".tq" "-tq" <@(torque_files_without_v8_root))'],
     'torque_outputs_csa_cc': ['<!@pymod_do_main(ForEachFormat "<(SHARED_INTERMEDIATE_DIR)/torque-generated/%s-csa.cc" <@(torque_files_replaced))'],
     'torque_outputs_csa_h': ['<!@pymod_do_main(ForEachFormat "<(SHARED_INTERMEDIATE_DIR)/torque-generated/%s-csa.h" <@(torque_files_replaced))'],

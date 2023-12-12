@@ -27,27 +27,36 @@ index 579494f8..2cf5c952 100644
    CurrentSourceFile::Scope unknown_source_file_scope(SourceId::Invalid());
    CurrentAst::Scope ast_scope;
 diff --git a/src/torque/torque.cc b/src/torque/torque.cc
-index 7ccc5bf9..b32a448f 100644
+index 7ccc5bf9..1eed5586 100644
 --- a/src/torque/torque.cc
 +++ b/src/torque/torque.cc
-@@ -5,6 +5,8 @@
+@@ -5,6 +5,12 @@
  #include "src/torque/source-positions.h"
  #include "src/torque/torque-compiler.h"
  
 +#include <regex>
 +
++#ifdef _WIN32
++#include <direct.h>
++#endif 
++
  namespace v8 {
  namespace internal {
  namespace torque {
-@@ -23,6 +25,7 @@ int WrappedMain(int argc, const char** argv) {
+@@ -23,6 +29,12 @@ int WrappedMain(int argc, const char** argv) {
    options.collect_language_server_data = false;
    options.force_assert_statements = false;
  
++#if _WIN32
++  char buffer[8192];
++  buffer[sizeof(buffer) - 1] = '\0';
++  std::cerr << "TORQUE CWD: " << _getcwd(&buffer[0], sizeof(buffer) - 1) << std::endl;
++#endif
 +  std::regex re("/gypfiles/");
    std::vector<std::string> files;
  
    for (int i = 1; i < argc; ++i) {
-@@ -32,6 +35,7 @@ int WrappedMain(int argc, const char** argv) {
+@@ -32,6 +44,7 @@ int WrappedMain(int argc, const char** argv) {
        options.output_directory = argv[++i];
      } else if (argument == "-v8-root") {
        options.v8_root = std::string(argv[++i]);
@@ -55,7 +64,7 @@ index 7ccc5bf9..b32a448f 100644
      } else if (argument == "-m32") {
  #ifdef V8_COMPRESS_POINTERS
        std::cerr << "Pointer compression is incompatible with -m32.\n";
-@@ -44,6 +48,11 @@ int WrappedMain(int argc, const char** argv) {
+@@ -44,6 +57,11 @@ int WrappedMain(int argc, const char** argv) {
      } else if (argument == "-strip-v8-root") {
        options.strip_v8_root = true;
      } else {

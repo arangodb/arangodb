@@ -97,6 +97,10 @@ The following subdirectories were added afterwards to make V8 compile:
 The full source code of `googletest` and `googlemock` also needed to be
 added to the existing `googletest` directory in order to make V8 compile.
 
+When we build ArangoDB with V8, we intentionally turn off the zlib support
+in V8 so that it has less dependencies (and conflicts with our own version
+of zlib).
+
 ## Upgrading our version of V8
 
 To upgrade our version of V8, the source code of V8 must be upgraded in
@@ -219,6 +223,12 @@ index 1238ab2b..1dba0409 100644
  // Typedefs to shorten commonly used vectors.
  using IntVector = ZoneVector<int>;
 ```
+
+If abseil is used more in future versions of V8, we may need to inject the path
+to our own abseil version when building V8, because otherwise the linker may
+either see duplicate abseil symbols, or worse, contradicting versions of the
+abseil library implementations of the same name inside V8 and ArangoDB's own
+3rdParty directory.
 
 ### Building V8
 
