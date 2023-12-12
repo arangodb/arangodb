@@ -638,17 +638,40 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     }
 
     if (std::isfinite(matchPathWeight)) {
-      // means we've found a match (+inf means no match)
+      // found a new path between start and target
+      // this has also been added to the candidatesStore;
+
+      // If a candidate was found, then the candidate store better not be empty
+      TRI_ASSERT(!_candidatesStore.isEmpty());
+
+      // This path is better than the previous best
       if (matchPathWeight < _bestCandidateWeight) {
         _bestCandidateWeight = matchPathWeight;
-      } else if (matchPathWeight > _bestCandidateWeight) {
-        // If a candidate has been found, we insert it into the store and only
-        // return the length of that path. As soon as we insert in into the
-        // store we sort that internal vector, therefore it might re-balance. If
-        // we pop the first element it is guaranteed that the calculated weight
-        // must be the same. It is not guaranteed that this is the path we
-        // actually inserted. Nevertheless, this should not be any problem.
-        //
+      }
+
+      TRI_ASSERT(_bestCandidateWeight == std::get<0>(_candidatesStore.peek()));
+
+      // if the sum of the diameters of left and right search are bigger
+      // than the best candidate, there will not be a better candidate found.
+      //
+      // A simple shortest path search is done *now* (and not earlier!);
+      //
+      // It is *required* to continue search for a shortest path even
+      // after having found *some* path between the two searches:
+      // There might be improvements on the weight in paths that are
+      // found later. Improvements are impossible only if the sum of
+      // the diameters of the two searches is smaller than the current
+      // best found path.
+      //
+      // For a K-SHORTEST-PATH search all candidates that have lower weight
+      // than the sum of the two diameters are valid shortest paths that must
+      // be returned.
+
+      auto leftDiameter = _left.getDiameter();
+      auto rightDiameter = _right.getDiameter();
+      auto sumDiameter = leftDiameter + rightDiameter;
+
+      if (sumDiameter >= _bestCandidateWeight) {
         // Additionally, this is only a potential candidate. We may find same
         // paths multiple times. If that is the case, we just get rid of that
         // candidate and do not pass it to the result data structure.
@@ -656,7 +679,9 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
         // Not only one candidate needs to be verified, but all candidates
         // which do have lower weights as the current found (match).
 
-        while (std::get<0>(_candidatesStore.peek()) < matchPathWeight) {
+        TRI_ASSERT(!_candidatesStore.isEmpty());
+        while (!_candidatesStore.isEmpty() and
+               std::get<0>(_candidatesStore.peek()) < sumDiameter) {
           bool foundShortestPath = false;
           CalculatedCandidate potentialCandidate = _candidatesStore.pop();
 
@@ -677,16 +702,10 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
               setAlgorithmFinished();
               break;
             }
-
-            // Setting _bestCandidateWeight to +inf (double) will perform an
-            // initialize / reset. This means we need to find at least two new
-            // paths to prove that we've found the next proven and valid
-            // shortest path.
-            auto [weight, nextStepLeft, nextStepRight] =
-                _candidatesStore.peek();
-            _bestCandidateWeight = weight;
           }
         }
+
+        _bestCandidateWeight = std::numeric_limits<double>::infinity();
       }
     }
   }

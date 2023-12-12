@@ -160,8 +160,8 @@ class WeightedTwoSidedEnumerator {
         Step const& match, CandidatesStore& results,
         PathValidatorType const& otherSideValidator) -> double;
 
-    // @brief returns a positive double in a match has been found.
-    // returns -1.0 if no match has been found.
+    // @brief returns the weight of a path if one has been found or
+    // +inf if path has been found.
     [[nodiscard]] auto computeNeighbourhoodOfNextVertex(
         Ball& other, CandidatesStore& results) -> double;
 
