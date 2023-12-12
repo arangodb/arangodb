@@ -268,10 +268,7 @@ void QueryRegistry::closeEngine(EngineId engineId) {
           << "closing engine " << engineId << ", no query";
     }
   }
-
-  if (queryToFinish) {
-    finishPromise.setValue(std::move(queryToFinish));
-  }
+  finishPromise.setValue(std::move(queryToFinish));
 }
 
 /// @brief destroy
@@ -622,7 +619,14 @@ QueryRegistry::QueryInfo::QueryInfo(ErrorCode errorCode, double ttl)
       _errorCode(errorCode),
       _isTombstone(true) {}
 
-QueryRegistry::QueryInfo::~QueryInfo() = default;
+QueryRegistry::QueryInfo::~QueryInfo() {
+  if (!_promise.isFulfilled()) {
+    // we just set a dummy value to avoid abandoning the promise, because this
+    // makes it much more difficult to debug cases where we _must not_ abandon a
+    // promise
+    _promise.setValue(std::shared_ptr<ClusterQuery>{nullptr});
+  }
+}
 
 QueryRegistry::EngineInfo::~EngineInfo() {
   // If we still have requests waiting for this engine, we need to wake schedule
