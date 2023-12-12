@@ -122,7 +122,8 @@ auto VocBaseLogManager::updateReplicatedState(
 }
 
 void VocBaseLogManager::prepareDropAll() noexcept {
-  std::map<arangodb::replication2::LogId, GuardedData::StateAndLog> statesAndLogs;
+  std::map<arangodb::replication2::LogId, GuardedData::StateAndLog>
+      statesAndLogs;
   {
     // We steal all logs from the _guardedData.
     // We need to give up the guarded Log, and we also
@@ -155,8 +156,7 @@ auto VocBaseLogManager::dropReplicatedState(arangodb::replication2::LogId id)
     return stateAndLog.result();
   }
   auto resignRes = basics::catchToResultT(
-      [&]()
-          -> std::unique_ptr<replication2::storage::IStorageEngineMethods> {
+      [&]() -> std::unique_ptr<replication2::storage::IStorageEngineMethods> {
         return resignAndDrop(stateAndLog.get());
       });
   if (resignRes.fail()) {
@@ -468,7 +468,7 @@ auto VocBaseLogManager::GuardedData::buildReplicatedStateWithMethods(
 }
 
 auto VocBaseLogManager::GuardedData::stealReplicatedState(
-    replication2::LogId id) -> ResultT<GuardedData::StateAndLog>  {
+    replication2::LogId id) -> ResultT<GuardedData::StateAndLog> {
   if (auto iter = statesAndLogs.find(id); iter != statesAndLogs.end()) {
     auto stateAndLog = std::move(iter->second);
     statesAndLogs.erase(iter);
