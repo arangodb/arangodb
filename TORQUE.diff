@@ -27,10 +27,27 @@ index 579494f8..2cf5c952 100644
    CurrentSourceFile::Scope unknown_source_file_scope(SourceId::Invalid());
    CurrentAst::Scope ast_scope;
 diff --git a/src/torque/torque.cc b/src/torque/torque.cc
-index 7ccc5bf9..35206856 100644
+index 7ccc5bf9..b32a448f 100644
 --- a/src/torque/torque.cc
 +++ b/src/torque/torque.cc
-@@ -32,6 +32,7 @@ int WrappedMain(int argc, const char** argv) {
+@@ -5,6 +5,8 @@
+ #include "src/torque/source-positions.h"
+ #include "src/torque/torque-compiler.h"
+ 
++#include <regex>
++
+ namespace v8 {
+ namespace internal {
+ namespace torque {
+@@ -23,6 +25,7 @@ int WrappedMain(int argc, const char** argv) {
+   options.collect_language_server_data = false;
+   options.force_assert_statements = false;
+ 
++  std::regex re("/gypfiles/");
+   std::vector<std::string> files;
+ 
+   for (int i = 1; i < argc; ++i) {
+@@ -32,6 +35,7 @@ int WrappedMain(int argc, const char** argv) {
        options.output_directory = argv[++i];
      } else if (argument == "-v8-root") {
        options.v8_root = std::string(argv[++i]);
@@ -38,11 +55,15 @@ index 7ccc5bf9..35206856 100644
      } else if (argument == "-m32") {
  #ifdef V8_COMPRESS_POINTERS
        std::cerr << "Pointer compression is incompatible with -m32.\n";
-@@ -44,6 +45,7 @@ int WrappedMain(int argc, const char** argv) {
+@@ -44,6 +48,11 @@ int WrappedMain(int argc, const char** argv) {
      } else if (argument == "-strip-v8-root") {
        options.strip_v8_root = true;
      } else {
++
 +      std::cerr << "TORQUE COMPILER: GOT FILE ARGUMENT: " << argument << std::endl;
++      argument = std::regex_replace(argument, re, "/v8/");
++      std::cerr << "TORQUE COMPILER: NEW FILE ARGUMENT: " << argument << std::endl;
++
        // Strip the v8-root in case it is a prefix of the file path itself.
        // This is used when building in Google3.
        if (options.strip_v8_root &&
