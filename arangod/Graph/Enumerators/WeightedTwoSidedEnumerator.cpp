@@ -66,7 +66,8 @@ WeightedTwoSidedEnumerator<
       _provider(std::move(provider)),
       _validator(_provider, _interior, std::move(validatorOptions)),
       _direction(dir),
-      _graphOptions(options) {}
+      _graphOptions(options),
+      _diameter(0.0) {}
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
@@ -91,6 +92,7 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 
   _queue.clear();
   _interior.reset();  // PathStore
+  _diameter = 0.0;
 
   // Provider - Must be last one to be cleared(!)
   clearProvider();
@@ -238,6 +240,8 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   auto tmp = _queue.pop();
   auto posPrevious = _interior.append(std::move(tmp));
   auto& step = _interior.getStepReference(posPrevious);
+
+  _diameter = step.getWeight();
 
   ValidationResult res = _validator.validatePath(step);
 
