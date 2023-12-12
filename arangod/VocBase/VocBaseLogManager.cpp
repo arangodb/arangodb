@@ -122,9 +122,17 @@ auto VocBaseLogManager::updateReplicatedState(
 }
 
 void VocBaseLogManager::prepareDropAll() noexcept {
-  auto guard = _guardedData.getLockedGuard();
-  guard->resignAllWasCalled = true;
-  for (auto&& [id, val] : guard->statesAndLogs) {
+  std::map<arangodb::replication2::LogId, GuardedData::StateAndLog> statesAndLogs;
+  {
+    // We steal all logs from the _guardedData.
+    // We need to give up the guarded Log, and we also
+    // need to have the logs to be unreachable from now on.
+    auto guard = _guardedData.getLockedGuard();
+    guard->resignAllWasCalled = true;
+    statesAndLogs.swap(guard->statesAndLogs);
+    TRI_ASSERT(guard->statesAndLogs.empty());
+  }
+  for (auto&& [id, val] : statesAndLogs) {
     if (auto res = basics::catchVoidToResult([&]() {
           auto storage = resignAndDrop(val);
           storage.reset();
@@ -136,7 +144,6 @@ void VocBaseLogManager::prepareDropAll() noexcept {
           << _vocbase.name() << " are being dropped " << id;
     }
   }
-  guard->statesAndLogs.clear();
 }
 
 auto VocBaseLogManager::dropReplicatedState(arangodb::replication2::LogId id)
