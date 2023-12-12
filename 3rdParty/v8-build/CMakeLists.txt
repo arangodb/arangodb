@@ -14,8 +14,6 @@ project(V8)
 
 set(CMAKE_CXX_STANDARD 20)
 
-# create target directory
-
 set(V8_DIR "${PROJECT_SOURCE_DIR}/${V8_SUB_DIR}")
 set(V8_TARGET_DIR "${CMAKE_CURRENT_BINARY_DIR}/${V8_SUB_DIR}")
 set(GYP_FILES_DIR "${PROJECT_SOURCE_DIR}/gypfiles")
@@ -53,10 +51,11 @@ set(V8_VERSION
 
 
 set(V8_RELATIVE_SOURCE_DIR "../${V8_SUB_DIR}")
+
+# create target directory
 file(MAKE_DIRECTORY ${V8_TARGET_DIR})
 
 # detect endianess, and translate to gyp/v8 proper string
-
 include(TestBigEndian)
 TEST_BIG_ENDIAN(IS_BIGENDIAN)
 
@@ -66,11 +65,9 @@ else()
   set(ENDIANESS 'little')
 endif()
 
-# detect 32bit or 64bit
-
+# detect 32bit or 64bit and target architecture
 if("${CMAKE_TARGET_ARCHITECTURES}" STREQUAL "aarch64")
   set(V8_PROC_ARCH "arm64")
-  set(QEMU_ARCH "qemu-aarch64")
   list(APPEND V8_GYP_ARGS -Darm_fpu=default -Darm_float_abi=default)
 else ()
   if ("${BITS}" STREQUAL "64")
@@ -80,8 +77,6 @@ else ()
   endif ()
 endif()
 
-
-# target architecture
 
 file(RELATIVE_PATH V8_REL_TARGET_PATH ${V8_DIR} ${V8_TARGET_DIR})
 
