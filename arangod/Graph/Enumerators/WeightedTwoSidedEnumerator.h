@@ -310,29 +310,12 @@ class WeightedTwoSidedEnumerator {
   // graph searches of type "Shortest Path".
   auto setAlgorithmFinished() -> void;
   auto setAlgorithmUnfinished() -> void;
-
-  auto setInitialFetchVerified() -> void;
-  auto getInitialFetchVerified() -> bool;
   [[nodiscard]] auto isAlgorithmFinished() const -> bool;
 
  private:
   GraphOptions _options;
   Ball _left;
   Ball _right;
-
-  // We always start with two vertices (start- and end vertex)
-  // Initially, we want to fetch both and then decide based on the
-  // initial results, where to continue our search.
-  bool _leftInitialFetch{false};   // TODO: Put this into the ball?
-  bool _rightInitialFetch{false};  // TODO: Put this into the ball?
-  // Bool to check whether we've verified our initial fetched steps
-  // or not. This is an optimization. Only during our initial _left and
-  // _right fetch it may be possible that we find matches, which are valid
-  // paths - but not the shortest one. Therefore, we need to compare with both
-  // queues. After that check - we always pull the minStep from both queues.
-  // After init, this check is no longer required as we will always have the
-  // smallest (in terms of path-weight) step in our hands.
-  bool _handledInitialFetch{false};
 
   // Templated result list, where only valid result(s) are stored in
   CandidatesStore _candidatesStore{};
