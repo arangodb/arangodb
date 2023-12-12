@@ -37,9 +37,10 @@ const wait = require("internal").wait;
 const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
 const download = require('internal').download;
+const {arangoClusterInfoFlush, getDBServers} = require("@arangodb/test-helper");
 
 function getDBServers() {
-  var tmp = global.ArangoClusterInfo.getDBServers();
+  var tmp = getDBServers();
   var servers = [];
   for (var i = 0; i < tmp.length; ++i) {
     servers[i] = tmp[i].serverId;
@@ -86,7 +87,7 @@ function SynchronousReplicationWithViewSuite () {
 
   function waitForSynchronousReplication(database) {
     console.info("Waiting for synchronous replication to settle...");
-    global.ArangoClusterInfo.flush();
+    arangoClusterInfoFlush();
     cinfo = global.ArangoClusterInfo.getCollectionInfo(database, cn);
     shards = Object.keys(cinfo.shards);
     var count = 0;
@@ -112,7 +113,7 @@ function SynchronousReplicationWithViewSuite () {
         return true;
       }  
       wait(0.5);
-      global.ArangoClusterInfo.flush();
+      arangoClusterInfoFlush();
     }
     console.error("Replication did not finish");
     return false;

@@ -128,7 +128,7 @@ function MovingShardsWithViewSuite (options) {
 
   function waitForSynchronousReplication(database) {
     console.info("Waiting for synchronous replication to settle...");
-    global.ArangoClusterInfo.flush();
+    arangoClusterInfoFlush();
     for (var i = 0; i < c.length; ++i) {
       var shardInfo = collectionShardInfo(database, c[i].name());
       var shards = Object.keys(shardInfo);
@@ -151,7 +151,7 @@ function MovingShardsWithViewSuite (options) {
           break;
         }
         wait(0.5);
-        global.ArangoClusterInfo.flush();
+        arangoClusterInfoFlush();
       }
       if (count > 120) {
         return false;
@@ -271,7 +271,7 @@ function MovingShardsWithViewSuite (options) {
 
         while (--count > 0) {
           wait(1.0);
-          global.ArangoClusterInfo.flush();
+          arangoClusterInfoFlush();
           var servers = findCollectionServers("_system", c[i].name());
           if (servers.indexOf(id) === -1) {
             // Now check current as well:
@@ -505,7 +505,7 @@ function MovingShardsWithViewSuite (options) {
   function getViewServersPerShard() {
     const endpointToURL = cluster.endpointToURL;
 
-    global.ArangoClusterInfo.flush();
+    arangoClusterInfoFlush();
 
     let serversPerShard = {};
 
@@ -726,7 +726,7 @@ function MovingShardsWithViewSuite (options) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function planEqualCurrent(collection) {
-    global.ArangoClusterInfo.flush();
+    arangoClusterInfoFlush();
     const shardDist = internal.getCollectionShardDistribution(collection._id);
     const Plan = shardDist[collection.name()].Plan;
     const Current = shardDist[collection.name()].Current;
@@ -782,7 +782,7 @@ function MovingShardsWithViewSuite (options) {
     };
 
     return waitUntilWithTimeout(() => {
-      global.ArangoClusterInfo.flush();
+      arangoClusterInfoFlush();
       return _.every(c, viewInSync);
     });
   }

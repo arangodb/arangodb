@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertFalse, assertEqual, fail, instanceManager, arango */
+/*global assertTrue, assertFalse, assertEqual, fail, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test synchronous replication in the cluster
@@ -42,6 +42,9 @@ const {
   debugClearFailAt,
   getEndpointById,
   getServersByType,
+  arangoClusterInfoFlush,
+  arangoClusterInfoGetCollectionInfo,
+  arangoClusterInfoGetCollectionInfoCurrent,
 } = require('@arangodb/test-helper');
 
 
@@ -68,7 +71,7 @@ function SynchronousReplicationSuite() {
   ////////////////////////////////////////////////////////////////////////////////
 
   function findCollectionServers(database, collection) {
-    var cinfo = global.ArangoClusterInfo.getCollectionInfo(database, collection);
+    var cinfo = arangoClusterInfoGetCollectionInfo(database, collection);
     var shard = Object.keys(cinfo.shards)[0];
     return cinfo.shards[shard];
   }
@@ -79,14 +82,14 @@ function SynchronousReplicationSuite() {
 
   function waitForSynchronousReplication(database) {
     console.info("Waiting for synchronous replication to settle...");
-    global.ArangoClusterInfo.flush();
-    cinfo = global.ArangoClusterInfo.getCollectionInfo(database, cn);
+    arangoClusterInfoFlush();
+    cinfo = arangoClusterInfoGetCollectionInfo(database, cn);
     shards = Object.keys(cinfo.shards);
     var count = 0;
     var replicas;
     while (++count <= 300) {
       ccinfo = shards.map(
-        s => global.ArangoClusterInfo.getCollectionInfoCurrent(database, cn, s)
+        s => arangoClusterInfoGetCollectionInfoCurrent(database, cn, s)
       );
       console.info("Plan:", cinfo.shards, "Current:", ccinfo.map(s => s.servers));
       replicas = ccinfo.map(s => s.servers.length);
@@ -105,7 +108,7 @@ function SynchronousReplicationSuite() {
         return true;
       }
       wait(0.5);
-      global.ArangoClusterInfo.flush();
+      arangoClusterInfoFlush();
     }
     console.error("Replication did not finish");
     return false;

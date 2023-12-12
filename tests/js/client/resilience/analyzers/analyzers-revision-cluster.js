@@ -28,6 +28,7 @@ var db = require("@arangodb").db;
 var analyzers = require("@arangodb/analyzers");
 var internal = require('internal');
 var ERRORS = require("@arangodb").errors;
+const {arangoClusterInfoFlush} = require("@arangodb/test-helper");
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -37,7 +38,7 @@ function analyzersRevisionTestSuite () {
   function waitForRevision(dbName, revisionNumber, buildingRevision) {
   	let tries = 0;
     while(tries < 2) {
-      global.ArangoClusterInfo.flush();
+      arangoClusterInfoFlush();
       let revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
       assertTrue(revision.hasOwnProperty("revision"));
       assertTrue(revision.hasOwnProperty("buildingRevision"));
@@ -261,7 +262,7 @@ function analyzersRevisionTestSuite () {
         let tries = 0;
         while (tries < 5) {
           tries++;
-          global.ArangoClusterInfo.flush();
+          arangoClusterInfoFlush();
           let recovered_revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
           if (recovered_revision.buildingRevision === 0) {
           	break;
@@ -332,7 +333,7 @@ function analyzersRevisionTestSuite () {
         let tries = 0;
         while (tries < 5) {
           tries++;
-          global.ArangoClusterInfo.flush();
+          arangoClusterInfoFlush();
           let recovered_revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
           if (recovered_revision.buildingRevision === 0) {
           	break;

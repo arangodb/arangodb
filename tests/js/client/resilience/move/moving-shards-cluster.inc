@@ -34,7 +34,7 @@ const db = arangodb.db;
 const _ = require("lodash");
 const internal = require("internal");
 const {errors, wait} = internal;
-const {debugSetFailAt, debugCanUseFailAt, debugRemoveFailAt, debugClearFailAt} = require('@arangodb/test-helper');
+const {debugSetFailAt, debugCanUseFailAt, debugRemoveFailAt, debugClearFailAt, arangoClusterInfoFlush} = require('@arangodb/test-helper');
 const supervisionState = require("@arangodb/testutils/cluster-test-helper").supervisionState;
 const queryAgencyJob = require("@arangodb/testutils/cluster-test-helper").queryAgencyJob;
 const {getServersByType, deriveTestSuite, getEndpointById, getUrlById} = require('@arangodb/test-helper-common');
@@ -109,7 +109,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
   function waitForSynchronousReplication(database) {
     console.info("Waiting for synchronous replication to settle...");
-    global.ArangoClusterInfo.flush();
+    arangoClusterInfoFlush();
     for (var i = 0; i < c.length; ++i) {
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
           database, c[i].name());
@@ -130,7 +130,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
           break;
         }
         wait(0.5);
-        global.ArangoClusterInfo.flush();
+        arangoClusterInfoFlush();
       }
       if (count > 120) {
         return false;
@@ -146,7 +146,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
   function waitForIncompleteMoveShard(database, collection, replFactor) {
     console.info("Waiting for incomplete move shard to settle...");
-    global.ArangoClusterInfo.flush();
+    arangoClusterInfoFlush();
     var cinfo = global.ArangoClusterInfo.getCollectionInfo(database, collection);
     var shards = Object.keys(cinfo.shards);
     var count = 0;
@@ -164,7 +164,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         break;
       }
       wait(0.5);
-      global.ArangoClusterInfo.flush();
+      arangoClusterInfoFlush();
     }
     if (count > 120) {
       return false;
@@ -246,7 +246,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       toCollNr = c.length - 1;
     }
     for (var i = fromCollNr; i <= toCollNr; ++i) {
-      global.ArangoClusterInfo.flush();
+      arangoClusterInfoFlush();
       var servers = findCollectionServers(dbn, c[i].name());
       if (servers.indexOf(id) === 0 && servers.length !== 1) {
         return false;
@@ -277,7 +277,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
   function findLeaderShardsForServer(id) {
     let result = [];
     for (var i = 0; i <  c.length ; ++i) {
-      global.ArangoClusterInfo.flush();
+      arangoClusterInfoFlush();
       var servers = findCollectionServers(dbn, c[i].name());
       if (servers.indexOf(id) === 0 && servers.length !== 1) {
         result.push(c[i].name());
@@ -341,7 +341,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
         while (--count > 0) {
           wait(1.0);
-          global.ArangoClusterInfo.flush();
+          arangoClusterInfoFlush();
           var servers = findCollectionServers(dbn, c[i].name());
           if (servers.indexOf(id) === -1) {
             // Now check current as well:

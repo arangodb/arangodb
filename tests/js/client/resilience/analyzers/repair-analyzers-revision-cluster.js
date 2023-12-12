@@ -29,6 +29,8 @@ var analyzers = require("@arangodb/analyzers");
 const expect = require('chai').expect;
 const wait = require('internal').wait;
 var internal = require('internal');
+const {arangoClusterInfoFlush} = require("@arangodb/test-helper");
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -38,7 +40,7 @@ function repairAnalyzersRevisionTestSuite () {
   function waitForRevision(dbName, revisionNumber, buildingRevision) {
     let tries = 0;
     while(true) {
-      global.ArangoClusterInfo.flush();
+      arangoClusterInfoFlush();
       let revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
       assertTrue(revision.hasOwnProperty("revision"));
       assertTrue(revision.hasOwnProperty("buildingRevision"));

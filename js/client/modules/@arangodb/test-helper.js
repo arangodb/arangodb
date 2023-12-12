@@ -768,6 +768,23 @@ exports.uniqid = function  () {
   return JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoClusterInfo.uniqid()"));
 };
 
+exports.arangoClusterInfoFlush = function () {
+  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.flush()`);
+};
+
+exports.arangoClusterInfoGetCollectionInfo = function (dbName, collName) {
+  return arango.POST("/_admin/execute", 
+    `return global.ArangoClusterInfo.getCollectionInfo(${JSON.stringify(dbName)}, ${JSON.stringify(collName)})`);
+};
+
+exports.arangoClusterInfoGetCollectionInfoCurrent = function (dbName, collName, shard) {
+  return arango.POST("/_admin/execute", 
+    `return global.ArangoClusterInfo.getCollectionInfoCurrent(
+      ${JSON.stringify(dbName)}, 
+      ${JSON.stringify(collName)}, 
+      ${JSON.stringify(shard)})`);
+};
+
 exports.AQL_EXPLAIN = function(query, bindVars, options) {
   let stmt = db._createStatement(query);
   if (typeof bindVars === "object") {
