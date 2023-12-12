@@ -411,9 +411,6 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   _bestCandidateWeight = std::numeric_limits<double>::infinity();
   _resultsCache.clear();
   _results.clear();
-  _leftInitialFetch = false;
-  _rightInitialFetch = false;
-  _handledInitialFetch = false;
 
   // 2.) Remove both Balls (order here is not important)
   _left.clear();
@@ -625,19 +622,9 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     auto matchPathWeight = std::numeric_limits<double>::infinity();
     auto searchLocation = getBallToContinueSearch();
     if (searchLocation == BallSearchLocation::LEFT) {
-      // might need special case depth == 0
       matchPathWeight =
           _left.computeNeighbourhoodOfNextVertex(_right, _candidatesStore);
     } else if (searchLocation == BallSearchLocation::RIGHT) {
-      // special case for initial step expansion
-      // this needs to only be checked once and only _right as we always
-      // start _left with our search. If that behaviour changed, this
-      // verification needs to be moved as well.
-
-      if (!getInitialFetchVerified()) {
-        setInitialFetchVerified();
-      }
-
       matchPathWeight =
           _right.computeNeighbourhoodOfNextVertex(_left, _candidatesStore);
     } else {
@@ -647,7 +634,7 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     }
 
     if (std::isfinite(matchPathWeight)) {
-      // means we've found a match (-1.0 means no match)
+      // means we've found a match (+inf means no match)
       if (matchPathWeight < _bestCandidateWeight) {
         _bestCandidateWeight = matchPathWeight;
       } else if (matchPathWeight > _bestCandidateWeight) {
@@ -719,20 +706,6 @@ template<class QueueType, class PathStoreType, class ProviderType,
 void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::setAlgorithmUnfinished() {
   _algorithmFinished = false;
-}
-
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::setInitialFetchVerified() {
-  _handledInitialFetch = true;
-}
-
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::getInitialFetchVerified() {
-  return _handledInitialFetch;
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
@@ -825,14 +798,6 @@ typename WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                     PathValidator>::BallSearchLocation
 WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                            PathValidator>::getBallToContinueSearch() {
-  if (!_leftInitialFetch) {
-    _leftInitialFetch = true;
-    return BallSearchLocation::LEFT;
-  } else if (!_rightInitialFetch) {
-    _rightInitialFetch = true;
-    return BallSearchLocation::RIGHT;
-  }
-
   if (!_left.isQueueEmpty() && !_right.isQueueEmpty()) {
     auto leftStep = _left.peekQueue();
     auto rightStep = _right.peekQueue();
