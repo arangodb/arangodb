@@ -354,7 +354,7 @@ const IndexPrimaryJoinTestSuite = function () {
       const queryStringEasy = `
         FOR doc1 IN A
           FILTER doc1.x == 5
-            FOR doc2 IN B
+          FOR doc2 IN B
             FILTER doc1.y == doc2.y
             RETURN [doc1, doc2]`;
 
@@ -476,7 +476,7 @@ const IndexPrimaryJoinTestSuite = function () {
       const queryStringEasy = `
         FOR doc1 IN A
           FILTER doc1.x == 5
-            FOR doc2 IN B
+          FOR doc2 IN B
             FILTER doc1.y == doc2.y
             FILTER doc2.z == 8
             RETURN [doc1, doc2]`;
