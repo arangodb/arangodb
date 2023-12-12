@@ -321,8 +321,7 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
 
       for (auto& expr : idx.expressions) {
         TRI_ASSERT(expr != nullptr);
-        TRI_ASSERT(expr->isConstant());
-        // TRI_ASSERT(expr->isDeterministic()); <-- Later
+        TRI_ASSERT(expr->isDeterministic());
         data.constantExpressions.push_back(
             expr->clone(engine.getQuery().ast(), true));
         data.usedKeyFields = idx.usedKeyFields;
