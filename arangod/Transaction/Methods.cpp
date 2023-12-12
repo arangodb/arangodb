@@ -37,6 +37,7 @@
 #include "Basics/encoding.h"
 #include "Basics/system-compiler.h"
 #include "Basics/voc-errors.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
@@ -2409,9 +2410,72 @@ Result transaction::Methods::determineReplication2TypeAndFollowers(
   if (auto* context = dynamic_cast<transaction::ReplicatedContext*>(
           _transactionContext.get());
       context == nullptr) {
+    // We believe to be the leader
     options.silent = false;
     replicationType = ReplicationType::LEADER;
     followers = std::make_shared<std::vector<ServerID>>();
+
+    // This is a stunt to make sure the write concern can be fulfilled.
+    auto& vocbase = this->vocbase();
+    auto& clusterFeature = vocbase.server().getFeature<ClusterFeature>();
+    auto canReachWriteConcern = basics::catchToResultT([&]() {
+      auto stateId = collection.replicatedStateId();
+      auto& agencyCache = clusterFeature.agencyCache();
+
+      // Fetch replicated log participants
+      auto [participantsConfigQuery, raftIndex] = agencyCache.get(
+          fmt::format("Plan/ReplicatedLogs/{}/{}/participantsConfig",
+                      vocbase.name(), stateId));
+      if (participantsConfigQuery->isEmpty()) {
+        LOG_TOPIC("90e43", DEBUG, Logger::REPLICATED_STATE)
+            << "ParticipantsConfig of log " << stateId
+            << " is non-existent according to raftIndex " << raftIndex
+            << ", during transaction " << tid() << ", concerning shard "
+            << collection.name();
+        return false;
+      }
+      auto participantsConfig =
+          velocypack::deserialize<replication2::agency::ParticipantsConfig>(
+              participantsConfigQuery->slice());
+      auto wc = participantsConfig.config.effectiveWriteConcern;
+
+      // Fetch health information
+      auto [healthQuery, healthRaftIndex] =
+          agencyCache.get("Supervision/Health");
+      if (healthQuery->isEmpty() || !healthQuery->slice().isObject()) {
+        LOG_TOPIC("86e21", DEBUG, Logger::REPLICATED_STATE)
+            << "Health of participants is invalid according to raftIndex "
+            << healthRaftIndex << ", during transaction " << tid()
+            << ", concerning shard " << collection.name();
+        return false;
+      }
+
+      // The number of non-failed participants must satisfy the write concern.
+      std::size_t nonFailedParticipants{0};
+      for (auto& [pid, _] : participantsConfig.participants) {
+        auto health = healthQuery->slice().get(pid);
+        TRI_ASSERT(health.isObject() && health.hasKey("Status"));
+        if (health.get("Status").copyString() != "FAILED") {
+          ++nonFailedParticipants;
+        }
+      }
+
+      return nonFailedParticipants >= wc;
+    });
+
+    if (canReachWriteConcern.fail()) {
+      LOG_TOPIC("bdce1", DEBUG, Logger::REPLICATED_STATE)
+          << "Cannot reach write concern for transaction " << tid()
+          << ", concerning shard " << collection.name() << ": "
+          << canReachWriteConcern.result();
+    } else if (*canReachWriteConcern) {
+      return {};
+    }
+
+    if (clusterFeature.statusCodeFailedWriteConcern() == 403) {
+      return {TRI_ERROR_ARANGO_READ_ONLY};
+    }
+    return {TRI_ERROR_REPLICATION_WRITE_CONCERN_NOT_FULFILLED};
   } else {
     options.silent = true;
     replicationType = ReplicationType::FOLLOWER;
