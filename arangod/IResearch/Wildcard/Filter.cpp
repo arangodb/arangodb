@@ -91,7 +91,7 @@ class Iterator : public irs::doc_iterator {
     auto* terms_end = terms_begin + _stored->value.size();
     while (terms_begin != terms_end) {
       auto size = irs::vread<uint32_t>(terms_begin);
-      ++terms_begin;
+      ++terms_begin;  // skip begin marker
 
       auto term = icu::UnicodeString::fromUTF8(
           icu::StringPiece{reinterpret_cast<char const*>(terms_begin),
@@ -103,7 +103,7 @@ class Iterator : public irs::doc_iterator {
         return true;
       }
 
-      terms_begin += size + 1;
+      terms_begin += size + 1;  // skip data and end marker
     }
 
     return false;
@@ -169,8 +169,8 @@ irs::filter::prepared::ptr Filter::prepare(
   // except first, last and all not intersected
 
   if (size == 0) {
-    if (options().prefix) {
-      irs::bytes_view token = options().token;
+    irs::bytes_view token = options().token;
+    if (token.back() != 0xFF) {
       TRI_IF_FAILURE("wildcard::Filter::dissallowPrefix") {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_DEBUG,

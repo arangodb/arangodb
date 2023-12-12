@@ -64,15 +64,15 @@ Options::Options(std::string_view pattern, AnalyzerPool const& analyzer,
   auto* patternCurr = pattern.data();
   auto* patternEnd = patternCurr + pattern.size();
   bool needsMatcher = false;
-  for (bool escaped = false; patternCurr != patternEnd; ++patternCurr) {
+  bool escaped = false;
+  for (; patternCurr != patternEnd; ++patternCurr) {
     if (escaped) {
       escaped = false;
       *patternLast++ = *patternCurr;
     } else if (*patternCurr == '\\') {
       escaped = true;
     } else if (*patternCurr == '_' || *patternCurr == '%') {
-      bool any = *patternCurr == '_';
-      if (any ||
+      if (*patternCurr == '_' ||
           (patternCurr != pattern.data() && patternCurr != patternEnd - 1)) {
         needsMatcher = true;
       }
@@ -82,13 +82,15 @@ Options::Options(std::string_view pattern, AnalyzerPool const& analyzer,
       *patternLast++ = *patternCurr;
     }
   }
+  if (escaped) {
+    *patternLast++ = '\\';
+  }
   if (patternFirst != patternLast) {
     *patternLast++ = '\xFF';
     makeParts(patternFirst, patternLast);
   }
   if (parts.empty()) {
     TRI_ASSERT(!best.empty());
-    prefix = best.back() != 0xFF;
     token = best;
   } else {
     hasPos = analyzer.features().hasFeatures(irs::IndexFeatures::POS);

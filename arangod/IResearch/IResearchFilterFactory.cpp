@@ -133,9 +133,9 @@ namespace {
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
-constexpr char const* GEO_INTERSECT_FUNC = "GEO_INTERSECTS";
-constexpr char const* GEO_DISTANCE_FUNC = "GEO_DISTANCE";
-constexpr char const* TERMS_FUNC = "TERMS";
+constexpr char const* kGeoIntersectsFunc = "GEO_INTERSECTS";
+constexpr char const* kGeoDistanceFunc = "GEO_DISTANCE";
+constexpr char const* kTermsFunc = "TERMS";
 
 void setupAllTypedFilter(irs::Or& disjunction, FilterContext const& ctx,
                          std::string&& mangledName) {
@@ -901,7 +901,7 @@ Result fromGeoDistanceInterval(irs::boolean_filter* filter,
       return {TRI_ERROR_BAD_PARAMETER,
               absl::StrCat(
                   "Failed to evaluate an argument denoting a distance near '",
-                  GEO_DISTANCE_FUNC, "' function")};
+                  kGeoDistanceFunc, "' function")};
     }
 
     if (SCOPED_VALUE_TYPE_DOUBLE != tmpValue.type() ||
@@ -909,19 +909,19 @@ Result fromGeoDistanceInterval(irs::boolean_filter* filter,
       return {TRI_ERROR_BAD_PARAMETER,
               absl::StrCat("Failed to parse an argument denoting a distance as "
                            "a number near '",
-                           GEO_DISTANCE_FUNC, "' function")};
+                           kGeoDistanceFunc, "' function")};
     }
   }
 
   std::string name{ctx.namePrefix};
   if (!nameFromAttributeAccess(name, *fieldNode, ctx, filter != nullptr)) {
-    return error::failedToGenerateName(GEO_DISTANCE_FUNC, fieldNodeIdx);
+    return error::failedToGenerateName(kGeoDistanceFunc, fieldNodeIdx);
   }
 
   if (filter) {
     tmpValue.reset(*centroidNode);
     if (!tmpValue.execute(ctx)) {
-      return error::failedToEvaluate(GEO_DISTANCE_FUNC, centroidNodeIdx);
+      return error::failedToEvaluate(kGeoDistanceFunc, centroidNodeIdx);
     }
     auto& analyzer = filterCtx.fieldAnalyzer(name, ctx.ctx);
     if (!analyzer) {
@@ -932,7 +932,7 @@ Result fromGeoDistanceInterval(irs::boolean_filter* filter,
     if (!r.ok()) {
       return r;
     }
-    r = getLatLng(tmpValue, options.origin, GEO_DISTANCE_FUNC, centroidNodeIdx,
+    r = getLatLng(tmpValue, options.origin, kGeoDistanceFunc, centroidNodeIdx,
                   options);
     if (!r.ok()) {
       return r;
@@ -3191,7 +3191,7 @@ frozen::map<std::string_view, ConversionPhraseHandler,
     {"STARTS_WITH", fromFuncPhraseStartsWith},
     {"WILDCARD", fromFuncPhraseLike},  // 'LIKE' is a key word
     {"LEVENSHTEIN_MATCH", fromFuncPhraseLevenshteinMatch},
-    {TERMS_FUNC, fromFuncPhraseTerms<VPackSlice>},
+    {kTermsFunc, fromFuncPhraseTerms<VPackSlice>},
     {"IN_RANGE", fromFuncPhraseInRange}};
 
 Result processPhraseArgObjectType(char const* funcName,
@@ -3279,7 +3279,7 @@ Result processPhraseArgs(char const* funcName, irs::by_phrase* phrase,
           continue;
         } else {
           auto res = fromFuncPhraseTerms(
-              funcName, idx, TERMS_FUNC, phrase, filterCtx,
+              funcName, idx, kTermsFunc, phrase, filterCtx,
               ElementTraits::valueSlice(valueArg), offset, analyzer);
           if (res.fail()) {
             return res;
@@ -3845,8 +3845,6 @@ Result fromFuncLike(char const* funcName, irs::boolean_filter* filter,
     return res;
   }
 
-  const auto scoringLimit = FilterConstants::DefaultScoringTermsLimit;
-
   std::string name{ctx.namePrefix};
   if (!nameFromAttributeAccess(name, *field, ctx, filter != nullptr)) {
     return error::failedToGenerateName(funcName, 1);
@@ -3869,7 +3867,7 @@ Result fromFuncLike(char const* funcName, irs::boolean_filter* filter,
       wildcardFilter.boost(filterCtx.boost);
       *wildcardFilter.mutable_field() = std::move(name);
       auto* opts = wildcardFilter.mutable_options();
-      opts->scored_terms_limit = scoringLimit;
+      opts->scored_terms_limit = FilterConstants::DefaultScoringTermsLimit;
       opts->term = irs::ViewCast<irs::byte_type>(pattern);
     }
   }
@@ -4002,7 +4000,7 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
     }
 
     options->shape = std::move(shape);
-    options->type = GEO_INTERSECT_FUNC == funcName
+    options->type = kGeoIntersectsFunc == funcName
                         ? GeoFilterType::INTERSECTS
                         : (1 == shapeNodeIdx ? GeoFilterType::CONTAINS
                                              : GeoFilterType::IS_CONTAINED);
@@ -4013,9 +4011,6 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
 
   return {};
 }
-
-frozen::map<std::string_view, ConversionHandler,
-            0> constexpr kFCallUserConversionHandlers{};
 
 Result fromFCallUser(irs::boolean_filter* filter,
                      FilterContext const& filterCtx, aql::AstNode const& node) {
@@ -4038,19 +4033,7 @@ Result fromFCallUser(irs::boolean_filter* filter,
     return {TRI_ERROR_BAD_PARAMETER, "Unable to parse user function name"};
   }
 
-  auto const entry = kFCallUserConversionHandlers.find(name);
-
-  if (entry == kFCallUserConversionHandlers.end()) {
-    return fromExpression(filter, filterCtx, node);
-  }
-
-  if (!args->isDeterministic()) {
-    return {TRI_ERROR_BAD_PARAMETER,
-            absl::StrCat("Unable to handle non-deterministic function '", name,
-                         "' arguments")};
-  }
-
-  return entry->second(entry->first.data(), filter, filterCtx, *args);
+  return fromExpression(filter, filterCtx, node);
 }
 
 frozen::map<std::string_view, ConversionHandler,
@@ -4066,7 +4049,7 @@ frozen::map<std::string_view, ConversionHandler,
     {"NGRAM_MATCH", fromFuncNgramMatch},
     {"MINHASH_MATCH", fromFuncMinHashMatch},
     // geo function
-    {GEO_INTERSECT_FUNC, fromFuncGeoContainsIntersect},
+    {kGeoIntersectsFunc, fromFuncGeoContainsIntersect},
     {"GEO_IN_RANGE", fromFuncGeoInRange},
     {"GEO_CONTAINS", fromFuncGeoContainsIntersect},
     // GEO_DISTANCE missing because it doesn't return boolean

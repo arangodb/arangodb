@@ -47,7 +47,6 @@ struct Options {
 
   std::vector<irs::by_phrase_options> parts;
   irs::bstring token;
-  bool prefix{false};
   bool hasPos{true};
   icu::RegexMatcher* matcher{};
 

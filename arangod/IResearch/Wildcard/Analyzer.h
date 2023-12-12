@@ -71,7 +71,6 @@ class Analyzer final : public irs::analysis::TypedAnalyzer<Analyzer>,
   std::unique_ptr<Ngram> _ngram;
   irs::term_attribute const* _term{};
   irs::term_attribute* _ngramTerm{};
-  irs::bytes_view _lastNgram;
   std::string _terms;
   irs::byte_type const* _termsBegin{};
   irs::byte_type const* _termsEnd{};

@@ -23,11 +23,7 @@
 
 #include "Assertions/Assert.h"
 #include "Basics/DownCast.h"
-#include "Basics/Result.h"
-#include "IResearch/IResearchCommon.h"
-#include "IResearch/VelocyPackHelper.h"
 #include "IResearch/Wildcard/Analyzer.h"
-#include "Logger/LogMacros.h"
 
 #include "analysis/token_streams.hpp"
 #include "utils/bytes_utils.hpp"
@@ -165,8 +161,8 @@ bool Analyzer::reset(std::string_view data) {
     auto const size = _term->value.size();
     if (size > std::numeric_limits<int32_t>::max()) {
       // TODO(MBkkt) icu doesn't support more
-      LOG_TOPIC("14345", ERR, TOPIC)
-          << "too long input for wildcard analyzer: " << size;
+      IRS_LOG_WARN(
+          absl::StrCat("too long input for wildcard analyzer: ", size));
       continue;
     }
     // TODO(MBkkt) We can add offsets here
