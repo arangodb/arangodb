@@ -1070,11 +1070,11 @@
                   }],
                ],
              }],
-#            ['OS=="win"', {
-#              'dependencies': [
-#                '<(icu_gyp_path):icudata#target',
-#              ],
-#            }],
+            ['OS=="win"', {
+              'dependencies': [
+                '<(icu_gyp_path):icudata#target',
+              ],
+            }],
           ],
         }, {  # v8_enable_i18n_support==0
            'sources!': [
