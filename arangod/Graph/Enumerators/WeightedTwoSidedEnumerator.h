@@ -174,6 +174,8 @@ class WeightedTwoSidedEnumerator {
 
     auto provider() -> ProviderType&;
 
+    auto getDiameter() const noexcept -> double { return _diameter; }
+
    private:
     auto clearProvider() -> void;
 
@@ -194,6 +196,7 @@ class WeightedTwoSidedEnumerator {
         _visitedNodes;
     Direction _direction;
     GraphOptions _graphOptions;
+    double _diameter = 0.0;
   };
   enum BallSearchLocation { LEFT, RIGHT, FINISH };
 
