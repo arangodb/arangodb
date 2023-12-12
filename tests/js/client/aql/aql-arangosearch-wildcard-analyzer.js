@@ -68,6 +68,7 @@ function ArangoSearchWildcardAnalyzer(hasPos) {
       }
       let c = db._create("c");
       c.insert({s: ""});
+      c.insert({s: "\\"});
       c.insert({s: "abcdef"});
       c.insert({s:  "bcde"});
       c.insert({s:   "c"});
@@ -84,6 +85,19 @@ function ArangoSearchWildcardAnalyzer(hasPos) {
 
     tearDownAll : function () { 
       cleanup();
+    },
+
+    testExactEscapeInvalid: function() {
+      try {
+        query("\\", false, false);
+        fail("invalid pattern should be disallowed by AQL");
+      } catch (e) {
+      }
+    },
+ 
+    testExactEscapeValid: function() {
+      let res = query("\\\\", false, false);
+      assertEqual(res, ["\\"]);
     },
 
     testExactEmpty: function() {
@@ -108,7 +122,7 @@ function ArangoSearchWildcardAnalyzer(hasPos) {
 
     testAnyShort: function() {
       let res = query("_", false, true);
-      assertEqual(res, ["a", "c", "e", "f"]);
+      assertEqual(res, ["\\", "a", "c", "e", "f"]);
     },
 
     testAnyMid1: function() {
@@ -172,8 +186,8 @@ function ArangoSearchWildcardAnalyzer(hasPos) {
     },
 
     testAllBetweenLong: function() {
-      let res = query("%ab%ef%", false, true);
-      assertEqual(res, ["abcdef", "abcdef qwerty", "qwerty abcdef"]);
+      let res = query("%abcdef% ", false, true);
+      assertEqual(res, ["abcdef qwerty"]);
     },
 
     testAll: function() {
