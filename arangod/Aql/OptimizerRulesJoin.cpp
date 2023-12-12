@@ -508,6 +508,12 @@ bool createSpanPositionsForIndex(
   VarSet result;
   Ast::getReferencedVariables(node, result);
 
+  // Print names of the known constant variables
+  LOG_JOIN_OPTIMIZER_RULE << "Known constant variables:";
+  for (auto const& var : knownConstVariables) {
+    LOG_JOIN_OPTIMIZER_RULE << "  - " << var->name;
+  }
+
   for (auto const& var : result) {
     if (!knownConstVariables.contains(var)) {
       return false;
@@ -524,6 +530,32 @@ void getIndexAttributes(IndexNode const* candidate,
                                              false);
 }
 
+std::pair<bool, size_t> attributeMatchesWithPosLocal(
+    transaction::Methods::IndexHandle idx,
+    std::vector<basics::AttributeName> const& attribute,
+    bool isPrimary = false) {
+  size_t pos = 0;
+  LOG_DEVEL << "Index name: " << idx->name()
+            << " , amount of fields: " << idx->fields().size();
+  for (auto const& it : idx->fields()) {
+    for (auto const& innerIt : it) {
+      LOG_DEVEL << "innerIt.name: " << innerIt.name;
+    }
+    if (basics::AttributeName::isIdentical(attribute, it, true)) {
+      return {true, pos};
+    }
+    pos++;
+  }
+  if (isPrimary) {
+    static std::vector<basics::AttributeName> const vec_id{
+        {StaticStrings::IdString, false}};
+    return basics::AttributeName::isIdentical(attribute, vec_id, true)
+               ? std::pair<bool, size_t>(true, pos)
+               : std::pair<bool, size_t>(false, -1);
+  }
+  return {false, -1};
+}
+
 std::pair<bool, size_t> doIndexAttributesMatch(
     IndexNode const* candidate,
     std::vector<basics::AttributeName>& resultVector) {
@@ -538,8 +570,8 @@ std::pair<bool, size_t> doIndexAttributesMatch(
             << usedIndex->id().isPrimary();
   // TODO: NEXT - attributeMatchesWithPos does not work as expected. We need to
   // implement an own method for positions.
-  return usedIndex->attributeMatchesWithPos(resultVector,
-                                            usedIndex->id().isPrimary());
+  return attributeMatchesWithPosLocal(usedIndex, resultVector,
+                                      usedIndex->id().isPrimary());
 }
 
 bool processConstantFinding(IndexNode const* currentCandidate,
@@ -580,8 +612,6 @@ bool processJoinKeyFinding(IndexNode const* firstCandidate,
                            IndexNode const* currentCandidate,
                            IndicesOffsets& indicesOffsets,
                            AstNode const* node) {
-  LOG_DEVEL << "aha here";
-  node->dump(20);
   std::vector<basics::AttributeName> resultVectorFirst;
   std::vector<basics::AttributeName> resultVectorCurrent;
   getIndexAttributes(firstCandidate, node->getStringView(), resultVectorFirst);
@@ -589,7 +619,7 @@ bool processJoinKeyFinding(IndexNode const* firstCandidate,
                      resultVectorCurrent);
 
   auto attributeMatchResultFirst =
-      doIndexAttributesMatch(currentCandidate, resultVectorFirst);
+      doIndexAttributesMatch(firstCandidate, resultVectorFirst);
   auto attributeMatchResultCurrent =
       doIndexAttributesMatch(currentCandidate, resultVectorCurrent);
 
@@ -599,8 +629,6 @@ bool processJoinKeyFinding(IndexNode const* firstCandidate,
     auto keyPosCurrent = attributeMatchResultCurrent.second;
     TRI_ASSERT(keyPosFirst >= 0);
     TRI_ASSERT(keyPosCurrent >= 0);
-    LOG_DEVEL << "Found key pos for first: " << keyPosFirst;
-    LOG_DEVEL << "Found key pos for current: " << keyPosCurrent;
 
     if (!indicesOffsets.contains(firstCandidate->id())) {
       IndexOffsets idxOffset{};
@@ -613,11 +641,9 @@ bool processJoinKeyFinding(IndexNode const* firstCandidate,
     TRI_ASSERT(indicesOffsets.contains(firstCandidate->id()));
     TRI_ASSERT(indicesOffsets.contains(currentCandidate->id()));
     auto& idxOffsetFirstRef = indicesOffsets[firstCandidate->id()];
-    auto& idxOffsetCurrentRef = indicesOffsets[firstCandidate->id()];
+    auto& idxOffsetCurrentRef = indicesOffsets[currentCandidate->id()];
     if (idxOffsetFirstRef.insertKeyField(keyPosFirst) &&
         idxOffsetCurrentRef.insertKeyField(keyPosCurrent)) {
-      LOG_DEVEL << "=====> Inserted both key Positions: " << keyPosFirst
-                << " and " << keyPosCurrent;
       return true;
     }
   }
@@ -659,7 +685,7 @@ bool isVarAccessToCandidateOutVariable(AstNode const* node,
         << lhs->toString() << ")";
     // `lhs` is using our candidates outVariable
     // Now we need to check if the other side is a constant condition.
-    auto rhsConstantRes = isVariableConstant(rhs, knownConstVariables);
+    auto rhsConstantRes = isVariableConstant(lhs, knownConstVariables);
     if (rhsConstantRes) {
       LOG_JOIN_OPTIMIZER_RULE << "  => This condition is a constant condition.";
       // The other side (`rhs`) is a constant condition.
@@ -745,114 +771,6 @@ bool isVarAccessToCandidateOutVariable(AstNode const* node,
   return false;
 }
 
-[[nodiscard]] bool parseAndCheckNaryOr(
-    IndexNode const* indexNode, AstNode const* root,
-    std::map<ExecutionNodeId, std::vector<AstNode*>>& constantValues,
-    ExecutionNodeId candidateId,
-    std::map<ExecutionNodeId,
-             std::tuple<std::string, std::vector<size_t>, std::vector<size_t>>>&
-        keyFieldsAndConstantFields);
-
-[[nodiscard]] bool parseAndCheckBinaryEQ(
-    IndexNode const* indexNode, AstNode const* member,
-    std::map<ExecutionNodeId, std::vector<AstNode*>>& constantValues,
-    ExecutionNodeId candidateID,
-    std::map<ExecutionNodeId,
-             std::tuple<std::string, std::vector<size_t>, std::vector<size_t>>>&
-        keyAndConstantFields) {
-  LOG_JOIN_OPTIMIZER_RULE << "FOUND BINARY_EQ";
-  TRI_ASSERT(member->numMembers() == 2);
-  member->dump(20);
-  auto lhsi = member->getMember(0);
-  auto rhsi = member->getMember(1);
-
-  // LATER Improvement TODO: Check "flag" isDeterministic <-- all
-  // allowed here then
-  if (lhsi->type == NODE_TYPE_VALUE || lhsi->type == NODE_TYPE_REFERENCE) {
-    LOG_JOIN_OPTIMIZER_RULE << "Setting constant value to lhsi";
-    if (rhsi->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      constantValues[candidateID].emplace_back(lhsi);
-      bool valid =
-          createSpanPositionsForIndex(rhsi, keyAndConstantFields, candidateID,
-                                      indexNode->getIndexes()[0]->fields());
-      LOG_DEVEL << "============================================== 1: "
-                << std::boolalpha << valid;
-      if (!valid) {
-        return false;
-      }
-    }
-  } else if (rhsi->type == NODE_TYPE_VALUE ||
-             rhsi->type == NODE_TYPE_REFERENCE) {
-    LOG_JOIN_OPTIMIZER_RULE << "Setting constant value to rhsi";
-    if (lhsi->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      constantValues[candidateID].emplace_back(rhsi);
-      bool valid =
-          createSpanPositionsForIndex(lhsi, keyAndConstantFields, candidateID,
-                                      indexNode->getIndexes()[0]->fields());
-      LOG_DEVEL << "============================================== 2: "
-                << std::boolalpha << valid;
-      if (!valid) {
-        return false;
-      }
-    }
-  } else if (lhsi->type == NODE_TYPE_REFERENCE &&
-             rhsi->type == NODE_TYPE_REFERENCE) {
-    // potential join attribute if attr access equal
-    // rhsi->
-
-  } else {
-    LOG_DEVEL "============================================== 3";
-    LOG_DEVEL << "that strange TIMES issues";
-    LOG_DEVEL << "Hm it is different here";
-  }
-
-  return true;
-}
-
-[[nodiscard]] bool parseAndCheckNaryOr(
-    IndexNode const* indexNode, AstNode const* root,
-    std::map<ExecutionNodeId, std::vector<AstNode*>>& constantValues,
-    ExecutionNodeId candidateId,
-    std::map<ExecutionNodeId,
-             std::tuple<std::string, std::vector<size_t>, std::vector<size_t>>>&
-        keyFieldsAndConstantFields) {
-  if (root->type == NODE_TYPE_OPERATOR_NARY_OR) {
-    LOG_JOIN_OPTIMIZER_RULE << "FOUND NARY_OR";
-    TRI_ASSERT(root->numMembers() == 1);
-    auto member = root->getMember(0);
-    std::vector<bool> eligibles{};
-
-    if (member->type == NODE_TYPE_OPERATOR_NARY_AND) {
-      LOG_JOIN_OPTIMIZER_RULE << "FOUND NARY_AND";
-      for (size_t innerPos = 0; innerPos < member->numMembers(); innerPos++) {
-        auto innerMember = member->getMember(innerPos);
-        if (innerMember->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-          eligibles.push_back(
-              parseAndCheckBinaryEQ(indexNode, innerMember, constantValues,
-                                    candidateId, keyFieldsAndConstantFields));
-        } else if (innerMember->type == NODE_TYPE_OPERATOR_NARY_OR) {
-          LOG_DEVEL << "naryor checke - TODO: Think this case should NOT be "
-                       "supported at all";
-          TRI_ASSERT(false);
-          eligibles.push_back(parseAndCheckNaryOr(indexNode, innerMember,
-                                                  constantValues, candidateId,
-                                                  keyFieldsAndConstantFields));
-        } else {
-          LOG_DEVEL << "some unexpected node here";
-          eligibles.push_back(false);
-        }
-      }
-      for (auto const& el : eligibles) {
-        if (!el) {
-          LOG_DEVEL << "Not all checks of all members are valid";
-          return false;
-        }
-      }
-    }
-  }
-  return true;
-}
-
 bool checkCandidateEligibleForAdvancedJoin(
     IndexNode* currentCandidate, IndexNode* firstCandidate,
     AstNode const* candidateConditionRoot, IndicesOffsets& indicesOffsets,
@@ -912,28 +830,16 @@ bool checkCandidateEligibleForAdvancedJoin(
   return eligible;
 }
 
-bool checkAndBuildConstantValues(
-    IndexNode const* indexNode, AstNode const* root,
-    ExecutionNodeId candidateID,
-    std::map<ExecutionNodeId, std::vector<AstNode*>>& constantValues,
-    std::map<ExecutionNodeId,
-             std::tuple<std::string, std::vector<size_t>, std::vector<size_t>>>&
-        keyFieldsAndConstantFields) {
-  return parseAndCheckNaryOr(indexNode, root, constantValues, candidateID,
-                             keyFieldsAndConstantFields);
-}
-
 std::pair<bool, IndicesOffsets> checkCandidatesEligible(
     ExecutionPlan& plan,
     containers::SmallVector<IndexNode*, 8> const& candidates) {
   IndicesOffsets indicesOffsets = {};
   VarSet const* knownConstVariables;
 
-  size_t candidatePosition = 0;
   for (auto* candidate : candidates) {
-    LOG_JOIN_OPTIMIZER_RULE << "==> Checking candidate: " << candidatePosition
-                            << "(" << candidate->id() << ")";
-    if (candidatePosition == 0) {
+    LOG_JOIN_OPTIMIZER_RULE << "==> Checking candidate: (" << candidate->id()
+                            << ")";
+    if (candidate == candidates.front()) {
       auto const* root = candidate->condition()->root();
       // auto const& firstCandidateID = candidate->id();
       if (root != nullptr) {
@@ -946,7 +852,7 @@ std::pair<bool, IndicesOffsets> checkCandidatesEligible(
         TRI_ASSERT(knownConstVariables != nullptr);
         LOG_JOIN_OPTIMIZER_RULE << "Variables which are known: ";
         for (auto kVar : *knownConstVariables) {
-          LOG_DEVEL << " -> " << kVar->name;
+          LOG_JOIN_OPTIMIZER_RULE << " -> " << kVar->name;
         }
 
         LOG_JOIN_OPTIMIZER_RULE
@@ -961,24 +867,6 @@ std::pair<bool, IndicesOffsets> checkCandidatesEligible(
                  "constant fields do not match";
           return {false, {}};
         }
-        /*if (constantValues.contains(firstCandidateID) &&
-            !constantValues[firstCandidateID].empty()) {
-          for (auto const* var : candidate->getVariablesSetHere()) {
-            firstCandidateConstantVariables.try_emplace(
-                var, candidate->condition()->getConstAttributes(var, false));
-          }
-        }
-        LOG_DEVEL << "=> Amount of elemeents in "
-                     "outerCandidateConstantVariables for first index node: "
-                  << firstCandidateConstantVariables.size();
-
-        if (firstCandidateConstantVariables.empty()) {
-          LOG_JOIN_OPTIMIZER_RULE
-              << "Not eligible for index join: "
-                 "first index node has a lookup "
-                 "condition - and we've not found any constants.";
-          return {false, {}};
-        }*/
       }
     } else {
       // follow-up FOR loop(s). we expect it to have a lookup condition
@@ -1023,7 +911,7 @@ std::pair<bool, IndicesOffsets> checkCandidatesEligible(
         // need to check if the current index node matches the order of
         // conditions and the variables.
         bool eligible = checkCandidateEligibleForAdvancedJoin(
-            candidate, &candidate[0], root, indicesOffsets,
+            candidate, candidates[0], root, indicesOffsets,
             *knownConstVariables);
 
         if (!eligible) {
@@ -1109,8 +997,6 @@ std::pair<bool, IndicesOffsets> checkCandidatesEligible(
         }
       }
     }*/
-
-    ++candidatePosition;
   }
 
   if (!indicesOffsets.empty()) {
