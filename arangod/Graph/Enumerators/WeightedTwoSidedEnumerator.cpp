@@ -266,7 +266,7 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::Ball::
     matchResultsInShell(Step const& otherStep, CandidatesStore& candidates,
                         PathValidator const& otherSideValidator) -> double {
-  double fullPathWeight = -1.0;
+  auto fullPathWeight = std::numeric_limits<double>::infinity();
   auto positions = _visitedNodes.at(otherStep.getVertex().getID());
 
   for (auto const& position : positions) {
