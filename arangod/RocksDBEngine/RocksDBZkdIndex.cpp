@@ -37,6 +37,7 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 #include "Zkd/ZkdHelper.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 
@@ -517,7 +518,7 @@ auto zkd::specializeCondition(Index const* index, aql::AstNode* condition,
 }
 
 namespace {
-auto extractStoredValues(
+auto extractAttributeValues(
     transaction::Methods& trx,
     std::vector<std::vector<basics::AttributeName>> const& storedValues,
     velocypack::Slice doc) {
@@ -566,7 +567,9 @@ Result RocksDBZkdIndexBase::insert(transaction::Methods& trx,
   RocksDBKey rocks_key;
   rocks_key.constructZkdIndexValue(objectId(), key_value, documentId);
 
-  auto storedValues = extractStoredValues(trx, _storedValues, doc);
+  auto storedValues = extractAttributeValues(trx, _storedValues, doc);
+  auto prefixValues = extractAttributeValues(trx, _sortedPrefixValues, doc);
+  LOG_DEVEL << prefixValues->toJson();
   auto value = RocksDBValue::ZkdIndexValue(storedValues->slice());
   auto s = methods->PutUntracked(_cf, rocks_key, value.string());
   if (!s.ok()) {
@@ -611,7 +614,11 @@ RocksDBZkdIndexBase::RocksDBZkdIndexBase(IndexId iid, LogicalCollection& coll,
                        .engine<RocksDBEngine>()),
       _storedValues(
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
-                             /*allowEmpty*/ true, /*allowExpansion*/ false)) {}
+                             /*allowEmpty*/ true, /*allowExpansion*/ false)),
+      _sortedPrefixValues(Index::parseFields(info.get("sortedPrefixValues"),
+                                             /*allowEmpty*/ true,
+                                             /*allowExpansion*/ false)),
+      _coveredFields(Index::mergeFields(_sortedPrefixValues, _storedValues)) {}
 
 void RocksDBZkdIndexBase::toVelocyPack(
     velocypack::Builder& builder,
@@ -624,6 +631,18 @@ void RocksDBZkdIndexBase::toVelocyPack(
     builder.openArray();
 
     for (auto const& field : _storedValues) {
+      std::string fieldString;
+      TRI_AttributeNamesToString(field, fieldString);
+      builder.add(VPackValue(fieldString));
+    }
+
+    builder.close();
+  }
+  if (!_sortedPrefixValues.empty()) {
+    builder.add(velocypack::Value("sortedPrefixValues"));
+    builder.openArray();
+
+    for (auto const& field : _sortedPrefixValues) {
       std::string fieldString;
       TRI_AttributeNamesToString(field, fieldString);
       builder.add(VPackValue(fieldString));
@@ -696,7 +715,8 @@ Result RocksDBUniqueZkdIndex::insert(transaction::Methods& trx,
     }
   }
 
-  auto storedValues = extractStoredValues(trx, _storedValues, doc);
+  auto storedValues = extractAttributeValues(trx, _storedValues, doc);
+  auto prefixValues = extractAttributeValues(trx, _sortedPrefixValues, doc);
   auto value =
       RocksDBValue::UniqueZkdIndexValue(documentId, storedValues->slice());
 

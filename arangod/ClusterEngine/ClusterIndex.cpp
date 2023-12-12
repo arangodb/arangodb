@@ -90,9 +90,11 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
                              /*allowEmpty*/ true, /*allowExpansion*/ false));
     } else if (_indexType == TRI_IDX_TYPE_ZKD_INDEX) {
-      _coveredFields =
+      _coveredFields = Index::mergeFields(
+          Index::parseFields(info.get("sortedPrefixValues"),
+                             /*allowEmpty*/ true, /*allowExpansion*/ false),
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
-                             /*allowEmpty*/ true, /*allowExpansion*/ false);
+                             /*allowEmpty*/ true, /*allowExpansion*/ false));
     }
 
     // check for "estimates" attribute
