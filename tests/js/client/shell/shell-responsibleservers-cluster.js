@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global ArangoClusterInfo, assertEqual, assertNotEqual, assertTrue, fail */
+/*global global.ArangoClusterInfo, assertEqual, assertNotEqual, assertTrue, fail, arango, assertMatch */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -28,6 +28,9 @@ let jsunity = require("jsunity");
 let arangodb = require("@arangodb");
 let internal = require("internal");
 let db = arangodb.db;
+const {
+  getResponsibleServersFromClusterInfo
+} = require('@arangodb/test-helper');
 
 function ResponsibleServersSuite() {
   const cn = "UnitTestsCollection";
@@ -46,12 +49,8 @@ function ResponsibleServersSuite() {
     
     testCheckNonExistingCollection : function () {
       [ "xxxxx", "s-1234", "fuppe!", "S12345", "" ].forEach(function(arg) {
-        try {
-          ArangoClusterInfo.getResponsibleServers([ arg ]);
-          fail();
-        } catch (err) {
-          assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
-        }
+        let res = getResponsibleServersFromClusterInfo([arg]);
+        assertMatch(/no shard found with ID/, res);
       });
     },
     
@@ -59,12 +58,9 @@ function ResponsibleServersSuite() {
       let c = db._create(cn + "1", { numberOfShards: 5 });
         
       [ null, false, true, 123, "foo", [] ].forEach(function(arg) {
-        try {
-          ArangoClusterInfo.getResponsibleServers(arg);
-          fail();
-        } catch (err) {
-          assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, err.errorNum);
-        }
+        let res = getResponsibleServersFromClusterInfo([arg]);
+        assertMatch(/no shard found with ID/, res);
+
       });
     },
 
@@ -79,11 +75,12 @@ function ResponsibleServersSuite() {
         assertNotEqual(0, shards.length);
         expected = dist[shards[0]][0];
 
-        let servers = ArangoClusterInfo.getResponsibleServers([ shards[0] ]);
+        let servers = getResponsibleServersFromClusterInfo([shards[0]]);
+
         assertTrue(servers.hasOwnProperty(shards[0]));
 
         actual = servers[shards[0]];
-        // the retrieval of collection.shards() and ArangoClusterInfo.getResponsibleServers()
+        // the retrieval of collection.shards() and global.ArangoClusterInfo.getResponsibleServers()
         // is not atomic. there may be a leader change in between
         if (expected === actual) {
           // no leader change
@@ -110,10 +107,11 @@ function ResponsibleServersSuite() {
         shards.forEach(function(shard) {
           expected[shard] = dist[shard][0];
         });
-        actual = ArangoClusterInfo.getResponsibleServers(shards);
+        actual = getResponsibleServersFromClusterInfo(shards);
+        
         assertEqual(5, Object.keys(actual).length);
 
-        // the retrieval of collection.shards() and ArangoClusterInfo.getResponsibleServers()
+        // the retrieval of collection.shards() and global.ArangoClusterInfo.getResponsibleServers()
         // is not atomic. there may be a leader change in between
         try {
           // this is actually a hack, we are using assertEqual here to compare the two values
@@ -153,10 +151,11 @@ function ResponsibleServersSuite() {
         shards.forEach(function(shard) {
           expected[shard] = dist[shard][0];
         });
-        actual = ArangoClusterInfo.getResponsibleServers(shards);
+        actual = getResponsibleServersFromClusterInfo(shards);
+
         assertEqual(10, Object.keys(actual).length);
 
-        // the retrieval of collection.shards() and ArangoClusterInfo.getResponsibleServers()
+        // the retrieval of collection.shards() and global.ArangoClusterInfo.getResponsibleServers()
         // is not atomic. there may be a leader change in between
         try {
           // this is actually a hack, we are using assertEqual here to compare the two values

@@ -46,6 +46,7 @@ const inst = require('@arangodb/testutils/instance');
 const request = require('@arangodb/request');
 const arangosh = require('@arangodb/arangosh');
 const jsunity = require('jsunity');
+const { isCluster } = require('../../bootstrap/modules/internal');
 const arango = internal.arango;
 const db = internal.db;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
@@ -511,7 +512,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
 };
 
 exports.waitForEstimatorSync = function() {
-  arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();"); // make sure estimates are consistent
+  return arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();"); // make sure estimates are consistent
 };
 
 exports.waitForShardsInSync = function (cn, timeout, minimumRequiredFollowers = 0) {
@@ -622,6 +623,62 @@ exports.triggerMetrics = function () {
     exports.getRawMetric(c, '?mode=trigger_global');
   }
   require("internal").sleep(2);
+};
+
+exports.activateFailure = function (name) {
+  const isCluster = require("internal").isCluster();
+  let roles = [];
+  if (isCluster) {
+    roles.push("dbserver");
+    roles.push("coordinator");
+  } else {
+    roles.push("single");
+  }
+  
+  print(roles);
+  roles.forEach(role => {
+    exports.getEndpointsByType(role).forEach(ep => exports.debugSetFailAt(ep, name));
+  });
+
+};
+
+exports.deactivateFailure = function (name) {
+  const isCluster = require("internal").isCluster();
+  let roles = [];
+  if (isCluster) {
+    roles.push("dbserver");
+    roles.push("coordinator");
+  } else {
+    roles.push("single");
+  }
+
+  roles.forEach(role => {
+    exports.getEndpointsByType(role).forEach(ep => exports.debugClearFailAt(ep, name));
+  });
+};
+
+exports.getMaxNumberOfShards = function () {
+  return arango.POST("/_admin/execute", "return require('internal').maxNumberOfShards;");
+};
+
+exports.getMaxReplicationFactor = function () {
+  return arango.POST("/_admin/execute", "return require('internal').maxReplicationFactor;");
+};
+
+exports.getMinReplicationFactor = function () {
+  return arango.POST("/_admin/execute", "return require('internal').minReplicationFactor;");
+};
+
+exports.getDbPath = function () {
+  return arango.POST("/_admin/execute", `return require("internal").db._path();`);
+};
+
+exports.getResponsibleShardFromClusterInfo = function (vertexCollectionId, v) {
+  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.getResponsibleShard(${JSON.stringify(vertexCollectionId)}, ${JSON.stringify(v)})`);
+};
+
+exports.getResponsibleServersFromClusterInfo = function (arg) {
+  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.getResponsibleServers(${JSON.stringify(arg)});`);
 };
 
 exports.getAllMetricsFromEndpoints = function (roles = "") {
