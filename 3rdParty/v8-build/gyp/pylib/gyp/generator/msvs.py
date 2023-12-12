@@ -161,7 +161,10 @@ def _FixPath(path, separator="\\"):
     The path with all slashes made into backslashes.
   """
     if (path.endswith('.tq')):
+      # this is very necessary to make the torque file builds on
+      # Windows succeed
       return path
+
     if (
         fixpath_prefix
         and path
