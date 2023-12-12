@@ -15,7 +15,6 @@
     'torque_files': ['<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "torque_files = ")'],
     # Torque and V8 expect the files to be named relative to V8's root.
     'torque_files_without_v8_root': ['<!@pymod_do_main(ForEachReplace "<@(V8_ROOT)/" "" <@(torque_files))'],
-    #'torque_files_without_v8_root': ['<!@pymod_do_main(ForEachReplaceRegex "^([A-Za-z]:[/\/])?((\.\.)[/\/])*v8[/\/]?" "" <@(torque_files))'],
     'torque_files_replaced': ['<!@pymod_do_main(ForEachReplace ".tq" "-tq" <@(torque_files_without_v8_root))'],
     'torque_outputs_csa_cc': ['<!@pymod_do_main(ForEachFormat "<(SHARED_INTERMEDIATE_DIR)/torque-generated/%s-csa.cc" <@(torque_files_replaced))'],
     'torque_outputs_csa_h': ['<!@pymod_do_main(ForEachFormat "<(SHARED_INTERMEDIATE_DIR)/torque-generated/%s-csa.h" <@(torque_files_replaced))'],
@@ -115,7 +114,6 @@
           'action': [
             '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)torque<(EXECUTABLE_SUFFIX)',
             '-o', '<(SHARED_INTERMEDIATE_DIR)/torque-generated',
-            # '-strip-v8-root',
             '-v8-root', '<(V8_ROOT)',
             '<@(torque_files_without_v8_root)',
           ],
@@ -864,7 +862,9 @@
         'run_torque',
         'v8_internal_headers',
         'v8_maybe_icu',
-#        'v8_zlib',
+        # dependency on zlib is not necessary for us
+        # commented out intentionally
+        # 'v8_zlib',
         'v8_pch',
       ],
       'includes': ['inspector.gypi'],

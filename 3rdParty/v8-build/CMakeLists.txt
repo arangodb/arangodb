@@ -186,7 +186,7 @@ if (WIN32)
   )
 
   # TODO: targets list must be finalized
-  list(APPEND V8_TARGETS
+  list(APPEND V8_TARGETS icui18n icuuc icustubdata
     #torque
     #run_torque
     #generate_bytecode_builtins_list
@@ -433,8 +433,7 @@ else ()
   # message("V8 compile args: ${V8_COMPILE_ARGS}")
   # message("V8 ldflags: ${V8_LDFLAGS}")
 
-  list(APPEND V8_COMPILE_TARGETS icui18n icuuc icustubdata)
-  list(APPEND V8_COMPILE_TARGETS v8_libbase v8_libplatform v8_snapshot)
+  list(APPEND V8_COMPILE_TARGETS icui18n icuuc icustubdata v8_libbase v8_libplatform v8_snapshot)
   ExternalProject_Add(v8_build
     BUILD_IN_SOURCE
       TRUE
