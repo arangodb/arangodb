@@ -93,9 +93,11 @@ DocumentFollowerState::~DocumentFollowerState() {
 auto DocumentFollowerState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
   LOG_CTX("7289e", DEBUG, loggerContext) << "resigning follower state";
-  _resigning = true;
+  _resigning.store(true);
 
   return _guardedData.doUnderLock([&](auto& data) {
+    // we have to shutdown the runtime inside the lock to serialize this with a
+    // concurrent applyEntries call (see the comment there for more details)
     // TODO - find a better way to wait for all the actors to finish
     _runtime->dispatch<actor::message::ApplyEntriesMessages>(
         _applyEntriesActor, _applyEntriesActor, actor::message::Resign{});
@@ -400,10 +402,19 @@ auto DocumentFollowerState::handleSnapshotTransfer(
 
 auto DocumentFollowerState::applyEntries(
     std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
-  futures::Promise<ResultT<std::optional<LogIndex>>> promise;
-  auto future = promise.getFuture();
-
   return _guardedData.doUnderLock([&](auto& data) -> futures::Future<Result> {
+    // We do not actually use data in here, but we use the guardedData lock to
+    // serialize this code with a concurrent resign call.
+    // We must avoid sending the ApplyEntries message if the actor has already
+    // been finished. Therefore we need to check the _resigning flag _inside_
+    // the lock. Likewise, resign must shutdown the runtime inside the lock,
+    // _after_ it has set the resigning flag.
+    if (_resigning.load()) {
+      return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
+    }
+
+    futures::Promise<ResultT<std::optional<LogIndex>>> promise;
+    auto future = promise.getFuture();
     _runtime->dispatch<actor::message::ApplyEntriesMessages>(
         _applyEntriesActor, _applyEntriesActor,
         actor::message::ApplyEntries{.entries = std::move(ptr),
