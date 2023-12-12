@@ -610,11 +610,12 @@ bool processConstantFinding(IndexNode const* currentCandidate,
 
 bool processJoinKeyFinding(IndexNode const* firstCandidate,
                            IndexNode const* currentCandidate,
-                           IndicesOffsets& indicesOffsets,
-                           AstNode const* node) {
+                           IndicesOffsets& indicesOffsets, AstNode const* node,
+                           AstNode const* firstAccessNode) {
   std::vector<basics::AttributeName> resultVectorFirst;
   std::vector<basics::AttributeName> resultVectorCurrent;
-  getIndexAttributes(firstCandidate, node->getStringView(), resultVectorFirst);
+  getIndexAttributes(firstCandidate, firstAccessNode->getStringView(),
+                     resultVectorFirst);
   getIndexAttributes(currentCandidate, node->getStringView(),
                      resultVectorCurrent);
 
@@ -716,7 +717,7 @@ bool isVarAccessToCandidateOutVariable(AstNode const* node,
         // Now we need to first parse the condition, check the used attribute,
         // and then adjust the offsets accordingly.
         if (processJoinKeyFinding(firstCandidate, currentCandidate,
-                                  indicesOffsets, rhs)) {
+                                  indicesOffsets, rhs, lhs)) {
           return true;
         }
       }
@@ -731,7 +732,7 @@ bool isVarAccessToCandidateOutVariable(AstNode const* node,
     // Now we need to first parse the condition, check the used attribute,
     // and then adjust the offsets accordingly.
     if (processJoinKeyFinding(firstCandidate, currentCandidate, indicesOffsets,
-                              rhs)) {
+                              rhs, lhs)) {
       return true;
     }
     // Otherwise no valid candidate found. We cannot optimize this.
