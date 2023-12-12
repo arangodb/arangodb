@@ -704,7 +704,6 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       // weight than the sum of the two diameters are valid shortest
       // paths that must be returned.  K-SHORTEST-PATH search has to
       // continue until the queues on both sides are empty
-
       auto leftDiameter = _left.getDiameter();
       auto rightDiameter = _right.getDiameter();
       auto sumDiameter = leftDiameter + rightDiameter;
