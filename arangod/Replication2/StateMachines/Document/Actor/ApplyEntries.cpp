@@ -326,7 +326,7 @@ auto ApplyEntriesHandler<Runtime>::beforeApplyEntry(
 }
 
 template<typename Runtime>
-void ApplyEntriesHandler<Runtime>::continueBatch() noexcept {
+void ApplyEntriesHandler<Runtime>::continueBatch() noexcept try {
   ADB_PROD_ASSERT(this->state->_batch != nullptr);
   ADB_PROD_ASSERT(this->state->_pendingTransactions.empty());
   if (not this->state->_batch->_currentEntry.has_value()) {
@@ -338,13 +338,12 @@ void ApplyEntriesHandler<Runtime>::continueBatch() noexcept {
     auto& e = this->state->_batch->_currentEntry.value();
     LogIndex index = e.first;
     auto& doc = e.second;
-    auto res = basics::catchToResultT([&]() {
-      return std::visit(
-          [&](auto&& op) -> ResultT<ProcessResult> {
-            return processEntry(op, index);
-          },
-          doc.getInnerOperation());
-    });
+
+    auto res = std::visit(
+        [&](auto&& op) -> ResultT<ProcessResult> {
+          return processEntry(op, index);
+        },
+        doc.getInnerOperation());
 
     if (res.fail()) {
       TRI_ASSERT(this->state->handlers.errorHandler
@@ -384,6 +383,17 @@ void ApplyEntriesHandler<Runtime>::continueBatch() noexcept {
   }
   // we have processed all entries, but there are still pending transactions
   // that we need to wait for, before we can resolve the batch
+} catch (std::exception const& ex) {
+  LOG_CTX("3927b", FATAL, this->state->loggerContext)
+      << "Caught an exception when applying entries. This is fatal - the "
+         "process will terminate now. The exception was: "
+      << ex.what();
+  FATAL_ERROR_ABORT();
+} catch (...) {
+  LOG_CTX("d57fc", FATAL, this->state->loggerContext)
+      << "Caught an unknown exception when applying entries. This is fatal - "
+         "the process will terminate now.";
+  FATAL_ERROR_ABORT();
 }
 
 template struct ApplyEntriesHandler<LocalRuntime>;
