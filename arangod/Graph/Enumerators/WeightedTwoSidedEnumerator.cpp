@@ -223,7 +223,7 @@ template<class QueueType, class PathStoreType, class ProviderType,
 auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::Ball::
     computeNeighbourhoodOfNextVertex(Ball& other, CandidatesStore& candidates)
-        -> double {
+        -> void {
   TRI_ASSERT(!_queue.isEmpty());
   if (!_queue.hasProcessableElement()) {
     std::vector<Step*> looseEnds = _queue.getLooseEnds();
@@ -245,23 +245,20 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 
   ValidationResult res = _validator.validatePath(step);
 
-  auto matchPathWeight = std::numeric_limits<double>::infinity();
-
   if (!res.isFiltered()) {
     _visitedNodes[step.getVertex().getID()].emplace_back(posPrevious);
-
-    // TODO: maybe the pathStore could be asked whether a vertex has been
-    // visited?
-    if (other.hasBeenVisited(step)) {
-      matchPathWeight = other.matchResultsInShell(step, candidates, _validator);
-    }
   }
 
   if (!res.isPruned()) {
-    _provider.expand(step, posPrevious,
-                     [&](Step n) -> void { _queue.append(std::move(n)); });
+    _provider.expand(step, posPrevious, [&](Step n) -> void {
+      // TODO: maybe the pathStore could be asked whether a vertex has been
+      // visited?
+      if (other.hasBeenVisited(n)) {
+        other.matchResultsInShell(n, candidates, _validator);
+      }
+      _queue.append(std::move(n));
+    });
   }
-  return matchPathWeight;
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
@@ -269,8 +266,7 @@ template<class QueueType, class PathStoreType, class ProviderType,
 auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::Ball::
     matchResultsInShell(Step const& otherStep, CandidatesStore& candidates,
-                        PathValidator const& otherSideValidator) -> double {
-  auto fullPathWeight = std::numeric_limits<double>::infinity();
+                        PathValidator const& otherSideValidator) -> void {
   auto positions = _visitedNodes.at(otherStep.getVertex().getID());
 
   for (auto const& position : positions) {
@@ -291,13 +287,7 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       candidates.append(
           std::make_tuple(nextFullPathWeight, otherStep, ourStep));
     }
-
-    if (fullPathWeight < 0.0 || fullPathWeight > nextFullPathWeight) {
-      fullPathWeight = nextFullPathWeight;
-    }
   }
-
-  return fullPathWeight;
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
@@ -623,37 +613,19 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   while (!searchDone()) {
     _resultsFetched = false;
 
-    auto matchPathWeight = std::numeric_limits<double>::infinity();
     auto searchLocation = getBallToContinueSearch();
     if (searchLocation == BallSearchLocation::LEFT) {
-      matchPathWeight =
-          _left.computeNeighbourhoodOfNextVertex(_right, _candidatesStore);
+      _left.computeNeighbourhoodOfNextVertex(_right, _candidatesStore);
     } else if (searchLocation == BallSearchLocation::RIGHT) {
-      matchPathWeight =
-          _right.computeNeighbourhoodOfNextVertex(_left, _candidatesStore);
+      _right.computeNeighbourhoodOfNextVertex(_left, _candidatesStore);
     } else {
       TRI_ASSERT(searchLocation == BallSearchLocation::FINISH);
       // Our queue is empty. We cannot produce more results.
       setAlgorithmFinished();
     }
 
-    if (std::isfinite(matchPathWeight)) {
-      // found a new path between start and target
-      // this has also been added to the candidatesStore;
-
-      // If a candidate was found, then the candidate store better not be empty
-      TRI_ASSERT(!_candidatesStore.isEmpty());
-
-      // This path is better than the previous best
-      if (matchPathWeight < _bestCandidateWeight) {
-        _bestCandidateWeight = matchPathWeight;
-      }
-
-      TRI_ASSERT(_bestCandidateWeight == std::get<0>(_candidatesStore.peek()))
-          << fmt::format(
-                 "_bestCandidateWeight = {} != {} = _candidatesStore.peek()",
-                 _bestCandidateWeight, std::get<0>(_candidatesStore.peek()));
-
+    if (!_candidatesStore.isEmpty()) {
+      auto bestWeight = std::get<0>(_candidatesStore.peek());
       // if the sum of the diameters of left and right search are bigger
       // than the best candidate, there will not be a better candidate found.
       //
@@ -669,20 +641,14 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       // For a K-SHORTEST-PATH search all candidates that have lower weight
       // than the sum of the two diameters are valid shortest paths that must
       // be returned.
+      // K-SHORTEST-PATH search has to continue until the queues on both
+      // sides are empty
 
       auto leftDiameter = _left.getDiameter();
       auto rightDiameter = _right.getDiameter();
       auto sumDiameter = leftDiameter + rightDiameter;
 
-      if (sumDiameter >= _bestCandidateWeight) {
-        // Additionally, this is only a potential candidate. We may find same
-        // paths multiple times. If that is the case, we just get rid of that
-        // candidate and do not pass it to the result data structure.
-        //
-        // Not only one candidate needs to be verified, but all candidates
-        // which do have lower weights as the current found (match).
-
-        TRI_ASSERT(!_candidatesStore.isEmpty());
+      if (sumDiameter >= bestWeight) {
         while (!_candidatesStore.isEmpty() and
                std::get<0>(_candidatesStore.peek()) < sumDiameter) {
           bool foundShortestPath = false;
@@ -707,19 +673,11 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
             }
           }
         }
-
-        _bestCandidateWeight = [&]() {
-          if (_candidatesStore.isEmpty()) {
-            return std::numeric_limits<double>::infinity();
-          } else {
-            return std::get<0>(_candidatesStore.peek());
-          }
-        }();
       }
     }
   }
 
-  if (_options.onlyProduceOnePath() && std::isfinite(_bestCandidateWeight)) {
+  if (_options.onlyProduceOnePath() /* found a candidate */) {
     fetchResult();
   } else {
     fetchResults();

@@ -156,14 +156,12 @@ class WeightedTwoSidedEnumerator {
     auto buildPath(Step const& vertexInShell,
                    PathResult<ProviderType, Step>& path) -> void;
 
-    [[nodiscard]] auto matchResultsInShell(
-        Step const& match, CandidatesStore& results,
-        PathValidatorType const& otherSideValidator) -> double;
+    auto matchResultsInShell(Step const& match, CandidatesStore& results,
+                             PathValidatorType const& otherSideValidator)
+        -> void;
 
-    // @brief returns the weight of a path if one has been found or
-    // +inf if path has been found.
-    [[nodiscard]] auto computeNeighbourhoodOfNextVertex(
-        Ball& other, CandidatesStore& results) -> double;
+    auto computeNeighbourhoodOfNextVertex(Ball& other, CandidatesStore& results)
+        -> void;
 
     [[nodiscard]] auto hasBeenVisited(Step const& step) -> bool;
 
