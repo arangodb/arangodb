@@ -1040,6 +1040,10 @@ std::pair<bool, IndicesOffsets> checkCandidatesEligible(
       }
     }
 
+    if (!allCandidatesSupportStreamInterface) {
+      return {false, {}};
+    }
+
     LOG_DEVEL << "==> Final Result: Can be optimized with constants!";
     return {true, std::move(indicesOffsets)};
   }
