@@ -190,6 +190,15 @@ function testSuite() {
 
         dumps.push({ id, done: false, asyncId: undefined, batchId: 1, lastBatch: null, shard });
       }
+
+      let tries = 60;
+      while (--tries > 0) {
+        let blocked = getMetricSingle("arangodb_dump_threads_blocked_total");
+        if (blocked > originalBlocked) {
+          break;
+        }
+        internal.sleep(0.5);
+      }
        
       try {
         while (true) {

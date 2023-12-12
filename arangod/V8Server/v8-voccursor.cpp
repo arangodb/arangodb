@@ -205,7 +205,9 @@ struct V8Cursor final {
       _handle.Reset();
     }
     if (_isolate) {
-      TRI_GET_GLOBALS2(_isolate);
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
+          _isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
+      TRI_ASSERT(v8g != nullptr);
       TRI_vocbase_t* vocbase = v8g->_vocbase;
       if (vocbase) {
         CursorRepository* cursors = vocbase->cursorRepository();

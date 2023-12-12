@@ -237,11 +237,11 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
 
   bool isAsyncQuery() const noexcept override { return false; }
 
-  void enterV8Context() override {
+  void enterV8Executor() override {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_NOT_IMPLEMENTED,
-        "CalculationQueryContext entering V8 context is not implemented");
+        "CalculationQueryContext: entering V8 executor is not implemented");
   }
 
  private:

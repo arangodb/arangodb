@@ -48,8 +48,8 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
+#include "V8Server/V8Executor.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -235,11 +235,11 @@ bool Task::tryCompile(ArangodServer& server, v8::Isolate* isolate,
   TRI_ASSERT(isolate != nullptr);
 
   v8::HandleScope scope(isolate);
-  auto context = TRI_IGETC;
+  v8::Handle<v8::Context> context = isolate->GetCurrentContext();
   // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
-  auto current = isolate->GetCurrentContext()->Global();
+  v8::Handle<v8::Object> global = context->Global();
   auto ctor = v8::Local<v8::Function>::Cast(
-      current->Get(context, TRI_V8_ASCII_STRING(isolate, "Function"))
+      global->Get(context, TRI_V8_ASCII_STRING(isolate, "Function"))
           .FromMaybe(v8::Local<v8::Value>()));
 
   // Invoke Function constructor to create function with the given body and no
@@ -247,11 +247,11 @@ bool Task::tryCompile(ArangodServer& server, v8::Isolate* isolate,
   v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING(isolate, "params"),
                                    TRI_V8_STD_STRING(isolate, command)};
   v8::Local<v8::Object> function =
-      ctor->NewInstance(TRI_IGETC, 2, args).FromMaybe(v8::Local<v8::Object>());
+      ctor->NewInstance(context, 2, args).FromMaybe(v8::Local<v8::Object>());
 
   v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
 
-  return (!action.IsEmpty());
+  return !action.IsEmpty();
 }
 
 bool Task::databaseMatches(std::string const& name) const {
@@ -435,23 +435,21 @@ void Task::work(ExecContext const* exec) {
           : JavaScriptSecurityContext::createTaskContext(
                 false /*_allowUseDatabase*/);  // task context that has no
                                                // access to dbs
-  V8ContextGuard guard(&(_dbGuard->database()), securityContext);
+  V8ExecutorGuard guard(&_dbGuard->database(), securityContext);
 
-  // now execute the function within this context
-  {
-    auto isolate = guard.isolate();
+  guard.runInContext([this](v8::Isolate* isolate) -> Result {
     v8::HandleScope scope(isolate);
-    auto context = TRI_IGETC;
 
     // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
-    auto current = isolate->GetCurrentContext()->Global();
+    v8::Handle<v8::Object> global = isolate->GetCurrentContext()->Global();
     auto ctor = v8::Local<v8::Function>::Cast(
-        current->Get(context, TRI_V8_ASCII_STRING(isolate, "Function"))
+        global
+            ->Get(isolate->GetCurrentContext(),
+                  TRI_V8_ASCII_STRING(isolate, "Function"))
             .FromMaybe(v8::Local<v8::Value>()));
 
     // Invoke Function constructor to create function with the given body and
-    // no
-    // arguments
+    // no arguments
     v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING(isolate, "params"),
                                      TRI_V8_STD_STRING(isolate, _command)};
     v8::Local<v8::Object> function = ctor->NewInstance(TRI_IGETC, 2, args)
@@ -472,14 +470,14 @@ void Task::work(ExecContext const* exec) {
       // call the function within a try/catch
       try {
         v8::TryCatch tryCatch(isolate);
-        action->Call(TRI_IGETC, current, 1, &fArgs)
+        action->Call(isolate->GetCurrentContext(), global, 1, &fArgs)
             .FromMaybe(v8::Local<v8::Value>());
         if (tryCatch.HasCaught()) {
           if (tryCatch.CanContinue()) {
             TRI_LogV8Exception(isolate, &tryCatch);
           } else {
-            TRI_GET_GLOBALS();
-
+            TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
+                isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
             v8g->_canceled = true;
             LOG_TOPIC("131e8", WARN, arangodb::Logger::FIXME)
                 << "caught non-catchable exception (aka termination) in job";
@@ -498,7 +496,8 @@ void Task::work(ExecContext const* exec) {
             << "caught unknown exception in V8 user task";
       }
     }
-  }
+    return {};
+  });
 }
 
 }  // namespace arangodb
