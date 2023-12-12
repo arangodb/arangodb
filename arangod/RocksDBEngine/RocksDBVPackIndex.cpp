@@ -3132,7 +3132,9 @@ bool RocksDBVPackIndex::checkSupportsStreamInterface(
 
   // for persisted indexes, we can only use a prefix of the indexed keys
   std::size_t idx = 0;
-  TRI_ASSERT(streamOpts.usedKeyFields.size() == 1);
+  if (streamOpts.usedKeyFields.size() != 1) {
+    return false;
+  }
 
   for (auto constantValue : streamOpts.constantFields) {
     if (constantValue != idx) {

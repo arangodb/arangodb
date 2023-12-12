@@ -685,8 +685,8 @@ bool isVarAccessToCandidateOutVariable(AstNode const* node,
         << lhs->toString() << ")";
     // `lhs` is using our candidates outVariable
     // Now we need to check if the other side is a constant condition.
-    auto rhsConstantRes = isVariableConstant(lhs, knownConstVariables);
-    if (rhsConstantRes) {
+    auto isConstantRes = isVariableConstant(rhs, knownConstVariables);
+    if (isConstantRes) {
       LOG_JOIN_OPTIMIZER_RULE << "  => This condition is a constant condition.";
       // The other side (`rhs`) is a constant condition.
       // We now need to calculate the constant offset for this specific index
@@ -703,6 +703,9 @@ bool isVarAccessToCandidateOutVariable(AstNode const* node,
       // to adjust the offsets for the candidates accordingly.
       if (firstCandidate == nullptr) {
         // Means our current candidate is the first `candidate[0]`.
+        LOG_JOIN_OPTIMIZER_RULE << "First is nullptr. Does not qualify : ("
+                                << lhs->toString() << " - " << rhs->toString()
+                                << ")";
         return false;
       }
 
@@ -721,7 +724,7 @@ bool isVarAccessToCandidateOutVariable(AstNode const* node,
       // Will fall through to the end of the method and return false.
     }
   } else if (firstCandidate != nullptr &&
-             isVarAccessToCandidateOutVariable(rhs,
+             isVarAccessToCandidateOutVariable(lhs,
                                                firstCandidate->outVariable())) {
     LOG_JOIN_OPTIMIZER_RULE << "II. We've found a join condition for: "
                             << firstCandidate->outVariable()->name;
@@ -740,6 +743,8 @@ bool isVarAccessToCandidateOutVariable(AstNode const* node,
         << lhs->toString() << ")";
   }
 
+  LOG_JOIN_OPTIMIZER_RULE << "Does not qualify : (" << lhs->toString() << " - "
+                          << rhs->toString() << ")";
   return false;
 }
 
@@ -762,13 +767,48 @@ bool isVarAccessToCandidateOutVariable(AstNode const* node,
       analyseBinaryEqMembers(currentCandidate, firstCandidate, rightMember,
                              leftMember, indicesOffsets, knownConstVariables)) {
     // At least one of the members is constant and can be optimized.
-    LOG_JOIN_OPTIMIZER_RULE << "Found at least one constant member which can "
-                               "be optimized. Condition: ("
-                            << leftMember->toString() << " - "
-                            << rightMember->toString() << ")";
+    LOG_JOIN_OPTIMIZER_RULE
+        << "Found at least one constant member or join which can "
+           "be optimized. Condition: ("
+        << leftMember->toString() << " - " << rightMember->toString() << ")";
     return true;
   }
   return false;
+}
+
+bool analyseNodeTypeOperatorNaryAnd(IndexNode const* currentCandidate,
+                                    IndexNode const* firstCandidate,
+                                    AstNode const* member,
+                                    IndicesOffsets& indicesOffsets,
+                                    VarSet const& knownConstVariables) {
+  TRI_ASSERT(member->type == NODE_TYPE_OPERATOR_NARY_AND);
+  LOG_JOIN_OPTIMIZER_RULE << "FOUND: NODE_TYPE_OPERATOR_NARY_AND";
+  bool eligible = false;
+
+  for (size_t innerPos = 0; innerPos < member->numMembers(); innerPos++) {
+    auto innerMember = member->getMember(innerPos);
+    if (innerMember->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+      bool binaryEqValid =
+          analyseBinaryEQ(currentCandidate, firstCandidate, innerMember,
+                          indicesOffsets, knownConstVariables);
+      if (!binaryEqValid) {
+        LOG_JOIN_OPTIMIZER_RULE << " => Candidate(" << currentCandidate->id()
+                                << ") is not eligible, because the "
+                                   "binary eq condition has not "
+                                   "qualified for the index.";
+        eligible = false;
+        return eligible;
+      }
+      eligible = true;
+    } else {
+      LOG_JOIN_OPTIMIZER_RULE << " => Candidate(" << currentCandidate->id()
+                              << ") is not eligible";
+      eligible = false;
+      return eligible;
+    }
+  }
+
+  return eligible;
 }
 
 bool checkCandidateEligibleForAdvancedJoin(
@@ -778,38 +818,21 @@ bool checkCandidateEligibleForAdvancedJoin(
   bool eligible = false;
 
   if (candidateConditionRoot->type == NODE_TYPE_OPERATOR_NARY_OR) {
-    LOG_JOIN_OPTIMIZER_RULE << "FOUND NARY_OR";
+    LOG_JOIN_OPTIMIZER_RULE << "FOUND: NODE_TYPE_OPERATOR_NARY_OR";
     TRI_ASSERT(candidateConditionRoot->numMembers() == 1);
     auto member = candidateConditionRoot->getMember(0);
-    std::vector<bool> binaryEqEligible{};
 
     if (member->type == NODE_TYPE_OPERATOR_NARY_AND) {
-      LOG_JOIN_OPTIMIZER_RULE << "FOUND NARY_AND";
-      for (size_t innerPos = 0; innerPos < member->numMembers(); innerPos++) {
-        auto innerMember = member->getMember(innerPos);
-        if (innerMember->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-          bool binaryEqValid =
-              analyseBinaryEQ(currentCandidate, firstCandidate, innerMember,
-                              indicesOffsets, knownConstVariables);
-          if (!binaryEqValid) {
-            LOG_JOIN_OPTIMIZER_RULE << " => Candidate("
-                                    << currentCandidate->id()
-                                    << ") is not eligible, because the "
-                                       "binary eq condition has not "
-                                       "qualified for the index.";
-            eligible = false;
-            return eligible;
-          }
-          eligible = true;
-        } else {
-          LOG_JOIN_OPTIMIZER_RULE << " => Candidate(" << currentCandidate->id()
-                                  << ") is not eligible";
-          eligible = false;
-          return eligible;
-        }
-      }
+      eligible = analyseNodeTypeOperatorNaryAnd(
+          currentCandidate, firstCandidate, member, indicesOffsets,
+          knownConstVariables);
     }
+  } else if (candidateConditionRoot->type == NODE_TYPE_OPERATOR_NARY_AND) {
+    eligible = analyseNodeTypeOperatorNaryAnd(
+        currentCandidate, firstCandidate, candidateConditionRoot,
+        indicesOffsets, knownConstVariables);
   } else if (candidateConditionRoot->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+    LOG_JOIN_OPTIMIZER_RULE << "FOUND: NODE_TYPE_OPERATOR_BINARY_EQ";
     bool binaryEqValid = analyseBinaryEQ(currentCandidate, firstCandidate,
                                          candidateConditionRoot, indicesOffsets,
                                          knownConstVariables);
@@ -822,6 +845,8 @@ bool checkCandidateEligibleForAdvancedJoin(
       return eligible;
     }
     eligible = true;
+  } else {
+    LOG_JOIN_OPTIMIZER_RULE << "FOUND: something else: ";
   }
   LOG_JOIN_OPTIMIZER_RULE
       << "checkCandidateEligibleForAdvancedJoin will return: " << std::boolalpha
@@ -910,9 +935,13 @@ std::pair<bool, IndicesOffsets> checkCandidatesEligible(
         // If we've found at least one condition in the first index node, we
         // need to check if the current index node matches the order of
         // conditions and the variables.
+        LOG_JOIN_OPTIMIZER_RULE
+            << "Calling CandidateEligible check for other candidate ("
+            << candidate->id() << ")";
+
         bool eligible = checkCandidateEligibleForAdvancedJoin(
-            candidate, candidates[0], root, indicesOffsets,
-            *knownConstVariables);
+            candidate, candidates[0], candidate->condition()->root(),
+            indicesOffsets, *knownConstVariables);
 
         if (!eligible) {
           LOG_JOIN_OPTIMIZER_RULE
@@ -953,7 +982,8 @@ std::pair<bool, IndicesOffsets> checkCandidatesEligible(
     // check if filter supports streaming interface
     {
       IndexStreamOptions opts;
-      opts.usedKeyFields = {0};  // for now only 0 is supported
+      opts.usedKeyFields = {
+          0};  // use as a default in case no constants have been found
       if (candidate->projections().usesCoveringIndex()) {
         opts.projectedFields.reserve(candidate->projections().size());
         auto& proj = candidate->projections().projections();
@@ -970,36 +1000,46 @@ std::pair<bool, IndicesOffsets> checkCandidatesEligible(
         return {false, {}};
       }
     }
-
-    // check if index does support constant values
-    /*{
-      if (!constantValues.empty()) {
-        size_t amountOfFields = candidate->getIndexes()[0]->fields().size();
-        if (amountOfFields == 1 || constantValues.size() >= amountOfFields) {
-          constantValues.clear();
-          continue;
-        }
-        IndexStreamOptions opts;
-        opts.usedKeyFields = {0};  // for now only 0 is supported
-        std::vector<size_t> constantFieldsForVerification{};
-        // TODO: Adjust this whole area.
-        for (auto const& cV : constantValues) {
-          for (auto const& constants : constantValues[cV.first]) {
-            std::ignore = constants;
-            constantFieldsForVerification.push_back(
-                {0});  // just used as a dummy here for verification
-          }
-        }
-        if (!candidate->getIndexes()[0]->supportsStreamInterface(opts)) {
-          LOG_JOIN_OPTIMIZER_RULE << "IndexNode's index does not "
-                                     "support constant values";
-          return {false, {}};
-        }
-      }
-    }*/
   }
 
   if (!indicesOffsets.empty()) {
+    // Indices offsets are fully computed after all candidates have been
+    // processed. Therefore, we cannot use the upper supportsStreamInterface
+    // check and need to re-check here after all candidates have been processed.
+    LOG_DEVEL << "Indices Offsets Debug Output, Size: "
+              << indicesOffsets.size();
+
+    bool allCandidatesSupportStreamInterface = true;
+    for (auto const& [candidateId, indexOffset] : indicesOffsets) {
+      // if constants found, we need to use the computed offsets
+      auto& idxOffsetRef = indexOffset;
+      LOG_DEVEL << "Candidate: " << candidateId;
+      IndexStreamOptions opts;
+      opts.usedKeyFields = idxOffsetRef.getKeyFields();
+      LOG_DEVEL << "Keys";
+      for (auto const& kk : opts.usedKeyFields) {
+        LOG_DEVEL << "-> {" << kk << "}";
+      }
+      opts.constantFields = idxOffsetRef.getConstantFields();
+      LOG_DEVEL << "Constants";
+      for (auto const& oo : opts.constantFields) {
+        LOG_DEVEL << "-> {" << oo << "}";
+      }
+
+      for (auto cIndexNode : candidates) {
+        if (cIndexNode->id() == candidateId) {
+          if (!cIndexNode->getIndexes()[0]->supportsStreamInterface(opts)) {
+            allCandidatesSupportStreamInterface = false;
+            LOG_JOIN_OPTIMIZER_RULE << "IndexNode's index does not "
+                                       "support streaming interface";
+            LOG_JOIN_OPTIMIZER_RULE
+                << "-> Index name: " << cIndexNode->getIndexes()[0]->name()
+                << ", id: " << cIndexNode->getIndexes()[0]->id();
+          }
+        }
+      }
+    }
+
     LOG_DEVEL << "==> Final Result: Can be optimized with constants!";
     return {true, std::move(indicesOffsets)};
   }
@@ -1119,12 +1159,13 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
         findCandidates(startNode, candidates, handled);
 
         if (candidates.size() >= 2) {
+          LOG_JOIN_OPTIMIZER_RULE << "========================================="
+                                     "=================================";
           LOG_JOIN_OPTIMIZER_RULE << "Found " << candidates.size()
                                   << " index nodes that qualify for joining";
 
           // First: Eligible bool
-          // Second: Vector of constant expressions
-          // Third: Vector of positions of keyFields and constantFields
+          // Second: IndexOffset information
           auto candidatesResult = checkCandidatesEligible(*plan, candidates);
           bool eligible = candidatesResult.first;
           auto indicesOffsets = candidatesResult.second;
@@ -1136,7 +1177,6 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
             std::vector<JoinNode::IndexInfo> indexInfos;
             indexInfos.reserve(candidates.size());
 
-            size_t removeMe = 0;
             for (auto* c : candidates) {
               std::vector<std::unique_ptr<Expression>> constExpressions{};
               std::vector<size_t> computedUseKeyFields{};
@@ -1171,7 +1211,7 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
               } else {
                 // if no constants have been found, we'll stick to the
                 // defaults.
-                LOG_DEVEL << "No constants found for candidate: " << removeMe;
+                LOG_DEVEL << "No constants found for candidate";
                 computedUseKeyFields = {0};
                 computedConstantFields = {};
               }
@@ -1219,6 +1259,18 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
             optimizeJoinNode(*plan, jn);
             modified = true;
           } else {
+            auto indicesOffsetsDebug = candidatesResult.second;
+            for (auto const& c : indicesOffsets) {
+              LOG_DEVEL << "Candidate: " << c.first;
+              LOG_DEVEL << "Keys:";
+              for (auto const& key : c.second.getKeyFields()) {
+                LOG_DEVEL << "{" << key << "}";
+              }
+              LOG_DEVEL << "Constants:";
+              for (auto const& constant : c.second.getConstantFields()) {
+                LOG_DEVEL << "{" << constant << "}";
+              }
+            }
             LOG_JOIN_OPTIMIZER_RULE << "Not eligible for index join due to: "
                                        "(checkCandidatesEligible)";
           }

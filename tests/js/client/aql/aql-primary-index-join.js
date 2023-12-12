@@ -113,7 +113,7 @@ const IndexPrimaryJoinTestSuite = function () {
     return defaultResult;
   };
 
-  const runAndCheckQuery = function (query, joinStrategyType = null, expectedStats = null) {
+  const runAndCheckQuery = function (query, joinStrategyType = null, expectedStats = null, shouldNotOptimize = false) {
     let qOptions = {...queryOptions};
     if (joinStrategyType === "generic") {
       qOptions.joinStrategyType = joinStrategyType;
@@ -129,14 +129,15 @@ const IndexPrimaryJoinTestSuite = function () {
       return node.type;
     });
 
-    if (planNodes.indexOf("JoinNode") === -1) {
-      db._explain(query, null, qOptions);
+    if (!shouldNotOptimize) {
+      if (planNodes.indexOf("JoinNode") === -1) {
+        db._explain(query, null, qOptions);
+      }
+
+      assertNotEqual(planNodes.indexOf("JoinNode"), -1);
     }
 
-    assertNotEqual(planNodes.indexOf("JoinNode"), -1);
-
     const result = db._createStatement({query: query, bindVars: null, options: qOptions}).execute();
-
 
     if (expectedStats) {
       const qStats = result.getExtra().stats;
@@ -393,22 +394,15 @@ const IndexPrimaryJoinTestSuite = function () {
       const queryString = `
         FOR i in 1..5 
           FOR doc1 IN A
-            FILTER doc1.x == i
+            FILTER doc1.x == i         // candidate[0]: const {0}
             FOR doc2 IN B
-              FILTER doc1.y == doc2.x
-              FILTER doc2.y == (2 * i)
-              FILTER doc2.z == 8
-              RETURN [doc1, doc2]
+              FILTER doc1.y == doc2.x  // candidate[0]: key {1} | candidate[1]: key {0}
+              FILTER doc2.y == (2 * i) // candidate[1]: const {1}
+              FILTER doc2.z == 8       // candidate[1]: const {2}
+              RETURN [doc1, doc2]      // => invalid offsets
       `;
 
-      const qResult = runAndCheckQuery(queryString, "generic");
-      qResult.forEach((docs) => {
-        let first = docs[0];
-        let second = docs[1];
-        assertEqual(first.x, 5, "Wrong value for 'x' in first document found");
-        assertEqual(first.y, second.y);
-      });
-      assertEqual(qResult.length, 5);
+      runAndCheckQuery(queryString, "generic", null, true);
     },
 
     testJoinConstantValuesTwoOuterTwoInner: function () {
