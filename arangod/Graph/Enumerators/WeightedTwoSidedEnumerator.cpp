@@ -649,7 +649,10 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
         _bestCandidateWeight = matchPathWeight;
       }
 
-      TRI_ASSERT(_bestCandidateWeight == std::get<0>(_candidatesStore.peek()));
+      TRI_ASSERT(_bestCandidateWeight == std::get<0>(_candidatesStore.peek()))
+          << fmt::format(
+                 "_bestCandidateWeight = {} != {} = _candidatesStore.peek()",
+                 _bestCandidateWeight, std::get<0>(_candidatesStore.peek()));
 
       // if the sum of the diameters of left and right search are bigger
       // than the best candidate, there will not be a better candidate found.
@@ -705,7 +708,13 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
           }
         }
 
-        _bestCandidateWeight = std::numeric_limits<double>::infinity();
+        _bestCandidateWeight = [&]() {
+          if (_candidatesStore.isEmpty()) {
+            return std::numeric_limits<double>::infinity();
+          } else {
+            return std::get<0>(_candidatesStore.peek());
+          }
+        }();
       }
     }
   }
