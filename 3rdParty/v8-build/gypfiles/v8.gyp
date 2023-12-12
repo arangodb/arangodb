@@ -115,6 +115,7 @@
           'action': [
             '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)torque<(EXECUTABLE_SUFFIX)',
             '-o', '<(SHARED_INTERMEDIATE_DIR)/torque-generated',
+            '-strip-v8-root',
             '-v8-root', '<(V8_ROOT)',
             '<@(torque_files_without_v8_root)',
           ],

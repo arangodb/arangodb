@@ -160,6 +160,8 @@ def _FixPath(path, separator="\\"):
   Returns:
     The path with all slashes made into backslashes.
   """
+    if (path.endswith('.tq')):
+      return path
     if (
         fixpath_prefix
         and path
