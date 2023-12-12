@@ -111,8 +111,13 @@ function ArangoSearchWildcardAnalyzer(hasPos) {
       assertEqual(res, ["a", "c", "e", "f"]);
     },
 
-    testAnyMid: function() {
+    testAnyMid1: function() {
       let res = query("bcd_", false, true);
+      assertEqual(res, ["bcde"]);
+    },
+
+    testAnyMid2: function() {
+      let res = query("_cde", false, true);
       assertEqual(res, ["bcde"]);
     },
 
@@ -163,6 +168,11 @@ function ArangoSearchWildcardAnalyzer(hasPos) {
 
     testAllLong: function() {
       let res = query("%abcdef%", false, !hasPos);
+      assertEqual(res, ["abcdef", "abcdef qwerty", "qwerty abcdef"]);
+    },
+
+    testAllBetweenLong: function() {
+      let res = query("%ab%ef%", false, true);
       assertEqual(res, ["abcdef", "abcdef qwerty", "qwerty abcdef"]);
     },
 
