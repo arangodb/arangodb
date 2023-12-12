@@ -191,10 +191,12 @@ bool Analyzer::next() {
   }
   if (auto size = _ngramTerm->value.size(); size > 1) {
     auto* begin = _ngramTerm->value.data();
-    auto* end = begin + size;
+    auto* end = begin + _ngramTerm->value.size();
     begin = nextUTF8(begin, end);
     _ngramTerm->value = {begin, end};
-    return true;
+    if (_ngramTerm->value.size() > 1) {
+      return true;
+    }
   }
   if (_termsBegin == _termsEnd) {
     return false;

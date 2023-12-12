@@ -170,20 +170,23 @@ irs::filter::prepared::ptr Filter::prepare(
 
   if (size == 0) {
     irs::bytes_view token = options().token;
-    if (token.back() != 0xFF) {
+    if (token.size() != 1 && token.back() == 0xFF) {
+      TRI_IF_FAILURE("wildcard::Filter::needsPrefix") {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_DEBUG,
+                                       "term instead of prefix");
+      }
+      p = irs::by_term::prepare(ctx, field(), token);
+    } else {
       TRI_IF_FAILURE("wildcard::Filter::dissallowPrefix") {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_DEBUG,
             absl::StrCat("prefix disabled for: ", irs::ViewCast<char>(token)));
       }
+      if (token.back() == 0xFF) {
+        token = irs::kEmptyStringView<irs::byte_type>;
+      }
       p = irs::by_prefix::prepare(ctx, field(), token,
                                   FilterConstants::DefaultScoringTermsLimit);
-    } else {
-      TRI_IF_FAILURE("wildcard::Filter::needsPrefix") {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_DEBUG,
-                                       "term instead of prefix");
-      }
-      p = irs::by_term::prepare(ctx, field(), options().token);
     }
   } else if (size == 1 && options().hasPos) {
     TRI_IF_FAILURE("wildcard::Filter::needsPrefix") {

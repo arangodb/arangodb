@@ -82,7 +82,7 @@ Options::Options(std::string_view pattern, AnalyzerPool const& analyzer,
       *patternLast++ = *patternCurr;
     }
   }
-  TRI_ASSERT(!escaped);  // AQL validates pattern
+  // We ignore escaped because post-filtering ignore it
   if (patternFirst != patternLast) {
     *patternLast++ = '\xFF';
     makeParts(patternFirst, patternLast);

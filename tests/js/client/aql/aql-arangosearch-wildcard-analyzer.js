@@ -39,7 +39,7 @@ function ArangoSearchWildcardAnalyzer(hasPos) {
     try { db._dropDatabase(dbName); } catch (err) {}
   };
 
-  let query = function(pattern, needsPrefix, needsMatcher) {
+  let query = function(pattern, needsPrefix, needsMatcher, checkIdentity = true) {
     internal.debugClearFailAt();
     if (needsPrefix) {
       internal.debugSetFailAt("wildcard::Filter::needsPrefix");
@@ -51,8 +51,14 @@ function ArangoSearchWildcardAnalyzer(hasPos) {
     } else {
       internal.debugSetFailAt("wildcard::Filter::dissallowMatcher");
     }
-    let r = db._query("FOR d in v SEARCH ANALYZER(d.s LIKE '" + pattern + "', 'w') RETURN d.s").toArray().sort();
-    return r;
+    let c = db._query("FOR d in c FILTER d.s LIKE '" + pattern + "' RETURN d.s").toArray().sort();
+    let w = db._query("FOR d in v SEARCH ANALYZER(d.s LIKE '" + pattern + "', 'w') RETURN d.s").toArray().sort();
+    let i = db._query("FOR d in v SEARCH ANALYZER(d.s LIKE '" + pattern + "', 'identity') RETURN d.s").toArray().sort();
+    assertEqual(c, w);
+    if (checkIdentity) {
+      assertEqual(w, i);
+    }
+    return w;
   };
 
   return {
@@ -80,23 +86,28 @@ function ArangoSearchWildcardAnalyzer(hasPos) {
       c.insert({s: "abcdef qwerty"});
       c.insert({s: "qwerty abcdef"});
       db._createView("v", "arangosearch",
-          { links: { c: { fields: {s: {}}, analyzers: ["w"] } } });
+          { links: { c: { fields: {s: {}}, analyzers: ["w", "identity"] } } });
     },
 
     tearDownAll : function () { 
       cleanup();
     },
 
-    testExactEscapeInvalid: function() {
+    testExactEscape1: function() {
       try {
         query("\\", false, false);
         fail("invalid pattern should be disallowed by AQL");
       } catch (e) {
       }
     },
+
+    testExactEscape2: function() {
+      let res = query("\\\\", false, false, false);
+      assertEqual(res, [""]);
+    },
  
-    testExactEscapeValid: function() {
-      let res = query("\\\\", false, false);
+    testExactEscape4: function() {
+      let res = query("\\\\\\\\", false, false);
       assertEqual(res, ["\\"]);
     },
 
@@ -121,7 +132,7 @@ function ArangoSearchWildcardAnalyzer(hasPos) {
     },
 
     testAnyShort: function() {
-      let res = query("_", false, true);
+      let res = query("_", true, true);
       assertEqual(res, ["\\", "a", "c", "e", "f"]);
     },
 
@@ -186,17 +197,17 @@ function ArangoSearchWildcardAnalyzer(hasPos) {
     },
 
     testAllBetweenLong: function() {
-      let res = query("%abcdef% ", false, true);
+      let res = query("%abcdef% %", false, true);
       assertEqual(res, ["abcdef qwerty"]);
     },
 
     testAll: function() {
-      let res = query("%", false, false);
-      assertEqual(res.length, 11);
-      res = query("%%", false, false);
-      assertEqual(res.length, 11);
-      res = query("%%%", false, true);
-      assertEqual(res.length, 11);
+      let res = query("%", true, false);
+      assertEqual(res.length, 12);
+      res = query("%%", true, false);
+      assertEqual(res.length, 12);
+      res = query("%%%", true, true);
+      assertEqual(res.length, 12);
     },
   };
 }
