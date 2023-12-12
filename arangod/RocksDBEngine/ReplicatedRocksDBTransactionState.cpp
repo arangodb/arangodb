@@ -29,7 +29,8 @@
 #include <numeric>
 
 #include "Futures/Utilities.h"
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 #include "RocksDBEngine/ReplicatedRocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
@@ -163,10 +164,10 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
 
   // We are capturing a shared pointer to this state so we prevent reclamation
   // while we are waiting for the commit operations.
-  return futures::collectAll(commits).thenValue([self = shared_from_this()](
-                                                    std::vector<
-                                                        futures::Try<Result>>&&
-                                                        results) -> Result {
+  return futures::collectAll(commits).thenValue([self = shared_from_this(),
+                                                 tid](std::vector<
+                                                      futures::Try<Result>>&&
+                                                          results) -> Result {
     std::vector<Result> partialResults;
     partialResults.reserve(results.size());
     for (auto& res : results) {
@@ -182,13 +183,36 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
       if (partialResults.empty() || partialResults.front().ok()) {
         return {};
       }
-      LOG_TOPIC("6d1ce", ERR, Logger::REPLICATED_STATE)
-          << "The leader has resigned, so nothing has been replicated. "
-             "However, if the transaction spans multiple collections, with "
-             "different leaders, it might have been partially applied.";
+
+      if (std::all_of(
+              partialResults.begin(), partialResults.end(), [](auto const& r) {
+                return r.is(
+                    TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+              })) {
+        // Although on this server, the transaction has not made any progress
+        // locally, it may have been committed by other replicated log leaders,
+        // if they are located on other servers. This problem could be fixed by
+        // distributed transactions.
+        return Result{
+            TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+            fmt::format(
+                "All the replicated log leaders involved in transaction {} "
+                "have resigned before the commit operation could be "
+                "replicated. The transaction has neither been committed "
+                "locally nor replicated, and it is going to be aborted.",
+                tid.asCoordinatorTransactionId().id())};
+      }
+
+      auto warningMsg = fmt::format(
+          "Some replicated log leaders have resigned before replicating "
+          "the commit operation of transaction {}. The transaction may "
+          "have been successfully applied only on some of the shards.",
+          tid.asCoordinatorTransactionId().id());
+      LOG_TOPIC("6d1ce", ERR, Logger::REPLICATED_STATE) << warningMsg;
+      // There's no need to crash in production, since there's not much we can
+      // do.
       TRI_ASSERT(false) << partialResults;
-      // There's no need to crash in production.
-      return partialResults.front();
+      return {TRI_ERROR_TRANSACTION_INTERNAL, warningMsg};
     }
 
     LOG_TOPIC("8ebc0", FATAL, Logger::REPLICATED_STATE)
@@ -196,6 +220,9 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
            "commits detected): "
         << partialResults;
     TRI_ASSERT(false) << partialResults;
+    // The leader is out of sync.
+    // It makes sense to crash here, in the hopes that this server
+    // becomes a follower and it re-applies the transaction successfully.
     FATAL_ERROR_EXIT();
   });
 }

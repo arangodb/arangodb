@@ -65,10 +65,10 @@ class SenderThread final : public arangodb::Thread {
 
   bool hasError();
   /// Ready to start sending
-  bool isReady();
+  bool isReady() const;
   /// Currently not sending data
-  bool isIdle();
-  bool isDone();
+  bool isIdle() const;
+  bool isDone() const;
 
   std::string const& errorMessage() const { return _errorMessage; }
 
@@ -78,7 +78,7 @@ class SenderThread final : public arangodb::Thread {
   void run() override;
 
  private:
-  basics::ConditionVariable _condition;
+  basics::ConditionVariable mutable _condition;
   std::unique_ptr<httpclient::SimpleHttpClient> _client;
   std::function<void()> _wakeup;
   std::string _url;

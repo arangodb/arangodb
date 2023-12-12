@@ -490,7 +490,8 @@ Result IndexFactory::processIndexStoredValues(VPackSlice definition,
                                               VPackBuilder& builder,
                                               size_t minFields,
                                               size_t maxFields, bool create,
-                                              bool allowSubAttributes) {
+                                              bool allowSubAttributes,
+                                              bool allowOverlappingFields) {
   TRI_ASSERT(builder.isOpenObject());
 
   Result res;
@@ -511,7 +512,8 @@ Result IndexFactory::processIndexStoredValues(VPackSlice definition,
         auto normalFields = definition.get(StaticStrings::IndexFields);
         TRI_ASSERT(normalFields.isArray());
         for (VPackSlice it : VPackArrayIterator(normalFields)) {
-          if (!fields.insert(it.stringView()).second) {
+          if (!allowOverlappingFields &&
+              !fields.insert(it.stringView()).second) {
             res.reset(TRI_ERROR_BAD_PARAMETER,
                       "duplicate attribute name (overlap between index fields "
                       "and index "
@@ -635,7 +637,8 @@ Result IndexFactory::enhanceJsonIndexGeneric(VPackSlice definition,
   if (res.ok()) {
     // "storedValues"
     res = processIndexStoredValues(definition, builder, 1, 32, create,
-                                   /*allowSubAttributes*/ true);
+                                   /*allowSubAttributes*/ true,
+                                   /* allowOverlappingFields */ false);
   }
 
   if (res.ok()) {
@@ -765,6 +768,16 @@ Result IndexFactory::enhanceJsonIndexZkd(VPackSlice definition,
       processIndexFields(definition, builder, 1, INT_MAX, create,
                          /*allowExpansion*/ false, /*allowSubAttributes*/ true,
                          /*allowIdAttribute*/ false);
+
+  if (res.ok()) {
+    // "storedValues"
+    // Since the indexed attributes are encoded and then bit interleaves
+    // they can not be used for projections. Thus, we allow the same fields
+    // to appear in the stored values for them to be projected out of the index.
+    res = processIndexStoredValues(definition, builder, 1, 32, create,
+                                   /*allowSubAttributes*/ true,
+                                   /* allowOverlappingFields */ true);
+  }
 
   if (res.ok()) {
     if (auto isSparse = definition.get(StaticStrings::IndexSparse).isTrue();

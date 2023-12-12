@@ -1581,6 +1581,10 @@ void TRI_vocbase_t::shutdownReplicatedLogs() noexcept {
   _logManager->resignAll();
 }
 
+void TRI_vocbase_t::dropReplicatedLogs() noexcept {
+  return _logManager->prepareDropAll();
+}
+
 auto TRI_vocbase_t::updateReplicatedState(
     LogId id, agency::LogPlanTermSpecification const& term,
     agency::ParticipantsConfig const& config) -> Result {

@@ -53,7 +53,7 @@ const UserManagementHeader = ({
       <Button
         size="sm"
         leftIcon={<AddIcon />}
-        colorScheme="blue"
+        colorScheme="green"
         onClick={onAddUserModalOpen}
       >
         Add user

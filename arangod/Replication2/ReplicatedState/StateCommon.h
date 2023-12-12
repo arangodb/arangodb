@@ -31,8 +31,6 @@
 
 #include <velocypack/Slice.h>
 #include "Basics/Result.h"
-#include "Inspection/VPackLoadInspector.h"
-#include "Inspection/VPackSaveInspector.h"
 #include "Inspection/Transformers.h"
 
 namespace arangodb::velocypack {

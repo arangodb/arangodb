@@ -46,6 +46,7 @@
 #include "Utils/ClientManager.h"
 #include "Utilities/NameValidator.h"
 
+#include <absl/strings/str_cat.h>
 #include <fuerte/jwt.h>
 
 using namespace arangodb::application_features;
@@ -69,6 +70,7 @@ ClientFeature::ClientFeature(ApplicationServer& server,
       _connectionTimeout(connectionTimeout),
       _requestTimeout(requestTimeout),
       _maxPacketSize(1024 * 1024 * 1024),
+      _compressRequestThreshold(0),
       _sslProtocol(TLS_V12),
       _retries(DEFAULT_RETRIES),
 #if _WIN32
@@ -81,7 +83,8 @@ ClientFeature::ClientFeature(ApplicationServer& server,
       _warn(false),
       _warnConnect(true),
       _haveServerPassword(false),
-      _forceJson(false) {
+      _forceJson(false),
+      _compressTransfer(false) {
   setOptional(true);
 }
 
@@ -101,11 +104,8 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "The username to use when connecting.",
                      new StringParameter(&_username));
 
-  bool isArangosh = false;
-  {
-    std::string basename = TRI_Basename(options->progname());
-    isArangosh = basename == "arangosh" || basename == "arangosh.exe";
-  }
+  std::string basename = TRI_Basename(options->progname());
+  bool isArangosh = basename == "arangosh" || basename == "arangosh.exe";
 
   char const* endpointHelp;
   if (isArangosh) {
@@ -198,6 +198,30 @@ arangosh without connecting to a server.)");
                                    arangodb::options::Flags::OsWindows,
                                    arangodb::options::Flags::Uncommon));
 #endif
+
+  options
+      ->addOption(
+          "--compress-transfer",
+          "Compress data for transport between " + basename + " and server.",
+          new BooleanParameter(&_compressTransfer))
+      .setIntroducedIn(31200)
+      .setLongDescription(R"(This option enables transport compression for data
+received by an ArangoDB server.)");
+
+  options
+      ->addOption("--compress-request-threshold",
+                  "The HTTP request body size from which on requests are "
+                  "transparently compressed when sending them to the server.",
+                  new UInt64Parameter(&_compressRequestThreshold))
+      .setIntroducedIn(31200)
+      .setLongDescription(
+          R"(Automatically compress outgoing HTTP requests 
+with the deflate compression format. Compression will only happen for
+HTTP/1.1 and HTTP/2 connections, if the size of the uncompressed request
+body exceeds the threshold value controlled by this startup option,
+and if the request body size after compression is less than the original
+request body size.
+Using the value 0 disables the automatic request compression.")");
 }
 
 void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -394,8 +418,10 @@ std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
     requestTimeout = _requestTimeout;
     warn = _warn;
   }
-  return createHttpClient(
-      definition, SimpleHttpClientParams(requestTimeout, warn), suppressError);
+  SimpleHttpClientParams params(requestTimeout, warn);
+  params.setCompressRequestThreshold(
+      compressTransfer() ? compressRequestThreshold() : 0);
+  return createHttpClient(definition, std::move(params), suppressError);
 }
 
 std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
@@ -591,19 +617,35 @@ bool ClientFeature::getWarnConnect() const noexcept {
   return _warnConnect;
 }
 
+bool ClientFeature::compressTransfer() const noexcept {
+  READ_LOCKER(locker, _settingsLock);
+  return _compressTransfer;
+}
+
+void ClientFeature::setCompressTransfer(bool value) noexcept {
+  WRITE_LOCKER(locker, _settingsLock);
+  _compressTransfer = value;
+}
+
+uint64_t ClientFeature::compressRequestThreshold() const noexcept {
+  READ_LOCKER(locker, _settingsLock);
+  return _compressRequestThreshold;
+}
+
 ApplicationServer& ClientFeature::server() const noexcept {
   return _comm.server();
 }
 
 std::string ClientFeature::buildConnectedMessage(
-    std::string const& endpointSpecification, std::string const& version,
-    std::string const& role, std::string const& mode,
-    std::string const& databaseName, std::string const& user) {
-  return std::string("Connected to ArangoDB '") + endpointSpecification +
-         ((version.empty() || version == "arango") ? ""
-                                                   : ", version: " + version) +
-         (role.empty() ? "" : " [" + role + ", " + mode + "]") +
-         ", database: '" + databaseName + "', username: '" + user + "'";
+    std::string_view endpointSpecification, std::string_view version,
+    std::string_view role, std::string_view mode, std::string_view databaseName,
+    std::string_view user) {
+  bool versionEmpty = (version.empty() || version == "arango");
+  return absl::StrCat(
+      "Connected to ArangoDB '", endpointSpecification,
+      (versionEmpty ? "" : ", version: "), (versionEmpty ? "" : version), " [",
+      (role.empty() ? "unknown" : role), ", ", mode, "], database: '",
+      databaseName, "', username: '", user, "'");
 }
 
 int ClientFeature::runMain(

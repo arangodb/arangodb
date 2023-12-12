@@ -29,9 +29,6 @@
 #include "Utils/ClientManager.h"
 
 namespace arangodb {
-namespace httpclient {
-class SimpleHttpResult;
-}
 
 class BackupFeature : public ArangoBackupFeature {
  public:

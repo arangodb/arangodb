@@ -101,10 +101,6 @@ export const AddDatabaseForm = ({
                           isDisabled || window.frontendConfig.forceOneShard
                         }
                         name={"isOneShard"}
-                        switchProps={{
-                          isChecked:
-                            window.frontendConfig.forceOneShard || undefined
-                        }}
                       />
                       <InfoTooltip
                         label={

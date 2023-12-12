@@ -463,8 +463,8 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
 #ifdef USE_V8
   if (dealer.isEnabled()) {
     b.add("v8Context", VPackValue(VPackValueType::Object, true));
-    auto v8Counters = dealer.getCurrentContextNumbers();
-    auto memoryStatistics = dealer.getCurrentContextDetails();
+    auto v8Counters = dealer.getCurrentExecutorStatistics();
+    auto memoryStatistics = dealer.getCurrentExecutorDetails();
     b.add("available", VPackValue(v8Counters.available));
     b.add("busy", VPackValue(v8Counters.busy));
     b.add("dirty", VPackValue(v8Counters.dirty));
