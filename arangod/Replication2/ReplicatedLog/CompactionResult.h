@@ -23,16 +23,30 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedLog/CommitFailReason.h"
-#include "Replication2/ReplicatedLog/CompactionResponse.h"
-#include "Replication2/ReplicatedLog/CompactionResult.h"
+#include <cstdint>
+#include <optional>
+#include <ostream>
+
 #include "Replication2/ReplicatedLog/CompactionStopReason.h"
-#include "Replication2/ReplicatedLog/CommitFailReason.h"
-#include "Replication2/ReplicatedLog/GlobalLogIdentifier.h"
-#include "Replication2/ReplicatedLog/LogId.h"
-#include "Replication2/ReplicatedLog/LogIndex.h"
 #include "Replication2/ReplicatedLog/LogRange.h"
-#include "Replication2/ReplicatedLog/LogTerm.h"
-#include "Replication2/ReplicatedLog/ParticipantFlags.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogGlobalSettings.h"
-#include "Replication2/ReplicatedLog/TermIndexPair.h"
+
+namespace arangodb::replication2::replicated_log {
+
+struct CompactionResult {
+  std::size_t numEntriesCompacted{0};
+  LogRange range;
+  std::optional<CompactionStopReason> stopReason;
+
+  friend auto operator==(CompactionResult const& left,
+                         CompactionResult const& right) noexcept
+      -> bool = default;
+
+  template<class Inspector>
+  friend auto inspect(Inspector& f, CompactionResult& x) {
+    return f.object(x).fields(
+        f.field("numEntriesCompacted", x.numEntriesCompacted),
+        f.field("stopReason", x.stopReason));
+  }
+};
+
+}  // namespace arangodb::replication2::replicated_log

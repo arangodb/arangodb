@@ -18,21 +18,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "ParticipantFlags.h"
 
-#include "Replication2/ReplicatedLog/CommitFailReason.h"
-#include "Replication2/ReplicatedLog/CompactionResponse.h"
-#include "Replication2/ReplicatedLog/CompactionResult.h"
-#include "Replication2/ReplicatedLog/CompactionStopReason.h"
-#include "Replication2/ReplicatedLog/CommitFailReason.h"
-#include "Replication2/ReplicatedLog/GlobalLogIdentifier.h"
-#include "Replication2/ReplicatedLog/LogId.h"
-#include "Replication2/ReplicatedLog/LogIndex.h"
-#include "Replication2/ReplicatedLog/LogRange.h"
-#include "Replication2/ReplicatedLog/LogTerm.h"
-#include "Replication2/ReplicatedLog/ParticipantFlags.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogGlobalSettings.h"
-#include "Replication2/ReplicatedLog/TermIndexPair.h"
+namespace arangodb::replication2 {
+
+auto operator<<(std::ostream& os, ParticipantFlags const& f) -> std::ostream& {
+  os << "{ ";
+  if (f.forced) {
+    os << "forced ";
+  }
+  if (f.allowedAsLeader) {
+    os << "allowedAsLeader ";
+  }
+  if (f.allowedInQuorum) {
+    os << "allowedInQuorum ";
+  }
+  return os << "}";
+}
+
+}  // namespace arangodb::replication2

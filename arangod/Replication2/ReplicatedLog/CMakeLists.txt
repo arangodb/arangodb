@@ -14,22 +14,31 @@ target_sources(arango_replication2 PRIVATE
 target_sources(arango_replication2_pure PRIVATE
   AgencyLogSpecification.cpp
   Algorithms.cpp
+  CommitFailReason.cpp
+  CompactionResponse.cpp
+  CompactionStopReason.cpp
+  GlobalLogIdentifier.cpp
   ILogInterfaces.cpp
   InMemoryLog.cpp
   InMemoryLogEntry.cpp
   IRebootIdCache.h
-  LogCommon.cpp
   LogEntry.cpp
   LogEntryView.cpp
+  LogId.cpp
+  LogIndex.cpp
   LogLeader.cpp
   LogMetaPayload.cpp
   LogPayload.cpp
+  LogRange.cpp
   LogStatus.cpp
+  LogTerm.cpp
   NetworkMessages.cpp
+  ParticipantFlags.cpp
   ReplicatedLog.cpp
   ReplicatedLogMetrics.tpp
   Supervision.cpp
   SupervisionAction.cpp
+  TermIndexPair.cpp
   TermIndexMapping.cpp
   types.cpp
   WaitForBag.cpp

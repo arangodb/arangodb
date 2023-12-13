@@ -18,21 +18,40 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "LogIndex.h"
 
-#include "Replication2/ReplicatedLog/CommitFailReason.h"
-#include "Replication2/ReplicatedLog/CompactionResponse.h"
-#include "Replication2/ReplicatedLog/CompactionResult.h"
-#include "Replication2/ReplicatedLog/CompactionStopReason.h"
-#include "Replication2/ReplicatedLog/CommitFailReason.h"
-#include "Replication2/ReplicatedLog/GlobalLogIdentifier.h"
-#include "Replication2/ReplicatedLog/LogId.h"
-#include "Replication2/ReplicatedLog/LogIndex.h"
-#include "Replication2/ReplicatedLog/LogRange.h"
-#include "Replication2/ReplicatedLog/LogTerm.h"
-#include "Replication2/ReplicatedLog/ParticipantFlags.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogGlobalSettings.h"
-#include "Replication2/ReplicatedLog/TermIndexPair.h"
+namespace arangodb::replication2 {
+
+auto LogIndex::operator+(std::uint64_t delta) const -> LogIndex {
+  return LogIndex(this->value + delta);
+}
+
+auto LogIndex::operator+=(std::uint64_t delta) -> LogIndex& {
+  this->value += delta;
+  return *this;
+}
+
+LogIndex::operator velocypack::Value() const noexcept {
+  return velocypack::Value(value);
+}
+
+auto operator<<(std::ostream& os, LogIndex idx) -> std::ostream& {
+  return os << idx.value;
+}
+
+auto LogIndex::saturatedDecrement(uint64_t delta) const noexcept -> LogIndex {
+  if (value > delta) {
+    return LogIndex{value - delta};
+  }
+
+  return LogIndex{0};
+}
+
+auto to_string(LogIndex index) -> std::string {
+  return std::to_string(index.value);
+}
+
+}  // namespace arangodb::replication2

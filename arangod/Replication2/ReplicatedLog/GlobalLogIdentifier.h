@@ -23,16 +23,31 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedLog/CommitFailReason.h"
-#include "Replication2/ReplicatedLog/CompactionResponse.h"
-#include "Replication2/ReplicatedLog/CompactionResult.h"
-#include "Replication2/ReplicatedLog/CompactionStopReason.h"
-#include "Replication2/ReplicatedLog/CommitFailReason.h"
-#include "Replication2/ReplicatedLog/GlobalLogIdentifier.h"
+#include <string>
+#include "Inspection/include/Inspection/Format.h"
 #include "Replication2/ReplicatedLog/LogId.h"
-#include "Replication2/ReplicatedLog/LogIndex.h"
-#include "Replication2/ReplicatedLog/LogRange.h"
-#include "Replication2/ReplicatedLog/LogTerm.h"
-#include "Replication2/ReplicatedLog/ParticipantFlags.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogGlobalSettings.h"
-#include "Replication2/ReplicatedLog/TermIndexPair.h"
+
+namespace arangodb::replication2 {
+
+struct GlobalLogIdentifier {
+  GlobalLogIdentifier(std::string database, LogId id);
+  GlobalLogIdentifier() = default;
+  std::string database{};
+  LogId id{};
+
+  template<class Inspector>
+  inline friend auto inspect(Inspector& f, GlobalLogIdentifier& gid) {
+    return f.object(gid).fields(f.field("database", gid.database),
+                                f.field("id", gid.id));
+  }
+};
+
+auto to_string(GlobalLogIdentifier const&) -> std::string;
+
+auto operator<<(std::ostream&, GlobalLogIdentifier const&) -> std::ostream&;
+
+}  // namespace arangodb::replication2
+
+template<>
+struct fmt::formatter<arangodb::replication2::GlobalLogIdentifier>
+    : arangodb::inspection::inspection_formatter {};

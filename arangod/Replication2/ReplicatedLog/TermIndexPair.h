@@ -23,16 +23,35 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedLog/CommitFailReason.h"
-#include "Replication2/ReplicatedLog/CompactionResponse.h"
-#include "Replication2/ReplicatedLog/CompactionResult.h"
-#include "Replication2/ReplicatedLog/CompactionStopReason.h"
-#include "Replication2/ReplicatedLog/CommitFailReason.h"
-#include "Replication2/ReplicatedLog/GlobalLogIdentifier.h"
-#include "Replication2/ReplicatedLog/LogId.h"
 #include "Replication2/ReplicatedLog/LogIndex.h"
-#include "Replication2/ReplicatedLog/LogRange.h"
 #include "Replication2/ReplicatedLog/LogTerm.h"
-#include "Replication2/ReplicatedLog/ParticipantFlags.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogGlobalSettings.h"
-#include "Replication2/ReplicatedLog/TermIndexPair.h"
+
+namespace arangodb::velocypack {
+class Builder;
+}  // namespace arangodb::velocypack
+
+namespace arangodb::replication2 {
+
+struct TermIndexPair {
+  LogTerm term{};
+  LogIndex index{};
+
+  TermIndexPair(LogTerm term, LogIndex index) noexcept;
+  TermIndexPair() = default;
+
+  void toVelocyPack(velocypack::Builder& builder) const;
+  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> TermIndexPair;
+
+  friend auto operator<=>(TermIndexPair const&, TermIndexPair const&) = default;
+  friend auto operator<<(std::ostream&, TermIndexPair) -> std::ostream&;
+};
+
+auto operator<<(std::ostream&, TermIndexPair) -> std::ostream&;
+[[nodiscard]] auto to_string(TermIndexPair pair) -> std::string;
+
+template<class Inspector>
+auto inspect(Inspector& f, TermIndexPair& x) {
+  return f.object(x).fields(f.field("term", x.term), f.field("index", x.index));
+}
+
+}  // namespace arangodb::replication2

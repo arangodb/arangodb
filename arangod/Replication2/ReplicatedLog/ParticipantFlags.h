@@ -23,16 +23,31 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedLog/CommitFailReason.h"
-#include "Replication2/ReplicatedLog/CompactionResponse.h"
-#include "Replication2/ReplicatedLog/CompactionResult.h"
-#include "Replication2/ReplicatedLog/CompactionStopReason.h"
-#include "Replication2/ReplicatedLog/CommitFailReason.h"
-#include "Replication2/ReplicatedLog/GlobalLogIdentifier.h"
-#include "Replication2/ReplicatedLog/LogId.h"
-#include "Replication2/ReplicatedLog/LogIndex.h"
-#include "Replication2/ReplicatedLog/LogRange.h"
-#include "Replication2/ReplicatedLog/LogTerm.h"
-#include "Replication2/ReplicatedLog/ParticipantFlags.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogGlobalSettings.h"
-#include "Replication2/ReplicatedLog/TermIndexPair.h"
+#include <ostream>
+
+namespace arangodb::replication2 {
+
+struct ParticipantFlags {
+  bool forced = false;
+  bool allowedInQuorum = true;
+  bool allowedAsLeader = true;
+
+  friend auto operator==(ParticipantFlags const& left,
+                         ParticipantFlags const& right) noexcept
+      -> bool = default;
+
+  friend auto operator<<(std::ostream&, ParticipantFlags const&)
+      -> std::ostream&;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, ParticipantFlags& x) {
+  return f.object(x).fields(
+      f.field("forced", x.forced).fallback(false),
+      f.field("allowedInQuorum", x.allowedInQuorum).fallback(true),
+      f.field("allowedAsLeader", x.allowedAsLeader).fallback(true));
+}
+
+auto operator<<(std::ostream&, ParticipantFlags const&) -> std::ostream&;
+
+}  // namespace arangodb::replication2

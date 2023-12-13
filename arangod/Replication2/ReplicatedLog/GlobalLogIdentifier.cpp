@@ -18,21 +18,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "GlobalLogIdentifier.h"
 
-#include "Replication2/ReplicatedLog/CommitFailReason.h"
-#include "Replication2/ReplicatedLog/CompactionResponse.h"
-#include "Replication2/ReplicatedLog/CompactionResult.h"
-#include "Replication2/ReplicatedLog/CompactionStopReason.h"
-#include "Replication2/ReplicatedLog/CommitFailReason.h"
-#include "Replication2/ReplicatedLog/GlobalLogIdentifier.h"
-#include "Replication2/ReplicatedLog/LogId.h"
-#include "Replication2/ReplicatedLog/LogIndex.h"
-#include "Replication2/ReplicatedLog/LogRange.h"
-#include "Replication2/ReplicatedLog/LogTerm.h"
-#include "Replication2/ReplicatedLog/ParticipantFlags.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogGlobalSettings.h"
-#include "Replication2/ReplicatedLog/TermIndexPair.h"
+#include "Inspection/include/Inspection/VPack.h"
+
+namespace arangodb::replication2 {
+
+GlobalLogIdentifier::GlobalLogIdentifier(std::string database, LogId id)
+    : database(std::move(database)), id(id) {}
+
+auto to_string(GlobalLogIdentifier const& gid) -> std::string {
+  VPackBuilder b;
+  velocypack::serialize(b, gid);
+  return b.toJson();
+}
+
+auto operator<<(std::ostream& os, GlobalLogIdentifier const& gid)
+    -> std::ostream& {
+  return os << to_string(gid);
+}
+
+}  // namespace arangodb::replication2

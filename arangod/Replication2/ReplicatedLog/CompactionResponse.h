@@ -23,16 +23,41 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedLog/CommitFailReason.h"
-#include "Replication2/ReplicatedLog/CompactionResponse.h"
+#include <string>
+#include <variant>
+
+#include "Basics/ErrorCode.h"
+
 #include "Replication2/ReplicatedLog/CompactionResult.h"
-#include "Replication2/ReplicatedLog/CompactionStopReason.h"
-#include "Replication2/ReplicatedLog/CommitFailReason.h"
-#include "Replication2/ReplicatedLog/GlobalLogIdentifier.h"
-#include "Replication2/ReplicatedLog/LogId.h"
-#include "Replication2/ReplicatedLog/LogIndex.h"
-#include "Replication2/ReplicatedLog/LogRange.h"
-#include "Replication2/ReplicatedLog/LogTerm.h"
-#include "Replication2/ReplicatedLog/ParticipantFlags.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogGlobalSettings.h"
-#include "Replication2/ReplicatedLog/TermIndexPair.h"
+
+namespace arangodb {
+template<typename T>
+class ResultT;
+}
+namespace arangodb::replication2::replicated_log {
+
+struct CompactionResponse {
+  struct Error {
+    ErrorCode error{0};
+    std::string errorMessage;
+
+    template<class Inspector>
+    friend auto inspect(Inspector& f, Error& x) {
+      return f.object(x).fields(f.field("error", x.error),
+                                f.field("errorMessage", x.errorMessage));
+    }
+  };
+  static auto fromResult(ResultT<CompactionResult>) -> CompactionResponse;
+
+  std::variant<CompactionResult, Error> value;
+
+  template<class Inspector>
+  friend auto inspect(Inspector& f, CompactionResponse& x) {
+    namespace insp = arangodb::inspection;
+    return f.variant(x.value).embedded("result").alternatives(
+        insp::type<CompactionResult>("ok"),
+        insp::type<CompactionResponse::Error>("error"));
+  }
+};
+
+}  // namespace arangodb::replication2::replicated_log

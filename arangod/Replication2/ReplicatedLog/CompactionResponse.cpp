@@ -18,21 +18,23 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "CompactionResponse.h"
 
-#include "Replication2/ReplicatedLog/CommitFailReason.h"
-#include "Replication2/ReplicatedLog/CompactionResponse.h"
-#include "Replication2/ReplicatedLog/CompactionResult.h"
-#include "Replication2/ReplicatedLog/CompactionStopReason.h"
-#include "Replication2/ReplicatedLog/CommitFailReason.h"
-#include "Replication2/ReplicatedLog/GlobalLogIdentifier.h"
-#include "Replication2/ReplicatedLog/LogId.h"
-#include "Replication2/ReplicatedLog/LogIndex.h"
-#include "Replication2/ReplicatedLog/LogRange.h"
-#include "Replication2/ReplicatedLog/LogTerm.h"
-#include "Replication2/ReplicatedLog/ParticipantFlags.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogGlobalSettings.h"
-#include "Replication2/ReplicatedLog/TermIndexPair.h"
+#include "Basics/ResultT.h"
+
+namespace arangodb::replication2::replicated_log {
+
+auto CompactionResponse::fromResult(ResultT<CompactionResult> res)
+    -> CompactionResponse {
+  if (res.fail()) {
+    return CompactionResponse{
+        Error{res.errorNumber(), std::string{res.errorMessage()}}};
+  } else {
+    return CompactionResponse{std::move(res).get()};
+  }
+}
+
+}  // namespace arangodb::replication2::replicated_log
