@@ -220,10 +220,9 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
-auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::Ball::
-    computeNeighbourhoodOfNextVertex(Ball& other, CandidatesStore& candidates)
-        -> void {
+auto WeightedTwoSidedEnumerator<
+    QueueType, PathStoreType, ProviderType,
+    PathValidator>::Ball::ensureQueueHasProcessableElement() -> void {
   TRI_ASSERT(!_queue.isEmpty());
   if (!_queue.hasProcessableElement()) {
     std::vector<Step*> looseEnds = _queue.getLooseEnds();
@@ -233,10 +232,37 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     auto&& preparedEnds = futureEnds.get();
 
     TRI_ASSERT(preparedEnds.size() != 0);
-    TRI_ASSERT(_queue.hasProcessableElement());
   }
+  TRI_ASSERT(_queue.hasProcessableElement());
+}
 
-  TRI_ASSERT(!_queue.isEmpty());
+template<class QueueType, class PathStoreType, class ProviderType,
+         class PathValidator>
+auto WeightedTwoSidedEnumerator<
+    QueueType, PathStoreType, ProviderType,
+    PathValidator>::Ball::validateSingletonPath(CandidatesStore& candidates)
+    -> void {
+  ensureQueueHasProcessableElement();
+  auto tmp = _queue.pop();
+
+  TRI_ASSERT(_queue.isEmpty());
+
+  auto posPrevious = _interior.append(std::move(tmp));
+  auto& step = _interior.getStepReference(posPrevious);
+  ValidationResult res = _validator.validatePath(step);
+
+  if (!res.isFiltered()) {
+    candidates.append(std::make_tuple(0.0, step, step));
+  }
+}
+
+template<class QueueType, class PathStoreType, class ProviderType,
+         class PathValidator>
+auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
+                                PathValidator>::Ball::
+    computeNeighbourhoodOfNextVertex(Ball& other, CandidatesStore& candidates)
+        -> void {
+  ensureQueueHasProcessableElement();
   auto tmp = _queue.pop();
 
   // if the other side has explored this vertex, don't add it again
@@ -434,7 +460,7 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     }
   }
 
-  return (_results.empty() && searchDone()) || isAlgorithmFinished();
+  return _results.empty() && searchDone();
 }
 
 /**
@@ -456,7 +482,24 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   clear();
 
   _left.reset(source, 0);
-  _right.reset(target, 0);
+
+  // TODO: this is not ideal; here's the issue: If source == target there is no
+  // search to be done as there is only *at most* one shortest path between a
+  // vertex and itself: the path of length and weight 0. If the vertex does not
+  // fulfill the global vertex condition, there is none. So the global vertex
+  // condition has to be evaluated! This is why the _left ball is used here.
+  //
+  // Admittedly, this choice is arbitrary: in our context a path is a sequence
+  // of edges that does not repeat vertices. Otherwise this path search would
+  // have to return all cycles based at the source == target vertex. This can be
+  // implemented using a OneSidedEnumerator if ever requested.
+  if (source == target) {
+    _singleton = true;
+    _right.clear();
+  } else {
+    _singleton = false;
+    _right.reset(target, 0);
+  }
   _resultPath.clear();
 }
 
@@ -617,15 +660,20 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   while (!searchDone()) {
     _resultsFetched = false;
 
-    auto searchLocation = getBallToContinueSearch();
-    if (searchLocation == BallSearchLocation::LEFT) {
-      _left.computeNeighbourhoodOfNextVertex(_right, _candidatesStore);
-    } else if (searchLocation == BallSearchLocation::RIGHT) {
-      _right.computeNeighbourhoodOfNextVertex(_left, _candidatesStore);
-    } else {
-      TRI_ASSERT(searchLocation == BallSearchLocation::FINISH);
-      // Our queue is empty. We cannot produce more results.
+    if (_singleton) {
+      _left.validateSingletonPath(_candidatesStore);
       setAlgorithmFinished();
+    } else {
+      auto searchLocation = getBallToContinueSearch();
+      if (searchLocation == BallSearchLocation::LEFT) {
+        _left.computeNeighbourhoodOfNextVertex(_right, _candidatesStore);
+      } else if (searchLocation == BallSearchLocation::RIGHT) {
+        _right.computeNeighbourhoodOfNextVertex(_left, _candidatesStore);
+      } else {
+        TRI_ASSERT(searchLocation == BallSearchLocation::FINISH);
+        // Our queue is empty. We cannot produce more results.
+        setAlgorithmFinished();
+      }
     }
 
     if (!_candidatesStore.isEmpty()) {

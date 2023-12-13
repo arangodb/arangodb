@@ -164,6 +164,9 @@ class WeightedTwoSidedEnumerator {
         -> void;
 
     [[nodiscard]] auto hasBeenVisited(Step const& step) -> bool;
+    auto validateSingletonPath(CandidatesStore& candidates) -> void;
+
+    auto ensureQueueHasProcessableElement() -> void;
 
     // Ensure that we have fetched all vertices in the _results list.
     // Otherwise, we will not be able to generate the resulting path
@@ -326,6 +329,7 @@ class WeightedTwoSidedEnumerator {
 
   bool _resultsFetched{false};
   bool _algorithmFinished{false};
+  bool _singleton{false};
 
   PathResult<ProviderType, Step> _resultPath;
 };
