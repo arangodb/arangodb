@@ -49,8 +49,6 @@ using namespace arangodb::basics;
 
 namespace {
 const double SETUP_TIMEOUT = 60.0;
-// Wait 2s to get the Lock in FastPath, otherwise assume dead-lock.
-const double FAST_PATH_LOCK_TIMEOUT = 2.0;
 
 std::string const finishUrl("/_api/aql/finish/");
 std::string const traverserUrl("/_internal/traverser/");
@@ -185,8 +183,8 @@ EngineInfoContainerDBServerServerBased::buildSetupRequest(
     transaction::Methods& trx, ServerID const& server, VPackSlice infoSlice,
     std::vector<bool> didCreateEngine, MapRemoteToSnippet& snippetIds,
     aql::ServerQueryIdList& serverToQueryId, std::mutex& serverToQueryIdLock,
-    network::ConnectionPool* pool,
-    network::RequestOptions const& options) const {
+    network::ConnectionPool* pool, network::RequestOptions const& options,
+    bool fastPath) const {
   TRI_ASSERT(!server.starts_with("server:"));
 
   auto byteSize = infoSlice.byteSize();
@@ -196,6 +194,9 @@ EngineInfoContainerDBServerServerBased::buildSetupRequest(
   // add the transaction ID header
   network::Headers headers;
   ClusterTrxMethods::addAQLTransactionHeader(trx, server, headers);
+  if (fastPath) {
+    headers.emplace(StaticStrings::AqlFastPath, "true");
+  }
 
   TRI_ASSERT(infoSlice.isObject()) << valueTypeName(infoSlice.type());
   TRI_ASSERT(infoSlice.get("clusterQueryId").isNumber<QueryId>())
@@ -378,9 +379,6 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
                                .clusterInfo()
                                .uniqid();
 
-  // decreases lock timeout manually for fast path
-  auto oldLockTimeout = _query.getLockTimeout();
-  _query.setLockTimeout(FAST_PATH_LOCK_TIMEOUT);
   std::mutex serverToQueryIdLock{};
   std::vector<std::tuple<ServerID, std::shared_ptr<VPackBuffer<uint8_t>>,
                          std::vector<bool>>>
@@ -410,9 +408,9 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       serversAdded.emplace(server);
     }
 
-    networkCalls.emplace_back(
-        buildSetupRequest(trx, server, infoSlice, didCreateEngine, snippetIds,
-                          serverToQueryId, serverToQueryIdLock, pool, options));
+    networkCalls.emplace_back(buildSetupRequest(
+        trx, server, infoSlice, didCreateEngine, snippetIds, serverToQueryId,
+        serverToQueryIdLock, pool, options, true /* fastPath */));
     if (!isReadOnly) {
       // need to keep a copy of the request only in case of write queries,
       // when it is possible that the initial lock request fails due to a
@@ -520,8 +518,6 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       trx.state()->coordinatorRerollTransactionId();
     }
 
-    // set back to default lock timeout for slow path fallback
-    _query.setLockTimeout(oldLockTimeout);
     LOG_TOPIC("f5022", DEBUG, Logger::AQL)
         << "Potential deadlock detected, using slow path for locking. This "
            "is expected if exclusive locks are used.";
@@ -565,7 +561,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       auto request = buildSetupRequest(
           trx, std::move(server), newRequest.slice(),
           std::move(didCreateEngine), snippetIds, serverToQueryId,
-          serverToQueryIdLock, pool, options);
+          serverToQueryIdLock, pool, options, false /* fastPath */);
       _query.incHttpRequests(unsigned(1));
       if (request.get().fail()) {
         // this will trigger the cleanupGuard.

@@ -186,6 +186,7 @@ class StaticStrings {
   static std::string const Authorization;
   static std::string const BatchContentType;
   static std::string const CacheControl;
+  static std::string const Chunked;
   static std::string const Close;
   static std::string const ClusterCommSource;
   static std::string const Code;
@@ -193,6 +194,8 @@ class StaticStrings {
   static std::string const ContentEncoding;
   static std::string const ContentLength;
   static std::string const ContentTypeHeader;
+  static std::string const Cookie;
+  ;
   static std::string const CorsMethods;
   static std::string const Error;
   static std::string const ErrorCode;
@@ -390,6 +393,7 @@ class StaticStrings {
 
   // aql api strings
   static std::string const AqlDocumentCall;
+  static std::string const AqlFastPath;
   static std::string const AqlRemoteExecute;
   static std::string const AqlRemoteCallStack;
   static std::string const AqlRemoteLimit;

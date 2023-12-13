@@ -195,7 +195,7 @@ QueryStreamCursor::QueryStreamCursor(
     _stateChangeCb = nullptr;
   }
 
-  _query->exitV8Context();
+  _query->exitV8Executor();
 }
 
 QueryStreamCursor::~QueryStreamCursor() {
@@ -255,7 +255,7 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(
   auto guard = scopeGuard([&]() noexcept {
     try {
       if (_query) {
-        _query->exitV8Context();
+        _query->exitV8Executor();
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("a2bf8", ERR, Logger::QUERIES)
@@ -324,7 +324,7 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
   auto guard = scopeGuard([&]() noexcept {
     try {
       if (_query) {
-        _query->exitV8Context();
+        _query->exitV8Executor();
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("db997", ERR, Logger::QUERIES)

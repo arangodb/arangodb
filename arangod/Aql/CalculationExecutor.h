@@ -31,7 +31,6 @@
 #include "Aql/types.h"
 #include "Transaction/Methods.h"
 
-#include <unordered_set>
 #include <vector>
 
 namespace arangodb {
@@ -138,10 +137,10 @@ class CalculationExecutor {
   InputAqlItemRow _currentRow;
   ExecutionState _rowState;
 
-  // true iff we entered a V8 context and didn't exit it yet.
-  // Necessary for owned contexts, which will not be exited when we call
+  // true iff we entered a V8 executor and didn't exit it yet.
+  // Necessary for owned executors, which will not be exited when we call
   // exitContext; but only for assertions in maintainer mode.
-  bool _hasEnteredContext;
+  bool _hasEnteredExecutor;
 };
 
 }  // namespace aql
