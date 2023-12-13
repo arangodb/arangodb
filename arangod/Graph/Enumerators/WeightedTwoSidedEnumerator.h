@@ -222,29 +222,6 @@ class WeightedTwoSidedEnumerator {
   };
   enum BallSearchLocation { LEFT, RIGHT, FINISH };
 
-  /*
-   * A class that is able to store valid shortest paths results.
-   * This is required to be able to check for duplicate paths, as those can be
-   * found during a KShortestPaths graphs search.
-   */
-  class ResultCache {
-   public:
-    ResultCache(Ball& left, Ball& right);
-    ~ResultCache();
-
-    // @brief: returns whether a path could be inserted or not.
-    // True: It will be inserted if this specific path has not been added yet.
-    // False: Could not insert as this path has already been found.
-    [[nodiscard]] auto tryAddResult(CalculatedCandidate const& candidate)
-        -> bool;
-    auto clear() -> void;
-
-   private:
-    Ball& _internalLeft;
-    Ball& _internalRight;
-    std::vector<PathResult<ProviderType, Step>> _internalResultsCache{};
-  };
-
  public:
   WeightedTwoSidedEnumerator(ProviderType&& forwardProvider,
                              ProviderType&& backwardProvider,
@@ -344,7 +321,6 @@ class WeightedTwoSidedEnumerator {
 
   // Templated result list, where only valid result(s) are stored in
   CandidatesStore _candidatesStore{};
-  ResultCache _resultsCache;
   ResultList _results{};
 
   bool _resultsFetched{false};
