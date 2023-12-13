@@ -38,7 +38,9 @@ export const QueryKeyboardShortcutProvider = ({
     hotkeys("ctrl+shift+enter,command+shift+enter", () => {
       onExplain({
         queryValue,
-        queryBindParams
+        queryBindParams,
+        queryOptions,
+        disabledRules
       });
     });
     return () => {
