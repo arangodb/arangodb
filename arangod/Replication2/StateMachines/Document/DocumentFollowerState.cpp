@@ -83,13 +83,12 @@ DocumentFollowerState::DocumentFollowerState(
       << "Spawned ApplyEntries actor " << _applyEntriesActor.id;
 }
 
-DocumentFollowerState::~DocumentFollowerState() {
-  _runtime->softShutdown();
-  while (not _runtime->areAllActorsIdle()) {
-    LOG_DEVEL << "waiting for actors to finish...\n"
-              << inspection::json(*_runtime);
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  }
+DocumentFollowerState::~DocumentFollowerState() { shutdownRuntime(); }
+
+void DocumentFollowerState::shutdownRuntime() noexcept {
+  LOG_CTX("19dec", DEBUG, loggerContext) << "shutting down actor runtime";
+  _runtime->shutdown();
+  LOG_CTX("7289f", DEBUG, loggerContext) << "all actors finished";
 }
 
 auto DocumentFollowerState::resign() && noexcept
@@ -104,13 +103,7 @@ auto DocumentFollowerState::resign() && noexcept
     _runtime->dispatch<actor::message::ApplyEntriesMessages>(
         _applyEntriesActor, _applyEntriesActor, actor::message::Resign{});
 
-    _runtime->softShutdown();
-    while (not _runtime->areAllActorsIdle()) {
-      LOG_DEVEL << "waiting for actors to finish...\n"
-                << inspection::json(*_runtime);
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
-    LOG_CTX("7289f", DEBUG, loggerContext) << "all actors finished";
+    shutdownRuntime();
 
     ADB_PROD_ASSERT(!data.didResign())
         << "Follower " << gid << " already resigned!";
@@ -433,10 +426,15 @@ auto DocumentFollowerState::applyEntries(
                                      .promise = std::move(promise)});
 
     return std::move(future).thenValue(
-        // TODO - capture a weak ptr?
-        [&](ResultT<std::optional<LogIndex>> res) -> Result {
+        [me =
+             weak_from_this()](ResultT<std::optional<LogIndex>> res) -> Result {
           if (res.fail()) {
             return res.result();
+          }
+
+          auto self = me.lock();
+          if (self == nullptr) {
+            return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
           }
           auto index = res.get();
           if (index.has_value()) {
@@ -444,11 +442,14 @@ auto DocumentFollowerState::applyEntries(
             // accessing the stream.
             auto releaseRes = basics::catchVoidToResult([&] {
               // TODO - is this getStream call actually safe?
-              auto const& stream = getStream();
+              // The comment above indicates that we might get an exception if
+              // we are already resigned, but getStream does not seem to handle
+              // that case, but instead simply contains an assertion
+              auto const& stream = self->getStream();
               stream->release(index.value());
             });
             if (releaseRes.fail()) {
-              LOG_CTX("10f07", ERR, loggerContext)
+              LOG_CTX("10f07", ERR, self->loggerContext)
                   << "Failed to get stream! " << releaseRes;
             }
           }

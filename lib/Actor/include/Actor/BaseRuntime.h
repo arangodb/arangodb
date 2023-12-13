@@ -196,6 +196,11 @@ struct BaseRuntime
     }
   }
 
+  auto shutdown() -> void {
+    softShutdown();
+    actors.waitForAll();
+  }
+
   IScheduler& scheduler() { return *_scheduler; }
 
   std::string const runtimeID;

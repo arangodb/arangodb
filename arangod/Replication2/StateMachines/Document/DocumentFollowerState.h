@@ -68,7 +68,7 @@ struct DocumentFollowerState
 
   auto getAssociatedShardList() const -> std::vector<ShardID>;
 
-  // protected:
+ protected:
   [[nodiscard]] auto resign() && noexcept
       -> std::unique_ptr<DocumentCore> override;
 
@@ -80,7 +80,9 @@ struct DocumentFollowerState
 
   using replicated_state::IReplicatedFollowerState<DocumentState>::getStream;
 
-  // private:
+ private:
+  void shutdownRuntime() noexcept;
+
   struct SnapshotTransferResult {
     Result res{};
     bool reportFailure{};
@@ -94,7 +96,6 @@ struct DocumentFollowerState
       futures::Future<ResultT<SnapshotBatch>>&& snapshotFuture) noexcept
       -> futures::Future<SnapshotTransferResult>;
 
-  // private:
   struct GuardedData {
     explicit GuardedData(std::unique_ptr<DocumentCore> core,
                          LoggerContext const& loggerContext);
@@ -111,8 +112,8 @@ struct DocumentFollowerState
   Handlers const _handlers;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
 
-  std::atomic<bool> _resigning{false};  // Allows for a quicker shutdown of the
-                                        // state machine upon resigning
+  std::atomic<bool> _resigning{false};  // Allows for a quicker shutdown of
+                                        // the state machine upon resigning
 
   std::shared_ptr<actor::LocalRuntime> _runtime;
   actor::LocalActorPID _applyEntriesActor;
