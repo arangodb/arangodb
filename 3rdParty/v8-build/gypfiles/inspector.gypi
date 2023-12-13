@@ -43,8 +43,8 @@
     ],
 
     'inspector_all_sources': [
-      '<(INSPECTOR_ROOT)/include/v8-inspector.h',
-      '<(INSPECTOR_ROOT)/include/v8-inspector-protocol.h',
+#      '<(INSPECTOR_ROOT)/include/v8-inspector.h',
+#      '<(INSPECTOR_ROOT)/include/v8-inspector-protocol.h',
       '<(INSPECTOR_ROOT)/src/inspector/crc32.cc',
       '<(INSPECTOR_ROOT)/src/inspector/crc32.h',
       '<(INSPECTOR_ROOT)/src/inspector/custom-preview.cc',

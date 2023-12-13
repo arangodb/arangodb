@@ -873,7 +873,6 @@
         'include_dirs': [
           '<(ABSL_INCLUDE_DIR)/',
           '<(generate_bytecode_output_root)',
-          '<(generate_bytecode_output_root)',
           '<(SHARED_INTERMEDIATE_DIR)',
         ],
       },
@@ -1072,7 +1071,8 @@
              }],
             ['OS=="win"', {
               'dependencies': [
-                '<(icu_gyp_path):icudata#target',
+#                '<(icu_gyp_path):icudata#target',
+                '<(icu_gyp_path):icustubdata#target',
               ],
             }],
           ],

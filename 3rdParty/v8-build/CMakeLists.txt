@@ -166,7 +166,7 @@ if (WIN32)
     -Dwerror=
     -Dembed_script=
     -Dwarmup_script=
-    -Dv8_enable_embedded_builtins=1
+    -Dv8_enable_embedded_builtins=0
     -Dembedded_builtins_snapshot_src=
     -Dv8_enable_handle_zapping=0
     -Dv8_use_snapshot=1
