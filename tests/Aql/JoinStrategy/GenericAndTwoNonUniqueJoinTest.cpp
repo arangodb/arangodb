@@ -419,6 +419,7 @@ TEST_P(GenericIndexMerger, one_iterator_corner_case) {
   // cannot be executed with the two indices join strategy (checked and
   // asserted). Therefore, only tested in the generic case.
   GenericJoinStrategy merger{std::move(iters), 1};
+  merger.reset({});
 
   bool hasMore = true;
   std::size_t count = 0;
@@ -456,6 +457,7 @@ TEST_P(GenericIndexMerger, three_iterators) {
   iters.emplace_back(std::make_unique<MyVectorIterator>(c), 0, isUnique);
 
   GenericJoinStrategy merger{std::move(iters), 1};
+  merger.reset({});
 
   bool hasMore = true;
   std::size_t count = 0;
@@ -493,6 +495,7 @@ TEST_P(GenericIndexMerger, three_iterators_2) {
   iters.emplace_back(std::make_unique<MyVectorIterator>(c), 0, isUnique);
 
   GenericJoinStrategy merger{std::move(iters), 1};
+  merger.reset({});
 
   bool hasMore = true;
   std::size_t count = 0;
