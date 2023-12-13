@@ -32,7 +32,9 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-#include "Replication2/ReplicatedLog/types.h"
+#include "Replication2/ReplicatedLog/AppendEntriesErrorReason.h"
+#include "Replication2/ReplicatedLog/FollowerState.h"
+#include "Replication2/ReplicatedLog/LogStatistics.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
 namespace arangodb::replication2::replicated_log {

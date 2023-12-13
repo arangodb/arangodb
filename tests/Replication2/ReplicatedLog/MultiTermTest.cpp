@@ -22,7 +22,6 @@
 
 #include <utility>
 
-#include "Replication2/ReplicatedLog/types.h"
 #include "Replication2/Helper/TestHelper.h"
 
 using namespace arangodb;
