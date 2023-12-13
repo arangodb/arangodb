@@ -145,7 +145,6 @@ class JoinExecutor {
   [[nodiscard]] ResourceMonitor& resourceMonitor();
 
   aql::AqlFunctionsInternalCache _functionsCache;
-  Fetcher& _fetcher;
   Infos& _infos;
   std::unique_ptr<AqlIndexJoinStrategy> _strategy;
 
