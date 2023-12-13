@@ -325,7 +325,6 @@ class WeightedTwoSidedEnumerator {
   CandidatesStore _candidatesStore{};
   ResultCache _resultsCache;
   ResultList _results{};
-  double _bestCandidateWeight = std::numeric_limits<double>::infinity();
 
   bool _resultsFetched{false};
   bool _algorithmFinished{false};

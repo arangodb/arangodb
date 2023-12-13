@@ -43,7 +43,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
-#include <limits>
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -432,7 +431,6 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   // Order is important here, please do not change.
   // 1.) Remove current results & state
   _candidatesStore.clear();
-  _bestCandidateWeight = std::numeric_limits<double>::infinity();
   _resultsCache.clear();
   _results.clear();
 
