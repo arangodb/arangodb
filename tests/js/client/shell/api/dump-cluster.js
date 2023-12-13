@@ -38,7 +38,7 @@ const collectionNameA = "A";
 function fillCollection(col, num) {
   let documents = [];
   for (let i = 0; i < num; i++) {
-    documents.push({value: i});
+    documents.push({value: i, some: {nested:{value: 1234}}});
     if (documents.length === 1000) {
       col.save(documents);
       documents = [];
@@ -193,6 +193,44 @@ function DumpAPI() {
 
       let response1 = apiNext(server, "DOES-NOT-EXIST", 0);
       assertEqual(response1.code, 404);
+    },
+
+    testSimpleProjections: function () {
+      const servers = getShardsByServer(collection);
+      const server = Object.keys(servers)[0];
+      const ctx = createContext(server, {shards: servers[server], projections: {"foo": ["value"]}});
+
+      for (const [doc, shard] of ctx.read()) {
+        assertEqual(Object.keys(doc), ["foo"]);
+        assertTrue(typeof doc.foo === 'number');
+      }
+      ctx.drop();
+    },
+
+    testProjectionsId: function () {
+      const servers = getShardsByServer(collection);
+      const server = Object.keys(servers)[0];
+      const ctx = createContext(server, {shards: servers[server], projections: {"foo": ["_id"]}});
+
+      for (const [doc, shard] of ctx.read()) {
+        assertEqual(Object.keys(doc), ["foo"]);
+        assertTrue(typeof doc.foo === 'string');
+        assertTrue(/^A\/\d+$/.test(doc.foo));
+      }
+      ctx.drop();
+    },
+
+    testProjectionsNested: function () {
+      const servers = getShardsByServer(collection);
+      const server = Object.keys(servers)[0];
+      const ctx = createContext(server, {shards: servers[server], projections: {"foo": ["some", "nested", "value"], "bar": ["value"]}});
+
+      for (const [doc, shard] of ctx.read()) {
+        assertEqual(Object.keys(doc).sort(), ["bar", "foo"]);
+        assertEqual(doc.foo, 1234);
+        assertTrue(typeof doc.bar === 'number');
+      }
+      ctx.drop();
     },
 
     testContextTTL: function () {
