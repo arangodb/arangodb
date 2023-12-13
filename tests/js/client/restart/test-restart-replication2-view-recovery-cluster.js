@@ -49,7 +49,7 @@ const waitForServersToBeInCurrent = () => {
     }
   });
   // Sleep a bit, to let AgencyCache see the update
-  require("internal").wait(0.2);
+  require("internal").wait(1);
 };
 
 const testSuite = (config) => {
