@@ -802,9 +802,9 @@ WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       return BallSearchLocation::RIGHT;
     }
   } else if (!_left.isQueueEmpty() && _right.isQueueEmpty()) {
-    return BallSearchLocation::RIGHT;
-  } else if (_left.isQueueEmpty() && !_right.isQueueEmpty()) {
     return BallSearchLocation::LEFT;
+  } else if (_left.isQueueEmpty() && !_right.isQueueEmpty()) {
+    return BallSearchLocation::RIGHT;
   }
 
   // Default
@@ -815,7 +815,7 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::searchDone() const -> bool {
-  return _left.noPathLeft() || _right.noPathLeft() || isAlgorithmFinished();
+  return (_left.noPathLeft() && _right.noPathLeft()) || isAlgorithmFinished();
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
