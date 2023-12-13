@@ -857,15 +857,20 @@ auto ensureIndexCoordinatorReplication2Inner(
   try {
     AgencyCallbackRegistry& callbackRegistry =
         clusterInfo.agencyCallbackRegistry();
-    // TODO: A unique index can actually fail here. Causing this loop to get
-    // stuck. We still need a proper implementation for this.
+    // NOTE: We do not need to synchronize this.
+    // The callback waitFor will only have a single thread calling it.
+    // As soon as this callback returns "true" the following future
+    // will be called in same thread, so there is no concurrency on read/write.
+    // In addition, the main thread here is synchronously waiting, so
+    // creationError is guaranteed to stay in scope.
+    Result creationError{};
     auto waitOnSuccess =
         callbackRegistry
             .waitFor(
                 pathCollectionInPlan(collection.vocbase().name(),
                                      std::to_string(collection.id().id()))
                     ->str(arangodb::cluster::paths::SkipComponents(1)),
-                [id = std::string{idString}](VPackSlice slice) {
+                [id = std::string{idString}, &creationError](VPackSlice slice) {
                   if (slice.isNone()) {
                     // TODO: Should this actual set an "error"? It indicates
                     // that the collection is dropped if i am not mistaken
@@ -882,12 +887,34 @@ auto ensureIndexCoordinatorReplication2Inner(
                       if (!indexSlice.hasKey(StaticStrings::IndexIsBuilding)) {
                         return true;
                       }
+                      auto maybeError = indexSlice.get("creationError");
+                      if (maybeError.isObject()) {
+                        // There has been an error reported on the DBServers
+                        auto status = velocypack::deserializeWithStatus(maybeError, creationError);
+                        if (!status.ok()) {
+                          LOG_DEVEL << "Failed to parse creationError: " << status.error() << " on " << maybeError.toJson();
+                          // Parsing error from Agency, report some generic error
+                          creationError = Result{
+                              TRI_ERROR_INTERNAL,
+                              fmt::format(
+                                  "Error while receiving Agency data: {}",
+                                  status.error())};
+                        }
+                        TRI_ASSERT(creationError.fail())
+                            << "An Index reported 'NO_ERROR' as an error in "
+                               "current during creation.";
+                        return true;
+                      }
                     }
                   }
                   return false;
                 })
             .thenValue([&clusterInfo,
-                        &server](auto index) -> futures::Future<Result> {
+                        &server, &creationError](auto index) -> futures::Future<Result> {
+              if (creationError.fail()) {
+                // Just forward the error, no need to wait anywhere.
+                return creationError;
+              }
               if (clusterInfo.getPlanIndex() < index) {
                 // Need to wait here, until ClusterInfo has updated to latest
                 // plan.
@@ -1391,7 +1418,7 @@ Result ClusterIndexMethods::ensureIndexCoordinator(
       if (collection.replicationVersion() == replication::Version::TWO) {
         auto tmpRes = ::ensureIndexCoordinatorReplication2Inner(
             collection, idString, slice, create, timeout, server);
-        if (!res.ok()) {
+        if (!tmpRes.ok()) {
           res = tmpRes.result();
         } else {
           resultBuilder = std::move(tmpRes.get());
