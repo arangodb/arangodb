@@ -22,5 +22,30 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Replication2/ReplicatedLog/Agency/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+#include <optional>
+#include <string>
+#include <velocypack/SharedSlice.h>
+
+#include <Basics/StaticStrings.h>
+
+namespace arangodb::replication2::agency {
+
+struct ImplementationSpec {
+  std::string type;
+  std::optional<velocypack::SharedSlice> parameters;
+
+  friend auto operator==(ImplementationSpec const& s,
+                         ImplementationSpec const& s2) noexcept -> bool;
+};
+
+auto operator==(ImplementationSpec const& s,
+                ImplementationSpec const& s2) noexcept -> bool;
+
+template<class Inspector>
+auto inspect(Inspector& f, ImplementationSpec& x) {
+  return f.object(x).fields(
+      f.field(StaticStrings::IndexType, x.type),
+      f.field(StaticStrings::DataSourceParameters, x.parameters));
+}
+
+}  // namespace arangodb::replication2::agency

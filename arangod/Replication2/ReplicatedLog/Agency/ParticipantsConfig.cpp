@@ -20,7 +20,18 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#pragma once
 
-#include "Replication2/ReplicatedLog/Agency/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+#include "ParticipantsConfig.h"
+
+#include "Inspection/VPack.h"
+
+namespace arangodb::replication2::agency {
+
+auto operator<<(std::ostream& os, ParticipantsConfig const& config)
+    -> std::ostream& {
+  VPackBuilder builder;
+  velocypack::serialize(builder, config);
+  return os << builder.toJson();
+}
+
+}  // namespace arangodb::replication2::agency

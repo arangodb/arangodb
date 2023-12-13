@@ -12,7 +12,6 @@ target_sources(arango_replication2 PRIVATE
   )
 
 target_sources(arango_replication2_pure PRIVATE
-  AgencyLogSpecification.cpp
   Algorithms.cpp
   AppendEntriesErrorReason.cpp
   CommitFailReason.cpp
@@ -67,3 +66,5 @@ target_sources(arango_replication2_pure PRIVATE
   Components/StateHandleManager.cpp Components/StateHandleManager.h
   Components/StorageManager.cpp Components/StorageManager.h
   )
+
+add_subdirectory(Agency)

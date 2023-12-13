@@ -22,5 +22,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Replication2/ReplicatedLog/Agency/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+#include <optional>
+
+#include "Replication2/ReplicatedLog/Agency/LogCurrent.h"
+#include "Replication2/ReplicatedLog/Agency/LogPlanSpecification.h"
+#include "Replication2/ReplicatedLog/Agency/LogTarget.h"
+
+namespace arangodb::replication2::agency {
+
+/* Convenience Wrapper */
+struct Log {
+  LogTarget target;
+
+  // These two do not necessarily exist in the Agency
+  // so when we're called for a Log these might not
+  // exist
+  std::optional<LogPlanSpecification> plan;
+  std::optional<LogCurrent> current;
+  friend auto operator==(Log const& s, Log const& s2) noexcept
+      -> bool = default;
+};
+
+}  // namespace arangodb::replication2::agency

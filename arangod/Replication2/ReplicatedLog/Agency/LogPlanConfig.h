@@ -22,5 +22,30 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Replication2/ReplicatedLog/Agency/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+#include <cstdint>
+
+namespace arangodb::replication2::agency {
+
+struct LogPlanConfig {
+  std::size_t effectiveWriteConcern = 1;
+  // TODO: Move this to the term config, we won't allow changing this
+  // intra-term.
+  bool waitForSync = false;
+
+  LogPlanConfig() noexcept = default;
+
+  LogPlanConfig(std::size_t effectiveWriteConcern, bool waitForSync) noexcept
+      : effectiveWriteConcern(effectiveWriteConcern),
+        waitForSync(waitForSync) {}
+  friend auto operator==(LogPlanConfig const& left,
+                         LogPlanConfig const& right) noexcept -> bool = default;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, LogPlanConfig& x) {
+  return f.object(x).fields(
+      f.field("effectiveWriteConcern", x.effectiveWriteConcern),
+      f.field("waitForSync", x.waitForSync));
+}
+
+}  // namespace arangodb::replication2::agency

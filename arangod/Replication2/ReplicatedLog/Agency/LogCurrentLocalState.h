@@ -22,5 +22,31 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Replication2/ReplicatedLog/Agency/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+#include "Basics/RebootId.h"
+#include "Replication2/ReplicatedLog/LogId.h"
+#include "Replication2/ReplicatedLog/LogTerm.h"
+#include "Replication2/ReplicatedLog/TermIndexPair.h"
+#include "Replication2/ReplicatedLog/LocalStateMachineStatus.h"
+
+namespace arangodb::replication2::agency {
+
+struct LogCurrentLocalState {
+  LogTerm term{};
+  TermIndexPair spearhead{};
+  bool snapshotAvailable{false};
+  replicated_log::LocalStateMachineStatus state;
+  RebootId rebootId = RebootId(0);
+
+  LogCurrentLocalState() = default;
+  LogCurrentLocalState(LogTerm term, TermIndexPair spearhead, bool snapshot,
+                       RebootId rebootId) noexcept
+      : term(term),
+        spearhead(spearhead),
+        snapshotAvailable(snapshot),
+        rebootId(rebootId) {}
+  friend auto operator==(LogCurrentLocalState const& s,
+                         LogCurrentLocalState const& s2) noexcept
+      -> bool = default;
+};
+
+}  // namespace arangodb::replication2::agency

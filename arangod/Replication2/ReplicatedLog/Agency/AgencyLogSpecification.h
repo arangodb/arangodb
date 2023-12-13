@@ -22,5 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Replication2/ReplicatedLog/Agency/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+#include "Replication2/ReplicatedLog/Agency/ImplementationSpec.h"
+#include "Replication2/ReplicatedLog/Agency/Log.h"
+#include "Replication2/ReplicatedLog/Agency/LogCurrentLocalState.h"
+#include "Replication2/ReplicatedLog/Agency/LogCurrentSupervisionElection.h"
+#include "Replication2/ReplicatedLog/Agency/LogCurrentSupervision.h"
+#include "Replication2/ReplicatedLog/Agency/LogPlanConfig.h"
+#include "Replication2/ReplicatedLog/Agency/LogPlanSpecification.h"
+#include "Replication2/ReplicatedLog/Agency/LogPlanTermSpecification.h"
+#include "Replication2/ReplicatedLog/Agency/ParticipantsConfig.h"
+#include "Replication2/ReplicatedLog/Agency/Properties.h"
+#include "Replication2/ReplicatedLog/Agency/ServerInstanceReference.h"

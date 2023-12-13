@@ -20,7 +20,22 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#pragma once
 
-#include "Replication2/ReplicatedLog/Agency/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+#include "LogPlanTermSpecification.h"
+
+#include "Inspection/VPack.h"
+
+namespace arangodb::replication2::agency {
+
+LogPlanTermSpecification::LogPlanTermSpecification(
+    LogTerm term, std::optional<ServerInstanceReference> leader)
+    : term(term), leader(std::move(leader)) {}
+
+auto operator<<(std::ostream& os, LogPlanTermSpecification const& term)
+    -> std::ostream& {
+  VPackBuilder builder;
+  velocypack::serialize(builder, term);
+  return os << builder.toJson();
+}
+
+}  // namespace arangodb::replication2::agency

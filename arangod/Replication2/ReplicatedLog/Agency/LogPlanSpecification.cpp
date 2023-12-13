@@ -18,44 +18,32 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#include "SupervisionAction.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-common.h>
+#include "LogPlanSpecification.h"
 
 #include "Inspection/VPack.h"
-#include "Logger/LogMacros.h"
-#include "Replication2/AgencyCollectionSpecification.h"
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
-#include <fmt/core.h>
-#include <variant>
+namespace arangodb::replication2::agency {
 
-using namespace arangodb::replication2::agency;
+LogPlanSpecification::LogPlanSpecification(
+    LogId id, std::optional<LogPlanTermSpecification> term)
+    : id(id), currentTerm(std::move(term)) {}
 
-namespace arangodb::replication2::replicated_log {
+LogPlanSpecification::LogPlanSpecification(
+    LogId id, std::optional<LogPlanTermSpecification> term,
+    ParticipantsConfig participantsConfig)
+    : id(id),
+      currentTerm(std::move(term)),
+      participantsConfig(std::move(participantsConfig)) {}
 
-auto executeAction(Log log, Action& action) -> ActionContext {
-  auto currentSupervision =
-      std::invoke([&]() -> std::optional<LogCurrentSupervision> {
-        if (log.current.has_value()) {
-          return log.current->supervision;
-        } else {
-          return std::nullopt;
-        }
-      });
-
-  if (!currentSupervision.has_value()) {
-    currentSupervision.emplace();
-  }
-
-  auto ctx = ActionContext{std::move(log.plan), std::move(currentSupervision)};
-
-  std::visit([&](auto&& action) { action.execute(ctx); }, action);
-  return ctx;
+auto operator<<(std::ostream& os, LogPlanSpecification const& term)
+    -> std::ostream& {
+  VPackBuilder builder;
+  velocypack::serialize(builder, term);
+  return os << builder.toJson();
 }
 
-}  // namespace arangodb::replication2::replicated_log
+}  // namespace arangodb::replication2::agency

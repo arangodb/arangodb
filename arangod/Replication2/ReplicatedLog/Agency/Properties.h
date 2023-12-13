@@ -22,5 +22,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Replication2/ReplicatedLog/Agency/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+#include "Replication2/ReplicatedLog/Agency/ImplementationSpec.h"
+
+namespace arangodb::replication2::agency {
+
+struct Properties {
+  ImplementationSpec implementation;
+
+  friend auto operator==(Properties const& s, Properties const& s2) noexcept
+      -> bool = default;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, Properties& x) {
+  return f.object(x).fields(f.field("implementation", x.implementation));
+}
+
+}  // namespace arangodb::replication2::agency

@@ -20,7 +20,14 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#pragma once
 
-#include "Replication2/ReplicatedLog/Agency/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+#include "ServerInstanceReference.h"
+
+namespace arangodb::replication2::agency {
+
+auto operator<<(std::ostream& os, ServerInstanceReference const& sir) noexcept
+    -> std::ostream& {
+  return os << sir.serverId << ":" << sir.rebootId;
+}
+
+}  // namespace arangodb::replication2::agency
