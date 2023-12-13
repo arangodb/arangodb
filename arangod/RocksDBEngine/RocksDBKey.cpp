@@ -89,10 +89,13 @@ void RocksDBKey::constructFromBuffer(std::string_view buffer) {
 void RocksDBKey::constructZkdIndexValue(uint64_t indexId,
                                         zkd::byte_string const& value) {
   _type = RocksDBEntryType::ZkdIndexValue;
-  size_t keyLength = sizeof(uint64_t) + value.size();
+  auto indexValues = VPackSlice::emptyArraySlice();
+  size_t keyLength = sizeof(uint64_t) + value.size() + indexValues.byteSize();
   _buffer->clear();
   _buffer->reserve(keyLength);
   uint64ToPersistent(*_buffer, indexId);
+  _buffer->append(reinterpret_cast<char const*>(indexValues.begin()),
+                  indexValues.byteSize());
   auto sv = std::string_view{reinterpret_cast<const char*>(value.data()),
                              value.size()};
   _buffer->append(sv.data(), sv.size());
@@ -103,10 +106,14 @@ void RocksDBKey::constructZkdIndexValue(uint64_t indexId,
                                         zkd::byte_string const& value,
                                         LocalDocumentId documentId) {
   _type = RocksDBEntryType::ZkdIndexValue;
-  size_t keyLength = sizeof(uint64_t) + value.size() + sizeof(uint64_t);
+  auto indexValues = VPackSlice::emptyArraySlice();
+  size_t keyLength = sizeof(uint64_t) + value.size() + sizeof(uint64_t) +
+                     indexValues.byteSize();
   _buffer->clear();
   _buffer->reserve(keyLength);
   uint64ToPersistent(*_buffer, indexId);
+  _buffer->append(reinterpret_cast<char const*>(indexValues.begin()),
+                  indexValues.byteSize());
   auto sv = std::string_view{reinterpret_cast<const char*>(value.data()),
                              value.size()};
   _buffer->append(sv.data(), sv.size());
@@ -530,9 +537,14 @@ VPackSlice RocksDBKey::indexedVPack(char const* data, size_t size) {
 zkd::byte_string_view RocksDBKey::zkdIndexValue(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size > 2 * sizeof(uint64_t));
+  auto* vpack = reinterpret_cast<const char*>(data) + sizeof(uint64_t);
+  auto* curve =
+      vpack + VPackSlice(reinterpret_cast<const uint8_t*>(vpack)).byteSize();
+
+  // TODO This code is completely broken in the unique index case
   return zkd::byte_string_view(
-      reinterpret_cast<const std::byte*>(data) + sizeof(uint64_t),
-      size - 2 * sizeof(uint64_t));
+      reinterpret_cast<const std::byte*>(curve),
+      std::distance(curve, data + size - sizeof(uint64_t)));
 }
 
 zkd::byte_string_view RocksDBKey::zkdIndexValue(const rocksdb::Slice& slice) {
