@@ -66,6 +66,8 @@ if (LINUX OR DARWIN)
         --prefix=${CMAKE_CURRENT_BINARY_DIR}
         --with-malloc-conf=${JEMALLOC_CONFIG}
         --with-version=${JEMALLOC_VERSION}-0-g0
+        --enable-opt-safety-checks
+        --enable-opt-size-checks
         ${JEMALLOC_PROF}
     BUILD_COMMAND
       $(MAKE) build_lib_static
