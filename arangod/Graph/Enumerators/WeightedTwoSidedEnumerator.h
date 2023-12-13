@@ -67,9 +67,6 @@ class WeightedTwoSidedEnumerator {
   enum Direction { FORWARD, BACKWARD };
 
   using VertexRef = arangodb::velocypack::HashedStringRef;
-
-  using Shell = std::multiset<Step>;
-  using ResultList = std::deque<CalculatedCandidate>;
   using GraphOptions = arangodb::graph::TwoSidedEnumeratorOptions;
 
   /*
@@ -321,7 +318,6 @@ class WeightedTwoSidedEnumerator {
 
   // Templated result list, where only valid result(s) are stored in
   CandidatesStore _candidatesStore{};
-  ResultList _results{};
 
   bool _resultsFetched{false};
   bool _algorithmFinished{false};
