@@ -38,26 +38,9 @@
 #include "VocBase/LogicalCollection.h"
 #include "Zkd/ZkdHelper.h"
 #include "Logger/LogMacros.h"
+#include "ClusterEngine/ClusterIndex.h"
 
 using namespace arangodb;
-
-/*namespace {
-
-auto coordsToVector(zkd::byte_string_view bs, size_t dim) -> std::vector<double>
-{ auto vs = zkd::transpose(bs, dim);
-
-  std::vector<double> res;
-  res.reserve(dim);
-
-  for (auto&& v : vs) {
-    zkd::BitReader r(v);
-    std::ignore = r.next();
-    res.push_back(zkd::from_bit_reader_fixed_length<double>(r));
-  }
-  return res;
-}
-
-}*/
 
 namespace arangodb {
 
@@ -68,17 +51,27 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
                           LogicalCollection* collection,
                           RocksDBZkdIndexBase* index, transaction::Methods* trx,
                           zkd::byte_string min, zkd::byte_string max,
-                          std::size_t dim, ReadOwnWrites readOwnWrites,
-                          size_t lookahead)
+                          transaction::BuilderLeaser prefix, std::size_t dim,
+                          ReadOwnWrites readOwnWrites, size_t lookahead)
       : IndexIterator(collection, trx, readOwnWrites),
-        _bound(RocksDBKeyBounds::ZkdIndex(index->objectId())),
         _min(std::move(min)),
         _max(std::move(max)),
         _dim(dim),
+        _prefix(std::move(prefix)),
         _index(index),
         _lookahead(lookahead) {
     _cur = _min;
-    _upperBound = _bound.end();
+
+    VPackBuilder builder;
+    {
+      VPackArrayBuilder ab(&builder);
+      builder.add(VPackArrayIterator(_prefix->slice()));
+      builder.add(VPackSlice::maxKeySlice());
+    }
+
+    _upperBoundKey.constructZkdIndexValue(index->objectId(), builder.slice(),
+                                          {});
+    _upperBound = _upperBoundKey.string();
 
     RocksDBTransactionMethods* mthds =
         RocksDBTransactionState::toMethods(trx, _collection->id());
@@ -87,9 +80,10 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
       opts.iterate_upper_bound = &_upperBound;
     });
     TRI_ASSERT(_iter != nullptr);
-    _iter->SeekToFirst();
     _compareResult.resize(_dim);
   }
+
+  RocksDBKey _upperBoundKey;
 
   std::string_view typeName() const noexcept final {
     return "rocksdb-zkd-index-iterator";
@@ -108,8 +102,10 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
       switch (_iterState) {
         case IterState::SEEK_ITER_TO_CUR: {
           RocksDBKey rocks_key;
-          rocks_key.constructZkdIndexValue(_index->objectId(), _cur);
+          rocks_key.constructZkdIndexValue(_index->objectId(), _prefix->slice(),
+                                           _cur);
           _iter->Seek(rocks_key.string());
+
           if (!_iter->Valid()) {
             rocksutils::checkIteratorStatus(*_iter);
             _iterState = IterState::DONE;
@@ -120,8 +116,8 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
           }
         } break;
         case IterState::CHECK_CURRENT_ITER: {
-          auto const rocksKey = _iter->key();
-          auto const byteStringKey = RocksDBKey::zkdIndexValue(rocksKey);
+          auto rocksKey = _iter->key();
+          auto byteStringKey = RocksDBKey::zkdIndexValue(rocksKey);
 
           bool foundNextZValueInBox =
               zkd::testInBox(byteStringKey, _min, _max, _dim);
@@ -133,6 +129,8 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
               _iterState = IterState::DONE;
               break;  // for loop
             }
+            rocksKey = _iter->key();
+            byteStringKey = RocksDBKey::zkdIndexValue(rocksKey);
             foundNextZValueInBox =
                 zkd::testInBox(byteStringKey, _min, _max, _dim);
           }
@@ -225,12 +223,12 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
   }
 
  private:
-  RocksDBKeyBounds _bound;
   rocksdb::Slice _upperBound;
   zkd::byte_string _cur;
   const zkd::byte_string _min;
   const zkd::byte_string _max;
   const std::size_t _dim;
+  transaction::BuilderLeaser const _prefix;
 
   enum class IterState {
     SEEK_ITER_TO_CUR = 0,
@@ -304,16 +302,17 @@ auto readDocumentKey(
   return zkd::interleave(v);
 }
 
-auto boundsForIterator(Index const* index, const aql::AstNode* node,
-                       const aql::Variable* reference,
-                       const IndexIteratorOptions& opts)
+auto boundsForIterator(RocksDBZkdIndexBase const* index,
+                       const aql::AstNode* node, const aql::Variable* reference,
+                       const IndexIteratorOptions& opts,
+                       velocypack::Builder& prefixValuesBuilder)
     -> std::pair<zkd::byte_string, zkd::byte_string> {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
-
+  std::unordered_map<size_t, aql::AstNode const*> extractedPrefix;
   std::unordered_map<size_t, zkd::ExpressionBounds> extractedBounds;
   std::unordered_set<aql::AstNode const*> unusedExpressions;
-  extractBoundsFromCondition(index, node, reference, extractedBounds,
-                             unusedExpressions);
+  extractBoundsFromCondition(index, node, reference, extractedPrefix,
+                             extractedBounds, unusedExpressions);
 
   TRI_ASSERT(unusedExpressions.empty());
 
@@ -339,16 +338,41 @@ auto boundsForIterator(Index const* index, const aql::AstNode* node,
     }
   }
 
+  prefixValuesBuilder.clear();
+  prefixValuesBuilder.openArray();
+  for (auto&& [idx, field] : enumerate(index->sortedPrefixFields())) {
+    auto it = extractedPrefix.find(idx);
+    TRI_ASSERT(it != extractedPrefix.end());
+    aql::AstNode const* value = it->second;
+    TRI_ASSERT(value->isConstant());
+    value->toVelocyPackValue(prefixValuesBuilder);
+  }
+  prefixValuesBuilder.close();
+
   TRI_ASSERT(min.size() == dim);
   TRI_ASSERT(max.size() == dim);
 
   return std::make_pair(zkd::interleave(min), zkd::interleave(max));
 }
+
+std::vector<std::vector<basics::AttributeName>> const& getSortedPrefixFields(
+    Index const* index) {
+  if (auto ptr = dynamic_cast<RocksDBZkdIndexBase const*>(index);
+      ptr != nullptr) {
+    return ptr->sortedPrefixFields();
+  }
+  if (auto ptr = dynamic_cast<ClusterIndex const*>(index); ptr != nullptr) {
+    return ptr->sortedPrefixFields();
+  }
+  return Index::emptyCoveredFields;
+}
+
 }  // namespace
 
 void zkd::extractBoundsFromCondition(
     Index const* index, const aql::AstNode* condition,
     const aql::Variable* reference,
+    std::unordered_map<size_t, aql::AstNode const*>& extractedPrefix,
     std::unordered_map<size_t, ExpressionBounds>& extractedBounds,
     std::unordered_set<aql::AstNode const*>& unusedExpressions) {
   TRI_ASSERT(condition->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
@@ -425,11 +449,41 @@ void zkd::extractBoundsFromCondition(
     return false;
   };
 
+  auto const checkIsPrefixValue = [&](aql::AstNode* op, aql::AstNode* access,
+                                      aql::AstNode* other) -> bool {
+    TRI_ASSERT(op->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
+
+    std::pair<aql::Variable const*, std::vector<basics::AttributeName>>
+        attributeData;
+    if (!access->isAttributeAccessForVariable(attributeData) ||
+        attributeData.first != reference) {
+      // this access is not referencing this collection
+      return false;
+    }
+
+    for (auto&& [idx, field] : enumerate(getSortedPrefixFields(index))) {
+      if (attributeData.second != field) {
+        continue;
+      }
+
+      auto [it, inserted] = extractedPrefix.emplace(idx, other);
+      TRI_ASSERT(inserted) << "duplicate access for " << attributeData.second;
+      return true;
+    }
+    return false;
+  };
+
   for (size_t i = 0; i < condition->numMembers(); ++i) {
     bool ok = false;
     auto op = condition->getMemberUnchecked(i);
     switch (op->type) {
       case aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+        ok |= checkIsPrefixValue(op, op->getMember(0), op->getMember(1));
+        ok |= checkIsPrefixValue(op, op->getMember(1), op->getMember(0));
+        if (ok) {
+          break;
+        }
+        [[fallthrough]];
       case aql::NODE_TYPE_OPERATOR_BINARY_LE:
       case aql::NODE_TYPE_OPERATOR_BINARY_GE:
       case aql::NODE_TYPE_OPERATOR_BINARY_LT:
@@ -453,19 +507,23 @@ auto zkd::supportsFilterCondition(
     const aql::AstNode* node, const aql::Variable* reference,
     size_t itemsInIndex) -> Index::FilterCosts {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
-
+  std::unordered_map<size_t, aql::AstNode const*> extractedPrefix;
   std::unordered_map<size_t, ExpressionBounds> extractedBounds;
   std::unordered_set<aql::AstNode const*> unusedExpressions;
-  extractBoundsFromCondition(index, node, reference, extractedBounds,
-                             unusedExpressions);
+  extractBoundsFromCondition(index, node, reference, extractedPrefix,
+                             extractedBounds, unusedExpressions);
 
   if (extractedBounds.empty()) {
     return {};
   }
 
+  if (extractedPrefix.size() != getSortedPrefixFields(index).size()) {
+    return {};  // all prefix values have to be assigned
+  }
+
   // TODO -- actually return costs
-  auto costs =
-      Index::FilterCosts::defaultCosts(itemsInIndex / extractedBounds.size());
+  auto costs = Index::FilterCosts::defaultCosts(
+      /*itemsInIndex / extractedBounds.size()*/ 1);
   costs.coveredAttributes = extractedBounds.size();
   costs.supportsCondition = true;
   return costs;
@@ -473,10 +531,11 @@ auto zkd::supportsFilterCondition(
 
 auto zkd::specializeCondition(Index const* index, aql::AstNode* condition,
                               const aql::Variable* reference) -> aql::AstNode* {
+  std::unordered_map<size_t, aql::AstNode const*> extractedPrefix;
   std::unordered_map<size_t, ExpressionBounds> extractedBounds;
   std::unordered_set<aql::AstNode const*> unusedExpressions;
-  extractBoundsFromCondition(index, condition, reference, extractedBounds,
-                             unusedExpressions);
+  extractBoundsFromCondition(index, condition, reference, extractedPrefix,
+                             extractedBounds, unusedExpressions);
 
   std::vector<aql::AstNode const*> children;
 
@@ -560,16 +619,14 @@ Result RocksDBZkdIndexBase::insert(transaction::Methods& trx,
   TRI_ASSERT(_unique == false);
   TRI_ASSERT(_sparse == false);
 
-  // TODO what about performChecks?
-
   auto key_value = readDocumentKey(doc, _fields);
+  auto prefixValues = extractAttributeValues(trx, _sortedPrefixValues, doc);
 
   RocksDBKey rocks_key;
-  rocks_key.constructZkdIndexValue(objectId(), key_value, documentId);
+  rocks_key.constructZkdIndexValue(objectId(), prefixValues->slice(), key_value,
+                                   documentId);
 
   auto storedValues = extractAttributeValues(trx, _storedValues, doc);
-  auto prefixValues = extractAttributeValues(trx, _sortedPrefixValues, doc);
-  LOG_DEVEL << prefixValues->toJson();
   auto value = RocksDBValue::ZkdIndexValue(storedValues->slice());
   auto s = methods->PutUntracked(_cf, rocks_key, value.string());
   if (!s.ok()) {
@@ -588,9 +645,11 @@ Result RocksDBZkdIndexBase::remove(transaction::Methods& trx,
   TRI_ASSERT(_sparse == false);
 
   auto key_value = readDocumentKey(doc, _fields);
+  auto prefixValues = extractAttributeValues(trx, _sortedPrefixValues, doc);
 
   RocksDBKey rocks_key;
-  rocks_key.constructZkdIndexValue(objectId(), key_value, documentId);
+  rocks_key.constructZkdIndexValue(objectId(), prefixValues->slice(), key_value,
+                                   documentId);
 
   auto s = methods->SingleDelete(_cf, rocks_key);
   if (!s.ok()) {
@@ -671,22 +730,24 @@ std::unique_ptr<IndexIterator> RocksDBZkdIndexBase::iteratorForCondition(
     ResourceMonitor& monitor, transaction::Methods* trx,
     const aql::AstNode* node, const aql::Variable* reference,
     const IndexIteratorOptions& opts, ReadOwnWrites readOwnWrites, int) {
-  auto&& [min, max] = boundsForIterator(this, node, reference, opts);
+  transaction::BuilderLeaser leaser(trx);
+  auto&& [min, max] = boundsForIterator(this, node, reference, opts, *leaser);
 
   return std::make_unique<RocksDBZkdIndexIterator<false>>(
       monitor, &_collection, this, trx, std::move(min), std::move(max),
-      fields().size(), readOwnWrites, opts.lookahead);
+      std::move(leaser), fields().size(), readOwnWrites, opts.lookahead);
 }
 
 std::unique_ptr<IndexIterator> RocksDBUniqueZkdIndex::iteratorForCondition(
     ResourceMonitor& monitor, transaction::Methods* trx,
     const aql::AstNode* node, const aql::Variable* reference,
     const IndexIteratorOptions& opts, ReadOwnWrites readOwnWrites, int) {
-  auto&& [min, max] = boundsForIterator(this, node, reference, opts);
+  transaction::BuilderLeaser leaser(trx);
+  auto&& [min, max] = boundsForIterator(this, node, reference, opts, *leaser);
 
   return std::make_unique<RocksDBZkdIndexIterator<true>>(
       monitor, &_collection, this, trx, std::move(min), std::move(max),
-      fields().size(), readOwnWrites, opts.lookahead);
+      std::move(leaser), fields().size(), readOwnWrites, opts.lookahead);
 }
 
 Result RocksDBUniqueZkdIndex::insert(transaction::Methods& trx,
@@ -700,9 +761,11 @@ Result RocksDBUniqueZkdIndex::insert(transaction::Methods& trx,
 
   // TODO what about performChecks
   auto key_value = readDocumentKey(doc, _fields);
+  auto prefixValues = extractAttributeValues(trx, _sortedPrefixValues, doc);
 
   RocksDBKey rocks_key;
-  rocks_key.constructZkdIndexValue(objectId(), key_value);
+  rocks_key.constructZkdIndexValue(objectId(), prefixValues->slice(),
+                                   key_value);
 
   if (!options.checkUniqueConstraintsInPreflight) {
     transaction::StringLeaser leased(&trx);
@@ -716,7 +779,6 @@ Result RocksDBUniqueZkdIndex::insert(transaction::Methods& trx,
   }
 
   auto storedValues = extractAttributeValues(trx, _storedValues, doc);
-  auto prefixValues = extractAttributeValues(trx, _sortedPrefixValues, doc);
   auto value =
       RocksDBValue::UniqueZkdIndexValue(documentId, storedValues->slice());
 
@@ -736,9 +798,11 @@ Result RocksDBUniqueZkdIndex::remove(transaction::Methods& trx,
   TRI_ASSERT(_sparse == false);
 
   auto key_value = readDocumentKey(doc, _fields);
+  auto prefixValues = extractAttributeValues(trx, _sortedPrefixValues, doc);
 
   RocksDBKey rocks_key;
-  rocks_key.constructZkdIndexValue(objectId(), key_value);
+  rocks_key.constructZkdIndexValue(objectId(), prefixValues->slice(),
+                                   key_value);
 
   auto s = methods->SingleDelete(_cf, rocks_key);
   if (!s.ok()) {

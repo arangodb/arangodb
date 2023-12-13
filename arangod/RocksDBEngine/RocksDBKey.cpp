@@ -87,15 +87,15 @@ void RocksDBKey::constructFromBuffer(std::string_view buffer) {
 }
 
 void RocksDBKey::constructZkdIndexValue(uint64_t indexId,
+                                        velocypack::Slice sorted,
                                         zkd::byte_string const& value) {
   _type = RocksDBEntryType::ZkdIndexValue;
-  auto indexValues = VPackSlice::emptyArraySlice();
-  size_t keyLength = sizeof(uint64_t) + value.size() + indexValues.byteSize();
+  size_t keyLength = sizeof(uint64_t) + value.size() + sorted.byteSize();
   _buffer->clear();
   _buffer->reserve(keyLength);
   uint64ToPersistent(*_buffer, indexId);
-  _buffer->append(reinterpret_cast<char const*>(indexValues.begin()),
-                  indexValues.byteSize());
+  _buffer->append(reinterpret_cast<char const*>(sorted.begin()),
+                  sorted.byteSize());
   auto sv = std::string_view{reinterpret_cast<const char*>(value.data()),
                              value.size()};
   _buffer->append(sv.data(), sv.size());
@@ -103,17 +103,17 @@ void RocksDBKey::constructZkdIndexValue(uint64_t indexId,
 }
 
 void RocksDBKey::constructZkdIndexValue(uint64_t indexId,
+                                        velocypack::Slice sorted,
                                         zkd::byte_string const& value,
                                         LocalDocumentId documentId) {
   _type = RocksDBEntryType::ZkdIndexValue;
-  auto indexValues = VPackSlice::emptyArraySlice();
-  size_t keyLength = sizeof(uint64_t) + value.size() + sizeof(uint64_t) +
-                     indexValues.byteSize();
+  size_t keyLength =
+      sizeof(uint64_t) + value.size() + sizeof(uint64_t) + sorted.byteSize();
   _buffer->clear();
   _buffer->reserve(keyLength);
   uint64ToPersistent(*_buffer, indexId);
-  _buffer->append(reinterpret_cast<char const*>(indexValues.begin()),
-                  indexValues.byteSize());
+  _buffer->append(reinterpret_cast<char const*>(sorted.begin()),
+                  sorted.byteSize());
   auto sv = std::string_view{reinterpret_cast<const char*>(value.data()),
                              value.size()};
   _buffer->append(sv.data(), sv.size());
