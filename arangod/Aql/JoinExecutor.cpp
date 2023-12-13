@@ -168,6 +168,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
             bool mustDestroy = false;
             aql::AqlValue res = expr->execute(&expressionContext, mustDestroy);
             aql::AqlValueGuard guard{res, mustDestroy};
+            // TODO: Use GenericDocumentExpressionContext
             LOG_JOIN << "Expression result: ";
             LOG_JOIN << res.slice().toJson();
             // constantSlices.push_back(res.slice());

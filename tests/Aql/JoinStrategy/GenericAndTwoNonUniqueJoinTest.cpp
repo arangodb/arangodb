@@ -110,13 +110,16 @@ class GenericAndTwoNonUniqueIndexMerger
       arangodb::aql::IndexJoinStrategy<MyKeyValue, MyDocumentId>>
   buildStrategy(std::vector<Desc>&& iters) {
     if (getStrategyName() == "GenericJoin") {
-      LOG_DEVEL << "Using generic";
-      return std::make_unique<GenericJoinStrategy>(std::move(iters), 1);
+      auto strategy =
+          std::make_unique<GenericJoinStrategy>(std::move(iters), 1);
+      strategy.get()->reset({});
+      return std::move(strategy);
     } else {
       TRI_ASSERT(getStrategyName() == "TwoIndicesMergeJoin");
-      LOG_DEVEL << "Using two index";
-      return std::make_unique<TwoIndexNonUniqueJoinStrategy>(std::move(iters),
-                                                             1);
+      auto strategy =
+          std::make_unique<TwoIndexNonUniqueJoinStrategy>(std::move(iters), 1);
+      strategy.get()->reset({});
+      return std::move(strategy);
     }
   }
 };

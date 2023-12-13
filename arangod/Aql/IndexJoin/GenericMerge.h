@@ -380,6 +380,7 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
 
   while (true) {
     // get the minimum
+    TRI_ASSERT(minHeap.size() > 0);
     auto minIndex = minHeap.top();
     LOG_INDEX_MERGER << "Min Heap Size is: " << minHeap.size();
     LOG_INDEX_MERGER << "min is " << minIndex->_position[0]

@@ -116,7 +116,6 @@ struct TwoIndicesMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
 template<typename SliceType, typename DocIdType, typename KeyCompare>
 void TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::reset(
     std::span<SliceType> constants) {
-  LOG_DEVEL << "am i right?";
   size_t constOffset = 0;
   for (auto& idx : indexes) {
     idx.reset(constants.subspan(constOffset, idx._constantSize));

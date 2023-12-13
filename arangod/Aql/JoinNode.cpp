@@ -388,7 +388,7 @@ ExecutionNode* JoinNode::clone(ExecutionPlan* plan, bool withDependencies,
             plan->getAst()->variables()->createVariable(outDocIdVariable);
       }
     }
-    // TODO: HEIKO NEXT
+
     indexInfos.emplace_back(
         IndexInfo{.collection = it.collection,
                   .usedShard = it.usedShard,
