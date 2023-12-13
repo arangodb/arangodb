@@ -565,9 +565,6 @@ const IndexPrimaryJoinTestSuite = function () {
     },
 
     testJoinFixedValuesComplexOpt: function () {
-      // TODO: This needs to be fixed next.
-      // TODO: Offsets are being calculated correctly. But some asserts hit.
-      return false;
       const collectionA = db._createDocumentCollection('A');
       collectionA.ensureIndex({type: "persistent", fields: ["x", "y"], unique: false});
 

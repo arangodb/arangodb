@@ -28,9 +28,9 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/QueryContext.h"
 #include "Basics/system-compiler.h"
+#include "Aql/ExecutorExpressionContext.h"
 #include "Logger/LogMacros.h"
 #include "VocBase/LogicalCollection.h"
-#include "FixedVarExpressionContext.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -161,26 +161,15 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       for (auto const& idx : _infos.indexes) {
         if (!idx.constantExpressions.empty()) {
           for (auto& expr : idx.constantExpressions) {
-            // 1.) Falls register erforderlich
-            aql::AqlFunctionsInternalCache functionsCache;
-            aql::FixedVarExpressionContext expressionContext{
-                _trx, *_infos.query, functionsCache};
             bool mustDestroy = false;
-            aql::AqlValue res = expr->execute(&expressionContext, mustDestroy);
-            aql::AqlValueGuard guard{res, mustDestroy};
-            // TODO: Use GenericDocumentExpressionContext
-            LOG_JOIN << "Expression result: ";
-            LOG_JOIN << res.slice().toJson();
-            // constantSlices.push_back(res.slice());
-            _constantBuilder.add(res.slice());
+            ExecutorExpressionContext ctx{_trx, *_infos.query, _functionsCache,
+                                          _currentRow,
+                                          idx.expressionVarsToRegs};
 
-            /*GenericDocumentExpressionContext ctx{
-                _trx,
-                *_infos.query,
-                _functionsCache,
-                idx.filter->filterVarsToRegs,
-                _currentRow,
-                idx.filter->documentVariable};*/
+            aql::AqlValue res = expr->execute(&ctx, mustDestroy);
+            aql::AqlValueGuard guard{res, mustDestroy};
+            LOG_JOIN << "Expression result: " << res.slice().toJson();
+            _constantBuilder.add(res.slice());
           }
         }
       }

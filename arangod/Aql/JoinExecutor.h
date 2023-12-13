@@ -104,6 +104,9 @@ struct JoinExecutorInfos {
 
     // used for jumping to the correct location during reset calls
     std::vector<std::unique_ptr<Expression>> constantExpressions;
+    // mapping of other variables to register in the input row
+    std::vector<std::pair<VariableId, RegisterId>> expressionVarsToRegs;
+
     std::vector<size_t> usedKeyFields;
     std::vector<size_t> constantFields;
   };

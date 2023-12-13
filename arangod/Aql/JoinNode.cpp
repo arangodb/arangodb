@@ -315,17 +315,21 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
     }
 
     if (!idx.expressions.empty()) {
-      // TODO: currently only one expression will be interpreted as one const
-      // value in the future we should support multiple expressions
-      TRI_ASSERT(idx.expressions.size() == 1);
+      VarSet varsUsed;
 
       for (auto& expr : idx.expressions) {
         TRI_ASSERT(expr != nullptr);
         TRI_ASSERT(expr->isDeterministic());
+        expr->variables(varsUsed);
         data.constantExpressions.push_back(
             expr->clone(engine.getQuery().ast(), true));
         data.usedKeyFields = idx.usedKeyFields;
         data.constantFields = idx.constantFields;
+      }
+
+      for (auto const& var : varsUsed) {
+        auto regId = variableToRegisterId(var);
+        data.expressionVarsToRegs.emplace_back(var->id, regId);
       }
     } else {
       data.usedKeyFields = {0};
@@ -366,7 +370,8 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
   }
 
   infos.varsToRegister = std::move(varsToRegs);
-
+  // TODO: Check the use of first paramter for createRegisterInfos (currently
+  // not tracked)
   auto registerInfos = createRegisterInfos({}, writableOutputRegisters);
 
   return std::make_unique<ExecutionBlockImpl<JoinExecutor>>(
