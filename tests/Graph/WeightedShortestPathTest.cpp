@@ -336,7 +336,7 @@ TEST_P(WeightedShortestPathTest, shortest_path_V1_V3) {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup the vertex
     // 3x vertices, 3x edges
-    EXPECT_EQ(stats.getScannedIndex(), 8U);
+    EXPECT_EQ(stats.getScannedIndex(), 6U);
   }
 
   {
@@ -384,7 +384,7 @@ TEST_P(WeightedShortestPathTest, shortest_path_V4_V9) {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup the vertex
     // 4x vertices, 3x edges
-    EXPECT_EQ(stats.getScannedIndex(), 16U);
+    EXPECT_EQ(stats.getScannedIndex(), 14U);
   }
 
   {
