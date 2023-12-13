@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/ResourceUsage.h"
+#include "Cluster/Utils/ShardID.h"
 
 #include <string>
 #include <unordered_map>
@@ -61,11 +62,15 @@ struct compare_monitored_string {
 typedef std::vector<MonitoredString,
                     ResourceUsageAllocator<MonitoredString, ResourceMonitor>>
     MonitoredStringVector;
+
+typedef std::vector<ShardID, ResourceUsageAllocator<ShardID, ResourceMonitor>>
+    MonitoredShardIDVector;
+
 typedef std::unordered_map<
-    MonitoredString, MonitoredStringVector, hash_monitored_string,
+    MonitoredString, MonitoredShardIDVector, hash_monitored_string,
     compare_monitored_string,
     ResourceUsageAllocator<
-        std::pair<const MonitoredString, MonitoredStringVector>,
+        std::pair<const MonitoredString, MonitoredShardIDVector>,
         ResourceMonitor>>
     MonitoredCollectionToShardMap;
 }  // namespace arangodb

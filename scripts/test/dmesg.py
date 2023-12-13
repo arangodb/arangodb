@@ -6,13 +6,21 @@ to detect serious incidents like oom
 
 import logging
 import psutil
-
+from site_config import IS_WINDOWS
 from async_client import (
-    ArangoCLIprogressiveTimeoutExecutor,
     make_tail_params,
     tail_line_result,
     delete_tail_params,
 )
+
+if IS_WINDOWS:
+    from async_client_pipe import (
+        ArangoCLIprogressiveTimeoutExecutorPipe as ArangoCLIprogressiveTimeoutExecutor,
+    )
+else:
+    from async_client_pty import (
+        ArangoCLIprogressiveTimeoutExecutorPty as ArangoCLIprogressiveTimeoutExecutor,
+    )
 
 
 def dmesg_runner(dmesg):
@@ -45,7 +53,6 @@ class DmesgWatcher(ArangoCLIprogressiveTimeoutExecutor):
             result_line_handler=tail_line_result,
             identifier="0_dmesg",
         )
-        # delete_logfile_params(params)
         ret = {}
         ret["error"] = self.params["error"]
         delete_tail_params(self.params)

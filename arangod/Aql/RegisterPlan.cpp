@@ -49,10 +49,10 @@ using namespace arangodb::aql;
 VarInfo::VarInfo(unsigned int depth, RegisterId registerId)
     : depth(depth), registerId(registerId) {
   if (!registerId.isValid()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT,
-                                   std::string("too many registers (") +
-                                       std::to_string(registerId.value()) +
-                                       ") needed for AQL query");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_RESOURCE_LIMIT,
+        absl::StrCat("too many registers (", registerId.value(),
+                     ") needed for AQL query"));
   }
 }
 
@@ -517,9 +517,8 @@ RegisterId RegisterPlanT<T>::registerVariable(
   if (!inserted) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
-        std::string("duplicate register assignment for variable " + v->name +
-                    " #") +
-            std::to_string(v->id) + " while planning registers");
+        absl::StrCat("duplicate register assignment for variable ", v->name,
+                     " #", v->id, " while planning registers"));
   }
 
   return regId;
@@ -599,7 +598,8 @@ auto RegisterPlanT<T>::variableToRegisterId(Variable const* variable) const
     -> RegisterId {
   TRI_ASSERT(variable != nullptr);
   auto it = varInfo.find(variable->id);
-  TRI_ASSERT(it != varInfo.end());
+  TRI_ASSERT(it != varInfo.end())
+      << "variable " << variable->name << " (" << variable->id << ")";
   RegisterId rv = it->second.registerId;
   TRI_ASSERT(rv.isValid());
   return rv;

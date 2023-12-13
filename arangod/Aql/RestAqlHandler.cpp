@@ -91,7 +91,7 @@ RestAqlHandler::RestAqlHandler(ArangodServer& server, GeneralRequest* request,
 //    traverserEngines: [ <infos for traverser engines> ],
 //    variables: [ <variables> ]
 //  }
-void RestAqlHandler::setupClusterQuery() {
+futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
   // We should not intentionally call this method
   // on the wrong server. So fail during maintanence.
   // On user setup reply gracefully.
@@ -99,7 +99,7 @@ void RestAqlHandler::setupClusterQuery() {
   if (ADB_UNLIKELY(!ServerState::instance()->isDBServer())) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
-    return;
+    co_return;
   }
 
   TRI_IF_FAILURE("Query::setupTimeout") {
@@ -119,6 +119,11 @@ void RestAqlHandler::setupClusterQuery() {
     }
   }
 
+  bool fastPath = false;  // Default false, now check HTTP header:
+  if (!_request->header(StaticStrings::AqlFastPath).empty()) {
+    fastPath = true;
+  }
+
   bool success = false;
   VPackSlice querySlice = this->parseVPackBody(success);
   if (!success) {
@@ -127,7 +132,7 @@ void RestAqlHandler::setupClusterQuery() {
         << "Failed to setup query. Could not "
            "parse the transmitted plan. "
            "Aborting query.";
-    return;
+    co_return;
   }
 
   QueryId clusterQueryId = 0;
@@ -147,7 +152,7 @@ void RestAqlHandler::setupClusterQuery() {
         << "Invalid VelocyPack: \"lockInfo\" is required but not an object.";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"lockInfo\"");
-    return;
+    co_return;
   }
 
   VPackSlice optionsSlice = querySlice.get("options");
@@ -156,7 +161,7 @@ void RestAqlHandler::setupClusterQuery() {
         << "Invalid VelocyPack: \"options\" attribute missing.";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"options\"");
-    return;
+    co_return;
   }
 
   VPackSlice snippetsSlice = querySlice.get("snippets");
@@ -165,7 +170,7 @@ void RestAqlHandler::setupClusterQuery() {
         << "Invalid VelocyPack: \"snippets\" attribute missing.";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"snippets\"");
-    return;
+    co_return;
   }
 
   VPackSlice traverserSlice = querySlice.get("traverserEngines");
@@ -176,7 +181,7 @@ void RestAqlHandler::setupClusterQuery() {
     generateError(
         rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
         "if \"traverserEngines\" is set in the body, it has to be an array");
-    return;
+    co_return;
   }
 
   VPackSlice variablesSlice = querySlice.get("variables");
@@ -185,7 +190,7 @@ void RestAqlHandler::setupClusterQuery() {
         << "Invalid VelocyPack: \"variables\" attribute missing.";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"variables\"");
-    return;
+    co_return;
   }
 
   LOG_TOPIC("f9e30", DEBUG, arangodb::Logger::AQL)
@@ -220,7 +225,7 @@ void RestAqlHandler::setupClusterQuery() {
           absl::StrCat("body must be an object with attribute \"",
                        StaticStrings::AttrCoordinatorRebootId, "\" and \"",
                        StaticStrings::AttrCoordinatorId, "\""));
-      return;
+      co_return;
     }
   }
   // Valid to not exist for upgrade scenarios!
@@ -251,26 +256,26 @@ void RestAqlHandler::setupClusterQuery() {
   for (auto lockInf : VPackObjectIterator(lockInfoSlice)) {
     if (!lockInf.value.isArray()) {
       LOG_TOPIC("1dc00", WARN, arangodb::Logger::AQL)
-          << "Invalid VelocyPack: \"lockInfo." << lockInf.key.copyString()
+          << "Invalid VelocyPack: \"lockInfo." << lockInf.key.stringView()
           << "\" is required but not an array.";
       generateError(
           rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
           absl::StrCat("body must be an object with attribute: \"lockInfo.",
                        lockInf.key.stringView(),
                        "\" is required but not an array."));
-      return;
+      co_return;
     }
     for (VPackSlice col : VPackArrayIterator(lockInf.value)) {
       if (!col.isString()) {
         LOG_TOPIC("9e29f", WARN, arangodb::Logger::AQL)
-            << "Invalid VelocyPack: \"lockInfo." << lockInf.key.copyString()
+            << "Invalid VelocyPack: \"lockInfo." << lockInf.key.stringView()
             << "\" is required but not an array.";
         generateError(
             rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
             absl::StrCat("body must be an object with attribute: \"lockInfo.",
                          lockInf.key.stringView(),
                          "\" is required but not an array."));
-        return;
+        co_return;
       }
       collectionBuilder.openObject();
       collectionBuilder.add("name", col);
@@ -295,9 +300,9 @@ void RestAqlHandler::setupClusterQuery() {
 
   double const ttl = options.ttl;
   // creates a StandaloneContext or a leased context
-  auto q = ClusterQuery::create(clusterQueryId,
-                                createTransactionContext(access, origin),
-                                std::move(options));
+  auto q = ClusterQuery::create(
+      clusterQueryId, co_await createTransactionContext(access, origin),
+      std::move(options));
   TRI_ASSERT(clusterQueryId == 0 || clusterQueryId == q->id());
 
   VPackBufferUInt8 buffer;
@@ -326,11 +331,11 @@ void RestAqlHandler::setupClusterQuery() {
         << "Failed to read ArangoSearch analyzers revision "
         << revisionRes.errorMessage();
     generateError(revisionRes);
-    return;
+    co_return;
   }
   q->prepareClusterQuery(querySlice, collectionBuilder.slice(), variablesSlice,
                          snippetsSlice, traverserSlice, answerBuilder,
-                         analyzersRevision);
+                         analyzersRevision, fastPath);
 
   answerBuilder.close();  // result
   answerBuilder.close();
@@ -383,12 +388,11 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
         // engine is still in use, but we have enqueued a callback to be woken
         // up once it is free again
         return RestStatus::WAITING;
-      } else {
-        TRI_ASSERT(res.is(TRI_ERROR_QUERY_NOT_FOUND));
-        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND,
-                      "query ID " + idString + " not found");
-        return RestStatus::DONE;
       }
+      TRI_ASSERT(res.is(TRI_ERROR_QUERY_NOT_FOUND));
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND,
+                    absl::StrCat("query ID ", idString, " not found"));
+      return RestStatus::DONE;
     }
     std::shared_ptr<SharedQueryState> ss = _engine->sharedState();
     ss->setWakeupHandler(withLogContext(
@@ -423,6 +427,7 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                   "an unknown exception occurred");
   }
+
   return RestStatus::DONE;
 }
 
@@ -446,7 +451,7 @@ RestStatus RestAqlHandler::execute() {
       if (suffixes.size() != 1) {
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       } else if (suffixes[0] == "setup") {
-        setupClusterQuery();
+        return waitForFuture(setupClusterQuery());
       } else {
         auto msg = absl::StrCat("Unknown POST API: ",
                                 basics::StringUtils::join(suffixes, '/'));
@@ -513,6 +518,7 @@ RestStatus RestAqlHandler::continueExecute() {
   if (type == rest::RequestType::DELETE_REQ && suffixes[0] == "finish") {
     return RestStatus::DONE;  // uses futures
   }
+
   generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                 "continued non-continuable method for /_api/aql");
 
@@ -777,8 +783,10 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
     return RestStatus::DONE;
   }
 
-  auto errorCode = basics::VelocyPackHelper::getNumericValue<ErrorCode>(
-      querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
+  auto errorCode =
+      basics::VelocyPackHelper::getNumericValue<ErrorCode,
+                                                ErrorCode::ValueType>(
+          querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
 
   auto f =
       _queryRegistry->finishQuery(qid, errorCode)

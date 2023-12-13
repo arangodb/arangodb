@@ -36,7 +36,8 @@ TEST_F(DocumentCoreTest, constructing_the_core_does_not_create_shard) {
 
   auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
 
-  EXPECT_CALL(*shardHandlerMock, ensureShard(shardId, collectionId, _))
+  // Initializing the core should have no effect on the shard handler.
+  EXPECT_CALL(*shardHandlerMock, ensureShard(shardId, collectionType, _))
       .Times(0);
   auto core = factory.constructCore(vocbaseMock, globalId, coreParams);
 
@@ -45,12 +46,10 @@ TEST_F(DocumentCoreTest, constructing_the_core_does_not_create_shard) {
 
 TEST_F(DocumentCoreTest, dropping_the_core_with_error_messages) {
   using namespace testing;
-  auto transactionHandlerMock = createRealTransactionHandler();
-
-  ON_CALL(*transactionHandlerMock, applyEntry(Matcher<ReplicatedOperation>(_)))
-      .WillByDefault(Return(Result{TRI_ERROR_WAS_ERLAUBE}));
-
   auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
+
+  // Dropping the core should automatically drop all shards, as a result of the
+  // replicated log removal.
   EXPECT_CALL(*shardHandlerMock, dropAllShards()).Times(1);
   auto core = factory.constructCore(vocbaseMock, globalId, coreParams);
   ON_CALL(*shardHandlerMock, dropAllShards)
@@ -62,13 +61,6 @@ TEST_F(DocumentCoreTest, dropping_the_core_with_error_messages) {
 TEST_F(DocumentStateMachineTest,
        shard_is_dropped_and_transactions_aborted_during_cleanup) {
   using namespace testing;
-
-  // For simplicity, no shards for this snapshot.
-  ON_CALL(*leaderInterfaceMock, startSnapshot).WillByDefault([&]() {
-    return futures::Future<ResultT<SnapshotConfig>>{
-        std::in_place, SnapshotConfig{SnapshotId{1}, {}}};
-  });
-
   auto transactionHandlerMock = handlersFactoryMock->makeRealTransactionHandler(
       &vocbaseMock, globalId, shardHandlerMock);
   ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _, _))
@@ -83,23 +75,41 @@ TEST_F(DocumentStateMachineTest,
       factory.constructCore(vocbaseMock, globalId, coreParams),
       handlersFactoryMock);
 
-  // transaction should be aborted before the snapshot is acquired
-  EXPECT_CALL(
-      *transactionHandlerMock,
-      applyEntry(ReplicatedOperation::buildAbortAllOngoingTrxOperation()))
-      .Times(1);
-  auto res = follower->acquireSnapshot("participantId");
-  EXPECT_TRUE(res.isReady() && res.get().ok());
-  Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
-
+  // Two steps are necessary before the snapshot is acquired:
+  //  - all ongoing transactions are aborted
+  //  - all shards are dropped
   EXPECT_CALL(
       *transactionHandlerMock,
       applyEntry(ReplicatedOperation::buildAbortAllOngoingTrxOperation()))
       .Times(1);
   EXPECT_CALL(*shardHandlerMock, dropAllShards()).Times(1);
-  auto cleanupHandler = factory.constructCleanupHandler();
-  auto core = std::move(*follower).resign();
-  cleanupHandler->drop(std::move(core));
-  Mock::VerifyAndClearExpectations(shardHandlerMock.get());
+  auto res = follower->acquireSnapshot("participantId");
+  EXPECT_TRUE(res.isReady() && res.get().ok());
   Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
+  Mock::VerifyAndClearExpectations(shardHandlerMock.get());
+
+  // Resigning should abort all ongoing transactions, but not drop any shards
+  // (because the shards might still be used on the next leader/follower
+  // instance). Note that resigning != deleting the replicated log.
+  EXPECT_CALL(*shardHandlerMock, dropAllShards()).Times(0);
+  EXPECT_CALL(
+      *transactionHandlerMock,
+      applyEntry(ReplicatedOperation::buildAbortAllOngoingTrxOperation()))
+      .Times(1);
+  auto core = std::move(*follower).resign();
+  Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
+  Mock::VerifyAndClearExpectations(shardHandlerMock.get());
+
+  // Dropping the core should drop all the shards, but no longer explicitly
+  // abort any transactions (because it is not needed, since the follower
+  // resigned already).
+  auto cleanupHandler = factory.constructCleanupHandler();
+  EXPECT_CALL(
+      *transactionHandlerMock,
+      applyEntry(ReplicatedOperation::buildAbortAllOngoingTrxOperation()))
+      .Times(0);
+  EXPECT_CALL(*shardHandlerMock, dropAllShards()).Times(1);
+  cleanupHandler->drop(std::move(core));
+  Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
+  Mock::VerifyAndClearExpectations(shardHandlerMock.get());
 }

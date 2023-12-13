@@ -24,6 +24,7 @@
       'login': 'login',
       'collection/:colid/documents/:pageid': 'documents',
       'cIndices/:colname': 'cIndices',
+      'cIndices/:colname/:indexName': 'cIndices',
       'cSettings/:colname': 'cSettings',
       'cSchema/:colname': 'cSchema',
       'cComputedValues/:colname': 'cComputedValues',
@@ -256,7 +257,8 @@
       window.progressView = new window.ProgressView();
 
       this.userCollection = new window.ArangoUsers();
-
+       
+      window.SkeletonLoader = new window.SkeletonLoader();
       this.initOnce = _.once(function () {
         const callback = function (error, isCoordinator) {
           if (isCoordinator === true) {
@@ -713,6 +715,7 @@
     cIndices: function (colname) {
       const self = this;
 
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {
@@ -737,6 +740,7 @@
     cSettings: function (colname) {
       const self = this;
 
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {
@@ -758,6 +762,7 @@
     cComputedValues: function (colname) {
       const self = this;
 
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {
@@ -778,6 +783,7 @@
 
     cSchema: function (colname) {
       const self = this;
+      window.SkeletonLoader.render();
 
       this.checkUser();
 
@@ -800,8 +806,8 @@
     cInfo: function (colname) {
       const self = this;
 
+      window.SkeletonLoader.render();
       this.checkUser();
-
       this.init.then(() => {
         this.arangoCollectionsStore.fetch({
           cache: false,
@@ -819,6 +825,7 @@
     },
 
     documents: function (colid, pageid) {
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {
@@ -1174,20 +1181,12 @@
 
     userPermission: function (name) {
       this.checkUser();
-
-      this.init.then(() => {
-        if (this.userPermissionView) {
-          this.userPermissionView.remove();
-        }
-
-        this.userPermissionView = new window.UserPermissionView({
-          collection: this.userCollection,
-          databases: this.arangoDatabase,
-          username: name
-        });
-
-        this.userPermissionView.render();
-      });
+      this.init.then(() =>
+        ReactDOM.render(
+          React.createElement(window.UserPermissionsReactView),
+          document.getElementById("content-react")
+        )
+      );
     },
 
     userView: function (name) {

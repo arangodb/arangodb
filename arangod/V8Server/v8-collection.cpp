@@ -1136,15 +1136,15 @@ static void JS_GetResponsibleShardVocbaseCol(
     TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleShard(<object>)");
   }
 
-  std::string shardId;
   TRI_ASSERT(builder.slice().isObject());
-  auto res = collection->getResponsibleShard(builder.slice(), false, shardId);
+  auto maybeShard = collection->getResponsibleShard(builder.slice(), false);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
+  if (maybeShard.fail()) {
+    TRI_V8_THROW_EXCEPTION(maybeShard.result());
   }
 
-  v8::Handle<v8::Value> result = TRI_V8_STD_STRING(isolate, shardId);
+  v8::Handle<v8::Value> result =
+      TRI_V8_STD_STRING(isolate, std::string{maybeShard.get()});
   TRI_V8_RETURN(result);
 
   TRI_V8_TRY_CATCH_END
@@ -1266,7 +1266,8 @@ static void JS_PropertiesVocbaseCol(
       OperationOptions options(ExecContext::current());
 
       auto res = methods::Collections::updateProperties(
-          *consoleColl, builder.slice(), options);
+                     *consoleColl, builder.slice(), options)
+                     .get();
       if (res.fail() && ServerState::instance()->isCoordinator()) {
         TRI_V8_THROW_EXCEPTION(res);
       }
@@ -1283,7 +1284,7 @@ static void JS_PropertiesVocbaseCol(
   if (coll) {
     VPackObjectBuilder object(&builder, true);
     methods::Collections::Context ctxt(coll);
-    Result res = methods::Collections::properties(ctxt, builder);
+    Result res = methods::Collections::properties(ctxt, builder).get();
 
     if (res.fail()) {
       TRI_V8_THROW_EXCEPTION(res);

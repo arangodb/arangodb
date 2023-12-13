@@ -26,13 +26,15 @@
 #include "Job.h"
 #include "Supervision.h"
 
+#include "Cluster/Utils/ShardID.h"
+
 namespace arangodb::consensus {
 
 struct MoveShard : public Job {
   MoveShard(Node const& snapshot, AgentInterface* agent,
             std::string const& jobId, std::string const& creator,
             std::string const& database, std::string const& collection,
-            std::string const& shard, std::string const& from,
+            ShardID const& shard, std::string const& from,
             std::string const& to, bool isLeader, bool remainsFollower = false,
             bool tryUndo = false);
 
@@ -55,7 +57,7 @@ struct MoveShard : public Job {
 
   std::string _database;
   std::string _collection;
-  std::string _shard;
+  ShardID _shard;
   std::string _from;
   std::string _to;
   std::string _parentJobId = {};

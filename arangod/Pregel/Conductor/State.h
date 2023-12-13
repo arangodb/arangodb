@@ -22,8 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Actor/ActorPID.h"
-#include "Pregel/Conductor/ExecutionStates/CollectionLookup.h"
+#include "Actor/DistributedActorPID.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/ExecutionStates/InitialState.h"
 #include "Pregel/PregelOptions.h"
@@ -37,8 +36,10 @@ struct Initial;
 struct ConductorState {
   ConductorState(std::unique_ptr<IAlgorithm> algorithm,
                  ExecutionSpecifications specifications,
-                 actor::ActorPID spawnActor, actor::ActorPID resultActor,
-                 actor::ActorPID statusActor, actor::ActorPID metricsActor)
+                 actor::DistributedActorPID spawnActor,
+                 actor::DistributedActorPID resultActor,
+                 actor::DistributedActorPID statusActor,
+                 actor::DistributedActorPID metricsActor)
       : executionState(std::make_unique<Initial>(*this)),
         algorithm{std::move(algorithm)},
         specifications{std::move(specifications)},
@@ -48,13 +49,13 @@ struct ConductorState {
         metricsActor{std::move(metricsActor)} {}
 
   std::unique_ptr<ExecutionState> executionState;
-  std::unordered_set<actor::ActorPID> workers;
+  std::unordered_set<actor::DistributedActorPID> workers;
   std::unique_ptr<IAlgorithm> algorithm;
   const ExecutionSpecifications specifications;
-  actor::ActorPID spawnActor;
-  actor::ActorPID resultActor;
-  actor::ActorPID statusActor;
-  actor::ActorPID metricsActor;
+  actor::DistributedActorPID spawnActor;
+  actor::DistributedActorPID resultActor;
+  actor::DistributedActorPID statusActor;
+  actor::DistributedActorPID metricsActor;
 };
 
 template<typename Inspector>

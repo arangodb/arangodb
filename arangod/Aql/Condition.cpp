@@ -666,7 +666,7 @@ void Condition::replaceVariables(
     return;
   }
 
-  _root = Ast::replaceVariables(_root, replacements);
+  _root = Ast::replaceVariables(_root, replacements, true);
 }
 
 void Condition::replaceAttributeAccess(Variable const* searchVariable,
@@ -736,9 +736,13 @@ std::pair<bool, bool> Condition::findIndexes(
                    usedIndexes, dummy));
   }
 
+  ReadOwnWrites readOwnWrites =
+      ExecutionNode::castTo<DocumentProducingNode const*>(node)
+          ->canReadOwnWrites();
+
   return aql::utils::getBestIndexHandlesForFilterCondition(
       trx, coll, _ast, _root, reference, sortCondition, itemsInIndex,
-      node->hint(), usedIndexes, _isSorted, isAllCoveredByIndex);
+      node->hint(), usedIndexes, _isSorted, isAllCoveredByIndex, readOwnWrites);
 }
 
 /// @brief get the attributes for a sub-condition that are const

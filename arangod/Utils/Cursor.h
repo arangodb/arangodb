@@ -67,8 +67,8 @@ class Cursor {
         _ttl(ttl),
         _expires(TRI_microtime() + _ttl),
         _hasCount(hasCount),
-        _isDeleted(false),
         _isRetriable(isRetriable),
+        _isDeleted(false),
         _isUsed(false) {}
 
   virtual ~Cursor() = default;
@@ -146,6 +146,8 @@ class Cursor {
   // so user actually has a chance to kill it here.
   virtual void debugKillQuery() {}
 
+  virtual uint64_t memoryUsage() const noexcept = 0;
+
   virtual size_t count() const = 0;
 
   virtual std::shared_ptr<transaction::Context> context() const = 0;
@@ -186,11 +188,11 @@ class Cursor {
   size_t const _batchSize;
   size_t _currentBatchId;
   size_t _lastAvailableBatchId;
-  double _ttl;
+  double const _ttl;
   std::atomic<double> _expires;
   bool const _hasCount;
+  bool const _isRetriable;
   bool _isDeleted;
-  bool _isRetriable;
   std::atomic<bool> _isUsed;
   std::pair<uint64_t, std::shared_ptr<velocypack::Buffer<uint8_t>>>
       _currentBatchResult;

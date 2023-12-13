@@ -51,6 +51,8 @@ struct CacheOptions : arangodb::CacheOptionsProvider {
         f.field("cacheSize", o._options.cacheSize).fallback(f.keep()),
         f.field("rebalancingInterval", o._options.rebalancingInterval)
             .fallback(f.keep()),
+        f.field("highwaterMultiplier", o._options.highwaterMultiplier)
+            .fallback(f.keep()),
         f.field("maxSpareAllocation", o._options.maxSpareAllocation)
             .fallback(f.keep()));
   }

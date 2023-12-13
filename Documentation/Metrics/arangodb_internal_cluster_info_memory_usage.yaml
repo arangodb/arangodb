@@ -1,5 +1,5 @@
 name: arangodb_internal_cluster_info_memory_usage
-introducedIn: "3.12"
+introducedIn: "3.12.0"
 help: |
   Amount of memory spent in ClusterInfo.
 unit: byte

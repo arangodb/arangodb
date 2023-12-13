@@ -23,7 +23,7 @@
 #pragma once
 
 #include <variant>
-#include "Actor/ActorPID.h"
+#include "Actor/DistributedActorPID.h"
 #include "Inspection/Types.h"
 #include "Pregel/Worker/Messages.h"
 

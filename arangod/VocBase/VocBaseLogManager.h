@@ -73,6 +73,12 @@ struct VocBaseLogManager {
 
   void resignAll() noexcept;
 
+  /// This method is meant to be called during database drop. It cleans up
+  /// all the available replicated states and their associated resources (such
+  /// as shards). However, it does not remove their persistent data from
+  /// storage.
+  void prepareDropAll() noexcept;
+
   auto updateReplicatedState(
       arangodb::replication2::LogId id,
       arangodb::replication2::agency::LogPlanTermSpecification const& term,
@@ -98,12 +104,6 @@ struct VocBaseLogManager {
   ArangodServer& _server;
   TRI_vocbase_t& _vocbase;
   LoggerContext const _logContext;
-
-  // During startup this map contains a mapping from logs to shards. Not
-  // valid after startup.
-  std::unordered_multimap<replication2::LogId,
-                          std::shared_ptr<LogicalCollection>>
-      _initCollections;
 
   struct GuardedData {
     struct StateAndLog {
@@ -136,8 +136,19 @@ struct VocBaseLogManager {
         TRI_vocbase_t& vocbase)
         -> ResultT<std::shared_ptr<
             replication2::replicated_state::ReplicatedStateBase>>;
+
+    auto stealReplicatedState(replication2::LogId id)
+        -> ResultT<GuardedData::StateAndLog>;
   };
   Guarded<GuardedData> _guardedData;
+
+ private:
+  /// Helper function to gracefully resign and drop a replicated log. This
+  /// may leave the log in an unusable state, even when the method is
+  /// unsuccessful. The returned value can be used to delete the associated
+  /// persistent data from the storage engine.
+  static auto resignAndDrop(GuardedData::StateAndLog& stateAndLog)
+      -> std::unique_ptr<replication2::storage::IStorageEngineMethods>;
 };
 
 }  // namespace arangodb

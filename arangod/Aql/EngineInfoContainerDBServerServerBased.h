@@ -125,8 +125,8 @@ class EngineInfoContainerDBServerServerBased {
       transaction::Methods& trx, ServerID const& server, VPackSlice infoSlice,
       std::vector<bool> didCreateEngine, MapRemoteToSnippet& snippetIds,
       aql::ServerQueryIdList& serverToQueryId, std::mutex& serverToQueryIdLock,
-      network::ConnectionPool* pool,
-      network::RequestOptions const& options) const;
+      network::ConnectionPool* pool, network::RequestOptions const& options,
+      bool fastPath) const;
 
   [[nodiscard]] bool isNotSatelliteLeader(VPackSlice infoSlice) const;
 

@@ -208,7 +208,7 @@ exports.getRawMetric = function (endpoint, tags) {
     if (endpoint !== primaryEndpoint) {
       reconnectRetry(endpoint, db._name(), "root", "");
     }
-    return arango.GET_RAW('/_admin/metrics' + tags);
+    return arango.GET_RAW('/_admin/metrics' + tags, { 'accept-encoding': 'identity' });
   } finally {
     if (endpoint !== primaryEndpoint) {
       reconnectRetry(primaryEndpoint, db._name(), "root", "");
@@ -510,6 +510,10 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
   return clients;
 };
 
+exports.waitForEstimatorSync = function() {
+  arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();"); // make sure estimates are consistent
+};
+
 exports.waitForShardsInSync = function (cn, timeout, minimumRequiredFollowers = 0) {
   if (!timeout) {
     timeout = 300;
@@ -517,8 +521,7 @@ exports.waitForShardsInSync = function (cn, timeout, minimumRequiredFollowers = 
   let start = internal.time();
   while (true) {
     if (internal.time() - start > timeout) {
-      print(Date() + " Shards were not getting in sync in time, giving up!");
-      assertTrue(false, "Shards were not getting in sync in time, giving up!");
+      assertTrue(false, Date() + " Shards were not getting in sync in time, giving up!");
       return;
     }
     let shardDistribution = arango.GET("/_admin/cluster/shardDistribution");

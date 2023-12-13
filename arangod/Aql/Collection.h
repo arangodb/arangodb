@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Cluster/ClusterTypes.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Transaction/CountCache.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/vocbase.h"
@@ -92,11 +93,11 @@ struct Collection {
   size_t responsibleServers(std::unordered_set<std::string>&) const;
 
   /// @brief returns the shard ids of a collection
-  std::shared_ptr<std::vector<std::string> const> shardIds() const;
+  std::shared_ptr<std::vector<ShardID> const> shardIds() const;
 
   /// @brief returns the filtered list of shard ids of a collection
-  std::shared_ptr<std::vector<std::string> const> shardIds(
-      std::unordered_set<std::string> const& includedShards) const;
+  std::shared_ptr<std::vector<ShardID> const> shardIds(
+      std::unordered_set<ShardID> const& includedShards) const;
 
   /// @brief returns the shard keys of a collection
   /// if "normalize" is true, then the shard keys for a smart vertex collection
@@ -137,7 +138,7 @@ struct Collection {
     return it->second;
   }
 
-  /// @brief get the index by it's identifier. Will either throw or
+  /// @brief get the index by its identifier. Will either throw or
   ///        return a valid index. nullptr is impossible.
   std::shared_ptr<arangodb::Index> indexByIdentifier(
       std::string const& idxId) const;

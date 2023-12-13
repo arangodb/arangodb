@@ -31,10 +31,10 @@
 
 namespace arangodb {
 
-class V8Context;
+class V8Executor;
 
 class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
-  V8Context* _v8Context;
+  V8Executor* _v8Context;
   basics::ReadWriteLock _lock;
 
  public:
@@ -66,7 +66,7 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
 
  private:
   void executeGetState();
-  void executeBegin();
+  [[nodiscard]] futures::Future<futures::Unit> executeBegin();
   void executeCommit();
   void executeAbort();
   void generateTransactionResult(rest::ResponseCode code, TransactionId tid,

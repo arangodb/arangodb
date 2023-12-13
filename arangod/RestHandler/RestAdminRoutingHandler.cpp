@@ -24,7 +24,6 @@
 #include "RestAdminRoutingHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb;
@@ -57,8 +56,8 @@ RestStatus RestAdminRoutingHandler::execute() {
 }
 
 void RestAdminRoutingHandler::reloadRouting() {
-  if (!server().getFeature<V8DealerFeature>().addGlobalContextMethod(
-          GlobalContextMethods::MethodType::kReloadRouting)) {
+  if (!server().getFeature<V8DealerFeature>().addGlobalExecutorMethod(
+          GlobalExecutorMethods::MethodType::kReloadRouting)) {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "invalid action definition");
     return;

@@ -214,6 +214,7 @@ struct TRI_vocbase_t {
       -> std::shared_ptr<arangodb::replication2::replicated_log::ILogFollower>;
 
   void shutdownReplicatedLogs() noexcept;
+  void dropReplicatedLogs() noexcept;
 
   [[nodiscard]] auto getDatabaseConfiguration()
       -> arangodb::DatabaseConfiguration;

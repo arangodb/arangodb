@@ -467,7 +467,6 @@ void DatabaseFeature::beginShutdown() {
 
     // throw away all open cursors in order to speed up shutdown
     vocbase->cursorRepository()->garbageCollect(true);
-    vocbase->shutdownReplicatedLogs();
   }
 }
 
@@ -524,6 +523,14 @@ void DatabaseFeature::stop() {
         << ", cursors: " << currentCursorCount
         << ", queries: " << currentQueriesCount;
 #endif
+
+    // Replicated logs are being processed in the vocbase->stop() method.
+    // Note that it is necessary for replicated logs to be cleaned up only after
+    // the maintenance thread has been stopped. Otherwise, the maintenance
+    // thread may try to access the logs after they have been deleted. The
+    // maintenance thread is stopped during ClusterFeature::stop().
+    // The DatabaseFeature is stopped only after the ClusterFeature. Make sure
+    // that we keep things in that order.
     vocbase->stop();
 
     vocbase->processCollectionsOnShutdown([](LogicalCollection* collection) {
@@ -803,9 +810,13 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
 
     TRI_vocbase_t* vocbase = it->second;
 
-    // Signal replicated logs to stop here, while they still have access to the
-    // database.
-    vocbase->shutdownReplicatedLogs();
+    // Shutdown and clear replicated logs here, while they still have access to
+    // the vocbase. This also drops all shards and resources associated with
+    // these replicated logs, so essentially there should be no collections left
+    // in this vocbase after this method gets executed. Note that the remains of
+    // the replicated logs will still be present on disk. They will be erased in
+    // bulk while executing the `dropDatabase` method of the storage engine.
+    vocbase->dropReplicatedLogs();
 
     auto next = _databases.make(prev);
     next->erase(name);

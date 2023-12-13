@@ -26,6 +26,7 @@
 #include "Aql/IResearchViewOptimizerRules.h"
 #include "Aql/IndexNodeOptimizerRules.h"
 #include "Aql/GraphOptimizerRules.h"
+#include "Aql/Optimizer/Rules/EnumeratePathsFilter/EnumeratePathsFilter.h"
 #include "Aql/OptimizerRules.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
@@ -177,6 +178,10 @@ void OptimizerRulesFeature::addRules() {
                R"(Replace deprecated index functions such as `FULLTEXT()`,
 `NEAR()`, `WITHIN()`, or `WITHIN_RECTANGLE()` with a regular subquery.)");
 
+  registerRule("replace-like-with-range", replaceLikeWithRangeRule,
+               OptimizerRule::replaceLikeWithRange, OptimizerRule::makeFlags(),
+               R"(Replace LIKE() function with range scans where possible.)");
+
   // inline subqueries one level higher
   registerRule("inline-subqueries", inlineSubqueriesRule,
                OptimizerRule::inlineSubqueriesRule,
@@ -272,6 +277,19 @@ optimizations.)");
                                OptimizerRule::Flags::CanBeDisabled),
       R"(Try out permutations of `FOR` statements in queries that contain
 multiple loops, which may enable further optimizations by other rules.)");
+
+  // replace attribute accesses that are equal due to a filter statement
+  // with the same value. This might enable other optimizations later on.
+  // WARNING: THIS RULE HAS BEEN DISABLED because while it can lead to new
+  // optimizations it can do harm to other optimizations. Furthermore, the
+  // user can always rewrite the query to make this rule unnecessary.
+  registerRule(
+      "replace-equal-attribute-accesses", replaceEqualAttributeAccesses,
+      OptimizerRule::replaceEqualAttributeAccesses,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::DisabledByDefault,
+                               OptimizerRule::Flags::CanBeDisabled),
+      R"(Replace attribute accesses that are equal due to a filter statement
+with the same value. This might enable other optimizations later on.)");
 
   // "Pass 4": moving nodes "up" (potentially outside loops) (second try):
   // move calculations up the dependency chain (to pull them out of
@@ -401,6 +419,13 @@ early pruning of results, apply traversal projections, and avoid calculating
 edge and path output variables that are not declared in the query for the
 AQL traversal.)");
 
+  // merge filters on the path output variable into the path search
+  registerRule(
+      "optimize-enumerate-path-filters", optimizeEnumeratePathsFilterRule,
+      OptimizerRule::optimizeEnumeratePathsFilterRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Move `FILTER` conditions on the path output variable into the path search)");
+
   // optimize K_PATHS
   registerRule(
       "optimize-paths", optimizePathsRule, OptimizerRule::optimizePathsRule,
@@ -450,6 +475,13 @@ optimizations)");
                R"(Avoid computing the variables emitted by AQL traversals if
 they are declared but unused in the query, or only used in filters that are
 pulled into the traversal, significantly reducing overhead.)");
+
+  registerRule(
+      "optimize-projections", optimizeProjections,
+      OptimizerRule::optimizeProjectionsRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Remove projections that are no longer used and store projection
+results in separate output registers.)");
 
   registerRule("optimize-cluster-single-document-operations",
                substituteClusterSingleDocumentOperationsRule,
@@ -771,6 +803,21 @@ involved attributes are covered by regular indexes.)");
 avoid unnecessary reads.)");
 #endif
 
+  registerRule(
+      "immutable-search-condition", iresearch::immutableSearchCondition,
+      OptimizerRule::immutableSearchConditionRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Optimize immutable search condition for nested loops, we don't need to make real search many times, if we can cache results in bitset)");
+
+  // remove calculations that are never necessary
+  registerRule("remove-unnecessary-calculations-4",
+               removeUnnecessaryCalculationsRule,
+               OptimizerRule::removeUnnecessaryCalculationsRule4,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Fourth pass of removing all calculations whose result is not
+referenced in the query. This can be a consequence of applying other
+optimizations)");
+
   // add the storage-engine specific rules
   addStorageEngineRules();
 
@@ -809,18 +856,13 @@ in case the indexes qualify for it.)");
 
   // allow nodes to asynchronously prefetch the next batch while processing the
   // current batch. this effectively allows parts of the query to run in
-  // parallel, but as some internal details are currently not guaranteed to be
-  // thread safe (e.g., TransactionState), this is currently disabled, and
-  // should only be activated for experimental usage at one's own risk.
+  // parallel. this is only supported by certain types of nodes and queries.
   registerRule("async-prefetch", asyncPrefetchRule,
-               OptimizerRule::asyncPrefetch,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::DisabledByDefault,
-                                        OptimizerRule::Flags::Hidden),
+               OptimizerRule::asyncPrefetchRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
                R"(Allow query execution nodes to asynchronously prefetch the
 next batch while processing the current batch, allowing parts of the query to
-run in parallel. This is an experimental option as not all operations are
-thread-safe.)");
+run in parallel. This is only possible for certain operations in a query.)");
 
   // finally sort all rules by their level
   std::sort(_rules.begin(), _rules.end(),

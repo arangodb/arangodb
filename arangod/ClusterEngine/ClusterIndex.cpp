@@ -34,6 +34,7 @@
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "Logger/LogMacros.h"
 #include "Network/NetworkFeature.h"
+#include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBVPackIndex.h"
 #include "RocksDBEngine/RocksDBZkdIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -81,13 +82,17 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
     } else if (_indexType == TRI_IDX_TYPE_PRIMARY_INDEX) {
       // The Primary Index on RocksDB can serve _key and _id when being asked.
       _coveredFields = {
-          {basics::AttributeName(StaticStrings::IdString, false)},
-          {basics::AttributeName(StaticStrings::KeyString, false)}};
+          {basics::AttributeName(StaticStrings::KeyString, false)},
+          {basics::AttributeName(StaticStrings::IdString, false)}};
     } else if (_indexType == TRI_IDX_TYPE_PERSISTENT_INDEX) {
       _coveredFields = Index::mergeFields(
           _fields,
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
                              /*allowEmpty*/ true, /*allowExpansion*/ false));
+    } else if (_indexType == TRI_IDX_TYPE_ZKD_INDEX) {
+      _coveredFields =
+          Index::parseFields(info.get(StaticStrings::IndexStoredValues),
+                             /*allowEmpty*/ true, /*allowExpansion*/ false);
     }
 
     // check for "estimates" attribute
@@ -311,8 +316,8 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
       }
       // other...
       std::vector<std::vector<basics::AttributeName>> fields{
-          {basics::AttributeName(StaticStrings::IdString, false)},
-          {basics::AttributeName(StaticStrings::KeyString, false)}};
+          {basics::AttributeName(StaticStrings::KeyString, false)},
+          {basics::AttributeName(StaticStrings::IdString, false)}};
       SimpleAttributeEqualityMatcher matcher(fields);
       return matcher.matchOne(this, node, reference, itemsInIndex);
     }
@@ -520,11 +525,21 @@ bool ClusterIndex::inProgress() const {
 bool ClusterIndex::supportsStreamInterface(
     IndexStreamOptions const& opts) const noexcept {
   switch (_indexType) {
-    case Index::TRI_IDX_TYPE_PERSISTENT_INDEX:
+    case Index::TRI_IDX_TYPE_PERSISTENT_INDEX: {
       if (_engineType == ClusterEngineType::RocksDBEngine) {
         return RocksDBVPackIndex::checkSupportsStreamInterface(_coveredFields,
                                                                opts);
       }
+      [[fallthrough]];
+    }
+
+    case Index::TRI_IDX_TYPE_PRIMARY_INDEX: {
+      if (_engineType == ClusterEngineType::RocksDBEngine) {
+        return RocksDBPrimaryIndex::checkSupportsStreamInterface(_coveredFields,
+                                                                 opts);
+      }
+      [[fallthrough]];
+    }
 
     default:
       break;

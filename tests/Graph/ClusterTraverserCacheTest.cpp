@@ -57,50 +57,6 @@ class ClusterTraverserCacheTest : public ::testing::Test {
   ~ClusterTraverserCacheTest() = default;
 };
 
-TEST_F(ClusterTraverserCacheTest,
-       it_should_return_a_null_aqlvalue_if_vertex_not_cached) {
-  std::unordered_map<ServerID, aql::EngineId> engines;
-  std::string vertexId = "UnitTest/Vertex";
-  std::string expectedMessage = "vertex '" + vertexId + "' not found";
-
-  auto q = gdb.getQuery("RETURN 1", std::vector<std::string>{});
-
-  traverser::TraverserOptions opts{*q};
-  ClusterTraverserCache testee(*q, &engines, &opts);
-
-  // NOTE: we do not put anything into the cache, so we get null for any vertex
-  AqlValue val;
-  testee.appendVertex(std::string_view(vertexId), val);
-  ASSERT_TRUE(val.isNull(false));
-  auto all = q->warnings().all();
-  ASSERT_EQ(all.size(), 1U);
-  ASSERT_EQ(all[0].first, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-  ASSERT_EQ(all[0].second, expectedMessage);
-}
-
-TEST_F(ClusterTraverserCacheTest,
-       it_should_insert_a_null_vpack_if_vertex_not_cached) {
-  std::unordered_map<ServerID, aql::EngineId> engines;
-  std::string vertexId = "UnitTest/Vertex";
-  std::string expectedMessage = "vertex '" + vertexId + "' not found";
-
-  auto q = gdb.getQuery("RETURN 1", std::vector<std::string>{});
-  VPackBuilder result;
-  traverser::TraverserOptions opts{*q};
-  ClusterTraverserCache testee(*q, &engines, &opts);
-
-  // NOTE: we do not put anything into the cache, so we get null for any vertex
-  testee.appendVertex(std::string_view(vertexId), result);
-
-  VPackSlice sl = result.slice();
-  ASSERT_TRUE(sl.isNull());
-
-  auto all = q->warnings().all();
-  ASSERT_EQ(all.size(), 1U);
-  ASSERT_EQ(all[0].first, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-  ASSERT_EQ(all[0].second, expectedMessage);
-}
-
 class RefactoredClusterTraverserCacheTest : public ::testing::Test {
  protected:
   arangodb::GlobalResourceMonitor _globalMonitor{};

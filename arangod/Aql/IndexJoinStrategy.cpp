@@ -25,6 +25,9 @@
 
 #include "IndexJoinStrategy.h"
 #include "Aql/IndexJoin/GenericMerge.h"
+#include "Aql/IndexJoin/TwoIndicesMergeJoin.h"
+#include "Aql/IndexJoin/TwoIndicesUniqueMergeJoin.h"
+#include "Aql/QueryOptions.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 
 using namespace arangodb::aql;
@@ -36,9 +39,24 @@ struct VPackSliceComparator {
   }
 };
 }  // namespace
-auto IndexJoinStrategyFactory::createStrategy(std::vector<Descriptor> desc,
-                                              std::size_t numKeyComponents)
+auto IndexJoinStrategyFactory::createStrategy(
+    std::vector<Descriptor> desc, std::size_t numKeyComponents,
+    aql::QueryOptions::JoinStrategyType joinStrategy)
     -> std::unique_ptr<AqlIndexJoinStrategy> {
+  if (desc.size() == 2 &&
+      joinStrategy != aql::QueryOptions::JoinStrategyType::GENERIC) {
+    if (desc[0].isUnique && desc[1].isUnique) {
+      // build optimized merge join strategy for two unique indices
+      return std::make_unique<TwoIndicesUniqueMergeJoin<
+          velocypack::Slice, LocalDocumentId, VPackSliceComparator>>(
+          std::move(desc), numKeyComponents);
+    } else {
+      // build optimized merge join strategy for two non-unique indices
+      return std::make_unique<TwoIndicesMergeJoin<
+          velocypack::Slice, LocalDocumentId, VPackSliceComparator>>(
+          std::move(desc), numKeyComponents);
+    }
+  }
   return std::make_unique<GenericMergeJoin<velocypack::Slice, LocalDocumentId,
                                            VPackSliceComparator>>(
       std::move(desc), numKeyComponents);

@@ -1,4 +1,5 @@
 import { literal } from "arangojs/aql";
+import { uniqueId } from "lodash";
 import React, { useCallback } from "react";
 import {
   getApiRouteForCurrentDB,
@@ -76,12 +77,14 @@ export const useQueryExecutors = ({
     const literalValue = literal(queryValue);
     const path = `/_admin/aardvark/query/profile`;
     const route = currentDB.route(path);
+    const id = uniqueId();
     setQueryResults(queryResults => [
       {
         queryValue,
         queryBindParams,
         type: "profile",
-        status: "loading"
+        status: "loading",
+        asyncJobId: id
       },
       ...queryResults
     ]);
@@ -97,6 +100,7 @@ export const useQueryExecutors = ({
         }
       });
       setQueryResultById({
+        asyncJobId: id,
         queryValue,
         queryBindParams,
         type: "profile",
@@ -106,6 +110,7 @@ export const useQueryExecutors = ({
     } catch (e: any) {
       const message = e.message || e.response.body.errorMessage;
       setQueryResultById({
+        asyncJobId: id,
         queryValue,
         queryBindParams,
         type: "profile",
@@ -128,12 +133,14 @@ export const useQueryExecutors = ({
       const literalValue = literal(queryValue);
       const path = `/_admin/aardvark/query/explain`;
       const route = currentDB.route(path);
+      const id = uniqueId();
       setQueryResults(queryResults => [
         {
           queryValue,
           queryBindParams,
           type: "explain",
-          status: "loading"
+          status: "loading",
+          asyncJobId: id
         },
         ...queryResults
       ]);
@@ -149,6 +156,7 @@ export const useQueryExecutors = ({
           }
         });
         setQueryResultById({
+          asyncJobId: id,
           queryValue,
           queryBindParams,
           type: "explain",
@@ -158,6 +166,7 @@ export const useQueryExecutors = ({
       } catch (e: any) {
         const message = e.message || e.response.body.errorMessage;
         setQueryResultById({
+          asyncJobId: id,
           queryValue,
           queryBindParams,
           type: "profile",

@@ -107,6 +107,9 @@ class EnumerateCollectionStats {
  private:
   std::uint64_t _scannedFull = 0;
   std::uint64_t _filtered = 0;
+  // Note: _documentLookup is explicitly not tracked here, because it's
+  // "lookups" are tracked inside the _scannedFull property. No additional
+  // document lookup happens here.
 };
 
 inline ExecutionStats& operator+=(
@@ -117,11 +120,56 @@ inline ExecutionStats& operator+=(
   return executionStats;
 }
 
+class JoinStats {
+ public:
+  void incrScannedIndex(std::uint64_t value = 1) noexcept {
+    _scannedIndex += value;
+  }
+  void incrFiltered(std::uint64_t value = 1) noexcept { _filtered += value; }
+  void incrDocumentLookups(std::uint64_t value = 1) noexcept {
+    _documentLookups += value;
+  }
+  void incrSeeks(std::uint64_t value = 1) noexcept { _seeks += value; }
+
+  [[nodiscard]] std::uint64_t getScannedIndex() const noexcept {
+    return _scannedIndex;
+  }
+  [[nodiscard]] std::uint64_t getFiltered() const noexcept { return _filtered; }
+  [[nodiscard]] std::uint64_t getDocumentLookups() const noexcept {
+    return _documentLookups;
+  }
+  [[nodiscard]] std::uint64_t getSeeks() const noexcept { return _seeks; }
+
+  void operator+=(JoinStats const& stats) noexcept {
+    _scannedIndex += stats._scannedIndex;
+    _filtered += stats._filtered;
+    _documentLookups += stats._documentLookups;
+    _seeks += stats._seeks;
+  }
+
+ private:
+  std::uint64_t _scannedIndex = 0;  // not populated yet
+  std::uint64_t _filtered = 0;
+  std::uint64_t _documentLookups = 0;
+  std::uint64_t _seeks = 0;
+};
+
+inline ExecutionStats& operator+=(ExecutionStats& executionStats,
+                                  JoinStats const& joinStats) noexcept {
+  executionStats.scannedIndex += joinStats.getScannedIndex();
+  executionStats.filtered += joinStats.getFiltered();
+  executionStats.documentLookups += joinStats.getDocumentLookups();
+  // TODO: think about the naming here for seek (RocksDB iterator seek calls)
+  executionStats.seeks += joinStats.getSeeks();
+  return executionStats;
+}
+
 class IndexStats {
  public:
   IndexStats() noexcept
       : _scannedIndex(0),
         _filtered(0),
+        _documentLookups(0),
         _cursorsCreated(0),
         _cursorsRearmed(0),
         _cacheHits(0),
@@ -129,6 +177,9 @@ class IndexStats {
 
   void incrScanned(std::uint64_t value = 1) noexcept { _scannedIndex += value; }
   void incrFiltered(std::uint64_t value = 1) noexcept { _filtered += value; }
+  void incrDocumentLookups(std::uint64_t value = 1) noexcept {
+    _documentLookups += value;
+  }
   void incrCursorsCreated(std::uint64_t value = 1) noexcept {
     _cursorsCreated += value;
   }
@@ -144,6 +195,9 @@ class IndexStats {
     return _scannedIndex;
   }
   [[nodiscard]] std::uint64_t getFiltered() const noexcept { return _filtered; }
+  [[nodiscard]] std::uint64_t getDocumentLookups() const noexcept {
+    return _documentLookups;
+  }
   [[nodiscard]] std::uint64_t getCursorsCreated() const noexcept {
     return _cursorsCreated;
   }
@@ -159,6 +213,7 @@ class IndexStats {
 
   void operator+=(IndexStats const& stats) noexcept {
     _scannedIndex += stats._scannedIndex;
+    _documentLookups += stats._documentLookups;
     _filtered += stats._filtered;
     _cursorsCreated += stats._cursorsCreated;
     _cursorsRearmed += stats._cursorsRearmed;
@@ -169,6 +224,7 @@ class IndexStats {
  private:
   std::uint64_t _scannedIndex = 0;
   std::uint64_t _filtered = 0;
+  std::uint64_t _documentLookups = 0;
   std::uint64_t _cursorsCreated = 0;
   std::uint64_t _cursorsRearmed = 0;
   std::uint64_t _cacheHits = 0;
@@ -179,6 +235,7 @@ inline ExecutionStats& operator+=(ExecutionStats& executionStats,
                                   IndexStats const& indexStats) noexcept {
   executionStats.scannedIndex += indexStats.getScanned();
   executionStats.filtered += indexStats.getFiltered();
+  executionStats.documentLookups += indexStats.getDocumentLookups();
   executionStats.cursorsCreated += indexStats.getCursorsCreated();
   executionStats.cursorsRearmed += indexStats.getCursorsRearmed();
   executionStats.cacheHits += indexStats.getCacheHits();

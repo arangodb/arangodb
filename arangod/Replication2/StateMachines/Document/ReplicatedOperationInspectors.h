@@ -22,13 +22,41 @@
 
 #pragma once
 
-#include "Replication2/StateMachines/Document/ReplicatedOperationInspectors.h"
+#include "Inspection/Format.h"
+#include "Inspection/Status.h"
+#include "Inspection/Types.h"
+#include "Inspection/VPack.h"
+#include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 
 namespace arangodb::replication2::replicated_state::document {
+
+template<class Enum>
+struct EnumTypeTransformer {
+  using SerializedType = std::underlying_type_t<Enum>;
+
+  arangodb::inspection::Status toSerialized(Enum v,
+                                            SerializedType& result) const {
+    result = static_cast<SerializedType>(v);
+    return {};
+  }
+
+  arangodb::inspection::Status fromSerialized(SerializedType const& v,
+                                              Enum& result) const {
+    result = Enum{v};
+    return {};
+  }
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, ReplicatedOperation::DocumentOperation::Options& x) {
+  return f.object(x).fields(f.field("refillIndexCaches", x.refillIndexCaches));
+}
+
 template<class Inspector>
 auto inspect(Inspector& f, ReplicatedOperation::DocumentOperation& x) {
   return f.object(x).fields(f.field("tid", x.tid), f.field("shard", x.shard),
-                            f.field("payload", x.payload));
+                            f.field("payload", x.payload),
+                            f.field("options", x.options));
 }
 
 template<class Inspector>
@@ -58,9 +86,11 @@ auto inspect(Inspector& f, ReplicatedOperation::Truncate& x) {
 
 template<class Inspector>
 auto inspect(Inspector& f, ReplicatedOperation::CreateShard& x) {
-  return f.object(x).fields(f.field("shard", x.shard),
-                            f.field("collection", x.collection),
-                            f.field("properties", x.properties));
+  return f.object(x).fields(
+      f.field("shard", x.shard),
+      f.field("collectionType", x.collectionType)
+          .transformWith(EnumTypeTransformer<TRI_col_type_e>{}),
+      f.field("properties", x.properties));
 }
 
 template<class Inspector>
@@ -72,8 +102,7 @@ auto inspect(Inspector& f, ReplicatedOperation::ModifyShard& x) {
 
 template<class Inspector>
 auto inspect(Inspector& f, ReplicatedOperation::DropShard& x) {
-  return f.object(x).fields(f.field("shard", x.shard),
-                            f.field("collection", x.collection));
+  return f.object(x).fields(f.field("shard", x.shard));
 }
 
 template<class Inspector>

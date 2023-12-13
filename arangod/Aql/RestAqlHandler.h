@@ -40,7 +40,6 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   RestAqlHandler(ArangodServer&, GeneralRequest*, GeneralResponse*,
                  QueryRegistry*);
 
- public:
   char const* name() const override final { return "RestAqlHandler"; }
   RequestLane lane() const override final;
   RestStatus execute() override;
@@ -120,7 +119,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   //    variables: [ <variables> ]
   //  }
 
-  void setupClusterQuery();
+  [[nodiscard]] futures::Future<futures::Unit> setupClusterQuery();
 
   // handle for useQuery
   RestStatus handleUseQuery(std::string const&,
