@@ -63,7 +63,7 @@ bool ParseOptions(velocypack::Slice slice, Analyzer::Options& options) {
   if (!ParseNgramSize(slice, options.ngramSize)) {
     return false;
   }
-  if (!irs::analysis::analyzers::MakeAnalyzer(slice, options.analyzer)) {
+  if (!irs::analysis::analyzers::MakeAnalyzer(slice, options.baseAnalyzer)) {
     IRS_LOG_ERROR(absl::StrCat("Invalid analyzer definition in ",
                                irs::slice_to_string(slice), kParseError));
     return false;
@@ -212,7 +212,7 @@ bool Analyzer::next() {
 }
 
 Analyzer::Analyzer(Options&& options) noexcept
-    : _analyzer{std::move(options.analyzer)} {
+    : _analyzer{std::move(options.baseAnalyzer)} {
   if (!_analyzer) {
     // Fallback to default implementation
     _analyzer = std::make_unique<irs::string_token_stream>();

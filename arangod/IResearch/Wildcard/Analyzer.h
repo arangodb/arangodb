@@ -39,7 +39,7 @@ class Analyzer final : public irs::analysis::TypedAnalyzer<Analyzer>,
 
  public:
   struct Options {
-    analyzer::ptr analyzer;
+    analyzer::ptr baseAnalyzer;
     size_t ngramSize = 3;
   };
 
