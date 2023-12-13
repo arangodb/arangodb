@@ -23,10 +23,29 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedLog/AbstractFollower.h"
-#include "Replication2/ReplicatedLog/AppendEntriesErrorReason.h"
-#include "Replication2/ReplicatedLog/FollowerState.h"
-#include "Replication2/ReplicatedLog/LocalStateMachineStatus.h"
-#include "Replication2/ReplicatedLog/LogStatistics.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/QuorumData.h"
+#include <vector>
+
+#include "Replication2/ReplicatedLog/LogIndex.h"
+#include "Replication2/ReplicatedLog/LogTerm.h"
+#include "Replication2/ReplicatedLog/ParticipantId.h"
+
+namespace arangodb::velocypack {
+class Builder;
+class Slice;
+}  // namespace arangodb::velocypack
+
+namespace arangodb::replication2::replicated_log {
+
+struct QuorumData {
+  QuorumData(LogIndex index, LogTerm term, std::vector<ParticipantId> quorum);
+  QuorumData(LogIndex index, LogTerm term);
+  explicit QuorumData(velocypack::Slice slice);
+
+  LogIndex index;
+  LogTerm term;
+  std::vector<ParticipantId> quorum;  // might be empty on follower
+
+  void toVelocyPack(velocypack::Builder& builder) const;
+};
+
+}  // namespace arangodb::replication2::replicated_log

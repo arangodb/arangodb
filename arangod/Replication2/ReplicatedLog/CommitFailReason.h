@@ -33,13 +33,10 @@
 #include <Containers/FlatHashMap.h>
 
 #include "Inspection/Types.h"
+#include "Replication2/ReplicatedLog/ParticipantId.h"
 #include "Replication2/ReplicatedLog/TermIndexPair.h"
 
-namespace arangodb::replication2 {
-
-using ParticipantId = std::string;
-
-namespace replicated_log {
+namespace arangodb::replication2::replicated_log {
 /*
  * Indicates why the commit index is not increasing as expected.
  * Even though some pending entries might have been committed, unless all
@@ -193,6 +190,4 @@ auto operator<<(std::ostream&,
 
 auto to_string(CommitFailReason const&) -> std::string;
 
-}  // namespace replicated_log
-
-}  // namespace arangodb::replication2
+}  // namespace arangodb::replication2::replicated_log

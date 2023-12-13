@@ -23,10 +23,24 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedLog/AbstractFollower.h"
-#include "Replication2/ReplicatedLog/AppendEntriesErrorReason.h"
-#include "Replication2/ReplicatedLog/FollowerState.h"
-#include "Replication2/ReplicatedLog/LocalStateMachineStatus.h"
-#include "Replication2/ReplicatedLog/LogStatistics.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/QuorumData.h"
+#include "Replication2/ReplicatedLog/ParticipantId.h"
+
+namespace arangodb::futures {
+template<typename T>
+class Future;
+}
+
+namespace arangodb::replication2::replicated_log {
+
+struct AppendEntriesRequest;
+struct AppendEntriesResult;
+
+struct AbstractFollower {
+  virtual ~AbstractFollower() = default;
+  [[nodiscard]] virtual auto getParticipantId() const noexcept
+      -> ParticipantId const& = 0;
+  [[nodiscard]] virtual auto appendEntries(AppendEntriesRequest)
+      -> futures::Future<AppendEntriesResult> = 0;
+};
+
+}  // namespace arangodb::replication2::replicated_log

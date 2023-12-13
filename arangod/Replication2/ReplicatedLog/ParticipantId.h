@@ -18,15 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Replication2/ReplicatedLog/AbstractFollower.h"
-#include "Replication2/ReplicatedLog/AppendEntriesErrorReason.h"
-#include "Replication2/ReplicatedLog/FollowerState.h"
-#include "Replication2/ReplicatedLog/LocalStateMachineStatus.h"
-#include "Replication2/ReplicatedLog/LogStatistics.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/QuorumData.h"
+#include <string>
+
+namespace arangodb::replication2 {
+
+using ParticipantId = std::string;
+
+}  // namespace arangodb::replication2

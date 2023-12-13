@@ -31,12 +31,9 @@
 #include "Inspection/Types.h"
 
 #include "Replication2/ReplicatedLog/LogIndex.h"
+#include "Replication2/ReplicatedLog/ParticipantId.h"
 
-namespace arangodb::replication2 {
-
-using ParticipantId = std::string;
-
-namespace replicated_log {
+namespace arangodb::replication2::replicated_log {
 
 struct CompactionStopReason {
   struct CompactionThresholdNotReached {
@@ -117,6 +114,4 @@ struct CompactionStopReason {
 auto operator<<(std::ostream&, CompactionStopReason const&) -> std::ostream&;
 auto to_string(CompactionStopReason const&) -> std::string;
 
-}  // namespace replicated_log
-
-}  // namespace arangodb::replication2
+}  // namespace arangodb::replication2::replicated_log

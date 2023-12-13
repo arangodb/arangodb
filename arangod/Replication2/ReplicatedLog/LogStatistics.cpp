@@ -21,12 +21,30 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "LogStatistics.h"
 
-#include "Replication2/ReplicatedLog/AbstractFollower.h"
-#include "Replication2/ReplicatedLog/AppendEntriesErrorReason.h"
-#include "Replication2/ReplicatedLog/FollowerState.h"
-#include "Replication2/ReplicatedLog/LocalStateMachineStatus.h"
-#include "Replication2/ReplicatedLog/LogStatistics.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/QuorumData.h"
+#include <Basics/Exceptions.h>
+#include <Basics/application-exit.h>
+#include <Basics/voc-errors.h>
+#include <Inspection/VPack.h>
+#include <Logger/LogMacros.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+
+#include <cstddef>
+#include <functional>
+#include <utility>
+
+namespace arangodb::replication2::replicated_log {
+
+void replicated_log::LogStatistics::toVelocyPack(
+    velocypack::Builder& builder) const {
+  serialize(builder, *this);
+}
+
+auto replicated_log::LogStatistics::fromVelocyPack(velocypack::Slice slice)
+    -> LogStatistics {
+  return deserialize<LogStatistics>(slice);
+}
+
+}  // namespace arangodb::replication2::replicated_log
