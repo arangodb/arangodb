@@ -158,7 +158,6 @@ if (WIN32)
   set(GYP_MSVS_OVERRIDE_PATH "${CMAKE_CXX_COMPILER}")
 
   list(APPEND V8_GYP_ARGS
-    -Dnode_use_pch=false
     -Dgenerator_output=${V8_TARGET_DIR}
     -Ggenerator_output=${V8_TARGET_DIR}
     --depth=.
