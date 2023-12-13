@@ -280,7 +280,7 @@ auto DocumentFollowerState::acquireSnapshot(
                 // If we replayed a snapshot, we need to wait for views to
                 // settle before we can continue. Otherwise, we would get into
                 // issues with duplicate document ids
-                self->_shardHandler->prepareShardsForLogReplay();
+                self->_handlers.shardHandler->prepareShardsForLogReplay();
               }
               return res;
             });
