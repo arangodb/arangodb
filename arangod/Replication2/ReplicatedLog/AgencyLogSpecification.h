@@ -22,5 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+// TODO - remove this file
 #include "Replication2/ReplicatedLog/Agency/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"

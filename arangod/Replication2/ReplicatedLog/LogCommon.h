@@ -23,6 +23,8 @@
 
 #pragma once
 
+// TODO - remove this file
+
 #include "Replication2/ReplicatedLog/CommitFailReason.h"
 #include "Replication2/ReplicatedLog/CompactionResponse.h"
 #include "Replication2/ReplicatedLog/CompactionResult.h"

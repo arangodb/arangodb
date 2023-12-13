@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+// TODO - move these inspectors to their respective types and remove this file
+
 #include "AgencyLogSpecification.h"
 
 #include "Inspection/Transformers.h"
