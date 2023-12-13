@@ -342,9 +342,12 @@ auto boundsForIterator(RocksDBZkdIndexBase const* index,
   prefixValuesBuilder.openArray();
   for (auto&& [idx, field] : enumerate(index->sortedPrefixFields())) {
     auto it = extractedPrefix.find(idx);
-    TRI_ASSERT(it != extractedPrefix.end());
+    TRI_ASSERT(it != extractedPrefix.end())
+        << "Field `" << field << "` not found. Expr: " << node->toString()
+        << " Fields: " << index->sortedPrefixFields();
     aql::AstNode const* value = it->second;
-    TRI_ASSERT(value->isConstant());
+    TRI_ASSERT(value->isConstant())
+        << "Value is not constant: " << value->toString();
     value->toVelocyPackValue(prefixValuesBuilder);
   }
   prefixValuesBuilder.close();
