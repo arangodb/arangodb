@@ -255,33 +255,13 @@ auto WeightedTwoSidedEnumerator<
   ensureQueueHasProcessableElement();
   auto tmp = _queue.pop();
 
-  TRI_ASSERT(_queue.isEmpty());
-
-  auto posPrevious = _interior.append(std::move(tmp));
-  auto& step = _interior.getStepReference(posPrevious);
-  ValidationResult res = _validator.validatePath(step);
-
-  if (!res.isFiltered()) {
-    candidates.append(std::make_tuple(0.0, step, step));
-  }
-}
-
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::Ball::
-    computeNeighbourhoodOfNextVertex(Ball& other, CandidatesStore& candidates)
-        -> void {
-  ensureQueueHasProcessableElement();
-  auto tmp = _queue.pop();
-
   // if the other side has explored this vertex, don't add it again
   if (!other.hasBeenVisited(tmp)) {
     auto posPrevious = _interior.append(std::move(tmp));
     auto& step = _interior.getStepReference(posPrevious);
 
-    TRI_ASSERT(step.getWeight() >= _diameter);
     _diameter = step.getWeight();
+
     ValidationResult res = _validator.validatePath(step);
 
     if (!res.isFiltered()) {
