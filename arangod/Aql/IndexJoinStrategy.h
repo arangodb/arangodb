@@ -57,6 +57,7 @@ struct IndexDescriptor {
         isUnique(isUnique) {}
   std::unique_ptr<StreamIteratorType> iter;
   std::size_t numProjections{0};
+  std::size_t numKeyComponents{0};
   std::size_t numConstants{0};
   bool isUnique{false};
 };
@@ -68,7 +69,7 @@ struct IndexJoinStrategyFactory {
   using Descriptor = IndexDescriptor<velocypack::Slice, LocalDocumentId>;
 
   std::unique_ptr<AqlIndexJoinStrategy> createStrategy(
-      std::vector<Descriptor>, std::size_t numKeyComponents,
+      std::vector<Descriptor>,
       aql::QueryOptions::JoinStrategyType desiredJoinStrategy);
 };
 

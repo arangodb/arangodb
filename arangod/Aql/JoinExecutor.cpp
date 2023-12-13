@@ -683,18 +683,15 @@ ResourceMonitor& JoinExecutor::resourceMonitor() { return _resourceMonitor; }
 void JoinExecutor::constructStrategy() {
   std::vector<IndexJoinStrategyFactory::Descriptor> indexDescription;
   for (auto const& idx : _infos.indexes) {
-    LOG_JOIN << "--> Calculating index information";
     IndexStreamOptions options;
-    // TODO right now we only support the first indexed field
-    // TODO join key write the correct one into this statement here
-    options.usedKeyFields = idx.usedKeyFields;  // previously {0};
+    options.usedKeyFields = idx.usedKeyFields;
     options.constantFields = idx.constantFields;
 
     auto& desc = indexDescription.emplace_back();
     desc.isUnique = idx.index->unique();
     desc.numProjections = 0;
-    desc.numConstants =
-        idx.constantFields.size();  // TODO:  HEIKO Double check this.
+    desc.numConstants = idx.constantFields.size();
+    desc.numKeyComponents = idx.usedKeyFields.size();
 
     if (idx.projections.usesCoveringIndex()) {
       TRI_ASSERT(!idx.filter.has_value() ||
@@ -731,7 +728,6 @@ void JoinExecutor::constructStrategy() {
   // special implementations for n = 2, 3, ...
   // TODO maybe make this an template parameter
   _strategy = IndexJoinStrategyFactory{}.createStrategy(
-      std::move(indexDescription), 1,  // TODO: HEIKO, remove this static 1 and
-                                       // put it into the indexDescription
+      std::move(indexDescription),
       _infos.query->queryOptions().desiredJoinStrategy);
 }

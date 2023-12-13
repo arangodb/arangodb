@@ -43,8 +43,7 @@ struct TwoIndicesUniqueMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
   using StreamIteratorType = IndexStreamIterator<SliceType, DocIdType>;
   using Descriptor = IndexDescriptor<SliceType, DocIdType>;
 
-  TwoIndicesUniqueMergeJoin(std::vector<Descriptor> descs,
-                            std::size_t numKeyComponents);
+  TwoIndicesUniqueMergeJoin(std::vector<Descriptor> descs);
 
   std::pair<bool, size_t> next(
       std::function<bool(std::span<DocIdType>, std::span<SliceType>)> const& cb)
@@ -149,26 +148,29 @@ bool TwoIndicesUniqueMergeJoin<SliceType, DocIdType,
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
 TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::
-    TwoIndicesUniqueMergeJoin(std::vector<Descriptor> descs,
-                              std::size_t numKeyComponents) {
+    TwoIndicesUniqueMergeJoin(std::vector<Descriptor> descs) {
   TRI_ASSERT(descs.size() == FIXED_INDEX_SIZE_VAR);
   std::size_t bufferSize = 0;
   for (auto const& desc : descs) {
-    bufferSize += desc.numProjections + numKeyComponents;
+    bufferSize += desc.numProjections + desc.numKeyComponents;
   }
 
   sliceBuffer.resize(bufferSize);
 
   auto keySliceIter = sliceBuffer.begin();
   auto projectionsIter =
-      sliceBuffer.begin() + numKeyComponents * FIXED_INDEX_SIZE_VAR;
+      sliceBuffer.begin() + descs[0].numKeyComponents * FIXED_INDEX_SIZE_VAR;
+  // Note: Access to descs[0] is safe because we have asserted that descs.size()
+  // == 2 and right now we only do support joins on exact one join-key. As soon
+  // as we extend this to support joins on multiple keys, we need to change this
+  // code here.
   projectionsSpan = {projectionsIter, sliceBuffer.end()};
   auto docIdIter = documentCache.begin();
   for (auto& desc : descs) {
     auto projections = projectionsIter;
     projectionsIter += desc.numProjections;
     auto keyBuffer = keySliceIter;
-    keySliceIter += numKeyComponents;
+    keySliceIter += desc.numKeyComponents;
     if (leftIndex == nullptr) {
       leftIndex = std::make_unique<IndexStreamData>(
           std::move(desc.iter), std::span<SliceType>{keyBuffer, keySliceIter},

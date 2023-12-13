@@ -41,7 +41,7 @@ struct GenericMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
   using StreamIteratorType = IndexStreamIterator<SliceType, DocIdType>;
   using Descriptor = IndexDescriptor<SliceType, DocIdType>;
 
-  GenericMergeJoin(std::vector<Descriptor> descs, std::size_t numKeyComponents);
+  GenericMergeJoin(std::vector<Descriptor> descs);
 
   std::pair<bool, size_t> next(
       std::function<bool(std::span<DocIdType>, std::span<SliceType>)> const& cb)
@@ -215,26 +215,32 @@ bool GenericMergeJoin<SliceType, DocIdType,
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
 GenericMergeJoin<SliceType, DocIdType, KeyCompare>::GenericMergeJoin(
-    std::vector<Descriptor> descs, std::size_t numKeyComponents) {
+    std::vector<Descriptor> descs) {
   indexes.reserve(descs.size());
   documentIds.resize(descs.size());
-  currentKeySet.resize(numKeyComponents);
+  currentKeySet.resize(descs[0].numKeyComponents);
 
   std::size_t bufferSize = 0;
   for (auto const& desc : descs) {
-    bufferSize += desc.numProjections + numKeyComponents;
+    bufferSize += desc.numProjections + desc.numKeyComponents;
   }
 
   sliceBuffer.resize(bufferSize);
   auto keySliceIter = sliceBuffer.begin();
-  auto projectionsIter = sliceBuffer.begin() + numKeyComponents * descs.size();
+  auto projectionsIter =
+      sliceBuffer.begin() + descs[0].numKeyComponents * descs.size();
+  // Note: Access to descs[0] is safe because we have asserted that descs.size()
+  // == 2 and right now we only do support joins on exact one join-key. As soon
+  // as we extend this to support joins on multiple keys, we need to change this
+  // code here.
+
   projectionsSpan = {projectionsIter, sliceBuffer.end()};
   auto docIdIter = documentIds.begin();
   for (auto& desc : descs) {
     auto projections = projectionsIter;
     projectionsIter += desc.numProjections;
     auto keyBuffer = keySliceIter;
-    keySliceIter += numKeyComponents;
+    keySliceIter += desc.numKeyComponents;
     indexes.emplace_back(std::move(desc.iter),
                          std::span<SliceType>{keyBuffer, keySliceIter},
                          std::span<SliceType>{projections, projectionsIter},
@@ -374,7 +380,6 @@ void GenericMergeJoin<SliceType, DocIdType, KeyCompare>::fillInitialMatch() {
 template<typename SliceType, typename DocIdType, typename KeyCompare>
 std::pair<bool, size_t>
 GenericMergeJoin<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
-  LOG_INDEX_MERGER << "======= ALGO START =======";
   LOG_INDEX_MERGER << "find common position";
   size_t amountOfSeeks = 0;
 
