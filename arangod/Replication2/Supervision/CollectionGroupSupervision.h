@@ -96,6 +96,12 @@ struct IndexConvergedCurrent {
   arangodb::velocypack::SharedSlice index;
 };
 
+struct IndexErrorCurrent {
+  CollectionID cid;
+  arangodb::velocypack::SharedSlice index;
+  Result error;
+};
+
 struct NoActionRequired {};
 struct NoActionPossible {
   std::string reason;
@@ -108,7 +114,7 @@ using Action = std::variant<
     AddCollectionToPlan, AddCollectionGroupToPlan, UpdateCollectionGroupInPlan,
     UpdateCollectionShardMap, AddParticipantToLog, RemoveParticipantFromLog,
     UpdateCollectionPlan, RemoveCollectionIndexPlan, AddCollectionIndexPlan,
-    IndexConvergedCurrent>;
+    IndexConvergedCurrent, IndexErrorCurrent>;
 
 struct CollectionGroup {
   agency::CollectionGroupTargetSpecification target;
