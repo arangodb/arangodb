@@ -298,9 +298,43 @@ function dropFollowersElCheapoSuite() {
   };
 }
 
+function lockTimeoutSuite() {
+  'use strict';
+  const cn = 'UnitTestsLockTimeout';
+  let collInfo = {};
+
+  return {
+    setUp: function () {
+      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      db._drop(cn);
+      collInfo = createCollectionWithTwoShardsSameLeaderAndFollower(cn);
+    },
+
+    tearDown: function () {
+      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      db._drop(cn);
+    },
+    
+    testLockTimeouts: function() {
+      // All we want to do is a single query and for that switch on some
+      // assertions:
+
+      switchConnectionToLeader(collInfo);
+      arango.PUT("/_admin/debug/failat/assertLockTimeoutLow",{});
+      switchConnectionToFollower(collInfo);
+      arango.PUT("/_admin/debug/failat/assertLockTimeoutHigh",{});
+      switchConnectionToCoordinator(collInfo);
+
+      let r = db._query(`FOR i IN 1..100 INSERT {Hallo:i} INTO ${cn} RETURN NEW`).toArray();
+
+    },
+  };
+}
+
 let ep = getEndpointsByType('dbserver');
 if (ep.length && debugCanUseFailAt(ep[0])) {
   // only execute if failure tests are available
   jsunity.run(dropFollowersElCheapoSuite);
+  jsunity.run(lockTimeoutSuite);
 }
 return jsunity.done();

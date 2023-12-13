@@ -1,6 +1,11 @@
 v3.10.12 (XXXX-XX-XX)
 ---------------------
 
+* BTS-1714: Within writing AQL queries the lock timeout was accidentally
+  set to 2 seconds for all write operations on followers. This could lead
+  to dropped followers when an index of a large shard was finalized on an
+  follower.
+
 * Updated OpenSSL to 3.0.12.
 
 * Fixed a problem in ReadWriteLock which could prevent waiting readers from
