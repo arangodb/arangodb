@@ -32,6 +32,7 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/IResearch/GeoAnalyzerEE.h"
 #endif
+#include "IResearch/Wildcard/Analyzer.h"
 
 #include <frozen/set.h>
 
@@ -202,7 +203,7 @@ bool isGeoAnalyzer(std::string_view type) noexcept {
 }
 
 bool isPrimitiveAnalyzer(std::string_view type) noexcept {
-  return !isGeoAnalyzer(type);
+  return type != wildcard::Analyzer::type_name() && !isGeoAnalyzer(type);
 }
 
 }  // namespace iresearch::kludge

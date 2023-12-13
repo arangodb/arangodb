@@ -87,6 +87,12 @@ add_library(arango_iresearch STATIC
   VelocyPackHelper.h
   ViewSnapshot.cpp
   ViewSnapshot.h
+  Wildcard/Analyzer.cpp
+  Wildcard/Analyzer.h
+  Wildcard/Filter.cpp
+  Wildcard/Filter.h
+  Wildcard/Options.cpp
+  Wildcard/Options.h
   ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestAnalyzerHandler.cpp
   ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestAnalyzerHandler.h)
 

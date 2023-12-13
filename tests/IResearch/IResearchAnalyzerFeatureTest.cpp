@@ -2342,7 +2342,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_features) {
             .ok());
     ASSERT_NE(nullptr, pool);
     ASSERT_EQ(arangodb::iresearch::Features{}, pool->features());
-    ASSERT_EQ(irs::IndexFeatures::NONE, pool->indexFeatures());
+    ASSERT_EQ(irs::IndexFeatures::NONE, pool->features().indexFeatures());
     ASSERT_TRUE(pool->fieldFeatures().empty());
   }
 
@@ -2359,7 +2359,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_features) {
     ASSERT_NE(nullptr, pool);
     ASSERT_EQ(arangodb::iresearch::Features{irs::IndexFeatures::FREQ},
               pool->features());
-    ASSERT_EQ(irs::IndexFeatures::FREQ, pool->indexFeatures());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, pool->features().indexFeatures());
     ASSERT_TRUE(pool->fieldFeatures().empty());
   }
 
@@ -2381,7 +2381,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_features) {
         (arangodb::iresearch::Features{arangodb::iresearch::FieldFeatures::NORM,
                                        irs::IndexFeatures::FREQ}),
         pool->features());
-    ASSERT_EQ(irs::IndexFeatures::FREQ, pool->indexFeatures());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, pool->features().indexFeatures());
     irs::type_info::type_id const expected[]{irs::type<irs::Norm>::id()};
     auto features = pool->fieldFeatures();
     ASSERT_TRUE(
@@ -2406,7 +2406,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_features) {
         (arangodb::iresearch::Features{arangodb::iresearch::FieldFeatures::NORM,
                                        irs::IndexFeatures::FREQ}),
         pool->features());
-    ASSERT_EQ(irs::IndexFeatures::FREQ, pool->indexFeatures());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, pool->features().indexFeatures());
     irs::type_info::type_id const expected[]{irs::type<irs::Norm2>::id()};
     auto features = pool->fieldFeatures();
     ASSERT_TRUE(

@@ -89,7 +89,7 @@ class DBServerAgencySync {
       containers::FlatHashSet<std::string> const& dirty,
       containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>>&
           collections,
-      LocalLogsMap& replLogs, LocalShardsToLogsMap& shardIdToLogId);
+      LocalLogsMap& replLogs, LocalShardsToLogsMap& localShardIdToLogId);
 
   double requestTimeout() const noexcept;
 
