@@ -782,7 +782,7 @@ Result dropIndexCoordinatorInner(LogicalCollection const& col, IndexId iid,
  * data.
  */
 auto ensureIndexCoordinatorReplication2Inner(
-    LogicalCollection const& collection, std::string_view idString,
+    LogicalCollection const& collection, IndexId iid,
     VPackSlice index, bool create, double timeout, ArangodServer& server)
     -> ResultT<VPackBuilder> {
   // Get the current entry in Target for this collection
@@ -818,7 +818,7 @@ auto ensureIndexCoordinatorReplication2Inner(
   if (!create) {
     return {TRI_ERROR_NO_ERROR};
   }
-
+  std::string const idString = arangodb::basics::StringUtils::itoa(iid.id());
   const size_t numberOfShards = collection.numberOfShards();
   VPackBuilder newIndexBuilder =
       ::buildIndexEntry(index, numberOfShards, idString, false);
@@ -890,10 +890,11 @@ auto ensureIndexCoordinatorReplication2Inner(
                       auto maybeError = indexSlice.get("creationError");
                       if (maybeError.isObject()) {
                         // There has been an error reported on the DBServers
-                        auto status = velocypack::deserializeWithStatus(maybeError, creationError);
+                        auto status = velocypack::deserializeWithStatus(
+                            maybeError, creationError);
                         if (!status.ok()) {
-                          LOG_DEVEL << "Failed to parse creationError: " << status.error() << " on " << maybeError.toJson();
-                          // Parsing error from Agency, report some generic error
+                          // Parsing error from Agency, report some generic
+                          // error
                           creationError = Result{
                               TRI_ERROR_INTERNAL,
                               fmt::format(
@@ -909,8 +910,8 @@ auto ensureIndexCoordinatorReplication2Inner(
                   }
                   return false;
                 })
-            .thenValue([&clusterInfo,
-                        &server, &creationError](auto index) -> futures::Future<Result> {
+            .thenValue([&clusterInfo, &server,
+                        &creationError](auto index) -> futures::Future<Result> {
               if (creationError.fail()) {
                 // Just forward the error, no need to wait anywhere.
                 return creationError;
@@ -931,6 +932,9 @@ auto ensureIndexCoordinatorReplication2Inner(
             });
     auto res = waitOnSuccess.get();
     if (res.fail()) {
+      // Try our best to drop the index again
+      std::ignore =
+          ClusterIndexMethods::dropIndexCoordinator(collection, iid, 0.0);
       return res;
     }
     VPackBuilder resultBuilder;
@@ -970,7 +974,7 @@ auto ensureIndexCoordinatorReplication2Inner(
 // Finally note that the retry loop for the case of a failed precondition
 // is outside this function here in `ensureIndexCoordinator`.
 Result ensureIndexCoordinatorInner(LogicalCollection const& collection,
-                                   std::string_view idString, VPackSlice slice,
+                                   IndexId iid, VPackSlice slice,
                                    bool create, VPackBuilder& resultBuilder,
                                    double timeout, ArangodServer& server) {
   using namespace std::chrono;
@@ -1032,6 +1036,7 @@ Result ensureIndexCoordinatorInner(LogicalCollection const& collection,
       std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
+  std::string const idString = arangodb::basics::StringUtils::itoa(iid.id());
   // We need explicit copies as this callback may run even after
   // this function returns. So let's keep all used variables
   // explicit here.
@@ -1398,8 +1403,6 @@ Result ClusterIndexMethods::ensureIndexCoordinator(
     iid = IndexId{clusterInfo.uniqid()};
   }
 
-  std::string const idString = arangodb::basics::StringUtils::itoa(iid.id());
-
   VPackSlice const typeSlice = slice.get(StaticStrings::IndexType);
   if (!typeSlice.isString() ||
       (typeSlice.isEqualString("geo1") || typeSlice.isEqualString("geo2"))) {
@@ -1417,7 +1420,7 @@ Result ClusterIndexMethods::ensureIndexCoordinator(
       resultBuilder.clear();
       if (collection.replicationVersion() == replication::Version::TWO) {
         auto tmpRes = ::ensureIndexCoordinatorReplication2Inner(
-            collection, idString, slice, create, timeout, server);
+            collection, iid, slice, create, timeout, server);
         if (!tmpRes.ok()) {
           res = tmpRes.result();
         } else {
@@ -1426,7 +1429,7 @@ Result ClusterIndexMethods::ensureIndexCoordinator(
         }
       } else {
         res = ::ensureIndexCoordinatorInner(  // create index
-            collection, idString, slice, create, resultBuilder, timeout,
+            collection, iid, slice, create, resultBuilder, timeout,
             server);
       }
 

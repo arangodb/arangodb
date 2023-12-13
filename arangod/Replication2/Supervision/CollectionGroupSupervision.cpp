@@ -490,9 +490,10 @@ auto checkCollectionsOfGroup(CollectionGroup const& group,
           return RemoveCollectionIndexPlan{cid, it.sharedSlice()};
         }
         if (arangodb::basics::VelocyPackHelper::getBooleanValue(
-                idx, StaticStrings::IndexIsBuilding, false) && !idx.hasKey("creationError")) {
-          // Index is still Flagged as isBuilding, and has not yet reported an error.
-          // Let us test if it converged, or errored.
+                idx, StaticStrings::IndexIsBuilding, false) &&
+            !idx.hasKey("creationError")) {
+          // Index is still Flagged as isBuilding, and has not yet reported an
+          // error. Let us test if it converged, or errored.
           auto const& currentCollection = group.currentCollections.find(cid);
           // Let us protect against Collection not created, although it should
           // be, as we are trying to add an index to it right now.
@@ -504,10 +505,13 @@ auto checkCollectionsOfGroup(CollectionGroup const& group,
               for (auto const& index : shard.indexes) {
                 if (index.get(StaticStrings::IndexId).isEqualString(indexId)) {
                   if (index.get(StaticStrings::Error).isTrue()) {
-                    auto errorNum = basics::VelocyPackHelper::getNumericValue<ErrorCode>(
-                        index.slice(), StaticStrings::ErrorNum, TRI_ERROR_INTERNAL);
-                    auto errorMessage = basics::VelocyPackHelper::getStringValue(
-                        index.slice(), StaticStrings::ErrorMessage, "");
+                    auto errorNum =
+                        basics::VelocyPackHelper::getNumericValue<ErrorCode>(
+                            index.slice(), StaticStrings::ErrorNum,
+                            TRI_ERROR_INTERNAL);
+                    auto errorMessage =
+                        basics::VelocyPackHelper::getStringValue(
+                            index.slice(), StaticStrings::ErrorMessage, "");
                     Result res{errorNum, std::move(errorMessage)};
                     return IndexErrorCurrent{cid, it.sharedSlice(), res};
                   } else {
@@ -818,8 +822,8 @@ struct TransactionBuilder {
         },
         [&](VPackBuilder& builder) {
           // New value, take everything from the action, but add the error field
-          // Note: We keep the isBuildingFlag on purpose. This way the index stays
-          // invisible for usage.
+          // Note: We keep the isBuildingFlag on purpose. This way the index
+          // stays invisible for usage.
           TRI_ASSERT(action.index.slice().isObject());
           VPackObjectBuilder guard{&builder};
           builder.add(VPackObjectIterator(action.index.slice()));
