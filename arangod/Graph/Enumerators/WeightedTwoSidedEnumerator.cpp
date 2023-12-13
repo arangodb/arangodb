@@ -43,7 +43,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
-#include <limits>
 
 using namespace arangodb;
 using namespace arangodb::graph;
