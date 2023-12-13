@@ -238,26 +238,30 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 
   TRI_ASSERT(!_queue.isEmpty());
   auto tmp = _queue.pop();
-  auto posPrevious = _interior.append(std::move(tmp));
-  auto& step = _interior.getStepReference(posPrevious);
 
-  _diameter = step.getWeight();
+  // if the other side has explored this vertex, don't add it again
+  if (!other.hasBeenVisited(tmp)) {
+    auto posPrevious = _interior.append(std::move(tmp));
+    auto& step = _interior.getStepReference(posPrevious);
 
-  ValidationResult res = _validator.validatePath(step);
+    _diameter = step.getWeight();
 
-  if (!res.isFiltered()) {
-    _visitedNodes[step.getVertex().getID()].emplace_back(posPrevious);
-  }
+    ValidationResult res = _validator.validatePath(step);
 
-  if (!res.isPruned()) {
-    _provider.expand(step, posPrevious, [&](Step n) -> void {
-      // TODO: maybe the pathStore could be asked whether a vertex has been
-      // visited?
-      if (other.hasBeenVisited(n)) {
-        other.matchResultsInShell(n, candidates, _validator);
-      }
-      _queue.append(std::move(n));
-    });
+    if (!res.isFiltered()) {
+      _visitedNodes[step.getVertex().getID()].emplace_back(posPrevious);
+    }
+
+    if (!res.isPruned()) {
+      _provider.expand(step, posPrevious, [&](Step n) -> void {
+        // TODO: maybe the pathStore could be asked whether a vertex has been
+        // visited?
+        if (other.hasBeenVisited(n)) {
+          other.matchResultsInShell(n, candidates, _validator);
+        }
+        _queue.append(std::move(n));
+      });
+    }
   }
 }
 

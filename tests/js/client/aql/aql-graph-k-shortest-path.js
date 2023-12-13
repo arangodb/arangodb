@@ -431,7 +431,7 @@ function kAttributeWeightShortestPathTestSuite() {
       `;
       const result = db._query(query).toArray();
       allPathsDiffer(result);
-      assertEqual(result.length, 9);
+      assertEqual(result.length, 9, JSON.stringify(result));
       allPathsAreSorted(result);
       isPathValid(result[0], 4, 4);
       isPathValid(result[1], 4, 7);
