@@ -23,6 +23,7 @@
 
 #include "CompactionStopReason.h"
 
+#include <ostream>
 #include <Basics/StaticStrings.h>
 #include <Basics/StringUtils.h>
 #include <Basics/VelocyPackHelper.h>

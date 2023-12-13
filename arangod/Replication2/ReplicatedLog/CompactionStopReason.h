@@ -24,7 +24,7 @@
 #pragma once
 
 #include <cstdint>
-#include <ostream>
+#include <iosfwd>
 #include <string>
 #include <variant>
 

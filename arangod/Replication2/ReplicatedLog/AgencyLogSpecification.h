@@ -23,16 +23,22 @@
 #pragma once
 
 #include <iosfwd>
+#include <variant>
+
 #include "Agency/AgencyPaths.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterTypes.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/types.h"
+#include "Replication2/ReplicatedLog/CommitFailReason.h"
+#include "Replication2/ReplicatedLog/LogId.h"
+#include "Replication2/ReplicatedLog/LogTerm.h"
+#include "Replication2/ReplicatedLog/ParticipantFlags.h"
+#include "Replication2/ReplicatedLog/ParticipantId.h"
+#include "Replication2/ReplicatedLog/TermIndexPair.h"
+#include "Replication2/ReplicatedLog/LocalStateMachineStatus.h"
 
 #include <fmt/core.h>
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
+#include <velocypack/SharedSlice.h>
 
 #include <optional>
 #include <type_traits>

@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include <ostream>
+#include <iosfwd>
 #include <string_view>
 
 namespace arangodb::replication2::replicated_log {

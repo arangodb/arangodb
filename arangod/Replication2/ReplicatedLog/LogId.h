@@ -24,9 +24,9 @@
 #pragma once
 
 #include <optional>
+#include <string_view>
 #include <Basics/Identifier.h>
 #include <velocypack/Slice.h>
-#include <velocypack/Value.h>
 
 namespace arangodb::replication2 {
 

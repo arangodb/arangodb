@@ -24,8 +24,8 @@
 #pragma once
 
 #include <cstdint>
+#include <iosfwd>
 #include <optional>
-#include <ostream>
 
 #include "Replication2/ReplicatedLog/CompactionStopReason.h"
 #include "Replication2/ReplicatedLog/LogRange.h"

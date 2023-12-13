@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include <ostream>
+#include <iosfwd>
 
 namespace arangodb::replication2 {
 

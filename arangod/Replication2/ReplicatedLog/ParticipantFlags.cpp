@@ -23,6 +23,7 @@
 
 #include "ParticipantFlags.h"
 
+#include <ostream>
 namespace arangodb::replication2 {
 
 auto operator<<(std::ostream& os, ParticipantFlags const& f) -> std::ostream& {

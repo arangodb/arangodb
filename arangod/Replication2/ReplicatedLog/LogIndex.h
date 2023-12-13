@@ -24,7 +24,7 @@
 #pragma once
 
 #include <cstdint>
-#include <ostream>
+#include <iosfwd>
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 

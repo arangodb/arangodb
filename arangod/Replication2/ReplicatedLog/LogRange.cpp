@@ -23,6 +23,7 @@
 
 #include "LogRange.h"
 
+#include <ostream>
 #include <Assertions/Assert.h>
 #include <Basics/StringUtils.h>
 

@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include <ostream>
+#include <iosfwd>
 #include "Replication2/ReplicatedLog/LogIndex.h"
 
 namespace arangodb::replication2 {

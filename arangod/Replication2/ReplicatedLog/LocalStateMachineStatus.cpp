@@ -23,6 +23,7 @@
 
 #include "LocalStateMachineStatus.h"
 
+#include <ostream>
 #include <Assertions/Assert.h>
 #include <Logger/LogMacros.h>
 

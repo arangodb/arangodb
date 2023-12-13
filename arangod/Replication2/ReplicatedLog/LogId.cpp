@@ -23,6 +23,7 @@
 
 #include "LogId.h"
 
+#include <ostream>
 #include <Basics/StringUtils.h>
 
 namespace arangodb::replication2 {

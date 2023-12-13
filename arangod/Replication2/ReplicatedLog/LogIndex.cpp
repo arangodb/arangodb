@@ -23,6 +23,8 @@
 
 #include "LogIndex.h"
 
+#include <ostream>
+
 namespace arangodb::replication2 {
 
 auto LogIndex::operator+(std::uint64_t delta) const -> LogIndex {

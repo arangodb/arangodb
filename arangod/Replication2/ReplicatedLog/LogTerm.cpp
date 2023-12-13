@@ -23,6 +23,7 @@
 
 #include "LogTerm.h"
 
+#include <ostream>
 namespace arangodb::replication2 {
 
 LogTerm::operator velocypack::Value() const noexcept {
