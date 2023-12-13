@@ -1,6 +1,11 @@
 devel
 -----
 
+* Activate more checks in jemalloc:
+    --enable-opt-safety-checks
+    --enable-opt-size-checks
+  This is supposed to help find bugs w.r.t. memory manangement.
+
 * BTS-1714: Within writing AQL queries the lock timeout was accidentally
   set to 2 seconds for all write operations on followers. This could lead
   to dropped followers when an index of a large shard was finalized on an
