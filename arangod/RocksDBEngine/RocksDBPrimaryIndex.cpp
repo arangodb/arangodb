@@ -1426,7 +1426,6 @@ struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
   bool reset(std::span<VPackSlice> span,
              std::span<VPackSlice> constants) override {
     TRI_ASSERT(constants.empty());
-    LOG_DEVEL << "CALLING RANDOM RESET";
     seekInternal({});
     return position(span);
   }

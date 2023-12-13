@@ -2943,14 +2943,6 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
       TRI_ASSERT(opts.prefix_same_as_start);
       opts.iterate_upper_bound = &_end;
     });
-
-    // _iterator->Seek(_bounds.start());  // we might want to get rid of this
-    /*if (!_options.hasConstantExpression) {
-      LOG_DEVEL << "NO HAS A CONSTANT EXPRESSION, calling seek";
-      //
-    } else {
-      LOG_DEVEL << "HAS A CONSTANT EXPRESSION - not - calling seek";
-    }*/
   }
 
   bool position(std::span<VPackSlice> span) const override {
@@ -3052,15 +3044,12 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
 
   bool reset(std::span<VPackSlice> span,
              std::span<VPackSlice> constants) override {
-    LOG_DEVEL << "Constants size is: " << constants.size();
-    LOG_DEVEL << "Options constant size is:" << _options.constantsSize;
     TRI_ASSERT(constants.size() == _options.constantsSize);
     _constants = constants;
     VPackBuilder keyBuilder;
     constructKey(keyBuilder, constants, {});
 
     RocksDBKey key;
-    LOG_DEVEL << "KeySlice is: " << keyBuilder.slice().toJson();
     key.constructUniqueVPackIndexValue(_index->objectId(), keyBuilder.slice());
 
     // we need to update the bounds to reflect the new key
@@ -3072,11 +3061,7 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
     _end = _rocksdbKeyUpperBound.string();
     _iterator->Seek(key.string());
 
-    auto x = position(span);
-    for (auto p : span) {
-      LOG_DEVEL << "Span is: " << p.toJson();
-    }
-    return x;
+    return position(span);
   }
 };
 

@@ -359,7 +359,13 @@ const IndexPrimaryJoinTestSuite = function () {
             FILTER doc1.y == doc2.y
             RETURN [doc1, doc2]`;
 
-      const qResult = runAndCheckQuery(queryStringEasy, "generic");
+      let qResult;
+      if (isCluster) {
+        qResult = runAndCheckQuery(queryStringEasy, "generic", null, true);
+      } else {
+        qResult = runAndCheckQuery(queryStringEasy, "generic");
+      }
+
       qResult.forEach((docs) => {
         let first = docs[0];
         let second = docs[1];
@@ -502,12 +508,16 @@ const IndexPrimaryJoinTestSuite = function () {
             FILTER doc1.y == doc2.y    // candidate[0]: key {1} | candidate[1]: key {1}
             FILTER doc2.x == 5         // candidate[1]: const {0}
             RETURN [doc1, doc2]`;
-
       // candidate[0] key {1} const {0}
       // candidate[1] key {1} const {0}
 
-      // runAndCheckQuery(queryString, "generic", null);
-      const qResult = runAndCheckQuery(queryString, "generic");
+      let qResult;
+      if (isCluster) {
+        qResult = runAndCheckQuery(queryString, "generic", null, true);
+      } else {
+        qResult = runAndCheckQuery(queryString, "generic");
+      }
+
       qResult.forEach((docs) => {
         let first = docs[0];
         let second = docs[1];
