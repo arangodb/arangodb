@@ -303,10 +303,10 @@ const waitForReplicatedLogAvailable = function (id) {
 
 
 const getServerProcessID = function (serverId) {
-  // Now look for instanceManager:
-  let pos = _.findIndex(global.instanceManager.arangods,
+  let arangods = clientHelper.getDBServers();
+  let pos = _.findIndex(arangods,
       x => x.id === serverId);
-  return global.instanceManager.arangods[pos].pid;
+  return arangods[pos].pid;
 };
 
 const stopServerImpl = function (serverId) {

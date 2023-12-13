@@ -6,7 +6,7 @@
 
 exports.supervisionState = function () {
   try {
-    var result = global.ArangoAgency.get('Target');
+    var result = arango.POST("/_admin/execute", `return global.ArangoAgency.get('Target')`);
     result = result.arango.Target;
     var proj = { ToDo: result.ToDo, Pending: result.Pending,
       Failed: result.Failed, Finished: result.Finished,
@@ -23,7 +23,8 @@ exports.queryAgencyJob = function (id) {
   let states = ["Finished", "Pending", "Failed", "ToDo"];
   for (let s of states) {
     try {
-      job = global.ArangoAgency.get('Target/' + s + '/' + id);
+      let arg = 'Target/' + s + '/' + id;
+      job = arango.POST("/_admin/execute", `return global.ArangoAgency.get(${JSON.stringify(arg)})`);
       job = job.arango.Target[s];
       if (Object.keys(job).length !== 0 && job.hasOwnProperty(id)) {
         return {error: false, id, status: s, job: job[id]};

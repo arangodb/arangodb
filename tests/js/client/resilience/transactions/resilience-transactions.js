@@ -35,16 +35,13 @@ const _ = require("lodash");
 const wait = require("internal").wait;
 const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
-const {arangoClusterInfoFlush, getDBServers} = require("@arangodb/test-helper");
-
-function getDBServers() {
-  var tmp = getDBServers();
-  var servers = [];
-  for (var i = 0; i < tmp.length; ++i) {
-    servers[i] = tmp[i].serverId;
-  }
-  return servers;
-}
+const {
+  arangoClusterInfoFlush, 
+  getDBServers,
+  arangoClusterInfoGetCollectionInfo,
+  arangoClusterInfoGetCollectionInfoCurrent,
+  getEndpointById
+} = require("@arangodb/test-helper");
 
 const tasksCompleted = () => {
   return 0 === tasks.get().filter((task) => {
@@ -82,7 +79,7 @@ function ClusterTransactionSuite() {
   ////////////////////////////////////////////////////////////////////////////////
 
   function findCollectionServers(database, collection) {
-    var cinfo = global.ArangoClusterInfo.getCollectionInfo(database, collection);
+    var cinfo = arangoClusterInfoGetCollectionInfo(database, collection);
     var shard = Object.keys(cinfo.shards)[0];
     return cinfo.shards[shard];
   }
@@ -94,13 +91,13 @@ function ClusterTransactionSuite() {
   function waitForSynchronousReplication(database) {
     console.info("Waiting for synchronous replication to settle...");
     arangoClusterInfoFlush();
-    cinfo = global.ArangoClusterInfo.getCollectionInfo(database, cn);
+    cinfo = arangoClusterInfoGetCollectionInfo(database, cn);
     shards = Object.keys(cinfo.shards);
     var count = 0;
     var replicas;
     while (++count <= 300) {
       ccinfo = shards.map(
-        s => global.ArangoClusterInfo.getCollectionInfoCurrent(database, cn, s)
+        s => arangoClusterInfoGetCollectionInfoCurrent(database, cn, s)
       );
       console.info("Plan:", cinfo.shards, "Current:", ccinfo.map(s => s.servers));
       replicas = ccinfo.map(s => s.servers.length);
@@ -121,12 +118,14 @@ function ClusterTransactionSuite() {
 
   function failFollower() {
     var follower = cinfo.shards[shards[0]][1];
-    var endpoint = global.ArangoClusterInfo.getServerEndpoint(follower);
-    // Now look for instanceManager:
-    var pos = _.findIndex(global.instanceManager.arangods,
-      x => x.endpoint === endpoint);
+    var endpoint = getEndpointById(follower);
+    let arangods = getDBServers();
+
+    var pos = _.findIndex(arangods,
+                          x => x.url === endpoint);
+  
     assertTrue(pos >= 0);
-    assertTrue(suspendExternal(global.instanceManager.arangods[pos].pid));
+    assertTrue(suspendExternal(arangods[pos].pid));
     console.info("Have failed follower", follower);
     return pos;
   }
@@ -137,45 +136,16 @@ function ClusterTransactionSuite() {
 
   function healFollower() {
     var follower = cinfo.shards[shards[0]][1];
-    var endpoint = global.ArangoClusterInfo.getServerEndpoint(follower);
-    // Now look for instanceManager:
-    var pos = _.findIndex(global.instanceManager.arangods,
-      x => x.endpoint === endpoint);
+    var endpoint = getEndpointById(follower);
+    let arangods = getDBServers();
+
+    var pos = _.findIndex(arangods,
+                          x => x.url === endpoint);
     assertTrue(pos >= 0);
-    assertTrue(continueExternal(global.instanceManager.arangods[pos].pid));
+    assertTrue(continueExternal(arangods[pos].pid));
     console.info("Have healed follower", follower);
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief fail the leader
-  ////////////////////////////////////////////////////////////////////////////////
-
-  function failLeader() {
-    var leader = cinfo.shards[shards[0]][0];
-    var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
-    // Now look for instanceManager:
-    var pos = _.findIndex(global.instanceManager.arangods,
-      x => x.endpoint === endpoint);
-    assertTrue(pos >= 0);
-    assertTrue(suspendExternal(global.instanceManager.arangods[pos].pid));
-    console.info("Have failed leader", leader);
-    return leader;
-  }
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief heal the follower
-  ////////////////////////////////////////////////////////////////////////////////
-
-  function healLeader() {
-    var leader = cinfo.shards[shards[0]][0];
-    var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
-    // Now look for instanceManager:
-    var pos = _.findIndex(global.instanceManager.arangods,
-      x => x.endpoint === endpoint);
-    assertTrue(pos >= 0);
-    assertTrue(continueExternal(global.instanceManager.arangods[pos].pid));
-    console.info("Have healed leader", leader);
-  }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the actual tests
@@ -219,9 +189,9 @@ function ClusterTransactionSuite() {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief check whether we have access to global.instanceManager
     ////////////////////////////////////////////////////////////////////////////////
-    testCheckInstanceInfo : function () {
-      assertTrue(global.instanceManager !== undefined);
-    },
+    // testCheckInstanceInfo : function () {
+    //   assertTrue(global.instanceManager !== undefined);
+    // },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief check if a synchronously replicated collection gets online

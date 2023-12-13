@@ -37,16 +37,14 @@ const wait = require("internal").wait;
 const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
 const download = require('internal').download;
-const {arangoClusterInfoFlush, getDBServers} = require("@arangodb/test-helper");
-
-function getDBServers() {
-  var tmp = getDBServers();
-  var servers = [];
-  for (var i = 0; i < tmp.length; ++i) {
-    servers[i] = tmp[i].serverId;
-  }
-  return servers;
-}
+const {
+  arangoClusterInfoFlush, 
+  getDBServers,
+  arangoClusterInfoGetCollectionInfo,
+  arangoClusterInfoGetCollectionInfoCurrent,
+  getEndpointById,
+  agency
+} = require("@arangodb/test-helper");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -66,7 +64,7 @@ function SynchronousReplicationWithViewSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function findCollectionServers(database, collection) {
-    var cinfo = global.ArangoClusterInfo.getCollectionInfo(database, collection);
+    var cinfo = arangoClusterInfoGetCollectionInfo(database, collection);
     var shard = Object.keys(cinfo.shards)[0];
     return cinfo.shards[shard];
   }
@@ -76,7 +74,7 @@ function SynchronousReplicationWithViewSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function findCollectionShardServers(database, collection) {
-    var cinfo = global.ArangoClusterInfo.getCollectionInfo(database, collection);
+    var cinfo = arangoClusterInfoGetCollectionInfo(database, collection);
     var shard = Object.keys(cinfo.shards)[0];
     return cinfo.shards[shard];
   }
@@ -88,13 +86,13 @@ function SynchronousReplicationWithViewSuite () {
   function waitForSynchronousReplication(database) {
     console.info("Waiting for synchronous replication to settle...");
     arangoClusterInfoFlush();
-    cinfo = global.ArangoClusterInfo.getCollectionInfo(database, cn);
+    cinfo = arangoClusterInfoGetCollectionInfo(database, cn);
     shards = Object.keys(cinfo.shards);
     var count = 0;
     var replicas;
     while (++count <= 300) {
       ccinfo = shards.map(
-        s => global.ArangoClusterInfo.getCollectionInfoCurrent(database, cn, s)
+        s => arangoClusterInfoGetCollectionInfoCurrent(database, cn, s)
       );
       console.info("Plan:", cinfo.shards, "Current:", ccinfo.map(s => s.servers));
       replicas = ccinfo.map(s => s.servers.length);
@@ -125,12 +123,13 @@ function SynchronousReplicationWithViewSuite () {
 
   function failFollower() {
     var follower = cinfo.shards[shards[0]][1];
-    var endpoint = global.ArangoClusterInfo.getServerEndpoint(follower);
+    var endpoint = getEndpointById(follower);
+    let arangods = getDBServers();
     // Now look for instanceManager:
-    var pos = _.findIndex(global.instanceManager.arangods,
-                          x => x.endpoint === endpoint);
+    var pos = _.findIndex(arangods,
+                          x => x.url === endpoint);
     assertTrue(pos >= 0);
-    assertTrue(suspendExternal(global.instanceManager.arangods[pos].pid));
+    assertTrue(suspendExternal(arangods[pos].pid));
     console.info("Have failed follower", follower);
     failedState.follower = follower;
   }
@@ -141,12 +140,13 @@ function SynchronousReplicationWithViewSuite () {
 
   function healFollower(follower = null) {
     if (follower == null) follower = cinfo.shards[shards[0]][1];
-    var endpoint = global.ArangoClusterInfo.getServerEndpoint(follower);
+    var endpoint = getEndpointById(follower);
+    let arangods = getDBServers();
     // Now look for instanceManager:
-    var pos = _.findIndex(global.instanceManager.arangods,
-                          x => x.endpoint === endpoint);
+    var pos = _.findIndex(arangods,
+                          x => x.url === endpoint);
     assertTrue(pos >= 0);
-    assertTrue(continueExternal(global.instanceManager.arangods[pos].pid));
+    assertTrue(continueExternal(arangods[pos].pid));
     console.info("Have healed follower", follower);
     if (failedState.follower === follower) failedState.follower = null;
   }
@@ -157,12 +157,13 @@ function SynchronousReplicationWithViewSuite () {
 
   function failLeader() {
     var leader = cinfo.shards[shards[0]][0];
-    var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
+    var endpoint = getEndpointById(leader);
+    let arangods = getDBServers();
     // Now look for instanceManager:
-    var pos = _.findIndex(global.instanceManager.arangods,
-                          x => x.endpoint === endpoint);
+    var pos = _.findIndex(arangods,
+                          x => x.url === endpoint);
     assertTrue(pos >= 0);
-    assertTrue(suspendExternal(global.instanceManager.arangods[pos].pid));
+    assertTrue(suspendExternal(arangods[pos].pid));
     console.info("Have failed leader", leader);
     failedState.leader = leader;
     return leader;
@@ -174,12 +175,13 @@ function SynchronousReplicationWithViewSuite () {
 
   function healLeader(leader) {
     if (leader == null) leader = cinfo.shards[shards[0]][0];
-    var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
+    var endpoint = getEndpointById(leader);
+    let arangods = getDBServers();
     // Now look for instanceManager:
-    var pos = _.findIndex(global.instanceManager.arangods,
-                          x => x.endpoint === endpoint);
+    var pos = _.findIndex(arangods,
+                          x => x.url === endpoint);
     assertTrue(pos >= 0);
-    assertTrue(continueExternal(global.instanceManager.arangods[pos].pid));
+    assertTrue(continueExternal(arangods[pos].pid));
     console.info("Have healed leader", leader);
     if (failedState.leader === leader) failedState.leader = null;
   }
@@ -606,8 +608,9 @@ function SynchronousReplicationWithViewSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     testInquiry : function () {
       console.warn("Checking inquiry");
-      var writeResult = global.ArangoAgency.write(
-        [[{"a":1},{"a":{"oldEmpty":true}},"INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
+      var writeResult = agency.call("write", [[{"a":1},{"a":{"oldEmpty":true}},"INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
+      // global.ArangoAgency.write(
+      //   [[{"a":1},{"a":{"oldEmpty":true}},"INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
       console.log(
         "Inquired successfully a matched precondition under 503 response from write");
       assertTrue(typeof writeResult === "object");
@@ -615,19 +618,19 @@ function SynchronousReplicationWithViewSuite () {
       assertTrue("results" in writeResult);
       assertTrue(writeResult.results[0]>0);
       try {
-        writeResult = global.ArangoAgency.write(
+        writeResult = agency.call("write",
           [[{"a":1},{"a":0},"INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
         fail();
       } catch (e1) {
         console.log(
           "Inquired successfully a failed precondition under 503 response from write");
       }
-      writeResult = global.ArangoAgency.write(
+      writeResult = agency.call("write",
         [[{"a":1},{"a":1},"INTEGRATION_TEST_INQUIRY_ERROR_0"]]);
       console.log(
         "Inquired successfully a matched precondition under 0 response from write");
       try {
-        writeResult = global.ArangoAgency.write(
+        writeResult = agency.call("write",
           [[{"a":1},{"a":0},"INTEGRATION_TEST_INQUIRY_ERROR_0"]]);
         fail();
       } catch (e1) {
@@ -639,9 +642,9 @@ function SynchronousReplicationWithViewSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether we have access to global.instanceManager
 ////////////////////////////////////////////////////////////////////////////////
-    testCheckInstanceInfo : function () {
-      assertTrue(global.instanceManager !== undefined);
-    },
+    // testCheckInstanceInfo : function () {
+    //   assertTrue(global.instanceManager !== undefined);
+    // },
 
 
 ////////////////////////////////////////////////////////////////////////////////

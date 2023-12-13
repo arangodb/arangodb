@@ -40,14 +40,14 @@ const supervisionState = require("@arangodb/testutils/cluster-test-helper").supe
 const queryAgencyJob = require("@arangodb/testutils/cluster-test-helper").queryAgencyJob;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
-function getDBServers() {
-  var tmp = global.ArangoClusterInfo.getDBServers();
-  var servers = [];
-  for (var i = 0; i < tmp.length; ++i) {
-    servers[i] = tmp[i].serverId;
-  }
-  return servers;
-}
+const {
+  arangoClusterInfoFlush, 
+  getDBServers,
+  arangoClusterInfoGetCollectionInfo,
+  arangoClusterInfoGetCollectionInfoCurrent,
+  getEndpointById
+} = require("@arangodb/test-helper");
+
 
 const servers = getDBServers();
 
@@ -72,7 +72,7 @@ function MovingShardsWithViewSuite (options) {
     if (typeof collection !== "string") {
       throw new Error(`argument is not a string: ${collection}`);
     }
-    var cinfo = global.ArangoClusterInfo.getCollectionInfo(database, collection);
+    var cinfo = arangoClusterInfoGetCollectionInfo(database, collection);
     return cinfo.shards;
   }
 
@@ -133,13 +133,13 @@ function MovingShardsWithViewSuite (options) {
       var shardInfo = collectionShardInfo(database, c[i].name());
       var shards = Object.keys(shardInfo);
       var replFactor =
-          global.ArangoClusterInfo.getCollectionInfo(database, c[i].name())
+          arangoClusterInfoGetCollectionInfo(database, c[i].name())
               .replicationFactor;
       assertTrue(typeof replFactor === "number");
       var count = 0;
       while (++count <= 180) {
         var ccinfo = shards.map(
-          s => global.ArangoClusterInfo.getCollectionInfoCurrent(
+          s => arangoClusterInfoGetCollectionInfoCurrent(
             database, c[i].name(), s)
         );
         var replicas = ccinfo.map(s => [s.servers.length, s.failoverCandidates.length]);
@@ -276,11 +276,11 @@ function MovingShardsWithViewSuite (options) {
           if (servers.indexOf(id) === -1) {
             // Now check current as well:
             var collInfo =
-                global.ArangoClusterInfo.getCollectionInfo("_system", c[i].name());
+                arangoClusterInfoGetCollectionInfo("_system", c[i].name());
             var shards = collInfo.shards;
             var collInfoCurr =
                 Object.keys(shards).map(
-                  s => global.ArangoClusterInfo.getCollectionInfoCurrent(
+                  s => arangoClusterInfoGetCollectionInfoCurrent(
                     "_system", c[i].name(), s).servers);
             var idxs = collInfoCurr.map(l => l.indexOf(id));
             ok = true;
@@ -872,7 +872,7 @@ function MovingShardsWithViewSuite (options) {
       var servers = findCollectionServers("_system", c[0].name());
       var fromServer = servers[1];
       var toServer = findServerNotOnList(servers);
-      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+      var cinfo = arangoClusterInfoGetCollectionInfo(
           "_system", c[0].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(moveShard("_system", c[0]._id, shard, fromServer, toServer, false));
@@ -889,7 +889,7 @@ function MovingShardsWithViewSuite (options) {
       var servers = findCollectionServers("_system", c[0].name());
       var fromServer = servers[0];
       var toServer = findServerNotOnList(servers);
-      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+      var cinfo = arangoClusterInfoGetCollectionInfo(
           "_system", c[0].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(moveShard("_system", c[0]._id, shard, fromServer, toServer, false));
@@ -907,7 +907,7 @@ function MovingShardsWithViewSuite (options) {
       var servers = findCollectionServers("_system", c[1].name());
       var fromServer = servers[0];
       var toServer = findServerNotOnList(servers);
-      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+      var cinfo = arangoClusterInfoGetCollectionInfo(
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false));
@@ -925,7 +925,7 @@ function MovingShardsWithViewSuite (options) {
       var servers = findCollectionServers("_system", c[1].name());
       var fromServer = servers[1];
       var toServer = findServerNotOnList(servers);
-      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+      var cinfo = arangoClusterInfoGetCollectionInfo(
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false));
@@ -943,7 +943,7 @@ function MovingShardsWithViewSuite (options) {
       var servers = findCollectionServers("_system", c[1].name());
       var fromServer = servers[2];
       var toServer = findServerNotOnList(servers);
-      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+      var cinfo = arangoClusterInfoGetCollectionInfo(
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false));
@@ -961,7 +961,7 @@ function MovingShardsWithViewSuite (options) {
       var servers = findCollectionServers("_system", c[1].name());
       var fromServer = servers[0];
       var toServer = findServerNotOnList(servers);
-      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+      var cinfo = arangoClusterInfoGetCollectionInfo(
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false));
@@ -1061,7 +1061,7 @@ function MovingShardsWithViewSuite (options) {
       var servers = findCollectionServers("_system", c[1].name());
       var fromServer = servers[0];
       var toServer = findServerNotOnList(servers);
-      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+      var cinfo = arangoClusterInfoGetCollectionInfo(
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(maintenanceMode("on"));

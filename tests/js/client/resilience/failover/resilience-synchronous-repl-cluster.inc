@@ -36,7 +36,13 @@
   const wait = require("internal").wait;
   const suspendExternal = require("internal").suspendExternal;
   const continueExternal = require("internal").continueExternal;
-  const {arangoClusterInfoFlush} = require("@arangodb/test-helper");
+  const {
+    arangoClusterInfoFlush, 
+    arangoClusterInfoGetCollectionInfo, 
+    arangoClusterInfoGetCollectionInfoCurrent,
+    getEndpointById,
+    getDBServers
+  } = require("@arangodb/test-helper");
 
   let cn = "UnitTestSyncRep";
   let c;
@@ -49,7 +55,7 @@
   /// @brief find out servers for the system collections
   ////////////////////////////////////////////////////////////////////////////////
   function findCollectionServers(database, collection) {
-    var cinfo = global.ArangoClusterInfo.getCollectionInfo(database, collection);
+    var cinfo = arangoClusterInfoGetCollectionInfo(database, collection);
     var shard = Object.keys(cinfo.shards)[0];
     return cinfo.shards[shard];
   }
@@ -61,13 +67,13 @@
   function waitForSynchronousReplication(database) {
     console.info("Waiting for synchronous replication to settle...");
     arangoClusterInfoFlush();
-    cinfo = global.ArangoClusterInfo.getCollectionInfo(database, cn);
+    cinfo = arangoClusterInfoGetCollectionInfo(database, cn);
     shards = Object.keys(cinfo.shards);
     var count = 0;
     var replicas;
     while (++count <= 300) {
       ccinfo = shards.map(
-        s => global.ArangoClusterInfo.getCollectionInfoCurrent(database, cn, s)
+        s => arangoClusterInfoGetCollectionInfoCurrent(database, cn, s)
       );
       console.info("Plan:", cinfo.shards, "Current:", ccinfo.map(s => s.servers));
       replicas = ccinfo.map(s => [s.servers.length, s.failoverCandidates.length]);
@@ -112,12 +118,13 @@
 
   function failFollower() {
     var follower = cinfo.shards[shards[0]][1];
-    var endpoint = global.ArangoClusterInfo.getServerEndpoint(follower);
+    var endpoint = getEndpointById(follower);
+    let arangods = getDBServers();
     // Now look for instanceManager:
-    var pos = _.findIndex(global.instanceManager.arangods,
-      x => x.endpoint === endpoint);
+    var pos = _.findIndex(arangods,
+      x => x.url === endpoint);
     assertTrue(pos >= 0);
-    var pid = global.instanceManager.arangods[pos].pid;
+    var pid = arangods[pos].pid;
     failedPIDs.push(pid);
     assertTrue(suspendExternal(pid));
     console.info("Have failed follower", follower);
@@ -131,12 +138,13 @@
 
   function healFollower() {
     var follower = cinfo.shards[shards[0]][1];
-    var endpoint = global.ArangoClusterInfo.getServerEndpoint(follower);
+    var endpoint = getEndpointById(follower);
+    let arangods = getDBServers();
     // Now look for instanceManager:
-    var pos = _.findIndex(global.instanceManager.arangods,
-      x => x.endpoint === endpoint);
+    var pos = _.findIndex(arangods,
+      x => x.url === endpoint);
     assertTrue(pos >= 0);
-    var pid = global.instanceManager.arangods[pos].pid;
+    var pid = arangods[pos].pid;
     assertTrue(continueExternal(pid));
     failedPIDs.splice(failedPIDs.indexOf(pid), 1);
     console.info("Have healed follower", follower);
@@ -148,12 +156,13 @@
 
   function failLeader() {
     var leader = cinfo.shards[shards[0]][0];
-    var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
+    var endpoint = getEndpointById(leader);
+    let arangods = getDBServers();
     // Now look for instanceManager:
-    var pos = _.findIndex(global.instanceManager.arangods,
-      x => x.endpoint === endpoint);
+    var pos = _.findIndex(arangods,
+      x => x.url === endpoint);
     assertTrue(pos >= 0);
-    var pid = global.instanceManager.arangods[pos].pid;
+    var pid = arangods[pos].pid;
     failedPIDs.push(pid);
     assertTrue(suspendExternal(pid));
     console.info("Have failed leader", leader);
@@ -166,12 +175,13 @@
 
   function healLeader() {
     var leader = cinfo.shards[shards[0]][0];
-    var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
+    var endpoint = getEndpointById(leader);
+    let arangods = getDBServers();
     // Now look for instanceManager:
-    var pos = _.findIndex(global.instanceManager.arangods,
-      x => x.endpoint === endpoint);
+    var pos = _.findIndex(arangods,
+      x => x.url === endpoint);
     assertTrue(pos >= 0);
-    var pid = global.instanceManager.arangods[pos].pid;
+    var pid = arangods[pos].pid;
     assertTrue(continueExternal(pid));
     failedPIDs.splice(failedPIDs.indexOf(pid), 1);
     console.info("Have healed leader", leader);

@@ -42,9 +42,11 @@ const {
   debugClearFailAt,
   getEndpointById,
   getServersByType,
+  getDBServers,
   arangoClusterInfoFlush,
   arangoClusterInfoGetCollectionInfo,
   arangoClusterInfoGetCollectionInfoCurrent,
+  getServerById
 } = require('@arangodb/test-helper');
 
 
@@ -121,15 +123,17 @@ function SynchronousReplicationSuite() {
   function failFollower(failAt = null, follower = null) {
     if (follower == null) follower = cinfo.shards[shards[0]][1];
     var endpoint = getEndpointById(follower);
-    // Now look for instanceManager:
-    var pos = _.findIndex(global.instanceManager.arangods,
-                          x => x.endpoint === endpoint);
-    assertTrue(pos >= 0);
+    let arangods = getDBServers();
+
+    var pos = _.findIndex(arangods,
+                          x => x.url === endpoint);
+  
+    assertTrue(pos >= 0, pos);
     if (failAt) {
       debugSetFailAt(endpoint.replace('tcp://', 'http://'), failAt);
       console.info("Have added failure in follower", follower, " at ", failAt);
     } else {
-      assertTrue(suspendExternal(global.instanceManager.arangods[pos].pid));
+      assertTrue(suspendExternal(arangods[pos].pid));
       console.info("Have failed follower", follower);
     }
     failedState.follower = { failAt: (failAt ? failAt : null), failedServer: follower };
@@ -141,16 +145,17 @@ function SynchronousReplicationSuite() {
 
   function healFollower(failAt = null, follower = null) {
     if (follower == null) follower = cinfo.shards[shards[0]][1];
-    var endpoint = global.ArangoClusterInfo.getServerEndpoint(follower);
-    // Now look for instanceManager:
-    var pos = _.findIndex(global.instanceManager.arangods,
-      x => x.endpoint === endpoint);
+    var endpoint = getEndpointById(follower);
+    let arangods = getDBServers();
+
+    var pos = _.findIndex(arangods,
+      x => x.url === endpoint);
     assertTrue(pos >= 0);
     if (failAt) {
       debugRemoveFailAt(endpoint.replace('tcp://', 'http://'), failAt);
       console.info("Have removed failure in follower", follower, " at ", failAt);
     } else {
-      assertTrue(continueExternal(global.instanceManager.arangods[pos].pid));
+      assertTrue(continueExternal(arangods[pos].pid));
       console.info("Have healed follower", follower);
     }
     failedState.follower = null;
@@ -162,16 +167,17 @@ function SynchronousReplicationSuite() {
 
   function failLeader(failAt = null, leader = null) {
     if (leader == null) leader = cinfo.shards[shards[0]][0];
-    var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
-    // Now look for instanceManager:
-    var pos = _.findIndex(global.instanceManager.arangods,
-      x => x.endpoint === endpoint);
+    var endpoint =getEndpointById(leader);
+    let arangods = getDBServers();
+
+    var pos = _.findIndex(arangods,
+      x => x.url === endpoint);
     assertTrue(pos >= 0);
     if (failAt) {
       debugSetFailAt(endpoint.replace('tcp://', 'http://'), failAt);
       console.info("Have failed leader", leader, " at ", failAt);
     } else {
-      assertTrue(suspendExternal(global.instanceManager.arangods[pos].pid));
+      assertTrue(suspendExternal(arangods[pos].pid));
       console.info("Have failed leader", leader);
     }
     failedState.leader = { failAt: (failAt ? failAt : null), failedServer: leader };
@@ -184,16 +190,17 @@ function SynchronousReplicationSuite() {
 
   function healLeader(failAt = null, leader = null) {
     if (leader == null) leader = cinfo.shards[shards[0]][0];
-    var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
-    // Now look for instanceManager:
-    var pos = _.findIndex(global.instanceManager.arangods,
-      x => x.endpoint === endpoint);
+    var endpoint =getEndpointById(leader);
+    let arangods = getDBServers();
+
+    var pos = _.findIndex(arangods,
+      x => x.url === endpoint);
     assertTrue(pos >= 0);
     if (failAt) {
       debugRemoveFailAt(endpoint.replace('tcp://', 'http://'), failAt);
       console.info("Have removed failure in leader", leader, " at ", failAt);
     } else {
-      assertTrue(continueExternal(global.instanceManager.arangods[pos].pid));
+      assertTrue(continueExternal(arangods[pos].pid));
       console.info("Have healed leader", leader);
     }
     failedState.leader = null;
@@ -354,7 +361,7 @@ function SynchronousReplicationSuite() {
     tearDown: function () {
       var servers = getServersByType(instanceRoledbServer);
       servers.forEach(s => {
-        let endpoint = global.ArangoClusterInfo.getServerEndpoint(s.serverId);
+        let endpoint = getServerById(s.id).endpoint;
         debugClearFailAt(endpoint.replace('tcp://', 'http://'));
       });
       if(failedState.leader != null) healLeader(failedState.leader.failAt, failedState.leader.failedServer);
@@ -366,9 +373,9 @@ function SynchronousReplicationSuite() {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief check whether we have access to global.instanceManager
     ////////////////////////////////////////////////////////////////////////////////
-    testCheckInstanceInfo: function () {
-      assertTrue(global.instanceManager !== undefined);
-    },
+    // testCheckInstanceInfo: function () {
+    //   assertTrue(global.instanceManager !== undefined);
+    // },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief check if a synchronously replicated collection gets online
