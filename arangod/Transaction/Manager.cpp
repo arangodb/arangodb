@@ -465,9 +465,13 @@ Result Manager::prepareOptions(transaction::Options& options) {
     // replicate changes to followers. replication to followers is only done
     // once the locks have been acquired on the leader(s). so if there are any
     // locking issues, they are supposed to happen first on leaders, and not
-    // affect followers. that's why we can hard-code the lock timeout here to a
-    // rather low value on followers
-    constexpr double followerLockTimeout = 15.0;
+    // affect followers.
+    // Having said that, even on a follower it can happen that for example
+    // an index is finalized on a shard. And then the collection could be
+    // locked exclusively for some period of time. Therefore, we should not
+    // set the locking timeout too low here. We choose 5 minutes as a
+    // compromise:
+    constexpr double followerLockTimeout = 300.0;
     if (options.lockTimeout == 0.0 ||
         options.lockTimeout >= followerLockTimeout) {
       options.lockTimeout = followerLockTimeout;
