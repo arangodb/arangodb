@@ -207,6 +207,42 @@ TEST_F(VPackLoadInspectorTest, load_map) {
             m.unordered);
 }
 
+TEST_F(VPackLoadInspectorTest, load_transformed_map) {
+  builder.openObject();
+  builder.add(VPackValue("map"));
+  builder.openArray();
+  builder.openObject();
+  builder.add("key", 1);
+  builder.add(VPackValue("value"));
+  builder.openObject();
+  builder.add("i", VPackValue(1));
+  builder.close();
+  builder.close();
+  builder.openObject();
+  builder.add("key", 2);
+  builder.add(VPackValue("value"));
+  builder.openObject();
+  builder.add("i", VPackValue(2));
+  builder.close();
+  builder.close();
+  builder.openObject();
+  builder.add("key", 3);
+  builder.add(VPackValue("value"));
+  builder.openObject();
+  builder.add("i", VPackValue(3));
+  builder.close();
+  builder.close();
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  TransformedMap m;
+  auto result = inspector.apply(m);
+  ASSERT_TRUE(result.ok());
+
+  EXPECT_EQ((std::map<int, Container>{{1, {1}}, {2, {2}}, {3, {3}}}), m.map);
+}
+
 TEST_F(VPackLoadInspectorTest, load_set) {
   builder.openObject();
   builder.add(VPackValue("set"));
