@@ -782,8 +782,8 @@ Result dropIndexCoordinatorInner(LogicalCollection const& col, IndexId iid,
  * data.
  */
 auto ensureIndexCoordinatorReplication2Inner(
-    LogicalCollection const& collection, IndexId iid,
-    VPackSlice index, bool create, double timeout, ArangodServer& server)
+    LogicalCollection const& collection, IndexId iid, VPackSlice index,
+    bool create, double timeout, ArangodServer& server)
     -> ResultT<VPackBuilder> {
   // Get the current entry in Target for this collection
   TargetCollectionReader collectionFromTarget(collection);
@@ -887,7 +887,8 @@ auto ensureIndexCoordinatorReplication2Inner(
                       if (!indexSlice.hasKey(StaticStrings::IndexIsBuilding)) {
                         return true;
                       }
-                      auto maybeError = indexSlice.get("creationError");
+                      auto maybeError =
+                          indexSlice.get(StaticStrings::IndexCreationError);
                       if (maybeError.isObject()) {
                         // There has been an error reported on the DBServers
                         auto status = velocypack::deserializeWithStatus(
@@ -974,9 +975,9 @@ auto ensureIndexCoordinatorReplication2Inner(
 // Finally note that the retry loop for the case of a failed precondition
 // is outside this function here in `ensureIndexCoordinator`.
 Result ensureIndexCoordinatorInner(LogicalCollection const& collection,
-                                   IndexId iid, VPackSlice slice,
-                                   bool create, VPackBuilder& resultBuilder,
-                                   double timeout, ArangodServer& server) {
+                                   IndexId iid, VPackSlice slice, bool create,
+                                   VPackBuilder& resultBuilder, double timeout,
+                                   ArangodServer& server) {
   using namespace std::chrono;
 
   double const realTimeout = getTimeout(timeout);
@@ -1429,8 +1430,7 @@ Result ClusterIndexMethods::ensureIndexCoordinator(
         }
       } else {
         res = ::ensureIndexCoordinatorInner(  // create index
-            collection, iid, slice, create, resultBuilder, timeout,
-            server);
+            collection, iid, slice, create, resultBuilder, timeout, server);
       }
 
       // Note that this function sets the errorMsg unless it is precondition

@@ -491,7 +491,7 @@ auto checkCollectionsOfGroup(CollectionGroup const& group,
         }
         if (arangodb::basics::VelocyPackHelper::getBooleanValue(
                 idx, StaticStrings::IndexIsBuilding, false) &&
-            !idx.hasKey("creationError")) {
+            !idx.hasKey(StaticStrings::IndexCreationError)) {
           // Index is still Flagged as isBuilding, and has not yet reported an
           // error. Let us test if it converged, or errored.
           auto const& currentCollection = group.currentCollections.find(cid);
@@ -827,7 +827,7 @@ struct TransactionBuilder {
           TRI_ASSERT(action.index.slice().isObject());
           VPackObjectBuilder guard{&builder};
           builder.add(VPackObjectIterator(action.index.slice()));
-          builder.add(VPackValue("creationError"));
+          builder.add(VPackValue(StaticStrings::IndexCreationError));
           velocypack::serialize(builder, action.error);
         });
     env = std::move(tmp)
