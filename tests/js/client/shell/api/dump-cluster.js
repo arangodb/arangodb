@@ -38,7 +38,7 @@ const collectionNameA = "A";
 function fillCollection(col, num) {
   let documents = [];
   for (let i = 0; i < num; i++) {
-    documents.push({value: i, some: {nested:{value: 1234}}});
+    documents.push({value: i, some: {nested:{value: 1234}}, flag: i % 3});
     if (documents.length === 1000) {
       col.save(documents);
       documents = [];
@@ -83,7 +83,7 @@ function apiNext(server, ctx, batchId, lastBatch) {
 
 function createContext(server, options) {
   const response = apiCreateContext(server, options);
-  assertEqual(response.code, 201);
+  assertEqual(response.code, 201, JSON.stringify(response));
   assertNotUndefined(response.headers["x-arango-dump-id"]);
   const id = response.headers["x-arango-dump-id"];
 
@@ -229,6 +229,30 @@ function DumpAPI() {
         assertEqual(Object.keys(doc).sort(), ["bar", "foo"]);
         assertEqual(doc.foo, 1234);
         assertTrue(typeof doc.bar === 'number');
+      }
+      ctx.drop();
+    },
+
+    testSimpleFilters: function () {
+      const servers = getShardsByServer(collection);
+      const server = Object.keys(servers)[0];
+      const ctx = createContext(server, {shards: servers[server],
+                                         filters: [{attributePath: ["flag"], value: 0}]});
+
+      for (const [doc, shard] of ctx.read()) {
+        assertEqual(doc.flag, 0);
+      }
+      ctx.drop();
+    },
+
+    testNestedFilters: function () {
+      const servers = getShardsByServer(collection);
+      const server = Object.keys(servers)[0];
+      const ctx = createContext(server, {shards: servers[server],
+                                         filters: [{attributePath: ["flag", "that", "nests"], value: 0}]});
+
+      for (const [doc, shard] of ctx.read()) {
+        assertEqual(doc.flag, 0);
       }
       ctx.drop();
     },
