@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, AQL_EXPLAIN */
+/*global assertEqual, assertTrue, AQL_EXPLAIN, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the index
@@ -30,6 +30,7 @@
 const jsunity = require("jsunity");
 const internal = require("internal");
 const db = internal.db;
+const {waitForEstimatorSync } = require('@arangodb/test-helper');
 
 function IndexSelectionSuite() {
   'use strict';
@@ -66,7 +67,7 @@ function IndexSelectionSuite() {
       }
       c.insert(docs);
 
-      internal.waitForEstimatorSync();
+      waitForEstimatorSync();
       let indexes = c.indexes();
       assertEqual(["a"], indexes[1].fields);
       assertEqual(["b"], indexes[2].fields);
@@ -75,11 +76,11 @@ function IndexSelectionSuite() {
       let query, plan;
       
       query = "FOR doc IN @@collection FILTER doc.a == @value RETURN doc";
-      plan = AQL_EXPLAIN(query, { "@collection": cn, value: 2 }).plan;
+      plan = db._createStatement({query: query, bindVars:  { "@collection": cn, value: 2 }}).explain().plan;
       assertIndexUsed(["a"], plan);
       
       query = "FOR doc IN @@collection FILTER doc.b == @value RETURN doc";
-      plan = AQL_EXPLAIN(query, { "@collection": cn, value: 2 }).plan;
+      plan = db._createStatement({query: query, bindVars:  { "@collection": cn, value: 2 }}).explain().plan;
       assertIndexUsed(["b"], plan);
     },
     
@@ -95,7 +96,7 @@ function IndexSelectionSuite() {
       }
       c.insert(docs);
 
-      internal.waitForEstimatorSync();
+      waitForEstimatorSync();
       let indexes = c.indexes();
       assertEqual(["a"], indexes[1].fields);
       assertEqual(["b"], indexes[2].fields);
@@ -104,11 +105,11 @@ function IndexSelectionSuite() {
       let query, plan;
       
       query = "FOR doc IN @@collection FILTER doc.a == @value && doc.b == @value RETURN doc";
-      plan = AQL_EXPLAIN(query, { "@collection": cn, value: 2 }).plan;
+      plan = db._createStatement({query: query, bindVars:  { "@collection": cn, value: 2 }}).explain().plan;
       assertIndexUsed(["b"], plan);
       
       query = "FOR doc IN @@collection FILTER doc.b == @value && doc.a == @value RETURN doc";
-      plan = AQL_EXPLAIN(query, { "@collection": cn, value: 2 }).plan;
+      plan = db._createStatement({query: query, bindVars:  { "@collection": cn, value: 2 }}).explain().plan;
       assertIndexUsed(["b"], plan);
     },
     
@@ -124,7 +125,7 @@ function IndexSelectionSuite() {
       }
       c.insert(docs);
 
-      internal.waitForEstimatorSync();
+      waitForEstimatorSync();
       let indexes = c.indexes();
       assertEqual(["b"], indexes[1].fields);
       assertEqual(["a"], indexes[2].fields);
@@ -133,11 +134,11 @@ function IndexSelectionSuite() {
       let query, plan;
       
       query = "FOR doc IN @@collection FILTER doc.a == @value && doc.b == @value RETURN doc";
-      plan = AQL_EXPLAIN(query, { "@collection": cn, value: 2 }).plan;
+      plan = db._createStatement({query: query, bindVars:  { "@collection": cn, value: 2 }}).explain().plan;
       assertIndexUsed(["b"], plan);
       
       query = "FOR doc IN @@collection FILTER doc.b == @value && doc.a == @value RETURN doc";
-      plan = AQL_EXPLAIN(query, { "@collection": cn, value: 2 }).plan;
+      plan = db._createStatement({query: query, bindVars:  { "@collection": cn, value: 2 }}).explain().plan;
       assertIndexUsed(["b"], plan);
     },
     
@@ -153,7 +154,7 @@ function IndexSelectionSuite() {
       }
       c.insert(docs);
 
-      internal.waitForEstimatorSync();
+      waitForEstimatorSync();
       let indexes = c.indexes();
       assertEqual(["a", "b"], indexes[1].fields);
       assertEqual(["a", "b", "c"], indexes[2].fields);
@@ -162,7 +163,7 @@ function IndexSelectionSuite() {
       let query, plan;
       
       query = "FOR doc IN @@collection FILTER doc.a == @value && doc.b == @value && doc.c == @value RETURN doc";
-      plan = AQL_EXPLAIN(query, { "@collection": cn, value: 2 }).plan;
+      plan = db._createStatement({query: query, bindVars:  { "@collection": cn, value: 2 }}).explain().plan;
       assertIndexUsed(["a", "b", "c"], plan);
     },
     
@@ -178,7 +179,7 @@ function IndexSelectionSuite() {
       }
       c.insert(docs);
 
-      internal.waitForEstimatorSync();
+      waitForEstimatorSync();
       let indexes = c.indexes();
       assertEqual(["a", "b", "c"], indexes[1].fields);
       assertEqual(["a", "b"], indexes[2].fields);
@@ -187,7 +188,7 @@ function IndexSelectionSuite() {
       let query, plan;
       
       query = "FOR doc IN @@collection FILTER doc.a == @value && doc.b == @value && doc.c == @value RETURN doc";
-      plan = AQL_EXPLAIN(query, { "@collection": cn, value: 2 }).plan;
+      plan = db._createStatement({query: query, bindVars:  { "@collection": cn, value: 2 }}).explain().plan;
       assertIndexUsed(["a", "b", "c"], plan);
     },
     
@@ -203,7 +204,7 @@ function IndexSelectionSuite() {
       }
       c.insert(docs);
 
-      internal.waitForEstimatorSync();
+      waitForEstimatorSync();
       let indexes = c.indexes();
       assertEqual(["a", "b"], indexes[1].fields);
       assertEqual(["a", "b", "c"], indexes[2].fields);
@@ -212,7 +213,7 @@ function IndexSelectionSuite() {
       let query, plan;
       
       query = "FOR doc IN @@collection FILTER doc.a == @value && doc.b == @value RETURN doc";
-      plan = AQL_EXPLAIN(query, { "@collection": cn, value: 2 }).plan;
+      plan = db._createStatement({query: query, bindVars:  { "@collection": cn, value: 2 }}).explain().plan;
       assertIndexUsed(["a", "b", "c"], plan);
     },
     
@@ -228,7 +229,7 @@ function IndexSelectionSuite() {
       }
       c.insert(docs);
 
-      internal.waitForEstimatorSync();
+      waitForEstimatorSync();
       let indexes = c.indexes();
       assertEqual(["a", "b", "c"], indexes[1].fields);
       assertEqual(["a", "b"], indexes[2].fields);
@@ -237,7 +238,7 @@ function IndexSelectionSuite() {
       let query, plan;
       
       query = "FOR doc IN @@collection FILTER doc.a == @value && doc.b == @value RETURN doc";
-      plan = AQL_EXPLAIN(query, { "@collection": cn, value: 2 }).plan;
+      plan = db._createStatement({query: query, bindVars:  { "@collection": cn, value: 2 }}).explain().plan;
       assertIndexUsed(["a", "b", "c"], plan);
     },
     

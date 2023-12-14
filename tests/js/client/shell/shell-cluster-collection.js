@@ -37,6 +37,15 @@ const isServer = typeof internal.arango === 'undefined';
 const console = require('console');
 const request = require('@arangodb/request');
 const ArangoError = require("@arangodb").ArangoError;
+let {
+  getMaxNumberOfShards,
+  getMaxReplicationFactor,
+  getMinReplicationFactor
+} = require("@arangodb/test-helper");
+
+const maxNumberOfShards    = getMaxNumberOfShards();
+const maxReplicationFactor = getMaxReplicationFactor();
+const minReplicationFactor = getMinReplicationFactor(); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -575,7 +584,7 @@ function ClusterCollectionSuite () {
     },
 
     testCreateAsManyShardsAsAllowed : function () {
-      let max = internal.maxNumberOfShards;
+      let max = maxNumberOfShards;
       if (max > 0) {
         db._create("UnitTestsClusterCrud", { numberOfShards : max });
         let properties = db["UnitTestsClusterCrud"].properties();
@@ -584,7 +593,7 @@ function ClusterCollectionSuite () {
     },
 
     testCreateMoreShardsThanAllowed : function () {
-      let max = internal.maxNumberOfShards;
+      let max = maxNumberOfShards;
       if (max > 0) {
         try {
           db._create("UnitTestsClusterCrud", { numberOfShards : max + 1 });
@@ -699,7 +708,7 @@ function ClusterCollectionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testMinReplicationFactor : function () {
-      let min = internal.minReplicationFactor;
+      let min = minReplicationFactor;
       if (min > 0) {
         db._create("UnitTestsClusterCrud", { replicationFactor: min });
         let properties = db["UnitTestsClusterCrud"].properties();
@@ -715,7 +724,7 @@ function ClusterCollectionSuite () {
     },
     
     testMaxReplicationFactor : function () {
-      let max = internal.maxReplicationFactor;
+      let max = maxReplicationFactor;
       if (max > 0) {
         try {
           db._create("UnitTestsClusterCrud", { replicationFactor: max });

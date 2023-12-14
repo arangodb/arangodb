@@ -36,36 +36,53 @@ struct HandlerBase {
   using ActorPID = typename Runtime::ActorPID;
   HandlerBase(ActorPID self, ActorPID sender, std::unique_ptr<State> state,
               std::shared_ptr<Runtime> runtime)
-      : self(self), sender(sender), state{std::move(state)}, runtime(runtime){};
+      : self(self),
+        sender(sender),
+        state{std::move(state)},
+        _runtime(runtime){};
 
   template<typename ActorMessage>
   auto dispatch(ActorPID receiver, ActorMessage&& message) -> void {
-    runtime->dispatch(self, receiver, std::forward<ActorMessage>(message));
+    _runtime->dispatch(self, receiver, std::forward<ActorMessage>(message));
   }
 
   template<typename ActorMessage>
   auto dispatchDelayed(std::chrono::seconds delay, ActorPID receiver,
                        ActorMessage&& message) -> void {
-    runtime->dispatchDelayed(delay, self, receiver,
-                             std::forward<ActorMessage>(message));
+    _runtime->dispatchDelayed(delay, self, receiver,
+                              std::forward<ActorMessage>(message));
+  }
+
+  template<typename ActorConfig>
+  auto spawn(std::unique_ptr<typename ActorConfig::State> initialState)
+      -> ActorPID {
+    return _runtime->template spawn<ActorConfig>(std::move(initialState));
   }
 
   template<typename ActorConfig>
   auto spawn(std::unique_ptr<typename ActorConfig::State> initialState,
              typename ActorConfig::Message initialMessage) -> ActorPID {
-    return runtime->template spawn<ActorConfig>(std::move(initialState),
-                                                std::move(initialMessage));
+    return _runtime->template spawn<ActorConfig>(std::move(initialState),
+                                                 std::move(initialMessage));
   }
 
-  auto finish(ExitReason reason) -> void { runtime->finishActor(self, reason); }
+  auto finish(ExitReason reason) -> void {
+    _runtime->finishActor(self, reason);
+  }
+
+  auto monitor(typename Runtime::ActorPID pid) -> void {
+    _runtime->monitorActor(self, pid);
+  }
 
  protected:
   ActorPID const self;
   ActorPID const sender;
   std::unique_ptr<State> state;
 
+  auto runtime() -> Runtime& { return *_runtime; }
+
  private:
-  std::shared_ptr<Runtime> runtime;
+  std::shared_ptr<Runtime> _runtime;
 };
 
 }  // namespace arangodb::actor

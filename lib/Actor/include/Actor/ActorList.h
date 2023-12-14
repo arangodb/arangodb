@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <condition_variable>
 #include <initializer_list>
 #include <memory>
 #include <vector>
@@ -90,15 +91,19 @@ struct ActorList {
   }
 
   auto remove(ActorID id) -> std::optional<Entry> {
-    return actors.doUnderLock([id](ActorMap& map) -> std::optional<Entry> {
-      auto it = map.find(id);
-      if (it != map.end()) {
-        std::optional<Entry> result{std::move(it->second)};
-        map.erase(it);
-        return result;
-      }
-      return {};
-    });
+    return actors.doUnderLock(
+        [this, id](ActorMap& map) -> std::optional<Entry> {
+          auto it = map.find(id);
+          if (it != map.end()) {
+            std::optional<Entry> result{std::move(it->second)};
+            map.erase(it);
+            if (map.empty()) {
+              _finishBell.notify_all();
+            }
+            return result;
+          }
+          return {};
+        });
   }
 
   template<typename F>
@@ -134,6 +139,12 @@ struct ActorList {
       }
       return res;
     });
+  }
+
+  auto waitForAll() -> void {
+    auto guard = actors.getLockedGuard();
+    auto& map = guard.get();
+    guard.wait(_finishBell, [&]() { return map.empty(); });
   }
 
   auto size() const -> size_t {
@@ -172,6 +183,7 @@ struct ActorList {
  private:
   struct ActorMap : std::unordered_map<ActorID, Entry> {};
   Guarded<ActorMap> actors;
+  std::condition_variable _finishBell;
 };
 
 };  // namespace arangodb::actor
