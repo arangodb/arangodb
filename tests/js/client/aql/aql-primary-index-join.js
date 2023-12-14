@@ -608,21 +608,20 @@ const IndexPrimaryJoinTestSuite = function () {
       runAndCheckQuery(queryStringComplex, "generic", null, true);
     },
 
-    testJoinFixedValuesComplexOpt: function () {
+    testJoinFixedValuesComplexOptDefaultSharding: function () {
       const collectionA = db._createDocumentCollection('A');
       collectionA.ensureIndex({type: "persistent", fields: ["x", "y"], unique: false});
 
       const collectionB = db._createDocumentCollection('B');
       collectionB.ensureIndex({type: "persistent", fields: ["x", "y", "z"], unique: true});
 
-      // insert some data. Every second document in A has x = 5.
-      // Apart from that, just incrementing y from 0 to 10.
-      for (let i = 0; i < 10; i++) {
+      for (let i = 1; i < 6; i++) {
         collectionA.insert({
-          x: (i % 2 === 0) ? i : 5,
+          x: i,
           y: i,
         });
         collectionB.insert({
+          x: i,
           y: i,
           z: i
         });
@@ -634,8 +633,57 @@ const IndexPrimaryJoinTestSuite = function () {
           FILTER doc1.x == i            // candidate[0] const {0}
           FOR doc2 IN B
             FILTER doc1.y == doc2.z     // candidate[0] key {1} | candidate[1] key {2}
-            FILTER doc2.y == (2 * i)    // candidate[1] const {1}
-            FILTER doc2.x == 8          // candidate[1] const {0}
+            FILTER doc2.y == (1 * i)    // candidate[1] const {1}
+            FILTER doc2.x == 1          // candidate[1] const {0}
+            RETURN [doc1, doc2]`;
+
+      // candidate[0] const {0} key {1}
+      // candidate[1] const {1,2} key {2}
+      // => Should OPT
+
+      let qResult;
+      if (isCluster) {
+        // Cannot be optimized in case shards are randomly distributed
+        qResult = runAndCheckQuery(queryStringComplex, "generic", null, true);
+      } else {
+        qResult = runAndCheckQuery(queryStringComplex, "generic");
+      }
+      qResult.forEach((docs) => {
+        let first = docs[0];
+        let second = docs[1];
+        assertEqual(first.x, 1, "Wrong value for 'x' in first document found");
+        assertEqual(first.y, second.y);
+        assertEqual(second.x, 1);
+      });
+      assertEqual(qResult.length, 1);
+    },
+
+    testJoinFixedValuesComplexOptShardingSameDBS: function () {
+      const collectionA = createCollection('A', ['y']);
+      const collectionB = createCollection('B', ['z']);
+      collectionA.ensureIndex({type: "persistent", fields: ["x", "y"], unique: false});
+      collectionB.ensureIndex({type: "persistent", fields: ["x", "y", "z"], unique: true});
+
+      for (let i = 1; i < 6; i++) {
+        collectionA.insert({
+          x: i,
+          y: i,
+        });
+        collectionB.insert({
+          x: i,
+          y: i,
+          z: i
+        });
+      }
+
+      const queryStringComplex = `
+      FOR i in 1..5 
+        FOR doc1 IN A
+          FILTER doc1.x == i            // candidate[0] const {0}
+          FOR doc2 IN B
+            FILTER doc1.y == doc2.z     // candidate[0] key {1} | candidate[1] key {2}
+            FILTER doc2.y == (1 * i)    // candidate[1] const {1}
+            FILTER doc2.x == 1          // candidate[1] const {0}
             RETURN [doc1, doc2]`;
 
       // candidate[0] const {0} key {1}
@@ -646,8 +694,9 @@ const IndexPrimaryJoinTestSuite = function () {
       qResult.forEach((docs) => {
         let first = docs[0];
         let second = docs[1];
-        assertEqual(first.x, 5, "Wrong value for 'x' in first document found");
+        assertEqual(first.x, 1, "Wrong value for 'x' in first document found");
         assertEqual(first.y, second.y);
+        assertEqual(second.x, 1);
       });
       assertEqual(qResult.length, 1);
     }
