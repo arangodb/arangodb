@@ -348,6 +348,14 @@ void RocksDBDumpContext::extendLifetime() noexcept {
   _expires.store(now + _options.ttl);
 }
 
+bool RocksDBDumpContext::applyFilter(
+    velocypack::Slice const& documentSlice) const {
+  return std::ranges::all_of(_options.filters, [&](auto&& filter) {
+    return basics::VelocyPackHelper::equal(documentSlice.get(filter.path),
+                                           filter.value.slice(), true);
+  });
+}
+
 std::shared_ptr<RocksDBDumpContext::Batch const> RocksDBDumpContext::next(
     std::uint64_t batchId, std::optional<std::uint64_t> lastBatch) {
   std::unique_lock guard(_batchesMutex);
@@ -440,31 +448,33 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
     auto documentSlice = velocypack::Slice(
         reinterpret_cast<std::uint8_t const*>(it->value().data()));
 
-    auto storedSlice = [&]() -> VPackSlice {
-      if (_options.projections) {
-        projectionsBuilder.clear();
-        {
-          VPackObjectBuilder ob(&projectionsBuilder);
-          for (auto const& [projKey, path] : *_options.projections) {
-            auto value = documentSlice.get(path);
-            if (path.size() == 1 && path[0] == "_id") {
-              auto id = _customTypeHandler->toString(value, &vpackOptions,
-                                                     documentSlice);
-              projectionsBuilder.add(projKey, VPackValue(id));
-            } else if (!value.isNone()) {
-              projectionsBuilder.add(projKey, value);
+    if (applyFilter(documentSlice)) {
+      auto storedSlice = [&]() -> VPackSlice {
+        if (_options.projections) {
+          projectionsBuilder.clear();
+          {
+            VPackObjectBuilder ob(&projectionsBuilder);
+            for (auto const& [projKey, path] : *_options.projections) {
+              auto value = documentSlice.get(path);
+              if (path.size() == 1 && path[0] == "_id") {
+                auto id = _customTypeHandler->toString(value, &vpackOptions,
+                                                       documentSlice);
+                projectionsBuilder.add(projKey, VPackValue(id));
+              } else if (!value.isNone()) {
+                projectionsBuilder.add(projKey, value);
+              }
             }
           }
+
+          return projectionsBuilder.slice();
         }
 
-        return projectionsBuilder.slice();
-      }
+        return documentSlice;
+      }();
 
-      return documentSlice;
-    }();
-
-    batch->add(storedSlice);
-    ++docsProduced;
+      batch->add(storedSlice);
+      ++docsProduced;
+    }
 
     if (batch->byteSize() >= batchSize ||
         batch->count() >= _options.docsPerBatch) {
@@ -501,7 +511,7 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
     }
   }
 
-  if (batch != nullptr) {
+  if (batch != nullptr && batch->count() > 0) {
     // push remainder out
     batch->close();
     TRI_ASSERT(batch->byteSize() > 0);

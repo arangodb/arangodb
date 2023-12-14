@@ -63,6 +63,17 @@ class RocksDBCollection;
 class RocksDBDumpManager;
 class RocksDBEngine;
 
+struct RocksDBDumpSimpleFilter {
+  std::vector<std::string> path;
+  velocypack::SharedSlice value;
+
+  template<class Inspector>
+  inline friend auto inspect(Inspector& f, RocksDBDumpSimpleFilter& o) {
+    return f.object(o).fields(f.field("attributePath", o.path),
+                              f.field("value", o.value));
+  }
+};
+
 struct RocksDBDumpContextOptions {
   std::uint64_t docsPerBatch = 10 * 1000;
   std::uint64_t batchSize = 16 * 1024;
@@ -73,6 +84,7 @@ struct RocksDBDumpContextOptions {
 
   std::optional<std::unordered_map<std::string, std::vector<std::string>>>
       projections;
+  std::vector<RocksDBDumpSimpleFilter> filters;
 
   template<class Inspector>
   inline friend auto inspect(Inspector& f, RocksDBDumpContextOptions& o) {
@@ -83,7 +95,9 @@ struct RocksDBDumpContextOptions {
         f.field("parallelism", o.parallelism).fallback(f.keep()),
         f.field("ttl", o.ttl).fallback(f.keep()),
         f.field("shards", o.shards).fallback(f.keep()),
-        f.field("projections", o.projections));
+        f.field("projections", o.projections),
+        f.field("filters", o.filters)
+            .fallback(std::vector<RocksDBDumpSimpleFilter>{}));
   }
 };
 
@@ -130,6 +144,10 @@ class RocksDBDumpContext {
   // extend the contexts lifetime, by adding TTL to the current time and storing
   // it in _expires.
   void extendLifetime() noexcept;
+
+  // determine whether the given document should be included in the
+  // dump
+  bool applyFilter(velocypack::Slice const& documentSlice) const;
 
   // Contains the data for a batch
   struct Batch {
