@@ -65,6 +65,13 @@ std::unordered_map<VariableId, std::string const> VariableGenerator::variables(
 /// @brief generate a variable
 Variable* VariableGenerator::createVariable(std::string_view name,
                                             bool isUserDefined) {
+  if (isUserDefined && !isValidName(name.data(), name.data() + name.size())) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_PARSE,
+        arangodb::basics::Exception::FillExceptionString(
+            TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, std::string{name}.c_str()));
+  }
+
   auto id = nextId();
   auto nameCopy = [&] {
     if (name.empty()) {
@@ -74,14 +81,6 @@ Variable* VariableGenerator::createVariable(std::string_view name,
       return std::string{name};
     }
   }();
-
-  if (isUserDefined && !isValidName(name.data(), name.data() + name.size())) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_QUERY_PARSE,
-        arangodb::basics::Exception::FillExceptionString(
-            TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, nameCopy.c_str()));
-  }
-
   auto variable = std::make_unique<Variable>(std::move(nameCopy), id, false,
                                              _resourceMonitor);
 
