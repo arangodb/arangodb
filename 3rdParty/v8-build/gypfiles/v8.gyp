@@ -5,7 +5,6 @@
   'variables': {
     'icu_gyp_path': './<(V8_ROOT)/third_party/icu/icu-generic.gyp',
     'v8_code': 1,
-    'v8_random_seed%': 314159265,
     'v8_vector_stores%': 0,
     'v8_embed_script%': "",
     'mksnapshot_exec': '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)mksnapshot<(EXECUTABLE_SUFFIX)',
@@ -396,7 +395,10 @@
               '--target_os=<(OS)',
               '--target_arch=<(v8_target_arch)',
               '--startup_src', '<(INTERMEDIATE_DIR)/snapshot.cc',
-              '--embedded_variant', 'Default',
+              # note: necessary to fuse these two into a single argument, because otherwise
+              # gyp will expand "Default" to "Default" with a relative path prefix. this
+              # will generate broken labels in the generated assembly code
+              '--embedded_variant=Default', 
               '--embedded_src', '<(INTERMEDIATE_DIR)/embedded.S',
             ],
           },
@@ -409,11 +411,6 @@
           ],
           'process_outputs_as_sources': 1,
           'conditions': [
-            ['v8_random_seed', {
-              'variables': {
-                'mksnapshot_flags': ['--random-seed', '<(v8_random_seed)'],
-              },
-            }],
             ['v8_os_page_size', {
               'variables': {
                 'mksnapshot_flags': ['--v8_os_page_size', '<(v8_os_page_size)'],

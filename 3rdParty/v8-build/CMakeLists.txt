@@ -162,6 +162,7 @@ if (WIN32)
     -Ggenerator_output=${V8_TARGET_DIR}
     -DINSPECTOR_ROOT=${V8_DIR}
     --depth=.
+    -Dforce_dynamic_crt=0
     -Dos_posix=1 # why are we actually setting this on Windows?
     -Dwerror=
     -Dembed_script=
@@ -172,10 +173,10 @@ if (WIN32)
     -Dv8_use_snapshot=1
     -Dv8_use_zlib=0
     -Dv8_enable_webassembly=0
-    -Dcomponent=shared_library
     -Dv8_optimized_debug=1
     -Dicu_use_data_file_flag=1
     -Denable_lto=0
+    -Dcomponent=static_library
     -Dlibrary=static_library
     -Dicu_small=false
     -Dicu_ver_major=73
@@ -378,6 +379,7 @@ else ()
     -Dclang_cxx_language_standard=c++20
     -Dmac_deployment_target=${CMAKE_OSX_DEPLOYMENT_TARGET}
     --depth=.
+    -Dforce_dynamic_crt=0 # only used on Windows
     -Dos_posix=1
     -Dstandalone_static_library=1
     -Dlinux_use_bundled_gold=0
@@ -394,10 +396,10 @@ else ()
     -Dv8_use_snapshot=1
     -Dv8_use_zlib=0
     -Dv8_enable_webassembly=0
-    -Dcomponent=shared_library
     -Dv8_optimized_debug=1
     -Dicu_use_data_file_flag=1
     -Denable_lto=0
+    -Dcomponent=static_library
     -Dlibrary=static_library
     -Dicu_small=false
     -Dicu_ver_major=73
