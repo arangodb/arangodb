@@ -5,7 +5,8 @@ import {
   PopoverArrow,
   PopoverBody,
   PopoverContent,
-  PopoverTrigger, Text
+  PopoverTrigger,
+  Text
 } from "@chakra-ui/react";
 import React from "react";
 import { ExternalLink } from "../../../components/link/ExternalLink";
@@ -15,6 +16,7 @@ export const CollectionDefaultRowWarningPopover = ({
 }: {
   databaseName: string;
 }) => {
+  const version = window.versionHelper.getDocuVersion();
   return (
     <Popover trigger="hover" placement="right">
       <PopoverTrigger>
@@ -48,7 +50,7 @@ export const CollectionDefaultRowWarningPopover = ({
                 _hover={{
                   color: "blue.400"
                 }}
-                href="https://docs.arangodb.com/stable/operations/administration/user-management/#wildcard-collection-access-level"
+                href={`https://docs.arangodb.com/${version}/operations/administration/user-management/#wildcard-collection-access-level`}
               >
                 Learn more
               </ExternalLink>
