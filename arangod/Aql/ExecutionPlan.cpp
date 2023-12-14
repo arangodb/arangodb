@@ -614,19 +614,19 @@ std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromVelocyPack(
 }
 
 /// @brief clone an existing execution plan
-ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
+std::unique_ptr<ExecutionPlan> ExecutionPlan::clone(Ast* ast) {
   auto plan = std::make_unique<ExecutionPlan>(ast, _trackMemoryUsage);
   plan->_nextId = _nextId;
-  plan->_root = _root->clone(plan.get(), true, false);
+  plan->_root = _root->clone(plan.get(), true);
   plan->_appliedRules = _appliedRules;
   plan->_disabledRules = _disabledRules;
   plan->_nestingLevel = _nestingLevel;
 
-  return plan.release();
+  return plan;
 }
 
 /// @brief clone an existing execution plan
-ExecutionPlan* ExecutionPlan::clone() { return clone(_ast); }
+std::unique_ptr<ExecutionPlan> ExecutionPlan::clone() { return clone(_ast); }
 
 // build flags for plan serialization
 unsigned ExecutionPlan::buildSerializationFlags(
