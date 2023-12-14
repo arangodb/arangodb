@@ -96,6 +96,14 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
     return _lookahead;
   }
 
+  static auto getIndexValue(rocksdb::Slice key) {
+    if constexpr (isUnique) {
+      return RocksDBKey::zkdUniqueIndexValue(key);
+    } else {
+      return RocksDBKey::zkdIndexValue(key);
+    }
+  }
+
   template<typename F>
   bool findNext(F&& callback, uint64_t limit) {
     for (uint64_t i = 0; i < limit;) {
@@ -117,7 +125,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
         } break;
         case IterState::CHECK_CURRENT_ITER: {
           auto rocksKey = _iter->key();
-          auto byteStringKey = RocksDBKey::zkdIndexValue(rocksKey);
+          auto byteStringKey = getIndexValue(rocksKey);
 
           bool foundNextZValueInBox =
               zkd::testInBox(byteStringKey, _min, _max, _dim);
@@ -130,7 +138,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
               break;  // for loop
             }
             rocksKey = _iter->key();
-            byteStringKey = RocksDBKey::zkdIndexValue(rocksKey);
+            byteStringKey = getIndexValue(rocksKey);
             foundNextZValueInBox =
                 zkd::testInBox(byteStringKey, _min, _max, _dim);
           }

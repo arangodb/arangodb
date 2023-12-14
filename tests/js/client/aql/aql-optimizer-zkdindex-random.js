@@ -31,11 +31,24 @@ const aql = arangodb.aql;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
 const _ = require("lodash");
 
-function optimizerRuleZkd2dIndexTestSuite() {
+function optimizerRuleZkd2dIndexTestSuite(unique) {
   const colName = 'UnitTestZkdIndexCollection';
   let col;
   let docs = [];
   const prefixValues = ["foo", "bar", "baz"];
+
+  let points = new Set();
+  const valueSize = 20;
+
+  const makePoint = function () {
+    let x, y;
+    do {
+      x = valueSize * Math.random();
+      y = valueSize * Math.random();
+    } while (unique && points.has([x, y]));
+    points.add([x, y]);
+    return [x, y];
+  };
 
   const computeExpectedResult = function (xStart, xEnd, yStart, yEnd, name) {
     return docs.filter(function (doc) {
@@ -43,7 +56,10 @@ function optimizerRuleZkd2dIndexTestSuite() {
     }).map(x => x.k).sort();
   };
 
-  const valueSize = 20;
+  const deriveName = function (name) {
+    return name + (unique ? "_Unique" : "_NonUnique");
+  };
+
   const rng = () => 1.1 * valueSize * Math.random() - 0.05 * valueSize;
   return {
     setUpAll: function () {
@@ -53,14 +69,13 @@ function optimizerRuleZkd2dIndexTestSuite() {
         name: 'zkdIndex',
         fields: ['x', 'y'],
         storedValues: ['k'],
-        unique: true,
+        unique: unique,
         fieldValueTypes: 'double',
         sortedPrefixValues: ['name']
       });
 
       for (let k = 0; k < 100000; k++) {
-        const x = valueSize * Math.random();
-        const y = valueSize * Math.random();
+        const [x, y] = makePoint();
         docs.push({k, x, y, name: _.sample(prefixValues)});
       }
       col.save(docs);
@@ -70,7 +85,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
       col.drop();
     },
 
-    testRandomRect: function () {
+    [deriveName("testRandomRect")]: function () {
 
       for (let k = 0; k < 300; k++) {
 
@@ -92,7 +107,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
       }
     },
 
-    testHalfSideOpen: function () {
+    [deriveName("testHalfSideOpen")]: function () {
       for (let k = 0; k < 300; k++) {
         const [xStart, xEnd] = [rng(), rng()].sort();
         const yStart = rng();
@@ -112,7 +127,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
       }
     },
 
-    testEqualSlice: function () {
+    [deriveName("testEqualSlice")]: function () {
       for (let k = 0; k < 300; k++) {
         const [xStart, xEnd] = [rng(), rng()].sort();
         const yStart = rng();
@@ -134,6 +149,13 @@ function optimizerRuleZkd2dIndexTestSuite() {
   };
 }
 
-jsunity.run(optimizerRuleZkd2dIndexTestSuite);
+function makeTestSuite(unique) {
+  return function () {
+    return optimizerRuleZkd2dIndexTestSuite(unique);
+  };
+}
+
+jsunity.run(makeTestSuite(true));
+jsunity.run(makeTestSuite(false));
 
 return jsunity.done();

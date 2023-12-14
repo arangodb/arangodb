@@ -538,17 +538,39 @@ zkd::byte_string_view RocksDBKey::zkdIndexValue(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size > 2 * sizeof(uint64_t));
   auto* vpack = reinterpret_cast<const char*>(data) + sizeof(uint64_t);
-  auto* curve =
-      vpack + VPackSlice(reinterpret_cast<const uint8_t*>(vpack)).byteSize();
+  auto vpackSize =
+      VPackSlice(reinterpret_cast<const uint8_t*>(vpack)).byteSize();
+  auto* curve = vpack + vpackSize;
 
-  // TODO This code is completely broken in the unique index case
-  return zkd::byte_string_view(
-      reinterpret_cast<const std::byte*>(curve),
-      std::distance(curve, data + size - sizeof(uint64_t)));
+  auto curveSize = std::distance(curve, data + size - sizeof(uint64_t));
+  TRI_ASSERT(size ==
+             sizeof(uint64_t) + vpackSize + curveSize + sizeof(uint64_t));
+  return zkd::byte_string_view(reinterpret_cast<const std::byte*>(curve),
+                               curveSize);
+}
+
+zkd::byte_string_view RocksDBKey::zkdUniqueIndexValue(char const* data,
+                                                      size_t size) {
+  TRI_ASSERT(data != nullptr);
+  // In this case, there is no local document id at the end
+  auto* vpack = reinterpret_cast<const char*>(data) + sizeof(uint64_t);
+  auto vpackSize =
+      VPackSlice(reinterpret_cast<const uint8_t*>(vpack)).byteSize();
+  auto* curve = vpack + vpackSize;
+
+  auto curveSize = std::distance(curve, data + size);
+  TRI_ASSERT(size == sizeof(uint64_t) + vpackSize + curveSize);
+  return zkd::byte_string_view(reinterpret_cast<const std::byte*>(curve),
+                               curveSize);
 }
 
 zkd::byte_string_view RocksDBKey::zkdIndexValue(const rocksdb::Slice& slice) {
   return zkdIndexValue(slice.data(), slice.size());
+}
+
+zkd::byte_string_view RocksDBKey::zkdUniqueIndexValue(
+    const rocksdb::Slice& slice) {
+  return zkdUniqueIndexValue(slice.data(), slice.size());
 }
 
 namespace arangodb {

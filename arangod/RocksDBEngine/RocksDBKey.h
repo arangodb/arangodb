@@ -300,6 +300,7 @@ class RocksDBKey {
   /// May be called only on zkd index values
   //////////////////////////////////////////////////////////////////////////////
   static zkd::byte_string_view zkdIndexValue(rocksdb::Slice const& slice);
+  static zkd::byte_string_view zkdUniqueIndexValue(rocksdb::Slice const& slice);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts log index from key
@@ -363,6 +364,8 @@ class RocksDBKey {
   static std::string_view vertexId(char const* data, size_t size);
   static VPackSlice indexedVPack(char const* data, size_t size);
   static zkd::byte_string_view zkdIndexValue(char const* data, size_t size);
+  static zkd::byte_string_view zkdUniqueIndexValue(char const* data,
+                                                   size_t size);
 
  private:
   static const char _stringSeparator;
