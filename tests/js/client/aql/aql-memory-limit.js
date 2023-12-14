@@ -264,7 +264,8 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
     testAllShortestPaths : function () {
       const query = "WITH " + vn + " FOR p IN OUTBOUND ALL_SHORTEST_PATHS '" + vn + "/test0' TO '" + vn + "/test11' " + en + " RETURN p";
 
-      let actual = db._query(query, null, { memoryLimit: 250 * 1000 }).toArray();
+      let actual = db._query(query, null, { memoryLimit: 20 * 1000 * 1000 }).toArray();
+
       // no shortest path available
       assertEqual(1, actual.length);
 
@@ -278,8 +279,8 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
 
     testKPaths : function () {
       const query = "WITH " + vn + " FOR p IN OUTBOUND K_PATHS '" + vn + "/test0' TO '" + vn + "/test317' " + en + " RETURN p";
-      
-      let actual = db._query(query, null, { memoryLimit: 250 * 1000 }).toArray();
+
+      let actual = db._query(query, null, { memoryLimit: 20 * 1000 * 1000 }).toArray();
       // no shortest path available
       assertEqual(1, actual.length);
       
@@ -294,7 +295,7 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
     testShortestPathDefaultWeight : function () {
       const query = "WITH " + vn + " FOR p IN ANY SHORTEST_PATH '" + vn + "/test0' TO '" + vn + "/test310' " + en + " RETURN p";
       
-      let actual = db._query(query, null, { memoryLimit: 500 * 1000 }).toArray();
+      let actual = db._query(query, null, { memoryLimit: 30 * 1000 * 1000 }).toArray();
       assertEqual(2, actual.length);
       
       try {
@@ -308,7 +309,7 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
     testShortestPathWeightAttribute : function () {
       const query = "WITH " + vn + " FOR p IN ANY SHORTEST_PATH '" + vn + "/test0' TO '" + vn + "/test310' " + en + " RETURN p";
       
-      let actual = db._query(query, null, { memoryLimit: 1000 * 1000, weightAttribute: "weight" }).toArray();
+      let actual = db._query(query, null, { memoryLimit: 30 * 1000 * 1000, weightAttribute: "weight" }).toArray();
       assertEqual(2, actual.length);
       
       try {

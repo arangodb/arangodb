@@ -96,8 +96,8 @@ void VocBaseLogManager::resignAll() noexcept {
   guard->resignAllWasCalled = true;
   for (auto&& [id, val] : guard->statesAndLogs) {
     auto&& log = val.log;
-    auto core = std::move(*log).resign();
-    core.reset();
+    auto storage = std::move(*log).resign();
+    storage.reset();
   }
   guard->statesAndLogs.clear();
 }
@@ -121,69 +121,102 @@ auto VocBaseLogManager::updateReplicatedState(
   }
 }
 
+void VocBaseLogManager::prepareDropAll() noexcept {
+  std::map<arangodb::replication2::LogId, GuardedData::StateAndLog>
+      statesAndLogs;
+  {
+    // We steal all logs from the _guardedData.
+    // We need to give up the guarded Log, and we also
+    // need to have the logs to be unreachable from now on.
+    auto guard = _guardedData.getLockedGuard();
+    guard->resignAllWasCalled = true;
+    statesAndLogs.swap(guard->statesAndLogs);
+    TRI_ASSERT(guard->statesAndLogs.empty());
+  }
+  for (auto&& [id, val] : statesAndLogs) {
+    if (auto res = basics::catchVoidToResult([&]() {
+          auto storage = resignAndDrop(val);
+          storage.reset();
+        });
+        res.fail()) {
+      LOG_CTX("1d158", WARN, _logContext)
+          << "Failure to drop replicated log will be ignored, as all "
+             "replication resources in "
+          << _vocbase.name() << " are being dropped " << id;
+    }
+  }
+}
+
 auto VocBaseLogManager::dropReplicatedState(arangodb::replication2::LogId id)
     -> arangodb::Result {
   LOG_CTX("658c6", DEBUG, _logContext) << "Dropping replicated state " << id;
+
+  auto stateAndLog = _guardedData.getLockedGuard()->stealReplicatedState(id);
+  if (stateAndLog.fail()) {
+    return stateAndLog.result();
+  }
+  auto resignRes = basics::catchToResultT(
+      [&]() -> std::unique_ptr<replication2::storage::IStorageEngineMethods> {
+        return resignAndDrop(stateAndLog.get());
+      });
+  if (resignRes.fail()) {
+    LOG_CTX("18db5", ERR, _logContext)
+        << "failed to drop replicated log " << resignRes.result();
+    return resignRes.result();
+  }
+  // Now we may delete the persistent metadata.
+  auto storage = std::move(*resignRes);
   StorageEngine& engine = _server.getFeature<EngineSelectorFeature>().engine();
-  auto result = _guardedData.doUnderLock([&](GuardedData& data) {
-    if (auto iter = data.statesAndLogs.find(id);
-        iter != data.statesAndLogs.end()) {
-      auto& state = iter->second.state;
-      auto& log = iter->second.log;
+  auto res = engine.dropReplicatedState(_vocbase, storage);
 
-      // Get the state handle so we can drop the state later
-      auto stateHandle = log->disconnect(std::move(iter->second.connection));
+  if (res.fail()) {
+    TRI_ASSERT(storage != nullptr);
+    LOG_CTX("998cc", ERR, _logContext)
+        << "failed to drop replicated log " << res.errorMessage();
+    return res;
+  }
+  TRI_ASSERT(storage == nullptr);
 
-      // resign the log now, before we update the metadata to avoid races
-      // on the storage.
-      auto storage = std::move(*log).resign();
+  auto& feature = _server.getFeature<ReplicatedLogFeature>();
+  feature.metrics()->replicatedLogDeletionNumber->count();
 
-      auto metadata = storage->readMetadata();
-      if (metadata.fail()) {
-        return std::move(metadata).result();  // state untouched after this
-      }
+  return {};
+}
 
-      // Invalidate the snapshot in persistent storage.
-      metadata->snapshot.updateStatus(
-          replication2::replicated_state::SnapshotStatus::kInvalidated);
-      // TODO make sure other methods working on the state, probably meaning
-      //      configuration updates, handle an invalidated snapshot correctly.
-      if (auto res = storage->updateMetadata(*metadata); res.fail()) {
-        LOG_CTX("6e6f0", ERR, _logContext)
-            << "failed to drop replicated log " << res.errorMessage();
-        THROW_ARANGO_EXCEPTION(res);
-      }
+auto VocBaseLogManager::resignAndDrop(GuardedData::StateAndLog& stateAndLog)
+    -> std::unique_ptr<replication2::storage::IStorageEngineMethods> {
+  auto& state = stateAndLog.state;
+  auto& log = stateAndLog.log;
 
-      // Drop the replicated state. This will also remove its associated
-      // resources, e.g. the shard/collection will be dropped.
-      // This must happen only after the snapshot is persistently marked as
-      // failed.
-      std::move(*state).drop(std::move(stateHandle));
+  // Get the state handle so we can drop the state later
+  auto stateHandle = log->disconnect(std::move(stateAndLog.connection));
 
-      // Now we may delete the persistent metadata.
-      auto res = engine.dropReplicatedState(_vocbase, storage);
+  // resign the log now, before we update the metadata to avoid races
+  // on the storage.
+  auto storage = std::move(*log).resign();
 
-      if (res.fail()) {
-        TRI_ASSERT(storage != nullptr);
-        LOG_CTX("998cc", ERR, _logContext)
-            << "failed to drop replicated log " << res.errorMessage();
-        return res;
-      }
-      TRI_ASSERT(storage == nullptr);
-      data.statesAndLogs.erase(iter);
-
-      return Result();
-    }
-
-    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-  });
-
-  if (result.ok()) {
-    auto& feature = _server.getFeature<ReplicatedLogFeature>();
-    feature.metrics()->replicatedLogDeletionNumber->count();
+  auto metadata = storage->readMetadata();
+  if (metadata.fail()) {
+    THROW_ARANGO_EXCEPTION(
+        std::move(metadata).result());  // state untouched after this
   }
 
-  return result;
+  // Invalidate the snapshot in persistent storage.
+  metadata->snapshot.updateStatus(
+      replication2::replicated_state::SnapshotStatus::kInvalidated);
+  // TODO make sure other methods working on the state, probably meaning
+  //      configuration updates, handle an invalidated snapshot correctly.
+  if (auto res = storage->updateMetadata(*metadata); res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  // Drop the replicated state. This will also remove its associated
+  // resources, e.g. the shard/collection will be dropped.
+  // This must happen only after the snapshot is persistently marked as
+  // failed.
+  std::move(*state).drop(std::move(stateHandle));
+
+  return storage;
 }
 
 auto VocBaseLogManager::getReplicatedLogsStatusMap() const
@@ -432,4 +465,15 @@ auto VocBaseLogManager::GuardedData::buildReplicatedStateWithMethods(
   std::abort();
 } catch (...) {
   std::abort();
+}
+
+auto VocBaseLogManager::GuardedData::stealReplicatedState(
+    replication2::LogId id) -> ResultT<GuardedData::StateAndLog> {
+  if (auto iter = statesAndLogs.find(id); iter != statesAndLogs.end()) {
+    auto stateAndLog = std::move(iter->second);
+    statesAndLogs.erase(iter);
+    return stateAndLog;
+  } else {
+    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
 }

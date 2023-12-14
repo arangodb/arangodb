@@ -71,6 +71,9 @@ struct RocksDBDumpContextOptions {
   double ttl = 600.0;
   std::vector<std::string> shards;
 
+  std::optional<std::unordered_map<std::string, std::vector<std::string>>>
+      projections;
+
   template<class Inspector>
   inline friend auto inspect(Inspector& f, RocksDBDumpContextOptions& o) {
     return f.object(o).fields(
@@ -79,7 +82,8 @@ struct RocksDBDumpContextOptions {
         f.field("prefetchCount", o.prefetchCount).fallback(f.keep()),
         f.field("parallelism", o.parallelism).fallback(f.keep()),
         f.field("ttl", o.ttl).fallback(f.keep()),
-        f.field("shards", o.shards).fallback(f.keep()));
+        f.field("shards", o.shards).fallback(f.keep()),
+        f.field("projections", o.projections));
   }
 };
 

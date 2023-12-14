@@ -97,7 +97,7 @@ const allPathsDiffer = (paths) => {
 const allPathsAreSorted = (paths) => {
   let last = paths[0].weight;
   for (const p of paths) {
-    assertTrue(last <= p.weight);
+    assertTrue(last <= p.weight, `${last} <= ${p.weight} (${JSON.stringify(paths.map((x) => x.weight))})`);
     last = p.weight;
   }
 };
