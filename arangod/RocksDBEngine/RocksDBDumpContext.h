@@ -74,6 +74,21 @@ struct RocksDBDumpSimpleFilter {
   }
 };
 
+struct RocksDBDumpFilterSpec {
+  std::string type;
+  std::vector<RocksDBDumpSimpleFilter> conditions;
+
+  template<class Inspector>
+  inline friend auto inspect(Inspector& f, RocksDBDumpFilterSpec& o) {
+    return f.object(o).fields(
+        f.field("type", o.type).invariant([](auto&& v) {
+          return v == "simple";
+        }),
+        f.field("conditions", o.conditions)
+            .fallback(std::vector<RocksDBDumpSimpleFilter>{}));
+  }
+};
+
 struct RocksDBDumpContextOptions {
   std::uint64_t docsPerBatch = 10 * 1000;
   std::uint64_t batchSize = 16 * 1024;
@@ -84,7 +99,7 @@ struct RocksDBDumpContextOptions {
 
   std::optional<std::unordered_map<std::string, std::vector<std::string>>>
       projections;
-  std::vector<RocksDBDumpSimpleFilter> filters;
+  RocksDBDumpFilterSpec filters;
 
   template<class Inspector>
   inline friend auto inspect(Inspector& f, RocksDBDumpContextOptions& o) {
@@ -96,8 +111,7 @@ struct RocksDBDumpContextOptions {
         f.field("ttl", o.ttl).fallback(f.keep()),
         f.field("shards", o.shards).fallback(f.keep()),
         f.field("projections", o.projections),
-        f.field("filters", o.filters)
-            .fallback(std::vector<RocksDBDumpSimpleFilter>{}));
+        f.field("filters", o.filters).fallback(RocksDBDumpFilterSpec{}));
   }
 };
 

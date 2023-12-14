@@ -350,7 +350,7 @@ void RocksDBDumpContext::extendLifetime() noexcept {
 
 bool RocksDBDumpContext::applyFilter(
     velocypack::Slice const& documentSlice) const {
-  return std::ranges::all_of(_options.filters, [&](auto&& filter) {
+  return std::ranges::all_of(_options.filters.conditions, [&](auto&& filter) {
     return basics::VelocyPackHelper::equal(documentSlice.get(filter.path),
                                            filter.value.slice(), true);
   });

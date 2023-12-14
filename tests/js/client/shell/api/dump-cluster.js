@@ -237,7 +237,8 @@ function DumpAPI() {
       const servers = getShardsByServer(collection);
       const server = Object.keys(servers)[0];
       const ctx = createContext(server, {shards: servers[server],
-                                         filters: [{attributePath: ["flag"], value: 0}]});
+                                         filters: {type: "simple",
+                                                   conditions: [{attributePath: ["flag"], value: 0}]}});
 
       for (const [doc, shard] of ctx.read()) {
         assertEqual(doc.flag, 0);
@@ -249,8 +250,9 @@ function DumpAPI() {
       const servers = getShardsByServer(collection);
       const server = Object.keys(servers)[0];
       const ctx = createContext(server, {shards: servers[server],
-                                         filters: [{attributePath: ["flag"], value: 1},
-                                                   {attributePath: ["some", "nested", "value"], value: 1234}]});
+                                         filters: {type: "simple",
+                                                   conditions: [{attributePath: ["flag"], value: 1},
+                                                                {attributePath: ["some", "nested", "value"], value: 1234}]}});
 
       for (const [doc, shard] of ctx.read()) {
         assertEqual(doc.flag, 1);
@@ -263,7 +265,8 @@ function DumpAPI() {
       const servers = getShardsByServer(collection);
       const server = Object.keys(servers)[0];
       const ctx = createContext(server, {shards: servers[server],
-                                         filters: [{attributePath: ["some"], value: {"nested": {"value": 1234}}}]});
+                                         filters: {type: "simple",
+                                                   conditions: [{attributePath: ["some"], value: {"nested": {"value": 1234}}}]}});
 
       for (const [doc, shard] of ctx.read()) {
         assertEqual(doc.some, {nested: {value: 1234}}, JSON.stringify(doc.some));
