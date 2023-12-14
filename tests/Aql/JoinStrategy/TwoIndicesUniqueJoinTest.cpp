@@ -110,7 +110,7 @@ TEST_P(UniqueIndexMerger, no_results) {
   iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0, isUnique);
   iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0, isUnique);
 
-  Strategy merger{std::move(iters), 1};
+  Strategy merger{std::move(iters)};
 
   bool hasMore = true;
   std::size_t count = 0;
@@ -136,7 +136,7 @@ TEST_P(UniqueIndexMerger, no_result_check_seek) {
   iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0, isUnique);
   iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0, isUnique);
 
-  Strategy merger{std::move(iters), 1};
+  Strategy merger{std::move(iters)};
 
   bool hasMore = true;
   std::size_t count = 0;
@@ -170,7 +170,7 @@ TEST_P(UniqueIndexMerger, some_results_a) {
   iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0, isUnique);
   iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0, isUnique);
 
-  Strategy merger{std::move(iters), 1};
+  Strategy merger{std::move(iters)};
 
   bool hasMore = true;
   std::size_t count = 0;
@@ -204,7 +204,7 @@ TEST_P(UniqueIndexMerger, some_results_b) {
   iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0, isUnique);
   iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0, isUnique);
 
-  Strategy merger{std::move(iters), 1};
+  Strategy merger{std::move(iters)};
 
   bool hasMore = true;
   std::size_t count = 0;
@@ -235,7 +235,7 @@ TEST_P(UniqueIndexMerger, one_empty) {
   iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0, isUnique);
   iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0, isUnique);
 
-  Strategy merger{std::move(iters), 1};
+  Strategy merger{std::move(iters)};
 
   bool hasMore = true;
   std::size_t count = 0;
@@ -262,7 +262,7 @@ TEST_P(UniqueIndexMerger, both_empty) {
   iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0, isUnique);
   iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0, isUnique);
 
-  Strategy merger{std::move(iters), 1};
+  Strategy merger{std::move(iters)};
 
   bool hasMore = true;
   std::size_t count = 0;
