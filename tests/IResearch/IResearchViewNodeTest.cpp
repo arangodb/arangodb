@@ -152,7 +152,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
           vocbase, arangodb::transaction::OperationOriginTestCase{}),
       arangodb::aql::QueryString(std::string_view("RETURN 1")));
   query.prepareQuery();
-  arangodb::aql::Variable const outVariable("variable", 0, false,
+  arangodb::aql::Variable const outVariable("variable", 1, false,
                                             resourceMonitor);
 
   {
@@ -160,7 +160,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-        "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
+        "\"name\":\"variable\", \"id\":1 }, \"options\": { \"waitForSync\" : "
         "true, \"collections\":[42] }, \"viewId\": \"" +
         std::to_string(logicalView->id().id()) +
         "\", "
@@ -207,7 +207,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-        "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
+        "\"name\":\"variable\", \"id\":1 }, \"options\": { \"waitForSync\" : "
         "true, \"collections\":[42] }, \"viewId\": \"" +
         std::to_string(logicalView->id().id()) +
         "\", "
@@ -255,7 +255,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-        "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
+        "\"name\":\"variable\", \"id\":1 }, \"viewId\": \"" +
         std::to_string(logicalView->id().id()) +
         "\", "
         "\"primarySortBuckets\": false }");
@@ -275,7 +275,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-        "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
+        "\"name\":\"variable\", \"id\":1 }, \"viewId\": \"" +
         std::to_string(logicalView->id().id()) +
         "\", "
         "\"primarySortBuckets\": 3 }");
@@ -1991,7 +1991,7 @@ TEST_F(IResearchViewNodeTest, clone) {
           vocbase, arangodb::transaction::OperationOriginTestCase{}),
       arangodb::aql::QueryString(std::string_view("RETURN 1")));
   query.prepareQuery();
-  arangodb::aql::Variable const outVariable("variable", 0, false,
+  arangodb::aql::Variable const outVariable("variable", 3, false,
                                             resourceMonitor);
 
   // no filter condition, no sort condition, no shards, no options
