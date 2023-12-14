@@ -57,6 +57,11 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+constexpr const char expressionKey[] = "expression";
+constexpr const char expressionsKey[] = "expressions";
+constexpr const char usedKeyFieldsKey[] = "usedKeyFields";
+constexpr const char constantFieldsKey[] = "constantFields";
+
 JoinNode::JoinNode(ExecutionPlan* plan, ExecutionNodeId id,
                    std::vector<JoinNode::IndexInfo> indexInfos,
                    IndexIteratorOptions const& opts)
@@ -66,7 +71,8 @@ JoinNode::JoinNode(ExecutionPlan* plan, ExecutionNodeId id,
 
 JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base) {
-  // TODO: this code is the same in IndexNode. move into a sharable function
+  // TODO: this code is almost the same in IndexNode. move into a sharable
+  // function
   _options.sorted =
       basics::VelocyPackHelper::getBooleanValue(base, "sorted", true);
   _options.ascending =
@@ -128,11 +134,38 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
                                     plan->getAst()->query().resourceMonitor());
 
     std::vector<std::unique_ptr<Expression>> expressions{};
-    if (it.get("expressions").isArray()) {
-      auto expressionsSlice = it.get("expressions");
+    if (it.get(expressionsKey).isArray()) {
+      auto expressionsSlice = it.get(expressionsKey);
       for (auto const& expr : VPackArrayIterator(expressionsSlice)) {
         expressions.push_back(
             std::make_unique<Expression>(plan->getAst(), expr));
+      }
+    }
+
+    std::vector<size_t> usedKeyFields{};
+    std::vector<size_t> constantFields{};
+
+    VPackSlice usedKeyFieldsSlice = it.get(usedKeyFieldsKey);
+    if (!usedKeyFieldsSlice.isArray()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "\"usedKeyFields\" attribute should be an array");
+    } else {
+      for (VPackSlice key : VPackArrayIterator(usedKeyFieldsSlice)) {
+        TRI_ASSERT(key.isNumber());
+        usedKeyFields.emplace_back(key.getNumber<size_t>());
+      }
+    }
+
+    VPackSlice constantFieldsSlice = it.get(constantFieldsKey);
+    if (!constantFieldsSlice.isArray()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "\"constantFields\" attribute should be an array");
+    } else {
+      for (VPackSlice constant : VPackArrayIterator(constantFieldsSlice)) {
+        TRI_ASSERT(constant.isNumber());
+        constantFields.emplace_back(constant.getNumber<size_t>());
       }
     }
 
@@ -155,7 +188,9 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
                   .filterProjections = filterProjections,
                   .usedAsSatellite = usedAsSatellite,
                   .producesOutput = producesOutput,
-                  .expressions = std::move(expressions)});
+                  .expressions = std::move(expressions),
+                  .usedKeyFields = std::move(usedKeyFields),
+                  .constantFields = std::move(constantFields)});
 
     idx.isLateMaterialized = it.get("isLateMaterialized").isTrue();
     if (idx.isLateMaterialized) {
@@ -233,13 +268,33 @@ void JoinNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
                   VPackValue(it.filterProjections.usesCoveringIndex(it.index)));
     }
     if (!it.expressions.empty()) {
-      builder.add(VPackValue("expressions"));
-      builder.openArray();
-      for (auto const& expr : it.expressions) {
-        expr->toVelocyPack(builder, true);
+      builder.add(VPackValue(expressionsKey));
+      {
+        VPackArrayBuilder expressionsArray(&builder);
+        for (auto const& expr : it.expressions) {
+          VPackObjectBuilder expressionObject(&builder);
+          builder.add(VPackValue(expressionKey));
+          expr->toVelocyPack(builder, true);
+        }
       }
-      builder.close();  // array
     }
+
+    builder.add(VPackValue(usedKeyFieldsKey));
+    {
+      VPackArrayBuilder usedKeyFieldsArray(&builder);
+      for (auto const& key : it.usedKeyFields) {
+        builder.add(VPackValue(key));
+      }
+    }
+
+    builder.add(VPackValue(constantFieldsKey));
+    {
+      VPackArrayBuilder constantFieldsArray(&builder);
+      for (auto const& constant : it.constantFields) {
+        builder.add(VPackValue(constant));
+      }
+    }
+
     // index
     builder.add(VPackValue("index"));
     it.index->toVelocyPack(builder,
