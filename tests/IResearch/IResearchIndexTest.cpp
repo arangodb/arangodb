@@ -1508,7 +1508,7 @@ class IResearchCacheOnlyFollowersTest : public ::testing::Test {
 
 TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted) {
   auto createCollection0 = arangodb::velocypack::Parser::fromJson(
-      "{\"id\":1, \"name\": \"testCollection0\" }");
+      "{\"id\":1, \"name\": \"s1337\" }");
   TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   auto collection0 = vocbase.createCollection(createCollection0->slice());
@@ -1556,11 +1556,11 @@ TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted) {
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testCollection0 OPTIONS { waitForSync: true, indexHint: "
+        "FOR d IN s1337 OPTIONS { waitForSync: true, indexHint: "
         "'inverted', forceIndexHint: true} FILTER d.X == 'abc' "
         "SORT d.seq RETURN d",
         nullptr);
-    ASSERT_TRUE(result.result.ok());
+    ASSERT_TRUE(result.result.ok()) << result.result.errorMessage();
   }
   ASSERT_EQ(feature.columnsCacheUsage(), 0);
   // now make it leader (just recreate collection in plan with new shards
@@ -1573,7 +1573,7 @@ TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted) {
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testCollection0 OPTIONS { waitForSync: true, indexHint: "
+        "FOR d IN s1337 OPTIONS { waitForSync: true, indexHint: "
         "'inverted', forceIndexHint: true} FILTER d.X == 'abc' "
         "SORT d.seq RETURN d",
         nullptr);
@@ -1584,7 +1584,7 @@ TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted) {
 
 TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted_InitialLeader) {
   auto createCollection0 = arangodb::velocypack::Parser::fromJson(
-      "{\"id\":1, \"name\": \"testCollection0\" }");
+      "{\"id\":1, \"name\": \"s1337\" }");
   TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   auto collection0 = vocbase.createCollection(createCollection0->slice());
@@ -1632,7 +1632,7 @@ TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted_InitialLeader) {
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testCollection0 OPTIONS { waitForSync: true, indexHint: "
+        "FOR d IN s1337 OPTIONS { waitForSync: true, indexHint: "
         "'inverted', forceIndexHint: true} FILTER d.X == 'abc' "
         "SORT d.seq RETURN d",
         nullptr);
@@ -1649,7 +1649,7 @@ TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted_InitialLeader) {
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testCollection0 OPTIONS { waitForSync: true, indexHint: "
+        "FOR d IN s1337 OPTIONS { waitForSync: true, indexHint: "
         "'inverted', forceIndexHint: true} FILTER d.X == 'abc' "
         "SORT d.seq RETURN d",
         nullptr);

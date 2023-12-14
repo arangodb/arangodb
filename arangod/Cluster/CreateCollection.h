@@ -36,6 +36,8 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 
+struct ShardID;
+
 namespace replication2::agency {
 struct CollectionGroupPlanSpecification;
 }  // namespace replication2::agency

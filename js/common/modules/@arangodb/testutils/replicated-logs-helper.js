@@ -77,6 +77,10 @@ const getServerRebootId = function (serverId) {
   return readAgencyValueAt(`Current/ServersKnown/${serverId}/rebootId`);
 };
 
+const isDBServerInCurrent = function (serverId) {
+  return readAgencyValueAt(`Current/DBServers/${serverId}`);
+};
+
 const bumpServerRebootId = function (serverId) {
   const response = clientHelper.agency.increaseVersion(`Current/ServersKnown/${serverId}/rebootId`);
   if (response !== true) {
@@ -726,6 +730,11 @@ const unsetLeader = (database, logId) => {
  * Causes underlying replicated logs to trigger leader recovery.
  */
 const bumpTermOfLogsAndWaitForConfirmation = function (dbn, col) {
+  const {numberOfShards, isSmart} = col.properties();
+  if (isSmart && numberOfShards === 0) {
+    // Adjust for SmartEdgeCollections
+    col = db._collection(`_local_${col.name()}`);
+  }
   const shards = col.shards();
   const shardsToLogs = getShardsToLogsMapping(dbn, col._id);
   const stateMachineIds = shards.map(s => shardsToLogs[s]);
@@ -787,6 +796,7 @@ exports.getReplicatedLogLeaderPlan = getReplicatedLogLeaderPlan;
 exports.getReplicatedLogLeaderTarget = getReplicatedLogLeaderTarget;
 exports.getServerHealth = getServerHealth;
 exports.getServerRebootId = getServerRebootId;
+exports.isDBServerInCurrent = isDBServerInCurrent;
 exports.bumpServerRebootId = bumpServerRebootId;
 exports.getServerUrl = getServerUrl;
 exports.getSupervisionActionTypes = getSupervisionActionTypes;

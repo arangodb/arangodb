@@ -415,7 +415,21 @@ int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
 
 /// @brief create the node
 AstNode::AstNode(AstNodeType type)
-    : type(type), flags(0), _computedValue(nullptr), members{} {
+    : type(type), flags(0), _computedValue(nullptr) {
+  // properly zero-initialize all members
+  value.value._int = 0;
+  value.length = 0;
+  value.type = VALUE_TYPE_NULL;
+}
+
+/// @brief create the node, and make it an internal const node
+AstNode::AstNode(AstNodeType type, InternalNode /*internal*/)
+    : type(type),
+      flags(makeFlags(DETERMINED_SORTED, DETERMINED_CONSTANT, DETERMINED_SIMPLE,
+                      DETERMINED_NONDETERMINISTIC, DETERMINED_RUNONDBSERVER,
+                      DETERMINED_CHECKUNIQUENESS, DETERMINED_V8,
+                      VALUE_RUNONDBSERVER, FLAG_INTERNAL_CONST)),
+      _computedValue(nullptr) {
   // properly zero-initialize all members
   value.value._int = 0;
   value.length = 0;
@@ -429,8 +443,18 @@ AstNode::AstNode(AstNodeValue const& value)
                       VALUE_SIMPLE, DETERMINED_RUNONDBSERVER,
                       VALUE_RUNONDBSERVER)),
       value(value),
-      _computedValue(nullptr),
-      members{} {}
+      _computedValue(nullptr) {}
+
+/// @brief create a node, with defining a value and making it an
+/// internal const node
+AstNode::AstNode(AstNodeValue const& value, InternalNode /*internal*/)
+    : type(NODE_TYPE_VALUE),
+      flags(makeFlags(DETERMINED_SORTED, DETERMINED_CONSTANT, DETERMINED_SIMPLE,
+                      DETERMINED_NONDETERMINISTIC, DETERMINED_RUNONDBSERVER,
+                      DETERMINED_CHECKUNIQUENESS, DETERMINED_V8, VALUE_CONSTANT,
+                      VALUE_SIMPLE, VALUE_RUNONDBSERVER, FLAG_INTERNAL_CONST)),
+      value(value),
+      _computedValue(nullptr) {}
 
 /// @brief create the node from VPack
 AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)

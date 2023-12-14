@@ -19,7 +19,7 @@ const ServiceViewHeader = () => {
       <Button
         size="sm"
         leftIcon={<AddIcon />}
-        colorScheme="blue"
+        colorScheme="green"
         onClick={() => {
           window.App.navigate("#services/install", { trigger: true });
         }}

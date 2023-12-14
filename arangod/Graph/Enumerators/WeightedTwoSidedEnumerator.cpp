@@ -233,41 +233,29 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     TRI_ASSERT(_queue.hasProcessableElement());
   }
 
-  auto step = _queue.pop();
-  auto previous = _interior.append(step);
+  TRI_ASSERT(!_queue.isEmpty());
+  auto tmp = _queue.pop();
+  auto posPrevious = _interior.append(std::move(tmp));
+  auto& step = _interior.getStepReference(posPrevious);
 
-  if (_graphOptions.getPathType() == PathType::Type::ShortestPath) {
-    if (hasBeenVisited(step)) {
-      return -1.0;
-    }
-  }
+  ValidationResult res = _validator.validatePath(step);
 
   double matchPathWeight = -1.0;
 
-  if (_graphOptions.getPathType() == PathType::Type::ShortestPath) {
-    TRI_ASSERT(!_visitedNodes.contains(step.getVertex().getID()));
-    _visitedNodes.emplace(step.getVertex().getID(), std::vector{previous});
-  } else {
-    _visitedNodes[step.getVertex().getID()].emplace_back(previous);
-  }
+  if (!res.isFiltered()) {
+    _visitedNodes[step.getVertex().getID()].emplace_back(posPrevious);
 
-  if (other.hasBeenVisited(step)) {
-    // Shortest Path Match
-    ValidationResult res = _validator.validatePath(step);
-    TRI_ASSERT(!res.isFiltered() && !res.isPruned());
-
-    matchPathWeight = other.matchResultsInShell(step, candidates, _validator);
-  }
-
-  _provider.expand(step, previous, [&](Step n) -> void {
-    ValidationResult res = _validator.validatePath(n);
-
-    if (!res.isFiltered() && !res.isPruned()) {
-      // Add the step to our shell
-      _queue.append(std::move(n));
+    // TODO: maybe the pathStore could be asked whether a vertex has been
+    // visited?
+    if (other.hasBeenVisited(step)) {
+      matchPathWeight = other.matchResultsInShell(step, candidates, _validator);
     }
-  });
+  }
 
+  if (!res.isPruned()) {
+    _provider.expand(step, posPrevious,
+                     [&](Step n) -> void { _queue.append(std::move(n)); });
+  }
   return matchPathWeight;
 }
 

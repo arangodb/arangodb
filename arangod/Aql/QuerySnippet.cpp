@@ -782,7 +782,8 @@ auto QuerySnippet::prepareFirstBranch(
             // to serve later lookups for this collection, we insert an empty
             // string into the collection->shard map. on lookup, we will react
             // to this.
-            localGraphNode->addCollectionToShard(aqlCollection->name(), "");
+            localGraphNode->addCollectionToShard(aqlCollection->name(),
+                                                 ShardID::invalidShard());
           }
         }
       }

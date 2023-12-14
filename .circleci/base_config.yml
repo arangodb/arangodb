@@ -1,12 +1,26 @@
 version: 2.1
 
 orbs:
-  win: circleci/windows@5.0 # The Windows orb gives you everything you need to start using the 
+  win: circleci/windows@5.0 # The Windows orb gives you everything you need to start using the
 
 parameters:
   enterprise-commit:
     type: string
     default: ""
+  build-docker-image:
+    type: string
+    default: "arangodb/build-alpine:3.18-clang16.0-gcc12.2-openssl3.1.4-26c4da3c8"
+  # Unused here, but it will be forwarded from config and will cause errors if not defined
+  replication-two:
+    type: boolean
+    default: false
+  c-compiler:
+    type: string
+    default: "clang"
+  cxx-compiler:
+    type: string
+    default: "clang++"
+  # these are basically global constants
   build-targets:
     type: string
     default: "arangod arangoimport arangoexport arangodump arangorestore arangobench"
@@ -19,9 +33,6 @@ parameters:
   v8-build-targets:
     type: string
     default: "arangosh"
-  build-docker-tag:
-    type: string
-    default: arangodb/build-alpine:3.16-gcc11.2-openssl3.1.3-4999848556c
 
 commands:
   checkout-arangodb:
@@ -181,7 +192,7 @@ jobs:
         type: string
         default: ""
     docker:
-      - image: << pipeline.parameters.build-docker-tag >>
+      - image: << pipeline.parameters.build-docker-image >>
     resource_class: << parameters.resource-class >>
     environment:
       GIT_SSH_COMMAND: ssh
@@ -203,7 +214,7 @@ jobs:
       - run:
           name: Configure
           command: |
-            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib
+            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib
       - run:
           name: Build
           command: |
@@ -344,14 +355,14 @@ jobs:
           command: |
             mkdir build
             # make sure we have the latest image!
-            docker pull arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.3
+            docker pull arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.4-f3c77755ece
             # TODO - use preset
-            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -w C:/project/build arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.3 cmake -G 'Visual Studio 17 2022' -T 'v143,host=x64' -DUSE_MAINTAINER_MODE=On -DUSE_GOOGLE_TESTS=On -DUSE_ENTERPRISE=On -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPACKAGING=NSIS -DCMAKE_INSTALL_PREFIX=/ -DSKIP_PACKAGING=On -DUSE_FAILURE_TESTS=On -DSTATIC_EXECUTABLES=On -DOPENSSL_USE_STATIC_LIBS=On -DUSE_STRICT_OPENSSL_VERSION=On ..
+            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -w C:/project/build arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.4-f3c77755ece cmake -G 'Visual Studio 17 2022' -T 'v143,host=x64' -DUSE_MAINTAINER_MODE=On -DUSE_GOOGLE_TESTS=On -DUSE_ENTERPRISE=On -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPACKAGING=NSIS -DCMAKE_INSTALL_PREFIX=/ -DSKIP_PACKAGING=On -DUSE_FAILURE_TESTS=On -DSTATIC_EXECUTABLES=On -DOPENSSL_USE_STATIC_LIBS=On -DUSE_STRICT_OPENSSL_VERSION=On ..
       - run:
           name: "Build"
           shell: powershell.exe
           command: |
-            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -w C:/project/build arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.3 cmake --build . --config `"RelWithDebInfo`" --parallel -- /p:CL_MPcount=24
+            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -w C:/project/build arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.4-f3c77755ece cmake --build . --config `"RelWithDebInfo`" --parallel -- /p:CL_MPcount=24
       - run:
           name: Cleanup build directory
           shell: powershell.exe
@@ -368,13 +379,13 @@ jobs:
             Get-ChildItem *.ifc -Recurse | foreach { Remove-Item -Path $_.FullName }
             Get-ChildItem *.ilk -Recurse | foreach { Remove-Item -Path $_.FullName }
             Get-ChildItem *.tlog -Recurse | where { ! $_.PSIsContainer } | foreach { Remove-Item -Path $_.FullName }
-#            Get-ChildItem *.dat -Recurse | foreach { Remove-Item -Path $_.FullName }
+      #            Get-ChildItem *.dat -Recurse | foreach { Remove-Item -Path $_.FullName }
       # - run:
       #     name: Save workspace for development
       #     shell: powershell.exe
       #     command: |
       #       cd D:/CircleCI/project/
-      #       7z a -r ./workspace CMakePresets.json build/ scripts/ js/ enterprise/js etc/ tests/js enterprise/tests/js utils UnitTests 3rdParty/iresearch/tests/resources 3rdParty/rta-makedata            
+      #       7z a -r ./workspace CMakePresets.json build/ scripts/ js/ enterprise/js etc/ tests/js enterprise/tests/js utils UnitTests 3rdParty/iresearch/tests/resources 3rdParty/rta-makedata
       # - run:
       #     name: SCCache Statistics
       #     command: sccache -s
@@ -545,18 +556,18 @@ jobs:
 
   run-cppcheck:
     docker:
-      - image: << pipeline.parameters.build-docker-tag >>
+      - image: << pipeline.parameters.build-docker-image >>
     resource_class: medium+
     steps:
       - run:
           name: Prepare container
           command: |
             mkdir -p /root/workspace/ 
-            mkdir -p /root/project/ 
+            mkdir -p /root/project/
       - attach_workspace:
           at: "/root/workspace/"
       - checkout-arangodb:
-          with-submodules: true 
+          with-submodules: true
           destination: "/root/project"
       - checkout-enterprise:
           destination: "/root/project/enterprise"
@@ -565,7 +576,7 @@ jobs:
           command: |
             ln -s /root/workspace/build/ /root/project/
             cd /root/project/ 
-            utils/cppcheck-circleci.sh /root/workspace/build/compile_commands.json  
+            utils/cppcheck-circleci.sh /root/workspace/build/compile_commands.json
       - run:
           name: Format result
           when: always

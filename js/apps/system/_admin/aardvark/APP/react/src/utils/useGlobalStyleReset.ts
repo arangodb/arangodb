@@ -12,7 +12,10 @@ export const useGlobalStyleReset = () => {
     const contentDiv = document.querySelector("#content");
     contentWrapper && contentWrapper.setAttribute("style", "padding: 0;");
     contentDiv &&
-      contentDiv.setAttribute("style", "margin: 0; padding: 0; display: none;");
+      contentDiv.setAttribute(
+        "style",
+        "margin: 0; padding: 0; display: none; visibility: hidden; height: 0;"
+      );
     return () => {
       contentDiv && contentDiv.removeAttribute("style");
       contentWrapper && contentWrapper.removeAttribute("style");

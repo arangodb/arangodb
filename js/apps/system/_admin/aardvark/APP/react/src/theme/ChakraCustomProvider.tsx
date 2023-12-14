@@ -27,6 +27,9 @@ export const ChakraCustomProvider = ({
       },
       ".centralRow": {
         backgroundColor: "white !important"
+      },
+      "a:focus": {
+        outline: "none"
       }
     };
   }

@@ -77,6 +77,34 @@ bool caseInsensitiveEqual(std::string_view lhs, std::string_view rhs) noexcept {
   });
 }
 
+void handleUpsertOptions(AstNode const* options, AstNode* forNode, AstNode* forOptionsNode, AstNode* upsertOptionsNode, bool& canReadOwnWrites) {
+  TRI_ASSERT(canReadOwnWrites);
+  if (options != nullptr && options->type == NODE_TYPE_OBJECT) {
+    for (size_t i = 0; i < options->numMembers(); ++i) {
+      auto nodeMember = options->getMember(i);
+      if (nodeMember->type == NODE_TYPE_OBJECT_ELEMENT) {
+        std::string_view nodeMemberName = nodeMember->getStringView();
+        if (nodeMemberName == arangodb::StaticStrings::IndexHintOption || 
+          nodeMemberName == arangodb::StaticStrings::IndexHintOptionForce ||
+          nodeMemberName == arangodb::StaticStrings::IndexHintDisableIndex ||
+          nodeMemberName == arangodb::StaticStrings::UseCache) {
+          forOptionsNode->addMember(nodeMember);
+        } else {
+          upsertOptionsNode->addMember(nodeMember);
+        }
+
+        if (nodeMemberName == arangodb::StaticStrings::ReadOwnWrites) {
+          canReadOwnWrites = nodeMember->getMember(0)->isTrue();
+        }
+      }
+    }
+    forNode->changeMember(2, forOptionsNode);
+  }
+  if (canReadOwnWrites) {
+    forNode->setFlag(AstNodeFlagType::FLAG_READ_OWN_WRITES);
+  }
+}
+
 AstNode* buildShortestPathInfo(Parser* parser,
                                char const* seperator,
                                AstNode* direction,
@@ -1450,30 +1478,17 @@ upsert_statement:
     } T_INSERT expression update_or_replace expression in_or_into_collection options {
       AstNode* forNode = static_cast<AstNode*>(parser->popStack());
       forNode->changeMember(1, $10);
+      bool canReadOwnWrites = true;
       auto* forOptionsNode = parser->ast()->createNodeObject();
       auto* upsertOptionsNode = parser->ast()->createNodeObject();
-      if ($11 != nullptr && $11->type == NODE_TYPE_OBJECT) {
-        for (size_t i = 0; i < $11->numMembers(); ++i) {
-          auto nodeMember = $11->getMember(i);
-          if (nodeMember->type == NODE_TYPE_OBJECT_ELEMENT) {
-            std::string_view nodeMemberName = nodeMember->getStringView();
-            if (nodeMemberName == arangodb::StaticStrings::IndexHintOption || 
-                nodeMemberName == arangodb::StaticStrings::IndexHintOptionForce ||
-                nodeMemberName == arangodb::StaticStrings::IndexHintDisableIndex ||
-                nodeMemberName == arangodb::StaticStrings::UseCache) {
-              forOptionsNode->addMember(nodeMember);
-            } else {
-              upsertOptionsNode->addMember(nodeMember);
-            }
-          }
-        }
-        forNode->changeMember(2, forOptionsNode);
-      }
+      handleUpsertOptions($11, forNode, forOptionsNode, upsertOptionsNode, canReadOwnWrites);
+      TRI_ASSERT(forNode->hasFlag(AstNodeFlagType::FLAG_READ_OWN_WRITES) || !canReadOwnWrites);
+
       if (!parser->configureWriteQuery($10, $11)) {
         YYABORT;
       }
 
-      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($8), parser->ast()->createNodeReference(Variable::NAME_OLD), $7, $9, $10, upsertOptionsNode);
+      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($8), parser->ast()->createNodeReference(Variable::NAME_OLD), $7, $9, $10, upsertOptionsNode, canReadOwnWrites);
       parser->ast()->addOperation(node);
     }
   | T_UPSERT upsert_input {
@@ -1519,30 +1534,17 @@ upsert_statement:
     } T_INSERT expression update_or_replace expression in_or_into_collection options {
       AstNode* forNode = static_cast<AstNode*>(parser->popStack());
       forNode->changeMember(1, $8);
+      bool canReadOwnWrites = true;
       auto* forOptionsNode = parser->ast()->createNodeObject();
       auto* upsertOptionsNode = parser->ast()->createNodeObject();
-      if ($9 != nullptr && $9->type == NODE_TYPE_OBJECT) {
-        for (size_t i = 0; i < $9->numMembers(); ++i) {
-          auto nodeMember = $9->getMember(i);
-          if (nodeMember->type == NODE_TYPE_OBJECT_ELEMENT) {
-            std::string_view nodeMemberName = nodeMember->getStringView();
-            if (nodeMemberName == arangodb::StaticStrings::IndexHintOption || 
-                nodeMemberName == arangodb::StaticStrings::IndexHintOptionForce ||
-                nodeMemberName == arangodb::StaticStrings::IndexHintDisableIndex ||
-                nodeMemberName == arangodb::StaticStrings::UseCache) {
-              forOptionsNode->addMember(nodeMember);
-            } else {
-              upsertOptionsNode->addMember(nodeMember);
-            }
-          }
-        }
-        forNode->changeMember(2, forOptionsNode);
-      }
+      handleUpsertOptions($9, forNode, forOptionsNode, upsertOptionsNode, canReadOwnWrites);
+      TRI_ASSERT(forNode->hasFlag(AstNodeFlagType::FLAG_READ_OWN_WRITES) || !canReadOwnWrites);
+
       if (!parser->configureWriteQuery($8, $9)) {
         YYABORT;
       }
 
-      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($6), parser->ast()->createNodeReference(Variable::NAME_OLD), $5, $7, $8, upsertOptionsNode);
+      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($6), parser->ast()->createNodeReference(Variable::NAME_OLD), $5, $7, $8, upsertOptionsNode, canReadOwnWrites);
       parser->ast()->addOperation(node);
     }
   ;

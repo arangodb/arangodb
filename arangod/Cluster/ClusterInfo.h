@@ -154,6 +154,13 @@ class ClusterInfo final {
     std::shared_ptr<LogicalCollection> collection;
   };
 
+  // IMPORTANT NOTE: This Hasher method does break ShardID.
+  // If you create a Map based on ShardID, and using this Hasher
+  // and then ask it for a string or string_view. This hasher will
+  // use the string_view hash method for the search term, but used
+  // the ShardID hash method for the inserted data, which are DIFFERENT.
+  // The compiler and sanitizers are absolutely happy with this.
+  // So it is on the developers duty to not make this mistake.
   struct Hasher {
     using is_transparent = void;
     template<typename T>
@@ -191,22 +198,24 @@ class ClusterInfo final {
   struct pmr {
     using ManagedString = std::basic_string<char, std::char_traits<char>,
                                             ClusterInfoResourceAllocator<char>>;
-    using ServerID = ManagedString;         // ID of a server
-    using DatabaseID = ManagedString;       // ID/name of a database
-    using CollectionID = ManagedString;     // ID of a collection
-    using ViewID = ManagedString;           // ID of a view
-    using ShardID = ManagedString;          // ID of a shard
-    using ServerShortName = ManagedString;  // Short name of a server
+    using ServerID = ManagedString;      // ID of a server
+    using DatabaseID = ManagedString;    // ID/name of a database
+    using CollectionID = ManagedString;  // ID of a collection
+    using ViewID = ManagedString;        // ID of a view
   };
 
   template<typename K, typename V>
   using FlatMap = containers::FlatHashMap<
-      K, V, Hasher, KeyEqual,
-      ClusterInfoResourceAllocator<std::pair<K const, V>>>;
+      K, V,
+      std::conditional_t<std::is_same_v<K, ShardID>, absl::Hash<K>, Hasher>,
+      KeyEqual, ClusterInfoResourceAllocator<std::pair<K const, V>>>;
   template<typename K, typename V>
   using FlatMapShared = containers::FlatHashMap<
-      K, std::shared_ptr<V>, Hasher, KeyEqual,
+      K, std::shared_ptr<V>,
+      std::conditional_t<std::is_same_v<K, ShardID>, absl::Hash<K>, Hasher>,
+      KeyEqual,
       ClusterInfoResourceAllocator<std::pair<K const, std::shared_ptr<V>>>>;
+
   template<typename K, typename V>
   using AssocMultiMap =
       std::multimap<K, V, KeyEqual,
@@ -251,7 +260,7 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
 
   explicit ClusterInfo(ArangodServer& server,
-                       AgencyCallbackRegistry* agencyCallbackRegistry,
+                       AgencyCallbackRegistry& agencyCallbackRegistry,
                        ErrorCode syncerShutdownCode);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -264,15 +273,16 @@ class ClusterInfo final {
   /// @brief cleanup method which frees cluster-internal shared ptrs on shutdown
   //////////////////////////////////////////////////////////////////////////////
 
-  void cleanup();
+  void unprepare();
+
+  /**
+   * @brief begins shutdown of cluster info,
+   * begin shutting down plan and current syncers
+   */
+  void beginShutdown();
 
   /// @brief cancel all pending wait-for-syncer operations
   void drainSyncers();
-
-  /**
-   * @brief begin shutting down plan and current syncers
-   */
-  void shutdownSyncers();
 
   /**
    * @brief begin shutting down plan and current syncers
@@ -758,7 +768,7 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<ManagedVector<pmr::ServerID> const> getResponsibleServer(
-      std::string_view shardID);
+      ShardID shardID);
 
   enum class ShardLeadership { kLeader, kFollower, kUnclear };
   ShardLeadership getShardLeadership(ServerID const& server,
@@ -811,7 +821,7 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<ManagedVector<pmr::ServerID> const> getCurrentServersForShard(
-      std::string_view shardId);
+      ShardID shardId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the list of coordinator server names
@@ -899,10 +909,10 @@ class ClusterInfo final {
    * @param shardId  The id of said shard
    * @return         List of DB servers serving the shard
    */
-  Result getShardServers(std::string_view shardId, std::vector<ServerID>&);
+  Result getShardServers(ShardID const& shardId, std::vector<ServerID>&);
 
   /// @brief map shardId to collection name (not ID)
-  CollectionID getCollectionNameForShard(std::string_view shardId);
+  CollectionID getCollectionNameForShard(ShardID const& shardId);
 
   auto getReplicatedLogLeader(replication2::LogId) const -> ResultT<ServerID>;
 
@@ -942,7 +952,7 @@ class ClusterInfo final {
   /// @brief get an operation timeout
   //////////////////////////////////////////////////////////////////////////////
 
-  static double getTimeout(double timeout) {
+  static constexpr double getTimeout(double timeout) {
     if (timeout == 0.0) {
       return 24.0 * 3600.0;
     }
@@ -957,7 +967,7 @@ class ClusterInfo final {
   /// @brief get the poll interval
   //////////////////////////////////////////////////////////////////////////////
 
-  static double getPollInterval() { return 5.0; }
+  static constexpr double getPollInterval() { return 5.0; }
 
  private:
   /// @brief create a new collection object from the data, using the cache if
@@ -1013,7 +1023,7 @@ class ClusterInfo final {
 
   AgencyComm _agency;
 
-  AgencyCallbackRegistry* _agencyCallbackRegistry;
+  AgencyCallbackRegistry& _agencyCallbackRegistry;
 
   // Cached data from the agency, we reload whenever necessary:
 
@@ -1125,14 +1135,14 @@ class ClusterInfo final {
   AllCollections _plannedCollections;     // from Plan/Collections/
   AllCollections _newPlannedCollections;  // TODO
   // TODO is it ok to don't account value for _shards?
-  FlatMapShared<pmr::CollectionID, std::vector<std::string> const>
+  FlatMapShared<pmr::CollectionID, std::vector<ShardID> const>
       _shards;  // from Plan/Collections/
                 // (may later come from Current/Collections/ )
   // planned shard => servers map
-  FlatMapShared<pmr::ShardID, ManagedVector<pmr::ServerID> const>
+  FlatMapShared<ShardID, ManagedVector<pmr::ServerID> const>
       _shardsToPlanServers;
   // planned shard ID => collection name
-  FlatMap<pmr::ShardID, pmr::CollectionID> _shardToName;
+  FlatMap<ShardID, pmr::CollectionID> _shardToName;
 
   // planned shard ID => shard ID of shard group leader
   // This deserves an explanation. If collection B has `distributeShardsLike`
@@ -1166,10 +1176,10 @@ class ClusterInfo final {
   // Note however, that a follower for a shard group can be in sync with
   // its leader for some of the shards in the group and not for others!
   // Note that shard group leaders themselves do not appear in this map:
-  FlatMap<pmr::ShardID, pmr::ShardID> _shardToShardGroupLeader;
+  FlatMap<ShardID, ShardID> _shardToShardGroupLeader;
   // In the following map we store for each shard group leader the list
   // of shards in the group, including the leader.
-  FlatMapShared<pmr::ShardID, ManagedVector<pmr::ShardID>> _shardGroups;
+  FlatMapShared<ShardID, ManagedVector<ShardID>> _shardGroups;
 
   AllViews _plannedViews;     // from Plan/Views/
   AllViews _newPlannedViews;  // views that have been created during `loadPlan`
@@ -1184,7 +1194,7 @@ class ClusterInfo final {
   // The Current state:
   FlatMapShared<pmr::DatabaseID, DatabaseCollectionsCurrent const>
       _currentCollections;  // from Current/Collections/
-  FlatMapShared<pmr::ShardID, ManagedVector<pmr::ServerID> const>
+  FlatMapShared<ShardID, ManagedVector<pmr::ServerID> const>
       _shardsToCurrentServers;  // from Current/Collections/
 
   struct NewStuffByDatabase;

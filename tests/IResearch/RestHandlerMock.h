@@ -75,7 +75,13 @@ struct GeneralResponseMock : public arangodb::GeneralResponse {
   virtual void addRawPayload(std::string_view payload) override;
   virtual void reset(arangodb::ResponseCode code) override;
   virtual arangodb::Endpoint::TransportType transportType() override;
-  ErrorCode deflate() override;
-  void setAllowCompression(bool allowed) noexcept override {}
-  bool isCompressionAllowed() const noexcept override { return false; }
+  void setAllowCompression(
+      arangodb::rest::ResponseCompressionType rct) noexcept override {}
+  arangodb::rest::ResponseCompressionType compressionAllowed()
+      const noexcept override {
+    return arangodb::rest::ResponseCompressionType::kNoCompression;
+  }
+  virtual size_t bodySize() const override { return _payload.size(); }
+  virtual ErrorCode zlibDeflate(bool onlyIfSmaller) override;
+  virtual ErrorCode gzipCompress(bool onlyIfSmaller) override;
 };

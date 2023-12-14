@@ -31,6 +31,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
@@ -124,8 +125,15 @@ auto DropIndex::dropIndexReplication2(std::shared_ptr<LogicalCollection>& coll,
                                       velocypack::SharedSlice index) noexcept
     -> Result {
   auto res = basics::catchToResult([&coll, index = std::move(index)]() mutable {
+    auto maybeShardID = ShardID::shardIdFromString(coll->name());
+    if (ADB_UNLIKELY(maybeShardID.fail())) {
+      // This will only throw if we take a real collection here and not a shard.
+      TRI_ASSERT(false) << "Tried to drop index on Collection " << coll->name()
+                        << " which is not considered a shard";
+      return maybeShardID.result();
+    }
     return coll->getDocumentStateLeader()
-        ->dropIndex(coll->name(), std::move(index))
+        ->dropIndex(maybeShardID.get(), std::move(index))
         .get();
   });
 

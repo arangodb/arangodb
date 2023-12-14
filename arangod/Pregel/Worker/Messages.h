@@ -63,7 +63,7 @@ auto inspect(Inspector& f, WorkerStart& x) {
 }
 
 struct LoadGraph {
-  std::unordered_map<ShardID, actor::DistributedActorPID>
+  std::unordered_map<PregelShardID, actor::DistributedActorPID>
       responsibleActorPerShard;
 };
 template<typename Inspector>

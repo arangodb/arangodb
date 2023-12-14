@@ -21,7 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShardDistribution.h"
-#include "PlanShardToServerMappping.h"
+
+#include "Cluster/Utils/PlanShardToServerMappping.h"
+#include "Cluster/Utils/ShardID.h"
 
 using namespace arangodb;
 

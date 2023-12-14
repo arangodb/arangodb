@@ -810,9 +810,13 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
 
     TRI_vocbase_t* vocbase = it->second;
 
-    // Signal replicated logs to stop here, while they still have access to the
-    // database.
-    vocbase->shutdownReplicatedLogs();
+    // Shutdown and clear replicated logs here, while they still have access to
+    // the vocbase. This also drops all shards and resources associated with
+    // these replicated logs, so essentially there should be no collections left
+    // in this vocbase after this method gets executed. Note that the remains of
+    // the replicated logs will still be present on disk. They will be erased in
+    // bulk while executing the `dropDatabase` method of the storage engine.
+    vocbase->dropReplicatedLogs();
 
     auto next = _databases.make(prev);
     next->erase(name);

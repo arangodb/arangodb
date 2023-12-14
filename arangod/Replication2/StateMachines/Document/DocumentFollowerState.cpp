@@ -23,6 +23,7 @@
 
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 #include "Replication2/StateMachines/Document/DocumentStateErrorHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
@@ -62,7 +63,10 @@ DocumentFollowerState::DocumentFollowerState(
           handlersFactory->createShardHandler(core->getVocbase(), core->gid)),
       _errorHandler(handlersFactory->createErrorHandler(core->gid)),
       _guardedData(std::move(core), handlersFactory, loggerContext,
-                   _errorHandler) {}
+                   _errorHandler) {
+  // Get ready to replay the log
+  _shardHandler->prepareShardsForLogReplay();
+}
 
 DocumentFollowerState::~DocumentFollowerState() = default;
 
@@ -93,7 +97,12 @@ auto DocumentFollowerState::getAssociatedShardList() const
   std::vector<ShardID> shardIds;
   shardIds.reserve(collections.size());
   for (auto const& shard : collections) {
-    shardIds.emplace_back(shard->name());
+    auto maybeShardId = ShardID::shardIdFromString(shard->name());
+    ADB_PROD_ASSERT(maybeShardId.ok())
+        << "Tried to produce shard list on Database Server for a collection "
+           "that is not a shard "
+        << shard->name();
+    shardIds.emplace_back(maybeShardId.get());
   }
   return shardIds;
 }
@@ -226,6 +235,16 @@ auto DocumentFollowerState::acquireSnapshot(
                   << "Snapshot " << *snapshotTransferResult.snapshotId
                   << " finished: " << snapshotTransferResult.res;
               return Result{};
+            })
+            .then([self](auto&& tryRes) {
+              auto res = basics::catchToResult([&] { return tryRes.get(); });
+              if (res.ok()) {
+                // If we replayed a snapshot, we need to wait for views to
+                // settle before we can continue. Otherwise, we would get into
+                // issues with duplicate document ids
+                self->_shardHandler->prepareShardsForLogReplay();
+              }
+              return res;
             });
       });
 }

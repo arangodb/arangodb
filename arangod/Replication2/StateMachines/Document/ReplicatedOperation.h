@@ -23,9 +23,7 @@
 #pragma once
 
 #include "Cluster/ClusterTypes.h"
-#include "Inspection/Format.h"
-#include "Inspection/Status.h"
-#include "Inspection/Types.h"
+#include "Cluster/Utils/ShardID.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/Methods/Indexes.h"
 
@@ -45,9 +43,21 @@ struct ReplicatedOperation {
     ShardID shard;
     velocypack::SharedSlice payload;
 
-    DocumentOperation() = default;
+    struct Options {
+      // Automatically refill in-memory cache entries after
+      // inserts/updates/replaces for all indexes that have an in-memory cache
+      // attached
+      bool refillIndexCaches;
+    };
+    std::optional<Options> options;
+
+    // TODO: This somehow seems to be needed for Inspection.
+    // Would like to remove it again though.
+    DocumentOperation() {}
+
     explicit DocumentOperation(TransactionId tid, ShardID shard,
-                               velocypack::SharedSlice payload);
+                               velocypack::SharedSlice payload,
+                               std::optional<Options> options);
 
     friend auto operator==(DocumentOperation const& a,
                            DocumentOperation const& b) -> bool {
@@ -191,9 +201,10 @@ struct ReplicatedOperation {
   static auto buildDropIndexOperation(ShardID shard,
                                       velocypack::SharedSlice index) noexcept
       -> ReplicatedOperation;
-  static auto buildDocumentOperation(TRI_voc_document_operation_e const& op,
-                                     TransactionId tid, ShardID shard,
-                                     velocypack::SharedSlice payload) noexcept
+  static auto buildDocumentOperation(
+      TRI_voc_document_operation_e const& op, TransactionId tid, ShardID shard,
+      velocypack::SharedSlice payload,
+      std::optional<DocumentOperation::Options> options = std::nullopt) noexcept
       -> ReplicatedOperation;
 
   friend auto operator==(ReplicatedOperation const&, ReplicatedOperation const&)

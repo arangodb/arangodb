@@ -1875,7 +1875,7 @@ function iResearchFeatureAqlTestSuite () {
       let analyzerName = "pipeUnderTest";
       try { analyzers.remove(analyzerName, true); } catch(e) {}
       {
-        analyzers.save(analyzerName,"pipeline",
+        analyzers.save(analyzerName, "pipeline",
                         {pipeline:[
                           {type:"delimiter", properties:{delimiter:" "}},
                           {type:"delimiter", properties:{delimiter:","}},
@@ -1896,7 +1896,7 @@ function iResearchFeatureAqlTestSuite () {
       }
       // upper + ngram utf8 sequence
       {
-        analyzers.save(analyzerName,"pipeline",
+        analyzers.save(analyzerName, "pipeline",
                         {pipeline:[
                           {type:"norm", properties:{locale:"ru_RU.UTF8", "case":"upper"}},
                           {type:"ngram", properties: { "preserveOriginal":false, min:2, max:3, streamType:"utf8"}}]});
@@ -2031,7 +2031,7 @@ function iResearchFeatureAqlTestSuite () {
       try { analyzers.remove(analyzerName, true); } catch(e) {}
       // soundex expression
       {
-        analyzers.save(analyzerName,"aql",{queryString:"RETURN SOUNDEX(@param)"});
+        analyzers.save(analyzerName, "aql",{queryString:"RETURN SOUNDEX(@param)"});
         try {
           let result = db._query(
             "RETURN TOKENS(['Andrei', 'Andrey'], '" + analyzerName + "' )",
@@ -2047,7 +2047,7 @@ function iResearchFeatureAqlTestSuite () {
       }
       // datetime
       {
-        analyzers.save(analyzerName,"aql",{queryString:"RETURN DATE_ISO8601(@param)"});
+        analyzers.save(analyzerName, "aql",{queryString:"RETURN DATE_ISO8601(@param)"});
         try {
           let result = db._query(
             "RETURN TOKENS('1974-06-09', '" + analyzerName + "' )",
@@ -2062,8 +2062,8 @@ function iResearchFeatureAqlTestSuite () {
         }
       }
       // cycle
-      {
-        analyzers.save(analyzerName,"aql",{queryString:"FOR d IN 1..TO_NUMBER(@param) FILTER d%2==0 RETURN TO_STRING(d)"});
+       {
+        analyzers.save(analyzerName, "aql",{queryString:"FOR d IN 1..TO_NUMBER(@param) FILTER d%2==0 RETURN TO_STRING(d)"});
         try {
           let result = db._query(
             "RETURN TOKENS('4', '" + analyzerName + "' )",
@@ -2079,7 +2079,7 @@ function iResearchFeatureAqlTestSuite () {
       }
       // pipeline for upper + ngram utf8 sequence
       {
-        analyzers.save(analyzerName,"pipeline",
+        analyzers.save(analyzerName, "pipeline",
                         {pipeline:[
                           {type:"aql", properties:{queryString:"RETURN UPPER(@param)"}},
                           {type:"ngram", properties: { "preserveOriginal":false, min:2, max:3, streamType:"utf8"}}]});
@@ -2099,7 +2099,7 @@ function iResearchFeatureAqlTestSuite () {
       }
       // pipeline for ngram utf8 sequence + upper
       {
-        analyzers.save(analyzerName,"pipeline",
+        analyzers.save(analyzerName, "pipeline",
                         {pipeline:[
                           {type:"ngram", properties: { "preserveOriginal":false, min:2, max:3, streamType:"utf8"}},
                           {type:"aql", properties:{queryString:"RETURN UPPER(@param)"}}]});
@@ -2133,7 +2133,7 @@ function iResearchFeatureAqlTestSuite () {
       let analyzerName = "stopwordsUnderTest";
       try { analyzers.remove(analyzerName, true); } catch(e) {}
       {
-        analyzers.save(analyzerName,"stopwords",
+        analyzers.save(analyzerName, "stopwords",
                         {stopwords:["QWE", "qwe", "qqq", "abcd"]}, ["position", "frequency"]);
         try {
           let result = db._query(
@@ -2154,7 +2154,7 @@ function iResearchFeatureAqlTestSuite () {
       }
       try { analyzers.remove(analyzerName, true); } catch(e) {}
       {
-        analyzers.save(analyzerName,"stopwords",
+        analyzers.save(analyzerName, "stopwords",
                         {stopwords:["515745", "717765", "717171"], hex:true}, ["position", "frequency"]);
         try {
           let result = db._query(
@@ -2178,11 +2178,11 @@ function iResearchFeatureAqlTestSuite () {
       let analyzerName = "collationUnderTest";
       try { analyzers.remove(analyzerName, true); } catch(e) {}
       try { 
-        analyzers.save(analyzerName,"collation", {}, []);
+        analyzers.save(analyzerName, "collation", {}, []);
         assertTrue(false);
       } catch (e) { }
       {
-        analyzers.save(analyzerName,"collation", {locale:"ru_RU.UTf-8"}, []);
+        analyzers.save(analyzerName, "collation", {locale:"ru_RU.UTF-8"}, []);
         try {
           let result = db._query(
             "RETURN TOKENS('АрангоДБ', '" + analyzerName + "' )",
@@ -2195,8 +2195,9 @@ function iResearchFeatureAqlTestSuite () {
             39, 6,  1158, 6, 120, 16, 1090, 26, 12,
             1, 12, 1, 1862, 1537, 1862, 1862];
 
+          const actual = result[0][0].split('').map(c => c.charCodeAt(0));
           assertTrue(
-            _.isEqual(expected, result[0][0].split('').map(c => c.charCodeAt(0))));
+            _.isEqual(expected, actual), {expected, actual});
         } finally {
           analyzers.remove(analyzerName, true);
         }
@@ -2276,7 +2277,7 @@ function iResearchFeatureAqlTestSuite () {
       let analyzerName = "segmentationUnderTest";
       try { analyzers.remove(analyzerName, true); } catch(e) {}
       {
-        analyzers.save(analyzerName,"segmentation", {}, []);
+        analyzers.save(analyzerName, "segmentation", {}, []);
         try {
           let result = db._query(
             "RETURN TOKENS('Arango DB', '" + analyzerName + "' )",

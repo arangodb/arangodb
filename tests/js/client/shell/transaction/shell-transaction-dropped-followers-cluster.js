@@ -52,10 +52,13 @@ function transactionDroppedFollowersSuite() {
   'use strict';
   const cn = 'UnitTestsTransaction';
 
+  let isReplication2 = false;
+
   return {
 
     setUp: function () {
       db._drop(cn);
+      isReplication2 = db._properties().replicationVersion === "2";
     },
 
     tearDown: function () {
@@ -236,7 +239,14 @@ function transactionDroppedFollowersSuite() {
       let intermediateCommitsAfter = getIntermediateCommits(servers);
 
       Object.keys(intermediateCommitsBefore).forEach((s) => {
-        assertTrue(intermediateCommitsBefore[s] + 5 < intermediateCommitsAfter[s]);
+        if (isReplication2) {
+          // For the non-AQL document API, intermediate commits are not performed on the leader.
+          // Hence, they are not performed on the followers either.
+          assertTrue(intermediateCommitsBefore[s] === intermediateCommitsAfter[s]);
+        } else {
+          // For replication1, intermediate commits are performed on the followers only.
+          assertTrue(intermediateCommitsBefore[s] + 5 < intermediateCommitsAfter[s]);
+        }
       });
     },
 

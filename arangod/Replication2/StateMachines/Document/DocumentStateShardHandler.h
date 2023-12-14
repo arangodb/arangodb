@@ -34,6 +34,10 @@
 
 struct TRI_vocbase_t;
 
+namespace arangodb {
+struct ShardID;
+}
+
 namespace arangodb::replication2::replicated_state::document {
 
 struct IMaintenanceActionExecutor;
@@ -69,6 +73,8 @@ struct IDocumentStateShardHandler {
   virtual auto lockShard(ShardID const& shard, AccessMode::Type accessType,
                          transaction::OperationOrigin origin)
       -> ResultT<std::unique_ptr<transaction::Methods>> = 0;
+
+  virtual auto prepareShardsForLogReplay() noexcept -> void = 0;
 };
 
 class DocumentStateShardHandler : public IDocumentStateShardHandler {
@@ -106,6 +112,8 @@ class DocumentStateShardHandler : public IDocumentStateShardHandler {
   auto lockShard(ShardID const& shard, AccessMode::Type accessType,
                  transaction::OperationOrigin origin)
       -> ResultT<std::unique_ptr<transaction::Methods>> override;
+
+  auto prepareShardsForLogReplay() noexcept -> void override;
 
  private:
   GlobalLogIdentifier _gid;

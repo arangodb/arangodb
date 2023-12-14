@@ -3554,6 +3554,11 @@ void Supervision::checkUndoLeaderChangeActions() {
         return Result{TRI_ERROR_BAD_PARAMETER, "collection missing"};
       }
 
+      auto maybeShardID = ShardID::shardIdFromString(id);
+      if (ADB_UNLIKELY(maybeShardID.fail())) {
+        return Result{TRI_ERROR_BAD_PARAMETER, maybeShardID.errorMessage()};
+      }
+
       if (isReplication2(*database)) {
         auto stateId =
             Job::getReplicatedStateId(snapshot(), *database, *collection, id);
@@ -3562,17 +3567,18 @@ void Supervision::checkUndoLeaderChangeActions() {
                         fmt::format("replicated log with ID {} missing", id)};
         }
 
-        return UndoAction{
-            UndoAction::UndoMoveShardR2{
-                std::move(*database), std::move(*collection), id,
-                std::move(*fromServer), std::move(*toServer), stateId.value()},
-            deadline, started, jobId, rebootId};
+        return UndoAction{UndoAction::UndoMoveShardR2{
+                              std::move(*database), std::move(*collection),
+                              maybeShardID.get(), std::move(*fromServer),
+                              std::move(*toServer), stateId.value()},
+                          deadline, started, jobId, rebootId};
       }
 
-      return UndoAction{UndoAction::UndoMoveShardR1{
-                            std::move(*database), std::move(*collection), id,
-                            std::move(*fromServer), std::move(*toServer)},
-                        deadline, started, jobId, rebootId};
+      return UndoAction{
+          UndoAction::UndoMoveShardR1{
+              std::move(*database), std::move(*collection), maybeShardID.get(),
+              std::move(*fromServer), std::move(*toServer)},
+          deadline, started, jobId, rebootId};
     } else if (jobOpt = undoOp.get("reconfigureReplicatedLog");
                jobOpt != nullptr) {
       Node const& job(*jobOpt);
@@ -3612,9 +3618,9 @@ void Supervision::checkUndoLeaderChangeActions() {
     return Result{TRI_ERROR_BAD_PARAMETER, "unknown undo action"};
   };
 
-  auto const isServerInPlan =
-      [&](std::string_view database, std::string_view collection,
-          std::string_view shard, std::string_view server) -> bool {
+  auto const isServerInPlan = [&](std::string_view database,
+                                  std::string_view collection, ShardID shard,
+                                  std::string_view server) -> bool {
     auto path = basics::StringUtils::joinT("/", "Plan/Collections", database,
                                            collection, "shards", shard);
     auto servers = snapshot().hasAsArray(path);
@@ -3700,9 +3706,9 @@ void Supervision::checkUndoLeaderChangeActions() {
         undo.action);
   };
 
-  auto const isServerInSync =
-      [&](std::string_view database, std::string_view collection,
-          std::string_view shard, std::string_view server) -> bool {
+  auto const isServerInSync = [&](std::string_view database,
+                                  std::string_view collection, ShardID shard,
+                                  std::string_view server) -> bool {
     auto path = basics::StringUtils::joinT("/", "Current/Collections", database,
                                            collection, shard, "servers");
     auto servers = snapshot().hasAsArray(path);

@@ -92,7 +92,7 @@ export const ExampleGraphForm = ({ onClose }: { onClose: () => void }) => {
               <Text>{exampleGraphField.label}</Text>
             </Box>
             <Button
-              colorScheme="blue"
+              colorScheme="green"
               size="xs"
               type="submit"
               isDisabled={isAnyLoading}

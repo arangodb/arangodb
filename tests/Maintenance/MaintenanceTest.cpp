@@ -1030,7 +1030,7 @@ TEST_F(
   auto cid = collectionMap(plan).at("db3/x");
   auto shards = plan->get({COLLECTIONS, dbname, cid, SHARDS})->children();
   ASSERT_EQ(shards.size(), 1);
-  std::string shardName = shards.begin()->first;
+  ShardID shardName{shards.begin()->first};
 
   for (auto node : localNodes) {
     std::vector<std::shared_ptr<ActionDescription>> actions;

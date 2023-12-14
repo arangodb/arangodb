@@ -37,6 +37,7 @@
 #include "Basics/encoding.h"
 #include "Basics/system-compiler.h"
 #include "Basics/voc-errors.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
@@ -54,6 +55,7 @@
 #include "Network/Utils.h"
 #include "Random/RandomGenerator.h"
 #include "Replication/ReplicationMetricsFeature.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/ReplicatedRocksDBTransactionCollection.h"
@@ -537,8 +539,7 @@ struct GetDocumentProcessor
                        OperationOptions const& options)
       : GenericProcessor(methods, trxColl, collection, value, options) {
     if (_methods.state()->isDBServer()) {
-      auto const& followerInfo = _collection.followers();
-      if (!followerInfo->getLeader().empty()) {
+      if (!_collection.isLeadingShard()) {
         // We believe to be a follower!
         if (!_options.allowDirtyReads) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
@@ -2084,7 +2085,7 @@ futures::Future<Result> transaction::Methods::documentFastPath(
         auto shards = ci.getShardList(std::to_string(collection->id().id()));
         if (shards != nullptr && shards->size() == 1) {
           TRI_ASSERT(vocbase().isOneShard());
-          return (*shards)[0];
+          return std::string{(*shards)[0]};
         }
       }
     }
@@ -2409,9 +2410,72 @@ Result transaction::Methods::determineReplication2TypeAndFollowers(
   if (auto* context = dynamic_cast<transaction::ReplicatedContext*>(
           _transactionContext.get());
       context == nullptr) {
+    // We believe to be the leader
     options.silent = false;
     replicationType = ReplicationType::LEADER;
     followers = std::make_shared<std::vector<ServerID>>();
+
+    // This is a stunt to make sure the write concern can be fulfilled.
+    auto& vocbase = this->vocbase();
+    auto& clusterFeature = vocbase.server().getFeature<ClusterFeature>();
+    auto canReachWriteConcern = basics::catchToResultT([&]() {
+      auto stateId = collection.replicatedStateId();
+      auto& agencyCache = clusterFeature.agencyCache();
+
+      // Fetch replicated log participants
+      auto [participantsConfigQuery, raftIndex] = agencyCache.get(
+          fmt::format("Plan/ReplicatedLogs/{}/{}/participantsConfig",
+                      vocbase.name(), stateId));
+      if (participantsConfigQuery->isEmpty()) {
+        LOG_TOPIC("90e43", DEBUG, Logger::REPLICATED_STATE)
+            << "ParticipantsConfig of log " << stateId
+            << " is non-existent according to raftIndex " << raftIndex
+            << ", during transaction " << tid() << ", concerning shard "
+            << collection.name();
+        return false;
+      }
+      auto participantsConfig =
+          velocypack::deserialize<replication2::agency::ParticipantsConfig>(
+              participantsConfigQuery->slice());
+      auto wc = participantsConfig.config.effectiveWriteConcern;
+
+      // Fetch health information
+      auto [healthQuery, healthRaftIndex] =
+          agencyCache.get("Supervision/Health");
+      if (healthQuery->isEmpty() || !healthQuery->slice().isObject()) {
+        LOG_TOPIC("86e21", DEBUG, Logger::REPLICATED_STATE)
+            << "Health of participants is invalid according to raftIndex "
+            << healthRaftIndex << ", during transaction " << tid()
+            << ", concerning shard " << collection.name();
+        return false;
+      }
+
+      // The number of non-failed participants must satisfy the write concern.
+      std::size_t nonFailedParticipants{0};
+      for (auto& [pid, _] : participantsConfig.participants) {
+        auto health = healthQuery->slice().get(pid);
+        TRI_ASSERT(health.isObject() && health.hasKey("Status"));
+        if (health.get("Status").copyString() != "FAILED") {
+          ++nonFailedParticipants;
+        }
+      }
+
+      return nonFailedParticipants >= wc;
+    });
+
+    if (canReachWriteConcern.fail()) {
+      LOG_TOPIC("bdce1", DEBUG, Logger::REPLICATED_STATE)
+          << "Cannot reach write concern for transaction " << tid()
+          << ", concerning shard " << collection.name() << ": "
+          << canReachWriteConcern.result();
+    } else if (*canReachWriteConcern) {
+      return {};
+    }
+
+    if (clusterFeature.statusCodeFailedWriteConcern() == 403) {
+      return {TRI_ERROR_ARANGO_READ_ONLY};
+    }
+    return {TRI_ERROR_REPLICATION_WRITE_CONCERN_NOT_FULFILLED};
   } else {
     options.silent = true;
     replicationType = ReplicationType::FOLLOWER;
@@ -2698,9 +2762,14 @@ Future<OperationResult> transaction::Methods::truncateLocal(
       VPackObjectBuilder ob(&body);
       body.add("collection", collectionName);
     }
+    auto maybeShardID = ShardID::shardIdFromString(trxColl->collectionName());
+    ADB_PROD_ASSERT(maybeShardID.ok())
+        << "Tried to replicate an operation for a collection that is not a "
+           "shard."
+        << trxColl->collectionName() << " in collection: " << collectionName;
     auto operation = replication2::replicated_state::document::
         ReplicatedOperation::buildTruncateOperation(
-            state()->id().asFollowerTransactionId(), trxColl->collectionName());
+            state()->id().asFollowerTransactionId(), maybeShardID.get());
     // Should finish immediately, because we are not waiting the operation to be
     // committed in the replicated log
     auto replicationFut = leaderState->replicateOperation(
@@ -3192,15 +3261,54 @@ Future<Result> Methods::replicateOperations(
 
   TRI_IF_FAILURE("replicateOperations::skip") { return Result(); }
 
+  // index cache refilling...
+  bool const refill = std::invoke([&]() {
+    if (options.refillIndexCaches == RefillIndexCaches::kDontRefill) {
+      // index cache refilling opt-out
+      return false;
+    }
+
+    // this attribute can have 3 values: default, true and false. only
+    // expose it when it is not set to "default"
+    auto& engine = vocbase()
+                       .server()
+                       .template getFeature<EngineSelectorFeature>()
+                       .engine();
+
+    return engine.autoRefillIndexCachesOnFollowers() &&
+           ((options.refillIndexCaches == RefillIndexCaches::kRefill) ||
+            (options.refillIndexCaches == RefillIndexCaches::kDefault &&
+             engine.autoRefillIndexCaches()));
+  });
+
+  TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfTrue") {
+    if (refill) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  }
+  TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfFalse") {
+    if (!refill) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  }
+
   // replication2 is handled here
   if (collection->replicationVersion() == replication::Version::TWO) {
+    using namespace replication2::replicated_state::document;
+
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(
         transactionCollection);
     auto leaderState = rtc.leaderState();
-    auto replicatedOp = replication2::replicated_state::document::
-        ReplicatedOperation::buildDocumentOperation(
-            operation, state()->id().asFollowerTransactionId(),
-            rtc.collectionName(), replicationData.sharedSlice());
+    auto maybeShardID = ShardID::shardIdFromString(rtc.collectionName());
+    ADB_PROD_ASSERT(maybeShardID.ok())
+        << "Tried to replicate an operation for a collection that is not a "
+           "shard."
+        << rtc.collectionName();
+    auto operationOptions = ReplicatedOperation::DocumentOperation::Options{
+        .refillIndexCaches = refill};
+    auto replicatedOp = ReplicatedOperation::buildDocumentOperation(
+        operation, state()->id().asFollowerTransactionId(), maybeShardID.get(),
+        replicationData.sharedSlice(), operationOptions);
     // Should finish immediately
     auto replicationFut = leaderState->replicateOperation(
         std::move(replicatedOp),
@@ -3224,41 +3332,8 @@ Future<Result> Methods::replicateOperations(
   reqOpts.database = vocbase().name();
   reqOpts.param(StaticStrings::IsRestoreString, "true");
 
-  // index cache refilling...
-  if (options.refillIndexCaches == RefillIndexCaches::kDontRefill) {
-    // index cache refilling opt-out
-    reqOpts.param(StaticStrings::RefillIndexCachesString, "false");
-
-    TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfFalse") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-  } else {
-    // this attribute can have 3 values: default, true and false. only
-    // expose it when it is not set to "default"
-    auto& engine = vocbase()
-                       .server()
-                       .template getFeature<EngineSelectorFeature>()
-                       .engine();
-
-    bool const refill =
-        engine.autoRefillIndexCachesOnFollowers() &&
-        ((options.refillIndexCaches == RefillIndexCaches::kRefill) ||
-         (options.refillIndexCaches == RefillIndexCaches::kDefault &&
-          engine.autoRefillIndexCaches()));
-
-    TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfTrue") {
-      if (refill) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-    }
-    TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfFalse") {
-      if (!refill) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-    }
-    reqOpts.param(StaticStrings::RefillIndexCachesString,
-                  refill ? "true" : "false");
-  }
+  reqOpts.param(StaticStrings::RefillIndexCachesString,
+                refill ? "true" : "false");
 
   std::string url = "/_api/document/";
   url.append(arangodb::basics::StringUtils::urlEncode(collection->name()));

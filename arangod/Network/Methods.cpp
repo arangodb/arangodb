@@ -32,6 +32,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
 #include "Network/ConnectionPool.h"
@@ -146,11 +147,11 @@ Result Response::combinedResult() const {
 }
 
 /// @brief shardId or empty
-std::string Response::destinationShard() const {
+ResultT<ShardID> Response::destinationShard() const {
   if (this->destination.size() > 6 && this->destination.starts_with("shard:")) {
-    return this->destination.substr(6);
+    return ShardID::shardIdFromString(this->destination.substr(6));
   }
-  return StaticStrings::Empty;
+  return Result{TRI_ERROR_BAD_PARAMETER, "destination not a shard"};
 }
 
 std::string Response::serverId() const {

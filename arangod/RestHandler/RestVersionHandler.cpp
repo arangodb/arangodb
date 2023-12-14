@@ -92,7 +92,8 @@ RestStatus RestVersionHandler::execute() {
   bool const includeDetails = _request->parsedValue("details", false);
   getVersion(server(), allowInfo, includeDetails, result);
 
-  response()->setAllowCompression(true);
+  response()->setAllowCompression(
+      rest::ResponseCompressionType::kAllowCompression);
 
   generateResult(rest::ResponseCode::OK, result.slice());
   return RestStatus::DONE;

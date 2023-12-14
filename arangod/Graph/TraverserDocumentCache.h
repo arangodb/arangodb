@@ -51,12 +51,6 @@ class TraverserDocumentCache final : public TraverserCache {
   void insertEdgeIntoResult(EdgeDocumentToken const& etkn,
                             arangodb::velocypack::Builder& builder) override;
 
-  /// Looks up the document and inserts it into the builder
-  bool appendVertex(std::string_view idString,
-                    arangodb::velocypack::Builder& result) override;
-  bool appendVertex(std::string_view idString,
-                    arangodb::aql::AqlValue& result) override;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return AQL value containing the result
   ///        The document will be taken from the hash-cache.

@@ -236,30 +236,58 @@ function clusterRebalanceOtherOptionsSuite() {
           const serverShortName = result[dbServer.id].ShortName;
           assertEqual(serverHealth, "FAILED");
           startTime = Date.now();
-          let serverUsed;
-          do {
-            wait(2);
-            serverUsed = false;
-            for (let j = 0; j < numCols; ++j) {
-              result = arango.GET("/_admin/cluster/shardDistribution").results["col" + j].Plan;
-              for (let key of Object.keys(result)) {
-                if (result[key].leader === serverShortName) {
-                  serverUsed = true;
+          if (db._properties().replicationVersion !== "2") {
+            // In Replication 1 we will eventually replace the dead server
+            let serverUsed;
+            do {
+              wait(2);
+              serverUsed = false;
+              for (let j = 0; j < numCols; ++j) {
+                result = arango.GET("/_admin/cluster/shardDistribution").results["col" + j].Plan;
+                for (let key of Object.keys(result)) {
+                  if (result[key].leader === serverShortName) {
+                    serverUsed = true;
+                    break;
+                  }
+                  result[key].followers.forEach(follower => {
+                    if (follower === serverShortName) {
+                      serverUsed = true;
+                    }
+                  });
+                }
+                if (serverUsed === true) {
                   break;
                 }
-                result[key].followers.forEach(follower => {
-                  if (follower === serverShortName) {
-                    serverUsed = true;
-                  }
-                });
               }
-              if (serverUsed === true) {
-                break;
-              }
+              // We only have 300s to move shards
               const timeElapsed = (Date.now() - startTime) / 1000;
               assertTrue(timeElapsed < 300, "Moving shards from server in ill state not acquired");
-            }
-          } while (serverUsed);
+            } while (serverUsed);
+          } else {
+            // In Replication2 we consider "server dead" to be an active operation.
+            // Otherwise we assume it will return shortly.
+            // However it should not stay a leader.
+            let serverUsed;
+            do {
+              wait(2);
+              serverUsed = false;
+              for (let j = 0; j < numCols; ++j) {
+                result = arango.GET("/_admin/cluster/shardDistribution").results["col" + j].Plan;
+                for (let key of Object.keys(result)) {
+                  if (result[key].leader === serverShortName) {
+                    serverUsed = true;
+                    break;
+                  }
+                }
+                if (serverUsed === true) {
+                  break;
+                }
+              }
+              // We only have 300s to move shards
+              const timeElapsed = (Date.now() - startTime) / 1000;
+              assertTrue(timeElapsed < 300, "Moving leader shards from server in ill state not acquired");
+            } while (serverUsed);
+          }
 
           result = getRebalancePlan(true, true, true, false);
           let moves = result.result.moves;

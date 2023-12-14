@@ -43,6 +43,7 @@ class LogId;
 }  // namespace replication2
 
 class HeartbeatThread;
+struct ShardID;
 
 struct DBServerAgencySyncResult {
   bool success;
@@ -78,8 +79,7 @@ class DBServerAgencySync {
 
   // equivalent of ShardIdToLogIdMapByDatabase
   using LocalShardsToLogsMap = std::unordered_map<
-      std::string,
-      std::unordered_map<std::string, arangodb::replication2::LogId>>;
+      std::string, std::unordered_map<ShardID, arangodb::replication2::LogId>>;
 
   /**
    * @brief Get copy of current local state
@@ -89,7 +89,7 @@ class DBServerAgencySync {
       containers::FlatHashSet<std::string> const& dirty,
       containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>>&
           collections,
-      LocalLogsMap& replLogs, LocalShardsToLogsMap& shardIdToLogId);
+      LocalLogsMap& replLogs, LocalShardsToLogsMap& localShardIdToLogId);
 
   double requestTimeout() const noexcept;
 

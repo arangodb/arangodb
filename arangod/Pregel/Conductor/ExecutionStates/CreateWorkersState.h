@@ -59,7 +59,7 @@ struct CreateWorkers : ExecutionState {
       -> std::optional<StateChange> override;
 
   ConductorState& conductor;
-  std::unordered_map<ShardID, actor::DistributedActorPID> actorForShard;
+  std::unordered_map<PregelShardID, actor::DistributedActorPID> actorForShard;
   std::set<ServerID> sentServers;
   std::set<ServerID> respondedServers;
   uint64_t responseCount = 0;

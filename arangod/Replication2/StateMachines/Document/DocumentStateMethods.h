@@ -30,6 +30,8 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 
+struct ShardID;
+
 template<typename T>
 class ResultT;
 

@@ -30,6 +30,8 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/ParticipantsHealth.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include <random>
 
@@ -157,9 +159,8 @@ auto createCollectionPlanSpec(
   }
   shardList.reserve(target.attributes.immutableAttributes.numberOfShards);
   std::generate_n(std::back_inserter(shardList),
-                  target.attributes.immutableAttributes.numberOfShards, [&] {
-                    return basics::StringUtils::concatT("s", uniqid.next());
-                  });
+                  target.attributes.immutableAttributes.numberOfShards,
+                  [&] { return ShardID{uniqid.next()}; });
 
   auto mapping = computeShardList(logs, shardSheaves, shardList);
   return ag::CollectionPlanSpecification{collection, std::move(shardList),
@@ -221,9 +222,8 @@ auto createCollectionGroupTarget(
     // If we have shadow collections we do not have any shards
     if (!targetCollection.immutableProperties.shadowCollections.has_value()) {
       std::generate_n(std::back_inserter(shardList),
-                      attributes.immutableAttributes.numberOfShards, [&] {
-                        return basics::StringUtils::concatT("s", uniqid.next());
-                      });
+                      attributes.immutableAttributes.numberOfShards,
+                      [&] { return ShardID{uniqid.next()}; });
 
       for (size_t k = 0; k < shardList.size(); ++k) {
         ResponsibleServerList serverids{};

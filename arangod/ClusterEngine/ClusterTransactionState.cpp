@@ -124,7 +124,7 @@ futures::Future<Result> ClusterTransactionState::beginTransaction(
           TRI_ASSERT(realCol != nullptr);
           auto shardIds = realCol->shardIds();
           for (auto const& pair : *shardIds) {
-            std::vector<arangodb::ShardID> const& servers = pair.second;
+            std::vector<arangodb::ServerID> const& servers = pair.second;
             if (!servers.empty()) {
               leaders.emplace(servers[0]);
             }
@@ -133,7 +133,7 @@ futures::Future<Result> ClusterTransactionState::beginTransaction(
       } else {
         auto shardIds = c.collection()->shardIds();
         for (auto const& pair : *shardIds) {
-          std::vector<arangodb::ShardID> const& servers = pair.second;
+          std::vector<arangodb::ServerID> const& servers = pair.second;
           if (!servers.empty()) {
             leaders.emplace(servers[0]);
           }

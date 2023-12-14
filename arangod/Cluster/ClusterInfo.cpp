@@ -76,7 +76,6 @@
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/AgencyCollectionSpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -348,7 +347,7 @@ class ClusterInfo::SyncerThread final
     : public arangodb::ServerThread<ArangodServer> {
  public:
   explicit SyncerThread(Server&, std::string const& section,
-                        std::function<void()> const&, AgencyCallbackRegistry*);
+                        std::function<void()> const&, AgencyCallbackRegistry&);
   ~SyncerThread() override;
   void beginShutdown() override;
   void run() override;
@@ -361,7 +360,7 @@ class ClusterInfo::SyncerThread final
   bool _news;
   std::string _section;
   std::function<void()> _f;
-  AgencyCallbackRegistry* _cr;
+  AgencyCallbackRegistry& _cr;
   std::shared_ptr<AgencyCallback> _acb;
 };
 
@@ -384,7 +383,7 @@ DECLARE_GAUGE(arangodb_internal_cluster_info_memory_usage, std::uint64_t,
               "Total memory used by internal cluster info data structures");
 
 ClusterInfo::ClusterInfo(ArangodServer& server,
-                         AgencyCallbackRegistry* agencyCallbackRegistry,
+                         AgencyCallbackRegistry& agencyCallbackRegistry,
                          ErrorCode syncerShutdownCode)
     : _server(server),
       _agency(server),
@@ -467,7 +466,9 @@ ClusterInfo::~ClusterInfo() {
 /// @brief cleanup method which frees cluster-internal shared ptrs on shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterInfo::cleanup() {
+void ClusterInfo::unprepare() {
+  waitForSyncersToStop();
+
   while (true) {
     {
       std::lock_guard mutexLocker{_idLock};
@@ -475,7 +476,7 @@ void ClusterInfo::cleanup() {
         break;
       }
     }
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 
   std::lock_guard mutexLocker{_planProt.mutex};
@@ -997,11 +998,12 @@ void ClusterInfo::loadPlan() {
             if (col.value.hasKey("shards")) {
               for (auto shard : VPackObjectIterator(col.value.get("shards"))) {
                 auto const& shardName = shard.key.copyString();
+                ShardID shardID{shardName};
                 newShards.erase(shardName);
-                newShardsToPlanServers.erase(shardName);
-                newShardToName.erase(shardName);
-                newShardToShardGroupLeader.erase(shardName);
-                newShardGroups.erase(shardName);
+                newShardsToPlanServers.erase(shardID);
+                newShardToName.erase(shardID);
+                newShardToShardGroupLeader.erase(shardID);
+                newShardGroups.erase(shardID);
               }
             }
           }
@@ -1390,7 +1392,13 @@ void ClusterInfo::loadPlan() {
           auto& collectionId = collection.first;
           // delete from maps with shardID as key
           newShards.erase(collectionId);
-          newShardToName.erase(collectionId);
+          if (auto maybeShardID = ShardID::shardIdFromString(collectionId);
+              maybeShardID.ok()) {
+            // The list contains collections and shards by name and id.
+            // So it is expected that some are not valid shard ids.
+            // Make sure we only erase valid shard ids.
+            newShardToName.erase(maybeShardID.get());
+          }
         }
         _newPlannedCollections.erase(it);
       }
@@ -1452,13 +1460,14 @@ void ClusterInfo::loadPlan() {
                                                    ->second->slice()[0]
                                                    .get(collectionsPath))) {
               auto const& shardId = sh.key.copyString();
+              ShardID sId{shardId};
               newShards.erase(shardId);
-              newShardsToPlanServers.erase(shardId);
-              newShardToName.erase(shardId);
+              newShardsToPlanServers.erase(sId);
+              newShardToName.erase(sId);
               // We try to erase the shard ID anyway, no problem if it is
               // not in there, should it be a shard group leader!
-              newShardToShardGroupLeader.erase(shardId);
-              newShardGroups.erase(shardId);
+              newShardToShardGroupLeader.erase(sId);
+              newShardGroups.erase(sId);
             }
             collectionsPath.pop_back();
           }
@@ -1540,22 +1549,20 @@ void ClusterInfo::loadPlan() {
         }
 
         auto shardIDs = newCollection->shardIds();
-        auto shards = std::make_shared<std::vector<ServerID>>();
+        auto shards = allocateShared<std::vector<ShardID>>();
         shards->reserve(shardIDs->size());
         newShardToName.reserve(shardIDs->size());
 
         for (auto const& p : *shardIDs) {
-          TRI_ASSERT(p.first.size() >= 2);
           shards->push_back(p.first);
           auto v = allocateShared<ManagedVector<pmr::ServerID>>();
           v->assign(p.second.begin(), p.second.end());
-          newShardsToPlanServers.insert_or_assign(
-              pmr::ShardID{p.first, _resourceMonitor}, std::move(v));
+          newShardsToPlanServers.insert_or_assign(p.first, std::move(v));
           newShardToName.insert_or_assign(p.first, newCollection->name());
         }
 
         // Sort by the number in the shard ID ("s0000001" for example):
-        ShardingInfo::sortShardNamesNumerically(*shards);
+        std::sort(shards->begin(), shards->end());
         newShards.insert_or_assign(collectionId, std::move(shards));
       } catch (std::exception const& ex) {
         // The plan contains invalid collection information.
@@ -1638,7 +1645,7 @@ void ClusterInfo::loadPlan() {
               if (auto it = newShardGroups.find(groupLeaderCol->second->at(i));
                   it == newShardGroups.end()) {
                 // Need to create a new list:
-                auto list = allocateShared<ManagedVector<pmr::ShardID>>();
+                auto list = allocateShared<ManagedVector<ShardID>>();
                 list->reserve(2);
                 // group leader as well as member:
                 list->emplace_back(groupLeaderCol->second->at(i));
@@ -1887,7 +1894,7 @@ void ClusterInfo::loadCurrent() {
             for (auto cc : VPackObjectIterator(colsSlice)) {
               if (cc.value.isObject()) {
                 for (auto cs : VPackObjectIterator(cc.value)) {
-                  newShardsToCurrentServers.erase(cs.key.stringView());
+                  newShardsToCurrentServers.erase(ShardID{cs.key.stringView()});
                 }
               }
             }
@@ -1952,7 +1959,8 @@ void ClusterInfo::loadCurrent() {
             for (auto const& sh : VPackObjectIterator(cc)) {
               path.push_back(sh.key.copyString());
               if (!ncs.hasKey(path)) {
-                newShardsToCurrentServers.erase(path.back());
+                ShardID shardID{path.back()};
+                newShardsToCurrentServers.erase(shardID);
               }
               path.pop_back();
             }
@@ -1970,9 +1978,17 @@ void ClusterInfo::loadCurrent() {
 
       for (auto const& shardSlice :
            velocypack::ObjectIterator(collectionSlice.value)) {
-        pmr::ManagedString shardID{shardSlice.key.copyString(),
-                                   _resourceMonitor};
+        auto maybeShardID =
+            ShardID::shardIdFromString(shardSlice.key.stringView());
+        if (ADB_UNLIKELY(maybeShardID.fail())) {
+          TRI_ASSERT(false)
+              << "Indexed malformed shard name " << shardSlice.key.stringView();
+          // TODO cannot handle this entry, is it better to continue or to abort
+          // here?
+          continue;
+        }
 
+        auto shardID = maybeShardID.get();
         collectionDataCurrent->add(shardID, shardSlice.value);
 
         // Note that we have only inserted the CollectionInfoCurrent under
@@ -1991,9 +2007,9 @@ void ClusterInfo::loadCurrent() {
         TRI_IF_FAILURE("ClusterInfo::loadCurrentSeesLeader") {
           if (!xx.empty()) {  // just in case
             std::string myShortName = ServerState::instance()->getShortName();
-            observeGlobalEvent(
-                "ClusterInfo::loadCurrentSeesLeader",
-                absl::StrCat(myShortName, ":", shardID, ":", xx[0]));
+            observeGlobalEvent("ClusterInfo::loadCurrentSeesLeader",
+                               absl::StrCat(myShortName, ":",
+                                            std::string{shardID}, ":", xx[0]));
           }
         }
       }
@@ -2644,13 +2660,13 @@ Result ClusterInfo::waitForDatabaseInCurrent(
   auto agencyCallback = std::make_shared<AgencyCallback>(
       _server, "Current/Databases/" + database.getName(), dbServerChanged, true,
       false);
-  Result r = _agencyCallbackRegistry->registerCallback(agencyCallback);
+  Result r = _agencyCallbackRegistry.registerCallback(agencyCallback);
   if (r.fail()) {
     return r;
   }
   auto cbGuard = scopeGuard([&]() noexcept {
     try {
-      _agencyCallbackRegistry->unregisterCallback(agencyCallback);
+      _agencyCallbackRegistry.unregisterCallback(agencyCallback);
     } catch (std::exception const& ex) {
       LOG_TOPIC("e952f", ERR, Logger::CLUSTER)
           << "Failed to unregister agency callback: " << ex.what();
@@ -2947,14 +2963,14 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   // AgencyCallback for this.
   auto agencyCallback = std::make_shared<AgencyCallback>(
       _server, where, dbServerChanged, true, false);
-  Result r = _agencyCallbackRegistry->registerCallback(agencyCallback);
+  Result r = _agencyCallbackRegistry.registerCallback(agencyCallback);
   if (r.fail()) {
     return r;
   }
 
   auto cbGuard = scopeGuard([this, &agencyCallback]() noexcept {
     try {
-      _agencyCallbackRegistry->unregisterCallback(agencyCallback);
+      _agencyCallbackRegistry.unregisterCallback(agencyCallback);
     } catch (std::exception const& ex) {
       LOG_TOPIC("1ec9b", ERR, Logger::CLUSTER)
           << "Failed to unregister agency callback: " << ex.what();
@@ -3165,14 +3181,14 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   // AgencyCallback for this.
   auto agencyCallback = std::make_shared<AgencyCallback>(
       _server, where, dbServerChanged, true, false);
-  Result r = _agencyCallbackRegistry->registerCallback(agencyCallback);
+  Result r = _agencyCallbackRegistry.registerCallback(agencyCallback);
   if (r.fail()) {
     return r;
   }
 
   auto cbGuard = scopeGuard([this, &agencyCallback]() noexcept {
     try {
-      _agencyCallbackRegistry->unregisterCallback(agencyCallback);
+      _agencyCallbackRegistry.unregisterCallback(agencyCallback);
     } catch (std::exception const& ex) {
       LOG_TOPIC("be7da", ERR, Logger::CLUSTER)
           << "Failed to unregister agency callback: " << ex.what();
@@ -4464,7 +4480,7 @@ std::vector<ServerID> ClusterInfo::getCurrentDBServers() {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<ClusterInfo::ManagedVector<ClusterInfo::pmr::ServerID> const>
-ClusterInfo::getResponsibleServer(std::string_view shardID) {
+ClusterInfo::getResponsibleServer(ShardID shardID) {
   int tries = 0;
 
   if (!_currentProt.isValid) {
@@ -4611,7 +4627,7 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
 /// @brief find the shard list of a collection, sorted numerically
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<std::vector<ShardID> const> ClusterInfo::getShardList(
+std::shared_ptr<std::vector<ShardID> const> arangodb::ClusterInfo::getShardList(
     std::string_view collectionID) {
   TRI_IF_FAILURE("ClusterInfo::failedToGetShardList") {
     // Simulate no results
@@ -4632,7 +4648,7 @@ std::shared_ptr<std::vector<ShardID> const> ClusterInfo::getShardList(
 }
 
 std::shared_ptr<ClusterInfo::ManagedVector<ClusterInfo::pmr::ServerID> const>
-ClusterInfo::getCurrentServersForShard(std::string_view shardId) {
+ClusterInfo::getCurrentServersForShard(ShardID shardId) {
   READ_LOCKER(readLocker, _currentProt.lock);
 
   if (auto it = _shardsToCurrentServers.find(shardId);
@@ -4819,7 +4835,7 @@ void ClusterInfo::setShardGroups(
   WRITE_LOCKER(writeLocker, _planProt.lock);
   _shardGroups.clear();
   for (auto const& [k, v] : shardGroups) {
-    auto vv = allocateShared<ManagedVector<pmr::ShardID>>();
+    auto vv = allocateShared<ManagedVector<ShardID>>();
     vv->assign(v->begin(), v->end());
     _shardGroups.emplace(k, std::move(vv));
   }
@@ -4832,7 +4848,7 @@ void ClusterInfo::setShardIds(
   WRITE_LOCKER(writeLocker, _currentProt.lock);
   _shardsToCurrentServers.clear();
   for (auto const& [k, v] : shardIds) {
-    auto vv = allocateShared<ManagedVector<pmr::ShardID>>();
+    auto vv = allocateShared<ManagedVector<pmr::ServerID>>();
     vv->assign(v->begin(), v->end());
     _shardsToCurrentServers.emplace(k, std::move(vv));
   }
@@ -4873,7 +4889,7 @@ containers::FlatHashMap<ServerID, std::string> ClusterInfo::getServerAliases() {
   return ret;
 }
 
-Result ClusterInfo::getShardServers(std::string_view shardId,
+Result ClusterInfo::getShardServers(ShardID const& shardId,
                                     std::vector<ServerID>& servers) {
   READ_LOCKER(readLocker, _planProt.lock);
 
@@ -4888,7 +4904,7 @@ Result ClusterInfo::getShardServers(std::string_view shardId,
   return Result{TRI_ERROR_FAILED};
 }
 
-CollectionID ClusterInfo::getCollectionNameForShard(std::string_view shardId) {
+CollectionID ClusterInfo::getCollectionNameForShard(ShardID const& shardId) {
   READ_LOCKER(readLocker, _planProt.lock);
 
   if (auto it = _shardToName.find(shardId); it != _shardToName.end()) {
@@ -5336,8 +5352,7 @@ Result ClusterInfo::agencyHotBackupUnlock(std::string_view backupId,
 ArangodServer& ClusterInfo::server() const { return _server; }
 
 AgencyCallbackRegistry& ClusterInfo::agencyCallbackRegistry() const {
-  TRI_ASSERT(_agencyCallbackRegistry != nullptr);
-  return *_agencyCallbackRegistry;
+  return _agencyCallbackRegistry;
 }
 
 void ClusterInfo::startSyncers() {
@@ -5368,7 +5383,7 @@ void ClusterInfo::drainSyncers() {
   clearWaitForMaps(_waitCurrentVersionLock, _waitCurrentVersion);
 }
 
-void ClusterInfo::shutdownSyncers() {
+void ClusterInfo::beginShutdown() {
   if (_planSyncer != nullptr) {
     _planSyncer->beginShutdown();
   }
@@ -5386,19 +5401,23 @@ void ClusterInfo::waitForSyncersToStop() {
   while ((_planSyncer != nullptr && _planSyncer->isRunning()) ||
          (_curSyncer != nullptr && _curSyncer->isRunning())) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    if (std::chrono::steady_clock::now() - start > std::chrono::seconds(30)) {
+    if (std::chrono::steady_clock::now() - start > std::chrono::seconds(60)) {
       LOG_TOPIC("b8a5d", FATAL, Logger::CLUSTER)
           << "exiting prematurely as we failed to end syncer threads in "
              "ClusterInfo";
       FATAL_ERROR_EXIT();
     }
   }
+
+  // make sure syncers threads must be gone
+  _planSyncer.reset();
+  _curSyncer.reset();
 }
 
 ClusterInfo::SyncerThread::SyncerThread(Server& server,
                                         std::string const& section,
                                         std::function<void()> const& f,
-                                        AgencyCallbackRegistry* cregistry)
+                                        AgencyCallbackRegistry& cregistry)
     : ServerThread<Server>(server, section + "Syncer"),
       _news(false),
       _section(section),
@@ -5452,7 +5471,7 @@ void ClusterInfo::SyncerThread::run() {
 
   auto acb = std::make_shared<AgencyCallback>(server(), _section + "/Version",
                                               update, true, false);
-  Result res = _cr->registerCallback(std::move(acb));
+  Result res = _cr.registerCallback(std::move(acb));
   if (res.fail()) {
     LOG_TOPIC("70e05", FATAL, Logger::CLUSTER)
         << "Failed to register callback with local registry: "
@@ -5499,7 +5518,7 @@ void ClusterInfo::SyncerThread::run() {
   }
 
   try {
-    _cr->unregisterCallback(acb);
+    _cr.unregisterCallback(acb);
   } catch (basics::Exception const& ex) {
     if (ex.code() != TRI_ERROR_SHUTTING_DOWN) {
       LOG_TOPIC("39336", WARN, Logger::CLUSTER)
@@ -5650,7 +5669,7 @@ VPackBuilder ClusterInfo::toVelocyPack() {
         {
           VPackObjectBuilder d(&dump);
           for (auto const& s : _shardToName) {
-            dump.add(s.first, VPackValue(s.second));
+            dump.add(std::string{s.first}, VPackValue(s.second));
           }
         }
         dump.add(VPackValue("shardServers"));
@@ -5668,7 +5687,7 @@ VPackBuilder ClusterInfo::toVelocyPack() {
         {
           VPackObjectBuilder d(&dump);
           for (auto const& s : _shardToShardGroupLeader) {
-            dump.add(s.first, VPackValue(s.second));
+            dump.add(std::string{s.first}, VPackValue(s.second));
           }
         }
         dump.add(VPackValue("shardGroups"));

@@ -29,6 +29,7 @@
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
+#include "Cluster/Utils/ShardID.h"
 
 #include <atomic>
 #include <chrono>
@@ -267,15 +268,15 @@ class ShardDefinition {
 
   std::string const& getDatabase() const noexcept { return _database; }
 
-  std::string const& getShard() const noexcept { return _shard; }
+  ShardID const& getShard() const noexcept { return _shard; }
 
   bool isValid() const noexcept {
-    return !_database.empty() && !_shard.empty();
+    return !_database.empty() && _shard.isValid();
   }
 
  private:
   std::string const _database;
-  std::string const _shard;
+  ShardID const _shard;
 };
 
 }  // namespace maintenance

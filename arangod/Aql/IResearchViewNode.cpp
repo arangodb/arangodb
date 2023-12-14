@@ -21,6 +21,7 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "IResearchViewNode.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -60,8 +61,9 @@
 #include "VocBase/LogicalCollection.h"
 #include "types.h"
 
-#include <absl/strings/str_cat.h>
 #include "utils/misc.hpp"
+
+#include <absl/strings/str_cat.h>
 #include <frozen/map.h>
 #include <velocypack/Iterator.h>
 
@@ -478,8 +480,8 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view,
                                                 attribute->getStringLength()};
     auto const handler = kHandlers.find(attributeName);
     if (handler == kHandlers.end()) {  // no handler found for attribute
-      aql::ExecutionPlan::invalidOptionAttribute(
-          query, "unknown", "FOR", attributeName.data(), attributeName.size());
+      aql::ExecutionPlan::invalidOptionAttribute(query, "unknown", "FOR",
+                                                 attributeName);
       continue;
     }
     auto const* value = attribute->getMemberUnchecked(0);
@@ -606,11 +608,12 @@ ViewSnapshotPtr snapshotDBServer(IResearchViewNode const& node,
     linksLock = searchLinksLock;
   }
   for (auto const& [shard, indexes] : shards) {
-    auto const& collection = resolver->getCollection(shard);
+    auto const& collection = resolver->getCollection(std::string{shard});
     if (!collection) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-          absl::StrCat("failed to find shard by id '", shard, "'"));
+          absl::StrCat("failed to find shard by id '", std::string{shard},
+                       "'"));
     }
     if (options.restrictSources &&
         !options.sources.contains(collection->planId())) {
@@ -1264,7 +1267,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
             << viewName << "'";
         continue;
       }
-      _shards[shard->name()];
+      _shards[ShardID{shard->name()}];
     }
     if (_meta) {  // handle search-alias view
       auto const indexesSlice = base.get(kNodeIndexesParam);
@@ -1283,7 +1286,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
         if (!shard) {
           continue;
         }
-        _shards[shard->name()].emplace_back(indexId);
+        _shards[ShardID{shard->name()}].emplace_back(indexId);
       }
     }
   } else {

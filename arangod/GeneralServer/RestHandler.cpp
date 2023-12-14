@@ -23,10 +23,6 @@
 
 #include "RestHandler.h"
 
-#include <absl/strings/str_cat.h>
-#include <fuerte/jwt.h>
-#include <velocypack/Exception.h>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/debugging.h"
@@ -36,6 +32,7 @@
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogStructuredParamsAllowList.h"
 #include "Network/Methods.h"
@@ -47,7 +44,10 @@
 #include "Statistics/RequestStatistics.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
-#include "GeneralServerFeature.h"
+
+#include <absl/strings/str_cat.h>
+#include <fuerte/jwt.h>
+#include <velocypack/Exception.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -603,27 +603,75 @@ void RestHandler::generateError(rest::ResponseCode code, ErrorCode errorNumber,
 }
 
 void RestHandler::compressResponse() {
-  if (!_isAsyncRequest && _response->isCompressionAllowed() &&
-      !_response->headers().contains(StaticStrings::ContentEncoding)) {
-    // TODO: only enable response compression if response size
-    // exceeds some threshold, so that we don't waste time with
-    // compression setup for small responses
-    switch (_request->acceptEncoding()) {
-      case rest::EncodingType::DEFLATE:
-        _response->deflate();
+  if (_isAsyncRequest) {
+    // responses to async requests are currently not compressed
+    return;
+  }
+
+  rest::ResponseCompressionType rct = _response->compressionAllowed();
+  if (rct == rest::ResponseCompressionType::kNoCompression) {
+    // compression explicitly disabled for the response
+    return;
+  }
+
+  if (_request->acceptEncoding() == rest::EncodingType::UNSET) {
+    // client hasn't asked for compression
+    return;
+  }
+
+  size_t bodySize = _response->bodySize();
+  if (bodySize == 0) {
+    // response body size of 0 does not need any compression
+    return;
+  }
+
+  uint64_t threshold =
+      server().getFeature<GeneralServerFeature>().compressResponseThreshold();
+
+  if (threshold == 0) {
+    // opted out of compression by configuration
+    return;
+  }
+
+  // check if response is eligible for compression
+  if (bodySize < threshold) {
+    // compression not necessary
+    return;
+  }
+
+  if (_response->headers().contains(StaticStrings::ContentEncoding)) {
+    // response is already content-encoded
+    return;
+  }
+
+  TRI_ASSERT(bodySize > 0);
+  TRI_ASSERT(_request->acceptEncoding() != rest::EncodingType::UNSET);
+
+  switch (_request->acceptEncoding()) {
+    case rest::EncodingType::DEFLATE:
+      // the resulting compressed response body may be larger than the
+      // uncompressed input size. in this case we are not returning the
+      // compressed response body, but the original, uncompressed body.
+      if (_response->zlibDeflate(/*onlyIfSmaller*/ true) ==
+          TRI_ERROR_NO_ERROR) {
         _response->setHeaderNC(StaticStrings::ContentEncoding,
                                StaticStrings::EncodingDeflate);
-        break;
+      }
+      break;
 
-      case rest::EncodingType::GZIP:
-        _response->gzip();
+    case rest::EncodingType::GZIP:
+      // the resulting compressed response body may be larger than the
+      // uncompressed input size. in this case we are not returning the
+      // compressed response body, but the original, uncompressed body.
+      if (_response->gzipCompress(/*onlyIfSmaller*/ true) ==
+          TRI_ERROR_NO_ERROR) {
         _response->setHeaderNC(StaticStrings::ContentEncoding,
                                StaticStrings::EncodingGzip);
-        break;
+      }
+      break;
 
-      default:
-        break;
-    }
+    default:
+      break;
   }
 }
 
