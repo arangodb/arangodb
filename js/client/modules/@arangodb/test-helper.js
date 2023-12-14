@@ -842,6 +842,14 @@ exports.arangoClusterInfoGetCollectionInfoCurrent = function (dbName, collName, 
       ${JSON.stringify(shard)})`);
 };
 
+exports.arangoClusterInfoGetAnalyzersRevision = function (dbName) {
+  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.getAnalyzersRevision(${JSON.stringify(dbName)})`);
+}
+
+exports.arangoClusterInfoWaitForPlanVersion = function (requiredVersion) {
+  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.waitForPlanVersion(${JSON.stringify(requiredVersion)})`);
+}
+
 exports.AQL_EXPLAIN = function(query, bindVars, options) {
   let stmt = db._createStatement(query);
   if (typeof bindVars === "object") {

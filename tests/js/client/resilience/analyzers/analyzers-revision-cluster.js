@@ -28,7 +28,12 @@ var db = require("@arangodb").db;
 var analyzers = require("@arangodb/analyzers");
 var internal = require('internal');
 var ERRORS = require("@arangodb").errors;
-const {arangoClusterInfoFlush} = require("@arangodb/test-helper");
+const {
+  arangoClusterInfoFlush,
+  arangoClusterInfoGetAnalyzersRevision,
+  arangoClusterInfoWaitForPlanVersion,
+  agency
+} = require("@arangodb/test-helper");
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -39,7 +44,7 @@ function analyzersRevisionTestSuite () {
   	let tries = 0;
     while(tries < 2) {
       arangoClusterInfoFlush();
-      let revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
+      let revision = arangoClusterInfoGetAnalyzersRevision(dbName);
       assertTrue(revision.hasOwnProperty("revision"));
       assertTrue(revision.hasOwnProperty("buildingRevision"));
       assertTrue(revision.hasOwnProperty("coordinator"));
@@ -129,7 +134,7 @@ function analyzersRevisionTestSuite () {
       db._useDatabase(dbName);
       let revisionNumber = 0;
 
-      let revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
+      let revision = arangoClusterInfoGetAnalyzersRevision(dbName);
       assertTrue(revision.hasOwnProperty("revision"));
       assertTrue(revision.hasOwnProperty("buildingRevision"));
       assertFalse(revision.hasOwnProperty("coordinator"));
@@ -144,11 +149,11 @@ function analyzersRevisionTestSuite () {
       db._useDatabase("_system");
       db._dropDatabase(dbName);
 
-      let delRevision = {};
-      try { delRevision = global.ArangoClusterInfo.getAnalyzersRevision(dbName); } catch(e) {
+      let delRevision = "";
+      try { delRevision = arangoClusterInfoGetAnalyzersRevision(dbName); } catch(e) {
         assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code, e.errorNum);
       }
-      assertEqual({}, delRevision);
+      assertMatch(/ArangoError: <databaseName> is invalid/, delRevision);
     },
     testAnalyzersPlanWithoutDbName: function() {
       db._useDatabase("_system");
@@ -159,7 +164,7 @@ function analyzersRevisionTestSuite () {
       db._useDatabase(dbName);
       let revisionNumber = 0;
 
-      let revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
+      let revision = arangoClusterInfoGetAnalyzersRevision(dbName);
       assertTrue(revision.hasOwnProperty("revision"));
       assertTrue(revision.hasOwnProperty("buildingRevision"));
       assertFalse(revision.hasOwnProperty("coordinator"));
@@ -174,17 +179,17 @@ function analyzersRevisionTestSuite () {
       db._useDatabase("_system");
       db._dropDatabase(dbName);
 
-      let delRevision = {};
-      try { delRevision = global.ArangoClusterInfo.getAnalyzersRevision(dbName); } catch(e) {
+      let delRevision = "";
+      try { delRevision = arangoClusterInfoGetAnalyzersRevision(dbName); } catch(e) {
         assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code, e.errorNum);
       }
-      assertEqual({}, delRevision);
+      assertMatch(/ArangoError: <databaseName> is invalid/, delRevision);
     },
     testAnalyzersPlanSystem: function() {
       let dbName = "_system";
       db._useDatabase(dbName);
 
-      let revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
+      let revision = arangoClusterInfoGetAnalyzersRevision(dbName);
       assertTrue(revision.hasOwnProperty("revision"));
       assertTrue(revision.hasOwnProperty("buildingRevision"));
       assertEqual(revision.revision, revision.buildingRevision);
@@ -196,7 +201,7 @@ function analyzersRevisionTestSuite () {
       let dbName = "_system";
       db._useDatabase(dbName);
 
-      let revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
+      let revision = arangoClusterInfoGetAnalyzersRevision(dbName);
       assertTrue(revision.hasOwnProperty("revision"));
       assertTrue(revision.hasOwnProperty("buildingRevision"));
       assertEqual(revision.revision, revision.buildingRevision);
@@ -263,7 +268,7 @@ function analyzersRevisionTestSuite () {
         while (tries < 5) {
           tries++;
           arangoClusterInfoFlush();
-          let recovered_revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
+          let recovered_revision = arangoClusterInfoGetAnalyzersRevision(dbName);
           if (recovered_revision.buildingRevision === 0) {
           	break;
           }
@@ -334,7 +339,7 @@ function analyzersRevisionTestSuite () {
         while (tries < 5) {
           tries++;
           arangoClusterInfoFlush();
-          let recovered_revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
+          let recovered_revision = arangoClusterInfoGetAnalyzersRevision(dbName);
           if (recovered_revision.buildingRevision === 0) {
           	break;
           }
@@ -359,14 +364,14 @@ function analyzersRevisionTestSuite () {
         let preconditions = {};
         let operations = {};
         operations['/arango/Plan/Analyzers/' + dbName] = {'op': 'delete'};
-        global.ArangoAgency.write([[operations, preconditions]]);
-        global.ArangoAgency.increaseVersion("Plan/Version");
-        let requiredVersion = global.ArangoAgency.get("Plan/Version").arango.Plan.Version;
+        agency.call("write", [[operations, preconditions]]);
+        agency.increaseVersion("Plan/Version");
+        let requiredVersion = agency.get("Plan/Version").arango.Plan.Version;
         // Avoid incorrect parsing here:
         assertTrue(Number.isInteger(requiredVersion));
         assertTrue(requiredVersion > 0);
         // Wait until the coordinator has seen the Plan update
-        global.ArangoClusterInfo.waitForPlanVersion(requiredVersion);
+        arangoClusterInfoWaitForPlanVersion(requiredVersion);
         // Continue with the test.
         analyzers.save("TestAnalyzer", "identity");
         waitForCompletedRevision(dbName, 1);
@@ -391,14 +396,14 @@ function analyzersRevisionTestSuite () {
         let preconditions = {};
         let operations = {};
         operations['/arango/Plan/Analyzers'] = {'op': 'delete'};
-        global.ArangoAgency.write([[operations, preconditions]]);
-        global.ArangoAgency.increaseVersion("Plan/Version");
-        let requiredVersion = global.ArangoAgency.get("Plan/Version").arango.Plan.Version;
+        agency.call("write", [[operations, preconditions]]);
+        agency.increaseVersion("Plan/Version");
+        let requiredVersion = agency.get("Plan/Version").arango.Plan.Version;
         // Avoid incorrect parsing here:
         assertTrue(Number.isInteger(requiredVersion));
         assertTrue(requiredVersion > 0);
         // Wait until the coordinator has seen the Plan update
-        global.ArangoClusterInfo.waitForPlanVersion(requiredVersion);
+        arangoClusterInfoWaitForPlanVersion(requiredVersion);
         // Continue with the test.
         internal.debugClearFailAt();
         analyzers.save("TestAnalyzer", "identity");
@@ -433,14 +438,14 @@ function analyzersRevisionTestSuite () {
         let preconditions = {};
         let operations = {};
         operations['/arango/Plan/Analyzers/' + dbName] = {'op': 'delete'};
-        global.ArangoAgency.write([[operations, preconditions]]);
-        global.ArangoAgency.increaseVersion("Plan/Version");
-        let requiredVersion = global.ArangoAgency.get("Plan/Version").arango.Plan.Version;
+        agency.call("write", [[operations, preconditions]]);
+        agency.increaseVersion("Plan/Version");
+        let requiredVersion = agency.get("Plan/Version").arango.Plan.Version;
         // Avoid incorrect parsing here:
         assertTrue(Number.isInteger(requiredVersion));
         assertTrue(requiredVersion > 0);
         // Wait until the coordinator has seen the Plan update
-        global.ArangoClusterInfo.waitForPlanVersion(requiredVersion);
+        arangoClusterInfoWaitForPlanVersion(requiredVersion);
         // Continue with the test.
         db._query("RETURN TOKENS('Test', '::SystemTestAnalyzer') "); // check system revision is still read
         internal.debugClearFailAt();
