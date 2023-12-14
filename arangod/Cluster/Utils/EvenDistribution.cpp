@@ -82,6 +82,14 @@ Result EvenDistribution::planShardsOnServers(
   std::mt19937 g(rd());
   std::shuffle(availableServers.begin(), availableServers.end(), g);
 
+  TRI_IF_FAILURE("allShardsOnSameServer") {
+    // Only one server shall remain available
+    if (!availableServers.empty()) {
+      std::sort(availableServers.begin(), availableServers.end());
+      availableServers.resize(1);
+    }
+  }
+
   _shardToServerMapping.clear();
 
   // Example: Servers: A B C D E F G H I (9)
