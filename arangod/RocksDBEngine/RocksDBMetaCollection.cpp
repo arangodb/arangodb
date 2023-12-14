@@ -166,6 +166,15 @@ void RocksDBMetaCollection::unlockWrite() noexcept {
 
 /// @brief read locks a collection, with a timeout
 futures::Future<ErrorCode> RocksDBMetaCollection::lockRead(double timeout) {
+  TRI_IF_FAILURE("assertLockTimeoutLow") {
+    // In the test we expect that fast path locking is done with 2s timeout.
+    TRI_ASSERT(timeout < 10);
+  }
+  TRI_IF_FAILURE("assertLockTimeoutHigh") {
+    // In the test we expect that an lazy locking happens on the follower
+    // with the default timeout of more than 2 seconds:
+    TRI_ASSERT(timeout > 10);
+  }
   return doLock(timeout, AccessMode::Type::READ);
 }
 

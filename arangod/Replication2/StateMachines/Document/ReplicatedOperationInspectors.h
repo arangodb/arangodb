@@ -22,6 +22,10 @@
 
 #pragma once
 
+#include "Inspection/Format.h"
+#include "Inspection/Status.h"
+#include "Inspection/Types.h"
+#include "Inspection/VPack.h"
 #include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 
 namespace arangodb::replication2::replicated_state::document {
@@ -44,9 +48,15 @@ struct EnumTypeTransformer {
 };
 
 template<class Inspector>
+auto inspect(Inspector& f, ReplicatedOperation::DocumentOperation::Options& x) {
+  return f.object(x).fields(f.field("refillIndexCaches", x.refillIndexCaches));
+}
+
+template<class Inspector>
 auto inspect(Inspector& f, ReplicatedOperation::DocumentOperation& x) {
   return f.object(x).fields(f.field("tid", x.tid), f.field("shard", x.shard),
-                            f.field("payload", x.payload));
+                            f.field("payload", x.payload),
+                            f.field("options", x.options));
 }
 
 template<class Inspector>
