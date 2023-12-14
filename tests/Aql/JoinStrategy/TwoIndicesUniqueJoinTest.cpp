@@ -109,6 +109,10 @@ TEST_P(UniqueIndexMerger, no_results) {
   std::vector<Desc> iters;
   iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0, isUnique);
   iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0, isUnique);
+  for (auto& desc : iters) {
+    desc.numKeyComponents = 1;
+    desc.numConstants = 0;
+  }
 
   Strategy merger{std::move(iters)};
 
@@ -135,6 +139,10 @@ TEST_P(UniqueIndexMerger, no_result_check_seek) {
   std::vector<Desc> iters;
   iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0, isUnique);
   iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0, isUnique);
+  for (auto& desc : iters) {
+    desc.numKeyComponents = 1;
+    desc.numConstants = 0;
+  }
 
   Strategy merger{std::move(iters)};
 
@@ -169,6 +177,10 @@ TEST_P(UniqueIndexMerger, some_results_a) {
   std::vector<Desc> iters;
   iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0, isUnique);
   iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0, isUnique);
+  for (auto& desc : iters) {
+    desc.numKeyComponents = 1;
+    desc.numConstants = 0;
+  }
 
   Strategy merger{std::move(iters)};
 
@@ -203,6 +215,10 @@ TEST_P(UniqueIndexMerger, some_results_b) {
   std::vector<Desc> iters;
   iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0, isUnique);
   iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0, isUnique);
+  for (auto& desc : iters) {
+    desc.numKeyComponents = 1;
+    desc.numConstants = 0;
+  }
 
   Strategy merger{std::move(iters)};
 
@@ -234,6 +250,10 @@ TEST_P(UniqueIndexMerger, one_empty) {
   std::vector<Desc> iters;
   iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0, isUnique);
   iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0, isUnique);
+  for (auto& desc : iters) {
+    desc.numKeyComponents = 1;
+    desc.numConstants = 0;
+  }
 
   Strategy merger{std::move(iters)};
 
@@ -261,6 +281,10 @@ TEST_P(UniqueIndexMerger, both_empty) {
   std::vector<Desc> iters;
   iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0, isUnique);
   iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0, isUnique);
+  for (auto& desc : iters) {
+    desc.numKeyComponents = 1;
+    desc.numConstants = 0;
+  }
 
   Strategy merger{std::move(iters)};
 
