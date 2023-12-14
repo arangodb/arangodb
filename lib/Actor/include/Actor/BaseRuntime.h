@@ -128,7 +128,8 @@ struct BaseRuntime
   template<typename ActorMessage>
   auto dispatch(ActorPID sender, ActorPID receiver, ActorMessage&& message)
       -> void {
-    self().doDispatch(sender, receiver, message, IgnoreDispatchFailure::no);
+    self().doDispatch(sender, receiver, std::move(message),
+                      IgnoreDispatchFailure::no);
   }
 
   template<typename ActorMessage>
