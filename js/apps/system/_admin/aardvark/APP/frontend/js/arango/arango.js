@@ -51,7 +51,7 @@
       return version;
     },
     getDocuVersion: function () {
-      return this.toDocuVersion(frontendConfig.version.version);
+      return this.toDocuVersion(window.frontendConfig.version.version);
     }
   };
 
