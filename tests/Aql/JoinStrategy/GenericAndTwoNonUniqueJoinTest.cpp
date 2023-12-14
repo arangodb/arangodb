@@ -419,6 +419,10 @@ TEST_P(GenericIndexMerger, one_iterator_corner_case) {
 
   std::vector<Desc> iters;
   iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0, isUnique);
+  for (auto& desc : iters) {
+    desc.numKeyComponents = 1;
+    desc.numConstants = 0;
+  }
 
   // cannot be executed with the two indices join strategy (checked and
   // asserted). Therefore, only tested in the generic case.
@@ -459,6 +463,10 @@ TEST_P(GenericIndexMerger, three_iterators) {
   iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0, isUnique);
   iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0, isUnique);
   iters.emplace_back(std::make_unique<MyVectorIterator>(c), 0, isUnique);
+  for (auto& desc : iters) {
+    desc.numKeyComponents = 1;
+    desc.numConstants = 0;
+  }
 
   GenericJoinStrategy merger{std::move(iters)};
   merger.reset({});
@@ -497,6 +505,10 @@ TEST_P(GenericIndexMerger, three_iterators_2) {
   iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0, isUnique);
   iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0, isUnique);
   iters.emplace_back(std::make_unique<MyVectorIterator>(c), 0, isUnique);
+  for (auto& desc : iters) {
+    desc.numKeyComponents = 1;
+    desc.numConstants = 0;
+  }
 
   GenericJoinStrategy merger{std::move(iters)};
   merger.reset({});
