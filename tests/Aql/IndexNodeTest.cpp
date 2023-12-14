@@ -448,7 +448,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
       "    \"name\" : \"7\""
       "  },"
       "  \"outVariable\" : {"
-      "    \"id\" : 0,"
+      "    \"id\" : 3,"
       "    \"name\" : \"d\""
       "  },"
       "  \"producesResult\" : true,"
@@ -465,7 +465,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
       "  \"varInfoList\" : ["
       "    {"
       "      \"RegisterId\" : 3,"
-      "      \"VariableId\" : 0,"
+      "      \"VariableId\" : 3,"
       "      \"depth\" : 2"
       "    },"
       "    {"
@@ -486,7 +486,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
       "  ],"
       "  \"varsUsedLaterStack\" : [ ["
       "    {"
-      "      \"id\" : 0,"
+      "      \"id\" : 3,"
       "      \"name\" : \"d\""
       "    },"
       "    {"
@@ -530,7 +530,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
     {
       auto vars = query->ast()->variables();
       for (auto const& v : {std::make_unique<arangodb::aql::Variable>(
-                                "d", 0, false, resourceMonitor),
+                                "d", 3, false, resourceMonitor),
                             std::make_unique<arangodb::aql::Variable>(
                                 "3", 4, false, resourceMonitor),
                             std::make_unique<arangodb::aql::Variable>(

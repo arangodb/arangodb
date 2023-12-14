@@ -103,6 +103,7 @@ Variable* VariableGenerator::createVariable(Variable const* original) {
                                    "cloned AQL variable already present");
   }
   // variable was inserted, return the clone
+  _id = std::max(id + 1, _id);
   return (*it).second.get();
 }
 
