@@ -1,4 +1,4 @@
-/*global describe, it, ArangoAgency, afterEach */
+/*global describe, it, ArangoAgency, afterEach, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cluster collection creation tests
@@ -32,29 +32,18 @@
 const expect = require('chai').expect;
 
 var internal = require("internal");
+const { instanceManager } = require('../../../../js/client/modules/@arangodb/testutils/instance-manager');
 var db = require("org/arangodb").db;
 
 describe('Cluster collection creation options', function() {
     afterEach(function() {
         db._drop('testi');
     });
-    it('should always throw an error when creating a faulty index', function() {
-        db._create("testi", {numberOfShards: 1});
-        db.testi.save({"test": 1});
-        db.testi.save({"test": 1});
+    it('should wait for all followers to get in sync when waiting for replication', function() {
+        db._create("testi", {replicationFactor: 2, numberOfShards: 32}, {waitForSyncReplication: true});
+        let current = global.instanceManager.getFromPlan('Current/Collections/_system');
+        let plan = global.instanceManager.getFromPlan('Plan/Collections/_system');
         
-        expect(function() {
-            db.testi.ensureIndex({ type: "hash", fields: [ "test" ], unique: true });
-        }).to.throw();
-        // before fixing it the second call would return the faulty index
-        expect(function() {
-            db.testi.ensureIndex({ type: "hash", fields: [ "test" ], unique: true });
-        }).to.throw();
-    });
-    it('should cleanup current after creating a faulty index', function() {
-        db._create("testi", {numberOfShards: 1});
-        let current = ArangoAgency.get('Current/Collections/_system');
-        let plan = ArangoAgency.get('Plan/Collections/_system');
         let collectionId = Object.values(plan.arango.Plan.Collections['_system']).reduce((result, collectionDef) => {
             if (result) {
                 return result;
@@ -64,17 +53,10 @@ describe('Cluster collection creation options', function() {
                 return collectionDef.id;
             }
         }, undefined);
-        db.testi.save({"test": 1});
-        db.testi.save({"test": 1});
-        
-        expect(function() {
-            db.testi.ensureIndex({ type: "hash", fields: [ "test" ], unique: true });
-        }).to.throw();
-        // wait for the schmutz
-        internal.wait(1.0);
-        current = ArangoAgency.get('Current/Collections/_system/' + collectionId);
+
         Object.values(current.arango.Current.Collections['_system'][collectionId]).forEach(entry => {
-            expect(entry.indexes).to.have.lengthOf(1);
+            expect(entry.servers).to.have.lengthOf(2);
         });
     });
+
 });
