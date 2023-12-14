@@ -505,10 +505,9 @@ auto checkCollectionsOfGroup(CollectionGroup const& group,
               for (auto const& index : shard.indexes) {
                 if (index.get(StaticStrings::IndexId).isEqualString(indexId)) {
                   if (index.get(StaticStrings::Error).isTrue()) {
-                    auto errorNum =
-                        basics::VelocyPackHelper::getNumericValue<ErrorCode>(
-                            index.slice(), StaticStrings::ErrorNum,
-                            TRI_ERROR_INTERNAL);
+                    auto errorNum = basics::VelocyPackHelper::getNumericValue(
+                        index.slice(), StaticStrings::ErrorNum,
+                        TRI_ERROR_INTERNAL);
                     auto errorMessage =
                         basics::VelocyPackHelper::getStringValue(
                             index.slice(), StaticStrings::ErrorMessage, "");
