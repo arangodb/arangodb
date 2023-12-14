@@ -445,6 +445,12 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
               }
             };
 
+            // idx.projections.usesCoveringIndex(idx.index) &&
+            // idx.projections.empty()  only allowed in late materialization
+            // case
+            TRI_ASSERT(!idx.projections.usesCoveringIndex(idx.index) ||
+                       !idx.projections.empty() || idx.isLateMaterialized);
+
             if (auto& docPtr = _documents[k].first; docPtr) {
               TRI_ASSERT(idx.filter.has_value() &&
                          !idx.filter->projections.usesCoveringIndex());
@@ -453,7 +459,8 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
               // resourceMonitor().decreaseMemoryUsage(_documents[k].second);
               _documents[k].second = 0;
               docPtr.reset();
-            } else if (idx.projections.usesCoveringIndex(idx.index)) {
+            } else if (idx.projections.usesCoveringIndex(idx.index) &&
+                       !idx.projections.empty()) {
               buildProjections(k, idx.projections,
                                idx.hasProjectionsForRegisters);
               if (!idx.hasProjectionsForRegisters) {
@@ -462,7 +469,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
               }
 
               projectionsOffset += idx.projections.size();
-            } else {
+            } else if (!idx.isLateMaterialized) {
               lookupDocument(k, docIds[k], docProduceCallback);
             }
 
