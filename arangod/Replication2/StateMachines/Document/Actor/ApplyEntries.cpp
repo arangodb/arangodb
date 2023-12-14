@@ -149,6 +149,18 @@ template<typename Runtime>
 auto ApplyEntriesHandler<Runtime>::processEntry(
     ReplicatedOperation::AbortAllOngoingTrx& op, LogIndex index)
     -> ResultT<ProcessResult> {
+  if (!this->state->_transactionMap.empty()) {
+    // if we have active transactions finish them and add them to the list of
+    // pending transactions
+    for (auto& [tid, pid] : this->state->_transactionMap) {
+      this->state->_pendingTransactions.emplace(
+          pid, ApplyEntriesState::TransactionInfo{.tid = tid,
+                                                  .intermediateCommit = false});
+      this->runtime().finishActor(pid, ExitReason::kFinished);
+    }
+    this->state->_transactionMap.clear();
+  }
+
   if (not this->state->_pendingTransactions.empty()) {
     return ProcessResult::kWaitForPendingTrx;
   }
