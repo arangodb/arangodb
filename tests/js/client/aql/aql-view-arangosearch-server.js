@@ -31,7 +31,9 @@ var fs = require("fs");
 var isCluster = require("internal").isCluster();
 const isEnterprise = require("internal").isEnterprise();
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
-
+const {
+  getDbPath
+} = require('@arangodb/test-helper');
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -696,7 +698,7 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
             const internal = require('internal');
             return internal.db._path();
           `;
-          let tmp_path = arango.POST("/_admin/execute", command);
+          let tmp_path = getDbPath();
 
           let dbPath = fs.safeJoin(tmp_path, 'databases');
           let databases = fs.list(dbPath);

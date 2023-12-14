@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, fail */
+/*global assertEqual, assertTrue, fail, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the persistent index, selectivity estimates
@@ -30,6 +30,7 @@
 
 const jsunity = require("jsunity");
 const internal = require("internal");
+const {waitForEstimatorSync } = require('@arangodb/test-helper');
 
 function SelectivityIndexSuite() {
   'use strict';
@@ -62,7 +63,7 @@ function SelectivityIndexSuite() {
       }
       collection.insert(docs);
 
-      internal.waitForEstimatorSync(); // make sure estimates are consistent
+      waitForEstimatorSync(); // make sure estimates are consistent
       idx = collection.ensureIndex({ type: "persistent", fields: ["value"], unique: true });
       assertEqual(1, idx.selectivityEstimate);
 
@@ -70,7 +71,7 @@ function SelectivityIndexSuite() {
         collection.remove("test" + i);
       }
 
-      internal.waitForEstimatorSync(); // make sure estimates are consistent
+      waitForEstimatorSync(); // make sure estimates are consistent
       idx = collection.ensureIndex({ type: "persistent", fields: ["value"], unique: true });
       assertEqual(1, idx.selectivityEstimate);
     },
@@ -87,7 +88,7 @@ function SelectivityIndexSuite() {
       }
       collection.insert(docs);
 
-      internal.waitForEstimatorSync(); // make sure estimates are consistent
+      waitForEstimatorSync(); // make sure estimates are consistent
       idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
       assertEqual(1, idx.selectivityEstimate);
 
@@ -97,7 +98,7 @@ function SelectivityIndexSuite() {
       }
       collection.insert(docs);
 
-      internal.waitForEstimatorSync(); // make sure estimates are consistent
+      waitForEstimatorSync(); // make sure estimates are consistent
       idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
       assertTrue(idx.selectivityEstimate >= 0.45 && idx.selectivityEstimate <= 0.55);
 
@@ -107,7 +108,7 @@ function SelectivityIndexSuite() {
       }
       collection.insert(docs);
 
-      internal.waitForEstimatorSync(); // make sure estimates are consistent
+      waitForEstimatorSync(); // make sure estimates are consistent
       idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
       assertTrue(idx.selectivityEstimate >= 0.3 && idx.selectivityEstimate <= 0.36);
     },
@@ -124,7 +125,7 @@ function SelectivityIndexSuite() {
       }
       collection.insert(docs);
 
-      internal.waitForEstimatorSync(); // make sure estimates are consistent
+      waitForEstimatorSync(); // make sure estimates are consistent
       idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
       assertTrue(idx.selectivityEstimate <= ((1 / 1000) + 0.0001));
 
@@ -134,7 +135,7 @@ function SelectivityIndexSuite() {
       }
       collection.insert(docs);
 
-      internal.waitForEstimatorSync(); // make sure estimates are consistent
+      waitForEstimatorSync(); // make sure estimates are consistent
       idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
       assertTrue(idx.selectivityEstimate <= ((2 / 2000) + 0.0001));
 
@@ -144,7 +145,7 @@ function SelectivityIndexSuite() {
       }
       collection.insert(docs);
 
-      internal.waitForEstimatorSync(); // make sure estimates are consistent
+      waitForEstimatorSync(); // make sure estimates are consistent
       idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
       assertTrue(idx.selectivityEstimate <= ((2 / 3000) + 0.0001));
     },
@@ -161,7 +162,7 @@ function SelectivityIndexSuite() {
         docs.push({value: i % 100});
       }
       collection.insert(docs);
-      internal.waitForEstimatorSync(); // make sure estimates are consistent
+      waitForEstimatorSync(); // make sure estimates are consistent
       idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
 
       assertEqual(idx.selectivityEstimate, 100 / 1000);
@@ -185,7 +186,7 @@ function SelectivityIndexSuite() {
         assertEqual(e.errorMessage, "banana");
         // Insert failed.
         // Validate that estimate is non modified
-        internal.waitForEstimatorSync(); // make sure estimates are consistent
+        waitForEstimatorSync(); // make sure estimates are consistent
         idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
         assertEqual(idx.selectivityEstimate, 100 / 1000);
       }

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertNotEqual, assertTrue, assertMatch, fail */
+/*global assertEqual, assertNotEqual, assertTrue, assertMatch, fail, params*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for client/server side transaction invocation
@@ -68,6 +68,7 @@ const qqSearchAliasWithSync = `FOR doc IN searchAliasView
 function TransactionsIResearchSuite() {
   'use strict';
   let c = null;
+  const cn = 'UnitTestsCollection';
   let view = null;
   let saView = null;
 
@@ -87,8 +88,8 @@ function TransactionsIResearchSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
-      db._drop('UnitTestsCollection');
-      c = db._create('UnitTestsCollection');
+      db._drop(cn);
+      c = db._create(cn);
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -143,7 +144,7 @@ function TransactionsIResearchSuite() {
       view.properties(viewMeta);
       saView = db._createView("searchAliasView", "search-alias", {indexes:[{collection: "UnitTestsCollection", index: "inverted"}]});
       let links = view.properties().links;
-      assertNotEqual(links['UnitTestsCollection'], undefined);
+      assertNotEqual(links[cn], undefined);
 
       c.save({ _key: "full", text: "the quick brown fox jumps over the lazy dog" });
       c.save({ _key: "half", text: "quick fox over lazy" });
@@ -151,15 +152,19 @@ function TransactionsIResearchSuite() {
 
       try {
         db._executeTransaction({
-          collections: {write: 'UnitTestsCollection'},
+          collections: {write: cn},
           action: function() {
-            const db = require('internal').db;
+            const db = require('@arangodb').db;
+            let c = db._collection(params.cn);
   
             c.save({ _key: "other_half", text: "the brown jumps the dog" });
             c.save({ _key: "quarter", text: "quick over" });
             c.save({ name_1: "456", "value": [{ "nested_1": [{ "nested_2": "123"}]}], text1: "lazy fox is lazy"});
 
             throw "myerror";
+          },
+          params: {
+            cn: cn
           }
         });
         fail();
@@ -207,12 +212,13 @@ function TransactionsIResearchSuite() {
       view.properties(viewMeta);
       saView = db._createView("searchAliasView", "search-alias", {indexes:[{collection: "UnitTestsCollection", index: "inverted"}]});
       let links = view.properties().links;
-      assertNotEqual(links['UnitTestsCollection'], undefined);
+      assertNotEqual(links[cn], undefined);
 
       db._executeTransaction({
-        collections: {write: 'UnitTestsCollection'},
+        collections: {write: cn},
         action: function() {
-          const db = require('internal').db;
+          const db = require('@arangodb').db;
+          let c = db._collection(params.cn);
           c.save({ _key: "full", text: "the quick brown fox jumps over the lazy dog", val: 1 });
           c.save({ _key: "half", text: "quick fox over lazy", val: 2 });
           c.save({ _key: "other_half", text: "the brown jumps the dog", val: 3 });
@@ -224,8 +230,11 @@ function TransactionsIResearchSuite() {
             c.save({ _key: "c", name_1: "123", "value": [{ "nested_1": [{ "nested_2": "a"}]}]});
             fail();
           } catch(err) {
-            assertEqual(err.errorNum, ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
+            require("jsunity").jsUnity.assertions.assertEqual(err.errorNum, require('@arangodb').errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
           }
+        },
+        params: {
+          cn: cn
         }
       });
 
@@ -269,14 +278,15 @@ function TransactionsIResearchSuite() {
       view.properties(viewMeta);
       saView = db._createView("searchAliasView", "search-alias", {indexes:[{collection: "UnitTestsCollection", index: "inverted"}]});
       let links = view.properties().links;
-      assertNotEqual(links['UnitTestsCollection'], undefined);
+      assertNotEqual(links[cn], undefined);
 
       c.ensureIndex({type: 'hash', fields:['val', 'text1'], unique: true});
 
       db._executeTransaction({
-        collections: {write: 'UnitTestsCollection'},
+        collections: {write: cn},
         action: function() {
-          const db = require('internal').db;
+          const db = require('@arangodb').db;
+          let c = db._collection(params.cn);
           c.save({ _key: "full", text: "the quick brown fox jumps over the lazy dog", val: 1 });
           c.save({ _key: "half", text: "quick fox over lazy", val: 2 });
           c.save({ _key: "other_half", text: "the brown jumps the dog", val: 3 });
@@ -288,8 +298,11 @@ function TransactionsIResearchSuite() {
             c.save({ _key: "quarter", text: "quick over", val: 3 });
             fail();
           } catch(err) {
-            assertEqual(err.errorNum, ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
+            require("jsunity").jsUnity.assertions.assertEqual(err.errorNum, require('@arangodb').errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
           }
+        },
+        params: {
+          cn: cn
         }
       });
 
@@ -335,7 +348,7 @@ function TransactionsIResearchSuite() {
       view.properties(viewMeta);
       saView = db._createView("searchAliasView", "search-alias", {indexes:[{collection: "UnitTestsCollection", index: "inverted"}]});
       let links = view.properties().links;
-      assertNotEqual(links['UnitTestsCollection'], undefined);
+      assertNotEqual(links[cn], undefined);
 
       c.save({ _key: "full", text: "the quick brown fox jumps over the lazy dog", val: 1 });
       c.save({ _key: "half", text: "quick fox over lazy", val: 2 });
@@ -347,15 +360,18 @@ function TransactionsIResearchSuite() {
 
       try {
         db._executeTransaction({
-          collections: {write: 'UnitTestsCollection'},
+          collections: {write: cn},
           action: function() {
-            const db = require('internal').db;
-            let c = db._collection('UnitTestsCollection');
+            const db = require('@arangodb').db;
+            let c = db._collection(params.cn);
             c.remove("full");
             c.remove("half");
             c.remove("other_half");
             c.remove("quarter");
             throw "myerror";
+          },
+          params: {
+            cn: cn
           }
         });
         fail();
@@ -407,7 +423,7 @@ function TransactionsIResearchSuite() {
       view.properties(viewMeta);
       saView = db._createView("searchAliasView", "search-alias", {indexes:[{collection: "UnitTestsCollection", index: "inverted"}]});
       let links = view.properties().links;
-      assertNotEqual(links['UnitTestsCollection'], undefined);
+      assertNotEqual(links[cn], undefined);
 
       c.save({ _key: "full", text: "the quick brown fox jumps over the lazy dog", val: 1 });
       c.save({ _key: "half", text: "quick fox over lazy", val: 2 });
@@ -419,16 +435,20 @@ function TransactionsIResearchSuite() {
 
       try {
         db._executeTransaction({
-          collections: {write: 'UnitTestsCollection'},
+          collections: {write: cn},
           action: function() {
-            const db = require('internal').db;
-            let c = db._collection('UnitTestsCollection');
+            const db = require('@arangodb').db;
+            let c = db._collection(params.cn);
             c.remove("full");
             c.remove("half");
 
             // it should not be possible to query with waitForSync
-            db._query(qqWithSync);
+            db._query(params.qqWithSync);
             fail();
+          },
+          params: {
+            cn: cn,
+            qqWithSync: qqWithSync
           }
         });
         fail();
@@ -438,16 +458,20 @@ function TransactionsIResearchSuite() {
 
       try {
         db._executeTransaction({
-          collections: {write: 'UnitTestsCollection'},
+          collections: {write: cn},
           action: function() {
-            const db = require('internal').db;
-            let c = db._collection('UnitTestsCollection');
+            const db = require('@arangodb').db;
+            let c = db._collection(params.cn);
             c.remove("full");
             c.remove("half");
 
             // it should not be possible to query with waitForSync
-            db._query(qqSearchAliasWithSync);
+            db._query(params.qqSearchAliasWithSync);
             fail();
+          },
+          params: {
+            cn: cn,
+            qqSearchAliasWithSync: qqSearchAliasWithSync
           }
         });
         fail();
@@ -457,16 +481,20 @@ function TransactionsIResearchSuite() {
 
       try {
         db._executeTransaction({
-          collections: {write: 'UnitTestsCollection'},
+          collections: {write: cn},
           action: function() {
-            const db = require('internal').db;
-            let c = db._collection('UnitTestsCollection');
+            const db = require('@arangodb').db;
+            let c = db._collection(params.cn);
             c.remove("full");
             c.remove("half");
 
             // it should not be possible to query with waitForSync
-            db._query(qqIndexWithSync);
+            db._query(params.qqIndexWithSync);
             fail();
+          },
+          params: {
+            cn: cn,
+            qqIndexWithSync: qqIndexWithSync
           }
         });
         fail();

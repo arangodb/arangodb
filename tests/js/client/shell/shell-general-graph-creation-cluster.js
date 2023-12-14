@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertFalse, fail */
+/*global assertEqual, assertTrue, assertFalse, fail, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the general-graph class
@@ -33,7 +33,11 @@ var arangodb = require("@arangodb");
 var db = arangodb.db;
 var graph = require("@arangodb/general-graph");
 var ERRORS = arangodb.errors;
-let internal = require("internal");
+let {
+  getMaxNumberOfShards,
+  getMaxReplicationFactor,
+  getMinReplicationFactor
+} = require("@arangodb/test-helper");
 
 function GeneralGraphClusterCreationSuite() {
   'use strict';
@@ -41,6 +45,9 @@ function GeneralGraphClusterCreationSuite() {
   const en = "UnitTestEdges";
   const gn = "UnitTestGraph";
   const edgeDef = [graph._relation(en, vn, vn)];
+  const maxNumberOfShards = getMaxNumberOfShards();
+  const maxReplicationFactor = getMaxReplicationFactor();
+  const minReplicationFactor = getMinReplicationFactor(); 
 
   return {
 
@@ -65,18 +72,16 @@ function GeneralGraphClusterCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
     
     testCreateAsManyShardsAsAllowed : function () {
-      let max = internal.maxNumberOfShards;
-      let myGraph = graph._create(gn, edgeDef, null, { numberOfShards: max, replicationFactor: 1 });
+      let myGraph = graph._create(gn, edgeDef, null, { numberOfShards: maxNumberOfShards, replicationFactor: 1 });
       let properties = db._graphs.document(gn);
       assertEqual(1, properties.replicationFactor);
       assertEqual(1, properties.minReplicationFactor);
-      assertEqual(max, properties.numberOfShards);
+      assertEqual(maxNumberOfShards, properties.numberOfShards);
     },
 
     testCreateMoreShardsThanAllowed : function () {
-      let max = internal.maxNumberOfShards;
       try {
-        graph._create(gn, edgeDef, null, { numberOfShards: max + 1, replicationFactor: 1 });
+        graph._create(gn, edgeDef, null, { numberOfShards: maxNumberOfShards + 1, replicationFactor: 1 });
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_CLUSTER_TOO_MANY_SHARDS.code, err.errorNum);
@@ -86,9 +91,8 @@ function GeneralGraphClusterCreationSuite() {
     testCreateMoreShardsThanAllowedExistingCollections : function () {
       db._create(vn);
       db._createEdgeCollection(en);
-      let max = internal.maxNumberOfShards;
       try {
-        graph._create(gn, edgeDef, null, { numberOfShards: max + 1, replicationFactor: 1 });
+        graph._create(gn, edgeDef, null, { numberOfShards: maxNumberOfShards + 1, replicationFactor: 1 });
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_CLUSTER_TOO_MANY_SHARDS.code, err.errorNum);
@@ -99,14 +103,13 @@ function GeneralGraphClusterCreationSuite() {
 /// @brief test replicationFactor
 ////////////////////////////////////////////////////////////////////////////////
     testMinReplicationFactor : function () {
-      let min = internal.minReplicationFactor;
-      let myGraph = graph._create(gn, edgeDef, null, { replicationFactor: min });
+      let myGraph = graph._create(gn, edgeDef, null, { replicationFactor: minReplicationFactor });
       let properties = db._graphs.document(gn);
-      assertEqual(min, properties.replicationFactor);
+      assertEqual(minReplicationFactor, properties.replicationFactor);
 
       graph._drop(gn, true);
       try {
-        graph._create(gn, edgeDef, null, { replicationFactor: min - 1 });
+        graph._create(gn, edgeDef, null, { replicationFactor: minReplicationFactor - 1 });
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
@@ -114,15 +117,14 @@ function GeneralGraphClusterCreationSuite() {
     },
     
     testMaxReplicationFactor : function () {
-      let max = internal.maxReplicationFactor;
       try {
-        let myGraph = graph._create(gn, edgeDef, null, { replicationFactor: max });
+        let myGraph = graph._create(gn, edgeDef, null, { replicationFactor: maxReplicationFactor });
         let properties = db._graphs.document(gn);
-        assertEqual(max, properties.replicationFactor);
+        assertEqual(maxReplicationFactor, properties.replicationFactor);
         
         graph._drop(gn, true);
         try {
-          graph._create(gn, edgeDef, null, { replicationFactor: max + 1 });
+          graph._create(gn, edgeDef, null, { replicationFactor: maxReplicationFactor + 1 });
           fail();
         } catch (err) {
           assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
@@ -136,15 +138,14 @@ function GeneralGraphClusterCreationSuite() {
     testMaxReplicationFactorExistingCollection : function () {
       db._create(vn);
       db._createEdgeCollection(en);
-      let max = internal.maxReplicationFactor;
       try {
-        let myGraph = graph._create(gn, edgeDef, null, { replicationFactor: max });
+        let myGraph = graph._create(gn, edgeDef, null, { replicationFactor: maxReplicationFactor });
         let properties = db._graphs.document(gn);
-        assertEqual(max, properties.replicationFactor);
+        assertEqual(maxReplicationFactor, properties.replicationFactor);
         
         graph._drop(gn, true);
         try {
-          graph._create(gn, edgeDef, null, { replicationFactor: max + 1 });
+          graph._create(gn, edgeDef, null, { replicationFactor: maxReplicationFactor + 1 });
           fail();
         } catch (err) {
           assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);

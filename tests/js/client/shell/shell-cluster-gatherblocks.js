@@ -134,7 +134,7 @@ function gatherBlocksTestSuite() {
               bindvars = Object.assign(bindvars, t.bindvars);
             }
 
-            let plan = AQL_EXPLAIN(t.query , bindvars);
+            let plan = db._createStatement({query: t.query, bindVars: bindvars}).explain();
 
             // check that the plan contains the expected amount of gatherNodes
             let gatherNodes = findExecutionNodes(plan, "GatherNode");
