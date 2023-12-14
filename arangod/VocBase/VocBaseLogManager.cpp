@@ -134,7 +134,7 @@ void VocBaseLogManager::prepareDropAll() noexcept {
     TRI_ASSERT(guard->statesAndLogs.empty());
   }
   for (auto&& [id, val] : statesAndLogs) {
-    if (auto res = basics::catchVoidToResult([&]() {
+    if (auto res = basics::catchVoidToResult([&, &val = val]() {
           auto storage = resignAndDrop(val);
           storage.reset();
         });
