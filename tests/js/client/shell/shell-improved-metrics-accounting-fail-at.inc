@@ -34,7 +34,7 @@
 
   const db = require('@arangodb').db;
   const internal = require("internal");
-  const { getCompleteMetricsValues } = require('@arangodb/test-helper');
+  const { getCompleteMetricsValues, waitForEstimatorSync } = require('@arangodb/test-helper');
 
   const bufferedMemoryMetric = "arangodb_revision_tree_buffered_memory_usage";
   const estimatesMetric = "arangodb_index_estimates_memory_usage";
@@ -132,14 +132,14 @@
 
       testRevisionTreeMemoryUsageShouldIncreaseAfterBatchedInserts: function () {
         // wait until all pending estimates & revision tree buffers have been applied
-        let res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+        let res = waitForEstimatorSync();
         assertNull(res);
         
         // block sync thread from doing anything from now on
         internal.debugSetFailAt("RocksDBSettingsManagerSync");
 
         // wait until all pending estimates & revision tree buffers have been applied
-        res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+        res = waitForEstimatorSync();
         assertNull(res);
         
         db._create(collectionName, collectionCreationOptions);
@@ -153,7 +153,7 @@
         // Now check that metric value will go down
         internal.debugClearFailAt();
         // wait until all pending estimates & revision tree buffers have been applied
-        res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+        res = waitForEstimatorSync();
         assertNull(res);
         
         waitForMetricToBeZero(bufferedMemoryMetric);
@@ -161,14 +161,14 @@
 
       testRevisionTreeMemoryUsageShouldIncreaseAfterSingleInserts: function () {
         // wait until all pending estimates & revision tree buffers have been applied
-        let res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+        let res = waitForEstimatorSync();
         assertNull(res);
 
         // block sync thread from doing anything from now on
         internal.debugSetFailAt("RocksDBSettingsManagerSync");
 
         // wait until all pending estimates & revision tree buffers have been applied
-        res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+        res = waitForEstimatorSync();
         assertNull(res);
 
         let c = db._create(collectionName, collectionCreationOptions);
@@ -188,7 +188,7 @@
         // Now check that metric value will go down
         internal.debugClearFailAt();
         // wait until all pending estimates & revision tree buffers have been applied
-        res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+        res = waitForEstimatorSync();
         assertNull(res);
 
         waitForMetricToBeZero(bufferedMemoryMetric);
@@ -196,7 +196,7 @@
 
       testRevisionTreeMemoryUsageShouldIncreaseAndDecreaseAfterAql: function () {               
         // wait until all pending estimates & revision tree buffers have been applied
-        let res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+        let res = waitForEstimatorSync();
         assertNull(res);
 
         // Check that metric value is 0 before inserting documents
@@ -274,7 +274,7 @@
         internal.debugSetFailAt("RocksDBSettingsManagerSync");
 
         // wait until all pending estimates & revision tree buffers have been applied
-        let res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+        let res = waitForEstimatorSync();
         assertNull(res);
 
         const metric0 = getCompleteMetricsValues(estimatesMetric);
@@ -305,7 +305,7 @@
         internal.debugSetFailAt("RocksDBSettingsManagerSync");
 
         // wait until all pending estimates & revision tree buffers have been applied
-        let res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+        let res = waitForEstimatorSync();
         assertNull(res);
 
         const metric0 = getCompleteMetricsValues(estimatesMetric);

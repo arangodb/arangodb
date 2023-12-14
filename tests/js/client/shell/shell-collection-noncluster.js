@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertEqual, assertTypeOf, assertNotEqual, fail, assertFalse */
+/*global assertEqual, assertTrue, assertEqual, assertTypeOf, assertNotEqual, fail, assertFalse, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface
@@ -31,7 +31,7 @@
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const ArangoCollection = arangodb.ArangoCollection;
-const testHelper = require("@arangodb/test-helper").Helper;
+const waitForEstimatorSync = require('@arangodb/test-helper').waitForEstimatorSync;
 const internal = require("internal");
 const db = arangodb.db;
 const ERRORS = arangodb.errors;
@@ -42,7 +42,18 @@ const ERRORS = arangodb.errors;
 
 function CollectionSuite () {
   'use strict';
+  let cn = "example";
+  
   return {
+
+    setUp: function() {
+      db._drop(cn);
+    },
+
+    tearDown: function() {
+      db._drop(cn);
+    },
+    
 
     testShards : function () {
       var cn = "example";
@@ -56,6 +67,82 @@ function CollectionSuite () {
         assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, err.errorNum);
       }
       db._drop(cn);
+    },
+
+    testCreateWithInvalidIndexes1 : function () {
+      // invalid indexes will simply be ignored
+      // This ignorance is only in Backwards compatibility with 3.11
+      // The commented test below will be used in the future
+      db._create(cn, {indexes: [{id: "1", type: "edge", fields: ["_from"]}]});
+      let indexes = db[cn].indexes();
+      assertEqual(1, indexes.length);
+      assertEqual("primary", indexes[0].type);
+      /*
+      // invalid indexes will be rejected
+      try {
+        db._create(cn, { indexes: [{ id: "1", type: "edge", fields: ["_from"] }] });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+      */
+    },
+    
+    testCreateWithInvalidIndexes2 : function () {
+      // invalid indexes will simply be ignored
+      // This ignorance is only in Backwards compatibility with 3.11
+      // The commented test below will be used in the future
+      db._create(cn, { indexes: [{ id: "1234", type: "hash", fields: ["a"] }] });
+      let indexes = db[cn].indexes();
+      assertEqual(1, indexes.length);
+      assertEqual("primary", indexes[0].type);
+      /*
+      // invalid indexes will be rejected
+      try {
+        db._create(cn, { indexes: [{ id: "1234", type: "hash", fields: ["a"] }] });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+      */
+    },
+
+    testTruncateSelectivityEstimates : function () {
+      let c = db._create(cn);
+      c.ensureIndex({ type: "hash", fields: ["value"] });
+      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+
+      // add enough docs to trigger RangeDelete in truncate
+      const docs = [];
+      for (let i = 0; i < 35000; ++i) {
+        docs.push({value: i % 250, value2: i % 100});
+      }
+      c.save(docs); 
+
+      c.truncate({ compact: false });
+      assertEqual(c.count(), 0);
+      assertEqual(c.all().toArray().length, 0);
+
+      // Test Selectivity Estimates
+      {
+        waitForEstimatorSync();  // make sure estimates are consistent
+        let indexes = c.getIndexes(true);
+        for (let i of indexes) {
+          switch (i.type) {
+            case 'primary':
+              assertEqual(i.selectivityEstimate, 1);
+              break;
+            case 'hash':
+              assertEqual(i.selectivityEstimate, 1);
+              break;
+            case 'skiplist':
+              assertEqual(i.selectivityEstimate, 1);
+              break;
+            default:
+              fail();
+          }
+        }
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////

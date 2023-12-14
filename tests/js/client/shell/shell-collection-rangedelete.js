@@ -52,7 +52,7 @@ function CollectionRangeDeleteSuite () {
     },
     
     testRangeDeleteTriggerInSingleServer : function () {
-      if (require("@arangodb/cluster").isCluster()) {
+      if (require("internal").isCluster()) {
         return;
       }
 
@@ -78,7 +78,7 @@ function CollectionRangeDeleteSuite () {
     },
     
     testRangeDeleteTriggersInCluster : function () {
-      if (!require("@arangodb/cluster").isCluster()) {
+      if (!require("internal").isCluster()) {
         return;
       }
 

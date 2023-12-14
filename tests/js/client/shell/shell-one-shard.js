@@ -40,6 +40,13 @@ const request = require('@arangodb/request');
 const defaultReplicationFactor = db._properties().replicationFactor;
 const replication2Enabled = require('internal').db._version(true).details['replication2-enabled'] === 'true';
 
+let {
+  getMaxReplicationFactor,
+  getMinReplicationFactor
+} = require("@arangodb/test-helper");
+
+const maxReplicationFactor = getMaxReplicationFactor();
+const minReplicationFactor = getMinReplicationFactor(); 
 
 function getEndpointsByType(type) {
   const isType = (d) => (d.instanceRole === type);
@@ -536,7 +543,7 @@ function OneShardPropertiesSuite () {
     },
     
     testValuesBelowMinReplicationFactor : function () {
-      let min = internal.minReplicationFactor;
+      let min = minReplicationFactor;
       if (min > 0) {
         try {
           db._createDatabase(dn, { replicationFactor : min - 1 });
@@ -547,7 +554,7 @@ function OneShardPropertiesSuite () {
     },
 
     testValuesAboveMaxReplicationFactor : function () {
-      let max = internal.maxReplicationFactor;
+      let max = maxReplicationFactor;
       if (max > 0) {
         try {
           db._createDatabase(dn, { replicationFactor : max + 1 });
