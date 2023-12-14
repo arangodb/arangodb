@@ -109,6 +109,11 @@ class GenericAndTwoNonUniqueIndexMerger
   [[nodiscard]] static std::unique_ptr<
       arangodb::aql::IndexJoinStrategy<MyKeyValue, MyDocumentId>>
   buildStrategy(std::vector<Desc>&& iters) {
+    for (auto& desc : iters) {
+      desc.numKeyComponents = {1};
+      desc.numConstants = {0};
+    }
+
     if (getStrategyName() == "GenericJoin") {
       auto strategy = std::make_unique<GenericJoinStrategy>(std::move(iters));
       strategy.get()->reset({});
