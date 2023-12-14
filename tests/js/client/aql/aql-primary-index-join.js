@@ -478,7 +478,7 @@ const IndexPrimaryJoinTestSuite = function () {
       runAndCheckQuery(queryString, "generic", null, true);
     },
 
-    testJoinConstantValuesOneOuterTwoInnerWithOpt: function () {
+    testJoinConstantValuesOneOuterTwoInnerWithOptDefaultSharding: function () {
       const collectionA = db._createDocumentCollection('A');
       collectionA.ensureIndex({type: "persistent", fields: ["x", "y"], unique: false});
 
@@ -498,6 +498,7 @@ const IndexPrimaryJoinTestSuite = function () {
           _key: JSON.stringify(i),
           x: i,
           y: i,
+          z: i
         });
       }
 
@@ -513,10 +514,53 @@ const IndexPrimaryJoinTestSuite = function () {
 
       let qResult;
       if (isCluster) {
+        // Cannot be optimized in case shards are randomly distributed
         qResult = runAndCheckQuery(queryString, "generic", null, true);
       } else {
         qResult = runAndCheckQuery(queryString, "generic");
       }
+
+      qResult.forEach((docs) => {
+        let first = docs[0];
+        let second = docs[1];
+        assertEqual(first.x, 5, "Wrong value for 'x' in first document found");
+        assertEqual(first.y, second.y);
+      });
+      assertEqual(qResult.length, 1);
+    },
+
+    testJoinConstantValuesOneOuterTwoInnerWithOptShardingSameDBS: function () {
+      const collectionA = createCollection('A', ['y']);
+      const collectionB = createCollection('B', ['y']);
+      collectionA.ensureIndex({type: "persistent", fields: ["x", "y"], unique: false});
+      collectionB.ensureIndex({type: "persistent", fields: ["x", "y", "z"], unique: true});
+
+      // insert some data. Every second document in A has x = 5.
+      // Means, we do have five documents with x = 5 in this example.
+      // Apart from that, just incrementing y from 0 to 10.
+      for (let i = 0; i < 10; i++) {
+        collectionA.insert({
+          x: (i % 2 === 0) ? i : 5,
+          y: i,
+        });
+        collectionB.insert({
+          x: i,
+          y: i,
+          z: i
+        });
+      }
+
+      const queryString = `
+        FOR doc1 IN A
+          FILTER doc1.x == 5           // candidate[0]: const {0}
+          FOR doc2 IN B
+            FILTER doc1.y == doc2.y    // candidate[0]: key {1} | candidate[1]: key {1}
+            FILTER doc2.x == 5         // candidate[1]: const {0}
+            RETURN [doc1, doc2]`;
+      // candidate[0] key {1} const {0}
+      // candidate[1] key {1} const {0}
+
+      const qResult = runAndCheckQuery(queryString, "generic");
 
       qResult.forEach((docs) => {
         let first = docs[0];
