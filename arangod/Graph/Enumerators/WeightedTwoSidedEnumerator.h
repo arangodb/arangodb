@@ -306,7 +306,7 @@ class WeightedTwoSidedEnumerator {
 
   // Check where we want to continue our search
   // (Left or right ball)
-  auto getBallToContinueSearch() -> BallSearchLocation;
+  auto getBallToContinueSearch() const -> BallSearchLocation;
 
   // In case we call this method, we know that we've already produced
   // enough results. This flag will be checked within the "isDone" method

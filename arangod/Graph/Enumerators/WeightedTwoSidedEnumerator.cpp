@@ -837,12 +837,12 @@ template<class QueueType, class PathStoreType, class ProviderType,
 typename WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                     PathValidator>::BallSearchLocation
 WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                           PathValidator>::getBallToContinueSearch() {
+                           PathValidator>::getBallToContinueSearch() const {
   if (!_left.isQueueEmpty() && !_right.isQueueEmpty()) {
-    auto leftStep = _left.peekQueue();
-    auto rightStep = _right.peekQueue();
+    auto leftWeight = _left.peekQueue().getWeight();
+    auto rightWeight = _right.peekQueue().getWeight();
 
-    if (leftStep.getWeight() <= rightStep.getWeight()) {
+    if (leftWeight <= rightWeight) {
       return BallSearchLocation::LEFT;
     } else {
       return BallSearchLocation::RIGHT;
