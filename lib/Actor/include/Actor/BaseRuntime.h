@@ -57,8 +57,9 @@ struct BaseRuntime
 
     auto address = self().makePid(newId);
 
-    auto newActor = std::make_shared<Actor<BaseRuntime, ActorConfig>>(
-        address, this->shared_from_this(), std::move(initialState));
+    auto newActor = std::make_shared<Actor<Derived, ActorConfig>>(
+        address, std::static_pointer_cast<Derived>(this->shared_from_this()),
+        std::move(initialState));
     actors.add(newId, std::move(newActor));
 
     return address;
@@ -86,7 +87,7 @@ struct BaseRuntime
     auto actorBase = actors.find(id);
     if (actorBase.has_value()) {
       auto* actor =
-          dynamic_cast<Actor<BaseRuntime, ActorConfig>*>(actorBase->get());
+          dynamic_cast<Actor<Derived, ActorConfig>*>(actorBase->get());
       if (actor != nullptr) {
         return actor->getState();
       }
