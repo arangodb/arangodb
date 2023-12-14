@@ -110,14 +110,13 @@ class GenericAndTwoNonUniqueIndexMerger
       arangodb::aql::IndexJoinStrategy<MyKeyValue, MyDocumentId>>
   buildStrategy(std::vector<Desc>&& iters) {
     if (getStrategyName() == "GenericJoin") {
-      auto strategy =
-          std::make_unique<GenericJoinStrategy>(std::move(iters), 1);
+      auto strategy = std::make_unique<GenericJoinStrategy>(std::move(iters));
       strategy.get()->reset({});
       return std::move(strategy);
     } else {
       TRI_ASSERT(getStrategyName() == "TwoIndicesMergeJoin");
       auto strategy =
-          std::make_unique<TwoIndexNonUniqueJoinStrategy>(std::move(iters), 1);
+          std::make_unique<TwoIndexNonUniqueJoinStrategy>(std::move(iters));
       strategy.get()->reset({});
       return std::move(strategy);
     }
@@ -418,7 +417,7 @@ TEST_P(GenericIndexMerger, one_iterator_corner_case) {
 
   // cannot be executed with the two indices join strategy (checked and
   // asserted). Therefore, only tested in the generic case.
-  GenericJoinStrategy merger{std::move(iters), 1};
+  GenericJoinStrategy merger{std::move(iters)};
   merger.reset({});
 
   bool hasMore = true;
@@ -456,7 +455,7 @@ TEST_P(GenericIndexMerger, three_iterators) {
   iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0, isUnique);
   iters.emplace_back(std::make_unique<MyVectorIterator>(c), 0, isUnique);
 
-  GenericJoinStrategy merger{std::move(iters), 1};
+  GenericJoinStrategy merger{std::move(iters)};
   merger.reset({});
 
   bool hasMore = true;
@@ -494,7 +493,7 @@ TEST_P(GenericIndexMerger, three_iterators_2) {
   iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0, isUnique);
   iters.emplace_back(std::make_unique<MyVectorIterator>(c), 0, isUnique);
 
-  GenericJoinStrategy merger{std::move(iters), 1};
+  GenericJoinStrategy merger{std::move(iters)};
   merger.reset({});
 
   bool hasMore = true;
