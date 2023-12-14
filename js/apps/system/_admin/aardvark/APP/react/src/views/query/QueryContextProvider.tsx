@@ -17,11 +17,6 @@ export type QueryExecutionOptions = {
   queryOptions?: { [key: string]: any };
   disabledRules?: string[];
 };
-
-export type QueryProfileOptions = {
-  queryValue: string;
-  queryBindParams?: { [key: string]: string };
-};
 type QueryContextType = {
   queryValue: string;
   queryBindParams: { [key: string]: string };
@@ -33,7 +28,7 @@ type QueryContextType = {
     name?: string;
   }) => void;
   onExecute: (options: QueryExecutionOptions) => void;
-  onProfile: (options: QueryProfileOptions) => void;
+  onProfile: (options: QueryExecutionOptions) => void;
   onExplain: (options: QueryExecutionOptions) => void;
   queryResults: QueryResultType[];
   onRemoveResult: (index: number) => void;
