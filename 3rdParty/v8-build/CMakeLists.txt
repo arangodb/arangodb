@@ -96,11 +96,11 @@ list(APPEND V8_GYP_ARGS
 
 option(USE_DEBUG_V8 "compile V8 in DEBUG mode" OFF)
   
+set(GYP_MAIN ${PROJECT_SOURCE_DIR}/gyp/gyp_main.py)
+
 ################################################################################
 ## WINDOWS with msbuild; Gyp now does TrackFileAccess too.
 ################################################################################
-
-set(GYP_MAIN ${PROJECT_SOURCE_DIR}/gyp/gyp_main.py)
 
 if (WIN32)
   MESSAGE(STATUS "Building V8 for Windows with MSBUILD")
@@ -137,7 +137,6 @@ if (WIN32)
   endif()
 
   list(APPEND V8_GYP_ARGS "-Dmsvs_cygwin_shell=0")
-  list(APPEND V8_GYP_ARGS "-Dv8_use_snapshot=true")
 
   if ("${BITS}" STREQUAL "64")
     set(MS_TARGET_PLATFORM x64)
@@ -163,14 +162,13 @@ if (WIN32)
     -DINSPECTOR_ROOT=${V8_DIR}
     --depth=.
     -Dforce_dynamic_crt=0
-    -Dos_posix=0 # TODO: verify
+    -Dos_posix=0
     -Dwerror=
     -Dembed_script=
     -Dwarmup_script=
     -Dv8_enable_embedded_builtins=0
     -Dembedded_builtins_snapshot_src=
     -Dv8_enable_handle_zapping=0
-    -Dv8_use_snapshot=1
     -Dv8_use_zlib=0
     -Dv8_enable_webassembly=0
     -Dv8_optimized_debug=1
@@ -186,18 +184,7 @@ if (WIN32)
     -Dpython=${PYTHON_EXECUTABLE}
   )
 
-  # TODO: targets list must be finalized
-  list(APPEND V8_TARGETS 
-    #torque
-    #run_torque
-    #generate_bytecode_builtins_list
-    #v8_initializers
-    v8_libbase
-    v8_libplatform
-    #mksnapshot
-    v8_snapshot
-    #v8
-  )
+  list(APPEND V8_TARGETS v8_libbase v8_libplatform v8_snapshot)
 
   add_custom_target(v8_build)
   set(V8_LIBS
@@ -342,8 +329,6 @@ else ()
     set(V8_CXXFLAGS "${V8_CXXFLAGS} -g0")
   endif ()
   
-  list(APPEND V8_GYP_ARGS "-Dv8_use_snapshot=true")
-
   # TODO: verify if we still need those
   add_c_flags_if_supported(V8_CFLAGS -Wno-suggest-override -Wno-implicit-const-int-float-conversion -Wno-non-virtual-dtor -Wno-final-dtor-non-final-class -Wno-implicit-const-int-float-conversion)
   add_cxx_flags_if_supported(V8_CXXFLAGS -Wno-suggest-override -Wno-implicit-const-int-float-conversion -Wno-non-virtual-dtor -Wno-final-dtor-non-final-class -Wno-implicit-const-int-float-conversion)
@@ -393,7 +378,6 @@ else ()
     -Dv8_enable_embedded_builtins=0
     -Dembedded_builtins_snapshot_src=
     -Dv8_enable_handle_zapping=0
-    -Dv8_use_snapshot=1
     -Dv8_use_zlib=0
     -Dv8_enable_webassembly=0
     -Dv8_optimized_debug=1
