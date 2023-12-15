@@ -495,6 +495,12 @@ void JoinNode::replaceAttributeAccess(ExecutionNode const* self,
       it.filter->replaceAttributeAccess(searchVariable, attribute,
                                         replaceVariable);
     }
+    if (!it.expressions.empty() && (self != this || i > index)) {
+      for (auto const& expr : it.expressions) {
+        expr->replaceAttributeAccess(searchVariable, attribute,
+                                     replaceVariable);
+      }
+    }
     ++i;
   }
 }
