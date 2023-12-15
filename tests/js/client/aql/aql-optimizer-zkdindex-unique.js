@@ -29,6 +29,7 @@ const internal = require("internal");
 const db = arangodb.db;
 const aql = arangodb.aql;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
+const normalize = require("@arangodb/aql-helper").normalizeProjections;
 const _ = require("lodash");
 
 const useIndexes = 'use-indexes';
@@ -46,6 +47,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
                 type: 'zkd',
                 name: 'zkdIndex',
                 fields: ['x', 'y'],
+                storedValues: ['i'],
                 unique: true,
                 fieldValueTypes: 'double'
             });
@@ -81,23 +83,46 @@ function optimizerRuleZkd2dIndexTestSuite() {
             assertEqual([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], res);
         },
 
-        testIndexAccess2: function () {
-            const query = aql`
+      testIndexAccess2: function () {
+        const query = aql`
         FOR d IN ${col}
           FILTER 0 <= d.x && d.y <= 1
           RETURN d.x
       `;
-            const explainRes = db._createStatement({query: query.query, bindVars:  query.bindVars}).explain();
-            const appliedRules = explainRes.plan.rules;
-            const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
-            assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
-            assertTrue(appliedRules.includes(useIndexes));
-            assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
-            const executeRes = db._query(query.query, query.bindVars);
-            const res = executeRes.toArray();
-            res.sort();
-            assertEqual([0, 0.1, 0.2, 0.3, 0.4, 0.5], res);
-        },
+        const explainRes = db._createStatement({query: query.query, bindVars:  query.bindVars}).explain();
+        const appliedRules = explainRes.plan.rules;
+        const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
+        assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
+        assertTrue(appliedRules.includes(useIndexes));
+        assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+        const executeRes = db._query(query.query, query.bindVars);
+        const res = executeRes.toArray();
+        res.sort();
+        assertEqual([0, 0.1, 0.2, 0.3, 0.4, 0.5], res);
+      },
+
+      testIndexAccessStoredValues: function () {
+        const query = aql`
+        FOR d IN ${col}
+          FILTER 0 <= d.x && d.y <= 1
+          RETURN d.i
+      `;
+        const explainRes = db._createStatement({query: query.query, bindVars:  query.bindVars}).explain();
+        const appliedRules = explainRes.plan.rules;
+        const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
+        assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
+        assertTrue(appliedRules.includes(useIndexes));
+        assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+        const indexNodes = explainRes.plan.nodes.filter(n => n.type === "IndexNode");
+        assertEqual(indexNodes.length, 1);
+        const index = indexNodes[0];
+        assertTrue(index.indexCoversProjections, true);
+        assertEqual(normalize(index.projections), normalize(["i"]));
+        const executeRes = db._query(query.query, query.bindVars);
+        const res = executeRes.toArray();
+        res.sort();
+        assertEqual([500, 501, 502, 503, 504, 505], res);
+      },
 
         testUniqueConstraint: function () {
             col.save({x: 0, y: 0.50001});

@@ -89,6 +89,10 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
           _fields,
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
                              /*allowEmpty*/ true, /*allowExpansion*/ false));
+    } else if (_indexType == TRI_IDX_TYPE_ZKD_INDEX) {
+      _coveredFields =
+          Index::parseFields(info.get(StaticStrings::IndexStoredValues),
+                             /*allowEmpty*/ true, /*allowExpansion*/ false);
     }
 
     // check for "estimates" attribute

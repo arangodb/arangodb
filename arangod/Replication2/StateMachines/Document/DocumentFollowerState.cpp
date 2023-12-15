@@ -63,7 +63,10 @@ DocumentFollowerState::DocumentFollowerState(
           handlersFactory->createShardHandler(core->getVocbase(), core->gid)),
       _errorHandler(handlersFactory->createErrorHandler(core->gid)),
       _guardedData(std::move(core), handlersFactory, loggerContext,
-                   _errorHandler) {}
+                   _errorHandler) {
+  // Get ready to replay the log
+  _shardHandler->prepareShardsForLogReplay();
+}
 
 DocumentFollowerState::~DocumentFollowerState() = default;
 
@@ -232,6 +235,16 @@ auto DocumentFollowerState::acquireSnapshot(
                   << "Snapshot " << *snapshotTransferResult.snapshotId
                   << " finished: " << snapshotTransferResult.res;
               return Result{};
+            })
+            .then([self](auto&& tryRes) {
+              auto res = basics::catchToResult([&] { return tryRes.get(); });
+              if (res.ok()) {
+                // If we replayed a snapshot, we need to wait for views to
+                // settle before we can continue. Otherwise, we would get into
+                // issues with duplicate document ids
+                self->_shardHandler->prepareShardsForLogReplay();
+              }
+              return res;
             });
       });
 }

@@ -36,6 +36,7 @@
 
 #include "Inspection/Access.h"
 #include "Inspection/Format.h"
+#include "Inspection/Transformers.h"
 #include "Inspection/Types.h"
 
 namespace {
@@ -114,6 +115,16 @@ auto inspect(Inspector& f, Map& x) {
   return f.object(x).fields(f.field("map", x.map),
                             f.field("unordered", x.unordered));
 }
+
+struct TransformedMap {
+  std::map<int, Container> map;
+
+  friend inline auto inspect(auto& f, TransformedMap& x) {
+    return f.object(x).fields(
+        f.field("map", x.map)
+            .transformWith(arangodb::inspection::mapToListTransformer(x.map)));
+  }
+};
 
 struct Set {
   std::set<Container> set;

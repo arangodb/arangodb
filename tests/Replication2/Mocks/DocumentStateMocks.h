@@ -300,6 +300,7 @@ struct MockDocumentStateShardHandler
   MOCK_METHOD(ResultT<std::unique_ptr<transaction::Methods>>, lockShard,
               (ShardID const&, AccessMode::Type, transaction::OperationOrigin),
               (override));
+  MOCK_METHOD(void, prepareShardsForLogReplay, (), (noexcept, override));
 };
 
 struct MockDocumentStateSnapshotHandler

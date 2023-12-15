@@ -6,10 +6,7 @@ import {
   getCurrentDB
 } from "../../utils/arangoClient";
 import { QueryResultType } from "./ArangoQuery.types";
-import {
-  QueryExecutionOptions,
-  QueryProfileOptions
-} from "./QueryContextProvider";
+import { QueryExecutionOptions } from "./QueryContextProvider";
 
 export const useQueryExecutors = ({
   setQueryResults,
@@ -72,8 +69,10 @@ export const useQueryExecutors = ({
 
   const onProfile = async ({
     queryValue,
-    queryBindParams
-  }: QueryProfileOptions) => {
+    queryBindParams,
+    queryOptions,
+    disabledRules
+  }: QueryExecutionOptions) => {
     const currentDB = getCurrentDB();
     const literalValue = literal(queryValue);
     const path = `/_admin/aardvark/query/profile`;
@@ -92,7 +91,13 @@ export const useQueryExecutors = ({
     try {
       const profile = await route.post({
         query: literalValue.toAQL(),
-        bindVars: queryBindParams
+        bindVars: queryBindParams,
+        options: {
+          ...queryOptions,
+          optimizer: {
+            rules: disabledRules
+          }
+        }
       });
       setQueryResultById({
         asyncJobId: id,
@@ -118,7 +123,12 @@ export const useQueryExecutors = ({
     }
   };
   const onExplain = useCallback(
-    async ({ queryValue, queryBindParams }: QueryProfileOptions) => {
+    async ({
+      queryValue,
+      queryBindParams,
+      queryOptions,
+      disabledRules
+    }: QueryExecutionOptions) => {
       const currentDB = getCurrentDB();
       const literalValue = literal(queryValue);
       const path = `/_admin/aardvark/query/explain`;
@@ -137,7 +147,13 @@ export const useQueryExecutors = ({
       try {
         const explainResult = await route.post({
           query: literalValue.toAQL(),
-          bindVars: queryBindParams
+          bindVars: queryBindParams,
+          options: {
+            ...queryOptions,
+            optimizer: {
+              rules: disabledRules
+            }
+          }
         });
         setQueryResultById({
           asyncJobId: id,
