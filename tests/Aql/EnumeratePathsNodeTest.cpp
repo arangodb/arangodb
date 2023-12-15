@@ -98,7 +98,7 @@ TEST_F(EnumeratePathsNodeTest, clone_should_preserve_isSmart) {
     original.setIsSmart(value);
     auto clone = ExecutionNode::castTo<EnumeratePathsNode*>(
         original.clone(plan(), false));
-    EXPECT_EQ(clone->id(), original.id()) << "Clone did not keep the id";
+    EXPECT_NE(clone->id(), original.id());
     EXPECT_EQ(original.isSmart(), value);
     EXPECT_EQ(clone->isSmart(), value);
   }
@@ -113,7 +113,7 @@ TEST_F(EnumeratePathsNodeTest, clone_should_preserve_isDisjoint) {
     original.setIsDisjoint(value);
     auto clone = ExecutionNode::castTo<EnumeratePathsNode*>(
         original.clone(plan(), false));
-    EXPECT_EQ(clone->id(), original.id()) << "Clone did not keep the id";
+    EXPECT_NE(clone->id(), original.id());
     EXPECT_EQ(original.isDisjoint(), value);
     EXPECT_EQ(clone->isDisjoint(), value);
   }
