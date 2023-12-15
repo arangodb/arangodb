@@ -532,6 +532,7 @@ function ValidationBasicsSuite() {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
       }
       testCollection.properties({"schema": null});
+      const shardList = testCollection.shards(true);
       waitInClusterUntil(() => {
         for (const [shard, servers] of Object.entries(shardList)) {
           const endpoint = getEndpointById(servers[0]);
