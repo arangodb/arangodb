@@ -20,6 +20,9 @@ devel
   output string length will make the function return `null` and issue a 
   warning.
 
+* Fix BTS-1636: Under certain circumstances the path found by a weighted
+  shortest path search was not the path of smallest weight.
+
 * Activate more checks in jemalloc:
     --enable-opt-safety-checks
     --enable-opt-size-checks
