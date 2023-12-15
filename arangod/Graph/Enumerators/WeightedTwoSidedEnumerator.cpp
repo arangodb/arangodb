@@ -393,20 +393,7 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::isDone() const {
-  LOG_DEVEL << "finder is done called "
-            << PathType::toString(_options.getPathType());
-
-  LOG_DEVEL << "is results empty: " << _candidatesStore.isEmpty();
-  LOG_DEVEL << "is the search done: " << searchDone();
-  LOG_DEVEL << "algorithm finished: " << _algorithmFinished;
-  LOG_DEVEL << "left: " << _left.getDiameter();
-  LOG_DEVEL << "right: " << _right.getDiameter();
-
-  if (!_candidatesStore.isEmpty()) {
-    //    LOG_DEVEL << "best candidate: " <<
-    //    std::get<0>(_candidatesStore.peek());
-  }
-
+  // #if 0
   switch (_options.getPathType()) {
     case PathType::Type::ShortestPath: {
       return (_candidatesStore.isEmpty() && searchDone()) ||
@@ -418,8 +405,10 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       }
     } break;
   }
+  // #endif
 
-  return _candidatesStore.isEmpty() && searchDone();
+  return (_candidatesStore.isEmpty() &&
+          searchDone());  // || isAlgorithmFinished();
 }
 
 /**
