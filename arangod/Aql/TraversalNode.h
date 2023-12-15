@@ -141,8 +141,8 @@ class TraversalNode : public virtual GraphNode {
       bool isSmart = false) const;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override;
 
   /// @brief Test if this node uses an in variable or constant
   bool usesInVariable() const { return _inVariable != nullptr; }
@@ -257,8 +257,7 @@ class TraversalNode : public virtual GraphNode {
   void checkConditionsDefined() const;
 #endif
 
-  void traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
-                            bool withProperties) const;
+  void traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c) const;
 
   /// @brief vertex output variable
   Variable const* _pathOutVariable;

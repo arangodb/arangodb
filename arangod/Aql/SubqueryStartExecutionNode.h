@@ -52,8 +52,8 @@ class SubqueryStartNode : public ExecutionNode {
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine) const override;
 
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   bool isEqualTo(ExecutionNode const& other) const override final;
 

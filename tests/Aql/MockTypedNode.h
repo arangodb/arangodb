@@ -51,8 +51,7 @@ class MockTypedNode : public ::arangodb::aql::ExecutionNode {
       ::arangodb::aql::ExecutionEngine& engine) const override;
 
   ExecutionNode* clone(::arangodb::aql::ExecutionPlan* plan,
-                       bool withDependencies,
-                       bool withProperties) const override;
+                       bool withDependencies) const override;
 
   ::arangodb::aql::CostEstimate estimateCost() const override;
 
