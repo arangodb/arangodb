@@ -80,6 +80,14 @@ void arangodb::aql::batchMaterializeDocumentsRule(
       continue;
     }
     if (index->canReadOwnWrites() == ReadOwnWrites::yes) {
+      LOG_RULE << "INDEX " << index->id() << " FAILED: "
+               << "index has to read its own write - not supported";
+      continue;
+    }
+
+    if (index->estimateCost().estimatedNrItems < 10) {
+      LOG_RULE << "INDEX " << index->id() << " FAILED: "
+               << "estimated number of items to small";
       continue;
     }
 
