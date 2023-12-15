@@ -162,19 +162,21 @@ function ClusterCollectionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateValidReplicationFactor : function () {
-      let c;
       // would like to test replication to the allowd maximum, but testsuite is
       // starting 2 dbservers, so setting to > 2 is currently not possible
       for ( let i = 1; i < 3; i++) {
-        c = db._create("UnitTestsClusterCrud", {
-          replicationFactor: i
-        });
-        assertEqual("UnitTestsClusterCrud", c.name());
-        assertEqual(2, c.type());
-        assertEqual(3, c.status());
-        assertTrue(c.hasOwnProperty("_id"));
-        assertEqual(i, c.properties().replicationFactor);
-        db._drop("UnitTestsClusterCrud");
+        try {
+          const c = db._create("UnitTestsClusterCrud", {
+            replicationFactor: i
+          });
+          assertEqual("UnitTestsClusterCrud", c.name());
+          assertEqual(2, c.type());
+          assertEqual(3, c.status());
+          assertTrue(c.hasOwnProperty("_id"));
+          assertEqual(i, c.properties().replicationFactor);
+        } finally {
+          db._drop("UnitTestsClusterCrud");
+        }
       }
     },
 
@@ -184,23 +186,24 @@ function ClusterCollectionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateValidMinReplicationFactor : function () {
-      let c;
       // would like to test replication to the allowd maximum, but testsuite is
       // starting 2 dbservers, so setting to > 2 is currently not possible
       for ( let i = 1; i < 3; i++) {
-        c = db._create("UnitTestsClusterCrud", {
-          replicationFactor: i,
-          minReplicationFactor: i
-        });
-        assertEqual("UnitTestsClusterCrud", c.name());
-        assertEqual(2, c.type());
-        assertEqual(3, c.status());
-        assertTrue(c.hasOwnProperty("_id"));
-        assertEqual(i, c.properties().replicationFactor);
-        assertEqual(i, c.properties().minReplicationFactor);
-        assertEqual(i, c.properties().writeConcern);
-        db._drop("UnitTestsClusterCrud");
-        c = undefined;
+        try {
+          const c = db._create("UnitTestsClusterCrud", {
+            replicationFactor: i,
+            minReplicationFactor: i
+          });
+          assertEqual("UnitTestsClusterCrud", c.name());
+          assertEqual(2, c.type());
+          assertEqual(3, c.status());
+          assertTrue(c.hasOwnProperty("_id"));
+          assertEqual(i, c.properties().replicationFactor);
+          assertEqual(i, c.properties().minReplicationFactor);
+          assertEqual(i, c.properties().writeConcern);
+        } finally {
+          db._drop("UnitTestsClusterCrud");
+        }
       }
     },
 
@@ -213,18 +216,21 @@ function ClusterCollectionSuite () {
       // would like to test replication to the allowd maximum, but testsuite is
       // starting 2 dbservers, so setting to > 2 is currently not possible
       for ( let i = 2; i < 3; i++) {
-        let c = db._create("UnitTestsClusterCrud", {
-          replicationFactor: i,
-          minReplicationFactor: i - 1
-        });
-        assertEqual("UnitTestsClusterCrud", c.name());
-        assertEqual(2, c.type());
-        assertEqual(3, c.status());
-        assertTrue(c.hasOwnProperty("_id"));
-        assertEqual(i, c.properties().replicationFactor);
-        assertEqual(i - 1, c.properties().minReplicationFactor);
-        assertEqual(i - 1, c.properties().writeConcern);
-        db._drop("UnitTestsClusterCrud");
+        try {
+          const c = db._create("UnitTestsClusterCrud", {
+            replicationFactor: i,
+            minReplicationFactor: i - 1
+          });
+          assertEqual("UnitTestsClusterCrud", c.name());
+          assertEqual(2, c.type());
+          assertEqual(3, c.status());
+          assertTrue(c.hasOwnProperty("_id"));
+          assertEqual(i, c.properties().replicationFactor);
+          assertEqual(i - 1, c.properties().minReplicationFactor);
+          assertEqual(i - 1, c.properties().writeConcern);
+        } finally {
+          db._drop("UnitTestsClusterCrud");
+        }
       }
     },
 
@@ -384,20 +390,22 @@ function ClusterCollectionSuite () {
 
       db._drop(cn);
       db._drop(id);
-      var c1 = db._create(cn, {id: id});
+      try {
+        var c1 = db._create(cn, {id: id});
 
-      assertTypeOf("string", c1._id);
-      assertEqual(id, c1._id);
-      assertEqual(cn, c1.name());
-      assertTypeOf("number", c1.status());
+        assertTypeOf("string", c1._id);
+        assertEqual(id, c1._id);
+        assertEqual(cn, c1.name());
+        assertTypeOf("number", c1.status());
 
-      var c2 = db._collection(cn);
+        var c2 = db._collection(cn);
 
-      assertEqual(c1._id, c2._id);
-      assertEqual(c1.name(), c2.name());
-      assertEqual(c1.status(), c2.status());
-
-      db._drop(cn);
+        assertEqual(c1._id, c2._id);
+        assertEqual(c1.name(), c2.name());
+        assertEqual(c1.status(), c2.status());
+      } finally {
+        db._drop(cn);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -890,12 +898,15 @@ function ClusterCollectionSuite () {
 
     testCreateInsufficientDBServersDefault : function () {
       try {
-        db._create("bigreplication", {replicationFactor: 8});
-        fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+        try {
+          db._create("bigreplication", { replicationFactor: 8 });
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+        }
+      } finally {
+        db._drop('bigreplication');
       }
-      db._drop('bigreplication');
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -904,8 +915,11 @@ function ClusterCollectionSuite () {
 
     testCreateInsufficientDBServersIgnoreReplicationFactor : function () {
       // should not throw (just a warning)
+      try {
       db._create("bigreplication", {replicationFactor: 8}, {enforceReplicationFactor: false});
-      db._drop('bigreplication');
+      } finally{
+        db._drop('bigreplication');
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -914,12 +928,15 @@ function ClusterCollectionSuite () {
 
     testCreateInsufficientDBServersEnforceReplicationFactor : function () {
       try {
-        db._create("bigreplication", {replicationFactor: 8}, {enforceReplicationFactor: true});
-        fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+        try {
+          db._create("bigreplication", { replicationFactor: 8 }, { enforceReplicationFactor: true });
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+        }
+      } finally {
+        db._drop('bigreplication');
       }
-      db._drop('bigreplication');
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -928,45 +945,47 @@ function ClusterCollectionSuite () {
 
     testCreateReplicated : function () {
       var cn = "UnitTestsClusterCrudRepl";
-      var c = db._create(cn, { numberOfShards: 2, replicationFactor: 2});
+      try {
+        var c = db._create(cn, { numberOfShards: 2, replicationFactor: 2});
 
-      // store and delete document
-      c.save({foo: 'bar'});
-      db._query(`FOR x IN @@cn REMOVE x IN @@cn`, {'@cn': cn});
-      assertEqual(0, c.toArray().length);
+        // store and delete document
+        c.save({foo: 'bar'});
+        db._query(`FOR x IN @@cn REMOVE x IN @@cn`, {'@cn': cn});
+        assertEqual(0, c.toArray().length);
 
-      //insert
-      var cursor = db._query(`
-        let x = (FOR a IN [1]
-                 INSERT {
-                   "_key" : "ulf",
-                   "super" : "dog"
-                 } IN @@cn)
-        return x`,
-        {'@cn' : cn});
-      assertEqual(1, c.toArray().length);
+        //insert
+        var cursor = db._query(`
+          let x = (FOR a IN [1]
+                  INSERT {
+                    "_key" : "ulf",
+                    "super" : "dog"
+                  } IN @@cn)
+          return x`,
+          {'@cn' : cn});
+        assertEqual(1, c.toArray().length);
 
-      //update
-      cursor = db._query(`
-        let x = (UPDATE 'ulf' WITH {
-                   "super" : "cat"
-                 } IN @@cn RETURN NEW)
-        RETURN x`,
-        {'@cn' : cn});
-      assertEqual(1, c.toArray().length);
-      var doc = c.any();
-      assertEqual(doc.super, "cat");
-      doc = cursor.next();                // should be: cursor >>= id
-      assertEqual(doc[0].super, "cat");  // extra [] buy subquery return
+        //update
+        cursor = db._query(`
+          let x = (UPDATE 'ulf' WITH {
+                    "super" : "cat"
+                  } IN @@cn RETURN NEW)
+          RETURN x`,
+          {'@cn' : cn});
+        assertEqual(1, c.toArray().length);
+        var doc = c.any();
+        assertEqual(doc.super, "cat");
+        doc = cursor.next();                // should be: cursor >>= id
+        assertEqual(doc[0].super, "cat");  // extra [] buy subquery return
 
-      //remove
-      cursor = db._query(`
-        let x = (REMOVE 'ulf' IN @@cn)
-        return x`,
-        {'@cn' : cn});
-      assertEqual(0, c.toArray().length);
-
-      db._drop(cn);
+        //remove
+        cursor = db._query(`
+          let x = (REMOVE 'ulf' IN @@cn)
+          return x`,
+          {'@cn' : cn});
+        assertEqual(0, c.toArray().length);
+      } finally {
+          db._drop(cn);
+      }
     },
 
   };
