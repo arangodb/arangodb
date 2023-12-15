@@ -499,7 +499,7 @@ class FailedLeaderTest
     ASSERT_TRUE(obj.isObject());
     // Will be set to false if ommited, or actively se t to false
     bool oldEmpty = VelocyPackHelper::getBooleanValue(obj, "oldEmpty", false);
-    // Required to be TRUE!
+    // Required to be FALSE!
     EXPECT_FALSE(oldEmpty);
   }
 
