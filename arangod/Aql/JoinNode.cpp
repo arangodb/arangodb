@@ -444,20 +444,22 @@ ExecutionNode* JoinNode::clone(ExecutionPlan* plan,
       clonedExpressions.emplace_back(expr->clone(plan->getAst(), true));
     }
 
-    indexInfos.emplace_back(
-        IndexInfo{.collection = it.collection,
-                  .usedShard = it.usedShard,
-                  .outVariable = it.outVariable,
-                  .condition = it.condition->clone(),
-                  .index = it.index,
-                  .projections = it.projections,
-                  .usedAsSatellite = it.usedAsSatellite,
-                  .producesOutput = it.producesOutput,
-                  .isLateMaterialized = it.isLateMaterialized,
-                  .outDocIdVariable = it.outDocIdVariable,
-                  .expressions = std::move(clonedExpressions),
-                  .usedKeyFields = it.usedKeyFields,
-                  .constantFields = it.constantFields});
+    indexInfos.emplace_back(IndexInfo{
+        .collection = it.collection,
+        .usedShard = it.usedShard,
+        .outVariable = it.outVariable,
+        .condition = it.condition->clone(),
+        .filter = it.filter != nullptr ? it.filter->clone(plan->getAst(), true)
+                                       : nullptr,
+        .index = it.index,
+        .projections = it.projections,
+        .usedAsSatellite = it.usedAsSatellite,
+        .producesOutput = it.producesOutput,
+        .isLateMaterialized = it.isLateMaterialized,
+        .outDocIdVariable = it.outDocIdVariable,
+        .expressions = std::move(clonedExpressions),
+        .usedKeyFields = it.usedKeyFields,
+        .constantFields = it.constantFields});
   }
 
   auto c =
