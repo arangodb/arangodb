@@ -33,6 +33,7 @@
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/PathManagement/PathValidator.h"
+#include "Graph/PathType.h"
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
@@ -40,6 +41,7 @@
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/Types/ValidationResult.h"
 #include "Graph/algorithm-aliases.h"
+#include "Logger/LogMacros.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
@@ -391,10 +393,30 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::isDone() const {
-  if (_options.getPathType() == PathType::Type::KShortestPaths) {
-    if (!_candidatesStore.isEmpty()) {
-      return false;
-    }
+  LOG_DEVEL << "finder is done called "
+            << PathType::toString(_options.getPathType());
+
+  LOG_DEVEL << "is results empty: " << _candidatesStore.isEmpty();
+  LOG_DEVEL << "is the search done: " << searchDone();
+  LOG_DEVEL << "algorithm finished: " << _algorithmFinished;
+  LOG_DEVEL << "left: " << _left.getDiameter();
+  LOG_DEVEL << "right: " << _right.getDiameter();
+
+  if (!_candidatesStore.isEmpty()) {
+    //    LOG_DEVEL << "best candidate: " <<
+    //    std::get<0>(_candidatesStore.peek());
+  }
+
+  switch (_options.getPathType()) {
+    case PathType::Type::ShortestPath: {
+      return (_candidatesStore.isEmpty() && searchDone()) ||
+             isAlgorithmFinished();
+    } break;
+    default: {
+      if (!_candidatesStore.isEmpty()) {
+        return false;
+      }
+    } break;
   }
 
   return _candidatesStore.isEmpty() && searchDone();
@@ -479,6 +501,7 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
             result, PathResult<ProviderType, Step>::WeightType::ACTUAL_WEIGHT);
       } else {
         _resultPath.toVelocyPack(result);
+        setAlgorithmFinished();
       }
 
       return true;
