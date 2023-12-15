@@ -449,6 +449,11 @@ ExecutionNode* JoinNode::clone(ExecutionPlan* plan, bool withDependencies,
       }
     }
 
+    std::vector<std::unique_ptr<Expression>> clonedExpressions{};
+    for (auto const& expr : it.expressions) {
+      clonedExpressions.emplace_back(expr->clone(plan->getAst(), true));
+    }
+
     indexInfos.emplace_back(
         IndexInfo{.collection = it.collection,
                   .usedShard = it.usedShard,
@@ -459,7 +464,10 @@ ExecutionNode* JoinNode::clone(ExecutionPlan* plan, bool withDependencies,
                   .usedAsSatellite = it.usedAsSatellite,
                   .producesOutput = it.producesOutput,
                   .isLateMaterialized = it.isLateMaterialized,
-                  .outDocIdVariable = outDocIdVariable});
+                  .outDocIdVariable = outDocIdVariable,
+                  .expressions = std::move(clonedExpressions),
+                  .usedKeyFields = it.usedKeyFields,
+                  .constantFields = it.constantFields});
   }
 
   auto c =
@@ -564,6 +572,9 @@ void JoinNode::getVariablesUsedHere(VarSet& vars) const {
     if (it.filter != nullptr && it.filter->node() != nullptr) {
       // lookup condition
       Ast::getReferencedVariables(it.filter->node(), vars);
+    }
+    for (auto& expr : it.expressions) {
+      expr->variables(vars);
     }
   }
   for (auto const& it : _indexInfos) {
