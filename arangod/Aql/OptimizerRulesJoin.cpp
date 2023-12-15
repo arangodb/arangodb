@@ -371,10 +371,17 @@ void optimizeJoinNode(ExecutionPlan& plan, JoinNode* jn) {
 }
 
 [[nodiscard]] bool isVariableConstant(AstNode const* node,
-                                      VarSet const* knownConstVariables) {
+                                      VarSet const* knownConstVariables,
+                                      bool isVarAccessToOthersSideOutVariable) {
   TRI_ASSERT(node != nullptr);
   LOG_JOIN_OPTIMIZER_RULE << "Checking if condition is constant ("
                           << node->toString() << ")";
+
+  if (isVarAccessToOthersSideOutVariable) {
+    // Only constant if we're sure that both (lhs + rhs) are not used outVars
+    // of our first candidate.
+    return false;
+  }
 
   // TODO:  Quickly explain this section
   VarSet result;
@@ -548,7 +555,14 @@ bool isVarAccessToCandidateOutVariable(AstNode const* node,
         << lhs->toString() << ")";
     // `lhs` is using our candidates outVariable
     // Now we need to check if the other side is a constant condition.
-    auto isConstantRes = isVariableConstant(rhs, knownConstVariables);
+
+    bool isVarAccessToOthersSideOutVariable = false;
+    if (firstCandidate != nullptr) {
+      isVarAccessToOthersSideOutVariable =
+          isVarAccessToCandidateOutVariable(rhs, firstCandidate->outVariable());
+    }
+    auto isConstantRes = isVariableConstant(rhs, knownConstVariables,
+                                            isVarAccessToOthersSideOutVariable);
     if (isConstantRes) {
       LOG_JOIN_OPTIMIZER_RULE << "  => This condition is a constant condition.";
       // The other side (`rhs`) is a constant condition.
