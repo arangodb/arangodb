@@ -103,45 +103,23 @@ static std::shared_ptr<VPackBuilder> createProps(VPackSlice const& s) {
       arangodb::velocypack::Collection::remove(s, alwaysRemoveProperties));
 }
 
-namespace {
-std::array<std::string_view, 7> replication1CompareProperties{
-    StaticStrings::Schema,
-    StaticStrings::CacheEnabled,
-    StaticStrings::InternalValidatorTypes,
-    StaticStrings::ComputedValues,
-    StaticStrings::GraphSmartGraphAttribute,
-    StaticStrings::WaitForSyncString,
-    StaticStrings::WriteConcern};
-
-std::array<std::string_view, 5> replication2CompareProperties{
-    StaticStrings::Schema, StaticStrings::CacheEnabled,
-    StaticStrings::InternalValidatorTypes, StaticStrings::ComputedValues,
-    StaticStrings::GraphSmartGraphAttribute};
-}  // namespace
-
 static std::shared_ptr<VPackBuilder> compareRelevantProps(
-    VPackSlice const& first, VPackSlice const& second, bool isReplication2) {
-  std::string_view* begin;
-  std::string_view* end;
-  if (isReplication2) {
-    begin = replication2CompareProperties.data();
-    end = begin + replication2CompareProperties.size();
-  } else {
-    begin = replication1CompareProperties.data();
-    end = begin + replication1CompareProperties.size();
-  }
+    VPackSlice const& first, VPackSlice const& second) {
+  std::array<std::string_view, 7> const compareProperties{
+      StaticStrings::WaitForSyncString,
+      StaticStrings::Schema,
+      StaticStrings::WriteConcern,
+      StaticStrings::CacheEnabled,
+      StaticStrings::InternalValidatorTypes,
+      StaticStrings::ComputedValues,
+      StaticStrings::GraphSmartGraphAttribute};
   auto result = std::make_shared<VPackBuilder>();
   {
     VPackObjectBuilder b(result.get());
-    for (auto ptr = begin; ptr != end; ++ptr) {
-      auto const& property = *ptr;
-      auto planned = first.get(property);
-      auto local = second.get(property);
+    for (auto const& property : compareProperties) {
+      auto const& planned = first.get(property);
       if (planned.isNone()) {
-        if (local.isNone()) {
-          continue;
-        }
-        planned = VPackSlice::nullSlice();
+        continue;
       }
       bool isSame = true;
       // Register any change
@@ -149,7 +127,7 @@ static std::shared_ptr<VPackBuilder> compareRelevantProps(
         // special handling for schemas is required here, because the
         // format for schemas seems to have changed, and we need to
         // compare them in a more fuzzy way
-        if (!ValidatorBase::isSame(planned, local)) {
+        if (!ValidatorBase::isSame(planned, second.get(property))) {
           isSame = false;
         }
       } else if (property == StaticStrings::ComputedValues) {
@@ -160,12 +138,14 @@ static std::shared_ptr<VPackBuilder> compareRelevantProps(
           return slice.isNone() || slice.isNull() || slice.isEmptyArray();
         };
 
-        if (!isEmpty(planned) || !isEmpty(local)) {
-          if (!basics::VelocyPackHelper::equal(planned, local, false)) {
+        if (!isEmpty(planned) || !isEmpty(second.get(property))) {
+          if (!basics::VelocyPackHelper::equal(planned, second.get(property),
+                                               false)) {
             isSame = false;
           }
         }
-      } else if (!basics::VelocyPackHelper::equal(planned, local, false)) {
+      } else if (!basics::VelocyPackHelper::equal(planned, second.get(property),
+                                                  false)) {
         isSame = false;
       }
 
@@ -340,9 +320,8 @@ static void handlePlanShard(
   std::shared_ptr<ActionDescription> description;
 
   bool shouldBeLeading = serverId == leaderId;
-  bool isReplication2 = replicationVersion == replication::Version::TWO;
   bool replication2Leader =
-      isReplication2 &&
+      replicationVersion == replication::Version::TWO &&
       isReplication2Leader(shname, localLogs.value(), shardsToLogs.value());
 
   commonShrds.emplace(shname);
@@ -352,7 +331,7 @@ static void handlePlanShard(
 
     std::string_view const localLeader = lcol.get(THE_LEADER).stringView();
     bool leading = localLeader.empty();
-    auto properties = compareRelevantProps(cprops, lcol, isReplication2);
+    auto properties = compareRelevantProps(cprops, lcol);
 
     auto fullShardLabel = dbname + "/" + colname + "/" + shname;
 
