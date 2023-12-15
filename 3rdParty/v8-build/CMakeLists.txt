@@ -163,7 +163,7 @@ if (WIN32)
     -DINSPECTOR_ROOT=${V8_DIR}
     --depth=.
     -Dforce_dynamic_crt=0
-    -Dos_posix=1 # why are we actually setting this on Windows?
+    -Dos_posix=0 # TODO: verify
     -Dwerror=
     -Dembed_script=
     -Dwarmup_script=
