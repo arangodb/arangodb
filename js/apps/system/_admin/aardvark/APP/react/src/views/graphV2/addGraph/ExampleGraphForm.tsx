@@ -83,6 +83,7 @@ export const ExampleGraphForm = ({ onClose }: { onClose: () => void }) => {
       };
     });
   };
+  const version = window.versionHelper.getDocuVersion();
   return (
     <VStack spacing={4} align="stretch">
       {exampleGraphsMap.map(exampleGraphField => {
@@ -115,7 +116,7 @@ export const ExampleGraphForm = ({ onClose }: { onClose: () => void }) => {
           _hover={{
             color: "blue.800"
           }}
-          href="https://www.arangodb.com/docs/stable/graphs.html#example-graphs"
+          href={`https://docs.arangodb.com/${version}/graphs/example-graphs/`}
         >
           <Flex gap="1" alignItems="center">
             <Text>Graph Documentation</Text> <ExternalLinkIcon />

@@ -163,6 +163,20 @@ auto inspect(Inspector& f, ReplicatedOperation& x) {
           inspection::type<ReplicatedOperation::Replace>("Replace"),
           inspection::type<ReplicatedOperation::Remove>("Remove"));
 }
+
+template<typename Inspector>
+auto inspect(Inspector& f, UserTransactionOperation& x) {
+  return f.variant(x).embedded("type").alternatives(
+      inspection::type<ReplicatedOperation::Commit>("Commit"),
+      inspection::type<ReplicatedOperation::IntermediateCommit>(
+          "IntermediateCommit"),
+      inspection::type<ReplicatedOperation::Abort>("Abort"),
+      inspection::type<ReplicatedOperation::Truncate>("Truncate"),
+      inspection::type<ReplicatedOperation::Insert>("Insert"),
+      inspection::type<ReplicatedOperation::Update>("Update"),
+      inspection::type<ReplicatedOperation::Replace>("Replace"),
+      inspection::type<ReplicatedOperation::Remove>("Remove"));
+}
 }  // namespace arangodb::replication2::replicated_state::document
 
 template<>

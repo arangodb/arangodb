@@ -11,6 +11,8 @@ devel
   output string length will make the function return `null` and issue a 
   warning.
 
+* FE-406: update docs links on web UI. 
+
 * BTS-1714: Within writing AQL queries the lock timeout was accidentally
   set to 2 seconds for all write operations on followers. This could lead
   to dropped followers when an index of a large shard was finalized on an

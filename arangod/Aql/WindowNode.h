@@ -127,8 +127,8 @@ class WindowNode : public ExecutionNode {
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
