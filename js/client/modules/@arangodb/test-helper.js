@@ -635,7 +635,6 @@ exports.activateFailure = function (name) {
     roles.push("single");
   }
   
-  print(roles);
   roles.forEach(role => {
     exports.getEndpointsByType(role).forEach(ep => exports.debugSetFailAt(ep, name));
   });

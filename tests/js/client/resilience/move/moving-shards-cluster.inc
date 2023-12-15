@@ -34,23 +34,31 @@ const db = arangodb.db;
 const _ = require("lodash");
 const internal = require("internal");
 const {errors, wait} = internal;
-const {debugSetFailAt, debugCanUseFailAt, debugRemoveFailAt, debugClearFailAt, arangoClusterInfoFlush} = require('@arangodb/test-helper');
 const supervisionState = require("@arangodb/testutils/cluster-test-helper").supervisionState;
 const queryAgencyJob = require("@arangodb/testutils/cluster-test-helper").queryAgencyJob;
-const {getServersByType, deriveTestSuite, getEndpointById, getUrlById} = require('@arangodb/test-helper-common');
+const {getServersByType, deriveTestSuite, getUrlById} = require('@arangodb/test-helper-common');
 const request = require('@arangodb/request');
 const helper = require("@arangodb/testutils/replicated-logs-helper");
 const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
+const {
+  agency,
+  debugSetFailAt, 
+  arangoClusterInfoGetCollectionInfo,
+  arangoClusterInfoGetCollectionInfoCurrent,
+  debugClearFailAt, 
+  arangoClusterInfoFlush,
+  getDBServers,
+  getEndpointById,
+  getCoordinators
+} = require('@arangodb/test-helper');
 
 // in the `useData` case, use this many documents:
 const numDocuments = 1000;
 
-const dbservers = (function () {
-  return getServersByType('dbserver').map((x) => x.id);
-}());
+const dbservers = getDBServers().map(arangod => arangod.id);
 
 function delaySupervisionFailoverActions(value) {
-  let agents = global.instanceManager.arangods.filter(
+  let agents = getDBServers().filter(
     arangod => arangod.instanceRole === "agent").map(
     arangod => arangod.url);
   for (let a of agents) {
@@ -80,7 +88,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function findCollectionServers(database, collection) {
-    var cinfo = global.ArangoClusterInfo.getCollectionInfo(database, collection);
+    var cinfo = arangoClusterInfoGetCollectionInfo(database, collection);
     var shard = Object.keys(cinfo.shards)[0];
 
     if (replVersion === "2") {
@@ -111,14 +119,14 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     console.info("Waiting for synchronous replication to settle...");
     arangoClusterInfoFlush();
     for (var i = 0; i < c.length; ++i) {
-      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+      var cinfo = arangoClusterInfoGetCollectionInfo(
           database, c[i].name());
       var shards = Object.keys(cinfo.shards);
       var replFactor = cinfo.shards[shards[0]].length;
       var count = 0;
       while (++count <= 180) {
         var ccinfo = shards.map(
-            s => global.ArangoClusterInfo.getCollectionInfoCurrent(
+            s => arangoClusterInfoGetCollectionInfoCurrent(
                 database, c[i].name(), s)
         );
         var replicas = ccinfo.map(s => [s.servers.length, s.failoverCandidates.length]);
@@ -147,12 +155,12 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
   function waitForIncompleteMoveShard(database, collection, replFactor) {
     console.info("Waiting for incomplete move shard to settle...");
     arangoClusterInfoFlush();
-    var cinfo = global.ArangoClusterInfo.getCollectionInfo(database, collection);
+    var cinfo = arangoClusterInfoGetCollectionInfo(database, collection);
     var shards = Object.keys(cinfo.shards);
     var count = 0;
     while (++count <= 180) {
       var ccinfo = shards.map(
-          s => global.ArangoClusterInfo.getCollectionInfoCurrent(
+          s => arangoClusterInfoGetCollectionInfoCurrent(
               database, collection, s)
       );
       var replicas = ccinfo.map(s => [s.servers.length, s.failoverCandidates.length]);
@@ -178,11 +186,13 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
   function getCleanedOutServers() {
     var coordEndpoint =
-        global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
+        getCoordinators()[0];
 
     var request = require("@arangodb/request");
-    var endpointToURL = require("@arangodb/cluster").endpointToURL;
-    var url = endpointToURL(coordEndpoint);
+    // var endpointToURL = require("@arangodb/cluster").endpointToURL;
+    // var url = endpointToURL(coordEndpoint);
+    var url = coordEndpoint.url;
+
 
     var res;
     try {
@@ -217,10 +227,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
   function displayAgencyInformation() {
     var coordEndpoint =
-        global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
+        getCoordinators()[0];
     var request = require("@arangodb/request");
-    var endpointToURL = require("@arangodb/cluster").endpointToURL;
-    var url = endpointToURL(coordEndpoint);
+    // var endpointToURL = require("@arangodb/cluster").endpointToURL;
+    // var url = endpointToURL(coordEndpoint);
+    var url = coordEndpoint.url;
 
     var res;
     try {
@@ -255,11 +266,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       // Now check current as well:
       if (replVersion !== "2") {
         var collInfo =
-            global.ArangoClusterInfo.getCollectionInfo(dbn, c[i].name());
+            arangoClusterInfoGetCollectionInfo(dbn, c[i].name());
         var shards = collInfo.shards;
         var collInfoCurr =
             Object.keys(shards).map(
-                s => global.ArangoClusterInfo.getCollectionInfoCurrent(
+                s => arangoClusterInfoGetCollectionInfoCurrent(
                     dbn, c[i].name(), s).servers);
         // quick hack here, if the list of servers has length one, we map it to -1
         // thus the check below will not return false in the case replFact === 1
@@ -346,11 +357,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
           if (servers.indexOf(id) === -1) {
             // Now check current as well:
             /*var collInfo =
-                global.ArangoClusterInfo.getCollectionInfo(dbn, c[i].name());
+                arangoClusterInfoGetCollectionInfo(dbn, c[i].name());
             var shards = collInfo.shards;
             var collInfoCurr =
                 Object.keys(shards).map(
-                  s => global.ArangoClusterInfo.getCollectionInfoCurrent(
+                  s => arangoClusterInfoGetCollectionInfoCurrent(
                     dbn, c[i].name(), s).servers);
             var idxs = collInfoCurr.map(l => l.indexOf(id));
             ok = true;
@@ -383,10 +394,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
   function cleanOutServer(id, dontwait = false) {
     var coordEndpoint =
-        global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
+        getCoordinators()[0];
     var request = require("@arangodb/request");
-    var endpointToURL = require("@arangodb/cluster").endpointToURL;
-    var url = endpointToURL(coordEndpoint);
+    // var endpointToURL = require("@arangodb/cluster").endpointToURL;
+    // var url = endpointToURL(coordEndpoint);
+    var url = coordEndpoint.url;
     var body = {"server": id};
     var result;
     try {
@@ -433,10 +445,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
   function resignLeadership(id, undoMoves = false) {
     var coordEndpoint =
-        global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
+        getCoordinators()[0];
     var request = require("@arangodb/request");
-    var endpointToURL = require("@arangodb/cluster").endpointToURL;
-    var url = endpointToURL(coordEndpoint);
+    // var endpointToURL = require("@arangodb/cluster").endpointToURL;
+    // var url = endpointToURL(coordEndpoint);
+    var url = coordEndpoint.url;
     var body = {"server": id, undoMoves};
     var result;
     try {
@@ -476,10 +489,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
   function shrinkCluster(toNum) {
     var coordEndpoint =
-        global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
+        getCoordinators()[0];
     var request = require("@arangodb/request");
-    var endpointToURL = require("@arangodb/cluster").endpointToURL;
-    var url = endpointToURL(coordEndpoint);
+    // var endpointToURL = require("@arangodb/cluster").endpointToURL;
+    // var url = endpointToURL(coordEndpoint);
+    var url = coordEndpoint.url;
     var body = {"numberOfDBServers": toNum};
     let res = {};
     try {
@@ -502,10 +516,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
   function resetCleanedOutServers() {
     var coordEndpoint =
-        global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
+        getCoordinators()[0];
     var request = require("@arangodb/request");
-    var endpointToURL = require("@arangodb/cluster").endpointToURL;
-    var url = endpointToURL(coordEndpoint);
+    // var endpointToURL = require("@arangodb/cluster").endpointToURL;
+    // var url = endpointToURL(coordEndpoint);
+    var url = coordEndpoint.url;
     var numberOfDBServers = dbservers.length;
     var body = {"cleanedServers": [], "numberOfDBServers": numberOfDBServers};
     try {
@@ -549,10 +564,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
   function moveShard(database, collection, shard, fromServer, toServer, dontwait, expectedResult) {
     var coordEndpoint =
-        global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
+        getCoordinators()[0];
     var request = require("@arangodb/request");
-    var endpointToURL = require("@arangodb/cluster").endpointToURL;
-    var url = endpointToURL(coordEndpoint);
+    // var endpointToURL = require("@arangodb/cluster").endpointToURL;
+    // var url = endpointToURL(coordEndpoint);
+    var url = coordEndpoint.url;
     var body = {database, collection, shard, fromServer, toServer};
     var result;
     try {
@@ -597,10 +613,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
   function maintenanceMode(mode) {
     console.log("Switching supervision maintenance " + mode);
     var coordEndpoint =
-        global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
+        getCoordinators()[0];
     var request = require("@arangodb/request");
-    var endpointToURL = require("@arangodb/cluster").endpointToURL;
-    var url = endpointToURL(coordEndpoint);
+    // var endpointToURL = require("@arangodb/cluster").endpointToURL;
+    // var url = endpointToURL(coordEndpoint);
+    var url = coordEndpoint.url;
     var req;
     try {
       req = request({
@@ -625,10 +642,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
   function cancelAgencyJob(id) {
     console.log("Killing job " + id);
     var coordEndpoint =
-        global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
+        getCoordinators()[0];
     var request = require("@arangodb/request");
-    var endpointToURL = require("@arangodb/cluster").endpointToURL;
-    var url = endpointToURL(coordEndpoint);
+    // var endpointToURL = require("@arangodb/cluster").endpointToURL;
+    // var url = endpointToURL(coordEndpoint);
+    var url = coordEndpoint.url;
     var req;
     for (let i = 0; i < 10; i++) {
       try {
@@ -854,7 +872,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var servers = findCollectionServers(dbn, c[0].name());
       var fromServer = servers[1];
       var toServer = findServerNotOnList(servers);
-      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+      var cinfo = arangoClusterInfoGetCollectionInfo(
           dbn, c[0].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(moveShard(dbn, c[0]._id, shard, fromServer, toServer, false, "Finished"));
@@ -872,7 +890,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var servers = findCollectionServers(dbn, c[0].name());
       var fromServer = servers[0];
       var toServer = findServerNotOnList(servers);
-      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+      var cinfo = arangoClusterInfoGetCollectionInfo(
           dbn, c[0].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(moveShard(dbn, c[0]._id, shard, fromServer, toServer, false, "Finished"));
@@ -891,7 +909,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var servers = findCollectionServers(dbn, c[1].name());
       var fromServer = servers[0];
       var toServer = findServerNotOnList(servers);
-      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+      var cinfo = arangoClusterInfoGetCollectionInfo(
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
@@ -910,7 +928,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var servers = findCollectionServers(dbn, c[1].name());
       var fromServer = servers[1];
       var toServer = findServerNotOnList(servers);
-      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+      var cinfo = arangoClusterInfoGetCollectionInfo(
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
@@ -929,7 +947,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var servers = findCollectionServers(dbn, c[1].name());
       var fromServer = servers[2];
       var toServer = findServerNotOnList(servers);
-      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+      var cinfo = arangoClusterInfoGetCollectionInfo(
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
@@ -948,7 +966,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var servers = findCollectionServers(dbn, c[1].name());
       var fromServer = servers[0];
       var toServer = findServerNotOnList(servers);
-      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+      var cinfo = arangoClusterInfoGetCollectionInfo(
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
@@ -967,7 +985,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var servers = findCollectionServers(dbn, c[1].name());
       var fromServer = servers[0];
       var toServer = servers[1];
-      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+      var cinfo = arangoClusterInfoGetCollectionInfo(
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
@@ -1130,15 +1148,15 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var servers = findCollectionServers(dbn, c[1].name());
       var fromServer = servers[0];
       var toServer = findServerNotOnList(servers);
-      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+      var cinfo = arangoClusterInfoGetCollectionInfo(
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(maintenanceMode("on"));
       assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, true, "Finished"));
-      var first = global.ArangoAgency.transient([["/arango/Supervision/State"]])[0].arango.Supervision.State, state;
+      var first = agency.call("transient", [["/arango/Supervision/State"]])[0].arango.Supervision.State, state;
       var waitUntil = new Date().getTime() + 30.0 * 1000;
       while (true) {
-        state = global.ArangoAgency.transient([["/arango/Supervision/State"]])[0].arango.Supervision.State;
+        state = agency.call("transient", [["/arango/Supervision/State"]])[0].arango.Supervision.State;
         assertEqual(state.Timestamp, first.Timestamp);
         wait(5.0);
         if (new Date().getTime() > waitUntil) {
@@ -1146,7 +1164,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         }
       }
       assertTrue(maintenanceMode("off"));
-      state = global.ArangoAgency.transient([["/arango/Supervision/State"]])[0].arango.Supervision.State;
+      state =agency.call("transient", [["/arango/Supervision/State"]])[0].arango.Supervision.State;
       assertTrue(state.Timestamp !== first.Timestamp);
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
@@ -1172,6 +1190,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var leader = servers[0];
       var fromServer = servers[1];
       var leaderUrl = getUrlById(leader);
+      print(leaderUrl)
       // Switch off something in the maintenance on the leader to detect
       // followers which are not in Plan. This means that the moveShard
       // below will leave the old server in Current/servers and
@@ -1180,7 +1199,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         debugSetFailAt(leaderUrl, "Maintenance::doNotRemoveUnPlannedFollowers");
 
         var toServer = findServerNotOnList(servers);
-        var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+        var cinfo = arangoClusterInfoGetCollectionInfo(
             dbn, c[1].name());
         var shard = Object.keys(cinfo.shards)[0];
         assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
@@ -1217,7 +1236,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var servers = findCollectionServers(dbn, c[1].name());
       var fromServer = servers[0];
       var toServer = findServerNotOnList(servers);
-      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+      var cinfo = arangoClusterInfoGetCollectionInfo(
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(maintenanceMode("on"));
@@ -1253,7 +1272,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         var servers = findCollectionServers(dbn, c[0].name());
         var fromServer = servers[0];
         var toServer = findServerNotOnList(servers);
-        var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+        var cinfo = arangoClusterInfoGetCollectionInfo(
             dbn, c[0].name());
         var shard = Object.keys(cinfo.shards)[0];
         let result = moveShard(dbn, c[0]._id, shard, fromServer, toServer, true, "Finished");
@@ -1287,7 +1306,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       assertTrue(waitForSynchronousReplication(dbn));
       var servers = findCollectionServers(dbn, c[1].name());
       var fromServer = servers[0];
-      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+      var cinfo = arangoClusterInfoGetCollectionInfo(
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(maintenanceMode("on"));
@@ -1325,7 +1344,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         assertTrue(waitForSynchronousReplication(dbn));
         var servers = findCollectionServers(dbn, c[0].name());
         var fromServer = servers[0];
-        var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+        var cinfo = arangoClusterInfoGetCollectionInfo(
             dbn, c[0].name());
         var shard = Object.keys(cinfo.shards)[0];
         let result = cleanOutServer(fromServer, true);

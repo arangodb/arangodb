@@ -29,7 +29,11 @@ var analyzers = require("@arangodb/analyzers");
 const expect = require('chai').expect;
 const wait = require('internal').wait;
 var internal = require('internal');
-const {arangoClusterInfoFlush} = require("@arangodb/test-helper");
+const {
+  arangoClusterInfoFlush,
+  arangoClusterInfoGetAnalyzersRevision,
+  agency
+} = require("@arangodb/test-helper");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -41,7 +45,7 @@ function repairAnalyzersRevisionTestSuite () {
     let tries = 0;
     while(true) {
       arangoClusterInfoFlush();
-      let revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
+      let revision = arangoClusterInfoGetAnalyzersRevision(dbName);
       assertTrue(revision.hasOwnProperty("revision"));
       assertTrue(revision.hasOwnProperty("buildingRevision"));
       if ((revision.revision === revisionNumber && 
@@ -62,7 +66,7 @@ function repairAnalyzersRevisionTestSuite () {
   }
 
   function waitForAllAgencyJobs() {
-    const prefix = global.ArangoAgency.prefix();
+    const prefix = arango.POST("/_admin/execute", `return global.ArangoAgency.prefix()`);
     const paths = [
       "Target/ToDo/",
       "Target/Pending/",
@@ -77,7 +81,7 @@ function repairAnalyzersRevisionTestSuite () {
 
     while (unfinishedJobs > 0 && ! timeout) {
       const duration = (Date.now() - start) / 1000;
-      const result = global.ArangoAgency.read([paths]);
+      const result = agency.call("read", [paths]);
       const target = result[0][prefix]["Target"];
 
       timeout = duration > maxWaitTime;
@@ -120,7 +124,7 @@ function repairAnalyzersRevisionTestSuite () {
         db._createDatabase(dbName + i);
         db._useDatabase(dbName + i);
         revisionNumber = 0;
-        let revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName + i);
+        let revision = arangoClusterInfoGetAnalyzersRevision(dbName + i);
         assertTrue(revision.hasOwnProperty("revision"));
         assertTrue(revision.hasOwnProperty("buildingRevision"));
         assertFalse(revision.hasOwnProperty("coordinator"));
@@ -140,9 +144,9 @@ function repairAnalyzersRevisionTestSuite () {
           coordinator: coordinator,
           coordinatorRebootId: rebootId + 1};
       for (let i = 0; i < n; i++) {
-        global.ArangoAgency.set("Plan/Analyzers/" + dbName + i, value);
+        agency.set("Plan/Analyzers/" + dbName + i, value);
       }
-      global.ArangoAgency.increaseVersion("Plan/Version");
+      agency.increaseVersion("Plan/Version");
 
       // Repair analyzers revision
       expect(waitForAllAgencyJobs(), 'Timeout while waiting for agency jobs to finish');
@@ -171,9 +175,9 @@ function repairAnalyzersRevisionTestSuite () {
           coordinator: coordinator,
           coordinatorRebootId: rebootId + 1};
       for (let i = 0; i < n; i++) {
-        global.ArangoAgency.set("Plan/Analyzers/" + dbName + i, value2);
+        agency.set("Plan/Analyzers/" + dbName + i, value2);
       }
-      global.ArangoAgency.increaseVersion("Plan/Version");
+      agency.increaseVersion("Plan/Version");
 
       // Repair analyzers revision
       expect(waitForAllAgencyJobs(), 'Timeout while waiting for agency jobs to finish');

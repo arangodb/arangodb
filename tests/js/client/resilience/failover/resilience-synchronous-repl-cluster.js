@@ -34,10 +34,7 @@ const wait = require("internal").wait;
 const continueExternal = require("internal").continueExternal;
 const {
   agency, 
-  getDBServers,
-  arangoClusterInfoGetCollectionInfo,
-  arangoClusterInfoGetCollectionInfoCurrent,
-  getEndpointById,
+  getDBServers
 } = require("@arangodb/test-helper");
 
 ////////////////////////////////////////////////////////////////////////////////
