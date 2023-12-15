@@ -77,7 +77,7 @@ function replicationIntermediateCommitsSuite() {
     },
     
     testFollowerDoesIntermediateCommits: function () {
-      if (db._properties().replicationVersion == "2") {
+      if (db._properties().replicationVersion === "2") {
         // this test is only relevant for replication 1
         return;
       }
