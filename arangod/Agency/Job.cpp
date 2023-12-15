@@ -1043,6 +1043,19 @@ void Job::addPreconditionJobStillInPending(Builder& pre,
   }
 }
 
+void Job::addPreconditionClonesStillExist(Builder& pre,
+                                          std::string_view database,
+                                          std::vector<shard_t> const& clones) {
+  for (auto const& shard : clones) {
+    pre.add(VPackValue(StringUtils::concatT("/Plan/Collections/", database, "/",
+                                            shard.collection)));
+    {
+      VPackObjectBuilder guard(&pre);
+      pre.add("oldEmpty", VPackValue(false));
+    }
+  }
+}
+
 std::string Job::checkServerHealth(Node const& snapshot,
                                    std::string const& server) {
   auto status = snapshot.hasAsString(healthPrefix + server + "/Status");

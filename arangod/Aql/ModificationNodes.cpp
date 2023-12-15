@@ -162,24 +162,13 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
 }
 
 /// @brief clone ExecutionNode recursively
-ExecutionNode* RemoveNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                 bool withProperties) const {
-  auto outVariableOld = _outVariableOld;
-  auto inVariable = _inVariable;
-
-  if (withProperties) {
-    if (_outVariableOld != nullptr) {
-      outVariableOld =
-          plan->getAst()->variables()->createVariable(outVariableOld);
-    }
-    inVariable = plan->getAst()->variables()->createVariable(inVariable);
-  }
-
+ExecutionNode* RemoveNode::clone(ExecutionPlan* plan,
+                                 bool withDependencies) const {
   auto c = std::make_unique<RemoveNode>(plan, _id, collection(), _options,
-                                        inVariable, outVariableOld);
+                                        _inVariable, _outVariableOld);
   ModificationNode::cloneCommon(c.get());
 
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::move(c), withDependencies);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -244,30 +233,14 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
 }
 
 /// @brief clone ExecutionNode recursively
-ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                 bool withProperties) const {
-  auto outVariableOld = _outVariableOld;
-  auto outVariableNew = _outVariableNew;
-  auto inVariable = _inVariable;
-
-  if (withProperties) {
-    if (_outVariableNew != nullptr) {
-      outVariableNew =
-          plan->getAst()->variables()->createVariable(outVariableNew);
-    }
-    if (_outVariableOld != nullptr) {
-      outVariableOld =
-          plan->getAst()->variables()->createVariable(outVariableOld);
-    }
-    inVariable = plan->getAst()->variables()->createVariable(inVariable);
-  }
-
-  auto c =
-      std::make_unique<InsertNode>(plan, _id, collection(), _options,
-                                   inVariable, outVariableOld, outVariableNew);
+ExecutionNode* InsertNode::clone(ExecutionPlan* plan,
+                                 bool withDependencies) const {
+  auto c = std::make_unique<InsertNode>(plan, _id, collection(), _options,
+                                        _inVariable, _outVariableOld,
+                                        _outVariableNew);
   ModificationNode::cloneCommon(c.get());
 
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::move(c), withDependencies);
 }
 
 void InsertNode::replaceVariables(
@@ -422,35 +395,14 @@ void RemoveNode::replaceAttributeAccess(ExecutionNode const* self,
 size_t RemoveNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 /// @brief clone ExecutionNode recursively
-ExecutionNode* UpdateNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                 bool withProperties) const {
-  auto outVariableOld = _outVariableOld;
-  auto outVariableNew = _outVariableNew;
-  auto inKeyVariable = _inKeyVariable;
-  auto inDocVariable = _inDocVariable;
-
-  if (withProperties) {
-    if (_outVariableOld != nullptr) {
-      outVariableOld =
-          plan->getAst()->variables()->createVariable(outVariableOld);
-    }
-    if (_outVariableNew != nullptr) {
-      outVariableNew =
-          plan->getAst()->variables()->createVariable(outVariableNew);
-    }
-    if (inKeyVariable != nullptr) {
-      inKeyVariable =
-          plan->getAst()->variables()->createVariable(inKeyVariable);
-    }
-    inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
-  }
-
+ExecutionNode* UpdateNode::clone(ExecutionPlan* plan,
+                                 bool withDependencies) const {
   auto c = std::make_unique<UpdateNode>(plan, _id, collection(), _options,
-                                        inDocVariable, inKeyVariable,
-                                        outVariableOld, outVariableNew);
+                                        _inDocVariable, _inKeyVariable,
+                                        _outVariableOld, _outVariableNew);
   ModificationNode::cloneCommon(c.get());
 
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::move(c), withDependencies);
 }
 
 size_t UpdateNode::getMemoryUsedBytes() const { return sizeof(*this); }
@@ -503,35 +455,14 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
 }
 
 /// @brief clone ExecutionNode recursively
-ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                  bool withProperties) const {
-  auto outVariableOld = _outVariableOld;
-  auto outVariableNew = _outVariableNew;
-  auto inKeyVariable = _inKeyVariable;
-  auto inDocVariable = _inDocVariable;
-
-  if (withProperties) {
-    if (_outVariableOld != nullptr) {
-      outVariableOld =
-          plan->getAst()->variables()->createVariable(outVariableOld);
-    }
-    if (_outVariableNew != nullptr) {
-      outVariableNew =
-          plan->getAst()->variables()->createVariable(outVariableNew);
-    }
-    if (inKeyVariable != nullptr) {
-      inKeyVariable =
-          plan->getAst()->variables()->createVariable(inKeyVariable);
-    }
-    inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
-  }
-
+ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan,
+                                  bool withDependencies) const {
   auto c = std::make_unique<ReplaceNode>(plan, _id, collection(), _options,
-                                         inDocVariable, inKeyVariable,
-                                         outVariableOld, outVariableNew);
+                                         _inDocVariable, _inKeyVariable,
+                                         _outVariableOld, _outVariableNew);
   ModificationNode::cloneCommon(c.get());
 
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::move(c), withDependencies);
 }
 
 size_t ReplaceNode::getMemoryUsedBytes() const { return sizeof(*this); }
@@ -648,31 +579,14 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
 }
 
 /// @brief clone ExecutionNode recursively
-ExecutionNode* UpsertNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                 bool withProperties) const {
-  auto outVariableNew = _outVariableNew;
-  auto inDocVariable = _inDocVariable;
-  auto insertVariable = _insertVariable;
-  auto updateVariable = _updateVariable;
-
-  if (withProperties) {
-    if (_outVariableNew != nullptr) {
-      outVariableNew =
-          plan->getAst()->variables()->createVariable(outVariableNew);
-    }
-    inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
-    insertVariable =
-        plan->getAst()->variables()->createVariable(insertVariable);
-    updateVariable =
-        plan->getAst()->variables()->createVariable(updateVariable);
-  }
-
+ExecutionNode* UpsertNode::clone(ExecutionPlan* plan,
+                                 bool withDependencies) const {
   auto c = std::make_unique<UpsertNode>(
-      plan, _id, collection(), _options, inDocVariable, insertVariable,
-      updateVariable, outVariableNew, _isReplace, _canReadOwnWrites);
+      plan, _id, collection(), _options, _inDocVariable, _insertVariable,
+      _updateVariable, _outVariableNew, _isReplace, _canReadOwnWrites);
   ModificationNode::cloneCommon(c.get());
 
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::move(c), withDependencies);
 }
 
 void UpsertNode::replaceVariables(

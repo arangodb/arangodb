@@ -348,6 +348,14 @@ void RocksDBDumpContext::extendLifetime() noexcept {
   _expires.store(now + _options.ttl);
 }
 
+bool RocksDBDumpContext::applyFilter(
+    velocypack::Slice const& documentSlice) const {
+  return std::ranges::all_of(_options.filters.conditions, [&](auto&& filter) {
+    return basics::VelocyPackHelper::equal(documentSlice.get(filter.path),
+                                           filter.value.slice(), true);
+  });
+}
+
 std::shared_ptr<RocksDBDumpContext::Batch const> RocksDBDumpContext::next(
     std::uint64_t batchId, std::optional<std::uint64_t> lastBatch) {
   std::unique_lock guard(_batchesMutex);
@@ -440,6 +448,10 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
     auto documentSlice = velocypack::Slice(
         reinterpret_cast<std::uint8_t const*>(it->value().data()));
 
+    if (!applyFilter(documentSlice)) {
+      continue;
+    }
+
     auto storedSlice = [&]() -> VPackSlice {
       if (_options.projections) {
         projectionsBuilder.clear();
@@ -501,7 +513,7 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
     }
   }
 
-  if (batch != nullptr) {
+  if (batch != nullptr && batch->count() > 0) {
     // push remainder out
     batch->close();
     TRI_ASSERT(batch->byteSize() > 0);

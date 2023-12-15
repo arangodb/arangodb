@@ -285,6 +285,13 @@ class FailedLeaderTest
       }
     }
     {
+      // Assert that collection still exists
+      auto path =
+          "/arango/Plan/Collections/" + si.database + "/" + si.collection;
+      ASSERT_TRUE(pre.hasKey(path)) << path << pre.toJson();
+      AssertOldNotEmptyObject(pre.get(path));
+    }
+    {
       // Section: Protection against lost plan updates:
       if (!si.isFollower) {
         // Plan, only the leader needs to be unmodified. The Followers can only
@@ -486,6 +493,14 @@ class FailedLeaderTest
     bool oldEmpty = VelocyPackHelper::getBooleanValue(obj, "oldEmpty", false);
     // Required to be TRUE!
     EXPECT_TRUE(oldEmpty);
+  }
+
+  void AssertOldNotEmptyObject(VPackSlice obj) {
+    ASSERT_TRUE(obj.isObject());
+    // Will be set to false if ommited, or actively se t to false
+    bool oldEmpty = VelocyPackHelper::getBooleanValue(obj, "oldEmpty", false);
+    // Required to be FALSE!
+    EXPECT_FALSE(oldEmpty);
   }
 
   void AssertOldIsString(VPackSlice obj, std::string const& expected) {
