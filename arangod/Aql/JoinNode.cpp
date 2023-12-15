@@ -479,6 +479,9 @@ void JoinNode::replaceVariables(
     if (it.filter != nullptr) {
       it.filter->replaceVariables(replacements);
     }
+    for (auto const& expr : it.expressions) {
+      expr->replaceVariables(replacements);
+    }
   }
 }
 
