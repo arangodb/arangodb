@@ -20,6 +20,7 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+#include <velocypack/Slice.h>
 #include "Agency/TransactionBuilder.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -716,10 +717,15 @@ struct TransactionBuilder {
             velocypack::serialize(builder, it.value);
           });
     }
-    // Special handling for Schema, which can be nullopt and should be removed
+    // Special handling for Schema, which can be nullopt, in which case if
+    // should be set to null.
+    // Note: we cannot _remove_ it, because the maintenance ignores properties
+    // that are not present in the plan.
     if (!action.spec.schema.has_value()) {
-      tmp = std::move(tmp).remove(basics::StringUtils::concatT(
-          "/arango/Plan/Collections/", database, "/", action.cid, "/schema"));
+      tmp = std::move(tmp).set(
+          basics::StringUtils::concatT("/arango/Plan/Collections/", database,
+                                       "/", action.cid, "/schema"),
+          VPackSlice::nullSlice());
     }
     env = std::move(tmp)
               .inc("/arango/Plan/Version")
