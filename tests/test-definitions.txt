@@ -48,7 +48,7 @@ shell_client_traffic !mac priority=250 parallelity=1 single suffix=ssl-http -- h
 shell_client_traffic !mac priority=250 parallelity=1 single suffix=ssl-http2 -- --http2 true --protocol ssl
 shell_client_traffic !mac priority=250 parallelity=1 single suffix=ssl-vst -- --vst true --protocol ssl
 
-shell_client_aql buckets=17 priority=250  single suffix=http -- --http true
+shell_client_aql size=medium buckets=17 priority=250  single suffix=http -- --http true
 shell_client_aql buckets=17 !mac priority=500  single suffix=http2 -- --http2 true
 shell_client_aql buckets=17 !mac priority=750  single suffix=vst -- --vst true
 shell_client_aql buckets=17 !mac priority=1000 single enterprise suffix=encrypt -- --encryptionAtRest true
