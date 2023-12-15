@@ -676,23 +676,24 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 
     if (!_candidatesStore.isEmpty()) {
       auto bestWeight = std::get<0>(_candidatesStore.peek());
-      // if the sum of the diameters of left and right search are bigger
-      // than the best candidate, there will not be a better candidate found.
+      // if the sum of the diameters of left and right search are
+      // bigger than the best candidate, there will not be a better
+      // candidate found.
       //
-      // A simple shortest path search is done *now* (and not earlier!);
+      // A simple shortest path search is done *now* (and not
+      // earlier!);
       //
       // It is *required* to continue search for a shortest path even
       // after having found *some* path between the two searches:
       // There might be improvements on the weight in paths that are
-      // found later. Improvements are impossible only if the sum of
-      // the diameters of the two searches is smaller than the current
+      // found later. Improvements are impossible only if the sum of the
+      // diameters of the two searches is bigger or equal to the current
       // best found path.
       //
-      // For a K-SHORTEST-PATH search all candidates that have lower weight
-      // than the sum of the two diameters are valid shortest paths that must
-      // be returned.
-      // K-SHORTEST-PATH search has to continue until the queues on both
-      // sides are empty
+      // For a K-SHORTEST-PATH search all candidates that have lower
+      // weight than the sum of the two diameters are valid shortest
+      // paths that must be returned.  K-SHORTEST-PATH search has to
+      // continue until the queues on both sides are empty
 
       auto leftDiameter = _left.getDiameter();
       auto rightDiameter = _right.getDiameter();
