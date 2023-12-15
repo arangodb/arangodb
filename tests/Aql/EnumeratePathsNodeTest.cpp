@@ -94,20 +94,13 @@ TEST_F(EnumeratePathsNodeTest, clone_should_preserve_isSmart) {
   auto opts = makeOptions();
   EnumeratePathsNode original = createNode(id, std::move(opts));
   ASSERT_EQ(original.id(), id);
-  for (bool keepPlan : std::vector<bool>{false, true}) {
-    for (bool value : std::vector<bool>{false, true}) {
-      auto p = keepPlan ? plan() : otherPlan(true);
-      original.setIsSmart(value);
-      auto clone = ExecutionNode::castTo<EnumeratePathsNode*>(
-          original.clone(p, false, !keepPlan));
-      if (keepPlan) {
-        EXPECT_NE(clone->id(), original.id()) << "Clone did keep the id";
-      } else {
-        EXPECT_EQ(clone->id(), original.id()) << "Clone did not keep the id";
-      }
-      EXPECT_EQ(original.isSmart(), value);
-      EXPECT_EQ(clone->isSmart(), value);
-    }
+  for (bool value : std::vector<bool>{false, true}) {
+    original.setIsSmart(value);
+    auto clone = ExecutionNode::castTo<EnumeratePathsNode*>(
+        original.clone(plan(), false));
+    EXPECT_NE(clone->id(), original.id());
+    EXPECT_EQ(original.isSmart(), value);
+    EXPECT_EQ(clone->isSmart(), value);
   }
 }
 
@@ -116,20 +109,13 @@ TEST_F(EnumeratePathsNodeTest, clone_should_preserve_isDisjoint) {
   auto opts = makeOptions();
   EnumeratePathsNode original = createNode(id, std::move(opts));
   ASSERT_EQ(original.id(), id);
-  for (bool keepPlan : std::vector<bool>{false, true}) {
-    for (bool value : std::vector<bool>{false, true}) {
-      auto p = keepPlan ? plan() : otherPlan(true);
-      original.setIsDisjoint(value);
-      auto clone = ExecutionNode::castTo<EnumeratePathsNode*>(
-          original.clone(p, false, !keepPlan));
-      if (keepPlan) {
-        EXPECT_NE(clone->id(), original.id()) << "Clone did keep the id";
-      } else {
-        EXPECT_EQ(clone->id(), original.id()) << "Clone did not keep the id";
-      }
-      EXPECT_EQ(original.isDisjoint(), value);
-      EXPECT_EQ(clone->isDisjoint(), value);
-    }
+  for (bool value : std::vector<bool>{false, true}) {
+    original.setIsDisjoint(value);
+    auto clone = ExecutionNode::castTo<EnumeratePathsNode*>(
+        original.clone(plan(), false));
+    EXPECT_NE(clone->id(), original.id());
+    EXPECT_EQ(original.isDisjoint(), value);
+    EXPECT_EQ(clone->isDisjoint(), value);
   }
 }
 

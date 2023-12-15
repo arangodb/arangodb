@@ -285,7 +285,7 @@ EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan& plan,
       _fromCondition(nullptr),
       _toCondition(nullptr),
       _distributeVariable(nullptr) {
-  other.enumeratePathsCloneHelper(plan, *this, false);
+  other.enumeratePathsCloneHelper(plan, *this);
 }
 
 void EnumeratePathsNode::setStartInVariable(Variable const* inVariable) {
@@ -727,8 +727,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
 }
 
 ExecutionNode* EnumeratePathsNode::clone(ExecutionPlan* plan,
-                                         bool withDependencies,
-                                         bool withProperties) const {
+                                         bool withDependencies) const {
   TRI_ASSERT(!_optionsBuilt);
   auto oldOpts = static_cast<ShortestPathOptions*>(options());
   std::unique_ptr<BaseOptions> tmp =
@@ -739,23 +738,17 @@ ExecutionNode* EnumeratePathsNode::clone(ExecutionPlan* plan,
       _inTargetVariable, _targetVertexId, std::move(tmp), _graphObj,
       _distributeVariable);
 
-  enumeratePathsCloneHelper(*plan, *c, withProperties);
+  enumeratePathsCloneHelper(*plan, *c);
 
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::move(c), withDependencies);
 }
 
-void EnumeratePathsNode::enumeratePathsCloneHelper(ExecutionPlan& plan,
-                                                   EnumeratePathsNode& c,
-                                                   bool withProperties) const {
-  graphCloneHelper(plan, c, withProperties);
+void EnumeratePathsNode::enumeratePathsCloneHelper(
+    ExecutionPlan& plan, EnumeratePathsNode& c) const {
+  graphCloneHelper(plan, c);
   if (usesPathOutVariable()) {
-    auto pathOutVariable = _pathOutVariable;
-    if (withProperties) {
-      pathOutVariable =
-          plan.getAst()->variables()->createVariable(pathOutVariable);
-    }
-    TRI_ASSERT(pathOutVariable != nullptr);
-    c.setPathOutput(pathOutVariable);
+    TRI_ASSERT(_pathOutVariable != nullptr);
+    c.setPathOutput(_pathOutVariable);
   }
 
   // Temporary Filter Objects

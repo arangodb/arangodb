@@ -180,8 +180,8 @@ class RemoveNode : public ModificationNode {
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
@@ -241,8 +241,8 @@ class InsertNode : public ModificationNode {
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
@@ -361,8 +361,8 @@ class UpdateNode : public UpdateReplaceNode {
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 };
 
 /// @brief class ReplaceNode
@@ -392,8 +392,8 @@ class ReplaceNode : public UpdateReplaceNode {
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 };
 
 /// @brief class UpsertNode
@@ -422,8 +422,8 @@ class UpsertNode : public ModificationNode {
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
