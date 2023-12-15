@@ -269,6 +269,9 @@ struct Job {
                                        velocypack::Value value);
   static void addPreconditionJobStillInPending(velocypack::Builder& pre,
                                                std::string const& jobId);
+  static void addPreconditionClonesStillExist(
+      velocypack::Builder& pre, std::string_view database,
+      std::vector<shard_t> const& clones);
   static std::string checkServerHealth(Node const& snapshot,
                                        std::string const& server);
 };
