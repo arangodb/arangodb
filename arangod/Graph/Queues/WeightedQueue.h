@@ -159,6 +159,16 @@ class WeightedQueue {
     }
   }
 
+  bool containsStep(Step const& step) const {
+    for (auto& qstep : _queue) {
+      if (qstep.getVertex().getID() == step.getVertex().getID() and
+          qstep.getEdge().getID().equals(step.getEdge().getID())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
  private:
   struct WeightedComparator {
     bool operator()(Step const& a, Step const& b) {

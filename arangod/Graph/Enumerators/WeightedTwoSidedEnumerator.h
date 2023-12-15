@@ -30,10 +30,12 @@
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 
 #include <limits>
 #include <set>
 #include <deque>
+#include <unordered_set>
 
 namespace arangodb {
 
@@ -213,6 +215,7 @@ class WeightedTwoSidedEnumerator {
     PathValidatorType _validator;
     containers::FlatHashMap<typename Step::VertexType, std::vector<size_t>>
         _visitedNodes;
+
     Direction _direction;
     GraphOptions _graphOptions;
     double _diameter = -std::numeric_limits<double>::infinity();

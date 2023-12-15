@@ -257,6 +257,28 @@ auto WeightedTwoSidedEnumerator<
   ensureQueueHasProcessableElement();
   auto tmp = _queue.pop();
 
+  TRI_ASSERT(_queue.isEmpty());
+
+  auto posPrevious = _interior.append(std::move(tmp));
+  auto& step = _interior.getStepReference(posPrevious);
+  ValidationResult res = _validator.validatePath(step);
+
+  if (!res.isFiltered()) {
+    candidates.append(std::make_tuple(0.0, step, step));
+  }
+}
+
+template<class QueueType, class PathStoreType, class ProviderType,
+         class PathValidator>
+auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
+                                PathValidator>::Ball::
+    computeNeighbourhoodOfNextVertex(Ball& other, CandidatesStore& candidates)
+        -> void {
+  ensureQueueHasProcessableElement();
+  auto tmp = _queue.pop();
+
+  LOG_DEVEL << "queue length " << _queue.size();
+
   // if the other side has explored this vertex, don't add it again
   if (!other.hasBeenVisited(tmp)) {
     auto posPrevious = _interior.append(std::move(tmp));
@@ -274,10 +296,12 @@ auto WeightedTwoSidedEnumerator<
       _provider.expand(step, posPrevious, [&](Step n) -> void {
         // TODO: maybe the pathStore could be asked whether a vertex has been
         // visited?
-        if (other.hasBeenVisited(n)) {
-          other.matchResultsInShell(n, candidates, _validator);
+        if (!_queue.containsStep(n)) {
+          if (other.hasBeenVisited(n)) {
+            other.matchResultsInShell(n, candidates, _validator);
+          }
+          _queue.append(std::move(n));
         }
-        _queue.append(std::move(n));
       });
     }
   }
@@ -431,16 +455,17 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 
   _left.reset(source, 0);
 
-  // TODO: this is not ideal; here's the issue: If source == target there is no
-  // search to be done as there is only *at most* one shortest path between a
-  // vertex and itself: the path of length and weight 0. If the vertex does not
-  // fulfill the global vertex condition, there is none. So the global vertex
-  // condition has to be evaluated! This is why the _left ball is used here.
+  // TODO: this is not ideal; here's the issue: If source == target there is
+  // no search to be done as there is only *at most* one shortest path between
+  // a vertex and itself: the path of length and weight 0. If the vertex does
+  // not fulfill the global vertex condition, there is none. So the global
+  // vertex condition has to be evaluated! This is why the _left ball is used
+  // here.
   //
   // Admittedly, this choice is arbitrary: in our context a path is a sequence
   // of edges that does not repeat vertices. Otherwise this path search would
-  // have to return all cycles based at the source == target vertex. This can be
-  // implemented using a OneSidedEnumerator if ever requested.
+  // have to return all cycles based at the source == target vertex. This can
+  // be implemented using a OneSidedEnumerator if ever requested.
   if (source == target) {
     _singleton = true;
     _right.clear();

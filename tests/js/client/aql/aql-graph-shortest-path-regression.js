@@ -3928,8 +3928,9 @@ function shortestPathTerminationRegressionTest() {
       const query = `
            RETURN SUM(FOR v, e IN OUTBOUND SHORTEST_PATH "${vName}/TPA" TO "${vName}/SFO" GRAPH "${graphName}" OPTIONS {weightAttribute: "Distance"}
                       RETURN e.Distance)`;
-      const result = db._query(query).toArray();
-      assertEqual(result, [ 2393 ], "Expecting weight 2393");
+      const result = db._query(query);
+      console.error(JSON.stringify(result.getExtra()));
+      assertEqual(result.toArray(), [ 2393 ], "Expecting weight 2393");
     },
   };
 }
