@@ -438,19 +438,14 @@ auto DocumentFollowerState::applyEntries(
           }
           auto index = res.get();
           if (index.has_value()) {
+            auto const& stream = self->getStream();
             // The follower might have resigned, so we need to be careful when
-            // accessing the stream.
-            auto releaseRes = basics::catchVoidToResult([&] {
-              // TODO - is this getStream call actually safe?
-              // The comment above indicates that we might get an exception if
-              // we are already resigned, but getStream does not seem to handle
-              // that case, but instead simply contains an assertion
-              auto const& stream = self->getStream();
-              stream->release(index.value());
-            });
+            // releasing an index on the stream
+            auto releaseRes = basics::catchVoidToResult(
+                [&] { stream->release(index.value()); });
             if (releaseRes.fail()) {
               LOG_CTX("10f07", ERR, self->loggerContext)
-                  << "Failed to get stream! " << releaseRes;
+                  << "Failed to release index " << releaseRes;
             }
           }
           return Result{};
