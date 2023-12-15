@@ -699,6 +699,61 @@ const IndexPrimaryJoinTestSuite = function () {
         assertEqual(second.x, 1);
       });
       assertEqual(qResult.length, 1);
+    },
+
+    testJoinFixedValuesTrippletJoinDefaultSharding: function () {
+      const collectionA = db._createDocumentCollection('A');
+      collectionA.ensureIndex({type: "persistent", fields: ["x", "y", "z", "w"], unique: false});
+
+      const collectionB = db._createDocumentCollection('B');
+      collectionB.ensureIndex({type: "persistent", fields: ["x", "y", "z", "w"], unique: false});
+
+      const collectionC = db._createDocumentCollection('C');
+      collectionC.ensureIndex({type: "persistent", fields: ["x", "y", "z", "w"], unique: false});
+
+      for (let i = 1; i < 6; i++) {
+        collectionA.insert({
+          x: i,
+          y: i,
+        });
+        collectionB.insert({
+          x: i,
+          y: i,
+          z: i
+        });
+      }
+
+      const queryStringComplex = ` 
+         FOR doc1 IN A
+           SORT doc1.x
+           FOR doc2 IN B
+             FOR doc3 in C
+               FILTER doc1.x == doc2.y   // candidate[0]: key {0} | candidate[1]: key {1}
+               FILTER doc1.x == doc3.x   // candidate[0]: key {0} | candidate[2]: key {0}
+               FILTER doc2.x == 5        // candidate[1]: const {0}
+               return [doc1, doc2, doc3]
+      `;
+
+      // candidate[0]: key {0} const {}
+      // candidate[1]: key {1} const {0}
+      // candidate[2]: key {0}
+      // => should be optimized.
+
+      let qResult;
+      if (isCluster) {
+        // Cannot be optimized in case shards are randomly distributed
+        qResult = runAndCheckQuery(queryStringComplex, "generic", null, true);
+      } else {
+        qResult = runAndCheckQuery(queryStringComplex, "generic");
+      }
+      qResult.forEach((docs) => {
+        let first = docs[0];
+        let second = docs[1];
+        assertEqual(first.x, 1, "Wrong value for 'x' in first document found");
+        assertEqual(first.y, second.y);
+        assertEqual(second.x, 1);
+      });
+      assertEqual(qResult.length, 0);
     }
   };
 };

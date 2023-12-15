@@ -93,7 +93,7 @@ struct IndexOffsets {
   bool insertKeyField(size_t position) {
     if (std::find(keyFields.begin(), keyFields.end(), position) !=
         keyFields.end()) {
-      return false;
+      return true;
     }
     keyFields.emplace_back(position);
     return true;
@@ -371,7 +371,7 @@ void optimizeJoinNode(ExecutionPlan& plan, JoinNode* jn) {
 }
 
 [[nodiscard]] bool isVariableConstant(AstNode const* node,
-                                      VarSet const& knownConstVariables) {
+                                      VarSet const* knownConstVariables) {
   LOG_JOIN_OPTIMIZER_RULE << "Checking if condition is constant ("
                           << node->toString() << ")";
 
@@ -379,15 +379,20 @@ void optimizeJoinNode(ExecutionPlan& plan, JoinNode* jn) {
   VarSet result;
   Ast::getReferencedVariables(node, result);
 
-  // Print names of the known constant variables
-  LOG_JOIN_OPTIMIZER_RULE << "Known constant variables:";
-  for (auto const& var : knownConstVariables) {
-    LOG_JOIN_OPTIMIZER_RULE << "  - " << var->name;
+  if (result.empty()) {
+    return true;
   }
 
-  for (auto const& var : result) {
-    if (!knownConstVariables.contains(var)) {
-      return false;
+  // Print names of the known constant variables
+  LOG_JOIN_OPTIMIZER_RULE << "Known constant variables:";
+  if (knownConstVariables != nullptr) {
+    for (auto const& var : *knownConstVariables) {
+      LOG_JOIN_OPTIMIZER_RULE << "  - " << var->name;
+    }
+    for (auto const& var : result) {
+      if (!knownConstVariables->contains(var)) {
+        return false;
+      }
     }
   }
 
@@ -530,7 +535,7 @@ bool isVarAccessToCandidateOutVariable(AstNode const* node,
                                           AstNode const* lhs,
                                           AstNode const* rhs,
                                           IndicesOffsets& indicesOffsets,
-                                          VarSet const& knownConstVariables) {
+                                          VarSet const* knownConstVariables) {
   // Note: This method will always be called twice to guarantee that both
   // directions of the binary eq are checked (lhs == rhs and rhs == lhs).
 
@@ -609,7 +614,7 @@ bool isVarAccessToCandidateOutVariable(AstNode const* node,
                                    IndexNode const* firstCandidate,
                                    AstNode const* eqRoot,
                                    IndicesOffsets& indicesOffsets,
-                                   VarSet const& knownConstVariables) {
+                                   VarSet const* knownConstVariables) {
   TRI_ASSERT(eqRoot->numMembers() == 2);
   auto const* leftMember = eqRoot->getMember(0);
   auto const* rightMember = eqRoot->getMember(1);
@@ -637,7 +642,7 @@ bool analyseNodeTypeOperatorNaryAnd(IndexNode const* currentCandidate,
                                     IndexNode const* firstCandidate,
                                     AstNode const* member,
                                     IndicesOffsets& indicesOffsets,
-                                    VarSet const& knownConstVariables) {
+                                    VarSet const* knownConstVariables) {
   TRI_ASSERT(member->type == NODE_TYPE_OPERATOR_NARY_AND);
   LOG_JOIN_OPTIMIZER_RULE << "FOUND: NODE_TYPE_OPERATOR_NARY_AND";
   bool eligible = false;
@@ -671,7 +676,7 @@ bool analyseNodeTypeOperatorNaryAnd(IndexNode const* currentCandidate,
 bool checkCandidateEligibleForAdvancedJoin(
     IndexNode* currentCandidate, IndexNode* firstCandidate,
     AstNode const* candidateConditionRoot, IndicesOffsets& indicesOffsets,
-    VarSet const& knownConstVariables) {
+    VarSet const* knownConstVariables) {
   bool eligible = false;
 
   if (candidateConditionRoot->type == NODE_TYPE_OPERATOR_NARY_OR) {
@@ -723,7 +728,7 @@ std::pair<bool, IndicesOffsets> checkCandidatesEligible(
                             << ")";
     if (candidate == candidates.front()) {
       auto const* root = candidate->condition()->root();
-      // auto const& firstCandidateID = candidate->id();
+
       if (root != nullptr) {
         // Build-up the known variables for the first index node.
         // This operation is only needed for the first index node, because
@@ -740,7 +745,7 @@ std::pair<bool, IndicesOffsets> checkCandidatesEligible(
         LOG_JOIN_OPTIMIZER_RULE
             << "Calling CandidateEligible check for first candidate";
         bool eligible = checkCandidateEligibleForAdvancedJoin(
-            candidate, nullptr, root, indicesOffsets, *knownConstVariables);
+            candidate, nullptr, root, indicesOffsets, knownConstVariables);
 
         if (!eligible) {
           LOG_JOIN_OPTIMIZER_RULE
@@ -766,56 +771,21 @@ std::pair<bool, IndicesOffsets> checkCandidatesEligible(
                                    "does not match";
         return {false, {}};
       }
-      root = root->getMember(0);
-      if (root == nullptr || root->type != NODE_TYPE_OPERATOR_NARY_AND ||
-          root->numMembers() != 1) {
-        if (indicesOffsets.empty()) {
-          // TODO: Find a better place for this check.
-          LOG_JOIN_OPTIMIZER_RULE
-              << "II. (NARY_AND) Not eligible for index join: "
-                 "index node's lookup condition "
-                 "does not match";
-          return {false, {}};
-        }
-      }
-      root = root->getMember(0);
-      if (root == nullptr || root->type != NODE_TYPE_OPERATOR_BINARY_EQ ||
-          root->numMembers() != 2) {
-        LOG_JOIN_OPTIMIZER_RULE << "III. (BINARY_EQ) Not eligible for index "
-                                   "join: index node's lookup "
-                                   "condition does not match";
-        return {false, {}};
-      }
 
-      if (!indicesOffsets.empty()) {
-        TRI_ASSERT(indicesOffsets.contains(candidates[0]->id()));
-        // If we've found at least one condition in the first index node, we
-        // need to check if the current index node matches the order of
-        // conditions and the variables.
+      root = root->getMember(0);
+      LOG_JOIN_OPTIMIZER_RULE
+          << "Calling CandidateEligible check for other candidate ("
+          << candidate->id() << ")";
+      bool eligible = checkCandidateEligibleForAdvancedJoin(
+          candidate, candidates[0], candidate->condition()->root(),
+          indicesOffsets, knownConstVariables);
+
+      if (!eligible) {
         LOG_JOIN_OPTIMIZER_RULE
-            << "Calling CandidateEligible check for other candidate ("
-            << candidate->id() << ")";
-
-        bool eligible = checkCandidateEligibleForAdvancedJoin(
-            candidate, candidates[0], candidate->condition()->root(),
-            indicesOffsets, *knownConstVariables);
-
-        if (!eligible) {
-          LOG_JOIN_OPTIMIZER_RULE
-              << "IndexNode's outer loop has a condition, but inner loop "
-                 "does not match, due to "
-                 "(checkCandidateEligibleForAdvancedJoin)";
-          return {false, {}};
-        }
-      } else {
-        auto* lhs = root->getMember(0);
-        auto* rhs = root->getMember(1);
-        if (!joinConditionMatches(plan, lhs, rhs, candidate, candidates[0]) &&
-            !joinConditionMatches(plan, lhs, rhs, candidates[0], candidate)) {
-          LOG_JOIN_OPTIMIZER_RULE << "IndexNode's lookup condition does not "
-                                     "match due to (joinConditionMatches)";
-          return {false, {}};
-        }
+            << "IndexNode's outer loop has a condition, but inner loop "
+               "does not match, due to "
+               "(checkCandidateEligibleForAdvancedJoin)";
+        return {false, {}};
       }
     }
 
@@ -870,10 +840,14 @@ std::pair<bool, IndicesOffsets> checkCandidatesEligible(
     for (auto const& [candidateId, indexOffset] : indicesOffsets) {
       // if constants found, we need to use the computed offsets
       auto& idxOffsetRef = indexOffset;
-      LOG_JOIN_OPTIMIZER_RULE_OFFSETS << "Candidate: " << candidateId;
+      LOG_JOIN_OPTIMIZER_RULE_OFFSETS << "==> Candidate: " << candidateId
+                                      << " <==";
       IndexStreamOptions opts;
       opts.usedKeyFields = idxOffsetRef.getKeyFields();
       LOG_JOIN_OPTIMIZER_RULE_OFFSETS << "Keys";
+      if (opts.usedKeyFields.empty()) {
+        LOG_JOIN_OPTIMIZER_RULE << "-> { EMPTY }";
+      }
       for (auto const& kk : opts.usedKeyFields) {
         LOG_JOIN_OPTIMIZER_RULE_OFFSETS << "-> {" << kk << "}";
       }
@@ -881,6 +855,9 @@ std::pair<bool, IndicesOffsets> checkCandidatesEligible(
       LOG_JOIN_OPTIMIZER_RULE_OFFSETS << "Constants";
       for (auto const& oo : opts.constantFields) {
         LOG_JOIN_OPTIMIZER_RULE_OFFSETS << "-> {" << oo << "}";
+      }
+      if (opts.constantFields.empty()) {
+        LOG_JOIN_OPTIMIZER_RULE << "-> { EMPTY }";
       }
 
       for (auto cIndexNode : candidates) {
