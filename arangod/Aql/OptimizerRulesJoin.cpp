@@ -372,6 +372,7 @@ void optimizeJoinNode(ExecutionPlan& plan, JoinNode* jn) {
 
 [[nodiscard]] bool isVariableConstant(AstNode const* node,
                                       VarSet const* knownConstVariables) {
+  TRI_ASSERT(node != nullptr);
   LOG_JOIN_OPTIMIZER_RULE << "Checking if condition is constant ("
                           << node->toString() << ")";
 
@@ -721,7 +722,7 @@ std::pair<bool, IndicesOffsets> checkCandidatesEligible(
     ExecutionPlan& plan,
     containers::SmallVector<IndexNode*, 8> const& candidates) {
   IndicesOffsets indicesOffsets = {};
-  VarSet const* knownConstVariables;
+  VarSet const* knownConstVariables = nullptr;
 
   for (auto* candidate : candidates) {
     LOG_JOIN_OPTIMIZER_RULE << "==> Checking candidate: (" << candidate->id()
