@@ -76,12 +76,12 @@ class RemoteNode final : public DistributeConsumerNode {
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final {
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final {
     return cloneHelper(
         std::make_unique<RemoteNode>(plan, _id, _vocbase, _server,
                                      getDistributeId(), _queryId),
-        withDependencies, withProperties);
+        withDependencies);
   }
 
   /// @brief estimateCost
@@ -144,8 +144,8 @@ class ScatterNode : public ExecutionNode {
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override;
@@ -213,8 +213,8 @@ class DistributeNode final : public ScatterNode,
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
@@ -292,12 +292,12 @@ class GatherNode final : public ExecutionNode {
   size_t getMemoryUsedBytes() const override final;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final {
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final {
     auto other =
         std::make_unique<GatherNode>(plan, _id, _sortmode, _parallelism);
     other->setConstrainedSortLimit(constrainedSortLimit());
-    return cloneHelper(std::move(other), withDependencies, withProperties);
+    return cloneHelper(std::move(other), withDependencies);
   }
 
   /// @brief creates corresponding ExecutionBlock
@@ -400,13 +400,13 @@ class SingleRemoteOperationNode final : public ExecutionNode,
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final {
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final {
     auto n = std::make_unique<SingleRemoteOperationNode>(
         plan, _id, _mode, _replaceIndexNode, _key, collection(), _options,
         _inVariable, _outVariable, _outVariableOld, _outVariableNew);
     CollectionAccessingNode::cloneInto(*n);
-    return cloneHelper(std::move(n), withDependencies, withProperties);
+    return cloneHelper(std::move(n), withDependencies);
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
