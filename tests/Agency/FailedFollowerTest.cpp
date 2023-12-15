@@ -885,6 +885,22 @@ TEST_F(FailedFollowerTest, job_should_handle_distributeshardslike) {
     EXPECT_TRUE(preconditions.get("/arango/Supervision/Shards/s99")
                     .get("oldEmpty")
                     .getBool() == true);
+    EXPECT_TRUE(
+        preconditions
+            .get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1")
+            .get("oldEmpty")
+            .getBool() == false);
+    EXPECT_TRUE(
+        preconditions
+            .get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2")
+            .get("oldEmpty")
+            .getBool() == false);
+
+    EXPECT_TRUE(
+        preconditions
+            .get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION)
+            .get("oldEmpty")
+            .getBool() == false);
 
     return fakeTransResult;
   });

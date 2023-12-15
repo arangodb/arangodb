@@ -337,38 +337,29 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
       &engine, this, registerInfos, std::move(infos));
 }
 
-ExecutionNode* JoinNode::clone(ExecutionPlan* plan, bool withDependencies,
-                               bool withProperties) const {
+ExecutionNode* JoinNode::clone(ExecutionPlan* plan,
+                               bool withDependencies) const {
   std::vector<IndexInfo> indexInfos;
   indexInfos.reserve(_indexInfos.size());
 
   for (auto const& it : _indexInfos) {
-    auto outVariable = it.outVariable;
-    auto outDocIdVariable = it.outDocIdVariable;
-    if (withProperties) {
-      outVariable = plan->getAst()->variables()->createVariable(outVariable);
-      if (outDocIdVariable) {
-        outDocIdVariable =
-            plan->getAst()->variables()->createVariable(outDocIdVariable);
-      }
-    }
     indexInfos.emplace_back(
         IndexInfo{.collection = it.collection,
                   .usedShard = it.usedShard,
-                  .outVariable = outVariable,
+                  .outVariable = it.outVariable,
                   .condition = it.condition->clone(),
                   .index = it.index,
                   .projections = it.projections,
                   .usedAsSatellite = it.usedAsSatellite,
                   .producesOutput = it.producesOutput,
                   .isLateMaterialized = it.isLateMaterialized,
-                  .outDocIdVariable = outDocIdVariable});
+                  .outDocIdVariable = it.outDocIdVariable});
   }
 
   auto c =
       std::make_unique<JoinNode>(plan, _id, std::move(indexInfos), _options);
 
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::move(c), withDependencies);
 }
 
 /// @brief replaces variables in the internals of the execution node
