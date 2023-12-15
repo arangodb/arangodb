@@ -35,7 +35,8 @@ if (LINUX OR DARWIN)
   if (USE_JEMALLOC_PROF)
       if (USE_LIBUNWIND)
           SET(JEMALLOC_PROF "--enable-prof" "--enable-prof-libunwind" "--with-static-libunwind=${LIBUNWIND_LIB}")
-          SET(JEMALLOC_C_FLAGS "${CMAKE_C_FLAGS} -I${LIBUNWIND_HOME}/include")
+          SET(JEMALLOC_C_FLAGS "${CMAKE_C_FLAGS} -isystem ${LIBUNWIND_HOME}/include")
+          SET(MY_CPPFLAGS "-isystem ${LIBUNWIND_HOME}/include")
       else ()
           SET(JEMALLOC_PROF "--enable-prof")
       endif()
@@ -57,6 +58,7 @@ if (LINUX OR DARWIN)
                   CXX=${JEMALLOC_CXX_TMP}
                   CFLAGS=${JEMALLOC_C_FLAGS}
                   CXXFLAGS=${CMAKE_CXX_FLAGS}
+                  CPPFLAGS=${MY_CPPFLAGS}
                   --prefix=${CMAKE_CURRENT_BINARY_DIR}
                   --with-malloc-conf=${JEMALLOC_CONFIG}
                   --with-version=${JEMALLOC_VERSION}-0-g0

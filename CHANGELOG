@@ -1,6 +1,8 @@
 v3.11.7 (XXXX-XX-XX)
 --------------------
 
+* Fix cmake setup for jemalloc library for the case of memory profiling.
+
 * BTS-1714: Within writing AQL queries the lock timeout was accidentally
   set to 2 seconds for all write operations on followers. This could lead
   to dropped followers when an index of a large shard was finalized on an
