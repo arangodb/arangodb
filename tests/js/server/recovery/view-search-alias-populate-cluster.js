@@ -150,15 +150,17 @@ function recoverySuite() {
       }
       let figures;
       for (let i = 0; i < 100; ++i) {
-        require("internal").sleep(0.5);
         figures = db._collection('UnitTestsRecoveryDummy').getIndexes(true, true)
           .find(e => e.name === "i1")
           .figures;
         if (figures.numDocs > 500) {
           break;
         }
+        require("internal").sleep(0.5);
       }
-      assertEqual(figures.numDocs, 501);
+      // Note: This is okay to be larger, as those are not consolidated docs, which can be the cause during recovery.
+      // The number live docs is the really visible amount of documents.s
+      assertTrue(figures.numDocs >= 501, `Not enough documents seen ${figures.numDocs} >= 501`);
       assertEqual(figures.numLiveDocs, 501);
       assertEqual(figures.numPrimaryDocs, 501);
       assertTrue(figures.numSegments >= 1);
