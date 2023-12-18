@@ -30,6 +30,8 @@
 const jsunity = require("jsunity");
 
 const internal = require("internal");
+const { getEndpointById } = require('@arangodb/test-helper');
+const request = require('@arangodb/request');
 const db = internal.db;
 const arangodb = require("@arangodb");
 const ERRORS = arangodb.errors;
@@ -40,12 +42,12 @@ const waitInClusterUntil = func => {
   if (!isCluster) {
     return;
   }
-  let tries = 10;
+  let tries = 15;
   while (tries-- > 0) {
-    internal.wait(0.2, false);
     if (func()) {
       return;
     }
+    internal.wait(0.2, false);
   }
 };
 
@@ -505,7 +507,18 @@ function ValidationBasicsSuite() {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
       }
       testCollection.properties({"schema": {}});
-      waitInClusterUntil(() => testCollection.properties().schema == null);
+      waitInClusterUntil(() => {
+        const shardList = testCollection.shards(true);
+        for (const [shard, servers] of Object.entries(shardList)) {
+          const endpoint = getEndpointById(servers[0]);
+          const resp = request.get(`${endpoint}/_api/collection/${shard}/properties`);
+          assertEqual(resp.statusCode, 200);
+          if (resp.json.schema != null) {
+            return false;
+          }
+        }
+        return true;
+      });
       assertEqual(testCollection.properties().schema, null);
       testCollection.insert(badDoc);
       assertEqual(1, testCollection.count());
@@ -519,7 +532,18 @@ function ValidationBasicsSuite() {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
       }
       testCollection.properties({"schema": null});
-      waitInClusterUntil(() => testCollection.properties().schema == null);
+      waitInClusterUntil(() => {
+        const shardList = testCollection.shards(true);
+        for (const [shard, servers] of Object.entries(shardList)) {
+          const endpoint = getEndpointById(servers[0]);
+          const resp = request.get(`${endpoint}/_api/collection/${shard}/properties`);
+          assertEqual(resp.statusCode, 200);
+          if (resp.json.schema != null) {
+            return false;
+          }
+        }
+        return true;
+      });
       assertEqual(testCollection.properties().schema, null);
       testCollection.insert(badDoc);
       assertEqual(1, testCollection.count());
