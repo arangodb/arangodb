@@ -34,23 +34,23 @@ function optimizerRuleZkd2dIndexTestSuite() {
   let col;
 
   return {
-    setUpAll: function () {
+
+    testSimplePrefix: function () {
       col = db._create(colName);
-      col.ensureIndex({type: 'zkd', name: 'zkdIndex', fields: ['x', 'y'], fieldValueTypes: 'double', storedValues: ["z"], prefixFields: ["stringValue"]});
+      col.ensureIndex({
+        type: 'zkd',
+        name: 'zkdIndex',
+        fields: ['x', 'y'],
+        fieldValueTypes: 'double',
+        storedValues: ["z"],
+        prefixFields: ["stringValue"],
+      });
 
       db._query(aql`
         FOR str IN ["foo", "bar", "baz"]
           FOR i IN 1..100
             INSERT {x: i, y: i, z: i, stringValue: str} INTO ${col}
       `);
-    },
-
-    tearDownAll: function () {
-      col.drop();
-    },
-
-
-    testSimplePrefix: function () {
 
       const res = db._query(aql`
         FOR doc IN ${col}
@@ -62,6 +62,39 @@ function optimizerRuleZkd2dIndexTestSuite() {
       assertEqual(result.length, 3);
       assertEqual(_.uniq(result.map(([a, b]) => b)), ["foo"]);
       assertEqual(result.map(([a, b]) => a).sort(), [5, 6, 7]);
+      col.drop();
+    },
+
+    testMultiPrefix: function () {
+      col = db._create(colName);
+      col.ensureIndex({
+        type: 'zkd',
+        name: 'zkdIndex',
+        fields: ['x', 'y'],
+        fieldValueTypes: 'double',
+        storedValues: ["z"],
+        prefixFields: ["stringValue", "value"],
+      });
+
+      db._query(aql`
+        FOR str IN ["foo", "bar", "baz"]
+        FOR v IN [1, 19, -2]
+          FOR i IN 1..100
+            INSERT {x: i, y: i, z: i, stringValue: str, value: v} INTO ${col}
+      `);
+
+      const res = db._query(aql`
+        FOR doc IN ${col}
+          FILTER doc.x >= 5 && doc.y <= 7 && doc.stringValue == "foo" && doc.value == -2
+          return [doc.z, doc.stringValue, doc.value]
+      `);
+
+      const result = res.toArray();
+      assertEqual(result.length, 3);
+      assertEqual(_.uniq(result.map(([a, b, c]) => b)), ["foo"]);
+      assertEqual(_.uniq(result.map(([a, b, c]) => c)), [-2]);
+      assertEqual(result.map(([a, b, c]) => a).sort(), [5, 6, 7]);
+      col.drop();
     }
 
   };
