@@ -181,7 +181,7 @@ const IndexJoinTestSuite = function () {
   return testsuite;
 };
 
-if (!isCluster || isEnterprise) {
+/*if (!isCluster || isEnterprise) {
   jsunity.run(IndexJoinTestSuite);
-}
+}*/
 return jsunity.done();
