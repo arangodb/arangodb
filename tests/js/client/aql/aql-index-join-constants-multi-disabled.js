@@ -36,7 +36,7 @@ const IndexJoinTestSuite = function () {
     prototype = prototype || "prototype";
     if (isCluster) {
       if (!db[prototype]) {
-        db._create(prototype, {numberOfShards: 3});
+        db._create(prototype, {numberOfShards: 3, shardKeys: shardKeys});
       }
       return db._create(name, {numberOfShards: 3, shardKeys: shardKeys, distributeShardsLike: prototype});
     } else {
@@ -46,7 +46,7 @@ const IndexJoinTestSuite = function () {
 
   const databaseName = "IndexJoinDB";
 
-  const keys = ["x", "y", "z", "w"];
+  const keys = ["x", "y", "z"];
 
   const testsuite = {
     setUpAll: function () {
@@ -55,6 +55,7 @@ const IndexJoinTestSuite = function () {
 
       for (const name of ["A", "B", "C"]) {
         createCollection(name, keys).ensureIndex({type: "persistent", fields: keys});
+        console.warn(db[name].properties());
       }
     },
 
