@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-320: Database name maximum length validation during input.
+
 * Added an optimizer rule `optimize-enumerate-paths` that pulls filters
 	of the form
    FILTER pathVar.vertices[* RETURN ...] ALL == value
