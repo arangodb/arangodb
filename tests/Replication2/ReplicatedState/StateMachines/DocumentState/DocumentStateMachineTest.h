@@ -26,6 +26,7 @@
 //   "explicit specialization of 'std::char_traits<unsigned char>' after
 //   instantiation"
 // errors.
+#include "Replication2/Mocks/SchedulerMocks.h"
 #include "utils/string.hpp"
 
 #include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
@@ -86,6 +87,8 @@ struct DocumentStateMachineTest : testing::Test {
       arangodb::tests::mocks::MockServer();
   MockVocbase vocbaseMock = MockVocbase(
       mockServer.server(), MockDocumentStateHandlersFactory::kDbName, 2);
+  std::shared_ptr<IScheduler> schedulerMock =
+      std::make_shared<test::SyncScheduler>();
 
   auto createDocumentEntry(
       TransactionId tid,
@@ -129,7 +132,7 @@ struct DocumentStateMachineTest : testing::Test {
         handlersFactoryMock, transactionManagerMock);
     return std::make_shared<DocumentFollowerStateWrapper>(
         factory.constructCore(vocbaseMock, globalId, coreParams),
-        handlersFactoryMock);
+        handlersFactoryMock, schedulerMock);
   }
 
   void SetUp() override {
