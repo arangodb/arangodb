@@ -293,7 +293,7 @@ function replicationAutoRepairSuite() {
 }
 
 let ep = getEndpointsByType('dbserver');
-if (ep.length && debugCanUseFailAt(ep[0])) {
+if (ep.length && debugCanUseFailAt(ep[0]) && db._properties().replicationVersion !== "2") {
   // only execute if failure tests are available
   jsunity.run(replicationAutoRepairSuite);
 }
