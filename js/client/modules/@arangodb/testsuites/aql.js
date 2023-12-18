@@ -32,6 +32,7 @@ const functionsDocumentation = {
   'shell_client': 'shell client tests',
   'shell_client_multi': 'shell client tests to be run in multiple protocol environments',
   'shell_client_aql': 'AQL tests in the client',
+  'shell_server_only': 'server specific tests',
   'shell_client_transaction': 'transaction tests',
   'shell_client_replication2_recovery': 'replication2 cluster recovery tests',
   'shell_client_traffic': 'traffic metrics tests',
@@ -55,6 +56,7 @@ const testPaths = {
   'shell_api_multi': [ tu.pathForTesting('client/shell/api/multi')],
   'shell_client': [ tu.pathForTesting('common/shell'), tu.pathForTesting('client/shell')],
   'shell_client_multi': [ tu.pathForTesting('common/shell/multi'), tu.pathForTesting('client/shell/multi')],
+  'shell_server_only': [ tu.pathForTesting('server/shell') ],
   'shell_client_aql': [ tu.pathForTesting('client/aql'), tu.pathForTesting('common/aql') ],
   'shell_client_transaction': [ tu.pathForTesting('client/shell/transaction')],
   'shell_client_replication2_recovery': [ tu.pathForTesting('client/shell/transaction/replication2_recovery')],
@@ -231,6 +233,21 @@ function shellClientMulti (options) {
   return rc;
 }
 
+//////////////////////////////////////////////////////////////////////////////
+// @brief TEST: shell_server_only
+//////////////////////////////////////////////////////////////////////////////
+
+function shellServerOnly (options) {
+  let testCases = tu.scanTestPaths(testPaths.shell_server_only, options);
+
+  testCases = tu.splitBuckets(options, testCases);
+
+  let opts = ensureServers(options, 3);
+  let rc = new tu.runOnArangodRunner(opts, 'shell_server_only', {}).run(testCases);
+  options.cleanup = options.cleanup && opts.cleanup;
+  return rc;
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: shell_client_aql
 // //////////////////////////////////////////////////////////////////////////////
@@ -332,6 +349,7 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['shell_client'] = shellClient;
   testFns['shell_client_multi'] = shellClientMulti;
   testFns['shell_client_aql'] = shellClientAql;
+  testFns['shell_server_only'] = shellServerOnly;
   testFns['shell_client_transaction'] = shellClientTransaction;
   testFns['shell_client_replication2_recovery'] = shellClientReplication2Recovery;
   testFns['shell_client_traffic'] = shellClientTraffic;
