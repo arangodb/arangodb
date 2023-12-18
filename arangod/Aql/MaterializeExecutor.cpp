@@ -46,10 +46,10 @@ MaterializeRocksDBExecutor::MaterializeRocksDBExecutor(Fetcher&, Infos& infos)
   TRI_ASSERT(_collection != nullptr);
 }
 
-std::tuple<ExecutorState, MaterializeStats, AqlCall>
+std::tuple<ExecutorState, NoStats, AqlCall>
 MaterializeRocksDBExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                         OutputAqlItemRow& output) {
-  MaterializeStats stats;
+  NoStats stats;
 
   AqlCall upstreamCall{};
   upstreamCall.fullCount = output.getClientCall().fullCount;
@@ -264,8 +264,8 @@ MaterializeSearchExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 }
 
 std::tuple<ExecutorState, MaterializeStats, size_t, AqlCall>
-MaterializeExecutorBase::skipRowsRange(AqlItemBlockInputRange& inputRange,
-                                       AqlCall& call) {
+MaterializeSearchExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                         AqlCall& call) {
   size_t skipped = 0;
 
   // hasDataRow may only occur during fullCount due to previous overfetching

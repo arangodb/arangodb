@@ -799,7 +799,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   MultipleRemoteModificationExecutor, SortExecutor,
                   // only available in Enterprise
                   arangodb::iresearch::OffsetMaterializeExecutor,
-                  MaterializeSearchExecutor, MaterializeRocksDBExecutor>) ||
+                  MaterializeSearchExecutor>) ||
           IsSearchExecutor<Executor>::value,
       "Unexpected executor for SkipVariants::EXECUTOR");
 
