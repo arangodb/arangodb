@@ -140,6 +140,10 @@ endif()
 message(STATUS "WINDOWS VERSION: ${ARANGODB_WINDOWS_UPSTREAM}")
 
 if (MSVC)
+  option(USE_CCACHE
+    "whether we want to use ccache"
+    OFF
+  )
   option(USE_CLCACHE_MODE
     "whether we want to use CLCACHE-specific build options"
     OFF
@@ -942,6 +946,39 @@ if (MSVC)
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1"                             CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2"                             CACHE INTERNAL "C++ release flags")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2"                         CACHE INTERNAL "C++ release with debug info flags")
+
+  if(USE_CCACHE)
+    find_program(CCACHE ccache REQUIRED)
+
+    if(CCACHE)
+      message(STATUS "Using ccache: ${CCACHE}")
+
+      file(COPY_FILE
+        ${CCACHE} ${CMAKE_BINARY_DIR}/cl.exe
+        ONLY_IF_DIFFERENT)
+
+      set(CMAKE_VS_GLOBALS
+        "CLToolExe=cl.exe"
+        "CLToolPath=${CMAKE_BINARY_DIR}"
+        "TrackFileAccess=false"
+        "UseMultiToolTask=true"
+        "DebugInformationFormat=OldStyle"
+      )
+
+      if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+        string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
+      elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+        string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+        string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+      elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+        string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+        string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+      endif()
+    else(CCACHE)
+      message(STATUS "CCACHE NOT FOUND")
+    endif(CCACHE)
+  endif(USE_CCACHE)
 
   if (USE_CLCACHE_MODE)
     set(CMAKE_VS_GLOBALS "TrackFileAccess=false")
