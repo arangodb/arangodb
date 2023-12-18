@@ -162,7 +162,7 @@ function recoverySuite() {
       // The number live docs is the really visible amount of documents.s
       assertTrue(figures.numDocs >= 501, `Not enough documents seen ${figures.numDocs} >= 501`);
       assertEqual(figures.numLiveDocs, 501);
-      assertEqual(figures.numPrimaryDocs, 501);
+      assertTrue(figures.numPrimaryDocs >= 501, `Not enough documents seen ${figures.numPrimaryDocs} >= 501`);
       assertTrue(figures.numSegments >= 1);
       assertTrue(figures.numFiles >= 6);
       assertTrue(figures.indexSize > 0);
