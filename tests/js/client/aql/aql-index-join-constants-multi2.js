@@ -49,15 +49,15 @@ const IndexJoinTestSuite = function () {
   const keys = ["x", "y", "z"];
 
   const computeAllSubset =
-      arr => arr.reduce(
-          (subsets, value) => subsets.concat(
-              subsets.map(set => [...set, value])
-          ),
-          [[]]
-      );
+    arr => arr.reduce(
+      (subsets, value) => subsets.concat(
+        subsets.map(set => [...set, value])
+      ),
+      [[]]
+    );
 
   const computePairs = (a, b) =>
-      a.map(x => b.map(y => [x, y])).flat();
+    a.map(x => b.map(y => [x, y])).flat();
 
   const testsuite = {
     setUpAll: function () {
@@ -106,36 +106,53 @@ const IndexJoinTestSuite = function () {
   };
 
   const checkExpectJoin = function (doc1Const, doc2Const, doc3Const, doc12Join, doc13Join) {
-    if (doc12Join[0] !== doc13Join[0]) {
-      return false;
-    }
     const checkJoinable = function (consts, joinAttrib) {
       let idx = 0;
+
+      if (consts.indexOf(joinAttrib) !== -1) {
+        return false;
+      }
+
       for (const c of consts) {
+        if (idx > consts.indexOf(joinAttrib)) {
+          break;
+        }
         if (c !== keys[idx]) {
           return false;
         }
         idx += 1;
       }
 
-      return joinAttrib === keys[idx];
+      return true;
     };
 
-    return checkJoinable(doc1Const, doc12Join[0]) && checkJoinable(doc2Const, doc12Join[1]) && checkJoinable(doc3Const, doc13Join[1]);
+    if (!checkJoinable(doc1Const, doc12Join[0])) {
+      return false;
+    }
+
+    let count = 1;
+    if (checkJoinable(doc2Const, doc12Join[1])) {
+      count++;
+    }
+    if (checkJoinable(doc3Const, doc13Join[1])) {
+      count++;
+    }
+
+    return count;
   };
 
-  const testFunction = function (query, expectJoin) {
+  const testFunction = function (query, expectJoinFN) {
     return function () {
-
+      const expectJoin = expectJoinFN();
       const plan = db._createStatement(query).explain().plan;
       const nodes = plan.nodes.map(x => x.type);
-
-      if (expectJoin) {
+      
+      if (expectJoin !== false) {
         if (nodes.indexOf("JoinNode") === -1) {
           db._explain(query);
         }
         assertEqual(nodes.indexOf("JoinNode"), 1);
-        assertEqual(nodes.indexOf("IndexNode"), -1);
+
       } else {
         if (nodes.indexOf("JoinNode") !== -1) {
           db._explain(query);
@@ -154,7 +171,7 @@ const IndexJoinTestSuite = function () {
         for (const d of pairs) {
           for (const e of pairs) {
             testsuite[`testJoinConstants_${a}_${b}_${c}_${d}_${e}`] =
-                testFunction(buildQuery(a, b, c, d, e), checkExpectJoin(a, b, c, d, e));
+              testFunction(buildQuery(a, b, c, d, e), () => checkExpectJoin(a, b, c, d, e));
           }
         }
       }
