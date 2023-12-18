@@ -69,7 +69,7 @@ function ReplicationLoggerSuite () {
               name === '_sessions');
     };
 
-    var entries = REPLICATION_LOGGER_LAST(tick, "9999999999999999999");
+    var entries = arango.POST("/_admin/execute", `return REPLICATION_LOGGER_LAST(${JSON.stringify(tick)}, "9999999999999999999");`);
 
     if (Array.isArray(type)) {
       entries.forEach(function(e) {

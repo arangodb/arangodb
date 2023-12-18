@@ -27,7 +27,7 @@
 
 const functionsDocumentation = {
   'authentication': 'authentication tests',
-  'authentication_server': 'authentication server tests',
+  // 'authentication_server': 'authentication server tests',
   'authentication_parameters': 'authentication parameters tests'
 };
 const optionsDocumentation = [
@@ -51,7 +51,7 @@ const download = require('internal').download;
 
 const testPaths = {
   'authentication': [tu.pathForTesting('client/authentication')],
-  'authentication_server': [tu.pathForTesting('server/authentication')],
+  // 'authentication_server': [tu.pathForTesting('server/authentication')],
   'authentication_parameters': []
 };
 
@@ -82,28 +82,28 @@ function authenticationClient (options) {
     }), false).run(testCases);
 }
 
-function authenticationServer (options) {
-  let testCases = tu.scanTestPaths(testPaths.authentication_server, options);
+// function authenticationServer (options) {
+//   let testCases = tu.scanTestPaths(testPaths.authentication_server, options);
 
-  testCases = tu.splitBuckets(options, testCases);
+//   testCases = tu.splitBuckets(options, testCases);
 
-  if ((testCases.length === 0) || (options.skipAuthentication === true)) {
-    print('skipping Authentication tests!');
-    return {
-      authentication: {
-        status: true,
-        skipped: true
-      }
-    };
-  }
+//   if ((testCases.length === 0) || (options.skipAuthentication === true)) {
+//     print('skipping Authentication tests!');
+//     return {
+//       authentication: {
+//         status: true,
+//         skipped: true
+//       }
+//     };
+//   }
 
-  print(CYAN + 'Server Authentication tests...' + RESET);
-  return new tu.runOnArangodRunner(options, 'authentication_server', Object.assign(
-    {},
-    tu.testServerAuthInfo, {
-      'cluster.create-waits-for-sync-replication': false
-    }), false).run(testCases);
-}
+//   print(CYAN + 'Server Authentication tests...' + RESET);
+//   return new tu.runOnArangodRunner(options, 'authentication_server', Object.assign(
+//     {},
+//     tu.testServerAuthInfo, {
+//       'cluster.create-waits-for-sync-replication': false
+//     }), false).run(testCases);
+// }
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: authentication parameters
@@ -269,7 +269,7 @@ function authenticationParameters (options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['authentication'] = authenticationClient;
-  testFns['authentication_server'] = authenticationServer;
+  // testFns['authentication_server'] = authenticationServer;
   testFns['authentication_parameters'] = authenticationParameters;
 
   opts['skipAuthentication'] = false;

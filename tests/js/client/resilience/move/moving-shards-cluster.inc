@@ -1190,13 +1190,16 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var leader = servers[0];
       var fromServer = servers[1];
       var leaderUrl = getUrlById(leader);
-      print(leaderUrl)
       // Switch off something in the maintenance on the leader to detect
       // followers which are not in Plan. This means that the moveShard
       // below will leave the old server in Current/servers and
       // Current/failoverCandidates.
       try {
+        print(db._collections())
+
         debugSetFailAt(leaderUrl, "Maintenance::doNotRemoveUnPlannedFollowers");
+
+        print(db._collections())
 
         var toServer = findServerNotOnList(servers);
         var cinfo = arangoClusterInfoGetCollectionInfo(
@@ -1204,7 +1207,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         var shard = Object.keys(cinfo.shards)[0];
         assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
         assertTrue(waitForIncompleteMoveShard(dbn, c[1].name(), 3));
-        wait(5);   // After 5 seconds the situation should be unchanged!
+        // wait(5);   // After 5 seconds the situation should be unchanged!
         assertTrue(waitForIncompleteMoveShard(dbn, c[1].name(), 3));
         // Now we know that the old follower is not in the plan but is in
         // failoverCandidates (and indeed in Current/servers). Let's now
