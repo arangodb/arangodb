@@ -507,8 +507,8 @@ function ValidationBasicsSuite() {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
       }
       testCollection.properties({"schema": {}});
-      const shardList = testCollection.shards(true);
       waitInClusterUntil(() => {
+        const shardList = testCollection.shards(true);
         for (const [shard, servers] of Object.entries(shardList)) {
           const endpoint = getEndpointById(servers[0]);
           const resp = request.get(`${endpoint}/_api/collection/${shard}/properties`);
@@ -532,8 +532,8 @@ function ValidationBasicsSuite() {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
       }
       testCollection.properties({"schema": null});
-      const shardList = testCollection.shards(true);
       waitInClusterUntil(() => {
+        const shardList = testCollection.shards(true);
         for (const [shard, servers] of Object.entries(shardList)) {
           const endpoint = getEndpointById(servers[0]);
           const resp = request.get(`${endpoint}/_api/collection/${shard}/properties`);
