@@ -223,7 +223,10 @@ function shellClient (options) {
   // we want this to ensure that in an overload situation we do not
   // get random failedLeader / failedFollower jobs during our tests.
   let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
-  let rc = new tu.runLocalInArangoshRunner(opts, 'shell_client', moreOptions).run(testCases);
+  // we can run the tests locally in the same arangosh as we need
+  // the Sanitizer suppressions to be used from our environment. 
+  // this only works if we start a new arangosh instance.
+  let rc = new tu.runInArangoshRunner(opts, 'shell_client', moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
