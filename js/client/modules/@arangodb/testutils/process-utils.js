@@ -436,21 +436,12 @@ function setupBinaries (builddir, buildType, configDir) {
     isEnterpriseClient = true;
     checkFiles.push(ARANGOBACKUP_BIN);
   }
-  ["asan", "ubsan", "lsan", "tsan"].forEach((san) => {
-    let envName = san.toUpperCase() + "_OPTIONS";
-    let fileName = san + "_arangodb_suppressions.txt";
-    if (!process.env.hasOwnProperty(envName) &&
-        fs.exists(fileName)) {
-      // print('preparing ' + san + ' environment');
-      process.env[envName] = `suppressions=${fs.join(fs.makeAbsolute(''), fileName)}`;
+
+  checkFiles.forEach((file) => {
+    if (!fs.isFile(file)) {
+      throw new Error('unable to locate ' + file);
     }
   });
-
-  for (let b = 0; b < checkFiles.length; ++b) {
-    if (!fs.isFile(checkFiles[b])) {
-      throw new Error('unable to locate ' + checkFiles[b]);
-    }
-  }
   global.ARANGOSH_BIN = ARANGOSH_BIN;
 }
 
