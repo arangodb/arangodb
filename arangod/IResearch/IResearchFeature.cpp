@@ -1098,7 +1098,7 @@ void IResearchFeature::validateOptions(
 
   if (!args.touched(SEARCH_THREADS_LIMIT)) {
     _searchExecutionThreadsLimit =
-        static_cast<uint32_t>(2 * NumberOfCores::getValue());
+        static_cast<uint32_t>(NumberOfCores::getValue());
   }
 }
 
