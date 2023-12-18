@@ -506,40 +506,18 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
-ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                bool withProperties) const {
-  auto outVariable = _outVariable;
-  auto outNonMaterializedDocId = _outNonMaterializedDocId;
-  IndexValuesVars outNonMaterializedIndVars;
-
-  if (withProperties) {
-    outVariable = plan->getAst()->variables()->createVariable(outVariable);
-    if (outNonMaterializedDocId != nullptr) {
-      outNonMaterializedDocId =
-          plan->getAst()->variables()->createVariable(outNonMaterializedDocId);
-    }
-    outNonMaterializedIndVars.first = _outNonMaterializedIndVars.first;
-    outNonMaterializedIndVars.second.reserve(
-        _outNonMaterializedIndVars.second.size());
-    for (auto& indVar : _outNonMaterializedIndVars.second) {
-      outNonMaterializedIndVars.second.try_emplace(
-          plan->getAst()->variables()->createVariable(indVar.first),
-          indVar.second);
-    }
-  } else {
-    outNonMaterializedIndVars = _outNonMaterializedIndVars;
-  }
-
-  auto c = std::make_unique<IndexNode>(plan, _id, collection(), outVariable,
+ExecutionNode* IndexNode::clone(ExecutionPlan* plan,
+                                bool withDependencies) const {
+  auto c = std::make_unique<IndexNode>(plan, _id, collection(), _outVariable,
                                        _indexes, _allCoveredByOneIndex,
                                        _condition->clone(), _options);
 
   c->needsGatherNodeSort(_needsGatherNodeSort);
-  c->_outNonMaterializedDocId = outNonMaterializedDocId;
-  c->_outNonMaterializedIndVars = std::move(outNonMaterializedIndVars);
+  c->_outNonMaterializedDocId = _outNonMaterializedDocId;
+  c->_outNonMaterializedIndVars = _outNonMaterializedIndVars;
   CollectionAccessingNode::cloneInto(*c);
   DocumentProducingNode::cloneInto(plan, *c);
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::move(c), withDependencies);
 }
 
 /// @brief replaces variables in the internals of the execution node

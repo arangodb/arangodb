@@ -219,30 +219,50 @@ template<typename T, typename... U>
 concept IsAnyOf = (std::same_as<T, U> || ...);
 
 template<class T>
-concept FinishesUserTransaction =
-    std::is_same_v<T, ReplicatedOperation::Commit> ||
-    std::is_same_v<T, ReplicatedOperation::Abort>;
+concept ModifiesUserTransaction = IsAnyOf<std::remove_cvref_t<T>,         //
+                                          ReplicatedOperation::Truncate,  //
+                                          ReplicatedOperation::Insert,    //
+                                          ReplicatedOperation::Update,    //
+                                          ReplicatedOperation::Replace,   //
+                                          ReplicatedOperation::Remove>;
+
+template<class T>
+concept FinishesUserTransaction = IsAnyOf<std::remove_cvref_t<T>,       //
+                                          ReplicatedOperation::Commit,  //
+                                          ReplicatedOperation::Abort>;
 
 template<class T>
 concept FinishesUserTransactionOrIntermediate = FinishesUserTransaction<T> ||
-    std::is_same_v<T, ReplicatedOperation::IntermediateCommit>;
+    std::is_same_v<std::remove_cvref_t<T>,
+                   ReplicatedOperation::IntermediateCommit>;
 
 template<class T>
-concept InsertsDocuments =
-    IsAnyOf<T, ReplicatedOperation::Insert, ReplicatedOperation::Update,
-            ReplicatedOperation::Replace>;
-
-template<class T>
-concept ModifiesUserTransaction =
-    std::is_same_v<T, ReplicatedOperation::Truncate> ||
-    std::is_same_v<T, ReplicatedOperation::Insert> ||
-    std::is_same_v<T, ReplicatedOperation::Update> ||
-    std::is_same_v<T, ReplicatedOperation::Replace> ||
-    std::is_same_v<T, ReplicatedOperation::Remove>;
+concept InsertsDocuments = IsAnyOf<std::remove_cvref_t<T>,       //
+                                   ReplicatedOperation::Insert,  //
+                                   ReplicatedOperation::Update,  //
+                                   ReplicatedOperation::Replace>;
 
 template<class T>
 concept UserTransaction =
     ModifiesUserTransaction<T> || FinishesUserTransactionOrIntermediate<T>;
+
+using UserTransactionOperation =
+    std::variant<ReplicatedOperation::Truncate,            //
+                 ReplicatedOperation::Insert,              //
+                 ReplicatedOperation::Update,              //
+                 ReplicatedOperation::Replace,             //
+                 ReplicatedOperation::Remove,              //
+                 ReplicatedOperation::IntermediateCommit,  //
+                 ReplicatedOperation::Commit,              //
+                 ReplicatedOperation::Abort>;
+
+template<class T>
+concept DataDefinition = IsAnyOf<std::remove_cvref_t<T>,            //
+                                 ReplicatedOperation::CreateShard,  //
+                                 ReplicatedOperation::ModifyShard,  //
+                                 ReplicatedOperation::DropShard,    //
+                                 ReplicatedOperation::CreateIndex,  //
+                                 ReplicatedOperation::DropIndex>;
 
 auto operator<<(std::ostream&, ReplicatedOperation const&) -> std::ostream&;
 auto operator<<(std::ostream&, ReplicatedOperation::OperationType const&)

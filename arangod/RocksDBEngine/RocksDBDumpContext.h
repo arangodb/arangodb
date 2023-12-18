@@ -63,6 +63,32 @@ class RocksDBCollection;
 class RocksDBDumpManager;
 class RocksDBEngine;
 
+struct RocksDBDumpSimpleFilter {
+  std::vector<std::string> path;
+  velocypack::SharedSlice value;
+
+  template<class Inspector>
+  inline friend auto inspect(Inspector& f, RocksDBDumpSimpleFilter& o) {
+    return f.object(o).fields(f.field("attributePath", o.path),
+                              f.field("value", o.value));
+  }
+};
+
+struct RocksDBDumpFilterSpec {
+  std::string type;
+  std::vector<RocksDBDumpSimpleFilter> conditions;
+
+  template<class Inspector>
+  inline friend auto inspect(Inspector& f, RocksDBDumpFilterSpec& o) {
+    return f.object(o).fields(
+        f.field("type", o.type).invariant([](auto&& v) {
+          return v == "simple";
+        }),
+        f.field("conditions", o.conditions)
+            .fallback(std::vector<RocksDBDumpSimpleFilter>{}));
+  }
+};
+
 struct RocksDBDumpContextOptions {
   std::uint64_t docsPerBatch = 10 * 1000;
   std::uint64_t batchSize = 16 * 1024;
@@ -70,6 +96,10 @@ struct RocksDBDumpContextOptions {
   std::uint64_t parallelism = 2;
   double ttl = 600.0;
   std::vector<std::string> shards;
+
+  std::optional<std::unordered_map<std::string, std::vector<std::string>>>
+      projections;
+  RocksDBDumpFilterSpec filters;
 
   template<class Inspector>
   inline friend auto inspect(Inspector& f, RocksDBDumpContextOptions& o) {
@@ -79,7 +109,9 @@ struct RocksDBDumpContextOptions {
         f.field("prefetchCount", o.prefetchCount).fallback(f.keep()),
         f.field("parallelism", o.parallelism).fallback(f.keep()),
         f.field("ttl", o.ttl).fallback(f.keep()),
-        f.field("shards", o.shards).fallback(f.keep()));
+        f.field("shards", o.shards).fallback(f.keep()),
+        f.field("projections", o.projections),
+        f.field("filters", o.filters).fallback(RocksDBDumpFilterSpec{}));
   }
 };
 
@@ -126,6 +158,10 @@ class RocksDBDumpContext {
   // extend the contexts lifetime, by adding TTL to the current time and storing
   // it in _expires.
   void extendLifetime() noexcept;
+
+  // determine whether the given document should be included in the
+  // dump
+  bool applyFilter(velocypack::Slice const& documentSlice) const;
 
   // Contains the data for a batch
   struct Batch {
