@@ -1271,9 +1271,6 @@ void RocksDBEngine::start() {
         : _scheduler(server.getFeature<SchedulerFeature>().SCHEDULER) {}
 
     void operator()(fu2::unique_function<void() noexcept> func) override {
-      if (_scheduler->server().isStopping()) {
-        return;
-      }
       _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(func));
     }
 

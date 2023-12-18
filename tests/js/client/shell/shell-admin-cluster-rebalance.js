@@ -69,7 +69,7 @@ function getRebalancePlan(moveLeaders, moveFollowers, leaderChanges, excludeSyst
 
 function getServersHealth() {
   let result = arango.GET_RAW('/_admin/cluster/health');
-  assertTrue(result.parsedBody.hasOwnProperty("Health"));
+  assertTrue(result.parsedBody.hasOwnProperty("Health"), "Health not found in response: " + JSON.stringify(result.parsedBody));
   return result.parsedBody.Health;
 }
 
