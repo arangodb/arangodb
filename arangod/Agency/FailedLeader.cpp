@@ -363,6 +363,8 @@ bool FailedLeader::start(bool& aborts) {
                                     Supervision::HEALTH_STATUS_GOOD);
         // Server list in plan still as before
         addPreconditionUnchanged(pending, planPath, planned);
+        // All clones still exist
+        addPreconditionClonesStillExist(pending, _database, shardsLikeMe);
         // Check that Current/servers and failoverCandidates are still as
         // we inspected them:
         doForAllShards(

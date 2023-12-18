@@ -183,7 +183,8 @@ TEST_F(DocumentStateFollowerTest,
   EXPECT_CALL(*stream, release).WillOnce([&](LogIndex index) {
     EXPECT_EQ(index, expectedReleaseIndex);
   });
-  std::ignore = follower->applyEntries(std::move(entryIterator));
+  res = follower->applyEntries(std::move(entryIterator));
+  ASSERT_TRUE(res.get().ok());
 }
 
 TEST_F(DocumentStateFollowerTest,
@@ -209,7 +210,8 @@ TEST_F(DocumentStateFollowerTest,
   EXPECT_CALL(*transactionHandlerMock,
               applyEntry(Matcher<ReplicatedOperation::OperationType const&>(_)))
       .Times(3);
-  std::ignore = follower->applyEntries(std::move(entryIterator));
+  res = follower->applyEntries(std::move(entryIterator));
+  ASSERT_TRUE(res.get().ok());
 }
 
 TEST_F(DocumentStateFollowerTest,
@@ -234,7 +236,8 @@ TEST_F(DocumentStateFollowerTest,
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
 
   EXPECT_CALL(*stream, release).Times(0);
-  std::ignore = follower->applyEntries(std::move(entryIterator));
+  res = follower->applyEntries(std::move(entryIterator));
+  ASSERT_TRUE(res.get().ok());
   Mock::VerifyAndClearExpectations(stream.get());
 }
 
@@ -258,7 +261,7 @@ TEST_F(DocumentStateFollowerTest,
       velocypack::SharedSlice()));
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
   ASSERT_DEATH_CORE_FREE(
-      std::ignore = follower->applyEntries(std::move(entryIterator)), "");
+      std::ignore = follower->applyEntries(std::move(entryIterator)).get(), "");
 }
 
 TEST_F(DocumentStateFollowerTest,
@@ -290,7 +293,8 @@ TEST_F(DocumentStateFollowerTest,
   EXPECT_CALL(*transactionHandlerMock,
               applyEntry(Matcher<ReplicatedOperation::OperationType const&>(_)))
       .Times(7);
-  std::ignore = follower->applyEntries(std::move(entryIterator));
+  res = follower->applyEntries(std::move(entryIterator));
+  ASSERT_TRUE(res.get().ok());
   Mock::VerifyAndClearExpectations(stream.get());
   Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
 
@@ -318,7 +322,8 @@ TEST_F(DocumentStateFollowerTest,
   EXPECT_CALL(*transactionHandlerMock,
               applyEntry(Matcher<ReplicatedOperation::OperationType const&>(_)))
       .Times(7);
-  std::ignore = follower->applyEntries(std::move(entryIterator));
+  res = follower->applyEntries(std::move(entryIterator));
+  ASSERT_TRUE(res.get().ok());
 }
 
 TEST_F(DocumentStateFollowerTest,
@@ -344,7 +349,8 @@ TEST_F(DocumentStateFollowerTest,
   EXPECT_CALL(*shardHandlerMock, ensureShard(myShard, TRI_COL_TYPE_DOCUMENT, _))
       .Times(1);
   EXPECT_CALL(*stream, release).Times(1);
-  std::ignore = follower->applyEntries(std::move(entryIterator));
+  res = follower->applyEntries(std::move(entryIterator));
+  ASSERT_TRUE(res.get().ok());
   Mock::VerifyAndClearExpectations(stream.get());
 
   // ModifyShard
@@ -355,7 +361,8 @@ TEST_F(DocumentStateFollowerTest,
   EXPECT_CALL(*shardHandlerMock, modifyShard(myShard, myCollection, _))
       .Times(1);
   EXPECT_CALL(*stream, release).Times(1);
-  std::ignore = follower->applyEntries(std::move(entryIterator));
+  res = follower->applyEntries(std::move(entryIterator));
+  ASSERT_TRUE(res.get().ok());
   Mock::VerifyAndClearExpectations(stream.get());
 
   // DropShard
@@ -364,7 +371,8 @@ TEST_F(DocumentStateFollowerTest,
   entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
   EXPECT_CALL(*shardHandlerMock, dropShard(myShard)).Times(1);
   EXPECT_CALL(*stream, release).Times(1);
-  std::ignore = follower->applyEntries(std::move(entryIterator));
+  res = follower->applyEntries(std::move(entryIterator));
+  ASSERT_TRUE(res.get().ok());
   Mock::VerifyAndClearExpectations(stream.get());
 
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());
@@ -388,7 +396,7 @@ TEST_F(DocumentStateFollowerTest,
   ON_CALL(*shardHandlerMock, ensureShard(shardId, TRI_COL_TYPE_DOCUMENT, _))
       .WillByDefault(Return(Result(TRI_ERROR_WAS_ERLAUBE)));
   ASSERT_DEATH_CORE_FREE(
-      std::ignore = follower->applyEntries(std::move(entryIterator)), "");
+      std::ignore = follower->applyEntries(std::move(entryIterator)).get(), "");
 
   entries.clear();
   entries.emplace_back(ReplicatedOperation::buildDropShardOperation(shardId));
@@ -396,7 +404,7 @@ TEST_F(DocumentStateFollowerTest,
   ON_CALL(*shardHandlerMock, dropShard(shardId))
       .WillByDefault(Return(Result(TRI_ERROR_WAS_ERLAUBE)));
   ASSERT_DEATH_CORE_FREE(
-      std::ignore = follower->applyEntries(std::move(entryIterator)), "");
+      std::ignore = follower->applyEntries(std::move(entryIterator)).get(), "");
 }
 
 TEST_F(DocumentStateFollowerTest, follower_ignores_invalid_transactions) {
@@ -417,7 +425,8 @@ TEST_F(DocumentStateFollowerTest, follower_ignores_invalid_transactions) {
               applyEntry(entries[0].getInnerOperation()))
       .Times(1)
       .WillOnce(Return(Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)));
-  std::ignore = follower->applyEntries(std::move(entryIterator));
+  res = follower->applyEntries(std::move(entryIterator));
+  ASSERT_TRUE(res.get().ok());
   Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
 
   // Try to commit the previous entry
@@ -428,7 +437,11 @@ TEST_F(DocumentStateFollowerTest, follower_ignores_invalid_transactions) {
   EXPECT_CALL(*transactionHandlerMock,
               applyEntry(entries[0].getInnerOperation()))
       .Times(0);
-  std::ignore = follower->applyEntries(std::move(entryIterator));
+  // we do not actually commit anything, because the transaction is invalid, but
+  // we still release the entry!
+  EXPECT_CALL(*stream, release(LogIndex{1})).Times(1);
+  res = follower->applyEntries(std::move(entryIterator));
+  ASSERT_TRUE(res.get().ok());
   Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
 
   // Try to apply another entry, this time making the shard available
@@ -438,7 +451,8 @@ TEST_F(DocumentStateFollowerTest, follower_ignores_invalid_transactions) {
   EXPECT_CALL(*transactionHandlerMock,
               applyEntry(entries[0].getInnerOperation()))
       .Times(1);
-  std::ignore = follower->applyEntries(std::move(entryIterator));
+  res = follower->applyEntries(std::move(entryIterator));
+  ASSERT_TRUE(res.get().ok());
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());
   Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
 }
@@ -462,7 +476,8 @@ TEST_F(DocumentStateFollowerTest,
       TRI_VOC_DOCUMENT_OPERATION_INSERT, TransactionId{10}, ShardID{2},
       velocypack::SharedSlice()));
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
-  std::ignore = follower->applyEntries(std::move(entryIterator));
+  res = follower->applyEntries(std::move(entryIterator));
+  ASSERT_TRUE(res.get().ok());
 
   entries.clear();
   entries.emplace_back(
@@ -490,7 +505,8 @@ TEST_F(DocumentStateFollowerTest,
       .Times(1);
   EXPECT_CALL(*stream, release(LogIndex{1})).Times(1);
 
-  std::ignore = follower->applyEntries(std::move(entryIterator));
+  res = follower->applyEntries(std::move(entryIterator));
+  ASSERT_TRUE(res.get().ok());
   Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
   Mock::VerifyAndClearExpectations(stream.get());
 }

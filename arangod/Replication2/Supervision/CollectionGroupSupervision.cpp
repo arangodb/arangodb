@@ -20,12 +20,13 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#include <velocypack/Slice.h>
+
+#include "CollectionGroupSupervision.h"
+
 #include "Agency/TransactionBuilder.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/Utils/EvenDistribution.h"
-#include "CollectionGroupSupervision.h"
 #include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/AgencyCollectionSpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
@@ -34,6 +35,9 @@
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+
+#include <velocypack/Slice.h>
+
 #include <random>
 
 using namespace arangodb;
@@ -490,11 +494,10 @@ auto checkCollectionsOfGroup(CollectionGroup const& group,
           return RemoveCollectionIndexPlan{cid, it.sharedSlice()};
         }
         if (arangodb::basics::VelocyPackHelper::getBooleanValue(
-                idx, StaticStrings::IndexIsBuilding, false)) {
-          // Index is still Flagged as isBuilding. Let us test if it converged
-
-          // TODO: We do not yet implement errors that could appear during
-          // creation of a UniqueIndex
+                idx, StaticStrings::IndexIsBuilding, false) &&
+            !idx.hasKey(StaticStrings::IndexCreationError)) {
+          // Index is still Flagged as isBuilding, and has not yet reported an
+          // error. Let us test if it converged, or errored.
           auto const& currentCollection = group.currentCollections.find(cid);
           // Let us protect against Collection not created, although it should
           // be, as we are trying to add an index to it right now.
@@ -505,8 +508,20 @@ auto checkCollectionsOfGroup(CollectionGroup const& group,
               bool foundLocalIndex = false;
               for (auto const& index : shard.indexes) {
                 if (index.get(StaticStrings::IndexId).isEqualString(indexId)) {
-                  foundLocalIndex = true;
-                  break;
+                  if (index.get(StaticStrings::Error).isTrue()) {
+                    ErrorCode errorNum{
+                        basics::VelocyPackHelper::getNumericValue<int>(
+                            index.slice(), StaticStrings::ErrorNum,
+                            TRI_ERROR_INTERNAL.value())};
+                    auto errorMessage =
+                        basics::VelocyPackHelper::getStringValue(
+                            index.slice(), StaticStrings::ErrorMessage, "");
+                    Result res{errorNum, std::move(errorMessage)};
+                    return IndexErrorCurrent{cid, it.sharedSlice(), res};
+                  } else {
+                    foundLocalIndex = true;
+                    break;
+                  }
                 }
               }
               if (!foundLocalIndex) {
@@ -795,6 +810,34 @@ struct TransactionBuilder {
               builder.add(key.copyString(), value);
             }
           }
+        });
+    env = std::move(tmp)
+              .inc("/arango/Plan/Version")
+              .precs()
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Plan/Collections/", database, "/", action.cid))
+              .end();
+  }
+
+  void operator()(IndexErrorCurrent const& action) {
+    auto tmp = env.write();
+    // Just overwrite all indexes as defined by the Action
+    tmp = std::move(tmp).replace(
+        basics::StringUtils::concatT("/arango/Plan/Collections/", database, "/",
+                                     action.cid, "/indexes"),
+        [&](VPackBuilder& builder) {
+          // Old value, take from the Action
+          builder.add(action.index.slice());
+        },
+        [&](VPackBuilder& builder) {
+          // New value, take everything from the action, but add the error field
+          // Note: We keep the isBuildingFlag on purpose. This way the index
+          // stays invisible for usage.
+          TRI_ASSERT(action.index.slice().isObject());
+          VPackObjectBuilder guard{&builder};
+          builder.add(VPackObjectIterator(action.index.slice()));
+          builder.add(VPackValue(StaticStrings::IndexCreationError));
+          velocypack::serialize(builder, action.error);
         });
     env = std::move(tmp)
               .inc("/arango/Plan/Version")
