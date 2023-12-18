@@ -23,6 +23,8 @@
 
 #include "ServerInstanceReference.h"
 
+#include <ostream>
+
 namespace arangodb::replication2::agency {
 
 auto operator<<(std::ostream& os, ServerInstanceReference const& sir) noexcept
