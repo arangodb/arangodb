@@ -370,6 +370,12 @@ class ClusterInfo final {
   [[nodiscard]] futures::Future<Result> waitForCurrentVersion(
       uint64_t currentVersion);
 
+  /**
+   * Blocks and waits until all known Replicated logs have selected a
+   * leader and are usable
+   */
+  void syncWaitForAllLogsToEstablishALeader();
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief flush the caches (used for testing only)
   //////////////////////////////////////////////////////////////////////////////

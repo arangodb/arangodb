@@ -344,8 +344,10 @@
         assertEqual(2, c.type()); // document
         assertTrue(p.waitForSync);
 
-        assertEqual(args.emptyIndexes, c.getIndexes().length); // just primary index
-        assertEqual("primary", c.getIndexes()[0].type);
+        const indexes = c.getIndexes();
+
+        assertEqual(args.emptyIndexes, indexes.length, `Found indexes: ${JSON.stringify(indexes)}`); // just primary index
+        assertEqual("primary", indexes[0].type);
         assertEqual(0, c.count());
       },
 
