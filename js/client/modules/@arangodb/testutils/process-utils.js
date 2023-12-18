@@ -442,6 +442,25 @@ function setupBinaries (builddir, buildType, configDir) {
       throw new Error('unable to locate ' + file);
     }
   });
+
+  // fiddle in suppressions for sanitizers if not already set from an
+  // outside script. this can populate the environment variables
+  // - ASAN_OPTIONS
+  // - UBSAN_OPTIONS
+  // - LSAN_OPTIONS
+  // - TSAN_OPTIONS
+  // note: this code repeats existing logic that can be found in
+  // scripts/unittest as well. according to @dothebart it must be
+  // present in both code locations.
+  ["asan", "ubsan", "lsan", "tsan"].forEach((san) => {
+    let envName = san.toUpperCase() + "_OPTIONS";
+    let fileName = san + "_arangodb_suppressions.txt";
+    if (!process.env.hasOwnProperty(envName) &&
+        fs.exists(fileName)) {
+      process.env[envName] = `suppressions=${fs.join(fs.makeAbsolute(''), fileName)}`;
+    }
+  });
+
   global.ARANGOSH_BIN = ARANGOSH_BIN;
 }
 
