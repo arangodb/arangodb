@@ -260,7 +260,6 @@ auto WeightedTwoSidedEnumerator<
     auto& step = _interior.getStepReference(posPrevious);
 
     _diameter = step.getWeight();
-
     ValidationResult res = _validator.validatePath(step);
 
     if (!res.isFiltered()) {
