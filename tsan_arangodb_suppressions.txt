@@ -55,3 +55,7 @@ deadlock:consensus::Agent::setPersistedState
 
 # TODO Fix data race in arangodbtests
 race:DummyConnection::sendRequest
+
+# V8 internals
+race:v8::platform::DefaultJobWorker
+race:v8::platform::DefaultJobState

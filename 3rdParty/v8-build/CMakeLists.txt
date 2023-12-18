@@ -319,7 +319,19 @@ else ()
     set(V8_CXXFLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
   endif ()
   set(V8_CFLAGS     "${V8_CFLAGS}   $ENV{V8_CFLAGS}")
-  set(V8_CXXFLAGS   "${V8_CXXFLAGS} $ENV{V8_CXXFLAGS} -std=c++20")
+  # note: c++17 is required here to make ASan/TSan builds still pass
+  set(V8_CXXFLAGS   "${V8_CXXFLAGS} $ENV{V8_CXXFLAGS} -std=c++17")
+
+  # TODO: find a better solution than forcefully removing all sanitizer
+  # options.
+  if (TRUE)
+    # remove sanitizer options. if these options are not removed, linking
+    # will currently fail.
+    string(REGEX REPLACE "-f(no-)?sanitize=[^ ]+" "" V8_CFLAGS ${V8_CFLAGS})
+    string(REGEX REPLACE "-f(no-)?sanitize=[^ ]+" "" V8_CXXFLAGS ${V8_CXXFLAGS})
+    string(REGEX REPLACE "-f(no-)?sanitize-[^ ]+" "" V8_CFLAGS ${V8_CFLAGS})
+    string(REGEX REPLACE "-f(no-)?sanitize-[^ ]+" "" V8_CXXFLAGS ${V8_CXXFLAGS})
+  endif ()
 
   set(V8_LDFLAGS    "${CMAKE_EXE_LINKER_FLAGS} $ENV{V8_LDFLAGS}")
 
@@ -361,7 +373,7 @@ else ()
 
   list(APPEND V8_GYP_ARGS
     -DINSPECTOR_ROOT=${V8_RELATIVE_SOURCE_DIR}
-    -Dclang_cxx_language_standard=c++20
+    -Dclang_cxx_language_standard=c++17
     -Dmac_deployment_target=${CMAKE_OSX_DEPLOYMENT_TARGET}
     --depth=.
     -Dforce_dynamic_crt=0 # only used on Windows
