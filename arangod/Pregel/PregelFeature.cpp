@@ -523,7 +523,6 @@ void PregelFeature::start() {
 }
 
 void PregelFeature::beginShutdown() {
-
   // Copy the _conductors and _workers maps here, because in the case of a
   // single server there is a lock order inversion.  This is because the
   // conductor code directly calls back into the feature while holding the
