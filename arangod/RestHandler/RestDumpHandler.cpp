@@ -158,6 +158,12 @@ void RestDumpHandler::handleCommandDumpStart() {
   auto useVPack = _request->parsedValue("useVPack", false);
 
   auto* manager = _engine.dumpManager();
+
+  // adjust permissions in single server case, so that the behavior
+  // is identical to non-parallel dumps
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser() &&
+                                   ServerState::instance()->isSingleServer());
+
   auto guard =
       manager->createContext(std::move(opts), user, database, useVPack);
 
@@ -201,7 +207,8 @@ void RestDumpHandler::handleCommandDumpNext() {
   }
 
   // output the batch value
-  _response->setAllowCompression(true);
+  _response->setAllowCompression(
+      rest::ResponseCompressionType::kAllowCompression);
   _response->setHeaderNC(StaticStrings::DumpShardId, std::string{batch->shard});
   _response->setHeaderNC(StaticStrings::DumpBlockCounts,
                          std::to_string(counts));
@@ -287,7 +294,17 @@ Result RestDumpHandler::validateRequest() {
 
         for (auto const& it : opts.shards) {
           // get collection name
-          auto collectionName = _clusterInfo.getCollectionNameForShard(it);
+          std::string collectionName;
+          if (ServerState::instance()->isSingleServer()) {
+            collectionName = it;
+          } else {
+            if (auto maybeShardID = ShardID::shardIdFromString(it);
+                maybeShardID.ok()) {
+              // If we are called without a shard, leave collectionName empty.
+              collectionName =
+                  _clusterInfo.getCollectionNameForShard(maybeShardID.get());
+            }
+          }
           if (!ExecContext::current().canUseCollection(
                   _request->databaseName(), collectionName, auth::Level::RO)) {
             return {TRI_ERROR_FORBIDDEN,

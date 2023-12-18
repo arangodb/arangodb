@@ -60,10 +60,14 @@ void ActiveTransactionsQueue::markAsInactive(TransactionId tid) {
   // mark it as inactive. We assume that the log indices are always given in
   // increasing order.
   auto it = _transactions.find(tid);
-  ADB_PROD_ASSERT(it != std::end(_transactions))
-      << "Could not find transaction " << tid;
-  markAsInactive(it->second);
-  _transactions.erase(it);
+  if (it != std::end(_transactions)) {
+    // In some cases (e.g. distribute-shards-like), the leader may be
+    // responsible for two or more shards that are referred to by the same
+    // transaction. Therefore, a transaction may be marked as inactive multiple
+    // times, as each individual shard performs the commit (or abort).
+    markAsInactive(it->second);
+    _transactions.erase(it);
+  }
 }
 
 void ActiveTransactionsQueue::markAsInactive(LogIndex index) {

@@ -28,6 +28,8 @@
 #include <vector>
 
 namespace arangodb {
+struct ShardID;
+
 struct ShardDistribution {
   ShardDistribution(std::vector<ShardID> shardNames,
                     std::shared_ptr<IShardDistributionFactory> distributeType);

@@ -249,6 +249,17 @@ return HTTP 503 instead of HTTP 200 when their availability API is probed.)");
       new UInt64Parameter(&_fifo1Size),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
+  options
+      ->addOption("--server.max-number-detached-threads",
+                  "The maximum number of detached scheduler threads.",
+                  new UInt64Parameter(&_nrMaximalDetachedThreads),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Default,
+                      arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31200)
+      .setLongDescription(
+          R"(If a scheduler thread performs a potentially long running operation like waiting for a lock, it can detach itself from the scheduler. This allows a new scheduler thread to be started and avoids blocking all threads with long-running operations, thereby avoiding deadlock situations. The default should normally be OK.)");
+
   // obsolete options
   options->addObsoleteOption("--server.threads", "number of threads", true);
 
@@ -337,7 +348,7 @@ void SchedulerFeature::prepare() {
   auto sched = std::make_unique<SupervisedScheduler>(
       server(), _nrMinimalThreads, _nrMaximalThreads, _queueSize, _fifo1Size,
       _fifo2Size, _fifo3Size, ongoingLowPriorityLimit,
-      _unavailabilityQueueFillGrade);
+      _unavailabilityQueueFillGrade, _nrMaximalDetachedThreads);
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif
@@ -369,7 +380,17 @@ void SchedulerFeature::stop() {
 }
 
 void SchedulerFeature::unprepare() {
-  SCHEDULER = nullptr;
+  // SCHEDULER = nullptr;
+  // This is to please the TSAN sanitizer: On shutdown, we set this global
+  // pointer to nullptr. Other threads read the pointer, but the logic of
+  // ApplicationFeatures should ensure that nobody will read the pointer
+  // out after the SchedulerFeature has run its unprepare method.
+  // Sometimes the TSAN sanitizer cannot recognize this indirect
+  // synchronization and complains about reads that have happened before
+  // this write here, but are not officially inter-thread synchronized.
+  // We use the atomic reference here and in these places to silence TSAN.
+  std::atomic_ref<Scheduler*> schedulerRef{SCHEDULER};
+  schedulerRef.store(nullptr, std::memory_order_relaxed);
   _scheduler.reset();
 }
 

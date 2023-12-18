@@ -24,6 +24,7 @@
 #include <memory>
 
 #include "Aql/IndexStreamIterator.h"
+#include "Aql/QueryOptions.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -37,8 +38,9 @@ namespace aql {
 template<typename SliceType, typename DocIdType>
 struct IndexJoinStrategy {
   virtual ~IndexJoinStrategy() = default;
-  virtual bool next(std::function<bool(std::span<DocIdType>,
-                                       std::span<SliceType>)> const& cb) = 0;
+  virtual std::pair<bool, size_t> next(
+      std::function<bool(std::span<DocIdType>, std::span<SliceType>)> const&
+          cb) = 0;
 
   virtual void reset() = 0;
 };
@@ -49,10 +51,13 @@ struct IndexDescriptor {
 
   IndexDescriptor() = default;
   explicit IndexDescriptor(std::unique_ptr<StreamIteratorType> iter,
-                           std::size_t numProjections)
-      : iter(std::move(iter)), numProjections(numProjections) {}
+                           std::size_t numProjections, bool isUnique)
+      : iter(std::move(iter)),
+        numProjections(numProjections),
+        isUnique(isUnique) {}
   std::unique_ptr<StreamIteratorType> iter;
   std::size_t numProjections{0};
+  bool isUnique{false};
 };
 
 using AqlIndexJoinStrategy =
@@ -62,7 +67,8 @@ struct IndexJoinStrategyFactory {
   using Descriptor = IndexDescriptor<velocypack::Slice, LocalDocumentId>;
 
   std::unique_ptr<AqlIndexJoinStrategy> createStrategy(
-      std::vector<Descriptor>, std::size_t numKeyComponents);
+      std::vector<Descriptor>, std::size_t numKeyComponents,
+      aql::QueryOptions::JoinStrategyType desiredJoinStrategy);
 };
 
 }  // namespace aql

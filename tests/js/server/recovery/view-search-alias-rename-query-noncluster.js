@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertNull, assertTrue, assertFalse, assertNotNull, AQL_EXECUTE */
+/* global assertEqual, assertNull, assertTrue, assertFalse, assertNotNull */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for dump/reload

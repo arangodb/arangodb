@@ -37,7 +37,14 @@ namespace document {
  * logic.
  */
 struct DocumentLogEntry {
+  static constexpr std::uint32_t VERSION = 0;
+
+  std::uint32_t version;
   ReplicatedOperation operation;
+
+  explicit DocumentLogEntry() = default;
+  explicit DocumentLogEntry(ReplicatedOperation op)
+      : version(VERSION), operation(std::move(op)) {}
 
   auto& getInnerOperation() noexcept { return operation.operation; }
   [[nodiscard]] auto const& getInnerOperation() const noexcept {
@@ -46,7 +53,8 @@ struct DocumentLogEntry {
 
   template<typename Inspector>
   friend auto inspect(Inspector& f, DocumentLogEntry& x) {
-    return f.object(x).fields(f.field("operation", x.operation));
+    return f.object(x).fields(f.field("v", x.version),
+                              f.field("operation", x.operation));
   }
 };
 

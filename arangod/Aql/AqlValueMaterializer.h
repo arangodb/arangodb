@@ -56,11 +56,10 @@ struct AqlValueMaterializer {
 
   ~AqlValueMaterializer();
 
-  arangodb::velocypack::Slice slice(arangodb::aql::AqlValue const& value,
-                                    bool resolveExternals);
+  velocypack::Slice slice(AqlValue const& value);
 
-  arangodb::velocypack::Options const* options;
-  arangodb::aql::AqlValue materialized;
+  velocypack::Options const* options;
+  AqlValue materialized;
   bool hasCopied;
 };
 

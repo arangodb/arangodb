@@ -30,18 +30,20 @@
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshotInspectors.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
 DocumentStateLeaderInterface::DocumentStateLeaderInterface(
     ParticipantId participantId, GlobalLogIdentifier gid,
-    network::ConnectionPool* pool)
+    network::ConnectionPool* pool, LoggerContext loggerContext)
     : _participantId(std::move(participantId)),
       _gid(std::move(gid)),
-      _pool(pool) {}
+      _pool(pool),
+      _loggerContext(std::move(loggerContext)) {}
 
 auto DocumentStateLeaderInterface::startSnapshot()
-    -> futures::Future<ResultT<SnapshotConfig>> {
+    -> futures::Future<ResultT<SnapshotBatch>> {
   VPackBuilder builder;
   auto params =
       SnapshotParams::Start{.serverId = ServerState::instance()->getId(),
@@ -53,8 +55,8 @@ auto DocumentStateLeaderInterface::startSnapshot()
                                  _gid.id, "snapshot", "start");
   network::RequestOptions opts;
   opts.database = _gid.database;
-  return postSnapshotRequest<SnapshotConfig>(std::move(path),
-                                             std::move(*builder.steal()), opts);
+  return postSnapshotRequest<SnapshotBatch>(std::move(path),
+                                            std::move(*builder.steal()), opts);
 }
 
 auto DocumentStateLeaderInterface::nextSnapshotBatch(SnapshotId id)
@@ -81,7 +83,7 @@ auto DocumentStateLeaderInterface::finishSnapshot(SnapshotId id)
                      network::Response&& resp) -> futures::Future<Result> {
         // Only retry on network error
         if (resp.fail()) {
-          LOG_TOPIC("2e771", ERR, Logger::REPLICATION2)
+          LOG_CTX("2e771", ERR, self->_loggerContext)
               << "Failed to finish snapshot " << id << " on "
               << self->_participantId << ": " << resp.combinedResult()
               << " - retrying in 5 seconds";
@@ -106,19 +108,29 @@ auto DocumentStateLeaderInterface::postSnapshotRequest(
           return resp.combinedResult();
         }
         auto slice = resp.slice();
+        if (!slice.hasKey("result")) {
+          return ResultT<T>::error(
+              TRI_ERROR_INTERNAL,
+              fmt::format("Missing \"result\" key in slice {}, while "
+                          "processing snapshot response",
+                          slice.toJson()));
+        }
         return velocypack::deserialize<T>(slice.get("result"));
       });
 }
 
 DocumentStateNetworkHandler::DocumentStateNetworkHandler(
-    GlobalLogIdentifier gid, network::ConnectionPool* pool)
-    : _gid(std::move(gid)), _pool(pool) {}
+    GlobalLogIdentifier gid, network::ConnectionPool* pool,
+    LoggerContext loggerContext)
+    : _gid(std::move(gid)),
+      _pool(pool),
+      _loggerContext(std::move(loggerContext)) {}
 
 auto DocumentStateNetworkHandler::getLeaderInterface(
     ParticipantId participantId) noexcept
     -> std::shared_ptr<IDocumentStateLeaderInterface> {
   return std::make_shared<DocumentStateLeaderInterface>(participantId, _gid,
-                                                        _pool);
+                                                        _pool, _loggerContext);
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

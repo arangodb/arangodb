@@ -656,7 +656,7 @@ function restoreIntegrationSuite() {
         db._useDatabase("_system");
       }
     },
-    
+
     testRestoreSplitFiles: function () {
       let path = fs.getTempFile();
       fs.makeDirectory(path);
@@ -687,6 +687,64 @@ function restoreIntegrationSuite() {
         let doc = c.document("test" + i);
         assertEqual(i, doc.value);
       }
+      fs.removeDirectoryRecursive(path, true);
+    },
+
+    testRestoreOverrideWriteConcern: function () {
+      if (!isCluster) {
+        return;
+      }
+
+      let path = fs.getTempFile();
+      fs.makeDirectory(path);
+      let fn = fs.join(path, cn + ".structure.json");
+
+      fs.write(fn, JSON.stringify({
+        indexes: [],
+        parameters: {
+          name: cn,
+          numberOfShards: 3,
+          type: 2,
+          replicationFactor: 3,
+          writeConcern: 3,
+        }
+      }));
+
+      let args = ['--collection', cn, '--import-data', 'true', '--write-concern', '2'];
+      runRestore(path, args, 0);
+
+      let c = db._collection(cn);
+      const properties = c.properties();
+      assertEqual(properties.writeConcern, 2);
+      fs.removeDirectoryRecursive(path, true);
+    },
+
+    testRestoreOverrideWriteConcernSpecific: function () {
+      if (!isCluster) {
+        return;
+      }
+
+      let path = fs.getTempFile();
+      fs.makeDirectory(path);
+      let fn = fs.join(path, cn + ".structure.json");
+
+      fs.write(fn, JSON.stringify({
+        indexes: [],
+        parameters: {
+          name: cn,
+          numberOfShards: 3,
+          type: 2,
+          replicationFactor: 3,
+          writeConcern: 3,
+        }
+      }));
+
+      let args = ['--collection', cn, '--import-data', 'true', '--write-concern', '2', '--write-concern', `${cn}=1`];
+      runRestore(path, args, 0);
+
+      let c = db._collection(cn);
+      const properties = c.properties();
+      assertEqual(properties.writeConcern, 1);
       fs.removeDirectoryRecursive(path, true);
     },
 

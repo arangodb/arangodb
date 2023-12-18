@@ -1558,8 +1558,7 @@ void RocksDBOptionFeature::validateOptions(
         << "invalid value for '--rocksdb.total-write-buffer-size'";
     FATAL_ERROR_EXIT();
   }
-  if (_maxBackgroundJobs != -1 &&
-      (_maxBackgroundJobs < 1 || _maxBackgroundJobs > 128)) {
+  if (_maxBackgroundJobs != -1 && _maxBackgroundJobs < 1) {
     LOG_TOPIC("cfc5a", FATAL, arangodb::Logger::STARTUP)
         << "invalid value for '--rocksdb.max-background-jobs'";
     FATAL_ERROR_EXIT();

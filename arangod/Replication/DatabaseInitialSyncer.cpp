@@ -65,6 +65,7 @@
 #include "VocBase/vocbase.h"
 
 #include <absl/strings/str_cat.h>
+#include <absl/strings/escaping.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>

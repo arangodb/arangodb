@@ -30,7 +30,7 @@ const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 
 const database = "replication2_supervision_test_drop_db";
 
-const {setUpAll, tearDownAll, setUp, tearDown} = lh.testHelperFunctions(database);
+const {setUpAll, tearDownAll, setUp, tearDown} = lh.testHelperFunctions(database, {replicationVersion: "2"});
 
 const replicatedLogSuite = function () {
 

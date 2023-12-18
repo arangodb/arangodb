@@ -362,7 +362,7 @@ class QueryGeoIntersectsSearch : public QueryGeoIntersects {
         version()));
     auto collection = _vocbase.lookupCollection("testCollection0");
     EXPECT_TRUE(collection);
-    collection->createIndex(createJson->slice(), created);
+    collection->createIndex(createJson->slice(), created).get();
     ASSERT_TRUE(created);
   }
 

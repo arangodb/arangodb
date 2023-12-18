@@ -171,7 +171,6 @@ void SortedCollectExecutor::CollectGroup::addLine(
       // compute the expression
       input.getValue(infos.getExpressionRegister())
           .toVelocyPack(infos.getVPackOptions(), _builder,
-                        /*resolveExternals*/ false,
                         /*allowUnindexed*/ false);
     } else {
       // copy variables / keep variables into result register
@@ -181,7 +180,6 @@ void SortedCollectExecutor::CollectGroup::addLine(
         _builder.add(VPackValue(pair.first));
         input.getValue(pair.second)
             .toVelocyPack(infos.getVPackOptions(), _builder,
-                          /*resolveExternals*/ false,
                           /*allowUnindexed*/ false);
       }
       _builder.close();
@@ -230,7 +228,6 @@ void SortedCollectExecutor::CollectGroup::groupValuesToArray(
   builder.openArray();
   for (auto const& value : groupValues) {
     value.toVelocyPack(infos.getVPackOptions(), builder,
-                       /*resolveExternals*/ false,
                        /*allowUnindexed*/ false);
   }
 

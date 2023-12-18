@@ -38,6 +38,7 @@ namespace arangodb::pregel::conductor {
 
 template<typename Runtime>
 struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
+  using ActorPID = typename Runtime::ActorPID;
   auto operator()(message::ConductorStart start)
       -> std::unique_ptr<ConductorState> {
     LOG_TOPIC("5adb0", INFO, Logger::PREGEL) << fmt::format(
@@ -158,7 +159,7 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
         this->state->executionState->receive(this->sender, start);
     if (stateChange.has_value()) {
       changeState(std::move(stateChange.value()));
-      this->finish();
+      this->finish(actor::ExitReason::kFinished);
       this->template dispatch<pregel::message::SpawnMessages>(
           this->state->spawnActor, pregel::message::SpawnCleanup{});
       this->template dispatch<pregel::message::StatusMessages>(
@@ -192,7 +193,7 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     return std::move(this->state);
   }
 
-  auto operator()(actor::message::UnknownMessage unknown)
+  auto operator()(actor::message::UnknownMessage<ActorPID> unknown)
       -> std::unique_ptr<ConductorState> {
     LOG_TOPIC("d1791", INFO, Logger::PREGEL)
         << fmt::format("Conductor Actor: Error - sent unknown message to {}",
@@ -200,7 +201,7 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     return std::move(this->state);
   }
 
-  auto operator()(actor::message::ActorNotFound notFound)
+  auto operator()(actor::message::ActorNotFound<ActorPID> notFound)
       -> std::unique_ptr<ConductorState> {
     LOG_TOPIC("ea585", INFO, Logger::PREGEL)
         << fmt::format("Conductor Actor: Error - receiving actor {} not found",

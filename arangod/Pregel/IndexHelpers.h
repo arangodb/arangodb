@@ -26,7 +26,7 @@
 #include <memory>
 #include <string>
 
-#include "Aql/Graphs.h"
+#include "Aql/EdgeConditionBuilderContainer.h"
 #include "Indexes/IndexIterator.h"
 
 namespace arangodb {

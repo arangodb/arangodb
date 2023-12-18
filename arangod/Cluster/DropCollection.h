@@ -30,8 +30,10 @@
 
 struct TRI_vocbase_t;
 namespace arangodb {
-namespace maintenance {
+class LogicalCollection;
+}
 
+namespace arangodb::maintenance {
 class DropCollection : public ActionBase, ShardDefinition {
  public:
   DropCollection(MaintenanceFeature&, ActionDescription const&);
@@ -42,8 +44,7 @@ class DropCollection : public ActionBase, ShardDefinition {
   void setState(ActionState state) override final;
 
  private:
-  bool dropReplication2Shard(ShardID const& shard, TRI_vocbase_t& vocbase);
+  static Result dropCollectionReplication2(
+      ShardID const& shard, std::shared_ptr<LogicalCollection>& coll);
 };
-
-}  // namespace maintenance
-}  // namespace arangodb
+}  // namespace arangodb::maintenance

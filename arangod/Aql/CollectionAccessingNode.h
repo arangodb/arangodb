@@ -26,6 +26,7 @@
 #include "Aql/CollectionAccess.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Basics/debugging.h"
+#include "Cluster/Utils/ShardID.h"
 
 #include <optional>
 #include <string>
@@ -79,10 +80,9 @@ class CollectionAccessingNode : public DataAccessingNode {
   /// should be used only in smart-graph context!
   void collection(aql::Collection const* collection);
 
-  void setUsedShard(std::string const& shardName) {
+  void setUsedShard(ShardID const& shardName) {
     // We can only use the shard we are restricted to
-    TRI_ASSERT(shardName.empty() || _restrictedTo.empty() ||
-               _restrictedTo == shardName);
+    TRI_ASSERT(!_restrictedTo.has_value() || _restrictedTo == shardName);
     _usedShard = shardName;
   }
 
@@ -91,7 +91,7 @@ class CollectionAccessingNode : public DataAccessingNode {
    *
    * @param shardId The shard restricted to
    */
-  void restrictToShard(std::string const& shardId);
+  void restrictToShard(ShardID const& shardId);
 
   /**
    * @brief Check if this Node is restricted to a single Shard (cluster only)
@@ -105,7 +105,7 @@ class CollectionAccessingNode : public DataAccessingNode {
    *
    * @return The Shard this node is restricted to
    */
-  std::string const& restrictedShard() const;
+  ShardID restrictedShard() const;
 
   /// @brief set the prototype collection when using distributeShardsLike
   void setPrototype(arangodb::aql::Collection const* prototypeCollection,
@@ -145,9 +145,9 @@ class CollectionAccessingNode : public DataAccessingNode {
   aql::CollectionAccess _collectionAccess;
 
   /// @brief A shard this node is restricted to, may be empty
-  std::string _restrictedTo;
+  std::optional<ShardID> _restrictedTo;
 
-  std::string _usedShard;
+  std::optional<ShardID> _usedShard;
 };
 
 }  // namespace aql

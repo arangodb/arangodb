@@ -57,17 +57,20 @@ void EngineInfoContainerCoordinator::EngineInfo::addNode(ExecutionNode* en) {
 }
 
 Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
-    Query& query, MapRemoteToSnippet const& dbServerQueryIds, bool isfirst,
+    Query& query, MapRemoteToSnippet const& dbServerQueryIds, bool isFirst,
     std::unique_ptr<ExecutionEngine>& engine) const {
   TRI_ASSERT(!_nodes.empty());
 
-  std::shared_ptr<SharedQueryState> sqs;
-  if (isfirst) {
-    sqs = query.sharedState();
+  if (isFirst) {
+    // use shared state of Query
+    engine = std::make_unique<ExecutionEngine>(
+        _id, query, query.itemBlockManager(), query.sharedState());
+  } else {
+    // create a separate shared state
+    engine = std::make_unique<ExecutionEngine>(
+        _id, query, query.itemBlockManager(),
+        std::make_shared<SharedQueryState>(query.vocbase().server()));
   }
-
-  engine = std::make_unique<ExecutionEngine>(_id, query,
-                                             query.itemBlockManager(), sqs);
 
   auto res = engine->createBlocks(_nodes, dbServerQueryIds);
   if (!res.ok()) {

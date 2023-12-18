@@ -105,13 +105,13 @@ RestStatus RestDocumentHandler::execute() {
   // execute one of the CRUD methods
   switch (type) {
     case rest::RequestType::DELETE_REQ:
-      return removeDocument();
+      return waitForFuture(removeDocument());
     case rest::RequestType::GET:
       return readDocument();
     case rest::RequestType::HEAD:
       return checkDocument();
     case rest::RequestType::POST:
-      return insertDocument();
+      return waitForFuture(insertDocument());
     case rest::RequestType::PUT:
       return replaceDocument();
     case rest::RequestType::PATCH:
@@ -154,14 +154,14 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
   RestVocbaseBaseHandler::shutdownExecute(isFinalized);
 }
 
-RestStatus RestDocumentHandler::insertDocument() {
+futures::Future<futures::Unit> RestDocumentHandler::insertDocument() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() > 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting " + DOCUMENT_PATH +
                       "?collection=<identifier>");
-    return RestStatus::DONE;
+    co_return;
   }
 
   bool found;
@@ -179,13 +179,13 @@ RestStatus RestDocumentHandler::insertDocument() {
                   "'collection' is missing, expecting " + DOCUMENT_PATH +
                       " POST /_api/document/<collection> or query parameter "
                       "'collection'");
-    return RestStatus::DONE;
+    co_return;
   }
 
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {  // error message generated in parseVPackBody
-    return RestStatus::DONE;
+    co_return;
   }
 
   arangodb::OperationOptions opOptions(_context);
@@ -241,7 +241,7 @@ RestStatus RestDocumentHandler::insertDocument() {
                                         // single document operations
 
   // find and load collection given by name or identifier
-  _activeTrx = createTransaction(
+  _activeTrx = co_await createTransaction(
       cname, AccessMode::Type::WRITE, opOptions,
       transaction::OperationOriginREST{"inserting document(s)"},
       std::move(trxOpts));
@@ -253,7 +253,7 @@ RestStatus RestDocumentHandler::insertDocument() {
 
   if (!res.ok()) {
     generateTransactionError(cname, OperationResult(res, opOptions), "");
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (ServerState::instance()->isDBServer() &&
@@ -275,32 +275,26 @@ RestStatus RestDocumentHandler::insertDocument() {
             "' with the required access mode.");
   }
 
-  return waitForFuture(
-      _activeTrx->insertAsync(cname, body, opOptions)
-          .thenValue([=, this,
-                      silent(opOptions.silent)](OperationResult&& opres) {
-            // Will commit if no error occured.
-            // or abort if an error occured.
-            // result stays valid!
-            return _activeTrx->finishAsync(opres.result)
-                .thenValue([=, this, opres(std::move(opres))](Result&& res) {
-                  if (opres.fail()) {
-                    generateTransactionError(cname, opres);
-                    return;
-                  }
+  OperationResult opres =
+      co_await _activeTrx->insertAsync(cname, body, opOptions);
 
-                  if (res.fail()) {
-                    generateTransactionError(
-                        cname, OperationResult(res, opOptions), "");
-                    return;
-                  }
+  // Will commit if no error occured.
+  // or abort if an error occured.
+  // result stays valid!
+  res = co_await _activeTrx->finishAsync(opres.result);
+  if (opres.fail()) {
+    generateTransactionError(cname, opres);
+    co_return;
+  }
 
-                  generate20x(
-                      opres, cname, _activeTrx->getCollectionType(cname),
-                      _activeTrx->transactionContextPtr()->getVPackOptions(),
-                      isMultiple, silent, rest::ResponseCode::CREATED);
-                });
-          }));
+  if (res.fail()) {
+    generateTransactionError(cname, OperationResult(res, opOptions), "");
+    co_return;
+  }
+
+  generate20x(opres, cname, _activeTrx->getCollectionType(cname),
+              _activeTrx->transactionContextPtr()->getVPackOptions(),
+              isMultiple, opOptions.silent, rest::ResponseCode::CREATED);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -320,7 +314,7 @@ RestStatus RestDocumentHandler::readDocument() {
                     "expecting GET /_api/document/<collection>/<key>");
       return RestStatus::DONE;
     case 2:
-      return readSingleDocument(true);
+      return waitForFuture(readSingleDocument(true));
 
     default:
       generateError(rest::ResponseCode::BAD,
@@ -330,7 +324,8 @@ RestStatus RestDocumentHandler::readDocument() {
   }
 }
 
-RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
+futures::Future<futures::Unit> RestDocumentHandler::readSingleDocument(
+    bool generateBody) {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   // split the document reference
@@ -383,9 +378,9 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
   VPackSlice search = builder.slice();
 
   // find and load collection given by name or identifier
-  _activeTrx =
-      createTransaction(collection, AccessMode::Type::READ, options,
-                        transaction::OperationOriginREST{"fetching document"});
+  _activeTrx = co_await createTransaction(
+      collection, AccessMode::Type::READ, options,
+      transaction::OperationOriginREST{"fetching document"});
 
   _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -393,48 +388,42 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
   // inside read transaction
   // ...........................................................................
 
-  Result res = _activeTrx->begin();
+  Result res = co_await _activeTrx->beginAsync();
 
   if (!res.ok()) {
     generateTransactionError(collection, OperationResult(res, options), "");
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (_activeTrx->state()->options().allowDirtyReads) {
     setOutgoingDirtyReadsHeader(true);
   }
 
-  return waitForFuture(
-      _activeTrx->documentAsync(collection, search, options)
-          .thenValue([=, this,
-                      buffer(std::move(buffer))](OperationResult opRes) {
-            return _activeTrx->finishAsync(opRes.result)
-                .thenValue([=, this, opRes(std::move(opRes))](Result&& res) {
-                  if (!opRes.ok()) {
-                    generateTransactionError(collection, opRes, key, ifRid);
-                    return;
-                  }
+  OperationResult opRes =
+      co_await _activeTrx->documentAsync(collection, search, options);
+  res = co_await _activeTrx->finishAsync(opRes.result);
+  if (!opRes.ok()) {
+    generateTransactionError(collection, opRes, key, ifRid);
+    co_return;
+  }
 
-                  if (!res.ok()) {
-                    generateTransactionError(
-                        collection, OperationResult(res, options), key, ifRid);
-                    return;
-                  }
+  if (!res.ok()) {
+    generateTransactionError(collection, OperationResult(res, options), key,
+                             ifRid);
+    co_return;
+  }
 
-                  if (ifNoneRid.isSet()) {
-                    RevisionId const rid = RevisionId::fromSlice(opRes.slice());
-                    if (ifNoneRid == rid) {
-                      generateNotModified(rid);
-                      return;
-                    }
-                  }
+  if (ifNoneRid.isSet()) {
+    RevisionId const rid = RevisionId::fromSlice(opRes.slice());
+    if (ifNoneRid == rid) {
+      generateNotModified(rid);
+      co_return;
+    }
+  }
 
-                  // use default options
-                  generateDocument(
-                      opRes.slice(), generateBody,
-                      _activeTrx->transactionContextPtr()->getVPackOptions());
-                });
-          }));
+  // use default options
+  generateDocument(opRes.slice(), generateBody,
+                   _activeTrx->transactionContextPtr()->getVPackOptions());
 }
 
 RestStatus RestDocumentHandler::checkDocument() {
@@ -446,23 +435,24 @@ RestStatus RestDocumentHandler::checkDocument() {
     return RestStatus::DONE;
   }
 
-  return readSingleDocument(false);
+  return waitForFuture(readSingleDocument(false));
 }
 
 RestStatus RestDocumentHandler::replaceDocument() {
   bool found;
   _request->value("onlyget", found);
   if (found) {
-    return readManyDocuments();
+    return waitForFuture(readManyDocuments());
   }
-  return modifyDocument(false);
+  return waitForFuture(modifyDocument(false));
 }
 
 RestStatus RestDocumentHandler::updateDocument() {
-  return modifyDocument(true);
+  return waitForFuture(modifyDocument(true));
 }
 
-RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
+futures::Future<futures::Unit> RestDocumentHandler::modifyDocument(
+    bool isPatch) {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() > 2) {
@@ -474,7 +464,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
         " /_api/document and query parameter 'collection'");
 
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
-    return RestStatus::DONE;
+    co_return;
   }
 
   bool isArrayCase = suffixes.size() <= 1;
@@ -495,7 +485,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
           "collection must be given in URL path or query parameter "
           "'collection' must be specified");
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
-      return RestStatus::DONE;
+      co_return;
     }
   } else {
     cname = suffixes[0];
@@ -505,7 +495,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {  // error message generated in parseVPackBody
-    return RestStatus::DONE;
+    co_return;
   }
 
   OperationOptions opOptions(_context);
@@ -513,7 +503,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     generateTransactionError(
         cname,
         OperationResult(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID, opOptions), "");
-    return RestStatus::DONE;
+    co_return;
   }
 
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
@@ -589,7 +579,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
                                         // single document operations
 
   // find and load collection given by name or identifier
-  _activeTrx = createTransaction(
+  _activeTrx = co_await createTransaction(
       cname, AccessMode::Type::WRITE, opOptions,
       transaction::OperationOriginREST{"modifying document(s)"},
       std::move(trxOpts));
@@ -600,11 +590,11 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   // inside write transaction
   // ...........................................................................
 
-  Result res = _activeTrx->begin();
+  Result res = co_await _activeTrx->beginAsync();
 
   if (!res.ok()) {
     generateTransactionError(cname, OperationResult(res, opOptions), "");
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (ServerState::instance()->isDBServer() &&
@@ -638,42 +628,32 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     f = _activeTrx->replaceAsync(cname, body, opOptions);
   }
 
-  return waitForFuture(std::move(f).thenValue(
-      [=, this, silent(opOptions.silent),
-       buffer(std::move(buffer))](OperationResult opRes) {
-        return _activeTrx->finishAsync(opRes.result)
-            .thenValue([=, this, opRes(std::move(opRes))](Result&& res) {
-              // ...........................................................................
-              // outside write transaction
-              // ...........................................................................
+  OperationResult opRes = co_await std::move(f);
+  res = co_await _activeTrx->finishAsync(opRes.result);
+  if (opRes.fail()) {
+    generateTransactionError(cname, opRes, key, headerRev);
+    co_return;
+  }
 
-              if (opRes.fail()) {
-                generateTransactionError(cname, opRes, key, headerRev);
-                return;
-              }
+  if (!res.ok()) {
+    generateTransactionError(cname, OperationResult(res, opOptions), key,
+                             headerRev);
+    co_return;
+  }
 
-              if (!res.ok()) {
-                generateTransactionError(cname, OperationResult(res, opOptions),
-                                         key, headerRev);
-                return;
-              }
-
-              generate20x(
-                  opRes, cname, _activeTrx->getCollectionType(cname),
-                  _activeTrx->transactionContextPtr()->getVPackOptions(),
-                  isArrayCase, silent, rest::ResponseCode::CREATED);
-            });
-      }));
+  generate20x(opRes, cname, _activeTrx->getCollectionType(cname),
+              _activeTrx->transactionContextPtr()->getVPackOptions(),
+              isArrayCase, opOptions.silent, rest::ResponseCode::CREATED);
 }
 
-RestStatus RestDocumentHandler::removeDocument() {
+futures::Future<futures::Unit> RestDocumentHandler::removeDocument() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() < 1 || suffixes.size() > 2) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/document/<collection>/<key> or "
                   "/_api/document/<collection> with a body");
-    return RestStatus::DONE;
+    co_return;
   }
 
   // split the document reference
@@ -736,14 +716,14 @@ RestStatus RestDocumentHandler::removeDocument() {
     bool parseSuccess = false;
     search = this->parseVPackBody(parseSuccess);
     if (!parseSuccess) {  // error message generated in parseVPackBody
-      return RestStatus::DONE;
+      co_return;
     }
   }
 
   if (!search.isArray() && !search.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "Request body not parseable");
-    return RestStatus::DONE;
+    co_return;
   }
 
   bool const isMultiple = search.isArray();
@@ -751,18 +731,18 @@ RestStatus RestDocumentHandler::removeDocument() {
   trxOpts.delaySnapshot = !isMultiple;  // for now we only enable this for
                                         // single document operations
 
-  _activeTrx = createTransaction(
+  _activeTrx = co_await createTransaction(
       cname, AccessMode::Type::WRITE, opOptions,
       transaction::OperationOriginREST{"removing document(s)"},
       std::move(trxOpts));
 
   addTransactionHints(cname, isMultiple, false);
 
-  Result res = _activeTrx->begin();
+  Result res = co_await _activeTrx->beginAsync();
 
   if (!res.ok()) {
     generateTransactionError(cname, OperationResult(res, opOptions), "");
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (ServerState::instance()->isDBServer() &&
@@ -784,42 +764,31 @@ RestStatus RestDocumentHandler::removeDocument() {
             "' with the required access mode.");
   }
 
-  return waitForFuture(
-      _activeTrx->removeAsync(cname, search, opOptions)
-          .thenValue([=, this, silent(opOptions.silent),
-                      buffer(std::move(buffer))](OperationResult opRes) {
-            return _activeTrx->finishAsync(opRes.result)
-                .thenValue([=, this, opRes(std::move(opRes))](Result&& res) {
-                  // ...........................................................................
-                  // outside write transaction
-                  // ...........................................................................
+  OperationResult opRes =
+      co_await _activeTrx->removeAsync(cname, search, opOptions);
+  res = co_await _activeTrx->finishAsync(opRes.result);
+  if (opRes.fail()) {
+    generateTransactionError(cname, opRes, key, revision);
+    co_return;
+  }
 
-                  if (opRes.fail()) {
-                    generateTransactionError(cname, opRes, key, revision);
-                    return;
-                  }
+  if (!res.ok()) {
+    generateTransactionError(cname, OperationResult(res, opOptions), key);
+    co_return;
+  }
 
-                  if (!res.ok()) {
-                    generateTransactionError(
-                        cname, OperationResult(res, opOptions), key);
-                    return;
-                  }
-
-                  generate20x(
-                      opRes, cname, _activeTrx->getCollectionType(cname),
-                      _activeTrx->transactionContextPtr()->getVPackOptions(),
-                      isMultiple, silent, rest::ResponseCode::OK);
-                });
-          }));
+  generate20x(opRes, cname, _activeTrx->getCollectionType(cname),
+              _activeTrx->transactionContextPtr()->getVPackOptions(),
+              isMultiple, opOptions.silent, rest::ResponseCode::OK);
 }
 
-RestStatus RestDocumentHandler::readManyDocuments() {
+futures::Future<futures::Unit> RestDocumentHandler::readManyDocuments() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/document/<collection> with a body");
-    return RestStatus::DONE;
+    co_return;
   }
 
   // split the document reference
@@ -841,52 +810,47 @@ RestStatus RestDocumentHandler::readManyDocuments() {
     // there, the flag is ignored.
   }
 
-  _activeTrx =
-      createTransaction(cname, AccessMode::Type::READ, opOptions,
-                        transaction::OperationOriginREST{"fetching documents"});
+  _activeTrx = co_await createTransaction(
+      cname, AccessMode::Type::READ, opOptions,
+      transaction::OperationOriginREST{"fetching documents"});
 
   // ...........................................................................
   // inside read transaction
   // ...........................................................................
 
-  Result res = _activeTrx->begin();
+  Result res = co_await _activeTrx->beginAsync();
 
   if (!res.ok()) {
     generateTransactionError(cname, OperationResult(res, opOptions), "");
-    return RestStatus::DONE;
+    co_return;
   }
 
   bool success;
   VPackSlice const search = this->parseVPackBody(success);
   if (!success) {  // error message generated in parseVPackBody
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (_activeTrx->state()->options().allowDirtyReads) {
     setOutgoingDirtyReadsHeader(true);
   }
 
-  return waitForFuture(
-      _activeTrx->documentAsync(cname, search, opOptions)
-          .thenValue([=, this](OperationResult opRes) {
-            return _activeTrx->finishAsync(opRes.result)
-                .thenValue([=, this, opRes(std::move(opRes))](Result&& res) {
-                  if (opRes.fail()) {
-                    generateTransactionError(cname, opRes);
-                    return;
-                  }
+  OperationResult opRes =
+      co_await _activeTrx->documentAsync(cname, search, opOptions);
+  res = co_await _activeTrx->finishAsync(opRes.result);
 
-                  if (!res.ok()) {
-                    generateTransactionError(
-                        cname, OperationResult(res, opOptions), "");
-                    return;
-                  }
+  if (opRes.fail()) {
+    generateTransactionError(cname, opRes);
+    co_return;
+  }
 
-                  generateDocument(
-                      opRes.slice(), true,
-                      _activeTrx->transactionContextPtr()->getVPackOptions());
-                });
-          }));
+  if (!res.ok()) {
+    generateTransactionError(cname, OperationResult(res, opOptions), "");
+    co_return;
+  }
+
+  generateDocument(opRes.slice(), true,
+                   _activeTrx->transactionContextPtr()->getVPackOptions());
 }
 
 void RestDocumentHandler::handleFillIndexCachesValue(

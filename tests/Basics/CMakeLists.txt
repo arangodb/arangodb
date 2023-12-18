@@ -5,6 +5,7 @@ target_sources(arangodbtests
   datetime.cpp
   FilesTest.cpp
   FpConvTest.cpp
+  FutureSharedLockTest.cpp
   HashesTest.cpp
   HybridLogicalClockTest.cpp
   InputProcessorsTest.cpp

@@ -359,7 +359,8 @@ class StorageEngine : public ArangodFeature {
 
   virtual void getStatistics(velocypack::Builder& builder) const;
 
-  virtual void getStatistics(std::string& result) const;
+  virtual void toPrometheus(std::string& result, std::string_view globals,
+                            bool ensureWhitespace) const;
 
   // management methods for synchronizing with external persistent stores
   virtual TRI_voc_tick_t currentTick() const = 0;

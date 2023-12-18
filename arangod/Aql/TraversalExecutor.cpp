@@ -66,8 +66,7 @@ TraversalExecutorInfos::TraversalExecutorInfos(
     traverser::TraverserOptions::UniquenessLevel vertexUniqueness,
     traverser::TraverserOptions::UniquenessLevel edgeUniqueness,
     traverser::TraverserOptions::Order order, double defaultWeight,
-    std::string weightAttribute, transaction::Methods* trx,
-    arangodb::aql::QueryContext& query,
+    std::string weightAttribute, arangodb::aql::QueryContext& query,
     arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
     arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
     ClusterBaseProviderOptions&& clusterBaseProviderOptions, bool isSmart)
@@ -79,8 +78,8 @@ TraversalExecutorInfos::TraversalExecutorInfos(
       _order(order),
       _defaultWeight(defaultWeight),
       _weightAttribute(std::move(weightAttribute)),
-      _trx(trx),
-      _query(query) {
+      _query(query),
+      _trx(query.newTrxContext()) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
   // _fixedSource XOR _inputRegister
@@ -112,8 +111,7 @@ TraversalExecutorInfos::TraversalExecutorInfos(
     traverser::TraverserOptions::UniquenessLevel vertexUniqueness,
     traverser::TraverserOptions::UniquenessLevel edgeUniqueness,
     traverser::TraverserOptions::Order order, double defaultWeight,
-    std::string weightAttribute, transaction::Methods* trx,
-    arangodb::aql::QueryContext& query,
+    std::string weightAttribute, arangodb::aql::QueryContext& query,
     arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
     arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
     graph::SingleServerBaseProviderOptions&& singleServerBaseProviderOptions,
@@ -126,8 +124,8 @@ TraversalExecutorInfos::TraversalExecutorInfos(
       _order(order),
       _defaultWeight(defaultWeight),
       _weightAttribute(std::move(weightAttribute)),
-      _trx(trx),
-      _query(query) {
+      _query(query),
+      _trx(_query.newTrxContext()) {
   // _fixedSource XOR _inputRegister
   // note: _fixedSource can be the empty string here
   TRI_ASSERT(_fixedSource.empty() ||
@@ -245,7 +243,7 @@ TraverserOptions::Order TraversalExecutorInfos::getOrder() const {
   return _order;
 }
 
-transaction::Methods* TraversalExecutorInfos::getTrx() { return _trx; }
+transaction::Methods* TraversalExecutorInfos::getTrx() { return &_trx; }
 
 arangodb::aql::QueryContext& TraversalExecutorInfos::getQuery() {
   return _query;

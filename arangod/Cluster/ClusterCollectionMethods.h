@@ -40,6 +40,7 @@ struct PlanCollectionEntryReplication2;
 class LogicalCollection;
 class ClusterInfo;
 struct IShardDistributionFactory;
+struct ShardID;
 
 namespace replication2 {
 struct CollectionGroupUpdates;

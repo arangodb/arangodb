@@ -36,6 +36,8 @@
 #include "Containers/HashSet.h"
 #include "Containers/SmallVector.h"
 
+#include <string_view>
+
 namespace arangodb {
 namespace velocypack {
 class Slice;
@@ -85,10 +87,10 @@ class ExecutionPlan {
   /// @brief whether or not the exclusive flag is set in the write options
   static bool hasExclusiveAccessOption(AstNode const* node);
 
-  ExecutionPlan* clone(Ast*);
+  std::unique_ptr<ExecutionPlan> clone(Ast*);
 
   /// @brief clone the plan by recursively cloning starting from the root
-  ExecutionPlan* clone();
+  std::unique_ptr<ExecutionPlan> clone();
 
   // build flags for plan serialization
   static unsigned buildSerializationFlags(bool verbose, bool includeInternals,
@@ -177,12 +179,6 @@ class ExecutionPlan {
   bool shouldExcludeFromScatterGather(ExecutionNode const* node) const {
     return (_excludeFromScatterGather.find(node) !=
             _excludeFromScatterGather.end());
-  }
-
-  void enableAsyncPrefetching() noexcept { _isAsyncPrefetchEnabled = true; }
-
-  bool isAsyncPrefetchEnabled() const noexcept {
-    return _isAsyncPrefetchEnabled;
   }
 
   /// @brief get the node where variable with id <id> is introduced . . .
@@ -303,16 +299,15 @@ class ExecutionPlan {
   bool fullCount() const noexcept;
 
   /// @brief parses modification options from an AST node
-  static ModificationOptions parseModificationOptions(QueryContext& query,
-                                                      char const* operationNode,
-                                                      AstNode const*,
-                                                      bool addWarnings);
+  static ModificationOptions parseModificationOptions(
+      QueryContext& query, std::string_view operationNode, AstNode const* node,
+      bool addWarnings);
 
   /// @brief registers a warning for an invalid OPTIONS attribute
   static void invalidOptionAttribute(QueryContext& query,
-                                     char const* errorReason,
-                                     char const* operationName,
-                                     char const* name, size_t length);
+                                     std::string_view errorReason,
+                                     std::string_view operationName,
+                                     std::string_view name);
 
  private:
   template<WalkerUniqueness U>
@@ -336,7 +331,7 @@ class ExecutionPlan {
 
   /// @brief create modification options by parsing an AST node
   /// and adding plan specific options.
-  ModificationOptions createModificationOptions(char const* operationName,
+  ModificationOptions createModificationOptions(std::string_view operationName,
                                                 AstNode const*);
 
   /// @brief create COLLECT options from an AST node
@@ -430,10 +425,6 @@ class ExecutionPlan {
 
   /// @brief flag to indicate whether the variable usage is computed
   bool _varUsageComputed;
-
-  /// @brief flag to indicate whether the postprocessing step to enable async
-  /// prefetching on the node level should be executed.
-  bool _isAsyncPrefetchEnabled{false};
 
   // Flag there are collection nodes with forceIndexHint:true
   bool _hasForcedIndexHints{false};

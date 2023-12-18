@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Result.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Containers/FlatHashMap.h"
 #include "RestServer/arangod.h"
 
@@ -31,6 +32,7 @@
 #include <velocypack/Slice.h>
 
 #include <atomic>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -45,7 +47,6 @@ class ApplicationServer;
 }
 
 typedef std::string ServerID;  // ID of a server
-typedef std::string ShardID;   // ID of a shard
 using ShardMap = containers::FlatHashMap<ShardID, std::vector<ServerID>>;
 
 class ShardingInfo {
@@ -96,17 +97,17 @@ class ShardingInfo {
   std::shared_ptr<ShardMap> shardIds() const;
 
   // return a sorted vector of ShardIDs
-  std::shared_ptr<std::vector<ShardID>> shardListAsShardID() const;
+  std::set<ShardID> shardListAsShardID() const;
 
   // return a filtered list of the collection's shards
   std::shared_ptr<ShardMap> shardIds(
       std::unordered_set<std::string> const& includedShards) const;
   void setShardMap(std::shared_ptr<ShardMap> const& map);
 
-  ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice,
-                                bool docComplete, ShardID& shardID,
-                                bool& usesDefaultShardKeys,
-                                std::string_view key);
+  ResultT<ShardID> getResponsibleShard(arangodb::velocypack::Slice slice,
+                                       bool docComplete,
+                                       bool& usesDefaultShardKeys,
+                                       std::string_view key);
 
   template<typename T>
   static void sortShardNamesNumerically(T& list);

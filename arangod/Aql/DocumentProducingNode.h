@@ -25,6 +25,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <span>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -42,9 +43,12 @@ class Slice;
 }  // namespace velocypack
 namespace aql {
 
+class ExecutionNode;
 class ExecutionPlan;
 class Expression;
 struct Variable;
+
+enum class AsyncPrefetchEligibility;
 
 class DocumentProducingNode {
  public:
@@ -61,8 +65,15 @@ class DocumentProducingNode {
   void replaceVariables(
       std::unordered_map<VariableId, Variable const*> const& replacements);
 
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable);
+
   /// @brief return the out variable
   Variable const* outVariable() const;
+
+  std::vector<Variable const*> getVariablesSetHere() const;
 
   Projections const& projections() const noexcept;
 
@@ -75,6 +86,8 @@ class DocumentProducingNode {
 
   /// @brief return the early pruning condition for the node
   Expression* filter() const noexcept { return _filter.get(); }
+
+  void setFilterProjections(Projections projections);
 
   Projections const& filterProjections() const noexcept;
 
@@ -104,8 +117,15 @@ class DocumentProducingNode {
 
   void setMaxProjections(size_t value) noexcept { _maxProjections = value; }
 
+  AsyncPrefetchEligibility canUseAsyncPrefetching() const noexcept;
+
   // arbitrary default value for the maximum number of projected attributes
   static constexpr size_t kMaxProjections = 5;
+
+  // returns true if projections have been updated
+  virtual bool recalculateProjections(ExecutionPlan* plan);
+
+  virtual bool isProduceResult() const = 0;
 
  protected:
   Variable const* _outVariable;

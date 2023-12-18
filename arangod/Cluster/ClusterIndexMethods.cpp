@@ -782,8 +782,8 @@ Result dropIndexCoordinatorInner(LogicalCollection const& col, IndexId iid,
  * data.
  */
 auto ensureIndexCoordinatorReplication2Inner(
-    LogicalCollection const& collection, std::string_view idString,
-    VPackSlice index, bool create, double timeout, ArangodServer& server)
+    LogicalCollection const& collection, IndexId iid, VPackSlice index,
+    bool create, double timeout, ArangodServer& server)
     -> ResultT<VPackBuilder> {
   // Get the current entry in Target for this collection
   TargetCollectionReader collectionFromTarget(collection);
@@ -818,82 +818,13 @@ auto ensureIndexCoordinatorReplication2Inner(
   if (!create) {
     return {TRI_ERROR_NO_ERROR};
   }
-
+  std::string const idString = arangodb::basics::StringUtils::itoa(iid.id());
   const size_t numberOfShards = collection.numberOfShards();
   VPackBuilder newIndexBuilder =
       ::buildIndexEntry(index, numberOfShards, idString, false);
 
-  auto report = std::make_shared<CurrentWatcher>();
-  {
-    // This callback waits on two things: First for the Index to appear in Plan,
-    // and Second for the IsBuilding Flag to be removed. This way the index
-    // creation is Completed
-    // TODO: We still need to report errors, only happy Path for now.
-    auto watcherCallback =
-        [report, id = std::string{idString}](VPackSlice slice) -> bool {
-      if (report->hasReported(id)) {
-        // This index has already reported
-        return true;
-      }
-      if (slice.isNone()) {
-        // TODO: Should this actual set an "error"? It indicates that the
-        // collection is dropped if i am not mistaken
-        return false;
-      }
-      auto collection = velocypack::deserialize<
-          replication2::agency::CollectionPlanSpecification>(slice);
-      auto const& indexes = collection.indexes.indexes;
-      for (auto const& index : indexes) {
-        auto indexSlice = index.slice();
-        if (indexSlice.hasKey(StaticStrings::IndexId) &&
-            indexSlice.get(StaticStrings::IndexId).isEqualString(id)) {
-          if (!indexSlice.hasKey(StaticStrings::IndexIsBuilding)) {
-            // TODO: We do not yet handle errors, e.g. on UniqueIndexes
-            report->addReport(id, TRI_ERROR_NO_ERROR);
-          }
-        }
-      }
-      return true;
-    };
-
-    report->addWatchPath(
-        pathCollectionInPlan(collection.vocbase().name(),
-                             std::to_string(collection.id().id()))
-            ->str(arangodb::cluster::paths::SkipComponents(1)),
-        std::string{idString}, watcherCallback);
-  }
   // Register Callbacks
   auto& clusterInfo = server.getFeature<ClusterFeature>().clusterInfo();
-  AgencyCallbackRegistry& callbackRegistry =
-      clusterInfo.agencyCallbackRegistry();
-
-  std::vector<std::pair<std::shared_ptr<AgencyCallback>, std::string>>
-      callbackList;
-  auto unregisterCallbacksGuard =
-      scopeGuard([&callbackList, &callbackRegistry]() noexcept {
-        try {
-          for (auto& [cb, _] : callbackList) {
-            callbackRegistry.unregisterCallback(cb);
-          }
-        } catch (std::exception const& ex) {
-          LOG_TOPIC("cc914", ERR, Logger::CLUSTER)
-              << "Failed to unregister agency callback: " << ex.what();
-        } catch (...) {
-          // Should never be thrown, we only throw exceptions
-        }
-      });
-
-  // First register all callbacks
-  for (auto const& [path, identifier, cb] : report->getCallbackInfos()) {
-    auto agencyCallback =
-        std::make_shared<AgencyCallback>(server, path, cb, true, false);
-    Result r = callbackRegistry.registerCallback(agencyCallback);
-    if (r.fail()) {
-      return r;
-    }
-    callbackList.emplace_back(std::move(agencyCallback), identifier);
-  }
-  report->clearCallbacks();
 
   auto targetPath = pathCollectionInTarget(
       collection.vocbase().name(), std::to_string(collection.id().id()));
@@ -910,16 +841,7 @@ auto ensureIndexCoordinatorReplication2Inner(
   AgencyWriteTransaction trx(newValue, oldValue);
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
 
-  if (result.successful()) {
-    if (VPackSlice resultsSlice = result.slice().get("results");
-        resultsSlice.length() > 0) {
-      Result r =
-          clusterInfo.waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
-      if (r.fail()) {
-        return r;
-      }
-    }
-  } else {
+  if (!result.successful()) {
     if (result.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
       // Retry loop is outside!
       return Result(TRI_ERROR_HTTP_PRECONDITION_FAILED);
@@ -932,61 +854,110 @@ auto ensureIndexCoordinatorReplication2Inner(
                       __FILE__, ":", __LINE__));
   }
 
-  auto pollInterval = getPollInterval();
-  // we have sent the transaction ot create the Index.
-  // Let's busy loop and wait until it shows up.
-  while (!server.isStopping()) {
-    auto maybeFinalResult = report->getResultIfAllReported();
-    if (maybeFinalResult.has_value()) {
-      // We have a final result. we are complete
-      auto const& finalResult = maybeFinalResult.value();
-      if (finalResult.fail()) {
-        // Oh noes, something bad has happened.
-        // Abort
-        return finalResult;
-      }
+  try {
+    AgencyCallbackRegistry& callbackRegistry =
+        clusterInfo.agencyCallbackRegistry();
+    // NOTE: We do not need to synchronize this.
+    // The callback waitFor will only have a single thread calling it.
+    // As soon as this callback returns "true" the following future
+    // will be called in same thread, so there is no concurrency on read/write.
+    // In addition, the main thread here is synchronously waiting, so
+    // creationError is guaranteed to stay in scope.
+    Result creationError{};
+    auto waitOnSuccess =
+        callbackRegistry
+            .waitFor(
+                pathCollectionInPlan(collection.vocbase().name(),
+                                     std::to_string(collection.id().id()))
+                    ->str(arangodb::cluster::paths::SkipComponents(1)),
+                [id = std::string{idString}, &creationError](VPackSlice slice) {
+                  if (slice.isNone()) {
+                    // TODO: Should this actual set an "error"? It indicates
+                    // that the collection is dropped if i am not mistaken
+                    return false;
+                  }
+                  auto collection = velocypack::deserialize<
+                      replication2::agency::CollectionPlanSpecification>(slice);
+                  auto const& indexes = collection.indexes.indexes;
+                  for (auto const& index : indexes) {
+                    auto indexSlice = index.slice();
+                    if (indexSlice.hasKey(StaticStrings::IndexId) &&
+                        indexSlice.get(StaticStrings::IndexId)
+                            .isEqualString(id)) {
+                      if (!indexSlice.hasKey(StaticStrings::IndexIsBuilding)) {
+                        return true;
+                      }
+                      auto maybeError =
+                          indexSlice.get(StaticStrings::IndexCreationError);
+                      if (maybeError.isObject()) {
+                        // There has been an error reported on the DBServers
+                        auto status = velocypack::deserializeWithStatus(
+                            maybeError, creationError);
+                        if (!status.ok()) {
+                          // Parsing error from Agency, report some generic
+                          // error
+                          creationError = Result{
+                              TRI_ERROR_INTERNAL,
+                              fmt::format(
+                                  "Error while receiving Agency data: {}",
+                                  status.error())};
+                        }
+                        TRI_ASSERT(creationError.fail())
+                            << "An Index reported 'NO_ERROR' as an error in "
+                               "current during creation.";
+                        return true;
+                      }
+                    }
+                  }
+                  return false;
+                })
+            .thenValue([&clusterInfo, &server,
+                        &creationError](auto index) -> futures::Future<Result> {
+              if (creationError.fail()) {
+                // Just forward the error, no need to wait anywhere.
+                return creationError;
+              }
+              if (clusterInfo.getPlanIndex() < index) {
+                // Need to wait here, until ClusterInfo has updated to latest
+                // plan.
+                auto& agencyCache =
+                    server.getFeature<ClusterFeature>().agencyCache();
+                auto [version, _] = agencyCache.read(std::vector<std::string>{
+                    AgencyCommHelper::path("Plan/Version")});
+                auto planVersion = version->slice()[0]
+                                       .get({"arango", "Plan", "Version"})
+                                       .getNumber<uint64_t>();
+                return clusterInfo.waitForPlanVersion(planVersion);
+              }
+              return Result{};
+            });
+    auto res = waitOnSuccess.get();
+    if (res.fail()) {
+      // Try our best to drop the index again
+      std::ignore =
+          ClusterIndexMethods::dropIndexCoordinator(collection, iid, 0.0);
+      return res;
+    }
+    VPackBuilder resultBuilder;
+    {
+      VPackObjectBuilder guard(&resultBuilder);
+      // add all original values
+      resultBuilder.add(VPackObjectIterator(newIndexBuilder.slice()));
+      resultBuilder.add("isNewlyCreated", VPackValue(true));
+    }
 
-      VPackBuilder resultBuilder;
-      {
-        VPackObjectBuilder guard(&resultBuilder);
-        // add all original values
-        resultBuilder.add(VPackObjectIterator(newIndexBuilder.slice()));
-        resultBuilder.add("isNewlyCreated", VPackValue(true));
-      }
-      return resultBuilder;
-    }
-    // We do not have a final result. Let's wait for more input
-    // Wait for the next incomplete callback
-    for (auto& [cb, indexId] : callbackList) {
-      if (!report->hasReported(indexId)) {
-        // We do not have result for this collection, wait for it.
-        bool gotTimeout;
-        {
-          // This one has not responded, wait for it.
-          std::unique_lock guard(cb->_cv.mutex);
-          gotTimeout = cb->executeByCallbackOrTimeout(pollInterval);
-        }
-        if (gotTimeout) {
-          // We got woken up by waittime, not by  callback.
-          // Let us check if we skipped other callbacks as well
-          for (auto& [cb2, cid2] : callbackList) {
-            if (!report->hasReported(cid2)) {
-              // Only re check those where we have not yet found a
-              // result.
-              cb2->refetchAndUpdate(true, false);
-            }
-          }
-        }
-        // Break the callback loop,
-        // continue on the check if we completed loop
-        break;
-      }
-    }
+    return resultBuilder;
+    // TODO: Maybe we want to catch ArangoErrors specifically?
+    // Right now we can only have communications issues here.
+  } catch (std::exception const& e) {
+    return Result(TRI_ERROR_INTERNAL, fmt::format("Exception while waiting on "
+                                                  "index to be created: {}",
+                                                  e.what()));
+  } catch (...) {
+    return Result(TRI_ERROR_INTERNAL,
+                  "Unspecified exception while waiting on "
+                  "index to be created.");
   }
-  // If we get here we are not allowed to retry.
-  // The loop above does not contain a break
-  TRI_ASSERT(server.isStopping());
-  return Result{TRI_ERROR_SHUTTING_DOWN};
 }
 
 // The following function does the actual work of index creation: Create
@@ -1004,9 +975,9 @@ auto ensureIndexCoordinatorReplication2Inner(
 // Finally note that the retry loop for the case of a failed precondition
 // is outside this function here in `ensureIndexCoordinator`.
 Result ensureIndexCoordinatorInner(LogicalCollection const& collection,
-                                   std::string_view idString, VPackSlice slice,
-                                   bool create, VPackBuilder& resultBuilder,
-                                   double timeout, ArangodServer& server) {
+                                   IndexId iid, VPackSlice slice, bool create,
+                                   VPackBuilder& resultBuilder, double timeout,
+                                   ArangodServer& server) {
   using namespace std::chrono;
 
   double const realTimeout = getTimeout(timeout);
@@ -1066,6 +1037,7 @@ Result ensureIndexCoordinatorInner(LogicalCollection const& collection,
       std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
+  std::string const idString = arangodb::basics::StringUtils::itoa(iid.id());
   // We need explicit copies as this callback may run even after
   // this function returns. So let's keep all used variables
   // explicit here.
@@ -1103,8 +1075,9 @@ Result ensureIndexCoordinatorInner(LogicalCollection const& collection,
                 // error otherwise
                 auto errNum =
                     arangodb::basics::VelocyPackHelper::getNumericValue<
-                        ErrorCode>(v, StaticStrings::ErrorNum,
-                                   TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
+                        ErrorCode, ErrorCode::ValueType>(
+                        v, StaticStrings::ErrorNum,
+                        TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
                 dbServerResult->store(errNum, std::memory_order_release);
                 return true;
               }
@@ -1431,8 +1404,6 @@ Result ClusterIndexMethods::ensureIndexCoordinator(
     iid = IndexId{clusterInfo.uniqid()};
   }
 
-  std::string const idString = arangodb::basics::StringUtils::itoa(iid.id());
-
   VPackSlice const typeSlice = slice.get(StaticStrings::IndexType);
   if (!typeSlice.isString() ||
       (typeSlice.isEqualString("geo1") || typeSlice.isEqualString("geo2"))) {
@@ -1450,8 +1421,8 @@ Result ClusterIndexMethods::ensureIndexCoordinator(
       resultBuilder.clear();
       if (collection.replicationVersion() == replication::Version::TWO) {
         auto tmpRes = ::ensureIndexCoordinatorReplication2Inner(
-            collection, idString, slice, create, timeout, server);
-        if (!res.ok()) {
+            collection, iid, slice, create, timeout, server);
+        if (!tmpRes.ok()) {
           res = tmpRes.result();
         } else {
           resultBuilder = std::move(tmpRes.get());
@@ -1459,8 +1430,7 @@ Result ClusterIndexMethods::ensureIndexCoordinator(
         }
       } else {
         res = ::ensureIndexCoordinatorInner(  // create index
-            collection, idString, slice, create, resultBuilder, timeout,
-            server);
+            collection, iid, slice, create, resultBuilder, timeout, server);
       }
 
       // Note that this function sets the errorMsg unless it is precondition

@@ -36,10 +36,14 @@ DocumentStateTransaction::DocumentStateTransaction(
 
 auto DocumentStateTransaction::apply(
     ReplicatedOperation::OperationType const& op) -> OperationResult {
-  auto opts = buildDefaultOptions();
   return std::visit(
       overload{
+          [&](ReplicatedOperation::Truncate const& operation) {
+            auto opts = buildOperationOptions(std::nullopt);
+            return applyOp(operation, opts);
+          },
           [&](ModifiesUserTransaction auto const& operation) {
+            auto opts = buildOperationOptions(operation.options);
             return applyOp(operation, opts);
           },
           [&](auto&&) {
@@ -48,7 +52,7 @@ auto DocumentStateTransaction::apply(
                 Result{TRI_ERROR_TRANSACTION_INTERNAL,
                        fmt::format("Operation {} cannot be applied",
                                    ReplicatedOperation::fromOperationType(op))},
-                opts};
+                buildOperationOptions(std::nullopt)};
           },
       },
       op);
@@ -63,10 +67,13 @@ auto DocumentStateTransaction::commit() -> Result { return _methods->commit(); }
 auto DocumentStateTransaction::abort() -> Result { return _methods->abort(); }
 
 auto DocumentStateTransaction::containsShard(ShardID const& sid) -> bool {
-  return nullptr != _methods->state()->collection(sid, AccessMode::Type::NONE);
+  return nullptr != _methods->state()->collection(std::string{sid},
+                                                  AccessMode::Type::NONE);
 }
 
-auto DocumentStateTransaction::buildDefaultOptions() -> OperationOptions {
+auto DocumentStateTransaction::buildOperationOptions(
+    std::optional<ReplicatedOperation::DocumentOperation::Options> options)
+    -> OperationOptions {
   // TODO revisit checkUniqueConstraintsInPreflight and waitForSync
   auto opOptions = OperationOptions();
   opOptions.silent = true;
@@ -76,6 +83,12 @@ auto DocumentStateTransaction::buildDefaultOptions() -> OperationOptions {
   opOptions.validate = false;
   opOptions.waitForSync = false;
   opOptions.indexOperationMode = IndexOperationMode::internal;
+
+  if (options.has_value()) {
+    opOptions.refillIndexCaches = options->refillIndexCaches
+                                      ? RefillIndexCaches::kRefill
+                                      : RefillIndexCaches::kDontRefill;
+  }
   return opOptions;
 }
 

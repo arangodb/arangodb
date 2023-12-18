@@ -109,9 +109,9 @@ class PlainCache final : public Cache {
                                        bool enableWindowedStats);
 
   bool freeMemoryWhile(std::function<bool(std::uint64_t)> const& cb) override;
-  virtual void migrateBucket(void* sourcePtr,
-                             std::unique_ptr<Table::Subtable> targets,
-                             Table& newTable) override;
+  void migrateBucket(Table* table, void* sourcePtr,
+                     std::unique_ptr<Table::Subtable> targets,
+                     Table& newTable) override;
 
   // helpers
   std::pair<::ErrorCode, Table::BucketLocker> getBucket(

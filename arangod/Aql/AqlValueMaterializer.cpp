@@ -32,7 +32,7 @@
 #include <velocypack/Slice.h>
 
 using namespace arangodb;
-using namespace arangodb::aql;
+using namespace aql;
 
 AqlValueMaterializer::AqlValueMaterializer(velocypack::Options const* options)
     : options(options), materialized(), hasCopied(false) {}
@@ -98,8 +98,7 @@ AqlValueMaterializer::~AqlValueMaterializer() {
   }
 }
 
-arangodb::velocypack::Slice AqlValueMaterializer::slice(AqlValue const& value,
-                                                        bool resolveExternals) {
-  materialized = value.materialize(options, hasCopied, resolveExternals);
+velocypack::Slice AqlValueMaterializer::slice(AqlValue const& value) {
+  materialized = value.materialize(options, hasCopied);
   return materialized.slice();
 }

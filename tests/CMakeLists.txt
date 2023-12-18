@@ -127,7 +127,8 @@ set(ARANGODB_TESTS_SOURCES
   Aql/InputRangeTest.cpp
   Aql/InsertExecutorTest.cpp
   Aql/JaccardFunctionTest.cpp
-  Aql/JoinStrategy/GenericJoinTest.cpp
+  Aql/JoinStrategy/GenericAndTwoNonUniqueJoinTest.cpp
+  Aql/JoinStrategy/TwoIndicesUniqueJoinTest.cpp
   Aql/LevenshteinMatchFunctionTest.cpp
   Aql/LimitExecutorTest.cpp
   Aql/MinHashFunctionsTest.cpp
@@ -148,6 +149,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/ReturnExecutorTest.cpp
   Aql/RowFetcherHelper.cpp
   Aql/ScatterExecutorTest.cpp
+  Aql/ShadowRowForwardingTest.cpp
   Aql/ShortestPathExecutorTest.cpp
   Aql/ShortestPathNodeTest.cpp
   Aql/SkipResultTest.cpp
@@ -193,6 +195,7 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/QueryAnalyzerRevisionsTest.cpp
   Cluster/RebootTrackerTest.cpp
   Cluster/ShardAutoRebalancerTest.cpp
+  Cluster/ShardIDTest.cpp
   Containers/EnumerateTest.cpp
   Containers/HashSetTest.cpp
   Containers/MerkleTreeTest.cpp
@@ -321,6 +324,7 @@ target_link_libraries(arangodbtests
   arango_rocksdb
   arangoserver
   arango_restore
+  clienttools_utils
   fuerte
   rocksdb
   snappy
@@ -367,6 +371,10 @@ if (USE_V8)
   target_link_libraries(arangodbtests v8_interface)
 endif ()
 
+if (NOT USE_PRECOMPILED_V8)
+  add_dependencies(arangodbtests v8_build)
+endif ()
+
 if (USE_JEMALLOC)
   add_dependencies(arangodbtests jemalloc_build)
 endif ()
@@ -389,6 +397,7 @@ foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
   endif()
 endforeach()
 
+add_subdirectory(Actor)
 add_subdirectory(Pregel)
 add_subdirectory(sepp)
 add_subdirectory(VocBase/Properties)

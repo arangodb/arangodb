@@ -62,7 +62,7 @@ function BaseRequestSuite () {
 
     testDeleteMethod: function () {
       var path = '/lol';
-      var res = request.delete(buildUrl(path), {timeout: 300});
+      var res = request.delete(buildUrl(path), {timeout: 300, headers: {"Accept-Encoding": "identity"}});
 
       expect(res).to.be.an.instanceof(request.Response);
 
@@ -70,7 +70,6 @@ function BaseRequestSuite () {
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
       var obj = JSON.parse(res.body);
       expect(obj.path).to.equal(path);
-
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -79,7 +78,7 @@ function BaseRequestSuite () {
 
     testGetMethod: function () {
       var path = '/lol';
-      var res = request.get(buildUrl(path), {timeout: 300});
+      var res = request.get(buildUrl(path), {timeout: 300, headers: {"Accept-Encoding": "identity"}});
       expect(res).to.be.an.instanceof(request.Response);
       expect(res.body).to.be.a('string');
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
@@ -105,7 +104,7 @@ function BaseRequestSuite () {
 
     testPostMethod: function () {
       var path = '/lol';
-      var res = request.post(buildUrl(path), {timeout: 300});
+      var res = request.post(buildUrl(path), {timeout: 300, headers: {"Accept-Encoding": "identity"}});
       expect(res).to.be.an.instanceof(request.Response);
       expect(res.body).to.be.a('string');
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
@@ -120,7 +119,7 @@ function BaseRequestSuite () {
     testPatchMethod: function () {
       var path = '/lol';
       var body = {hello: 'world'};
-      var res = request.post(buildUrl(path), {body: body, json: true, timeout: 300});
+      var res = request.post(buildUrl(path), {body: body, json: true, timeout: 300, headers: {"Accept-Encoding": "identity"}});
       expect(res).to.be.an.instanceof(request.Response);
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
       expect(res.json).to.be.an('object');
@@ -137,7 +136,7 @@ function BaseRequestSuite () {
     testPutMethod: function () {
       var path = '/lol';
       var body = {hello: 'world'};
-      var res = request.put(buildUrl(path), {body: body, json: true, timeout: 300});
+      var res = request.put(buildUrl(path), {body: body, json: true, timeout: 300, headers: {"Accept-Encoding": "identity"}});
       expect(res).to.be.an.instanceof(request.Response);
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
       expect(res.json).to.be.an('object');

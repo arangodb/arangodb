@@ -145,8 +145,7 @@ TEST_F(EnumerateListExecutorTest, test_check_state_second_row_border) {
 
 // new framework tests
 using EnumerateListTestHelper = ExecutorTestHelper<1, 1>;
-using EnumerateListSplitType = EnumerateListTestHelper::SplitType;
-using EnumerateListParamType = std::tuple<EnumerateListSplitType>;
+using EnumerateListParamType = std::tuple<SplitType>;
 
 class EnumerateListExecutorTestProduce
     : public AqlExecutorTestCaseWithParam<EnumerateListParamType, false> {
@@ -411,10 +410,9 @@ TEST_P(EnumerateListExecutorTestProduce,
 }
 
 template<size_t... vs>
-const EnumerateListSplitType splitIntoBlocks =
-    EnumerateListSplitType{std::vector<std::size_t>{vs...}};
+const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
 template<size_t step>
-const EnumerateListSplitType splitStep = EnumerateListSplitType{step};
+const SplitType splitStep = SplitType{step};
 
 INSTANTIATE_TEST_CASE_P(EnumerateListExecutor, EnumerateListExecutorTestProduce,
                         ::testing::Values(splitIntoBlocks<2, 3>,

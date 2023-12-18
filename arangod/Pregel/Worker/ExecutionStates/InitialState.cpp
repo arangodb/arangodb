@@ -46,14 +46,15 @@ template<typename V, typename E, typename M>
 Initial<V, E, M>::Initial(WorkerState<V, E, M>& worker) : worker{worker} {}
 
 template<typename V, typename E, typename M>
-auto Initial<V, E, M>::receive(actor::ActorPID const& sender,
-                               actor::ActorPID const& self,
+auto Initial<V, E, M>::receive(actor::DistributedActorPID const& sender,
+                               actor::DistributedActorPID const& self,
                                worker::message::WorkerMessages const& message,
                                Dispatcher dispatcher)
     -> std::unique_ptr<ExecutionState> {
   if (std::holds_alternative<worker::message::WorkerStart>(message)) {
     LOG_TOPIC("cd696", INFO, Logger::PREGEL)
-        << fmt::format("Worker Actor {} started with state {}", self, worker);
+        << fmt::format("Worker Actor {} started with state {}",
+                       inspection::json(self), worker);
 
     dispatcher.dispatchConductor(ResultT<conductor::message::WorkerCreated>{});
     dispatcher.dispatchMetrics(

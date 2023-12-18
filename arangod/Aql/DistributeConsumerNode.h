@@ -78,8 +78,8 @@ class DistributeConsumerNode : public ExecutionNode {
   std::string const& getDistributeId() const { return _distributeId; }
 
   /// @brief clone execution Node recursively, this makes the class abstract
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override;
 
   CostEstimate estimateCost() const override {
     TRI_ASSERT(false);

@@ -32,6 +32,7 @@ const db = arangodb.db;
 const isCluster = require("internal").isCluster();
 const dbs = ["_system", "maçã", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "testName"];
 const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
+const collectionToBeIgnored = ["UnitTestCollectionNoNoDumpA", "UnitTestCollectionNoNoDumpB"];
 
 const validatorJson = {
   "message": "",
@@ -111,6 +112,12 @@ function dumpIntegrationSuite() {
       structure = escapedName + ".structure.json";
     }
     return structure;
+  };
+
+  let checkStructureFileNotAvailable = function (tree, path, cn) {
+    let structure = structureFile(path, cn);
+    assertFalse(fs.isFile(fs.join(path, structure)), structure);
+    assertEqual(-1, tree.indexOf(structure));
   };
 
   let checkStructureFile = function (tree, path, readable, cn, subdir = "", escapedName = undefined) {
@@ -783,6 +790,58 @@ function dumpIntegrationSuite() {
       checkStructureFile(tree, path, true, cn);
       checkDataFile(tree, path, /*split*/ false, true, true, cn);
       fs.removeDirectoryRecursive(path, true);
+    },
+
+    testDumpWithCollectionsToBeIgnored: function () {
+      const cA = db._collection(cn);
+      const cIgnoreA = db._create(collectionToBeIgnored[0], {waitForSync: true});
+      const cIgnoreB = db._create(collectionToBeIgnored[1], {waitForSync: true});
+
+      try {
+        let docs = [];
+        for (let i = 0; i < 1000; ++i) {
+          docs.push({_key: "test" + i});
+        }
+        cA.insert(docs);
+        cIgnoreA.insert(docs);
+        cIgnoreB.insert(docs);
+
+        // Create the dump with ignored collections given
+        let path = fs.getTempFile();
+        let args = ['--ignore-collection', collectionToBeIgnored[0], '--ignore-collection', collectionToBeIgnored[1]];
+        let tree = runDump(path, args, 0);
+
+        const checkDumpedCollection = (collectionName) => {
+          checkEncryption(tree, path, "none");
+          checkStructureFile(tree, path, true, collectionName, "");
+          checkDataFile(tree, path, /*split*/ false, true, true, collectionName);
+        };
+
+        const checkIgnoredCollection = (collectionName) => {
+          checkStructureFileNotAvailable(tree, path, collectionName);
+        };
+
+        // Collection "UnitTestCollectionA" must pass all checks regularly
+        checkDumpedCollection(cA.name());
+        // Whereas "UnitTestCollectionNoNoDumpA" and "UnitTestCollectionNoNoDumpB" are not allowed to exist.
+        checkIgnoredCollection(cIgnoreA.name());
+        checkIgnoredCollection(cIgnoreB.name());
+
+        fs.removeDirectoryRecursive(path, true);
+      } finally {
+        db._drop(cIgnoreA.name());
+        db._drop(cIgnoreB.name());
+      }
+    },
+
+    testDumpWithCollectionsToBeIgnoredAndCollectionsToNotBeIgnored: function () {
+      // Basically, tests the use of a blacklist in direct combination with a whitelist
+      // approach, which is currently not supported.
+      let path = fs.getTempFile();
+      let args = ['--collection', cn, '--ignore-collection', collectionToBeIgnored[1]];
+
+      // expected to fail
+      runDump(path, args, 1);
     },
     
     testDumpCollectionWithExtendedName: function () {

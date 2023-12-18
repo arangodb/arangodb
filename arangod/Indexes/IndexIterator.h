@@ -44,6 +44,7 @@
 
 #pragma once
 
+#include <iosfwd>
 #include "Aql/AqlValue.h"
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
@@ -89,6 +90,8 @@ class IndexIteratorCoveringData {
 
   virtual velocypack::ValueLength length() const = 0;
 };
+
+std::ostream& operator<<(std::ostream&, IndexIteratorCoveringData const&);
 
 /// @brief a base class to iterate over the index. An iterator is requested
 /// at the index itself

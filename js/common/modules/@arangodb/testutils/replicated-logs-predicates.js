@@ -424,6 +424,18 @@ const allServicesOperational = function (database, logId) {
   };
 };
 
+const lowestIndexToKeepReached = function (log, leader, ltik) {
+  return function () {
+    log.ping();
+    const status = log.status();
+    if (status.participants[leader].response.lowestIndexToKeep >= ltik) {
+      return true;
+    }
+    return Error(`lowestIndexToKeep should be >= ${ltik} for ${leader}, status: ${JSON.stringify(status)} `
+      + `log contents ${JSON.stringify(log.head(1000))}`);
+  };
+};
+
 exports.allServersHealthy = allServersHealthy;
 exports.replicatedLogIsGone = replicatedLogIsGone;
 exports.replicatedLogIsReady = replicatedLogIsReady;
@@ -444,3 +456,4 @@ exports.allReplicatedStatesAccessible = allReplicatedStatesAccessible;
 exports.allServicesOperational = allServicesOperational;
 exports.replicatedStateConverged = replicatedStateConverged;
 exports.allReplicatedStatesConverged = allReplicatedStatesConverged;
+exports.lowestIndexToKeepReached = lowestIndexToKeepReached;

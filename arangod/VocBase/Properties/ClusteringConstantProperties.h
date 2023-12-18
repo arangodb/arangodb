@@ -43,7 +43,7 @@ struct ClusteringConstantProperties {
   std::optional<std::string> shardingStrategy =
       std::nullopt;  // defaultShardingStrategy
   inspection::NonNullOptional<std::vector<std::string>> shardKeys{std::nullopt};
-  inspection::NonNullOptional<std::vector<std::string>> shardsR2{std::nullopt};
+  inspection::NonNullOptional<std::vector<ShardID>> shardsR2{std::nullopt};
   inspection::NonNullOptional<replication2::agency::CollectionGroupId> groupId{
       std::nullopt};
 

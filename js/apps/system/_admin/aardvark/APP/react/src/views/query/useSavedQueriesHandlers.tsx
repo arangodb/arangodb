@@ -71,21 +71,31 @@ export const useSavedQueriesHandlers = ({
     mutate("/savedQueries");
   };
 
-  const onSaveQueryList = async (queries: QueryType[]) => {
-    // add queries to savedQueries and dedupe
-    const newQueries = [
-      ...(savedQueries || []),
-      ...queries.filter(
-        query =>
-          !savedQueries?.find(savedQuery => savedQuery.name === query.name)
-      )
-    ];
-    await patchQueries({
-      queries: newQueries,
-      onSuccess: () => {
-        window.arangoHelper.arangoNotification(`Saved queries`);
-      }
-    });
+  const onSaveQueryList = async ({
+    sanitizedQueries,
+    onSuccess,
+    onFailure
+  }: {
+    sanitizedQueries: QueryType[];
+    onSuccess: () => void;
+    onFailure: (e: any) => void;
+  }) => {
+    try {
+      // add queries to savedQueries and dedupe
+      const newQueries = [
+        ...(savedQueries || []),
+        ...sanitizedQueries.filter(
+          query =>
+            !savedQueries?.find(savedQuery => savedQuery.name === query.name)
+        )
+      ];
+      await patchQueries({
+        queries: newQueries,
+        onSuccess
+      });
+    } catch (e: any) {
+      onFailure(e);
+    }
   };
   const {
     isOpen: isSaveAsModalOpen,
@@ -113,6 +123,13 @@ const patchQueries = async ({
   onSuccess: () => void;
 }) => {
   const storageKey = getQueryStorageKey();
+  let currentUser = window.App.currentUser;
+  const frontendConfig = window.frontendConfig;
+  
+  if (!frontendConfig.authenticationEnabled) {
+    currentUser = 'root';
+  }
+
   if (window.frontendConfig.ldapEnabled) {
     localStorage.setItem(storageKey, JSON.stringify(queries));
     onSuccess();
@@ -122,7 +139,7 @@ const patchQueries = async ({
   try {
     await currentDB.route().request({
       method: "PATCH",
-      path: `/_api/user/${encodeURIComponent(window.App.currentUser)}`,
+      path: `/_api/user/${encodeURIComponent(currentUser)}`,
       body: {
         extra: {
           queries

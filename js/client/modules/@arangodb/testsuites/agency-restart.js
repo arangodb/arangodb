@@ -46,7 +46,7 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 const BLUE = require('internal').COLORS.COLOR_BLUE;
 
 const testPaths = {
-  'agency-restart': [tu.pathForTesting('server/agency-restart')]
+  'agency-restart': [tu.pathForTesting('client/agency-restart')]
 };
 
 // //////////////////////////////////////////////////////////////////////////////

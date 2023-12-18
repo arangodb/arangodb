@@ -60,9 +60,6 @@
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
-#ifdef USE_V8
-#include "V8Server/V8Context.h"
-#endif
 #include "VocBase/ComputedValues.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
@@ -397,8 +394,8 @@ Collections::Context::~Context() {
   }
 }
 
-transaction::Methods* Collections::Context::trx(AccessMode::Type const& type,
-                                                bool embeddable) {
+futures::Future<transaction::Methods*> Collections::Context::trx(
+    AccessMode::Type const& type, bool embeddable) {
   if (_responsibleForTrx && _trx == nullptr) {
     auto origin = transaction::OperationOriginREST{::moduleName};
 
@@ -411,7 +408,7 @@ transaction::Methods* Collections::Context::trx(AccessMode::Type const& type,
     auto trx = std::make_unique<SingleCollectionTransaction>(std::move(ctx),
                                                              *_coll, type);
 
-    Result res = trx->begin();
+    Result res = co_await trx->beginAsync();
 
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
@@ -419,7 +416,7 @@ transaction::Methods* Collections::Context::trx(AccessMode::Type const& type,
     _trx = trx.release();
   }
   // ADD asserts for running state and locking issues!
-  return _trx;
+  co_return _trx;
 }
 
 std::shared_ptr<LogicalCollection> Collections::Context::coll() const {
@@ -767,7 +764,7 @@ Collections::create(         // create collection
 /*static*/ arangodb::Result Collections::createShard(  // create shard
     TRI_vocbase_t& vocbase,                            // collection vocbase
     OperationOptions const& options,
-    std::string const& name,                 // collection name
+    ShardID const& name,                     // shardName
     TRI_col_type_e collectionType,           // collection type
     arangodb::velocypack::Slice properties,  // collection properties
     std::shared_ptr<LogicalCollection>& ret) {
@@ -775,13 +772,9 @@ Collections::create(         // create collection
   // NOTE: This is original Collections::create but we stripped of
   // everything that is not relevant on DBServers.
 
-  if (name.empty()) {
-    events::CreateCollection(vocbase.name(), name,
-                             TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    return TRI_ERROR_ARANGO_ILLEGAL_NAME;
-  } else if (collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
-             collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
-    events::CreateCollection(vocbase.name(), name,
+  if (collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
+      collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
+    events::CreateCollection(vocbase.name(), std::string{name},
                              TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     return TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
   }
@@ -801,8 +794,8 @@ Collections::create(         // create collection
     TRI_ASSERT(!isLocalCollection(infos.front()));
     auto res = validateCreationInfo(
         infos.front(), vocbase, allowEnterpriseCollectionsOnSingleServer,
-        enforceReplicationFactor, isLocalCollection(infos.front()),
-        NameValidator::isSystemName(name), allowSystem);
+        enforceReplicationFactor, isLocalCollection(infos.front()), false,
+        allowSystem);
     if (res.fail()) {
       // Audit Log the error
       events::CreateCollection(vocbase.name(), name, res.errorNumber());
@@ -831,7 +824,8 @@ Collections::create(         // create collection
 
     for (auto const& info : infos) {
       // Add audit logging for the one collection we have
-      events::CreateCollection(vocbase.name(), name, TRI_ERROR_NO_ERROR);
+      events::CreateCollection(vocbase.name(), std::string{name},
+                               TRI_ERROR_NO_ERROR);
       velocypack::Builder reportBuilder(info.properties);
       OperationResult result(Result(), reportBuilder.steal(), options);
       events::PropertyUpdateCollection(vocbase.name(), name, result);
@@ -967,13 +961,14 @@ void Collections::createSystemCollectionProperties(
   return res;
 }
 
-Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
+futures::Future<Result> Collections::properties(Context& ctxt,
+                                                VPackBuilder& builder) {
   auto coll = ctxt.coll();
   TRI_ASSERT(coll != nullptr);
   ExecContext const& exec = ExecContext::current();
   bool canRead = exec.canUseCollection(coll->name(), auth::Level::RO);
   if (!canRead || exec.databaseAuthLevel() == auth::Level::NONE) {
-    return Result(
+    co_return Result(
         TRI_ERROR_FORBIDDEN,
         absl::StrCat("cannot access collection '", coll->name(), "'"));
   }
@@ -1006,7 +1001,7 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
          StaticStrings::ShardingStrategy, StaticStrings::IsDisjoint});
 
     // this transaction is held longer than the following if...
-    auto trx = ctxt.trx(AccessMode::Type::READ, true);
+    auto trx = co_await ctxt.trx(AccessMode::Type::READ, true);
     TRI_ASSERT(trx != nullptr);
   }
 
@@ -1017,17 +1012,17 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackObjectIterator(props.slice()));
 
-  return TRI_ERROR_NO_ERROR;
+  co_return TRI_ERROR_NO_ERROR;
 }
 
-Result Collections::updateProperties(LogicalCollection& collection,
-                                     velocypack::Slice props,
-                                     OperationOptions const& options) {
+futures::Future<Result> Collections::updateProperties(
+    LogicalCollection& collection, velocypack::Slice props,
+    OperationOptions const& options) {
   ExecContext const& exec = ExecContext::current();
   bool canModify = exec.canUseCollection(collection.name(), auth::Level::RW);
 
   if (!canModify || !exec.canUseDatabase(auth::Level::RW)) {
-    return TRI_ERROR_FORBIDDEN;
+    co_return TRI_ERROR_FORBIDDEN;
   }
 
   if (ServerState::instance()->isCoordinator()) {
@@ -1044,7 +1039,7 @@ Result Collections::updateProperties(LogicalCollection& collection,
           props, StaticStrings::ReplicationFactor, 0);
       if (replFactor > 0 &&
           static_cast<size_t>(replFactor) > ci.getCurrentDBServers().size()) {
-        return TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS;
+        co_return TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS;
       }
     }
 
@@ -1060,13 +1055,13 @@ Result Collections::updateProperties(LogicalCollection& collection,
     // write-concern checks
     if (writeConcern > ci.getCurrentDBServers().size()) {
       TRI_ASSERT(writeConcern > 0);
-      return TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS;
+      co_return TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS;
     }
 
     Result res = ShardingInfo::validateShardsAndReplicationFactor(
         props, collection.vocbase().server(), false);
     if (res.fail()) {
-      return res;
+      co_return res;
     }
 
     auto rv = info->properties(props);
@@ -1076,7 +1071,7 @@ Result Collections::updateProperties(LogicalCollection& collection,
       events::PropertyUpdateCollection(collection.vocbase().name(),
                                        collection.name(), result);
     }
-    return rv;
+    co_return rv;
 
   } else {
     // The following lambda isolates the core of the update operation. This
@@ -1094,7 +1089,7 @@ Result Collections::updateProperties(LogicalCollection& collection,
 
     if (collection.replicationVersion() == replication::Version::TWO) {
       // In replication2, the exclusive lock is already acquired.
-      return doUpdate();
+      co_return doUpdate();
     }
 
     auto origin =
@@ -1109,11 +1104,11 @@ Result Collections::updateProperties(LogicalCollection& collection,
 
     SingleCollectionTransaction trx(std::move(ctx), collection,
                                     AccessMode::Type::EXCLUSIVE);
-    Result res = trx.begin();
+    Result res = co_await trx.beginAsync();
     if (res.ok()) {
-      return doUpdate();
+      co_return doUpdate();
     }
-    return res;
+    co_return res;
   }
 }
 
@@ -1317,22 +1312,23 @@ futures::Future<OperationResult> Collections::revisionId(
     auto cid = std::to_string(ctxt.coll()->id().id());
     auto& feature =
         ctxt.coll()->vocbase().server().getFeature<ClusterFeature>();
-    return revisionOnCoordinator(feature, databaseName, cid, options);
+    co_return co_await revisionOnCoordinator(feature, databaseName, cid,
+                                             options);
   }
 
   RevisionId rid =
-      ctxt.coll()->revision(ctxt.trx(AccessMode::Type::READ, true));
+      ctxt.coll()->revision(co_await ctxt.trx(AccessMode::Type::READ, true));
 
   VPackBuilder builder;
   builder.add(VPackValue(rid.toString()));
 
-  return futures::makeFuture(
-      OperationResult(Result(), builder.steal(), options));
+  co_return OperationResult(Result(), builder.steal(), options);
 }
 
-arangodb::Result Collections::checksum(LogicalCollection& collection,
-                                       bool withRevisions, bool withData,
-                                       uint64_t& checksum, RevisionId& revId) {
+futures::Future<Result> Collections::checksum(LogicalCollection& collection,
+                                              bool withRevisions, bool withData,
+                                              uint64_t& checksum,
+                                              RevisionId& revId) {
   if (ServerState::instance()->isCoordinator()) {
     auto cid = std::to_string(collection.id().id());
     auto& feature = collection.vocbase().server().getFeature<ClusterFeature>();
@@ -1344,7 +1340,7 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
       revId = RevisionId::fromSlice(res.slice().get("revision"));
       checksum = res.slice().get("checksum").getUInt();
     }
-    return res.result;
+    co_return res.result;
   }
 
   ResourceMonitor monitor(GlobalResourceMonitor::instance());
@@ -1359,10 +1355,10 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
 #endif
   SingleCollectionTransaction trx(std::move(ctx), collection,
                                   AccessMode::Type::READ);
-  Result res = trx.begin();
+  Result res = co_await trx.beginAsync();
 
   if (res.fail()) {
-    return res;
+    co_return res;
   }
 
   revId = collection.revision(&trx);
@@ -1411,7 +1407,7 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
     return true;
   });
 
-  return trx.finish(res);
+  co_return trx.finish(res);
 }
 
 /// @brief the list of collection attributes that are allowed by user-input

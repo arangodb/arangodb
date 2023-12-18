@@ -123,12 +123,6 @@ RegisterId ShortestPathExecutorInfos<FinderType>::getOutputRegister(
 }
 
 template<class FinderType>
-graph::TraverserCache* ShortestPathExecutorInfos<FinderType>::cache() const {
-  TRI_ASSERT(false);  // TODO [GraphRefactor]:remove me later
-  return nullptr;
-}
-
-template<class FinderType>
 ShortestPathExecutor<FinderType>::ShortestPathExecutor(Fetcher&, Infos& infos)
     : _infos(infos),
       _trx(infos.query().newTrxContext()),

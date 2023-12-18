@@ -27,20 +27,29 @@
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
-#include <v8.h>
-#include <velocypack/Builder.h>
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "VocBase/vocbase.h"
 
+#include <v8.h>
+#include <atomic>
+#include <string>
+
 namespace arangodb {
+namespace velocypack {
+class Builder;
+class Slice;
+}  // namespace velocypack
+class V8Executor;
 
-Result executeTransaction(v8::Isolate*, basics::ReadWriteLock& cancelLock,
-                          std::atomic<bool>& canceled, VPackSlice transaction,
+Result executeTransaction(V8Executor* executor,
+                          basics::ReadWriteLock& cancelLock,
+                          std::atomic<bool>& canceled,
+                          velocypack::Slice transaction,
                           std::string const& requestPortType,
-                          VPackBuilder& result);
+                          velocypack::Builder& result);
 
-Result executeTransactionJS(v8::Isolate*, v8::Handle<v8::Value> const& arg,
+Result executeTransactionJS(v8::Isolate*, v8::Handle<v8::Value> arg,
                             v8::Handle<v8::Value>& result, v8::TryCatch&);
 
 }  // namespace arangodb

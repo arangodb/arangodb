@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Functions.h"
-#include <cstdint>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/LanguageFeature.h"
@@ -32,10 +31,8 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Query.h"
+#include "Aql/QueryExpressionContext.h"
 #include "Aql/Range.h"
-#ifdef USE_V8
-#include "Aql/V8Executor.h"
-#endif
 #include "Basics/Endian.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
@@ -115,6 +112,7 @@
 #include <velocypack/Sink.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <list>
 
 #ifdef __APPLE__
@@ -273,7 +271,7 @@ AqlValue numberValue(double value, bool nullify) {
       return AqlValue(AqlValueHintNull());
     }
     // convert to 0
-    return AqlValue(AqlValueHintZero());
+    value = 0.0;
   }
 
   return AqlValue(AqlValueHintDouble(value));
@@ -662,7 +660,7 @@ std::string extractCollectionName(transaction::Methods* trx,
     identifier = value.slice().copyString();
   } else {
     AqlValueMaterializer materializer(&trx->vpackOptions());
-    VPackSlice slice = materializer.slice(value, true);
+    VPackSlice slice = materializer.slice(value);
     VPackSlice id = slice;
 
     if (slice.isObject()) {
@@ -714,7 +712,7 @@ void extractKeys(containers::FlatHashSet<std::string>& names,
       }
     } else if (param.isArray()) {
       AqlValueMaterializer materializer(vopts);
-      VPackSlice s = materializer.slice(param, false);
+      VPackSlice s = materializer.slice(param);
 
       for (VPackSlice v : VPackArrayIterator(s)) {
         if (v.isString()) {
@@ -732,7 +730,7 @@ void extractKeys(containers::FlatHashSet<std::string>& names,
 void appendAsString(VPackOptions const& vopts, velocypack::StringSink& buffer,
                     AqlValue const& value) {
   AqlValueMaterializer materializer(&vopts);
-  VPackSlice slice = materializer.slice(value, false);
+  VPackSlice slice = materializer.slice(value);
 
   functions::Stringify(&vopts, buffer, slice);
 }
@@ -742,10 +740,10 @@ bool listContainsElement(VPackOptions const* vopts, AqlValue const& list,
                          AqlValue const& testee, size_t& index) {
   TRI_ASSERT(list.isArray());
   AqlValueMaterializer materializer(vopts);
-  VPackSlice slice = materializer.slice(list, false);
+  VPackSlice slice = materializer.slice(list);
 
   AqlValueMaterializer testeeMaterializer(vopts);
-  VPackSlice testeeSlice = testeeMaterializer.slice(testee, false);
+  VPackSlice testeeSlice = testeeMaterializer.slice(testee);
 
   VPackArrayIterator it(slice);
   while (it.valid()) {
@@ -792,7 +790,7 @@ bool variance(VPackOptions const* vopts, AqlValue const& values, double& value,
   double mean = 0.0;
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice slice = materializer.slice(values, false);
+  VPackSlice slice = materializer.slice(values);
 
   for (VPackSlice element : VPackArrayIterator(slice)) {
     if (!element.isNull()) {
@@ -818,7 +816,7 @@ bool sortNumberList(VPackOptions const* vopts, AqlValue const& values,
   TRI_ASSERT(result.empty());
   bool unused;
   AqlValueMaterializer materializer(vopts);
-  VPackSlice slice = materializer.slice(values, false);
+  VPackSlice slice = materializer.slice(values);
 
   VPackArrayIterator it(slice);
   result.reserve(it.size());
@@ -897,7 +895,8 @@ void getDocumentByIdentifier(transaction::Methods* trx,
   Result res;
   try {
     res = trx->documentFastPath(collectionName, searchBuilder->slice(), options,
-                                result);
+                                result)
+              .get();
   } catch (basics::Exception const& ex) {
     res.reset(ex.code());
   }
@@ -941,7 +940,7 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
   // use the first argument as the preliminary result
   AqlValue const& initial = aql::extractFunctionParameterValue(parameters, 0);
   AqlValueMaterializer materializer(&vopts);
-  VPackSlice initialSlice = materializer.slice(initial, true);
+  VPackSlice initialSlice = materializer.slice(initial);
 
   VPackBuilder builder;
 
@@ -1006,7 +1005,7 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
     }
 
     AqlValueMaterializer materializer(&vopts);
-    VPackSlice slice = materializer.slice(param, false);
+    VPackSlice slice = materializer.slice(param);
 
     builder = velocypack::Collection::merge(initialSlice, slice,
                                             /*mergeObjects*/ recursive,
@@ -1172,58 +1171,82 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext,
 
   // JavaScript function (this includes user-defined functions)
   {
-    ISOLATE;
+    v8::Isolate* isolate = v8::Isolate::GetCurrent();
     if (isolate == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
           absl::StrCat(
               "no V8 context available when executing call to function ", AFN));
     }
-    TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
-    auto context = TRI_IGETC;
+
+    TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
+        isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
+
+    TRI_ASSERT(v8g != nullptr);
+
+    auto queryCtx = dynamic_cast<QueryExpressionContext*>(expressionContext);
+    if (queryCtx == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, "unable to cast into QueryExpressionContext");
+    }
+
+    auto query = dynamic_cast<Query*>(&queryCtx->query());
+    if (query == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unable to cast into Query");
+    }
+
+    VPackOptions const& options = trx.vpackOptions();
 
     auto old = v8g->_expressionContext;
     v8g->_expressionContext = expressionContext;
     auto sg = scopeGuard([&]() noexcept { v8g->_expressionContext = old; });
 
-    VPackOptions const& options = trx.vpackOptions();
-    std::string jsName;
-    int const n = static_cast<int>(invokeParams.size());
-    int const callArgs = (func == nullptr ? 3 : n);
-    auto args = std::make_unique<v8::Handle<v8::Value>[]>(callArgs);
+    AqlValue funcRes;
+    query->runInV8ExecutorContext([&](v8::Isolate* isolate) {
+      v8::HandleScope scope(isolate);
 
-    if (func == nullptr) {
-      // a call to a user-defined function
-      jsName = "FCALL_USER";
+      std::string jsName;
+      int const n = static_cast<int>(invokeParams.size());
+      int const callArgs = (func == nullptr ? 3 : n);
+      auto args = std::make_unique<v8::Handle<v8::Value>[]>(callArgs);
 
-      // function name
-      args[0] = TRI_V8_STD_STRING(isolate, ucInvokeFN);
-      // call parameters
-      v8::Handle<v8::Array> params =
-          v8::Array::New(isolate, static_cast<int>(n));
+      if (func == nullptr) {
+        // a call to a user-defined function
+        jsName = "FCALL_USER";
 
-      for (int i = 0; i < n; ++i) {
-        params
-            ->Set(context, static_cast<uint32_t>(i),
-                  invokeParams[i].toV8(isolate, &options))
-            .FromMaybe(true);
+        // function name
+        args[0] = TRI_V8_STD_STRING(isolate, ucInvokeFN);
+
+        v8::Handle<v8::Context> context = isolate->GetCurrentContext();
+        // call parameters
+        v8::Handle<v8::Array> params =
+            v8::Array::New(isolate, static_cast<int>(n));
+
+        for (int i = 0; i < n; ++i) {
+          params
+              ->Set(context, static_cast<uint32_t>(i),
+                    invokeParams[i].toV8(isolate, &options))
+              .FromMaybe(true);
+        }
+        args[1] = params;
+        args[2] = TRI_V8_ASCII_STRING(isolate, AFN);
+      } else {
+        // a call to a built-in V8 function
+        TRI_ASSERT(func->hasV8Implementation());
+
+        jsName = absl::StrCat("AQL_", func->name);
+        for (int i = 0; i < n; ++i) {
+          args[i] = invokeParams[i].toV8(isolate, &options);
+        }
       }
-      args[1] = params;
-      args[2] = TRI_V8_ASCII_STRING(isolate, AFN);
-    } else {
-      // a call to a built-in V8 function
-      TRI_ASSERT(func->hasV8Implementation());
 
-      jsName = "AQL_" + func->name;
-      for (int i = 0; i < n; ++i) {
-        args[i] = invokeParams[i].toV8(isolate, &options);
-      }
-    }
-
-    bool dummy;
-    return Expression::invokeV8Function(*expressionContext, jsName, ucInvokeFN,
-                                        AFN, false, callArgs, args.get(),
-                                        dummy);
+      bool dummy;
+      funcRes = Expression::invokeV8Function(*expressionContext, jsName,
+                                             isolate, ucInvokeFN, AFN, false,
+                                             callArgs, args.get(), dummy);
+    });
+    return funcRes;
   }
 }
 #endif
@@ -1245,7 +1268,7 @@ AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
 
   AqlValueMaterializer mat1(vopts);
   geo::ShapeContainer outer, inner;
-  auto res = geo::json::parseRegion(mat1.slice(p1, true), outer,
+  auto res = geo::json::parseRegion(mat1.slice(p1), outer,
                                     /*legacy=*/false);
   if (res.fail()) {
     registerWarning(expressionContext, func, res);
@@ -1262,10 +1285,10 @@ AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
 
   AqlValueMaterializer mat2(vopts);
   if (p2.isArray()) {
-    res = geo::json::parseCoordinates<true>(mat2.slice(p2, true), inner,
+    res = geo::json::parseCoordinates<true>(mat2.slice(p2), inner,
                                             /*geoJson=*/true);
   } else {
-    res = geo::json::parseRegion(mat2.slice(p2, true), inner,
+    res = geo::json::parseRegion(mat2.slice(p2), inner,
                                  /*legacy=*/false);
   }
   if (res.fail()) {
@@ -1385,10 +1408,10 @@ Result parseShape(ExpressionContext* exprCtx, AqlValue const& value,
   AqlValueMaterializer mat(vopts);
 
   if (value.isArray()) {
-    return geo::json::parseCoordinates<true>(mat.slice(value, true), shape,
+    return geo::json::parseCoordinates<true>(mat.slice(value), shape,
                                              /*geoJson=*/true);
   }
-  return geo::json::parseRegion(mat.slice(value, true), shape,
+  return geo::json::parseRegion(mat.slice(value), shape,
                                 /*legacy=*/false);
 }
 
@@ -1550,7 +1573,7 @@ AqlValue functions::ToNumber(ExpressionContext*, AstNode const&,
   double value = a.toDouble(failed);
 
   if (failed) {
-    return AqlValue(AqlValueHintZero());
+    value = 0.0;
   }
 
   return AqlValue(AqlValueHintDouble(value));
@@ -2009,7 +2032,7 @@ AqlValue functions::ToArray(ExpressionContext* ctx, AstNode const&,
     builder->add(value.slice());
   } else if (value.isObject()) {
     AqlValueMaterializer materializer(&trx->vpackOptions());
-    VPackSlice slice = materializer.slice(value, false);
+    VPackSlice slice = materializer.slice(value);
     // return an array with the attribute values
     for (auto it : VPackObjectIterator(slice, true)) {
       if (it.value.isCustom()) {
@@ -2224,7 +2247,7 @@ AqlValue functions::Reverse(ExpressionContext* expressionContext,
   if (value.isArray()) {
     transaction::BuilderLeaser builder(trx);
     AqlValueMaterializer materializer(&vopts);
-    VPackSlice slice = materializer.slice(value, false);
+    VPackSlice slice = materializer.slice(value);
     std::vector<VPackSlice> array;
     array.reserve(slice.length());
     for (VPackSlice it : VPackArrayIterator(slice)) {
@@ -2420,7 +2443,7 @@ AqlValue functions::Concat(ExpressionContext* ctx, AstNode const&,
     AqlValue const& member = extractFunctionParameterValue(parameters, 0);
     if (member.isArray()) {
       AqlValueMaterializer materializer(&vopts);
-      VPackSlice slice = materializer.slice(member, false);
+      VPackSlice slice = materializer.slice(member);
 
       for (VPackSlice it : VPackArrayIterator(slice)) {
         if (it.isNull()) {
@@ -2472,7 +2495,7 @@ AqlValue functions::ConcatSeparator(ExpressionContext* ctx, AstNode const&,
       buffer->reserve((plainStr.size() + 10) * member.length());
 
       AqlValueMaterializer materializer(&vopts);
-      VPackSlice slice = materializer.slice(member, false);
+      VPackSlice slice = materializer.slice(member);
 
       for (VPackSlice it : VPackArrayIterator(slice)) {
         if (it.isNull()) {
@@ -2519,7 +2542,7 @@ AqlValue functions::CharLength(ExpressionContext* ctx, AstNode const&,
 
   if (value.isArray() || value.isObject()) {
     AqlValueMaterializer materializer(vopts);
-    VPackSlice slice = materializer.slice(value, false);
+    VPackSlice slice = materializer.slice(value);
 
     transaction::StringLeaser buffer(trx);
     velocypack::StringSink adapter(buffer.get());
@@ -2743,7 +2766,7 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
     if (parameters.size() == 3) {
       limit = extractFunctionParameterValue(parameters, 2).toInt64();
     }
-    VPackSlice slice = materializer.slice(search, false);
+    VPackSlice slice = materializer.slice(search);
     matchPatterns.reserve(slice.length());
     replacePatterns.reserve(slice.length());
     for (auto it :
@@ -2776,7 +2799,7 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
       limit = extractFunctionParameterValue(parameters, 3).toInt64();
     }
 
-    VPackSlice slice = materializer.slice(search, false);
+    VPackSlice slice = materializer.slice(search);
     if (search.isArray()) {
       for (VPackSlice it : VPackArrayIterator(slice)) {
         if (it.isString()) {
@@ -2803,7 +2826,7 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
     if (parameters.size() > 2) {
       AqlValue const& replace = extractFunctionParameterValue(parameters, 2);
       AqlValueMaterializer materializer2(&vopts);
-      VPackSlice rslice = materializer2.slice(replace, false);
+      VPackSlice rslice = materializer2.slice(replace);
       if (replace.isArray()) {
         for (VPackSlice it : VPackArrayIterator(rslice)) {
           if (it.isNull()) {
@@ -4624,7 +4647,7 @@ AqlValue functions::Unset(ExpressionContext* expressionContext, AstNode const&,
   ::extractKeys(names, expressionContext, vopts, parameters, 1, AFN);
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice slice = materializer.slice(value, false);
+  VPackSlice slice = materializer.slice(value);
   transaction::BuilderLeaser builder(trx);
   ::unsetOrKeep(trx, slice, names, true, false, *builder.get());
   return AqlValue(builder->slice(), builder->size());
@@ -4650,7 +4673,7 @@ AqlValue functions::UnsetRecursive(ExpressionContext* expressionContext,
   ::extractKeys(names, expressionContext, vopts, parameters, 1, AFN);
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice slice = materializer.slice(value, false);
+  VPackSlice slice = materializer.slice(value);
   transaction::BuilderLeaser builder(trx);
   ::unsetOrKeep(trx, slice, names, true, true, *builder.get());
   return AqlValue(builder->slice(), builder->size());
@@ -4675,7 +4698,7 @@ AqlValue functions::Keep(ExpressionContext* expressionContext, AstNode const&,
   ::extractKeys(names, expressionContext, vopts, parameters, 1, AFN);
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice slice = materializer.slice(value, false);
+  VPackSlice slice = materializer.slice(value);
   transaction::BuilderLeaser builder(trx);
   ::unsetOrKeep(trx, slice, names, false, false, *builder.get());
   return AqlValue(builder->slice(), builder->size());
@@ -4701,7 +4724,7 @@ AqlValue functions::KeepRecursive(ExpressionContext* expressionContext,
   ::extractKeys(names, expressionContext, vopts, parameters, 1, AFN);
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice slice = materializer.slice(value, false);
+  VPackSlice slice = materializer.slice(value);
   transaction::BuilderLeaser builder(trx);
   ::unsetOrKeep(trx, slice, names, false, true, *builder.get());
   return AqlValue(builder->slice(), builder->size());
@@ -4725,7 +4748,7 @@ AqlValue functions::Translate(ExpressionContext* expressionContext,
   }
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice slice = materializer.slice(lookupDocument, true);
+  VPackSlice slice = materializer.slice(lookupDocument);
   TRI_ASSERT(slice.isObject());
 
   VPackSlice result;
@@ -4824,7 +4847,7 @@ AqlValue functions::Attributes(ExpressionContext* expressionContext,
   auto* vopts = &trx->vpackOptions();
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice slice = materializer.slice(value, false);
+  VPackSlice slice = materializer.slice(value);
 
   if (doSort) {
     std::set<std::string_view,
@@ -4890,7 +4913,7 @@ AqlValue functions::Values(ExpressionContext* expressionContext, AstNode const&,
   auto* vopts = &trx->vpackOptions();
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice slice = materializer.slice(value, false);
+  VPackSlice slice = materializer.slice(value);
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
   for (auto const& entry : VPackObjectIterator(slice, true)) {
@@ -4947,7 +4970,7 @@ AqlValue functions::Value(ExpressionContext* expressionContext,
 
   auto& trx = expressionContext->trx();
   AqlValueMaterializer materializer{&trx.vpackOptions()};
-  VPackSlice slice{materializer.slice(value, false)};
+  VPackSlice slice{materializer.slice(value)};
   VPackSlice const root{slice};
 
   auto visitor = [&slice]<typename T>(T value) {
@@ -5009,7 +5032,7 @@ AqlValue functions::Min(ExpressionContext* expressionContext, AstNode const&,
   auto* vopts = &trx->vpackOptions();
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice slice = materializer.slice(value, false);
+  VPackSlice slice = materializer.slice(value);
 
   VPackSlice minValue;
   auto options = trx->transactionContextPtr()->getVPackOptions();
@@ -5043,7 +5066,7 @@ AqlValue functions::Max(ExpressionContext* expressionContext, AstNode const&,
   auto* vopts = &trx->vpackOptions();
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice slice = materializer.slice(value, false);
+  VPackSlice slice = materializer.slice(value);
   VPackSlice maxValue;
   auto options = trx->transactionContextPtr()->getVPackOptions();
   for (VPackSlice it : VPackArrayIterator(slice)) {
@@ -5073,7 +5096,7 @@ AqlValue functions::Sum(ExpressionContext* expressionContext, AstNode const&,
   auto* vopts = &trx->vpackOptions();
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice slice = materializer.slice(value, false);
+  VPackSlice slice = materializer.slice(value);
   double sum = 0.0;
   for (VPackSlice it : VPackArrayIterator(slice)) {
     if (it.isNull()) {
@@ -5109,7 +5132,7 @@ AqlValue functions::Average(ExpressionContext* expressionContext,
   auto* vopts = &trx->vpackOptions();
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice slice = materializer.slice(value, false);
+  VPackSlice slice = materializer.slice(value);
 
   double sum = 0.0;
   size_t count = 0;
@@ -5155,7 +5178,7 @@ AqlValue functions::Product(ExpressionContext* expressionContext,
   auto* vopts = &trx->vpackOptions();
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice slice = materializer.slice(value, false);
+  VPackSlice slice = materializer.slice(value);
   double product = 1.0;
   for (VPackSlice it : VPackArrayIterator(slice)) {
     if (it.isNull()) {
@@ -5327,7 +5350,7 @@ AqlValue functions::IpV4ToNumber(ExpressionContext* expressionContext,
   }
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice slice = materializer.slice(value, false);
+  VPackSlice slice = materializer.slice(value);
 
   // parse the input string
   TRI_ASSERT(slice.isString());
@@ -5379,7 +5402,7 @@ AqlValue functions::IsIpV4(ExpressionContext* expressionContext, AstNode const&,
   }
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice slice = materializer.slice(value, false);
+  VPackSlice slice = materializer.slice(value);
 
   // parse the input string
   TRI_ASSERT(slice.isString());
@@ -5581,7 +5604,7 @@ AqlValue functions::CountDistinct(ExpressionContext* expressionContext,
   }
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice slice = materializer.slice(value, false);
+  VPackSlice slice = materializer.slice(value);
 
   auto options = trx->transactionContextPtr()->getVPackOptions();
   containers::FlatHashSet<VPackSlice, basics::VelocyPackHelper::VPackHash,
@@ -5615,7 +5638,7 @@ AqlValue functions::Unique(ExpressionContext* expressionContext, AstNode const&,
   }
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice slice = materializer.slice(value, false);
+  VPackSlice slice = materializer.slice(value);
 
   auto options = trx->transactionContextPtr()->getVPackOptions();
   containers::FlatHashSet<VPackSlice, basics::VelocyPackHelper::VPackHash,
@@ -5660,7 +5683,7 @@ AqlValue functions::SortedUnique(ExpressionContext* expressionContext,
   }
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice slice = materializer.slice(value, false);
+  VPackSlice slice = materializer.slice(value);
 
   basics::VelocyPackHelper::VPackLess<true> less(
       trx->transactionContext()->getVPackOptions(), &slice, &slice);
@@ -5697,7 +5720,7 @@ AqlValue functions::Sorted(ExpressionContext* expressionContext, AstNode const&,
   }
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice slice = materializer.slice(value, false);
+  VPackSlice slice = materializer.slice(value);
 
   basics::VelocyPackHelper::VPackLess<true> less(
       trx->transactionContext()->getVPackOptions(), &slice, &slice);
@@ -5747,7 +5770,7 @@ AqlValue functions::Union(ExpressionContext* expressionContext, AstNode const&,
     }
 
     AqlValueMaterializer materializer(vopts);
-    VPackSlice slice = materializer.slice(value, false);
+    VPackSlice slice = materializer.slice(value);
 
     // this passes ownership for the JSON contents into result
     for (VPackSlice it : VPackArrayIterator(slice)) {
@@ -5792,7 +5815,7 @@ AqlValue functions::UnionDistinct(ExpressionContext* expressionContext,
     }
 
     materializers.emplace_back(vopts);
-    VPackSlice slice = materializers.back().slice(value, false);
+    VPackSlice slice = materializers.back().slice(value);
 
     for (VPackSlice v : VPackArrayIterator(slice)) {
       v = v.resolveExternal();
@@ -5850,7 +5873,7 @@ AqlValue functions::Intersection(ExpressionContext* expressionContext,
     }
 
     materializers.emplace_back(vopts);
-    VPackSlice slice = materializers.back().slice(value, false);
+    VPackSlice slice = materializers.back().slice(value);
 
     for (VPackSlice it : VPackArrayIterator(slice)) {
       if (i == 0) {
@@ -5929,8 +5952,8 @@ AqlValue functions::Jaccard(ExpressionContext* ctx, AstNode const&,
   AqlValueMaterializer lhsMaterializer(vopts);
   AqlValueMaterializer rhsMaterializer(vopts);
 
-  VPackSlice lhsSlice = lhsMaterializer.slice(lhs, false);
-  VPackSlice rhsSlice = rhsMaterializer.slice(rhs, false);
+  VPackSlice lhsSlice = lhsMaterializer.slice(lhs);
+  VPackSlice rhsSlice = rhsMaterializer.slice(rhs);
 
   size_t cardinality = 0;  // cardinality of intersection
 
@@ -5976,7 +5999,7 @@ AqlValue functions::Outersection(ExpressionContext* expressionContext,
     }
 
     materializers.emplace_back(vopts);
-    VPackSlice slice = materializers.back().slice(value, false);
+    VPackSlice slice = materializers.back().slice(value);
 
     for (VPackSlice it : VPackArrayIterator(slice)) {
       // check if we have seen the same element before
@@ -6250,9 +6273,9 @@ AqlValue functions::GeoEquals(ExpressionContext* expressionContext,
   AqlValueMaterializer mat2(vopts);
 
   geo::ShapeContainer first, second;
-  auto res1 = geo::json::parseRegion(mat1.slice(p1, true), first,
+  auto res1 = geo::json::parseRegion(mat1.slice(p1), first,
                                      /*legacy=*/false);
-  auto res2 = geo::json::parseRegion(mat2.slice(p2, true), second,
+  auto res2 = geo::json::parseRegion(mat2.slice(p2), second,
                                      /*legacy=*/false);
 
   if (res1.fail()) {
@@ -6281,7 +6304,7 @@ AqlValue functions::GeoArea(ExpressionContext* expressionContext,
   AqlValueMaterializer mat(vopts);
 
   geo::ShapeContainer shape;
-  auto res = geo::json::parseRegion(mat.slice(p1, true), shape,
+  auto res = geo::json::parseRegion(mat.slice(p1), shape,
                                     /*legacy=*/false);
 
   if (res.fail()) {
@@ -6317,7 +6340,7 @@ AqlValue functions::IsInPolygon(ExpressionContext* expressionContext,
       return AqlValue(AqlValueHintNull());
     }
     AqlValueMaterializer materializer(vopts);
-    VPackSlice arr = materializer.slice(p2, false);
+    VPackSlice arr = materializer.slice(p2);
     geoJson = p3.isBoolean() && p3.toBoolean();
     // if geoJson, map [lon, lat] -> lat, lon
     VPackSlice lat = geoJson ? arr[1] : arr[0];
@@ -6436,7 +6459,7 @@ AqlValue functions::GeoMultiPoint(ExpressionContext* expressionContext,
   builder->add("coordinates", VPackValue(VPackValueType::Array));
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice s = materializer.slice(geoArray, false);
+  VPackSlice s = materializer.slice(geoArray);
   for (VPackSlice v : VPackArrayIterator(s)) {
     if (v.isArray()) {
       builder->openArray();
@@ -6493,7 +6516,7 @@ AqlValue functions::GeoPolygon(ExpressionContext* expressionContext,
   builder->add("coordinates", VPackValue(VPackValueType::Array));
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice s = materializer.slice(geoArray, false);
+  VPackSlice s = materializer.slice(geoArray);
 
   Result res = ::parseGeoPolygon(s, *builder.get());
   if (res.fail()) {
@@ -6537,7 +6560,7 @@ AqlValue functions::GeoMultiPolygon(ExpressionContext* expressionContext,
   }
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice s = materializer.slice(geoArray, false);
+  VPackSlice s = materializer.slice(geoArray);
 
   /*
   return GEO_MULTIPOLYGON([
@@ -6632,7 +6655,7 @@ AqlValue functions::GeoLinestring(ExpressionContext* expressionContext,
   builder->add("coordinates", VPackValue(VPackValueType::Array));
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice s = materializer.slice(geoArray, false);
+  VPackSlice s = materializer.slice(geoArray);
   for (VPackSlice v : VPackArrayIterator(s)) {
     if (v.isArray()) {
       builder->openArray();
@@ -6697,7 +6720,7 @@ AqlValue functions::GeoMultiLinestring(ExpressionContext* expressionContext,
   builder->add("coordinates", VPackValue(VPackValueType::Array));
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice s = materializer.slice(geoArray, false);
+  VPackSlice s = materializer.slice(geoArray);
   for (VPackSlice v : VPackArrayIterator(s)) {
     if (v.isArray()) {
       if (v.length() > 1) {
@@ -6775,7 +6798,7 @@ AqlValue functions::Flatten(ExpressionContext* expressionContext,
   }
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice listSlice = materializer.slice(list, false);
+  VPackSlice listSlice = materializer.slice(list);
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
@@ -6804,10 +6827,10 @@ AqlValue functions::Zip(ExpressionContext* expressionContext, AstNode const&,
   auto* vopts = &trx->vpackOptions();
 
   AqlValueMaterializer keyMaterializer(vopts);
-  VPackSlice keysSlice = keyMaterializer.slice(keys, false);
+  VPackSlice keysSlice = keyMaterializer.slice(keys);
 
   AqlValueMaterializer valueMaterializer(vopts);
-  VPackSlice valuesSlice = valueMaterializer.slice(values, false);
+  VPackSlice valuesSlice = valueMaterializer.slice(values);
 
   transaction::BuilderLeaser builder(trx);
   builder->openObject();
@@ -6850,7 +6873,7 @@ AqlValue functions::JsonStringify(ExpressionContext* exprCtx, AstNode const&,
   auto* vopts = &trx->vpackOptions();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   AqlValueMaterializer materializer(vopts);
-  VPackSlice slice = materializer.slice(value, false);
+  VPackSlice slice = materializer.slice(value);
 
   transaction::StringLeaser buffer(trx);
   velocypack::StringSink adapter(buffer.get());
@@ -6871,7 +6894,7 @@ AqlValue functions::JsonParse(ExpressionContext* expressionContext,
   auto* vopts = &trx->vpackOptions();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   AqlValueMaterializer materializer(vopts);
-  VPackSlice slice = materializer.slice(value, false);
+  VPackSlice slice = materializer.slice(value);
 
   if (!slice.isString()) {
     registerWarning(expressionContext, AFN,
@@ -6892,53 +6915,99 @@ AqlValue functions::JsonParse(ExpressionContext* expressionContext,
   }
 }
 
+template<typename T>
+struct ParseBase : public T {
+  explicit ParseBase(ExpressionContext* expressionContext, char const* AFN)
+      : expressionContext(expressionContext), AFN(AFN) {}
+
+  AqlValue handle(std::string_view identifier) {
+    size_t pos = identifier.find('/');
+    if (pos == std::string::npos ||
+        identifier.find('/', pos + 1) != std::string::npos) {
+      registerWarning(expressionContext, AFN,
+                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    return T::handle(identifier, pos, expressionContext);
+  }
+
+  AqlValue parse(AqlValue const& value) {
+    if (value.isObject()) {
+      transaction::Methods* trx = &expressionContext->trx();
+      auto resolver = trx->resolver();
+      TRI_ASSERT(resolver != nullptr);
+      bool localMustDestroy;
+      AqlValue valueStr = value.get(*resolver, StaticStrings::IdString,
+                                    localMustDestroy, false);
+      AqlValueGuard guard(valueStr, localMustDestroy);
+
+      if (valueStr.isString()) {
+        return this->handle(valueStr.slice().stringView());
+      }
+    } else if (value.isString()) {
+      return this->handle(value.slice().stringView());
+    }
+
+    return this->handle("");
+  }
+
+  ExpressionContext* expressionContext;
+  char const* AFN;
+};
+
 /// @brief function PARSE_IDENTIFIER
 AqlValue functions::ParseIdentifier(ExpressionContext* expressionContext,
                                     AstNode const&,
                                     VPackFunctionParametersView parameters) {
-  static char const* AFN = "PARSE_IDENTIFIER";
-
-  transaction::Methods* trx = &expressionContext->trx();
-  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
-  std::string identifier;
-  if (value.isObject() && value.hasKey(StaticStrings::IdString)) {
-    auto resolver = trx->resolver();
-    TRI_ASSERT(resolver != nullptr);
-    bool localMustDestroy;
-    AqlValue valueStr =
-        value.get(*resolver, StaticStrings::IdString, localMustDestroy, false);
-    AqlValueGuard guard(valueStr, localMustDestroy);
-
-    if (valueStr.isString()) {
-      identifier = valueStr.slice().copyString();
+  struct ParseIdentifierImpl {
+    AqlValue handle(std::string_view identifier, size_t pos,
+                    ExpressionContext* expressionContext) {
+      transaction::Methods* trx = &expressionContext->trx();
+      transaction::BuilderLeaser builder(trx);
+      builder->openObject();
+      builder->add("collection", VPackValuePair(identifier.data(), pos,
+                                                VPackValueType::String));
+      builder->add("key", VPackValuePair(identifier.data() + pos + 1,
+                                         identifier.size() - pos - 1,
+                                         VPackValueType::String));
+      builder->close();
+      return AqlValue(builder->slice(), builder->size());
     }
-  } else if (value.isString()) {
-    identifier = value.slice().copyString();
-  }
+  };
 
-  if (identifier.empty()) {
-    registerWarning(expressionContext, AFN,
-                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(AqlValueHintNull());
-  }
+  ParseBase<ParseIdentifierImpl> impl(expressionContext, "PARSE_IDENTIFIER");
+  return impl.parse(extractFunctionParameterValue(parameters, 0));
+}
 
-  size_t pos = identifier.find('/');
-  if (pos == std::string::npos ||
-      identifier.find('/', pos + 1) != std::string::npos) {
-    registerWarning(expressionContext, AFN,
-                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(AqlValueHintNull());
-  }
+/// @brief function PARSE_COLLECTION
+AqlValue functions::ParseCollection(ExpressionContext* expressionContext,
+                                    AstNode const&,
+                                    VPackFunctionParametersView parameters) {
+  struct ParseCollectionImpl {
+    AqlValue handle(std::string_view identifier, size_t pos,
+                    ExpressionContext* expressionContext) {
+      return AqlValue(identifier.substr(0, pos));
+    }
+  };
 
-  transaction::BuilderLeaser builder(trx);
-  builder->openObject();
-  builder->add("collection",
-               VPackValuePair(identifier.data(), pos, VPackValueType::String));
-  builder->add("key", VPackValuePair(identifier.data() + pos + 1,
-                                     identifier.size() - pos - 1,
-                                     VPackValueType::String));
-  builder->close();
-  return AqlValue(builder->slice(), builder->size());
+  ParseBase<ParseCollectionImpl> impl(expressionContext, "PARSE_COLLECTION");
+  return impl.parse(extractFunctionParameterValue(parameters, 0));
+}
+
+/// @brief function PARSE_KEY
+AqlValue functions::ParseKey(ExpressionContext* expressionContext,
+                             AstNode const&,
+                             VPackFunctionParametersView parameters) {
+  struct ParseKeyImpl {
+    AqlValue handle(std::string_view identifier, size_t pos,
+                    ExpressionContext* expressionContext) {
+      return AqlValue(identifier.substr(pos + 1, identifier.size() - pos - 1));
+    }
+  };
+
+  ParseBase<ParseKeyImpl> impl(expressionContext, "PARSE_KEY");
+  return impl.parse(extractFunctionParameterValue(parameters, 0));
 }
 
 /// @brief function Slice
@@ -6986,7 +7055,7 @@ AqlValue functions::Slice(ExpressionContext* expressionContext, AstNode const&,
   }
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice arraySlice = materializer.slice(baseArray, false);
+  VPackSlice arraySlice = materializer.slice(baseArray);
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
@@ -7032,7 +7101,7 @@ AqlValue functions::Minus(ExpressionContext* expressionContext, AstNode const&,
 
   // Fill the original map
   AqlValueMaterializer materializer(vopts);
-  VPackSlice arraySlice = materializer.slice(baseArray, false);
+  VPackSlice arraySlice = materializer.slice(baseArray);
 
   VPackArrayIterator it(arraySlice);
   while (it.valid()) {
@@ -7051,7 +7120,7 @@ AqlValue functions::Minus(ExpressionContext* expressionContext, AstNode const&,
     }
 
     AqlValueMaterializer materializer(vopts);
-    VPackSlice arraySlice = materializer.slice(next, false);
+    VPackSlice arraySlice = materializer.slice(next);
 
     for (VPackSlice search : VPackArrayIterator(arraySlice)) {
       auto find = contains.find(search);
@@ -7100,7 +7169,7 @@ AqlValue functions::Document(ExpressionContext* expressionContext,
     }
     if (id.isArray()) {
       AqlValueMaterializer materializer(vopts);
-      VPackSlice idSlice = materializer.slice(id, false);
+      VPackSlice idSlice = materializer.slice(id);
       builder->openArray();
       for (auto next : VPackArrayIterator(idSlice)) {
         if (next.isString()) {
@@ -7142,7 +7211,7 @@ AqlValue functions::Document(ExpressionContext* expressionContext,
     builder->openArray();
 
     AqlValueMaterializer materializer(vopts);
-    VPackSlice idSlice = materializer.slice(id, false);
+    VPackSlice idSlice = materializer.slice(id);
     for (auto const& next : VPackArrayIterator(idSlice)) {
       if (next.isString()) {
         std::string identifier(next.copyString());
@@ -7181,13 +7250,13 @@ AqlValue functions::Matches(ExpressionContext* expressionContext,
   }
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice const docSlice = materializer.slice(docToFind, true);
+  VPackSlice const docSlice = materializer.slice(docToFind);
 
   TRI_ASSERT(docSlice.isObject());
 
   transaction::BuilderLeaser builder(trx);
   AqlValueMaterializer exampleMaterializer(vopts);
-  VPackSlice examples = exampleMaterializer.slice(exampleDocs, false);
+  VPackSlice examples = exampleMaterializer.slice(exampleDocs);
 
   if (!examples.isArray()) {
     builder->openArray();
@@ -7501,7 +7570,7 @@ static AqlValue handleBitOperation(
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
   AqlValueMaterializer materializer(vopts);
-  VPackSlice s = materializer.slice(value, false);
+  VPackSlice s = materializer.slice(value);
   for (VPackSlice v : VPackArrayIterator(s)) {
     // skip null values in the input
     if (v.isNull()) {
@@ -7694,7 +7763,7 @@ AqlValue functions::BitConstruct(ExpressionContext* expressionContext,
     transaction::Methods* trx = &expressionContext->trx();
     auto* vopts = &trx->vpackOptions();
     AqlValueMaterializer materializer(vopts);
-    VPackSlice s = materializer.slice(value, false);
+    VPackSlice s = materializer.slice(value);
 
     uint64_t result = 0;
     for (VPackSlice v : VPackArrayIterator(s)) {
@@ -7861,7 +7930,7 @@ AqlValue functions::Push(ExpressionContext* expressionContext, AstNode const&,
   AqlValue const& toPush = extractFunctionParameterValue(parameters, 1);
 
   AqlValueMaterializer toPushMaterializer(vopts);
-  VPackSlice p = toPushMaterializer.slice(toPush, false);
+  VPackSlice p = toPushMaterializer.slice(toPush);
 
   if (list.isNull(true)) {
     transaction::BuilderLeaser builder(trx);
@@ -7879,7 +7948,7 @@ AqlValue functions::Push(ExpressionContext* expressionContext, AstNode const&,
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
   AqlValueMaterializer materializer(vopts);
-  VPackSlice l = materializer.slice(list, false);
+  VPackSlice l = materializer.slice(list);
 
   for (VPackSlice it : VPackArrayIterator(l)) {
     builder->add(it);
@@ -7918,7 +7987,7 @@ AqlValue functions::Pop(ExpressionContext* expressionContext, AstNode const&,
   }
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice slice = materializer.slice(list, false);
+  VPackSlice slice = materializer.slice(list);
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
@@ -7947,7 +8016,7 @@ AqlValue functions::Append(ExpressionContext* expressionContext, AstNode const&,
   }
 
   AqlValueMaterializer toAppendMaterializer(vopts);
-  VPackSlice t = toAppendMaterializer.slice(toAppend, false);
+  VPackSlice t = toAppendMaterializer.slice(toAppend);
 
   if (t.isArray() && t.length() == 0) {
     return list.clone();
@@ -7960,7 +8029,7 @@ AqlValue functions::Append(ExpressionContext* expressionContext, AstNode const&,
   }
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice l = materializer.slice(list, false);
+  VPackSlice l = materializer.slice(list);
 
   if (l.isNull()) {
     return toAppend.clone();
@@ -7987,7 +8056,7 @@ AqlValue functions::Append(ExpressionContext* expressionContext, AstNode const&,
   }
 
   AqlValueMaterializer materializer2(vopts);
-  VPackSlice slice = materializer2.slice(toAppend, false);
+  VPackSlice slice = materializer2.slice(toAppend);
 
   if (!slice.isArray()) {
     if (!unique || added.find(slice) == added.end()) {
@@ -8035,7 +8104,7 @@ AqlValue functions::Unshift(ExpressionContext* expressionContext,
   }
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice a = materializer.slice(toAppend, false);
+  VPackSlice a = materializer.slice(toAppend);
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
@@ -8043,7 +8112,7 @@ AqlValue functions::Unshift(ExpressionContext* expressionContext,
 
   if (list.isArray()) {
     AqlValueMaterializer listMaterializer(vopts);
-    VPackSlice v = listMaterializer.slice(list, false);
+    VPackSlice v = listMaterializer.slice(list);
     for (VPackSlice it : VPackArrayIterator(v)) {
       builder->add(it);
     }
@@ -8075,7 +8144,7 @@ AqlValue functions::Shift(ExpressionContext* expressionContext, AstNode const&,
 
   if (list.length() > 0) {
     AqlValueMaterializer materializer(vopts);
-    VPackSlice l = materializer.slice(list, false);
+    VPackSlice l = materializer.slice(list);
 
     auto iterator = VPackArrayIterator(l);
     // This jumps over the first element
@@ -8127,10 +8196,10 @@ AqlValue functions::RemoveValue(ExpressionContext* expressionContext,
 
   AqlValue const& toRemove = extractFunctionParameterValue(parameters, 1);
   AqlValueMaterializer toRemoveMaterializer(vopts);
-  VPackSlice r = toRemoveMaterializer.slice(toRemove, false);
+  VPackSlice r = toRemoveMaterializer.slice(toRemove);
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice v = materializer.slice(list, false);
+  VPackSlice v = materializer.slice(list);
 
   for (VPackSlice it : VPackArrayIterator(v)) {
     if (useLimit && limit == 0) {
@@ -8174,10 +8243,10 @@ AqlValue functions::RemoveValues(ExpressionContext* expressionContext,
   }
 
   AqlValueMaterializer valuesMaterializer(vopts);
-  VPackSlice v = valuesMaterializer.slice(values, false);
+  VPackSlice v = valuesMaterializer.slice(values);
 
   AqlValueMaterializer listMaterializer(vopts);
-  VPackSlice l = listMaterializer.slice(list, false);
+  VPackSlice l = listMaterializer.slice(list);
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
@@ -8223,7 +8292,7 @@ AqlValue functions::RemoveNth(ExpressionContext* expressionContext,
   }
 
   AqlValueMaterializer materializer(vopts);
-  VPackSlice v = materializer.slice(list, false);
+  VPackSlice v = materializer.slice(list);
 
   transaction::BuilderLeaser builder(trx);
   size_t target = static_cast<size_t>(p);
@@ -8281,9 +8350,9 @@ AqlValue functions::ReplaceNth(ExpressionContext* expressionContext,
   }
 
   AqlValueMaterializer materializer1(vopts);
-  VPackSlice arraySlice = materializer1.slice(baseArray, false);
+  VPackSlice arraySlice = materializer1.slice(baseArray);
   AqlValueMaterializer materializer2(vopts);
-  VPackSlice replaceValue = materializer2.slice(newValue, false);
+  VPackSlice replaceValue = materializer2.slice(newValue);
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
@@ -8301,7 +8370,7 @@ AqlValue functions::ReplaceNth(ExpressionContext* expressionContext,
   uint64_t pos = length;
   if (replaceOffset >= length) {
     AqlValueMaterializer materializer(vopts);
-    VPackSlice paddVpValue = materializer.slice(paddValue, false);
+    VPackSlice paddVpValue = materializer.slice(paddValue);
     while (pos < replaceOffset) {
       builder->add(paddVpValue);
       ++pos;
@@ -8382,7 +8451,7 @@ AqlValue functions::CheckDocument(ExpressionContext* expressionContext,
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
   AqlValueMaterializer materializer(vopts);
-  VPackSlice slice = materializer.slice(value, false);
+  VPackSlice slice = materializer.slice(value);
 
   return AqlValue(AqlValueHintBool(::isValidDocument(slice)));
 }
@@ -8749,6 +8818,7 @@ AqlValue functions::Position(ExpressionContext* expressionContext,
 AqlValue functions::Call(ExpressionContext* expressionContext,
                          AstNode const& node,
                          VPackFunctionParametersView parameters) {
+#ifdef USE_V8
   static char const* AFN = "CALL";
 
   AqlValue const& invokeFN = extractFunctionParameterValue(parameters, 0);
@@ -8769,7 +8839,6 @@ AqlValue functions::Call(ExpressionContext* expressionContext,
     }
   }
 
-#ifdef USE_V8
   return ::callApplyBackend(expressionContext, node, AFN, invokeFN,
                             invokeParams);
 #else
@@ -8989,7 +9058,7 @@ AqlValue functions::Fail(ExpressionContext* expressionContext, AstNode const&,
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
   AqlValueMaterializer materializer(vopts);
-  VPackSlice str = materializer.slice(value, false);
+  VPackSlice str = materializer.slice(value);
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FAIL_CALLED, str.copyString());
 }
 
@@ -9057,12 +9126,14 @@ AqlValue functions::ShardId(ExpressionContext* expressionContext,
 
   std::string shardId;
   if (cluster) {
-    auto const errorCode = collection->getResponsibleShard(keys, true, shardId);
-    if (errorCode != TRI_ERROR_NO_ERROR) {
+    auto maybeShardID = collection->getResponsibleShard(keys, true);
+    if (maybeShardID.fail()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          errorCode, "could not find shard for document by shard keys " +
-                         keys.toJson() + " in " + colName);
+          maybeShardID.errorNumber(),
+          "could not find shard for document by shard keys " + keys.toJson() +
+              " in " + colName);
     }
+    shardId = maybeShardID.get();
   } else {  // Agents, single server, AFO return the collection name in favour
             // of AQL universality
     shardId = colName;
@@ -9244,7 +9315,7 @@ AqlValue functions::Interleave(aql::ExpressionContext* expressionContext,
 
   for (AqlValue const& parameter : parameters) {
     auto& materializer = materializers.emplace_back(vopts);
-    VPackSlice slice = materializer.slice(parameter, true);
+    VPackSlice slice = materializer.slice(parameter);
 
     if (!slice.isArray()) {
       // not an array
@@ -9577,7 +9648,7 @@ AqlValue decayFuncImpl(aql::ExpressionContext* expressionContext,
     // argument is array or range
     auto* trx = &expressionContext->trx();
     AqlValueMaterializer materializer(&trx->vpackOptions());
-    VPackSlice slice = materializer.slice(argValue, true);
+    VPackSlice slice = materializer.slice(argValue);
     TRI_ASSERT(slice.isArray());
 
     VPackBuilder builder;

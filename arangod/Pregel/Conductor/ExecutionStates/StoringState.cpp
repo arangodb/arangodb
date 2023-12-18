@@ -33,16 +33,17 @@ using namespace arangodb::pregel::conductor;
 Storing::Storing(ConductorState& conductor) : conductor{conductor} {}
 
 auto Storing::messages()
-    -> std::unordered_map<actor::ActorPID, worker::message::WorkerMessages> {
-  auto out =
-      std::unordered_map<actor::ActorPID, worker::message::WorkerMessages>();
+    -> std::unordered_map<actor::DistributedActorPID,
+                          worker::message::WorkerMessages> {
+  auto out = std::unordered_map<actor::DistributedActorPID,
+                                worker::message::WorkerMessages>();
   for (auto const& worker : conductor.workers) {
     out.emplace(worker, worker::message::Store{});
   }
   return out;
 }
 
-auto Storing::cancel(arangodb::pregel::actor::ActorPID sender,
+auto Storing::cancel(arangodb::actor::DistributedActorPID sender,
                      message::ConductorMessages message)
     -> std::optional<StateChange> {
   auto newState = std::make_unique<Canceled>(conductor);
@@ -57,7 +58,7 @@ auto Storing::cancel(arangodb::pregel::actor::ActorPID sender,
       .newState = std::move(newState)};
 }
 
-auto Storing::receive(actor::ActorPID sender,
+auto Storing::receive(actor::DistributedActorPID sender,
                       message::ConductorMessages message)
     -> std::optional<StateChange> {
   if (not conductor.workers.contains(sender) or
@@ -68,9 +69,9 @@ auto Storing::receive(actor::ActorPID sender,
         .statusMessage =
             pregel::message::InFatalError{
                 .state = stateName,
-                .errorMessage =
-                    fmt::format("In {}: Received unexpected message {} from {}",
-                                name(), inspection::json(message), sender)},
+                .errorMessage = fmt::format(
+                    "In {}: Received unexpected message {} from {}", name(),
+                    inspection::json(message), inspection::json(sender))},
         .metricsMessage =
             pregel::metrics::message::ConductorFinished{
                 .previousState =
@@ -85,9 +86,10 @@ auto Storing::receive(actor::ActorPID sender,
         .statusMessage =
             pregel::message::InFatalError{
                 .state = stateName,
-                .errorMessage = fmt::format(
-                    "In {}: Received error {} from {}", name(),
-                    inspection::json(stored.errorMessage()), sender)},
+                .errorMessage =
+                    fmt::format("In {}: Received error {} from {}", name(),
+                                inspection::json(stored.errorMessage()),
+                                inspection::json(sender))},
         .metricsMessage =
             pregel::metrics::message::ConductorFinished{
                 .previousState =

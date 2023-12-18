@@ -42,7 +42,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Transaction/Hints.h"
-#include "Transaction/V8Context.h"
 #include "Utilities/NameValidator.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"

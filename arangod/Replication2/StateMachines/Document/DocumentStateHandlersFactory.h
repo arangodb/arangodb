@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Replication2/LoggerContext.h"
 #include "RocksDBEngine/SimpleRocksDBTransactionState.h"
 #include "VocBase/Identifiers/TransactionId.h"
 
@@ -47,6 +48,7 @@ class LogId;
 
 namespace arangodb::replication2::replicated_state::document {
 
+struct IDocumentStateErrorHandler;
 struct IDocumentStateNetworkHandler;
 struct IDocumentStateShardHandler;
 struct IDocumentStateSnapshotHandler;
@@ -60,7 +62,7 @@ struct IDocumentStateHandlersFactory {
                                   GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateShardHandler> = 0;
   virtual auto createSnapshotHandler(TRI_vocbase_t& vocbase,
-                                     GlobalLogIdentifier const& gid)
+                                     GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateSnapshotHandler> = 0;
   virtual auto createTransactionHandler(
       TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
@@ -76,6 +78,9 @@ struct IDocumentStateHandlersFactory {
                                                GlobalLogIdentifier gid,
                                                ServerID server)
       -> std::shared_ptr<IMaintenanceActionExecutor> = 0;
+  virtual auto createErrorHandler(GlobalLogIdentifier gid)
+      -> std::shared_ptr<IDocumentStateErrorHandler> = 0;
+  virtual auto createLogger(GlobalLogIdentifier gid) -> LoggerContext = 0;
 };
 
 class DocumentStateHandlersFactory
@@ -83,11 +88,11 @@ class DocumentStateHandlersFactory
       public std::enable_shared_from_this<DocumentStateHandlersFactory> {
  public:
   DocumentStateHandlersFactory(network::ConnectionPool* connectionPool,
-                               MaintenanceFeature& maintenanceFeature);
+                               MaintenanceFeature& maintenanceFeature,
+                               LoggerContext defaultLoggerContext);
   auto createShardHandler(TRI_vocbase_t& vocbase, GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateShardHandler> override;
-  auto createSnapshotHandler(TRI_vocbase_t& vocbase,
-                             GlobalLogIdentifier const& gid)
+  auto createSnapshotHandler(TRI_vocbase_t& vocbase, GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateSnapshotHandler> override;
   auto createTransactionHandler(
       TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
@@ -101,10 +106,14 @@ class DocumentStateHandlersFactory
   auto createMaintenanceActionExecutor(TRI_vocbase_t& vocbase,
                                        GlobalLogIdentifier gid, ServerID server)
       -> std::shared_ptr<IMaintenanceActionExecutor> override;
+  auto createErrorHandler(GlobalLogIdentifier gid)
+      -> std::shared_ptr<IDocumentStateErrorHandler> override;
+  auto createLogger(GlobalLogIdentifier gid) -> LoggerContext override;
 
  private:
   network::ConnectionPool* _connectionPool;
   MaintenanceFeature& _maintenanceFeature;
+  LoggerContext const _defaultLoggerContext;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

@@ -23,7 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/GlobalResourceMonitor.h"
-#include "Basics/MemoryTypes/MemoryTypes.h"
 #include "gtest/gtest.h"
 
 #include "Aql/AttributeNamePath.h"
@@ -33,11 +32,7 @@ using namespace arangodb::aql;
 namespace {
 auto createAttributeNamePath = [](std::vector<std::string>&& vec,
                                   arangodb::ResourceMonitor& resMonitor) {
-  arangodb::MonitoredStringVector myVector{resMonitor};
-  for (auto& s : vec) {
-    myVector.emplace_back(s);
-  }
-  return AttributeNamePath(std::move(myVector));
+  return AttributeNamePath(std::move(vec), resMonitor);
 };
 }
 
@@ -48,7 +43,7 @@ TEST(AttributeNamePathTest, empty) {
   ASSERT_TRUE(p.empty());
   ASSERT_EQ(0, p.size());
 
-  p._path.emplace_back("test");
+  p.add("test");
   ASSERT_FALSE(p.empty());
   ASSERT_EQ(1, p.size());
 }
@@ -60,7 +55,7 @@ TEST(AttributeNamePathTest, size) {
   ASSERT_EQ(0, p.size());
 
   for (size_t i = 0; i < 10; ++i) {
-    p._path.emplace_back("test");
+    p.add("test");
     ASSERT_EQ(i + 1, p.size());
   }
 }
@@ -126,9 +121,9 @@ TEST(AttributeNamePathTest, atLong) {
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
   AttributeNamePath p{monitor};
-  p._path.emplace_back("foo");
-  p._path.emplace_back("bar");
-  p._path.emplace_back("baz");
+  p.add("foo");
+  p.add("bar");
+  p.add("baz");
 
   ASSERT_EQ("foo", p[0]);
   ASSERT_EQ("bar", p[1]);
@@ -146,23 +141,23 @@ TEST(AttributeNamePathTest, equalsLong) {
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
   AttributeNamePath p1{monitor};
-  p1._path.emplace_back("foo");
-  p1._path.emplace_back("bar");
-  p1._path.emplace_back("baz");
+  p1.add("foo");
+  p1.add("bar");
+  p1.add("baz");
 
   AttributeNamePath p2{monitor};
-  p2._path.emplace_back("foo");
-  p2._path.emplace_back("bar");
-  p2._path.emplace_back("baz");
+  p2.add("foo");
+  p2.add("bar");
+  p2.add("baz");
 
   ASSERT_TRUE(p1 == p2);
   ASSERT_FALSE(p1 != p2);
 
-  p1._path.pop_back();
+  p1.pop();
   ASSERT_FALSE(p1 == p2);
   ASSERT_TRUE(p1 != p2);
 
-  p2._path.pop_back();
+  p2.pop();
   ASSERT_TRUE(p1 == p2);
   ASSERT_FALSE(p1 != p2);
 }

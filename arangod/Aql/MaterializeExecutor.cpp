@@ -63,13 +63,13 @@ MaterializeRocksDBExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     LocalDocumentId id{input.getValue(docRegId).slice().getUInt()};
     auto result = _collection->lookup(
         &_trx, id,
-        [&, &input = input](LocalDocumentId, aql::DocumentData&& data,
-                            VPackSlice doc) {
-          TRI_ASSERT(input.isInitialized());
+        [&, &inputRef = input](LocalDocumentId, aql::DocumentData&& data,
+                               VPackSlice doc) {
+          TRI_ASSERT(inputRef.isInitialized());
           if (data) {
-            output.moveValueInto(docOutReg, input, &data);
+            output.moveValueInto(docOutReg, inputRef, &data);
           } else {
-            output.moveValueInto(docOutReg, input, doc);
+            output.moveValueInto(docOutReg, inputRef, doc);
           }
           return true;
         },

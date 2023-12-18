@@ -44,6 +44,7 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
@@ -154,7 +155,7 @@ uint64_t RocksDBMetaCollection::numberDocuments(
 }
 
 /// @brief write locks a collection, with a timeout
-ErrorCode RocksDBMetaCollection::lockWrite(double timeout) {
+futures::Future<ErrorCode> RocksDBMetaCollection::lockWrite(double timeout) {
   return doLock(timeout, AccessMode::Type::WRITE);
 }
 
@@ -164,7 +165,16 @@ void RocksDBMetaCollection::unlockWrite() noexcept {
 }
 
 /// @brief read locks a collection, with a timeout
-ErrorCode RocksDBMetaCollection::lockRead(double timeout) {
+futures::Future<ErrorCode> RocksDBMetaCollection::lockRead(double timeout) {
+  TRI_IF_FAILURE("assertLockTimeoutLow") {
+    // In the test we expect that fast path locking is done with 2s timeout.
+    TRI_ASSERT(timeout < 10);
+  }
+  TRI_IF_FAILURE("assertLockTimeoutHigh") {
+    // In the test we expect that an lazy locking happens on the follower
+    // with the default timeout of more than 2 seconds:
+    TRI_ASSERT(timeout > 10);
+  }
   return doLock(timeout, AccessMode::Type::READ);
 }
 
@@ -172,7 +182,7 @@ ErrorCode RocksDBMetaCollection::lockRead(double timeout) {
 void RocksDBMetaCollection::unlockRead() { _exclusiveLock.unlockRead(); }
 
 // rescans the collection to update document count
-uint64_t RocksDBMetaCollection::recalculateCounts() {
+futures::Future<uint64_t> RocksDBMetaCollection::recalculateCounts() {
   std::unique_lock<std::mutex> guard(_recalculationLock);
 
   rocksdb::TransactionDB* db = _engine.db();
@@ -180,7 +190,7 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
   // start transaction to get a collection lock
   TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
   if (!vocbase.use()) {  // someone dropped the database
-    return _meta.numberDocuments();
+    co_return _meta.numberDocuments();
   }
   auto useGuard = scopeGuard([&]() noexcept {
     // cppcheck-suppress knownConditionTrueFalse
@@ -201,7 +211,7 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
     // fetch number docs and snapshot under exclusive lock
     // this should enable us to correct the count later
     auto lockGuard = scopeGuard([this]() noexcept { unlockWrite(); });
-    auto res = lockWrite(transaction::Options::defaultLockTimeout);
+    auto res = co_await lockWrite(transaction::Options::defaultLockTimeout);
     if (res != TRI_ERROR_NO_ERROR) {
       lockGuard.cancel();
       THROW_ARANGO_EXCEPTION(res);
@@ -295,7 +305,7 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
         << ": counted value: " << count;
   }
 
-  return _meta.numberDocuments();
+  co_return _meta.numberDocuments();
 }
 
 void RocksDBMetaCollection::compact() {
@@ -795,8 +805,8 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
   return _revisionTreeSerializedSeq;
 }
 
-ResultT<std::pair<std::unique_ptr<containers::RevisionTree>,
-                  rocksdb::SequenceNumber>>
+futures::Future<ResultT<std::pair<std::unique_ptr<containers::RevisionTree>,
+                                  rocksdb::SequenceNumber>>>
 RocksDBMetaCollection::revisionTreeFromCollection(bool checkForBlockers) {
   auto origin =
       transaction::OperationOriginInternal{"rebuilding revision tree"};
@@ -805,21 +815,21 @@ RocksDBMetaCollection::revisionTreeFromCollection(bool checkForBlockers) {
   SingleCollectionTransaction trx(std::move(ctxt), _logicalCollection,
                                   AccessMode::Type::READ);
 
-  Result res = trx.begin();
+  Result res = co_await trx.beginAsync();
   if (res.fail()) {
     LOG_TOPIC("d1e53", WARN, arangodb::Logger::ENGINES)
         << "failed to begin transaction to rebuild revision tree "
            "for collection '"
         << _logicalCollection.id().id() << "'";
-    return res;
+    co_return res;
   }
 
   auto* state = RocksDBTransactionState::toState(&trx);
 
   if (checkForBlockers && _meta.hasBlockerUpTo(state->beginSeq())) {
-    return Result(TRI_ERROR_LOCKED,
-                  "cannot rebuild revision tree now as there are still "
-                  "transaction blockers in place");
+    co_return Result(TRI_ERROR_LOCKED,
+                     "cannot rebuild revision tree now as there are still "
+                     "transaction blockers in place");
   }
 
   auto iter =
@@ -830,7 +840,7 @@ RocksDBMetaCollection::revisionTreeFromCollection(bool checkForBlockers) {
            "tree "
            "for collection '"
         << _logicalCollection.id().id() << "'";
-    return Result(TRI_ERROR_INTERNAL);
+    co_return Result(TRI_ERROR_INTERNAL);
   }
   RevisionReplicationIterator& it =
       *static_cast<RevisionReplicationIterator*>(iter.get());
@@ -839,7 +849,7 @@ RocksDBMetaCollection::revisionTreeFromCollection(bool checkForBlockers) {
   // not track its memory usage here, but rather at some indirect call sites
   // only.
   auto newTree = buildTreeFromIterator(it);
-  return std::make_pair(std::move(newTree), state->beginSeq());
+  co_return std::make_pair(std::move(newTree), state->beginSeq());
 }
 
 std::unique_ptr<containers::RevisionTree>
@@ -895,16 +905,16 @@ void RocksDBMetaCollection::corruptRevisionTree(uint64_t count, uint64_t hash) {
 }
 #endif
 
-Result RocksDBMetaCollection::rebuildRevisionTree() {
+futures::Future<Result> RocksDBMetaCollection::rebuildRevisionTree() {
   if (!_logicalCollection.useSyncByRevision()) {
-    return {};
+    co_return {};
   }
 
-  return basics::catchToResult([this]() -> Result {
+  auto const lambda = [this]() -> futures::Future<Result> {
     auto lockGuard = scopeGuard([this]() noexcept { unlockWrite(); });
     // get the exclusive lock on the collection, so that no new write
     // transactions can start for this collection
-    auto res = lockWrite(/*timeout*/ 180.0);
+    auto res = co_await lockWrite(/*timeout*/ 180.0);
     if (res != TRI_ERROR_NO_ERROR) {
       lockGuard.cancel();
       THROW_ARANGO_EXCEPTION(res);
@@ -990,9 +1000,9 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     // now rebuild the tree from the collection data, using a
     // snapshot that will be acquired inside `revisionTreeFromCollection`.
     // note that the snapshot may have a sequence number > blockerSeq!
-    auto result = revisionTreeFromCollection(false);
+    auto result = co_await revisionTreeFromCollection(false);
     if (result.fail()) {
-      return result.result();
+      co_return result.result();
     }
 
     auto&& [newTree, beginSeq] = result.get();
@@ -1067,9 +1077,10 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
       // finally remove all pending updates up to including our own sequence
       // number
       removeBufferedUpdatesUpTo(beginSeq);
-      return {};
+      co_return {};
     }
-  });
+  };
+  co_return co_await asResult(lambda());
 }
 
 void RocksDBMetaCollection::rebuildRevisionTree(
@@ -1150,10 +1161,10 @@ std::pair<uint64_t, uint64_t> RocksDBMetaCollection::revisionTreeInfo() const {
   return {0, 0};
 }
 
-void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder,
-                                                bool fromCollection) {
+futures::Future<futures::Unit> RocksDBMetaCollection::revisionTreeSummary(
+    VPackBuilder& builder, bool fromCollection) {
   if (!_logicalCollection.useSyncByRevision()) {
-    return;
+    co_return;
   }
 
   uint64_t count = 0;
@@ -1162,7 +1173,7 @@ void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder,
 
   if (fromCollection) {
     // rebuild a temporary tree from the collection
-    auto result = revisionTreeFromCollection(false);
+    auto result = co_await revisionTreeFromCollection(false);
     // the tree is only there temporarily, so we intentionally do
     // not track its memory usage!
 
@@ -1714,7 +1725,38 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
   auto timeout_us = std::chrono::duration_cast<std::chrono::microseconds>(
       std::chrono::duration<double>(timeout));
 
+  constexpr auto detachThreshold = std::chrono::microseconds(1000000);
+
   bool gotLock = false;
+  if (timeout_us > detachThreshold) {
+    if (mode == AccessMode::Type::WRITE) {
+      gotLock = _exclusiveLock.tryLockWriteFor(detachThreshold);
+    } else {
+      gotLock = _exclusiveLock.tryLockReadFor(detachThreshold);
+    }
+    if (gotLock) {
+      // keep the lock and exit
+      return TRI_ERROR_NO_ERROR;
+    }
+    LOG_TOPIC("dd231", INFO, Logger::THREADS)
+        << "Did not get lock within 1 seconds, detaching scheduler thread.";
+    uint64_t currentNumberDetached = 0;
+    uint64_t maximumNumberDetached = 0;
+    Result r = arangodb::SchedulerFeature::SCHEDULER->detachThread(
+        &currentNumberDetached, &maximumNumberDetached);
+    if (r.is(TRI_ERROR_TOO_MANY_DETACHED_THREADS)) {
+      LOG_TOPIC("dd232", WARN, Logger::THREADS)
+          << "Could not detach scheduler thread (currently detached threads: "
+          << currentNumberDetached
+          << ", maximal number of detached threads: " << maximumNumberDetached
+          << "), will continue to acquire "
+             "lock in scheduler thread, this can potentially lead to "
+             "blockages!";
+    }
+  }
+
+  timeout_us -= detachThreshold;
+
   if (mode == AccessMode::Type::WRITE) {
     gotLock = _exclusiveLock.tryLockWriteFor(timeout_us);
   } else {

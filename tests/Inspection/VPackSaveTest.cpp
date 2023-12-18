@@ -172,6 +172,27 @@ TEST_F(VPackSaveInspectorTest, store_map) {
   EXPECT_EQ(m.unordered["5"], obj["5"].getInt());
 }
 
+TEST_F(VPackSaveInspectorTest, store_transformed_map) {
+  TransformedMap m{.map = {{1, {1}}, {2, {2}}, {3, {3}}}};
+  auto result = inspector.apply(m);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isObject());
+  auto obj = slice["map"];
+  ASSERT_TRUE(obj.isArray());
+  ASSERT_EQ(3u, obj.length());
+
+  EXPECT_EQ(1, obj[0]["key"].getInt());
+  EXPECT_EQ(m.map[1].i.value, obj[0]["value"]["i"].getInt());
+
+  EXPECT_EQ(2, obj[1]["key"].getInt());
+  EXPECT_EQ(m.map[2].i.value, obj[1]["value"]["i"].getInt());
+
+  EXPECT_EQ(3, obj[2]["key"].getInt());
+  EXPECT_EQ(m.map[3].i.value, obj[2]["value"]["i"].getInt());
+}
+
 TEST_F(VPackSaveInspectorTest, store_set) {
   static_assert(
       inspection::detail::HasInspectOverload<Set, VPackSaveInspector>::value);
@@ -650,6 +671,30 @@ TEST_F(VPackSaveInspectorTest, store_embedded_fields) {
   EXPECT_EQ(n.inner.i, slice["i"].getInt());
   EXPECT_EQ(n.inner.s, slice["s"].copyString());
   EXPECT_EQ(n.b, slice["b"].getInt());
+}
+
+struct EmbeddedTemporary {
+  friend inline auto inspect(auto& f, EmbeddedTemporary& x) {
+    return f.object(x).fields(f.field("a", 42),
+                              f.field("b", std::string("foobar")));
+  }
+};
+struct NestedEmbeddedTemporary {
+  friend inline auto inspect(auto& f, NestedEmbeddedTemporary& x) {
+    EmbeddedTemporary temp{};
+    return f.object(x).fields(f.embedFields(temp));
+  }
+};
+
+TEST_F(VPackSaveInspectorTest, store_embedded_temporary_fields) {
+  NestedEmbeddedTemporary const n{};
+  auto result = inspector.apply(n);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isObject());
+  EXPECT_EQ(42, slice["a"].getInt());
+  EXPECT_EQ("foobar", slice["b"].copyString());
 }
 
 TEST(VPackSaveInspectorContext, serialize_with_context) {

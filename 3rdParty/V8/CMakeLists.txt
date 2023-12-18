@@ -32,7 +32,7 @@ set(ICU_VERSION
   "${ICU_COMPACT_VERSION}.1"
   CACHE INTERNAL
   "ICU: Version"
-  )
+)
 
 set(ICU_BASEDIR ${V8_DIR}/third_party/icu)
 
@@ -200,7 +200,7 @@ if (WIN32)
     -Dv8_use_snapshot=1
     -DPYTHON_EXECUTABLE="${PYTHON_EXECUTABLE}"
     -Dnode_use_pch=false
-    )
+  )
 
   list(APPEND V8_TARGETS
     torque
@@ -213,7 +213,7 @@ if (WIN32)
     mksnapshot
     v8_snapshot
     v8
-    )
+  )
 
   add_custom_target(v8_build)
   set(V8_LIBS
@@ -237,7 +237,7 @@ if (WIN32)
       ""
       INSTALL_COMMAND
         ""
-      )
+    )
 
     add_dependencies(v8_build v8_build_${MS_TARGET_CONF_LOWER})
 
@@ -248,12 +248,11 @@ if (WIN32)
           ${V8_TARGET_DIR}/../gypfiles
         COMMAND
           msbuild ${V8_ONE_TARGET}.vcxproj /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
-#          msbuild All.vcxproj /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
         DEPENDEES
           configure
         DEPENDERS
           build
-        )
+      )
     endforeach ()
   endforeach ()
 
@@ -270,22 +269,12 @@ if (WIN32)
     CACHE INTERNAL
     "ICU: Libraries"
     FORCE
-    )
-
+  )
   
   set(V8_LIBRARY_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/gypfiles/Debug")
   set(V8_LIBRARY_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/gypfiles//Release")
 
-
   message("V8_LIBRARY_DEBUG ${V8_LIBRARY_DEBUG} CMAKE_CURRENT_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}")
-#v8_libplatform.lib
-#v8_base_without_compiler.lib
-#v8_libbase.lib
-#v8_libsampler.lib
-#v8_compiler.lib
-#v8_snapshot.lib
-#v8_initializers.lib
-
   set(V8_LIBS
     debug "${V8_LIBRARY_DEBUG}/lib/v8_libplatform.lib"
     optimized "${V8_LIBRARY_RELEASE}/lib/v8_libplatform.lib"
@@ -311,33 +300,29 @@ if (WIN32)
     debug "${V8_LIBRARY_DEBUG}/lib/v8_snapshot.lib"
     optimized "${V8_LIBRARY_RELEASE}/lib/v8_snapshot.lib"
 
-#    debug "${V8_LIBRARY_DEBUG}/lib/v8_init.lib"
-#    optimized "${V8_LIBRARY_RELEASE}/lib/v8_init.lib"
-
     debug "DbgHelp.lib"
     optimized "DbgHelp.lib"
 
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
-    )
+  )
   set(V8_INCLUDE_DIR
     debug "${V8_DIR}/include;${V8_DIR};${V8_LIBRARY_DEBUG}/obj/global_intermediate/"
     optimized "${V8_DIR}/include;${V8_DIR};${V8_LIBRARY_RELEASE}/obj/global_intermediate/"
     CACHE INTERNAL
     "${PROJECT_NAME}: include path"
-    )
+  )
   set(V8_INTERNAL_INCLUDE_DIR
     debug "${V8_DIR}/src/builtins;${V8_LIBRARY_DEBUG}/obj/global_intermediate/generate-bytecode-output-root;${V8_LIBRARY_DEBUG}/obj/global_intermediate/torque-output-root"
     optimized "${V8_DIR}/src/builtins;${V8_LIBRARY_RELEASE}/obj/global_intermediate/generate-bytecode-output-root;${V8_LIBRARY_RELEASE}/obj/global_intermediate/torque-output-root"
     CACHE INTERNAL
     "${PROJECT_NAME}: V8 private include path"
-    )
+  )
 
   set(V8_LIBRARY_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/gypfiles/Debug")
   set(V8_LIBRARY_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/gypfiles//Release")
 
 else ()
-
 
 ################################################################################
 ## UNIX
@@ -405,7 +390,8 @@ else ()
     -Dv8_enable_embedded_builtins=0
     -Dembedded_builtins_snapshot_src=
     -Dv8_enable_handle_zapping=0
-    -Dv8_use_snapshot=1 )
+    -Dv8_use_snapshot=1
+  )
 
   if (USE_DEBUG_V8)
     set(V8_BUILDTYPE Debug)
@@ -435,8 +421,8 @@ else ()
     v8_nosnapshot
     mksnapshot
     v8_snapshot
-    )
-message(${V8_GYP_ARGS})
+  )
+  message(${V8_GYP_ARGS})
   ExternalProject_Add(v8_build
     BUILD_IN_SOURCE
       TRUE
@@ -449,7 +435,8 @@ message(${V8_GYP_ARGS})
     STEP_TARGETS
       v8_libbase v8_libplatform icui18n icuuc v8_base v8_libsampler v8_init v8_initializers v8_nosnapshot mksnapshot v8_snapshot
     INSTALL_COMMAND
-      "")
+      ""
+  )
 
   list(APPEND LINK_DIRECTORIES "${V8_LIBRARY_DIR}")
 
@@ -472,7 +459,7 @@ message(${V8_GYP_ARGS})
     "${V8_DIR}/include;${V8_DIR};${V8_TARGET_DIR}/${V8_TARGET_ARCH}/obj/gen"
     CACHE INTERNAL
     "${PROJECT_NAME}: include path"
-    )
+  )
 endif()
 
 set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)

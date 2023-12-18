@@ -492,6 +492,8 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"FIRST_LIST", ".|+", flags, &functions::FirstList});
   add({"FIRST_DOCUMENT", ".|+", flags, &functions::FirstDocument});
   add({"PARSE_IDENTIFIER", ".", flags, &functions::ParseIdentifier});
+  add({"PARSE_KEY", ".", flags, &functions::ParseKey});
+  add({"PARSE_COLLECTION", ".", flags, &functions::ParseCollection});
   add({"IS_SAME_COLLECTION", ".h,.h", flags, &functions::IsSameCollection});
   add({"DECODE_REV", ".", flags, &functions::DecodeRev});
 

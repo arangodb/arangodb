@@ -25,7 +25,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
-#include "Aql/Graphs.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Aql/Variable.h"

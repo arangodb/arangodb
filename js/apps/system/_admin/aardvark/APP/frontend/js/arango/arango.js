@@ -49,6 +49,9 @@
         version = v.replace(/^(\d+\.\d+).*$/, '$1');
       }
       return version;
+    },
+    getDocuVersion: function () {
+      return this.toDocuVersion(window.frontendConfig.version.version);
     }
   };
 
@@ -439,13 +442,29 @@
       });
     },
 
+    disableSubNavBar: function () {
+      const navItems = $('.subMenuEntries.bottom').children();
+      _.each(navItems, function (item) {
+        $(item).addClass('disabled');
+        $(item).css('pointer-events', 'none');
+      });
+    },
+
+    enableSubNavBar: function () {
+      const navItems = $('.subMenuEntries.bottom').children();
+      _.each(navItems, function (item) {
+        $(item).removeClass('disabled');
+        $(item).css('pointer-events', 'all');
+      });
+    },
+
     buildUserSubNav: function (username, activeKey) {
       var menus = {
         General: {
-          route: '#user/' + encodeURIComponent(username)
+          route: '#user/' + username
         },
         Permissions: {
-          route: '#user/' + encodeURIComponent(username) + '/permission'
+          route: '#user/' + username + '/permission'
         }
       };
 

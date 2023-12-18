@@ -61,6 +61,7 @@ class SchedulerFeature final : public ArangodFeature {
 
   uint64_t _nrMinimalThreads = 4;
   uint64_t _nrMaximalThreads = 0;
+  uint64_t _nrMaximalDetachedThreads = 1000;
   uint64_t _queueSize = 4096;
   uint64_t _fifo1Size = 4096;
   uint64_t _fifo2Size = 4096;

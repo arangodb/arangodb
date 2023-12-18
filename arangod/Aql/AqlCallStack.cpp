@@ -35,6 +35,8 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+AqlCallStack::AqlCallStack(AqlCallStack::Empty) {}
+
 AqlCallStack::AqlCallStack(AqlCallList call) : _operations{{std::move(call)}} {}
 
 AqlCallStack::AqlCallStack(AqlCallStack const& other, AqlCallList call)
@@ -67,6 +69,17 @@ auto AqlCallStack::popCall() -> AqlCallList {
   auto call = std::move(_operations.back());
   _operations.pop_back();
   return call;
+}
+
+void AqlCallStack::popDepthsLowerThan(size_t depth) {
+  TRI_ASSERT(!_operations.empty());
+  TRI_ASSERT(depth <= _operations.size());
+  for (auto i = _operations.size() - depth; i < _operations.size(); ++i) {
+    auto& operation = _operations[i];
+    if (operation.hasMoreCalls()) {
+      std::ignore = operation.popNextCall();
+    }
+  }
 }
 
 auto AqlCallStack::peek() const noexcept -> AqlCall const& {
@@ -231,3 +244,13 @@ auto AqlCallStack::requestLessDataThan(AqlCallStack const& other) const noexcept
   }
   return true;
 }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+// For tests
+AqlCallStack::AqlCallStack(std::initializer_list<AqlCallList> calls)
+    : _operations{std::move(calls)} {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  validateNoCallHasSkippedRows();
+#endif
+}
+#endif

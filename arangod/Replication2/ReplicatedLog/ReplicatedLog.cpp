@@ -78,7 +78,7 @@ auto replicated_log::ReplicatedLog::connect(
   auto guard = _guarded.getLockedGuard();
   ADB_PROD_ASSERT(guard->stateHandle == nullptr);
   guard->stateHandle = std::move(stateHandle);
-  tryBuildParticipant(guard.get());
+  std::ignore = tryBuildParticipant(guard.get());
   return ReplicatedLogConnection(this);
 }
 

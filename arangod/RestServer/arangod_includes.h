@@ -43,7 +43,7 @@
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #ifdef USE_V8
-#include "ApplicationFeatures/V8PlatformFeature.h"
+#include "V8/V8PlatformFeature.h"
 #include "V8/V8SecurityFeature.h"
 #endif
 #include "ApplicationFeatures/VersionFeature.h"

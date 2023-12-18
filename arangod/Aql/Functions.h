@@ -387,6 +387,10 @@ AqlValue JsonParse(arangodb::aql::ExpressionContext*, AstNode const&,
                    VPackFunctionParametersView);
 AqlValue ParseIdentifier(arangodb::aql::ExpressionContext*, AstNode const&,
                          VPackFunctionParametersView);
+AqlValue ParseKey(arangodb::aql::ExpressionContext*, AstNode const&,
+                  VPackFunctionParametersView);
+AqlValue ParseCollection(arangodb::aql::ExpressionContext*, AstNode const&,
+                         VPackFunctionParametersView);
 AqlValue Slice(arangodb::aql::ExpressionContext*, AstNode const&,
                VPackFunctionParametersView);
 AqlValue Minus(arangodb::aql::ExpressionContext*, AstNode const&,

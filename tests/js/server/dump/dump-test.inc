@@ -71,8 +71,8 @@
       assertFalse(_.isEmpty(collDistribution));
       collDistributionPlan = collDistribution["Plan"];
       collDistributionCurrent = collDistribution["Current"];
-      assertFalse(_.isEmpty(collDistributionPlan));
-      assertFalse(_.isEmpty(collDistributionCurrent));
+      assertFalse(_.isEmpty(collDistributionPlan), {collName, res});
+      assertFalse(_.isEmpty(collDistributionCurrent), {collName, res});
       if (_.isEqual(collDistributionPlan, collDistributionCurrent) || numSecs >= numSecsLimit) {
         break;
       }

@@ -25,6 +25,7 @@
 
 #include "Aql/SharedQueryState.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/debugging.h"
 #include "Cluster/ServerState.h"
 #include "Rest/GeneralResponse.h"
 #include "StorageEngine/TransactionState.h"
@@ -91,13 +92,15 @@ TEST_F(TransactionManagerTest, parsing_errors) {
   auto json = arangodb::velocypack::Parser::fromJson("{ \"write\": [33] }");
   Result res =
       mgr->ensureManagedTrx(vocbase, tid, json->slice(),
-                            transaction::OperationOriginTestCase{}, false);
+                            transaction::OperationOriginTestCase{}, false)
+          .get();
   EXPECT_TRUE(res.is(TRI_ERROR_BAD_PARAMETER));
 
   json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": \"33\"}, \"lockTimeout\": -1 }");
   res = mgr->ensureManagedTrx(vocbase, tid, json->slice(),
-                              transaction::OperationOriginTestCase{}, false);
+                              transaction::OperationOriginTestCase{}, false)
+            .get();
   EXPECT_TRUE(res.is(TRI_ERROR_BAD_PARAMETER));
 }
 
@@ -108,19 +111,22 @@ TEST_F(TransactionManagerTest, collection_not_found) {
       "{ \"collections\":{\"read\": [\"33\"]}}");
   Result res =
       mgr->ensureManagedTrx(vocbase, tid, json->slice(),
-                            transaction::OperationOriginTestCase{}, false);
+                            transaction::OperationOriginTestCase{}, false)
+          .get();
   EXPECT_EQ(res.errorNumber(), TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 
   json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"33\"]}}");
   res = mgr->ensureManagedTrx(vocbase, tid, json->slice(),
-                              transaction::OperationOriginTestCase{}, false);
+                              transaction::OperationOriginTestCase{}, false)
+            .get();
   EXPECT_EQ(res.errorNumber(), TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 
   json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"exclusive\": [\"33\"]}}");
   res = mgr->ensureManagedTrx(vocbase, tid, json->slice(),
-                              transaction::OperationOriginTestCase{}, false);
+                              transaction::OperationOriginTestCase{}, false)
+            .get();
   EXPECT_EQ(res.errorNumber(), TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
@@ -137,13 +143,15 @@ TEST_F(TransactionManagerTest, transaction_id_reuse) {
       "{ \"collections\":{\"read\": [\"42\"]}}");
   Result res =
       mgr->ensureManagedTrx(vocbase, tid, json->slice(),
-                            transaction::OperationOriginTestCase{}, false);
+                            transaction::OperationOriginTestCase{}, false)
+          .get();
   ASSERT_TRUE(res.ok());
 
   json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"33\"]}}");
   res = mgr->ensureManagedTrx(vocbase, tid, json->slice(),
-                              transaction::OperationOriginTestCase{}, false);
+                              transaction::OperationOriginTestCase{}, false)
+            .get();
   EXPECT_EQ(res.errorNumber(), TRI_ERROR_TRANSACTION_INTERNAL);
 
   res = mgr->abortManagedTrx(tid, vocbase.name());
@@ -163,7 +171,8 @@ TEST_F(TransactionManagerTest, simple_transaction_and_abort) {
       "{ \"collections\":{\"write\": [\"42\"]}}");
   Result res =
       mgr->ensureManagedTrx(vocbase, tid, json->slice(),
-                            transaction::OperationOriginTestCase{}, false);
+                            transaction::OperationOriginTestCase{}, false)
+          .get();
   ASSERT_TRUE(res.ok());
 
   auto doc = arangodb::velocypack::Parser::fromJson("{ \"_key\": \"1\"}");
@@ -226,7 +235,8 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
       "{ \"collections\":{\"write\": [\"42\"]}}");
   Result res =
       mgr->ensureManagedTrx(vocbase, tid, json->slice(),
-                            transaction::OperationOriginTestCase{}, false);
+                            transaction::OperationOriginTestCase{}, false)
+          .get();
   ASSERT_TRUE(res.ok());
 
   {
@@ -279,7 +289,8 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
       "{ \"collections\":{\"write\": [\"42\"]}}");
   Result res =
       mgr->ensureManagedTrx(vocbase, tid, json->slice(),
-                            transaction::OperationOriginTestCase{}, true);
+                            transaction::OperationOriginTestCase{}, true)
+          .get();
   ASSERT_TRUE(res.ok());
 
   {
@@ -325,7 +336,8 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_while_in_use) {
       "{ \"collections\":{\"write\": [\"42\"]}}");
   Result res =
       mgr->ensureManagedTrx(vocbase, tid, json->slice(),
-                            transaction::OperationOriginTestCase{}, false);
+                            transaction::OperationOriginTestCase{}, false)
+          .get();
   ASSERT_TRUE(res.ok());
 
   {
@@ -371,7 +383,8 @@ TEST_F(TransactionManagerTest, leading_multiple_readonly_transactions) {
       "{ \"collections\":{\"read\": [\"42\"]}}");
   Result res =
       mgr->ensureManagedTrx(vocbase, tid, json->slice(),
-                            transaction::OperationOriginTestCase{}, false);
+                            transaction::OperationOriginTestCase{}, false)
+          .get();
   ASSERT_TRUE(res.ok());
 
   {
@@ -414,7 +427,8 @@ TEST_F(TransactionManagerTest, lock_conflict) {
       "{ \"collections\":{\"write\": [\"42\"]}}");
   Result res =
       mgr->ensureManagedTrx(vocbase, tid, json->slice(),
-                            transaction::OperationOriginTestCase{}, false);
+                            transaction::OperationOriginTestCase{}, false)
+          .get();
   ASSERT_TRUE(res.ok());
   {
     transaction::Options opts;
@@ -445,7 +459,8 @@ TEST_F(TransactionManagerTest, lock_conflict_side_user) {
       "{ \"collections\":{\"write\": [\"42\"]}}");
   Result res =
       mgr->ensureManagedTrx(vocbase, tid, json->slice(),
-                            transaction::OperationOriginTestCase{}, false);
+                            transaction::OperationOriginTestCase{}, false)
+          .get();
   ASSERT_TRUE(res.ok());
   {
     transaction::Options opts;
@@ -482,7 +497,8 @@ TEST_F(TransactionManagerTest, garbage_collection_shutdown) {
       "{ \"collections\":{\"write\": [\"42\"]}}");
   Result res =
       mgr->ensureManagedTrx(vocbase, tid, json->slice(),
-                            transaction::OperationOriginTestCase{}, false);
+                            transaction::OperationOriginTestCase{}, false)
+          .get();
   ASSERT_TRUE(res.ok());
   {
     transaction::Options opts;
@@ -555,7 +571,8 @@ TEST_F(TransactionManagerTest, abort_transactions_with_matcher) {
       "{ \"collections\":{\"write\": [\"42\"]}}");
   Result res =
       mgr->ensureManagedTrx(vocbase, tid, json->slice(),
-                            transaction::OperationOriginTestCase{}, false);
+                            transaction::OperationOriginTestCase{}, false)
+          .get();
   ASSERT_TRUE(res.ok());
 
   {
@@ -607,7 +624,8 @@ TEST_F(TransactionManagerTest, permission_denied_readonly) {
       "{ \"collections\":{\"read\": [\"42\"]}}");
   Result res =
       mgr->ensureManagedTrx(vocbase, tid, json->slice(),
-                            transaction::OperationOriginTestCase{}, false);
+                            transaction::OperationOriginTestCase{}, false)
+          .get();
   EXPECT_TRUE(res.ok());
   ASSERT_TRUE(mgr->abortManagedTrx(tid, vocbase.name()).ok());
 
@@ -615,7 +633,8 @@ TEST_F(TransactionManagerTest, permission_denied_readonly) {
   json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"42\"]}}");
   res = mgr->ensureManagedTrx(vocbase, tid, json->slice(),
-                              transaction::OperationOriginTestCase{}, false);
+                              transaction::OperationOriginTestCase{}, false)
+            .get();
   ASSERT_EQ(res.errorNumber(), TRI_ERROR_ARANGO_READ_ONLY);
 }
 
@@ -640,7 +659,8 @@ TEST_F(TransactionManagerTest, permission_denied_forbidden) {
       "{ \"collections\":{\"read\": [\"42\"]}}");
   Result res =
       mgr->ensureManagedTrx(vocbase, tid, json->slice(),
-                            transaction::OperationOriginTestCase{}, false);
+                            transaction::OperationOriginTestCase{}, false)
+          .get();
   ASSERT_EQ(res.errorNumber(), TRI_ERROR_FORBIDDEN);
 }
 
@@ -655,8 +675,9 @@ TEST_F(TransactionManagerTest, transaction_invalid_mode) {
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"read\": [\"testCollection\"]}}");
   Result res = mgr->ensureManagedTrx(
-      vocbase, tid, json->slice(),
-      transaction::OperationOriginInternal{"some test"}, false);
+                      vocbase, tid, json->slice(),
+                      transaction::OperationOriginInternal{"some test"}, false)
+                   .get();
   ASSERT_TRUE(res.ok());
 
   auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
@@ -682,8 +703,9 @@ TEST_F(TransactionManagerTest, transaction_origin) {
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"testCollection\"]}}");
   Result res = mgr->ensureManagedTrx(
-      vocbase, tid, json->slice(),
-      transaction::OperationOriginInternal{"some test"}, false);
+                      vocbase, tid, json->slice(),
+                      transaction::OperationOriginInternal{"some test"}, false)
+                   .get();
   ASSERT_TRUE(res.ok());
 
   auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
@@ -701,3 +723,94 @@ TEST_F(TransactionManagerTest, transaction_origin) {
   res = mgr->abortManagedTrx(tid, vocbase.name());
   ASSERT_TRUE(res.ok());
 }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+TEST_F(TransactionManagerTest, expired_transaction) {
+  auto guard = scopeGuard([]() noexcept { TRI_ClearFailurePointsDebugging(); });
+
+  std::shared_ptr<LogicalCollection> coll;
+  {
+    auto json = VPackParser::fromJson("{ \"name\": \"testCollection\" }");
+    coll = vocbase.createCollection(json->slice());
+  }
+  ASSERT_NE(coll, nullptr);
+
+  auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \"collections\":{\"write\": [\"testCollection\"]}}");
+
+  // disables garbage-collection
+  TRI_AddFailurePointDebugging("transaction::Manager::noGC");
+  // sets TTL for transaction to a very low value
+  TRI_AddFailurePointDebugging("transaction::Manager::shortTTL");
+  Result res = mgr->ensureManagedTrx(
+                      vocbase, tid, json->slice(),
+                      transaction::OperationOriginInternal{"some test"}, false)
+                   .get();
+  ASSERT_TRUE(res.ok());
+
+  // wait until trx is expired
+  std::this_thread::sleep_for(std::chrono::milliseconds(150));
+
+  // we cannot use the transaction anymore
+  auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
+  ASSERT_EQ(ctx.get(), nullptr);
+
+  // aborting it is fine though
+  res = mgr->abortManagedTrx(tid, vocbase.name());
+  ASSERT_TRUE(res.ok());
+
+  res = mgr->commitManagedTrx(tid, vocbase.name());
+  ASSERT_FALSE(res.ok());
+  ASSERT_EQ(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION, res.errorNumber());
+}
+#endif
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+TEST_F(TransactionManagerTest, lock_usage_of_expired_transaction) {
+  auto guard = scopeGuard([]() noexcept { TRI_ClearFailurePointsDebugging(); });
+
+  std::shared_ptr<LogicalCollection> coll;
+  {
+    auto json = VPackParser::fromJson("{ \"name\": \"testCollection\" }");
+    coll = vocbase.createCollection(json->slice());
+  }
+  ASSERT_NE(coll, nullptr);
+
+  auto json1 = arangodb::velocypack::Parser::fromJson(
+      "{ \"collections\":{\"exclusive\": [\"testCollection\"]}}");
+
+  // sets TTL for transaction to a very low value
+  TRI_AddFailurePointDebugging("transaction::Manager::shortTTL");
+  Result res = mgr->ensureManagedTrx(
+                      vocbase, tid, json1->slice(),
+                      transaction::OperationOriginInternal{"some test"}, false)
+                   .get();
+  ASSERT_TRUE(res.ok());
+
+  // wait until trx is expired
+  std::this_thread::sleep_for(std::chrono::milliseconds(150));
+
+  // we must now be able to open a second transaction on the
+  // underlying collection, at least after the garbage collection
+  mgr->garbageCollect(/*abortAll*/ false);
+
+  TRI_ClearFailurePointsDebugging();
+
+  TransactionId tid2 = TransactionId::createLeader();
+  auto json2 = arangodb::velocypack::Parser::fromJson(
+      "{ \"collections\":{\"write\": [\"testCollection\"]}}");
+  res = mgr->ensureManagedTrx(vocbase, tid2, json2->slice(),
+                              transaction::OperationOriginInternal{"some test"},
+                              false)
+            .get();
+  ASSERT_TRUE(res.ok());
+
+  // aborting trx1 is still fine, even though it is expired
+  res = mgr->abortManagedTrx(tid, vocbase.name());
+  ASSERT_TRUE(res.ok());
+
+  // committing trx2 must be ok
+  res = mgr->commitManagedTrx(tid2, vocbase.name());
+  ASSERT_TRUE(res.ok());
+}
+#endif

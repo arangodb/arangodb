@@ -133,7 +133,9 @@ class SharedQueryState final
     return queued;
   }
 
-  bool noTasksRunning();
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  bool noTasksRunning() const noexcept { return _numTasks.load() == 0; }
+#endif
 
  private:
   /// execute the _continueCallback. must hold _mutex
@@ -156,7 +158,7 @@ class SharedQueryState final
   unsigned _numWakeups;  // number of times
   unsigned _cbVersion;   // increased once callstack is done
 
-  const unsigned _maxTasks;
+  unsigned const _maxTasks;
   std::atomic<unsigned> _numTasks;
   std::atomic<bool> _valid;
 };

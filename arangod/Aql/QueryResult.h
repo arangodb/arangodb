@@ -23,18 +23,16 @@
 
 #pragma once
 
+#include "Basics/Common.h"
+#include "Basics/Result.h"
+
+#include <velocypack/Builder.h>
+
 #include <memory>
 #include <unordered_set>
 #include <vector>
 
-#include "Basics/Common.h"
-#include "Basics/Result.h"
-
 namespace arangodb {
-namespace velocypack {
-class Builder;
-}
-
 namespace transaction {
 class Context;
 }
@@ -48,7 +46,7 @@ struct QueryResult {
   QueryResult(QueryResult&& other) = default;
   QueryResult& operator=(QueryResult&& other) = default;
 
-  QueryResult() : result(), cached(false), allowDirtyReads(false) {}
+  QueryResult() : cached(false), allowDirtyReads(false) {}
 
   explicit QueryResult(Result const& res)
       : result(res), cached(false), allowDirtyReads(false) {}
@@ -83,6 +81,29 @@ struct QueryResult {
   }
   bool isNot(ErrorCode errorNumber) const { return !is(errorNumber); }
   std::string_view errorMessage() const { return result.errorMessage(); }
+
+  uint64_t memoryUsage() const noexcept {
+    uint64_t value = 0;
+    for (auto const& it : bindParameters) {
+      value += it.size() + 16; /* 16 bytes as an arbitrary overhead */
+    }
+    for (auto const& it : collectionNames) {
+      value += it.size() + 16; /* 16 bytes as an arbitrary overhead */
+    }
+    if (data != nullptr && data->buffer() != nullptr) {
+      value +=
+          data->buffer()->size() + 256 /* 256 bytes as an arbitrary overhead */;
+    }
+    if (extra != nullptr && extra->buffer() != nullptr) {
+      value += extra->buffer()->size() +
+               256 /* 256 bytes as an arbitrary overhead */;
+    }
+    if (context != nullptr) {
+      value += 256; /* 256 bytes as an arbitrary overhead */
+    }
+
+    return value;
+  }
 
  public:
   Result result;

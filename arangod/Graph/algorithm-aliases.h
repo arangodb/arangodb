@@ -215,7 +215,7 @@ using TracedDFSEnumerator = OneSidedEnumerator<
 // occupies this name
 template<class Provider, VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness>
-using WeightedEnumeratorRefactored = OneSidedEnumerator<
+using WeightedEnumerator = OneSidedEnumerator<
     WeightedConfiguration<Provider, vertexUniqueness, edgeUniqueness, false>>;
 
 // BFS Traversal Enumerator implementation using Tracing

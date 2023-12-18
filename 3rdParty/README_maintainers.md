@@ -66,39 +66,27 @@ Then copy `temp_modules.h` to `modules.h`, and fix the paths.
 
 Only used on Linux/Mac, still uses autofoo.
 
+Updated to the head of the dev branch to make it possible to compile
+ArangoDB with clang 15.0.7 in an 3.18 Alpine container.
+
 The following change has been made to jemalloc compared to upstream commit
-54eaed1d8b56b1aa528be3bdd1877e59c56fa90c:
+e4817c8d89a2a413e835c4adeab5c5c4412f9235:
 
 ```diff
-diff --git a/3rdParty/jemalloc/CMakeLists.txt b/3rdParty/jemalloc/CMakeLists.txt
-index add5b967e2e..3ef8b0d6e39 100644
---- a/3rdParty/jemalloc/CMakeLists.txt
-+++ b/3rdParty/jemalloc/CMakeLists.txt
-@@ -28,7 +28,7 @@ if (LINUX OR DARWIN)
-   else ()
-     set(JEMALLOC_CC_TMP "${CMAKE_C_COMPILER}")
-     set(JEMALLOC_CXX_TMP "${CMAKE_CXX_COMPILER}")
--    set(JEMALLOC_CONFIG "background_thread:true")
-+    set(JEMALLOC_CONFIG "background_thread:true,cache_oblivious:false")
-   endif ()
-
-   if (USE_JEMALLOC_PROF)
-diff --git a/3rdParty/jemalloc/v5.3.0/src/jemalloc.c b/3rdParty/jemalloc/v5.3.0/src/jemalloc.c
-index 7655de4e2f3..9e1c8a37627 100644
---- a/3rdParty/jemalloc/v5.3.0/src/jemalloc.c
-+++ b/3rdParty/jemalloc/v5.3.0/src/jemalloc.c
-@@ -1220,6 +1220,7 @@ malloc_conf_init_helper(sc_data_t *sc_data, unsigned bin_shard_sizes[SC_NBINS],
-
-                        CONF_HANDLE_BOOL(opt_abort, "abort")
-                        CONF_HANDLE_BOOL(opt_abort_conf, "abort_conf")
-+                       CONF_HANDLE_BOOL(opt_cache_oblivious, "cache_oblivious")
-                        CONF_HANDLE_BOOL(opt_trust_madvise, "trust_madvise")
-                        if (strncmp("metadata_thp", k, klen) == 0) {
-                                int m;
+diff --git a/3rdParty/jemalloc/jemalloc/src/pages.c b/3rdParty/jemalloc/jemalloc/src/pages.c
+index 8cf2fd9f876..11489b3f03d 100644
+--- a/3rdParty/jemalloc/jemalloc/src/pages.c
++++ b/3rdParty/jemalloc/jemalloc/src/pages.c
+@@ -37,7 +37,7 @@ size_t        os_page;
+ 
+ #ifndef _WIN32
+ #  define PAGES_PROT_COMMIT (PROT_READ | PROT_WRITE)
+-#  define PAGES_PROT_DECOMMIT (PROT_NONE)
++#  define PAGES_PROT_DECOMMIT (PROT_READ | PROT_WRITE)
+ static int     mmap_flags;
+ #endif
+ static bool    os_overcommits;
 ```
-This change will become irrelevant when upgrading to a newer version of
-jemalloc, because it is already contained in upstream jemalloc.
-
 
 ## libunwind
 

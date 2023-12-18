@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Aql/IndexStreamIterator.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/Result.h"
@@ -424,6 +425,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
     transaction::BuilderLeaser builder(transaction());
 
     do {
+      TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
       LocalDocumentId documentId = RocksDBValue::documentId(_iterator->value());
       std::string_view key = RocksDBKey::primaryKey(_iterator->key());
 
@@ -506,12 +508,30 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       _iterator = mthds->NewIterator(
           _index->columnFamily(), [&](rocksdb::ReadOptions& options) {
             TRI_ASSERT(options.prefix_same_as_start);
-            // we need to have a pointer to a slice for the upper bound
-            // so we need to assign the slice to an instance variable here
-            if constexpr (reverse) {
-              options.iterate_lower_bound = &_rangeBound;
-            } else {
-              options.iterate_upper_bound = &_rangeBound;
+            // note: iterate_lower_bound/iterate_upper_bound should only be
+            // set if the iterator is not supposed to check the bounds
+            // for every operation.
+            // when the iterator is a db snapshot-based iterator, it is ok
+            // to set iterate_lower_bound/iterate_upper_bound, because this
+            // is well supported by RocksDB.
+            // if the iterator is a multi-level iterator that merges data from
+            // the db snapshot with data from an ongoing in-memory transaction
+            // (contained in a WriteBatchWithIndex, WBWI), then RocksDB does
+            // not properly support the bounds checking using
+            // iterate_lower_bound/ iterate_upper_bound. in this case we must
+            // avoid setting the bounds here and rely on our own bounds checking
+            // using the comparator. at least one underlying issue was fixed in
+            // RocksDB in version 8.8.0 via
+            // https://github.com/facebook/rocksdb/pull/11680. we can revisit
+            // the issue once we have upgraded to RocksDB >= 8.8.0.
+            if constexpr (!mustCheckBounds) {
+              // we need to have a pointer to a slice for the upper bound
+              // so we need to assign the slice to an instance variable here
+              if constexpr (reverse) {
+                options.iterate_lower_bound = &_rangeBound;
+              } else {
+                options.iterate_upper_bound = &_rangeBound;
+              }
             }
           });
       TRI_ASSERT(_mustSeek);
@@ -1309,4 +1329,151 @@ void RocksDBPrimaryIndex::handleValNode(transaction::Methods* trx,
                             valNode->getStringLength(),
                             VPackValueType::String));
   }
+}
+
+namespace {
+
+struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
+  RocksDBPrimaryIndex const* _index;
+  std::unique_ptr<rocksdb::Iterator> _iterator;
+
+  VPackBuilder _builder;
+  VPackString _cache;
+  RocksDBKeyBounds _bounds;
+  rocksdb::Slice _end;
+  RocksDBKey _rocksdbKey;
+
+  RocksDBPrimaryIndexStreamIterator(RocksDBPrimaryIndex const* index,
+                                    transaction::Methods* trx)
+      : _index(index),
+        _bounds(RocksDBKeyBounds::PrimaryIndex(
+            index->objectId(), KeyGeneratorHelper::lowestKey,
+            KeyGeneratorHelper::highestKey)) {
+    _end = _bounds.end();
+    RocksDBTransactionMethods* mthds =
+        RocksDBTransactionState::toMethods(trx, index->collection().id());
+    _iterator = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
+      TRI_ASSERT(opts.prefix_same_as_start);
+      opts.iterate_upper_bound = &_end;
+    });
+    seekInternal({});
+  }
+
+  bool position(std::span<VPackSlice> span) const override {
+    if (!_iterator->Valid()) {
+      return false;
+    }
+
+    TRI_ASSERT(span.size() == 1);
+    // store the actual key
+    span[0] = _builder.slice();
+    return true;
+  }
+
+  void seekInternal(std::string_view key) {
+    if (key.empty()) {
+      _iterator->Seek(_bounds.start());
+    } else {
+      _rocksdbKey.constructPrimaryIndexValue(_index->objectId(), key);
+      _iterator->Seek(_rocksdbKey.string());
+    }
+
+    if (_iterator->Valid()) {
+      auto keySlice = RocksDBKey::primaryKey(_iterator->key());
+      _builder.clear();
+      _builder.add(VPackValue(std::string{keySlice.begin(), keySlice.end()}));
+    }
+  }
+
+  bool seek(std::span<VPackSlice> span) override {
+    TRI_ASSERT(span.size() == 1 && span[0].isString());
+    seekInternal(span[0].stringView());
+
+    return position(span);
+  }
+
+  LocalDocumentId load(std::span<VPackSlice> projections) const override {
+    TRI_ASSERT(_iterator->Valid());
+
+    for (auto& slice : projections) {
+      slice = _builder.slice();
+    }
+
+    return RocksDBValue::documentId(_iterator->value());
+  }
+
+  bool next(std::span<VPackSlice> key, LocalDocumentId& docId,
+            std::span<VPackSlice> projections) override {
+    _iterator->Next();
+
+    if (!_iterator->Valid()) {
+      return false;
+    }
+    auto keySlice = RocksDBKey::primaryKey(_iterator->key());
+    _builder.clear();
+    _builder.add(VPackValue(std::string{keySlice.begin(), keySlice.end()}));
+    key[0] = _builder.slice();
+    docId = load(projections);
+
+    return true;
+  }
+
+  void cacheCurrentKey(std::span<VPackSlice> cache) override {
+    _cache = VPackString{_builder.slice()};
+    cache[0] = _cache;
+  }
+
+  bool reset(std::span<VPackSlice> span) override {
+    seekInternal({});
+    return position(span);
+  }
+};
+
+}  // namespace
+
+std::unique_ptr<AqlIndexStreamIterator> RocksDBPrimaryIndex::streamForCondition(
+    transaction::Methods* trx, IndexStreamOptions const& opts) {
+  if (!supportsStreamInterface(opts)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "RocksDBPrimaryIndex streamForCondition was "
+                                   "called with unsupported options.");
+  }
+
+  auto stream = [&]() -> std::unique_ptr<AqlIndexStreamIterator> {
+    TRI_ASSERT(isSorted());
+    return std::make_unique<RocksDBPrimaryIndexStreamIterator>(this, trx);
+  }();
+
+  return stream;
+}
+
+bool RocksDBPrimaryIndex::checkSupportsStreamInterface(
+    std::vector<std::vector<basics::AttributeName>> const& coveredFields,
+    IndexStreamOptions const& streamOpts) noexcept {
+  // we can only project values that are in range
+  TRI_ASSERT(coveredFields.size() == 2);
+  TRI_ASSERT(coveredFields[0][0].name == StaticStrings::KeyString &&
+             coveredFields[1][0].name == StaticStrings::IdString);
+
+  for (auto idx : streamOpts.projectedFields) {
+    if (idx != 0) {
+      return false;
+    }
+  }
+
+  // For the primary index, there is only one property set, which is "_key".
+  if (streamOpts.usedKeyFields.size() != 1) {
+    return false;
+  }
+
+  if (streamOpts.usedKeyFields[0] != 0) {
+    return false;
+  }
+
+  return true;
+}
+
+bool RocksDBPrimaryIndex::supportsStreamInterface(
+    IndexStreamOptions const& streamOpts) const noexcept {
+  return checkSupportsStreamInterface(_coveredFields, streamOpts);
 }

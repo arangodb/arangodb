@@ -52,7 +52,7 @@ struct EdgeCache : Workload {
 
 struct EdgeCache::Options {
   struct Thread {
-    std::string collection;
+    std::vector<std::string> collections;
     std::uint32_t documentsPerTrx;
     std::uint32_t readsPerEdge;
     std::uint64_t edgesPerVertex;
@@ -63,7 +63,7 @@ struct EdgeCache::Options {
           f.field("documentsPerTrx", o.documentsPerTrx).fallback(100u),
           f.field("edgesPerVertex", o.edgesPerVertex).fallback(10u),
           f.field("readsPerEdge", o.readsPerEdge).fallback(2u),
-          f.field("collection", o.collection));
+          f.field("collections", o.collections));
     }
   };
 
@@ -80,7 +80,7 @@ struct EdgeCache::Options {
 };
 
 struct EdgeCache::ThreadOptions {
-  std::string collection;
+  std::vector<std::string> collections;
   std::uint32_t documentsPerTrx{100};
   std::uint64_t readsPerEdge{2};
   std::uint64_t edgesPerVertex{10};

@@ -24,7 +24,6 @@
 
 #include "AgencyLogSpecification.h"
 
-#include "Inspection/VPack.h"
 #include "Inspection/Transformers.h"
 
 namespace arangodb::replication2::agency {

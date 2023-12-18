@@ -942,11 +942,8 @@ TEST_F(SortedCollectExecutorTestSkip, skip_5) {
   clientCall.resetSkipCount();
 }
 
-using SortedCollectTestHelper = ExecutorTestHelper<1, 1>;
-using SortedCollectSplitType = SortedCollectTestHelper::SplitType;
-
 class SortedCollectExecutorTestSplit
-    : public AqlExecutorTestCaseWithParam<std::tuple<SortedCollectSplitType>> {
+    : public AqlExecutorTestCaseWithParam<std::tuple<SplitType>> {
  protected:
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
 
@@ -1024,10 +1021,9 @@ TEST_P(SortedCollectExecutorTestSplit, split_3) {
 }
 
 template<size_t... vs>
-const SortedCollectSplitType splitIntoBlocks =
-    SortedCollectSplitType{std::vector<std::size_t>{vs...}};
+const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
 template<size_t step>
-const SortedCollectSplitType splitStep = SortedCollectSplitType{step};
+const SplitType splitStep = SplitType{step};
 
 INSTANTIATE_TEST_CASE_P(SortedCollectExecutor, SortedCollectExecutorTestSplit,
                         ::testing::Values(splitIntoBlocks<2, 3>,

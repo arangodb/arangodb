@@ -137,14 +137,12 @@ let optionsDocumentation = [
   '                        filtering by asterisk is possible',
   '   - `exceptionCount`: how many exceptions should procdump be able to capture?',
   '   - `coreGen`: whether debuggers should generate a coredump after getting stacktraces',
+  '   - `coreAbort`: if we should use sigAbrt in order to terminate process instead of GDB attaching',
   '   - `coreCheck`: if set to true, we will attempt to locate a coredump to ',
   '                  produce a backtrace in the event of a crash',
   '',
   '   - `sanitizer`: if set the programs are run with enabled sanitizer',
   '     and need longer timeouts',
-  '',
-  '   - `activefailover` starts active failover single server setup (active/passive)',
-  '   -  `singles` the number of servers in an active failover test, defaults to 2',
   '',
   '   - `valgrind`: if set the programs are run with the valgrind',
   '     memory checker; should point to the valgrind executable',
@@ -189,6 +187,7 @@ const optionsDefaults = {
   'configDir': 'etc/testing',
   'coordinators': 1,
   'coreCheck': false,
+  'coreAbort': false,
   'coreDirectory': '/var/tmp',
   'coreGen': !isSan,
   'dbServers': 2,
@@ -217,7 +216,6 @@ const optionsDefaults = {
   'exceptionFilter': null,
   'exceptionCount': 1,
   'sanitizer': isSan,
-  'activefailover': false,
   'singles': 1,
   'setInterruptable': ! internal.isATTy(),
   'sniff': false,
@@ -620,9 +618,6 @@ function unitTest (cases, options) {
   }
   if (options.setInterruptable) {
     internal.SetSignalToImmediateDeadline();
-  }
-  if (options.activefailover && (options.singles === 1)) {
-    options.singles =  2;
   }
   if (options.isSan) {
     ['ASAN_OPTIONS',

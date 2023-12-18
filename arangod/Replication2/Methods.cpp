@@ -185,7 +185,7 @@ struct ReplicatedLogMethodsDBServer final
         vocbase.getReplicatedLogLeaderById(id));
     auto indexes = std::vector<LogIndex>{};
     while (auto payload = iter.next()) {
-      auto idx = log->insert(std::move(*payload));
+      auto idx = log->insert(std::move(*payload), waitForSync);
       indexes.push_back(idx);
     }
     if (indexes.empty()) {
@@ -193,8 +193,9 @@ struct ReplicatedLogMethodsDBServer final
                                      "multi insert list must not be empty");
     }
 
-    return log->waitFor(indexes.back())
-        .thenValue([indexes = std::move(indexes)](auto&& result) mutable {
+    auto lastIndex = indexes.back();
+    return log->waitFor(lastIndex).thenValue(
+        [indexes = std::move(indexes)](auto&& result) mutable {
           return std::make_pair(std::move(indexes),
                                 std::forward<decltype(result)>(result));
         });

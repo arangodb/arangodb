@@ -133,6 +133,9 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   bool supportsStreamInterface(
       IndexStreamOptions const&) const noexcept override;
+  static bool checkSupportsStreamInterface(
+      std::vector<std::vector<basics::AttributeName>> const& coveredFields,
+      IndexStreamOptions const&) noexcept;
 
   virtual std::unique_ptr<AqlIndexStreamIterator> streamForCondition(
       transaction::Methods* trx, IndexStreamOptions const&) override;

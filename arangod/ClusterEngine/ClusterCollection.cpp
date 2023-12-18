@@ -200,7 +200,7 @@ uint64_t ClusterCollection::numberDocuments(transaction::Methods* trx) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-std::shared_ptr<Index> ClusterCollection::createIndex(
+futures::Future<std::shared_ptr<Index>> ClusterCollection::createIndex(
     velocypack::Slice info, bool restore, bool& created,
     std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
@@ -213,7 +213,7 @@ std::shared_ptr<Index> ClusterCollection::createIndex(
   if (idx) {
     created = false;
     // We already have this index.
-    return idx;
+    co_return idx;
   }
 
   StorageEngine& engine = _logicalCollection.vocbase()
@@ -232,7 +232,7 @@ std::shared_ptr<Index> ClusterCollection::createIndex(
   _indexes.emplace(idx);
 
   created = true;
-  return idx;
+  co_return idx;
 }
 
 std::unique_ptr<IndexIterator> ClusterCollection::getAllIterator(

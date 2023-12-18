@@ -41,7 +41,7 @@ const fmu = require('@arangodb/foxx/manager-utils');
 const easyPostCallback = actions.easyPostCallback;
 
 function proxyLocal (method, url, qs, body, headers = {}) {
-  url = `/_db/${db._name()}${url}`;
+  url = `/_db/${encodeURIComponent(db._name())}${url}`;
   if (body instanceof Buffer) {
     if (body.utf8Slice(0, 4) === 'PK\u0003\u0004') {
       headers['content-type'] = 'application/zip';

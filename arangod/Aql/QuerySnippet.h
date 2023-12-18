@@ -24,15 +24,14 @@
 #pragma once
 
 #include "Aql/Query.h"
-#include "Cluster/ClusterInfo.h"
 #include "Basics/ResultT.h"
+#include "Cluster/ClusterInfo.h"
 
 #include <map>
 #include <set>
 #include <vector>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 class DistributeConsumerNode;
 class ExecutionNode;
@@ -112,5 +111,4 @@ class QuerySnippet {
 
   Id const _id;
 };
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

@@ -46,9 +46,9 @@ class DropIndex : public ActionBase {
   virtual bool first() override final;
 
  private:
-  static auto dropIndexReplication2(TRI_vocbase_t* vocbase,
-                                    LogicalCollection& col,
-                                    velocypack::SharedSlice index) -> Result;
+  static auto dropIndexReplication2(std::shared_ptr<LogicalCollection>& coll,
+                                    velocypack::SharedSlice index) noexcept
+      -> Result;
 };
 
 }  // namespace maintenance

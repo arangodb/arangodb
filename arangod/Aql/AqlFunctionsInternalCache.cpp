@@ -62,7 +62,7 @@ icu::RegexMatcher* AqlFunctionsInternalCache::buildSplitMatcher(
   std::string rx;
 
   AqlValueMaterializer materializer(opts);
-  VPackSlice slice = materializer.slice(splitExpression, false);
+  VPackSlice slice = materializer.slice(splitExpression);
   if (splitExpression.isArray()) {
     for (VPackSlice it : VPackArrayIterator(slice)) {
       if (!it.isString() || it.getStringLength() == 0) {

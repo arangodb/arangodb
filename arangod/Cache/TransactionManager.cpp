@@ -28,11 +28,14 @@
 #include "Cache/TransactionManager.h"
 
 #include "Basics/debugging.h"
+#include "Cache/Manager.h"
 #include "Cache/Transaction.h"
 
 namespace arangodb::cache {
 
-TransactionManager::TransactionManager() : _state({{0, 0, 0}, 0}) {}
+// note: manager can be a null pointer in unit tests
+TransactionManager::TransactionManager(Manager* manager)
+    : _state({{0, 0, 0}, 0}), _manager(manager) {}
 
 void TransactionManager::begin(Transaction& tx, bool readOnly) {
   tx = Transaction{readOnly};
@@ -98,6 +101,11 @@ void TransactionManager::end(Transaction& tx) noexcept {
 }
 
 uint64_t TransactionManager::term() const noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (_manager != nullptr) {
+    _manager->trackTermCall();
+  }
+#endif
   return _state.load(std::memory_order_acquire).term;
 }
 
