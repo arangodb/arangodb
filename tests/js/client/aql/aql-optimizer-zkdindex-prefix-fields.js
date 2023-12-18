@@ -29,10 +29,6 @@ const aql = arangodb.aql;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
 const _ = require("lodash");
 
-const useIndexes = 'use-indexes';
-const removeFilterCoveredByIndex = "remove-filter-covered-by-index";
-const moveFiltersIntoEnumerate = "move-filters-into-enumerate";
-
 function optimizerRuleZkd2dIndexTestSuite() {
   const colName = 'UnitTestZkdIndexCollection';
   let col;
@@ -40,7 +36,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
   return {
     setUpAll: function () {
       col = db._create(colName);
-      col.ensureIndex({type: 'zkd', name: 'zkdIndex', fields: ['x', 'y'], fieldValueTypes: 'double', storedValues: ["z"], sortedPrefixValues: ["stringValue"]});
+      col.ensureIndex({type: 'zkd', name: 'zkdIndex', fields: ['x', 'y'], fieldValueTypes: 'double', storedValues: ["z"], prefixFields: ["stringValue"]});
 
       db._query(aql`
         FOR str IN ["foo", "bar", "baz"]

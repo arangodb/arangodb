@@ -49,7 +49,7 @@ class RocksDBZkdIndexBase : public RocksDBIndex {
   }
   std::vector<std::vector<basics::AttributeName>> const& sortedPrefixFields()
       const noexcept {
-    return _sortedPrefixValues;
+    return _prefixFields;
   }
 
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
@@ -76,7 +76,7 @@ class RocksDBZkdIndexBase : public RocksDBIndex {
       int) override;
 
   std::vector<std::vector<basics::AttributeName>> const _storedValues;
-  std::vector<std::vector<basics::AttributeName>> const _sortedPrefixValues;
+  std::vector<std::vector<basics::AttributeName>> const _prefixFields;
   std::vector<std::vector<basics::AttributeName>> const _coveredFields;
 };
 

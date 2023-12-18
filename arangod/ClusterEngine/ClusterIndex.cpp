@@ -91,7 +91,7 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
                              /*allowEmpty*/ true, /*allowExpansion*/ false));
     } else if (_indexType == TRI_IDX_TYPE_ZKD_INDEX) {
       _sortedPrefixFields =
-          Index::parseFields(info.get("sortedPrefixValues"),
+          Index::parseFields(info.get(StaticStrings::IndexPrefixFields),
                              /*allowEmpty*/ true, /*allowExpansion*/ false);
       _coveredFields =
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
@@ -140,7 +140,7 @@ void ClusterIndex::toVelocyPack(
   }
 
   if (_indexType == Index::TRI_IDX_TYPE_ZKD_INDEX) {
-    builder.add(arangodb::velocypack::Value("sortedPrefixValues"));
+    builder.add(arangodb::velocypack::Value(StaticStrings::IndexPrefixFields));
     builder.openArray();
 
     for (auto const& field : _sortedPrefixFields) {

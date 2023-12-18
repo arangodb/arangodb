@@ -761,7 +761,7 @@ Result processIndexSortedPrefixFields(VPackSlice definition,
 
   Result res;
 
-  auto fieldsSlice = definition.get("sortedPrefixValues");
+  auto fieldsSlice = definition.get(StaticStrings::IndexPrefixFields);
 
   // storedValues are fully optional
   if (!fieldsSlice.isNone()) {
@@ -786,7 +786,7 @@ Result processIndexSortedPrefixFields(VPackSlice definition,
           }
         }
 
-        builder.add(velocypack::Value("sortedPrefixValues"));
+        builder.add(velocypack::Value(StaticStrings::IndexPrefixFields));
         builder.openArray();
 
         for (VPackSlice it : VPackArrayIterator(fieldsSlice)) {
@@ -800,7 +800,7 @@ Result processIndexSortedPrefixFields(VPackSlice definition,
         builder.close();
       }
     } else {
-      res.reset(TRI_ERROR_BAD_PARAMETER, "sortedPrefixValues must be an array");
+      res.reset(TRI_ERROR_BAD_PARAMETER, "prefixFields must be an array");
     }
   }
 

@@ -657,10 +657,10 @@ Result RocksDBZkdIndexBase::insert(transaction::Methods& trx,
   auto key_value = readDocumentKey(doc, _fields);
 
   RocksDBKey rocksdbKey;
-  if (_sortedPrefixValues.empty()) {
+  if (_prefixFields.empty()) {
     rocksdbKey.constructZkdIndexValue(objectId(), key_value, documentId);
   } else {
-    auto prefixValues = extractAttributeValues(trx, _sortedPrefixValues, doc);
+    auto prefixValues = extractAttributeValues(trx, _prefixFields, doc);
     rocksdbKey.constructZkdIndexValue(objectId(), prefixValues->slice(),
                                       key_value, documentId);
   }
@@ -686,10 +686,10 @@ Result RocksDBZkdIndexBase::remove(transaction::Methods& trx,
   auto key_value = readDocumentKey(doc, _fields);
 
   RocksDBKey rocksdbKey;
-  if (_sortedPrefixValues.empty()) {
+  if (_prefixFields.empty()) {
     rocksdbKey.constructZkdIndexValue(objectId(), key_value, documentId);
   } else {
-    auto prefixValues = extractAttributeValues(trx, _sortedPrefixValues, doc);
+    auto prefixValues = extractAttributeValues(trx, _prefixFields, doc);
     rocksdbKey.constructZkdIndexValue(objectId(), prefixValues->slice(),
                                       key_value, documentId);
   }
@@ -704,7 +704,7 @@ Result RocksDBZkdIndexBase::remove(transaction::Methods& trx,
 
 namespace {
 auto columnFamilyForInfo(velocypack::Slice info) {
-  if (auto prefix = info.get("sortedPrefixValues");
+  if (auto prefix = info.get(StaticStrings::IndexPrefixFields);
       prefix.isArray() && !prefix.isEmptyArray()) {
     return RocksDBColumnFamilyManager::get(
         RocksDBColumnFamilyManager::Family::VPackIndex);  // TODO add new column
@@ -730,10 +730,11 @@ RocksDBZkdIndexBase::RocksDBZkdIndexBase(IndexId iid, LogicalCollection& coll,
       _storedValues(
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
                              /*allowEmpty*/ true, /*allowExpansion*/ false)),
-      _sortedPrefixValues(Index::parseFields(info.get("sortedPrefixValues"),
-                                             /*allowEmpty*/ true,
-                                             /*allowExpansion*/ false)),
-      _coveredFields(Index::mergeFields(_sortedPrefixValues, _storedValues)) {}
+      _prefixFields(
+          Index::parseFields(info.get(StaticStrings::IndexPrefixFields),
+                             /*allowEmpty*/ true,
+                             /*allowExpansion*/ false)),
+      _coveredFields(Index::mergeFields(_prefixFields, _storedValues)) {}
 
 void RocksDBZkdIndexBase::toVelocyPack(
     velocypack::Builder& builder,
@@ -753,11 +754,11 @@ void RocksDBZkdIndexBase::toVelocyPack(
 
     builder.close();
   }
-  if (!_sortedPrefixValues.empty()) {
-    builder.add(velocypack::Value("sortedPrefixValues"));
+  if (!_prefixFields.empty()) {
+    builder.add(velocypack::Value(StaticStrings::IndexPrefixFields));
     builder.openArray();
 
-    for (auto const& field : _sortedPrefixValues) {
+    for (auto const& field : _prefixFields) {
       std::string fieldString;
       TRI_AttributeNamesToString(field, fieldString);
       builder.add(VPackValue(fieldString));
@@ -789,7 +790,7 @@ std::unique_ptr<IndexIterator> RocksDBZkdIndexBase::iteratorForCondition(
   transaction::BuilderLeaser leaser(trx);
   auto&& [min, max] = boundsForIterator(this, node, reference, opts, *leaser);
 
-  if (_sortedPrefixValues.empty()) {
+  if (_prefixFields.empty()) {
     return std::make_unique<RocksDBZkdIndexIterator<false, false>>(
         monitor, &_collection, this, trx, std::move(min), std::move(max),
         std::move(leaser), fields().size(), readOwnWrites, opts.lookahead);
@@ -807,7 +808,7 @@ std::unique_ptr<IndexIterator> RocksDBUniqueZkdIndex::iteratorForCondition(
   transaction::BuilderLeaser leaser(trx);
   auto&& [min, max] = boundsForIterator(this, node, reference, opts, *leaser);
 
-  if (_sortedPrefixValues.empty()) {
+  if (_prefixFields.empty()) {
     return std::make_unique<RocksDBZkdIndexIterator<true, false>>(
         monitor, &_collection, this, trx, std::move(min), std::move(max),
         std::move(leaser), fields().size(), readOwnWrites, opts.lookahead);
@@ -831,10 +832,10 @@ Result RocksDBUniqueZkdIndex::insert(transaction::Methods& trx,
   auto key_value = readDocumentKey(doc, _fields);
 
   RocksDBKey rocksdbKey;
-  if (_sortedPrefixValues.empty()) {
+  if (_prefixFields.empty()) {
     rocksdbKey.constructZkdIndexValue(objectId(), key_value);
   } else {
-    auto prefixValues = extractAttributeValues(trx, _sortedPrefixValues, doc);
+    auto prefixValues = extractAttributeValues(trx, _prefixFields, doc);
     rocksdbKey.constructZkdIndexValue(objectId(), prefixValues->slice(),
                                       key_value);
   }
@@ -873,10 +874,10 @@ Result RocksDBUniqueZkdIndex::remove(transaction::Methods& trx,
   auto key_value = readDocumentKey(doc, _fields);
 
   RocksDBKey rocksdbKey;
-  if (_sortedPrefixValues.empty()) {
+  if (_prefixFields.empty()) {
     rocksdbKey.constructZkdIndexValue(objectId(), key_value);
   } else {
-    auto prefixValues = extractAttributeValues(trx, _sortedPrefixValues, doc);
+    auto prefixValues = extractAttributeValues(trx, _prefixFields, doc);
     rocksdbKey.constructZkdIndexValue(objectId(), prefixValues->slice(),
                                       key_value);
   }

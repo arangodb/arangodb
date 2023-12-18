@@ -74,7 +74,7 @@ function optimizerRuleZkd2dIndexTestSuite(unique) {
         storedValues: ['k'],
         unique: unique,
         fieldValueTypes: 'double',
-        sortedPrefixValues: ['name']
+        prefixFields: ['name']
       });
 
       for (let k = 0; k < 100000; k++) {
