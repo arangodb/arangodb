@@ -67,6 +67,8 @@ using namespace arangodb::containers;
 using EN = arangodb::aql::ExecutionNode;
 
 #define LOG_JOIN_OPTIMIZER_RULE LOG_DEVEL_IF(false)
+#define LOG_JOIN_OPTIMIZER_RULE_CONSTANTS LOG_DEVEL_IF(false)
+#define LOG_JOIN_OPTIMIZER_RULE_KEYS LOG_DEVEL_IF(false)
 #define LOG_JOIN_OPTIMIZER_RULE_OFFSETS LOG_DEVEL_IF(false)
 
 namespace {
@@ -438,6 +440,10 @@ std::pair<bool, size_t> attributeMatchesWithPosLocal(
 std::pair<bool, size_t> doIndexAttributesMatch(
     IndexNode const* candidate,
     std::vector<basics::AttributeName>& resultVector) {
+  LOG_JOIN_OPTIMIZER_RULE_KEYS << "Attributes: ";
+  for (auto const& d : resultVector) {
+    LOG_JOIN_OPTIMIZER_RULE_KEYS << "- " << d.name;
+  }
   auto usedIndex = candidate->getIndexes()[0];
   return usedIndex->attributeMatchesWithPos(resultVector,
                                             usedIndex->id().isPrimary());
@@ -448,6 +454,7 @@ bool processConstantFinding(IndexNode const* currentCandidate,
                             AstNode const* constant,
                             AstNode const* constantValue) {
   TRI_ASSERT(constant->type == NODE_TYPE_ATTRIBUTE_ACCESS);
+  LOG_JOIN_OPTIMIZER_RULE_CONSTANTS << "Calling processConstantFinding";
 
   std::vector<basics::AttributeName> resultVector;
   getIndexAttributes(currentCandidate, constant->getStringView(), resultVector);
@@ -465,6 +472,9 @@ bool processConstantFinding(IndexNode const* currentCandidate,
     }
 
     TRI_ASSERT(indicesOffsets.contains(currentCandidate->id()));
+    LOG_JOIN_OPTIMIZER_RULE_CONSTANTS << "Inserting constant of: ("
+                                      << constantPos
+                                      << ") to CID: " << currentCandidate->id();
     auto& idxOffsetRef = indicesOffsets[currentCandidate->id()];
     if (idxOffsetRef.insertConstantField(constantPos)) {
       idxOffsetRef.insertConstantValue(constantValue);
@@ -481,14 +491,19 @@ bool processJoinKeyFinding(IndexNode const* firstCandidate,
                            IndexNode const* currentCandidate,
                            IndicesOffsets& indicesOffsets, AstNode const* lhs,
                            AstNode const* rhs) {
+  LOG_JOIN_OPTIMIZER_RULE_KEYS << "Calling processJoinKeyFinding based on ("
+                               << lhs->toString() << ") and ("
+                               << rhs->toString() << ")";
   std::vector<basics::AttributeName> resultVectorFirst;
   std::vector<basics::AttributeName> resultVectorCurrent;
   getIndexAttributes(firstCandidate, lhs->getStringView(), resultVectorFirst);
   getIndexAttributes(currentCandidate, rhs->getStringView(),
                      resultVectorCurrent);
 
+  LOG_JOIN_OPTIMIZER_RULE_KEYS << "Get first index information";
   auto attributeMatchResultFirst =
       doIndexAttributesMatch(firstCandidate, resultVectorFirst);
+  LOG_JOIN_OPTIMIZER_RULE_KEYS << "Get current index information";
   auto attributeMatchResultCurrent =
       doIndexAttributesMatch(currentCandidate, resultVectorCurrent);
 
@@ -496,6 +511,8 @@ bool processJoinKeyFinding(IndexNode const* firstCandidate,
     // match found
     auto keyPosFirst = attributeMatchResultFirst.second;
     auto keyPosCurrent = attributeMatchResultCurrent.second;
+    LOG_JOIN_OPTIMIZER_RULE_KEYS << "Pos for first: " << keyPosFirst;
+    LOG_JOIN_OPTIMIZER_RULE_KEYS << "Pos for current: " << keyPosCurrent;
     TRI_ASSERT(keyPosFirst >= 0);
     TRI_ASSERT(keyPosCurrent >= 0);
 
@@ -511,8 +528,13 @@ bool processJoinKeyFinding(IndexNode const* firstCandidate,
     TRI_ASSERT(indicesOffsets.contains(currentCandidate->id()));
     auto& idxOffsetFirstRef = indicesOffsets[firstCandidate->id()];
     auto& idxOffsetCurrentRef = indicesOffsets[currentCandidate->id()];
-    if (idxOffsetFirstRef.insertKeyField(keyPosFirst) &&
-        idxOffsetCurrentRef.insertKeyField(keyPosCurrent)) {
+    LOG_JOIN_OPTIMIZER_RULE_KEYS << "Inserting first of (" << keyPosFirst
+                                 << ")";
+    bool first = idxOffsetFirstRef.insertKeyField(keyPosFirst);
+    LOG_JOIN_OPTIMIZER_RULE_KEYS << "Inserting current of (" << keyPosCurrent
+                                 << ")";
+    bool current = idxOffsetCurrentRef.insertKeyField(keyPosCurrent);
+    if (first && current) {
       return true;
     }
   }
@@ -607,7 +629,7 @@ bool isVarAccessToCandidateOutVariable(AstNode const* node,
     // Now we need to first parse the condition, check the used attribute,
     // and then adjust the offsets accordingly.
     if (processJoinKeyFinding(firstCandidate, currentCandidate, indicesOffsets,
-                              rhs, lhs)) {
+                              lhs, rhs)) {
       return true;
     }
     // Otherwise no valid candidate found. We cannot optimize this.
