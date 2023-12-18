@@ -30,39 +30,41 @@
 const jsunity = require('jsunity');
 const { deriveTestSuite } = require('@arangodb/test-helper');
 const fs = require('fs');
+const db = require('@arangodb').db;
 
 const {
   BaseTestConfig,
   connectToLeader,
   connectToFollower,
-  setFailurePoint,
-  clearFailurePoints } = require(fs.join('tests', 'js', 'client', 'replication', 'sync', 'replication-sync-malarkey.inc'));
+  clearFailurePoints } = require(fs.join('tests', 'js', 'server', 'replication', 'sync', 'replication-sync-malarkey.inc'));
 
-function ReplicationIncrementalMalarkeyOldFormat() {
+const cn = 'UnitTestsReplication';
+
+function ReplicationIncrementalMalarkeyNewFormat() {
   'use strict';
 
   let suite = {
     setUp: function () {
       connectToFollower();
-      // clear all failure points, but enforce old-style collections
+      // clear all failure points
       clearFailurePoints();
-      setFailurePoint("disableRevisionsAsDocumentIds");
+      db._drop(cn);
 
       connectToLeader();
-      // clear all failure points, but enforce old-style collections
+      // clear all failure points
       clearFailurePoints();
-      setFailurePoint("disableRevisionsAsDocumentIds");
+      db._drop(cn);
     },
   };
 
-  deriveTestSuite(BaseTestConfig(), suite, '_OldFormat');
+  deriveTestSuite(BaseTestConfig(), suite, '_NewFormat');
   return suite;
 }
 
 let res = arango.GET("/_admin/debug/failat");
 if (res === true) {
   // tests only work when compiled with -DUSE_FAILURE_TESTS
-  jsunity.run(ReplicationIncrementalMalarkeyOldFormat);
+  jsunity.run(ReplicationIncrementalMalarkeyNewFormat);
 }
 
 return jsunity.done();

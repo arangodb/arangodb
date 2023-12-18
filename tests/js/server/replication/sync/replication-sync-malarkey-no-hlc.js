@@ -37,37 +37,37 @@ const {
   connectToLeader,
   connectToFollower,
   setFailurePoint,
-  clearFailurePoints } = require(fs.join('tests', 'js', 'client', 'replication', 'sync', 'replication-sync-malarkey.inc'));
+  clearFailurePoints } = require(fs.join('tests', 'js', 'server', 'replication', 'sync', 'replication-sync-malarkey.inc'));
 
 const cn = 'UnitTestsReplication';
 
-function ReplicationIncrementalMalarkeyNewFormatIntermediateCommits() {
+function ReplicationIncrementalMalarkeyNoHLC() {
   'use strict';
 
   let suite = {
     setUp: function () {
       connectToFollower();
-      // clear all failure points
+      // clear all failure points except the one that will lead to the follower
+      // sending requests without forced HLCs
       clearFailurePoints();
-      setFailurePoint("TransactionState::intermediateCommitCount1000");
+      setFailurePoint("SyncerNoEncodeAsHLC");
       db._drop(cn);
 
       connectToLeader();
       // clear all failure points
       clearFailurePoints();
-      setFailurePoint("TransactionState::intermediateCommitCount1000");
       db._drop(cn);
     },
   };
 
-  deriveTestSuite(BaseTestConfig(), suite, '_NewFormatIntermediateCommit');
+  deriveTestSuite(BaseTestConfig(), suite, '_NoHLC');
   return suite;
 }
 
 let res = arango.GET("/_admin/debug/failat");
 if (res === true) {
   // tests only work when compiled with -DUSE_FAILURE_TESTS
-  jsunity.run(ReplicationIncrementalMalarkeyNewFormatIntermediateCommits);
+  jsunity.run(ReplicationIncrementalMalarkeyNoHLC);
 }
 
 return jsunity.done();

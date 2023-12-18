@@ -36,11 +36,12 @@ const {
   BaseTestConfig,
   connectToLeader,
   connectToFollower,
-  clearFailurePoints } = require(fs.join('tests', 'js', 'client', 'replication', 'sync', 'replication-sync-malarkey.inc'));
+  setFailurePoint,
+  clearFailurePoints } = require(fs.join('tests', 'js', 'server', 'replication', 'sync', 'replication-sync-malarkey.inc'));
 
 const cn = 'UnitTestsReplication';
 
-function ReplicationIncrementalMalarkeyNewFormat() {
+function ReplicationIncrementalMalarkeyNewFormatIntermediateCommits() {
   'use strict';
 
   let suite = {
@@ -48,23 +49,25 @@ function ReplicationIncrementalMalarkeyNewFormat() {
       connectToFollower();
       // clear all failure points
       clearFailurePoints();
+      setFailurePoint("TransactionState::intermediateCommitCount1000");
       db._drop(cn);
 
       connectToLeader();
       // clear all failure points
       clearFailurePoints();
+      setFailurePoint("TransactionState::intermediateCommitCount1000");
       db._drop(cn);
     },
   };
 
-  deriveTestSuite(BaseTestConfig(), suite, '_NewFormat');
+  deriveTestSuite(BaseTestConfig(), suite, '_NewFormatIntermediateCommit');
   return suite;
 }
 
 let res = arango.GET("/_admin/debug/failat");
 if (res === true) {
   // tests only work when compiled with -DUSE_FAILURE_TESTS
-  jsunity.run(ReplicationIncrementalMalarkeyNewFormat);
+  jsunity.run(ReplicationIncrementalMalarkeyNewFormatIntermediateCommits);
 }
 
 return jsunity.done();

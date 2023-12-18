@@ -30,44 +30,39 @@
 const jsunity = require('jsunity');
 const { deriveTestSuite } = require('@arangodb/test-helper');
 const fs = require('fs');
-const db = require('@arangodb').db;
 
 const {
   BaseTestConfig,
   connectToLeader,
   connectToFollower,
   setFailurePoint,
-  clearFailurePoints } = require(fs.join('tests', 'js', 'client', 'replication', 'sync', 'replication-sync-malarkey.inc'));
+  clearFailurePoints } = require(fs.join('tests', 'js', 'server', 'replication', 'sync', 'replication-sync-malarkey.inc'));
 
-const cn = 'UnitTestsReplication';
-
-function ReplicationIncrementalMalarkeyNoHLC() {
+function ReplicationIncrementalMalarkeyOldFormat() {
   'use strict';
 
   let suite = {
     setUp: function () {
       connectToFollower();
-      // clear all failure points except the one that will lead to the follower
-      // sending requests without forced HLCs
+      // clear all failure points, but enforce old-style collections
       clearFailurePoints();
-      setFailurePoint("SyncerNoEncodeAsHLC");
-      db._drop(cn);
+      setFailurePoint("disableRevisionsAsDocumentIds");
 
       connectToLeader();
-      // clear all failure points
+      // clear all failure points, but enforce old-style collections
       clearFailurePoints();
-      db._drop(cn);
+      setFailurePoint("disableRevisionsAsDocumentIds");
     },
   };
 
-  deriveTestSuite(BaseTestConfig(), suite, '_NoHLC');
+  deriveTestSuite(BaseTestConfig(), suite, '_OldFormat');
   return suite;
 }
 
 let res = arango.GET("/_admin/debug/failat");
 if (res === true) {
   // tests only work when compiled with -DUSE_FAILURE_TESTS
-  jsunity.run(ReplicationIncrementalMalarkeyNoHLC);
+  jsunity.run(ReplicationIncrementalMalarkeyOldFormat);
 }
 
 return jsunity.done();
