@@ -46,7 +46,7 @@ const IndexJoinTestSuite = function () {
 
   const databaseName = "IndexJoinDB";
 
-  const keys = ["x", "y", "z"];
+  const keys = ["x", "y", "z", "w"];
 
   const testsuite = {
     setUpAll: function () {
@@ -116,7 +116,7 @@ const IndexJoinTestSuite = function () {
   return testsuite;
 };
 
-if (!isCluster || isEnterprise) {
+if (isEnterprise && !isCluster) {
   jsunity.run(IndexJoinTestSuite);
 }
 return jsunity.done();
