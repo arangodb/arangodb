@@ -2052,11 +2052,11 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
     std::vector<aql::RegisterId> scoreRegisters;
     scoreRegisters.reserve(numScoreRegisters);
-    std::for_each(_scorers.begin(), _scorers.end(), [&](auto const& scorer) {
+    for (auto const& scorer : _scorers) {
       auto registerId = variableToRegisterId(scorer.var);
       writableOutputRegisters.emplace(registerId);
       scoreRegisters.emplace_back(registerId);
-    });
+    }
 
     // TODO remove if not needed
     auto const& varInfos = getRegisterPlan()->varInfo;
@@ -2080,35 +2080,50 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     aql::RegisterInfos registerInfos = createRegisterInfos(
         calcInputRegs(), std::move(writableOutputRegisters));
     TRI_ASSERT(_view || _meta);
-    auto executorInfos = aql::IResearchViewExecutorInfos{
-        std::move(reader),
-        outRegister,
-        searchDocRegId,
-        std::move(scoreRegisters),
-        engine.getQuery(),
+
+    bool emptyFilter = iresearch::isFilterConditionEmpty(_filterCondition) &&
+                       !reader->hasNestedFields();
+    auto [volatileSort, volatileFilter] = volatility();
+
+    aql::IResearchViewExecutorInfos executorInfos{
+        .reader = std::move(reader),
+        .meta = _meta.get(),
+
+        .query = &engine.getQuery(),
+        .ast = plan()->getAst(),
+        .varInfo = &getRegisterPlan()->varInfo,
+        .filter = &filterCondition(),
+        .outVar = &outVariable(),
+
+        .docReg = outRegister,
+        .searchDocReg = searchDocRegId,
+        .scoreRegs = std::move(scoreRegisters),
+        .valuesRegs = std::move(outNonMaterializedViewRegs),
+
+        .scorers = _scorers,
+        .storedValues = &storedValues(_meta, _view),
+
+        .heapSort = _heapSort,
+        .heapSortLimit = _heapSortLimit,
 #ifdef USE_ENTERPRISE
-        optimizeTopK(_meta, _view),
+        .optimizeTopK = &optimizeTopK(_meta, _view),
 #endif
-        scorers(),
-        sort(),
-        storedValues(_meta, _view),
-        *plan(),
-        outVariable(),
-        filterCondition(),
-        volatility(),
-        _immutableParts,
-        getRegisterPlan()->varInfo,  // ??? do we need this?
-        getDepth(),
-        std::move(outNonMaterializedViewRegs),
-        _options.countApproximate,
-        filterOptimization(),
-        _heapSort,
-        _heapSortLimit,
-        _meta.get(),
-        _options.parallelism,
-        _vocbase.server().getFeature<IResearchFeature>().getSearchPool()};
-    return std::make_tuple(materializeType, std::move(executorInfos),
-                           std::move(registerInfos));
+        .sort = sort(),
+
+        .depth = getDepth(),
+        .immutableParts = _immutableParts,
+        .filterOptimization = filterOptimization(),
+        .countApproximate = _options.countApproximate,
+        .emptyFilter = emptyFilter,
+        .volatileSort = volatileSort,
+        .volatileFilter = volatileSort || volatileFilter,
+
+        .parallelism = _options.parallelism,
+        .parallelExecutionPool =
+            &_vocbase.server().getFeature<IResearchFeature>().getSearchPool(),
+    };
+    return std::tuple{materializeType, std::move(executorInfos),
+                      std::move(registerInfos)};
   };
 
   if (ServerState::instance()->isCoordinator()) {
@@ -2121,20 +2136,14 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     return createNoResultsExecutor(engine);
   }
 
-  // auto [materializeType, executorInfos, registerInfos] =
-  //    buildExecutorInfo(engine, std::move(reader));
-  // Workaround for using clang15 during asan build.
-  // FIXME: remove it as soon as we switch to clang16 or higher
-  auto infosTuple = buildExecutorInfo(engine, std::move(reader));
-  auto& materializeType = std::get<0>(infosTuple);
-  auto& executorInfos = std::get<1>(infosTuple);
-  auto& registerInfos = std::get<2>(infosTuple);
+  auto [materializeType, executorInfos, registerInfos] =
+      buildExecutorInfo(engine, std::move(reader));
   // guaranteed by optimizer rule
   TRI_ASSERT(_sort == nullptr || !_sort->empty());
   bool const ordered = !_scorers.empty();
   bool const sorted = _sort != nullptr;
   bool const heapsort = !_heapSort.empty();
-  bool const emitSearchDoc = executorInfos.searchDocIdRegId().isValid();
+  bool const emitSearchDoc = executorInfos.searchDocReg.isValid();
 #ifdef USE_ENTERPRISE
   auto& engineSelectorFeature =
       _vocbase.server().getFeature<EngineSelectorFeature>();

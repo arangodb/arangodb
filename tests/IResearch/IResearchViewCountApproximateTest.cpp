@@ -556,19 +556,45 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
       arangodb::iresearch::ViewSnapshotPtr{}, snapshot};
   arangodb::iresearch::IResearchViewSort sort;
   sort.emplace_back({{std::string_view("value"), false}}, true);
-  arangodb::aql::IResearchViewExecutorInfos executorInfos(
-      reader, arangodb::aql::RegisterId::makeInvalid(),
-      arangodb::aql::RegisterId::makeInvalid(), {}, *query,
+
+  arangodb::aql::IResearchViewExecutorInfos executorInfos{
+      .reader = reader,
+      .meta = nullptr,
+
+      .query = query.get(),
+      .ast = plan->getAst(),
+      .varInfo = &viewNode.getRegisterPlan()->varInfo,
+      .filter = &viewNode.filterCondition(),
+      .outVar = &viewNode.outVariable(),
+
+      .docReg = arangodb::aql::RegisterId::makeInvalid(),
+      .searchDocReg = arangodb::aql::RegisterId::makeInvalid(),
+      .scoreRegs = {},
+      .valuesRegs = {},
+
+      .scorers = emptyScorers,
+      .storedValues = &_view->storedValues(),
+
+      .heapSort = emptyScorersSort,
+      .heapSortLimit = 0,
 #ifdef USE_ENTERPRISE
-      _view->meta()._optimizeTopK,
+      .optimizeTopK = &_view->meta()._optimizeTopK,
 #endif
-      emptyScorers, {&sort, 1U}, _view->storedValues(), *plan,
-      viewNode.outVariable(), viewNode.filterCondition(), {false, false}, 0,
-      viewNode.getRegisterPlan()->varInfo, 0,
-      arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
-      arangodb::iresearch::CountApproximate::Exact,
-      arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0,
-      nullptr, 1, _pool);
+      .sort = {&sort, 1U},
+
+      .depth = 0,
+      .immutableParts = 0,
+      .filterOptimization = arangodb::iresearch::FilterOptimization::MAX,
+      .countApproximate = arangodb::iresearch::CountApproximate::Exact,
+      .emptyFilter = arangodb::iresearch::isFilterConditionEmpty(
+                         &viewNode.filterCondition()) &&
+                     !reader->hasNestedFields(),
+      .volatileSort = false,
+      .volatileFilter = false,
+
+      .parallelism = 1,
+      .parallelExecutionPool = &_pool,
+  };
 
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable>
@@ -638,19 +664,45 @@ TEST_F(IResearchViewCountApproximateTest,
       arangodb::iresearch::ViewSnapshotPtr{}, snapshot};
   arangodb::iresearch::IResearchViewSort sort;
   sort.emplace_back({{std::string_view("value"), false}}, true);
-  arangodb::aql::IResearchViewExecutorInfos executorInfos(
-      reader, arangodb::aql::RegisterId::makeInvalid(),
-      arangodb::aql::RegisterId::makeInvalid(), {}, *query,
+
+  arangodb::aql::IResearchViewExecutorInfos executorInfos{
+      .reader = reader,
+      .meta = nullptr,
+
+      .query = query.get(),
+      .ast = plan->getAst(),
+      .varInfo = &viewNode.getRegisterPlan()->varInfo,
+      .filter = &viewNode.filterCondition(),
+      .outVar = &viewNode.outVariable(),
+
+      .docReg = arangodb::aql::RegisterId::makeInvalid(),
+      .searchDocReg = arangodb::aql::RegisterId::makeInvalid(),
+      .scoreRegs = {},
+      .valuesRegs = {},
+
+      .scorers = emptyScorers,
+      .storedValues = &_view->storedValues(),
+
+      .heapSort = emptyScorersSort,
+      .heapSortLimit = 0,
 #ifdef USE_ENTERPRISE
-      _view->meta()._optimizeTopK,
+      .optimizeTopK = &_view->meta()._optimizeTopK,
 #endif
-      emptyScorers, {&sort, 1U}, _view->storedValues(), *plan,
-      viewNode.outVariable(), viewNode.filterCondition(), {false, false}, 0,
-      viewNode.getRegisterPlan()->varInfo, 0,
-      arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
-      arangodb::iresearch::CountApproximate::Exact,
-      arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0,
-      nullptr, 1, _pool);
+      .sort = {&sort, 1U},
+
+      .depth = 0,
+      .immutableParts = 0,
+      .filterOptimization = arangodb::iresearch::FilterOptimization::MAX,
+      .countApproximate = arangodb::iresearch::CountApproximate::Exact,
+      .emptyFilter = arangodb::iresearch::isFilterConditionEmpty(
+                         &viewNode.filterCondition()) &&
+                     !reader->hasNestedFields(),
+      .volatileSort = false,
+      .volatileFilter = false,
+
+      .parallelism = 1,
+      .parallelExecutionPool = &_pool,
+  };
 
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable>
@@ -722,19 +774,45 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
       arangodb::iresearch::ViewSnapshotPtr{}, snapshot};
   arangodb::iresearch::IResearchViewSort sort;
   sort.emplace_back({{std::string_view("value"), false}}, true);
-  arangodb::aql::IResearchViewExecutorInfos executorInfos(
-      reader, arangodb::aql::RegisterId::makeInvalid(),
-      arangodb::aql::RegisterId::makeInvalid(), {}, *query,
+
+  arangodb::aql::IResearchViewExecutorInfos executorInfos{
+      .reader = reader,
+      .meta = nullptr,
+
+      .query = query.get(),
+      .ast = plan->getAst(),
+      .varInfo = &viewNode.getRegisterPlan()->varInfo,
+      .filter = &viewNode.filterCondition(),
+      .outVar = &viewNode.outVariable(),
+
+      .docReg = arangodb::aql::RegisterId::makeInvalid(),
+      .searchDocReg = arangodb::aql::RegisterId::makeInvalid(),
+      .scoreRegs = {},
+      .valuesRegs = {},
+
+      .scorers = emptyScorers,
+      .storedValues = &_view->storedValues(),
+
+      .heapSort = emptyScorersSort,
+      .heapSortLimit = 0,
 #ifdef USE_ENTERPRISE
-      _view->meta()._optimizeTopK,
+      .optimizeTopK = &_view->meta()._optimizeTopK,
 #endif
-      emptyScorers, {&sort, 1U}, _view->storedValues(), *plan,
-      viewNode.outVariable(), viewNode.filterCondition(), {false, false}, 0,
-      viewNode.getRegisterPlan()->varInfo, 0,
-      arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
-      arangodb::iresearch::CountApproximate::Cost,
-      arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0,
-      nullptr, 1, _pool);
+      .sort = {&sort, 1U},
+
+      .depth = 0,
+      .immutableParts = 0,
+      .filterOptimization = arangodb::iresearch::FilterOptimization::MAX,
+      .countApproximate = arangodb::iresearch::CountApproximate::Cost,
+      .emptyFilter = arangodb::iresearch::isFilterConditionEmpty(
+                         &viewNode.filterCondition()) &&
+                     !reader->hasNestedFields(),
+      .volatileSort = false,
+      .volatileFilter = false,
+
+      .parallelism = 1,
+      .parallelExecutionPool = &_pool,
+  };
 
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable>

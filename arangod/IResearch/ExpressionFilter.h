@@ -46,10 +46,6 @@ struct ExpressionCompilationContext {
     return ast == rhs.ast && node == rhs.node;
   }
 
-  bool operator!=(ExpressionCompilationContext const& rhs) const noexcept {
-    return !(*this == rhs);
-  }
-
   explicit operator bool() const noexcept { return ast && node; }
 
   size_t hash() const noexcept;
