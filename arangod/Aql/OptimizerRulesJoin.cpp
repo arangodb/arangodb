@@ -479,13 +479,12 @@ bool processConstantFinding(IndexNode const* currentCandidate,
 
 bool processJoinKeyFinding(IndexNode const* firstCandidate,
                            IndexNode const* currentCandidate,
-                           IndicesOffsets& indicesOffsets, AstNode const* node,
-                           AstNode const* firstAccessNode) {
+                           IndicesOffsets& indicesOffsets, AstNode const* lhs,
+                           AstNode const* rhs) {
   std::vector<basics::AttributeName> resultVectorFirst;
   std::vector<basics::AttributeName> resultVectorCurrent;
-  getIndexAttributes(firstCandidate, firstAccessNode->getStringView(),
-                     resultVectorFirst);
-  getIndexAttributes(currentCandidate, node->getStringView(),
+  getIndexAttributes(firstCandidate, lhs->getStringView(), resultVectorFirst);
+  getIndexAttributes(currentCandidate, rhs->getStringView(),
                      resultVectorCurrent);
 
   auto attributeMatchResultFirst =
