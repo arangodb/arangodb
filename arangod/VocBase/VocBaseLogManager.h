@@ -136,6 +136,9 @@ struct VocBaseLogManager {
         TRI_vocbase_t& vocbase)
         -> ResultT<std::shared_ptr<
             replication2::replicated_state::ReplicatedStateBase>>;
+
+    auto stealReplicatedState(replication2::LogId id)
+        -> ResultT<GuardedData::StateAndLog>;
   };
   Guarded<GuardedData> _guardedData;
 

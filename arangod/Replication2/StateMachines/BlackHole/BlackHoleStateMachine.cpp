@@ -77,7 +77,8 @@ auto BlackHoleFollowerState::resign() && noexcept
   return std::move(_core);
 }
 
-auto BlackHoleFactory::constructFollower(std::unique_ptr<BlackHoleCore> core)
+auto BlackHoleFactory::constructFollower(std::unique_ptr<BlackHoleCore> core,
+                                         std::shared_ptr<IScheduler> scheduler)
     -> std::shared_ptr<BlackHoleFollowerState> {
   return std::make_shared<BlackHoleFollowerState>(std::move(core));
 }

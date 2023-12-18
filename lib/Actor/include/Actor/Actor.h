@@ -133,6 +133,9 @@ struct Actor : ActorBase<typename Runtime::ActorPID> {
   }
 
   auto finish(ExitReason reason) -> void override {
+    if (status.load() & Status::kFinished) {
+      return;
+    }
     exitReason = reason;
     auto s = status.fetch_or(Status::kFinished);
     if (s & Status::kIdle) {

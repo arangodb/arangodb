@@ -286,7 +286,6 @@ IResearchRocksDBRecoveryHelper::getRanges(uint64_t objectId) {
 
 IResearchRocksDBRecoveryHelper::Ranges
 IResearchRocksDBRecoveryHelper::makeRanges(uint64_t objectId) {
-  TRI_ASSERT(!_skipAllItems);
   auto collection = lookupCollection(objectId);
   if (!collection) {
     // TODO(MBkkt) it was ok in the old implementation

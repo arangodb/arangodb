@@ -42,6 +42,7 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/LogicalCollection.h"
 
+#include "Replication2/Mocks/SchedulerMocks.h"
 namespace arangodb::replication2::tests {
 struct MockDocumentStateTransactionHandler;
 struct MockDocumentStateSnapshotHandler;
@@ -248,8 +249,7 @@ struct MockDocumentStateTransactionHandler
   MOCK_METHOD(void, removeTransaction, (TransactionId tid), (override));
   MOCK_METHOD(std::vector<TransactionId>, getTransactionsForShard,
               (ShardID const&), (override));
-  MOCK_METHOD(TransactionMap const&, getUnfinishedTransactions, (),
-              (const, override));
+  MOCK_METHOD(TransactionMap, getUnfinishedTransactions, (), (const, override));
 
  private:
   std::shared_ptr<replicated_state::document::IDocumentStateTransactionHandler>
@@ -365,8 +365,9 @@ struct DocumentFollowerStateWrapper
       std::unique_ptr<replicated_state::document::DocumentCore> core,
       std::shared_ptr<
           replicated_state::document::IDocumentStateHandlersFactory> const&
-          handlersFactory)
-      : DocumentFollowerState(std::move(core), handlersFactory) {}
+          handlersFactory,
+      std::shared_ptr<IScheduler> scheduler)
+      : DocumentFollowerState(std::move(core), handlersFactory, scheduler) {}
 
   auto resign() && noexcept
       -> std::unique_ptr<replicated_state::document::DocumentCore> override {

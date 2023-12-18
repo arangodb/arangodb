@@ -25,13 +25,13 @@
 
 #include "Assertions/AssertionLogger.h"
 #include "Assertions/ProdAssert.h"
-#include "Inspection/VPack.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
 ReplicatedOperation::DocumentOperation::DocumentOperation(
-    TransactionId tid, ShardID shard, velocypack::SharedSlice payload)
-    : tid{tid}, shard{std::move(shard)}, payload{std::move(payload)} {}
+    TransactionId tid, ShardID shard, velocypack::SharedSlice payload,
+    std::optional<Options> options)
+    : tid{tid}, shard{shard}, payload{std::move(payload)}, options(options) {}
 
 template<typename... Args>
 ReplicatedOperation::ReplicatedOperation(std::in_place_t,
@@ -66,28 +66,27 @@ auto ReplicatedOperation::buildAbortOperation(TransactionId tid) noexcept
 auto ReplicatedOperation::buildTruncateOperation(TransactionId tid,
                                                  ShardID shard) noexcept
     -> ReplicatedOperation {
-  return ReplicatedOperation{std::in_place, Truncate{tid, std::move(shard)}};
+  return ReplicatedOperation{std::in_place, Truncate{tid, shard}};
 }
 
 auto ReplicatedOperation::buildCreateShardOperation(
     ShardID shard, TRI_col_type_e collectionType,
     velocypack::SharedSlice properties) noexcept -> ReplicatedOperation {
   return ReplicatedOperation{
-      std::in_place,
-      CreateShard{std::move(shard), collectionType, std::move(properties)}};
+      std::in_place, CreateShard{shard, collectionType, std::move(properties)}};
 }
 
 auto ReplicatedOperation::buildModifyShardOperation(
     ShardID shard, CollectionID collection,
     velocypack::SharedSlice properties) noexcept -> ReplicatedOperation {
   return ReplicatedOperation{
-      std::in_place, ModifyShard{std::move(shard), std::move(collection),
-                                 std::move(properties)}};
+      std::in_place,
+      ModifyShard{shard, std::move(collection), std::move(properties)}};
 }
 
 auto ReplicatedOperation::buildDropShardOperation(ShardID shard) noexcept
     -> ReplicatedOperation {
-  return ReplicatedOperation{std::in_place, DropShard{std::move(shard)}};
+  return ReplicatedOperation{std::in_place, DropShard{shard}};
 }
 
 auto ReplicatedOperation::buildCreateIndexOperation(
@@ -95,42 +94,36 @@ auto ReplicatedOperation::buildCreateIndexOperation(
     std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
     -> ReplicatedOperation {
   return ReplicatedOperation{
-      std::in_place, CreateIndex{std::move(shard), std::move(properties),
+      std::in_place, CreateIndex{shard, std::move(properties),
                                  CreateIndex::Parameters{std::move(progress)}}};
 }
 
 auto ReplicatedOperation::buildDropIndexOperation(
     ShardID shard, velocypack::SharedSlice index) noexcept
     -> ReplicatedOperation {
-  return ReplicatedOperation{std::in_place,
-                             DropIndex{std::move(shard), std::move(index)}};
+  return ReplicatedOperation{std::in_place, DropIndex{shard, std::move(index)}};
 }
 
 auto ReplicatedOperation::buildDocumentOperation(
     TRI_voc_document_operation_e const& op, TransactionId tid, ShardID shard,
-    velocypack::SharedSlice payload) noexcept -> ReplicatedOperation {
+    velocypack::SharedSlice payload,
+    std::optional<DocumentOperation::Options> options) noexcept
+    -> ReplicatedOperation {
+  auto documentOp = DocumentOperation(tid, shard, std::move(payload), options);
   switch (op) {
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
-      return ReplicatedOperation{
-          std::in_place,
-          Insert{DocumentOperation(tid, std::move(shard), std::move(payload))}};
+      return ReplicatedOperation{std::in_place, Insert{std::move(documentOp)}};
     case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
-      return ReplicatedOperation{
-          std::in_place,
-          Update{DocumentOperation(tid, std::move(shard), std::move(payload))}};
+      return ReplicatedOperation{std::in_place, Update{std::move(documentOp)}};
     case TRI_VOC_DOCUMENT_OPERATION_REPLACE:
-      return ReplicatedOperation{
-          std::in_place, Replace{DocumentOperation(tid, std::move(shard),
-                                                   std::move(payload))}};
+      return ReplicatedOperation{std::in_place, Replace{std::move(documentOp)}};
     case TRI_VOC_DOCUMENT_OPERATION_REMOVE:
-      return ReplicatedOperation{
-          std::in_place,
-          Remove{DocumentOperation(tid, std::move(shard), std::move(payload))}};
+      return ReplicatedOperation{std::in_place, Remove{std::move(documentOp)}};
     default:
       ADB_PROD_ASSERT(false) << "Unexpected document operation " << op;
   }
-  return {};  // should never be reached, but compiler complains about
-              // missing return
+  return {};  // should never be reached, but compiler complains
+              // about missing return
 }
 
 auto operator<<(std::ostream& ostream, ReplicatedOperation const& operation)
