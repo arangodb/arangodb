@@ -270,7 +270,6 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     auto& step = _interior.getStepReference(posPrevious);
 
     _diameter = step.getWeight();
-
     ValidationResult res = _validator.validatePath(step);
 
     if (!res.isFiltered()) {
@@ -923,6 +922,29 @@ template class ::arangodb::graph::WeightedTwoSidedEnumerator<
             ::arangodb::graph::PathStore<SingleServerProviderStep>>,
         VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
+template class ::arangodb::graph::WeightedTwoSidedEnumerator<
+    ::arangodb::graph::WeightedQueue<SingleServerProviderStep>,
+    ::arangodb::graph::PathStore<SingleServerProviderStep>,
+    SingleServerProvider<SingleServerProviderStep>,
+    ::arangodb::graph::PathValidator<
+        SingleServerProvider<SingleServerProviderStep>,
+        PathStore<SingleServerProviderStep>, VertexUniquenessLevel::GLOBAL,
+        EdgeUniquenessLevel::PATH>>;
+
+template class ::arangodb::graph::WeightedTwoSidedEnumerator<
+    ::arangodb::graph::QueueTracer<
+        ::arangodb::graph::WeightedQueue<SingleServerProviderStep>>,
+    ::arangodb::graph::PathStoreTracer<
+        ::arangodb::graph::PathStore<SingleServerProviderStep>>,
+    ::arangodb::graph::ProviderTracer<
+        SingleServerProvider<SingleServerProviderStep>>,
+    ::arangodb::graph::PathValidator<
+        ::arangodb::graph::ProviderTracer<
+            SingleServerProvider<SingleServerProviderStep>>,
+        ::arangodb::graph::PathStoreTracer<
+            ::arangodb::graph::PathStore<SingleServerProviderStep>>,
+        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
+
 /* ClusterProvider Section */
 
 template class ::arangodb::graph::WeightedTwoSidedEnumerator<
@@ -944,3 +966,23 @@ template class ::arangodb::graph::WeightedTwoSidedEnumerator<
         ::arangodb::graph::PathStoreTracer<
             ::arangodb::graph::PathStore<ClusterProviderStep>>,
         VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+
+template class ::arangodb::graph::WeightedTwoSidedEnumerator<
+    ::arangodb::graph::WeightedQueue<::arangodb::graph::ClusterProviderStep>,
+    ::arangodb::graph::PathStore<ClusterProviderStep>,
+    ClusterProvider<ClusterProviderStep>,
+    ::arangodb::graph::PathValidator<
+        ClusterProvider<ClusterProviderStep>, PathStore<ClusterProviderStep>,
+        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
+
+template class ::arangodb::graph::WeightedTwoSidedEnumerator<
+    ::arangodb::graph::QueueTracer<::arangodb::graph::WeightedQueue<
+        ::arangodb::graph::ClusterProviderStep>>,
+    ::arangodb::graph::PathStoreTracer<
+        ::arangodb::graph::PathStore<ClusterProviderStep>>,
+    ::arangodb::graph::ProviderTracer<ClusterProvider<ClusterProviderStep>>,
+    ::arangodb::graph::PathValidator<
+        ::arangodb::graph::ProviderTracer<ClusterProvider<ClusterProviderStep>>,
+        ::arangodb::graph::PathStoreTracer<
+            ::arangodb::graph::PathStore<ClusterProviderStep>>,
+        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
