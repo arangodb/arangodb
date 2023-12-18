@@ -87,15 +87,15 @@ void RocksDBKey::constructFromBuffer(std::string_view buffer) {
 }
 
 void RocksDBKey::constructZkdIndexValue(uint64_t indexId,
-                                        velocypack::Slice sorted,
+                                        velocypack::Slice prefix,
                                         zkd::byte_string const& value) {
   _type = RocksDBEntryType::ZkdIndexValue;
-  size_t keyLength = sizeof(uint64_t) + value.size() + sorted.byteSize();
+  size_t keyLength = sizeof(uint64_t) + value.size() + prefix.byteSize();
   _buffer->clear();
   _buffer->reserve(keyLength);
   uint64ToPersistent(*_buffer, indexId);
-  _buffer->append(reinterpret_cast<char const*>(sorted.begin()),
-                  sorted.byteSize());
+  _buffer->append(reinterpret_cast<char const*>(prefix.begin()),
+                  prefix.byteSize());
   auto sv = std::string_view{reinterpret_cast<const char*>(value.data()),
                              value.size()};
   _buffer->append(sv.data(), sv.size());
@@ -103,17 +103,45 @@ void RocksDBKey::constructZkdIndexValue(uint64_t indexId,
 }
 
 void RocksDBKey::constructZkdIndexValue(uint64_t indexId,
-                                        velocypack::Slice sorted,
+                                        velocypack::Slice prefix,
                                         zkd::byte_string const& value,
                                         LocalDocumentId documentId) {
   _type = RocksDBEntryType::ZkdIndexValue;
   size_t keyLength =
-      sizeof(uint64_t) + value.size() + sizeof(uint64_t) + sorted.byteSize();
+      sizeof(uint64_t) + value.size() + sizeof(uint64_t) + prefix.byteSize();
   _buffer->clear();
   _buffer->reserve(keyLength);
   uint64ToPersistent(*_buffer, indexId);
-  _buffer->append(reinterpret_cast<char const*>(sorted.begin()),
-                  sorted.byteSize());
+  _buffer->append(reinterpret_cast<char const*>(prefix.begin()),
+                  prefix.byteSize());
+  auto sv = std::string_view{reinterpret_cast<const char*>(value.data()),
+                             value.size()};
+  _buffer->append(sv.data(), sv.size());
+  uint64ToPersistent(*_buffer, documentId.id());
+  TRI_ASSERT(_buffer->size() == keyLength);
+}
+
+void RocksDBKey::constructZkdIndexValue(uint64_t indexId,
+                                        zkd::byte_string const& value) {
+  _type = RocksDBEntryType::ZkdIndexValue;
+  size_t keyLength = sizeof(uint64_t) + value.size();
+  _buffer->clear();
+  _buffer->reserve(keyLength);
+  uint64ToPersistent(*_buffer, indexId);
+  auto sv = std::string_view{reinterpret_cast<const char*>(value.data()),
+                             value.size()};
+  _buffer->append(sv.data(), sv.size());
+  TRI_ASSERT(_buffer->size() == keyLength);
+}
+
+void RocksDBKey::constructZkdIndexValue(uint64_t indexId,
+                                        zkd::byte_string const& value,
+                                        LocalDocumentId documentId) {
+  _type = RocksDBEntryType::ZkdIndexValue;
+  size_t keyLength = sizeof(uint64_t) + value.size() + sizeof(uint64_t);
+  _buffer->clear();
+  _buffer->reserve(keyLength);
+  uint64ToPersistent(*_buffer, indexId);
   auto sv = std::string_view{reinterpret_cast<const char*>(value.data()),
                              value.size()};
   _buffer->append(sv.data(), sv.size());
@@ -534,7 +562,8 @@ VPackSlice RocksDBKey::indexedVPack(char const* data, size_t size) {
   return VPackSlice(reinterpret_cast<uint8_t const*>(data) + sizeof(uint64_t));
 }
 
-zkd::byte_string_view RocksDBKey::zkdIndexValue(char const* data, size_t size) {
+zkd::byte_string_view RocksDBKey::zkdVPackIndexCurveValue(char const* data,
+                                                          size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size > 2 * sizeof(uint64_t));
   auto* vpack = reinterpret_cast<const char*>(data) + sizeof(uint64_t);
@@ -549,8 +578,8 @@ zkd::byte_string_view RocksDBKey::zkdIndexValue(char const* data, size_t size) {
                                curveSize);
 }
 
-zkd::byte_string_view RocksDBKey::zkdUniqueIndexValue(char const* data,
-                                                      size_t size) {
+zkd::byte_string_view RocksDBKey::zkdUniqueVPackIndexCurveValue(
+    char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   // In this case, there is no local document id at the end
   auto* vpack = reinterpret_cast<const char*>(data) + sizeof(uint64_t);
@@ -564,13 +593,42 @@ zkd::byte_string_view RocksDBKey::zkdUniqueIndexValue(char const* data,
                                curveSize);
 }
 
-zkd::byte_string_view RocksDBKey::zkdIndexValue(const rocksdb::Slice& slice) {
-  return zkdIndexValue(slice.data(), slice.size());
+zkd::byte_string_view RocksDBKey::zkdIndexCurveValue(char const* data,
+                                                     size_t size) {
+  TRI_ASSERT(data != nullptr);
+  TRI_ASSERT(size > 2 * sizeof(uint64_t));
+  return zkd::byte_string_view(
+      reinterpret_cast<const std::byte*>(data) + sizeof(uint64_t),
+      size - 2 * sizeof(uint64_t));
 }
 
-zkd::byte_string_view RocksDBKey::zkdUniqueIndexValue(
+zkd::byte_string_view RocksDBKey::zkdUniqueIndexCurveValue(char const* data,
+                                                           size_t size) {
+  TRI_ASSERT(data != nullptr);
+  TRI_ASSERT(size > sizeof(uint64_t));
+  return zkd::byte_string_view(
+      reinterpret_cast<const std::byte*>(data) + sizeof(uint64_t),
+      size - sizeof(uint64_t));
+}
+
+zkd::byte_string_view RocksDBKey::zkdVPackIndexCurveValue(
     const rocksdb::Slice& slice) {
-  return zkdUniqueIndexValue(slice.data(), slice.size());
+  return zkdVPackIndexCurveValue(slice.data(), slice.size());
+}
+
+zkd::byte_string_view RocksDBKey::zkdUniqueVPackIndexCurveValue(
+    const rocksdb::Slice& slice) {
+  return zkdUniqueVPackIndexCurveValue(slice.data(), slice.size());
+}
+
+zkd::byte_string_view RocksDBKey::zkdIndexCurveValue(
+    const rocksdb::Slice& slice) {
+  return zkdIndexCurveValue(slice.data(), slice.size());
+}
+
+zkd::byte_string_view RocksDBKey::zkdUniqueIndexCurveValue(
+    const rocksdb::Slice& slice) {
+  return zkdUniqueIndexCurveValue(slice.data(), slice.size());
 }
 
 namespace arangodb {

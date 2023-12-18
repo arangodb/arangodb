@@ -45,7 +45,10 @@ function optimizerRuleZkd2dIndexTestSuite(unique) {
     do {
       x = valueSize * Math.random();
       y = valueSize * Math.random();
-    } while (unique && points.has([x, y]));
+      if (!unique) {
+        break;
+      }
+    } while (points.has([x, y]));
     points.add([x, y]);
     return [x, y];
   };
