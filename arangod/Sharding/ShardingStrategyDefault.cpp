@@ -374,14 +374,9 @@ ShardingStrategyEnterpriseBase::ShardingStrategyEnterpriseBase(
   if (shardKeys.size() == 1) {
     TRI_ASSERT(!shardKeys[0].empty());
 
-    _usesDefaultShardKeys =
-        (shardKeys[0] == StaticStrings::KeyString ||
-         (shardKeys[0].starts_with(':') &&
-          shardKeys[0].compare(1, shardKeys[0].size() - 1,
-                               StaticStrings::KeyString) == 0) ||
-         (shardKeys[0].ends_with(':') &&
-          shardKeys[0].compare(0, shardKeys[0].size() - 1,
-                               StaticStrings::KeyString) == 0));
+    _usesDefaultShardKeys = shardKeys[0] == StaticStrings::KeyString ||
+                            shardKeys[0] == StaticStrings::PrefixOfKeyString ||
+                            shardKeys[0] == StaticStrings::PostfixOfKeyString;
   }
 }
 
@@ -417,14 +412,9 @@ ShardingStrategyHash::ShardingStrategyHash(ShardingInfo* sharding)
   if (shardKeys.size() == 1) {
     TRI_ASSERT(!shardKeys[0].empty());
 
-    _usesDefaultShardKeys =
-        (shardKeys[0] == StaticStrings::KeyString ||
-         (shardKeys[0].starts_with(':') &&
-          shardKeys[0].compare(1, shardKeys[0].size() - 1,
-                               StaticStrings::KeyString) == 0) ||
-         (shardKeys[0].ends_with(':') &&
-          shardKeys[0].compare(0, shardKeys[0].size() - 1,
-                               StaticStrings::KeyString) == 0));
+    _usesDefaultShardKeys = shardKeys[0] == StaticStrings::KeyString ||
+                            shardKeys[0] == StaticStrings::PrefixOfKeyString ||
+                            shardKeys[0] == StaticStrings::PostfixOfKeyString;
   }
 
   ::preventUseOnSmartEdgeCollection(_sharding->collection(), NAME);
