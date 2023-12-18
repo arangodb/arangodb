@@ -484,12 +484,6 @@ if (LINKER_IS_MOLD AND USE_BUILD_ID_READER)
   message(SEND_ERROR "It looks like you're using mold as a linker. That doesn't work together with USE_BUILD_ID_READER. Either disable USE_BUILD_ID_READER, or use another linker.")
 endif ()
 
-if (CROSS_COMPILING)
-# currently off, need additional params to configure like --host=triple <params>
-  SET(USE_JEMALLOC OFF)
-  SET(USE_LIBUNWIND OFF)
-endif()
-
 ################################################################################
 ## EXTERNAL PROGRAMS
 ################################################################################
