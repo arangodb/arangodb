@@ -602,7 +602,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, velocypack::Slice slice)
 ExecutionNode::ExecutionNode(ExecutionPlan& plan, ExecutionNode const& other)
     : ExecutionNode(&plan, other.id()) {
   TRI_ASSERT(&plan == other.plan());
-  other.cloneWithoutRegisteringAndDependencies(plan, *this, false);
+  other.cloneWithoutRegisteringAndDependencies(plan, *this);
 }
 
 /// @brief exports this ExecutionNode with all its dependencies to VelocyPack.
@@ -627,32 +627,27 @@ void ExecutionNode::allToVelocyPack(velocypack::Builder& builder,
 /// @brief execution Node clone utility to be called by derived classes
 /// @return pointer to a registered node owned by a plan
 ExecutionNode* ExecutionNode::cloneHelper(std::unique_ptr<ExecutionNode> other,
-                                          bool withDependencies,
-                                          bool withProperties) const {
+                                          bool withDependencies) const {
   ExecutionPlan* plan = other->plan();
 
-  cloneWithoutRegisteringAndDependencies(*plan, *other, withProperties);
+  cloneWithoutRegisteringAndDependencies(*plan, *other);
 
   auto* registeredNode = plan->registerNode(std::move(other));
 
   if (withDependencies) {
-    cloneDependencies(plan, registeredNode, withProperties);
+    cloneDependencies(plan, registeredNode);
   }
 
   return registeredNode;
 }
 
 void ExecutionNode::cloneWithoutRegisteringAndDependencies(
-    ExecutionPlan& plan, ExecutionNode& other, bool withProperties) const {
+    ExecutionPlan& plan, ExecutionNode& other) const {
   if (&plan == _plan) {
     // same execution plan for source and target
     // now assign a new id to the cloned node, otherwise it will fail
     // upon node registration and/or its meaning is ambiguous
     other.setId(plan.nextId());
-
-    // cloning with properties will only work if we clone a node into
-    // a different plan
-    TRI_ASSERT(!withProperties);
   }
 
   other._regsToClear = _regsToClear;
@@ -660,51 +655,19 @@ void ExecutionNode::cloneWithoutRegisteringAndDependencies(
   other._varUsageValid = _varUsageValid;
   other._isInSplicedSubquery = _isInSplicedSubquery;
 
-  if (withProperties) {
-    auto allVars = plan.getAst()->variables();
-    // Create new structures on the new AST...
-    other._varsUsedLaterStack.reserve(_varsUsedLaterStack.size());
-    for (auto const& stackEntry : _varsUsedLaterStack) {
-      auto& otherStackEntry = other._varsUsedLaterStack.emplace_back();
-      otherStackEntry.reserve(stackEntry.size());
-      for (auto const& orgVar : stackEntry) {
-        auto var = allVars->getVariable(orgVar->id);
-        TRI_ASSERT(var != nullptr);
-        otherStackEntry.emplace(var);
-      }
-    }
-
-    other._varsValidStack.reserve(_varsValidStack.size());
-
-    for (auto const& stackEntry : _varsValidStack) {
-      auto& otherStackEntry = other._varsValidStack.emplace_back();
-      otherStackEntry.reserve(stackEntry.size());
-      for (auto const& orgVar : stackEntry) {
-        auto var = allVars->getVariable(orgVar->id);
-        TRI_ASSERT(var != nullptr);
-        otherStackEntry.emplace(var);
-      }
-    }
-
-    if (_registerPlan != nullptr) {
-      other._registerPlan = _registerPlan->clone();
-    }
-  } else {
-    // point to current AST -> don't do deep copies.
-    other._varsUsedLaterStack = _varsUsedLaterStack;
-    other._varsValidStack = _varsValidStack;
-    other._registerPlan = _registerPlan;
-  }
+  // point to current AST -> don't do deep copies.
+  other._varsUsedLaterStack = _varsUsedLaterStack;
+  other._varsValidStack = _varsValidStack;
+  other._registerPlan = _registerPlan;
 }
 
 /// @brief helper for cloning, use virtual clone methods for dependencies
 void ExecutionNode::cloneDependencies(ExecutionPlan* plan,
-                                      ExecutionNode* theClone,
-                                      bool withProperties) const {
+                                      ExecutionNode* theClone) const {
   TRI_ASSERT(theClone != nullptr);
   auto it = _dependencies.begin();
   while (it != _dependencies.end()) {
-    auto c = (*it)->clone(plan, true, withProperties);
+    auto c = (*it)->clone(plan, true);
     TRI_ASSERT(c != nullptr);
     try {
       c->_parents.emplace_back(theClone);
@@ -1829,21 +1792,14 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
 
 /// @brief clone ExecutionNode recursively
 ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
-                                              bool withDependencies,
-                                              bool withProperties) const {
-  auto outVariable = _outVariable;
-  if (withProperties) {
-    outVariable = plan->getAst()->variables()->createVariable(outVariable);
-    TRI_ASSERT(outVariable != nullptr);
-  }
-
+                                              bool withDependencies) const {
   auto c = std::make_unique<EnumerateCollectionNode>(
-      plan, _id, collection(), outVariable, _random, _hint);
+      plan, _id, collection(), _outVariable, _random, _hint);
 
   CollectionAccessingNode::cloneInto(*c);
   DocumentProducingNode::cloneInto(plan, *c);
 
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::move(c), withDependencies);
 }
 
 /// @brief replaces variables in the internals of the execution node
@@ -1991,20 +1947,10 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
 
 /// @brief clone ExecutionNode recursively
 ExecutionNode* EnumerateListNode::clone(ExecutionPlan* plan,
-                                        bool withDependencies,
-                                        bool withProperties) const {
-  auto outVariable = _outVariable;
-  auto inVariable = _inVariable;
-
-  if (withProperties) {
-    outVariable = plan->getAst()->variables()->createVariable(outVariable);
-    inVariable = plan->getAst()->variables()->createVariable(inVariable);
-  }
-
-  auto c =
-      std::make_unique<EnumerateListNode>(plan, _id, inVariable, outVariable);
-
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+                                        bool withDependencies) const {
+  return cloneHelper(
+      std::make_unique<EnumerateListNode>(plan, _id, _inVariable, _outVariable),
+      withDependencies);
 }
 
 /// @brief the cost of an enumerate list node
@@ -2120,15 +2066,15 @@ ExecutionNode::NodeType LimitNode::getType() const { return LIMIT; }
 
 size_t LimitNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
-ExecutionNode* LimitNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                bool withProperties) const {
+ExecutionNode* LimitNode::clone(ExecutionPlan* plan,
+                                bool withDependencies) const {
   auto c = std::make_unique<LimitNode>(plan, _id, _offset, _limit);
 
   if (_fullCount) {
     c->setFullCount();
   }
 
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::move(c), withDependencies);
 }
 
 AsyncPrefetchEligibility LimitNode::canUseAsyncPrefetching() const noexcept {
@@ -2305,18 +2251,11 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
 }
 
 ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,
-                                      bool withDependencies,
-                                      bool withProperties) const {
-  auto outVariable = _outVariable;
-
-  if (withProperties) {
-    outVariable = plan->getAst()->variables()->createVariable(outVariable);
-  }
-
-  auto c = std::make_unique<CalculationNode>(
-      plan, _id, _expression->clone(plan->getAst(), true), outVariable);
-
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+                                      bool withDependencies) const {
+  return cloneHelper(
+      std::make_unique<CalculationNode>(
+          plan, _id, _expression->clone(plan->getAst(), true), _outVariable),
+      withDependencies);
 }
 
 /// @brief estimateCost
@@ -2507,17 +2446,11 @@ std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
                                  "cannot instantiate SubqueryExecutor");
 }
 
-ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                   bool withProperties) const {
-  auto outVariable = _outVariable;
-
-  if (withProperties) {
-    outVariable = plan->getAst()->variables()->createVariable(outVariable);
-  }
-  auto c = std::make_unique<SubqueryNode>(
-      plan, _id, _subquery->clone(plan, true, withProperties), outVariable);
-
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan,
+                                   bool withDependencies) const {
+  return cloneHelper(std::make_unique<SubqueryNode>(
+                         plan, _id, _subquery->clone(plan, true), _outVariable),
+                     withDependencies);
 }
 
 /// @brief whether or not the subquery is a data-modification operation
@@ -2685,16 +2618,10 @@ std::unique_ptr<ExecutionBlock> FilterNode::createBlock(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
-ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                 bool withProperties) const {
-  auto inVariable = _inVariable;
-
-  if (withProperties) {
-    inVariable = plan->getAst()->variables()->createVariable(inVariable);
-  }
-
-  return cloneHelper(std::make_unique<FilterNode>(plan, _id, inVariable),
-                     withDependencies, withProperties);
+ExecutionNode* FilterNode::clone(ExecutionPlan* plan,
+                                 bool withDependencies) const {
+  return cloneHelper(std::make_unique<FilterNode>(plan, _id, _inVariable),
+                     withDependencies);
 }
 
 /// @brief estimateCost
@@ -2797,21 +2724,15 @@ bool ReturnNode::returnInheritedResults() const {
 }
 
 /// @brief clone ExecutionNode recursively
-ExecutionNode* ReturnNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                 bool withProperties) const {
-  auto inVariable = _inVariable;
-
-  if (withProperties) {
-    inVariable = plan->getAst()->variables()->createVariable(inVariable);
-  }
-
-  auto c = std::make_unique<ReturnNode>(plan, _id, inVariable);
+ExecutionNode* ReturnNode::clone(ExecutionPlan* plan,
+                                 bool withDependencies) const {
+  auto c = std::make_unique<ReturnNode>(plan, _id, _inVariable);
 
   if (_count) {
     c->setCount();
   }
 
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::move(c), withDependencies);
 }
 
 /// @brief estimateCost
@@ -2891,10 +2812,10 @@ NoResultsNode::NoResultsNode(ExecutionPlan* plan,
 
 ExecutionNode::NodeType NoResultsNode::getType() const { return NORESULTS; }
 
-ExecutionNode* NoResultsNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                    bool withProperties) const {
+ExecutionNode* NoResultsNode::clone(ExecutionPlan* plan,
+                                    bool withDependencies) const {
   return cloneHelper(std::make_unique<NoResultsNode>(plan, _id),
-                     withDependencies, withProperties);
+                     withDependencies);
 }
 
 AsyncPrefetchEligibility NoResultsNode::canUseAsyncPrefetching()
@@ -3011,10 +2932,9 @@ ExecutionNode::NodeType AsyncNode::getType() const { return ASYNC; }
 
 size_t AsyncNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
-ExecutionNode* AsyncNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                bool withProperties) const {
-  return cloneHelper(std::make_unique<AsyncNode>(plan, _id), withDependencies,
-                     withProperties);
+ExecutionNode* AsyncNode::clone(ExecutionPlan* plan,
+                                bool withDependencies) const {
+  return cloneHelper(std::make_unique<AsyncNode>(plan, _id), withDependencies);
 }
 
 namespace {
@@ -3128,22 +3048,12 @@ std::unique_ptr<ExecutionBlock> MaterializeSearchNode::createBlock(
 }
 
 ExecutionNode* MaterializeSearchNode::clone(ExecutionPlan* plan,
-                                            bool withDependencies,
-                                            bool withProperties) const {
+                                            bool withDependencies) const {
   TRI_ASSERT(plan);
 
-  auto* outVariable = _outVariable;
-  auto* inNonMaterializedDocId = _inNonMaterializedDocId;
-
-  if (withProperties) {
-    outVariable = plan->getAst()->variables()->createVariable(outVariable);
-    inNonMaterializedDocId =
-        plan->getAst()->variables()->createVariable(inNonMaterializedDocId);
-  }
-
-  auto c = std::make_unique<MaterializeSearchNode>(
-      plan, _id, *inNonMaterializedDocId, *outVariable);
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::make_unique<MaterializeSearchNode>(
+                         plan, _id, *_inNonMaterializedDocId, *_outVariable),
+                     withDependencies);
 }
 
 MaterializeRocksDBNode::MaterializeRocksDBNode(
@@ -3199,21 +3109,11 @@ std::unique_ptr<ExecutionBlock> MaterializeRocksDBNode::createBlock(
 }
 
 ExecutionNode* MaterializeRocksDBNode::clone(ExecutionPlan* plan,
-                                             bool withDependencies,
-                                             bool withProperties) const {
+                                             bool withDependencies) const {
   TRI_ASSERT(plan);
 
-  auto* outVariable = _outVariable;
-  auto* inNonMaterializedDocId = _inNonMaterializedDocId;
-
-  if (withProperties) {
-    outVariable = plan->getAst()->variables()->createVariable(outVariable);
-    inNonMaterializedDocId =
-        plan->getAst()->variables()->createVariable(inNonMaterializedDocId);
-  }
-
   auto c = std::make_unique<MaterializeRocksDBNode>(
-      plan, _id, collection(), *inNonMaterializedDocId, *outVariable);
+      plan, _id, collection(), *_inNonMaterializedDocId, *_outVariable);
   CollectionAccessingNode::cloneInto(*c);
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::move(c), withDependencies);
 }
