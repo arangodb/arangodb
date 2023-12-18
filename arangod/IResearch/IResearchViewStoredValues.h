@@ -33,11 +33,11 @@
 #include "Containers/FlatHashSet.h"
 
 namespace arangodb {
-
 namespace velocypack {
-class Builder;
-}
 
+class Builder;
+
+}  // namespace velocypack
 namespace iresearch {
 
 class IResearchViewStoredValues {
@@ -55,10 +55,6 @@ class IResearchViewStoredValues {
       return name == rhs.name;
     }
 
-    bool operator!=(StoredColumn const& rhs) const noexcept {
-      return !(*this == rhs);
-    }
-
     bool sameName(std::string_view str) const noexcept {
       return (name.size() == str.size() + 1) && name.ends_with(str);
     }
@@ -68,13 +64,7 @@ class IResearchViewStoredValues {
     return _storedColumns == rhs._storedColumns;
   }
 
-  bool operator!=(IResearchViewStoredValues const& rhs) const noexcept {
-    return !(*this == rhs);
-  }
-
-  std::vector<StoredColumn> const& columns() const noexcept {
-    return _storedColumns;
-  }
+  auto const& columns() const noexcept { return _storedColumns; }
 
   size_t memory() const noexcept;
 
@@ -93,7 +83,7 @@ class IResearchViewStoredValues {
   void clear() noexcept { _storedColumns.clear(); }
 
   std::vector<StoredColumn> _storedColumns;
-};  // IResearchViewStoredValues
+};
 
 }  // namespace iresearch
 }  // namespace arangodb

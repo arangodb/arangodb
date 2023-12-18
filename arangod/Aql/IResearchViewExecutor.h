@@ -56,18 +56,22 @@
 #include <variant>
 
 namespace irs {
-struct score;
-}  // namespace irs
 
+struct score;
+
+}  // namespace irs
 namespace arangodb {
+
 class LogicalCollection;
 
 namespace iresearch {
+
 struct SearchFunc;
 class SearchMeta;
-}  // namespace iresearch
 
+}  // namespace iresearch
 namespace aql {
+
 struct AqlCall;
 class AqlItemBlockInputRange;
 struct ExecutionStats;
@@ -76,123 +80,43 @@ template<BlockPassthrough>
 class SingleRowFetcher;
 class QueryContext;
 
-class IResearchViewExecutorInfos {
- public:
-  IResearchViewExecutorInfos(
-      iresearch::ViewSnapshotPtr reader, RegisterId outRegister,
-      RegisterId searchDocRegister, std::vector<RegisterId> scoreRegisters,
-      QueryContext& query,
+struct IResearchViewExecutorInfos {
+  bool isOldMangling() const noexcept { return meta == nullptr; }
+
+  iresearch::ViewSnapshotPtr reader;
+  iresearch::SearchMeta const* meta;
+
+  QueryContext* query;
+  Ast* ast;
+  VarInfoMap const* varInfo;
+  AstNode const* filter;
+  Variable const* outVar;
+
+  RegisterId docReg;
+  RegisterId searchDocReg;
+  std::vector<RegisterId> scoreRegs;
+  iresearch::IResearchViewNode::ViewValuesRegisters valuesRegs;
+
+  std::span<iresearch::SearchFunc const> scorers;
+  iresearch::IResearchViewStoredValues const* storedValues;
+
+  std::span<iresearch::HeapSortElement const> heapSort;
+  size_t heapSortLimit;
 #ifdef USE_ENTERPRISE
-      iresearch::IResearchOptimizeTopK const& optimizeTopK,
+  iresearch::IResearchOptimizeTopK const* optimizeTopK;
 #endif
-      std::vector<iresearch::SearchFunc> const& scorers,
-      std::pair<iresearch::IResearchSortBase const*, size_t> sort,
-      iresearch::IResearchViewStoredValues const& storedValues,
-      ExecutionPlan const& plan, Variable const& outVariable,
-      AstNode const& filterCondition, std::pair<bool, bool> volatility,
-      uint32_t immutableParts, VarInfoMap const& varInfoMap, int depth,
-      iresearch::IResearchViewNode::ViewValuesRegisters&&
-          outNonMaterializedViewRegs,
-      iresearch::CountApproximate, iresearch::FilterOptimization,
-      std::vector<iresearch::HeapSortElement> const& heapSort,
-      size_t heapSortLimit, iresearch::SearchMeta const* meta,
-      size_t parallelism,
-      iresearch::IResearchExecutionPool& parallelExecutionPool);
+  std::pair<iresearch::IResearchSortBase const*, size_t> sort;
 
-  auto getDocumentRegister() const noexcept { return _documentOutReg; }
+  int32_t depth;
+  uint32_t immutableParts;
+  iresearch::FilterOptimization filterOptimization;
+  iresearch::CountApproximate countApproximate;
+  bool emptyFilter;
+  bool volatileSort;
+  bool volatileFilter;
 
-  auto searchDocIdRegId() const noexcept { return _searchDocOutReg; }
-
-  auto const& getScoreRegisters() const noexcept { return _scoreRegisters; }
-
-  auto const& getOutNonMaterializedViewRegs() const noexcept {
-    return _outNonMaterializedViewRegs;
-  }
-
-  auto getReader() const noexcept { return _reader; }
-
-  auto& getQuery() noexcept { return _query; }
-
-  auto const& scorers() const noexcept { return _scorers; }
-
-  auto const& plan() const noexcept { return _plan; }
-
-  auto const& outVariable() const noexcept { return _outVariable; }
-
-  auto const& filterCondition() const noexcept { return _filterCondition; }
-
-  bool filterConditionIsEmpty() const noexcept {
-    return _filterConditionIsEmpty;
-  }
-
-  auto const& varInfoMap() const noexcept { return _varInfoMap; }
-
-  int getDepth() const noexcept { return _depth; }
-
-  uint32_t immutableParts() const noexcept { return _immutableParts; }
-
-  bool volatileSort() const noexcept { return _volatileSort; }
-
-  bool volatileFilter() const noexcept { return _volatileFilter; }
-
-  bool isOldMangling() const noexcept { return _meta == nullptr; }
-
-  auto countApproximate() const noexcept { return _countApproximate; }
-
-  auto filterOptimization() const noexcept { return _filterOptimization; }
-
-#ifdef USE_ENTERPRISE
-  auto const& optimizeTopK() const noexcept { return _optimizeTopK; }
-#endif
-
-  auto const& sort() const noexcept { return _sort; }
-
-  auto const& storedValues() const noexcept { return _storedValues; }
-
-  auto heapSortLimit() const noexcept { return _heapSortLimit; }
-
-  auto heapSort() const noexcept { return std::span{_heapSort}; }
-
-  auto scoreRegistersCount() const noexcept { return _scoreRegistersCount; }
-
-  auto const* meta() const noexcept { return _meta; }
-
-  auto parallelism() const noexcept { return _parallelism; }
-
-  auto& parallelExecutionPool() const noexcept {
-    return _parallelExecutionPool;
-  }
-
- private:
-  RegisterId _searchDocOutReg;
-  RegisterId _documentOutReg;
-  std::vector<RegisterId> _scoreRegisters;
-  size_t _scoreRegistersCount;
-  iresearch::ViewSnapshotPtr const _reader;
-  QueryContext& _query;
-#ifdef USE_ENTERPRISE
-  iresearch::IResearchOptimizeTopK const& _optimizeTopK;
-#endif
-  std::vector<iresearch::SearchFunc> const& _scorers;
-  std::pair<iresearch::IResearchSortBase const*, size_t> _sort;
-  iresearch::IResearchViewStoredValues const& _storedValues;
-  ExecutionPlan const& _plan;
-  Variable const& _outVariable;
-  AstNode const& _filterCondition;
-  VarInfoMap const& _varInfoMap;
-  iresearch::IResearchViewNode::ViewValuesRegisters _outNonMaterializedViewRegs;
-  iresearch::CountApproximate _countApproximate;
-  iresearch::FilterOptimization _filterOptimization;
-  std::vector<iresearch::HeapSortElement> const& _heapSort;
-  size_t _heapSortLimit;
-  size_t _parallelism;
-  iresearch::SearchMeta const* _meta;
-  iresearch::IResearchExecutionPool& _parallelExecutionPool;
-  int const _depth;
-  uint32_t _immutableParts;
-  bool _filterConditionIsEmpty;
-  bool const _volatileSort;
-  bool const _volatileFilter;
+  size_t parallelism;
+  iresearch::IResearchExecutionPool* parallelExecutionPool;
 };
 
 class IResearchViewStats {
@@ -229,26 +153,6 @@ struct FilterCtx final : irs::attribute_provider {
   iresearch::ExpressionExecutionContext _execCtx;
 };
 
-// LateMater: storing LocDocIds as invalid()
-// For MultiMaterializerNode-> DocIdReg = SearchDoc
-// CollectionPtr May be dropped as SearchDoc contains Cid! But needs caching to
-// avoid multiple access rights check! Adding buffering for
-// LateMaterializeExecutor!
-
-class ScoreIterator {
- public:
-  ScoreIterator(std::span<float_t> scoreBuffer, size_t keyIdx,
-                size_t numScores) noexcept;
-
-  auto begin() noexcept;
-  auto end() noexcept;
-
- private:
-  std::span<float_t> _scoreBuffer;
-  size_t _scoreBaseIdx;
-  size_t _numScores;
-};
-
 union HeapSortValue {
   irs::score_t score;
   velocypack::Slice slice;
@@ -262,7 +166,7 @@ class IndexReadBuffer {
  public:
   using KeyValueType = ValueType;
 
-  explicit IndexReadBuffer(size_t numScoreRegisters, ResourceMonitor& monitor);
+  explicit IndexReadBuffer(size_t numScores, ResourceMonitor& monitor);
 
   ValueType const& getValue(size_t idx) const noexcept {
     assertSizeCoherence();
@@ -280,7 +184,10 @@ class IndexReadBuffer {
     return _searchDocs[idx];
   }
 
-  ScoreIterator getScores(size_t idx) noexcept;
+  auto getScores(size_t idx) noexcept {
+    assertSizeCoherence();
+    return std::span{_scoreBuffer.data() + idx * _numScores, _numScores};
+  }
 
   void setHeapSort(std::span<iresearch::HeapSortElement const> s,
                    iresearch::IResearchViewNode::ViewValuesRegisters const&
@@ -313,7 +220,7 @@ class IndexReadBuffer {
     }
   }
 
-  irs::score_t* pushNoneScores(size_t count);
+  irs::score_t* pushNoneScores();
 
   template<typename T, typename Id>
   void makeValue(T idx, iresearch::ViewSegment const& segment, Id id) {
@@ -336,10 +243,10 @@ class IndexReadBuffer {
 
   template<typename ColumnReaderProvider>
   void pushSortedValue(ColumnReaderProvider& columnReader, ValueType&& value,
-                       std::span<float_t const> scores, irs::score& score,
+                       irs::score_t const* scores, irs::score const& score,
                        irs::score_t& threshold);
 
-  void finalizeHeapSort();
+  void finalizeHeapSort(size_t skip);
   // A note on the scores: instead of saving an array of AqlValues, we could
   // save an array of floats plus a bitfield noting which entries should be None
 
@@ -363,10 +270,9 @@ class IndexReadBuffer {
   // before and after.
   void assertSizeCoherence() const noexcept;
 
-  size_t memoryUsage(size_t maxSize, size_t scores,
-                     size_t stored) const noexcept {
+  size_t memoryUsage(size_t maxSize, size_t stored) const noexcept {
     auto res = maxSize * sizeof(_keyBuffer[0]) +
-               maxSize * scores * sizeof(_scoreBuffer[0]) +
+               maxSize * _numScores * sizeof(_scoreBuffer[0]) +
                maxSize * sizeof(_searchDocs[0]) +
                maxSize * stored * sizeof(_storedValuesBuffer[0]);
     if (auto sortSize = _heapSort.size(); sortSize != 0) {
@@ -379,31 +285,25 @@ class IndexReadBuffer {
     return res;
   }
 
-  void setForParallelAccess(size_t atMost, size_t scores, size_t stored) {
+  void setForParallelAccess(size_t atMost, size_t stored) {
     _keyBuffer.resize(atMost);
     _searchDocs.resize(atMost);
-    _scoreBuffer.resize(atMost * scores,
+    _scoreBuffer.resize(atMost * _numScores,
                         std::numeric_limits<float_t>::quiet_NaN());
     _storedValuesBuffer.resize(atMost * stored);
   }
 
-  irs::score_t* getScoreBuffer(size_t idx) noexcept {
-    TRI_ASSERT(idx < _scoreBuffer.size());
-    return _scoreBuffer.data() + idx;
-  }
-
-  void preAllocateStoredValuesBuffer(size_t atMost, size_t scores,
-                                     size_t stored) {
+  void preAllocateStoredValuesBuffer(size_t atMost, size_t stored) {
     TRI_ASSERT(_storedValuesBuffer.empty());
     if (_keyBuffer.capacity() < atMost) {
-      auto newMemoryUsage = memoryUsage(atMost, scores, stored);
+      auto newMemoryUsage = memoryUsage(atMost, stored);
       auto tracked = _memoryTracker.tracked();
       if (newMemoryUsage > tracked) {
         _memoryTracker.increase(newMemoryUsage - tracked);
       }
       _keyBuffer.reserve(atMost);
       _searchDocs.reserve(atMost);
-      _scoreBuffer.reserve(atMost * scores);
+      _scoreBuffer.reserve(atMost * _numScores);
       if (!_heapSort.empty()) {
         _rows.reserve(atMost);
         _currentDocumentBuffer.reserve(_heapSort.size());
@@ -411,9 +311,9 @@ class IndexReadBuffer {
         // indexed access for setting values
         _storedValuesBuffer.resize(atMost * stored);
         _heapOnlyStoredValuesBuffer.resize(_heapOnlyColumnsCount * atMost);
-        if (!scores) {
+        if (!_numScores) {
           // save ourselves 1 "if" during pushing values
-          _scoreBuffer.push_back(irs::score_t{});
+          _scoreBuffer.emplace_back();
         }
       } else {
         _storedValuesBuffer.reserve(atMost * stored);
@@ -456,11 +356,11 @@ class IndexReadBuffer {
   // _keyBuffer, _scoreBuffer, _storedValuesBuffer together hold all the
   // information read from the iresearch index.
   // For the _scoreBuffer, it holds that
-  //   _scoreBuffer.size() == _keyBuffer.size() * infos().getNumScoreRegisters()
+  //   _scoreBuffer.size() == _keyBuffer.size() * _numScores
   // and all entries
   //   _scoreBuffer[i]
   // correspond to
-  //   _keyBuffer[i / getNumScoreRegisters()]
+  //   _keyBuffer[i / _numScores]
 
   template<typename ColumnReaderProvider>
   velocypack::Slice readHeapSortColumn(iresearch::HeapSortElement const& cmp,
@@ -469,7 +369,7 @@ class IndexReadBuffer {
                                        size_t readerSlot);
   template<bool fullHeap, typename ColumnReaderProvider>
   void finalizeHeapSortDocument(size_t idx, irs::doc_id_t doc,
-                                std::span<float_t const> scores,
+                                irs::score_t const* scores,
                                 ColumnReaderProvider& readerProvider);
 
   std::vector<ValueType> _keyBuffer;
@@ -492,12 +392,12 @@ class IndexReadBuffer {
   size_t _heapOnlyColumnsCount{0};
   size_t _currentReaderOffset{std::numeric_limits<size_t>::max()};
 
-  size_t _numScoreRegisters;
-  size_t _keyBaseIdx;
+  size_t _numScores;
+  size_t _keyBaseIdx{0};
   std::vector<size_t> _rows;
-  size_t _maxSize;
-  size_t _heapSizeLeft;
-  size_t _storedValuesCount;
+  size_t _maxSize{0};
+  size_t _heapSizeLeft{0};
+  size_t _storedValuesCount{0};
   ResourceUsageScope _memoryTracker;
 };
 
@@ -594,14 +494,12 @@ class IResearchViewExecutorBase {
   IResearchViewExecutorBase(Fetcher& fetcher, Infos&);
   ~IResearchViewExecutorBase() = default;
 
-  Infos const& infos() const noexcept { return _infos; }
-
   void fillScores(irs::score const& score) {
     TRI_ASSERT(Traits::Ordered);
 
     // Scorer registers are placed right before document output register.
     // Allocate block for scores (registerId's are sequential) and fill it.
-    score(_indexReadBuffer.pushNoneScores(infos().scoreRegistersCount()));
+    score(_indexReadBuffer.pushNoneScores());
   }
 
   template<typename Value>
@@ -637,7 +535,7 @@ class IResearchViewExecutorBase {
   FilterCtx _filterCtx;
   iresearch::ViewSnapshotPtr _reader;
   irs::proxy_filter::cache_ptr _cache;
-  irs::filter::prepared::ptr _filter;
+  irs::filter::prepared::ptr _filter = irs::filter::prepared::empty();
   irs::filter::prepared const** _filterCookie{};
   containers::SmallVector<irs::Scorer::ptr, 2> _scorersContainer;
   irs::Scorers _scorers;
@@ -691,7 +589,6 @@ class IResearchViewExecutor
     size_t currentSegmentPos{0};
     // total position for full snapshot
     size_t totalPos{0};
-    size_t numScores{0};
     size_t atMost{0};
     LogicalCollection const* collection{};
     iresearch::ViewSegment const* segment{};
@@ -817,9 +714,8 @@ class IResearchViewMergeExecutor
 
   struct Segment {
     Segment(irs::doc_iterator::ptr&& docs, irs::document const& doc,
-            irs::score const& score, size_t numScores,
-            irs::doc_iterator::ptr&& pkReader, size_t index,
-            irs::doc_iterator* sortReaderRef,
+            irs::score const& score, irs::doc_iterator::ptr&& pkReader,
+            size_t index, irs::doc_iterator* sortReaderRef,
             irs::payload const* sortReaderValue,
             irs::doc_iterator::ptr&& sortReader) noexcept;
     Segment(Segment const&) = delete;
@@ -830,7 +726,6 @@ class IResearchViewMergeExecutor
     irs::doc_iterator::ptr docs;
     irs::document const* doc{};
     irs::score const* score{};
-    size_t numScores{};
     ColumnIterator pkReader;
     size_t segmentIndex;  // first stored values index
     irs::doc_iterator* sortReaderRef;

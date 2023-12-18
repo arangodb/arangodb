@@ -533,9 +533,4 @@ bool IResearchDataStoreMeta::operator==(
   return true;
 }
 
-bool IResearchDataStoreMeta::operator!=(
-    IResearchDataStoreMeta const& other) const noexcept {
-  return !(*this == other);
-}
-
 }  // namespace arangodb::iresearch
