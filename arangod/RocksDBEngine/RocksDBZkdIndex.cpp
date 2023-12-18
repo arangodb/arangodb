@@ -557,9 +557,8 @@ auto zkd::supportsFilterCondition(
   }
 
   // TODO -- actually return costs
-  auto costs = Index::FilterCosts::defaultCosts(
-      /*itemsInIndex / extractedBounds.size()*/ 1);
-  costs.coveredAttributes = extractedBounds.size();
+  auto costs = Index::FilterCosts::defaultCosts(itemsInIndex);
+  costs.coveredAttributes = extractedBounds.size() + extractedPrefix.size();
   costs.supportsCondition = true;
   return costs;
 }
