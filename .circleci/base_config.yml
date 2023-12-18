@@ -353,6 +353,11 @@ jobs:
           name: "Configure"
           shell: powershell.exe
           command: |
+            $CCacheFolderName = "D:/CircleCI/ccache"
+            if ( -not (Test-Path $CCacheFolderName)) {
+                New-Item $CCacheFolderName -ItemType Directory
+                Write-Host "$($CCacheFolderName) Created successfully"
+            }
             mkdir build
             # make sure we have the latest image!
             docker pull arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.4-f3c77755ece
