@@ -158,7 +158,7 @@ function recoverySuite() {
         }
         require("internal").sleep(0.5);
       }
-      // Note: This is okay to be larger, as those are not consolidated docs, which can be the cause during recovery.
+      // Note: This is okay to be larger, as those are not consolidated docs, which can be the case during recovery.
       // The number live docs is the really visible amount of documents.s
       assertTrue(figures.numDocs >= 501, `Not enough documents seen ${figures.numDocs} >= 501`);
       assertEqual(figures.numLiveDocs, 501);
