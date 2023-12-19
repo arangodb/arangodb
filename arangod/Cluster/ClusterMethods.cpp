@@ -3221,16 +3221,18 @@ arangodb::Result restoreOnDBServers(network::ConnectionPool* pool,
 arangodb::Result applyDBServerMatchesToPlan(
     VPackSlice const plan, std::map<ServerID, ServerID> const& matches,
     VPackBuilder& newPlan) {
-  std::function<void(VPackSlice const, std::map<ServerID, ServerID> const&, bool)>
+  std::function<void(VPackSlice const, std::map<ServerID, ServerID> const&,
+                     bool)>
       replaceDBServer;
   /*
-   * This recursive function replaces all occurences of DBServer names with their
-   * handed replacement map.
-   * In Replication2 also remove the currentTerm entry, to enforce leader election.
+   * This recursive function replaces all occurences of DBServer names with
+   * their handed replacement map. In Replication2 also remove the currentTerm
+   * entry, to enforce leader election.
    */
   replaceDBServer = [&newPlan, &replaceDBServer](
                         VPackSlice const s,
-                        std::map<ServerID, ServerID> const& matches, bool inReplicatedLogs) {
+                        std::map<ServerID, ServerID> const& matches,
+                        bool inReplicatedLogs) {
     if (s.isObject()) {
       VPackObjectBuilder o(&newPlan);
       for (auto it : VPackObjectIterator(s)) {
