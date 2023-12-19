@@ -98,7 +98,7 @@ void arangodb::aql::batchMaterializeDocumentsRule(
 
     if (index->estimateCost().estimatedNrItems < 100) {
       LOG_RULE << "INDEX " << index->id() << " FAILED: "
-               << "estimated number of items to small";
+               << "estimated number of items too small";
       continue;
     }
 

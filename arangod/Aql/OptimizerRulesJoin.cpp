@@ -419,8 +419,6 @@ void findCandidates(IndexNode* indexNode,
         continue;
       } else if (parent->getType() == EN::MATERIALIZE) {
         // we can always move past materialize nodes
-        // auto mat =
-        // ExecutionNode::castTo<materialize::MaterializeNode*>(parent);
         parent = parent->getFirstParent();
         continue;
       } else if (parent->getType() == EN::INDEX) {
