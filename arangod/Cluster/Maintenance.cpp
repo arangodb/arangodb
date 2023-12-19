@@ -1672,6 +1672,7 @@ static void writeUpdateReplicatedLogLeader(
     VPackBuilder& report, replication2::LogId id, DatabaseID const& dbName,
     replication2::LogTerm localTerm,
     replication2::agency::LogCurrent::Leader const& leader) {
+  LOG_DEVEL << "Checkpoint Beta 1";
   // update Current/ReplicatedLogs/<dbname>/<logId>/leader/term with
   // currentTerm and precondition
   //  Plan/ReplicatedLogs/<dbname>/<logId>/term/term == currentTerm
@@ -1683,6 +1684,7 @@ static void writeUpdateReplicatedLogLeader(
                         ->leader()
                         ->str(SkipComponents(
                             1) /* skip first path component, i.e. 'arango' */);
+  LOG_DEVEL << "Checkpoint Beta 2";
   auto preconditionPath =
       aliases::plan()
           ->replicatedLogs()
@@ -1771,6 +1773,7 @@ static void writeUpdateReplicatedLogLocal(
   // and precondition
   //  Plan/ReplicatedLogs/<dbname>/<logId>/term/term == currentTerm
 
+  LOG_DEVEL << "Checkpoint charly 1";
   using namespace cluster::paths;
   auto reportPath = aliases::current()
                         ->replicatedLogs()
@@ -1780,6 +1783,7 @@ static void writeUpdateReplicatedLogLocal(
                         ->participant(serverId)
                         ->str(SkipComponents(
                             1) /* skip first path component, i.e. 'arango' */);
+  LOG_DEVEL << "Checkpoint charly 2";
   auto preconditionPath =
       aliases::plan()
           ->replicatedLogs()
@@ -1789,6 +1793,7 @@ static void writeUpdateReplicatedLogLocal(
           ->term()
           ->str(
               SkipComponents(1) /* skip first path component, i.e. 'arango' */);
+  LOG_DEVEL << "Checkpoint charly 3";
   report.add(VPackValue(reportPath));
   {
     VPackObjectBuilder o(&report);
@@ -1800,6 +1805,7 @@ static void writeUpdateReplicatedLogLocal(
       report.add(preconditionPath, VPackValue(localTerm));
     }
   }
+  LOG_DEVEL << "Checkpoint charly 4";
 }
 
 static void reportCurrentReplicatedLog(
@@ -1818,14 +1824,16 @@ static void reportCurrentReplicatedLog(
   if (!localTerm.has_value()) {
     return;
   }
-
+  LOG_DEVEL << "Checkpoint 1";
   // load current into memory
   auto current = std::invoke([&]() -> std::optional<LogCurrent> {
+    LOG_DEVEL << "Checkpoint 2";
     auto currentSlice = cur.get(cluster::paths::aliases::current()
                                     ->replicatedLogs()
                                     ->database(dbName)
                                     ->log(to_string(id))
                                     ->vec());
+    LOG_DEVEL << "Checkpoint 2.1";
     if (currentSlice.isNone()) {
       return std::nullopt;
     }
@@ -1835,6 +1843,7 @@ static void reportCurrentReplicatedLog(
   {
     auto localState = std::invoke([&]() -> LogCurrentLocalState const* {
       if (current.has_value()) {
+        LOG_DEVEL << "Checkpoint 3";
         if (auto iter = current->localState.find(serverId);
             iter != std::end(current->localState)) {
           return &iter->second;
@@ -1843,6 +1852,7 @@ static void reportCurrentReplicatedLog(
       return nullptr;
     });
 
+    LOG_DEVEL << "Checkpoint 4";
     if (auto result = reportCurrentReplicatedLogLocal(
             status, logStatus.server.rebootId, localState);
         result.has_value()) {
@@ -1852,6 +1862,7 @@ static void reportCurrentReplicatedLog(
   }
 
   {
+    LOG_DEVEL << "Checkpoint 5";
     if (status.role == replication2::replicated_log::ParticipantRole::kLeader) {
       auto currentLeader =
           std::invoke([&]() -> replication2::agency::LogCurrent::Leader const* {
@@ -1862,11 +1873,13 @@ static void reportCurrentReplicatedLog(
             }
             return nullptr;
           });
+      LOG_DEVEL << "Checkpoint 6";
       if (auto result =
               reportCurrentReplicatedLogLeader(status, serverId, currentLeader);
           result.has_value()) {
         writeUpdateReplicatedLogLeader(report, id, dbName, *localTerm, *result);
       }
+      LOG_DEVEL << "Checkpoint 7";
       if (auto result =
               reportCurrentReplicatedLogSafeRebootIds(status, current);
           result.has_value()) {
@@ -1894,7 +1907,6 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     ReplicatedLogStatusMapByDatabase const& localLogs,
     ShardIdToLogIdMapByDatabase const& localShardIdToLogId) {
   for (auto const& dbName : dirty) {
-    LOG_DEVEL << "Testing " << dbName;
     auto lit = local.find(dbName);
     VPackSlice ldb;
     if (lit == local.end()) {
@@ -1915,7 +1927,6 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       cur = cit->second->slice()[0];
     }
 
-    LOG_DEVEL << "Testing " << dbName << " checkpoint 1";
     auto& df = feature.server().getFeature<DatabaseFeature>();
     auto localDBExists = false;
     auto replicationVersion = std::invoke([&]() {
@@ -1951,7 +1962,6 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       std::vector<std::string> ppath{AgencyCommHelper::path(), PLAN,
                                      COLLECTIONS, dbName};
       TRI_ASSERT(pdb.isObject());
-      LOG_DEVEL << "Testing " << dbName << " checkpoint 2";
       if (!localDBExists) {
         // If the local database is not found, the replication version is
         // assumed to be ONE. As fallback, the following code checks for the
@@ -1966,20 +1976,16 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           }
         }
       }
-      LOG_DEVEL << "Testing " << dbName << " checkpoint 3";
       // Plan of this database's collections
       pdb = pdb.get(ppath);
       if (!pdb.isNone()) {
         shardMap = getShardMap(pdb);
       }
     }
-    LOG_DEVEL << "Testing " << dbName << " checkpoint 4";
     auto cdbpath = std::vector<std::string>{AgencyCommHelper::path(), CURRENT,
                                             DATABASES, dbName, serverId};
-    LOG_DEVEL << "Testing " << dbName << " checkpoint 5";
     if (ldb.isObject()) {
       if (cur.isNone() || (cur.isObject() && !cur.hasKey(cdbpath))) {
-        LOG_DEVEL << "Testing " << dbName << " checkpoint 5.1";
         auto const localDatabaseInfo =
             assembleLocalDatabaseInfo(df, dbName, allErrors);
         TRI_ASSERT(!localDatabaseInfo.slice().isNone());
@@ -1993,7 +1999,6 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           }
         }
       }
-      LOG_DEVEL << "Testing " << dbName << " checkpoint 5.2";
 
       auto shardsToLogs = replicationVersion == replication::Version::TWO
                               ? localShardIdToLogId.find(dbName)
@@ -2011,7 +2016,6 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         continue;
       }
 
-      LOG_DEVEL << "Testing " << dbName << " checkpoint 5.3";
       auto logs = replicationVersion == replication::Version::TWO
                       ? localLogs.find(dbName)
                       : std::end(localLogs);
@@ -2027,9 +2031,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         continue;
       }
 
-      LOG_DEVEL << "Testing " << dbName << " checkpoint 5.4";
       for (auto const& shard : VPackObjectIterator(ldb, true)) {
-        LOG_DEVEL << "Testing " << dbName << " checkpoint 5.5 for shard " << shard.key.toJson();
         auto const shName = ShardID{shard.key.stringView()};
         auto const shSlice = shard.value;
         TRI_ASSERT(shSlice.isObject());
@@ -2289,13 +2291,11 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     // UpdateCurrentForDatabases
     try {
       VPackSlice cdb;
-      LOG_DEVEL << "Testing " << dbName << " checkpoint 6";
       if (cur.isObject()) {
         cdbpath = std::vector<std::string>{AgencyCommHelper::path(), CURRENT,
                                            DATABASES, dbName};
         cdb = cur.get(cdbpath);
       }
-      LOG_DEVEL << "Testing " << dbName << " checkpoint 7";
 
       if (cdb.isObject()) {
         VPackSlice myEntry = cdb.get(serverId);
@@ -2329,7 +2329,6 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       throw;
     }
 
-    LOG_DEVEL << "Testing " << dbName << " checkpoint 8";
     // UpdateCurrentForCollections
     try {
       std::vector<std::string> curcolpath{AgencyCommHelper::path(), CURRENT,
@@ -2339,7 +2338,6 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         curcolls = cur.get(curcolpath);
       }
 
-      LOG_DEVEL << "Testing " << dbName << " checkpoint 8.1";
 
       // UpdateCurrentForCollections (Current/Collections/Collection)
       if (curcolls.isObject() && ldb.isObject()) {
@@ -2379,7 +2377,6 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       throw;
     }
 
-    LOG_DEVEL << "Testing " << dbName << " checkpoint 9";
     // UpdateReplicatedLogs
     try {
       if (auto logsIter = localLogs.find(dbName);
@@ -2396,7 +2393,6 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     }
   }  // next database
 
-  LOG_DEVEL << "Testing " << " checkpoint 11";
   // Let's find database errors for databases which do not occur in Local
   // but in Plan:
   try {
