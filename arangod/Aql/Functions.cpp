@@ -756,7 +756,8 @@ void extractKeys(containers::FlatHashSet<std::string>& names,
 
 /// @brief append the VelocyPack value to a string buffer
 ///        Note: Backwards compatibility. Is different than Slice.toJson()
-void appendAsString(VPackOptions const& vopts, velocypack::StringSink& buffer,
+template<typename T>
+void appendAsString(VPackOptions const& vopts, T& buffer,
                     AqlValue const& value) {
   AqlValueMaterializer materializer(&vopts);
   VPackSlice slice = materializer.slice(value);
@@ -1523,8 +1524,9 @@ void registerInvalidArgumentWarning(ExpressionContext* expressionContext,
 }  // namespace arangodb
 
 /// @brief append the VelocyPack value to a string buffer
-void functions::Stringify(VPackOptions const* vopts,
-                          velocypack::StringSink& buffer, VPackSlice slice) {
+template<typename T>
+void functions::Stringify(VPackOptions const* vopts, T& buffer,
+                          VPackSlice slice) {
   if (slice.isNull()) {
     // null is the empty string
     return;
@@ -1544,6 +1546,16 @@ void functions::Stringify(VPackOptions const* vopts,
   VPackDumper dumper(&buffer, &adjustedOptions);
   dumper.dump(slice);
 }
+
+template void functions::Stringify<arangodb::velocypack::StringSink>(
+    velocypack::Options const* vopts, arangodb::velocypack::StringSink& buffer,
+    arangodb::velocypack::Slice slice);
+
+template void
+functions::Stringify<arangodb::velocypack::SizeConstrainedStringSink>(
+    velocypack::Options const* vopts,
+    arangodb::velocypack::SizeConstrainedStringSink& buffer,
+    arangodb::velocypack::Slice slice);
 
 /// @brief function IS_NULL
 AqlValue functions::IsNull(ExpressionContext*, AstNode const&,
@@ -1652,6 +1664,79 @@ AqlValue functions::ToHex(ExpressionContext* expr, AstNode const&,
       basics::StringUtils::encodeHex(buffer->data(), buffer->length());
 
   return AqlValue(encoded);
+}
+
+AqlValue functions::ToChar(ExpressionContext* ctx, AstNode const&,
+                           VPackFunctionParametersView parameters) {
+  static char const* AFN = "TO_CHAR";
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+
+  int64_t v = -1;
+  if (ADB_UNLIKELY(value.isNumber())) {
+    v = value.toInt64();
+  }
+  if (v < 0) {
+    aql::registerInvalidArgumentWarning(ctx, AFN);
+    return aql::AqlValue{aql::AqlValueHintNull{}};
+  }
+
+  UChar32 c = static_cast<uint32_t>(v);
+  char buffer[6];
+  int32_t offset = 0;
+  U8_APPEND_UNSAFE(&buffer[0], offset, c);
+
+  return AqlValue(std::string_view(&buffer[0], static_cast<size_t>(offset)));
+}
+
+AqlValue functions::Repeat(ExpressionContext* ctx, AstNode const&,
+                           VPackFunctionParametersView parameters) {
+  static char const* AFN = "REPEAT";
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+
+  AqlValue const& repetitions = extractFunctionParameterValue(parameters, 1);
+  int64_t r = repetitions.toInt64();
+  if (r == 0) {
+    // empty string
+    return AqlValue(std::string_view("", 0));
+  }
+  if (r < 0) {
+    // negative number of repetitions
+    aql::registerInvalidArgumentWarning(ctx, AFN);
+    return aql::AqlValue{aql::AqlValueHintNull{}};
+  }
+
+  auto& trx = ctx->trx();
+
+  transaction::StringLeaser sepBuffer(&trx);
+  velocypack::StringSink sepAdapter(sepBuffer.get());
+  std::string_view separator;
+  if (parameters.size() > 2) {
+    // separator
+    ::appendAsString(trx.vpackOptions(), sepAdapter,
+                     extractFunctionParameterValue(parameters, 2));
+    separator = {sepBuffer->data(), sepBuffer->size()};
+  }
+
+  transaction::StringLeaser buffer(&trx);
+  velocypack::SizeConstrainedStringSink adapter(buffer.get(),
+                                                /*maxLength*/ 16 * 1024 * 1024);
+
+  for (int64_t i = 0; i < r; ++i) {
+    if (i > 0 && !separator.empty()) {
+      buffer->append(separator);
+    }
+    ::appendAsString(trx.vpackOptions(), adapter, value);
+    if (adapter.overflowed()) {
+      registerWarning(
+          ctx, AFN,
+          Result{TRI_ERROR_RESOURCE_LIMIT,
+                 "Output string of AQL REPEAT function was limited to 16MB."});
+      return AqlValue(AqlValueHintNull());
+    }
+  }
+
+  // hand over string to AqlValue
+  return AqlValue(std::string_view(buffer->data(), buffer->size()));
 }
 
 /// @brief function ENCODE_URI_COMPONENT
