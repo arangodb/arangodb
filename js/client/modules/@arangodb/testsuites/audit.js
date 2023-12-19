@@ -26,7 +26,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  // 'audit_server': 'audit log tests executed on server',
+  'audit_server': 'audit log tests executed on server',
   'audit_client': 'audit log tests executed in client'
 };
 
@@ -48,7 +48,7 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const testPaths = {
-  // audit_server: [tu.pathForTesting('common/audit'), tu.pathForTesting('server/audit')],
+  audit_server: [tu.pathForTesting('common/audit'), tu.pathForTesting('server/audit')],
   audit_client: [tu.pathForTesting('common/audit'), tu.pathForTesting('client/audit')]
 };
 
@@ -91,13 +91,17 @@ function auditLog(onServer) {
 
     print(CYAN + 'Audit log server tests...' + RESET);
     let testCases = tu.scanTestPaths(testPaths['audit_' + (onServer ? 'server' : 'client')], options);
-    return new tu.runInArangoshRunner(options, 'audit', serverOptions).run(testCases);
+    if (onServer) {
+      return new runBasicOnArangod(options, 'audit', serverOptions).run(testCases);
+    } else {
+      return new tu.runInArangoshRunner(options, 'audit', serverOptions).run(testCases);
+    }
   };
 }
 
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
-  // testFns['audit_server'] = auditLog(true);
+  testFns['audit_server'] = auditLog(true);
   testFns['audit_client'] = auditLog(false);
 
   // only enable them in Enterprise Edition
