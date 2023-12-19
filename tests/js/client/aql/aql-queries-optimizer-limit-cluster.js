@@ -202,7 +202,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
         assertEqual([ "SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "LimitNode", "ReturnNode" ], explain(query));
       }
     },
-      
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check limit optimization for non-collection access, limit 0
 ////////////////////////////////////////////////////////////////////////////////
@@ -394,7 +394,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
         assertEqual([ "SingletonNode", "CalculationNode", "EnumerateListNode", "LimitNode", "ReturnNode" ], explain(query, {}, options));
       }
     },
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check limit optimization for full collection access, limit > 0 and
 /// filter conditions
@@ -436,7 +436,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 
         var actual = getQueryResults(query);
         assertEqual(test.expectedLength, actual.length);
-     
+
         assertEqual([ "SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "LimitNode", "ReturnNode" ], explain(query));
       }
     },
@@ -482,7 +482,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 
         var actual = getQueryResults(query);
         assertEqual(test.expectedLength, actual.length);
-      
+
         assertEqual([ "SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "LimitNode", "ReturnNode" ], explain(query));
       }
     },
@@ -520,7 +520,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       assertEqual(29, actual[9].value);
 
       // RocksDB PersistentIndex can be used for range queries.
-      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "RemoteNode", "GatherNode", "LimitNode", "SortNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "MaterializeNode", "CalculationNode", "RemoteNode", "GatherNode", "LimitNode", "SortNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -539,7 +539,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       assertEqual(29, actual[9].value);
 
       // RocksDB PersistentIndex can be used for range queries.
-      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "RemoteNode", "GatherNode", "LimitNode", "SortNode", "ReturnNode" ], explain(query));
+      assertEqual(["SingletonNode", "IndexNode", "MaterializeNode", "CalculationNode", "RemoteNode", "GatherNode", "LimitNode", "SortNode", "ReturnNode",], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -585,7 +585,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 
       var actual = getQueryResults(query);
       assertEqual(0, actual.length);
-     
+
       assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "LimitNode", "CalculationNode",
 	                "RemoteNode", "GatherNode", "LimitNode", "FilterNode", "ReturnNode" ], explain(query));
     },
@@ -594,7 +594,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 
       var actual = getQueryResults(query);
       assertEqual(0, actual.length);
-     
+
       assertEqual([ "SingletonNode", "EnumerateCollectionNode", "SortNode", "LimitNode", "CalculationNode",
 	                "RemoteNode", "GatherNode", "LimitNode", "FilterNode", "ReturnNode" ], explain(query));
     },
@@ -613,7 +613,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       assertEqual(21, actual[1].value);
       assertEqual(22, actual[2].value);
       assertEqual(29, actual[9].value);
-        
+
       assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "LimitNode", "RemoteNode", "GatherNode", "LimitNode", "ReturnNode" ], explain(query));
     },
 

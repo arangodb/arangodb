@@ -82,8 +82,8 @@ function BaseTestConfig () {
       db[cn].ensureIndex({ type: "persistent", fields: ["pid", "dt", "uid", "other4"] });
       
       [
-        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 FILTER doc.dt == 1234 FILTER doc.uid == 1234 RETURN doc`, ["pid", "dt", "uid", "other4"], "document" ],
-        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 FILTER doc.dt == 1234 FILTER doc.uid == 1234 SORT doc.other5 RETURN doc`, ["pid", "dt", "uid", "other4"], "document" ],
+        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 FILTER doc.dt == 1234 FILTER doc.uid == 1234 RETURN doc`, ["pid", "dt", "uid", "other4"]],
+        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 FILTER doc.dt == 1234 FILTER doc.uid == 1234 SORT doc.other5 RETURN doc`, ["pid", "dt", "uid", "other4"]],
       ].forEach((q) => {
         let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -93,7 +93,8 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(q[1], index.fields, q);
-        assertEqual(q[2], indexNode.strategy);
+        const expectedStrat = indexNode.estimatedNrItems >= 100 ? "late materialized" : "document";
+        assertEqual(expectedStrat, indexNode.strategy);
       });
     },
     
@@ -108,13 +109,13 @@ function BaseTestConfig () {
       db[cn].ensureIndex({ type: "persistent", fields: ["dt", "other"] });
       db[cn].ensureIndex({ type: "persistent", fields: ["uid", "other"] });
       db[cn].ensureIndex({ type: "persistent", fields: ["uid", "other", "pid"] });
-     
+
       [
-        [ `FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN doc`, ["uid", "pid", "dt"], "document" ],
-        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 RETURN doc`, ["pid", "dt"], "document" ],
-        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 && doc.uid == 1234 RETURN doc`, ["uid", "pid", "dt"], "document" ],
-        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 && doc.dt == 1234 RETURN doc`, ["pid", "dt"], "document" ],
-        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 && doc.dt == 1234 && doc.uid == 1234 RETURN doc`, ["uid", "pid", "dt"], "document" ],
+        [ `FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN doc`, ["uid", "pid", "dt"] ],
+        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 RETURN doc`, ["pid", "dt"] ],
+        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 && doc.uid == 1234 RETURN doc`, ["uid", "pid", "dt"] ],
+        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 && doc.dt == 1234 RETURN doc`, ["pid", "dt"] ],
+        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 && doc.dt == 1234 && doc.uid == 1234 RETURN doc`, ["uid", "pid", "dt"] ],
       ].forEach((q) => {
         let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -124,7 +125,8 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(q[1], index.fields, q);
-        assertEqual(q[2], indexNode.strategy);
+        const expectedStrat = indexNode.estimatedNrItems > 100 ? "late materialized" : "document";
+        assertEqual(expectedStrat, indexNode.strategy);
       });
     },
     
@@ -132,9 +134,9 @@ function BaseTestConfig () {
       db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
       
       [
-        [`FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN doc`, "document"],
-        [`FOR doc IN ${cn} FILTER doc.uid > 1234 RETURN doc`, "document"],
-        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN doc`],
+        [`FOR doc IN ${cn} FILTER doc.uid > 1234 RETURN doc`],
+        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 RETURN doc`],
       ].forEach((q) => {
         let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -145,7 +147,8 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(["uid"], index.fields);
-        assertEqual(q[1], indexNode.strategy);
+        const expectedStrat = indexNode.estimatedNrItems >= 100 ? "late materialized" : "document";
+        assertEqual(expectedStrat, indexNode.strategy);
       });
     },
     
@@ -175,9 +178,9 @@ function BaseTestConfig () {
       db[cn].ensureIndex({ type: "persistent", fields: ["uid", "dt"] });
       
       [
-        [`FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN doc`, "document"],
-        [`FOR doc IN ${cn} FILTER doc.uid > 1234 RETURN doc`, "document"],
-        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN doc`],
+        [`FOR doc IN ${cn} FILTER doc.uid > 1234 RETURN doc`],
+        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 RETURN doc`],
       ].forEach((q) => {
         let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -191,7 +194,8 @@ function BaseTestConfig () {
         // so it always picks the "longer" of the 2 indexes here in case everything
         // else is equal
         assertEqual(["uid", "dt"], index.fields);
-        assertEqual(q[1], indexNode.strategy);
+        const expectedStrat = indexNode.estimatedNrItems >= 100 ? "late materialized" : "document";
+        assertEqual(expectedStrat, indexNode.strategy);
       });
     },
     
@@ -341,7 +345,8 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(["uid", "dt"], index.fields);
-        assertEqual(q[1], indexNode.strategy);
+        const expectedStrat = indexNode.estimatedNrItems >= 100 ? "late materialized" : "document";
+        assertEqual(expectedStrat, indexNode.strategy);
       });
     },
     
@@ -423,8 +428,8 @@ function BaseTestConfig () {
       
       [
         [`FOR doc IN ${cn} FILTER doc.uid == 1234 SORT doc.dt RETURN doc`, "document"],
-        [`FOR doc IN ${cn} FILTER doc.uid > 1234 SORT doc.dt RETURN doc`, "document"],
-        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 SORT doc.dt RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid > 1234 SORT doc.dt RETURN doc`, "late materialized"],
+        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 SORT doc.dt RETURN doc`, "late materialized"],
       ].forEach((q) => {
         let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -445,8 +450,8 @@ function BaseTestConfig () {
       
       [
         [`FOR doc IN ${cn} FILTER doc.uid == 1234 SORT doc.uid RETURN doc`, "document"],
-        [`FOR doc IN ${cn} FILTER doc.uid > 1234 SORT doc.uid RETURN doc`, "document"],
-        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 SORT doc.uid RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid > 1234 SORT doc.uid RETURN doc`, "late materialized"],
+        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 SORT doc.uid RETURN doc`, "late materialized"],
       ].forEach((q) => {
         let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -467,7 +472,7 @@ function BaseTestConfig () {
       db[cn].ensureIndex({ type: "persistent", fields: ["uid", "dt"] });
       
       [
-        [`FOR doc IN ${cn} FILTER doc.uid == 1234 SORT doc.dt RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 SORT doc.dt RETURN doc`],
       ].forEach((q) => {
         let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -479,12 +484,13 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(["uid", "dt"], index.fields);
-        assertEqual(q[1], indexNode.strategy);
+        const expectedStrat = indexNode.estimatedNrItems >= 100 ? "late materialized" : "document";
+        assertEqual(expectedStrat, indexNode.strategy);
       });
 
       [
-        [`FOR doc IN ${cn} FILTER doc.uid > 1234 SORT doc.dt RETURN doc`, "document"],
-        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 SORT doc.dt RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid > 1234 SORT doc.dt RETURN doc`, "late materialized"],
+        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 SORT doc.dt RETURN doc`, "late materialized"],
       ].forEach((q) => {
         let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -524,10 +530,10 @@ function BaseTestConfig () {
       });
       
       [
-        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 SORT doc.dt RETURN doc`, "document"],
-        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 SORT doc.dt RETURN doc`, "document"],
-        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt <= 1234 SORT doc.dt RETURN doc`, "document"],
-        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 && doc.dt < 9999 SORT doc.dt RETURN doc`, "document"],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 SORT doc.dt RETURN doc`],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 SORT doc.dt RETURN doc`],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt <= 1234 SORT doc.dt RETURN doc`],
+        [`FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 && doc.dt < 9999 SORT doc.dt RETURN doc`],
       ].forEach((q) => {
         let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -539,7 +545,8 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(["uid", "dt"], index.fields);
-        assertEqual(q[1], indexNode.strategy);
+        const expectedStrat = indexNode.estimatedNrItems >= 100 ? "late materialized" : "document";
+        assertEqual(expectedStrat, indexNode.strategy);
       });
 
       [
@@ -685,7 +692,7 @@ function BaseTestConfig () {
         assertEqual(2, indexNode.condition.subNodes[0].subNodes.length);
         // since the index covers all conditions, the filter should be completely removed
         assertEqual(0, nodes.filter((n) => n.type === 'FilterNode').length);
-        assertEqual("document", indexNode.strategy);
+        assertEqual("late materialized", indexNode.strategy);
       });
     },
     

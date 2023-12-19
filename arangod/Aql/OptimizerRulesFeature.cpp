@@ -793,6 +793,12 @@ as possible if the involved attributes are covered by the View index.)");
                R"(Try to read from collections as late as possible if the
 involved attributes are covered by regular indexes.)");
 
+  // apply late materialization for index queries
+  registerRule("batch-materialize-documents", batchMaterializeDocumentsRule,
+               OptimizerRule::batchMaterializeDocumentsRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Batch document lookup from indexes.)");
+
 #ifdef USE_ENTERPRISE
   // apply late materialization for offset infos
   registerRule("late-materialization-offset-info",
