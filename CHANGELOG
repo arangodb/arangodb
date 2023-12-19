@@ -1,7 +1,7 @@
 devel
 -----
 
-* Upgraded bundled version of RocksDB to 8.8.
+* Upgraded bundled version of RocksDB to 8.10.
 
 * Optimize equality lookups and prefix matches that use the AQL like function.
   The optimization will turn `LIKE(doc.attribute, 'fixed string')` into an
