@@ -77,6 +77,10 @@ function replicationIntermediateCommitsSuite() {
     },
     
     testFollowerDoesIntermediateCommits: function () {
+      if (db._properties().replicationVersion === "2") {
+        // this test is only relevant for replication 1
+        return;
+      }
       let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
       let [shardId, [leader, follower]] = getEndpoints();
 

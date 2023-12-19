@@ -746,7 +746,7 @@ void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   _options->toVelocyPackIndexes(nodes);
 }
 
-void GraphNode::graphCloneHelper(ExecutionPlan&, GraphNode& clone, bool) const {
+void GraphNode::graphCloneHelper(ExecutionPlan&, GraphNode& clone) const {
   clone._isSmart = _isSmart;
   clone._isDisjoint = _isDisjoint;
   clone._enabledClusterOneShardRule = _enabledClusterOneShardRule;

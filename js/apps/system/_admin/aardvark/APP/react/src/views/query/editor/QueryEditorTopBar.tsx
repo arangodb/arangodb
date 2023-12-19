@@ -43,6 +43,7 @@ export const QueryEditorTopBar = () => {
     onOpen: onOpenDebugPackageModal,
     onClose: onCloseDebugPackageModal
   } = useDisclosure();
+  const version = window.versionHelper.getDocuVersion();
   return (
     <Flex
       gap="2"
@@ -71,7 +72,9 @@ export const QueryEditorTopBar = () => {
         </Button>
       )}
       <Flex marginLeft="auto" gap="4" alignItems="center">
-        <ExternalLink href="https://www.arangodb.com/docs/stable/http/aql-query.html#create-a-cursor">
+        <ExternalLink
+          href={`https://docs.arangodb.com/${version}/develop/http-api/queries/aql-queries/#create-a-cursor`}
+        >
           Docs
         </ExternalLink>
         <Tooltip label="Create debug package">
