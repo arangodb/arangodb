@@ -458,6 +458,12 @@ class instance {
         this.args['cluster.default-replication-factor'] = (platform.substr(0, 3) === 'win') ? '1':'2';
       }
     }
+    if (!this.args.hasOwnProperty("default-language")) {
+      // set deterministic locale value for all tests.
+      // otherwise tests that depend on sort order/collation may
+      // behave differently on different platforms
+      this.args['default-language'] = 'en_US';
+    }
     if (this.args.hasOwnProperty('server.jwt-secret')) {
       this.JWT = this.args['server.jwt-secret'];
     }
