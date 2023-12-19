@@ -32,9 +32,14 @@ SatelliteDistribution::SatelliteDistribution() {
   _shardToServerMapping.reserve(1);
 }
 
-Result SatelliteDistribution::planShardsOnServers(
+auto SatelliteDistribution::checkDistributionPossible(
+    std::vector<ServerID>& availableServers) -> Result {
+  return {};
+}
+
+auto SatelliteDistribution::planShardsOnServers(
     std::vector<ServerID> availableServers,
-    std::unordered_set<ServerID>& serversPlanned) {
+    std::unordered_set<ServerID>& serversPlanned) -> Result {
   // Caller needs to ensure we have something to place shards on
   TRI_ASSERT(!availableServers.empty());
   _shardToServerMapping.clear();

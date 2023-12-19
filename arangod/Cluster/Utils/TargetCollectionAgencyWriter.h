@@ -65,7 +65,8 @@ struct TargetCollectionAgencyWriter {
       AgencyCache& agencyCache) const;
 
   [[nodiscard]] ResultT<velocypack::Buffer<uint8_t>> prepareCreateTransaction(
-      std::string_view databaseName) const;
+      std::string_view databaseName,
+      std::vector<ServerID> const& availableServers) const;
 
   [[nodiscard]] std::vector<std::string> collectionNames() const;
 

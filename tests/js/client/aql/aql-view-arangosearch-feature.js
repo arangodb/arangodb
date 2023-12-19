@@ -2191,13 +2191,19 @@ function iResearchFeatureAqlTestSuite () {
           assertEqual(1, result.length);
           assertEqual(16, result[0][0].length);
 
-          const expected = [
+          // old ICU generates this
+          const expected1 = [
             39, 6,  1158, 6, 120, 16, 1090, 26, 12,
             1, 12, 1, 1862, 1537, 1862, 1862];
 
+          // new ICU generates this
+          const expected2 = [
+            39, 6,  1158, 6, 120, 16, 1090, 26, 12,
+            1, 12, 1, 1731, 1537, 1731, 1731 ];
+
           const actual = result[0][0].split('').map(c => c.charCodeAt(0));
           assertTrue(
-            _.isEqual(expected, actual), {expected, actual});
+            _.isEqual(expected1, actual) || _.isEqual(expected2, actual), {expected1, expected2, actual});
         } finally {
           analyzers.remove(analyzerName, true);
         }
