@@ -42,6 +42,7 @@
 #include <string_view>
 #include <type_traits>
 #include <vector>
+#include <span>
 
 namespace arangodb {
 namespace transaction {
@@ -206,6 +207,17 @@ class PhysicalCollection {
                         IndexIterator::DocumentCallback const& cb,
                         LookupOptions options,
                         StorageSnapshot const* snapshot = nullptr) const = 0;
+
+  using MultiDocumentCallback =
+      fu2::function<bool(Result, LocalDocumentId token,
+                         aql::DocumentData&& data, VPackSlice doc) const>;
+
+  /// @brief looks up multiple documents. A result value is passed in for each
+  /// read document. `data` and `doc` are only valid if the result is ok.
+  virtual Result lookup(transaction::Methods* trx,
+                        std::span<LocalDocumentId> tokens,
+                        MultiDocumentCallback const& cb,
+                        LookupOptions options) const = 0;
 
   virtual Result insert(transaction::Methods& trx,
                         IndexesSnapshot const& indexesSnapshot,
