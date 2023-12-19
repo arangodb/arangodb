@@ -5598,6 +5598,7 @@ void ClusterInfo::syncWaitForAllLogsToEstablishALeader() {
   while (true) {
     READ_LOCKER(readLocker, _planProt.lock);
     bool foundLogWithoutLeader = false;
+    LOG_DEVEL << "Testing: " _replicatedLogs.size() << " logs";
     for (auto const& [id, log] : _replicatedLogs) {
       if (!log->currentTerm.has_value() ||
           !log->currentTerm->leader.has_value()) {
