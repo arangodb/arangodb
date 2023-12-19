@@ -510,11 +510,20 @@ function ahuacatlProfilerTestSuite() {
       const query = `FOR d IN @@col FILTER d.value <= 10 RETURN d`;
 
       const genNodeList = (rows, batches) => {
-        return [
-          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
-          {type: IndexBlock, calls: 1, items: Math.min(rows, 10), filtered: 0},
-          {type: ReturnBlock, calls: 1, items: Math.min(rows, 10), filtered: 0}
-        ];
+        if (rows >= 100) {
+          return [
+            {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+            {type: IndexBlock, calls: 1, items: Math.min(rows, 10), filtered: 0},
+            {type: MaterializeBlock, calls: 1, items: Math.min(rows, 10), filtered: 0},
+            {type: ReturnBlock, calls: 1, items: Math.min(rows, 10), filtered: 0}
+          ];
+        } else {
+          return [
+            {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+            {type: IndexBlock, calls: 1, items: Math.min(rows, 10), filtered: 0},
+            {type: ReturnBlock, calls: 1, items: Math.min(rows, 10), filtered: 0}
+          ];
+        }
       };
       profHelper.runDefaultChecks(
         {query, genNodeList, prepare, bind}
