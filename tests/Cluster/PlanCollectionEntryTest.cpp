@@ -58,6 +58,11 @@ struct TestShardDistribution : public IShardDistributionFactory {
     }
   }
 
+  auto checkDistributionPossible(std::vector<ServerID>& availableServers)
+      -> Result override {
+    return {};
+  }
+
   auto planShardsOnServers(std::vector<ServerID>,
                            std::unordered_set<ServerID>& serversPlanned)
       -> Result override {

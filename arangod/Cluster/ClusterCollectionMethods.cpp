@@ -440,13 +440,11 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
 Result impl(ClusterInfo& ci, ArangodServer& server,
             std::string_view databaseName, TargetCollectionAgencyWriter& writer,
             bool waitForSyncReplication) {
-  AgencyComm ac(server);
-  double pollInterval = ci.getPollInterval();
-  AgencyCallbackRegistry& callbackRegistry = ci.agencyCallbackRegistry();
+  std::vector<ServerID> availableServers = ci.getCurrentDBServers();
 
   // TODO Timeout?
-  std::vector<std::string> collectionNames = writer.collectionNames();
-  auto buildingTransaction = writer.prepareCreateTransaction(databaseName);
+  auto buildingTransaction =
+      writer.prepareCreateTransaction(databaseName, availableServers);
   if (buildingTransaction.fail()) {
     return buildingTransaction.result();
   }
@@ -456,6 +454,7 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
 
   std::vector<std::pair<std::shared_ptr<AgencyCallback>, std::string>>
       callbackList;
+  AgencyCallbackRegistry& callbackRegistry = ci.agencyCallbackRegistry();
   auto unregisterCallbacksGuard =
       scopeGuard([&callbackList, &callbackRegistry]() noexcept {
         try {
@@ -486,6 +485,7 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
   AsyncAgencyComm aac;
   // TODO do we need to handle Error message (thenError?)
 
+  double pollInterval = ci.getPollInterval();
   auto future =
       aac.sendWriteTransaction(120s, std::move(buildingTransaction.get()))
           .thenValue(::reactToPreconditionsCreate)
