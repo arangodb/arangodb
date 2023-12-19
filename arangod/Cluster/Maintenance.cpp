@@ -1894,6 +1894,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     ReplicatedLogStatusMapByDatabase const& localLogs,
     ShardIdToLogIdMapByDatabase const& localShardIdToLogId) {
   for (auto const& dbName : dirty) {
+    LOG_DEVEL << "Testing " << dbName;
     auto lit = local.find(dbName);
     VPackSlice ldb;
     if (lit == local.end()) {
@@ -1914,6 +1915,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       cur = cit->second->slice()[0];
     }
 
+    LOG_DEVEL << "Testing " << dbName << " checkpoint 1";
     auto& df = feature.server().getFeature<DatabaseFeature>();
     auto localDBExists = false;
     auto replicationVersion = std::invoke([&]() {
@@ -1949,7 +1951,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       std::vector<std::string> ppath{AgencyCommHelper::path(), PLAN,
                                      COLLECTIONS, dbName};
       TRI_ASSERT(pdb.isObject());
-
+      LOG_DEVEL << "Testing " << dbName << " checkpoint 2";
       if (!localDBExists) {
         // If the local database is not found, the replication version is
         // assumed to be ONE. As fallback, the following code checks for the
@@ -1964,19 +1966,20 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           }
         }
       }
-
+      LOG_DEVEL << "Testing " << dbName << " checkpoint 3";
       // Plan of this database's collections
       pdb = pdb.get(ppath);
       if (!pdb.isNone()) {
         shardMap = getShardMap(pdb);
       }
     }
-
+    LOG_DEVEL << "Testing " << dbName << " checkpoint 4";
     auto cdbpath = std::vector<std::string>{AgencyCommHelper::path(), CURRENT,
                                             DATABASES, dbName, serverId};
-
+    LOG_DEVEL << "Testing " << dbName << " checkpoint 5";
     if (ldb.isObject()) {
       if (cur.isNone() || (cur.isObject() && !cur.hasKey(cdbpath))) {
+        LOG_DEVEL << "Testing " << dbName << " checkpoint 5.1";
         auto const localDatabaseInfo =
             assembleLocalDatabaseInfo(df, dbName, allErrors);
         TRI_ASSERT(!localDatabaseInfo.slice().isNone());
@@ -1990,6 +1993,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           }
         }
       }
+      LOG_DEVEL << "Testing " << dbName << " checkpoint 5.2";
 
       auto shardsToLogs = replicationVersion == replication::Version::TWO
                               ? localShardIdToLogId.find(dbName)
@@ -2007,6 +2011,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         continue;
       }
 
+      LOG_DEVEL << "Testing " << dbName << " checkpoint 5.3";
       auto logs = replicationVersion == replication::Version::TWO
                       ? localLogs.find(dbName)
                       : std::end(localLogs);
@@ -2022,7 +2027,9 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         continue;
       }
 
+      LOG_DEVEL << "Testing " << dbName << " checkpoint 5.4";
       for (auto const& shard : VPackObjectIterator(ldb, true)) {
+        LOG_DEVEL << "Testing " << dbName << " checkpoint 5.5 for shard " << shard.key.toJson();
         auto const shName = ShardID{shard.key.stringView()};
         auto const shSlice = shard.value;
         TRI_ASSERT(shSlice.isObject());
@@ -2282,11 +2289,13 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     // UpdateCurrentForDatabases
     try {
       VPackSlice cdb;
+      LOG_DEVEL << "Testing " << dbName << " checkpoint 6";
       if (cur.isObject()) {
         cdbpath = std::vector<std::string>{AgencyCommHelper::path(), CURRENT,
                                            DATABASES, dbName};
         cdb = cur.get(cdbpath);
       }
+      LOG_DEVEL << "Testing " << dbName << " checkpoint 7";
 
       if (cdb.isObject()) {
         VPackSlice myEntry = cdb.get(serverId);
@@ -2320,6 +2329,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       throw;
     }
 
+    LOG_DEVEL << "Testing " << dbName << " checkpoint 8";
     // UpdateCurrentForCollections
     try {
       std::vector<std::string> curcolpath{AgencyCommHelper::path(), CURRENT,
@@ -2328,6 +2338,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       if (cur.isObject() && cur.hasKey(curcolpath)) {
         curcolls = cur.get(curcolpath);
       }
+
+      LOG_DEVEL << "Testing " << dbName << " checkpoint 8.1";
 
       // UpdateCurrentForCollections (Current/Collections/Collection)
       if (curcolls.isObject() && ldb.isObject()) {
@@ -2367,6 +2379,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       throw;
     }
 
+    LOG_DEVEL << "Testing " << dbName << " checkpoint 9";
     // UpdateReplicatedLogs
     try {
       if (auto logsIter = localLogs.find(dbName);
@@ -2383,6 +2396,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     }
   }  // next database
 
+  LOG_DEVEL << "Testing " << dbName << " checkpoint 10";
   // Let's find database errors for databases which do not occur in Local
   // but in Plan:
   try {
