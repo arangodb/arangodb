@@ -2396,7 +2396,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     }
   }  // next database
 
-  LOG_DEVEL << "Testing " << dbName << " checkpoint 10";
+  LOG_DEVEL << "Testing " << " checkpoint 11";
   // Let's find database errors for databases which do not occur in Local
   // but in Plan:
   try {
