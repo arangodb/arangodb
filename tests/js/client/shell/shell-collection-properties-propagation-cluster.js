@@ -105,6 +105,11 @@ function CollectionPropertiesPropagationSuite() {
     },
     
     testCreateOtherWithDifferentWriteConcern : function () {
+      if (db._properties().replicationVersion === "2") {
+        // in replication 2 the writeConcern is associated with the log (i.e., with the collection group),
+        // so we cannot create a collection with a different writeConcern
+        return;
+      }
       let c = db._create(other, { distributeShardsLike: proto, writeConcern: 1 });
 
       let p = c.properties();
@@ -177,12 +182,20 @@ function CollectionPropertiesPropagationSuite() {
         assertEqual(3, p[s].replicationFactor, {s, p});
       });
 
-      // dependent collection won't see the replicationFactor update
       p = c.properties();
       assertEqual(proto, p.distributeShardsLike);
-      assertEqual(3, p.replicationFactor);
-
-      // nor do its shards
+      let expectedRF;
+      if (db._properties().replicationVersion === "2") {
+        // with replication 2, the collection's replicationFactor is tied to the replicationFactor
+        // of the collection group, so it will report the correct value#
+        assertEqual(2, p.replicationFactor, p);
+      } else {
+        // with replication1, dependent collection won't see the replicationFactor update
+        assertEqual(3, p.replicationFactor, p);
+      }
+      
+      // the individual shards currently do not report the updated replicationFactor,
+      // neither for replication 1 nor 2
       p = propertiesOnDBServers(c);
       keys = Object.keys(p);
       assertTrue(keys.length > 0);

@@ -1,5 +1,7 @@
 devel
 -----
+* Fixed issue #17673: Adds timezone conversion as an optional parameter in
+  all relevant date functions.
 
 * Make AQL optimizer rule `move-filters-into-enumerate` also move filters into
   EnumerateListNodes for early pruning. Previously it could only pull filters 
