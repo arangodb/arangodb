@@ -34,6 +34,7 @@ namespace std_coro = std;
 #include "Basics/Result.h"
 #include "Promise.h"
 #include "Try.h"
+#include "Utils/ExecContext.h"
 
 namespace arangodb::futures {
 template<typename T>
@@ -43,10 +44,12 @@ struct FutureAwaitable {
   [[nodiscard]] auto await_ready() const noexcept -> bool { return false; }
   bool await_suspend(std_coro::coroutine_handle<> coro) noexcept {
     // returning false resumes `coro`
+    _execContext = &ExecContext::current();
     std::move(_future).thenFinal(
         [coro, this](futures::Try<T>&& result) mutable noexcept {
           _result = std::move(result);
           if (_counter.fetch_sub(1) == 1) {
+            ExecContextScope exec(_execContext);
             coro.resume();
           }
         });
@@ -59,6 +62,7 @@ struct FutureAwaitable {
   std::atomic_uint8_t _counter{2};
   Future<T> _future;
   std::optional<futures::Try<T>> _result;
+  ExecContext const* _execContext;
 };
 
 template<typename T>
@@ -70,10 +74,13 @@ template<typename T, typename F>
 struct FutureTransformAwaitable : F {
   [[nodiscard]] auto await_ready() const noexcept -> bool { return false; }
   bool await_suspend(std_coro::coroutine_handle<> coro) noexcept {
+    // returning false resumes `coro`
+    _execContext = &ExecContext::current();
     std::move(_future).thenFinal(
         [coro, this](futures::Try<T>&& result) noexcept {
           _result = F::operator()(std::move(result));
           if (_counter.fetch_sub(1) == 1) {
+            ExecContextScope exec(_execContext);
             coro.resume();
           }
         });
@@ -91,6 +98,7 @@ struct FutureTransformAwaitable : F {
   std::atomic_uint8_t _counter{2};
   Future<T> _future;
   std::optional<ResultType> _result;
+  ExecContext const* _execContext;
 };
 
 template<typename T>
