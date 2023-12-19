@@ -332,6 +332,10 @@ else ()
     string(REGEX REPLACE "-f(no-)?sanitize-[^ ]+" "" V8_CFLAGS ${V8_CFLAGS})
     string(REGEX REPLACE "-f(no-)?sanitize-[^ ]+" "" V8_CXXFLAGS ${V8_CXXFLAGS})
   endif ()
+  # remove -Werror from compile options if it is set, we do not want to turn
+  # any warning in the compilation of V8 into an error
+  string(REGEX REPLACE "-Werror( |$)" "" V8_CFLAGS ${V8_CXXFLAGS})
+  string(REGEX REPLACE "-Werror( |$)" "" V8_CXXFLAGS ${V8_CXXFLAGS})
 
   set(V8_LDFLAGS    "${CMAKE_EXE_LINKER_FLAGS} $ENV{V8_LDFLAGS}")
 
