@@ -3593,15 +3593,6 @@ void Supervision::checkUndoLeaderChangeActions() {
         return Result{TRI_ERROR_BAD_PARAMETER, "server missing"};
       }
 
-      if (!isReplication2(*database)) {
-        auto result = Result{TRI_ERROR_BAD_PARAMETER,
-                             "reconfigureReplicatedLog "
-                             "job for non-replication2 "
-                             "database"};
-        TRI_ASSERT(false) << result;
-        return result;
-      }
-
       auto logId = replication2::LogId::fromString(id);
       if (!logId.has_value()) {
         auto result = Result{TRI_ERROR_BAD_PARAMETER,
