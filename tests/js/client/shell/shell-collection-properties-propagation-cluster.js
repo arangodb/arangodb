@@ -105,6 +105,11 @@ function CollectionPropertiesPropagationSuite() {
     },
     
     testCreateOtherWithDifferentWriteConcern : function () {
+      if (db._properties().replicationVersion === "2") {
+        // in replication 2 the writeConcern is associated with the log (i.e., with the collection group),
+        // so we cannot create a collection with a different writeConcern
+        return;
+      }
       let c = db._create(other, { distributeShardsLike: proto, writeConcern: 1 });
 
       let p = c.properties();
