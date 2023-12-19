@@ -401,7 +401,7 @@ DateSelectionModifier parseDateModifierFlag(VPackSlice flag) {
   return INVALID;
 }
 
-date::sys_info localizeTimePoint(std::string& timezone,
+date::sys_info localizeTimePoint(std::string const& timezone,
                                  tp_sys_clock_ms& localTimePoint) {
   auto const utc = floor<milliseconds>(localTimePoint);
   auto const zoned = date::make_zoned(timezone, utc);
@@ -409,7 +409,7 @@ date::sys_info localizeTimePoint(std::string& timezone,
   return zoned.get_info();
 }
 
-date::sys_info unlocalizeTimePoint(std::string& timezone,
+date::sys_info unlocalizeTimePoint(std::string const& timezone,
                                    tp_sys_clock_ms& utcTimePoint) {
   auto const local = date::local_time<milliseconds>{
       floor<milliseconds>(utcTimePoint).time_since_epoch()};
@@ -423,7 +423,7 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
                                         VPackSlice durationUnitsSlice,
                                         VPackSlice durationType,
                                         char const* AFN, bool isSubtract,
-                                        std::string& timezone) {
+                                        std::string const& timezone) {
   bool isInteger = durationUnitsSlice.isInteger();
   double durationUnits = durationUnitsSlice.getNumber<double>();
   std::chrono::duration<double, std::ratio<1l, 1000l>> ms{};
@@ -520,7 +520,7 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
 AqlValue addOrSubtractIsoDurationFromTimestamp(
     ExpressionContext* expressionContext, tp_sys_clock_ms const& tp,
     std::string_view duration, char const* AFN, bool isSubtract,
-    std::string& timezone) {
+    std::string const& timezone) {
   date::year_month_day ymd{floor<date::days>(tp)};
   auto day_time = date::make_time(tp - date::sys_days(ymd));
 
@@ -4298,9 +4298,9 @@ AqlValue functions::DateUtcToLocal(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  AqlValue const& timeZoneParam = extractFunctionParameterValue(parameters, 1);
+  AqlValue const& timezoneParam = extractFunctionParameterValue(parameters, 1);
 
-  if (!timeZoneParam.isString()) {  // timezone type must be string
+  if (!timezoneParam.isString()) {  // timezone type must be string
     registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
@@ -4317,7 +4317,7 @@ AqlValue functions::DateUtcToLocal(ExpressionContext* expressionContext,
     showDetail = detailParam.slice().getBoolean();
   }
 
-  std::string const tz = timeZoneParam.slice().copyString();
+  std::string const tz = timezoneParam.slice().copyString();
   auto const utc = floor<milliseconds>(tp_utc);
   auto const zoned = date::make_zoned(tz, utc);
   auto const info = zoned.get_info();
