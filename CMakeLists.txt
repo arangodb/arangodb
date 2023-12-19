@@ -144,10 +144,6 @@ if (MSVC)
     "whether we want to use ccache"
     OFF
   )
-  option(USE_CLCACHE_MODE
-    "whether we want to use CLCACHE-specific build options"
-    OFF
-  )
 endif ()
 
 ################################################################################
@@ -993,11 +989,6 @@ if (MSVC)
       message(STATUS "CCACHE NOT FOUND")
     endif(CCACHE)
   endif(USE_CCACHE)
-
-  if (USE_CLCACHE_MODE)
-    set(CMAKE_VS_GLOBALS "TrackFileAccess=false")
-    add_definitions(/Z7)
-  endif ()
 
   add_definitions(/bigobj)
   if (CMAKE_COMPILER_IS_CLANG) # clang-cl
