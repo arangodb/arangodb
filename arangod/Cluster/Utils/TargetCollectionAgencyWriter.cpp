@@ -150,7 +150,17 @@ TargetCollectionAgencyWriter::prepareCurrentWatcher(
 
 ResultT<VPackBufferUInt8>
 TargetCollectionAgencyWriter::prepareCreateTransaction(
-    std::string_view databaseName) const {
+    std::string_view databaseName,
+    std::vector<ServerID> const& availableServers) const {
+  for (auto& v : _shardDistributionsUsed) {
+    // checkDistributionPossible may modify the input vector, so we have to use
+    // separate copies
+    std::vector<ServerID> servers{availableServers};
+    if (auto res = v.second->checkDistributionPossible(servers); res.fail()) {
+      return res;
+    }
+  }
+
   auto const baseCollectionPath = pathCollectionInTarget(databaseName);
   auto const baseGroupPath = pathCollectionGroupInTarget(databaseName);
   auto const collectionNamePath = pathCollectionNamesInTarget(databaseName);
