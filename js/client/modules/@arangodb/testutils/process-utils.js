@@ -441,8 +441,8 @@ function setupBinaries (builddir, buildType, configDir) {
     let fileName = san + "_arangodb_suppressions.txt";
     if (!process.env.hasOwnProperty(envName) &&
         fs.exists(fileName)) {
-      // print('preparing ' + san + ' environment');
       process.env[envName] = `suppressions=${fs.join(fs.makeAbsolute(''), fileName)}`;
+      print('preparing ' + san + ' environment:', envName + '=' + process.env[envName]);
     }
   });
 
