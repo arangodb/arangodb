@@ -948,7 +948,11 @@ if (MSVC)
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2"                         CACHE INTERNAL "C++ release with debug info flags")
 
   if(USE_CCACHE)
-    find_program(CCACHE ccache REQUIRED)
+    find_program(CCACHE_PROGRAM ccache REQUIRED)
+
+    message(STATUS "Using ccache symlink: ${CCACHE_PROGRAM}")
+
+    file(REAL_PATH ${CCACHE_PROGRAM} CCACHE)
 
     if(CCACHE)
       message(STATUS "Using ccache: ${CCACHE}")
