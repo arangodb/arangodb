@@ -32,9 +32,14 @@ DistributeShardsLike::DistributeShardsLike(
         getOriginalSharding)
     : _originalShardingProducer{std::move(getOriginalSharding)} {}
 
-Result DistributeShardsLike::planShardsOnServers(
+auto DistributeShardsLike::checkDistributionPossible(
+    std::vector<ServerID>& availableServers) -> Result {
+  return {};
+}
+
+auto DistributeShardsLike::planShardsOnServers(
     std::vector<ServerID> availableServers,
-    std::unordered_set<ServerID>& serversPlanned) {
+    std::unordered_set<ServerID>& serversPlanned) -> Result {
   auto nextSharding = _originalShardingProducer();
   if (nextSharding.fail()) {
     return nextSharding.result();
