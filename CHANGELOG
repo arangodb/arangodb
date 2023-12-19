@@ -1,11 +1,22 @@
 devel
 -----
-* Fixed issue #17673: Adds timezone conversion as an optional parameter in
-  all relevant date functions.
 
 * Upgraded bundled version of V8 to 12.1.165.
 
 * Upgraded bundled version of ICU to 73.
+
+* Fixed issue #17673: Adds timezone conversion as an optional parameter in
+  all relevant date functions.
+
+* Added AQL function `TO_CHAR(number)`, which produces a character from the
+  given character number.
+
+* Added AQL function `REPEAT(string, count, separator)`, which repeats a string
+  for a configurable number of times, with an optional separator.
+  Note that the maximum size of the output string is limited to 16 MB to avoid
+  very large outputs that would consume lots of memory. Exceeding the maximum
+  output string length will make the function return `null` and issue a 
+  warning.
 
 * Activate more checks in jemalloc:
     --enable-opt-safety-checks
