@@ -1,5 +1,7 @@
 devel
 -----
+* Fixed issue #17673: Adds timezone conversion as an optional parameter in
+  all relevant date functions.
 
 * Upgraded bundled version of V8 to 12.1.165.
 
