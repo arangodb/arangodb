@@ -80,6 +80,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include <absl/strings/str_cat.h>
 #include <algorithm>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>

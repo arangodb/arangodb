@@ -1,35 +1,11 @@
 v3.10.12 (XXXX-XX-XX)
 ---------------------
 
-<<<<<<< HEAD
+* Adjusted for clang 16 builds.
+
 * BTS-1714: Within writing AQL queries the lock timeout was accidentally set to
   2 seconds for all write operations on followers. This could lead to dropped
   followers when an index of a large shard was finalized on an follower.
-=======
-* Fix cmake setup for jemalloc library for the case of memory profiling.
-
-* BTS-1714: Within writing AQL queries the lock timeout was accidentally
-  set to 2 seconds for all write operations on followers. This could lead
-  to dropped followers when an index of a large shard was finalized on an
-  follower.
-
-* Fixed BTS-1701: Assertion triggered in AQL Traversal on edge PRUNE.
-
-* Fix an issue when forced index hints were used in a query, but the optimizer
-  selected a query execution plan that would not use the selected index.
-  Previously, the query failed with a "Could not serve index hint" error
-  message. With the fix, the optimizer will select the next best plan(s) until
-  all index hints are either satisfied, or there are no further plans to select
-  from. In the latter case, the query still aborts with said error.
-
-
-v3.11.6 (2023-11-29)
---------------------
-
-* FE-403: Fix loader instantiation.
-
-* Fix display of "unique" column in indexes overview of collections.
->>>>>>> b9240bc4454 (Fix jemalloc cmake setup for building with glibc images (#20306))
 
 * Updated OpenSSL to 3.0.12.
 

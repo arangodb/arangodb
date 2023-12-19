@@ -100,6 +100,7 @@
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/ticks.h"
 
+#include <absl/strings/str_cat.h>
 #include <rocksdb/convenience.h>
 #include <rocksdb/db.h>
 #include <rocksdb/env.h>

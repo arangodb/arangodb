@@ -56,6 +56,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
