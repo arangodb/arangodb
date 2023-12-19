@@ -30,7 +30,7 @@ jobs:
   # this is in a separate job from "setup" to make it as cheap as possible (because it uses the bare base image)
   check-build-trigger:
     docker:
-      - image: cimg/base:current
+      - image: ubuntu:20.04
     resource_class: small
     steps:
       - when:
