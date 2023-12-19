@@ -59,6 +59,21 @@ void arangodb::aql::batchMaterializeDocumentsRule(
                << "not covered by one index";
       continue;
     }
+    auto const& indexHandle = index->getIndexes()[0];
+
+    if (auto type = indexHandle->type();
+        type == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+      LOG_RULE << "INDEX " << index->id() << " FAILED: "
+               << "index type explicitly excluded.";
+      continue;
+    }
+
+    if (indexHandle->coveredFields().empty()) {
+      LOG_RULE << "INDEX " << index->id() << " FAILED: "
+               << "does not support covering call";
+      continue;
+    }
+
     if (!index->projections().empty()) {
       LOG_RULE << "INDEX " << index->id() << " FAILED: "
                << "has projections";
@@ -69,11 +84,7 @@ void arangodb::aql::batchMaterializeDocumentsRule(
                << "has post filter";
       continue;
     }
-    if (index->getIndexes()[0]->coveredFields().empty()) {
-      LOG_RULE << "INDEX " << index->id() << " FAILED: "
-               << "does not support covering call";
-      continue;
-    }
+
     if (!index->canApplyLateDocumentMaterializationRule()) {
       LOG_RULE << "INDEX " << index->id() << " FAILED: "
                << "no late materilize support";
