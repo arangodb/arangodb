@@ -1,5 +1,8 @@
 devel
 -----
+
+* Upgraded bundled version of RocksDB to 8.10.
+
 * Fixed issue #17673: Adds timezone conversion as an optional parameter in
   all relevant date functions.
 
@@ -113,8 +116,6 @@ devel
   So the "readOwnWrite" option should only be set to `false` if it can be
   guaranteed that the input to the UPSERT will lead to disjoint documents 
   being inserted/updated/replaced.
-
-* Upgraded bundled version of RocksDB to 8.10.
 
 * Optimize equality lookups and prefix matches that use the AQL like function.
   The optimization will turn `LIKE(doc.attribute, 'fixed string')` into an
