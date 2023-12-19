@@ -543,7 +543,7 @@ class ExecutionNode {
 
   /// @brief factory for sort elements
   static void getSortElements(SortElementVector& elements, ExecutionPlan* plan,
-                              arangodb::velocypack::Slice const& slice,
+                              arangodb::velocypack::Slice slice,
                               char const* which);
 
   RegisterId variableToRegisterId(Variable const*) const;
@@ -633,7 +633,7 @@ class SingletonNode : public ExecutionNode {
  public:
   SingletonNode(ExecutionPlan* plan, ExecutionNodeId id);
 
-  SingletonNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+  SingletonNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
   /// @brief return the type of the node
   NodeType getType() const override final;
@@ -679,7 +679,7 @@ class EnumerateCollectionNode : public ExecutionNode,
                           IndexHint const& hint);
 
   EnumerateCollectionNode(ExecutionPlan* plan,
-                          arangodb::velocypack::Slice const& base);
+                          arangodb::velocypack::Slice base);
 
   /// @brief return the type of the node
   NodeType getType() const override final;
@@ -756,7 +756,7 @@ class EnumerateListNode : public ExecutionNode {
   EnumerateListNode(ExecutionPlan* plan, ExecutionNodeId id,
                     Variable const* inVariable, Variable const* outVariable);
 
-  EnumerateListNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
+  EnumerateListNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
   /// @brief return the type of the node
   NodeType getType() const override final;
@@ -781,6 +781,21 @@ class EnumerateListNode : public ExecutionNode {
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
 
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable,
+                              size_t index) override;
+
+  /// @brief remember the condition to execute for early filtering
+  void setFilter(std::unique_ptr<Expression> filter);
+
+  /// @brief return the early pruning condition for the node
+  Expression* filter() const noexcept { return _filter.get(); }
+
+  /// @brief whether or not the node has an early pruning filter condition
+  bool hasFilter() const noexcept { return _filter != nullptr; }
+
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
 
@@ -804,6 +819,9 @@ class EnumerateListNode : public ExecutionNode {
 
   /// @brief output variable to write to
   Variable const* _outVariable;
+
+  /// @brief early filtering condition
+  std::unique_ptr<Expression> _filter;
 };
 
 /// @brief class LimitNode
@@ -814,7 +832,7 @@ class LimitNode : public ExecutionNode {
   LimitNode(ExecutionPlan* plan, ExecutionNodeId id, size_t offset,
             size_t limit);
 
-  LimitNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
+  LimitNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
   /// @brief return the type of the node
   NodeType getType() const override final;
@@ -873,7 +891,7 @@ class CalculationNode : public ExecutionNode {
                   std::unique_ptr<Expression> expr,
                   Variable const* outVariable);
 
-  CalculationNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
+  CalculationNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
   ~CalculationNode();
 
@@ -945,7 +963,7 @@ class SubqueryNode : public ExecutionNode {
   friend class ExecutionBlock;
 
  public:
-  SubqueryNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
+  SubqueryNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
   SubqueryNode(ExecutionPlan* plan, ExecutionNodeId id, ExecutionNode* subquery,
                Variable const* outVariable);
@@ -1022,7 +1040,7 @@ class FilterNode : public ExecutionNode {
   FilterNode(ExecutionPlan* plan, ExecutionNodeId id,
              Variable const* inVariable);
 
-  FilterNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
+  FilterNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
   /// @brief return the type of the node
   NodeType getType() const override;
@@ -1090,7 +1108,7 @@ class ReturnNode : public ExecutionNode {
   ReturnNode(ExecutionPlan* plan, ExecutionNodeId id,
              Variable const* inVariable);
 
-  ReturnNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
+  ReturnNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
   /// @brief return the type of the node
   NodeType getType() const override final;
@@ -1147,7 +1165,7 @@ class NoResultsNode : public ExecutionNode {
  public:
   NoResultsNode(ExecutionPlan* plan, ExecutionNodeId id);
 
-  NoResultsNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+  NoResultsNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
   /// @brief return the type of the node
   NodeType getType() const override final;
@@ -1183,7 +1201,7 @@ class AsyncNode : public ExecutionNode {
  public:
   AsyncNode(ExecutionPlan* plan, ExecutionNodeId id);
 
-  AsyncNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+  AsyncNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
   /// @brief return the type of the node
   NodeType getType() const override final;
@@ -1215,7 +1233,7 @@ class MaterializeNode : public ExecutionNode {
                   aql::Variable const& inDocId,
                   aql::Variable const& outVariable);
 
-  MaterializeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+  MaterializeNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
  public:
   /// @brief return the type of the node
@@ -1266,8 +1284,7 @@ class MaterializeSearchNode : public MaterializeNode {
                         aql::Variable const& inDocId,
                         aql::Variable const& outVariable);
 
-  MaterializeSearchNode(ExecutionPlan* plan,
-                        arangodb::velocypack::Slice const& base);
+  MaterializeSearchNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -1291,8 +1308,7 @@ class MaterializeRocksDBNode : public MaterializeNode,
                          aql::Variable const& inDocId,
                          aql::Variable const& outVariable);
 
-  MaterializeRocksDBNode(ExecutionPlan* plan,
-                         arangodb::velocypack::Slice const& base);
+  MaterializeRocksDBNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(

@@ -585,7 +585,7 @@ CostEstimate IndexNode::estimateCost() const {
   }
 
   estimate.estimatedNrItems *= totalItems;
-  estimate.estimatedCost += incoming * totalCost;
+  estimate.estimatedCost += incoming * totalCost * (hasFilter() ? 1.25 : 1.0);
   return estimate;
 }
 

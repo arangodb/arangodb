@@ -1,6 +1,10 @@
 devel
 -----
 
+* Make AQL optimizer rule `move-filters-into-enumerate` also move filters into
+  EnumerateListNodes for early pruning. Previously it could only pull filters 
+  into IndexNodes and EnumerateCollectionNodes.
+
 * Activate more checks in jemalloc:
     --enable-opt-safety-checks
     --enable-opt-size-checks

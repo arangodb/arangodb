@@ -41,8 +41,8 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
   let collection = null;
   let idx = null;
   
-  let explain = function (query) {
-    return helper.getCompactPlan(db._createStatement(query).explain()).map(function(node) { return node.type; });
+  let explain = function (query, bindVars = null, options = {}) {
+    return helper.getCompactPlan(db._createStatement({query, bindVars, options}).explain()).map(function(node) { return node.type; });
   };
 
   return {
@@ -302,13 +302,12 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitNonCollectionFilter : function () {
-      var i;
-      var list = [ ];
-      for (i = 0; i < 100; ++i) {
+      let list = [];
+      for (let i = 0; i < 100; ++i) {
         list.push(i);
       }
 
-      var tests = [
+      const tests = [
         { offset: 0, limit: 500, value: 0, expectedLength: 100 },
         { offset: 0, limit: 50, value: 0, expectedLength: 50 },
         { offset: 0, limit: 5, value: 0, expectedLength: 5 },
@@ -336,15 +335,63 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
         { offset: 50, limit: 5, value: 50, expectedLength: 0 }
       ];
 
-      for (i = 0; i < tests.length; ++i) {
-        var test = tests[i];
+      const options = {optimizer: {rules: ["-move-filters-into-enumerate"] } };
 
-        var query = "FOR c IN " + JSON.stringify(list) + " FILTER c >= " + test.value + " LIMIT " + test.offset + ", " + test.limit + " RETURN c";
+      for (let i = 0; i < tests.length; ++i) {
+        let test = tests[i];
+        const query = "FOR c IN " + JSON.stringify(list) + " FILTER c >= " + test.value + " LIMIT " + test.offset + ", " + test.limit + " RETURN c";
 
-        var actual = getQueryResults(query);
+        let actual = getQueryResults(query, {}, false, options);
         assertEqual(test.expectedLength, actual.length);
       
-        assertEqual([ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "LimitNode", "ReturnNode" ], explain(query));
+        assertEqual([ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "LimitNode", "ReturnNode" ], explain(query, {}, options));
+      }
+    },
+    
+    testLimitNonCollectionFilterMovedIntoEnumeration : function () {
+      let list = [];
+      for (let i = 0; i < 100; ++i) {
+        list.push(i);
+      }
+
+      const tests = [
+        { offset: 0, limit: 500, value: 0, expectedLength: 100 },
+        { offset: 0, limit: 50, value: 0, expectedLength: 50 },
+        { offset: 0, limit: 5, value: 0, expectedLength: 5 },
+        { offset: 0, limit: 1, value: 0, expectedLength: 1 },
+        { offset: 1, limit: 50, value: 0, expectedLength: 50 },
+        { offset: 1, limit: 1, value: 0, expectedLength: 1 },
+        { offset: 10, limit: 50, value: 0, expectedLength: 50 },
+        { offset: 95, limit: 5, value: 0, expectedLength: 5 },
+        { offset: 95, limit: 50, value: 0, expectedLength: 5 },
+        { offset: 98, limit: 50, value: 0, expectedLength: 2 },
+        { offset: 98, limit: 2, value: 0, expectedLength: 2 },
+        { offset: 99, limit: 1, value: 0, expectedLength: 1 },
+        { offset: 99, limit: 2, value: 0, expectedLength: 1 },
+        { offset: 100, limit: 2, value: 0, expectedLength: 0 },
+        { offset: 0, limit: 500, value: 10, expectedLength: 90 },
+        { offset: 0, limit: 50, value: 10, expectedLength: 50 },
+        { offset: 0, limit: 5, value: 10, expectedLength: 5 },
+        { offset: 0, limit: 1, value: 10, expectedLength: 1 },
+        { offset: 50, limit: 1, value: 10, expectedLength: 1 },
+        { offset: 90, limit: 1, value: 0, expectedLength: 1 },
+        { offset: 89, limit: 1, value: 10, expectedLength: 1 },
+        { offset: 89, limit: 2, value: 10, expectedLength: 1 },
+        { offset: 90, limit: 1, value: 10, expectedLength: 0 },
+        { offset: 50, limit: 5, value: 40, expectedLength: 5 },
+        { offset: 50, limit: 5, value: 50, expectedLength: 0 }
+      ];
+
+      const options = {optimizer: {rules: ["+move-filters-into-enumerate"] } };
+
+      for (let i = 0; i < tests.length; ++i) {
+        let test = tests[i];
+        const query = "FOR c IN " + JSON.stringify(list) + " FILTER c >= " + test.value + " LIMIT " + test.offset + ", " + test.limit + " RETURN c";
+
+        let actual = getQueryResults(query, {}, false, options);
+        assertEqual(test.expectedLength, actual.length);
+      
+        assertEqual([ "SingletonNode", "CalculationNode", "EnumerateListNode", "LimitNode", "ReturnNode" ], explain(query, {}, options));
       }
     },
     

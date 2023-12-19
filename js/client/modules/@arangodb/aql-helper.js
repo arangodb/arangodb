@@ -155,7 +155,7 @@ function getRawQueryResults (query, bindVars, options = {}) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function getQueryResults (query, bindVars, recursive, options = {}) {
-  var result = getRawQueryResults(query, bindVars, options);
+  let result = getRawQueryResults(query, bindVars, options);
 
   if (Array.isArray(result)) {
     result = result.map(function (row) {

@@ -28,6 +28,8 @@
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 
+#include <absl/strings/str_cat.h>
+
 using namespace arangodb::aql;
 
 ExecutorExpressionContext::ExecutorExpressionContext(
@@ -59,9 +61,9 @@ AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable,
             return _inputRow.get().getValue(regId);
           }
         }
-        std::string msg("variable not found '");
-        msg.append(variable->name);
-        msg.append("' in executeSimpleExpression()");
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            absl::StrCat("variable not found '", variable->name,
+                         "' in ExecutorExpressionContext"));
       });
 }

@@ -735,7 +735,8 @@ a single index (this is always true if the shard key is the default `_key`).)");
                R"(Move filters on non-indexed collection attributes into
 `IndexNode` or `EnumerateCollectionNode` to allow early pruning of
 non-matching documents. This optimization can help to avoid a lot of temporary
-document copies.)");
+document copies. The optimization can also be applied to enumerations over
+non-collection array.)");
 
   registerRule("optimize-count", optimizeCountRule,
                OptimizerRule::optimizeCountRule,

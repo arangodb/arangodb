@@ -2,10 +2,6 @@
 /*global assertEqual, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for filters
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -28,15 +24,10 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
+const jsunity = require("jsunity");
 const db = require('internal').db;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
-
 function optimizerFiltersTestSuite () {
-
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,7 +35,7 @@ function optimizerFiltersTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOptimizeAwayFalseFilter : function () {
-      var queries = [ 
+      const queries = [ 
         "FOR i IN 1..10 FILTER i == 1 && false RETURN i",
         "FOR i IN 1..10 FILTER (i == 1 || i == 2) && false RETURN i",
         "FOR i IN 1..10 FILTER false && i == 1 RETURN i",
@@ -55,8 +46,8 @@ function optimizerFiltersTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var plan = db._createStatement(query).explain().plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        let plan = db._createStatement(query).explain().plan;
+        let nodeTypes = plan.nodes.map(function(node) {
           return node.type;
         });
 
@@ -64,7 +55,7 @@ function optimizerFiltersTestSuite () {
         assertNotEqual(-1, nodeTypes.indexOf("NoResultsNode"), query);
         assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
 
-        var results = db._query(query).toArray();
+        let results = db._query(query).toArray();
         assertEqual([ ], results, query);
       });
     },
@@ -74,7 +65,7 @@ function optimizerFiltersTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOptimizeAwayTrueFilter : function () {
-      var queries = [ 
+      const queries = [ 
         "FOR i IN 1..10 FILTER i == 1 || true RETURN i",
         "FOR i IN 1..10 FILTER i == 1 || i == 2 || true RETURN i",
         "FOR i IN 1..10 FILTER true || i == 1 RETURN i",
@@ -84,8 +75,8 @@ function optimizerFiltersTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var plan = db._createStatement(query).explain().plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        let plan = db._createStatement(query).explain().plan;
+        let nodeTypes = plan.nodes.map(function(node) {
           return node.type;
         });
 
@@ -103,7 +94,7 @@ function optimizerFiltersTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testKeepFilter : function () {
-      var queries = [ 
+      const queries = [ 
         "FOR i IN 1..10 FILTER false || i == 1 RETURN i",
         "FOR i IN 1..10 FILTER i == 1 || false RETURN i",
         "FOR i IN 1..10 FILTER IS_STRING(i) || false RETURN i",
@@ -117,8 +108,8 @@ function optimizerFiltersTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var plan = db._createStatement(query).explain().plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        let plan = db._createStatement({query: query, options: {optimizer: {rules: ["-move-filters-into-enumerate"] } } }).explain().plan;
+        let nodeTypes = plan.nodes.map(function(node) {
           return node.type;
         });
 
@@ -131,11 +122,6 @@ function optimizerFiltersTestSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(optimizerFiltersTestSuite);
 
 return jsunity.done();
-
