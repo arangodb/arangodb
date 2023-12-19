@@ -584,8 +584,27 @@ CostEstimate IndexNode::estimateCost() const {
     totalItems = 1;
   }
 
+  // weight to apply for each expected result row
+  double factor = 1.0;
+  if (hasFilter()) {
+    // if we have a filter, we assume a weight of 1.25 for applying the
+    // filter condition
+    if (getIndexes().size() != 1) {
+      factor = 1.25;
+    } else {
+      auto type = getIndexes()[0]->type();
+      if (type != Index::IndexType::TRI_IDX_TYPE_GEO_INDEX &&
+          type != Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX &&
+          type != Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX) {
+        // if we only use a single index, and it is a geo index, we don't
+        // apply the weight to prioritize geo indexes
+        factor = 1.25;
+      }
+    }
+  }
+
   estimate.estimatedNrItems *= totalItems;
-  estimate.estimatedCost += incoming * totalCost * (hasFilter() ? 1.25 : 1.0);
+  estimate.estimatedCost += incoming * totalCost * factor;
   return estimate;
 }
 
