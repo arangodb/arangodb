@@ -948,18 +948,28 @@ if (MSVC)
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2"                         CACHE INTERNAL "C++ release with debug info flags")
 
   if(USE_CCACHE)
-    find_program(CCACHE_PROGRAM ccache REQUIRED)
-
-    message(STATUS "Using ccache symlink: ${CCACHE_PROGRAM}")
-
-    file(REAL_PATH ${CCACHE_PROGRAM} CCACHE)
+    find_program(CCACHE ccache REQUIRED)
 
     if(CCACHE)
       message(STATUS "Using ccache: ${CCACHE}")
 
-      file(COPY_FILE
+      execute_process(
+          COMMAND powershell
+              "${CCACHE} --shimgen-help | Select-String -SimpleMatch "Target:"| ForEach-Object { ($_ -split \"'\")[1]  }" 
+          OUTPUT_VARIABLE CCACHE_REAL
+          RESULT_VARIABLE CCACHE_RESULT_CODE
+          OUTPUT_STRIP_TRAILING_WHITESPACE
+      )
+
+      if(CCACHE_RESULT_CODE)
+        set( CCACHE ${CCACHE_REAL} )
+        message(STATUS "Resolved ccache SHIM: '${CCACHE_REAL}'")
+      endif()
+
+      file(COPY_FILE 
         ${CCACHE} ${CMAKE_BINARY_DIR}/cl.exe
-        ONLY_IF_DIFFERENT)
+        ONLY_IF_DIFFERENT
+      )
 
       set(CMAKE_VS_GLOBALS
         "CLToolExe=cl.exe"
