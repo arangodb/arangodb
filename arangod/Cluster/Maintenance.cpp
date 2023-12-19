@@ -1672,7 +1672,6 @@ static void writeUpdateReplicatedLogLeader(
     VPackBuilder& report, replication2::LogId id, DatabaseID const& dbName,
     replication2::LogTerm localTerm,
     replication2::agency::LogCurrent::Leader const& leader) {
-  LOG_DEVEL << "Checkpoint Beta 1";
   // update Current/ReplicatedLogs/<dbname>/<logId>/leader/term with
   // currentTerm and precondition
   //  Plan/ReplicatedLogs/<dbname>/<logId>/term/term == currentTerm
@@ -1684,7 +1683,6 @@ static void writeUpdateReplicatedLogLeader(
                         ->leader()
                         ->str(SkipComponents(
                             1) /* skip first path component, i.e. 'arango' */);
-  LOG_DEVEL << "Checkpoint Beta 2";
   auto preconditionPath =
       aliases::plan()
           ->replicatedLogs()
@@ -1773,7 +1771,6 @@ static void writeUpdateReplicatedLogLocal(
   // and precondition
   //  Plan/ReplicatedLogs/<dbname>/<logId>/term/term == currentTerm
 
-  LOG_DEVEL << "Checkpoint charly 1";
   using namespace cluster::paths;
   auto reportPath = aliases::current()
                         ->replicatedLogs()
@@ -1783,7 +1780,6 @@ static void writeUpdateReplicatedLogLocal(
                         ->participant(serverId)
                         ->str(SkipComponents(
                             1) /* skip first path component, i.e. 'arango' */);
-  LOG_DEVEL << "Checkpoint charly 2";
   auto preconditionPath =
       aliases::plan()
           ->replicatedLogs()
@@ -1793,7 +1789,6 @@ static void writeUpdateReplicatedLogLocal(
           ->term()
           ->str(
               SkipComponents(1) /* skip first path component, i.e. 'arango' */);
-  LOG_DEVEL << "Checkpoint charly 3";
   report.add(VPackValue(reportPath));
   {
     VPackObjectBuilder o(&report);
@@ -1805,7 +1800,6 @@ static void writeUpdateReplicatedLogLocal(
       report.add(preconditionPath, VPackValue(localTerm));
     }
   }
-  LOG_DEVEL << "Checkpoint charly 4";
 }
 
 static void reportCurrentReplicatedLog(
@@ -1824,16 +1818,16 @@ static void reportCurrentReplicatedLog(
   if (!localTerm.has_value()) {
     return;
   }
-  LOG_DEVEL << "Checkpoint 1";
+  if (!cur.isObject()) {
+    return;
+  }
   // load current into memory
   auto current = std::invoke([&]() -> std::optional<LogCurrent> {
-    LOG_DEVEL << "Checkpoint 2";
     auto currentSlice = cur.get(cluster::paths::aliases::current()
                                     ->replicatedLogs()
                                     ->database(dbName)
                                     ->log(to_string(id))
                                     ->vec());
-    LOG_DEVEL << "Checkpoint 2.1";
     if (currentSlice.isNone()) {
       return std::nullopt;
     }
@@ -1843,7 +1837,6 @@ static void reportCurrentReplicatedLog(
   {
     auto localState = std::invoke([&]() -> LogCurrentLocalState const* {
       if (current.has_value()) {
-        LOG_DEVEL << "Checkpoint 3";
         if (auto iter = current->localState.find(serverId);
             iter != std::end(current->localState)) {
           return &iter->second;
@@ -1852,7 +1845,6 @@ static void reportCurrentReplicatedLog(
       return nullptr;
     });
 
-    LOG_DEVEL << "Checkpoint 4";
     if (auto result = reportCurrentReplicatedLogLocal(
             status, logStatus.server.rebootId, localState);
         result.has_value()) {
@@ -1862,7 +1854,6 @@ static void reportCurrentReplicatedLog(
   }
 
   {
-    LOG_DEVEL << "Checkpoint 5";
     if (status.role == replication2::replicated_log::ParticipantRole::kLeader) {
       auto currentLeader =
           std::invoke([&]() -> replication2::agency::LogCurrent::Leader const* {
@@ -1873,13 +1864,11 @@ static void reportCurrentReplicatedLog(
             }
             return nullptr;
           });
-      LOG_DEVEL << "Checkpoint 6";
       if (auto result =
               reportCurrentReplicatedLogLeader(status, serverId, currentLeader);
           result.has_value()) {
         writeUpdateReplicatedLogLeader(report, id, dbName, *localTerm, *result);
       }
-      LOG_DEVEL << "Checkpoint 7";
       if (auto result =
               reportCurrentReplicatedLogSafeRebootIds(status, current);
           result.has_value()) {
