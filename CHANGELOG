@@ -3,6 +3,11 @@ devel
 * Fixed issue #17673: Adds timezone conversion as an optional parameter in
   all relevant date functions.
 
+* Activate more checks in jemalloc:
+    --enable-opt-safety-checks
+    --enable-opt-size-checks
+  This is supposed to help find bugs w.r.t. memory manangement.
+
 * FE-406: update docs links on web UI. 
 
 * BTS-1714: Within writing AQL queries the lock timeout was accidentally
