@@ -596,7 +596,7 @@ bool FieldIterator<IndexMetaStruct>::setValue(
         _value._indexFeatures = context.indexFeatures();
       } else {
         _value._fieldFeatures = pool->fieldFeatures();
-        _value._indexFeatures = pool->indexFeatures();
+        _value._indexFeatures = pool->features().indexFeatures();
       }
       _value._name = _nameBuffer;
     } break;

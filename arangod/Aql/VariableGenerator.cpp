@@ -65,21 +65,26 @@ std::unordered_map<VariableId, std::string const> VariableGenerator::variables(
 /// @brief generate a variable
 Variable* VariableGenerator::createVariable(std::string_view name,
                                             bool isUserDefined) {
-  std::string temp(name);
-
   if (isUserDefined && !isValidName(name.data(), name.data() + name.size())) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_PARSE,
         arangodb::basics::Exception::FillExceptionString(
-            TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, temp.c_str()));
+            TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, std::string{name}.c_str()));
   }
 
-  auto variable = std::make_unique<Variable>(std::move(temp), nextId(), false,
+  auto id = nextId();
+  auto nameCopy = [&] {
+    if (name.empty()) {
+      TRI_ASSERT(!isUserDefined);
+      return std::to_string(id);
+    } else {
+      return std::string{name};
+    }
+  }();
+  auto variable = std::make_unique<Variable>(std::move(nameCopy), id, false,
                                              _resourceMonitor);
 
   TRI_ASSERT(!isUserDefined || variable->isUserDefined());
-
-  VariableId const id = variable->id;
   auto [it, inserted] = _variables.emplace(id, std::move(variable));
   TRI_ASSERT(inserted);
   return (*it).second.get();
@@ -98,6 +103,7 @@ Variable* VariableGenerator::createVariable(Variable const* original) {
                                    "cloned AQL variable already present");
   }
   // variable was inserted, return the clone
+  _id = std::max(id + 1, _id);
   return (*it).second.get();
 }
 
@@ -116,7 +122,7 @@ Variable* VariableGenerator::createVariable(VPackSlice slice) {
 
 /// @brief generate a temporary variable
 Variable* VariableGenerator::createTemporaryVariable() {
-  return createVariable(nextName(), false);
+  return createVariable({}, false);
 }
 
 /// @brief renames a variable (assigns a temporary name)

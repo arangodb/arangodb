@@ -45,7 +45,6 @@ class ClientFeature;
 class EncryptionFeature;
 namespace httpclient {
 class SimpleHttpClient;
-class SimpleHttpResult;
 struct SimpleHttpClientParams;
 }  // namespace httpclient
 }  // namespace arangodb

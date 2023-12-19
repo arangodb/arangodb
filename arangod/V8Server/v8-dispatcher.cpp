@@ -50,7 +50,6 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Methods/Tasks.h"

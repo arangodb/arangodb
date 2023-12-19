@@ -109,7 +109,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
       _transactionContext(std::move(ctx)),
       _sharedState(std::move(sharedState)),
 #ifdef USE_V8
-      _v8Context(nullptr),
+      _v8Executor(nullptr),
 #endif
       _bindParameters(_resourceMonitor, bindParameters),
       _queryOptions(std::move(options)),
@@ -122,11 +122,15 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
       _executionPhase(ExecutionPhase::INITIALIZE),
       _resultCode(std::nullopt),
 #ifdef USE_V8
-      _contextOwnedByExterior(_transactionContext->isV8Context() &&
-                              v8::Isolate::GetCurrent() != nullptr),
+      _executorOwnedByExterior(_transactionContext->isV8Context() &&
+#ifdef V8_UPGRADE
+                               v8::Isolate::TryGetCurrent() != nullptr),
+#else
+                               v8::Isolate::GetCurrent() != nullptr),
+#endif
       _embeddedQuery(_transactionContext->isV8Context() &&
                      transaction::V8Context::isEmbedded()),
-      _registeredInV8Context(false),
+      _registeredInV8Executor(false),
 #endif
       _queryHashCalculated(false),
       _registeredQueryInTrx(false),
@@ -138,7 +142,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
   }
 
 #ifdef USE_V8
-  if (_contextOwnedByExterior) {
+  if (_executorOwnedByExterior) {
     // copy transaction options from global state into our local query options
     auto state = transaction::V8Context::getParentState();
     if (state != nullptr) {
@@ -252,7 +256,7 @@ void Query::destroy() {
 
   unregisterSnippets();
 
-  exitV8Context();
+  exitV8Executor();
 
   _snippets.clear();  // simon: must be before plan
   _plans.clear();     // simon: must be before AST
@@ -487,8 +491,8 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   TRI_ASSERT(plan != nullptr);
 
-  // return the V8 context if we are in one
-  exitV8Context();
+  // return the V8 executor if we are in one
+  exitV8Executor();
 
   return plan;
 }
@@ -1157,8 +1161,8 @@ bool Query::isAsyncQuery() const noexcept {
   return _ast->canApplyParallelism();
 }
 
-/// @brief enter a V8 context
-void Query::enterV8Context() {
+/// @brief enter a V8 executor
+void Query::enterV8Executor() {
 #ifdef USE_V8
   auto registerCtx = [&] {
     // register transaction in context
@@ -1168,14 +1172,15 @@ void Query::enterV8Context() {
       ctx->enterV8Context();
     } else {
       v8::Isolate* isolate = v8::Isolate::GetCurrent();
+      TRI_ASSERT(isolate != nullptr);
       TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
           isolate->GetData(V8PlatformFeature::V8_DATA_SLOT));
       v8g->_transactionState = _trx->stateShrdPtr();
     }
   };
 
-  if (!_contextOwnedByExterior) {
-    if (_v8Context == nullptr) {
+  if (!_executorOwnedByExterior) {
+    if (_v8Executor == nullptr) {
       auto& server = vocbase().server();
       if (!server.hasFeature<V8DealerFeature>() ||
           !server.isEnabled<V8DealerFeature>()) {
@@ -1184,27 +1189,27 @@ void Query::enterV8Context() {
       }
       JavaScriptSecurityContext securityContext =
           JavaScriptSecurityContext::createQueryContext();
-      _v8Context = server.getFeature<V8DealerFeature>().enterContext(
+      _v8Executor = server.getFeature<V8DealerFeature>().enterExecutor(
           &_vocbase, securityContext);
 
-      if (_v8Context == nullptr) {
+      if (_v8Executor == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_RESOURCE_LIMIT,
-            "unable to enter V8 context for query execution");
+            "unable to enter V8 executor for query execution");
       }
       registerCtx();
     }
-    TRI_ASSERT(_v8Context != nullptr);
+    TRI_ASSERT(_v8Executor != nullptr);
   } else if (!_embeddedQuery &&
-             !_registeredInV8Context) {  // may happen for stream trx
+             !_registeredInV8Executor) {  // may happen for stream trx
     registerCtx();
-    _registeredInV8Context = true;
+    _registeredInV8Executor = true;
   }
 #endif
 }
 
-/// @brief return a V8 context
-void Query::exitV8Context() {
+/// @brief return a V8 executor
+void Query::exitV8Executor() {
 #ifdef USE_V8
   auto unregister = [&] {
     if (_transactionContext->isV8Context()) {  // necessary for stream trx
@@ -1213,29 +1218,55 @@ void Query::exitV8Context() {
       ctx->exitV8Context();
     } else {
       v8::Isolate* isolate = v8::Isolate::GetCurrent();
+      TRI_ASSERT(isolate != nullptr);
       TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
           isolate->GetData(V8PlatformFeature::V8_DATA_SLOT));
       v8g->_transactionState = nullptr;
     }
   };
-  if (!_contextOwnedByExterior) {
-    if (_v8Context != nullptr) {
+  if (!_executorOwnedByExterior) {
+    if (_v8Executor != nullptr) {
       // unregister transaction in context
       unregister();
 
       auto& server = vocbase().server();
       TRI_ASSERT(server.hasFeature<V8DealerFeature>() &&
                  server.isEnabled<V8DealerFeature>());
-      server.getFeature<V8DealerFeature>().exitContext(_v8Context);
-      _v8Context = nullptr;
+      server.getFeature<V8DealerFeature>().exitExecutor(_v8Executor);
+      _v8Executor = nullptr;
     }
-  } else if (!_embeddedQuery && _registeredInV8Context) {
+  } else if (!_embeddedQuery && _registeredInV8Executor) {
     // prevent duplicate deregistration
     unregister();
-    _registeredInV8Context = false;
+    _registeredInV8Executor = false;
   }
 #endif
 }
+
+#ifdef USE_V8
+void Query::runInV8ExecutorContext(
+    std::function<void(v8::Isolate*)> const& cb) {
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  TRI_ASSERT(isolate != nullptr);
+
+  if (_executorOwnedByExterior) {
+    TRI_ASSERT(_v8Executor == nullptr);
+    TRI_ASSERT(isolate->InContext());
+
+    cb(isolate);
+  } else {
+    TRI_ASSERT(!isolate->InContext());
+    TRI_ASSERT(_v8Executor != nullptr);
+
+    _v8Executor->runInContext(
+        [&cb](v8::Isolate* isolate) -> Result {
+          cb(isolate);
+          return {};
+        },
+        /*executeGlobalMethods*/ false);
+  }
+}
+#endif
 
 /// @brief initializes the query
 void Query::init(bool createProfile) {
@@ -1745,7 +1776,6 @@ ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
       _shutdownState.store(ShutdownState::None, std::memory_order_relaxed);
     });
     futures::Future<Result> commitResult = _trx->commitAsync();
-    TRI_ASSERT(commitResult.isReady());
     if (commitResult.get().fail()) {
       THROW_ARANGO_EXCEPTION(std::move(commitResult).get());
     }

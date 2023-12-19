@@ -207,7 +207,8 @@ void RestDumpHandler::handleCommandDumpNext() {
   }
 
   // output the batch value
-  _response->setAllowCompression(true);
+  _response->setAllowCompression(
+      rest::ResponseCompressionType::kAllowCompression);
   _response->setHeaderNC(StaticStrings::DumpShardId, std::string{batch->shard});
   _response->setHeaderNC(StaticStrings::DumpBlockCounts,
                          std::to_string(counts));

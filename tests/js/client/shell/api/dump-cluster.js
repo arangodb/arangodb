@@ -38,7 +38,7 @@ const collectionNameA = "A";
 function fillCollection(col, num) {
   let documents = [];
   for (let i = 0; i < num; i++) {
-    documents.push({value: i});
+    documents.push({value: i, some: {nested:{value: 1234}}, flag: i % 3});
     if (documents.length === 1000) {
       col.save(documents);
       documents = [];
@@ -83,7 +83,7 @@ function apiNext(server, ctx, batchId, lastBatch) {
 
 function createContext(server, options) {
   const response = apiCreateContext(server, options);
-  assertEqual(response.code, 201);
+  assertEqual(response.code, 201, JSON.stringify(response));
   assertNotUndefined(response.headers["x-arango-dump-id"]);
   const id = response.headers["x-arango-dump-id"];
 
@@ -193,6 +193,85 @@ function DumpAPI() {
 
       let response1 = apiNext(server, "DOES-NOT-EXIST", 0);
       assertEqual(response1.code, 404);
+    },
+
+    testSimpleProjections: function () {
+      const servers = getShardsByServer(collection);
+      const server = Object.keys(servers)[0];
+      const ctx = createContext(server, {shards: servers[server], projections: {"foo": ["value"]}});
+
+      for (const [doc, shard] of ctx.read()) {
+        assertEqual(Object.keys(doc), ["foo"]);
+        assertTrue(typeof doc.foo === 'number');
+      }
+      ctx.drop();
+    },
+
+    testProjectionsId: function () {
+      const servers = getShardsByServer(collection);
+      const server = Object.keys(servers)[0];
+      const ctx = createContext(server, {shards: servers[server], projections: {"foo": ["_id"]}});
+
+      for (const [doc, shard] of ctx.read()) {
+        assertEqual(Object.keys(doc), ["foo"]);
+        assertTrue(typeof doc.foo === 'string');
+        assertTrue(/^A\/\d+$/.test(doc.foo));
+      }
+      ctx.drop();
+    },
+
+    testProjectionsNested: function () {
+      const servers = getShardsByServer(collection);
+      const server = Object.keys(servers)[0];
+      const ctx = createContext(server, {shards: servers[server], projections: {"foo": ["some", "nested", "value"], "bar": ["value"]}});
+
+      for (const [doc, shard] of ctx.read()) {
+        assertEqual(Object.keys(doc).sort(), ["bar", "foo"]);
+        assertEqual(doc.foo, 1234);
+        assertTrue(typeof doc.bar === 'number');
+      }
+      ctx.drop();
+    },
+
+    testSimpleFilters: function () {
+      const servers = getShardsByServer(collection);
+      const server = Object.keys(servers)[0];
+      const ctx = createContext(server, {shards: servers[server],
+                                         filters: {type: "simple",
+                                                   conditions: [{attributePath: ["flag"], value: 0}]}});
+
+      for (const [doc, shard] of ctx.read()) {
+        assertEqual(doc.flag, 0);
+      }
+      ctx.drop();
+    },
+
+    testNestedFilters: function () {
+      const servers = getShardsByServer(collection);
+      const server = Object.keys(servers)[0];
+      const ctx = createContext(server, {shards: servers[server],
+                                         filters: {type: "simple",
+                                                   conditions: [{attributePath: ["flag"], value: 1},
+                                                                {attributePath: ["some", "nested", "value"], value: 1234}]}});
+
+      for (const [doc, shard] of ctx.read()) {
+        assertEqual(doc.flag, 1);
+        assertEqual(doc.some.nested.value, 1234);
+      }
+      ctx.drop();
+    },
+
+    testFilterWithObjectVal: function () {
+      const servers = getShardsByServer(collection);
+      const server = Object.keys(servers)[0];
+      const ctx = createContext(server, {shards: servers[server],
+                                         filters: {type: "simple",
+                                                   conditions: [{attributePath: ["some"], value: {"nested": {"value": 1234}}}]}});
+
+      for (const [doc, shard] of ctx.read()) {
+        assertEqual(doc.some, {nested: {value: 1234}}, JSON.stringify(doc.some));
+      }
+      ctx.drop();
     },
 
     testContextTTL: function () {

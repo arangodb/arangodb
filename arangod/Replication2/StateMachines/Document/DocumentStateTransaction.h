@@ -60,7 +60,9 @@ class DocumentStateTransaction
   auto containsShard(ShardID const&) -> bool override;
 
  private:
-  auto buildDefaultOptions() -> OperationOptions;
+  static auto buildOperationOptions(
+      std::optional<ReplicatedOperation::DocumentOperation::Options> options)
+      -> OperationOptions;
   auto applyOp(InsertsDocuments auto const&, OperationOptions&)
       -> OperationResult;
   auto applyOp(ReplicatedOperation::Remove const& op, OperationOptions&)

@@ -134,7 +134,6 @@ class portManager {
 
 const instanceType = {
   single: 'single',
-  activefailover : 'activefailover',
   cluster: 'cluster'
 };
 
@@ -143,7 +142,6 @@ const instanceRole = {
   agent: 'agent',
   dbServer: 'dbserver',
   coordinator: 'coordinator',
-  failover: 'activefailover'
 };
 
 class agencyConfig {
@@ -459,13 +457,6 @@ class instance {
       if (!this.args.hasOwnProperty('cluster.default-replication-factor')) {
         this.args['cluster.default-replication-factor'] = (platform.substr(0, 3) === 'win') ? '1':'2';
       }
-    } else if (this.instanceRole === instanceRole.failover) {
-      this.args = Object.assign(this.args, {
-        'cluster.my-role': 'SINGLE',
-        'cluster.my-address': this.args['server.endpoint'],
-        'cluster.agency-endpoint': this.agencyConfig.agencyEndpoint,
-        'replication.active-failover': true
-      });
     }
     if (this.args.hasOwnProperty('server.jwt-secret')) {
       this.JWT = this.args['server.jwt-secret'];

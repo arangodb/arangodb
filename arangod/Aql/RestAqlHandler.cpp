@@ -119,6 +119,11 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
     }
   }
 
+  bool fastPath = false;  // Default false, now check HTTP header:
+  if (!_request->header(StaticStrings::AqlFastPath).empty()) {
+    fastPath = true;
+  }
+
   bool success = false;
   VPackSlice querySlice = this->parseVPackBody(success);
   if (!success) {
@@ -330,7 +335,7 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
   }
   q->prepareClusterQuery(querySlice, collectionBuilder.slice(), variablesSlice,
                          snippetsSlice, traverserSlice, answerBuilder,
-                         analyzersRevision);
+                         analyzersRevision, fastPath);
 
   answerBuilder.close();  // result
   answerBuilder.close();

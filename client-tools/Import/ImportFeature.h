@@ -34,7 +34,6 @@ namespace arangodb {
 namespace httpclient {
 class GeneralClientConnection;
 class SimpleHttpClient;
-class SimpleHttpResult;
 }  // namespace httpclient
 
 class ImportFeature final : public ArangoImportFeature {

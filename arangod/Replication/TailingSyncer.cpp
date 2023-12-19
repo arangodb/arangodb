@@ -58,6 +58,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
@@ -129,7 +130,7 @@ TailingSyncer::~TailingSyncer() { abortOngoingTransactions(); }
 /// @brief decide based on _state.leader which api to use
 ///        GlobalTailingSyncer should overwrite this probably
 std::string TailingSyncer::tailingBaseUrl(std::string const& cc) {
-  return TailingSyncer::WalAccessUrl + "/" + cc + "?";
+  return absl::StrCat(TailingSyncer::WalAccessUrl, "/", cc, "?");
 }
 
 /// @brief set the applier progress
@@ -266,8 +267,7 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
 /// @brief whether or not a collection should be excluded
 bool TailingSyncer::isExcludedCollection(
     std::string const& collectionName) const {
-  if (!collectionName.empty() && collectionName[0] == '_' &&
-      !_state.applier._includeSystem) {
+  if (collectionName.starts_with('_') && !_state.applier._includeSystem) {
     // system collection
     return true;
   }
@@ -457,17 +457,15 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     auto it = _ongoingTransactions.find(tid);
 
     if (it == _ongoingTransactions.end()) {
-      return Result(
-          TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION,
-          std::string("unexpected transaction ") + StringUtils::itoa(tid.id()));
+      return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION,
+                    absl::StrCat("unexpected transaction ", tid.id()));
     }
 
     std::unique_ptr<ReplicationTransaction>& trx = (*it).second;
 
     if (trx == nullptr) {
-      return Result(
-          TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION,
-          std::string("unexpected transaction ") + StringUtils::itoa(tid.id()));
+      return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION,
+                    absl::StrCat("unexpected transaction ", tid.id()));
     }
 
     trx->addCollectionAtRuntime(coll->id(), coll->name(),
@@ -535,10 +533,9 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
 
     // fix error handling here when function returns result
     if (!res.ok()) {
-      return Result(
-          res.errorNumber(),
-          StringUtils::concatT("unable to create replication transaction: ",
-                               res.errorMessage()));
+      return Result(res.errorNumber(),
+                    absl::StrCat("unable to create replication transaction: ",
+                                 res.errorMessage()));
     }
 
     res = applyCollectionDumpMarker(trx, coll.get(), type, applySlice,
@@ -1108,9 +1105,8 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
     return processDBMarker(type, slice);
   }
 
-  return Result(
-      TRI_ERROR_REPLICATION_UNEXPECTED_MARKER,
-      std::string("unexpected marker type ") + StringUtils::itoa(type));
+  return Result(TRI_ERROR_REPLICATION_UNEXPECTED_MARKER,
+                absl::StrCat("unexpected marker type ", type));
 }
 
 /// @brief apply the data from the continuous log
@@ -1282,18 +1278,19 @@ Result TailingSyncer::run() {
     return runInternal();
   } catch (arangodb::basics::Exception const& ex) {
     return Result(ex.code(),
-                  std::string("continuous synchronization for database '") +
-                      _state.databaseName +
-                      "' failed with exception: " + ex.what());
+                  absl::StrCat("continuous synchronization for database '",
+                               _state.databaseName,
+                               "' failed with exception: ", ex.what()));
   } catch (std::exception const& ex) {
     return Result(TRI_ERROR_INTERNAL,
-                  std::string("continuous synchronization for database '") +
-                      _state.databaseName +
-                      "' failed with exception: " + ex.what());
+                  absl::StrCat("continuous synchronization for database '",
+                               _state.databaseName,
+                               "' failed with exception: ", ex.what()));
   } catch (...) {
-    return Result(TRI_ERROR_INTERNAL,
-                  std::string("continuous synchronization for database '") +
-                      _state.databaseName + "' failed with unknown exception");
+    return Result(
+        TRI_ERROR_INTERNAL,
+        absl::StrCat("continuous synchronization for database '",
+                     _state.databaseName, "' failed with unknown exception"));
   }
 }
 
@@ -1344,11 +1341,10 @@ retry:
         // check if we are aborted externally
         if (_applier->sleepIfStillActive(
                 _state.applier._connectionRetryWaitTime)) {
-          setProgress(
+          setProgress(absl::StrCat(
               "fetching leader state information failed. will retry now. "
-              "retries left: " +
-              std::to_string(_state.applier._maxConnectRetries -
-                             connectRetries));
+              "retries left: ",
+              (_state.applier._maxConnectRetries - connectRetries)));
           continue;
         }
 
@@ -1561,10 +1557,10 @@ void TailingSyncer::getLocalState() {
       _applier->_state._serverId.isSet() && _state.leader.serverId.isSet()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_REPLICATION_LEADER_CHANGE,
-        std::string(
-            "encountered wrong leader id in replication state file. found: ") +
-            StringUtils::itoa(_state.leader.serverId.id()) + ", expected: " +
-            StringUtils::itoa(_applier->_state._serverId.id()));
+        absl::StrCat(
+            "encountered wrong leader id in replication state file. found: ",
+            _state.leader.serverId.id(),
+            ", expected: ", _applier->_state._serverId.id()));
   }
 }
 
@@ -1637,10 +1633,9 @@ Result TailingSyncer::runContinuousSync() {
     return Result(TRI_ERROR_INTERNAL);
   }
 
-  setProgress(
-      std::string("starting with from tick ") + StringUtils::itoa(fromTick) +
-      ", fetch tick " + StringUtils::itoa(fetchTick) + ", open transactions: " +
-      StringUtils::itoa(_ongoingTransactions.size()) + ", parallel: yes");
+  setProgress(absl::StrCat(
+      "starting with from tick ", fromTick, ", fetch tick ", fetchTick,
+      ", open transactions: ", _ongoingTransactions.size(), ", parallel: yes"));
 
   // when we leave this method, we must unregister ourselves from the leader,
   // otherwise the leader may keep WAL logs around for us for too long
@@ -1649,9 +1644,9 @@ Result TailingSyncer::runContinuousSync() {
       try {
         _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
           std::unique_ptr<httpclient::SimpleHttpResult> response;
-          std::string const url = tailingBaseUrl("tail") +
-                                  "serverId=" + _state.localServerIdString +
-                                  "&syncerId=" + syncerId().toString();
+          std::string const url = absl::StrCat(
+              tailingBaseUrl("tail"), "serverId=", _state.localServerIdString,
+              "&syncerId=", syncerId().toString());
           // simply send the request, but don't care about the response. if it
           // fails, there is not much we can do from here.
           auto headers = replutils::createHeaders();
@@ -1787,31 +1782,26 @@ void TailingSyncer::fetchLeaderLog(
     TRI_voc_tick_t fetchTick, TRI_voc_tick_t lastScannedTick,
     TRI_voc_tick_t firstRegularTick) {
   try {
-    std::string url =
-        tailingBaseUrl("tail") +
-        "chunkSize=" + StringUtils::itoa(_state.applier._chunkSize) +
-        "&from=" + StringUtils::itoa(fetchTick) +
-        "&lastScanned=" + StringUtils::itoa(lastScannedTick) +
-        (firstRegularTick > fetchTick
-             ? "&firstRegular=" + StringUtils::itoa(firstRegularTick)
-             : "") +
-        "&serverId=" + _state.localServerIdString +
-        "&includeSystem=" + (_state.applier._includeSystem ? "true" : "false") +
-        "&includeFoxxQueues=" +
-        (_state.applier._includeFoxxQueues ? "true" : "false");
+    std::string url = absl::StrCat(
+        tailingBaseUrl("tail"), "chunkSize=", _state.applier._chunkSize,
+        "&from=", fetchTick, "&lastScanned=", lastScannedTick,
+        (firstRegularTick > fetchTick ? "&firstRegular=" : "&unusedOption="),
+        firstRegularTick, "&serverId=", _state.localServerIdString,
+        "&includeSystem=", (_state.applier._includeSystem ? "true" : "false"),
+        "&includeFoxxQueues=",
+        (_state.applier._includeFoxxQueues ? "true" : "false"));
 
     if (syncerId().value > 0) {
       // we must only send the syncerId along if it is != 0, otherwise we will
       // trigger an error on the leader
-      url += "&syncerId=" + syncerId().toString();
+      absl::StrAppend(&url, "&syncerId=", syncerId().toString());
     }
 
     // send request
-    setProgress(std::string("fetching leader log from tick ") +
-                StringUtils::itoa(fetchTick) + ", last scanned tick " +
-                StringUtils::itoa(lastScannedTick) + ", first regular tick " +
-                StringUtils::itoa(firstRegularTick) + ", chunk size " +
-                std::to_string(_state.applier._chunkSize));
+    setProgress(absl::StrCat("fetching leader log from tick ", fetchTick,
+                             ", last scanned tick ", lastScannedTick,
+                             ", first regular tick ", firstRegularTick,
+                             ", chunk size ", _state.applier._chunkSize));
 
     // stringify list of open transactions
     std::string body = "[]";
@@ -1898,11 +1888,11 @@ Result TailingSyncer::processLeaderLog(
   worked = false;
 
   if (!hasHeader(response, StaticStrings::ReplicationHeaderCheckMore)) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  std::string("got invalid response from leader at ") +
-                      _state.leader.endpoint + ": required header " +
-                      StaticStrings::ReplicationHeaderCheckMore +
-                      " is missing");
+    return Result(
+        TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+        absl::StrCat("got invalid response from leader at ",
+                     _state.leader.endpoint, ": required header ",
+                     StaticStrings::ReplicationHeaderCheckMore, " is missing"));
   }
 
   bool checkMore =
@@ -1916,10 +1906,10 @@ Result TailingSyncer::processLeaderLog(
 
   if (!hasHeader(response, StaticStrings::ReplicationHeaderLastIncluded)) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  std::string("got invalid response from leader at ") +
-                      _state.leader.endpoint + ": required header " +
-                      StaticStrings::ReplicationHeaderLastIncluded +
-                      " is missing in logger-follow response");
+                  absl::StrCat("got invalid response from leader at ",
+                               _state.leader.endpoint, ": required header ",
+                               StaticStrings::ReplicationHeaderLastIncluded,
+                               " is missing in logger-follow response"));
   }
 
   TRI_voc_tick_t lastIncludedTick =
@@ -1954,10 +1944,10 @@ Result TailingSyncer::processLeaderLog(
 
   if (!hasHeader(response, StaticStrings::ReplicationHeaderLastTick)) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  std::string("got invalid response from leader at ") +
-                      _state.leader.endpoint + ": required header " +
-                      StaticStrings::ReplicationHeaderLastTick +
-                      " is missing in logger-follow response");
+                  absl::StrCat("got invalid response from leader at ",
+                               _state.leader.endpoint, ": required header ",
+                               StaticStrings::ReplicationHeaderLastTick,
+                               " is missing in logger-follow response"));
   }
 
   bool bumpTick = false;
@@ -2116,13 +2106,12 @@ Result TailingSyncer::processLeaderLog(
 Result TailingSyncer::handleRequiredFromPresentFailure(TRI_voc_tick_t fromTick,
                                                        TRI_voc_tick_t readTick,
                                                        char const* type) {
-  std::string const msg =
-      std::string("required ") + type + " tick value '" +
-      StringUtils::itoa(fromTick) +
-      "' is not present (anymore?) on leader at " + _state.leader.endpoint +
-      ". Last tick available on leader is '" + StringUtils::itoa(readTick) +
+  std::string const msg = absl::StrCat(
+      "required ", type, " tick value '", fromTick,
+      "' is not present (anymore?) on leader at ", _state.leader.endpoint,
+      ". Last tick available on leader is '", readTick,
       "'. It may be required to do a full resync and increase the number "
-      "of historic logfiles/WAL file timeout or archive size on the leader.";
+      "of historic logfiles/WAL file timeout or archive size on the leader.");
   LOG_TOPIC("4c6d2", WARN, Logger::REPLICATION) << msg;
 
   if (_requireFromPresent) {  // hard fail

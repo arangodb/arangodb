@@ -17,6 +17,8 @@ export const AddAnalyzerForm = ({
   const [analyzerTypeField] = useField<AnalyzerTypes>("type");
   const { isFormDisabled: isDisabled } = useAnalyzersContext();
   const analyzerTypeValue = analyzerTypeField.value;
+  const version = window.versionHelper.getDocuVersion();
+
   return (
     <Grid templateColumns={"1fr 1fr"} gap="6">
       <Stack>
@@ -41,7 +43,7 @@ export const AddAnalyzerForm = ({
             <ExternalLink
               marginLeft="2"
               marginBottom="2"
-              href={`https://www.arangodb.com/docs/stable/analyzers.html#${analyzerTypeValue}`}
+              href={`https://docs.arangodb.com/${version}/index-and-search/analyzers/#${analyzerTypeValue}`}
             >
               Docs
             </ExternalLink>

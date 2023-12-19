@@ -173,6 +173,7 @@ GeneralServerFeature::GeneralServerFeature(Server& server)
       _startedListening(false),
 #endif
       _allowEarlyConnections(false),
+      _handleContentEncodingForUnauthenticatedRequests(false),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _enableTelemetrics(false),
 #else
@@ -181,6 +182,7 @@ GeneralServerFeature::GeneralServerFeature(Server& server)
       _proxyCheck(true),
       _returnQueueTimeHeader(true),
       _permanentRootRedirect(true),
+      _compressResponseThreshold(0),
       _redirectRootTo("/_admin/aardvark/index.html"),
       _supportInfoApiPolicy("admin"),
       _numIoThreads(0),
@@ -318,6 +320,22 @@ Client applications and drivers can use this value to control the server load
 and also react on overload.)");
 
   options
+      ->addOption("--http.compress-response-threshold",
+                  "The HTTP response body size from which on responses are "
+                  "transparently compressed in case the client asks for it.",
+                  new UInt64Parameter(&_compressResponseThreshold))
+      .setIntroducedIn(31200)
+      .setLongDescription(
+          R"(Automatically compress outgoing HTTP responses with the
+deflate or gzip compression format, in case the client request advertises
+support for this. Compression will only happen for HTTP/1.1 and HTTP/2
+connections, if the size of the uncompressed response body exceeds 
+the threshold value controlled by this startup option,
+and if the response body size after compression is less than the original 
+response body size.
+Using the value 0 disables the automatic response compression.")");
+
+  options
       ->addOption("--server.early-connections",
                   "Allow requests to a limited set of APIs early during the "
                   "server startup.",
@@ -357,6 +375,18 @@ and also react on overload.)");
       arangodb::options::makeFlags(arangodb::options::Flags::Default,
                                    arangodb::options::Flags::Uncommon));
 #endif
+
+  options
+      ->addOption(
+          "--http.handle-content-encoding-for-unauthenticated-requests",
+          "Handle Content-Encoding headers for unauthenticated requests.",
+          new BooleanParameter(
+              &_handleContentEncodingForUnauthenticatedRequests))
+      .setIntroducedIn(31200)
+      .setLongDescription(
+          R"(If the option is set to `true`, the server will automatically 
+uncompress incoming HTTP requests with Content-Encodings gzip and deflate
+even if the request is not authenticated.)");
 }
 
 void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
@@ -501,6 +531,11 @@ double GeneralServerFeature::keepAliveTimeout() const noexcept {
   return _keepAliveTimeout;
 }
 
+bool GeneralServerFeature::handleContentEncodingForUnauthenticatedRequests()
+    const noexcept {
+  return _handleContentEncodingForUnauthenticatedRequests;
+}
+
 bool GeneralServerFeature::proxyCheck() const noexcept { return _proxyCheck; }
 
 bool GeneralServerFeature::returnQueueTimeHeader() const noexcept {
@@ -537,6 +572,10 @@ std::string GeneralServerFeature::redirectRootTo() const {
 
 std::string const& GeneralServerFeature::supportInfoApiPolicy() const noexcept {
   return _supportInfoApiPolicy;
+}
+
+uint64_t GeneralServerFeature::compressResponseThreshold() const noexcept {
+  return _compressResponseThreshold;
 }
 
 std::shared_ptr<rest::RestHandlerFactory> GeneralServerFeature::handlerFactory()

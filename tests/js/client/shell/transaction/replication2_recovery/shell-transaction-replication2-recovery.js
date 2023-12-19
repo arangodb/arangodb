@@ -302,12 +302,12 @@ function transactionReplication2Recovery() {
       stopServersWait(allOtherServers);
 
       let tc = trx.collection(c.name());
-      tc.insert({_key: 'test1', value: 1});
-
-      // Commit transaction
-      const coordinatorEndpoint = lh.getServerUrl(coordinator);
-      const url = `/_db/${dbn}/_api/transaction/${trx._id}`;
-      request.put({url: coordinatorEndpoint + url, timeout: 3});
+      try {
+        tc.insert({_key: 'test1', value: 1});
+        fail('Insert was expected to fail due to write concern not being reached.');
+      } catch (err) {
+        // This is expected, because we cannot reach write concern.
+      }
 
       let leaderServer = lh.getServerUrl(leader);
       dh.localKeyStatus(leaderServer, dbn, shardId,
@@ -316,20 +316,18 @@ function transactionReplication2Recovery() {
       // Resume enough participants to reach write concern.
       continueServersWait(followers.slice(0, WC - 1));
 
-      // Expect the transaction to be committed
+      // Expect the transaction to have not been committed
       lh.waitFor(dh.localKeyStatus(leaderServer, dbn, shardId,
-        "test1", true, 1));
-      // TODO Uncomment this, after https://arangodb.atlassian.net/browse/CINFRA-668 is addressed.
-      //      Currently, this can occasionally fail, if the replicated state is recreated (due to the change in
-      //      RebootId) *after* the replicated log on the follower is completely up-to-date (including commit index),
-      //      but *before* the latest entries have been applied to the replicated state.
-      //      Because then, the leader has no reason to send new append entries requests, while the follower's log
-      //      still has a freshly initialized commit index of 0.
-      // for (let cnt = 0; cnt < WC - 1; ++cnt) {
-      //   let server = replicatedLogsHelper.getServerUrl(followers[cnt]);
-      //   replicatedLogsHelper.waitFor(replicatedStatePredicates.localKeyStatus(server, dbn, shardId,
-      //     "test1", true, 1));
-      // }
+        "test1", false));
+
+      // This insert should succeed.
+      tc.insert({_key: 'test2', value: 2});
+      trx.commit();
+
+      lh.waitFor(dh.localKeyStatus(leaderServer, dbn, shardId,
+        "test2", true, 2));
+      dh.localKeyStatus(leaderServer, dbn, shardId,
+        "test1", false)();
     },
   };
 }
