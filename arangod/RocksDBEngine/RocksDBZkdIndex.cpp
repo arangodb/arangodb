@@ -503,6 +503,10 @@ void zkd::extractBoundsFromCondition(
 
       auto [it, inserted] = extractedPrefix.emplace(idx, other);
       TRI_ASSERT(inserted) << "duplicate access for " << attributeData.second;
+      if (!inserted) {
+        // duplicate equal condition, better not supported
+        return false;
+      }
       return true;
     }
     return false;

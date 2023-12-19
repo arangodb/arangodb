@@ -763,7 +763,7 @@ Result processIndexSortedPrefixFields(VPackSlice definition,
 
   auto fieldsSlice = definition.get(StaticStrings::IndexPrefixFields);
 
-  // storedValues are fully optional
+  // prefixFields are fully optional
   if (!fieldsSlice.isNone()) {
     if (fieldsSlice.isArray()) {
       res = IndexFactory::validateFieldsDefinition(
@@ -783,6 +783,7 @@ Result processIndexSortedPrefixFields(VPackSlice definition,
                       "prefix fields "
                       "and index "
                       "stored values list)");
+            break;
           }
         }
 
