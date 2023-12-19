@@ -369,13 +369,13 @@ auto boundsForIterator(RocksDBZkdIndexBase const* index,
   }
 
   prefixValuesBuilder.clear();
-  if (!index->sortedPrefixFields().empty()) {
+  if (!index->prefixFields().empty()) {
     prefixValuesBuilder.openArray();
-    for (auto&& [idx, field] : enumerate(index->sortedPrefixFields())) {
+    for (auto&& [idx, field] : enumerate(index->prefixFields())) {
       auto it = extractedPrefix.find(idx);
       TRI_ASSERT(it != extractedPrefix.end())
           << "Field `" << field << "` not found. Expr: " << node->toString()
-          << " Fields: " << index->sortedPrefixFields();
+          << " Fields: " << index->prefixFields();
       aql::AstNode const* value = it->second;
       TRI_ASSERT(value->isConstant())
           << "Value is not constant: " << value->toString();
@@ -394,10 +394,10 @@ std::vector<std::vector<basics::AttributeName>> const& getSortedPrefixFields(
     Index const* index) {
   if (auto ptr = dynamic_cast<RocksDBZkdIndexBase const*>(index);
       ptr != nullptr) {
-    return ptr->sortedPrefixFields();
+    return ptr->prefixFields();
   }
   if (auto ptr = dynamic_cast<ClusterIndex const*>(index); ptr != nullptr) {
-    return ptr->sortedPrefixFields();
+    return ptr->prefixFields();
   }
   return Index::emptyCoveredFields;
 }

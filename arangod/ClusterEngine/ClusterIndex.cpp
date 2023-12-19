@@ -90,7 +90,7 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
                              /*allowEmpty*/ true, /*allowExpansion*/ false));
     } else if (_indexType == TRI_IDX_TYPE_ZKD_INDEX) {
-      _sortedPrefixFields =
+      _prefixFields =
           Index::parseFields(info.get(StaticStrings::IndexPrefixFields),
                              /*allowEmpty*/ true, /*allowExpansion*/ false);
       _coveredFields =
@@ -143,7 +143,7 @@ void ClusterIndex::toVelocyPack(
     builder.add(arangodb::velocypack::Value(StaticStrings::IndexPrefixFields));
     builder.openArray();
 
-    for (auto const& field : _sortedPrefixFields) {
+    for (auto const& field : _prefixFields) {
       std::string fieldString;
       TRI_AttributeNamesToString(field, fieldString);
       builder.add(VPackValue(fieldString));

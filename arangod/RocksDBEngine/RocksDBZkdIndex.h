@@ -47,7 +47,7 @@ class RocksDBZkdIndexBase : public RocksDBIndex {
     // return _coveredFields;
     return _storedValues;
   }
-  std::vector<std::vector<basics::AttributeName>> const& sortedPrefixFields()
+  std::vector<std::vector<basics::AttributeName>> const& prefixFields()
       const noexcept {
     return _prefixFields;
   }
