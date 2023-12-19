@@ -752,6 +752,64 @@ Result IndexFactory::enhanceJsonIndexFulltext(VPackSlice definition,
   return res;
 }
 
+namespace {
+Result processIndexSortedPrefixFields(VPackSlice definition,
+                                      VPackBuilder& builder, size_t minFields,
+                                      size_t maxFields, bool create,
+                                      bool allowSubAttributes) {
+  TRI_ASSERT(builder.isOpenObject());
+
+  Result res;
+
+  auto fieldsSlice = definition.get(StaticStrings::IndexPrefixFields);
+
+  // prefixFields are fully optional
+  if (!fieldsSlice.isNone()) {
+    if (fieldsSlice.isArray()) {
+      res = IndexFactory::validateFieldsDefinition(
+          definition, StaticStrings::IndexStoredValues, minFields, maxFields,
+          allowSubAttributes, /*allowIdAttribute*/ true);
+      if (res.ok() && fieldsSlice.length() > 0) {
+        std::unordered_set<std::string_view> fields;
+        for (VPackSlice it : VPackArrayIterator(fieldsSlice)) {
+          fields.insert(it.stringView());
+        }
+        auto normalFields = definition.get(StaticStrings::IndexStoredValues);
+        TRI_ASSERT(normalFields.isArray());
+        for (VPackSlice it : VPackArrayIterator(normalFields)) {
+          if (!fields.insert(it.stringView()).second) {
+            res.reset(TRI_ERROR_BAD_PARAMETER,
+                      "duplicate attribute name (overlap between index sorted "
+                      "prefix fields "
+                      "and index "
+                      "stored values list)");
+            break;
+          }
+        }
+
+        builder.add(velocypack::Value(StaticStrings::IndexPrefixFields));
+        builder.openArray();
+
+        for (VPackSlice it : VPackArrayIterator(fieldsSlice)) {
+          std::vector<basics::AttributeName> temp;
+          TRI_ParseAttributeString(it.stringView(), temp,
+                                   /*allowExpansion*/ false);
+
+          builder.add(it);
+        }
+
+        builder.close();
+      }
+    } else {
+      res.reset(TRI_ERROR_BAD_PARAMETER, "prefixFields must be an array");
+    }
+  }
+
+  return res;
+}
+
+}  // namespace
+
 /// @brief enhances the json of a zkd index
 Result IndexFactory::enhanceJsonIndexZkd(VPackSlice definition,
                                          VPackBuilder& builder, bool create) {
@@ -777,6 +835,11 @@ Result IndexFactory::enhanceJsonIndexZkd(VPackSlice definition,
     res = processIndexStoredValues(definition, builder, 1, 32, create,
                                    /*allowSubAttributes*/ true,
                                    /* allowOverlappingFields */ true);
+  }
+
+  if (res.ok()) {
+    res = processIndexSortedPrefixFields(definition, builder, 1, 32, create,
+                                         true);
   }
 
   if (res.ok()) {

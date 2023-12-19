@@ -43,8 +43,12 @@ class RocksDBZkdIndexBase : public RocksDBIndex {
 
   std::vector<std::vector<basics::AttributeName>> const& coveredFields()
       const override {
-    // index does not cover the index attributes!
+    // The index only covers stored values
     return _storedValues;
+  }
+  std::vector<std::vector<basics::AttributeName>> const& prefixFields()
+      const noexcept {
+    return _prefixFields;
   }
 
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
@@ -71,6 +75,8 @@ class RocksDBZkdIndexBase : public RocksDBIndex {
       int) override;
 
   std::vector<std::vector<basics::AttributeName>> const _storedValues;
+  std::vector<std::vector<basics::AttributeName>> const _prefixFields;
+  std::vector<std::vector<basics::AttributeName>> const _coveredFields;
 };
 
 class RocksDBZkdIndex final : public RocksDBZkdIndexBase {
@@ -111,6 +117,7 @@ struct ExpressionBounds {
 void extractBoundsFromCondition(
     Index const* index, const aql::AstNode* condition,
     const aql::Variable* reference,
+    std::unordered_map<size_t, aql::AstNode const*>& extractedPrefix,
     std::unordered_map<size_t, ExpressionBounds>& extractedBounds,
     std::unordered_set<aql::AstNode const*>& unusedExpressions);
 
