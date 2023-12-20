@@ -349,7 +349,7 @@ jobs:
           name: "Configure"
           shell: powershell.exe
           command: |
-            $CCacheFolderName = "D:/CircleCI/ccache"
+            $CCacheFolderName = "D:/CircleCI-ccache"
             if ( -not (Test-Path $CCacheFolderName)) {
               New-Item $CCacheFolderName -ItemType Directory
               Write-Host "$($CCacheFolderName) Created successfully"
@@ -358,12 +358,12 @@ jobs:
             # make sure we have the latest image!
             docker pull arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.4-399cc6a6e26
             # TODO - use preset
-            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -v D:/CircleCI/ccache:C:/ccache -w C:/project/build arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.4-399cc6a6e26 cmake -G 'Visual Studio 17 2022' -T 'v143,host=x64' -DUSE_MAINTAINER_MODE=On -DUSE_GOOGLE_TESTS=On -DUSE_ENTERPRISE=On -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPACKAGING=NSIS -DCMAKE_INSTALL_PREFIX=/ -DSKIP_PACKAGING=On -DUSE_FAILURE_TESTS=On -DSTATIC_EXECUTABLES=On -DOPENSSL_USE_STATIC_LIBS=On -DUSE_STRICT_OPENSSL_VERSION=On -DUSE_CCACHE=On ..
+            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -v $CCacheFolderName:C:/ccache -w C:/project/build arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.4-399cc6a6e26 cmake -G 'Visual Studio 17 2022' -T 'v143,host=x64' -DUSE_MAINTAINER_MODE=On -DUSE_GOOGLE_TESTS=On -DUSE_ENTERPRISE=On -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPACKAGING=NSIS -DCMAKE_INSTALL_PREFIX=/ -DSKIP_PACKAGING=On -DUSE_FAILURE_TESTS=On -DSTATIC_EXECUTABLES=On -DOPENSSL_USE_STATIC_LIBS=On -DUSE_STRICT_OPENSSL_VERSION=On -DUSE_CCACHE=On ..
       - run:
           name: "Clear CCache statistics"
           shell: powershell.exe
           command: |
-            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -v D:/CircleCI/ccache:C:/ccache -w C:/project/build arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.4-399cc6a6e26 ccache -z
+            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -v $CCacheFolderName:C:/ccache -w C:/project/build arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.4-399cc6a6e26 ccache -z
       - run:
           name: "Build"
           shell: powershell.exe
