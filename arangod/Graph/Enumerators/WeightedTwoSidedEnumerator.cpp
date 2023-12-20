@@ -43,9 +43,25 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
+#include <limits>
 
 using namespace arangodb;
 using namespace arangodb::graph;
+
+namespace {
+
+bool almostEqual(double x, double y) {
+  if (x == y) {
+    return true;
+  }
+
+  auto diff = std::abs(x - y);
+  auto norm =
+      std::min((std::abs(x) + std::abs(y)), std::numeric_limits<double>::max());
+  return diff < std::max(std::numeric_limits<double>::round_error(),
+                         std::numeric_limits<double>::epsilon() * norm);
+}
+}  // namespace
 
 /*
  * Class: Ball (internally used in WeightedTwoSidedEnumerator)
@@ -270,6 +286,7 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     auto posPrevious = _interior.append(std::move(tmp));
     auto& step = _interior.getStepReference(posPrevious);
 
+    TRI_ASSERT(step.getWeight() >= _diameter);
     _diameter = step.getWeight();
     ValidationResult res = _validator.validatePath(step);
 
@@ -308,7 +325,6 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     }
 
     double nextFullPathWeight = ourStep.getWeight() + otherStep.getWeight();
-
     if (_direction == FORWARD) {
       candidates.append(
           std::make_tuple(nextFullPathWeight, ourStep, otherStep));
@@ -840,7 +856,12 @@ typename WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                            PathValidator>::getBallToContinueSearch() const {
   if (!_left.isQueueEmpty() && !_right.isQueueEmpty()) {
-    if (_left.getDiameter() <= _right.getDiameter()) {
+    if (almostEqual(_left.peekQueue().getWeight(), _left.getDiameter())) {
+      return BallSearchLocation::LEFT;
+    } else if (almostEqual(_right.peekQueue().getWeight(),
+                           _right.getDiameter())) {
+      return BallSearchLocation::RIGHT;
+    } else if (_left.getDiameter() <= _right.getDiameter()) {
       return BallSearchLocation::LEFT;
     } else {
       return BallSearchLocation::RIGHT;
