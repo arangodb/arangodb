@@ -5594,21 +5594,25 @@ futures::Future<Result> ClusterInfo::waitForCurrentVersion(
       ->second.getFuture();
 }
 
-void ClusterInfo::syncWaitForAllLogsToEstablishALeader() {
+void ClusterInfo::syncWaitForAllShardsToEstablishALeader() {
+  // We wait for a maximum of 60 seconds for all shards to have a leader.
+  // There may be a situation where we could not get a leader (e.g. shard
+  // was already without a leader while taking the hot backup) or servers
+  // not being responsive right now.
   for (size_t i = 0; i < 600; ++i)
-  while (true) {
-    READ_LOCKER(readLocker, _planProt.lock);
-    // First we test that we have planned some shards.
-    // This is to protect ourselves against a "no plan loaded yet" situation.
-    // We will always have some shards (at least we will need the _users in
-    // _system) Next we wait until we have a current entry for all the planned
-    // shards. This is not super precise, but should be good enough.
-    if (!_shardsToPlanServers.empty() &&
-        _shardsToPlanServers.size() == _shardsToCurrentServers.size()) {
-      break;
+    while (true) {
+      READ_LOCKER(readLocker, _planProt.lock);
+      // First we test that we have planned some shards.
+      // This is to protect ourselves against a "no plan loaded yet" situation.
+      // We will always have some shards (at least we will need the _users in
+      // _system) Next we wait until we have a current entry for all the planned
+      // shards. This is not super precise, but should be good enough.
+      if (!_shardsToPlanServers.empty() &&
+          _shardsToPlanServers.size() == _shardsToCurrentServers.size()) {
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  }
 }
 
 futures::Future<Result> ClusterInfo::waitForPlan(uint64_t raftIndex) {

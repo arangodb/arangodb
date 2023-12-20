@@ -3461,10 +3461,8 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature,
     }
   }
 
-  LOG_DEVEL << "Start: Wait for Replicated Logs to settle";
-  // and Wait for Replicated Logs to settle
-  ci.syncWaitForAllLogsToEstablishALeader();
-  LOG_DEVEL << "Done: Wait for Replicated Logs to settle";
+  // and Wait for Shards to decide on a leader
+  ci.syncWaitForAllShardsToEstablishALeader();
 
   {
     VPackObjectBuilder o(&report);

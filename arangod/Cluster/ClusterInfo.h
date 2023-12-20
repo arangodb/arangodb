@@ -371,10 +371,16 @@ class ClusterInfo final {
       uint64_t currentVersion);
 
   /**
-   * Blocks and waits until all known Replicated logs have selected a
-   * leader and are usable
+   * Blocks and waits until all planned shards
+   * have reported back in current and a leader
+   * has thereby taken over the shard responsibility.
+   * After this the shards are usable.
+   *
+   * Note: This method is written for hot-restore
+   * As we erase the current during the process
+   * and need to wait for current to be build back up.
    */
-  void syncWaitForAllLogsToEstablishALeader();
+  void syncWaitForAllShardsToEstablishALeader();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief flush the caches (used for testing only)
