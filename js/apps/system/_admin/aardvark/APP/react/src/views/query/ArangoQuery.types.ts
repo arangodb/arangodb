@@ -8,7 +8,7 @@ export type QueryResultType<ResultType extends any = any> = {
   result?: ResultType;
   extra?: CursorExtras;
   status: "success" | "error" | "loading";
-  asyncJobId?: string;
+  asyncJobId: string;
   profile?: any;
   stats?: any;
   warnings?: {

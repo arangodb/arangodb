@@ -263,7 +263,14 @@ class LogicalCollection : public LogicalDataSource {
       velocypack::Slice slice, bool docComplete, bool& usesDefaultShardKeys,
       std::string_view key = std::string_view());
 
-  auto getDocumentState()
+  /**
+   * Test if this Logical collection is the leading shard.
+   * Will only return true on DBServers and Shards, and only
+   * if they are leading. Independent of the Replication version
+   */
+  auto isLeadingShard() const -> bool;
+
+  auto getDocumentState() const
       -> std::shared_ptr<replication2::replicated_state::ReplicatedState<
           replication2::replicated_state::document::DocumentState>>;
   auto getDocumentStateLeader() -> std::shared_ptr<

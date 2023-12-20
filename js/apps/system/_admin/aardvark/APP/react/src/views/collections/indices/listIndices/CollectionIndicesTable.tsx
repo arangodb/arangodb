@@ -12,36 +12,29 @@ import { CollectionIndexActionButtons } from "./CollectionIndexActionButtons";
 
 const columnHelper = createColumnHelper<Index>();
 
-const IdCell = ({ info }: { info: CellContext<Index, string> }) => {
-  const cellValue = info.cell.getValue();
-  const id = cellValue.slice(cellValue.lastIndexOf("/") + 1);
-  const collectionName = window.location.hash.split("#cIndices/")[1];
+const NameCell = ({ info }: { info: CellContext<Index, string> }) => {
+  const id = info.row.original.id;
+  const finalId = id.slice(id.lastIndexOf("/") + 1); // remove the collection name from the id
+  const collectionName = window.location.hash.split("#cIndices/")[1]; // get the collection name from the url
   // need to use href here instead of RouteLink due to a bug in react-router
   return (
     <Link
-      href={`#cIndices/${collectionName}/${id}`}
+      href={`#cIndices/${collectionName}/${finalId}`}
       textDecoration="underline"
       color="blue.500"
       _hover={{
         color: "blue.600"
       }}
     >
-      {id}
+      {info.cell.getValue()}
     </Link>
   );
 };
 const TABLE_COLUMNS = [
-  columnHelper.accessor("id", {
-    header: "ID",
-    id: "id",
-    cell: info => <IdCell info={info} />,
-    meta: {
-      filterType: "text"
-    }
-  }),
   columnHelper.accessor("name", {
     header: "Name",
     id: "name",
+    cell: info => <NameCell info={info} />,
     meta: {
       filterType: "text"
     }
@@ -54,6 +47,50 @@ const TABLE_COLUMNS = [
       filterType: "multi-select"
     }
   }),
+  columnHelper.accessor(
+    row => {
+      return row.fields
+        .map(field => {
+          if (typeof field === "string") return field;
+          return field.name;
+        })
+        .join(", ");
+    },
+    {
+      header: "Fields",
+      id: "fields",
+      meta: {
+        filterType: "text"
+      }
+    }
+  ),
+  columnHelper.accessor("unique", {
+    header: "Unique",
+    id: "unique",
+    cell: info => {
+      return `${info.cell.getValue()}`;
+    },
+    meta: {
+      filterType: "single-select",
+    }
+  }),
+  columnHelper.accessor(
+    row => {
+      if ((row as any).selectivityEstimate) {
+        const selectivityEstimate = (row as any).selectivityEstimate;
+        // percentage rounded to 2 decimal places
+        return `${(selectivityEstimate * 100).toFixed(2)}%`;
+      }
+      return "N/A";
+    },
+    {
+      header: "Selectivity Estimate",
+      id: "selectivityEstimate",
+      meta: {
+        filterType: "text"
+      }
+    }
+  ),
   columnHelper.display({
     header: "Actions",
     id: "actions",
@@ -73,7 +110,7 @@ export const CollectionIndicesTable = () => {
     columns: TABLE_COLUMNS,
     initialSorting: [
       {
-        id: "id",
+        id: "name",
         desc: false
       }
     ],

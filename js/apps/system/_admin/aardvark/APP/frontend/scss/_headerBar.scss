@@ -340,7 +340,7 @@ div.headerBar {
       }
 
       &.positive {
-        color: $c-positive;
+        color: var(--green-500);
       }
 
       &.warning {

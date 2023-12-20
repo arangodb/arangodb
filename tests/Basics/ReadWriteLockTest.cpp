@@ -53,15 +53,14 @@ struct Synchronizer {
   }
   void start(int nr) {
     while (true) {
-      std::unique_lock lock(mutex);
-      if (waiting >= nr) {
-        break;
+      {
+        std::unique_lock lock(mutex);
+        if (waiting >= nr) {
+          ready = true;
+          break;
+        }
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-    {
-      std::unique_lock lock(mutex);
-      ready = true;
     }
     cv.notify_all();
   }

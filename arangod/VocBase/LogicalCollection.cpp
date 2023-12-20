@@ -40,6 +40,8 @@
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Sharding/ShardingInfo.h"
@@ -1293,7 +1295,29 @@ std::optional<replication2::LogId> LogicalCollection::tryShardIdToStateId(
   return replication2::LogId::fromString(std::to_string(shardId.id()));
 }
 
-auto LogicalCollection::getDocumentState()
+auto LogicalCollection::isLeadingShard() const -> bool {
+  if (!ServerState::instance()->isDBServer()) {
+    // Only DBServers can be leaders of shards
+    return false;
+  }
+  if (isAStub()) {
+    // Stubs are no shards, they cannot be leaders
+    return false;
+  }
+  if (replicationVersion() == replication::Version::ONE) {
+    // Replication version 1 does not have leaders
+    auto const& followerInfo = followers();
+    // If the Leader is empty, we are the leader
+    return followerInfo->getLeader().empty();
+  } else {
+    auto const& maybeDocState =
+        basics::catchToResultT([&]() { return getDocumentState(); });
+    // We can only get the leader state if we are the leader
+    return maybeDocState.ok() && maybeDocState.get()->getLeader() != nullptr;
+  }
+}
+
+auto LogicalCollection::getDocumentState() const
     -> std::shared_ptr<replication2::replicated_state::ReplicatedState<
         replication2::replicated_state::document::DocumentState>> {
   using namespace replication2::replicated_state;

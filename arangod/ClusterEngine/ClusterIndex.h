@@ -113,6 +113,11 @@ class ClusterIndex : public Index {
   bool supportsStreamInterface(
       IndexStreamOptions const&) const noexcept override;
 
+  std::vector<std::vector<basics::AttributeName>> const& prefixFields()
+      const noexcept {
+    return _prefixFields;
+  }
+
  protected:
   ClusterEngineType _engineType;
   Index::IndexType _indexType;
@@ -122,5 +127,7 @@ class ClusterIndex : public Index {
 
   // Only used in RocksDB edge index.
   std::vector<std::vector<basics::AttributeName>> _coveredFields;
+  // Only used in RocksDB zkd index
+  std::vector<std::vector<basics::AttributeName>> _prefixFields;
 };
 }  // namespace arangodb

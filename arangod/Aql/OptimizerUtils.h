@@ -27,6 +27,7 @@
 #include "Aql/VarInfoMap.h"
 #include "Aql/types.h"
 #include "Containers/FlatHashSet.h"
+#include "Utils/OperationOptions.h"
 
 #include <cstdint>
 #include <memory>
@@ -79,7 +80,7 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
     arangodb::aql::SortCondition const* sortCondition, size_t itemsInCollection,
     aql::IndexHint const& hint,
     std::vector<std::shared_ptr<Index>>& usedIndexes, bool& isSorted,
-    bool& isAllCoveredByIndex);
+    bool& isAllCoveredByIndex, ReadOwnWrites readOwnWrites);
 
 /// @brief Gets the best fitting index for an AQL condition.
 /// note: the contents of  node  may be modified by this function if
@@ -88,7 +89,8 @@ bool getBestIndexHandleForFilterCondition(
     transaction::Methods& trx, aql::Collection const& collection,
     arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference,
     size_t itemsInCollection, aql::IndexHint const& hint,
-    std::shared_ptr<Index>& usedIndex, bool onlyEdgeIndexes = false);
+    std::shared_ptr<Index>& usedIndex, ReadOwnWrites readOwnWrites,
+    bool onlyEdgeIndexes);
 
 /// @brief Gets the best fitting index for an AQL sort condition
 bool getIndexForSortCondition(aql::Collection const& coll,

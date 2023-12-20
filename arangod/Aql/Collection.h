@@ -138,7 +138,7 @@ struct Collection {
     return it->second;
   }
 
-  /// @brief get the index by it's identifier. Will either throw or
+  /// @brief get the index by its identifier. Will either throw or
   ///        return a valid index. nullptr is impossible.
   std::shared_ptr<arangodb::Index> indexByIdentifier(
       std::string const& idxId) const;

@@ -92,8 +92,8 @@ class EnumeratePathsNode : public virtual GraphNode {
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override;
 
   bool usesPathOutVariable() const { return _pathOutVariable != nullptr; }
   Variable const& pathOutVariable() const {
@@ -166,8 +166,8 @@ class EnumeratePathsNode : public virtual GraphNode {
  private:
   std::vector<arangodb::graph::IndexAccessor> buildIndexes(bool reverse) const;
 
-  void enumeratePathsCloneHelper(ExecutionPlan& plan, EnumeratePathsNode& c,
-                                 bool withProperties) const;
+  void enumeratePathsCloneHelper(ExecutionPlan& plan,
+                                 EnumeratePathsNode& c) const;
 
   /// @brief algorithm type (K_SHORTEST_PATHS or K_PATHS)
   arangodb::graph::PathType::Type _pathType;

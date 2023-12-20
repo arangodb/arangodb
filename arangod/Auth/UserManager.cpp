@@ -118,7 +118,7 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
     if (s.get("source").isString() && s.get("source").stringView() == "LDAP") {
       LOG_TOPIC("18ee8", TRACE, arangodb::Logger::CONFIG)
           << "LDAP: skip user in collection _users: "
-          << s.get("user").copyString();
+          << s.get("user").stringView();
       continue;
     }
 

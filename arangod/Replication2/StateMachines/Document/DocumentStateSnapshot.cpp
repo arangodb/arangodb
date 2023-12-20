@@ -26,7 +26,6 @@
 
 #include "Assertions/ProdAssert.h"
 #include "Replication2/StateMachines/Document/CollectionReader.h"
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Logger/LogContextKeys.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"

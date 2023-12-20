@@ -3724,7 +3724,7 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
 
     LOG_TOPIC("b370d", DEBUG, Logger::BACKUP)
         << r.destination << " created local backup "
-        << resSlice.get(BackupMeta::ID).copyString();
+        << resSlice.get(BackupMeta::ID).stringView();
   }
 
   // remove duplicate hashes

@@ -202,6 +202,8 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"HASH", ".", flags, &functions::Hash});
   add({"TO_BASE64", ".", flags, &functions::ToBase64});
   add({"TO_HEX", ".", flags, &functions::ToHex});
+  add({"TO_CHAR", ".", flags, &functions::ToChar});
+  add({"REPEAT", ".,.|.", flags, &functions::Repeat});
   add({"ENCODE_URI_COMPONENT", ".", flags, &functions::EncodeURIComponent});
   add({"SOUNDEX", ".", flags, &functions::Soundex});
   add({"LEVENSHTEIN_DISTANCE", ".,.", flags, &functions::LevenshteinDistance});
@@ -447,31 +449,31 @@ void AqlFunctionFeature::addDateFunctions() {
   // date functions
   add({"DATE_TIMESTAMP", ".|.,.,.,.,.,.", flags, &functions::DateTimestamp});
   add({"DATE_ISO8601", ".|.,.,.,.,.,.", flags, &functions::DateIso8601});
-  add({"DATE_DAYOFWEEK", ".", flags, &functions::DateDayOfWeek});
-  add({"DATE_YEAR", ".", flags, &functions::DateYear});
-  add({"DATE_MONTH", ".", flags, &functions::DateMonth});
-  add({"DATE_DAY", ".", flags, &functions::DateDay});
-  add({"DATE_HOUR", ".", flags, &functions::DateHour});
-  add({"DATE_MINUTE", ".", flags, &functions::DateMinute});
+  add({"DATE_DAYOFWEEK", ".|.", flags, &functions::DateDayOfWeek});
+  add({"DATE_YEAR", ".|.", flags, &functions::DateYear});
+  add({"DATE_MONTH", ".|.", flags, &functions::DateMonth});
+  add({"DATE_DAY", ".|.", flags, &functions::DateDay});
+  add({"DATE_HOUR", ".|.", flags, &functions::DateHour});
+  add({"DATE_MINUTE", ".|.", flags, &functions::DateMinute});
   add({"DATE_SECOND", ".", flags, &functions::DateSecond});
   add({"DATE_MILLISECOND", ".", flags, &functions::DateMillisecond});
-  add({"DATE_DAYOFYEAR", ".", flags, &functions::DateDayOfYear});
-  add({"DATE_ISOWEEK", ".", flags, &functions::DateIsoWeek});
-  add({"DATE_ISOWEEKYEAR", ".", flags, &functions::DateIsoWeekYear});
-  add({"DATE_LEAPYEAR", ".", flags, &functions::DateLeapYear});
-  add({"DATE_QUARTER", ".", flags, &functions::DateQuarter});
-  add({"DATE_DAYS_IN_MONTH", ".", flags, &functions::DateDaysInMonth});
-  add({"DATE_ADD", ".,.|.", flags, &functions::DateAdd});
-  add({"DATE_SUBTRACT", ".,.|.", flags, &functions::DateSubtract});
-  add({"DATE_DIFF", ".,.,.|.", flags, &functions::DateDiff});
-  add({"DATE_COMPARE", ".,.,.|.", flags, &functions::DateCompare});
-  add({"DATE_FORMAT", ".,.", flags, &functions::DateFormat});
-  add({"DATE_TRUNC", ".,.", flags, &functions::DateTrunc});
+  add({"DATE_DAYOFYEAR", ".|.", flags, &functions::DateDayOfYear});
+  add({"DATE_ISOWEEK", ".|.", flags, &functions::DateIsoWeek});
+  add({"DATE_ISOWEEKYEAR", ".|.", flags, &functions::DateIsoWeekYear});
+  add({"DATE_LEAPYEAR", ".|.", flags, &functions::DateLeapYear});
+  add({"DATE_QUARTER", ".|.", flags, &functions::DateQuarter});
+  add({"DATE_DAYS_IN_MONTH", ".|.", flags, &functions::DateDaysInMonth});
+  add({"DATE_ADD", ".,.|.,.", flags, &functions::DateAdd});
+  add({"DATE_SUBTRACT", ".,.|.,.", flags, &functions::DateSubtract});
+  add({"DATE_DIFF", ".,.,.|.,.,.", flags, &functions::DateDiff});
+  add({"DATE_COMPARE", ".,.,.|.,.,.", flags, &functions::DateCompare});
+  add({"DATE_FORMAT", ".,.|.", flags, &functions::DateFormat});
+  add({"DATE_TRUNC", ".,.|.", flags, &functions::DateTrunc});
   add({"DATE_UTCTOLOCAL", ".,.|.", flags, &functions::DateUtcToLocal});
   add({"DATE_LOCALTOUTC", ".,.|.", flags, &functions::DateLocalToUtc});
   add({"DATE_TIMEZONE", "", flags, &functions::DateTimeZone});
   add({"DATE_TIMEZONES", "", flags, &functions::DateTimeZones});
-  add({"DATE_ROUND", ".,.,.", flags, &functions::DateRound});
+  add({"DATE_ROUND", ".,.,.|.", flags, &functions::DateRound});
 
   // special flags:
   add({"DATE_NOW", "",

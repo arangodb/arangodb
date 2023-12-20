@@ -82,14 +82,16 @@ static LogId UnwrapReplicatedLog(v8::Isolate* isolate,
   if (obj->InternalFieldCount() <= SLOT_CLASS) {
     return LogId{0};
   }
-  auto slot = obj->GetInternalField(SLOT_CLASS_TYPE);
+  auto slot = obj->GetInternalField(SLOT_CLASS_TYPE).As<v8::Value>();
   if (slot->Int32Value(TRI_IGETC).ToChecked() !=
       WRP_VOCBASE_REPLICATED_LOG_TYPE) {
     return LogId{0};
   }
 
-  return LogId{
-      obj->GetInternalField(SLOT_CLASS)->Uint32Value(TRI_IGETC).ToChecked()};
+  return LogId{obj->GetInternalField(SLOT_CLASS)
+                   .As<v8::Value>()
+                   ->Uint32Value(TRI_IGETC)
+                   .ToChecked()};
 }
 
 static void JS_GetReplicatedLog(

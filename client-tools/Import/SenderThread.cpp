@@ -93,17 +93,17 @@ bool SenderThread::hasError() {
   return retFlag;
 }
 
-bool SenderThread::isReady() {
+bool SenderThread::isReady() const {
   std::lock_guard guard{_condition.mutex};
   return _ready;
 }
 
-bool SenderThread::isIdle() {
+bool SenderThread::isIdle() const {
   std::lock_guard guard{_condition.mutex};
   return _idle;
 }
 
-bool SenderThread::isDone() {
+bool SenderThread::isDone() const {
   std::lock_guard guard{_condition.mutex};
   return _idle || _hasError;
 }
@@ -174,16 +174,16 @@ void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {
   }
 
   if (haveBody) {
-    VPackSlice const body = parsedBody->slice();
+    VPackSlice body = parsedBody->slice();
 
     // error details
-    VPackSlice const details = body.get("details");
-
-    if (details.isArray()) {
+    if (VPackSlice details = body.get("details"); details.isArray()) {
       for (VPackSlice detail : VPackArrayIterator(details)) {
-        if (detail.isString()) {
-          LOG_TOPIC("e5a29", WARN, arangodb::Logger::FIXME)
-              << "" << detail.copyString();
+        if (!detail.isString()) {
+          continue;
+        }
+        if (!_stats->logError(detail.stringView())) {
+          break;
         }
       }
     }
@@ -216,7 +216,7 @@ void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {
     if (arangodb::basics::VelocyPackHelper::getBooleanValue(body, "error",
                                                             false)) {
       // get the error message
-      VPackSlice const errorMessage = body.get("errorMessage");
+      VPackSlice errorMessage = body.get("errorMessage");
       if (errorMessage.isString()) {
         _errorMessage = errorMessage.copyString();
       }

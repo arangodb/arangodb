@@ -25,13 +25,6 @@
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
-#include <map>
-#include <utility>
-
-#include <v8.h>
-
-#include <velocypack/Builder.h>
-
 #include "JSLoader.h"
 
 #include "Basics/StringUtils.h"
@@ -42,21 +35,17 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 
+#include <velocypack/Builder.h>
+#include <v8.h>
+
+#include <map>
+#include <utility>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a loader
-////////////////////////////////////////////////////////////////////////////////
-
-JSLoader::JSLoader() {}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief loads a named script
-////////////////////////////////////////////////////////////////////////////////
-
 JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate,
-                                      v8::Handle<v8::Context>& context,
                                       std::string const& name,
                                       velocypack::Builder* builder) {
   v8::HandleScope scope(isolate);
@@ -73,32 +62,32 @@ JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate,
     return eFailLoad;
   }
 
-  // Enter the newly created execution environment.
-  v8::Context::Scope context_scope(context);
+  {
+    TRI_ASSERT(isolate->InContext());
 
-  v8::Handle<v8::Value> result = TRI_ExecuteJavaScriptString(
-      isolate, context, TRI_V8_STD_STRING(isolate, i->second),
-      TRI_V8_STD_STRING(isolate, name), false);
+    v8::Handle<v8::Value> result =
+        TRI_ExecuteJavaScriptString(isolate, i->second, name, false);
 
-  if (tryCatch.HasCaught()) {
-    if (tryCatch.CanContinue()) {
-      TRI_LogV8Exception(isolate, &tryCatch);
-    } else {
-      TRI_GET_GLOBALS();
-      v8g->_canceled = true;
-    }
-    return eFailExecute;
-  }
-
-  // Report the result if there is one:
-  if (builder != nullptr) {
-    try {
-      if (!result.IsEmpty()) {
-        TRI_V8ToVPack(isolate, *builder, result, false);
+    if (tryCatch.HasCaught()) {
+      if (tryCatch.CanContinue()) {
+        TRI_LogV8Exception(isolate, &tryCatch);
       } else {
-        builder->add(VPackValue(VPackValueType::Null));
+        TRI_GET_GLOBALS();
+        v8g->_canceled = true;
       }
-    } catch (...) {
+      return eFailExecute;
+    }
+
+    // Report the result if there is one:
+    if (builder != nullptr) {
+      try {
+        if (!result.IsEmpty()) {
+          TRI_V8ToVPack(isolate, *builder, result, false);
+        } else {
+          builder->add(VPackValue(VPackValueType::Null));
+        }
+      } catch (...) {
+      }
     }
   }
 

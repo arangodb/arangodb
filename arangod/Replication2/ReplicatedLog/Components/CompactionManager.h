@@ -22,9 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Basics/Guarded.h"
+#include "Futures/Try.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
-#include "Basics/Guarded.h"
 #include "Replication2/DeferredExecution.h"
 #include "Replication2/ReplicatedLog/Components/ICompactionManager.h"
 #include "Replication2/LoggerContext.h"

@@ -26,6 +26,7 @@
 #include "Aql/IResearchViewOptimizerRules.h"
 #include "Aql/IndexNodeOptimizerRules.h"
 #include "Aql/GraphOptimizerRules.h"
+#include "Aql/Optimizer/Rules/EnumeratePathsFilter/EnumeratePathsFilter.h"
 #include "Aql/OptimizerRules.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
@@ -176,6 +177,10 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(),
                R"(Replace deprecated index functions such as `FULLTEXT()`,
 `NEAR()`, `WITHIN()`, or `WITHIN_RECTANGLE()` with a regular subquery.)");
+
+  registerRule("replace-like-with-range", replaceLikeWithRangeRule,
+               OptimizerRule::replaceLikeWithRange, OptimizerRule::makeFlags(),
+               R"(Replace LIKE() function with range scans where possible.)");
 
   // inline subqueries one level higher
   registerRule("inline-subqueries", inlineSubqueriesRule,
@@ -413,6 +418,13 @@ further optimizations that are not possible on the path variable `p`.)");
 early pruning of results, apply traversal projections, and avoid calculating
 edge and path output variables that are not declared in the query for the
 AQL traversal.)");
+
+  // merge filters on the path output variable into the path search
+  registerRule(
+      "optimize-enumerate-path-filters", optimizeEnumeratePathsFilterRule,
+      OptimizerRule::optimizeEnumeratePathsFilterRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Move `FILTER` conditions on the path output variable into the path search)");
 
   // optimize K_PATHS
   registerRule(
@@ -779,6 +791,12 @@ as possible if the involved attributes are covered by the View index.)");
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
                R"(Try to read from collections as late as possible if the
 involved attributes are covered by regular indexes.)");
+
+  // apply late materialization for index queries
+  registerRule("batch-materialize-documents", batchMaterializeDocumentsRule,
+               OptimizerRule::batchMaterializeDocumentsRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Batch document lookup from indexes.)");
 
 #ifdef USE_ENTERPRISE
   // apply late materialization for offset infos

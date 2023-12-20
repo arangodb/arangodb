@@ -90,9 +90,6 @@ struct MaterializeExecutorBase {
   using Infos = MaterializerExecutorInfos;
   using Stats = MaterializeStats;
 
-  [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
-      AqlItemBlockInputRange& inputRange, AqlCall& call);
-
   explicit MaterializeExecutorBase(Infos& infos);
 
   void initializeCursor() {
@@ -112,14 +109,17 @@ class MaterializeRocksDBExecutor : public MaterializeExecutorBase {
         BlockPassthrough::Enable;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
+  using Stats = NoStats;
 
   MaterializeRocksDBExecutor(Fetcher&, Infos& infos);
 
-  std::tuple<ExecutorState, MaterializeStats, AqlCall> produceRows(
+  std::tuple<ExecutorState, Stats, AqlCall> produceRows(
       AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output);
 
  private:
   PhysicalCollection* _collection{};
+  std::vector<LocalDocumentId> _docIds;
+  std::vector<InputAqlItemRow> _inputRows;
 };
 
 class MaterializeSearchExecutor : public MaterializeExecutorBase {
@@ -144,6 +144,9 @@ class MaterializeSearchExecutor : public MaterializeExecutorBase {
    */
   [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
       AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output);
+
+  [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
+      AqlItemBlockInputRange& inputRange, AqlCall& call);
 
  private:
   static constexpr size_t kInvalidRecord = std::numeric_limits<size_t>::max();
