@@ -5595,24 +5595,34 @@ futures::Future<Result> ClusterInfo::waitForCurrentVersion(
 }
 
 void ClusterInfo::syncWaitForAllShardsToEstablishALeader() {
+// TODO: Implement this Properly.
+// The below code actually waits for Shards to show up in Current.
+// However the way current is parsed, the old shards may not be removed
+// as long as current is empty (or does not contain any Collection entries).
+// which is the case after HotBackupRestore.
+// We need to adapt current parsing to be able to handle this situation.
+// Dirty quick solution is to wait for 60 seconds and pray.
+#if true
+  std::this_thread::sleep_for(std::chrono::seconds(60));
+#else
   // We wait for a maximum of 60 seconds for all shards to have a leader.
   // There may be a situation where we could not get a leader (e.g. shard
   // was already without a leader while taking the hot backup) or servers
   // not being responsive right now.
-  for (size_t i = 0; i < 600; ++i)
-    while (true) {
-      READ_LOCKER(readLocker, _planProt.lock);
-      // First we test that we have planned some shards.
-      // This is to protect ourselves against a "no plan loaded yet" situation.
-      // We will always have some shards (at least we will need the _users in
-      // _system) Next we wait until we have a current entry for all the planned
-      // shards. This is not super precise, but should be good enough.
-      if (!_shardsToPlanServers.empty() &&
-          _shardsToPlanServers.size() == _shardsToCurrentServers.size()) {
-        break;
-      }
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  for (size_t i = 0; i < 600; ++i) {
+    READ_LOCKER(readLocker, _planProt.lock);
+    // First we test that we have planned some shards.
+    // This is to protect ourselves against a "no plan loaded yet" situation.
+    // We will always have some shards (at least we will need the _users in
+    // _system) Next we wait until we have a current entry for all the planned
+    // shards. This is not super precise, but should be good enough.
+    if (!_shardsToPlanServers.empty() &&
+        _shardsToPlanServers.size() == _shardsToCurrentServers.size()) {
+      break;
     }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+#endif
 }
 
 futures::Future<Result> ClusterInfo::waitForPlan(uint64_t raftIndex) {
