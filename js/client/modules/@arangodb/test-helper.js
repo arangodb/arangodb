@@ -109,7 +109,7 @@ exports.debugCanUseFailAt = function (endpoint) {
     let res = arango.GET_RAW('/_admin/debug/failat');
     return res.code === 200;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -124,7 +124,7 @@ exports.debugSetFailAt = function (endpoint, failAt) {
     }
     return true;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -138,7 +138,7 @@ exports.debugResetRaceControl = function (endpoint) {
     }
     return false;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -153,7 +153,7 @@ exports.debugRemoveFailAt = function (endpoint, failAt) {
     }
     return true;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -167,7 +167,7 @@ exports.debugClearFailAt = function (endpoint) {
     }
     return true;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -184,7 +184,7 @@ exports.debugGetFailurePoints = function (endpoint) {
       return res.parsedBody;
     }
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
   return [];
 };
@@ -199,7 +199,7 @@ exports.getChecksum = function (endpoint, name) {
     }
     return res.parsedBody.checksum;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 

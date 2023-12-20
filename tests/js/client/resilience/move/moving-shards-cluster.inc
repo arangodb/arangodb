@@ -1195,11 +1195,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       // below will leave the old server in Current/servers and
       // Current/failoverCandidates.
       try {
-        print(db._collections())
-
         debugSetFailAt(leaderUrl, "Maintenance::doNotRemoveUnPlannedFollowers");
-
-        print(db._collections())
 
         var toServer = findServerNotOnList(servers);
         var cinfo = arangoClusterInfoGetCollectionInfo(
