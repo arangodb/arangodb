@@ -710,8 +710,7 @@ auto columnFamilyForInfo(velocypack::Slice info) {
   if (auto prefix = info.get(StaticStrings::IndexPrefixFields);
       prefix.isArray() && !prefix.isEmptyArray()) {
     return RocksDBColumnFamilyManager::get(
-        RocksDBColumnFamilyManager::Family::VPackIndex);  // TODO add new column
-                                                          // family
+        RocksDBColumnFamilyManager::Family::ZkdVPackIndex);
   }
 
   return RocksDBColumnFamilyManager::get(
