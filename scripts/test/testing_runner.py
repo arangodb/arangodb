@@ -38,15 +38,15 @@ if "MAX_CORESIZE" in os.environ:
 pp = pprint.PrettyPrinter(indent=4)
 
 ZIPFORMAT = "gztar"
-try:
-    import py7zr
+#try:
+#    import py7zr
 
-    shutil.register_archive_format(
-        "7zip", py7zr.pack_7zarchive, description="7zip archive"
-    )
-    ZIPFORMAT = "7zip"
-except ModuleNotFoundError:
-    pass
+#    shutil.register_archive_format(
+#        "7zip", py7zr.pack_7zarchive, description="7zip archive"
+#    )
+    # ZIPFORMAT = "7zip"
+# except ModuleNotFoundError:
+#    pass
 
 
 def zipp_this(filenames, target_dir):
