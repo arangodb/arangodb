@@ -111,10 +111,12 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        require("console").warn(query);
+        require("console").warn("query:", query);
         db._explain(query, null, { allPlans: true, optimizer: { rules: [ "-all", "+" + ruleName ] } });
         let result = db._createStatement({query, bindVars: { }, options: paramEnabled}).explain();
         assertEqual([ ruleName ], result.plan.rules, query);
+        require("console").error("all queries:");
+        db._explain(query, null, { allPlans: true });
         let allresults = getQueryMultiplePlansAndExecutions(query, {});
         for (let j = 1; j < allresults.results.length; j++) {
             assertTrue(isEqual(allresults.results[0],
