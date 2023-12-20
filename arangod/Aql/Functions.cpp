@@ -253,10 +253,7 @@ bool isValidDocument(VPackSlice slice) {
 
 void registerICUWarning(ExpressionContext* expressionContext,
                         std::string_view functionName, UErrorCode status) {
-  std::string msg;
-  msg.append("in function '");
-  msg.append(functionName);
-  msg.append("()': ");
+  std::string msg = absl::StrCat("in function '", functionName, "()': ");
   msg.append(basics::Exception::FillExceptionString(TRI_ERROR_ARANGO_ICU_ERROR,
                                                     u_errorName(status)));
   expressionContext->registerWarning(TRI_ERROR_ARANGO_ICU_ERROR, msg);
@@ -340,6 +337,7 @@ DateSelectionModifier parseDateModifierFlag(VPackSlice flag) {
     return INVALID;
   }
 
+  // must be copied because we are lower-casing the string
   std::string flagStr = flag.copyString();
   if (flagStr.empty()) {
     return INVALID;
@@ -873,7 +871,7 @@ void unsetOrKeep(transaction::Methods* trx, VPackSlice const& value,
   VPackObjectBuilder b(&result);  // Close the object after this function
   for (auto const& entry : VPackObjectIterator(value, false)) {
     TRI_ASSERT(entry.key.isString());
-    std::string key = entry.key.copyString();
+    std::string_view key = entry.key.stringView();
     if ((names.find(key) == names.end()) == unset) {
       // not found and unset or found and keep
       if (recursive && entry.value.isObject()) {
@@ -891,8 +889,8 @@ void unsetOrKeep(transaction::Methods* trx, VPackSlice const& value,
   }
 }
 
-/// @brief Helper function to get a document by it's identifier
-///        Lazy Locks the collection if necessary.
+/// @brief Helper function to get a document by its identifier
+/// Lazily adds the collection to the transaction if necessary.
 void getDocumentByIdentifier(transaction::Methods* trx,
                              OperationOptions const& options,
                              std::string& collectionName,
@@ -945,9 +943,8 @@ void getDocumentByIdentifier(transaction::Methods* trx,
       // special error message to indicate which collection was undeclared
       THROW_ARANGO_EXCEPTION_MESSAGE(
           res.errorNumber(),
-          StringUtils::concatT(res.errorMessage(), ": ", collectionName, " [",
-                               AccessMode::typeString(AccessMode::Type::READ),
-                               "]"));
+          absl::StrCat(res.errorMessage(), ": ", collectionName, " [",
+                       AccessMode::typeString(AccessMode::Type::READ), "]"));
     }
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -1468,12 +1465,10 @@ std::string_view getFunctionName(AstNode const& node) noexcept {
 
 /// @brief register warning
 void registerWarning(ExpressionContext* expressionContext,
-                     std::string_view functionName, Result const& rr) {
-  std::string msg = "in function '";
-  msg.append(functionName);
-  msg.append("()': ");
-  msg.append(rr.errorMessage());
-  expressionContext->registerWarning(rr.errorNumber(), msg);
+                     std::string_view functionName, Result const& r) {
+  std::string msg =
+      absl::StrCat("in function '", functionName, "()': ", r.errorMessage());
+  expressionContext->registerWarning(r.errorNumber(), msg);
 }
 
 /// @brief register warning
@@ -1504,10 +1499,8 @@ void registerError(ExpressionContext* expressionContext,
     std::string fname(functionName);
     msg = basics::Exception::FillExceptionString(code, fname.c_str());
   } else {
-    msg.append("in function '");
-    msg.append(functionName);
-    msg.append("()': ");
-    msg.append(TRI_errno_string(code));
+    msg = absl::StrCat("in function '", functionName,
+                       "()': ", TRI_errno_string(code));
   }
 
   expressionContext->registerError(code, msg);
@@ -9097,7 +9090,7 @@ AqlValue functions::Percentile(ExpressionContext* expressionContext,
                       TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       return AqlValue(AqlValueHintNull());
     }
-    std::string method = methodValue.slice().copyString();
+    std::string_view method = methodValue.slice().stringView();
     if (method == "interpolation") {
       useInterpolation = true;
     } else if (method == "rank") {
@@ -9462,8 +9455,8 @@ AqlValue functions::Assert(ExpressionContext* expressionContext, AstNode const&,
     return AqlValue(AqlValueHintNull());
   }
   if (!expr.toBoolean()) {
-    std::string msg = message.slice().copyString();
-    expressionContext->registerError(TRI_ERROR_QUERY_USER_ASSERT, msg.data());
+    expressionContext->registerError(TRI_ERROR_QUERY_USER_ASSERT,
+                                     message.slice().stringView());
   }
   return AqlValue(AqlValueHintBool(true));
 }
@@ -9482,8 +9475,8 @@ AqlValue functions::Warn(ExpressionContext* expressionContext, AstNode const&,
   }
 
   if (!expr.toBoolean()) {
-    std::string msg = message.slice().copyString();
-    expressionContext->registerWarning(TRI_ERROR_QUERY_USER_WARN, msg.data());
+    expressionContext->registerWarning(TRI_ERROR_QUERY_USER_WARN,
+                                       message.slice().stringView());
     return AqlValue(AqlValueHintBool(false));
   }
   return AqlValue(AqlValueHintBool(true));
@@ -9581,7 +9574,8 @@ AqlValue functions::ShardId(ExpressionContext* expressionContext,
   if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-        "could not find collection: " + colName + " in database " + dbName);
+        absl::StrCat("could not find collection: ", colName, " in database ",
+                     dbName));
   }
 
   std::string shardId;
@@ -9590,8 +9584,8 @@ AqlValue functions::ShardId(ExpressionContext* expressionContext,
     if (maybeShardID.fail()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           maybeShardID.errorNumber(),
-          "could not find shard for document by shard keys " + keys.toJson() +
-              " in " + colName);
+          absl::StrCat("could not find shard for document by shard keys ",
+                       keys.toJson(), " in ", colName));
     }
     shardId = maybeShardID.get();
   } else {  // Agents, single server, AFO return the collection name in favour
