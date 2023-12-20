@@ -589,6 +589,19 @@ void RocksDBTrxBaseMethods::MultiGet(rocksdb::Snapshot const* snapshot,
   _db->MultiGet(_readOptions, &family, count, keys, values, statuses, false);
 }
 
+void RocksDBTrxBaseMethods::MultiGet(rocksdb::ColumnFamilyHandle& family,
+                                     size_t count, rocksdb::Slice const* keys,
+                                     rocksdb::PinnableSlice* values,
+                                     rocksdb::Status* statuses,
+                                     ReadOwnWrites readOwnWrites) {
+  if (readOwnWrites == ReadOwnWrites::yes) {
+    _rocksTransaction->MultiGet(_readOptions, &family, count, keys, values,
+                                statuses, false);
+  } else {
+    _db->MultiGet(_readOptions, &family, count, keys, values, statuses, false);
+  }
+}
+
 size_t RocksDBTrxBaseMethods::currentWriteBatchSize() const noexcept {
   TRI_ASSERT(_rocksTransaction);
   return _rocksTransaction->GetWriteBatch()->GetWriteBatch()->Data().capacity();

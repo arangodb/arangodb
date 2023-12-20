@@ -99,6 +99,9 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
                 rocksdb::ColumnFamilyHandle& family, size_t count,
                 rocksdb::Slice const* keys, rocksdb::PinnableSlice* values,
                 rocksdb::Status* statuses) final;
+  void MultiGet(rocksdb::ColumnFamilyHandle& family, size_t count,
+                rocksdb::Slice const* keys, rocksdb::PinnableSlice* values,
+                rocksdb::Status* statuses, ReadOwnWrites) override;
 
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
                       rocksdb::PinnableSlice*, ReadOwnWrites) override;
