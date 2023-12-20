@@ -1,5 +1,10 @@
 devel
 -----
+
+* Added CMake option `USE_JEMALLOC_CHECKS` to toggle the usage of extra safety 
+  checks in jemalloc. The option is currently enabled by default, but can be
+  turned off when there are performance concerns.
+
 * Fixed issue #17673: Adds timezone conversion as an optional parameter in
   all relevant date functions.
 
