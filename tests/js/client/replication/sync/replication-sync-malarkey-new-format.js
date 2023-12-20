@@ -36,7 +36,7 @@ const {
   BaseTestConfig,
   connectToLeader,
   connectToFollower,
-  clearFailurePoints } = require(fs.join('tests', 'js', 'server', 'replication', 'sync', 'replication-sync-malarkey.inc'));
+  clearFailurePoints } = require(fs.join('tests', 'js', 'client', 'replication', 'sync', 'replication-sync-malarkey.inc'));
 
 const cn = 'UnitTestsReplication';
 
