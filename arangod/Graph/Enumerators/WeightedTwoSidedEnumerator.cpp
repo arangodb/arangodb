@@ -91,7 +91,8 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 
   _queue.clear();
   _interior.reset();  // PathStore
-  _diameter = 0.0;
+  _diameter = -1.0;
+  _validator.reset();
 
   // Provider - Must be last one to be cleared(!)
   clearProvider();
@@ -839,10 +840,7 @@ typename WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                            PathValidator>::getBallToContinueSearch() const {
   if (!_left.isQueueEmpty() && !_right.isQueueEmpty()) {
-    auto leftWeight = _left.peekQueue().getWeight();
-    auto rightWeight = _right.peekQueue().getWeight();
-
-    if (leftWeight <= rightWeight) {
+    if (_left.getDiameter() <= _right.getDiameter()) {
       return BallSearchLocation::LEFT;
     } else {
       return BallSearchLocation::RIGHT;

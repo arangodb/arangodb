@@ -197,7 +197,7 @@ class WeightedTwoSidedEnumerator {
         _visitedNodes;
     Direction _direction;
     GraphOptions _graphOptions;
-    double _diameter = 0.0;
+    double _diameter = -1.0;
   };
   enum BallSearchLocation { LEFT, RIGHT, FINISH };
 
