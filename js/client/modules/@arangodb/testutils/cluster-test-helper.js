@@ -1,4 +1,4 @@
-/* global ArangoServerState, ArangoClusterInfo */
+/* global ArangoServerState, ArangoClusterInfo, arango */
 'use strict';
 
 /// helpers for cluster tests. these rely on objects not necessarily

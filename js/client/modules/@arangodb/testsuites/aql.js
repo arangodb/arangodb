@@ -327,6 +327,8 @@ function shellClientReplication2Recovery(options) {
   var opts = ensureServers(options, 5);
   opts = ensureCoordinators(opts, 2);
   opts.enableAliveMonitor = false;
+  opts.propagateInstanceInfo = true;
+
   opts['httpTrustedOrigin'] =  'http://was-erlauben-strunz.it';
 
   let moreOptions = {

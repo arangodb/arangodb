@@ -305,9 +305,9 @@ const waitForReplicatedLogAvailable = function (id) {
 
 const getServerProcessID = function (serverId) {
   let arangods = [];
-  if (isServer) {
+  try {
     arangods = global.instanceManager.arangods;
-  } else {
+  } catch(_) {
     arangods = helper.getServersByType("dbserver");
   }
   let pos = _.findIndex(arangods,
