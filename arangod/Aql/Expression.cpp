@@ -56,6 +56,9 @@
 #include "V8/v8-vpack.h"
 #endif
 
+#include "Basics/debugging.h"
+#include "Logger/LogMacros.h"
+
 #include <absl/strings/str_cat.h>
 
 #include <velocypack/Buffer.h>
@@ -225,6 +228,12 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
 
   size_t const n = right.length();
 
+  TRI_IF_FAILURE("debugWindows") {
+    LOG_DEVEL << "FINDINARRAY. N: " << n
+              << ", RHS ISSORTED: " << node->getMember(1)->isSorted()
+              << ", IN IS SORTED: " << node->getBoolValue();
+  }
+
   if (n >= AstNode::kSortNumberThreshold &&
       (node->getMember(1)->isSorted() ||
        ((node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
@@ -243,6 +252,14 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
       AqlValueGuard guard(a, localMustDestroy);
 
       int compareResult = AqlValue::Compare(vopts, left, a, true);
+
+      TRI_IF_FAILURE("debugWindows") {
+        if (!left.isRange() && !a.isRange()) {
+          LOG_DEVEL << "COMPARING LEFT " << left.slice().toJson()
+                    << ", RIGHT: " << a.slice().toJson()
+                    << ", RESULT: " << compareResult;
+        }
+      }
 
       if (compareResult == 0) {
         // item found in the list
@@ -286,6 +303,8 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
 
   // use linear search
 
+  TRI_IF_FAILURE("debugWindows") { LOG_DEVEL << "FINDARRAYIN LINEAR SEARCH"; }
+
   if (!right.isRange() && !left.isRange()) {
     // optimization for the case in which rhs is a Velocypack array, and we
     // can simply use a VelocyPack iterator to walk through it. this will
@@ -297,6 +316,11 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
     while (it.valid()) {
       int compareResult = arangodb::basics::VelocyPackHelper::compare(
           lhs, it.value(), false, vopts);
+
+      TRI_IF_FAILURE("debugWindows") {
+        LOG_DEVEL << "COMPARING LHS " << lhs.toJson() << ", RHS "
+                  << it.value().toJson() << ", RESULT: " << compareResult;
+      }
 
       if (compareResult == 0) {
         // item found in the list
@@ -1306,6 +1330,13 @@ AqlValue Expression::executeSimpleExpressionComparison(ExpressionContext& ctx,
   AqlValue right = executeSimpleExpression(ctx, node->getMemberUnchecked(1),
                                            mustDestroy, false);
   AqlValueGuard guardRight(right, mustDestroy);
+
+  TRI_IF_FAILURE("debugWindows") {
+    if (!left.isRange() && !right.isRange()) {
+      LOG_DEVEL << "IN COMPARE. LEFT: " << left.slice().toJson()
+                << ", RIGHT: " << right.slice().toJson();
+    }
+  }
 
   mustDestroy = false;  // we're returning a boolean only
 

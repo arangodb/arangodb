@@ -36,6 +36,8 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
+#include "Logger/LogMacros.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -74,6 +76,12 @@ AqlValue EnumerateListExpressionContext::getVariableValue(
         mustDestroy = doCopy;
         auto const searchId = variable->id;
         if (searchId == _outputVariableId) {
+          TRI_IF_FAILURE("debugWindows") {
+            if (!_currentValue->get().isRange()) {
+              LOG_DEVEL << "FOUND VARIABLE " << searchId
+                        << ", VALUE: " << _currentValue->get().slice().toJson();
+            }
+          }
           return *_currentValue;
         }
         for (auto const& [varId, regId] : _varsToRegister) {
@@ -195,6 +203,14 @@ bool EnumerateListExecutor::processArrayElement(OutputAqlItemRow& output) {
       getAqlValue(inputList, _inputArrayPosition, mustDestroy);
   AqlValueGuard guard(innerValue, mustDestroy);
 
+  TRI_IF_FAILURE("debugWindows") {
+    if (!innerValue.isRange()) {
+      LOG_DEVEL << "PROCESSARRAYELEMENT. ITEM: " << innerValue.slice().toJson()
+                << ", POS: " << _inputArrayPosition
+                << ", HAS FILTER: " << _infos.hasFilter();
+    }
+  }
+
   TRI_IF_FAILURE("EnumerateListBlock::getSome") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -233,6 +249,8 @@ EnumerateListExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   AqlCall upstreamCall{};
   upstreamCall.fullCount = output.getClientCall().fullCount;
 
+  TRI_IF_FAILURE("debugWindows") { LOG_DEVEL << "PRODUCEROWS BEGIN"; }
+
   while (inputRange.hasDataRow() && !output.isFull()) {
     if (_inputArrayLength == _inputArrayPosition) {
       // we reached either the end of an array
@@ -242,6 +260,8 @@ EnumerateListExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     }
 
     TRI_ASSERT(_inputArrayPosition < _inputArrayLength);
+    TRI_IF_FAILURE("debugWindows") { LOG_DEVEL << "PRODUCEROWS CHECKING ITEM"; }
+
     if (!processArrayElement(output)) {
       // item was filtered out
       stats.incrFiltered();
@@ -254,6 +274,8 @@ EnumerateListExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     // or are in our first loop iteration
     initializeNewRow(inputRange);
   }
+
+  TRI_IF_FAILURE("debugWindows") { LOG_DEVEL << "PRODUCEROWS END"; }
 
   return {inputRange.upstreamState(), stats, upstreamCall};
 }
@@ -325,10 +347,18 @@ bool EnumerateListExecutor::checkFilter(AqlValue const& currentValue) {
   _expressionContext->adjustCurrentRow(_currentRow);
   _expressionContext->adjustCurrentValue(currentValue);
 
+  TRI_IF_FAILURE("debugWindows") {
+    if (!currentValue.isRange()) {
+      LOG_DEVEL << "CURRENT VALUE: " << currentValue.slice().toJson();
+    }
+  }
   bool mustDestroy;  // will get filled by execution
   AqlValue a =
       _infos.getFilter()->execute(_expressionContext.get(), mustDestroy);
   AqlValueGuard guard(a, mustDestroy);
+  TRI_IF_FAILURE("debugWindows") {
+    LOG_DEVEL << "FILTER RESULT: " << a.toBoolean();
+  }
   return a.toBoolean();
 }
 

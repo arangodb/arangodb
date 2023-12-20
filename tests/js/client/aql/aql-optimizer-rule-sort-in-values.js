@@ -29,6 +29,7 @@ const helper = require("@arangodb/aql-helper");
 const isEqual = helper.isEqual;
 const getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
 const db = require('internal').db;
+const internal = require("internal");
 
 function optimizerRuleTestSuite () {
   const ruleName = "sort-in-values";
@@ -39,6 +40,9 @@ function optimizerRuleTestSuite () {
   const paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
 
   return {
+    tearDown: function () {
+      internal.debugClearFailAt();
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test that rule has no effect when explicitly disabled
@@ -110,23 +114,35 @@ function optimizerRuleTestSuite () {
         "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a NOT IN values RETURN i",
       ];
 
+      if (!internal.debugCanUseFailAt()) {
+        throw "cannot use failurePoints";
+      }
+      
+      internal.debugClearFailAt();
+      internal.debugSetFailAt("debugWindows");
+
       queries.forEach(function(query) {
-        require("console").warn("query:", query);
-        db._explain(query, null, { allPlans: true, optimizer: { rules: [ "-all", "+" + ruleName ] } });
         let result = db._createStatement({query, bindVars: { }, options: paramEnabled}).explain();
         assertEqual([ ruleName ], result.plan.rules, query);
-        require("console").error("all queries:");
+        require("console").error("NEXT:");
+        require("console").error("NEXT:");
+        require("console").error("NEXT:");
+        require("console").error("NEXT:", query, " <<<<<<<<<<<<<<<<<<<<<<<<<<");
+
         db._explain(query, null, { allPlans: true });
-        let allresults = getQueryMultiplePlansAndExecutions(query, {});
+        let allresults = getQueryMultiplePlansAndExecutions(query, {}, undefined, true);
         for (let j = 1; j < allresults.results.length; j++) {
-            assertTrue(isEqual(allresults.results[0],
-                               allresults.results[j]),
-                       "whether the execution of '" + query +
-                       "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
-                       " Should be: '" + JSON.stringify(allresults.results[0]) +
-                       "' but is: " + JSON.stringify(allresults.results[j]) + "'"
-                      );
+          assertTrue(isEqual(allresults.results[0],
+            allresults.results[j]),
+            "whether the execution of '" + query +
+            "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+            " Should be: '" + JSON.stringify(allresults.results[0]) +
+            "' but is: " + JSON.stringify(allresults.results[j]) + "'"
+          );
         }
+        require("console").error("DONE:");
+        require("console").error("DONE:");
+        require("console").error("DONE:");
       });
     },
 

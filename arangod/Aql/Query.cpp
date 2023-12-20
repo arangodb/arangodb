@@ -340,6 +340,8 @@ void Query::prepareQuery() {
   try {
     init(/*createProfile*/ true);
 
+    TRI_IF_FAILURE("debugWindows") { LOG_DEVEL << "QUERY PREPARE"; }
+
     enterState(QueryExecutionState::ValueType::PARSING);
 
     std::unique_ptr<ExecutionPlan> plan = preparePlan();
@@ -396,6 +398,8 @@ void Query::prepareQuery() {
     }
     registerQueryInTransactionState();
 
+    TRI_IF_FAILURE("debugWindows") { LOG_DEVEL << "QUERY PREPARED"; }
+
     enterState(QueryExecutionState::ValueType::EXECUTION);
   } catch (Exception const& ex) {
     _resultCode = ex.code();
@@ -418,6 +422,8 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   LOG_TOPIC("9625e", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::prepare"
       << " this: " << (uintptr_t)this;
+
+  TRI_IF_FAILURE("debugWindows") { LOG_DEVEL << "QUERY START"; }
 
   TRI_ASSERT(_ast != nullptr);
   Parser parser(*this, *_ast, _queryString);
@@ -494,6 +500,8 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   // return the V8 executor if we are in one
   exitV8Executor();
 
+  TRI_IF_FAILURE("debugWindows") { LOG_DEVEL << "QUERY PREPARED"; }
+
   return plan;
 }
 
@@ -507,6 +515,8 @@ ExecutionState Query::execute(QueryResult& queryResult) {
     if (killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
     }
+
+    TRI_IF_FAILURE("debugWindows") { LOG_DEVEL << "QUERY EXECUTE"; }
 
     bool useQueryCache = canUseQueryCache();
     switch (_executionPhase) {
