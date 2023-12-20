@@ -76,7 +76,10 @@ class endpointRunner extends tu.runInArangoshRunner {
                                         'rocksdb.debug-logging': 'true',
                                       },
                                       {}, 'tcp', this.dummyDir, '',
-                                      new inst.agencyConfig(this.options, null));
+                                      new inst.agencyConfig(this.options, null),
+                                      this.dummyDir,
+                                      this.options.memory
+                                     );
     this.endpoint = this.instance.args['server.endpoint'];
   }
   getEndpoint() {
@@ -91,7 +94,7 @@ class endpointRunner extends tu.runInArangoshRunner {
     this.instanceManager['arangods'] = [this.instance];
     this.instanceManager.rootDir = this.instance.rootDir;
     
-    const keyFile = fs.join(tu.pathForTesting('.'), '..', '..', 'UnitTests', 'server.pem');
+    const keyFile = fs.join(tu.pathForTesting('.'), '..', '..', 'etc', 'testing', 'server.pem');
 
     let endpoints = {
       ssl: {
@@ -288,7 +291,7 @@ class endpointRunner extends tu.runInArangoshRunner {
       }
       sleep(2);
       try {
-        obj.instance.checkArangoConnection(15, true);
+        obj.instance.checkArangoConnection(40, true);
       } catch (ex) {
         fatalError = true;
         print(RED + Date() + ' Server did not become available on time' + RESET);
@@ -374,7 +377,7 @@ function endpoints (options) {
   print(CYAN + 'Endpoints tests...' + RESET);
   return new endpointRunner(options, "endpoints").run();
 }
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['endpoints'] = endpoints;
 
@@ -383,8 +386,6 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   opts['skipEndpointsIpv4'] = false;
   opts['skipEndpointsSSL'] = false;
   opts['skipEndpointsUnix'] = (platform.substr(0, 3) === 'win');
-
-  defaultFns.push('endpoints');
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }

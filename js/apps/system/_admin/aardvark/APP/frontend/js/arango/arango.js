@@ -469,6 +469,22 @@
       });
     },
 
+    disableSubNavBar: function () {
+      const navItems = $('.subMenuEntries.bottom').children();
+      _.each(navItems, function (item) {
+        $(item).addClass('disabled');
+        $(item).css('pointer-events', 'none');
+      });
+    },
+
+    enableSubNavBar: function () {
+      const navItems = $('.subMenuEntries.bottom').children();
+      _.each(navItems, function (item) {
+        $(item).removeClass('disabled');
+        $(item).css('pointer-events', 'all');
+      });
+    },
+
     buildUserSubNav: function (username, activeKey) {
       var menus = {
         General: {
@@ -1431,4 +1447,25 @@
       }
     }
   };
+
+  window.searchHelper = {
+    skipEvent: function (event) {
+      if (
+        event &&
+        event.originalEvent &&
+        ((event.originalEvent.key &&
+          (event.originalEvent.key === "Control" ||
+            event.originalEvent.key === "Alt" ||
+            event.originalEvent.key === "Shift" ||
+            event.originalEvent.key === "Meta")) ||
+          event.originalEvent.ctrlKey ||
+          event.originalEvent.altKey ||
+          event.originalEvent.metaKey)
+      ) {
+        return true;
+      }
+      return false;
+    },
+  };
+
 }());

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +30,11 @@ class CrashHandler {
  public:
   /// @brief log backtrace for current thread to logfile
   static void logBacktrace();
+
+  /// @brief set server state string as context for crash messages.
+  /// state string will be advanced whenever the application server
+  /// changes its state. state string must be null-terminated!
+  static void setState(std::string_view state);
 
   /// @brief logs a fatal message and crashes the program
   [[noreturn]] static void crash(std::string_view context);

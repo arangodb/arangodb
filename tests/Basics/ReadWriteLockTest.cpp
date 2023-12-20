@@ -24,12 +24,386 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/system-compiler.h"
+#include "Random/RandomGenerator.h"
 
 #include "gtest/gtest.h"
 
+#include <atomic>
 #include <chrono>
+#include <condition_variable>
+#include <cstdint>
+#include <mutex>
+#include <thread>
 
 using namespace arangodb::basics;
+
+namespace {
+struct Synchronizer {
+  std::mutex mutex;
+  std::condition_variable cv;
+  bool ready = false;
+
+  void waitForStart() {
+    std::unique_lock lock(mutex);
+    cv.wait(lock, [&] { return ready; });
+  }
+  void start() {
+    {
+      std::unique_lock lock(mutex);
+      ready = true;
+    }
+    cv.notify_all();
+  }
+};
+
+}  // namespace
+
+TEST(ReadWriteLockTest, testLockWriteParallel) {
+  ReadWriteLock lock;
+
+  constexpr size_t n = 4;
+  std::vector<std::thread> threads;
+  threads.reserve(n);
+
+  auto guard = arangodb::scopeGuard([&]() noexcept {
+    for (auto& t : threads) {
+      t.join();
+    }
+  });
+
+  Synchronizer s;
+
+  constexpr size_t iterations = 5000000;
+  uint64_t counter = 0;
+
+  for (size_t i = 0; i < n; ++i) {
+    threads.emplace_back([&]() {
+      s.waitForStart();
+
+      for (size_t i = 0; i < iterations; ++i) {
+        lock.lockWrite();
+        ++counter;
+        lock.unlock();
+      }
+    });
+  }
+
+  s.start();
+
+  guard.fire();
+  ASSERT_EQ(iterations * n, counter);
+}
+
+TEST(ReadWriteLockTest, testTryLockWriteParallel) {
+  ReadWriteLock lock;
+
+  constexpr size_t n = 4;
+  std::vector<std::thread> threads;
+  threads.reserve(n);
+
+  auto guard = arangodb::scopeGuard([&]() noexcept {
+    for (auto& t : threads) {
+      t.join();
+    }
+  });
+
+  Synchronizer s;
+
+  constexpr size_t iterations = 5000000;
+  uint64_t counter = 0;
+
+  for (size_t i = 0; i < n; ++i) {
+    threads.emplace_back([&]() {
+      s.waitForStart();
+      for (size_t i = 0; i < iterations; ++i) {
+        while (!lock.tryLockWrite()) {
+        }
+        ++counter;
+        lock.unlock();
+      }
+    });
+  }
+
+  s.start();
+
+  guard.fire();
+  ASSERT_EQ(iterations * n, counter);
+}
+
+TEST(ReadWriteLockTest, testTryLockWriteForParallel) {
+  ReadWriteLock lock;
+
+  constexpr size_t n = 4;
+  std::vector<std::thread> threads;
+  threads.reserve(n);
+
+  auto guard = arangodb::scopeGuard([&]() noexcept {
+    for (auto& t : threads) {
+      t.join();
+    }
+  });
+
+  Synchronizer s;
+
+  auto timeout = std::chrono::duration_cast<std::chrono::microseconds>(
+      std::chrono::duration<double>(60.0 /*seconds*/));
+  constexpr size_t iterations = 5000000;
+  uint64_t counter = 0;
+
+  for (size_t i = 0; i < n; ++i) {
+    threads.emplace_back([&]() {
+      s.waitForStart();
+      for (size_t i = 0; i < iterations; ++i) {
+        while (!lock.tryLockWriteFor(timeout)) {
+        }
+        ++counter;
+        lock.unlock();
+      }
+    });
+  }
+
+  s.start();
+
+  guard.fire();
+  ASSERT_EQ(iterations * n, counter);
+}
+
+TEST(ReadWriteLockTest, testTryLockWriteForParallelLowTimeout) {
+  ReadWriteLock lock;
+
+  constexpr size_t n = 4;
+  std::vector<std::thread> threads;
+  threads.reserve(n);
+
+  auto guard = arangodb::scopeGuard([&]() noexcept {
+    for (auto& t : threads) {
+      t.join();
+    }
+  });
+
+  Synchronizer s;
+
+  auto timeout = std::chrono::microseconds(1);
+  constexpr size_t iterations = 5000000;
+  uint64_t counter = 0;
+
+  for (size_t i = 0; i < n; ++i) {
+    threads.emplace_back([&]() {
+      s.waitForStart();
+      for (size_t i = 0; i < iterations; ++i) {
+        while (!lock.tryLockWriteFor(timeout)) {
+        }
+        ++counter;
+        lock.unlock();
+      }
+    });
+  }
+
+  s.start();
+
+  guard.fire();
+  ASSERT_EQ(iterations * n, counter);
+}
+
+TEST(ReadWriteLockTest, testLockWriteLockReadParallel) {
+  ReadWriteLock lock;
+
+  constexpr size_t n = 4;
+  std::vector<std::thread> threads;
+  threads.reserve(n);
+
+  auto guard = arangodb::scopeGuard([&]() noexcept {
+    for (auto& t : threads) {
+      t.join();
+    }
+  });
+
+  Synchronizer s;
+
+  constexpr size_t iterations = 5000000;
+  uint64_t counter = 0;
+
+  for (size_t i = 0; i < n; ++i) {
+    if (i >= n / 2) {
+      threads.emplace_back([&]() {
+        s.waitForStart();
+        for (size_t i = 0; i < iterations; ++i) {
+          while (!lock.tryLockWrite()) {
+          }
+          ++counter;
+          lock.unlock();
+        }
+      });
+    } else {
+      threads.emplace_back([&]() {
+        s.waitForStart();
+        [[maybe_unused]] uint64_t total = 0;
+        for (size_t i = 0; i < iterations; ++i) {
+          lock.lockRead();
+          total += counter;
+          lock.unlock();
+        }
+      });
+    }
+  }
+
+  s.start();
+
+  guard.fire();
+  ASSERT_EQ(iterations * (n / 2), counter);
+}
+
+TEST(ReadWriteLockTest, testMixedParallel) {
+  ReadWriteLock lock;
+
+  constexpr size_t n = 8;
+  std::vector<std::thread> threads;
+  threads.reserve(n);
+
+  auto guard = arangodb::scopeGuard([&]() noexcept {
+    for (auto& t : threads) {
+      t.join();
+    }
+  });
+
+  Synchronizer s;
+
+  auto timeout = std::chrono::duration_cast<std::chrono::microseconds>(
+      std::chrono::duration<double>(60.0 /*seconds*/));
+  constexpr size_t iterations = 5000000;
+  uint64_t counter = 0;
+
+  for (size_t i = 0; i < n; ++i) {
+    if (i == 0 || i == 1) {
+      threads.emplace_back([&]() {
+        s.waitForStart();
+        for (size_t i = 0; i < iterations; ++i) {
+          lock.lockWrite();
+          ++counter;
+          lock.unlock();
+        }
+      });
+    } else if (i == 2 || i == 3) {
+      threads.emplace_back([&]() {
+        s.waitForStart();
+        for (size_t i = 0; i < iterations; ++i) {
+          while (!lock.tryLockWrite()) {
+          }
+          ++counter;
+          lock.unlock();
+        }
+      });
+    } else if (i == 4 || i == 5) {
+      threads.emplace_back([&]() {
+        s.waitForStart();
+        for (size_t i = 0; i < iterations; ++i) {
+          while (!lock.tryLockWriteFor(timeout)) {
+          }
+          ++counter;
+          lock.unlock();
+        }
+      });
+    } else {
+      threads.emplace_back([&]() {
+        s.waitForStart();
+        [[maybe_unused]] uint64_t total = 0;
+        for (size_t i = 0; i < iterations; ++i) {
+          lock.lockRead();
+          total += counter;
+          lock.unlock();
+        }
+      });
+    }
+  }
+
+  s.start();
+
+  guard.fire();
+  ASSERT_EQ(iterations * 6, counter);
+}
+
+TEST(ReadWriteLockTest, testRandomMixedParallel) {
+  ReadWriteLock lock;
+
+  constexpr size_t n = 6;
+  std::vector<std::thread> threads;
+  threads.reserve(n);
+
+  auto guard = arangodb::scopeGuard([&]() noexcept {
+    for (auto& t : threads) {
+      t.join();
+    }
+  });
+
+  Synchronizer s;
+
+  constexpr size_t iterations = 5000000;
+  uint64_t counter = 0;
+
+  std::atomic<size_t> total = 0;
+
+  for (size_t i = 0; i < n; ++i) {
+    threads.emplace_back([&]() {
+      s.waitForStart();
+      size_t expected = 0;
+      for (size_t i = 0; i < iterations; ++i) {
+        auto r = arangodb::RandomGenerator::interval(static_cast<uint32_t>(4));
+        switch (r) {
+          case 0: {
+            lock.lockWrite();
+            ++counter;
+            ++expected;
+            lock.unlock();
+            break;
+          }
+          case 1: {
+            if (lock.tryLockWrite()) {
+              ++counter;
+              ++expected;
+              lock.unlock();
+            }
+            break;
+          }
+          case 2: {
+            if (lock.tryLockRead()) {
+              [[maybe_unused]] uint64_t value = counter;
+              lock.unlock();
+            }
+            break;
+          }
+          case 3: {
+            lock.lockRead();
+            [[maybe_unused]] uint64_t value = counter;
+            lock.unlock();
+            break;
+          }
+          case 4: {
+            if (lock.tryLockWriteFor(std::chrono::microseconds(
+                    arangodb::RandomGenerator::interval(
+                        static_cast<uint32_t>(1000))))) {
+              ++counter;
+              ++expected;
+              lock.unlock();
+            }
+            break;
+          }
+          default: {
+            ADB_UNREACHABLE;
+          }
+        }
+      }
+
+      total.fetch_add(expected);
+    });
+  }
+
+  s.start();
+
+  guard.fire();
+  ASSERT_EQ(total, counter);
+}
 
 TEST(ReadWriteLockTest, testTryLockWrite) {
   ReadWriteLock lock;

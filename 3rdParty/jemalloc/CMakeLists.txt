@@ -31,8 +31,14 @@ if (LINUX OR DARWIN)
     set(JEMALLOC_CONFIG "background_thread:true,cache_oblivious:false")
   endif ()
 
+  SET(JEMALLOC_C_FLAGS ${CMAKE_C_FLAGS})
   if (USE_JEMALLOC_PROF)
-    SET(JEMALLOC_PROF "--enable-prof")
+      if (USE_LIBUNWIND)
+          SET(JEMALLOC_PROF "--enable-prof" "--enable-prof-libunwind" "--with-static-libunwind=${LIBUNWIND_LIB}")
+          SET(JEMALLOC_C_FLAGS "${CMAKE_C_FLAGS} -I${LIBUNWIND_HOME}/include")
+      else ()
+          SET(JEMALLOC_PROF "--enable-prof")
+      endif()
   endif ()
 
   set(JEMALLOC_LIB "${CMAKE_CURRENT_BINARY_DIR}/lib/libjemalloc.a")
@@ -49,7 +55,7 @@ if (LINUX OR DARWIN)
     CONFIGURE_COMMAND
       "${JEMALLOC_SOURCE_DIR}/configure" CC=${JEMALLOC_CC_TMP}
                   CXX=${JEMALLOC_CXX_TMP}
-                  CFLAGS=${CMAKE_C_FLAGS}
+                  CFLAGS=${JEMALLOC_C_FLAGS}
                   CXXFLAGS=${CMAKE_CXX_FLAGS}
                   --prefix=${CMAKE_CURRENT_BINARY_DIR}
                   --with-malloc-conf=${JEMALLOC_CONFIG}

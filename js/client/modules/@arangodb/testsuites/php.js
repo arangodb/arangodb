@@ -161,7 +161,7 @@ function phpDriver (options) {
 }
 
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   opts['phpkeepalive'] = true;
   Object.assign(allTestPaths, testPaths);
   testFns['php_driver'] = phpDriver;

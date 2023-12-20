@@ -15,7 +15,7 @@ Getting Started
 
 - [Free Udemy Course](https://www.udemy.com/course/getting-started-with-arangodb)
 - [Training Center](https://www.arangodb.com/learn/)
-- [Documentation](https://www.arangodb.com/docs/stable/)
+- [Documentation](https://docs.arangodb.com/)
 
 For the impatient:
 
@@ -86,17 +86,8 @@ Latest Release
 Packages for all supported platforms can be downloaded from
 [https://www.arangodb.com/download](https://www.arangodb.com/download/).
 
-Please also check [what's new in ArangoDB](https://www.arangodb.com/docs/stable/release-notes.html).
-
-More Information
-----------------
-
-See our documentation for detailed
-[installation & compilation instructions](https://www.arangodb.com/docs/stable/installation.html).
-
-There is an [introductory chapter](https://www.arangodb.com/docs/stable/getting-started.html)
-showing the basic operation of ArangoDB. To learn ArangoDB's query language check out the
-[AQL tutorial](https://www.arangodb.com/docs/stable/aql/tutorial.html).
+For what's new in ArangoDB, see the Release Notes in the
+[Documentation](https://docs.arangodb.com/).
 
 Stay in Contact
 ---------------

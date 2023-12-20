@@ -303,7 +303,9 @@ function parseElementStartPart(source,start,el,currentNSMap,entityReplacer,error
 				el.closed = true;
 			case S_ATTR_NOQUOT_VALUE:
 			case S_ATTR:
-			case S_ATTR_SPACE:
+				break;
+				case S_ATTR_SPACE:
+					el.closed = true;
 				break;
 			//case S_EQ:
 			default:

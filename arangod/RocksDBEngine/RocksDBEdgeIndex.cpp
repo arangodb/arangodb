@@ -409,6 +409,8 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
          iterator->Next()) {
       LocalDocumentId const docId = RocksDBKey::edgeDocumentId(iterator->key());
 
+      TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(iterator->key()));
+
       // adding documentId and _from or _to value
       _builder.add(VPackValue(docId.id()));
       std::string_view vertexId = RocksDBValue::vertexId(iterator->value());
@@ -960,13 +962,14 @@ void RocksDBEdgeIndex::handleValNode(VPackBuilder* keys,
   }
 }
 
-void RocksDBEdgeIndex::afterTruncate(TRI_voc_tick_t tick,
-                                     transaction::Methods* trx) {
+void RocksDBEdgeIndex::truncateCommit(TruncateGuard&& guard,
+                                      TRI_voc_tick_t tick,
+                                      transaction::Methods* trx) {
   TRI_ASSERT(!unique());
   if (_estimator != nullptr) {
     _estimator->bufferTruncate(tick);
   }
-  RocksDBIndex::afterTruncate(tick, trx);
+  RocksDBIndex::truncateCommit(std::move(guard), tick, trx);
 }
 
 RocksDBCuckooIndexEstimatorType* RocksDBEdgeIndex::estimator() {

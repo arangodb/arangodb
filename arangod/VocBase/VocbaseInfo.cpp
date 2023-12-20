@@ -61,6 +61,16 @@ void CreateDatabaseInfo::shardingPrototype(ShardingPrototype type) {
   _shardingPrototype = type;
 }
 
+void CreateDatabaseInfo::setSharding(std::string_view sharding) {
+  // sharding -- must be "", "flexible" or "single"
+  bool isValidProperty =
+      (sharding.empty() || sharding == "flexible" || sharding == "single");
+  TRI_ASSERT(isValidProperty);
+  if (isValidProperty) {
+    _sharding = sharding;
+  }
+}
+
 Result CreateDatabaseInfo::load(std::string const& name, uint64_t id) {
   _name = methods::Databases::normalizeName(name);
   _id = id;

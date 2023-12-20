@@ -1,29 +1,308 @@
-v3.10.9 (XXXX-XX-XX)
+v3.10.12 (XXXX-XX-XX)
+---------------------
+
+* BTS-1714: Within writing AQL queries the lock timeout was accidentally set to
+  2 seconds for all write operations on followers. This could lead to dropped
+  followers when an index of a large shard was finalized on an follower.
+
+* Updated OpenSSL to 3.0.12.
+
+* Fixed a problem in ReadWriteLock which could prevent waiting readers from
+  being woken up, when a write lock acquire timed out.
+
+* Fixed MDS-1170: Significant performance degradation when queries are executed
+  within transactions that involve edits.
+
+* Solve a potential blockage during hotbackup by not stopping read-only
+  transactions from committing during hotbackup. Furthermore, improve behavior
+  of authentication in the case that the user cache is outdated.
+
+* FE-395: Fix query editor map not loading.
+
+* Rebuilt included rclone v1.59.0 with go1.21.4.
+
+* Updated ArangoDB Starter to v0.17.2 and arangosync to v2.19.5.
+
+* Track memory usage of internal connection statistics and request statistics:
+  - `arangodb_connection_statistics_memory_usage`
+  - `arangodb_requests_statistics_memory_usage`
+  These metrics will remain at 0 if the server is started with the option
+  `--server.statistics false`. Otherwise they will contain the memory usage used
+  by connection and request statistics. Memory usage should remain pretty
+  constant over time, unless there are bursts of new connections and/or
+  requests.
+
+* Avoid memory leak in case an arangod instance is started with the option
+  `--server.statistics false`. Previously, with that setting the request and
+  connection statistics were built up in memory, but were never released because
+  the statistics background thread was not running.
+
+* Remove version check on startup of arangosh. This can speed up the startup of
+  the arangosh considerably because it won't do a network request to
+  www.arangodb.com.
+
+* MDS-1164: Added Publisher and Company to the Windows binaries.
+
+* Fixed a race in controlled leader change which could lead to a situation in
+  which a shard follower is dropped when the first write operation happens. This
+  fixes BTS-1647.
+
+* Fixed BTS-1273: While queueing an async server log message, we could be
+  blocked by IO on the log-writer thread. This could slow down the main
+  path. In case the log-writer is configured to use slow device
+  (e.g. using syslog) this could have significant impact.
+
+* Introduced an upper bound of queued async log messages. If we would log
+  more messages then the background logger thread can actually process, we
+  start to write log messages synchronously. This is to prevent the queue
+  to grow indefinitely. The upper bound is configurable via the startup
+  option `--log.max-queued-entries`. The default value is 10000.
+
+* Fixed an unnecessary follower drop in controlled leader change, which will
+  speed up leader changes. This fixes BTS-1658.
+
+* Fixed BTS-1669 Transaction Manager returns Error if we Abort an Expired
+  Transaction.
+  There was a small time window of around 2 seconds in which aborting expired
+  transactions would return "transaction aborted" instead of returning success.
+  The time window was between when a transaction expired (according to its TTL
+  value) and when the transaction manager's garbage collection aborted the
+  transaction. The issue only happened for transactions which outlived their TTL
+  value and for which an abort operation was attempted in that time window.
+
+
+v3.10.11 (2023-10-19)
+---------------------
+
+* Fix a race in failure oracle feature on server shutdown.
+
+* Updated OpenSSL to 3.0.11.
+
+* Make AQL query cursor garbage-collection clean up more expired cursors in a
+  single run than before. This change can help to reclaim memory of expired
+  cursors quicker than in previous versions.
+
+* Reduce number of atomic shared_ptr copies in in-memory cache subsystem.
+
+* Fixed BTS-1610: In certain situations with at least three levels of nested
+  subqueries, of which some of the outer iterations don't return any results,
+  results of later iterations could be lost.
+
+* Updated arangosync to v2.19.4.
+
+* Fix updating of collection properties (schema) when the collection has a view
+  on top.
+
+* FE-323: allow 'nested' property in view JSON UI.
+
+* FE-317: add graph name validations.
+
+* Slightly extended hot backup release lock timeout on coordinators from
+  `timeout + 5` seconds to `timeout + 30` seconds, to prevent premature release
+  of hot backup commit locks on coordinators.
+
+* Improve logging in case hot backup locks cannot be taken on coordinators.
+
+* Fixed BTS-1618: Buggy AQL query returning empty results, due to incorrect use
+  of index projections.
+
+* Added the following metrics to improve observability of the in-memory cache
+  subsystem:
+  - `rocksdb_cache_free_memory_tasks_total`: total number of `freeMemory`
+    tasks scheduled
+  - `rocksdb_cache_migrate_tasks_total`: total number of `migrate` tasks
+    scheduled
+  - `rocksdb_cache_free_memory_tasks_duration_total`: total time (microseconds)
+    spent in `freeMemory` tasks
+  - `rocksdb_cache_migrate_tasks_duration_total`: total time (microseconds)
+    spent in `migrate` tasks
+
+* Improve performance of the in-memory cache's memory reclamation procedure.
+  The previous implementation acquired too many locks, which could drive system
+  CPU time up.
+
+* Fixed issue with `keepNull=false` updates not being properly replicated to
+  followers.
+
+* Updated JavaScript dependencies:
+
+  qs: 6.11.0 -> 6.11.2
+  semver: 7.3.8 -> 7.5.4
+
+  This addresses CVE-2022-25883 in the semver module.
+
+* FE-355: fix ctrl + A for search box.
+
+* FE-365: fix query import breaking due to extra fields.
+
+* Fixed BTS-1613: Fixed processing analyzers imported from Cluster dump to the
+  Single server database.
+
+* Removed DocuBlocks and obsolete documentation tooling.
+  The HTTP API descriptions are now in the `arangodb/docs-hugo` repository.
+
+* Fixed BTS-1556: Potential shutdown race, when the server is shutting down and
+  still AgencyCommunication was going on it could use the scheduler which was
+  already deleted, causing a crash right before a normal shutdown.
+  This should not have any negative effect, as all state preserving operations
+  are done by then, it just wasn't a clean exit.
+
+* Fix issue #19630: wildcard automaton sometime accepts more symbols than
+  required.
+
+* Fix BTS-1583: search-alias view sometimes was unavailable in cluster.
+
+* Fix BTS-1379: add inverted index to collection figures.
+
+* BTS-1544: The _system database now properly reports its sharding value.
+
+* Updated ArangoDB Starter to 0.17.1.
+
+* Whenever there is a query request timeout in AQL (e.g., a server died) which
+  causes the query to fail, the DBServers will now all directly kill their
+  potentially ongoing parts of the query and not wait for garbage collection.
+
+* Fixed BTS-1541: Old legacy little endian key format for RocksDB database
+  (created in ArangoDB 3.2 and 3.3) showed wrong behavior on newer versions.
+  This fixes a persistent index corruption bug with the old format.
+
+* Fixed a loophole in COLLECT variable name validation: in COLLECT INTO
+  expressions it was possible to refer to variables that the COLLECT just
+  introduced. This was undefined behavior and not caught by the previous version
+  of COLLECT's variable checking.
+
+* BTS-1598: fix race in agency.
+
+* ES-1727: Fix `UPDATE`, `REPLACE`, and `UPSERT ... UPDATE/REPLACE` failing with
+  "conflict, _rev values do not match" for non-local edges in Smart- and
+  EnterpriseGraphs, when `OPTIONS { ignoreRevs: false }` is supplied.
+
+* Upgraded Swagger-UI to v5.4.1.
+
+* Fixed BTS-1590: Fixed potentially undefined behavior in NetworkFeature, when
+  it was referring to an options object that could have been destroyed already.
+
+* BTS-1549: adjust permission handling in experimental dump to the same behavior
+  as in non-experimental dump.
+
+* Allow compression content-negotation in metrics API, so that responses from
+  the metrics API at `/_admin/metrics` can be sent compressed if the client
+  supports it.
+
+* Fixed BTS-1553: Fixed a rare occuring issue during AQL queries where the inner
+  amount of a limit in the LimitExecutor is set to a wrong value which lead to
+  some data rows not being returned to the client.
+
+
+v3.10.10 (2023-08-15)
+---------------------
+
+* Prevent potential buffer overflow in the crash handler.
+
+* Fixed AQL WINDOW statement for OneShard databases: Whenever WINDOW is used in
+  the row based variant like (e.g. WINDOW { preceding: 1, following: 1 }) it
+  errored with:  mandatory variable "inVariable" not found. This variable is now
+  correctly treated as optional.
+
+* Fixed AQL WINDOW statement for OneShard databases: Whenever WINDOW is used
+  on a OneShardDatabase, or on data from a collection that only has one shard,
+  the preceding and following clauses were flipped.
+
+* Updated arangosync to v2.19.3.
+
+* Prevent potential buffer overflow in the crash handler.
+
+* Updated OpenSSL to 3.0.10 and OpenLDAP to 2.6.6.
+
+* Updated ArangoDB Starter to 0.17.0.
+
+* ES-1566: instead of potentially accessing a nullptr inside graph traversal
+  setup, throw an exception. This will be handled properly and returned with
+  a proper error message.
+
+* BTS-1511: AQL: Fixed access of integers in the ranges
+  [-36028797018963968, -281474976710657] and
+  [281474976710656, 36028797018963968], i.e. those whose representation require
+  7 bytes. These values were misinterpreted as different integers.
+  Simple passing of values (i.e. writing to or reading from documents) was not
+  affected: Only accesses of those values as numbers by AQL was. E.g. arithmetic
+  (addition, multiplication, ...), certain AQL functions, comparing/sorting -
+  the latter only if the numbers are compared directly, but not as part of a
+  value. For example, `SORT x` lead to an unexpected order if x was such a
+  number. `SORT [x]` however worked as expected.
+
+* Fixed potential deadlock() in cache::Manager::unprepareTask() in case a 
+  MigrateTask could not be scheduled successfully (in case of a full scheduler 
+
+* Fix SEARCH-465: Truncate on ArangoSearch index could release a WAL if commit
+  passed.
+
+* Fixed potential deadlock() in cache::Manager::unprepareTask() in case a
+  MigrateTask could not be scheduled successfully (in case of a full scheduler
+  queue on DB servers).
+
+* Added startup option `--database.max-databases` to limit the maximum number
+  of databases that can exist in parallel on a deployment. This option can be
+  used to limit resources used by database objects. If the option is used and
+  there already exist as many databases as configured by this option, any
+  attempt to create an additional database will fail with error 32
+  (`ERROR_RESOURCE_LIMIT`). Additional databases can then only be created if
+  other databases are dropped first.
+  The default value for this option is unlimited, so technically an arbitrary
+  amount of databases can be created (although effectively the number of
+  databases is limited by memory and processing resources).
+
+* Avoid recursive lock during agency startup.
+
+* FE-20: fix UI placeholder format for locale when creating analyzers.
+
+* FE-304, FE-305: use navigator.onLine for checking internet connection, correct
+  path for running/slow queries.
+
+* FE-303: fix geo map doesn't show up in query UI.
+
+* Use libunwind in jemalloc profiling to make it available with libmusl
+  and static binaries.
+
+* FE-287: fix number validation for replicationFactor and writeConcern.
+
+* FE-162: Fix display of geodesic lines.
+
+* Enforce that server always returns an empty body if the return code is 204.
+
+* Arangodump retries dump requests in more cases: read, write and connection
+  errors.
+
+* When trying to read multiple documents, the coordinator will now handle empty
+  lists gracefully and return an empty result set instead of an error.
+
+
+v3.10.9 (2023-06-30)
 --------------------
 
 * Added startup option `--replication.active-failover-leader-grace-period`.
   This startup option can be used to set the amount of time (in seconds) for
-  which the current leader in an active failover setup will continue to 
-  assume its leadership even if it lost connection to the agency.
+  which the current leader in an active failover setup will continue to assume
+  its leadership even if it lost connection to the agency.
 
-  In case the leader cannot contact the agency anymore, the agency will elect
-  a new leader after the supervision grace period has elapsed. 
+  In case the leader cannot contact the agency anymore, the agency will elect a
+  new leader after the supervision grace period has elapsed.
   In order to avoid a split-brain situation with multiple servers assuming
-  leadership, this option can be used to make a disconnected leader refuse
-  any incoming write operations after the grace period controled by this option
-  has elapsed.
-  Ideally the startup option should be given a value greater than the value
-  of the supervision grace period, in order to avoid a temporarily disconnected
+  leadership, this option can be used to make a disconnected leader refuse any
+  incoming write operations after the grace period controled by this option has
+  elapsed.
+  Ideally the startup option should be given a value greater than the value of
+  the supervision grace period, in order to avoid a temporarily disconnected
   leader giving up leadership too early and unnecessarily.
 
-  The default value is 120 seconds. Setting the option to a value of 0 will
-  keep the existing behavior, in which a disconnected leader will not refuse
-  incoming write operations.
+  The default value is 120 seconds. Setting the option to a value of 0 will keep
+  the existing behavior, in which a disconnected leader will not refuse incoming
+  write operations.
 
 * Optimize runtime performance of exclusive locks.
 
-* Remove temporary `CREATING_{number}` directories from hot backup in case a
-  hot backup runs into an error.
+* Remove temporary `CREATING_{number}` directories from hot backup in case a hot
+  backup runs into an error.
 
 * BTS-1490: Allow performing AQL updates locally without using DISTRIBUTE in
   case the update AQL is of the pattern
@@ -51,7 +330,7 @@ v3.10.9 (XXXX-XX-XX)
 * Add a `description` field to OptimizerRule and dump the explanations via the
   `GET /_api/query/rules` endpoint.
 
-* Attempt to avoid busy looping when locking collections with a timeout
+* Attempt to avoid busy looping when locking collections with a timeout.
 
 * BTS-1490: query can use a lot more memory when using COLLECT WITH COUNT.
 
@@ -59,10 +338,11 @@ v3.10.9 (XXXX-XX-XX)
 v3.10.8 (2023-06-23)
 --------------------
 
-* Fixed two possible deadlocks which could occur if all medium priority
-  threads are busy. One is that in this case the AgencyCache could no longer
-  receive updates from the agency and another that queries could no longer
-  be finished. This fixes BTS-1475 and BTS-1486.
+* Fixed two possible deadlocks which could occur if all medium priority threads
+  are busy. One is that in this case the AgencyCache could no longer receive
+  updates from the agency and another that queries could no longer be finished.
+  This fixes BTS-1475 and BTS-1486.
+
 
 v3.10.7 (2023-06-12)
 --------------------
@@ -9278,8 +9558,6 @@ v3.5.0-rc.1 (2019-05-14)
   - `--javascript.environment-variables-whitelist`: control environment variables visible in JavaScript
   - `--javascript.endpoints-whitelist`: control accessible endpoints in JavaScript
   - `--javascript.files-whitelist`: control file access in JavaScript
-
-  Note: There is a [detailed description of all options](https://www.arangodb.com/docs/devel/security-security-options.html).
 
 * Prevented arangod from making a call to www.arangodb.com at startup.
 

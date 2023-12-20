@@ -192,7 +192,6 @@ function recovery (options) {
   let recoveryTests = tu.scanTestPaths(testPaths.recovery, options);
 
   recoveryTests = tu.splitBuckets(options, recoveryTests);
-
   let count = 0;
 
   let tmpMgr = new tmpDirMmgr('recovery', options);
@@ -291,6 +290,7 @@ function recovery (options) {
           if (params.keyDir !== "") {
             fs.removeDirectoryRecursive(params.keyDir, true);
           }
+          params.instance.cleanup();
         }
         break;
       }
@@ -315,7 +315,7 @@ function recovery (options) {
   return results;
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['recovery'] = recovery;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }

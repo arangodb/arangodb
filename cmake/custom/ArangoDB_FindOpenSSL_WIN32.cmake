@@ -289,6 +289,17 @@ if(OPENSSL_INCLUDE_DIR AND EXISTS "${OPENSSL_INCLUDE_DIR}/openssl/opensslv.h")
     endif ()
 
     set(OPENSSL_VERSION "${OPENSSL_VERSION_MAJOR}.${OPENSSL_VERSION_MINOR}.${OPENSSL_VERSION_FIX}${OPENSSL_VERSION_PATCH_STRING}")
+  else ()
+    # Since OpenSSL 3.0.0, the new version format is MAJOR.MINOR.PATCH and
+    # a new OPENSSL_VERSION_STR macro contains exactly that
+    file(STRINGS "${OPENSSL_INCLUDE_DIR}/openssl/opensslv.h" OPENSSL_VERSION_STR
+         REGEX "^#[\t ]*define[\t ]+OPENSSL_VERSION_STR[\t ]+\"([0-9])+\\.([0-9])+\\.([0-9])+\".*")
+    string(REGEX REPLACE "^.*OPENSSL_VERSION_STR[\t ]+\"([0-9]+\\.[0-9]+\\.[0-9]+)\".*$"
+           "\\1" OPENSSL_VERSION_STR "${OPENSSL_VERSION_STR}")
+
+    set(OPENSSL_VERSION "${OPENSSL_VERSION_STR}")
+
+    unset(OPENSSL_VERSION_STR)
   endif ()
 endif ()
 

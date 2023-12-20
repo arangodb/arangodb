@@ -90,7 +90,6 @@ using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
 std::string const dataString("data");
-std::string const keyString("key");
 std::string const typeString("type");
 }  // namespace
 
@@ -758,10 +757,6 @@ RestReplicationHandler::forwardingTarget() {
   return {std::make_pair(StaticStrings::Empty, false)};
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_put_api_replication_makeFollower
-////////////////////////////////////////////////////////////////////////////////
-
 void RestReplicationHandler::handleCommandMakeFollower() {
   bool isGlobal = false;
   ReplicationApplier* applier = getApplier(isGlobal);
@@ -838,10 +833,6 @@ void RestReplicationHandler::handleUnforwardedTrampolineCoordinator() {
 
   TRI_ASSERT(false);  // should only get here if request is not well-formed
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_get_api_replication_cluster_inventory
-////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandClusterInventory() {
   auto& replicationFeature = _vocbase.server().getFeature<ReplicationFeature>();
@@ -2174,10 +2165,6 @@ void RestReplicationHandler::handleCommandRestoreView() {
   generateResult(rest::ResponseCode::OK, result.slice());
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_put_api_replication_serverID
-////////////////////////////////////////////////////////////////////////////////
-
 void RestReplicationHandler::handleCommandServerId() {
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
@@ -2186,10 +2173,6 @@ void RestReplicationHandler::handleCommandServerId() {
   result.close();
   generateResult(rest::ResponseCode::OK, result.slice());
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_put_api_replication_synchronize
-////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandSync() {
   bool isGlobal;
@@ -2258,10 +2241,6 @@ void RestReplicationHandler::handleCommandSync() {
   generateResult(rest::ResponseCode::OK, result.slice());
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_put_api_replication_applier
-////////////////////////////////////////////////////////////////////////////////
-
 void RestReplicationHandler::handleCommandApplierGetConfig() {
   bool isGlobal;
   ReplicationApplier* applier = getApplier(isGlobal);
@@ -2277,10 +2256,6 @@ void RestReplicationHandler::handleCommandApplierGetConfig() {
 
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_put_api_replication_applier_adjust
-////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierSetConfig() {
   bool isGlobal;
@@ -2311,10 +2286,6 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
   handleCommandApplierGetConfig();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_put_api_replication_applier_start
-////////////////////////////////////////////////////////////////////////////////
-
 void RestReplicationHandler::handleCommandApplierStart() {
   bool isGlobal;
   ReplicationApplier* applier = getApplier(isGlobal);
@@ -2338,10 +2309,6 @@ void RestReplicationHandler::handleCommandApplierStart() {
   handleCommandApplierGetState();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_put_api_replication_applier_stop
-////////////////////////////////////////////////////////////////////////////////
-
 void RestReplicationHandler::handleCommandApplierStop() {
   bool isGlobal;
   ReplicationApplier* applier = getApplier(isGlobal);
@@ -2352,10 +2319,6 @@ void RestReplicationHandler::handleCommandApplierStop() {
   applier->stopAndJoin();
   handleCommandApplierGetState();
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_get_api_replication_applier_state
-////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierGetState() {
   bool isGlobal;
@@ -2370,10 +2333,6 @@ void RestReplicationHandler::handleCommandApplierGetState() {
   builder.close();
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_get_api_replication_applier_state_all
-////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierGetStateAll() {
   if (_request->databaseName() != StaticStrings::SystemDatabase) {
@@ -2747,6 +2706,12 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
       arangodb::maintenance::ResignShardLeadership::LeaderNotYetKnownString) {
     // We have resigned, check that we are the old leader
     currentLeader = ServerState::instance()->getId();
+  } else {
+    auto pos = currentLeader.find(
+        '_');  // this separates the FollowingTermId // from the actual leader
+    if (pos != std::string::npos) {
+      currentLeader = currentLeader.substr(0, pos);
+    }
   }
 
   if (leaderId != currentLeader) {
@@ -2756,6 +2721,9 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
     }
 
     if (!oldLeaderIdSlice.isEqualString(currentLeader)) {
+      LOG_TOPIC("aaee2", WARN, Logger::MAINTENANCE)
+          << "SetTheLeader: Old leader not as expected: oldLeaderIdSlice: "
+          << oldLeaderIdSlice.toJson() << ", currentLeader: " << currentLeader;
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                     "old leader not as expected");
       return;
@@ -3008,10 +2976,6 @@ void RestReplicationHandler::handleCommandGetIdForReadLockCollection() {
 
   generateResult(rest::ResponseCode::OK, b.slice());
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_get_api_replication_logger_return_state
-////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerState() {
   TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
@@ -3757,9 +3721,7 @@ Result RestReplicationHandler::createBlockingTransaction(
     return {TRI_ERROR_TRANSACTION_INTERNAL, "transaction already cancelled"};
   }
 
-  TRI_ASSERT(isLockHeld(id).ok());
-
-  return Result();
+  return isLockHeld(id);
 }
 
 Result RestReplicationHandler::isLockHeld(TransactionId id) const {
@@ -3767,7 +3729,7 @@ Result RestReplicationHandler::isLockHeld(TransactionId id) const {
   // there it should return false.
   // In all other cases it is released quickly.
   if (_vocbase.isDropped()) {
-    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
   }
 
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
@@ -3775,9 +3737,8 @@ Result RestReplicationHandler::isLockHeld(TransactionId id) const {
 
   transaction::Status stats = mgr->getManagedTrxStatus(id, _vocbase.name());
   if (stats == transaction::Status::UNDEFINED) {
-    return Result(
-        TRI_ERROR_HTTP_NOT_FOUND,
-        "no hold read lock job found for id " + std::to_string(id.id()));
+    return {TRI_ERROR_HTTP_NOT_FOUND,
+            "no hold read lock job found for id " + std::to_string(id.id())};
   }
 
   return {};

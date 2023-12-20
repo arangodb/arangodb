@@ -8,7 +8,7 @@ const CollationForm = ({ formState, dispatch, disabled }: FormProps<CollationSta
   <Grid>
     <Cell size={'1-2'}>
       <LocaleInput formState={formState} dispatch={dispatch as Dispatch<DispatchArgs<LocaleProperty>>}
-                   disabled={disabled}/>
+                   placeholder="language[_COUNTRY][_VARIANT][@keywords]" disabled={disabled}/>
     </Cell>
   </Grid>;
 

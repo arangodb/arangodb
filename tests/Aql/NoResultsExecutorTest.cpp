@@ -36,14 +36,12 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-using NoResultsTestHelper = ExecutorTestHelper<1, 1>;
-using NoResultsSplitType = NoResultsTestHelper::SplitType;
-using NoResultsInputParam = std::tuple<NoResultsSplitType, AqlCall, size_t>;
+using NoResultsInputParam = std::tuple<SplitType, AqlCall, size_t>;
 
 class NoResultsExecutorTest
     : public AqlExecutorTestCaseWithParam<NoResultsInputParam> {
  protected:
-  auto getSplit() -> NoResultsSplitType {
+  auto getSplit() -> SplitType {
     auto const& [split, call, inputRows] = GetParam();
     return split;
   }
@@ -64,10 +62,9 @@ class NoResultsExecutorTest
 };
 
 template<size_t... vs>
-const NoResultsSplitType splitIntoBlocks =
-    NoResultsSplitType{std::vector<std::size_t>{vs...}};
+const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
 template<size_t step>
-const NoResultsSplitType splitStep = NoResultsSplitType{step};
+const SplitType splitStep = SplitType{step};
 
 auto NoResultsInputSplits =
     ::testing::Values(splitIntoBlocks<2, 3>, splitStep<1>, splitStep<2>);

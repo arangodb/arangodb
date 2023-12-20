@@ -750,6 +750,18 @@ describe('ansi_up', function () {
       });
     });
 
+    describe('ignore controls beginning with ESC', function () {
+
+      it('Designate G0 Character Set (UK)', function () {
+        var start = "foo\033(Abar";
+        var au = new AnsiUp();
+        var l = au.ansi_to_html(start);
+        l.should.eql('foobar');
+      });
+
+    });
+
+
     describe('buffering situations', function () {
 
       it('should transform an incomplete prefix', function () {

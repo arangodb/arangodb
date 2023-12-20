@@ -57,10 +57,6 @@ RestStatus RestExplainHandler::execute() {
   return RestStatus::DONE;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock REST_DOCUMENT_CREATE
-////////////////////////////////////////////////////////////////////////////////
-
 void RestExplainHandler::explainQuery() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() != 0) {

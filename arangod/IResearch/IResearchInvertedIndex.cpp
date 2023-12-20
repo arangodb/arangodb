@@ -416,6 +416,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
 
           for (int64_t i = 0; i < conditionSize; ++i) {
             if (i != _mutableConditionIdx) {
+              // cppcheck-suppress invalidLifetime
               auto& tmp_root = append<irs::Or>(*immutableRoot, filterCtx);
               auto rv = FilterFactory::filter(&tmp_root, filterCtx,
                                               *condition->getMember(i));

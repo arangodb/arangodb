@@ -492,7 +492,7 @@ bool FieldMeta::init(
   _hasNested = !_nested.empty();
   if (!_hasNested) {
     for (auto const& f : _fields) {
-      if (!f.second._nested.empty()) {
+      if (f.second._hasNested) {
         _hasNested = true;
         break;
       }

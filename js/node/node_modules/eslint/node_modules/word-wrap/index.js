@@ -1,9 +1,24 @@
 /*!
  * word-wrap <https://github.com/jonschlinkert/word-wrap>
  *
- * Copyright (c) 2014-2017, Jon Schlinkert.
+ * Copyright (c) 2014-2023, Jon Schlinkert.
  * Released under the MIT License.
  */
+
+function trimEnd(str) {
+  let lastCharPos = str.length - 1;
+  let lastChar = str[lastCharPos];
+  while(lastChar === ' ' || lastChar === '\t') {
+    lastChar = str[--lastCharPos];
+  }
+  return str.substring(0, lastCharPos + 1);
+}
+
+function trimTabAndSpaces(str) {
+  const lines = str.split('\n');
+  const trimmedLines = lines.map((line) => trimEnd(line));
+  return trimmedLines.join('\n');
+}
 
 module.exports = function(str, options) {
   options = options || {};
@@ -36,7 +51,7 @@ module.exports = function(str, options) {
   }).join(newline);
 
   if (options.trim === true) {
-    result = result.replace(/[ \t]*$/gm, '');
+    result = trimTabAndSpaces(result);
   }
   return result;
 };

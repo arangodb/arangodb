@@ -7,7 +7,6 @@
   window.UserManagementView = Backbone.View.extend({
     el: '#content',
     el2: '#userManagementThumbnailsIn',
-
     template: templateEngine.createTemplate('userManagementView.ejs'),
 
     remove: function () {
@@ -24,7 +23,7 @@
       'click #userManagementThumbnailsIn .tile': 'editUser',
       'click #submitEditUser': 'submitEditUser',
       'click #userManagementToggle': 'toggleView',
-      'keyup #userManagementSearchInput': 'search',
+      'keydown #userManagementSearchInput': 'searchKeyDown',
       'click #userManagementSearchSubmit': 'search',
       'click #callEditUserPassword': 'editUserPassword',
       'click #submitEditUserPassword': 'submitEditUserPassword',
@@ -117,8 +116,24 @@
 
       return this;
     },
-
+    searchKeyDown: function (event) {
+      if (window.searchHelper.skipEvent(event)) {
+        return;
+      }
+      this.resetSearch();
+      var self = this;
+      self.searchTimeout = setTimeout(function () {
+        self.search();
+      }, 200);
+    },
+    resetSearch: function () {
+      if (this.searchTimeout) {
+        clearTimeout(this.searchTimeout);
+        this.searchTimeout = null;
+      }
+    },
     search: function () {
+      this.resetSearch();
       var searchInput,
         searchString,
         strLength,
@@ -126,11 +141,17 @@
 
       searchInput = $('#userManagementSearchInput');
       searchString = arangoHelper.escapeHtml($('#userManagementSearchInput').val());
-
       reducedCollection = this.collection.filter(
         function (u) {
-          if (typeof u.attributes.extra.name !== 'undefined') {
-            return (u.attributes.extra.name.toLowerCase().indexOf(searchString.toLowerCase()) !== -1) || (u.attributes.user.toLowerCase().indexOf(searchString.toLowerCase()) !== -1);
+          if (searchString === '') {
+            return true;
+          }
+          var name = u.attributes.extra.name || '';
+          var user = u.attributes.user || '';
+          if (typeof name !== 'undefined') {
+            var foundName = name.toLowerCase().indexOf(searchString.toLowerCase()) !== -1;
+            var foundUser = user.toLowerCase().indexOf(searchString.toLowerCase()) !== -1;
+            return foundName || foundUser;
           }
           return false;
         }

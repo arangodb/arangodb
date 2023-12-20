@@ -1338,11 +1338,19 @@ bool AgencyComm::tryInitializeStructure() {
       builder.add(VPackValue("Databases"));
       {
         VPackObjectBuilder d(&builder);
-        builder.add(VPackValue("_system"));
+        builder.add(VPackValue(StaticStrings::SystemDatabase));
         {
           VPackObjectBuilder d2(&builder);
-          builder.add("name", VPackValue("_system"));
-          builder.add("id", VPackValue("1"));
+          builder.add(StaticStrings::DatabaseName,
+                      VPackValue(StaticStrings::SystemDatabase));
+          builder.add(StaticStrings::DatabaseId, VPackValue("1"));
+          // We need to also take care of the `cluster.force-one-shard` option
+          // here. If set, the entire cluster is forced to be a OneShard
+          // deployment.
+          if (_server.getFeature<ClusterFeature>().forceOneShard()) {
+            builder.add(StaticStrings::Sharding,
+                        VPackValue(StaticStrings::ShardingSingle));
+          }
         }
       }
       builder.add("Lock", VPackValue("UNLOCKED"));

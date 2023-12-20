@@ -60,6 +60,8 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
@@ -1527,8 +1529,19 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   auto const& serverQueryIds = query.serverQueryIds();
   TRI_ASSERT(!serverQueryIds.empty());
 
-  NetworkFeature const& nf =
-      query.vocbase().server().getFeature<NetworkFeature>();
+  auto& server = query.vocbase().server();
+
+  // used by hotbackup to prevent commits
+  std::optional<arangodb::transaction::Manager::TransactionCommitGuard>
+      commitGuard;
+  // If the query is not read-only, we want to acquire the transaction
+  // commit lock as read lock, read-only queries can just proceed:
+  if (query.isModificationQuery()) {
+    auto* manager = server.getFeature<transaction::ManagerFeature>().manager();
+    commitGuard.emplace(manager->getTransactionCommitGuard());
+  }
+
+  NetworkFeature const& nf = server.getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (pool == nullptr) {
     return futures::makeFuture(Result{TRI_ERROR_SHUTTING_DOWN});
@@ -1609,7 +1622,8 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   }
 
   return futures::collectAll(std::move(futures))
-      .thenValue([](std::vector<futures::Try<Result>>&& results) -> Result {
+      .thenValue([commitGuard = std::move(commitGuard)](
+                     std::vector<futures::Try<Result>>&& results) -> Result {
         for (futures::Try<Result>& tryRes : results) {
           if (tryRes.get().fail()) {
             return std::move(tryRes).get();

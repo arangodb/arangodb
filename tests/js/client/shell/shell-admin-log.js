@@ -31,8 +31,7 @@ const _ = require("lodash");
 
 const dbservers = (function () {
   const isType = (d) => (d.instanceRole.toLowerCase() === "dbserver");
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-  return instanceInfo.arangods.filter(isType).map((x) => x.id);
+  return global.instanceManager.arangods.filter(isType).map((x) => x.id);
 })();
 
 function adminLogSuite() {
@@ -42,17 +41,23 @@ function adminLogSuite() {
     arango.POST("/_admin/execute", `for (let i = 0; i < 50; ++i) require('console')._log('general=${level}', 'testi');`);
   };
 
-  let oldLogLevel;
+  let oldLogLevels;
 
   return {
     setUpAll: function () {
-      oldLogLevel = arango.GET("/_admin/log/level").general;
-      arango.PUT("/_admin/log/level", {general: "info"});
+      oldLogLevels = arango.GET("/_admin/log/level");
+      // set all log levels to "fatal" except for topic general
+      let adjusted = {};
+      Object.keys(oldLogLevels).forEach((k) => {
+        adjusted[k] = "fatal";
+      });
+      adjusted.general = "info";
+      arango.PUT("/_admin/log/level", adjusted);
     },
 
     tearDownAll: function () {
       // restore previous log level for "general" topic;
-      arango.PUT("/_admin/log/level", {general: oldLogLevel});
+      arango.PUT("/_admin/log/level", oldLogLevels);
     },
 
     setUp: function () {
@@ -137,7 +142,7 @@ function adminLogSuite() {
       assertEqual(50, res.text.length, res);
       res.text.forEach((t) => assertMatch(/testi/, t, res));
     },
-    
+
     testGetAdminLogNewFormat: function () {
       log("warn");
       let res = arango.GET("/_admin/log/entries?upto=warning");
@@ -156,20 +161,20 @@ function adminLogSuite() {
         assertMatch(/testi/, entry.message);
       });
     },
-    
+
     testGetAdminLogNewFormatUpToFatal: function () {
       log("fatal");
-      
+
       let res = arango.GET("/_admin/log/entries?upto=fatal");
       assertTrue(Array.isArray(res.messages));
       assertEqual(50, res.messages.length);
       assertEqual(50, res.total);
-      
+
       res = arango.GET("/_admin/log/entries?upto=err");
       assertTrue(Array.isArray(res.messages));
       assertEqual(50, res.messages.length);
       assertEqual(50, res.total);
-      
+
       res = arango.GET("/_admin/log/entries?upto=warning");
       assertTrue(Array.isArray(res.messages));
       assertEqual(50, res.messages.length);
@@ -180,20 +185,20 @@ function adminLogSuite() {
       assertEqual(50, res.messages.length);
       assertEqual(50, res.total);
     },
-    
+
     testGetAdminLogNewFormatUpToErr: function () {
       log("error");
-      
+
       let res = arango.GET("/_admin/log/entries?upto=fatal");
       assertTrue(Array.isArray(res.messages));
       assertEqual(0, res.messages.length);
       assertEqual(0, res.total);
-      
+
       res = arango.GET("/_admin/log/entries?upto=error");
       assertTrue(Array.isArray(res.messages));
       assertEqual(50, res.messages.length);
       assertEqual(50, res.total);
-      
+
       res = arango.GET("/_admin/log/entries?upto=warning");
       assertTrue(Array.isArray(res.messages));
       assertEqual(50, res.messages.length);
@@ -204,20 +209,20 @@ function adminLogSuite() {
       assertEqual(50, res.messages.length);
       assertEqual(50, res.total);
     },
-    
+
     testGetAdminLogNewFormatUpToWarn: function () {
       log("warn");
-      
+
       let res = arango.GET("/_admin/log/entries?upto=fatal");
       assertTrue(Array.isArray(res.messages));
       assertEqual(0, res.messages.length);
       assertEqual(0, res.total);
-      
+
       res = arango.GET("/_admin/log/entries?upto=err");
       assertTrue(Array.isArray(res.messages));
       assertEqual(0, res.messages.length);
       assertEqual(0, res.total);
-      
+
       res = arango.GET("/_admin/log/entries?upto=warning");
       assertTrue(Array.isArray(res.messages));
       assertEqual(50, res.messages.length);
@@ -228,20 +233,20 @@ function adminLogSuite() {
       assertEqual(50, res.messages.length);
       assertEqual(50, res.total);
     },
-    
+
     testGetAdminLogNewFormatUpToInfo: function () {
       log("info");
-      
+
       let res = arango.GET("/_admin/log/entries?upto=fatal");
       assertTrue(Array.isArray(res.messages));
       assertEqual(0, res.messages.length);
       assertEqual(0, res.total);
-      
+
       res = arango.GET("/_admin/log/entries?upto=err");
       assertTrue(Array.isArray(res.messages));
       assertEqual(0, res.messages.length);
       assertEqual(0, res.total);
-      
+
       res = arango.GET("/_admin/log/entries?upto=warning");
       assertTrue(Array.isArray(res.messages));
       assertEqual(0, res.messages.length);
@@ -252,7 +257,7 @@ function adminLogSuite() {
       assertEqual(50, res.messages.length);
       assertEqual(50, res.total);
     },
-    
+
     testGetAdminLogNewFormatReverse: function () {
       log("warn");
       let res = arango.GET("/_admin/log/entries?upto=warning&sort=desc");
@@ -271,7 +276,7 @@ function adminLogSuite() {
         assertMatch(/testi/, entry.message);
       });
     },
-    
+
     testGetAdminLogNewFormatSearch: function () {
       log("warn");
       let res = arango.GET("/_admin/log/entries?upto=warning&search=testi");
@@ -282,7 +287,7 @@ function adminLogSuite() {
       res.messages.forEach((entry) => {
         assertMatch(/testi/, entry.message);
       });
-      
+
       res = arango.GET("/_admin/log/entries?upto=warning&search=testi&size=5");
       assertTrue(Array.isArray(res.messages));
       assertEqual(5, res.messages.length);
@@ -291,13 +296,13 @@ function adminLogSuite() {
       res.messages.forEach((entry) => {
         assertMatch(/testi/, entry.message);
       });
-      
+
       res = arango.GET("/_admin/log/entries?upto=warning&search=fuxxmann");
       assertTrue(Array.isArray(res.messages));
       assertEqual(0, res.total);
       assertEqual(0, res.messages.length);
     },
-    
+
     testGetAdminLogNewFormatSize: function () {
       log("warn");
       let res = arango.GET("/_admin/log/entries?upto=warning&size=4");
@@ -309,23 +314,23 @@ function adminLogSuite() {
       assertTrue(Array.isArray(res.messages));
       assertEqual(10, res.messages.length);
       assertEqual(50, res.total);
-      
+
       res = arango.GET("/_admin/log/entries?upto=warning&size=50");
       assertTrue(Array.isArray(res.messages));
       assertEqual(50, res.messages.length);
       assertEqual(50, res.total);
-      
+
       res = arango.GET("/_admin/log/entries?upto=warning&size=52");
       assertTrue(Array.isArray(res.messages));
       assertEqual(50, res.messages.length);
       assertEqual(50, res.total);
-      
+
       res = arango.GET("/_admin/log/entries?upto=warning&size=100000");
       assertTrue(Array.isArray(res.messages));
       assertEqual(50, res.messages.length);
       assertEqual(50, res.total);
     },
-   
+
     testGetAdminLogNewFormatOffset: function () {
       log("warn");
       let res = arango.GET("/_admin/log/entries?upto=warning&offset=0&size=4");
@@ -337,57 +342,57 @@ function adminLogSuite() {
       assertTrue(Array.isArray(res.messages));
       assertEqual(10, res.messages.length);
       assertEqual(50, res.total);
-      
+
       res = arango.GET("/_admin/log/entries?upto=warning&offset=0&size=49");
       assertTrue(Array.isArray(res.messages));
       assertEqual(49, res.messages.length);
       assertEqual(50, res.total);
-      
+
       res = arango.GET("/_admin/log/entries?upto=warning&offset=0&size=50");
       assertTrue(Array.isArray(res.messages));
       assertEqual(50, res.messages.length);
       assertEqual(50, res.total);
-      
+
       res = arango.GET("/_admin/log/entries?upto=warning&offset=0&size=51");
       assertTrue(Array.isArray(res.messages));
       assertEqual(50, res.messages.length);
       assertEqual(50, res.total);
-      
+
       res = arango.GET("/_admin/log/entries?upto=warning&offset=0&size=100000");
       assertTrue(Array.isArray(res.messages));
       assertEqual(50, res.messages.length);
       assertEqual(50, res.total);
-      
+
       res = arango.GET("/_admin/log/entries?upto=warning&offset=48&size=0");
       assertTrue(Array.isArray(res.messages));
       assertEqual(0, res.messages.length);
       assertEqual(50, res.total);
-      
+
       res = arango.GET("/_admin/log/entries?upto=warning&offset=48&size=1");
       assertTrue(Array.isArray(res.messages));
       assertEqual(1, res.messages.length);
       assertEqual(50, res.total);
-      
+
       res = arango.GET("/_admin/log/entries?upto=warning&offset=48&size=2");
       assertTrue(Array.isArray(res.messages));
       assertEqual(2, res.messages.length);
       assertEqual(50, res.total);
-      
+
       res = arango.GET("/_admin/log/entries?upto=warning&offset=48&size=3");
       assertTrue(Array.isArray(res.messages));
       assertEqual(2, res.messages.length);
       assertEqual(50, res.total);
-      
+
       res = arango.GET("/_admin/log/entries?upto=warning&offset=49&size=0");
       assertTrue(Array.isArray(res.messages));
       assertEqual(0, res.messages.length);
       assertEqual(50, res.total);
-      
+
       res = arango.GET("/_admin/log/entries?upto=warning&offset=49&size=1");
       assertTrue(Array.isArray(res.messages));
       assertEqual(1, res.messages.length);
       assertEqual(50, res.total);
-      
+
       res = arango.GET("/_admin/log/entries?upto=warning&offset=49&size=2");
       assertTrue(Array.isArray(res.messages));
       assertEqual(1, res.messages.length);
@@ -397,18 +402,18 @@ function adminLogSuite() {
       assertTrue(Array.isArray(res.messages));
       assertEqual(0, res.messages.length);
       assertEqual(50, res.total);
-      
+
       res = arango.GET("/_admin/log/entries?upto=warning&offset=50&size=1");
       assertTrue(Array.isArray(res.messages));
       assertEqual(0, res.messages.length);
       assertEqual(50, res.total);
-      
+
       res = arango.GET("/_admin/log/entries?upto=warning&offset=50&size=100");
       assertTrue(Array.isArray(res.messages));
       assertEqual(0, res.messages.length);
       assertEqual(50, res.total);
     },
-    
+
   };
 }
 

@@ -81,10 +81,6 @@ RestStatus RestSimpleHandler::execute() {
   return RestStatus::DONE;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock RestRemoveByKeys
-////////////////////////////////////////////////////////////////////////////////
-
 RestStatus RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
   TRI_ASSERT(slice.isObject());
   std::string collectionName;
@@ -248,10 +244,6 @@ void RestSimpleHandler::handleQueryResultLookupByKeys() {
   generateResult(rest::ResponseCode::OK, std::move(resultBuffer),
                  _queryResult.context);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock RestLookupByKeys
-////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
   if (response() == nullptr) {

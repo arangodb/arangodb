@@ -35,5 +35,5 @@ class ApplicationServer;
 }
 
 void rocksdbStartupVersionCheck(ArangodServer& server, rocksdb::TransactionDB*,
-                                bool dbExisted);
+                                bool dbExisted, bool forceLittleEndianKeys);
 }  // namespace arangodb

@@ -58,6 +58,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionNameResolver.h"
@@ -533,6 +534,15 @@ collections (e.g. test suites).)");
       .setIntroducedIn(30807)
       .setIntroducedIn(30902);
 
+  options
+      ->addOption("--database.max-databases",
+                  "The maximum number of databases that can exist in parallel.",
+                  new options::SizeTParameter(&_maxDatabases))
+      .setLongDescription(R"(If the maximum number of databases is reached, no
+additional databases can be created in the deployment. In order to create additional
+databases, other databases need to be removed first.")")
+      .setIntroducedIn(31010);
+
   // the following option was obsoleted in 3.9
   options->addObsoleteOption(
       "--database.old-system-collections",
@@ -811,9 +821,24 @@ void DatabaseFeature::recoveryDone() {
 
   // '_pendingRecoveryCallbacks' will not change because
   // !StorageEngine.inRecovery()
+  // It's single active thread before recovery done,
+  // so we could use general purpose thread pool for this
+  std::vector<futures::Future<Result>> futures;
+  futures.reserve(_pendingRecoveryCallbacks.size());
   for (auto& entry : _pendingRecoveryCallbacks) {
-    auto result = entry();
-
+    futures::Promise<Result> p;
+    futures.emplace_back(p.getFuture());
+    SchedulerFeature::SCHEDULER->queue(
+        RequestLane::CLIENT_SLOW,
+        [p = std::move(p), f = std::move(entry)]() mutable {
+          p.setValue(f());
+        });
+  }
+  _pendingRecoveryCallbacks.clear();
+  // TODO(MBkkt) use single wait with early termination
+  // when it would be available
+  for (auto& future : futures) {
+    auto result = std::move(future).get();
     if (!result.ok()) {
       LOG_TOPIC("772a7", ERR, arangodb::Logger::FIXME)
           << "recovery failure due to error from callback, error '"
@@ -909,6 +934,18 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
         // name already in use
         return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME,
                       std::string("duplicate database name '") + name + "'");
+      }
+
+      if (ServerState::instance()->isSingleServerOrCoordinator() &&
+          theLists->_databases.size() >= maxDatabases()) {
+        // intentionally do not validate number of databases on DB servers,
+        // because they only carry out operations that are initiated by
+        // coordinators
+        return {TRI_ERROR_RESOURCE_LIMIT,
+                absl::StrCat(
+                    "unable to create additional database because it would "
+                    "exceed the configured maximum number of databases (",
+                    maxDatabases(), ")")};
       }
     }
 

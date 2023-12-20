@@ -80,7 +80,7 @@ template<SocketType T>
   }
 
   int32_t const sid = frame->hd.stream_id;
-  me->acquireStatistics(sid).SET_READ_START(TRI_microtime());
+  me->acquireRequestStatistics(sid).SET_READ_START(TRI_microtime());
   auto req =
       std::make_unique<HttpRequest>(me->_connectionInfo, /*messageId*/ sid,
                                     /*allowMethodOverride*/ false);
@@ -584,7 +584,7 @@ void H2CommTask<T>::processRequest(Stream& stream,
   // store origin header for later use
   stream.origin = req->header(StaticStrings::Origin);
   auto messageId = req->messageId();
-  RequestStatistics::Item const& stat = this->statistics(messageId);
+  RequestStatistics::Item const& stat = this->requestStatistics(messageId);
   stat.SET_REQUEST_TYPE(req->requestType());
   stat.ADD_RECEIVED_BYTES(stream.headerBuffSize + req->body().size());
   stat.SET_READ_END();
@@ -655,6 +655,11 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
   }
 
   auto* tmp = static_cast<H2Response*>(res.get());
+
+  // handle response code 204 No Content
+  if (tmp->responseCode() == rest::ResponseCode::NO_CONTENT) {
+    tmp->clearBody();  // in non maintainer build clear the body
+  }
 
   if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
       Logger::logRequestParameters()) {

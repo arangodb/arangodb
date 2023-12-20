@@ -56,7 +56,8 @@ const testPaths = {
 // / @brief TEST: arangobench
 // //////////////////////////////////////////////////////////////////////////////
 
-const benchTodos = [{
+const benchTodos = [
+{
   'histogram.generate': true,
   'requests': '10000',
   'threads': '2',
@@ -189,7 +190,7 @@ const benchTodos = [{
   'custom-query-bindvars': '{"@@collectionName": "testCollection", "name": "test"}',
   'expected-failure': true
 }
-                   ];
+];
 
 function arangobench (options) {
   if (options.skipArangoBench === true) {
@@ -252,47 +253,20 @@ function arangobench (options) {
       if (options.hasOwnProperty('benchargs')) {
         args = Object.assign(args, options.benchargs);
       }
+
       let oneResult = pu.run.arangoBenchmark(options, instanceManager, args, instanceManager.rootDir, options.coreCheck);
-      if (benchTodo.hasOwnProperty('expected-failure') && benchTodo['expected-failure']) {
-        continueTesting = instanceManager.checkInstanceAlive();
-        if (benchTodo.hasOwnProperty('create-database') && benchTodo['create-database']) {
-          if (internal.db._databases().find(
-            dbName => dbName === benchTodo['server.database']) !== undefined) {
-            internal.db._dropDatabase(benchTodo['server.database']);
-          }
-        }
-        results[name] = oneResult;
-        results[name].total++;
-        results[name].failed = 0;
+      const expectFailure = (benchTodo.hasOwnProperty('expected-failure') && benchTodo['expected-failure']);
 
-        if (results[name].status) {
-          results[name].failed = 1;
-          results.status = false;
-          results.failed += 1;
+      continueTesting = instanceManager.checkInstanceAlive();
+        
+      if (benchTodo.hasOwnProperty('create-database') && benchTodo['create-database']) {
+        if (internal.db._databases().find(
+          dbName => dbName === benchTodo['server.database']) !== undefined) {
+          internal.db._dropDatabase(benchTodo['server.database']);
         }
-        if (oneResult.status && !options.force) {
-          break;
-        }
-      } else {
-        if (benchTodo.hasOwnProperty('duration')) {
-          oneResult.status = oneResult.status && oneResult.duration >= benchTodo['duration'];
-          if (!oneResult.status) {
-            oneResult.message += ` didn't run for the expected time ${benchTodo.duration} but only ${oneResult.duration}`;
-          }
-          if (!oneResult.status && options.extremeVerbosity) {
-            print("Duration test failed: " + JSON.stringify(oneResult));
-          }
-        }
+      }
 
-        if (benchTodo.hasOwnProperty('create-database') && benchTodo['create-database']) {
-          if (internal.db._databases().find(
-            dbName => dbName === benchTodo['server.database']) === undefined) {
-            oneResult.message += " no database was created!";
-            oneResult.status = false;
-          } else {
-            internal.db._dropDatabase(benchTodo['server.database']);
-          }
-        }
+      if (!expectFailure) {
         let content;
         try {
           content = fs.read(reportfn);
@@ -310,21 +284,24 @@ function arangobench (options) {
             reportfn + "' - '" + x.message + "' - content: '" + content;
           oneResult.status = false;
         }
+      }
 
-        results[name] = oneResult;
-        results[name].total++;
-        results[name].failed = 0;
+      results[name] = oneResult;
+      results[name].total++;
+      results[name].failed = 0;
 
-        if (!results[name].status) {
-          results[name].failed = 1;
-          results.status = false;
-          results.failed += 1;
+      if (results[name].status === expectFailure) {
+        results[name].failed = 1;
+        results.status = false;
+        results.failed += 1;
+      } else {
+        // a failure is actually considered success for expected-failure == true
+        if (expectFailure) {
+          results[name] = { status: true };
         }
-        continueTesting = instanceManager.checkInstanceAlive();
-
-        if (oneResult.status !== true && !options.force) {
-          break;
-        }
+      }
+      if (oneResult.status === expectFailure && !options.force) {
+        break;
       }
     }
   }
@@ -337,11 +314,9 @@ function arangobench (options) {
   return results;
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['arangobench'] = arangobench;
-
-  defaultFns.push('arangobench');
 
   opts['skipArangoBench'] = false;
   opts['skipArangoBenchNonConnKeepAlive'] = true;

@@ -894,7 +894,7 @@ License Id: -
 #### Swagger UI
 
 * Name: swagger-ui
-* Version: 3.25.1
+* Version: 5.4.1
 * Project Home: http://swagger.io
 * GitHub: https://github.com/swagger-api/swagger-ui
 * License: https://raw.githubusercontent.com/swagger-api/swagger-ui/master/LICENSE
@@ -936,15 +936,6 @@ License Id: -
 * License: https://raw.githubusercontent.com/Leaflet/Leaflet/master/LICENSE
 * License Name: BSD 2-clause "Simplified" License
 * License Id: BSD-2-Clause
-
-#### Stamen
-
-* Name: stamen
-* Version: 1.3.0
-* GitHub: https://github.com/stamen/maps.stamen.com
-* License: https://raw.githubusercontent.com/stamen/maps.stamen.com/master/LICENSE
-* License Name: BSD 3-clause "New" or "Revised" License
-* License Id: BSD-3-Clause
 
 #### randomColor
 

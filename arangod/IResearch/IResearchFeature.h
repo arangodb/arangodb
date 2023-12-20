@@ -77,7 +77,7 @@ inline bool isScorer(aql::AstNode const& node) noexcept {
       aql::NODE_TYPE_FCALL_USER != node.type) {
     return false;
   }
-
+  // cppcheck-suppress throwInNoexceptFunction
   return isScorer(*static_cast<aql::Function const*>(node.getData()));
 }
 
@@ -109,12 +109,6 @@ class IResearchFeature final : public ArangodFeature {
   void stop() override;
   void unprepare() override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief report progress during recovery phase
-  //////////////////////////////////////////////////////////////////////////////
-  void reportRecoveryProgress(arangodb::IndexId id, std::string_view phase,
-                              size_t current, size_t total);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief schedule an asynchronous task for execution
@@ -196,12 +190,6 @@ class IResearchFeature final : public ArangodFeature {
 
   // helper object, only useful during WAL recovery
   std::shared_ptr<IResearchRocksDBRecoveryHelper> _recoveryHelper;
-
-  // state used for progress reporting only
-  struct ProgressReportState {
-    arangodb::IndexId lastReportId{0};
-    std::chrono::time_point<std::chrono::system_clock> lastReportTime{};
-  } _progressState;
 };
 
 }  // namespace iresearch

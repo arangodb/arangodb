@@ -481,9 +481,6 @@ struct AqlValue final {
   }
 
  private:
-  /// @brief initializes value from a slice
-  void initFromSlice(arangodb::velocypack::Slice slice);
-
   /// @brief initializes value from a slice, when the length is already known
   void initFromSlice(arangodb::velocypack::Slice slice,
                      arangodb::velocypack::ValueLength length);

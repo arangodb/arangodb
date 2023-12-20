@@ -36,6 +36,8 @@
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/MethodsApi.h"
@@ -229,6 +231,15 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
     return Result();
   }
 
+  std::optional<arangodb::transaction::Manager::TransactionCommitGuard>
+      commitGuard;
+  // If the transaction is not read-only, we want to acquire the transaction
+  // commit lock as read lock, read-only transactions can just proceed:
+  if (!state->isReadOnlyTransaction()) {
+    commitGuard.emplace(
+        transaction::ManagerFeature::manager()->getTransactionCommitGuard());
+  }
+
   // only commit managed transactions, and AQL leader transactions (on
   // DBServers)
   if (!ClusterTrxMethods::isElCheapo(*state) ||
@@ -287,7 +298,8 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
   }
 
   return futures::collectAll(requests).thenValue(
-      [=](std::vector<Try<network::Response>>&& responses) -> Result {
+      [=, commitGuard = std::move(commitGuard)](
+          std::vector<Try<network::Response>>&& responses) -> Result {
         if (state->isCoordinator()) {
           TRI_ASSERT(state->id().isCoordinatorTransactionId());
 

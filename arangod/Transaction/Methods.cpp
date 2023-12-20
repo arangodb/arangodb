@@ -1281,6 +1281,11 @@ Future<OperationResult> transaction::Methods::insertLocal(
     return futures::makeFuture(OperationResult(std::move(res), options));
   }
 
+  if (replicationType == ReplicationType::FOLLOWER &&
+      options.overwriteMode == OperationOptions::OverwriteMode::Update) {
+    options.overwriteMode = OperationOptions::OverwriteMode::Replace;
+  }
+
   // set up batch options
   BatchOptions batchOptions = ::buildBatchOptions(
       options, *collection, TRI_VOC_DOCUMENT_OPERATION_INSERT,
@@ -2960,17 +2965,22 @@ Future<Result> Methods::replicateOperations(
             opName = "insert w/ overwriteMode ingore";
           }
         }
-        if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
-          // extra parameters only required for update
-          reqOpts.param(StaticStrings::KeepNullString,
-                        options.keepNull ? "true" : "false");
-          reqOpts.param(StaticStrings::MergeObjectsString,
-                        options.mergeObjects ? "true" : "false");
-        }
       }
       break;
     case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
-      requestType = arangodb::fuerte::RestVerb::Patch;
+      // intentionally turn UPDATE operations on the leader into REPLACE
+      // operations on the follower.
+      // we need to do this because we are replicating the (full) document
+      // that we have written on the leader, but this does not include any
+      // removed attributes anymore. However, an UPDATE operation on the
+      // follower would merge what we have written on the leader with the
+      // existing document on the follower, which could silently cause
+      // data drift.
+      // by replicating the document as it was written on the leader and
+      // replicating the operation as a REPLACE, we ensure that we write
+      // the same document on the follower as we did on the leader.
+      requestType =
+          arangodb::fuerte::RestVerb::Put;  // this will make it a REPLACE
       opName = "update";
       break;
     case TRI_VOC_DOCUMENT_OPERATION_REPLACE:

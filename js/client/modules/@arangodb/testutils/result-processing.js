@@ -49,6 +49,7 @@ const YELLOW = internal.COLORS.COLOR_YELLOW;
 const internalMembers = [
   'crashreport',
   'code',
+  'exitCode',
   'error',
   'status',
   'skipped',
@@ -265,13 +266,13 @@ function saveToJunitXML(options, results) {
 
     return xml;
   }
-
   let xmlState = {
     xml: undefined,
     xmlName: '',
     testRunName: '',
     seenTestCases: false,
   };
+  let prefix = (options.cluster ? 'CL_' : '') + (pu.isEnterpriseClient ? 'EE_' : 'CE_');
 
   if (results.hasOwnProperty('crashreport')) {
     results['crash'] = {
@@ -289,9 +290,8 @@ function saveToJunitXML(options, results) {
     };
   }
 
-  let prefix = (options.cluster ? 'CL_' : '') + (pu.isEnterpriseClient ? 'EE_' : 'CE_');
   const addOptionalDuration = (elem, test) => {
-    if (test.hasOwnProperty('duration')) {
+    if (test.hasOwnProperty('duration') && test.duration !== undefined) {
       // time is in seconds
       elem['time'] =  test.duration / 1000;
     }

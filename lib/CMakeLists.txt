@@ -93,6 +93,7 @@ add_library(arango STATIC
   Basics/FileUtils.cpp
   Basics/FunctionUtils.cpp
   Basics/GlobalResourceMonitor.cpp
+  Basics/GlobalSerialization.cpp
   Basics/HybridLogicalClock.cpp
   Basics/LdapUrlParser.cpp
   Basics/LocalTaskQueue.cpp
@@ -316,9 +317,6 @@ add_library(arango_v8 STATIC
   V8/v8-vpack.cpp
   V8/v8-environment.cpp
   )
-add_library(arango_v8_deadline STATIC
-  V8/v8-deadline.cpp
-  )
 
 add_library(arango_v8_no_deadline STATIC
   V8/v8-no-deadline.cpp
@@ -335,14 +333,11 @@ target_include_directories(arango_v8 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(arango_v8 PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_include_directories(arango_v8 SYSTEM PUBLIC ${OPENSSL_INCLUDE_DIR})
 target_include_directories(arango_v8 SYSTEM PUBLIC ${ICU_INCLUDE_DIR})
-target_include_directories(arango_v8_deadline PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(arango_v8_no_deadline PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(arango_v8 v8_interface)
-target_link_libraries(arango_v8_deadline arango v8_interface)
 target_link_libraries(arango_v8_no_deadline v8_interface)
 
-target_link_libraries(arango_v8_deadline velocypack)
 target_link_libraries(arango_v8_no_deadline velocypack)
 
 # Enterprise

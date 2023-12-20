@@ -1076,13 +1076,14 @@ void ServerState::setShortId(uint32_t id) {
 }
 
 RebootId ServerState::getRebootId() const {
-  TRI_ASSERT(_rebootId.initialized());
-  return _rebootId;
+  auto const rebootId = RebootId(_rebootId.load(std::memory_order_relaxed));
+  TRI_ASSERT(rebootId.initialized());
+  return rebootId;
 }
 
 void ServerState::setRebootId(RebootId const rebootId) {
   TRI_ASSERT(rebootId.initialized());
-  _rebootId = rebootId;
+  _rebootId.store(rebootId.value(), std::memory_order_relaxed);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

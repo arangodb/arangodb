@@ -98,6 +98,15 @@ export const linksSchema = {
         }
       }
     },
+    nested: {
+      type: 'object',
+      nullable: false,
+      patternProperties: {
+        '.+': {
+          $recursiveRef: '#'
+        }
+      }
+    },
     includeAllFields: {
       type: 'boolean',
       nullable: false
@@ -323,7 +332,7 @@ export const formSchema: JSONSchemaType<FormState> = {
     }
   },
   required: ['id', 'name', 'type'],
-  additionalProperties: false
+  additionalProperties: true
 };
 
 export const ViewContext = createContext({

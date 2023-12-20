@@ -40,8 +40,6 @@
 #include "Basics/voc-errors.h"
 #include "Random/RandomGenerator.h"
 
-static std::string const DBServer = "DBServer";
-
 namespace arangodb {
 namespace consensus {
 

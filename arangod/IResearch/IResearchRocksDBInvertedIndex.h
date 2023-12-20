@@ -100,8 +100,18 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
   void load() override {}
   void unload() override;
 
-  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) override {
-    IResearchDataStore::afterTruncate(tick, trx);
+  ResultT<TruncateGuard> truncateBegin(rocksdb::WriteBatch& batch) final {
+    auto r = RocksDBIndex::truncateBegin(batch);
+    if (!r.ok()) {
+      return r;
+    }
+    return IResearchDataStore::truncateBegin();
+  }
+
+  void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
+                      transaction::Methods* trx) final {
+    IResearchDataStore::truncateCommit(std::move(guard), tick, trx);
+    guard = {};
   }
 
   bool matchesDefinition(velocypack::Slice const& other) const override;

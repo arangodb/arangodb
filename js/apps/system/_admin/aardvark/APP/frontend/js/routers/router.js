@@ -270,7 +270,7 @@
 
       // This should be the only global object
       window.modalView = new window.ModalView();
-
+      window.SkeletonLoader = new window.SkeletonLoader();
       // foxxes
       this.foxxList = new window.FoxxCollection();
 
@@ -763,7 +763,7 @@
 
     cIndices: function (colname) {
       const self = this;
-
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {
@@ -788,6 +788,7 @@
     cSettings: function (colname) {
       const self = this;
 
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {
@@ -809,6 +810,7 @@
     cComputedValues: function (colname) {
       const self = this;
 
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {
@@ -830,6 +832,7 @@
     cSchema: function (colname) {
       const self = this;
 
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {
@@ -851,6 +854,7 @@
     cInfo: function (colname) {
       const self = this;
 
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {
@@ -870,6 +874,7 @@
     },
 
     documents: function (colid, pageid) {
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {

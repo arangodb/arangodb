@@ -206,11 +206,12 @@ function replicationStatic (options) {
 
 function replicationSync (options) {
   let testCases = tu.scanTestPaths(testPaths.replication_sync, options);
+  testCases = tu.splitBuckets(options, testCases);
 
   return new replicationRunner(options, 'replication_sync', {"server.authentication": "true"}).run(testCases);
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['shell_replication'] = shellReplication;
   testFns['replication_aql'] = replicationAql;

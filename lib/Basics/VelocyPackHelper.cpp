@@ -278,11 +278,6 @@ void VelocyPackHelper::initialize() {
                  .copyString() == StaticStrings::ToString);
 }
 
-/// @brief turn off assembler optimizations in vpack
-void VelocyPackHelper::disableAssemblerFunctions() {
-  arangodb::velocypack::disableAssemblerFunctions();
-}
-
 /// @brief return the (global) attribute translator instance
 arangodb::velocypack::AttributeTranslator* VelocyPackHelper::getTranslator() {
   return ::translator.get();

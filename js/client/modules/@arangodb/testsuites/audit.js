@@ -99,7 +99,7 @@ function auditLog(onServer) {
   };
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['audit_server'] = auditLog(true);
   testFns['audit_client'] = auditLog(false);

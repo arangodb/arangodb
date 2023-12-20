@@ -153,6 +153,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/ReturnExecutorTest.cpp
   Aql/RowFetcherHelper.cpp
   Aql/ScatterExecutorTest.cpp
+  Aql/ShadowRowForwardingTest.cpp
   Aql/ShortestPathExecutorTest.cpp
   Aql/ShortestPathNodeTest.cpp
   Aql/SkipResultTest.cpp
@@ -204,6 +205,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/RandomTest.cpp
   Basics/ReadWriteLockTest.cpp
   Basics/RecursiveLockerTest.cpp
+  Basics/SizeLimitedStringTest.cpp
   Basics/SpinLockTest.cpp
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
@@ -243,7 +245,6 @@ set(ARANGODB_TESTS_SOURCES
   Geo/NearUtilsTest.cpp
   Geo/ShapeContainerTest.cpp
   Greenspun/PrimitivesTest.cpp
-  HotBackup/HotBackupCoordinatorTest.cpp
   Logger/EscaperTest.cpp
   Logger/LogContextTest.cpp
   ${ARANGODB_IRESEARCH_TESTS_SOURCES}
@@ -276,7 +277,6 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/CachedCollectionNameTest.cpp
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp
-  RocksDBEngine/HotBackupTest.cpp
   RocksDBEngine/EncryptionProviderTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
   RocksDBEngine/TransactionManagerTest.cpp
@@ -393,6 +393,13 @@ endif()
 
 if (USE_ENTERPRISE)
   target_link_libraries(arangodbtests arango_rclone)
+endif ()
+
+if (USE_JEMALLOC)
+  target_link_libraries(arangodbtests ${JEMALLOC_LIB})
+  if (USE_JEMALLOC_PROF AND USE_LIBUNWIND)
+    target_link_libraries(arangodbtests ${LIBUNWIND_LIB})
+  endif ()
 endif ()
 
 target_include_directories(arangodbtests PRIVATE

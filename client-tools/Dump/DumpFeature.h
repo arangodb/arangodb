@@ -143,7 +143,6 @@ class DumpFeature final : public ArangoDumpFeature {
 
     Result run(arangodb::httpclient::SimpleHttpClient& client) override;
 
-    VPackSlice const collectionInfo;
     std::string const shardName;
     std::string const server;
     std::shared_ptr<ManagedDirectory::File> file;

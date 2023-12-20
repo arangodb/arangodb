@@ -101,7 +101,7 @@ set(ARANGODB_VERSION_MINOR "10")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
-  set(ARANGODB_VERSION_PATCH "9")
+  set(ARANGODB_VERSION_PATCH "12")
   set(ARANGODB_VERSION_RELEASE_TYPE "")
   set(ARANGODB_VERSION_RELEASE_NUMBER "")
 else()
@@ -332,7 +332,7 @@ set(ARANGODB_PACKAGE_VENDOR  "ArangoDB GmbH")
 set(ARANGODB_PACKAGE_CONTACT "info@arangodb.com")
 set(ARANGODB_DISPLAY_NAME    "ArangoDB")
 set(ARANGODB_URL_INFO_ABOUT  "https://www.arangodb.com")
-set(ARANGODB_HELP_LINK       "https://www.arangodb.com/docs/${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}/")
+set(ARANGODB_HELP_LINK       "https://docs.arangodb.com/${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}/")
 set(ARANGODB_CONTACT         "hackers@arangodb.com")
 set(ARANGODB_FRIENDLY_STRING "ArangoDB - the native multi-model NoSQL database")
 
@@ -402,46 +402,64 @@ configure_file(
 ## Find the git revision
 ################################################################################
 
+function(determine_repository_version source_dir build_repository have_build_repository)
+  # Get commit hash 
+  execute_process(
+    WORKING_DIRECTORY ${source_dir}
+    COMMAND ${GIT_EXE} rev-parse --short HEAD
+    OUTPUT_VARIABLE COMMIT_RAW
+  )
+  if (NOT COMMIT_RAW)
+    message(FATAL_ERROR "Can't extract current commit with the command: 'git rev-parse --short HEAD'")
+  endif()
+
+  string(STRIP ${COMMIT_RAW} COMMIT_SHORT)
+
+  if (NOT DEFINED BUILD_REPO_INFO OR BUILD_REPO_INFO STREQUAL "default")
+    execute_process(
+      WORKING_DIRECTORY ${source_dir}
+      COMMAND ${GIT_EXE} branch --show-current
+      OUTPUT_VARIABLE BRANCH_NAME_RAW)
+    if (NOT BRANCH_NAME_RAW)
+      # For example, in docker we do 'checkout'. Hence, it is impossible to detect branch
+      set(${build_repository} "${COMMIT_SHORT}" PARENT_SCOPE)
+      set(${have_build_repository} "1" PARENT_SCOPE)
+    else()
+      string(STRIP ${BRANCH_NAME_RAW} BRANCH_NAME)
+      set(${build_repository} "refs/${BRANCH_NAME} ${COMMIT_SHORT}" PARENT_SCOPE)
+      set(${have_build_repository} "1" PARENT_SCOPE)
+    endif()
+  elseif(BUILD_REPO_INFO STREQUAL "release")
+    execute_process(
+      WORKING_DIRECTORY ${source_dir}
+      COMMAND ${GIT_EXE} describe --all --tags --match v${ARANGODB_PLAIN_VERSION}
+      OUTPUT_VARIABLE TAG_RAW)
+    if (NOT TAG_RAW)
+      message(FATAL_ERROR "Can't extract tag using the command: 'git describe --all --tags --match v${ARANGODB_PLAIN_VERSION}")
+    else()
+      string(STRIP ${TAG_RAW} TAG)
+      set(${build_repository} "refs/${TAG} ${COMMIT_SHORT}" PARENT_SCOPE)
+      set(${have_build_repository} "1" PARENT_SCOPE)
+    endif()
+  elseif(BUILD_REPO_INFO STREQUAL "nightly")
+    set(${build_repository} "refs/head/${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR} ${COMMIT_SHORT}" PARENT_SCOPE)
+    set(${have_build_repository} "1" PARENT_SCOPE)
+  else ()
+    set(${build_repository} "GIT FAILED TO RETRIEVE THE VERSION - UNSUPPORTED BUILD MODE" PARENT_SCOPE)
+    set(${have_build_repository} "1" PARENT_SCOPE)
+  endif()
+endfunction()
+
 find_program (GIT_EXE git)
 if (DEFINED GIT_EXE AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/.git")
-  execute_process(
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-
-    COMMAND ${GIT_EXE} describe --all --tags --long --dirty=-dirty
-    OUTPUT_VARIABLE GIT_OUTPUT)
-
-  # this may fail on shallow clones that only knows about a limited number of commits.
-  # if there is an older merged revision the head, it may not be available to git.
-  if (NOT GIT_OUTPUT)
-      set(ARANGODB_BUILD_REPOSITORY "GIT FAILED TO RETRIEVE THE VERSION - SHALLOW CLONE?")
-      set(HAVE_ARANGODB_BUILD_REPOSITORY "1")
-    else()
-      string(STRIP ${GIT_OUTPUT} REPOSITORY_VERSION)
-      set(ARANGODB_BUILD_REPOSITORY ${REPOSITORY_VERSION})
-      set(HAVE_ARANGODB_BUILD_REPOSITORY "1")
-    endif()
-else ()
+  determine_repository_version(${CMAKE_SOURCE_DIR} ARANGODB_BUILD_REPOSITORY HAVE_ARANGODB_BUILD_REPOSITORY)
+else()
   set(ARANGODB_BUILD_REPOSITORY "")
   set(HAVE_ARANGODB_BUILD_REPOSITORY "0")
 endif()
 
 if (DEFINED GIT_EXE AND USE_ENTERPRISE AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/enterprise/.git")
-  execute_process(
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/enterprise
-
-    COMMAND ${GIT_EXE} describe --all --tags --long --dirty=-dirty
-    OUTPUT_VARIABLE GIT_OUTPUT)
-
-  # this may fail on shallow clones that only knows about a limited number of commits.
-  # if there is an older merged revision the head, it may not be available to git.
-  if (NOT GIT_OUTPUT)
-      set(ENTERPRISE_BUILD_REPOSITORY "GIT FAILED TO RETRIEVE THE VERSION - SHALLOW CLONE?")
-      set(HAVE_ENTERPRISE_BUILD_REPOSITORY "1")
-    else()
-      string(STRIP ${GIT_OUTPUT} REPOSITORY_VERSION)
-      set(ENTERPRISE_BUILD_REPOSITORY ${REPOSITORY_VERSION})
-      set(HAVE_ENTERPRISE_BUILD_REPOSITORY "1")
-    endif()
+  determine_repository_version(${CMAKE_SOURCE_DIR}/enterprise ENTERPRISE_BUILD_REPOSITORY HAVE_ENTERPRISE_BUILD_REPOSITORY)
 else ()
   set(ENTERPRISE_BUILD_REPOSITORY "")
   set(HAVE_ENTERPRISE_BUILD_REPOSITORY "0")
@@ -462,6 +480,7 @@ configure_file(
 
 if (VERBOSE)
   message(STATUS "ARANGODB_BUILD_REPOSITORY=\"${ARANGODB_BUILD_REPOSITORY}\"")
+  message(STATUS "ENTERPRISE_BUILD_REPOSITORY=\"${ENTERPRISE_BUILD_REPOSITORY}\"")
 endif ()
 
 ################################################################################
@@ -917,6 +936,9 @@ option(USE_JEMALLOC_PROF "use jemalloc profiler" OFF)
 
 if (USE_JEMALLOC)
   add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
+else ()
+  # Must not compile in profiling stuff if we are not using JEMALLOC
+  set(USE_JEMALLOC_PROF OFF)
 endif ()
 
 if (USE_JEMALLOC_PROF)
@@ -1160,7 +1182,7 @@ else ()
   if (USE_STRICT_OPENSSL_VERSION)
     set (OPENSSL_VERSION_PATTERN ".*OPENSSL_${TARGET_OS}[ ]+\"([^\"]*).*")
   else ()
-    set (OPENSSL_VERSION_PATTERN ".*OPENSSL_${TARGET_OS}[ ]+\"([^\"a-z]*).*")
+    set (OPENSSL_VERSION_PATTERN ".*OPENSSL_${TARGET_OS}[ ]+\"([0-9]\.[0-9]\.[^0-9\"]*).*")
   endif ()
   string(REGEX MATCH
             "${OPENSSL_VERSION_PATTERN}"
@@ -1185,7 +1207,7 @@ if (NOT DEFINED OPENSSL_ROOT_DIR OR "${OPENSSL_ROOT_DIR}" STREQUAL "")
     set (OPENSSL_ROOT_DIR "$ENV{OPENSSL_ROOT_DIR}")
   endif ()
 else ()
-  set(ENV{OPENSSL_ROOT_DIR} "${OPENSSL_ROOT_DIR}")
+  set (ENV{OPENSSL_ROOT_DIR} "${OPENSSL_ROOT_DIR}")
 endif ()
 
 unset (OPENSSL_FOUND CACHE)
@@ -1201,7 +1223,9 @@ endif ()
 
 if (WIN32)
   # Attempt to find ArangoDB CI compiled OpenSSL
-  message ("Attempt to find ArangoDB CI compiled OpenSSL:")
+  message ("Attempt to find ArangoDB CI compiled OpenSSL at ${OPENSSL_ROOT_DIR}:")
+  set (OPENSSL_USE_STATIC_LIBS TRUE)
+  set (OPENSSL_MSVC_STATIC_RT TRUE)
   include ("${CMAKE_CURRENT_LIST_DIR}/cmake/custom/ArangoDB_FindOpenSSL_WIN32.cmake")
   if (NOT OPENSSL_FOUND)
     message ("System-wide attempt to find OpenSSL:")
@@ -1220,8 +1244,8 @@ endif ()
 message(${OPENSSL_INCLUDE_DIR})
 
 add_definitions(-DARANGODB_OPENSSL_VERSION=\"${OPENSSL_VERSION}\")
-add_definitions(-DOPENSSL_VERSION_MAJOR=${OPENSSL_VERSION_MAJOR})
-add_definitions(-DOPENSSL_VERSION_MINOR=${OPENSSL_VERSION_MINOR})
+add_definitions(-DARANGODB_OPENSSL_VERSION_MAJOR=${OPENSSL_VERSION_MAJOR})
+add_definitions(-DARANGODB_OPENSSL_VERSION_MINOR=${OPENSSL_VERSION_MINOR})
 
 if (OPENSSL_VERSION)
   string(REPLACE "." ";" OPENSSL_VERSION_LIST ${OPENSSL_VERSION})

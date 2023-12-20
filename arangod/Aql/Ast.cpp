@@ -947,7 +947,8 @@ AstNode* Ast::createNodeReference(Variable const* variable) {
 }
 
 /// @brief create an AST subquery reference node
-AstNode* Ast::createNodeSubqueryReference(std::string_view variableName) {
+AstNode* Ast::createNodeSubqueryReference(std::string_view variableName,
+                                          AstNode const* subquery) {
   AstNode* node = createNode(NODE_TYPE_REFERENCE);
   node->setFlag(AstNodeFlagType::FLAG_SUBQUERY_REFERENCE);
 
@@ -959,6 +960,8 @@ AstNode* Ast::createNodeSubqueryReference(std::string_view variableName) {
   }
 
   node->setData(variable);
+
+  _subqueries.emplace(variable->id, subquery);
 
   return node;
 }
@@ -4427,3 +4430,10 @@ void Ast::setContainsParallelNode() noexcept {
 bool Ast::willUseV8() const noexcept { return _willUseV8; }
 
 void Ast::setWillUseV8() noexcept { _willUseV8 = true; }
+
+AstNode const* Ast::getSubqueryForVariable(Variable const* variable) const {
+  if (auto it = _subqueries.find(variable->id); it != _subqueries.end()) {
+    return it->second;
+  }
+  return nullptr;
+}

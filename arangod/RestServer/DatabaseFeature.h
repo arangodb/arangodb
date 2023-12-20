@@ -141,11 +141,11 @@ class DatabaseFeature : public ArangodFeature {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register a callback
-  ///        if StorageEngine.inRecovery() -> call at start of recoveryDone()
-  ///                                         and fail recovery if callback
-  ///                                         !ok()
-  ///        if !StorageEngine.inRecovery() -> call immediately and return
-  ///                                          result
+  ///   if StorageEngine.inRecovery() ->
+  ///     call at start of recoveryDone() in parallel with other callbacks
+  ///     and fail recovery if callback !ok()
+  ///   else ->
+  ///     call immediately and return result
   //////////////////////////////////////////////////////////////////////////////
   Result registerPostRecoveryCallback(std::function<Result()>&& callback);
 
@@ -207,6 +207,8 @@ class DatabaseFeature : public ArangodFeature {
     std::unordered_set<TRI_vocbase_t*> _droppedDatabases;
   };
 
+  size_t maxDatabases() const noexcept { return _maxDatabases; }
+
   static TRI_vocbase_t& getCalculationVocbase();
 
  private:
@@ -257,6 +259,8 @@ class DatabaseFeature : public ArangodFeature {
   // arangodb::basics::DataProtector<64>
   mutable arangodb::basics::DataProtector _databasesProtector;
   mutable arangodb::Mutex _databasesMutex;
+
+  size_t _maxDatabases{SIZE_MAX};
 
   std::atomic<bool> _started;
 

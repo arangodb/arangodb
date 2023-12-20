@@ -289,7 +289,7 @@ std::shared_ptr<ClusterQuery> QueryRegistry::destroyQuery(
       TRI_ASSERT(!q->second->_isTombstone);
 
       // query in use by another thread/request
-      if (errorCode == TRI_ERROR_QUERY_KILLED) {
+      if (errorCode != TRI_ERROR_NO_ERROR) {
         q->second->_query->kill();
       }
       q->second->_expires = 0.0;

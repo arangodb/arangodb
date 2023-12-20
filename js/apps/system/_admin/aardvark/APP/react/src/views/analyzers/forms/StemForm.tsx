@@ -8,7 +8,7 @@ const StemForm = ({ formState, dispatch, disabled }: FormProps<StemState>) =>
   <Grid>
     <Cell size={'1-2'}>
       <LocaleInput formState={formState} dispatch={dispatch as Dispatch<DispatchArgs<LocaleProperty>>}
-                   disabled={disabled}/>
+                   placeholder="language" disabled={disabled}/>
     </Cell>
   </Grid>;
 

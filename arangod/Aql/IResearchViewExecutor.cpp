@@ -215,7 +215,8 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _scorersSortLimit{scorersSortLimit},
       _meta{meta},
       _depth{depth},
-      _filterConditionIsEmpty{isFilterConditionEmpty(&_filterCondition)},
+      _filterConditionIsEmpty{isFilterConditionEmpty(&_filterCondition) &&
+                              !_reader->hasNestedFields()},
       _volatileSort{volatility.second},
       // `_volatileSort` implies `_volatileFilter`
       _volatileFilter{_volatileSort || volatility.first} {
@@ -550,7 +551,7 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::IResearchViewExecutorBase(
   if (auto const* meta = infos.meta(); meta != nullptr) {
     auto const& vocbase = _trx.vocbase();
     auto const& analyzerFeature =
-        vocbase.server().getFeature<IResearchAnalyzerFeature>();
+        vocbase.server().template getFeature<IResearchAnalyzerFeature>();
     TRI_ASSERT(_trx.state());
     auto const& revision = _trx.state()->analyzersRevision();
     auto getAnalyzer = [&](std::string_view shortName) -> FieldMeta::Analyzer {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +20,7 @@
 ///
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
+#include <optional>
 #include "v8-deadline.h"
 // arangod dummy implementation doing nothing
 void setExecutionDeadlineInMS(uint64_t timeout) {}
@@ -38,3 +39,11 @@ std::chrono::milliseconds correctTimeoutToExecutionDeadline(
 uint32_t correctTimeoutToExecutionDeadline(uint32_t timeout) { return timeout; }
 
 void TRI_InitV8Deadline(v8::Isolate* isolate) {}
+void triggerV8DeadlineNow(bool fromSignal) {}
+
+namespace arangodb {
+std::optional<ExternalProcessStatus> getHistoricStatus(
+    TRI_pid_t pid, arangodb::application_features::ApplicationServer& server) {
+  return std::nullopt;
+}
+}  // namespace arangodb

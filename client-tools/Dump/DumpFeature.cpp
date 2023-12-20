@@ -45,6 +45,7 @@
 #include "Basics/system-functions.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Maskings/Maskings.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
 #include "Shell/ClientFeature.h"
@@ -71,7 +72,7 @@ constexpr uint64_t MinChunkSize = 1024 * 128;
 constexpr uint64_t MaxChunkSize = 1024 * 1024 * 96;
 
 /// @brief generic error for if server returns bad/unexpected json
-const arangodb::Result ErrorMalformedJsonResponse = {
+arangodb::Result const ErrorMalformedJsonResponse = {
     TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
 
 /// @brief checks that a file pointer is valid and file status is ok
@@ -257,15 +258,11 @@ bool isIgnoredHiddenEnterpriseCollection(
 arangodb::Result dumpJsonObjects(arangodb::DumpFeature::DumpJob& job,
                                  arangodb::ManagedDirectory::File& file,
                                  arangodb::basics::StringBuffer const& body,
-                                 std::string const* collectionName = nullptr) {
-  if (collectionName == nullptr) {
-    collectionName = &job.collectionName;
-  }
-  TRI_ASSERT(collectionName != nullptr);
+                                 std::string const& collectionName) {
   size_t length;
   if (job.maskings != nullptr) {
     arangodb::basics::StringBuffer masked(256, false);
-    job.maskings->mask(*collectionName, body, masked);
+    job.maskings->mask(collectionName, body, masked);
     file.write(masked.data(), masked.length());
     length = masked.length();
   } else {
@@ -380,7 +377,8 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
 
     // now actually write retrieved data to dump file
     arangodb::basics::StringBuffer const& body = response->getBody();
-    arangodb::Result result = dumpJsonObjects(job, file, body);
+    arangodb::Result result =
+        dumpJsonObjects(job, file, body, job.collectionName);
 
     if (result.fail()) {
       return result;
@@ -723,13 +721,18 @@ void DumpFeature::collectOptions(
                   "Wrap each document into a {type, data} envelope "
                   "(this is required for compatibility with v3.7 and before).",
                   new BooleanParameter(&_options.useEnvelope))
-      .setIntroducedIn(30800);
+      .setIntroducedIn(30800)
+      .setDeprecatedIn(31011);
 
-  options->addOption("--tick-start", "Only include data after this tick.",
-                     new UInt64Parameter(&_options.tickStart));
+  options
+      ->addOption("--tick-start", "Only include data after this tick.",
+                  new UInt64Parameter(&_options.tickStart))
+      .setDeprecatedIn(31011);
 
-  options->addOption("--tick-end", "Last tick to be included in data dump.",
-                     new UInt64Parameter(&_options.tickEnd));
+  options
+      ->addOption("--tick-end", "Last tick to be included in data dump.",
+                  new UInt64Parameter(&_options.tickEnd))
+      .setDeprecatedIn(31011);
 
   options
       ->addOption("--maskings", "A path to a file with masking definitions.",
@@ -752,15 +755,21 @@ void DumpFeature::collectOptions(
                       arangodb::options::Flags::Experimental,
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31200);
-  // options
-  //    ->addOption(
-  //        "--split-files",
-  //        "Split a collection in multiple files to increase throughput.",
-  //        new BooleanParameter(&_options.splitFiles),
-  //        arangodb::options::makeDefaultFlags(
-  //            arangodb::options::Flags::Experimental,
-  //            arangodb::options::Flags::Uncommon))
-  //    .setIntroducedIn(31200);
+
+  options
+      ->addOption(
+          "--split-files",
+          "Split a collection in multiple files to increase throughput.",
+          new BooleanParameter(&_options.splitFiles),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Experimental,
+              arangodb::options::Flags::Uncommon))
+      .setLongDescription(R"(This option only has effect when the option
+`--use-experimental-dump` is set to `true`. Restoring split files also
+requires an arangorestore version that is capable of restoring data of a
+single collection/shard from multiple files.)")
+      .setIntroducedIn(31200);
+
   options
       ->addOption("--dbserver-worker-threads",
                   "Number of worker threads on each dbserver.",
@@ -919,7 +928,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
   } catch (...) {
     return ::ErrorMalformedJsonResponse;
   }
-  VPackSlice const body = parsedBody->slice();
+  VPackSlice body = parsedBody->slice();
   if (!body.isObject()) {
     return ::ErrorMalformedJsonResponse;
   }
@@ -957,7 +966,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
   }
 
   // parse collections array
-  VPackSlice const collections = body.get("collections");
+  VPackSlice collections = body.get("collections");
   if (!collections.isArray()) {
     return ::ErrorMalformedJsonResponse;
   }
@@ -968,7 +977,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
     views = VPackSlice::emptyArraySlice();
   }
 
-  // Step 1. Store view definition files
+  // Step 1. Store database properties files
   Result res = storeDumpJson(body, dbName);
   if (res.fail()) {
     return res;
@@ -983,12 +992,6 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
   // create a lookup table for collections
   std::map<std::string, arangodb::velocypack::Slice> restrictList;
   for (auto const& name : _options.collections) {
-    if (!name.empty() && name[0] == '_') {
-      // if the user explictly asked for dumping certain collections, toggle the
-      // system collection flag automatically
-      _options.includeSystemCollections = true;
-    }
-
     restrictList.emplace(name, arangodb::velocypack::Slice::noneSlice());
   }
   // restrictList now contains all collections the user has requested (can be
@@ -1000,7 +1003,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
     if (!collection.isObject()) {
       return ::ErrorMalformedJsonResponse;
     }
-    VPackSlice const parameters = collection.get("parameters");
+    VPackSlice parameters = collection.get("parameters");
 
     if (!parameters.isObject()) {
       return ::ErrorMalformedJsonResponse;
@@ -1020,13 +1023,13 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
     if (deleted) {
       continue;
     }
-    if (name[0] == '_' && !_options.includeSystemCollections) {
+    if (name.starts_with('_') && !_options.includeSystemCollections) {
+      // exclude system collections
       continue;
     }
 
     // filter by specified names
-    if (!_options.collections.empty() &&
-        restrictList.find(name) == restrictList.end()) {
+    if (!_options.collections.empty() && !restrictList.contains(name)) {
       // collection name not in list
       continue;
     }
@@ -1363,6 +1366,12 @@ void DumpFeature::start() {
       }
 
       try {
+        // if any of the specified collections is a system collection, we
+        // auto-enable --include-system-collections for the user
+        _options.includeSystemCollections |= std::any_of(
+            _options.collections.begin(), _options.collections.end(),
+            [&](auto const& name) { return name.starts_with('_'); });
+
         if (_options.clusterMode) {
           res = runClusterDump(*httpClient, db);
         } else {
@@ -1412,6 +1421,33 @@ void DumpFeature::start() {
   }
 }
 
+namespace {
+bool shouldRetryRequest(httpclient::SimpleHttpResult const* response,
+                        Result const& check) {
+  if (response != nullptr) {
+    // check for retryable errors in simple http client
+    switch (response->getResultType()) {
+      case httpclient::SimpleHttpResult::COULD_NOT_CONNECT:
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        return true;
+      case httpclient::SimpleHttpResult::WRITE_ERROR:
+      case httpclient::SimpleHttpResult::READ_ERROR:
+        return true;  // retry loop
+      default:
+        break;
+    }
+  }
+
+  if (check.is(TRI_ERROR_CLUSTER_TIMEOUT) ||
+      check.is(TRI_ERROR_HTTP_GATEWAY_TIMEOUT)) {
+    // retry
+    return true;
+  }
+
+  return false;
+}
+}  // namespace
+
 void DumpFeature::ParallelDumpServer::createDumpContext(
     httpclient::SimpleHttpClient& client) {
   VPackBuilder builder;
@@ -1429,19 +1465,36 @@ void DumpFeature::ParallelDumpServer::createDumpContext(
   }
 
   auto bodystr = builder.toJson();
+  size_t retryCount = 100;
 
   auto url = basics::StringUtils::concatT("_api/dump/start?dbserver=", server);
-  std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
-      client.request(arangodb::rest::RequestType::POST, url, bodystr.c_str(),
-                     bodystr.size(), {}));
+  std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response;
+  while (true) {
+    response.reset(client.request(arangodb::rest::RequestType::POST, url,
+                                  bodystr.c_str(), bodystr.size(), {}));
 
-  auto check = ::arangodb::HttpResponseChecker::check(client.getErrorMessage(),
-                                                      response.get());
-  if (check.fail()) {
-    LOG_TOPIC("bdecf", FATAL, Logger::DUMP)
-        << "failed to create dump context on server " << server << ": "
-        << check.errorMessage();
-    FATAL_ERROR_EXIT();
+    auto check = ::arangodb::HttpResponseChecker::check(
+        client.getErrorMessage(), response.get());
+    if (check.fail()) {
+      LOG_TOPIC("45d6e", ERR, Logger::DUMP)
+          << "An error occurred while creating a dump context on '" << server
+          << "': " << check.errorMessage();
+      bool const retry = shouldRetryRequest(response.get(), check);
+
+      if (retry && --retryCount > 0) {
+        continue;
+      }
+
+      if (retryCount == 0) {
+        LOG_TOPIC("7a3e4", ERR, Logger::DUMP) << "Too many connection errors.";
+      }
+      LOG_TOPIC("bdecf", FATAL, Logger::DUMP)
+          << "failed to create dump context on server " << server << ": "
+          << check.errorMessage();
+      FATAL_ERROR_EXIT();
+    } else {
+      break;
+    }
   }
 
   bool headerExtracted;
@@ -1503,6 +1556,8 @@ Result DumpFeature::ParallelDumpServer::run(
 
   printBlockStats();
 
+  LOG_TOPIC("1b7fe", INFO, Logger::DUMP) << "all data received for " << server;
+
   return Result{};
 }
 
@@ -1522,7 +1577,7 @@ void DumpFeature::ParallelDumpServer::ParallelDumpServer::printBlockStats() {
     msg += std::to_string(blockCounter[i]);
   }
 
-  LOG_TOPIC("d1349", INFO, Logger::DUMP) << "block counter " << msg;
+  LOG_TOPIC("d1349", DEBUG, Logger::DUMP) << "block counter " << msg;
 }
 
 void DumpFeature::ParallelDumpServer::ParallelDumpServer::countBlocker(
@@ -1576,6 +1631,8 @@ DumpFeature::ParallelDumpServer::receiveNextBatch(
     url += "&lastBatch=" + std::to_string(*lastBatch);
   }
 
+  std::size_t retryCounter = 100;
+
   while (true) {
     std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
         client.request(arangodb::rest::RequestType::POST, url, nullptr, 0, {}));
@@ -1586,20 +1643,25 @@ DumpFeature::ParallelDumpServer::receiveNextBatch(
           << "An error occurred while dumping from server '" << server
           << "': " << check.errorMessage();
 
-      // TODO complete this list!
-      if (check.is(TRI_ERROR_CLUSTER_TIMEOUT) ||
-          check.is(TRI_ERROR_HTTP_GATEWAY_TIMEOUT)) {
-        // retry
-        continue;
-      } else {
+      bool const retry = shouldRetryRequest(response.get(), check);
+      if (!retry || --retryCounter == 0) {
+        if (retryCounter == 0) {
+          LOG_TOPIC("684ee", FATAL, Logger::DUMP) << "Too many network errors.";
+        }
         LOG_TOPIC("5cb01", FATAL, Logger::DUMP)
             << "Unrecoverable network/http error: " << check.errorMessage();
         FATAL_ERROR_EXIT();
       }
     } else if (response->getHttpReturnCode() == 204) {
       return nullptr;
+    } else if (response->getHttpReturnCode() == 200) {
+      return response;
+    } else {
+      LOG_TOPIC("2668f", FATAL, Logger::DUMP)
+          << "Got invalid return code: " << response->getHttpReturnCode() << " "
+          << response->getHttpReturnMessage();
+      FATAL_ERROR_EXIT();
     }
-    return response;
   }
 }
 
@@ -1686,7 +1748,7 @@ void DumpFeature::ParallelDumpServer::runWriterThread() noexcept {
 
     auto file = getFileForShard(shardId);
     arangodb::Result result =
-        dumpJsonObjects(*this, *file, body, &shards.at(shardId).collectionName);
+        dumpJsonObjects(*this, *file, body, shards.at(shardId).collectionName);
 
     if (result.fail()) {
       LOG_TOPIC("77881", FATAL, Logger::DUMP)
@@ -1707,6 +1769,10 @@ DumpFeature::DumpFileProvider::DumpFileProvider(
     // to create a file for each collection, even if it is empty. Otherwise,
     // arangorestore complains.
     for (auto const& [name, info] : collectionInfo) {
+      if (info.isNone()) {
+        // collection name present in dump
+        continue;
+      }
       std::string const hexString(arangodb::rest::SslInterface::sslMD5(name));
 
       std::string filename = name + "_" + hexString + ".data.json";

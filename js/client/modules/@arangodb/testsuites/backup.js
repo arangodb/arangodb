@@ -284,17 +284,12 @@ const BackupAuthNoSysTests = (options) => {
                                 testPaths.BackupAuthNoSysTests);
 };
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['BackupNoAuthSysTests'] = BackupNoAuthSysTests;
   testFns['BackupNoAuthNoSysTests'] = BackupNoAuthNoSysTests;
   testFns['BackupAuthSysTests'] = BackupAuthSysTests;
   testFns['BackupAuthNoSysTests'] = BackupAuthNoSysTests;
-
-  defaultFns.push('BackupNoAuthSysTests');
-  defaultFns.push('BackupNoAuthNoSysTests');
-  defaultFns.push('BackupAuthSysTests');
-  defaultFns.push('BackupAuthNoSysTests');
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }

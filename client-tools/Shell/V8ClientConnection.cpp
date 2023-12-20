@@ -163,6 +163,9 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
   fu::StringMap params{{"details", "true"}};
   while (retryCount > 0) {
     auto req = fu::createRequest(fu::RestVerb::Get, "/_api/version", params);
+    if (_forceJson) {
+      req->header.acceptType(fu::ContentType::Json);
+    }
     req->header.database = _databaseName;
     req->timeout(std::chrono::seconds(30));
     retryCount -= 1;

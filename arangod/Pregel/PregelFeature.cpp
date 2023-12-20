@@ -189,7 +189,10 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
             shardKeyAttribute = params.get("shardKeyAttribute").copyString();
           }
 
-          if (eKeys.size() != 1 || eKeys[0] != shardKeyAttribute) {
+          // In a OneShard database sharding is acceptable
+          // for pregel by default.
+          if (!vocbase.isOneShard() &&
+              (eKeys.size() != 1 || eKeys[0] != shardKeyAttribute)) {
             return std::make_pair(
                 Result{TRI_ERROR_BAD_PARAMETER,
                        "Edge collection needs to be sharded "

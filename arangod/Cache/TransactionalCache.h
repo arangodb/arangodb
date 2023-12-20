@@ -132,13 +132,19 @@ class TransactionalCache final : public Cache {
                                        bool enableWindowedStats);
 
   bool freeMemoryWhile(std::function<bool(std::uint64_t)> const& cb) override;
-  void migrateBucket(void* sourcePtr, std::unique_ptr<Table::Subtable> targets,
+  void migrateBucket(Table* table, void* sourcePtr,
+                     std::unique_ptr<Table::Subtable> targets,
                      Table& newTable) override;
 
   // helpers
   std::tuple<::ErrorCode, Table::BucketLocker> getBucket(
       Table::HashOrId bucket, std::uint64_t maxTries,
       bool singleOperation = true);
+
+  // simplified version of getBucket(). does not report access to the
+  // manager and does not update the bucket's term.
+  std::tuple<::ErrorCode, Table::BucketLocker> getBucketSimple(
+      Table* table, Table::HashOrId bucket, std::uint64_t maxTries);
 
   static Table::BucketClearer bucketClearer(Metadata* metadata);
 };

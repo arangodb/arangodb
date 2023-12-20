@@ -159,7 +159,8 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice,
     // note: we have to exclude inverted indexes here,
     // as they are a different class type (no relationship to
     // ClusterIndex).
-    if (idx->type() != Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+    if (idx->type() != Index::TRI_IDX_TYPE_INVERTED_INDEX &&
+        idx->type() != Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
       TRI_ASSERT(dynamic_cast<ClusterIndex*>(idx.get()) != nullptr);
       static_cast<ClusterIndex*>(idx.get())->updateProperties(_info.slice());
     }

@@ -88,9 +88,8 @@ struct MGMethods final : arangodb::transaction::Methods {
 Manager::Manager(ManagerFeature& feature)
     : _feature(feature),
       _nrRunning(0),
-      _nrReadLocked(0),
       _disallowInserts(false),
-      _writeLockHeld(false),
+      _hotbackupCommitLockHeld(false),
       _streamingLockTimeout(feature.streamingLockTimeout()),
       _softShutdownOngoing(false) {}
 
@@ -105,11 +104,8 @@ void Manager::registerTransaction(TransactionId transactionId,
   if (!isReadOnlyTransaction && !isFollowerTransaction) {
     LOG_TOPIC("ccdea", TRACE, Logger::TRANSACTIONS)
         << "Acquiring read lock for tid " << transactionId.id();
-    _rwLock.lockRead();
-    _nrReadLocked.fetch_add(1, std::memory_order_relaxed);
     LOG_TOPIC("ccdeb", TRACE, Logger::TRANSACTIONS)
-        << "Got read lock for tid " << transactionId.id()
-        << " nrReadLocked: " << _nrReadLocked.load(std::memory_order_relaxed);
+        << "Got read lock for tid " << transactionId.id();
   }
 
   _nrRunning.fetch_add(1, std::memory_order_relaxed);
@@ -120,17 +116,6 @@ void Manager::unregisterTransaction(TransactionId transactionId,
                                     bool isReadOnlyTransaction,
                                     bool isFollowerTransaction) {
   // always perform an unlock when we leave this function
-  auto guard = scopeGuard([this, transactionId, &isReadOnlyTransaction,
-                           &isFollowerTransaction]() noexcept {
-    if (!isReadOnlyTransaction && !isFollowerTransaction) {
-      _rwLock.unlockRead();
-      _nrReadLocked.fetch_sub(1, std::memory_order_relaxed);
-      LOG_TOPIC("ccded", TRACE, Logger::TRANSACTIONS)
-          << "Released lock for tid " << transactionId.id()
-          << " nrReadLocked: " << _nrReadLocked.load(std::memory_order_relaxed);
-    }
-  });
-
   uint64_t r = _nrRunning.fetch_sub(1, std::memory_order_relaxed);
   TRI_ASSERT(r > 0);
 }
@@ -141,6 +126,8 @@ uint64_t Manager::getActiveTransactionCount() {
 
 /*static*/ double Manager::ttlForType(ManagerFeature const& feature,
                                       Manager::MetaType type) {
+  TRI_IF_FAILURE("transaction::Manager::shortTTL") { return 0.1; }
+
   if (type == Manager::MetaType::Tombstone) {
     return tombstoneTTL;
   }
@@ -464,9 +451,13 @@ Result Manager::prepareOptions(transaction::Options& options) {
     // replicate changes to followers. replication to followers is only done
     // once the locks have been acquired on the leader(s). so if there are any
     // locking issues, they are supposed to happen first on leaders, and not
-    // affect followers. that's why we can hard-code the lock timeout here to a
-    // rather low value on followers
-    constexpr double followerLockTimeout = 15.0;
+    // affect followers.
+    // Having said that, even on a follower it can happen that for example
+    // an index is finalized on a shard. And then the collection could be
+    // locked exclusively for some period of time. Therefore, we should not
+    // set the locking timeout too low here. We choose 5 minutes as a
+    // compromise:
+    constexpr double followerLockTimeout = 300.0;
     if (options.lockTimeout == 0.0 ||
         options.lockTimeout >= followerLockTimeout) {
       options.lockTimeout = followerLockTimeout;
@@ -996,6 +987,7 @@ Result Manager::statusChangeWithTimeout(TransactionId tid,
 
 Result Manager::commitManagedTrx(TransactionId tid,
                                  std::string const& database) {
+  READ_LOCKER(guard, _hotbackupCommitLock);
   return statusChangeWithTimeout(tid, database, transaction::Status::COMMITTED);
 }
 
@@ -1122,7 +1114,7 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
 
     if (mtrx.expired()) {
       // we will update the expire time of the tombstone shortly afterwards,
-      // so we need to store the fact that this transaction originally expired
+      // but we need to store the fact that this transaction originally expired
       wasExpired = true;
       status = transaction::Status::ABORTED;
     }
@@ -1195,8 +1187,6 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
       // makes the leader drop us as a follower for all shards in the
       // transaction.
       res.reset(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED);
-    } else if (res.ok() && wasExpired) {
-      res.reset(TRI_ERROR_TRANSACTION_ABORTED);
     }
   }
   TRI_ASSERT(!trx.state()->isRunning());
@@ -1224,6 +1214,8 @@ void Manager::iterateManagedTrx(
 
 /// @brief collect forgotten transactions
 bool Manager::garbageCollect(bool abortAll) {
+  TRI_IF_FAILURE("transaction::Manager::noGC") { return false; }
+
   bool didWork = false;
   containers::SmallVector<TransactionId, 8> toAbort;
   containers::SmallVector<TransactionId, 8> toErase;
@@ -1556,6 +1548,11 @@ std::shared_ptr<ManagedContext> Manager::buildManagedContextUnderLock(
     mtrx.rwlock.unlock();
     throw;
   }
+}
+
+Manager::TransactionCommitGuard Manager::getTransactionCommitGuard() {
+  READ_LOCKER(guard, _hotbackupCommitLock);
+  return guard;
 }
 
 }  // namespace transaction
