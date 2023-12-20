@@ -417,6 +417,10 @@ void findCandidates(IndexNode* indexNode,
         calculations.push_back(calc);
         parent = parent->getFirstParent();
         continue;
+      } else if (parent->getType() == EN::MATERIALIZE) {
+        // we can always move past materialize nodes
+        parent = parent->getFirstParent();
+        continue;
       } else if (parent->getType() == EN::INDEX) {
         // check that this index node does not depend on previous
         // calculations

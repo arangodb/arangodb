@@ -3961,7 +3961,7 @@ yyreduce:
                       {
       // reserve a variable named "$OLD", we might need it in the update expression
       // and in a later return thing
-      AstNode* variableNode = parser->ast()->createNodeVariable(Variable::NAME_OLD, true);
+      AstNode* variableNode = parser->ast()->createNodeVariable(Variable::NAME_OLD, false);
       parser->pushStack(variableNode);
 
       auto scopes = parser->ast()->scopes();
@@ -4041,7 +4041,7 @@ yyreduce:
                           {
       // reserve a variable named "$OLD", we might need it in the update expression
       // and in a later return thing
-      AstNode* variableNode = parser->ast()->createNodeVariable(Variable::NAME_OLD, true);
+      AstNode* variableNode = parser->ast()->createNodeVariable(Variable::NAME_OLD, false);
 
       auto scopes = parser->ast()->scopes();
 

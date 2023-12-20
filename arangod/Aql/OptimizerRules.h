@@ -397,5 +397,8 @@ void optimizeProjections(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void replaceEqualAttributeAccesses(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                    OptimizerRule const&);
 
+void batchMaterializeDocumentsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                   OptimizerRule const&);
+
 }  // namespace aql
 }  // namespace arangodb
