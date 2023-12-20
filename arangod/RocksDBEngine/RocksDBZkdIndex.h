@@ -44,7 +44,7 @@ class RocksDBZkdIndexBase : public RocksDBIndex {
   std::vector<std::vector<basics::AttributeName>> const& coveredFields()
       const override {
     // The index only covers stored values
-    return _storedValues;
+    return _coveredFields;
   }
   std::vector<std::vector<basics::AttributeName>> const& prefixFields()
       const noexcept {
