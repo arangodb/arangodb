@@ -182,6 +182,7 @@ class LogicalCollection : public LogicalDataSource {
   bool isSmartEdgeCollection() const noexcept;
   bool isSatToSmartEdgeCollection() const noexcept;
   bool isSmartToSatEdgeCollection() const noexcept;
+  bool isSmartVertexCollection() const noexcept;
 
 #else
   bool isDisjoint() const noexcept { return false; }
