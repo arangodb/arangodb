@@ -338,11 +338,6 @@
       ////////////////////////////////////////////////////////////////////////////////
 
       testEmpty: function () {
-
-        let r = global.ArangoAgency.read([["/arango/Plan/"]]);
-        require("console").error("###### PLAN ######");
-        require("console").error(JSON.stringify(r));
-        require("console").error("###### PLAN END ######");
         var c = getCollection("UnitTestsDumpEmpty");
         var p = c.properties();
 
