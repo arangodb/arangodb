@@ -3464,6 +3464,10 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature,
   LOG_DEVEL << "Start: Wait for Replicated Logs to settle";
   // and Wait for Replicated Logs to settle
   ci.syncWaitForAllLogsToEstablishALeader();
+
+
+  // This is a helpless attempt to wait longer, to have things settle
+  std::this_thread::sleep_for(std::chrono::seconds(60));
   LOG_DEVEL << "Done: Wait for Replicated Logs to settle";
 
   {
