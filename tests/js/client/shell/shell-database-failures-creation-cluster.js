@@ -154,6 +154,9 @@ function databaseFailureSuite() {
     },
 
     testDatabaseSomeExisting: function () {
+      if (db._properties().replicationVersion === "2") {
+        return;
+      }
       internal.debugSetFailAt("UpgradeTasks::CreateCollectionsExistsGraphAqlFunctions");
 
       db._createDatabase(dn);
