@@ -2327,7 +2327,6 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         curcolls = cur.get(curcolpath);
       }
 
-
       // UpdateCurrentForCollections (Current/Collections/Collection)
       if (curcolls.isObject() && ldb.isObject()) {
         for (auto const& collection : VPackObjectIterator(curcolls)) {
