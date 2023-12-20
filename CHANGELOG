@@ -5,6 +5,11 @@ devel
   EnumerateListNodes for early pruning. Previously it could only pull filters 
   into IndexNodes and EnumerateCollectionNodes.
 
+* Fixed BTS-1703: Cannot chain multiple UPSERTS.
+
+* Fixed issue #17673: Adds timezone conversion as an optional parameter in
+  all relevant date functions.
+
 * Added AQL function `TO_CHAR(number)`, which produces a character from the
   given character number.
 
