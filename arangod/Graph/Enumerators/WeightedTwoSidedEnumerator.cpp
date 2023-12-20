@@ -43,6 +43,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
+#include <limits>
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -259,6 +260,7 @@ auto WeightedTwoSidedEnumerator<
     auto posPrevious = _interior.append(std::move(tmp));
     auto& step = _interior.getStepReference(posPrevious);
 
+    TRI_ASSERT(step.getWeight() >= _diameter);
     _diameter = step.getWeight();
     ValidationResult res = _validator.validatePath(step);
 
