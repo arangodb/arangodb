@@ -111,6 +111,8 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
+        require("console").warn(query);
+        db._explain(query, null, { allPlans: true, optimizer: { rules: [ "-all", "+" + ruleName ] } });
         let result = db._createStatement({query, bindVars: { }, options: paramEnabled}).explain();
         assertEqual([ ruleName ], result.plan.rules, query);
         let allresults = getQueryMultiplePlansAndExecutions(query, {});
