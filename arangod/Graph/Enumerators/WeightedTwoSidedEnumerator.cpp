@@ -107,7 +107,7 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 
   _queue.clear();
   _interior.reset();  // PathStore
-  _diameter = -1.0;
+  _diameter = -std::numeric_limits<double>::infinity();
   _validator.reset();
 
   // Provider - Must be last one to be cleared(!)
@@ -855,7 +855,11 @@ typename WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                     PathValidator>::BallSearchLocation
 WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                            PathValidator>::getBallToContinueSearch() const {
-  if (!_left.isQueueEmpty() && !_right.isQueueEmpty()) {
+  if (_left.getDiameter() < 0.0) {
+    return BallSearchLocation::LEFT;
+  } else if (_right.getDiameter() < 0.0) {
+    return BallSearchLocation::RIGHT;
+  } else if (!_left.isQueueEmpty() && !_right.isQueueEmpty()) {
     if (almostEqual(_left.peekQueue().getWeight(), _left.getDiameter())) {
       return BallSearchLocation::LEFT;
     } else if (almostEqual(_right.peekQueue().getWeight(),

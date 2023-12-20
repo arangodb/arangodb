@@ -31,6 +31,7 @@
 #include "Graph/PathManagement/PathResult.h"
 #include "Containers/FlatHashMap.h"
 
+#include <limits>
 #include <set>
 #include <deque>
 
@@ -197,7 +198,7 @@ class WeightedTwoSidedEnumerator {
         _visitedNodes;
     Direction _direction;
     GraphOptions _graphOptions;
-    double _diameter = -1.0;
+    double _diameter = -std::numeric_limits<double>::infinity();
   };
   enum BallSearchLocation { LEFT, RIGHT, FINISH };
 
