@@ -262,7 +262,6 @@ jobs:
                   - tests/js
                   - enterprise/tests/js
                   - utils
-                  - UnitTests
                   - 3rdParty/iresearch/tests/resources
                   - 3rdParty/rta-makedata
 
@@ -395,7 +394,7 @@ jobs:
       #     shell: powershell.exe
       #     command: |
       #       cd D:/CircleCI/project/
-      #       7z a -r ./workspace CMakePresets.json build/ scripts/ js/ enterprise/js etc/ tests/js enterprise/tests/js utils UnitTests 3rdParty/iresearch/tests/resources 3rdParty/rta-makedata
+      #       7z a -r ./workspace CMakePresets.json build/ scripts/ js/ enterprise/js etc/ tests/js enterprise/tests/js utils 3rdParty/iresearch/tests/resources 3rdParty/rta-makedata
       - when:
           condition: << parameters.publish-artifacts >>
           steps:
@@ -416,7 +415,6 @@ jobs:
                   - tests/js
                   - enterprise/tests/js
                   - utils
-                  - UnitTests
                   - 3rdParty/iresearch/tests/resources
                   - 3rdParty/rta-makedata
 

@@ -116,6 +116,10 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                 LookupOptions options,
                 StorageSnapshot const* snapshot = nullptr) const override;
 
+  Result lookup(transaction::Methods* trx, std::span<LocalDocumentId> tokens,
+                MultiDocumentCallback const& cb,
+                LookupOptions options) const override;
+
   Result insert(transaction::Methods& trx,
                 IndexesSnapshot const& indexesSnapshot,
                 RevisionId newRevisionId, velocypack::Slice newDocument,
