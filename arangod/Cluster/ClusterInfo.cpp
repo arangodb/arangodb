@@ -5595,19 +5595,17 @@ futures::Future<Result> ClusterInfo::waitForCurrentVersion(
 }
 
 void ClusterInfo::syncWaitForAllLogsToEstablishALeader() {
+  for (size_t i = 0; i < 600; ++i)
   while (true) {
     READ_LOCKER(readLocker, _planProt.lock);
-    bool foundLogWithoutLeader = false;
-    LOG_DEVEL << "Testing: " << _replicatedLogs.size() << " logs";
-    for (auto const& [id, log] : _replicatedLogs) {
-      if (!log->currentTerm.has_value() ||
-          !log->currentTerm->leader.has_value()) {
-        foundLogWithoutLeader = true;
-        break;
-      }
-    }
-    if (!foundLogWithoutLeader) {
-      return;
+    // First we test that we have planned some shards.
+    // This is to protect ourselves against a "no plan loaded yet" situation.
+    // We will always have some shards (at least we will need the _users in
+    // _system) Next we wait until we have a current entry for all the planned
+    // shards. This is not super precise, but should be good enough.
+    if (!_shardsToPlanServers.empty() &&
+        _shardsToPlanServers.size() == _shardsToCurrentServers.size()) {
+      break;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
