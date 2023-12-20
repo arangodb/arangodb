@@ -103,6 +103,7 @@ int RocksDBVPackComparator::compareIndexValues(
 
   // index values were identical. now compare the leftovers (which is the
   // LocalDocumentId for non-unique indexes)
+  // For the ZKD index, there is also the curve data, following the vpack.
 
   constexpr size_t offset = sizeof(uint64_t);
   size_t const lOffset = offset + static_cast<size_t>(lSlice.byteSize());

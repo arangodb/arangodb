@@ -82,6 +82,9 @@ class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
                 rocksdb::ColumnFamilyHandle& family, size_t count,
                 rocksdb::Slice const* keys, rocksdb::PinnableSlice* values,
                 rocksdb::Status* statuses) final;
+  void MultiGet(rocksdb::ColumnFamilyHandle& family, size_t count,
+                rocksdb::Slice const* keys, rocksdb::PinnableSlice* values,
+                rocksdb::Status* statuses, ReadOwnWrites) final;
 
   void PutLogData(rocksdb::Slice const&) override;
 

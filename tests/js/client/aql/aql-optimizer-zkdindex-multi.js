@@ -55,7 +55,7 @@ function conditionForVariable(op, name) {
     }
 }
 
-function resultSetForConditoin(op) {
+function resultSetForCondition(op) {
     const all = [...Array(11).keys()];
     if (op === "none") {
         return all;
@@ -80,10 +80,10 @@ function resultSetForConditoin(op) {
 
 function productSet(x, y, z, w) {
     let result = [];
-    for (let dx of resultSetForConditoin(x)) {
-        for (let dy of resultSetForConditoin(y)) {
-            for (let dz of resultSetForConditoin(z)) {
-                for (let dw of resultSetForConditoin(w)) {
+    for (let dx of resultSetForCondition(x)) {
+        for (let dy of resultSetForCondition(y)) {
+            for (let dz of resultSetForCondition(z)) {
+                for (let dw of resultSetForCondition(w)) {
                     result.unshift([dx, dy, dz, dw]);
                 }
             }
