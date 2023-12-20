@@ -2,10 +2,6 @@
 /*global assertEqual, assertTrue, assertFalse, assertNotNull, assertNotUndefined, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test the collection interface
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2020 ArangoDB Inc, Cologne, Germany
@@ -34,6 +30,7 @@ const { getEndpointById } = require('@arangodb/test-helper');
 const request = require('@arangodb/request');
 const db = internal.db;
 const arangodb = require("@arangodb");
+const _ = require("lodash");
 const ERRORS = arangodb.errors;
 
 // helper
@@ -49,6 +46,19 @@ const waitInClusterUntil = func => {
     }
     internal.wait(0.2, false);
   }
+};
+
+const waitForCollectionPredicate = (collection, predicate) => {
+  const shardList = collection.shards(true);
+  for (const [shard, servers] of Object.entries(shardList)) {
+    const endpoint = getEndpointById(servers[0]);
+    const resp = request.get(`${endpoint}/_api/collection/${shard}/properties`);
+    assertEqual(resp.statusCode, 200);
+    if (!predicate(resp.json)) {
+      return false;
+    }
+  }
+  return true;
 };
 
 const skipOptions = {"skipDocumentValidation": true};
@@ -331,16 +341,9 @@ function ValidationBasicsSuite() {
       validatorJson.level = "none";
       testCollection.properties({"schema": validatorJson});
       waitInClusterUntil(() => {
-        const shardList = testCollection.shards(true);
-        for (const [shard, servers] of Object.entries(shardList)) {
-          const endpoint = getEndpointById(servers[0]);
-          const resp = request.get(`${endpoint}/_api/collection/${shard}/properties`);
-          assertEqual(resp.statusCode, 200);
-          if (resp.json.schema.level !== validatorJson.level) {
-            return false;
-          }
-        }
-        return true;
+        return waitForCollectionPredicate(testCollection, (json) => {
+          return json.schema.level === validatorJson.level;
+        });
       });
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
       testCollection.insert(badDoc);
@@ -350,16 +353,9 @@ function ValidationBasicsSuite() {
       validatorJson.level = "new";
       testCollection.properties({"schema": validatorJson});
       waitInClusterUntil(() => {
-        const shardList = testCollection.shards(true);
-        for (const [shard, servers] of Object.entries(shardList)) {
-          const endpoint = getEndpointById(servers[0]);
-          const resp = request.get(`${endpoint}/_api/collection/${shard}/properties`);
-          assertEqual(resp.statusCode, 200);
-          if (resp.json.schema.level !== validatorJson.level) {
-            return false;
-          }
-        }
-        return true;
+        return waitForCollectionPredicate(testCollection, (json) => {
+          return json.schema.level === validatorJson.level;
+        });
       });
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
@@ -378,16 +374,9 @@ function ValidationBasicsSuite() {
       validatorJson.level = "moderate";
       testCollection.properties({"schema": validatorJson});
       waitInClusterUntil(() => {
-        const shardList = testCollection.shards(true);
-        for (const [shard, servers] of Object.entries(shardList)) {
-          const endpoint = getEndpointById(servers[0]);
-          const resp = request.get(`${endpoint}/_api/collection/${shard}/properties`);
-          assertEqual(resp.statusCode, 200);
-          if (resp.json.schema.level !== validatorJson.level) {
-            return false;
-          }
-        }
-        return true;
+        return waitForCollectionPredicate(testCollection, (json) => {
+          return json.schema.level === validatorJson.level;
+        });
       });
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
@@ -404,16 +393,9 @@ function ValidationBasicsSuite() {
       validatorJson.level = "moderate";
       testCollection.properties({"schema": validatorJson});
       waitInClusterUntil(() => {
-        const shardList = testCollection.shards(true);
-        for (const [shard, servers] of Object.entries(shardList)) {
-          const endpoint = getEndpointById(servers[0]);
-          const resp = request.get(`${endpoint}/_api/collection/${shard}/properties`);
-          assertEqual(resp.statusCode, 200);
-          if (resp.json.schema.level !== validatorJson.level) {
-            return false;
-          }
-        }
-        return true;
+        return waitForCollectionPredicate(testCollection, (json) => {
+          return json.schema.level === validatorJson.level;
+        });
       });
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
@@ -430,16 +412,9 @@ function ValidationBasicsSuite() {
       validatorJson.level = "moderate";
       testCollection.properties({"schema": validatorJson});
       waitInClusterUntil(() => {
-        const shardList = testCollection.shards(true);
-        for (const [shard, servers] of Object.entries(shardList)) {
-          const endpoint = getEndpointById(servers[0]);
-          const resp = request.get(`${endpoint}/_api/collection/${shard}/properties`);
-          assertEqual(resp.statusCode, 200);
-          if (resp.json.schema.level !== validatorJson.level) {
-            return false;
-          }
-        }
-        return true;
+        return waitForCollectionPredicate(testCollection, (json) => {
+          return json.schema.level === validatorJson.level;
+        });
       });
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
@@ -465,15 +440,9 @@ function ValidationBasicsSuite() {
       validatorJson.level = "moderate";
       testCollection.properties({"schema": validatorJson});
       waitInClusterUntil(() => {
-        const shardList = testCollection.shards(true);
-        for (const [shard, servers] of Object.entries(shardList)) {
-          const endpoint = getEndpointById(servers[0]);
-          const resp = request.get(`${endpoint}/_api/collection/${shard}/properties`);
-          assertEqual(resp.statusCode, 200);
-          if (resp.json.schema.level !== validatorJson.level) {
-            return false;
-          }
-        }
+        return waitForCollectionPredicate(testCollection, (json) => {
+          return json.schema.level === validatorJson.level;
+        });
         return true;
       });
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
@@ -500,16 +469,9 @@ function ValidationBasicsSuite() {
       validatorJson.level = "moderate";
       testCollection.properties({"schema": validatorJson});
       waitInClusterUntil(() => {
-        const shardList = testCollection.shards(true);
-        for (const [shard, servers] of Object.entries(shardList)) {
-          const endpoint = getEndpointById(servers[0]);
-          const resp = request.get(`${endpoint}/_api/collection/${shard}/properties`);
-          assertEqual(resp.statusCode, 200);
-          if (resp.json.schema.level !== validatorJson.level) {
-            return false;
-          }
-        }
-        return true;
+        return waitForCollectionPredicate(testCollection, (json) => {
+          return json.schema.level === validatorJson.level;
+        });
       });
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
@@ -582,16 +544,9 @@ function ValidationBasicsSuite() {
       }
       testCollection.properties({"schema": {}});
       waitInClusterUntil(() => {
-        const shardList = testCollection.shards(true);
-        for (const [shard, servers] of Object.entries(shardList)) {
-          const endpoint = getEndpointById(servers[0]);
-          const resp = request.get(`${endpoint}/_api/collection/${shard}/properties`);
-          assertEqual(resp.statusCode, 200);
-          if (resp.json.schema != null) {
-            return false;
-          }
-        }
-        return true;
+        return waitForCollectionPredicate(testCollection, (json) => {
+          return json.schema === null;
+        });
       });
       assertEqual(testCollection.properties().schema, null);
       testCollection.insert(badDoc);
@@ -607,16 +562,9 @@ function ValidationBasicsSuite() {
       }
       testCollection.properties({"schema": null});
       waitInClusterUntil(() => {
-        const shardList = testCollection.shards(true);
-        for (const [shard, servers] of Object.entries(shardList)) {
-          const endpoint = getEndpointById(servers[0]);
-          const resp = request.get(`${endpoint}/_api/collection/${shard}/properties`);
-          assertEqual(resp.statusCode, 200);
-          if (resp.json.schema != null) {
-            return false;
-          }
-        }
-        return true;
+        return waitForCollectionPredicate(testCollection, (json) => {
+          return json.schema === null;
+        });
       });
       assertEqual(testCollection.properties().schema, null);
       testCollection.insert(badDoc);
@@ -645,20 +593,13 @@ function ValidationBasicsSuite() {
 
       testCollection.properties({"schema": validatorJson});
       waitInClusterUntil(() => {
-        const shardList = testCollection.shards(true);
-        for (const [shard, servers] of Object.entries(shardList)) {
-          const endpoint = getEndpointById(servers[0]);
-          const resp = request.get(`${endpoint}/_api/collection/${shard}/properties`);
-          assertEqual(resp.statusCode, 200);
-          const rule = resp.json.schema.rule;
+        return waitForCollectionPredicate(testCollection, (json) => {
+          const rule = json.schema.rule;
           if (!rule.hasOwnProperty('required')) {
             return false;
           }
-          if (!_.isEqual(rule.required, ["numArray", "name"])) {
-            return false;
-          }
-        }
-        return true;
+          return _.isEqual(rule.required, ["numArray", "name"]);
+        });
       });
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
       assertEqual(testCollection.properties().schema.rule.required, validatorJson.rule.required);
@@ -695,7 +636,6 @@ function ValidationBasicsSuite() {
     },
     // AQL ////////////////////////////////////////////////////////////////////////////////////////////
     testAQLSchemaGet: () => {
-      waitInClusterUntil(() => testCollection.properties().schema.level === validatorJson.level);
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
       // get regular schema
@@ -726,16 +666,9 @@ function ValidationBasicsSuite() {
       // unset schema
       testCollection.properties({schema: {}});
       waitInClusterUntil(() => {
-        const shardList = testCollection.shards(true);
-        for (const [shard, servers] of Object.entries(shardList)) {
-          const endpoint = getEndpointById(servers[0]);
-          const resp = request.get(`${endpoint}/_api/collection/${shard}/properties`);
-          assertEqual(resp.statusCode, 200);
-          if (resp.json.schema != null) {
-            return false;
-          }
-        }
-        return true;
+        return waitForCollectionPredicate(testCollection, (json) => {
+          return json.schema === null;
+        });
       });
 
       let res;
