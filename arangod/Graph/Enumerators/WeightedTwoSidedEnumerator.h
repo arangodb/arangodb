@@ -30,12 +30,10 @@
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Containers/FlatHashMap.h"
-#include "Containers/FlatHashSet.h"
 
 #include <limits>
 #include <set>
 #include <deque>
-#include <unordered_set>
 
 namespace arangodb {
 
