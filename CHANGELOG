@@ -1,11 +1,14 @@
 devel
 -----
 
-* Fixed BTS-1703: Cannot chain multiple UPSERTS.
+* Fix BTS-1636: Under certain circumstances the path found by a weighted
+  shortest path search was not the path of smallest weight.
 
 * Added CMake option `USE_JEMALLOC_CHECKS` to toggle the usage of extra safety 
   checks in jemalloc. The option is currently enabled by default, but can be
   turned off when there are performance concerns.
+
+* Fixed BTS-1703: Cannot chain multiple UPSERTS.
 
 * Fixed issue #17673: Adds timezone conversion as an optional parameter in
   all relevant date functions.
@@ -19,9 +22,6 @@ devel
   very large outputs that would consume lots of memory. Exceeding the maximum
   output string length will make the function return `null` and issue a 
   warning.
-
-* Fix BTS-1636: Under certain circumstances the path found by a weighted
-  shortest path search was not the path of smallest weight.
 
 * Activate more checks in jemalloc:
     --enable-opt-safety-checks
