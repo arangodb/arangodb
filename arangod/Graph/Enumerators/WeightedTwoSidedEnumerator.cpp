@@ -277,8 +277,6 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   ensureQueueHasProcessableElement();
   auto tmp = _queue.pop();
 
-  LOG_DEVEL << "queue length " << _queue.size();
-
   // if the other side has explored this vertex, don't add it again
   if (!other.hasBeenVisited(tmp)) {
     auto posPrevious = _interior.append(std::move(tmp));
@@ -296,12 +294,10 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       _provider.expand(step, posPrevious, [&](Step n) -> void {
         // TODO: maybe the pathStore could be asked whether a vertex has been
         // visited?
-        if (!_queue.containsStep(n)) {
-          if (other.hasBeenVisited(n)) {
-            other.matchResultsInShell(n, candidates, _validator);
-          }
-          _queue.append(std::move(n));
+        if (other.hasBeenVisited(n)) {
+          other.matchResultsInShell(n, candidates, _validator);
         }
+        _queue.append(std::move(n));
       });
     }
   }
