@@ -1431,7 +1431,7 @@ upsert_statement:
     T_UPSERT T_FILTER {
       // reserve a variable named "$OLD", we might need it in the update expression
       // and in a later return thing
-      AstNode* variableNode = parser->ast()->createNodeVariable(Variable::NAME_OLD, true);
+      AstNode* variableNode = parser->ast()->createNodeVariable(Variable::NAME_OLD, false);
       parser->pushStack(variableNode);
 
       auto scopes = parser->ast()->scopes();
@@ -1494,7 +1494,7 @@ upsert_statement:
   | T_UPSERT upsert_input {
       // reserve a variable named "$OLD", we might need it in the update expression
       // and in a later return thing
-      AstNode* variableNode = parser->ast()->createNodeVariable(Variable::NAME_OLD, true);
+      AstNode* variableNode = parser->ast()->createNodeVariable(Variable::NAME_OLD, false);
 
       auto scopes = parser->ast()->scopes();
 
