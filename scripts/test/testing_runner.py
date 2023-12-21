@@ -599,7 +599,7 @@ class TestingRunner:
         try:
             shutil.rmtree(TEMP, ignore_errors=False)
             zipformat = ZIPFORMAT
-            if Path(f"innerlogs.{ZIPEXT}").stat().st_size > 1024*1024*200:
+            if (self.cfg.run_root / f"innerlogs.{ZIPEXT}").stat().st_size > 1024*1024*200:
                 logging.info("Falling back to tar since innerlogs is huge!")
                 zipformat = "tar"
             shutil.make_archive(tarfile, zipformat, self.cfg.run_root, ".", True)
