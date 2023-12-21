@@ -168,8 +168,8 @@ void addToShardStatistics(ShardStatistics& stats,
           if (!hasDistributeShardsLike) {
             auto groupId = collection.get(StaticStrings::GroupId);
             if (groupId.isNumber()) {
-              auto gid =
-                  groupId.getNumber<replication2::agency::CollectionGroupId>();
+              auto gid = replication2::agency::CollectionGroupId{
+                  groupId.getNumber<uint64_t>()};
               auto maybeLeader = designatedGroupLeader.find(gid);
               if (maybeLeader == designatedGroupLeader.end()) {
                 // Just declare this collection to "lead" the group
@@ -238,8 +238,8 @@ void addToShardStatistics(
           if (!hasDistributeShardsLike) {
             auto groupId = collection.get(StaticStrings::GroupId);
             if (groupId.isNumber()) {
-              auto gid =
-                  groupId.getNumber<replication2::agency::CollectionGroupId>();
+              auto gid = replication2::agency::CollectionGroupId{
+                  groupId.getNumber<uint64_t>()};
               auto maybeLeader = designatedGroupLeader.find(gid);
               if (maybeLeader == designatedGroupLeader.end()) {
                 // Just declare this collection to "lead" the group
