@@ -5040,7 +5040,7 @@ Result ClusterInfo::agencyReplan(VPackSlice const plan) {
                                  "CollectionNames", "ReplicatedLogs"}) {
       if (auto entry = plan.get({"arango", "Target", subEntry});
           !entry.isNone()) {
-        trxOperations.emplace_back(absl::StrCat("Target", subEntry),
+        trxOperations.emplace_back(absl::StrCat("Target/", subEntry),
                                    AgencyValueOperationType::SET, entry);
       }
     }
@@ -5049,7 +5049,7 @@ Result ClusterInfo::agencyReplan(VPackSlice const plan) {
   // For replication 2 we also have other parts in Plan
   for (auto const& subEntry : {"CollectionGroups", "ReplicatedLogs"}) {
     if (auto entry = plan.get({"arango", "Plan", subEntry}); !entry.isNone()) {
-      trxOperations.emplace_back(absl::StrCat("Plan", subEntry),
+      trxOperations.emplace_back(absl::StrCat("Plan/", subEntry),
                                  AgencyValueOperationType::SET, entry);
     }
   }
@@ -5602,7 +5602,7 @@ void ClusterInfo::syncWaitForAllShardsToEstablishALeader() {
 // which is the case after HotBackupRestore.
 // We need to adapt current parsing to be able to handle this situation.
 // Dirty quick solution is to wait for 60 seconds and pray.
-#if true
+#if false
   std::this_thread::sleep_for(std::chrono::seconds(60));
 #else
   // We wait for a maximum of 60 seconds for all shards to have a leader.
