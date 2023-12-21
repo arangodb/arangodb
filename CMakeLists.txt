@@ -943,6 +943,8 @@ if (MSVC)
     if(CCACHE)
       message(STATUS "Using ccache: ${CCACHE}")
 
+      # if ccache is installed with Chocolatey on Windows, the found exe is a shim file hiding the real location.
+      # get real location by querying for the target.
       execute_process(
           COMMAND powershell
               "${CCACHE} --shimgen-help | Select-String -SimpleMatch "Target:"| ForEach-Object { ($_ -split \"'\")[1]  }" 
@@ -956,6 +958,8 @@ if (MSVC)
         message(STATUS "Resolved ccache SHIM: '${CCACHE_REAL}'")
       endif()
 
+      # copy ccache as cl to build directory, this integrates ccache without cmake needing any other setup than a new tool path.
+      # this solution also does not require administrative rights on Windows.
       file(COPY_FILE 
         ${CCACHE} ${CMAKE_BINARY_DIR}/cl.exe
         ONLY_IF_DIFFERENT
