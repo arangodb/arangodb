@@ -38,6 +38,7 @@ if "MAX_CORESIZE" in os.environ:
 pp = pprint.PrettyPrinter(indent=4)
 
 ZIPFORMAT = "gztar"
+ZIPEXT="tar.gz"
 try:
     import py7zr
 
@@ -45,6 +46,7 @@ try:
         "7zip", py7zr.pack_7zarchive, description="7zip archive"
     )
     ZIPFORMAT = "7zip"
+    ZIPEXT="7z"
 except ModuleNotFoundError:
     pass
 
