@@ -8,10 +8,9 @@ import platform
 import signal
 import sys
 from datetime import datetime, timedelta
-from subprocess import PIPE
-import psutil
-from allure_commons._allure import attach
 from abc import ABC, abstractmethod
+from allure_commons._allure import attach
+import psutil
 from tools.asciiprint import print_progress as progress
 
 # import tools.loghelper as lh
@@ -226,7 +225,8 @@ def kill_children(identifier, params, children):
         f"{identifier}: Waiting for the children to terminate {killed} {len(children)}",
         params,
     )
-    psutil.wait_procs(children, timeout=20)
+    if len(killed) > 0:
+        psutil.wait_procs(killed, timeout=20)
     return err
 
 
@@ -377,4 +377,4 @@ class ArangoCLIprogressiveTimeoutExecutor(ABC):
         identifier="",
     ):
         raise NotImplementedError("Subclasses should implement this!")
-    
+ 
