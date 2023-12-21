@@ -242,6 +242,7 @@ EnumerateListExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     }
 
     TRI_ASSERT(_inputArrayPosition < _inputArrayLength);
+
     if (!processArrayElement(output)) {
       // item was filtered out
       stats.incrFiltered();
