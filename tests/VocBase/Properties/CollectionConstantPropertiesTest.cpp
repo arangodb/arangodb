@@ -91,7 +91,6 @@ TEST_F(CollectionConstantPropertiesTest, test_minimal_user_input) {
   ASSERT_TRUE(testee.ok());
   EXPECT_EQ(testee->type, TRI_col_type_e::TRI_COL_TYPE_DOCUMENT);
   EXPECT_FALSE(testee->isSystem);
-  EXPECT_FALSE(testee->cacheEnabled);
   EXPECT_FALSE(testee->smartJoinAttribute.has_value());
   EXPECT_TRUE(std::holds_alternative<TraditionalKeyGeneratorProperties>(
       testee->keyOptions));
@@ -132,7 +131,6 @@ TEST_F(CollectionConstantPropertiesTest, test_collection_type) {
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isSystem);
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isSmart);
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isDisjoint);
-GenerateBoolAttributeTest(CollectionConstantPropertiesTest, cacheEnabled);
 
 GenerateOptionalStringAttributeTest(CollectionConstantPropertiesTest,
                                     smartJoinAttribute);
@@ -173,7 +171,6 @@ class CollectionConstantSmartPropertiesTest
 
 GenerateBoolAttributeTest(CollectionConstantSmartPropertiesTest, isSystem);
 GenerateBoolAttributeTest(CollectionConstantSmartPropertiesTest, isDisjoint);
-GenerateBoolAttributeTest(CollectionConstantSmartPropertiesTest, cacheEnabled);
 
 GenerateOptionalStringAttributeTest(CollectionConstantSmartPropertiesTest,
                                     smartGraphAttribute);
