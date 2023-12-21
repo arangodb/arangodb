@@ -136,6 +136,8 @@ void addToShardStatistics(ShardStatistics& stats,
                           velocypack::Slice databaseSlice,
                           std::string_view restrictServer) {
   bool foundCollection = false;
+  std::unordered_map<replication2::agency::CollectionGroupId, std::string_view>
+      designatedGroupLeader;
 
   for (auto it : VPackObjectIterator(databaseSlice)) {
     VPackSlice collection = it.value;
@@ -164,7 +166,23 @@ void addToShardStatistics(ShardStatistics& stats,
         if (i++ == 0) {
           ++stats.leaders;
           if (!hasDistributeShardsLike) {
-            ++stats.realLeaders;
+            auto groupId = collection.get(StaticStrings::GroupId);
+            if (groupId.isNumber()) {
+              auto gid =
+                  groupId.getNumber<replication2::agency::CollectionGroupId>();
+              auto maybeLeader = designatedGroupLeader.find(gid);
+              if (maybeLeader == designatedGroupLeader.end()) {
+                // Just declare this collection to "lead" the group
+                // The concept of a group leader is obsolete in Replication2
+                designatedGroupLeader.emplace(gid, it.key.stringView());
+                ++stats.realLeaders;
+              } else if (maybeLeader->second == it.key.stringView()) {
+                // We have already declared this collection to lead the group
+                ++stats.realLeaders;
+              }
+            } else {
+              ++stats.realLeaders;
+            }
           }
         } else {
           ++stats.followers;
@@ -187,7 +205,8 @@ void addToShardStatistics(
     containers::NodeHashMap<ServerID, ShardStatistics>& stats,
     velocypack::Slice databaseSlice) {
   containers::FlatHashSet<std::string_view> serversSeenForDatabase;
-
+  std::unordered_map<replication2::agency::CollectionGroupId, std::string_view>
+      designatedGroupLeader;
   for (auto it : VPackObjectIterator(databaseSlice)) {
     VPackSlice collection = it.value;
 
@@ -217,7 +236,23 @@ void addToShardStatistics(
         if (i++ == 0) {
           ++stat.leaders;
           if (!hasDistributeShardsLike) {
-            ++stat.realLeaders;
+            auto groupId = collection.get(StaticStrings::GroupId);
+            if (groupId.isNumber()) {
+              auto gid =
+                  groupId.getNumber<replication2::agency::CollectionGroupId>();
+              auto maybeLeader = designatedGroupLeader.find(gid);
+              if (maybeLeader == designatedGroupLeader.end()) {
+                // Just declare this collection to "lead" the group
+                // The concept of a group leader is obsolete in Replication2
+                designatedGroupLeader.emplace(gid, it.key.stringView());
+                ++stat.realLeaders;
+              } else if (maybeLeader->second == it.key.stringView()) {
+                // We have already declared this collection to lead the group
+                ++stat.realLeaders;
+              }
+            } else {
+              ++stat.realLeaders;
+            }
           }
         } else {
           ++stat.followers;
