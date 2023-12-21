@@ -114,8 +114,11 @@ template<class Provider>
 using ShortestPathEnumerator = TwoSidedEnumeratorWithProvider<Provider>;
 
 template<class Provider>
-using WeightedShortestPathEnumerator =
-    TwoSidedEnumeratorWithProviderWeighted<Provider>;
+using WeightedShortestPathEnumerator = WeightedTwoSidedEnumerator<
+    WeightedQueue<typename Provider::Step>, PathStore<typename Provider::Step>,
+    Provider,
+    PathValidator<Provider, PathStore<typename Provider::Step>,
+                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 
 // SHORTEST_PATH implementation using Tracing
 template<class Provider>
@@ -123,8 +126,13 @@ using TracedShortestPathEnumerator =
     TracedTwoSidedEnumeratorWithProvider<Provider>;
 
 template<class Provider>
-using TracedWeightedShortestPathEnumerator =
-    TracedTwoSidedEnumeratorWithProviderWeighted<Provider>;
+using TracedWeightedShortestPathEnumerator = WeightedTwoSidedEnumerator<
+    QueueTracer<WeightedQueue<typename Provider::Step>>,
+    PathStoreTracer<PathStore<typename Provider::Step>>,
+    ProviderTracer<Provider>,
+    PathValidator<ProviderTracer<Provider>,
+                  PathStoreTracer<PathStore<typename Provider::Step>>,
+                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 
 template<class ProviderType, VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness, bool useTracing>
