@@ -1357,40 +1357,6 @@ function createSatelliteGraphs() {
   assertEqual(expected, res.toArray());
 }
 
-/**
- * @brief Only if enterprise mode:
- *        Creates a SmartGraph and changes the value of the smart
- *        attribute to check that the graph can still be restored.
- *
- *        This is a regression test for a bug in which a dumped
- *        database containing a SmartGraph with edited smart attribute
- *        value could not be restored.
- */
-function createSmartGraphRegressionTest() {
-  if (!isEnterprise) {
-    return;
-  }
-
-  const smartGraphName = "UnitTestRestoreSmartGraphRegressionTest";
-  const edges = "UnitTestRestoreSmartGraphRegressionEdges";
-  const vertices = "UnitTestRestoreSmartGraphRegressionVertices";
-  const gm = require("@arangodb/smart-graph");
-
-  assertCollectionsAreNew([edges, vertices]);
-
-  gm._create(smartGraphName, [gm._relation(edges, vertices, vertices)],
-    [], {numberOfShards: 5, smartGraphAttribute: "cheesyness"});
-
-  let vDocs = [{cheesyness: "cheese"}];
-  let saved = db[vertices].save(vDocs).map(v => v._id);
-  let eDocs = [];
-
-  // update smartGraphAttribute. This makes _key inconsistent
-  // and on dump/restore used to throw an error. We now ignore
-  // that error
-  db._update(saved[0], {cheesyness: "bread"});
-}
-
 exports.createEmptySmartGraph = createEmptySmartGraph;
 exports.createEmptyEnterpriseGraph = createEmptyEnterpriseGraph;
 exports.createEmptySatelliteGraph = createEmptySatelliteGraph;
@@ -1413,7 +1379,6 @@ exports.createHybridDisjointSmartGraphSingleServer = createHybridDisjointSmartGr
 exports.createSmartArangoSearch = createSmartArangoSearch;
 exports.createSatelliteCollections = createSatelliteCollections;
 exports.createSatelliteGraphs = createSatelliteGraphs;
-exports.createSmartGraphRegressionTest = createSmartGraphRegressionTest;
 
 exports.cleanup = cleanup;
 exports.createUsers = createUsers;

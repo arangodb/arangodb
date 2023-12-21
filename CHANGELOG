@@ -1,6 +1,14 @@
 v3.10.13 (XXXX-XX-XX)
 ---------------------
 
+* Validate that smartgraph attribute exists and is not changed. Previously this
+  check was performed in the KeyGenerator and therefore only performed for
+  inserts, but not for replace or update operations. Therefore replace or update
+  operations could modify or even remove this attribute.
+  In addition, we now return the error code `ERROR_NO_SMART_GRAPH_ATTRIBUTE`
+  instead of `ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE` if the
+  attribute is not set.
+
 * BTS-1727: Return proper EXIT_UPGRADE_REQUIRED in cluster mode.
 
 * Removal artificial upper bound value of `128` for the startup option
