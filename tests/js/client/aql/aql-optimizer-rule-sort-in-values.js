@@ -54,7 +54,7 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let result = db._createStatement({query, bindVars: { }, options: paramNone}).explain();
+        let result = db._createStatement({query, options: paramNone}).explain();
         assertEqual([ ], result.plan.rules);
       });
     },
@@ -80,7 +80,7 @@ function optimizerRuleTestSuite () {
       ];
 
       queryList.forEach(function(query) {
-        let result = db._createStatement({query, bindVars: { }, options: paramEnabled}).explain();
+        let result = db._createStatement({query, options: paramEnabled}).explain();
         assertEqual([ ], result.plan.rules, query);
         let allresults = getQueryMultiplePlansAndExecutions(query, {});
         for (let j = 1; j < allresults.results.length; j++) {
@@ -111,21 +111,17 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        require("console").warn("query:", query);
-        db._explain(query, null, { allPlans: true, optimizer: { rules: [ "-all", "+" + ruleName ] } });
-        let result = db._createStatement({query, bindVars: { }, options: paramEnabled}).explain();
+        let result = db._createStatement({query, options: paramEnabled}).explain();
         assertEqual([ ruleName ], result.plan.rules, query);
-        require("console").error("all queries:");
-        db._explain(query, null, { allPlans: true });
         let allresults = getQueryMultiplePlansAndExecutions(query, {});
         for (let j = 1; j < allresults.results.length; j++) {
-            assertTrue(isEqual(allresults.results[0],
-                               allresults.results[j]),
-                       "whether the execution of '" + query +
-                       "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
-                       " Should be: '" + JSON.stringify(allresults.results[0]) +
-                       "' but is: " + JSON.stringify(allresults.results[j]) + "'"
-                      );
+          assertTrue(isEqual(allresults.results[0],
+            allresults.results[j]),
+            "whether the execution of '" + query +
+            "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+            " Should be: '" + JSON.stringify(allresults.results[0]) +
+            "' but is: " + JSON.stringify(allresults.results[j]) + "'"
+          );
         }
       });
     },
@@ -136,7 +132,7 @@ function optimizerRuleTestSuite () {
 
     testPlans : function () {
       const query = "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a IN values RETURN i";
-      let actual = db._createStatement({query, bindVars: null, options: paramEnabled}).explain();
+      let actual = db._createStatement({query, options: paramEnabled}).explain();
       let nodes = helper.getLinearizedPlan(actual).reverse();
 
       assertEqual("ReturnNode", nodes[0].type);
@@ -214,10 +210,10 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let planDisabled   = db._createStatement({query: query[0], bindVars: { }, options: paramDisabled}).explain();
-        let planEnabled    = db._createStatement({query: query[0], bindVars: { }, options: paramEnabled}).explain();
-        let resultDisabled = db._query(query[0], { }, paramDisabled).toArray();
-        let resultEnabled  = db._query(query[0], { }, paramEnabled).toArray();
+        let planDisabled   = db._createStatement({query: query[0], options: paramDisabled}).explain();
+        let planEnabled    = db._createStatement({query: query[0], options: paramEnabled}).explain();
+        let resultDisabled = db._query(query[0], {}, paramDisabled).toArray();
+        let resultEnabled  = db._query(query[0], {}, paramEnabled).toArray();
 
         assertTrue(isEqual(resultDisabled, resultEnabled), query[0]);
 
@@ -228,13 +224,13 @@ function optimizerRuleTestSuite () {
         assertEqual(resultEnabled, query[1], query[0]);
         let allresults = getQueryMultiplePlansAndExecutions(query[0], {});
         for (let j = 1; j < allresults.results.length; j++) {
-            assertTrue(isEqual(allresults.results[0],
-                               allresults.results[j]),
-                       "whether the execution of '" + query[0] +
-                       "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
-                       " Should be: '" + JSON.stringify(allresults.results[0]) +
-                       "' but is: " + JSON.stringify(allresults.results[j]) + "'"
-                      );
+          assertTrue(isEqual(allresults.results[0],
+            allresults.results[j]),
+            "whether the execution of '" + query[0] +
+            "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+            " Should be: '" + JSON.stringify(allresults.results[0]) +
+            "' but is: " + JSON.stringify(allresults.results[j]) + "'"
+          );
         }
       });
     },
