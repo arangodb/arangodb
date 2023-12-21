@@ -10,6 +10,9 @@ parameters:
   build-docker-image:
     type: string
     default: "arangodb/build-alpine:3.18-clang16.0-gcc12.2-openssl3.1.4-26c4da3c8"
+  build-windows-image:
+    type: string
+    default: "arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.4-399cc6a6e26"
   # Unused here, but it will be forwarded from config and will cause errors if not defined
   replication-two:
     type: boolean
@@ -355,24 +358,24 @@ jobs:
             }
             mkdir build
             # make sure we have the latest image!
-            docker pull arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.4-399cc6a6e26
+            docker pull << pipeline.parameters.build-windows-image >>
             # TODO - use preset
-            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -v D:/CircleCI-ccache:C:/ccache -w C:/project/build arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.4-399cc6a6e26 cmake -G 'Visual Studio 17 2022' -T 'v143,host=x64' -DUSE_MAINTAINER_MODE=On -DUSE_GOOGLE_TESTS=On -DUSE_ENTERPRISE=On -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPACKAGING=NSIS -DCMAKE_INSTALL_PREFIX=/ -DSKIP_PACKAGING=On -DUSE_FAILURE_TESTS=On -DSTATIC_EXECUTABLES=On -DOPENSSL_USE_STATIC_LIBS=On -DUSE_STRICT_OPENSSL_VERSION=On -DUSE_CCACHE=On ..
+            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -v D:/CircleCI-ccache:C:/ccache -w C:/project/build << pipeline.parameters.build-windows-image >> cmake -G 'Visual Studio 17 2022' -T 'v143,host=x64' -DUSE_MAINTAINER_MODE=On -DUSE_GOOGLE_TESTS=On -DUSE_ENTERPRISE=On -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPACKAGING=NSIS -DCMAKE_INSTALL_PREFIX=/ -DSKIP_PACKAGING=On -DUSE_FAILURE_TESTS=On -DSTATIC_EXECUTABLES=On -DOPENSSL_USE_STATIC_LIBS=On -DUSE_STRICT_OPENSSL_VERSION=On -DUSE_CCACHE=On ..
       - run:
           name: "Clear CCache statistics"
           shell: powershell.exe
           command: |
-            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -v D:/CircleCI-ccache:C:/ccache -w C:/project/build arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.4-399cc6a6e26 ccache -z
+            docker run --rm --isolation process -v D:/CircleCI-ccache:C:/ccache << pipeline.parameters.build-windows-image >> ccache -z
       - run:
           name: "Build"
           shell: powershell.exe
           command: |
-            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -v D:/CircleCI-ccache:C:/ccache -w C:/project/build arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.4-399cc6a6e26 cmake --build . --config `"RelWithDebInfo`" --parallel -- /p:CL_MPcount=24 
+            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -v D:/CircleCI-ccache:C:/ccache -w C:/project/build << pipeline.parameters.build-windows-image >> cmake --build . --config `"RelWithDebInfo`" --parallel -- /p:CL_MPcount=24 
       - run:
           name: "Print CCache statistics"
           shell: powershell.exe
           command: |
-            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -v D:/CircleCI-ccache:C:/ccache -w C:/project/build arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.4-399cc6a6e26 ccache -s
+            docker run --rm --isolation process -v D:/CircleCI-ccache:C:/ccache << pipeline.parameters.build-windows-image >> ccache -s
       - run:
           name: Cleanup build directory
           shell: powershell.exe
