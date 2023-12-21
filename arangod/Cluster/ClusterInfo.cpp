@@ -4995,9 +4995,9 @@ Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> const& body) {
 
 Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> const& body) {
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [acb, index] =
-      agencyCache.read({AgencyCommHelper::path("Plan"),
-                        AgencyCommHelper::path("Sync/LatestID")});
+  auto [acb, index] = agencyCache.read(
+      {AgencyCommHelper::path("Plan"), AgencyCommHelper::path("Target"),
+       AgencyCommHelper::path("Sync/LatestID")});
   VPackSlice result = acb->slice();
 
   if (result.isArray()) {
@@ -5012,8 +5012,7 @@ Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> const& body) {
 }
 
 Result ClusterInfo::agencyReplan(VPackSlice const plan) {
-  // Apply only Collections and DBServers
-  AgencyWriteTransaction transaction(std::vector<AgencyOperation>{
+  auto trxOperations = std::vector<AgencyOperation>{
       {"Current/Collections", AgencyValueOperationType::SET,
        VPackSlice::emptyObjectSlice()},
       {"Plan/Collections", AgencyValueOperationType::SET,
@@ -5030,7 +5029,33 @@ Result ClusterInfo::agencyReplan(VPackSlice const plan) {
       {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP},
       {"Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP},
       {"Sync/FoxxQueueVersion", AgencySimpleOperationType::INCREMENT_OP},
-      {"Sync/HotBackupRestoreDone", AgencySimpleOperationType::INCREMENT_OP}});
+      {"Sync/HotBackupRestoreDone", AgencySimpleOperationType::INCREMENT_OP}};
+
+  // For replication 2 we need to include some parts of target.
+  // As those are not existing in Replication 1, we only append them, if they
+  // are part of the export structure.
+  if (plan.hasKey({"arango", "Target"})) {
+    // If we have entries in Target, we should apply them
+    for (auto const& subEntry : {"CollectionGroups", "Collections",
+                                 "CollectionNames", "ReplicatedLogs"}) {
+      if (auto entry = plan.get({"arango", "Target", subEntry});
+          !entry.isNone()) {
+        trxOperations.emplace_back(absl::StrCat("Target/", subEntry),
+                                   AgencyValueOperationType::SET, entry);
+      }
+    }
+  }
+
+  // For replication 2 we also have other parts in Plan
+  for (auto const& subEntry : {"CollectionGroups", "ReplicatedLogs"}) {
+    if (auto entry = plan.get({"arango", "Plan", subEntry}); !entry.isNone()) {
+      trxOperations.emplace_back(absl::StrCat("Plan/", subEntry),
+                                 AgencyValueOperationType::SET, entry);
+    }
+  }
+
+  // Apply only Collections and DBServers
+  AgencyWriteTransaction transaction(std::move(trxOperations));
 
   VPackSlice latestIdSlice = plan.get({"arango", "Sync", "LatestID"});
   if (!latestIdSlice.isNone()) {
@@ -5567,6 +5592,26 @@ futures::Future<Result> ClusterInfo::waitForCurrentVersion(
   return _waitCurrentVersion
       .emplace(currentVersion, futures::Promise<Result>())
       ->second.getFuture();
+}
+
+void ClusterInfo::syncWaitForAllShardsToEstablishALeader() {
+  // We wait for a maximum of 60 seconds for all shards to have a leader.
+  // There may be a situation where we could not get a leader (e.g. shard
+  // was already without a leader while taking the hot backup) or servers
+  // not being responsive right now.
+  for (size_t i = 0; i < 600; ++i) {
+    READ_LOCKER(readLocker, _planProt.lock);
+    // First we test that we have planned some shards.
+    // This is to protect ourselves against a "no plan loaded yet" situation.
+    // We will always have some shards (at least we will need the _users in
+    // _system) Next we wait until we have a current entry for all the planned
+    // shards. This is not super precise, but should be good enough.
+    if (!_shardsToPlanServers.empty() &&
+        _shardsToPlanServers.size() == _shardsToCurrentServers.size()) {
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
 }
 
 futures::Future<Result> ClusterInfo::waitForPlan(uint64_t raftIndex) {

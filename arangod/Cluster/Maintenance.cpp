@@ -1818,7 +1818,9 @@ static void reportCurrentReplicatedLog(
   if (!localTerm.has_value()) {
     return;
   }
-
+  if (!cur.isObject()) {
+    return;
+  }
   // load current into memory
   auto current = std::invoke([&]() -> std::optional<LogCurrent> {
     auto currentSlice = cur.get(cluster::paths::aliases::current()
@@ -1949,7 +1951,6 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       std::vector<std::string> ppath{AgencyCommHelper::path(), PLAN,
                                      COLLECTIONS, dbName};
       TRI_ASSERT(pdb.isObject());
-
       if (!localDBExists) {
         // If the local database is not found, the replication version is
         // assumed to be ONE. As fallback, the following code checks for the
@@ -1964,17 +1965,14 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           }
         }
       }
-
       // Plan of this database's collections
       pdb = pdb.get(ppath);
       if (!pdb.isNone()) {
         shardMap = getShardMap(pdb);
       }
     }
-
     auto cdbpath = std::vector<std::string>{AgencyCommHelper::path(), CURRENT,
                                             DATABASES, dbName, serverId};
-
     if (ldb.isObject()) {
       if (cur.isNone() || (cur.isObject() && !cur.hasKey(cdbpath))) {
         auto const localDatabaseInfo =
