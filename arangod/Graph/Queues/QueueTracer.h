@@ -64,8 +64,6 @@ class QueueTracer {
   // Step from the queue, but it cannot be processed.
   void getStepsWithoutFetchedEdges(std::vector<Step*>& stepsToFetch);
 
-  bool containsStep(Step const& step) const;
-
  private:
   QueueImpl _impl;
 

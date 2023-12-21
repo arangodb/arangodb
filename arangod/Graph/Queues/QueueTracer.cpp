@@ -104,12 +104,6 @@ void QueueTracer<QueueImpl>::getStepsWithoutFetchedEdges(
 }
 
 template<class QueueImpl>
-bool QueueTracer<QueueImpl>::containsStep(Step const& step) const {
-  TRI_ASSERT(false);
-  return false;
-}
-
-template<class QueueImpl>
 std::vector<typename QueueImpl::Step*>
 QueueTracer<QueueImpl>::getStepsWithoutFetchedVertex() {
   double start = TRI_microtime();
