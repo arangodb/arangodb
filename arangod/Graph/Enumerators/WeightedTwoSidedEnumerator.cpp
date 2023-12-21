@@ -82,7 +82,7 @@ WeightedTwoSidedEnumerator<
       _validator(_provider, _interior, std::move(validatorOptions)),
       _direction(dir),
       _graphOptions(options),
-      _diameter(0.0) {}
+      _diameter(-std::numeric_limits<double>::infinity()) {}
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
@@ -855,24 +855,40 @@ typename WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                     PathValidator>::BallSearchLocation
 WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                            PathValidator>::getBallToContinueSearch() const {
+  if (_left.isQueueEmpty() and _right.isQueueEmpty()) {
+    return BallSearchLocation::FINISH;
+  }
+
   if (_left.getDiameter() < 0.0) {
     return BallSearchLocation::LEFT;
-  } else if (_right.getDiameter() < 0.0) {
+  }
+
+  if (_right.getDiameter() < 0.0) {
     return BallSearchLocation::RIGHT;
-  } else if (!_left.isQueueEmpty() && !_right.isQueueEmpty()) {
-    if (almostEqual(_left.peekQueue().getWeight(), _left.getDiameter())) {
-      return BallSearchLocation::LEFT;
-    } else if (almostEqual(_right.peekQueue().getWeight(),
-                           _right.getDiameter())) {
-      return BallSearchLocation::RIGHT;
-    } else if (_left.getDiameter() <= _right.getDiameter()) {
-      return BallSearchLocation::LEFT;
-    } else {
-      return BallSearchLocation::RIGHT;
-    }
-  } else if (!_left.isQueueEmpty() && _right.isQueueEmpty()) {
+  }
+
+  // Note not *both* left and right are empty, so if
+  // _left is, _right is not!
+  if (_left.isQueueEmpty()) {
+    return BallSearchLocation::RIGHT;
+  }
+
+  if (_right.isQueueEmpty()) {
     return BallSearchLocation::LEFT;
-  } else if (_left.isQueueEmpty() && !_right.isQueueEmpty()) {
+  }
+
+  // From here both _left and _right are guaranteed to not be empty.
+  if (almostEqual(_left.peekQueue().getWeight(), _left.getDiameter())) {
+    return BallSearchLocation::LEFT;
+  }
+
+  if (almostEqual(_right.peekQueue().getWeight(), _right.getDiameter())) {
+    return BallSearchLocation::RIGHT;
+  }
+
+  if (_left.getDiameter() <= _right.getDiameter()) {
+    return BallSearchLocation::LEFT;
+  } else {
     return BallSearchLocation::RIGHT;
   }
 
