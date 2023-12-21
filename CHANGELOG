@@ -5,6 +5,9 @@ devel
   EnumerateListNodes for early pruning. Previously it could only pull filters 
   into IndexNodes and EnumerateCollectionNodes.
 
+* Fix BTS-1636: Under certain circumstances the path found by a weighted
+  shortest path search was not the path of smallest weight.
+
 * Added CMake option `USE_JEMALLOC_CHECKS` to toggle the usage of extra safety 
   checks in jemalloc. The option is currently enabled by default, but can be
   turned off when there are performance concerns.

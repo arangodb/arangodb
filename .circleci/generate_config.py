@@ -87,6 +87,9 @@ def parse_arguments():
     parser.add_argument(
         "-rt", "--replication_two", default=False, action='store_true', help="flag if we should enable replication two tests"
     )
+    parser.add_argument(
+        "--skip-windows", default=False, action='store_true', help="flag if we should skip windows tests"
+    )
     return parser.parse_args()
 
 
@@ -331,12 +334,12 @@ def get_arch(workflow):
     raise Exception(f"Cannot extract architecture from workflow {workflow}")
 
 
-def generate_output(config, tests, enterprise, repl2):
+def generate_output(config, tests, enterprise, repl2, skip_windows):
     """generate output"""
     workflows = config["workflows"]
     edition = "ee" if enterprise else "ce"
     for workflow, jobs in workflows.items():
-        if ("windows" in workflow) and enterprise:
+        if ("windows" in workflow) and enterprise and not skip_windows:
             arch = get_arch(workflow)
             add_test_jobs_to_workflow(config, tests, workflow, edition, arch, "windows", repl2)
         if (
@@ -351,7 +354,7 @@ def generate_output(config, tests, enterprise, repl2):
 def generate_jobs(config, args, tests, enterprise):
     """generate job definitions"""
     tests = filter_tests(args, tests, enterprise)
-    generate_output(config, tests, enterprise, args.replication_two)
+    generate_output(config, tests, enterprise, args.replication_two, args.skip_windows)
 
 
 def main():
