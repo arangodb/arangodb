@@ -17,6 +17,9 @@ parameters:
   replication-two:
     type: boolean
     default: false
+  skip-windows-tests:
+    type: boolean
+    default: true 
   c-compiler:
     type: string
     default: "clang"
