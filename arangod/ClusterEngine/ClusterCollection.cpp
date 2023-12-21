@@ -278,6 +278,13 @@ Result ClusterCollection::lookup(transaction::Methods* trx,
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
+Result ClusterCollection::lookup(transaction::Methods* trx,
+                                 std::span<LocalDocumentId> tokens,
+                                 MultiDocumentCallback const& cb,
+                                 LookupOptions options) const {
+  return {TRI_ERROR_NOT_IMPLEMENTED};
+}
+
 Result ClusterCollection::insert(transaction::Methods&, IndexesSnapshot const&,
                                  RevisionId, velocypack::Slice,
                                  OperationOptions const&) {

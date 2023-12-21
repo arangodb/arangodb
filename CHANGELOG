@@ -3,6 +3,12 @@ devel
 
 * Upgraded bundled version of RocksDB to 8.10.
 
+* Added CMake option `USE_JEMALLOC_CHECKS` to toggle the usage of extra safety 
+  checks in jemalloc. The option is currently enabled by default, but can be
+  turned off when there are performance concerns.
+
+* Fixed BTS-1703: Cannot chain multiple UPSERTS.
+
 * Fixed issue #17673: Adds timezone conversion as an optional parameter in
   all relevant date functions.
 
@@ -193,6 +199,8 @@ devel
 
 * Fixed MDS-1170: Significant performance degradation when queries are
   executed within transactions that involve edits.
+
+* Stabilize detaching of threads test.
 
 * Rebuilt included rclone v1.62.2 with go1.21.4.
 

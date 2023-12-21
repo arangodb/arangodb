@@ -809,6 +809,7 @@ endfunction()
 # ------------------------------------------------------------------------------
 
 option(USE_JEMALLOC_PROF "use jemalloc profiler" ON)
+option(USE_JEMALLOC_CHECKS "use jemalloc extended safety checks" ON)
 
 if (USE_JEMALLOC)
   add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
