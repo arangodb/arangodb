@@ -300,13 +300,19 @@ function BaseChaosSuite(testOpts) {
           debugSetFailAt(getEndpointById(server.id), "Query::setupLockTimeout");
           debugSetFailAt(getEndpointById(server.id), "Query::setupTimeoutFailSequence");
           debugSetFailAt(getEndpointById(server.id), "Query::setupTimeoutFailSequenceRandom");
-          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::insertFail1");
-          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::insertFail2");
-          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::modifyFail1");
-          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::modifyFail2");
-          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::modifyFail3");
-          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::removeFail1");
-          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::removeFail2");
+
+          if (db._properties().replicationVersion !== "2") {
+            // in replication2 the modification operations on the follower MUST NOT fail
+            // if they do, we conclude that something else must have gone terribly wrong
+            // and therefore abort the process
+            debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::insertFail1");
+            debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::insertFail2");
+            debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::modifyFail1");
+            debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::modifyFail2");
+            debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::modifyFail3");
+            debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::removeFail1");
+            debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::removeFail2");
+          }
         }
         servers = getCoordinators();
         assertTrue(servers.length > 0);
