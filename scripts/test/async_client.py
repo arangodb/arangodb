@@ -200,7 +200,7 @@ def kill_children(identifier, params, children):
             continue
         try:
             pname = one_child.name()
-            if pname not in ["svchost.exe", "conhost.exe", "mscorsvw.exe"]:
+            if pname not in ["svchost.exe", "conhost.exe", "mscorsvw.exe", "AM_Delta.exe"]:
                 killed.append(one_child.pid)
                 err += add_message_to_report(
                     params,
@@ -377,4 +377,3 @@ class ArangoCLIprogressiveTimeoutExecutor(ABC):
         identifier="",
     ):
         raise NotImplementedError("Subclasses should implement this!")
- 
