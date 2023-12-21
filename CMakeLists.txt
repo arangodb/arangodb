@@ -140,8 +140,8 @@ endif()
 message(STATUS "WINDOWS VERSION: ${ARANGODB_WINDOWS_UPSTREAM}")
 
 if (MSVC)
-  option(USE_CLCACHE_MODE
-    "whether we want to use CLCACHE-specific build options"
+  option(USE_CCACHE
+    "whether we want to use ccache"
     OFF
   )
 endif ()
@@ -938,10 +938,56 @@ if (MSVC)
   set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2"                             CACHE INTERNAL "C++ release flags")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2"                         CACHE INTERNAL "C++ release with debug info flags")
 
-  if (USE_CLCACHE_MODE)
-    set(CMAKE_VS_GLOBALS "TrackFileAccess=false")
-    add_definitions(/Z7)
-  endif ()
+  if(USE_CCACHE)
+    find_program(CCACHE ccache REQUIRED)
+
+    if(CCACHE)
+      message(STATUS "Using ccache: ${CCACHE}")
+
+      # if ccache is installed with Chocolatey on Windows, the found exe is a shim file hiding the real location.
+      # get real location by querying for the target.
+      execute_process(
+          COMMAND powershell
+              "${CCACHE} --shimgen-help | Select-String -SimpleMatch "Target:"| ForEach-Object { ($_ -split \"'\")[1]  }" 
+          OUTPUT_VARIABLE CCACHE_REAL
+          RESULT_VARIABLE CCACHE_RESULT_CODE
+          OUTPUT_STRIP_TRAILING_WHITESPACE
+      )
+
+      if(CCACHE_RESULT_CODE)
+        set( CCACHE ${CCACHE_REAL} )
+        message(STATUS "Resolved ccache SHIM: '${CCACHE_REAL}'")
+      endif()
+
+      # copy ccache as cl to build directory, this integrates ccache without cmake needing any other setup than a new tool path.
+      # this solution also does not require administrative rights on Windows.
+      file(COPY_FILE 
+        ${CCACHE} ${CMAKE_BINARY_DIR}/cl.exe
+        ONLY_IF_DIFFERENT
+      )
+
+      set(CMAKE_VS_GLOBALS
+        "CLToolExe=cl.exe"
+        "CLToolPath=${CMAKE_BINARY_DIR}"
+        "TrackFileAccess=false"
+        "UseMultiToolTask=true"
+        "DebugInformationFormat=OldStyle"
+      )
+
+      if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+        string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
+      elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+        string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+        string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+      elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+        string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+        string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+      endif()
+    else(CCACHE)
+      message(STATUS "CCACHE NOT FOUND")
+    endif(CCACHE)
+  endif(USE_CCACHE)
 
   add_definitions(/bigobj)
   if (CMAKE_COMPILER_IS_CLANG) # clang-cl
