@@ -367,15 +367,7 @@ function SynchronousReplicationSuite() {
       if(failedState.leader != null) healLeader(failedState.leader.failAt, failedState.leader.failedServer);
       if(failedState.follower != null) healFollower(failedState.follower.failAt, failedState.follower.failedServer);
       db._drop(cn);
-      //global.ArangoAgency.set('Target/FailedServers', {});
     },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief check whether we have access to global.instanceManager
-    ////////////////////////////////////////////////////////////////////////////////
-    // testCheckInstanceInfo: function () {
-    //   assertTrue(global.instanceManager !== undefined);
-    // },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief check if a synchronously replicated collection gets online

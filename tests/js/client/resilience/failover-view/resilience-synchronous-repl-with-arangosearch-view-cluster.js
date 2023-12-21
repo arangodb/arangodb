@@ -609,8 +609,6 @@ function SynchronousReplicationWithViewSuite () {
     testInquiry : function () {
       console.warn("Checking inquiry");
       var writeResult = agency.call("write", [[{"a":1},{"a":{"oldEmpty":true}},"INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
-      // global.ArangoAgency.write(
-      //   [[{"a":1},{"a":{"oldEmpty":true}},"INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
       console.log(
         "Inquired successfully a matched precondition under 503 response from write");
       assertTrue(typeof writeResult === "object");
@@ -638,14 +636,6 @@ function SynchronousReplicationWithViewSuite () {
           "Inquired successfully a failed precondition under 0 response from write");
       }
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether we have access to global.instanceManager
-////////////////////////////////////////////////////////////////////////////////
-    // testCheckInstanceInfo : function () {
-    //   assertTrue(global.instanceManager !== undefined);
-    // },
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a synchronously replicated collection gets online
