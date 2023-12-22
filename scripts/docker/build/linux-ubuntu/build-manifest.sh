@@ -1,7 +1,9 @@
+#!/bin/bash
 set -e
 
-manifest=arangodb/build-ubuntu
-# IMAGE_TAG is set within build-image_*.sh and expected to be equal there
+manifest=neunhoef/build-ubuntu
+# IMAGE_TAG is computed within build-image_*.sh and expected to be equal there
+# but the architecture bit must be removed!
 [ -z "$IMAGE_TAG" ] && ( echo "IMAGE_TAG env variable is not set!"; exit 1 )
 
 echo "Creating docker multiarch manifest \"${manifest}:${IMAGE_TAG}\":"

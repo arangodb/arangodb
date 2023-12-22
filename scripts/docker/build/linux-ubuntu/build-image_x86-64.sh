@@ -1,3 +1,4 @@
+#!/bin/bash
 set -e
 
 arch=amd64
@@ -13,10 +14,10 @@ OPENSSL_VERSION=$(docker run --rm -it $image:latest-$arch sh -c "cat /opt/lib64/
 
 OS_VERSION=23.10
 
-export IMAGE_TAG="${OS_VERSION}-clang${CLANG_VERSION}-gcc${GCC_VERSION}-openssl${OPENSSL_VERSION}-$(git rev-parse --short HEAD)-$arch"
+IMAGE_TAG="${OS_VERSION}-clang${CLANG_VERSION}-gcc${GCC_VERSION}-openssl${OPENSSL_VERSION}-$(git rev-parse --short HEAD)-$arch"
 
-echo "Tagging image as \"${IMAGE_TAG}\""
-docker tag $image:latest-$arch $image:${IMAGE_TAG}
+echo "Tagging image as \"${IMAGE_TAG}\"" plus "-$arch" suffix.
+docker tag "$image:latest-$arch" "$image:${IMAGE_TAG}-$arch"
 
 echo "To push the image please run:"
-echo "  docker push $image:${IMAGE_TAG}"
+echo "  docker push $image:${IMAGE_TAG}-$arch"
