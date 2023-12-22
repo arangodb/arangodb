@@ -25,7 +25,9 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "Basics/application-exit.h"
 #include "Basics/debugging.h"
+#include "Logger/LogMacros.h"
 
 #include <algorithm>
 #include <vector>
@@ -108,7 +110,7 @@ class FixedSizeAllocator {
 
     // get memory location for next T object.
     // this moves forward the memory pointer in the memory block
-    // and increased _numUsed.
+    // and increases _numUsed.
     T* p = _head->nextSlot();
     TRI_ASSERT(p != nullptr);
     try {
@@ -125,7 +127,14 @@ class FixedSizeAllocator {
       // memory block with a default-constructed T.
       // if the default ctor of T throws here, there is not much we
       // can do anymore.
-      new (p) T();
+      try {
+        new (p) T();
+      } catch (...) {
+        LOG_TOPIC("b50d1", FATAL, Logger::FIXME)
+            << "unrecoverable out-of-memory error in FixedSizeAllocator. "
+               "terminating process";
+        FATAL_ERROR_EXIT();
+      }
       throw;
     }
   }

@@ -489,6 +489,11 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
           VPackValueLength l;
           char const* p = v.getString(l);
           setStringValue(ast->resources().registerString(p, l), l);
+          TRI_IF_FAILURE("AstNode::throwOnAllocation") {
+            if (getStringView() == "throw!") {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+            }
+          }
           break;
         }
         default: {
