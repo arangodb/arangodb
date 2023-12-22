@@ -583,11 +583,11 @@ struct AstNode {
  private:
   // private ctor, only called during by FixedSizeAllocator in case of emergency
   // to properly initialize the node
-  // Note that since C++17 the default constructor of `std::vector` is 
+  // Note that since C++17 the default constructor of `std::vector` is
   // `noexcept` iff and only if the  default constructor of its `allocator_type`
   // is. Therefore, we can say that `AstNode::AstNode()` is noexcept, if and
-  // only if the default constructor of the allocator type of 
-  // `std::vector<AstNode*>` is noexcept, which is exactly what this fancy 
+  // only if the default constructor of the allocator type of
+  // `std::vector<AstNode*>` is noexcept, which is exactly what this fancy
   // `noexcept` expression does.
   AstNode() noexcept(noexcept(decltype(members)::allocator_type()));
 
