@@ -1,4 +1,4 @@
-v3.10.12 (XXXX-XX-XX)
+v3.10.12 (2023-12-18)
 ---------------------
 
 * Added stored values support for ZKD indexes.
