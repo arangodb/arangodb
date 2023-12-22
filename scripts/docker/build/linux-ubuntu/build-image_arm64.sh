@@ -13,7 +13,7 @@ OPENSSL_VERSION=$(docker run --rm -it $image:latest-$arch sh -c "cat /opt/lib/pk
 
 OS_VERSION=23.10
 
-IMAGE_TAG="${OS_VERSION}-clang${CLANG_VERSION}-gcc${GCC_VERSION}-openssl${OPENSSL_VERSION}-$(git rev-parse --short HEAD)-$arch"
+export IMAGE_TAG="${OS_VERSION}-clang${CLANG_VERSION}-gcc${GCC_VERSION}-openssl${OPENSSL_VERSION}-$(git rev-parse --short HEAD)-$arch"
 
 echo "Tagging image as \"${IMAGE_TAG}\""
 docker tag $image:latest-$arch $image:${IMAGE_TAG}
