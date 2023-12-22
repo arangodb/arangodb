@@ -12,19 +12,22 @@ which have the option to use an external v8 engine.
 Simply run
 
 ```
-make amd64
+./build-image_x86-64.sh
 ```
 
-on an `x86_64` machine and then
+on an `x86_64` machine and then push the docker image produced. Then run
 
 ```
-make arm64
+./build-image_arm64.sh
 ```
 
-on an `arm64` machine and then finally do
+on an `arm64` machine, push the image, and then finally do
 
 ```
-make manifest
+export IMAGE_TAG="..."
+./build-manifest.sh
 ```
 
+after setting the environment variable `IMAGE_TAG` to the output
+of one of the previous scripts (without the architecture suffix!)
 and follow the instructions on the screen to push the manifest.
