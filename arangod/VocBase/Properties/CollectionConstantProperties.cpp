@@ -47,9 +47,6 @@ bool CollectionConstantProperties::operator==(
   if (isDisjoint != other.isDisjoint) {
     return false;
   }
-  if (cacheEnabled != other.cacheEnabled) {
-    return false;
-  }
   if (smartGraphAttribute != other.smartGraphAttribute) {
     return false;
   }
