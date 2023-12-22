@@ -1,3 +1,12 @@
+v3.10.13 (XXXX-XX-XX)
+---------------------
+
+* Fixed a crash during recursive AstNode creation when an exception was thrown.
+  This can happen on DB servers when a query plan snippet is created from
+  VelocyPack, and the query plan snippet would use more memory than is allowed
+  by the query memory limit.
+
+
 v3.10.12 (2023-12-18)
 ---------------------
 
