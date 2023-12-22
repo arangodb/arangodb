@@ -101,6 +101,10 @@ AstNode* AstResources::registerNode(AstNodeType type) {
   // note that this may throw, but then no state is modified here.
   _nodes.ensureCapacity();
 
+  // now we can unconditionally increase the memory usage for the
+  // one more node. if this throws, no harm is done.
+  _resourceMonitor.increaseMemoryUsage(sizeof(AstNode));
+
   // _nodes.allocate() will not throw if we are only creating a single
   // node wihout subnodes, which is what we do here.
   return _nodes.allocate(type);
