@@ -9,7 +9,7 @@ parameters:
     default: ""
   build-docker-image:
     type: string
-    default: "arangodb/build-alpine:3.18-clang16.0-gcc12.2-openssl3.1.4-26c4da3c8"
+    default: "neunhoef/build-ubuntu:23.10-clang16.0.6-gcc13.2.0-openssl3.1.4-6dfb5b28711"
   build-windows-image:
     type: string
     default: "arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.4-399cc6a6e26"
