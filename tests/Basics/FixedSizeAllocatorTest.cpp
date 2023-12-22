@@ -32,7 +32,6 @@
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
-#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/VocbaseInfo.h"
@@ -269,8 +268,7 @@ TEST(FixedSizeAllocatorTest, test_AstNodesRollbackDuringCreation) {
   testDBInfo.load("testVocbase", 2);
   TRI_vocbase_t vocbase(std::move(testDBInfo));
   auto query = arangodb::aql::Query::create(
-      arangodb::transaction::StandaloneContext::create(
-          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      arangodb::transaction::StandaloneContext::Create(vocbase),
       arangodb::aql::QueryString(queryString), nullptr);
   query->initForTests();
 
