@@ -380,9 +380,7 @@ function ahuacatlProfilerTestSuite () {
         return [
           { type : SingletonBlock, calls : 1, items : 1, filtered: 0},
           { type : CalculationBlock, calls : 1, items : 1, filtered: 0},
-          { type : EnumerateListBlock, calls : batches, items : rows, filtered: 0},
-          { type : CalculationBlock, calls : batches, items : rows, filtered: 0},
-          { type : FilterBlock, calls : batchesAfterFilter, items : rowsAfterFilter, filtered: rows - rowsAfterFilter},
+          { type : EnumerateListBlock, calls : batchesAfterFilter, items : rowsAfterFilter, filtered: rows - rowsAfterFilter},
           { type : ReturnBlock, calls : batchesAfterFilter, items : rowsAfterFilter, filtered: 0},
         ];
       };
@@ -406,9 +404,7 @@ function ahuacatlProfilerTestSuite () {
         return [
           { type : SingletonBlock, calls : 1, items : 1, filtered: 0},
           { type : CalculationBlock, calls : 1, items : 1, filtered: 0},
-          { type : EnumerateListBlock, calls : batches, items : rows, filtered: 0},
-          { type : CalculationBlock, calls : batches, items : rows, filtered: 0},
-          { type : FilterBlock, calls : batchesAfterFilter, items : rowsAfterFilter, filtered: rows - rowsAfterFilter},
+          { type : EnumerateListBlock, calls : batchesAfterFilter, items : rowsAfterFilter, filtered: rows - rowsAfterFilter},
           { type : ReturnBlock, calls : batchesAfterFilter, items : rowsAfterFilter, filtered: 0},
         ];
       };

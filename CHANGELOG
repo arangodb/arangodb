@@ -1,6 +1,10 @@
 devel
 -----
 
+* Make AQL optimizer rule `move-filters-into-enumerate` also move filters into
+  EnumerateListNodes for early pruning. Previously it could only pull filters 
+  into IndexNodes and EnumerateCollectionNodes.
+
 * Validate that smartgraph attribute exists and is not changed. Previously this
   check was performed in the KeyGenerator and therefore only performed for
   inserts, but not for replace or update operations. Therefore replace or update
@@ -30,6 +34,9 @@ devel
   very large outputs that would consume lots of memory. Exceeding the maximum
   output string length will make the function return `null` and issue a 
   warning.
+
+* Fixed issue #17673: Adds timezone conversion as an optional parameter in
+  all relevant date functions.
 
 * Activate more checks in jemalloc:
     --enable-opt-safety-checks
