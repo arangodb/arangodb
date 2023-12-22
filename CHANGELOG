@@ -1,7 +1,11 @@
-v3.10.12 (2023-12-18)
+v3.10.13 (XXXX-XX-XX)
 ---------------------
 
 * Added stored values support for ZKD indexes.
+
+
+v3.10.12 (2023-12-18)
+---------------------
 
 * BTS-1714: Within writing AQL queries the lock timeout was accidentally set to
   2 seconds for all write operations on followers. This could lead to dropped
