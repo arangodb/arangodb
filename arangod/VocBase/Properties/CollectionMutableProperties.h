@@ -46,6 +46,8 @@ struct CollectionMutableProperties {
   // Did a short_cut here to avoid concatenated changes
   std::optional<arangodb::velocypack::Builder> schema{std::nullopt};
 
+  bool cacheEnabled = false;
+
   bool operator==(CollectionMutableProperties const&) const;
 };
 
@@ -59,6 +61,8 @@ auto inspect(Inspector& f, CollectionMutableProperties& props) {
           .fallback(f.keep())
           .invariant(CollectionMutableProperties::Invariants::isJsonSchema),
       f.field(StaticStrings::ComputedValues, props.computedValues)
+          .fallback(f.keep()),
+      f.field(StaticStrings::CacheEnabled, props.cacheEnabled)
           .fallback(f.keep()));
 }
 
