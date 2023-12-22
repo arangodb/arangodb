@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-manifest=neunhoef/build-ubuntu
+manifest=arangodb/build-ubuntu
 # IMAGE_TAG is computed within build-image_*.sh and expected to be equal there
 # but the architecture bit must be removed!
 [ -z "$IMAGE_TAG" ] && ( echo "IMAGE_TAG env variable is not set!"; exit 1 )
