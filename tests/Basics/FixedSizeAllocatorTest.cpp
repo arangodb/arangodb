@@ -254,7 +254,7 @@ TEST(FixedSizeAllocatorTest, test_AstNodesRollbackDuringCreation) {
   // recursive AstNode structure. the AstNode ctor will throw
   // when it encounters the node with the "throw!" string value,
   // if the failure point is set.
-  constexpr std::string_view data(R"(
+  std::string data(R"(
 {"type":"array","typeID":41,"subNodes":[{"type":"value","typeID":40,"value":1,"vTypeID":2},{"type":"array","typeID":41,"subNodes":[{"type":"value","typeID":40,"value":2,"vTypeID":2},{"type":"array","typeID":41,"subNodes":[{"type":"value","typeID":40,"value":3,"vTypeID":2},{"type":"array","typeID":41,"subNodes":[{"type":"value","typeID":40,"value":"throw!","vTypeID":4}]}]}]}]}
   )");
 
@@ -266,7 +266,7 @@ TEST(FixedSizeAllocatorTest, test_AstNodesRollbackDuringCreation) {
   arangodb::CreateDatabaseInfo testDBInfo(server.server(),
                                           arangodb::ExecContext::current());
   testDBInfo.load("testVocbase", 2);
-  TRI_vocbase_t vocbase(std::move(testDBInfo));
+  TRI_vocbase_t vocbase(TRI_VOCBASE_TYPE_NORMAL, std::move(testDBInfo));
   auto query = arangodb::aql::Query::create(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       arangodb::aql::QueryString(queryString), nullptr);
