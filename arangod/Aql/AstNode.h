@@ -41,6 +41,9 @@ namespace basics {
 struct AttributeName;
 }  // namespace basics
 
+template<typename T>
+class FixedSizeAllocator;
+
 namespace aql {
 class Ast;
 struct Variable;
@@ -229,6 +232,7 @@ static_assert(NODE_TYPE_ARRAY < NODE_TYPE_OBJECT, "incorrect node types order");
 /// @brief the node
 struct AstNode {
   friend class Ast;
+  friend class FixedSizeAllocator<AstNode>;
 
   /// @brief array values with at least this number of members that
   /// are in IN or NOT IN lookups will be sorted, so that we can use
@@ -236,7 +240,8 @@ struct AstNode {
   static constexpr size_t kSortNumberThreshold = 8;
 
   /// @brief create the node
-  explicit AstNode(AstNodeType);
+  explicit AstNode(AstNodeType type) noexcept(
+      noexcept(decltype(members)::allocator_type()));
 
   /// @brief create a node, with defining a value
   explicit AstNode(AstNodeValue const& value);
@@ -279,6 +284,8 @@ struct AstNode {
 
   /// @brief return the type name of a node
   std::string_view getTypeString() const;
+
+  static std::string_view getTypeString(AstNodeType);
 
   /// @brief return the value type name of a node
   std::string_view getValueTypeString() const;
@@ -574,6 +581,10 @@ struct AstNode {
   AstNodeValue value;
 
  private:
+  // private ctor, only called during by FixedSizeAllocator in case of emergency
+  // to properly initialize the node
+  AstNode() noexcept(noexcept(decltype(members)::allocator_type()));
+
   /// @brief helper for building flags
   template<typename... Args>
   static std::underlying_type<AstNodeFlagType>::type makeFlags(

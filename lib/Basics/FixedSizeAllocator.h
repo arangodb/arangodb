@@ -65,12 +65,6 @@ class FixedSizeAllocator {
       return _data + _numUsed++;
     }
 
-    // roll back the effect of nextSlot()
-    void rollbackSlot() noexcept {
-      TRI_ASSERT(_numUsed > 0);
-      --_numUsed;
-    }
-
     bool full() const noexcept { return _numUsed == _numAllocated; }
 
     size_t numUsed() const noexcept { return _numUsed; }
@@ -100,19 +94,38 @@ class FixedSizeAllocator {
   FixedSizeAllocator() = default;
   ~FixedSizeAllocator() noexcept { clear(); }
 
-  template<typename... Args>
-  T* allocate(Args&&... args) {
+  void ensureCapacity() {
     if (_head == nullptr || _head->full()) {
       allocateBlock();
     }
+  }
+
+  // requires: ensureCapacity() has been called before!
+  template<typename... Args>
+  T* allocate(Args&&... args) {
     TRI_ASSERT(_head != nullptr);
     TRI_ASSERT(!_head->full());
 
+    // get memory location for next T object.
+    // this moves forward the memory pointer in the memory block
+    // and increased _numUsed.
+    T* p = _head->nextSlot();
+    TRI_ASSERT(p != nullptr);
     try {
-      T* p = _head->nextSlot();
-      return new (p) T(std::forward<Args>(args)...);
+      // create new T object in place
+      new (p) T(std::forward<Args>(args)...);
+      return p;
     } catch (...) {
-      _head->rollbackSlot();
+      // if creating the T object has failed, we will have a
+      // gap in the memory block with no valid object in it.
+      // we cannot easily rollback the memory pointer now, because
+      // it may have been moved forward already (e.g. if the ctor
+      // of T invoked the same FixedSizeAllocator recursively).
+      // thus all we can do here is to patch the "hole" in the
+      // memory block with a default-constructed T.
+      // if the default ctor of T throws here, there is not much we
+      // can do anymore.
+      new (p) T();
       throw;
     }
   }
