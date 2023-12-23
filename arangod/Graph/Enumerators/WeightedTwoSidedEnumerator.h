@@ -30,6 +30,14 @@
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Containers/FlatHashMap.h"
+#include "Graph/PathManagement/PathStoreTracer.h"
+#include "Graph/PathManagement/PathValidatorTracer.h"
+#include "Graph/Queues/WeightedQueue.h"
+#include "Graph/Queues/QueueTracer.h"
+#include "Graph/PathManagement/PathStore.h"
+#include "Graph/Providers/ProviderTracer.h"
+#include "Graph/PathManagement/PathValidator.h"
+#include "Graph/Types/UniquenessLevel.h"
 
 #include <limits>
 #include <set>
@@ -54,11 +62,33 @@ struct TwoSidedEnumeratorOptions;
 template<class ProviderType, class Step>
 class PathResult;
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidatorType>
+template<typename ProviderT, VertexUniquenessLevel VUL, EdgeUniquenessLevel EUL>
+struct WeightedPathSearch {
+  using Provider = ProviderT;
+  using Step = typename Provider::Step;
+  using Queue = WeightedQueue<Step>;
+  using Store = PathStore<Step>;
+  using Validator = PathValidator<Provider, Store, VUL, EUL>;
+};
+
+template<typename ProviderT, VertexUniquenessLevel VUL, EdgeUniquenessLevel EUL>
+struct TracedWeightedPathSearch {
+  using Provider = ProviderTracer<ProviderT>;
+  using Step = typename Provider::Step;
+  using Queue = QueueTracer<WeightedQueue<Step>>;
+  using Store = PathStoreTracer<PathStore<Step>>;
+  using Validator =
+      PathValidatorTracer<PathValidator<Provider, Store, VUL, EUL>>;
+};
+
+template<typename Configuration>
 class WeightedTwoSidedEnumerator {
  public:
-  using Step = typename ProviderType::Step;  // public due to tracer access
+  using Step = typename Configuration::Step;  // public due to tracer access
+  using Provider = typename Configuration::Provider;
+  using Queue = typename Configuration::Queue;
+  using Store = typename Configuration::Store;
+  using Validator = typename Configuration::Validator;
 
   // A meeting point with calculated path weight
   using CalculatedCandidate = std::tuple<double, Step, Step>;
@@ -160,7 +190,7 @@ class WeightedTwoSidedEnumerator {
 
   class Ball {
    public:
-    Ball(Direction dir, ProviderType&& provider, GraphOptions const& options,
+    Ball(Direction dir, Provider&& provider, GraphOptions const& options,
          PathValidatorOptions validatorOptions,
          arangodb::ResourceMonitor& resourceMonitor);
     ~Ball();
@@ -171,12 +201,11 @@ class WeightedTwoSidedEnumerator {
     [[nodiscard]] auto isQueueEmpty() const -> bool;
     [[nodiscard]] auto doneWithDepth() const -> bool;
 
-    auto buildPath(Step const& vertexInShell,
-                   PathResult<ProviderType, Step>& path) -> void;
+    auto buildPath(Step const& vertexInShell, PathResult<Provider, Step>& path)
+        -> void;
 
     auto matchResultsInShell(Step const& match, CandidatesStore& results,
-                             PathValidatorType const& otherSideValidator)
-        -> void;
+                             Validator const& otherSideValidator) -> void;
 
     auto computeNeighbourhoodOfNextVertex(Ball& other, CandidatesStore& results)
         -> void;
@@ -191,7 +220,7 @@ class WeightedTwoSidedEnumerator {
     auto fetchResults(CandidatesStore& candidates) -> void;
     auto fetchResult(CalculatedCandidate& candidate) -> void;
 
-    auto provider() -> ProviderType&;
+    auto provider() -> Provider&;
 
     auto getDiameter() const noexcept -> double { return _diameter; }
 
@@ -203,14 +232,14 @@ class WeightedTwoSidedEnumerator {
     arangodb::ResourceMonitor& _resourceMonitor;
 
     // This stores all paths processed by this ball
-    PathStoreType _interior;
+    Store _interior;
 
     // The next elements to process
-    QueueType _queue;
+    Queue _queue;
 
-    ProviderType _provider;
+    Provider _provider;
 
-    PathValidatorType _validator;
+    Validator _validator;
     containers::FlatHashMap<typename Step::VertexType, std::vector<size_t>>
         _visitedNodes;
 
@@ -221,8 +250,8 @@ class WeightedTwoSidedEnumerator {
   enum BallSearchLocation { LEFT, RIGHT, FINISH };
 
  public:
-  WeightedTwoSidedEnumerator(ProviderType&& forwardProvider,
-                             ProviderType&& backwardProvider,
+  WeightedTwoSidedEnumerator(Provider&& forwardProvider,
+                             Provider&& backwardProvider,
                              TwoSidedEnumeratorOptions&& options,
                              PathValidatorOptions validatorOptions,
                              arangodb::ResourceMonitor& resourceMonitor);
@@ -233,7 +262,7 @@ class WeightedTwoSidedEnumerator {
   WeightedTwoSidedEnumerator& operator=(WeightedTwoSidedEnumerator&& other) =
       delete;
 
-  ~WeightedTwoSidedEnumerator();
+  ~WeightedTwoSidedEnumerator() = default;
 
   auto clear() -> void;
 
@@ -324,7 +353,7 @@ class WeightedTwoSidedEnumerator {
   bool _algorithmFinished{false};
   bool _singleton{false};
 
-  PathResult<ProviderType, Step> _resultPath;
+  PathResult<Provider, Step> _resultPath;
 };
 }  // namespace graph
 }  // namespace arangodb
