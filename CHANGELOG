@@ -1,6 +1,11 @@
 devel
 -----
 
+* FRB-252: Added startup option `--server.robots-file` to allow responding to
+  requests to /robots.txt with a custom response. If the option is provided,
+  the server will answer all HTTP GET requests to robots.txt with the contents
+  from that file.
+
 * Make AQL optimizer rule `move-filters-into-enumerate` also move filters into
   EnumerateListNodes for early pruning. Previously it could only pull filters 
   into IndexNodes and EnumerateCollectionNodes.

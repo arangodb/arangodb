@@ -34,6 +34,7 @@
 #include "Agency/RestAgencyPrivHandler.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/RestAqlHandler.h"
+#include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
@@ -100,6 +101,7 @@
 #include "RestHandler/RestMetricsHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
+#include "RestHandler/RestRobotsHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
@@ -387,6 +389,13 @@ Using the value 0 disables the automatic response compression.")");
           R"(If the option is set to `true`, the server will automatically 
 uncompress incoming HTTP requests with Content-Encodings gzip and deflate
 even if the request is not authenticated.)");
+
+  options
+      ->addOption(
+          "--server.robots-file",
+          "The filename containing the response for requests to /robots.txt.",
+          new StringParameter(&_robotsFile))
+      .setIntroducedIn(31200);
 }
 
 void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
@@ -426,6 +435,13 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
     LOG_TOPIC("80dcf", WARN, Logger::FIXME)
         << "io-contexts are limited to " << maxIoThreads;
     _numIoThreads = maxIoThreads;
+  }
+
+  if (!_robotsFile.empty() && !basics::FileUtils::isRegularFile(_robotsFile)) {
+    LOG_TOPIC("6d3ab", FATAL, Logger::FIXME)
+        << "unable to open file '" << _robotsFile
+        << "' with content for 'robots.txt'";
+    FATAL_ERROR_EXIT();
   }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -574,6 +590,10 @@ std::string const& GeneralServerFeature::supportInfoApiPolicy() const noexcept {
   return _supportInfoApiPolicy;
 }
 
+std::string const& GeneralServerFeature::robotsFile() const noexcept {
+  return _robotsFile;
+}
+
 uint64_t GeneralServerFeature::compressResponseThreshold() const noexcept {
   return _compressResponseThreshold;
 }
@@ -638,6 +658,10 @@ void GeneralServerFeature::defineInitialHandlers(rest::RestHandlerFactory& f) {
                RestHandlerCreator<RestVersionHandler>::createNoData);
   f.addHandler("/_admin/status",
                RestHandlerCreator<RestStatusHandler>::createNoData);
+  if (!_robotsFile.empty()) {
+    f.addHandler("/robots.txt",
+                 RestHandlerCreator<RestRobotsHandler>::createNoData);
+  }
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // This handler can be used to control failure points
   f.addPrefixHandler(
