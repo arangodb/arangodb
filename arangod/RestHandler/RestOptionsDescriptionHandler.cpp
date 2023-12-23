@@ -21,18 +21,29 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "RestOptionsDescriptionHandler.h"
 
-#include "RestHandler/RestBaseHandler.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ProgramOptions/ProgramOptions.h"
 
-namespace arangodb {
+#include <velocypack/Builder.h>
 
-class RestSupportInfoHandler : public RestBaseHandler {
- public:
-  RestSupportInfoHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+using namespace arangodb;
+using namespace arangodb::rest;
 
-  char const* name() const override final { return "RestSupportInfoHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
-  RestStatus execute() override;
-};
-}  // namespace arangodb
+RestOptionsDescriptionHandler::RestOptionsDescriptionHandler(
+    ArangodServer& server, GeneralRequest* request, GeneralResponse* response)
+    : RestOptionsBaseHandler(server, request, response) {}
+
+RestStatus RestOptionsDescriptionHandler::execute() {
+  if (!checkAuthentication()) {
+    // checkAuthentication() will has created the response message already
+    return RestStatus::DONE;
+  }
+
+  VPackBuilder builder = server().options()->toVelocyPack(
+      false, true, [](std::string const&) { return true; });
+
+  generateResult(rest::ResponseCode::OK, builder.slice());
+  return RestStatus::DONE;
+}

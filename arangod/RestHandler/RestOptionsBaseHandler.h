@@ -27,12 +27,13 @@
 
 namespace arangodb {
 
-class RestSupportInfoHandler : public RestBaseHandler {
+class RestOptionsBaseHandler : public arangodb::RestBaseHandler {
  public:
-  RestSupportInfoHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestOptionsBaseHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
-  char const* name() const override final { return "RestSupportInfoHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
-  RestStatus execute() override;
+  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
+
+ protected:
+  bool checkAuthentication();
 };
 }  // namespace arangodb

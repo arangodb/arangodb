@@ -23,16 +23,18 @@
 
 #pragma once
 
-#include "RestHandler/RestBaseHandler.h"
+#include "RestHandler/RestOptionsBaseHandler.h"
 
 namespace arangodb {
 
-class RestSupportInfoHandler : public RestBaseHandler {
+class RestOptionsDescriptionHandler : public RestOptionsBaseHandler {
  public:
-  RestSupportInfoHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestOptionsDescriptionHandler(ArangodServer&, GeneralRequest*,
+                                GeneralResponse*);
 
-  char const* name() const override final { return "RestSupportInfoHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
+  char const* name() const override final {
+    return "RestOptionsDescriptionHandler";
+  }
   RestStatus execute() override;
 };
 }  // namespace arangodb
