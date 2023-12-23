@@ -49,24 +49,8 @@ using TwoSidedEnumeratorWithProvider = TwoSidedEnumerator<
                   VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
 template<class Provider>
-using TwoSidedEnumeratorWithProviderWeighted = WeightedTwoSidedEnumerator<
-    WeightedQueue<typename Provider::Step>, PathStore<typename Provider::Step>,
-    Provider,
-    PathValidator<Provider, PathStore<typename Provider::Step>,
-                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
-
-template<class Provider>
 using TracedTwoSidedEnumeratorWithProvider = TwoSidedEnumerator<
     QueueTracer<FifoQueue<typename Provider::Step>>,
-    PathStoreTracer<PathStore<typename Provider::Step>>,
-    ProviderTracer<Provider>,
-    PathValidator<ProviderTracer<Provider>,
-                  PathStoreTracer<PathStore<typename Provider::Step>>,
-                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
-
-template<class Provider>
-using TracedTwoSidedEnumeratorWithProviderWeighted = WeightedTwoSidedEnumerator<
-    QueueTracer<WeightedQueue<typename Provider::Step>>,
     PathStoreTracer<PathStore<typename Provider::Step>>,
     ProviderTracer<Provider>,
     PathValidator<ProviderTracer<Provider>,
@@ -97,12 +81,14 @@ using TracedKShortestPathsEnumerator =
 // WEIGHTED_K_SHORTEST_PATHS implementation
 template<class Provider>
 using WeightedKShortestPathsEnumerator =
-    TwoSidedEnumeratorWithProviderWeighted<Provider>;
+    WeightedTwoSidedEnumerator<WeightedPathSearch<
+        Provider, VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
 // WEIGHTED_K_SHORTEST_PATHS implementation using Tracing
 template<class Provider>
 using TracedWeightedKShortestPathsEnumerator =
-    TracedTwoSidedEnumeratorWithProviderWeighted<Provider>;
+    WeightedTwoSidedEnumerator<TracedWeightedPathSearch<
+        Provider, VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
 // ALL_SHORTEST_PATHS implementation using Tracing
 template<class Provider>
@@ -114,25 +100,21 @@ template<class Provider>
 using ShortestPathEnumerator = TwoSidedEnumeratorWithProvider<Provider>;
 
 template<class Provider>
-using WeightedShortestPathEnumerator = WeightedTwoSidedEnumerator<
-    WeightedQueue<typename Provider::Step>, PathStore<typename Provider::Step>,
-    Provider,
-    PathValidator<Provider, PathStore<typename Provider::Step>,
-                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
-
-// SHORTEST_PATH implementation using Tracing
-template<class Provider>
 using TracedShortestPathEnumerator =
     TracedTwoSidedEnumeratorWithProvider<Provider>;
 
 template<class Provider>
-using TracedWeightedShortestPathEnumerator = WeightedTwoSidedEnumerator<
-    QueueTracer<WeightedQueue<typename Provider::Step>>,
-    PathStoreTracer<PathStore<typename Provider::Step>>,
-    ProviderTracer<Provider>,
-    PathValidator<ProviderTracer<Provider>,
-                  PathStoreTracer<PathStore<typename Provider::Step>>,
-                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
+using WeightedShortestPathEnumerator =
+    WeightedTwoSidedEnumerator<WeightedPathSearch<
+        Provider, VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
+
+template<class Provider>
+using TracedWeightedShortestPathEnumerator =
+    WeightedTwoSidedEnumerator<TracedWeightedPathSearch<
+        Provider, VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
+
+//  TracedWeightedPathSearch<Provider, VertexUniquenessLevel::GLOBAL,
+//  EdgeUniquenessLevel::PATH>
 
 template<class ProviderType, VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness, bool useTracing>
