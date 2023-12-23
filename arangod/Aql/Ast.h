@@ -184,6 +184,10 @@ class Ast {
   /// @brief create an AST subquery node
   AstNode* createNodeSubquery();
 
+  /// @brief create an AST ARRAY FOR node
+  AstNode* createNodeForArray(AstNode const* keyNode, AstNode const* valueNode,
+                              AstNode const* expression);
+
   /// @brief create an AST for node as part of an UPSERT
   AstNode* createNodeForUpsert(char const* variableName, size_t nameLength,
                                AstNode const* expression,

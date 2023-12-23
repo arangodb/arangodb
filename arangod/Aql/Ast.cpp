@@ -444,6 +444,34 @@ AstNode* Ast::createNodeExample(AstNode const* variable,
 /// @brief create subquery node
 AstNode* Ast::createNodeSubquery() { return createNode(NODE_TYPE_SUBQUERY); }
 
+/// @brief create an AST ARRAY FOR node
+AstNode* Ast::createNodeForArray(AstNode const* keyNode,
+                                 AstNode const* valueNode,
+                                 AstNode const* expression) {
+  if (valueNode == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  AstNode* node = createNode(NODE_TYPE_FOR_ARRAY);
+  node->reserve(2 + (keyNode != nullptr ? 1 : 0));
+
+  // key (optional)
+  if (keyNode == nullptr) {
+    node->addMember(createNodeNop());
+  } else {
+    TRI_ASSERT(keyNode->type == NODE_TYPE_VARIABLE);
+    node->addMember(keyNode);
+  }
+
+  // value
+  TRI_ASSERT(valueNode->type == NODE_TYPE_VARIABLE);
+  node->addMember(valueNode);
+
+  node->addMember(expression);
+
+  return node;
+}
+
 /// @brief create an AST FOR node as part of an UPSERT
 AstNode* Ast::createNodeForUpsert(char const* variableName, size_t nameLength,
                                   AstNode const* expression,

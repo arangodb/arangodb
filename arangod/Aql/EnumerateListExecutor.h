@@ -64,7 +64,8 @@ class EnumerateListExpressionContext final : public QueryExpressionContext {
       transaction::Methods& trx, QueryContext& context,
       AqlFunctionsInternalCache& cache,
       std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister,
-      VariableId outputVariableId);
+      std::optional<VariableId> outputVariableId,
+      std::optional<VariableId> keyVariableId);
 
   ~EnumerateListExpressionContext() override = default;
 
@@ -72,21 +73,24 @@ class EnumerateListExpressionContext final : public QueryExpressionContext {
                             bool& mustDestroy) const override;
 
   void adjustCurrentValue(AqlValue const& value);
+  void adjustCurrentRowIndex(uint64_t rowIndex);
   void adjustCurrentRow(InputAqlItemRow const& inputRow);
 
  private:
   /// @brief temporary storage for expression data context
   std::optional<std::reference_wrapper<InputAqlItemRow const>> _inputRow;
   std::vector<std::pair<VariableId, RegisterId>> const& _varsToRegister;
-  VariableId _outputVariableId;
+  std::optional<VariableId> _outputVariableId;
+  std::optional<VariableId> _keyVariableId;
   std::optional<std::reference_wrapper<AqlValue const>> _currentValue;
+  uint64_t _currentRowIndex;
 };
 
 class EnumerateListExecutorInfos {
  public:
   EnumerateListExecutorInfos(
-      RegisterId inputRegister, RegisterId outputRegister, QueryContext& query,
-      Expression* filter,
+      RegisterId inputRegister, RegisterId outputRegister,
+      RegisterId keyRegister, QueryContext& query, Expression* filter,
       std::vector<std::pair<VariableId, RegisterId>>&& varsToRegs);
 
   EnumerateListExecutorInfos() = delete;
@@ -97,7 +101,9 @@ class EnumerateListExecutorInfos {
   QueryContext& getQuery() const noexcept;
   RegisterId getInputRegister() const noexcept;
   RegisterId getOutputRegister() const noexcept;
-  VariableId getOutputVariableId() const noexcept;
+  std::optional<VariableId> getOutputVariableId() const noexcept;
+  RegisterId getKeyRegister() const noexcept;
+  std::optional<VariableId> getKeyVariableId() const noexcept;
   bool hasFilter() const noexcept;
   Expression* getFilter() const noexcept;
   std::vector<std::pair<VariableId, RegisterId>> const& getVarsToRegs()
@@ -110,7 +116,9 @@ class EnumerateListExecutorInfos {
   // getInputRegisters() and getOutputRegisters().
   RegisterId _inputRegister;
   RegisterId _outputRegister;
-  VariableId _outputVariableId;
+  std::optional<VariableId> _outputVariableId;
+  RegisterId _keyRegister;
+  std::optional<VariableId> _keyVariableId;
   Expression* _filter;
   // Input variable and register pairs required for the filter
   std::vector<std::pair<VariableId, RegisterId>> _varsToRegs;
@@ -185,6 +193,9 @@ class EnumerateListExecutor {
   size_t _inputArrayPosition;
   size_t _inputArrayLength;
   std::unique_ptr<EnumerateListExpressionContext> _expressionContext;
+  // used to return the index for the returned row (only if a key output
+  // register is set)
+  uint64_t _rowIndex;
 };
 
 }  // namespace aql

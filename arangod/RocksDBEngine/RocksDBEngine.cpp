@@ -1156,11 +1156,12 @@ void RocksDBEngine::start() {
       _dbOptions, transactionOptions, _path, cfFamilies, &cfHandles, &_db);
 
   if (!status.ok()) {
-    std::string error;
+    std::string_view error;
     if (status.IsIOError()) {
       error =
-          "; Maybe your filesystem doesn't provide required features? (Cifs? "
-          "NFS?)";
+          "; potentially another ArangoDB instance is still/already running "
+          "using the same database directory, or your filesystem doesn't "
+          "provide required file locking features (Cifs/NFS)";
     }
 
     LOG_TOPIC("fe3df", FATAL, arangodb::Logger::STARTUP)

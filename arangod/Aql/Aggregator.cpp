@@ -700,7 +700,7 @@ struct AggregatorSortedUnique : public Aggregator {
 
     VPackSlice s = materializer.slice(cmpValue);
 
-    if (seen.find(s) != seen.end()) {
+    if (seen.contains(s)) {
       // already saw the same value
       return;
     }
@@ -933,6 +933,85 @@ struct AggregatorBitXOr : public AggregatorBitFunction<BitFunctionXOr> {
       : AggregatorBitFunction(opts) {}
 };
 
+/// @brief aggregator for COUNT_IF()
+struct AggregatorCountIf final : public Aggregator {
+  explicit AggregatorCountIf(velocypack::Options const* opts)
+      : Aggregator(opts), count(0) {}
+
+  void reset() override { count = 0; }
+
+  void reduce(AqlValue const& value) override {
+    if (value.toBoolean()) {
+      ++count;
+    }
+  }
+
+  AqlValue get() const override {
+    uint64_t value = count;
+    return AqlValue(AqlValueHintUInt(value));
+  }
+
+  uint64_t count;
+};
+
+/// @brief the single-server and DB server variant of APPEND
+struct AggregatorAppend : public Aggregator {
+  explicit AggregatorAppend(velocypack::Options const* opts)
+      : Aggregator(opts) {}
+
+  ~AggregatorAppend() { reset(); }
+
+  void reset() override final { builder.clear(); }
+
+  void reduce(AqlValue const& value) override {
+    AqlValueMaterializer materializer(_vpackOptions);
+
+    VPackSlice s = materializer.slice(value);
+
+    if (builder.isClosed()) {
+      builder.openArray();
+    }
+    builder.add(s);
+  }
+
+  AqlValue get() const override final {
+    // if not yet an array, start one
+    if (builder.isClosed()) {
+      builder.openArray();
+    }
+
+    // always close the Builder
+    builder.close();
+    return AqlValue(builder.slice());
+  }
+
+  mutable arangodb::velocypack::Builder builder;
+};
+
+/// @brief the coordinator variant of APPEND
+struct AggregatorAppendStep2 final : public AggregatorAppend {
+  explicit AggregatorAppendStep2(velocypack::Options const* opts)
+      : AggregatorAppend(opts) {}
+
+  void reduce(AqlValue const& value) override final {
+    if (builder.isClosed()) {
+      builder.openArray();
+    }
+
+    AqlValueMaterializer materializer(_vpackOptions);
+
+    VPackSlice s = materializer.slice(value);
+
+    if (!s.isArray()) {
+      return;
+    }
+
+    for (VPackSlice it : VPackArrayIterator(s)) {
+      builder.add(it);
+    }
+  }
+};
+
 /// @brief all available aggregators with their meta data
 std::unordered_map<std::string_view, AggregatorInfo> const aggregators = {
     {"LENGTH",
@@ -1031,6 +1110,16 @@ std::unordered_map<std::string_view, AggregatorInfo> const aggregators = {
     {"BIT_XOR",
      {std::make_shared<GenericFactory<AggregatorBitXOr>>(), doesRequireInput,
       official, "BIT_XOR", "BIT_XOR"}},
+    {"COUNT_IF",
+     {std::make_shared<GenericFactory<AggregatorCountIf>>(), doesRequireInput,
+      official, "COUNT_IF",
+      "SUM"}},  // we need to sum up the lengths from the DB servers
+    {"APPEND",
+     {std::make_shared<GenericFactory<AggregatorAppend>>(), doesRequireInput,
+      official, "APPEND", "APPEND_STEP2"}},
+    {"APPEND_STEP2",
+     {std::make_shared<GenericFactory<AggregatorAppendStep2>>(),
+      doesRequireInput, internalOnly, "", "APPEND_STEP2"}},
 };
 
 /// @brief aliases (user-visible) for aggregation functions

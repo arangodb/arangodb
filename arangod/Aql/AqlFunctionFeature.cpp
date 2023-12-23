@@ -370,6 +370,10 @@ void AqlFunctionFeature::addListFunctions() {
   // run this on DB servers
   add({"CALL", ".|.+", Function::makeFlags(), &functions::Call});
   add({"APPLY", ".|.", Function::makeFlags(), &functions::Apply});
+
+  // COUNT_IF can only be used in COLLECT AGGREGATE
+  add({"COUNT_IF", "", Function::makeFlags(FF::Internal),
+       &functions::NotImplementedAggregator});
 }
 
 void AqlFunctionFeature::addDocumentFunctions() {
