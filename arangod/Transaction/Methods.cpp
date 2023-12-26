@@ -1069,6 +1069,27 @@ struct ModifyingProcessorBase : ReplicatedProcessorBase<Derived> {
          this->_options.isSynchronousReplicationFrom.empty() &&
          _batchOptions.computedValues == nullptr);
 
+    if (!this->_options.versionAttribute.empty()) {
+      // check document versions
+      std::optional<uint64_t> previousVersion;
+      std::optional<uint64_t> currentVersion;
+      if (VPackSlice previous =
+              previousDocument.get(this->_options.versionAttribute);
+          previous.isNumber()) {
+        previousVersion = previous.getNumericValue<uint64_t>();
+      }
+      if (VPackSlice current = value.get(this->_options.versionAttribute);
+          current.isNumber()) {
+        currentVersion = current.getNumericValue<uint64_t>();
+      }
+      if (previousVersion.has_value() && currentVersion.has_value() &&
+          *currentVersion <= *previousVersion) {
+        // attempt to update a document with an older version
+        isNoOpUpdate = true;
+        value = VPackSlice::emptyObjectSlice();
+      }
+    }
+
     // merge old and new values
     Result res;
     if (isUpdate) {

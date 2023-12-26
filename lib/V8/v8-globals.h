@@ -772,6 +772,9 @@ struct TRI_v8_global_t {
   /// @brief "value" key
   v8::Persistent<v8::String> ValueKey;
 
+  /// @brief "versionAttribute" key name
+  v8::Persistent<v8::String> VersionAttributeKey;
+
   /// @brief "version" key
   v8::Persistent<v8::String> VersionKeyHidden;
 

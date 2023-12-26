@@ -1552,6 +1552,10 @@ futures::Future<OperationResult> insertDocumentOnCoordinator(
                         ? "true"
                         : "false");
     }
+    if (!options.versionAttribute.empty()) {
+      reqOpts.param(StaticStrings::VersionAttributeString,
+                    options.versionAttribute);
+    }
     if (options.isOverwriteModeSet()) {
       reqOpts.parameters.insert_or_assign(
           StaticStrings::OverwriteMode,
@@ -2531,6 +2535,10 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
                   (options.refillIndexCaches == RefillIndexCaches::kRefill)
                       ? "true"
                       : "false");
+  }
+  if (!options.versionAttribute.empty()) {
+    reqOpts.param(StaticStrings::VersionAttributeString,
+                  options.versionAttribute);
   }
 
   fuerte::RestVerb restVerb;

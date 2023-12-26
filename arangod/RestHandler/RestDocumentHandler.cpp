@@ -191,6 +191,8 @@ futures::Future<futures::Unit> RestDocumentHandler::insertDocument() {
   arangodb::OperationOptions opOptions(_context);
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
+  opOptions.versionAttribute =
+      _request->value(StaticStrings::VersionAttributeString);
   opOptions.isRestore =
       _request->parsedValue(StaticStrings::IsRestoreString, false);
   opOptions.waitForSync =
@@ -508,6 +510,8 @@ futures::Future<futures::Unit> RestDocumentHandler::modifyDocument(
 
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
+  opOptions.versionAttribute =
+      _request->value(StaticStrings::VersionAttributeString);
   opOptions.isRestore =
       _request->parsedValue(StaticStrings::IsRestoreString, false);
   opOptions.ignoreRevs =
