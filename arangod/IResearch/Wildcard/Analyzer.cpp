@@ -28,6 +28,7 @@
 #include "analysis/token_streams.hpp"
 #include "utils/bytes_utils.hpp"
 #include "utils/vpack_utils.hpp"
+#include "utils/utf8_utils.hpp"
 
 #include <velocypack/Builder.h>
 
@@ -102,24 +103,6 @@ constexpr std::string_view fill(size_t len) noexcept {
   return {kFill.data() + kFill.size() - len, len};
 }
 
-irs::byte_type const* nextUTF8(irs::byte_type const* it,
-                               irs::byte_type const* end) noexcept {
-  const uint32_t cp_start = *it++;
-  if (IRS_UNLIKELY(cp_start >= 0b1000'0000)) {
-    if (cp_start < 0b1110'0000) {
-      ++it;
-    } else if (cp_start < 0b1111'0000) {
-      it += 2;
-    } else if (cp_start < 0b1111'1000) {
-      it += 3;
-    }
-    if (it > end) {
-      it = end;
-    }
-  }
-  return it;
-}
-
 }  // namespace
 
 bool Analyzer::normalize(std::string_view args, std::string& definition) {
@@ -191,8 +174,8 @@ bool Analyzer::next() {
   }
   if (auto size = _ngramTerm->value.size(); size > 1) {
     auto* begin = _ngramTerm->value.data();
-    auto* end = begin + _ngramTerm->value.size();
-    begin = nextUTF8(begin, end);
+    auto* end = begin + size;
+    begin = irs::utf8_utils::Next(begin, end);
     _ngramTerm->value = {begin, end};
     if (_ngramTerm->value.size() > 1) {
       return true;

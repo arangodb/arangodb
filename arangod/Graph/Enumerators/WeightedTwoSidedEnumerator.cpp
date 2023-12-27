@@ -43,9 +43,25 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
+#include <limits>
 
 using namespace arangodb;
 using namespace arangodb::graph;
+
+namespace {
+
+bool almostEqual(double x, double y) {
+  if (x == y) {
+    return true;
+  }
+
+  auto diff = std::abs(x - y);
+  auto norm =
+      std::min((std::abs(x) + std::abs(y)), std::numeric_limits<double>::max());
+  return diff < std::max(std::numeric_limits<double>::round_error(),
+                         std::numeric_limits<double>::epsilon() * norm);
+}
+}  // namespace
 
 /*
  * Class: Ball (internally used in WeightedTwoSidedEnumerator)
@@ -65,7 +81,8 @@ WeightedTwoSidedEnumerator<
       _provider(std::move(provider)),
       _validator(_provider, _interior, std::move(validatorOptions)),
       _direction(dir),
-      _graphOptions(options) {}
+      _graphOptions(options),
+      _diameter(-std::numeric_limits<double>::infinity()) {}
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
@@ -90,6 +107,8 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 
   _queue.clear();
   _interior.reset();  // PathStore
+  _diameter = -std::numeric_limits<double>::infinity();
+  _validator.reset();
 
   // Provider - Must be last one to be cleared(!)
   clearProvider();
@@ -217,10 +236,9 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
-auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::Ball::
-    computeNeighbourhoodOfNextVertex(Ball& other, CandidatesStore& candidates)
-        -> double {
+auto WeightedTwoSidedEnumerator<
+    QueueType, PathStoreType, ProviderType,
+    PathValidator>::Ball::ensureQueueHasProcessableElement() -> void {
   TRI_ASSERT(!_queue.isEmpty());
   if (!_queue.hasProcessableElement()) {
     std::vector<Step*> looseEnds = _queue.getLooseEnds();
@@ -230,33 +248,63 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     auto&& preparedEnds = futureEnds.get();
 
     TRI_ASSERT(preparedEnds.size() != 0);
-    TRI_ASSERT(_queue.hasProcessableElement());
   }
+  TRI_ASSERT(_queue.hasProcessableElement());
+}
 
-  TRI_ASSERT(!_queue.isEmpty());
+template<class QueueType, class PathStoreType, class ProviderType,
+         class PathValidator>
+auto WeightedTwoSidedEnumerator<
+    QueueType, PathStoreType, ProviderType,
+    PathValidator>::Ball::validateSingletonPath(CandidatesStore& candidates)
+    -> void {
+  ensureQueueHasProcessableElement();
   auto tmp = _queue.pop();
+
+  TRI_ASSERT(_queue.isEmpty());
+
   auto posPrevious = _interior.append(std::move(tmp));
   auto& step = _interior.getStepReference(posPrevious);
-
   ValidationResult res = _validator.validatePath(step);
 
-  double matchPathWeight = -1.0;
-
   if (!res.isFiltered()) {
-    _visitedNodes[step.getVertex().getID()].emplace_back(posPrevious);
+    candidates.append(std::make_tuple(0.0, step, step));
+  }
+}
 
-    // TODO: maybe the pathStore could be asked whether a vertex has been
-    // visited?
-    if (other.hasBeenVisited(step)) {
-      matchPathWeight = other.matchResultsInShell(step, candidates, _validator);
+template<class QueueType, class PathStoreType, class ProviderType,
+         class PathValidator>
+auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
+                                PathValidator>::Ball::
+    computeNeighbourhoodOfNextVertex(Ball& other, CandidatesStore& candidates)
+        -> void {
+  ensureQueueHasProcessableElement();
+  auto tmp = _queue.pop();
+
+  // if the other side has explored this vertex, don't add it again
+  if (!other.hasBeenVisited(tmp)) {
+    auto posPrevious = _interior.append(std::move(tmp));
+    auto& step = _interior.getStepReference(posPrevious);
+
+    TRI_ASSERT(step.getWeight() >= _diameter);
+    _diameter = step.getWeight();
+    ValidationResult res = _validator.validatePath(step);
+
+    if (!res.isFiltered()) {
+      _visitedNodes[step.getVertex().getID()].emplace_back(posPrevious);
+    }
+
+    if (!res.isPruned()) {
+      _provider.expand(step, posPrevious, [&](Step n) -> void {
+        // TODO: maybe the pathStore could be asked whether a vertex has been
+        // visited?
+        if (other.hasBeenVisited(n)) {
+          other.matchResultsInShell(n, candidates, _validator);
+        }
+        _queue.append(std::move(n));
+      });
     }
   }
-
-  if (!res.isPruned()) {
-    _provider.expand(step, posPrevious,
-                     [&](Step n) -> void { _queue.append(std::move(n)); });
-  }
-  return matchPathWeight;
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
@@ -264,8 +312,7 @@ template<class QueueType, class PathStoreType, class ProviderType,
 auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::Ball::
     matchResultsInShell(Step const& otherStep, CandidatesStore& candidates,
-                        PathValidator const& otherSideValidator) -> double {
-  double fullPathWeight = -1.0;
+                        PathValidator const& otherSideValidator) -> void {
   auto positions = _visitedNodes.at(otherStep.getVertex().getID());
 
   for (auto const& position : positions) {
@@ -278,7 +325,6 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     }
 
     double nextFullPathWeight = ourStep.getWeight() + otherStep.getWeight();
-
     if (_direction == FORWARD) {
       candidates.append(
           std::make_tuple(nextFullPathWeight, ourStep, otherStep));
@@ -286,13 +332,7 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       candidates.append(
           std::make_tuple(nextFullPathWeight, otherStep, ourStep));
     }
-
-    if (fullPathWeight < 0.0 || fullPathWeight > nextFullPathWeight) {
-      fullPathWeight = nextFullPathWeight;
-    }
   }
-
-  return fullPathWeight;
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
@@ -407,12 +447,8 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   // Order is important here, please do not change.
   // 1.) Remove current results & state
   _candidatesStore.clear();
-  _bestCandidateLength = -1.0;
   _resultsCache.clear();
   _results.clear();
-  _leftInitialFetch = false;
-  _rightInitialFetch = false;
-  _handledInitialFetch = false;
 
   // 2.) Remove both Balls (order here is not important)
   _left.clear();
@@ -438,7 +474,7 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     }
   }
 
-  return (_results.empty() && searchDone()) || isAlgorithmFinished();
+  return _results.empty() && searchDone();
 }
 
 /**
@@ -460,7 +496,24 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   clear();
 
   _left.reset(source, 0);
-  _right.reset(target, 0);
+
+  // TODO: this is not ideal; here's the issue: If source == target there is no
+  // search to be done as there is only *at most* one shortest path between a
+  // vertex and itself: the path of length and weight 0. If the vertex does not
+  // fulfill the global vertex condition, there is none. So the global vertex
+  // condition has to be evaluated! This is why the _left ball is used here.
+  //
+  // Admittedly, this choice is arbitrary: in our context a path is a sequence
+  // of edges that does not repeat vertices. Otherwise this path search would
+  // have to return all cycles based at the source == target vertex. This can be
+  // implemented using a OneSidedEnumerator if ever requested.
+  if (source == target) {
+    _singleton = true;
+    _right.clear();
+  } else {
+    _singleton = false;
+    _right.reset(target, 0);
+  }
   _resultPath.clear();
 }
 
@@ -621,50 +674,50 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   while (!searchDone()) {
     _resultsFetched = false;
 
-    double matchPathLength = -1.0;
-    auto searchLocation = getBallToContinueSearch();
-    if (searchLocation == BallSearchLocation::LEFT) {
-      // might need special case depth == 0
-      matchPathLength =
-          _left.computeNeighbourhoodOfNextVertex(_right, _candidatesStore);
-    } else if (searchLocation == BallSearchLocation::RIGHT) {
-      // special case for initial step expansion
-      // this needs to only be checked once and only _right as we always
-      // start _left with our search. If that behaviour changed, this
-      // verification needs to be moved as well.
-
-      if (!getInitialFetchVerified()) {
-        setInitialFetchVerified();
-      }
-
-      matchPathLength =
-          _right.computeNeighbourhoodOfNextVertex(_left, _candidatesStore);
-    } else {
-      TRI_ASSERT(searchLocation == BallSearchLocation::FINISH);
-      // Our queue is empty. We cannot produce more results.
+    if (_singleton) {
+      _left.validateSingletonPath(_candidatesStore);
       setAlgorithmFinished();
+    } else {
+      auto searchLocation = getBallToContinueSearch();
+      if (searchLocation == BallSearchLocation::LEFT) {
+        _left.computeNeighbourhoodOfNextVertex(_right, _candidatesStore);
+      } else if (searchLocation == BallSearchLocation::RIGHT) {
+        _right.computeNeighbourhoodOfNextVertex(_left, _candidatesStore);
+      } else {
+        TRI_ASSERT(searchLocation == BallSearchLocation::FINISH);
+        // Our queue is empty. We cannot produce more results.
+        setAlgorithmFinished();
+      }
     }
 
-    if (matchPathLength > 0) {
-      // means we've found a match (-1.0 means no match)
-      if (_bestCandidateLength < 0 || matchPathLength < _bestCandidateLength) {
-        _bestCandidateLength = matchPathLength;
-      } else if (matchPathLength > _bestCandidateLength) {
-        // If a candidate has been found, we insert it into the store and only
-        // return the length of that path. As soon as we insert in into the
-        // store we sort that internal vector, therefore it might re-balance. If
-        // we pop the first element it is guaranteed that the calculated weight
-        // must be the same. It is not guaranteed that this is the path we
-        // actually inserted. Nevertheless, this should not be any problem.
-        //
-        // Additionally, this is only a potential candidate. We may find same
-        // paths multiple times. If that is the case, we just get rid of that
-        // candidate and do not pass it to the result data structure.
-        //
-        // Not only one candidate needs to be verified, but all candidates
-        // which do have lower weights as the current found (match).
+    if (!_candidatesStore.isEmpty()) {
+      auto bestWeight = std::get<0>(_candidatesStore.peek());
+      // if the sum of the diameters of left and right search are
+      // bigger than the best candidate, there will not be a better
+      // candidate found.
+      //
+      // A simple shortest path search is done *now* (and not
+      // earlier!);
+      //
+      // It is *required* to continue search for a shortest path even
+      // after having found *some* path between the two searches:
+      // There might be improvements on the weight in paths that are
+      // found later. Improvements are impossible only if the sum of the
+      // diameters of the two searches is bigger or equal to the current
+      // best found path.
+      //
+      // For a K-SHORTEST-PATH search all candidates that have lower
+      // weight than the sum of the two diameters are valid shortest
+      // paths that must be returned.  K-SHORTEST-PATH search has to
+      // continue until the queues on both sides are empty
 
-        while (std::get<0>(_candidatesStore.peek()) < matchPathLength) {
+      auto leftDiameter = _left.getDiameter();
+      auto rightDiameter = _right.getDiameter();
+      auto sumDiameter = leftDiameter + rightDiameter;
+
+      if (sumDiameter >= bestWeight) {
+        while (!_candidatesStore.isEmpty() and
+               std::get<0>(_candidatesStore.peek()) < sumDiameter) {
           bool foundShortestPath = false;
           CalculatedCandidate potentialCandidate = _candidatesStore.pop();
 
@@ -685,21 +738,13 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
               setAlgorithmFinished();
               break;
             }
-
-            // Setting _bestCandidateLength to -1.0 (double) will perform an
-            // initialize / reset. This means we need to find at least two new
-            // paths to prove that we've found the next proven and valid
-            // shortest path.
-            auto [weight, nextStepLeft, nextStepRight] =
-                _candidatesStore.peek();
-            _bestCandidateLength = weight;
           }
         }
       }
     }
   }
 
-  if (_options.onlyProduceOnePath() && _bestCandidateLength >= 0) {
+  if (_options.onlyProduceOnePath() /* found a candidate */) {
     fetchResult();
   } else {
     fetchResults();
@@ -718,20 +763,6 @@ template<class QueueType, class PathStoreType, class ProviderType,
 void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::setAlgorithmUnfinished() {
   _algorithmFinished = false;
-}
-
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::setInitialFetchVerified() {
-  _handledInitialFetch = true;
-}
-
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::getInitialFetchVerified() {
-  return _handledInitialFetch;
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
@@ -823,28 +854,42 @@ template<class QueueType, class PathStoreType, class ProviderType,
 typename WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                     PathValidator>::BallSearchLocation
 WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                           PathValidator>::getBallToContinueSearch() {
-  if (!_leftInitialFetch) {
-    _leftInitialFetch = true;
+                           PathValidator>::getBallToContinueSearch() const {
+  if (_left.isQueueEmpty() and _right.isQueueEmpty()) {
+    return BallSearchLocation::FINISH;
+  }
+
+  if (_left.getDiameter() < 0.0) {
     return BallSearchLocation::LEFT;
-  } else if (!_rightInitialFetch) {
-    _rightInitialFetch = true;
+  }
+
+  if (_right.getDiameter() < 0.0) {
     return BallSearchLocation::RIGHT;
   }
 
-  if (!_left.isQueueEmpty() && !_right.isQueueEmpty()) {
-    auto leftStep = _left.peekQueue();
-    auto rightStep = _right.peekQueue();
-
-    if (leftStep.getWeight() <= rightStep.getWeight()) {
-      return BallSearchLocation::LEFT;
-    } else {
-      return BallSearchLocation::RIGHT;
-    }
-  } else if (!_left.isQueueEmpty() && _right.isQueueEmpty()) {
+  // Note not *both* left and right are empty, so if
+  // _left is, _right is not!
+  if (_left.isQueueEmpty()) {
     return BallSearchLocation::RIGHT;
-  } else if (_left.isQueueEmpty() && !_right.isQueueEmpty()) {
+  }
+
+  if (_right.isQueueEmpty()) {
     return BallSearchLocation::LEFT;
+  }
+
+  // From here both _left and _right are guaranteed to not be empty.
+  if (almostEqual(_left.peekQueue().getWeight(), _left.getDiameter())) {
+    return BallSearchLocation::LEFT;
+  }
+
+  if (almostEqual(_right.peekQueue().getWeight(), _right.getDiameter())) {
+    return BallSearchLocation::RIGHT;
+  }
+
+  if (_left.getDiameter() <= _right.getDiameter()) {
+    return BallSearchLocation::LEFT;
+  } else {
+    return BallSearchLocation::RIGHT;
   }
 
   // Default
@@ -855,7 +900,7 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::searchDone() const -> bool {
-  return _left.noPathLeft() || _right.noPathLeft() || isAlgorithmFinished();
+  return (_left.noPathLeft() && _right.noPathLeft()) || isAlgorithmFinished();
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
@@ -916,6 +961,29 @@ template class ::arangodb::graph::WeightedTwoSidedEnumerator<
             ::arangodb::graph::PathStore<SingleServerProviderStep>>,
         VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
+template class ::arangodb::graph::WeightedTwoSidedEnumerator<
+    ::arangodb::graph::WeightedQueue<SingleServerProviderStep>,
+    ::arangodb::graph::PathStore<SingleServerProviderStep>,
+    SingleServerProvider<SingleServerProviderStep>,
+    ::arangodb::graph::PathValidator<
+        SingleServerProvider<SingleServerProviderStep>,
+        PathStore<SingleServerProviderStep>, VertexUniquenessLevel::GLOBAL,
+        EdgeUniquenessLevel::PATH>>;
+
+template class ::arangodb::graph::WeightedTwoSidedEnumerator<
+    ::arangodb::graph::QueueTracer<
+        ::arangodb::graph::WeightedQueue<SingleServerProviderStep>>,
+    ::arangodb::graph::PathStoreTracer<
+        ::arangodb::graph::PathStore<SingleServerProviderStep>>,
+    ::arangodb::graph::ProviderTracer<
+        SingleServerProvider<SingleServerProviderStep>>,
+    ::arangodb::graph::PathValidator<
+        ::arangodb::graph::ProviderTracer<
+            SingleServerProvider<SingleServerProviderStep>>,
+        ::arangodb::graph::PathStoreTracer<
+            ::arangodb::graph::PathStore<SingleServerProviderStep>>,
+        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
+
 /* ClusterProvider Section */
 
 template class ::arangodb::graph::WeightedTwoSidedEnumerator<
@@ -937,3 +1005,23 @@ template class ::arangodb::graph::WeightedTwoSidedEnumerator<
         ::arangodb::graph::PathStoreTracer<
             ::arangodb::graph::PathStore<ClusterProviderStep>>,
         VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+
+template class ::arangodb::graph::WeightedTwoSidedEnumerator<
+    ::arangodb::graph::WeightedQueue<::arangodb::graph::ClusterProviderStep>,
+    ::arangodb::graph::PathStore<ClusterProviderStep>,
+    ClusterProvider<ClusterProviderStep>,
+    ::arangodb::graph::PathValidator<
+        ClusterProvider<ClusterProviderStep>, PathStore<ClusterProviderStep>,
+        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
+
+template class ::arangodb::graph::WeightedTwoSidedEnumerator<
+    ::arangodb::graph::QueueTracer<::arangodb::graph::WeightedQueue<
+        ::arangodb::graph::ClusterProviderStep>>,
+    ::arangodb::graph::PathStoreTracer<
+        ::arangodb::graph::PathStore<ClusterProviderStep>>,
+    ::arangodb::graph::ProviderTracer<ClusterProvider<ClusterProviderStep>>,
+    ::arangodb::graph::PathValidator<
+        ::arangodb::graph::ProviderTracer<ClusterProvider<ClusterProviderStep>>,
+        ::arangodb::graph::PathStoreTracer<
+            ::arangodb::graph::PathStore<ClusterProviderStep>>,
+        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;

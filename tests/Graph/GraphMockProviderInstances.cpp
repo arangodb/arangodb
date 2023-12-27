@@ -85,6 +85,12 @@ template class ::arangodb::graph::WeightedTwoSidedEnumerator<
     PathValidator<MockGraphProvider, PathStore<MockGraphProvider::Step>,
                   VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
+template class ::arangodb::graph::WeightedTwoSidedEnumerator<
+    WeightedQueue<MockGraphProvider::Step>, PathStore<MockGraphProvider::Step>,
+    MockGraphProvider,
+    PathValidator<MockGraphProvider, PathStore<MockGraphProvider::Step>,
+                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
+
 template class arangodb::graph::PathValidatorTracer<
     arangodb::graph::PathValidator<
         arangodb::graph::ProviderTracer<MockGraphProvider>,

@@ -40,7 +40,7 @@ RUN `
     Set-ExecutionPolicy Bypass -Scope Process -Force; `
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]'Tls,Tls11,Tls12'; `
     iex ((New-Object System.Net.WebClient).DownloadString("$env:CHOCO_URL")); `
-    choco install git winflexbison strawberryperl nasm python3 -y
+    choco install git winflexbison strawberryperl nasm python3 ccache -y
     
 RUN @powershell git config --global --add safe.directory *; `
     $env:PATH += ';C:\Program Files\NASM'; `
@@ -51,6 +51,7 @@ RUN @powershell git config --global --add safe.directory *; `
     choco uninstall strawberryperl nasm -y
 
 ENV OPENSSL_ROOT_DIR=C:\openssl-3.1.4
+ENV CCACHE_DIR=C:\ccache
 
 # Define the entry point for the docker container.
 # This entry point starts the developer command prompt and launches the PowerShell shell.

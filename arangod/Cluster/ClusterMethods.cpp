@@ -3221,22 +3221,34 @@ arangodb::Result restoreOnDBServers(network::ConnectionPool* pool,
 arangodb::Result applyDBServerMatchesToPlan(
     VPackSlice const plan, std::map<ServerID, ServerID> const& matches,
     VPackBuilder& newPlan) {
-  std::function<void(VPackSlice const, std::map<ServerID, ServerID> const&)>
+  std::function<void(VPackSlice const, std::map<ServerID, ServerID> const&,
+                     bool)>
       replaceDBServer;
-
+  /*
+   * This recursive function replaces all occurences of DBServer names with
+   * their handed replacement map. In Replication2 also remove the currentTerm
+   * entry, to enforce leader election.
+   */
   replaceDBServer = [&newPlan, &replaceDBServer](
                         VPackSlice const s,
-                        std::map<ServerID, ServerID> const& matches) {
+                        std::map<ServerID, ServerID> const& matches,
+                        bool inReplicatedLogs) {
     if (s.isObject()) {
       VPackObjectBuilder o(&newPlan);
       for (auto it : VPackObjectIterator(s)) {
         newPlan.add(it.key);
-        replaceDBServer(it.value, matches);
+        if (it.key.isEqualString("ReplicatedLogs")) {
+          replaceDBServer(it.value, matches, true);
+        } else if (inReplicatedLogs && it.key.isEqualString("currentTerm")) {
+          newPlan.add(VPackSlice::emptyObjectSlice());
+        } else {
+          replaceDBServer(it.value, matches, inReplicatedLogs);
+        }
       }
     } else if (s.isArray()) {
       VPackArrayBuilder a(&newPlan);
       for (VPackSlice it : VPackArrayIterator(s)) {
-        replaceDBServer(it, matches);
+        replaceDBServer(it, matches, inReplicatedLogs);
       }
     } else {
       bool swapped = false;
@@ -3255,7 +3267,7 @@ arangodb::Result applyDBServerMatchesToPlan(
     }
   };
 
-  replaceDBServer(plan, matches);
+  replaceDBServer(plan, matches, false);
 
   return arangodb::Result();
 }
@@ -3448,6 +3460,9 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature,
       break;
     }
   }
+
+  // and Wait for Shards to decide on a leader
+  ci.syncWaitForAllShardsToEstablishALeader();
 
   {
     VPackObjectBuilder o(&report);

@@ -24,14 +24,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 // We need the following options for this test. We need a specific number 
-// of threads in the scheduler. 40 threads means that there are 20 low
+// of threads in the scheduler. 60 threads means that there are 30 low
 // priority lane threads. We will post 200 background jobs which will
 // start an exclusive transaction and thus get stuck in a lock.
 // This totally blocks all scheduler threads. If the detaching
 // of scheduler threads waiting for this lock works, then we can Unblock
-// this situation pretty soon (20 threads per second). So after a few
+// this situation pretty soon (30 threads per second). So after a few
 // seconds, a normal low priority operation will go through again.
-// If you use fewer than 25 threads, then the cluster overwhelm protections
+// If you use fewer than 51 threads, then the cluster overwhelm protections
 // will also block the situation since the coordinator will no longer
 // dequeue low priority lane jobs. If you use more than 200 threads, then
 // the test will not test the detaching of threads.
