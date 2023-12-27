@@ -84,9 +84,10 @@ const IndexJoinTestSuite = function () {
           FOR doc3 IN C
     `;
 
+    let k = 0;
     const buildConstFilter = function (v, attribs) {
       for (const attr of attribs) {
-        query += `FILTER ${v}.${attr} == 0\n`;
+        query += `FILTER ${v}.${attr} == ${k++}\n`;
       }
     };
 
@@ -107,14 +108,17 @@ const IndexJoinTestSuite = function () {
 
   const checkExpectJoin = function (doc1Const, doc2Const, doc3Const, doc12Join, doc13Join) {
     const checkJoinable = function (consts, joinAttrib) {
-      let idx = 0;
-
       if (consts.indexOf(joinAttrib) !== -1) {
         return false;
       }
+      const joinIdx = keys.indexOf(joinAttrib);
+      if (consts.length < joinIdx) {
+        return false;
+      }
 
+      let idx = 0;
       for (const c of consts) {
-        if (idx > consts.indexOf(joinAttrib)) {
+        if (idx > joinIdx) {
           break;
         }
         if (c !== keys[idx]) {
@@ -126,18 +130,24 @@ const IndexJoinTestSuite = function () {
       return true;
     };
 
-    if (!checkJoinable(doc1Const, doc12Join[0])) {
+    let count = 0;
+
+    if (checkJoinable(doc1Const, doc12Join[0]) && checkJoinable(doc2Const, doc12Join[1])) {
+      count++;
+    }
+
+    if (checkJoinable(doc1Const, doc13Join[0]) &&checkJoinable(doc3Const, doc13Join[1])) {
+      count++;
+    }
+
+    if (count === 2) {
+      if (doc12Join[0] !== doc13Join[0]) {
+        return 1;
+      }
+    }
+    if (count === 0) {
       return false;
     }
-
-    let count = 1;
-    if (checkJoinable(doc2Const, doc12Join[1])) {
-      count++;
-    }
-    if (checkJoinable(doc3Const, doc13Join[1])) {
-      count++;
-    }
-
     return count;
   };
 
@@ -181,7 +191,5 @@ const IndexJoinTestSuite = function () {
   return testsuite;
 };
 
-/*if (!isCluster || isEnterprise) {
-  jsunity.run(IndexJoinTestSuite);
-}*/
+jsunity.run(IndexJoinTestSuite);
 return jsunity.done();

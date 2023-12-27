@@ -23,25 +23,12 @@
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
-const normalize = require("@arangodb/aql-helper").normalizeProjections;
 const internal = require('internal');
 const _ = require('lodash');
 
-const isCluster = internal.isCluster();
-const isEnterprise = internal.isEnterprise();
-
 const IndexJoinTestSuite = function () {
   const createCollection = function (name, shardKeys, prototype) {
-    shardKeys = shardKeys || ["x"];
-    prototype = prototype || "prototype";
-    if (isCluster) {
-      if (!db[prototype]) {
-        db._create(prototype, {numberOfShards: 3, shardKeys: shardKeys});
-      }
-      return db._create(name, {numberOfShards: 3, shardKeys: shardKeys, distributeShardsLike: prototype});
-    } else {
-      return db._create(name);
-    }
+    return db._create(name);
   };
 
   const databaseName = "IndexJoinDB";
@@ -116,7 +103,5 @@ const IndexJoinTestSuite = function () {
   return testsuite;
 };
 
-if (isEnterprise && !isCluster) {
-  jsunity.run(IndexJoinTestSuite);
-}
+jsunity.run(IndexJoinTestSuite);
 return jsunity.done();
