@@ -753,9 +753,8 @@ bool checkCandidateEligibleForAdvancedJoin(
   return eligible;
 }
 
-std::pair<bool, IndicesOffsets> checkCandidatesEligible(
-    ExecutionPlan& plan,
-    containers::SmallVector<IndexNode*, 8> const& candidates) {
+std::tuple<bool, IndicesOffsets> checkCandidatesEligible(
+    ExecutionPlan& plan, std::span<IndexNode*> candidates) {
   IndicesOffsets indicesOffsets = {};
   VarSet const* knownConstVariables = nullptr;
 
@@ -922,6 +921,48 @@ std::pair<bool, IndicesOffsets> checkCandidatesEligible(
   return {true, {}};
 }
 
+std::tuple<bool, IndicesOffsets, containers::SmallVector<IndexNode*, 8>>
+checkCandidatePermutationsEligible(ExecutionPlan& plan,
+                                   std::span<IndexNode*> candidates) {
+  if (candidates.size() == 2) {
+    return std::tuple_cat(
+        checkCandidatesEligible(plan, candidates),
+        std::make_tuple(containers::SmallVector<IndexNode*, 8>{
+            candidates.begin(), candidates.end()}));
+  } else if (candidates.size() == 3) {
+    {
+      auto [eligible, indexes] = checkCandidatesEligible(plan, candidates);
+      if (eligible) {
+        return std::make_tuple(true, std::move(indexes),
+                               containers::SmallVector<IndexNode*, 8>{
+                                   candidates.begin(), candidates.end()});
+      }
+    }
+
+    // test all 2 subsets
+    {
+      std::array<IndexNode*, 2> selected = {candidates[0], candidates[1]};
+      auto [eligible, indexes] = checkCandidatesEligible(plan, selected);
+      if (eligible) {
+        return std::make_tuple(true, std::move(indexes),
+                               containers::SmallVector<IndexNode*, 8>{
+                                   selected.begin(), selected.end()});
+      }
+    }
+    {
+      std::array<IndexNode*, 2> selected = {candidates[0], candidates[2]};
+      auto [eligible, indexes] = checkCandidatesEligible(plan, selected);
+      if (eligible) {
+        return std::make_tuple(true, std::move(indexes),
+                               containers::SmallVector<IndexNode*, 8>{
+                                   selected.begin(), selected.end()});
+      }
+    }
+  }
+
+  return {false, {}, {}};
+}
+
 void findCandidates(IndexNode* indexNode,
                     containers::SmallVector<IndexNode*, 8>& candidates,
                     containers::FlatHashSet<ExecutionNode const*>& handled) {
@@ -1043,20 +1084,18 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
           LOG_JOIN_OPTIMIZER_RULE << "Found " << candidates.size()
                                   << " index nodes that qualify for joining";
 
-          // First: Eligible bool
-          // Second: IndexOffset information
-          auto candidatesResult = checkCandidatesEligible(*plan, candidates);
-          bool eligible = candidatesResult.first;
-          auto indicesOffsets = candidatesResult.second;
-
+          auto [eligible, indicesOffsets, selectedCandidates] =
+              checkCandidatePermutationsEligible(*plan, candidates);
           if (eligible) {
             // we will now replace all candidate IndexNodes with a JoinNode,
             // and remove the previous IndexNodes from the plan
             LOG_JOIN_OPTIMIZER_RULE << "Should be eligible for index join";
             std::vector<JoinNode::IndexInfo> indexInfos;
-            indexInfos.reserve(candidates.size());
+            indexInfos.reserve(selectedCandidates.size());
+            TRI_ASSERT(selectedCandidates.size() >= 2);
+            TRI_ASSERT(selectedCandidates[0] == candidates[0]);
 
-            for (auto* c : candidates) {
+            for (auto* c : selectedCandidates) {
               std::vector<std::unique_ptr<Expression>> constExpressions{};
               std::vector<size_t> computedUseKeyFields{};
               std::vector<size_t> computedConstantFields{};
@@ -1117,9 +1156,9 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                 IndexIteratorOptions{});
             // Nodes we jumped over (like calculations) are left in place
             // and are now below the Join Node
-            plan->replaceNode(candidates[0], jn);
-            for (size_t i = 1; i < candidates.size(); ++i) {
-              plan->unlinkNode(candidates[i]);
+            plan->replaceNode(selectedCandidates[0], jn);
+            for (size_t i = 1; i < selectedCandidates.size(); ++i) {
+              plan->unlinkNode(selectedCandidates[i]);
             }
 
             // do some post insertion optimizations

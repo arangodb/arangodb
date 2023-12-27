@@ -84,6 +84,13 @@ const IndexJoinTestSuite = function () {
           FOR doc3 IN C
     `;
 
+    const buildJoin = function (v1, v2, attribs) {
+      query += `FILTER ${v1}.${attribs[0]} == ${v2}.${attribs[1]}\n`;
+    };
+
+    buildJoin("doc1", "doc2", doc12Join);
+    buildJoin("doc1", "doc3", doc13Join);
+
     let k = 0;
     const buildConstFilter = function (v, attribs) {
       for (const attr of attribs) {
@@ -94,13 +101,6 @@ const IndexJoinTestSuite = function () {
     buildConstFilter("doc1", doc1Const);
     buildConstFilter("doc2", doc2Const);
     buildConstFilter("doc3", doc3Const);
-
-    const buildJoin = function (v1, v2, attribs) {
-      query += `FILTER ${v1}.${attribs[0]} == ${v2}.${attribs[1]}\n`;
-    };
-
-    buildJoin("doc1", "doc2", doc12Join);
-    buildJoin("doc1", "doc3", doc13Join);
 
     query += "RETURN [doc1, doc2, doc3]";
     return query;
@@ -151,21 +151,25 @@ const IndexJoinTestSuite = function () {
     return count;
   };
 
+  const opts = {
+    optimizer: {rules: ["-propagate-constant-attributes"]}
+  };
+
   const testFunction = function (query, expectJoinFN) {
     return function () {
       const expectJoin = expectJoinFN();
-      const plan = db._createStatement(query).explain().plan;
+      const plan = db._createStatement(query, null, opts).explain().plan;
       const nodes = plan.nodes.map(x => x.type);
       
       if (expectJoin !== false) {
         if (nodes.indexOf("JoinNode") === -1) {
-          db._explain(query);
+          db._explain(query, null, opts);
         }
         assertEqual(nodes.indexOf("JoinNode"), 1);
 
       } else {
         if (nodes.indexOf("JoinNode") !== -1) {
-          db._explain(query);
+          db._explain(query, null, opts);
         }
         assertEqual(nodes.indexOf("JoinNode"), -1);
       }
