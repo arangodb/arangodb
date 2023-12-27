@@ -94,11 +94,10 @@ void removePlanServersReplicationOne(std::unordered_set<std::string>& servers,
   }
 }
 
-void removeCurrentServersReplicationOne(std::unordered_set<std::string>& servers,
-                                     VPackSlice currentCollections) {
+void removeCurrentServersReplicationOne(
+    std::unordered_set<std::string>& servers, VPackSlice currentCollections) {
   for (auto const& shard : VPackObjectIterator(currentCollections)) {
-    for (auto const& server :
-         VPackArrayIterator(shard.value.get("servers"))) {
+    for (auto const& server : VPackArrayIterator(shard.value.get("servers"))) {
       servers.erase(server.copyString());
       if (servers.empty()) {
         return;
@@ -112,7 +111,8 @@ void removePlanServersReplicationTwo(std::unordered_set<std::string>& servers,
   for (auto const& logSlice : VPackObjectIterator(planReplicatedLogs)) {
     auto log = velocypack::deserialize<
         arangodb::replication2::agency::LogPlanSpecification>(logSlice.value);
-    // In ReplicationTwo we need to ignore servers that are still leading the logs
+    // In ReplicationTwo we need to ignore servers that are still leading the
+    // logs
     if (log.currentTerm.has_value() &&
         log.currentTerm.value().leader.has_value()) {
       // If we have selected a leader, let's avoid to remove it
@@ -146,8 +146,7 @@ void removePlanOrCurrentServers(std::unordered_set<std::string>& servers,
   for (auto const& database : VPackObjectIterator(plan.get("Databases"))) {
     if (database.value.get(StaticStrings::ReplicationVersion)
             .isEqualString("2")) {
-      auto planLogs =
-          plan.get("ReplicatedLogs").get(database.key.stringView());
+      auto planLogs = plan.get("ReplicatedLogs").get(database.key.stringView());
       auto currentLogs =
           current.get("ReplicatedLogs").get(database.key.stringView());
       removePlanServersReplicationTwo(servers, planLogs);

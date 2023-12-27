@@ -298,7 +298,8 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                                            ResolvedPromiseSet> {
                           auto guarded = self->acquireMutex();
                           if (!guarded->_didResign) {
-                            // TODO: This can throw when we register the Callback
+                            // TODO: This can throw when we register the
+                            // Callback
                             return guarded->handleAppendEntriesResponse(
                                 *follower, lastIndex, currentCommitIndex,
                                 currentLITK, currentTerm, std::move(res),
