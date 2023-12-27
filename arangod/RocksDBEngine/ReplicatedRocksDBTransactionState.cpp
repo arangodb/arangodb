@@ -209,9 +209,8 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
           "have been successfully applied only on some of the shards.",
           tid.asCoordinatorTransactionId().id());
       LOG_TOPIC("6d1ce", ERR, Logger::REPLICATED_STATE) << warningMsg;
-      // There's no need to crash in production, since there's not much we can
-      // do.
-      TRI_ASSERT(false) << partialResults;
+      // This is expected behaviour. The transaction is committed on
+      // some but not all leaders.
       return {TRI_ERROR_TRANSACTION_INTERNAL, warningMsg};
     }
 
