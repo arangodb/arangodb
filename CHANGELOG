@@ -1,6 +1,8 @@
 v3.11.7 (XXXX-XX-XX)
 --------------------
 
+* Added stored values support for ZKD indexes.
+
 * Fixed a crash during recursive AstNode creation when an exception was thrown.
   This can happen on DB servers when a query plan snippet is created from
   VelocyPack, and the query plan snippet would use more memory than is allowed
