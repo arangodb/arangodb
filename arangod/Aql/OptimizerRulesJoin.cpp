@@ -968,11 +968,23 @@ void findCandidates(IndexNode* indexNode,
                     containers::FlatHashSet<ExecutionNode const*>& handled) {
   containers::SmallVector<CalculationNode*, 8> calculations;
 
+  auto dependsOnPrevCalc = [&](ExecutionNode* node) {
+    VarSet usedVariables;
+    node->getVariablesUsedHere(usedVariables);
+    return std::any_of(
+        calculations.begin(), calculations.end(),
+        [&](auto const& calc) { return calc->setsVariable(usedVariables); });
+  };
+
   while (true) {
-    if (handled.contains(indexNode) || !indexNodeQualifies(*indexNode)) {
+    if (handled.contains(indexNode)) {
       break;
     }
-    candidates.emplace_back(indexNode);
+    // it is ok to ignore some index nodes if they don't qualify
+    // Enumerations always commute.
+    if (indexNodeQualifies(*indexNode)) {
+      candidates.emplace_back(indexNode);
+    }
     auto* parent = indexNode->getFirstParent();
     while (true) {
       if (parent == nullptr) {
@@ -988,19 +1000,22 @@ void findCandidates(IndexNode* indexNode,
         // we can always move past materialize nodes
         parent = parent->getFirstParent();
         continue;
+      } else if (parent->getType() == EN::ENUMERATE_COLLECTION) {
+        // we can move past enumerate collections if their filters
+        // do not depend on any calculations
+        if (dependsOnPrevCalc(parent)) {
+          return;
+        }
+        parent = parent->getFirstParent();
+        continue;
       } else if (parent->getType() == EN::INDEX) {
         // check that this index node does not depend on previous
         // calculations
+        if (dependsOnPrevCalc(parent)) {
+          return;
+        }
 
         indexNode = ExecutionNode::castTo<IndexNode*>(parent);
-        VarSet usedVariables;
-        indexNode->getVariablesUsedHere(usedVariables);
-        for (auto* calc : calculations) {
-          if (calc->setsVariable(usedVariables)) {
-            // can not join past this calculation
-            return;
-          }
-        }
         break;
       } else {
         return;
