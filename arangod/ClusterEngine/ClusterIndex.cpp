@@ -93,9 +93,10 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
       _prefixFields =
           Index::parseFields(info.get(StaticStrings::IndexPrefixFields),
                              /*allowEmpty*/ true, /*allowExpansion*/ false);
-      _coveredFields =
+      _coveredFields = Index::mergeFields(
+          _prefixFields,
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
-                             /*allowEmpty*/ true, /*allowExpansion*/ false);
+                             /*allowEmpty*/ true, /*allowExpansion*/ false));
     }
 
     // check for "estimates" attribute

@@ -219,12 +219,24 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
   bool nextCoveringImpl(CoveringCallback const& callback,
                         uint64_t limit) override {
     struct CoveringData : IndexIteratorCoveringData {
-      explicit CoveringData(velocypack::Slice data) : _data(data) {}
-      VPackSlice at(size_t i) const override { return _data.at(i); }
+      CoveringData(VPackSlice prefixValues, VPackSlice storedValues)
+          : _storedValues(storedValues),
+            _prefixValuesLength(prefixValues.length()),
+            _prefixValues(prefixValues) {}
+      VPackSlice at(size_t i) const override {
+        if (i < _prefixValuesLength) {
+          return _prefixValues.at(i);
+        }
+        return _storedValues.at(i - _prefixValuesLength);
+      }
       bool isArray() const noexcept override { return true; }
-      velocypack::ValueLength length() const override { return _data.length(); }
+      velocypack::ValueLength length() const override {
+        return _prefixValuesLength + _storedValues.length();
+      }
 
-      velocypack::Slice _data;
+      velocypack::Slice _storedValues;
+      std::size_t _prefixValuesLength;
+      velocypack::Slice _prefixValues;
     };
     return findNext(
         [&](rocksdb::Slice key, rocksdb::Slice value) {
@@ -243,7 +255,14 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
               return RocksDBValue::indexStoredValues(value);
             }
           });
-          CoveringData coveringData{storedValues};
+          auto prefixValues = std::invoke([&] {
+            if constexpr (hasPrefix) {
+              return RocksDBKey::indexedVPack(key);
+            } else {
+              return VPackSlice::emptyArraySlice();
+            }
+          });
+          CoveringData coveringData{prefixValues, storedValues};
           std::ignore = callback(documentId, coveringData);
         },
         limit);
@@ -710,8 +729,7 @@ auto columnFamilyForInfo(velocypack::Slice info) {
   if (auto prefix = info.get(StaticStrings::IndexPrefixFields);
       prefix.isArray() && !prefix.isEmptyArray()) {
     return RocksDBColumnFamilyManager::get(
-        RocksDBColumnFamilyManager::Family::VPackIndex);  // TODO add new column
-                                                          // family
+        RocksDBColumnFamilyManager::Family::ZkdVPackIndex);
   }
 
   return RocksDBColumnFamilyManager::get(
