@@ -96,11 +96,14 @@ void removePlanServersReplicationOne(std::unordered_set<std::string>& servers,
 
 void removeCurrentServersReplicationOne(
     std::unordered_set<std::string>& servers, VPackSlice currentCollections) {
-  for (auto const& shard : VPackObjectIterator(currentCollections)) {
-    for (auto const& server : VPackArrayIterator(shard.value.get("servers"))) {
-      servers.erase(server.copyString());
-      if (servers.empty()) {
-        return;
+  for (auto const& collection : VPackObjectIterator(currentCollections)) {
+    for (auto const& shard : VPackObjectIterator(collection.value)) {
+      for (auto const& server :
+           VPackArrayIterator(shard.value.get("servers"))) {
+        servers.erase(server.copyString());
+        if (servers.empty()) {
+          return;
+        }
       }
     }
   }
