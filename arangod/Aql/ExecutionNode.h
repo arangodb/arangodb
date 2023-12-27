@@ -1238,7 +1238,7 @@ class MaterializeNode : public ExecutionNode {
   void getVariablesUsedHere(VarSet& vars) const override;
 
   /// @brief getVariablesSetHere
-  std::vector<Variable const*> getVariablesSetHere() const override final;
+  std::vector<Variable const*> getVariablesSetHere() const override;
 
   /// @brief return out variable
   aql::Variable const& outVariable() const noexcept { return *_outVariable; }
@@ -1305,10 +1305,19 @@ class MaterializeRocksDBNode : public MaterializeNode,
   bool alwaysCopiesRows() const override { return false; }
   bool isIncreaseDepth() const override { return false; }
 
+  void setProjections(Projections proj) { _projections = std::move(proj); }
+  Projections const& projections() const noexcept { return _projections; }
+  Projections& projections() noexcept { return _projections; }
+
+  /// @brief getVariablesSetHere
+  std::vector<Variable const*> getVariablesSetHere() const override;
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder& nodes,
                       unsigned flags) const override final;
+
+  Projections _projections;
 };
 
 MaterializeNode* createMaterializeNode(ExecutionPlan* plan,

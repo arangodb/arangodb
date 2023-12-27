@@ -3041,7 +3041,9 @@ std::unique_ptr<ExecutionBlock> MaterializeSearchNode::createBlock(
                                            std::move(writableOutputRegisters));
 
   auto executorInfos = MaterializerExecutorInfos(
-      inNmDocIdRegId, outDocumentRegId, engine.getQuery(), nullptr);
+      inNmDocIdRegId, outDocumentRegId, engine.getQuery(), nullptr,
+      Projections(),
+      arangodb::containers::FlatHashMap<VariableId, RegisterId>());
 
   return std::make_unique<ExecutionBlockImpl<MaterializeSearchExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -3070,6 +3072,7 @@ void MaterializeRocksDBNode::doToVelocyPack(velocypack::Builder& nodes,
                                             unsigned flags) const {
   // call base class method
   MaterializeNode::doToVelocyPack(nodes, flags);
+  _projections.toVelocyPack(nodes);
 
   // add collection information
   CollectionAccessingNode::toVelocyPack(nodes, flags);
@@ -3098,11 +3101,23 @@ std::unique_ptr<ExecutionBlock> MaterializeRocksDBNode::createBlock(
   }
   auto writableOutputRegisters = RegIdSet{outDocumentRegId};
 
+  containers::FlatHashMap<VariableId, RegisterId> projVarRegs;
+  if (projections().hasOutputRegisters()) {
+    for (auto const& p : projections().projections()) {
+      if (p.variable != nullptr) {
+        auto reg = getRegisterPlan()->variableToRegisterId(p.variable);
+        writableOutputRegisters.emplace(reg);
+        projVarRegs.emplace(p.variable->id, reg);
+      }
+    }
+  }
+
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writableOutputRegisters));
 
   auto executorInfos = MaterializerExecutorInfos(
-      inNmDocIdRegId, outDocumentRegId, engine.getQuery(), collection());
+      inNmDocIdRegId, outDocumentRegId, engine.getQuery(), collection(),
+      projections(), std::move(projVarRegs));
 
   return std::make_unique<ExecutionBlockImpl<MaterializeRocksDBExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -3116,4 +3131,24 @@ ExecutionNode* MaterializeRocksDBNode::clone(ExecutionPlan* plan,
       plan, _id, collection(), *_inNonMaterializedDocId, *_outVariable);
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies);
+}
+
+std::vector<Variable const*> MaterializeRocksDBNode::getVariablesSetHere()
+    const {
+  std::vector<Variable const*> result;
+  if (_projections.empty()) {
+    // no projections. simply produce outvariable
+    result.push_back(_outVariable);
+  } else {
+    // projections. add one output register per projection
+    result.reserve(_projections.size() + 1);
+    result.push_back(_outVariable);
+    for (size_t i = 0; i < _projections.size(); ++i) {
+      // output registers are not necessarily set yet
+      if (_projections[i].variable != nullptr) {
+        result.push_back(_projections[i].variable);
+      }
+    }
+  }
+  return result;
 }

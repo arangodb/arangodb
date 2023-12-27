@@ -25,6 +25,7 @@
 
 #include "Aql/QueryContext.h"
 #include "Aql/Stats.h"
+#include "Aql/Variable.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -70,6 +71,7 @@ MaterializeRocksDBExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   if (_inputRows.empty()) {
     return {inputRange.upstreamState(), stats, output.getClientCall()};
   }
+  auto const& projections = _infos.projections();
   auto inputRowIterator = _inputRows.begin();
   _collection->lookup(
       &_trx, _docIds,
@@ -85,10 +87,29 @@ MaterializeRocksDBExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                   " for collection ",
                   _infos.collection()->name(), ": ", result.errorMessage()));
         }
-        if (data) {
-          output.moveValueInto(docOutReg, *inputRowIterator, &data);
+        if (projections.empty()) {
+          if (data) {
+            output.moveValueInto(docOutReg, *inputRowIterator, &data);
+          } else {
+            output.moveValueInto(docOutReg, *inputRowIterator, doc);
+          }
         } else {
-          output.moveValueInto(docOutReg, *inputRowIterator, doc);
+          if (projections.hasOutputRegisters()) {
+            projections.produceFromDocument(
+                _projectionsBuilder, doc, &_trx,
+                [&](Variable const* variable, velocypack::Slice slice) {
+                  if (slice.isNone()) {
+                    slice = VPackSlice::nullSlice();
+                  }
+                  RegisterId registerId =
+                      _infos.registerForVariable(variable->id);
+                  TRI_ASSERT(registerId != RegisterId::maxRegisterId);
+                  output.moveValueInto(registerId, *inputRowIterator, slice);
+                });
+          } else {
+            projections.toVelocyPackFromDocument(_projectionsBuilder, doc,
+                                                 &_trx);
+          }
         }
         ++inputRowIterator;
         output.advanceRow();
@@ -284,4 +305,12 @@ MaterializeSearchExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
   return {inputRange.upstreamState(), MaterializeStats{}, skipped, call};
 }
 
+RegisterId MaterializerExecutorInfos::registerForVariable(
+    VariableId id) const noexcept {
+  auto it = _varsToRegister.find(id);
+  if (it != _varsToRegister.end()) {
+    return it->second;
+  }
+  return RegisterId::maxRegisterId;
+}
 }  // namespace arangodb::aql

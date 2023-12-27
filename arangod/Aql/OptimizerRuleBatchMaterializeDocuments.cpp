@@ -36,7 +36,7 @@ using namespace arangodb::aql;
 using namespace arangodb::containers;
 using EN = arangodb::aql::ExecutionNode;
 
-#define LOG_RULE LOG_DEVEL_IF(false)
+#define LOG_RULE LOG_DEVEL_IF(true)
 
 void arangodb::aql::batchMaterializeDocumentsRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
@@ -74,9 +74,15 @@ void arangodb::aql::batchMaterializeDocumentsRule(
       continue;
     }
 
-    if (!index->projections().empty()) {
+    if (!index->projections().empty() &&
+        index->projections().usesCoveringIndex()) {
       LOG_RULE << "INDEX " << index->id() << " FAILED: "
-               << "has projections";
+               << "has projections that are covered";
+      LOG_DEVEL << "HAS OUTPUT REGISTERS = "
+                << index->projections().hasOutputRegisters();
+      LOG_DEVEL << "USES COVERING = "
+                << index->projections().usesCoveringIndex();
+
       continue;
     }
     if (index->hasFilter()) {
@@ -105,11 +111,20 @@ void arangodb::aql::batchMaterializeDocumentsRule(
     LOG_RULE << "FOUND INDEX NODE " << index->id();
 
     auto docIdVar = plan->getAst()->variables()->createTemporaryVariable();
+    index->recalculateProjections(plan.get());
     index->setLateMaterialized(docIdVar, index->getIndexes()[0]->id(), {});
     auto materialized = plan->createNode<materialize::MaterializeRocksDBNode>(
         plan.get(), plan->nextId(), index->collection(), *docIdVar,
         *index->outVariable());
     plan->insertAfter(index, materialized);
+    if (!index->projections().empty()) {
+      TRI_ASSERT(!index->projections()
+                      .usesCoveringIndex());  // In that case do not want late
+                                              // materialization
+
+      materialized->setProjections(std::move(index->projections()));
+      TRI_ASSERT(index->projections().empty());
+    }
     modified = true;
   }
 

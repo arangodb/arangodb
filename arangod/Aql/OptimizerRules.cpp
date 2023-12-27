@@ -8925,8 +8925,9 @@ void arangodb::aql::optimizeProjections(Optimizer* opt,
                                         std::unique_ptr<ExecutionPlan> plan,
                                         OptimizerRule const& rule) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
-  plan->findNodesOfType(nodes, {EN::INDEX, EN::ENUMERATE_COLLECTION, EN::JOIN},
-                        true);
+  plan->findNodesOfType(
+      nodes, {EN::INDEX, EN::ENUMERATE_COLLECTION, EN::JOIN, EN::MATERIALIZE},
+      true);
 
   auto replace = [&plan](ExecutionNode* self, Projections& p,
                          Variable const* searchVariable, size_t index) {
@@ -8939,7 +8940,6 @@ void arangodb::aql::optimizeProjections(Optimizer* opt,
       for (auto const& it : p[i].path.get()) {
         path.emplace_back(it);
       }
-
       AttributeAccessReplacer replacer(self, searchVariable, std::span(path),
                                        p[i].variable, index);
       plan->root()->walk(replacer);
@@ -8962,6 +8962,14 @@ void arangodb::aql::optimizeProjections(Optimizer* opt,
         }
         modified |= replace(n, it.projections, it.outVariable, index++);
       }
+    } else if (n->getType() == EN::MATERIALIZE) {
+      auto* matNode = dynamic_cast<materialize::MaterializeRocksDBNode*>(n);
+      if (matNode == nullptr) {
+        // wrong materialize type
+        continue;
+      }
+
+      modified = replace(n, matNode->projections(), &matNode->outVariable(), 0);
     } else {
       // IndexNode or EnumerateCollectionNode.
       TRI_ASSERT(n->getType() == EN::ENUMERATE_COLLECTION ||

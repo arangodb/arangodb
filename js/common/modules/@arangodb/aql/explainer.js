@@ -2008,7 +2008,21 @@ function processQuery(query, explain, planIndex) {
         }).join(', ') + (gatherAnnotations.length ? '  ' + annotation('/* ' + gatherAnnotations.join(', ') + ' */') : '');
 
       case 'MaterializeNode':
-        return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
+        let projectionsStr = '';
+        if (node.projections) {
+          projectionsStr = ' /*' + projections(node, 'projections', 'projections') + ' */';
+          // produce LET nodes for each projection output register
+          let parts = [];
+          node.projections.forEach((p) => {
+            if (p.hasOwnProperty('variable')) {
+              parts.push(variableName(p.variable) + ' = ' + variableName(node.outVariable) + '.' + p.path.map((p) => attribute(p)).join('.'));
+            }
+          });
+          if (parts.length) {
+            projectionsStr += '   ' + keyword('LET') + ' ' + parts.join(', ');
+          }
+        }
+        return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable) + projectionsStr;
       case 'OffsetMaterializeNode':
         return keyword('LET ') + variableName(node.outVariable) + ' = ' +
                func('OFFSET_INFO') + '(' + variableName(node.viewVariable) + ', ' + buildExpression(node.options) + ')';

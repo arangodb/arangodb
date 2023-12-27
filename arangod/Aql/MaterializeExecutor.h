@@ -27,6 +27,7 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/Projections.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
 #include "Aql/MultiGet.h"
@@ -52,13 +53,16 @@ struct Collection;
 
 class MaterializerExecutorInfos {
  public:
-  MaterializerExecutorInfos(RegisterId inNmDocId, RegisterId outDocRegId,
-                            aql::QueryContext& query,
-                            Collection const* collection)
+  MaterializerExecutorInfos(
+      RegisterId inNmDocId, RegisterId outDocRegId, aql::QueryContext& query,
+      Collection const* collection, Projections projections,
+      containers::FlatHashMap<VariableId, RegisterId> varsToRegister)
       : _inNonMaterializedDocRegId(inNmDocId),
         _outMaterializedDocumentRegId(outDocRegId),
         _query(query),
-        _collection(collection) {}
+        _collection(collection),
+        _projections(projections),
+        _varsToRegister(varsToRegister) {}
 
   MaterializerExecutorInfos() = delete;
   MaterializerExecutorInfos(MaterializerExecutorInfos&&) = default;
@@ -76,6 +80,9 @@ class MaterializerExecutorInfos {
   aql::QueryContext& query() const noexcept { return _query; }
 
   Collection const* collection() const noexcept { return _collection; }
+  Projections const& projections() const noexcept { return _projections; }
+
+  RegisterId registerForVariable(VariableId id) const noexcept;
 
  private:
   /// @brief register to store local document id
@@ -84,6 +91,8 @@ class MaterializerExecutorInfos {
   RegisterId const _outMaterializedDocumentRegId;
   aql::QueryContext& _query;
   Collection const* _collection;
+  Projections _projections;
+  containers::FlatHashMap<VariableId, RegisterId> _varsToRegister;
 };
 
 struct MaterializeExecutorBase {
@@ -120,6 +129,7 @@ class MaterializeRocksDBExecutor : public MaterializeExecutorBase {
   PhysicalCollection* _collection{};
   std::vector<LocalDocumentId> _docIds;
   std::vector<InputAqlItemRow> _inputRows;
+  velocypack::Builder _projectionsBuilder;
 };
 
 class MaterializeSearchExecutor : public MaterializeExecutorBase {
