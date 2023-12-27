@@ -637,7 +637,8 @@ std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
 std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
     moveFilterIntoEnumerateTypes{
         arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
-        arangodb::aql::ExecutionNode::INDEX};
+        arangodb::aql::ExecutionNode::INDEX,
+        arangodb::aql::ExecutionNode::ENUMERATE_LIST};
 std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
     undistributeNodeTypes{arangodb::aql::ExecutionNode::UPDATE,
                           arangodb::aql::ExecutionNode::REPLACE,
@@ -7708,12 +7709,6 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(
   VarSet introduced;
 
   for (auto const& n : nodes) {
-    auto en = dynamic_cast<DocumentProducingNode*>(n);
-    if (en == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL, "unable to cast node to DocumentProducingNode");
-    }
-
     if (n->getType() == EN::INDEX &&
         ExecutionNode::castTo<IndexNode const*>(n)->getIndexes().size() != 1) {
       // we can only handle exactly one index right now. otherwise some
@@ -7721,14 +7716,27 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(
       continue;
     }
 
-    Variable const* outVariable = en->outVariable();
+    Variable const* outVariable = nullptr;
+    if (n->getType() == EN::INDEX || n->getType() == EN::ENUMERATE_COLLECTION) {
+      auto en = dynamic_cast<DocumentProducingNode*>(n);
+      if (en == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL, "unable to cast node to DocumentProducingNode");
+      }
+
+      outVariable = en->outVariable();
+    } else {
+      TRI_ASSERT(n->getType() == EN::ENUMERATE_LIST);
+      outVariable =
+          ExecutionNode::castTo<EnumerateListNode const*>(n)->outVariable();
+    }
 
     if (!n->isVarUsedLater(outVariable)) {
       // e.g. FOR doc IN collection RETURN 1
       continue;
     }
 
-    std::unordered_map<Variable const*, CalculationNode*> calculations;
+    containers::FlatHashMap<Variable const*, CalculationNode*> calculations;
     introduced.clear();
 
     ExecutionNode* current = n->getFirstParent();
@@ -7754,17 +7762,30 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(
 
         CalculationNode* cn = (*it).second;
         Expression* expr = cn->expression();
-        Expression* existingFilter = en->filter();
-        if (existingFilter != nullptr && existingFilter->node() != nullptr) {
-          // node already has a filter, now AND-merge it with what we found!
-          AstNode* merged = plan->getAst()->createNodeBinaryOperator(
-              NODE_TYPE_OPERATOR_BINARY_AND, existingFilter->node(),
-              expr->node());
 
-          en->setFilter(std::make_unique<Expression>(plan->getAst(), merged));
+        auto setFilter = [&](auto* en, Expression* expr) {
+          Expression* existingFilter = en->filter();
+          if (existingFilter != nullptr && existingFilter->node() != nullptr) {
+            // node already has a filter, now AND-merge it with what we found!
+            AstNode* merged = plan->getAst()->createNodeBinaryOperator(
+                NODE_TYPE_OPERATOR_BINARY_AND, existingFilter->node(),
+                expr->node());
+
+            en->setFilter(std::make_unique<Expression>(plan->getAst(), merged));
+          } else {
+            // node did not yet have a filter
+            en->setFilter(expr->clone(plan->getAst()));
+          }
+        };
+
+        if (n->getType() == EN::INDEX ||
+            n->getType() == EN::ENUMERATE_COLLECTION) {
+          auto en = dynamic_cast<DocumentProducingNode*>(n);
+          TRI_ASSERT(en != nullptr);
+          setFilter(en, expr);
         } else {
-          // node did not yet have a filter
-          en->setFilter(expr->clone(plan->getAst()));
+          TRI_ASSERT(n->getType() == EN::ENUMERATE_LIST);
+          setFilter(ExecutionNode::castTo<EnumerateListNode*>(n), expr);
         }
 
         // remove the filter

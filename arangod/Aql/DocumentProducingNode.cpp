@@ -89,8 +89,7 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
 void DocumentProducingNode::cloneInto(ExecutionPlan* plan,
                                       DocumentProducingNode& c) const {
   if (hasFilter()) {
-    c.setFilter(
-        std::unique_ptr<Expression>(_filter->clone(plan->getAst(), true)));
+    c.setFilter(_filter->clone(plan->getAst(), true));
   }
   c._projections = _projections;
   c._filterProjections = _filterProjections;

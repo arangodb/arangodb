@@ -65,7 +65,7 @@ function testOptimizeFilterCondition() {
       let docs = db._query(query).toArray();
       assertEqual(docs.length, 5);
 
-      let plan = db._createStatement(query).explain();
+      let plan = db._createStatement({query, bindVars: null, options: { optimizer: { rules: ["-move-filters-into-enumerate"] } } }).explain();
       plan = require("@arangodb/aql-helper").getCompactPlan(plan);
       let hasInRangeCalculationNode = false;
       let hasFilter = false;

@@ -374,7 +374,7 @@ function StatementSuite () {
       var plan = result.plan;
       assertTrue(plan.hasOwnProperty("estimatedCost"));
       assertTrue(plan.hasOwnProperty("rules"));
-      assertEqual([ "async-prefetch" ], plan.rules);
+      assertEqual([ "async-prefetch", "move-filters-into-enumerate" ].sort(), plan.rules.sort());
       assertTrue(plan.hasOwnProperty("nodes"));
       assertTrue(plan.hasOwnProperty("collections"));
       assertEqual([ ], plan.collections);
@@ -718,7 +718,7 @@ function StatementSuite () {
       var plan = extra.plan;
       assertTrue(plan.hasOwnProperty("estimatedCost"));
       assertTrue(plan.hasOwnProperty("rules"));
-      assertEqual([ "async-prefetch" ], plan.rules);
+      assertEqual([ "async-prefetch", "move-filters-into-enumerate" ].sort(), plan.rules.sort());
       assertTrue(plan.hasOwnProperty("nodes"));
       assertTrue(plan.hasOwnProperty("collections"));
       assertEqual([ ], plan.collections);
