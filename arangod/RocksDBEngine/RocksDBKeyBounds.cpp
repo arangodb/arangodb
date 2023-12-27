@@ -464,6 +464,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
       uint64ToPersistent(_internals.buffer(), first);
       _internals.separate();
       uint64ToPersistent(_internals.buffer(), first + 1);
+      break;
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
