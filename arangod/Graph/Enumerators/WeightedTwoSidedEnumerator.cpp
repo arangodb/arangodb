@@ -204,7 +204,7 @@ auto WeightedTwoSidedEnumerator<
         return candidates.getRightLooseEnds();
       }
       default: {
-        TRI_ASSERT(false);
+        ADB_PROD_ASSERT(false);
       }
     }
   }();
