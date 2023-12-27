@@ -2018,7 +2018,7 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
       return {TRI_ERROR_INTERNAL,
               absl::StrCat("failure to remove dangling analyzers from '",
                            database, "' Aql error: (",
-                           static_cast<int>(deleteResult.errorNumber()), " ) ",
+                           static_cast<int>(deleteResult.errorNumber()), ") ",
                            deleteResult.errorMessage())};
     }
 
@@ -2036,7 +2036,7 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
       return {TRI_ERROR_INTERNAL,
               absl::StrCat("failure to restore dangling analyzers from '",
                            database, "' Aql error: (",
-                           static_cast<int>(updateResult.errorNumber()), " ) ",
+                           static_cast<int>(updateResult.errorNumber()), ") ",
                            updateResult.errorMessage())};
     }
 

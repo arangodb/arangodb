@@ -370,6 +370,18 @@ class ClusterInfo final {
   [[nodiscard]] futures::Future<Result> waitForCurrentVersion(
       uint64_t currentVersion);
 
+  /**
+   * Blocks and waits until all planned shards
+   * have reported back in current and a leader
+   * has thereby taken over the shard responsibility.
+   * After this the shards are usable.
+   *
+   * Note: This method is written for hot-restore
+   * As we erase the current during the process
+   * and need to wait for current to be build back up.
+   */
+  void syncWaitForAllShardsToEstablishALeader();
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief flush the caches (used for testing only)
   //////////////////////////////////////////////////////////////////////////////
