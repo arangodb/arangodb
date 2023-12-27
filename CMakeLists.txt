@@ -329,7 +329,7 @@ function(determine_repository_version source_dir build_repository have_build_rep
   elseif(BUILD_REPO_INFO STREQUAL "release")
     execute_process(
       WORKING_DIRECTORY ${source_dir}
-      if("${ARANGODB_VERSION_RELEASE_NUMBER}" STREQUAL "" AND ARANGODB_VERSION_RELEASE_TYPE MATCHES "^[0-9]+$")
+      if("${ARANGODB_VERSION_RELEASE_NUMBER}" STREQUAL "" AND ARANGODB_VERSION_RELEASE_TYPE MATCHES "^[1-9][0-9]*$")
         string(REPLACE "-" "." RELEASE_TAG ${ARANGODB_VERSION})
       else()
         set(RELEASE_TAG ${ARANGODB_VERSION})
