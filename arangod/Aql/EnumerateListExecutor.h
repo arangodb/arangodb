@@ -26,13 +26,20 @@
 
 #pragma once
 
+#include "Aql/AqlFunctionsInternalCache.h"
+#include "Aql/AqlValue.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/QueryExpressionContext.h"
 #include "Aql/RegisterInfos.h"
+#include "Aql/Stats.h"
+#include "Aql/Variable.h"
 #include "Aql/types.h"
+#include "Transaction/Methods.h"
 
 #include <memory>
-#include <unordered_set>
+#include <optional>
+#include <utility>
 
 namespace arangodb {
 namespace transaction {
@@ -43,35 +50,74 @@ namespace aql {
 
 struct AqlCall;
 class AqlItemBlockInputRange;
-class RegisterInfos;
-class OutputAqlItemRow;
+class Expression;
 class NoStats;
+class OutputAqlItemRow;
+class QueryContext;
+class RegisterInfos;
 template<BlockPassthrough>
 class SingleRowFetcher;
 
+class EnumerateListExpressionContext final : public QueryExpressionContext {
+ public:
+  EnumerateListExpressionContext(
+      transaction::Methods& trx, QueryContext& context,
+      AqlFunctionsInternalCache& cache,
+      std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister,
+      VariableId outputVariableId);
+
+  ~EnumerateListExpressionContext() override = default;
+
+  AqlValue getVariableValue(Variable const* variable, bool doCopy,
+                            bool& mustDestroy) const override;
+
+  void adjustCurrentValue(AqlValue const& value);
+  void adjustCurrentRow(InputAqlItemRow const& inputRow);
+
+ private:
+  /// @brief temporary storage for expression data context
+  std::optional<std::reference_wrapper<InputAqlItemRow const>> _inputRow;
+  std::vector<std::pair<VariableId, RegisterId>> const& _varsToRegister;
+  VariableId _outputVariableId;
+  std::optional<std::reference_wrapper<AqlValue const>> _currentValue;
+};
+
 class EnumerateListExecutorInfos {
  public:
-  EnumerateListExecutorInfos(RegisterId inputRegister,
-                             RegisterId outputRegister);
+  EnumerateListExecutorInfos(
+      RegisterId inputRegister, RegisterId outputRegister, QueryContext& query,
+      Expression* filter,
+      std::vector<std::pair<VariableId, RegisterId>>&& varsToRegs);
 
   EnumerateListExecutorInfos() = delete;
   EnumerateListExecutorInfos(EnumerateListExecutorInfos&&) = default;
   EnumerateListExecutorInfos(EnumerateListExecutorInfos const&) = delete;
   ~EnumerateListExecutorInfos() = default;
 
+  QueryContext& getQuery() const noexcept;
   RegisterId getInputRegister() const noexcept;
   RegisterId getOutputRegister() const noexcept;
+  VariableId getOutputVariableId() const noexcept;
+  bool hasFilter() const noexcept;
+  Expression* getFilter() const noexcept;
+  std::vector<std::pair<VariableId, RegisterId>> const& getVarsToRegs()
+      const noexcept;
 
  private:
+  QueryContext& _query;
   // These two are exactly the values in the parent members
   // ExecutorInfo::_inRegs and ExecutorInfo::_outRegs, respectively
   // getInputRegisters() and getOutputRegisters().
   RegisterId _inputRegister;
   RegisterId _outputRegister;
+  VariableId _outputVariableId;
+  Expression* _filter;
+  // Input variable and register pairs required for the filter
+  std::vector<std::pair<VariableId, RegisterId>> _varsToRegs;
 };
 
 /**
- * @brief Implementation of Filter Node
+ * @brief Implementation of EnumerateList Node
  */
 class EnumerateListExecutor {
  public:
@@ -82,7 +128,7 @@ class EnumerateListExecutor {
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = EnumerateListExecutorInfos;
-  using Stats = NoStats;
+  using Stats = FilterStats;
 
   EnumerateListExecutor(Fetcher&, EnumerateListExecutorInfos&);
   ~EnumerateListExecutor() = default;
@@ -96,9 +142,9 @@ class EnumerateListExecutor {
   void initializeNewRow(AqlItemBlockInputRange& inputRange);
 
   /**
-   * @brief Will process an found array element
+   * @brief Will process a found array element
    */
-  void processArrayElement(OutputAqlItemRow& output);
+  bool processArrayElement(OutputAqlItemRow& output);
 
   /**
    * @brief Will skip a maximum of n-elements inside the current array
@@ -128,12 +174,17 @@ class EnumerateListExecutor {
                        bool& mustDestroy);
   void initialize();
 
+  bool checkFilter(AqlValue const& currentValue);
+
  private:
   EnumerateListExecutorInfos& _infos;
+  transaction::Methods _trx;
+  aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   InputAqlItemRow _currentRow;
   ExecutorState _currentRowState;
   size_t _inputArrayPosition;
   size_t _inputArrayLength;
+  std::unique_ptr<EnumerateListExpressionContext> _expressionContext;
 };
 
 }  // namespace aql

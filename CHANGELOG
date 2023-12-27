@@ -1,5 +1,40 @@
 devel
 -----
+
+* Make AQL optimizer rule `move-filters-into-enumerate` also move filters into
+  EnumerateListNodes for early pruning. Previously it could only pull filters 
+  into IndexNodes and EnumerateCollectionNodes.
+
+* Validate that smartgraph attribute exists and is not changed. Previously this
+  check was performed in the KeyGenerator and therefore only performed for
+  inserts, but not for replace or update operations. Therefore replace or update
+  operations could modify or even remove this attribute.
+  In addition, we now return the error code `ERROR_NO_SMART_GRAPH_ATTRIBUTE`
+  instead of `ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE` if the
+  attribute is not set.
+
+* Fix BTS-1636: Under certain circumstances the path found by a weighted
+  shortest path search was not the path of smallest weight.
+
+* Added CMake option `USE_JEMALLOC_CHECKS` to toggle the usage of extra safety 
+  checks in jemalloc. The option is currently enabled by default, but can be
+  turned off when there are performance concerns.
+
+* Fixed BTS-1703: Cannot chain multiple UPSERTS.
+
+* Fixed issue #17673: Adds timezone conversion as an optional parameter in
+  all relevant date functions.
+
+* Added AQL function `TO_CHAR(number)`, which produces a character from the
+  given character number.
+
+* Added AQL function `REPEAT(string, count, separator)`, which repeats a string
+  for a configurable number of times, with an optional separator.
+  Note that the maximum size of the output string is limited to 16 MB to avoid
+  very large outputs that would consume lots of memory. Exceeding the maximum
+  output string length will make the function return `null` and issue a 
+  warning.
+
 * Fixed issue #17673: Adds timezone conversion as an optional parameter in
   all relevant date functions.
 
@@ -180,6 +215,8 @@ devel
 
 * Fixed MDS-1170: Significant performance degradation when queries are
   executed within transactions that involve edits.
+
+* Stabilize detaching of threads test.
 
 * Rebuilt included rclone v1.62.2 with go1.21.4.
 

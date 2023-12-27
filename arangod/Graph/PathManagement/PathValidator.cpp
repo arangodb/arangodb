@@ -195,12 +195,7 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     return ValidationResult{ValidationResult::Type::TAKE};
   }
   if constexpr (vertexUniqueness == VertexUniquenessLevel::GLOBAL) {
-    auto const& [unused, added] =
-        _uniqueVertices.emplace(step.getVertexIdentifier());
-    // If this add fails, we need to exclude this path
-    if (!added) {
-      return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
-    }
+    // Global uniqueness is satisfied on both sides of the path;
     return ValidationResult{ValidationResult::Type::TAKE};
   }
 

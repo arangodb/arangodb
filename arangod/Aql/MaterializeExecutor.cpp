@@ -46,46 +46,59 @@ MaterializeRocksDBExecutor::MaterializeRocksDBExecutor(Fetcher&, Infos& infos)
   TRI_ASSERT(_collection != nullptr);
 }
 
-std::tuple<ExecutorState, MaterializeStats, AqlCall>
+std::tuple<ExecutorState, NoStats, AqlCall>
 MaterializeRocksDBExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                         OutputAqlItemRow& output) {
-  MaterializeStats stats;
+  NoStats stats;
 
   AqlCall upstreamCall{};
   upstreamCall.fullCount = output.getClientCall().fullCount;
 
   auto docRegId = _infos.inputNonMaterializedDocRegId();
   auto docOutReg = _infos.outputMaterializedDocumentRegId();
-  while (inputRange.hasDataRow() && !output.isFull()) {
-    auto const [state, input] =
+
+  _docIds.reserve(inputRange.numRowsLeft());
+  _inputRows.reserve(inputRange.numRowsLeft());
+
+  while (inputRange.hasDataRow()) {
+    auto [state, input] =
         inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
-
     LocalDocumentId id{input.getValue(docRegId).slice().getUInt()};
-    auto result = _collection->lookup(
-        &_trx, id,
-        [&, &inputRef = input](LocalDocumentId, aql::DocumentData&& data,
-                               VPackSlice doc) {
-          TRI_ASSERT(inputRef.isInitialized());
-          if (data) {
-            output.moveValueInto(docOutReg, inputRef, &data);
-          } else {
-            output.moveValueInto(docOutReg, inputRef, doc);
-          }
-          return true;
-        },
-        {});
-
-    if (result.fail()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          result.errorNumber(),
-          basics::StringUtils::concatT(
-              "failed to materialize document ", id.id(), " for collection ",
-              _infos.collection()->name(), ": ", result.errorMessage()));
-    }
-
-    output.advanceRow();
+    _docIds.push_back(id);
+    _inputRows.emplace_back(std::move(input));
   }
+  if (_inputRows.empty()) {
+    return {inputRange.upstreamState(), stats, output.getClientCall()};
+  }
+  auto inputRowIterator = _inputRows.begin();
+  _collection->lookup(
+      &_trx, _docIds,
+      [&](Result result, LocalDocumentId id, aql::DocumentData&& data,
+          VPackSlice doc) {
+        if (result.fail()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              result.errorNumber(),
+              basics::StringUtils::concatT(
+                  "failed to materialize document ", RevisionId(id).toString(),
+                  " (", id.id(),
+                  ")"
+                  " for collection ",
+                  _infos.collection()->name(), ": ", result.errorMessage()));
+        }
+        if (data) {
+          output.moveValueInto(docOutReg, *inputRowIterator, &data);
+        } else {
+          output.moveValueInto(docOutReg, *inputRowIterator, doc);
+        }
+        ++inputRowIterator;
+        output.advanceRow();
+        return true;
+      },
+      {});
+  TRI_ASSERT(inputRowIterator == _inputRows.end());
 
+  _docIds.clear();
+  _inputRows.clear();
   return {inputRange.upstreamState(), stats, output.getClientCall()};
 }
 
@@ -251,8 +264,8 @@ MaterializeSearchExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 }
 
 std::tuple<ExecutorState, MaterializeStats, size_t, AqlCall>
-MaterializeExecutorBase::skipRowsRange(AqlItemBlockInputRange& inputRange,
-                                       AqlCall& call) {
+MaterializeSearchExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                         AqlCall& call) {
   size_t skipped = 0;
 
   // hasDataRow may only occur during fullCount due to previous overfetching

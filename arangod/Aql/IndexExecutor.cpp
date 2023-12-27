@@ -162,28 +162,29 @@ IndexIterator::CoveringCallback getCallback(
     }
 
     // hash/skiplist/persistent
-    if (covering.isArray()) {
-      for (auto const& indReg : outNonMaterializedIndRegs.second) {
-        TRI_ASSERT(indReg.first < covering.length());
-        if (ADB_UNLIKELY(indReg.first >= covering.length())) {
+    if (!outNonMaterializedIndRegs.second.empty()) {
+      if (covering.isArray()) {
+        for (auto const& indReg : outNonMaterializedIndRegs.second) {
+          TRI_ASSERT(indReg.first < covering.length());
+          if (ADB_UNLIKELY(indReg.first >= covering.length())) {
+            return false;
+          }
+          auto s = covering.at(indReg.first);
+          AqlValue v(s);
+          AqlValueGuard guard{v, true};
+          TRI_ASSERT(!output.isFull());
+          output.moveValueInto(indReg.second, input, &guard);
+        }
+      } else {  // primary/edge
+        auto indReg = outNonMaterializedIndRegs.second.cbegin();
+        if (ADB_UNLIKELY(indReg == outNonMaterializedIndRegs.second.cend())) {
           return false;
         }
-        auto s = covering.at(indReg.first);
-        AqlValue v(s);
+        AqlValue v(covering.value());
         AqlValueGuard guard{v, true};
         TRI_ASSERT(!output.isFull());
-        output.moveValueInto(indReg.second, input, &guard);
+        output.moveValueInto(indReg->second, input, &guard);
       }
-    } else {  // primary/edge
-      auto indReg = outNonMaterializedIndRegs.second.cbegin();
-      TRI_ASSERT(indReg != outNonMaterializedIndRegs.second.cend());
-      if (ADB_UNLIKELY(indReg == outNonMaterializedIndRegs.second.cend())) {
-        return false;
-      }
-      AqlValue v(covering.value());
-      AqlValueGuard guard{v, true};
-      TRI_ASSERT(!output.isFull());
-      output.moveValueInto(indReg->second, input, &guard);
     }
 
     TRI_ASSERT(output.produced());

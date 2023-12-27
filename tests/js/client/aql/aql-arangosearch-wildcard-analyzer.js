@@ -39,7 +39,7 @@ function ArangoSearchWildcardAnalyzer(hasPos) {
     try { db._dropDatabase(dbName); } catch (err) {}
   };
 
-  let query = function(pattern, needsPrefix, needsMatcher, checkIdentity = true) {
+  let query = function(pattern, needsPrefix, needsMatcher, ignoreCollection = false) {
     internal.debugClearFailAt();
     if (needsPrefix) {
       internal.debugSetFailAt("wildcard::Filter::needsPrefix");
@@ -54,10 +54,10 @@ function ArangoSearchWildcardAnalyzer(hasPos) {
     let c = db._query("FOR d in c FILTER d.s LIKE '" + pattern + "' RETURN d.s").toArray().sort();
     let w = db._query("FOR d in v SEARCH ANALYZER(d.s LIKE '" + pattern + "', 'w') RETURN d.s").toArray().sort();
     let i = db._query("FOR d in v SEARCH ANALYZER(d.s LIKE '" + pattern + "', 'identity') RETURN d.s").toArray().sort();
-    assertEqual(c, w);
-    if (checkIdentity) {
-      assertEqual(w, i);
+    if (!ignoreCollection) {
+      assertEqual(c, w);
     }
+    assertEqual(w, i);
     return w;
   };
 
@@ -94,6 +94,8 @@ function ArangoSearchWildcardAnalyzer(hasPos) {
     },
 
     testExactEscape1: function() {
+      // "\\" -- one escape will be in aql query, because js
+      // "\\\\" -- one escape in wildcard pattern, because aql
       try {
         query("\\", false, false);
         fail("invalid pattern should be disallowed by AQL");
@@ -102,7 +104,7 @@ function ArangoSearchWildcardAnalyzer(hasPos) {
     },
 
     testExactEscape2: function() {
-      let res = query("\\\\", false, false, false);
+      let res = query("\\\\", false, false);
       assertEqual(res, [""]);
     },
  
@@ -118,6 +120,13 @@ function ArangoSearchWildcardAnalyzer(hasPos) {
 
     testExactShort: function() {
       let res = query("c", false, false);
+      assertEqual(res, ["c"]);
+    },
+
+    testExactShortEscaped: function() {
+      // We don't want to follow AQL behavior, because it's inconsistent:
+      // it's ignore last escape but not ignore inner escape
+      let res = query("\\\\c", false, false, true);
       assertEqual(res, ["c"]);
     },
 
