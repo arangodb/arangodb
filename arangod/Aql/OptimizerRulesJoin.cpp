@@ -70,6 +70,7 @@ using EN = arangodb::aql::ExecutionNode;
 #define LOG_JOIN_OPTIMIZER_RULE_CONSTANTS LOG_DEVEL_IF(false)
 #define LOG_JOIN_OPTIMIZER_RULE_KEYS LOG_DEVEL_IF(false)
 #define LOG_JOIN_OPTIMIZER_RULE_OFFSETS LOG_DEVEL_IF(false)
+#define LOG_JOIN_OPTIMIZER_FIND_CAN LOG_DEVEL_IF(false)
 
 namespace {
 
@@ -840,28 +841,6 @@ std::tuple<bool, IndicesOffsets> checkCandidatesEligible(
         }
       }
     }
-
-    // check if filter supports streaming interface
-    {
-      IndexStreamOptions opts;
-      opts.usedKeyFields = {
-          0};  // use as a default in case no constants have been found
-      if (candidate->projections().usesCoveringIndex()) {
-        opts.projectedFields.reserve(candidate->projections().size());
-        auto& proj = candidate->projections().projections();
-        std::transform(proj.begin(), proj.end(),
-                       std::back_inserter(opts.projectedFields),
-                       [](auto const& p) { return p.coveringIndexPosition; });
-      }
-      if (!candidate->getIndexes()[0]->supportsStreamInterface(opts)) {
-        LOG_JOIN_OPTIMIZER_RULE << "IndexNode's index does not "
-                                   "support streaming interface";
-        LOG_JOIN_OPTIMIZER_RULE
-            << "-> Index name: " << candidate->getIndexes()[0]->name()
-            << ", id: " << candidate->getIndexes()[0]->id();
-        return {false, {}};
-      }
-    }
   }
 
   if (!indicesOffsets.empty()) {
@@ -958,6 +937,76 @@ checkCandidatePermutationsEligible(ExecutionPlan& plan,
                                    selected.begin(), selected.end()});
       }
     }
+  } else if (candidates.size() == 4) {
+    {
+      auto [eligible, indexes] = checkCandidatesEligible(plan, candidates);
+      if (eligible) {
+        return std::make_tuple(true, std::move(indexes),
+                               containers::SmallVector<IndexNode*, 8>{
+                                   candidates.begin(), candidates.end()});
+      }
+    }
+
+    // test all 3 subsets
+    {
+      std::array<IndexNode*, 3> selected = {candidates[0], candidates[1],
+                                            candidates[2]};
+      auto [eligible, indexes] = checkCandidatesEligible(plan, selected);
+      if (eligible) {
+        return std::make_tuple(true, std::move(indexes),
+                               containers::SmallVector<IndexNode*, 8>{
+                                   selected.begin(), selected.end()});
+      }
+    }
+    {
+      std::array<IndexNode*, 3> selected = {candidates[0], candidates[2],
+                                            candidates[3]};
+      auto [eligible, indexes] = checkCandidatesEligible(plan, selected);
+      if (eligible) {
+        return std::make_tuple(true, std::move(indexes),
+                               containers::SmallVector<IndexNode*, 8>{
+                                   selected.begin(), selected.end()});
+      }
+    }
+    {
+      std::array<IndexNode*, 3> selected = {candidates[0], candidates[1],
+                                            candidates[3]};
+      auto [eligible, indexes] = checkCandidatesEligible(plan, selected);
+      if (eligible) {
+        return std::make_tuple(true, std::move(indexes),
+                               containers::SmallVector<IndexNode*, 8>{
+                                   selected.begin(), selected.end()});
+      }
+    }
+
+    // test all 2 subsets
+    {
+      std::array<IndexNode*, 2> selected = {candidates[0], candidates[1]};
+      auto [eligible, indexes] = checkCandidatesEligible(plan, selected);
+      if (eligible) {
+        return std::make_tuple(true, std::move(indexes),
+                               containers::SmallVector<IndexNode*, 8>{
+                                   selected.begin(), selected.end()});
+      }
+    }
+    {
+      std::array<IndexNode*, 2> selected = {candidates[0], candidates[2]};
+      auto [eligible, indexes] = checkCandidatesEligible(plan, selected);
+      if (eligible) {
+        return std::make_tuple(true, std::move(indexes),
+                               containers::SmallVector<IndexNode*, 8>{
+                                   selected.begin(), selected.end()});
+      }
+    }
+    {
+      std::array<IndexNode*, 2> selected = {candidates[0], candidates[3]};
+      auto [eligible, indexes] = checkCandidatesEligible(plan, selected);
+      if (eligible) {
+        return std::make_tuple(true, std::move(indexes),
+                               containers::SmallVector<IndexNode*, 8>{
+                                   selected.begin(), selected.end()});
+      }
+    }
   }
 
   return {false, {}, {}};
@@ -977,13 +1026,18 @@ void findCandidates(IndexNode* indexNode,
   };
 
   while (true) {
+    LOG_JOIN_OPTIMIZER_FIND_CAN << "AT " << indexNode->id() << " "
+                                << indexNode->getTypeString();
     if (handled.contains(indexNode)) {
       break;
     }
     // it is ok to ignore some index nodes if they don't qualify
     // Enumerations always commute.
     if (indexNodeQualifies(*indexNode)) {
+      LOG_JOIN_OPTIMIZER_FIND_CAN << "QUALIFIED";
       candidates.emplace_back(indexNode);
+    } else {
+      LOG_JOIN_OPTIMIZER_FIND_CAN << "IGNORED";
     }
     auto* parent = indexNode->getFirstParent();
     while (true) {
@@ -994,30 +1048,39 @@ void findCandidates(IndexNode* indexNode,
         // it
         auto calc = ExecutionNode::castTo<CalculationNode*>(parent);
         calculations.push_back(calc);
+
+        LOG_JOIN_OPTIMIZER_FIND_CAN << "FOUND CALCULATION ";
         parent = parent->getFirstParent();
         continue;
       } else if (parent->getType() == EN::MATERIALIZE) {
         // we can always move past materialize nodes
         parent = parent->getFirstParent();
+        LOG_JOIN_OPTIMIZER_FIND_CAN << "FOUND MATERIALIZE";
         continue;
       } else if (parent->getType() == EN::ENUMERATE_COLLECTION) {
         // we can move past enumerate collections if their filters
         // do not depend on any calculations
         if (dependsOnPrevCalc(parent)) {
+          LOG_JOIN_OPTIMIZER_FIND_CAN << "HAS DEPENDENT VAR";
           return;
         }
+
+        LOG_JOIN_OPTIMIZER_FIND_CAN << "JOINING PAST EC";
         parent = parent->getFirstParent();
         continue;
       } else if (parent->getType() == EN::INDEX) {
         // check that this index node does not depend on previous
         // calculations
         if (dependsOnPrevCalc(parent)) {
+          LOG_JOIN_OPTIMIZER_FIND_CAN << "HAS DEPENDENT VAR";
           return;
         }
 
+        LOG_JOIN_OPTIMIZER_FIND_CAN << "JOINING PAST INDEX";
         indexNode = ExecutionNode::castTo<IndexNode*>(parent);
         break;
       } else {
+        LOG_JOIN_OPTIMIZER_FIND_CAN << "UNKNOWN NODE exit";
         return;
       }
     }
