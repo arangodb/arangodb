@@ -422,8 +422,6 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                                    bool second)
     : _type(type) {
   switch (_type) {
-    case RocksDBEntryType::ZkdIndexValue:
-    case RocksDBEntryType::UniqueZkdIndexValue:
     case RocksDBEntryType::ZkdVPackIndexValue:
     case RocksDBEntryType::UniqueZkdVPackIndexValue:
     case RocksDBEntryType::VPackIndexValue:
@@ -459,6 +457,13 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
       break;
     }
 
+    case RocksDBEntryType::ZkdIndexValue:
+    case RocksDBEntryType::UniqueZkdIndexValue:
+      TRI_ASSERT(second == false) << "second not supported";
+      _internals.reserve(2 * sizeof(uint64_t));
+      uint64ToPersistent(_internals.buffer(), first);
+      _internals.separate();
+      uint64ToPersistent(_internals.buffer(), first + 1);
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }

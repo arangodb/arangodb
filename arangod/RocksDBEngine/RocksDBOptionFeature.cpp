@@ -327,6 +327,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _partitionFilesForPrimaryIndexCf(false),
       _partitionFilesForEdgeIndexCf(false),
       _partitionFilesForVPackIndexCf(false),
+      _partitionFilesForZkdIndexCf(false),
       _maxWriteBufferNumberCf{0, 0, 0, 0, 0, 0, 0, 0, 0, 0} {
   // setting the number of background jobs to
   _maxBackgroundJobs = static_cast<int32_t>(
