@@ -196,17 +196,12 @@ auto WeightedTwoSidedEnumerator<
     QueueType, PathStoreType, ProviderType,
     PathValidator>::Ball::fetchResults(CandidatesStore& candidates) -> void {
   auto looseEnds = [&]() {
-    switch (_direction) {
-      case Direction::FORWARD: {
-        return candidates.getLeftLooseEnds();
-      }
-      case Direction::BACKWARD: {
-        return candidates.getRightLooseEnds();
-      }
-      default: {
-        ADB_PROD_ASSERT(false);
-      }
+    if (_direction == FORWARD) {
+      return candidates.getLeftLooseEnds();
     }
+
+    ADB_PROD_ASSERT(_direction == Direction::BACKWARD);
+    return candidates.getRightLooseEnds();
   }();
 
   if (!looseEnds.empty()) {
