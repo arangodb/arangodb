@@ -413,8 +413,25 @@ int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
   }
 }
 
+// private ctor, only called during by FixedSizeAllocator in case of emergency
+// to properly initialize the node
+// Note that since C++17 the default constructor of `std::vector` is
+// `noexcept` iff and only if the  default constructor of its `allocator_type`
+// is. Therefore, we can say that `AstNode::AstNode()` is noexcept, if and
+// only if the default constructor of the allocator type of
+// `std::vector<AstNode*>` is noexcept, which is exactly what this fancy
+// `noexcept` expression does.
+AstNode::AstNode() noexcept(noexcept(decltype(members)::allocator_type()))
+    : type(NODE_TYPE_NOP), flags(0), _computedValue(nullptr), members{} {
+  // properly zero-initialize all members
+  value.value._int = 0;
+  value.length = 0;
+  value.type = VALUE_TYPE_NULL;
+}
+
 /// @brief create the node
-AstNode::AstNode(AstNodeType type)
+AstNode::AstNode(AstNodeType type) noexcept(
+    noexcept(decltype(members)::allocator_type()))
     : type(type), flags(0), _computedValue(nullptr) {
   // properly zero-initialize all members
   value.value._int = 0;
@@ -502,6 +519,11 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
           VPackValueLength l;
           char const* p = v.getString(l);
           setStringValue(ast->resources().registerString(p, l), l);
+          TRI_IF_FAILURE("AstNode::throwOnAllocation") {
+            if (getStringView() == "throw!") {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+            }
+          }
           break;
         }
         default: {
@@ -664,24 +686,14 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
   if (VPackSlice subNodes = slice.get("subNodes"); subNodes.isArray()) {
     members.reserve(subNodes.length());
 
-    try {
-      for (VPackSlice it : VPackArrayIterator(subNodes)) {
-        int t = it.get("typeID").getNumericValue<int>();
-        if (static_cast<AstNodeType>(t) == NODE_TYPE_NOP) {
-          // special handling for nop as it is a singleton
-          addMember(ast->createNodeNop());
-        } else {
-          addMember(ast->createNode(it));
-        }
+    for (VPackSlice it : VPackArrayIterator(subNodes)) {
+      int t = it.get("typeID").getNumericValue<int>();
+      if (static_cast<AstNodeType>(t) == NODE_TYPE_NOP) {
+        // special handling for nop as it is a singleton
+        addMember(ast->createNodeNop());
+      } else {
+        addMember(ast->createNode(it));
       }
-    } catch (...) {
-      // prevent leaks
-      for (auto const& it : members) {
-        if (it->type != NODE_TYPE_NOP) {
-          delete it;
-        }
-      }
-      throw;
     }
   }
 }
@@ -872,7 +884,9 @@ void AstNode::sort() {
 }
 
 /// @brief return the type name of a node
-std::string_view AstNode::getTypeString() const {
+std::string_view AstNode::getTypeString() const { return getTypeString(type); }
+
+std::string_view AstNode::getTypeString(AstNodeType type) {
   auto it = kTypeNames.find(static_cast<int>(type));
 
   if (it != kTypeNames.end()) {

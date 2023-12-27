@@ -40,6 +40,7 @@
 #include "Cache/Manager.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ClusterMethods.h"
+#include "Replication2/Version.h"
 #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
 #include "CrashHandler/CrashHandler.h"
 #endif
@@ -1501,8 +1502,14 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
   IndexingDisabler disabler(mthds, state->isSingleOperation());
 
   TRI_IF_FAILURE("RocksDBCollection::insertFail1") {
-    if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
-      return res.reset(TRI_ERROR_DEBUG);
+    if (_logicalCollection.replicationVersion() == replication::Version::ONE ||
+        _logicalCollection.isLeadingShard()) {
+      // in replication2 the modification operations on the follower MUST NOT
+      // fail if they do, we conclude that something else must have gone
+      // terribly wrong and therefore abort the process
+      if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
+        return res.reset(TRI_ERROR_DEBUG);
+      }
     }
   }
 
@@ -1569,11 +1576,18 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
         return res.reset(TRI_ERROR_DEBUG);
       }
       TRI_IF_FAILURE("RocksDBCollection::insertFail2") {
-        if (it == indexes.begin() &&
-            RandomGenerator::interval(uint32_t(1000)) >= 995) {
-          res.reset(TRI_ERROR_DEBUG);
-          // reverse(it); TODO(MBkkt) remove first part of condition
-          break;
+        if (_logicalCollection.replicationVersion() ==
+                replication::Version::ONE ||
+            _logicalCollection.isLeadingShard()) {
+          // in replication2 the modification operations on the follower MUST
+          // NOT fail if they do, we conclude that something else must have gone
+          // terribly wrong and therefore abort the process
+          if (it == indexes.begin() &&
+              RandomGenerator::interval(uint32_t(1000)) >= 995) {
+            res.reset(TRI_ERROR_DEBUG);
+            // reverse(it); TODO(MBkkt) remove first part of condition
+            break;
+          }
         }
       }
       auto& rIdx = basics::downCast<RocksDBIndex>(*it->get());
@@ -1625,8 +1639,14 @@ Result RocksDBCollection::removeDocument(transaction::Methods* trx,
   IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
 
   TRI_IF_FAILURE("RocksDBCollection::removeFail1") {
-    if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
-      return res.reset(TRI_ERROR_DEBUG);
+    if (_logicalCollection.replicationVersion() == replication::Version::ONE ||
+        _logicalCollection.isLeadingShard()) {
+      // in replication2 the modification operations on the follower MUST NOT
+      // fail if they do, we conclude that something else must have gone
+      // terribly wrong and therefore abort the process
+      if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
+        return res.reset(TRI_ERROR_DEBUG);
+      }
     }
   }
 
@@ -1673,11 +1693,18 @@ Result RocksDBCollection::removeDocument(transaction::Methods* trx,
         return res.reset(TRI_ERROR_DEBUG);
       }
       TRI_IF_FAILURE("RocksDBCollection::removeFail2") {
-        if (it == indexes.begin() &&
-            RandomGenerator::interval(uint32_t(1000)) >= 995) {
-          res.reset(TRI_ERROR_DEBUG);
-          // reverse(it); TODO(MBkkt) remove first part of condition
-          break;
+        if (_logicalCollection.replicationVersion() ==
+                replication::Version::ONE ||
+            _logicalCollection.isLeadingShard()) {
+          // in replication2 the modification operations on the follower MUST
+          // NOT fail if they do, we conclude that something else must have gone
+          // terribly wrong and therefore abort the process
+          if (it == indexes.begin() &&
+              RandomGenerator::interval(uint32_t(1000)) >= 995) {
+            res.reset(TRI_ERROR_DEBUG);
+            // reverse(it); TODO(MBkkt) remove first part of condition
+            break;
+          }
         }
       }
       auto& rIdx = basics::downCast<RocksDBIndex>(*it->get());
@@ -1773,8 +1800,14 @@ Result RocksDBCollection::modifyDocument(
   invalidateCacheEntry(key.ref());
 
   TRI_IF_FAILURE("RocksDBCollection::modifyFail1") {
-    if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
-      return res.reset(TRI_ERROR_DEBUG);
+    if (_logicalCollection.replicationVersion() == replication::Version::ONE ||
+        _logicalCollection.isLeadingShard()) {
+      // in replication2 the modification operations on the follower MUST NOT
+      // fail if they do, we conclude that something else must have gone
+      // terribly wrong and therefore abort the process
+      if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
+        return res.reset(TRI_ERROR_DEBUG);
+      }
     }
   }
 
@@ -1801,8 +1834,14 @@ Result RocksDBCollection::modifyDocument(
   savepoint.tainted();
 
   TRI_IF_FAILURE("RocksDBCollection::modifyFail3") {
-    if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
-      return res.reset(TRI_ERROR_DEBUG);
+    if (_logicalCollection.replicationVersion() == replication::Version::ONE ||
+        _logicalCollection.isLeadingShard()) {
+      // in replication2 the modification operations on the follower MUST NOT
+      // fail if they do, we conclude that something else must have gone
+      // terribly wrong and therefore abort the process
+      if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
+        return res.reset(TRI_ERROR_DEBUG);
+      }
     }
   }
 
@@ -1873,11 +1912,18 @@ Result RocksDBCollection::modifyDocument(
         return res.reset(TRI_ERROR_DEBUG);
       }
       TRI_IF_FAILURE("RocksDBCollection::modifyFail2") {
-        if (it == indexes.begin() &&
-            RandomGenerator::interval(uint32_t(1000)) >= 995) {
-          res.reset(TRI_ERROR_DEBUG);
-          // reverse(it); TODO(MBkkt) remove first part of condition
-          break;
+        if (_logicalCollection.replicationVersion() ==
+                replication::Version::ONE ||
+            _logicalCollection.isLeadingShard()) {
+          // in replication2 the modification operations on the follower MUST
+          // NOT fail if they do, we conclude that something else must have gone
+          // terribly wrong and therefore abort the process
+          if (it == indexes.begin() &&
+              RandomGenerator::interval(uint32_t(1000)) >= 995) {
+            res.reset(TRI_ERROR_DEBUG);
+            // reverse(it); TODO(MBkkt) remove first part of condition
+            break;
+          }
         }
       }
       auto& rIdx = basics::downCast<RocksDBIndex>(*it->get());

@@ -1,6 +1,18 @@
 devel
 -----
 
+* Make AQL optimizer rule `move-filters-into-enumerate` also move filters into
+  EnumerateListNodes for early pruning. Previously it could only pull filters 
+  into IndexNodes and EnumerateCollectionNodes.
+
+* Validate that smartgraph attribute exists and is not changed. Previously this
+  check was performed in the KeyGenerator and therefore only performed for
+  inserts, but not for replace or update operations. Therefore replace or update
+  operations could modify or even remove this attribute.
+  In addition, we now return the error code `ERROR_NO_SMART_GRAPH_ATTRIBUTE`
+  instead of `ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE` if the
+  attribute is not set.
+
 * Fix BTS-1636: Under certain circumstances the path found by a weighted
   shortest path search was not the path of smallest weight.
 
@@ -22,6 +34,9 @@ devel
   very large outputs that would consume lots of memory. Exceeding the maximum
   output string length will make the function return `null` and issue a 
   warning.
+
+* Fixed issue #17673: Adds timezone conversion as an optional parameter in
+  all relevant date functions.
 
 * Activate more checks in jemalloc:
     --enable-opt-safety-checks
