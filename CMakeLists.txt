@@ -432,7 +432,13 @@ function(determine_repository_version source_dir build_repository have_build_rep
   elseif(BUILD_REPO_INFO STREQUAL "release")
     execute_process(
       WORKING_DIRECTORY ${source_dir}
-      COMMAND ${GIT_EXE} describe --all --tags --match v${ARANGODB_PLAIN_VERSION}
+      if("${ARANGODB_VERSION_RELEASE_NUMBER}" STREQUAL "" AND ARANGODB_VERSION_RELEASE_TYPE MATCHES "^[0-9]+$")
+        string(REPLACE "-" "." RELEASE_TAG ${ARANGODB_VERSION})
+      else()
+        set(RELEASE_TAG ${ARANGODB_VERSION})
+      endif()
+      set(RELEASE_TAG "v${RELEASE_TAG}")
+      COMMAND ${GIT_EXE} describe --all --tags --match ${RELEASE_TAG}
       OUTPUT_VARIABLE TAG_RAW)
     if (NOT TAG_RAW)
       message(FATAL_ERROR "Can't extract tag using the command: 'git describe --all --tags --match v${ARANGODB_PLAIN_VERSION}")
