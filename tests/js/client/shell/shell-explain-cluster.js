@@ -170,15 +170,9 @@ function ExplainSuite () {
       assertEqual("EnumerateListNode", node.type);
 
       node = nodes[3];
-      assertEqual("CalculationNode", node.type);
-
-      node = nodes[4];
-      assertEqual("FilterNode", node.type);
-
-      node = nodes[5];
       assertEqual("EnumerateListNode", node.type);
 
-      node = nodes[6];
+      node = nodes[4];
       assertEqual("ReturnNode", node.type);
     },
 
