@@ -2253,6 +2253,18 @@ Result transaction::Methods::determineReplicationTypeAndFollowers(
     velocypack::Slice value, OperationOptions& options,
     ReplicationType& replicationType,
     std::shared_ptr<std::vector<ServerID> const>& followers) {
+  if (_state->isDBServer()) {
+    // This failure point is to test the case that a former leader has
+    // resigned in the meantime but still gets an insert request from
+    // a coordinator who does not know this yet. That is, the test sets
+    // the failure point on all servers, including the current leader.
+    TRI_IF_FAILURE("documents::insertLeaderRefusal") {
+      if (operationName == "insert" && value.isObject() &&
+          value.hasKey("ThisIsTheRetryOnLeaderRefusalTest")) {
+        return {TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
+      }
+    }
+  }
   auto replicationVersion = collection.replicationVersion();
   if (replicationVersion == replication::Version::ONE) {
     return determineReplication1TypeAndFollowers(
@@ -2274,17 +2286,6 @@ Result transaction::Methods::determineReplication1TypeAndFollowers(
   TRI_ASSERT(followers == nullptr);
 
   if (_state->isDBServer()) {
-    // This failure point is to test the case that a former leader has
-    // resigned in the meantime but still gets an insert request from
-    // a coordinator who does not know this yet. That is, the test sets
-    // the failure point on all servers, including the current leader.
-    TRI_IF_FAILURE("documents::insertLeaderRefusal") {
-      if (operationName == "insert" && value.isObject() &&
-          value.hasKey("ThisIsTheRetryOnLeaderRefusalTest")) {
-        return {TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
-      }
-    }
-
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection.followers();
     std::string theLeader = followerInfo->getLeader();

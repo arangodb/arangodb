@@ -10,10 +10,16 @@ parameters:
   build-docker-image:
     type: string
     default: "arangodb/build-alpine:3.18-clang16.0-gcc12.2-openssl3.1.4-26c4da3c8"
+  build-windows-image:
+    type: string
+    default: "arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.4-399cc6a6e26"
   # Unused here, but it will be forwarded from config and will cause errors if not defined
   replication-two:
     type: boolean
     default: false
+  skip-windows-tests:
+    type: boolean
+    default: true 
   c-compiler:
     type: string
     default: "clang"
@@ -262,7 +268,6 @@ jobs:
                   - tests/js
                   - enterprise/tests/js
                   - utils
-                  - UnitTests
                   - 3rdParty/iresearch/tests/resources
                   - 3rdParty/rta-makedata
 
@@ -345,24 +350,35 @@ jobs:
       # for windows we build only enterprise, so we can check it out unconditionally
       - checkout-enterprise:
           destination: "D:/CircleCI/project/enterprise"
-      # TODO - sccache currently doesn't work on windows; will be addressed in a separate PR
-      # - run:
-      #     name: Print SCCache Settings
-      #     command: sccache -s
       - run:
           name: "Configure"
           shell: powershell.exe
           command: |
+            $CCacheFolderName = "D:/CircleCI-ccache"
+            if ( -not (Test-Path $CCacheFolderName)) {
+              New-Item $CCacheFolderName -ItemType Directory
+              Write-Host "$($CCacheFolderName) Created successfully"
+            }
             mkdir build
             # make sure we have the latest image!
-            docker pull arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.4-f3c77755ece
+            docker pull << pipeline.parameters.build-windows-image >>
             # TODO - use preset
-            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -w C:/project/build arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.4-f3c77755ece cmake -G 'Visual Studio 17 2022' -T 'v143,host=x64' -DUSE_MAINTAINER_MODE=On -DUSE_GOOGLE_TESTS=On -DUSE_ENTERPRISE=On -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPACKAGING=NSIS -DCMAKE_INSTALL_PREFIX=/ -DSKIP_PACKAGING=On -DUSE_FAILURE_TESTS=On -DSTATIC_EXECUTABLES=On -DOPENSSL_USE_STATIC_LIBS=On -DUSE_STRICT_OPENSSL_VERSION=On ..
+            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -v D:/CircleCI-ccache:C:/ccache -w C:/project/build << pipeline.parameters.build-windows-image >> cmake -G 'Visual Studio 17 2022' -T 'v143,host=x64' -DUSE_MAINTAINER_MODE=On -DUSE_GOOGLE_TESTS=On -DUSE_ENTERPRISE=On -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPACKAGING=NSIS -DCMAKE_INSTALL_PREFIX=/ -DSKIP_PACKAGING=On -DUSE_FAILURE_TESTS=On -DSTATIC_EXECUTABLES=On -DOPENSSL_USE_STATIC_LIBS=On -DUSE_STRICT_OPENSSL_VERSION=On -DUSE_CCACHE=On ..
+      - run:
+          name: "Clear CCache statistics"
+          shell: powershell.exe
+          command: |
+            docker run --rm --isolation process -v D:/CircleCI-ccache:C:/ccache << pipeline.parameters.build-windows-image >> ccache -z
       - run:
           name: "Build"
           shell: powershell.exe
           command: |
-            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -w C:/project/build arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.4-f3c77755ece cmake --build . --config `"RelWithDebInfo`" --parallel -- /p:CL_MPcount=24
+            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -v D:/CircleCI-ccache:C:/ccache -w C:/project/build << pipeline.parameters.build-windows-image >> cmake --build . --config `"RelWithDebInfo`" --parallel -- /p:CL_MPcount=24 
+      - run:
+          name: "Print CCache statistics"
+          shell: powershell.exe
+          command: |
+            docker run --rm --isolation process -v D:/CircleCI-ccache:C:/ccache << pipeline.parameters.build-windows-image >> ccache -s
       - run:
           name: Cleanup build directory
           shell: powershell.exe
@@ -379,18 +395,12 @@ jobs:
             Get-ChildItem *.ifc -Recurse | foreach { Remove-Item -Path $_.FullName }
             Get-ChildItem *.ilk -Recurse | foreach { Remove-Item -Path $_.FullName }
             Get-ChildItem *.tlog -Recurse | where { ! $_.PSIsContainer } | foreach { Remove-Item -Path $_.FullName }
-      #            Get-ChildItem *.dat -Recurse | foreach { Remove-Item -Path $_.FullName }
       # - run:
       #     name: Save workspace for development
       #     shell: powershell.exe
       #     command: |
       #       cd D:/CircleCI/project/
-      #       7z a -r ./workspace CMakePresets.json build/ scripts/ js/ enterprise/js etc/ tests/js enterprise/tests/js utils UnitTests 3rdParty/iresearch/tests/resources 3rdParty/rta-makedata
-      # - run:
-      #     name: SCCache Statistics
-      #     command: sccache -s
-      # - store_artifacts:
-      #     path: /tmp/sccache.log
+      #       7z a -r ./workspace CMakePresets.json build/ scripts/ js/ enterprise/js etc/ tests/js enterprise/tests/js utils 3rdParty/iresearch/tests/resources 3rdParty/rta-makedata
       - when:
           condition: << parameters.publish-artifacts >>
           steps:
@@ -411,7 +421,6 @@ jobs:
                   - tests/js
                   - enterprise/tests/js
                   - utils
-                  - UnitTests
                   - 3rdParty/iresearch/tests/resources
                   - 3rdParty/rta-makedata
 

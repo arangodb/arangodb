@@ -273,9 +273,9 @@ Result ShardingInfo::extractShardKeys(velocypack::Slice info,
           // remove : char at the beginning or end (for enterprise)
           std::string_view stripped;
           if (!key.empty()) {
-            if (key.front() == ':') {
+            if (key.starts_with(':')) {
               stripped = key.substr(1);
-            } else if (key.back() == ':') {
+            } else if (key.ends_with(':')) {
               stripped = key.substr(0, key.size() - 1);
             } else {
               stripped = key;

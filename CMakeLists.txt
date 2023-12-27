@@ -143,8 +143,8 @@ endif()
 message(STATUS "WINDOWS VERSION: ${ARANGODB_WINDOWS_UPSTREAM}")
 
 if (MSVC)
-  option(USE_CLCACHE_MODE
-    "whether we want to use CLCACHE-specific build options"
+  option(USE_CCACHE
+    "whether we want to use ccache"
     OFF
   )
 endif ()
@@ -332,7 +332,13 @@ function(determine_repository_version source_dir build_repository have_build_rep
   elseif(BUILD_REPO_INFO STREQUAL "release")
     execute_process(
       WORKING_DIRECTORY ${source_dir}
-      COMMAND ${GIT_EXE} describe --all --tags --match v${ARANGODB_PLAIN_VERSION}
+      if("${ARANGODB_VERSION_RELEASE_NUMBER}" STREQUAL "" AND ARANGODB_VERSION_RELEASE_TYPE MATCHES "^[1-9][0-9]*$")
+        string(REPLACE "-" "." RELEASE_TAG ${ARANGODB_VERSION})
+      else()
+        set(RELEASE_TAG ${ARANGODB_VERSION})
+      endif()
+      set(RELEASE_TAG "v${RELEASE_TAG}")
+      COMMAND ${GIT_EXE} describe --all --tags --match ${RELEASE_TAG}
       OUTPUT_VARIABLE TAG_RAW)
     if (NOT TAG_RAW)
       message(FATAL_ERROR "Can't extract tag using the command: 'git describe --all --tags --match v${ARANGODB_PLAIN_VERSION}")
@@ -486,12 +492,6 @@ endif ()
 if (LINKER_IS_MOLD AND USE_BUILD_ID_READER)
   message(SEND_ERROR "It looks like you're using mold as a linker. That doesn't work together with USE_BUILD_ID_READER. Either disable USE_BUILD_ID_READER, or use another linker.")
 endif ()
-
-if (CROSS_COMPILING)
-# currently off, need additional params to configure like --host=triple <params>
-  SET(USE_JEMALLOC OFF)
-  SET(USE_LIBUNWIND OFF)
-endif()
 
 ################################################################################
 ## EXTERNAL PROGRAMS
@@ -822,6 +822,7 @@ endfunction()
 # ------------------------------------------------------------------------------
 
 option(USE_JEMALLOC_PROF "use jemalloc profiler" ON)
+option(USE_JEMALLOC_CHECKS "use jemalloc extended safety checks" ON)
 
 if (USE_JEMALLOC)
   add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
@@ -946,10 +947,56 @@ if (MSVC)
   set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2"                             CACHE INTERNAL "C++ release flags")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2"                         CACHE INTERNAL "C++ release with debug info flags")
 
-  if (USE_CLCACHE_MODE)
-    set(CMAKE_VS_GLOBALS "TrackFileAccess=false")
-    add_definitions(/Z7)
-  endif ()
+  if(USE_CCACHE)
+    find_program(CCACHE ccache REQUIRED)
+
+    if(CCACHE)
+      message(STATUS "Using ccache: ${CCACHE}")
+
+      # if ccache is installed with Chocolatey on Windows, the found exe is a shim file hiding the real location.
+      # get real location by querying for the target.
+      execute_process(
+          COMMAND powershell
+              "${CCACHE} --shimgen-help | Select-String -SimpleMatch "Target:"| ForEach-Object { ($_ -split \"'\")[1]  }" 
+          OUTPUT_VARIABLE CCACHE_REAL
+          RESULT_VARIABLE CCACHE_RESULT_CODE
+          OUTPUT_STRIP_TRAILING_WHITESPACE
+      )
+
+      if(CCACHE_RESULT_CODE)
+        set( CCACHE ${CCACHE_REAL} )
+        message(STATUS "Resolved ccache SHIM: '${CCACHE_REAL}'")
+      endif()
+
+      # copy ccache as cl to build directory, this integrates ccache without cmake needing any other setup than a new tool path.
+      # this solution also does not require administrative rights on Windows.
+      file(COPY_FILE 
+        ${CCACHE} ${CMAKE_BINARY_DIR}/cl.exe
+        ONLY_IF_DIFFERENT
+      )
+
+      set(CMAKE_VS_GLOBALS
+        "CLToolExe=cl.exe"
+        "CLToolPath=${CMAKE_BINARY_DIR}"
+        "TrackFileAccess=false"
+        "UseMultiToolTask=true"
+        "DebugInformationFormat=OldStyle"
+      )
+
+      if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+        string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
+      elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+        string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+        string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+      elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+        string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+        string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+      endif()
+    else(CCACHE)
+      message(STATUS "CCACHE NOT FOUND")
+    endif(CCACHE)
+  endif(USE_CCACHE)
 
   add_definitions(/bigobj)
   if (CMAKE_COMPILER_IS_CLANG) # clang-cl

@@ -136,6 +136,15 @@ void RocksDBReadOnlyBaseMethods::MultiGet(rocksdb::Snapshot const* snapshot,
   _db->MultiGet(_readOptions, &family, count, keys, values, statuses, false);
 }
 
+void RocksDBReadOnlyBaseMethods::MultiGet(rocksdb::ColumnFamilyHandle& family,
+                                          size_t count,
+                                          rocksdb::Slice const* keys,
+                                          rocksdb::PinnableSlice* values,
+                                          rocksdb::Status* statuses,
+                                          ReadOwnWrites) {
+  _db->MultiGet(_readOptions, &family, count, keys, values, statuses, false);
+}
+
 void RocksDBReadOnlyBaseMethods::PutLogData(rocksdb::Slice const& blob) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
 }

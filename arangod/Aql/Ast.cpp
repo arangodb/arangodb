@@ -2586,8 +2586,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
           func->hasFlag(Function::Flags::CanReadDocuments)) {
         // we have a document-reading function _after_ a modification/write
         // operation. this is disallowed
-        std::string name("function ");
-        name.append(func->name);
+        auto name = absl::StrCat("function ", func->name);
         THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION,
                                       name.c_str());
       }
@@ -2662,9 +2661,8 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
     if (node->type == NODE_TYPE_COLLECTION) {
       if (ctx->writeCollectionsSeen.find(node->getString()) !=
           ctx->writeCollectionsSeen.end()) {
-        std::string name("collection '");
-        name.append(node->getString());
-        name.push_back('\'');
+        std::string name =
+            absl::StrCat("collection '", node->getStringView(), "'");
         THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION,
                                       name.c_str());
       }

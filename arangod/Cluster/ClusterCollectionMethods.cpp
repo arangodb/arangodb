@@ -115,15 +115,14 @@ auto reactToPreconditionsCreate(AsyncAgencyCommResult&& agencyRes)
   return slice.at(slice.length() - 1).getNumericValue<uint64_t>();
 }
 
-auto waitForOperationRoundtrip(ClusterInfo& ci) {
-  return [&ci](ResultT<uint64_t>&& agencyRaftIndex) -> Result {
-    // Got the Plan version while building.
-    // Let us wait for it
-    if (agencyRaftIndex.fail()) {
-      return agencyRaftIndex.result();
-    }
-    return ci.waitForPlan(agencyRaftIndex.get()).get();
-  };
+auto waitForOperationRoundtrip(ClusterInfo& ci,
+                               ResultT<uint64_t>&& agencyRaftIndex) {
+  // Got the Plan version while building.
+  // Let us wait for it
+  if (agencyRaftIndex.fail()) {
+    return agencyRaftIndex.result();
+  }
+  return ci.waitForPlan(agencyRaftIndex.get()).get();
 }
 
 auto waitForCurrentToCatchUp(
@@ -131,65 +130,58 @@ auto waitForCurrentToCatchUp(
     std::vector<std::pair<std::shared_ptr<AgencyCallback>, std::string>>&
         callbackList,
     double pollInterval) {
-  return [&server, &callbackInfos, &callbackList, pollInterval](Result&& res) {
-    // We waited on the buildingPlan to be loaded in the local cache
-    // Now let us watch for CURRENT to check if all requried changes
-    // ahve been applied
-    if (res.fail()) {
-      // TODO: TRIGGER_CLEANUP
-      return res;
+  // We waited on the buildingPlan to be loaded in the local cache
+  // Now let us watch for CURRENT to check if all required changes
+  // have been applied
+  TRI_IF_FAILURE("ClusterInfo::createCollectionsCoordinator") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  // NOTE: LOGID was 98bca before, duplicate from below
+  LOG_TOPIC("98bc9", DEBUG, Logger::CLUSTER)
+      << "createCollectionCoordinator, Plan changed, waiting for "
+         "success...";
+
+  // Now "busy-loop"
+  while (!server.isStopping()) {
+    auto maybeFinalResult = callbackInfos->getResultIfAllReported();
+    if (maybeFinalResult.has_value()) {
+      // We have a final result. we are complete
+      return maybeFinalResult.value();
     }
 
-    TRI_IF_FAILURE("ClusterInfo::createCollectionsCoordinator") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    // NOTE: LOGID was 98bca before, duplicate from below
-    LOG_TOPIC("98bc9", DEBUG, Logger::CLUSTER)
-        << "createCollectionCoordinator, Plan changed, waiting for "
-           "success...";
-
-    // Now "busy-loop"
-    while (!server.isStopping()) {
-      auto maybeFinalResult = callbackInfos->getResultIfAllReported();
-      if (maybeFinalResult.has_value()) {
-        // We have a final result. we are complete
-        return maybeFinalResult.value();
-      }
-
-      // We do not have a final result. Let's wait for more input
-      // Wait for the next incomplete callback
-      for (auto& [cb, cid] : callbackList) {
-        if (!callbackInfos->hasReported(cid)) {
-          // We do not have result for this collection, wait for it.
-          bool gotTimeout;
-          {
-            // This one has not responded, wait for it.
-            std::unique_lock guard(cb->_cv.mutex);
-            gotTimeout = cb->executeByCallbackOrTimeout(pollInterval);
-          }
-          if (gotTimeout) {
-            // We got woken up by waittime, not by  callback.
-            // Let us check if we skipped other callbacks as well
-            for (auto& [cb2, cid2] : callbackList) {
-              if (callbackInfos->hasReported(cid2)) {
-                // Only re check those where we have not yet found a
-                // result.
-                cb2->refetchAndUpdate(true, false);
-              }
+    // We do not have a final result. Let's wait for more input
+    // Wait for the next incomplete callback
+    for (auto& [cb, cid] : callbackList) {
+      if (!callbackInfos->hasReported(cid)) {
+        // We do not have result for this collection, wait for it.
+        bool gotTimeout;
+        {
+          // This one has not responded, wait for it.
+          std::unique_lock guard(cb->_cv.mutex);
+          gotTimeout = cb->executeByCallbackOrTimeout(pollInterval);
+        }
+        if (gotTimeout) {
+          // We got woken up by waittime, not by  callback.
+          // Let us check if we skipped other callbacks as well
+          for (auto& [cb2, cid2] : callbackList) {
+            if (callbackInfos->hasReported(cid2)) {
+              // Only re check those where we have not yet found a
+              // result.
+              cb2->refetchAndUpdate(true, false);
             }
           }
-          // Break the callback loop,
-          // continue on the check if we completed loop
-          break;
         }
+        // Break the callback loop,
+        // continue on the check if we completed loop
+        break;
       }
     }
+  }
 
-    // If we get here we are not allowed to retry.
-    // The loop above does not contain a break
-    TRI_ASSERT(server.isStopping());
-    return Result{TRI_ERROR_SHUTTING_DOWN};
-  };
+  // If we get here we are not allowed to retry.
+  // The loop above does not contain a break
+  TRI_ASSERT(server.isStopping());
+  return Result{TRI_ERROR_SHUTTING_DOWN};
 }
 
 Result impl(ClusterInfo& ci, ArangodServer& server,
@@ -440,13 +432,11 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
 Result impl(ClusterInfo& ci, ArangodServer& server,
             std::string_view databaseName, TargetCollectionAgencyWriter& writer,
             bool waitForSyncReplication) {
-  AgencyComm ac(server);
-  double pollInterval = ci.getPollInterval();
-  AgencyCallbackRegistry& callbackRegistry = ci.agencyCallbackRegistry();
+  std::vector<ServerID> availableServers = ci.getCurrentDBServers();
 
   // TODO Timeout?
-  std::vector<std::string> collectionNames = writer.collectionNames();
-  auto buildingTransaction = writer.prepareCreateTransaction(databaseName);
+  auto buildingTransaction =
+      writer.prepareCreateTransaction(databaseName, availableServers);
   if (buildingTransaction.fail()) {
     return buildingTransaction.result();
   }
@@ -456,6 +446,7 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
 
   std::vector<std::pair<std::shared_ptr<AgencyCallback>, std::string>>
       callbackList;
+  AgencyCallbackRegistry& callbackRegistry = ci.agencyCallbackRegistry();
   auto unregisterCallbacksGuard =
       scopeGuard([&callbackList, &callbackRegistry]() noexcept {
         try {
@@ -486,16 +477,20 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
   AsyncAgencyComm aac;
   // TODO do we need to handle Error message (thenError?)
 
-  auto future =
-      aac.sendWriteTransaction(120s, std::move(buildingTransaction.get()))
+  double pollInterval = ci.getPollInterval();
+  auto res =
+      aac.withSkipScheduler(true)
+          .sendWriteTransaction(120s, std::move(buildingTransaction.get()))
           .thenValue(::reactToPreconditionsCreate)
-          .thenValue(waitForOperationRoundtrip(ci))
-          .thenValue(waitForCurrentToCatchUp(server, callbackInfos,
-                                             callbackList, pollInterval));
-  // Wait synchronously here.
-  // We cannot easily return the future as the callbacks capture local
-  // variables.
-  return future.get();
+          .get();
+
+  if (auto r = waitForOperationRoundtrip(ci, std::move(res)); r.fail()) {
+    // TODO: TRIGGER_CLEANUP
+    return r;
+  }
+
+  return waitForCurrentToCatchUp(server, callbackInfos, callbackList,
+                                 pollInterval);
 }
 
 template<replication::Version ReplicationVersion>
@@ -977,9 +972,10 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
                                  {databaseExists, oldValue});
 
     using namespace std::chrono_literals;
-    auto future = aac.sendTransaction(120s, trans)
-                      .thenValue(::reactToPreconditions)
-                      .thenValue(waitForOperationRoundtrip(ci));
-    return future.get();
+    auto res = aac.withSkipScheduler(true)
+                   .sendTransaction(120s, trans)
+                   .thenValue(::reactToPreconditions)
+                   .get();
+    return waitForOperationRoundtrip(ci, std::move(res));
   }
 }

@@ -90,9 +90,13 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
                              /*allowEmpty*/ true, /*allowExpansion*/ false));
     } else if (_indexType == TRI_IDX_TYPE_ZKD_INDEX) {
-      _coveredFields =
-          Index::parseFields(info.get(StaticStrings::IndexStoredValues),
+      _prefixFields =
+          Index::parseFields(info.get(StaticStrings::IndexPrefixFields),
                              /*allowEmpty*/ true, /*allowExpansion*/ false);
+      _coveredFields = Index::mergeFields(
+          _prefixFields,
+          Index::parseFields(info.get(StaticStrings::IndexStoredValues),
+                             /*allowEmpty*/ true, /*allowExpansion*/ false));
     }
 
     // check for "estimates" attribute
@@ -134,6 +138,19 @@ void ClusterIndex::toVelocyPack(
   } else if (_indexType == Index::TRI_IDX_TYPE_TTL_INDEX) {
     // no estimates for the ttl index
     builder.add(StaticStrings::IndexEstimates, VPackValue(false));
+  }
+
+  if (_indexType == Index::TRI_IDX_TYPE_ZKD_INDEX) {
+    builder.add(arangodb::velocypack::Value(StaticStrings::IndexPrefixFields));
+    builder.openArray();
+
+    for (auto const& field : _prefixFields) {
+      std::string fieldString;
+      TRI_AttributeNamesToString(field, fieldString);
+      builder.add(VPackValue(fieldString));
+    }
+
+    builder.close();
   }
 
   if (inProgress()) {

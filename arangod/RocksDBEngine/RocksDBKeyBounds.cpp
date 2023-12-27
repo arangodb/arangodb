@@ -113,6 +113,10 @@ RocksDBKeyBounds RocksDBKeyBounds::ZkdIndex(uint64_t indexId) {
   return RocksDBKeyBounds(RocksDBEntryType::ZkdIndexValue, indexId, false);
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::ZkdVPackIndex(uint64_t indexId) {
+  return RocksDBKeyBounds(RocksDBEntryType::ZkdVPackIndexValue, indexId, false);
+}
+
 /// used for seeking lookups
 RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId,
                                                     VPackSlice left,
@@ -245,12 +249,16 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
           RocksDBColumnFamilyManager::Family::FulltextIndex);
     case RocksDBEntryType::LegacyGeoIndexValue:
     case RocksDBEntryType::GeoIndexValue:
-    case RocksDBEntryType::UniqueZkdIndexValue:
       return RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::GeoIndex);
     case RocksDBEntryType::ZkdIndexValue:
+    case RocksDBEntryType::UniqueZkdIndexValue:
       return RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::ZkdIndex);
+    case RocksDBEntryType::ZkdVPackIndexValue:
+    case RocksDBEntryType::UniqueZkdVPackIndexValue:
+      return RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::ZkdVPackIndex);
     case RocksDBEntryType::LogEntry:
       return RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::ReplicatedLogs);
@@ -414,7 +422,8 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                                    bool second)
     : _type(type) {
   switch (_type) {
-    case RocksDBEntryType::ZkdIndexValue:
+    case RocksDBEntryType::ZkdVPackIndexValue:
+    case RocksDBEntryType::UniqueZkdVPackIndexValue:
     case RocksDBEntryType::VPackIndexValue:
     case RocksDBEntryType::UniqueVPackIndexValue: {
       uint8_t const maxSlice[] = {0x02, 0x03, 0x1f};
@@ -448,6 +457,14 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
       break;
     }
 
+    case RocksDBEntryType::ZkdIndexValue:
+    case RocksDBEntryType::UniqueZkdIndexValue:
+      TRI_ASSERT(second == false) << "second not supported";
+      _internals.reserve(2 * sizeof(uint64_t));
+      uint64ToPersistent(_internals.buffer(), first);
+      _internals.separate();
+      uint64ToPersistent(_internals.buffer(), first + 1);
+      break;
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }

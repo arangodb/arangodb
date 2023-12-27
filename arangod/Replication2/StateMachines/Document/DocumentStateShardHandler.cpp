@@ -241,6 +241,7 @@ auto DocumentStateShardHandler::prepareShardsForLogReplay() noexcept -> void {
                                           "claims to be an inverted index";
         if (maybeInvertedIndex) {
           maybeInvertedIndex->commit(true);
+          maybeInvertedIndex->finishCreation();
         }
       }
       if (index->type() == Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
@@ -251,6 +252,7 @@ auto DocumentStateShardHandler::prepareShardsForLogReplay() noexcept -> void {
             << "Failed to downcast an index that claims to be a link index";
         if (maybeSearchLink) {
           maybeSearchLink->commit(true);
+          maybeSearchLink->finishCreation();
         }
       }
     }

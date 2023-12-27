@@ -182,6 +182,11 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for zkd index
   //////////////////////////////////////////////////////////////////////////////
+  void constructZkdIndexValue(uint64_t objectId, velocypack::Slice prefix,
+                              const zkd::byte_string& value);
+  void constructZkdIndexValue(uint64_t objectId, velocypack::Slice prefix,
+                              const zkd::byte_string& value,
+                              LocalDocumentId documentId);
   void constructZkdIndexValue(uint64_t objectId, const zkd::byte_string& value);
   void constructZkdIndexValue(uint64_t objectId, const zkd::byte_string& value,
                               LocalDocumentId documentId);
@@ -297,7 +302,13 @@ class RocksDBKey {
   ///
   /// May be called only on zkd index values
   //////////////////////////////////////////////////////////////////////////////
-  static zkd::byte_string_view zkdIndexValue(rocksdb::Slice const& slice);
+  static zkd::byte_string_view zkdVPackIndexCurveValue(
+      rocksdb::Slice const& slice);
+  static zkd::byte_string_view zkdUniqueVPackIndexCurveValue(
+      rocksdb::Slice const& slice);
+  static zkd::byte_string_view zkdIndexCurveValue(rocksdb::Slice const& slice);
+  static zkd::byte_string_view zkdUniqueIndexCurveValue(
+      rocksdb::Slice const& slice);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts log index from key
@@ -360,7 +371,14 @@ class RocksDBKey {
   static std::string_view primaryKey(char const* data, size_t size);
   static std::string_view vertexId(char const* data, size_t size);
   static VPackSlice indexedVPack(char const* data, size_t size);
-  static zkd::byte_string_view zkdIndexValue(char const* data, size_t size);
+  static zkd::byte_string_view zkdIndexCurveValue(char const* data,
+                                                  size_t size);
+  static zkd::byte_string_view zkdUniqueIndexCurveValue(char const* data,
+                                                        size_t size);
+  static zkd::byte_string_view zkdVPackIndexCurveValue(char const* data,
+                                                       size_t size);
+  static zkd::byte_string_view zkdUniqueVPackIndexCurveValue(char const* data,
+                                                             size_t size);
 
  private:
   static const char _stringSeparator;

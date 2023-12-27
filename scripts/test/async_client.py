@@ -200,12 +200,14 @@ def kill_children(identifier, params, children):
         if one_child.pid in killed:
             continue
         try:
-            killed.append(one_child.pid)
-            err += add_message_to_report(
-                params,
-                f"{identifier}: killing {one_child.name()} - {str(one_child.pid)}",
-            )
-            one_child.resume()
+            pname = one_child.name()
+            if pname not in ["svchost.exe", "conhost.exe", "mscorsvw.exe"]:
+                killed.append(one_child.pid)
+                err += add_message_to_report(
+                    params,
+                    f"{identifier}: killing {pname} - {str(one_child.pid)}",
+                )
+                one_child.resume()
         except FileNotFoundError:
             pass
         except AttributeError:

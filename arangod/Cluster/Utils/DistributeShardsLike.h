@@ -33,9 +33,13 @@ struct DistributeShardsLike : public IShardDistributionFactory {
   DistributeShardsLike(
       std::function<ResultT<std::vector<ResponsibleServerList>>()>
           getOriginalSharding);
-  Result planShardsOnServers(
-      std::vector<ServerID> availableServers,
-      std::unordered_set<ServerID>& serversPlanned) override;
+
+  auto checkDistributionPossible(std::vector<ServerID>& availableServers)
+      -> Result override;
+
+  auto planShardsOnServers(std::vector<ServerID> availableServers,
+                           std::unordered_set<ServerID>& serversPlanned)
+      -> Result override;
 
  private:
   std::function<ResultT<std::vector<ResponsibleServerList>>()>

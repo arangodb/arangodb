@@ -53,7 +53,7 @@ namespace tests {
 namespace aql {
 
 // test inner executor behaviour
-class EnumerateListExecutorTest : public ::testing::Test {
+class EnumerateListExecutorTest : public AqlExecutorTestCase<false> {
  protected:
   ExecutionState state;
   NoStats stats;
@@ -62,7 +62,9 @@ class EnumerateListExecutorTest : public ::testing::Test {
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager{monitor};
-  EnumerateListExecutorTest() : itemBlockManager(monitor) {}
+
+  EnumerateListExecutorTest()
+      : AqlExecutorTestCase(), itemBlockManager(monitor) {}
 };
 
 TEST_F(EnumerateListExecutorTest, test_check_state_first_row_border) {
@@ -79,7 +81,7 @@ TEST_F(EnumerateListExecutorTest, test_check_state_first_row_border) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 5)};
   RegisterInfos registerInfos(RegIdSet{3}, RegIdSet{4}, 4, 5, {},
                               {RegIdSet{0, 1, 2, 3}});
-  EnumerateListExecutorInfos executorInfos(3, 4);
+  EnumerateListExecutorInfos executorInfos(3, 4, *fakedQuery, nullptr, {});
   EnumerateListExecutor testee(fetcher, executorInfos);
   SharedAqlItemBlockPtr inBlock =
       buildBlock<4>(itemBlockManager, {{{{1}, {2}, {3}, {R"([true, 1, 2])"}}},
@@ -118,7 +120,7 @@ TEST_F(EnumerateListExecutorTest, test_check_state_second_row_border) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 5)};
   RegisterInfos registerInfos(RegIdSet{3}, RegIdSet{4}, 4, 5, {},
                               {RegIdSet{0, 1, 2, 3}});
-  EnumerateListExecutorInfos executorInfos(3, 4);
+  EnumerateListExecutorInfos executorInfos(3, 4, *fakedQuery, nullptr, {});
   EnumerateListExecutor testee(fetcher, executorInfos);
   SharedAqlItemBlockPtr inBlock =
       buildBlock<4>(itemBlockManager, {{{{1}, {2}, {3}, {R"([true, 1, 2])"}}},
@@ -155,7 +157,8 @@ class EnumerateListExecutorTestProduce
   SharedAqlItemBlockPtr block;
   NoStats stats;
 
-  EnumerateListExecutorTestProduce() : executorInfos(0, 1) {}
+  EnumerateListExecutorTestProduce()
+      : executorInfos(0, 1, *fakedQuery, nullptr, {}) {}
 
   auto makeRegisterInfos(RegisterId inputRegister = 0,
                          RegisterId outputRegister = 1,
@@ -176,7 +179,8 @@ class EnumerateListExecutorTestProduce
   auto makeExecutorInfos(RegisterId inputRegister = 0,
                          RegisterId outputRegister = 1)
       -> EnumerateListExecutorInfos {
-    EnumerateListExecutorInfos infos{inputRegister, outputRegister};
+    EnumerateListExecutorInfos infos{
+        inputRegister, outputRegister, *fakedQuery, nullptr, {}};
     return infos;
   }
 };
