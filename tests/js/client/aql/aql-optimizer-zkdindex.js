@@ -213,6 +213,27 @@ function optimizerRuleZkd2dIndexTestSuite() {
             assertEqual([0.1, 0.2, 0.3, 0.4, 0.5].sort(), res);
         },
 
+
+      testEstimates: function () {
+        col = db._create(colName + "2");
+        col.ensureIndex({
+          type: 'zkd',
+          name: 'zkdIndex',
+          fields: ['x', 'y'],
+          fieldValueTypes: 'double',
+        });
+
+        db._query(aql`
+        FOR str IN ["foo", "bar", "baz"]
+          FOR i IN 1..2
+            INSERT {x: i, y: i, z: i, stringValue: str} INTO ${col}
+      `);
+        const index = col.index("zkdIndex");
+        assertFalse(index.estimates);
+        assertFalse(index.hasOwnProperty("selectivityEstimate"));
+        col.drop();
+      },
+
     };
 }
 

@@ -83,6 +83,12 @@ function optimizerRuleZkd2dIndexTestSuite() {
             assertEqual([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], res);
         },
 
+      testEstimates: function () {
+          const index = col.index("zkdIndex");
+          assertTrue(index.estimates);
+          assertEqual(index.selectivityEstimate, 1);
+      },
+
       testIndexAccess2: function () {
         const query = aql`
         FOR d IN ${col}

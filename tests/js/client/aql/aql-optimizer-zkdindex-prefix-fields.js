@@ -69,6 +69,27 @@ function optimizerRuleZkd2dIndexTestSuite() {
       assertEqual(result.map(([a, b]) => a).sort(), [5, 6, 7]);
     },
 
+    testEstimates: function () {
+      col = db._create(colName);
+      col.ensureIndex({
+        type: 'zkd',
+        name: 'zkdIndex',
+        fields: ['x', 'y'],
+        fieldValueTypes: 'double',
+        storedValues: ["z"],
+        prefixFields: ["stringValue"],
+      });
+
+      db._query(aql`
+        FOR str IN ["foo", "bar", "baz"]
+          FOR i IN 1..2
+            INSERT {x: i, y: i, z: i, stringValue: str} INTO ${col}
+      `);
+      const index = col.index("zkdIndex");
+      assertTrue(index.estimates);
+      assertTrue(index.hasOwnProperty("selectivityEstimate"));
+    },
+
     testMultiPrefix: function () {
       col = db._create(colName);
       col.ensureIndex({
@@ -136,6 +157,43 @@ function optimizerRuleZkd2dIndexTestSuite() {
         assertEqual(b, "foo");
         assertEqual(c, -2);
         assertTrue(5 <= a && a <= 7);
+      }
+    },
+
+    testNoStoredValues: function () {
+      col = db._create(colName);
+      col.ensureIndex({
+        type: 'zkd',
+        name: 'zkdIndex',
+        fields: ['x', 'y'],
+        fieldValueTypes: 'double',
+        prefixFields: ["stringValue", "value"],
+      });
+
+      db._query(aql`
+        FOR str IN ["foo", "bar", "baz"]
+        FOR v IN [1, 19, -2]
+          FOR i IN 1..100
+            INSERT {x: i, y: i, z: i, stringValue: str, value: v} INTO ${col}
+      `);
+
+      const query = aql`
+        FOR doc IN ${col}
+          FILTER doc.x >= 5 && doc.y <= 7 && doc.stringValue == "foo" && doc.value == -2
+          return [doc.stringValue, doc.value]
+      `;
+
+      const res = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
+      const indexNodes = res.plan.nodes.filter(n => n.type === "IndexNode");
+      assertEqual(indexNodes.length, 1);
+      const index = indexNodes[0];
+      assertTrue(index.indexCoversProjections, true);
+      assertEqual(normalize(index.projections), normalize(["stringValue", "value"]));
+
+      const result = db._createStatement({query: query.query, bindVars: query.bindVars}).execute().toArray();
+      for (const [b, c] of result) {
+        assertEqual(b, "foo");
+        assertEqual(c, -2);
       }
     },
 

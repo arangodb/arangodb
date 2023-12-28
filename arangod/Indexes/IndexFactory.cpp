@@ -767,7 +767,7 @@ Result processIndexSortedPrefixFields(VPackSlice definition,
   if (!fieldsSlice.isNone()) {
     if (fieldsSlice.isArray()) {
       res = IndexFactory::validateFieldsDefinition(
-          definition, StaticStrings::IndexStoredValues, minFields, maxFields,
+          definition, StaticStrings::IndexPrefixFields, minFields, maxFields,
           allowSubAttributes, /*allowIdAttribute*/ true);
       if (res.ok() && fieldsSlice.length() > 0) {
         std::unordered_set<std::string_view> fields;
@@ -775,15 +775,18 @@ Result processIndexSortedPrefixFields(VPackSlice definition,
           fields.insert(it.stringView());
         }
         auto normalFields = definition.get(StaticStrings::IndexStoredValues);
-        TRI_ASSERT(normalFields.isArray());
-        for (VPackSlice it : VPackArrayIterator(normalFields)) {
-          if (!fields.insert(it.stringView()).second) {
-            res.reset(TRI_ERROR_BAD_PARAMETER,
-                      "duplicate attribute name (overlap between index sorted "
-                      "prefix fields "
-                      "and index "
-                      "stored values list)");
-            break;
+        if (!normalFields.isNone()) {
+          TRI_ASSERT(normalFields.isArray());
+          for (VPackSlice it : VPackArrayIterator(normalFields)) {
+            if (!fields.insert(it.stringView()).second) {
+              res.reset(
+                  TRI_ERROR_BAD_PARAMETER,
+                  "duplicate attribute name (overlap between index sorted "
+                  "prefix fields "
+                  "and index "
+                  "stored values list)");
+              break;
+            }
           }
         }
 

@@ -285,6 +285,11 @@ struct ZkdIndexFactory : public DefaultIndexFactory {
           StaticStrings::ObjectId,
           arangodb::velocypack::Value(std::to_string(TRI_NewTickServer())));
     }
+    if (isCreation) {
+      bool est = basics::VelocyPackHelper::getBooleanValue(
+          definition, StaticStrings::IndexEstimates, true);
+      normalized.add(StaticStrings::IndexEstimates, velocypack::Value(est));
+    }
 
     return IndexFactory::enhanceJsonIndexZkd(definition, normalized,
                                              isCreation);

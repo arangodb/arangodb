@@ -104,7 +104,8 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
       _estimates = true;
     } else if (_indexType == TRI_IDX_TYPE_HASH_INDEX ||
                _indexType == TRI_IDX_TYPE_SKIPLIST_INDEX ||
-               _indexType == TRI_IDX_TYPE_PERSISTENT_INDEX) {
+               _indexType == TRI_IDX_TYPE_PERSISTENT_INDEX ||
+               _indexType == TRI_IDX_TYPE_ZKD_INDEX) {
       if (VPackSlice s = info.get(StaticStrings::IndexEstimates);
           s.isBoolean()) {
         _estimates = s.getBoolean();
@@ -133,7 +134,8 @@ void ClusterIndex::toVelocyPack(
 
   if (_indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
       _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
-      _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX) {
+      _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX ||
+      _indexType == Index::TRI_IDX_TYPE_ZKD_INDEX) {
     builder.add(StaticStrings::IndexEstimates, VPackValue(_estimates));
   } else if (_indexType == Index::TRI_IDX_TYPE_TTL_INDEX) {
     // no estimates for the ttl index
@@ -237,7 +239,8 @@ bool ClusterIndex::hasSelectivityEstimate() const {
            _indexType == Index::TRI_IDX_TYPE_TTL_INDEX ||
            (_estimates && (_indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
                            _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
-                           _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX));
+                           _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX ||
+                           _indexType == Index::TRI_IDX_TYPE_ZKD_INDEX));
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   } else if (_engineType == ClusterEngineType::MockEngine) {
     return false;
