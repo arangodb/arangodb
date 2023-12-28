@@ -2900,6 +2900,7 @@ namespace {
 
 struct RocksDBVPackStreamOptions {
   std::size_t keyPrefixSize;
+  std::size_t constantsSize;
   struct ProjectedValuePair {
     explicit ProjectedValuePair(std::size_t resultOffset,
                                 std::size_t indexOffset)
@@ -2923,6 +2924,8 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
   RocksDBKeyBounds _bounds;
   rocksdb::Slice _end;
   RocksDBKey _rocksdbKey;
+  RocksDBKey _rocksdbKeyUpperBound;
+  std::span<VPackSlice> _constants;
 
   RocksDBVPackStreamIterator(RocksDBVPackIndex const* index,
                              transaction::Methods* trx,
@@ -2940,7 +2943,6 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
       TRI_ASSERT(opts.prefix_same_as_start);
       opts.iterate_upper_bound = &_end;
     });
-    _iterator->Seek(_bounds.start());
   }
 
   bool position(std::span<VPackSlice> span) const override {
@@ -2960,6 +2962,9 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
   void loadKey(std::span<VPackSlice> span) {
     _builder.clear();
     _builder.openArray();
+    for (auto c : _constants) {
+      _builder.add(c);
+    }
     for (auto k : span) {
       _builder.add(k);
     }
@@ -2967,13 +2972,11 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
   }
 
   void storeKey(std::span<VPackSlice> into, VPackSlice keySlice) const {
-    std::size_t idx = 0;
-    for (auto k : VPackArrayIterator(keySlice)) {
-      if (idx >= _options.keyPrefixSize) {
-        break;
-      }
-      into[idx++] = k;
-    }
+    TRI_ASSERT(into.size() == _options.keyPrefixSize);
+    auto keyIter = VPackArrayIterator(keySlice);
+    std::advance(keyIter, _options.constantsSize);
+    TRI_ASSERT(keyIter != keyIter.end());
+    std::copy_n(keyIter, _options.keyPrefixSize, into.begin());
   }
 
   bool seek(std::span<VPackSlice> span) override {
@@ -3026,8 +3029,38 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
     storeKey(cache, _cache);
   }
 
-  bool reset(std::span<VPackSlice> span) override {
-    _iterator->Seek(_bounds.start());
+  static void constructKey(VPackBuilder& builder,
+                           std::span<VPackSlice> constants,
+                           std::span<VPackSlice const> values) {
+    builder.openArray();
+    for (auto c : constants) {
+      builder.add(c);
+    }
+    for (auto v : values) {
+      builder.add(v);
+    }
+    builder.close();  // array
+  }
+
+  bool reset(std::span<VPackSlice> span,
+             std::span<VPackSlice> constants) override {
+    TRI_ASSERT(constants.size() == _options.constantsSize);
+    _constants = constants;
+    VPackBuilder keyBuilder;
+    constructKey(keyBuilder, constants, {});
+
+    RocksDBKey key;
+    key.constructUniqueVPackIndexValue(_index->objectId(), keyBuilder.slice());
+
+    // we need to update the bounds to reflect the new key
+    keyBuilder.clear();
+    std::array<VPackSlice, 1> values = {VPackSlice::maxKeySlice()};
+    constructKey(keyBuilder, constants, values);
+    _rocksdbKeyUpperBound.constructUniqueVPackIndexValue(_index->objectId(),
+                                                         keyBuilder.slice());
+    _end = _rocksdbKeyUpperBound.string();
+    _iterator->Seek(key.string());
+
     return position(span);
   }
 };
@@ -3044,6 +3077,8 @@ std::unique_ptr<AqlIndexStreamIterator> RocksDBVPackIndex::streamForCondition(
 
   RocksDBVPackStreamOptions streamOptions;
   streamOptions.keyPrefixSize = opts.usedKeyFields.size();
+  streamOptions.constantsSize = opts.constantFields.size();
+
   for (auto [offset, idx] : enumerate(opts.projectedFields)) {
     if (idx < _fields.size()) {
       streamOptions.projectedKeyValues.emplace_back(offset, idx);
@@ -3082,6 +3117,17 @@ bool RocksDBVPackIndex::checkSupportsStreamInterface(
 
   // for persisted indexes, we can only use a prefix of the indexed keys
   std::size_t idx = 0;
+  if (streamOpts.usedKeyFields.size() != 1) {
+    return false;
+  }
+
+  for (auto constantValue : streamOpts.constantFields) {
+    if (constantValue != idx) {
+      return false;
+    }
+    idx += 1;
+  }
+
   for (auto keyIdx : streamOpts.usedKeyFields) {
     if (keyIdx != idx) {
       return false;

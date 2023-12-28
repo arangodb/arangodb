@@ -28,6 +28,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/QueryContext.h"
 #include "Basics/system-compiler.h"
+#include "Aql/ExecutorExpressionContext.h"
 #include "Logger/LogMacros.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -153,7 +154,31 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   while (inputRange.hasDataRow() && !output.isFull()) {
     if (!_currentRow) {
       std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
-      _strategy->reset();
+      _constantBuilder.clear();
+      _constantSlices.clear();
+      _constantBuilder.openArray();
+
+      for (auto const& idx : _infos.indexes) {
+        if (!idx.constantExpressions.empty()) {
+          for (auto& expr : idx.constantExpressions) {
+            bool mustDestroy = false;
+            ExecutorExpressionContext ctx{_trx, *_infos.query, _functionsCache,
+                                          _currentRow,
+                                          idx.expressionVarsToRegs};
+
+            aql::AqlValue res = expr->execute(&ctx, mustDestroy);
+            aql::AqlValueGuard guard{res, mustDestroy};
+            LOG_JOIN << "Expression result: " << res.slice().toJson();
+            _constantBuilder.add(res.slice());
+          }
+        }
+      }
+      _constantBuilder.close();  // array
+
+      for (VPackSlice it : VPackArrayIterator(_constantBuilder.slice())) {
+        _constantSlices.push_back(it);
+      }
+      _strategy->reset(_constantSlices);
     }
 
     [[maybe_unused]] std::size_t rowCount = 0;
@@ -505,7 +530,7 @@ auto JoinExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
   while (inputRange.hasDataRow() && clientCall.needSkipMore()) {
     if (!_currentRow) {
       std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
-      _strategy->reset();
+      _strategy->reset({});
     }
 
     auto [hasMore, amountOfSeeks] =
@@ -652,12 +677,14 @@ void JoinExecutor::constructStrategy() {
   std::vector<IndexJoinStrategyFactory::Descriptor> indexDescription;
   for (auto const& idx : _infos.indexes) {
     IndexStreamOptions options;
-    // TODO right now we only support the first indexed field
-    options.usedKeyFields = {0};
+    options.usedKeyFields = idx.usedKeyFields;
+    options.constantFields = idx.constantFields;
 
     auto& desc = indexDescription.emplace_back();
     desc.isUnique = idx.index->unique();
     desc.numProjections = 0;
+    desc.numConstants = idx.constantFields.size();
+    desc.numKeyComponents = idx.usedKeyFields.size();
 
     if (idx.projections.usesCoveringIndex()) {
       TRI_ASSERT(!idx.filter.has_value() ||
@@ -684,6 +711,7 @@ void JoinExecutor::constructStrategy() {
       desc.numProjections += idx.filter->projections.size();
     }
     LOG_JOIN << "PROJECTIONS FOR INDEX " << options.projectedFields;
+
     auto stream = idx.index->streamForCondition(&_trx, options);
     TRI_ASSERT(stream != nullptr);
     desc.iter = std::move(stream);
@@ -693,6 +721,6 @@ void JoinExecutor::constructStrategy() {
   // special implementations for n = 2, 3, ...
   // TODO maybe make this an template parameter
   _strategy = IndexJoinStrategyFactory{}.createStrategy(
-      std::move(indexDescription), 1,
+      std::move(indexDescription),
       _infos.query->queryOptions().desiredJoinStrategy);
 }
