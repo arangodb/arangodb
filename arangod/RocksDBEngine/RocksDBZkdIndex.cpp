@@ -579,10 +579,23 @@ auto zkd::supportsFilterCondition(
     return {};  // all prefix values have to be assigned
   }
 
-  // TODO -- actually return costs
-  auto costs = Index::FilterCosts::defaultCosts(itemsInIndex);
-  costs.coveredAttributes = extractedBounds.size() + extractedPrefix.size();
+  Index::FilterCosts costs;
   costs.supportsCondition = true;
+  costs.coveredAttributes = extractedBounds.size() + extractedPrefix.size();
+
+  // we look up a single point using the prefix values
+  const double estimatedElementsOnCurve =
+      index->hasSelectivityEstimate() ? 1. / index->selectivityEstimate()
+                                      : static_cast<double>(itemsInIndex);
+
+  const double searchBoxVolume = 1.;
+
+  costs.estimatedItems =
+      static_cast<size_t>(estimatedElementsOnCurve * searchBoxVolume);
+
+  // account for post filtering
+  costs.estimatedCosts = static_cast<double>(
+      costs.estimatedItems + costs.estimatedItems * unusedExpressions.size());
   return costs;
 }
 
