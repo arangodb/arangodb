@@ -122,6 +122,9 @@ function makeDataWrapper (options) {
             stoppedDbServerInstance.shutDownOneInstance(counters, false, 10);
             stoppedDbServerInstance.waitForExit();
             moreargv = [ '--disabledDbserverUUID', stoppedDbServerInstance.id];
+            if (this.options.replicationVersion === 2 || this.options.replicationVersion === "2") {
+              this.instanceManager.removeServerFromAgency(stoppedDbServerInstance.id);
+            }
           }
         }
         let logFile = fs.join(fs.getTempPath(), `rta_out_${count}.log`);
