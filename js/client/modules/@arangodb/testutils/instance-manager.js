@@ -632,6 +632,7 @@ class instanceManager {
       }
       // Server could not be removed, give supervision some more time
       // and then try again.
+      print("Wait for supervision to clear responsibilty of server");
       require("internal").wait(0.2);
     }
     // If we reach this place the server could not be removed
