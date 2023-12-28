@@ -287,7 +287,6 @@ function optimizerRuleZkdTraversal() {
           filter p.edges[2].x >= 5 and p.edges[2].w >= 5 and p.edges[2].y <= 8 and p.edges[2].foo == "bar"
           return p
       `;
-      db._explain(query);
 
       const res = db._createStatement(query).explain();
       const traversalNodes = res.plan.nodes.filter(n => n.type === "TraversalNode");
