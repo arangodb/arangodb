@@ -106,7 +106,7 @@ const IndexJoinTestSuite = function () {
     return query;
   };
 
-  const debugPrint = print; // function() {};
+  const debugPrint = function() {}; // print
 
   const checkExpectJoin = function (doc1Const, doc2Const, doc3Const, doc12Join, doc13Join) {
     const checkJoinable = function (consts, joinAttrib, isFirstCandidate) {
