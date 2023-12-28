@@ -588,7 +588,9 @@ auto zkd::supportsFilterCondition(
       index->hasSelectivityEstimate() ? 1. / index->selectivityEstimate()
                                       : static_cast<double>(itemsInIndex);
 
-  const double searchBoxVolume = 1.;
+  // each additional bound reduces the volume
+  const double searchBoxVolume =
+      1. / static_cast<double>(extractedBounds.size());
 
   costs.estimatedItems =
       static_cast<size_t>(estimatedElementsOnCurve * searchBoxVolume);
