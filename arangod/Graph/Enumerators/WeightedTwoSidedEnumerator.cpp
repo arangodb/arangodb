@@ -195,25 +195,14 @@ template<class QueueType, class PathStoreType, class ProviderType,
 auto WeightedTwoSidedEnumerator<
     QueueType, PathStoreType, ProviderType,
     PathValidator>::Ball::fetchResults(CandidatesStore& candidates) -> void {
-  std::vector<Step*> looseEnds{};
+  auto looseEnds = [&]() {
+    if (_direction == FORWARD) {
+      return candidates.getLeftLooseEnds();
+    }
 
-  if (_direction == Direction::FORWARD) {
-    for (auto& [weight, leftMeetingPoint, rightMeetingPoint] :
-         candidates.getQueue()) {
-      auto& step = leftMeetingPoint;
-      if (!step.isProcessable()) {
-        looseEnds.emplace_back(&step);
-      }
-    }
-  } else {
-    for (auto& [weight, leftMeetingPoint, rightMeetingPoint] :
-         candidates.getQueue()) {
-      auto& step = rightMeetingPoint;
-      if (!step.isProcessable()) {
-        looseEnds.emplace_back(&step);
-      }
-    }
-  }
+    ADB_PROD_ASSERT(_direction == Direction::BACKWARD);
+    return candidates.getRightLooseEnds();
+  }();
 
   if (!looseEnds.empty()) {
     // Will throw all network errors here
