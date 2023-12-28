@@ -570,7 +570,6 @@ auto zkd::supportsFilterCondition(
   std::unordered_set<aql::AstNode const*> unusedExpressions;
   extractBoundsFromCondition(index, node, reference, extractedPrefix,
                              extractedBounds, unusedExpressions);
-
   if (extractedBounds.empty()) {
     return {};
   }
@@ -589,15 +588,26 @@ auto zkd::supportsFilterCondition(
                                       : static_cast<double>(itemsInIndex);
 
   // each additional bound reduces the volume
+  const double volumeReductionFactor = 1.4;  // eyeballed, 2 might be too much
   const double searchBoxVolume =
-      1. / static_cast<double>(extractedBounds.size());
+      static_cast<double>(index->fields().size()) /
+      pow(volumeReductionFactor, static_cast<double>(extractedBounds.size()));
 
   costs.estimatedItems =
       static_cast<size_t>(estimatedElementsOnCurve * searchBoxVolume);
 
+  const size_t unusedDimensions =
+      index->fields().size() - extractedBounds.size();
+
+  double const unusedDimensionCost =
+      0.5 * static_cast<double>(unusedDimensions * costs.estimatedItems);
+  auto const unusedExpressionCost =
+      static_cast<double>(costs.estimatedItems * unusedExpressions.size());
+
   // account for post filtering
-  costs.estimatedCosts = static_cast<double>(
-      costs.estimatedItems + costs.estimatedItems * unusedExpressions.size());
+  costs.estimatedCosts = static_cast<double>(costs.estimatedItems) +
+                         unusedDimensionCost + unusedExpressionCost;
+
   return costs;
 }
 

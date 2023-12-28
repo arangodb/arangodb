@@ -196,10 +196,94 @@ function optimizerRuleZkd2dIndexTestSuite() {
         assertEqual(c, -2);
       }
     },
+  };
+}
+
+const gm = require('@arangodb/enterprise-graph');
+const waitForEstimatorSync = require('@arangodb/test-helper').waitForEstimatorSync;
+
+function optimizerRuleZkdTraversal() {
+  const database = "MyTestZkdTraversalDB";
+  const graph = "mygraph";
+  const vertexCollection = "v";
+  const edgeCollection = "e";
+  const indexName = "myZkdIndex";
+  const levelIndexName = "myZkdIndexLevel";
+
+  return {
+    setUpAll: function () {
+      db._createDatabase(database);
+      db._useDatabase(database);
+    },
+
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(database);
+    },
+
+    testZkdTraversal: function () {
+      gm._create(graph,
+          [{"collection": edgeCollection, "to": [vertexCollection], "from": [vertexCollection]}],
+          [],
+          {numberOfShards: 3, isSmart: true});
+
+      db[edgeCollection].ensureIndex({
+        type: 'zkd',
+        name: indexName,
+        fields: ["x", "y"],
+        prefixFields: ["_from"],
+        fieldValueTypes: 'double',
+      });
+      db[edgeCollection].ensureIndex({
+        type: 'zkd',
+        name: levelIndexName,
+        fields: ["x", "y", "w"],
+        storedValues: ["foo"],
+        prefixFields: ["_from"],
+        fieldValueTypes: 'double',
+      });
+      db._query(`
+        for i in 0..99
+          insert {_key: CONCAT("${vertexCollection}", i)} into ${vertexCollection}
+          for j in 1..100
+            let x = RAND() * 10
+            let y = RAND() * 10
+            let w = RAND() * 10
+            let from = CONCAT("${vertexCollection}/v", i)
+            let to = CONCAT("${vertexCollection}/v", (j+1)%100)
+            insert {_from: from, _to: to, x, y, w} into ${edgeCollection}
+      `);
+
+      waitForEstimatorSync();
+
+      const query = `
+        for v, e, p in 0..3 outbound "${vertexCollection}/v1" graph "${graph}"
+        options {bfs: true, uniqueVertices: "path"}
+          filter p.edges[*].x all >= 5 and p.edges[*].y all <= 7
+          filter p.edges[2].w >= 5 and p.edges[2].y <= 8 and p.edges[2].foo == "bar"
+          return p
+      `;
+      //db._explain(query);
+
+      const res = db._createStatement(query).explain();
+      const traversalNodes = res.plan.nodes.filter(n => n.type === "TraversalNode");
+
+      traversalNodes.forEach(function (node) {
+        const baseIndexes = node.indexes.base;
+        assertEqual(1, baseIndexes.length);
+        assertEqual(baseIndexes[0].name, indexName);
+
+        assertEqual(["2"], Object.keys(node.indexes.levels));
+        const levelIndexes = node.indexes.levels["2"];
+        assertEqual(1, levelIndexes.length);
+        assertEqual(levelIndexes[0].name, levelIndexName);
+      });
+    },
 
   };
 }
 
 jsunity.run(optimizerRuleZkd2dIndexTestSuite);
+jsunity.run(optimizerRuleZkdTraversal);
 
 return jsunity.done();
