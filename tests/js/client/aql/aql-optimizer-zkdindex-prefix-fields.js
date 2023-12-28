@@ -214,14 +214,7 @@ function optimizerRuleZkdTraversal() {
     setUpAll: function () {
       db._createDatabase(database);
       db._useDatabase(database);
-    },
 
-    tearDownAll: function () {
-      db._useDatabase("_system");
-      db._dropDatabase(database);
-    },
-
-    testZkdTraversal: function () {
       gm._create(graph,
           [{"collection": edgeCollection, "to": [vertexCollection], "from": [vertexCollection]}],
           [],
@@ -255,7 +248,14 @@ function optimizerRuleZkdTraversal() {
       `);
 
       waitForEstimatorSync();
+    },
 
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(database);
+    },
+
+    testZkdTraversal: function () {
       const query = `
         for v, e, p in 0..3 outbound "${vertexCollection}/v1" graph "${graph}"
         options {bfs: true, uniqueVertices: "path"}
@@ -272,6 +272,30 @@ function optimizerRuleZkdTraversal() {
         const baseIndexes = node.indexes.base;
         assertEqual(1, baseIndexes.length);
         assertEqual(baseIndexes[0].name, indexName);
+
+        assertEqual(["2"], Object.keys(node.indexes.levels));
+        const levelIndexes = node.indexes.levels["2"];
+        assertEqual(1, levelIndexes.length);
+        assertEqual(levelIndexes[0].name, levelIndexName);
+      });
+    },
+
+    testZkdTraversalOnlyOneLevel: function () {
+      const query = `
+        for v, e, p in 0..3 outbound "${vertexCollection}/v1" graph "${graph}"
+        options {bfs: true, uniqueVertices: "path"}
+          filter p.edges[2].x >= 5 and p.edges[2].w >= 5 and p.edges[2].y <= 8 and p.edges[2].foo == "bar"
+          return p
+      `;
+      db._explain(query);
+
+      const res = db._createStatement(query).explain();
+      const traversalNodes = res.plan.nodes.filter(n => n.type === "TraversalNode");
+
+      traversalNodes.forEach(function (node) {
+        const baseIndexes = node.indexes.base;
+        assertEqual(1, baseIndexes.length);
+        assertEqual(baseIndexes[0].name, "edge");
 
         assertEqual(["2"], Object.keys(node.indexes.levels));
         const levelIndexes = node.indexes.levels["2"];
