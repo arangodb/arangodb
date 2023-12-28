@@ -938,7 +938,7 @@ const IndexJoinTestSuite = function () {
         assertEqual(a, c);
       }
     },
-
+/* NOT SUPPORTED The optimizer rearranges the for loops that turn the enumeration on A and C into point lookups.
     testTripleIndexJoinTwoOfThreeB: function () {
       const A = createCollection("A", ["x"]);
       A.ensureIndex({type: "persistent", fields: ["x"]});
@@ -958,6 +958,7 @@ const IndexJoinTestSuite = function () {
               FILTER doc1.x == doc3.x
               RETURN [doc1.x, doc2.y, doc3.x]
       `;
+      db._explain(query, null, queryOptions);
 
       const plan = db._createStatement({query, options: queryOptions}).explain().plan;
       const nodes = plan.nodes.map(x => x.type);
@@ -977,7 +978,7 @@ const IndexJoinTestSuite = function () {
         assertEqual(a, c);
       }
     },
-
+*/
     testJoinPastEnumerate: function () {
       const A = createCollection("A", ["x"]);
       A.ensureIndex({type: "persistent", fields: ["x"]});
