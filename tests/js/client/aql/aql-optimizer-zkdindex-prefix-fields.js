@@ -199,7 +199,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
   };
 }
 
-const gm = require('@arangodb/enterprise-graph');
+const gm = require("@arangodb/general-graph");
 const waitForEstimatorSync = require('@arangodb/test-helper').waitForEstimatorSync;
 
 function optimizerRuleZkdTraversal() {
@@ -218,7 +218,7 @@ function optimizerRuleZkdTraversal() {
       gm._create(graph,
           [{"collection": edgeCollection, "to": [vertexCollection], "from": [vertexCollection]}],
           [],
-          {numberOfShards: 2, isSmart: true});
+          {numberOfShards: 2});
 
       db[edgeCollection].ensureIndex({
         type: 'zkd',
@@ -307,9 +307,6 @@ function optimizerRuleZkdTraversal() {
 }
 
 jsunity.run(optimizerRuleZkd2dIndexTestSuite);
+jsunity.run(optimizerRuleZkdTraversal);
 
-const isCluster = require('internal').isCluster();
-if (!isCluster) {
-  jsunity.run(optimizerRuleZkdTraversal);
-}
 return jsunity.done();
