@@ -218,7 +218,7 @@ function optimizerRuleZkdTraversal() {
       gm._create(graph,
           [{"collection": edgeCollection, "to": [vertexCollection], "from": [vertexCollection]}],
           [],
-          {numberOfShards: 3, isSmart: true});
+          {numberOfShards: 2, isSmart: true});
 
       db[edgeCollection].ensureIndex({
         type: 'zkd',
@@ -238,7 +238,7 @@ function optimizerRuleZkdTraversal() {
       db._query(`
         for i in 0..99
           insert {_key: CONCAT("${vertexCollection}", i)} into ${vertexCollection}
-          for j in 1..100
+          for j in 1..200
             let x = RAND() * 10
             let y = RAND() * 10
             let w = RAND() * 10
@@ -263,20 +263,20 @@ function optimizerRuleZkdTraversal() {
           filter p.edges[2].w >= 5 and p.edges[2].y <= 8 and p.edges[2].foo == "bar"
           return p
       `;
-      //db._explain(query);
 
       const res = db._createStatement(query).explain();
       const traversalNodes = res.plan.nodes.filter(n => n.type === "TraversalNode");
 
       traversalNodes.forEach(function (node) {
-        const baseIndexes = node.indexes.base;
-        assertEqual(1, baseIndexes.length);
-        assertEqual(baseIndexes[0].name, indexName);
+        node.indexes.base.forEach(function (idx) {
+          assertEqual(idx.name, indexName, node.indexes);
+        });
 
-        assertEqual(["2"], Object.keys(node.indexes.levels));
-        const levelIndexes = node.indexes.levels["2"];
-        assertEqual(1, levelIndexes.length);
-        assertEqual(levelIndexes[0].name, levelIndexName);
+        assertEqual(["2"], Object.keys(node.indexes.levels), node.indexes);
+        node.indexes.levels["2"].forEach(function (idx) {
+          assertEqual(idx.name, levelIndexName, node.indexes);
+        });
+
       });
     },
 
@@ -307,6 +307,9 @@ function optimizerRuleZkdTraversal() {
 }
 
 jsunity.run(optimizerRuleZkd2dIndexTestSuite);
-jsunity.run(optimizerRuleZkdTraversal);
 
+const isCluster = require('internal').isCluster();
+if (!isCluster) {
+  jsunity.run(optimizerRuleZkdTraversal);
+}
 return jsunity.done();

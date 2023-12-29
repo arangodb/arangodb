@@ -110,6 +110,9 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
           s.isBoolean()) {
         _estimates = s.getBoolean();
       }
+      if (_indexType == TRI_IDX_TYPE_ZKD_INDEX && _prefixFields.empty()) {
+        _estimates = false;
+      }
     } else if (_indexType == TRI_IDX_TYPE_TTL_INDEX) {
       _estimates = false;
     }

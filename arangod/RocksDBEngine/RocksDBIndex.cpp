@@ -238,8 +238,7 @@ Result RocksDBIndex::drop() {
 
 ResultT<TruncateGuard> RocksDBIndex::truncateBegin(rocksdb::WriteBatch& batch) {
   auto bounds = getBounds();
-  auto s =
-      batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
+  auto s = batch.DeleteRange(_cf, bounds.start(), bounds.end());
   auto r = rocksutils::convertStatus(s);
   if (!r.ok()) {
     return r;

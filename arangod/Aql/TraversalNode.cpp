@@ -1176,11 +1176,6 @@ void TraversalNode::prepareOptions() {
 
   TraverserOptions* opts = this->TraversalNode::options();
   TRI_ASSERT(opts != nullptr);
-  /*
-   * HACK: DO NOT use other indexes for smart BFS. Otherwise, this will produce
-   * wrong results.
-   */
-  bool onlyEdgeIndexes = this->isSmart() && opts->isUseBreadthFirst();
   for (auto& it : _edgeConditions) {
     uint64_t depth = it.first;
     // We probably have to adopt minDepth. We cannot fulfill a condition of
@@ -1197,16 +1192,14 @@ void TraversalNode::prepareOptions() {
       // made non-overlapping.
       switch (dir) {
         case TRI_EDGE_IN:
-          opts->addDepthLookupInfo(_plan, _edgeColls[i]->name(),
-                                   StaticStrings::ToString,
-                                   builder->getInboundCondition()->clone(ast),
-                                   depth, onlyEdgeIndexes, dir);
+          opts->addDepthLookupInfo(
+              _plan, _edgeColls[i]->name(), StaticStrings::ToString,
+              builder->getInboundCondition()->clone(ast), depth, false, dir);
           break;
         case TRI_EDGE_OUT:
-          opts->addDepthLookupInfo(_plan, _edgeColls[i]->name(),
-                                   StaticStrings::FromString,
-                                   builder->getOutboundCondition()->clone(ast),
-                                   depth, onlyEdgeIndexes, dir);
+          opts->addDepthLookupInfo(
+              _plan, _edgeColls[i]->name(), StaticStrings::FromString,
+              builder->getOutboundCondition()->clone(ast), depth, false, dir);
           break;
         case TRI_EDGE_ANY:
           TRI_ASSERT(false);

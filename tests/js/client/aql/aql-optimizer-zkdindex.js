@@ -215,7 +215,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
 
 
       testEstimates: function () {
-        col = db._create(colName + "2");
+        let col = db._create(colName + "2");
         col.ensureIndex({
           type: 'zkd',
           name: 'zkdIndex',
