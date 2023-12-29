@@ -31,8 +31,10 @@ class Slice;
 class LocalDocumentId;
 
 struct IndexStreamOptions {
+  // positions of which keys to use for the actual index join
   std::vector<std::size_t> usedKeyFields;
   std::vector<std::size_t> projectedFields;
+  std::vector<std::size_t> constantFields;
 };
 
 std::ostream& operator<<(std::ostream&, IndexStreamOptions const&);
@@ -64,7 +66,9 @@ struct IndexStreamIterator {
 
   // called to reset the iterator to the initial position and loads that
   // positions keys into span. returns false if the iterator is exhausted.
-  virtual bool reset(std::span<SliceType> span) = 0;
+  // Constants remain valid until the next reset call.
+  virtual bool reset(std::span<SliceType> span,
+                     std::span<SliceType> constants) = 0;
 };
 
 struct AqlIndexStreamIterator

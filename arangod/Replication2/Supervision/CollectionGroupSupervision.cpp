@@ -344,6 +344,12 @@ auto checkAssociatedReplicatedLogs(
       return UpdateReplicatedLogConfig{sheaf.replicatedLog, wantedConfig};
     }
 
+    for (auto const& p : log.target.participants) {
+      if (!health.contains(p.first)) {
+        return RemoveParticipantFromLog{log.target.id, p.first};
+      }
+    }
+
     auto currentReplicationFactor = log.target.participants.size();
     if (currentReplicationFactor < expectedReplicationFactor) {
       // add a new server to the replicated log

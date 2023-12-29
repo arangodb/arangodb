@@ -169,6 +169,12 @@ class RocksDBKeyBounds {
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds ZkdIndex(uint64_t indexId);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Bounds for all index-entries belonging to a specified non-unique
+  /// index (hash, skiplist and permanent)
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKeyBounds ZkdVPackIndex(uint64_t indexId);
+
  public:
   RocksDBKeyBounds(RocksDBKeyBounds const& other);
   RocksDBKeyBounds(RocksDBKeyBounds&& other) noexcept;
