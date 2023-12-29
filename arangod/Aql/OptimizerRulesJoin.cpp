@@ -465,8 +465,6 @@ bool processConstantFinding(IndexNode const* currentCandidate,
   if (attributeMatchResult.first) {
     // match found
     size_t constantPos = attributeMatchResult.second;
-    TRI_ASSERT(constantPos >= 0);
-
     if (!indicesOffsets.contains(currentCandidate->id())) {
       IndexOffsets idxOffset{};
       indicesOffsets.try_emplace(currentCandidate->id(), std::move(idxOffset));
@@ -514,8 +512,6 @@ bool processJoinKeyFinding(IndexNode const* firstCandidate,
     auto keyPosCurrent = attributeMatchResultCurrent.second;
     LOG_JOIN_OPTIMIZER_RULE_KEYS << "Pos for first: " << keyPosFirst;
     LOG_JOIN_OPTIMIZER_RULE_KEYS << "Pos for current: " << keyPosCurrent;
-    TRI_ASSERT(keyPosFirst >= 0);
-    TRI_ASSERT(keyPosCurrent >= 0);
 
     if (!indicesOffsets.contains(firstCandidate->id())) {
       IndexOffsets idxOffset{};
