@@ -83,9 +83,7 @@ DocumentFollowerState::DocumentFollowerState(
       << "Spawned ApplyEntries actor " << _applyEntriesActor.id;
 }
 
-DocumentFollowerState::~DocumentFollowerState() {
-  ADB_PROD_ASSERT(_runtime->actors.size() == 0);
-}
+DocumentFollowerState::~DocumentFollowerState() { shutdownRuntime(); }
 
 void DocumentFollowerState::shutdownRuntime() noexcept {
   LOG_CTX("19dec", DEBUG, loggerContext) << "shutting down actor runtime";
