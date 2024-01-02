@@ -66,7 +66,7 @@ auto ApplyEntriesHandler<Runtime>::operator()(message::Resign&& msg) noexcept
   // spawn a new actor after softShutdown has been called, and this actor will
   // never be finished
   for (auto& [tid, pid] : this->state->_transactionMap) {
-    this->runtime().finishActor(pid, ExitReason::kFinished);
+    this->runtime().finishActor(pid, ExitReason::kShutdown);
   }
   resign();
   this->finish(ExitReason::kFinished);
