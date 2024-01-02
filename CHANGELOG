@@ -1,6 +1,13 @@
 v3.11.7 (XXXX-XX-XX)
 --------------------
 
+* Added stored values support for ZKD indexes.
+
+* Fixed a crash during recursive AstNode creation when an exception was thrown.
+  This can happen on DB servers when a query plan snippet is created from
+  VelocyPack, and the query plan snippet would use more memory than is allowed
+  by the query memory limit.
+
 * Fix cmake setup for jemalloc library for the case of memory profiling.
 
 * BTS-1714: Within writing AQL queries the lock timeout was accidentally set to

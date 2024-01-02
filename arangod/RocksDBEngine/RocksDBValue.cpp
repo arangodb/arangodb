@@ -65,13 +65,13 @@ RocksDBValue RocksDBValue::VPackIndexValue(VPackSlice data) {
   return RocksDBValue(RocksDBEntryType::VPackIndexValue, data);
 }
 
-RocksDBValue RocksDBValue::ZkdIndexValue() {
-  return RocksDBValue(RocksDBEntryType::ZkdIndexValue);
+RocksDBValue RocksDBValue::ZkdIndexValue(VPackSlice data) {
+  return RocksDBValue(RocksDBEntryType::ZkdIndexValue, data);
 }
 
-RocksDBValue RocksDBValue::UniqueZkdIndexValue(LocalDocumentId const& docId) {
-  return RocksDBValue(RocksDBEntryType::UniqueZkdIndexValue, docId,
-                      RevisionId::none());
+RocksDBValue RocksDBValue::UniqueZkdIndexValue(LocalDocumentId docId,
+                                               VPackSlice data) {
+  return RocksDBValue(RocksDBEntryType::UniqueZkdIndexValue, docId, data);
 }
 
 RocksDBValue RocksDBValue::UniqueVPackIndexValue(LocalDocumentId const& docId) {
@@ -225,7 +225,8 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
                            VPackSlice data)
     : _type(type), _buffer() {
   switch (_type) {
-    case RocksDBEntryType::UniqueVPackIndexValue: {
+    case RocksDBEntryType::UniqueVPackIndexValue:
+    case RocksDBEntryType::UniqueZkdIndexValue: {
       size_t byteSize = static_cast<size_t>(data.byteSize());
       _buffer.reserve(sizeof(uint64_t) + byteSize);
       uint64ToPersistent(_buffer, docId.id());  // LocalDocumentId
@@ -242,6 +243,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice data)
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::VPackIndexValue:
+    case RocksDBEntryType::ZkdIndexValue:
       TRI_ASSERT(data.isArray());
       [[fallthrough]];
 
