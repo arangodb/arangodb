@@ -1,16 +1,22 @@
 IMAGE = arangodb/ubuntubuildarangodb-devel
-TAG := $(shell git rev-parse --short HEAD)
+TAG = $(shell ./latest-tag.sh)
 
-all: amd64 manifest
+all: amd64 arm64v8 manifest
 
-amd64:
-	docker build -t ${IMAGE}:${TAG}-x86_64 . -f Dockerfile.x86-64 .
+tag:
+	@if [ -z "$$TAG" ]; then \
+		echo "A new TAG was not provided explicitly or wasn't able to be guessed"\
+    "from arangodb/ubuntubuildarangodb-devel!"; exit 1; \
+	fi
+
+amd64: tag
+	docker build -t ${IMAGE}:${TAG}-x86_64 -f Dockerfile.x86-64 .
 	docker push ${IMAGE}:${TAG}-x86_64
 
-manifest:
-	./build-manifest.sh ${IMAGE} ${TAG}
-
-arm64:
+arm64: tag
 	docker build -t ${IMAGE}:${TAG}-arm64v8 -f Dockerfile.arm64 .
 	docker push ${IMAGE}:${TAG}-arm64v8
+
+manifest: tag
+	./build-manifest.sh ${IMAGE} ${TAG}
 

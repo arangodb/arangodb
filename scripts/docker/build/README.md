@@ -7,12 +7,14 @@ This folder is intended to have resources to build docker images necessary for C
 Linux manifest and images requirements
 --------------------------------------
 
-- The main devel build image is always `docker.io/arangodb/ubuntubuildarangodb-devel:latest` manifest
-  - It's based on `arangodb/ubuntubuildarangodb-devel:latest(-amd64 | arm64v8)` images
-  - In order to make a change a PR tag (based on `git rev-parse --short HEAD` or another unique hash) should be used instead of `latest` first
+- The main devel build image is always `docker.io/arangodb/ubuntubuildarangodb-devel:<TAG>` manifest
+  - A `<TAG>` is a is a positive natural number
+  - It's based on `arangodb/ubuntubuildarangodb-devel:<TAG>(-amd64 | arm64v8)` images
+  - In order to make a change a PR tag should be used instead: it must be current `<TAG>` value plus 1
   - `linux/README.md` contains the guide on how to build and push images and a manifest
   - `docker.io/arangodb/ubuntubuildarangodb-devel:<TAG>` manifest should be used as a parameter for CI (CircleCI by default, see https://circleci.com/docs/selecting-a-workflow-to-run-using-pipeline-parameters/) to check changes
-  - If a PR is ready to be merged one can build a `latest` images and manifest at the time of merge
+  - If a PR is ready to be merged one can put a new `<TAG>` within `.circleci/base_config.yaml` pior to merge
+  - For a better convinience it makes sense to do `./regctl image copy arangodb/ubuntubuildarangodb-devel:<TAG> arangodb/ubuntubuildarangodb-devel:latest`
 
 Windows image requirements
 --------------------------
