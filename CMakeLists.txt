@@ -140,6 +140,7 @@ endif()
 message(STATUS "WINDOWS VERSION: ${ARANGODB_WINDOWS_UPSTREAM}")
 
 if (MSVC)
+  unset(USE_CCACHE CACHE)
   option(USE_CCACHE
     "whether we want to use ccache"
     OFF
