@@ -588,7 +588,7 @@ auto zkd::supportsFilterCondition(
                                       : static_cast<double>(itemsInIndex);
 
   // each additional bound reduces the volume
-  const double volumeReductionFactor = 1.4;  // eyeballed, 2 might be too much
+  const double volumeReductionFactor = 1.4;  // guessed, 2 might be too much
   const double searchBoxVolume =
       1. /
       pow(volumeReductionFactor, static_cast<double>(extractedBounds.size()));

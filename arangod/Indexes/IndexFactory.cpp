@@ -761,23 +761,23 @@ Result processIndexSortedPrefixFields(VPackSlice definition,
 
   Result res;
 
-  auto fieldsSlice = definition.get(StaticStrings::IndexPrefixFields);
+  auto prefixFieldsSlice = definition.get(StaticStrings::IndexPrefixFields);
 
   // prefixFields are fully optional
-  if (!fieldsSlice.isNone()) {
-    if (fieldsSlice.isArray()) {
+  if (!prefixFieldsSlice.isNone()) {
+    if (prefixFieldsSlice.isArray()) {
       res = IndexFactory::validateFieldsDefinition(
           definition, StaticStrings::IndexPrefixFields, minFields, maxFields,
           allowSubAttributes, /*allowIdAttribute*/ true);
-      if (res.ok() && fieldsSlice.length() > 0) {
+      if (res.ok() && prefixFieldsSlice.length() > 0) {
         std::unordered_set<std::string_view> fields;
-        for (VPackSlice it : VPackArrayIterator(fieldsSlice)) {
+        for (VPackSlice it : VPackArrayIterator(prefixFieldsSlice)) {
           fields.insert(it.stringView());
         }
-        auto normalFields = definition.get(StaticStrings::IndexStoredValues);
-        if (!normalFields.isNone()) {
-          TRI_ASSERT(normalFields.isArray());
-          for (VPackSlice it : VPackArrayIterator(normalFields)) {
+        auto storedValues = definition.get(StaticStrings::IndexStoredValues);
+        if (!storedValues.isNone()) {
+          TRI_ASSERT(storedValues.isArray());
+          for (VPackSlice it : VPackArrayIterator(storedValues)) {
             if (!fields.insert(it.stringView()).second) {
               res.reset(
                   TRI_ERROR_BAD_PARAMETER,
@@ -793,7 +793,7 @@ Result processIndexSortedPrefixFields(VPackSlice definition,
         builder.add(velocypack::Value(StaticStrings::IndexPrefixFields));
         builder.openArray();
 
-        for (VPackSlice it : VPackArrayIterator(fieldsSlice)) {
+        for (VPackSlice it : VPackArrayIterator(prefixFieldsSlice)) {
           std::vector<basics::AttributeName> temp;
           TRI_ParseAttributeString(it.stringView(), temp,
                                    /*allowExpansion*/ false);
