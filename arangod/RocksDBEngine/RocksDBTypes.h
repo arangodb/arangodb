@@ -61,6 +61,8 @@ enum class RocksDBEntryType : char {
   ReplicatedState = 's',
   ZkdIndexValue = 'z',
   UniqueZkdIndexValue = 'Z',
+  ZkdVPackIndexValue = 'w',
+  UniqueZkdVPackIndexValue = 'W',
 };
 
 std::string_view rocksDBEntryTypeName(RocksDBEntryType);

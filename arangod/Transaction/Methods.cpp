@@ -2455,8 +2455,10 @@ Result transaction::Methods::determineReplication2TypeAndFollowers(
       std::size_t nonFailedParticipants{0};
       for (auto& [pid, _] : participantsConfig.participants) {
         auto health = healthQuery->slice().get(pid);
-        TRI_ASSERT(health.isObject() && health.hasKey("Status"));
-        if (health.get("Status").copyString() != "FAILED") {
+        // Server can be removed from Health (health is none), as permanently
+        // gone In this case it has to be counted as failed participant
+        if (health.isObject() &&
+            health.get("Status").copyString() != "FAILED") {
           ++nonFailedParticipants;
         }
       }

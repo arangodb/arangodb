@@ -91,6 +91,7 @@ rocksdb::ColumnFamilyOptions RocksDBOptionsProvider::getColumnFamilyOptions(
           rocksdb::NewBlockBasedTableFactory(tableOptions));
       break;
     }
+    case RocksDBColumnFamilyManager::Family::ZkdVPackIndex:
     case RocksDBColumnFamilyManager::Family::VPackIndex: {
       // velocypack based index variants with custom comparator
       rocksdb::BlockBasedTableOptions tableOptions(getTableOptions());

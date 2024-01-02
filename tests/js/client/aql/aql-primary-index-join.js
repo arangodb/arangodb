@@ -108,12 +108,12 @@ const IndexPrimaryJoinTestSuite = function () {
     let genericResult = runAndCheckQuery(query, "generic");
 
     assertEqual(defaultResult, genericResult, "Results do not match, but they should! Result of default execution: " +
-    JSON.stringify(defaultResult) + ", generic execution: " + JSON.stringify(genericResult));
+      JSON.stringify(defaultResult) + ", generic execution: " + JSON.stringify(genericResult));
 
     return defaultResult;
   };
 
-  const runAndCheckQuery = function (query, joinStrategyType = null, expectedStats = null) {
+  const runAndCheckQuery = function (query, joinStrategyType = null, expectedStats = null, shouldNotOptimize = false) {
     let qOptions = {...queryOptions};
     if (joinStrategyType === "generic") {
       qOptions.joinStrategyType = joinStrategyType;
@@ -129,14 +129,15 @@ const IndexPrimaryJoinTestSuite = function () {
       return node.type;
     });
 
-    if (planNodes.indexOf("JoinNode") === -1) {
-      db._explain(query, null, qOptions);
+    if (!shouldNotOptimize) {
+      if (planNodes.indexOf("JoinNode") === -1) {
+        db._explain(query, null, qOptions);
+      }
+
+      assertNotEqual(planNodes.indexOf("JoinNode"), -1);
     }
 
-    assertNotEqual(planNodes.indexOf("JoinNode"), -1);
-
     const result = db._createStatement({query: query, bindVars: null, options: qOptions}).execute();
-
 
     if (expectedStats) {
       const qStats = result.getExtra().stats;
@@ -328,6 +329,432 @@ const IndexPrimaryJoinTestSuite = function () {
       }
     },
     // TODO: Add additional FILTER for doc2._key (e.g. calculation compare last character)
+
+    testJoinConstantValuesOneOuterOneInner: function () {
+      const collectionA = db._createDocumentCollection('A');
+      collectionA.ensureIndex({type: "persistent", fields: ["x", "y"], unique: false});
+
+      const collectionB = db._createDocumentCollection('B');
+      collectionB.ensureIndex({type: "persistent", fields: ["y"], unique: true});
+
+      // insert some data. Every second document in A has x = 5.
+      // Means, we do have five documents with x = 5 in this example.
+      // Apart from that, just incrementing y from 0 to 10.
+      for (let i = 0; i < 10; i++) {
+        collectionA.insert({
+          _key: JSON.stringify(i),
+          x: (i % 2 === 0) ? i : 5,
+          y: i,
+        });
+        collectionB.insert({
+          _key: JSON.stringify(i),
+          y: i,
+        });
+      }
+
+      const queryStringEasy = `
+        FOR doc1 IN A
+          FILTER doc1.x == 5
+          FOR doc2 IN B
+            FILTER doc1.y == doc2.y
+            RETURN [doc1, doc2]`;
+
+      let qResult;
+      if (isCluster) {
+        qResult = runAndCheckQuery(queryStringEasy, "generic", null, true);
+      } else {
+        qResult = runAndCheckQuery(queryStringEasy, "generic");
+      }
+
+      qResult.forEach((docs) => {
+        let first = docs[0];
+        let second = docs[1];
+        assertEqual(first.x, 5, "Wrong value for 'x' in first document found");
+        assertEqual(first.y, second.y);
+      });
+      assertEqual(qResult.length, 5);
+    },
+
+    testJoinConstantValuesInvalid: function () {
+      const collectionA = db._createDocumentCollection('A');
+      collectionA.ensureIndex({type: "persistent", fields: ["x", "y"], unique: false});
+
+      const collectionB = db._createDocumentCollection('B');
+      collectionB.ensureIndex({type: "persistent", fields: ["x", "y", "z"], unique: true});
+
+      // insert some data. Every second document in A has x = 5.
+      // Means, we do have five documents with x = 5 in this example.
+      // Apart from that, just incrementing y from 0 to 10.
+      for (let i = 0; i < 10; i++) {
+        collectionA.insert({
+          _key: JSON.stringify(i),
+          x: (i % 2 === 0) ? i : 5,
+          y: i,
+        });
+        collectionB.insert({
+          _key: JSON.stringify(i),
+          y: i,
+        });
+      }
+
+      const queryString = `
+        FOR i in 1..5 
+          FOR doc1 IN A
+            FILTER doc1.x == i         // candidate[0]: const {0}
+            FOR doc2 IN B
+              FILTER doc1.y == doc2.x  // candidate[0]: key {1} | candidate[1]: key {0}
+              FILTER doc2.y == (2 * i) // candidate[1]: const {1}
+              FILTER doc2.z == 8       // candidate[1]: const {2}
+              RETURN [doc1, doc2]      // => invalid offsets
+      `;
+
+      runAndCheckQuery(queryString, "generic", null, true);
+    },
+
+    testJoinConstantValuesTwoOuterTwoInner: function () {
+      const collectionA = db._createDocumentCollection('A');
+      collectionA.ensureIndex({type: "persistent", fields: ["x", "y", "z"], unique: false});
+
+      const collectionB = db._createDocumentCollection('B');
+      collectionB.ensureIndex({type: "persistent", fields: ["y", "z"], unique: true});
+
+      for (let i = 0; i < 10; i++) {
+        collectionA.insert({
+          _key: JSON.stringify(i),
+          x: (i % 2 === 0) ? i : 5,
+          y: (i % 2 === 0) ? i : 10,
+          z: i
+        });
+        collectionB.insert({
+          _key: JSON.stringify(i),
+          y: (i % 2 === 0) ? i : 10,
+          z: i
+        });
+      }
+
+      const queryString = `
+        FOR doc1 IN A
+          FILTER doc1.x == 5 AND doc1.y == 10 // candidate[0]: const {0, 1}
+            FOR doc2 IN B
+            FILTER doc1.y == doc2.y           // candidate[0]: key {1} | candidate[1]: const {0}
+            FILTER doc1.z == 10               // candidate[0]: const {0, 1, 2}
+            RETURN [doc1, doc2]`;
+
+      // TODO: doc1.y == doc2.y both are getting marked as constants (as they are)
+      // This leads to no key pos can be set at all. Can we handle this in a way? Or just do not optimize instead.
+      runAndCheckQuery(queryString, "generic", null, true);
+    },
+
+    testJoinConstantValuesOneOuterTwoInnerNoOpt: function () {
+      const collectionA = db._createDocumentCollection('A');
+      collectionA.ensureIndex({type: "persistent", fields: ["x", "y"], unique: false});
+
+      const collectionB = db._createDocumentCollection('B');
+      collectionB.ensureIndex({type: "persistent", fields: ["x", "y", "z"], unique: true});
+
+      // insert some data. Every second document in A has x = 5.
+      // Means, we do have five documents with x = 5 in this example.
+      // Apart from that, just incrementing y from 0 to 10.
+      for (let i = 0; i < 10; i++) {
+        collectionA.insert({
+          _key: JSON.stringify(i),
+          x: (i % 2 === 0) ? i : 5,
+          y: i,
+        });
+        collectionB.insert({
+          _key: JSON.stringify(i),
+          y: i,
+        });
+      }
+
+      const queryString = `
+        FOR doc1 IN A
+          FILTER doc1.x == 5           // candidate[0]: const {0}
+          FOR doc2 IN B
+            FILTER doc1.y == doc2.y    // candidate[0]: key {1} | candidate[1]: key {1}
+            FILTER doc2.z == 8         // candidate[1]: const {2}
+            RETURN [doc1, doc2]`;
+
+      runAndCheckQuery(queryString, "generic", null, true);
+    },
+
+    testJoinConstantValuesOneOuterTwoInnerWithOptDefaultSharding: function () {
+      const collectionA = db._createDocumentCollection('A');
+      collectionA.ensureIndex({type: "persistent", fields: ["x", "y"], unique: false});
+
+      const collectionB = db._createDocumentCollection('B');
+      collectionB.ensureIndex({type: "persistent", fields: ["x", "y", "z"], unique: true});
+
+      // insert some data. Every second document in A has x = 5.
+      // Means, we do have five documents with x = 5 in this example.
+      // Apart from that, just incrementing y from 0 to 10.
+      for (let i = 0; i < 10; i++) {
+        collectionA.insert({
+          _key: JSON.stringify(i),
+          x: (i % 2 === 0) ? i : 5,
+          y: i,
+        });
+        collectionB.insert({
+          _key: JSON.stringify(i),
+          x: i,
+          y: i,
+          z: i
+        });
+      }
+
+      const queryString = `
+        FOR doc1 IN A
+          FILTER doc1.x == 5           // candidate[0]: const {0}
+          FOR doc2 IN B
+            FILTER doc1.y == doc2.y    // candidate[0]: key {1} | candidate[1]: key {1}
+            FILTER doc2.x == 5         // candidate[1]: const {0}
+            RETURN [doc1, doc2]`;
+      // candidate[0] key {1} const {0}
+      // candidate[1] key {1} const {0}
+
+      let qResult;
+      if (isCluster) {
+        // Cannot be optimized in case shards are randomly distributed
+        qResult = runAndCheckQuery(queryString, "generic", null, true);
+      } else {
+        qResult = runAndCheckQuery(queryString, "generic");
+      }
+
+      qResult.forEach((docs) => {
+        let first = docs[0];
+        let second = docs[1];
+        assertEqual(first.x, 5, "Wrong value for 'x' in first document found");
+        assertEqual(first.y, second.y);
+      });
+      assertEqual(qResult.length, 1);
+    },
+
+    testJoinConstantValuesOneOuterTwoInnerWithOptShardingSameDBS: function () {
+      const collectionA = createCollection('A', ['y']);
+      const collectionB = createCollection('B', ['y']);
+      collectionA.ensureIndex({type: "persistent", fields: ["x", "y"], unique: false});
+      collectionB.ensureIndex({type: "persistent", fields: ["x", "y", "z"], unique: true});
+
+      // insert some data. Every second document in A has x = 5.
+      // Means, we do have five documents with x = 5 in this example.
+      // Apart from that, just incrementing y from 0 to 10.
+      for (let i = 0; i < 10; i++) {
+        collectionA.insert({
+          x: (i % 2 === 0) ? i : 5,
+          y: i,
+        });
+        collectionB.insert({
+          x: i,
+          y: i,
+          z: i
+        });
+      }
+
+      const queryString = `
+        FOR doc1 IN A
+          FILTER doc1.x == 5           // candidate[0]: const {0}
+          FOR doc2 IN B
+            FILTER doc1.y == doc2.y    // candidate[0]: key {1} | candidate[1]: key {1}
+            FILTER doc2.x == 5         // candidate[1]: const {0}
+            RETURN [doc1, doc2]`;
+      // candidate[0] key {1} const {0}
+      // candidate[1] key {1} const {0}
+
+      const qResult = runAndCheckQuery(queryString, "generic");
+
+      qResult.forEach((docs) => {
+        let first = docs[0];
+        let second = docs[1];
+        assertEqual(first.x, 5, "Wrong value for 'x' in first document found");
+        assertEqual(first.y, second.y);
+      });
+      assertEqual(qResult.length, 1);
+    },
+
+    testJoinFixedValuesComplexNoOpt: function () {
+      const collectionA = db._createDocumentCollection('A');
+      collectionA.ensureIndex({type: "persistent", fields: ["x", "y"], unique: false});
+
+      const collectionB = db._createDocumentCollection('B');
+      collectionB.ensureIndex({type: "persistent", fields: ["x", "y", "z"], unique: true});
+
+      // insert some data. Every second document in A has x = 5.
+      // Apart from that, just incrementing y from 0 to 10.
+      for (let i = 0; i < 10; i++) {
+        collectionA.insert({
+          x: (i % 2 === 0) ? i : 5,
+          y: i,
+        });
+        collectionB.insert({
+          y: i,
+          z: i
+        });
+      }
+
+      const queryStringComplex = `
+      FOR i in 1..5 
+        FOR doc1 IN A
+          FILTER doc1.x == i            // candidate[0] const {0}
+          FOR doc2 IN B
+            FILTER doc1.y == doc2.x     // candidate[0] key {1} | candidate[1] key {0}
+            FILTER doc2.y == (2 * i)    // candidate[1] const {1}
+            FILTER doc2.z == 8          // candidate[1] const {1, 2}
+            RETURN [doc1, doc2]`;
+
+      // candidate[0] const {0} key {1}
+      // candidate[1] const {1, 2} key {0}
+      // => NO OPT
+
+      runAndCheckQuery(queryStringComplex, "generic", null, true);
+    },
+
+    testJoinFixedValuesComplexOptDefaultSharding: function () {
+      const collectionA = db._createDocumentCollection('A');
+      collectionA.ensureIndex({type: "persistent", fields: ["x", "y"], unique: false});
+
+      const collectionB = db._createDocumentCollection('B');
+      collectionB.ensureIndex({type: "persistent", fields: ["x", "y", "z"], unique: true});
+
+      for (let i = 1; i < 6; i++) {
+        collectionA.insert({
+          x: i,
+          y: i,
+        });
+        collectionB.insert({
+          x: i,
+          y: i,
+          z: i
+        });
+      }
+
+      const queryStringComplex = `
+      FOR i in 1..5 
+        FOR doc1 IN A
+          FILTER doc1.x == i            // candidate[0] const {0}
+          FOR doc2 IN B
+            FILTER doc1.y == doc2.z     // candidate[0] key {1} | candidate[1] key {2}
+            FILTER doc2.y == (1 * i)    // candidate[1] const {1}
+            FILTER doc2.x == 1          // candidate[1] const {0}
+            RETURN [doc1, doc2]`;
+
+      // candidate[0] const {0} key {1}
+      // candidate[1] const {1,2} key {2}
+      // => Should OPT
+
+      let qResult;
+      if (isCluster) {
+        // Cannot be optimized in case shards are randomly distributed
+        qResult = runAndCheckQuery(queryStringComplex, "generic", null, true);
+      } else {
+        qResult = runAndCheckQuery(queryStringComplex, "generic");
+      }
+      qResult.forEach((docs) => {
+        let first = docs[0];
+        let second = docs[1];
+        assertEqual(first.x, 1, "Wrong value for 'x' in first document found");
+        assertEqual(first.y, second.y);
+        assertEqual(second.x, 1);
+      });
+      assertEqual(qResult.length, 1);
+    },
+
+    testJoinFixedValuesComplexOptShardingSameDBS: function () {
+      const collectionA = createCollection('A', ['y']);
+      const collectionB = createCollection('B', ['z']);
+      collectionA.ensureIndex({type: "persistent", fields: ["x", "y"], unique: false});
+      collectionB.ensureIndex({type: "persistent", fields: ["x", "y", "z"], unique: true});
+
+      for (let i = 1; i < 6; i++) {
+        collectionA.insert({
+          x: i,
+          y: i,
+        });
+        collectionB.insert({
+          x: i,
+          y: i,
+          z: i
+        });
+      }
+
+      const queryStringComplex = `
+      FOR i in 1..5 
+        FOR doc1 IN A
+          FILTER doc1.x == i            // candidate[0] const {0}
+          FOR doc2 IN B
+            FILTER doc1.y == doc2.z     // candidate[0] key {1} | candidate[1] key {2}
+            FILTER doc2.y == (1 * i)    // candidate[1] const {1}
+            FILTER doc2.x == 1          // candidate[1] const {0}
+            RETURN [doc1, doc2]`;
+
+      // candidate[0] const {0} key {1}
+      // candidate[1] const {1,2} key {2}
+      // => Should OPT
+
+      const qResult = runAndCheckQuery(queryStringComplex, "generic", null);
+      qResult.forEach((docs) => {
+        let first = docs[0];
+        let second = docs[1];
+        assertEqual(first.x, 1, "Wrong value for 'x' in first document found");
+        assertEqual(first.y, second.y);
+        assertEqual(second.x, 1);
+      });
+      assertEqual(qResult.length, 1);
+    },
+
+    testJoinFixedValuesTrippletJoinDefaultSharding: function () {
+      const collectionA = db._createDocumentCollection('A');
+      collectionA.ensureIndex({type: "persistent", fields: ["x", "y", "z", "w"], unique: false});
+
+      const collectionB = db._createDocumentCollection('B');
+      collectionB.ensureIndex({type: "persistent", fields: ["x", "y", "z", "w"], unique: false});
+
+      const collectionC = db._createDocumentCollection('C');
+      collectionC.ensureIndex({type: "persistent", fields: ["x", "y", "z", "w"], unique: false});
+
+      for (let i = 1; i < 6; i++) {
+        collectionA.insert({
+          x: i,
+          y: i,
+        });
+        collectionB.insert({
+          x: i,
+          y: i,
+          z: i
+        });
+      }
+
+      const queryStringComplex = ` 
+         FOR doc1 IN A
+           SORT doc1.x
+           FOR doc2 IN B
+             FOR doc3 in C
+               FILTER doc1.x == doc2.y   // candidate[0]: key {0} | candidate[1]: key {1}
+               FILTER doc1.x == doc3.x   // candidate[0]: key {0} | candidate[2]: key {0}
+               FILTER doc2.x == 5        // candidate[1]: const {0}
+               return [doc1, doc2, doc3]
+      `;
+
+      // candidate[0]: key {0} const {}
+      // candidate[1]: key {1} const {0}
+      // candidate[2]: key {0}
+      // => should be optimized.
+
+      let qResult;
+      if (isCluster) {
+        // Cannot be optimized in case shards are randomly distributed
+        qResult = runAndCheckQuery(queryStringComplex, "generic", null, true);
+      } else {
+        qResult = runAndCheckQuery(queryStringComplex, "generic");
+      }
+      qResult.forEach((docs) => {
+        let first = docs[0];
+        let second = docs[1];
+        assertEqual(first.x, 1, "Wrong value for 'x' in first document found");
+        assertEqual(first.y, second.y);
+        assertEqual(second.x, 1);
+      });
+      assertEqual(qResult.length, 0);
+    }
   };
 };
 
