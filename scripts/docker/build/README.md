@@ -13,7 +13,7 @@ Linux manifest and images requirements
   - In order to make a change a PR tag should be used instead: it must be current `<TAG>` value plus 1
   - `linux/README.md` contains the guide on how to build and push images and a manifest
   - `docker.io/arangodb/ubuntubuildarangodb-devel:<TAG>` manifest should be used as a parameter for CI (CircleCI by default, see https://circleci.com/docs/selecting-a-workflow-to-run-using-pipeline-parameters/) to check changes
-  - If a PR is ready to be merged one can put a new `<TAG>` within `.circleci/base_config.yaml` pior to merge
+  - If a PR is ready to be merged one can put a new `<TAG>` within `.circleci/base_config.yaml` prior to merge
   - For a better convinience it makes sense to do `./regctl image copy arangodb/ubuntubuildarangodb-devel:<TAG> arangodb/ubuntubuildarangodb-devel:latest`
 
 Windows image requirements
