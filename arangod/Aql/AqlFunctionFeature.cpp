@@ -292,6 +292,8 @@ void AqlFunctionFeature::addNumericFunctions() {
       Function::makeFlags(FF::CanRunOnDBServerCluster,
                           FF::CanRunOnDBServerOneShard, FF::CanUseInAnalyzer);
   add({"RAND", "", nonDeterministicFlags, &functions::Rand});
+  // RANDOM is an alias for RAND
+  addAlias("RANDOM", "RAND");
 }
 
 void AqlFunctionFeature::addListFunctions() {
