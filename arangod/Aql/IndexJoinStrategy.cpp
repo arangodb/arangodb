@@ -40,7 +40,7 @@ struct VPackSliceComparator {
 };
 }  // namespace
 auto IndexJoinStrategyFactory::createStrategy(
-    std::vector<Descriptor> desc, std::size_t numKeyComponents,
+    std::vector<Descriptor> desc,
     aql::QueryOptions::JoinStrategyType joinStrategy)
     -> std::unique_ptr<AqlIndexJoinStrategy> {
   if (desc.size() == 2 &&
@@ -49,15 +49,15 @@ auto IndexJoinStrategyFactory::createStrategy(
       // build optimized merge join strategy for two unique indices
       return std::make_unique<TwoIndicesUniqueMergeJoin<
           velocypack::Slice, LocalDocumentId, VPackSliceComparator>>(
-          std::move(desc), numKeyComponents);
+          std::move(desc));
     } else {
       // build optimized merge join strategy for two non-unique indices
       return std::make_unique<TwoIndicesMergeJoin<
           velocypack::Slice, LocalDocumentId, VPackSliceComparator>>(
-          std::move(desc), numKeyComponents);
+          std::move(desc));
     }
   }
   return std::make_unique<GenericMergeJoin<velocypack::Slice, LocalDocumentId,
                                            VPackSliceComparator>>(
-      std::move(desc), numKeyComponents);
+      std::move(desc));
 }

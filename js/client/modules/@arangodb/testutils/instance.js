@@ -387,6 +387,9 @@ class instance {
     // instanceInfo.authOpts['server.jwt-secret-folder'] = addArgs['server.jwt-secret-folder'];
     }
 
+
+    this.args['database.default-replication-version'] = this.options.replicationVersion;
+
     for (const [key, value] of Object.entries(this.options.extraArgs)) {
       let splitkey = key.split('.');
       if (splitkey.length !== 2) {
