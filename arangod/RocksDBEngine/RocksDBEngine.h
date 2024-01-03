@@ -151,7 +151,6 @@ struct ICompactKeyRange {
   virtual void compactRange(RocksDBKeyBounds bounds) = 0;
 };
 
-
 class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   friend class RocksDBFilePurgePreventer;
   friend class RocksDBFilePurgeEnabler;
