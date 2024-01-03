@@ -146,7 +146,12 @@ class RocksDBFilePurgeEnabler {
   RocksDBEngine* _engine;
 };
 
-class RocksDBEngine final : public StorageEngine {
+struct ICompactKeyRange {
+  virtual ~ICompactKeyRange() = default;
+  virtual void compactRange(RocksDBKeyBounds bounds) = 0;
+};
+
+class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   friend class RocksDBFilePurgePreventer;
   friend class RocksDBFilePurgeEnabler;
 
@@ -286,7 +291,7 @@ class RocksDBEngine final : public StorageEngine {
                            std::string const& collection);
   void processTreeRebuilds();
 
-  void compactRange(RocksDBKeyBounds bounds);
+  void compactRange(RocksDBKeyBounds bounds) override;
   void processCompactions();
 
   auto dropReplicatedState(

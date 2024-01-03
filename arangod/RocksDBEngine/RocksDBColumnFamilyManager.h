@@ -47,6 +47,7 @@ struct RocksDBColumnFamilyManager {
     FulltextIndex = 6,
     ReplicatedLogs = 7,
     ZkdIndex = 8,
+    ZkdVPackIndex = 9,
 
     Invalid = 1024  // special placeholder
   };
@@ -57,7 +58,7 @@ struct RocksDBColumnFamilyManager {
   };
 
   static constexpr size_t minNumberOfColumnFamilies = 7;
-  static constexpr size_t numberOfColumnFamilies = 9;
+  static constexpr size_t numberOfColumnFamilies = 10;
 
   static void initialize();
 
