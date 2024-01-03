@@ -9,7 +9,7 @@ Linux manifest and images requirements
 
 - The main devel build image is always `docker.io/arangodb/ubuntubuildarangodb-devel:<TAG>` manifest
   - A `<TAG>` is a is a positive natural number
-  - It's based on `arangodb/ubuntubuildarangodb-devel:<TAG>(-amd64 | arm64v8)` images
+  - It's based on `arangodb/ubuntubuildarangodb-devel:<TAG>(-amd64 | -arm64v8)` images
   - In order to make a change a PR tag should be used instead: it must be current `<TAG>` value plus 1
   - `linux/README.md` contains the guide on how to build and push images and a manifest
   - `docker.io/arangodb/ubuntubuildarangodb-devel:<TAG>` manifest should be used as a parameter for CI (CircleCI by default, see https://circleci.com/docs/selecting-a-workflow-to-run-using-pipeline-parameters/) to check changes
