@@ -45,7 +45,7 @@ struct LogPersistor final : ILogPersistor {
                ::rocksdb::ColumnFamilyHandle* const logCf,
                std::shared_ptr<IAsyncLogWriteBatcher> batcher,
                std::shared_ptr<AsyncLogWriteBatcherMetrics> metrics,
-               arangodb::ICompactKeyRange* engine);
+               arangodb::ICompactKeyRange* keyrangeCompactor);
 
   [[nodiscard]] auto getIterator(IteratorPosition position)
       -> std::unique_ptr<PersistedLogIterator> override;
@@ -73,7 +73,7 @@ struct LogPersistor final : ILogPersistor {
   std::shared_ptr<AsyncLogWriteBatcherMetrics> const _metrics;
   ::rocksdb::DB* const db;
   ::rocksdb::ColumnFamilyHandle* const logCf;
-  arangodb::ICompactKeyRange* _engine;
+  arangodb::ICompactKeyRange* _keyrangeCompactor;
 };
 
 }  // namespace arangodb::replication2::storage::rocksdb

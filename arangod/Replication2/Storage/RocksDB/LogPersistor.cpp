@@ -40,14 +40,14 @@ LogPersistor::LogPersistor(LogId logId, uint64_t objectId,
                            ::rocksdb::ColumnFamilyHandle* const logCf,
                            std::shared_ptr<IAsyncLogWriteBatcher> batcher,
                            std::shared_ptr<AsyncLogWriteBatcherMetrics> metrics,
-                           arangodb::ICompactKeyRange* engine)
+                           arangodb::ICompactKeyRange* keyrangeCompactor)
     : logId(logId),
       ctx(vocbaseId, objectId),
       batcher(std::move(batcher)),
       _metrics(std::move(metrics)),
       db(db),
       logCf(logCf),
-      _engine(engine) {}
+      _keyrangeCompactor(keyrangeCompactor) {}
 
 std::unique_ptr<replication2::PersistedLogIterator> LogPersistor::getIterator(
     IteratorPosition position) {
@@ -113,9 +113,9 @@ auto LogPersistor::drop() -> Result {
 
 auto LogPersistor::compact() -> Result {
   auto range = RocksDBKeyBounds::LogRange(ctx.objectId);
-  _engine->compactRange(range);
-  // The CompactRange of the engine does not have
-  // a return value and is asynchroneous. So we
+  _keyrangeCompactor->compactRange(range);
+  // The CompactRange does not have
+  // a return value and is asynchronous. So we
   // can only return Success here.
   return TRI_ERROR_NO_ERROR;
 }
