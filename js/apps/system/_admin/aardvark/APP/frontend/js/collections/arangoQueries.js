@@ -74,7 +74,7 @@
         this.activeUser = 'root';
       }
 
-      if (response.user === self.activeUser) {
+      if (response.user === window.App.currentUser) {
         try {
           if (response.extra.queries) {
             toReturn = response.extra.queries;
@@ -83,7 +83,7 @@
       } else {
         if (response.result && response.result instanceof Array) {
           _.each(response.result, function (userobj) {
-            if (userobj.user === self.activeUser) {
+            if (userobj.user === window.App.currentUser) {
               toReturn = userobj.extra.queries;
             }
           });
@@ -202,7 +202,7 @@
             $.ajax({
               cache: false,
               type: 'POST',
-              url: 'query/upload/' + encodeURIComponent(window.App.currentUser),
+              url: arangoHelper.databaseUrl('/_admin/aardvark/query/upload/' + encodeURIComponent(window.App.currentUser)),
               data: JSON.stringify(sanitizedQueries),
               contentType: 'application/json',
               processData: false,
