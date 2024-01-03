@@ -37,11 +37,19 @@ RestOptionsHandler::RestOptionsHandler(ArangodServer& server,
     : RestOptionsBaseHandler(server, request, response) {}
 
 RestStatus RestOptionsHandler::execute() {
-  if (!checkAuthentication()) {
-    // checkAuthentication() will has created the response message already
+  if (_request->requestType() != rest::RequestType::GET) {
+    // only HTTP GET allowed
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
 
+  if (!checkAuthentication()) {
+    // checkAuthentication() will have created the response message already
+    return RestStatus::DONE;
+  }
+
+  // filter out these attributes from the options
   auto filter = [](std::string const& name) {
     if (name.find("passwd") != std::string::npos ||
         name.find("password") != std::string::npos ||

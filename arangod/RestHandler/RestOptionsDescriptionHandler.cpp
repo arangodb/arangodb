@@ -36,8 +36,15 @@ RestOptionsDescriptionHandler::RestOptionsDescriptionHandler(
     : RestOptionsBaseHandler(server, request, response) {}
 
 RestStatus RestOptionsDescriptionHandler::execute() {
+  if (_request->requestType() != rest::RequestType::GET) {
+    // only HTTP GET allowed
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
+  }
+
   if (!checkAuthentication()) {
-    // checkAuthentication() will has created the response message already
+    // checkAuthentication() will have created the response message already
     return RestStatus::DONE;
   }
 
