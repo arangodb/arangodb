@@ -1144,6 +1144,7 @@ void RocksDBEngine::start() {
   addFamily(RocksDBColumnFamilyManager::Family::FulltextIndex);
   addFamily(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   addFamily(RocksDBColumnFamilyManager::Family::ZkdIndex);
+  addFamily(RocksDBColumnFamilyManager::Family::ZkdVPackIndex);
 
   bool dbExisted = checkExistingDB(cfFamilies);
 
@@ -1210,6 +1211,8 @@ void RocksDBEngine::start() {
       RocksDBColumnFamilyManager::Family::ReplicatedLogs, cfHandles[7]);
   RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::ZkdIndex,
                                   cfHandles[8]);
+  RocksDBColumnFamilyManager::set(
+      RocksDBColumnFamilyManager::Family::ZkdVPackIndex, cfHandles[9]);
   TRI_ASSERT(RocksDBColumnFamilyManager::get(
                  RocksDBColumnFamilyManager::Family::Definitions)
                  ->GetID() == 0);
@@ -3671,6 +3674,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addCf(RocksDBColumnFamilyManager::Family::FulltextIndex);
   addCf(RocksDBColumnFamilyManager::Family::ZkdIndex);
   addCf(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
+  addCf(RocksDBColumnFamilyManager::Family::ZkdVPackIndex);
   builder.close();
 
   if (_throttleListener) {
@@ -4050,12 +4054,15 @@ bool RocksDBEngine::checkExistingDB(
         RocksDBColumnFamilyManager::Family::ReplicatedLogs);
     auto const zkdIndexName = RocksDBColumnFamilyManager::name(
         RocksDBColumnFamilyManager::Family::ZkdIndex);
+    auto const zkdVPackIndexName = RocksDBColumnFamilyManager::name(
+        RocksDBColumnFamilyManager::Family::ZkdVPackIndex);
 
     for (auto const& it : cfFamilies) {
       auto it2 = std::find(existingColumnFamilies.begin(),
                            existingColumnFamilies.end(), it.name);
       if (it2 == existingColumnFamilies.end()) {
-        if (it.name == replicatedLogsName || it.name == zkdIndexName) {
+        if (it.name == replicatedLogsName || it.name == zkdIndexName ||
+            it.name == zkdVPackIndexName) {
           LOG_TOPIC("293c3", INFO, Logger::STARTUP)
               << "column family " << it.name
               << " is missing and will be created.";

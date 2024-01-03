@@ -28,12 +28,17 @@ const db = arangodb.db;
 const aql = arangodb.aql;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
 const _ = require("lodash");
+const normalize = require("@arangodb/aql-helper").normalizeProjections;
 
 function optimizerRuleZkd2dIndexTestSuite() {
   const colName = 'UnitTestZkdIndexCollection';
   let col;
 
   return {
+
+    tearDown: function () {
+      db[colName].drop();
+    },
 
     testSimplePrefix: function () {
       col = db._create(colName);
@@ -62,7 +67,6 @@ function optimizerRuleZkd2dIndexTestSuite() {
       assertEqual(result.length, 3);
       assertEqual(_.uniq(result.map(([a, b]) => b)), ["foo"]);
       assertEqual(result.map(([a, b]) => a).sort(), [5, 6, 7]);
-      col.drop();
     },
 
     testMultiPrefix: function () {
@@ -94,8 +98,46 @@ function optimizerRuleZkd2dIndexTestSuite() {
       assertEqual(_.uniq(result.map(([a, b, c]) => b)), ["foo"]);
       assertEqual(_.uniq(result.map(([a, b, c]) => c)), [-2]);
       assertEqual(result.map(([a, b, c]) => a).sort(), [5, 6, 7]);
-      col.drop();
-    }
+    },
+
+    testProjections: function () {
+      col = db._create(colName);
+      col.ensureIndex({
+        type: 'zkd',
+        name: 'zkdIndex',
+        fields: ['x', 'y'],
+        fieldValueTypes: 'double',
+        storedValues: ["z"],
+        prefixFields: ["stringValue", "value"],
+      });
+
+      db._query(aql`
+        FOR str IN ["foo", "bar", "baz"]
+        FOR v IN [1, 19, -2]
+          FOR i IN 1..100
+            INSERT {x: i, y: i, z: i, stringValue: str, value: v} INTO ${col}
+      `);
+
+      const query = aql`
+        FOR doc IN ${col}
+          FILTER doc.x >= 5 && doc.y <= 7 && doc.stringValue == "foo" && doc.value == -2
+          return [doc.z, doc.stringValue, doc.value]
+      `;
+
+      const res = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
+      const indexNodes = res.plan.nodes.filter(n => n.type === "IndexNode");
+      assertEqual(indexNodes.length, 1);
+      const index = indexNodes[0];
+      assertTrue(index.indexCoversProjections, true);
+      assertEqual(normalize(index.projections), normalize(["z", "stringValue", "value"]));
+
+      const result = db._createStatement({query: query.query, bindVars: query.bindVars}).execute().toArray();
+      for (const [a, b, c] of result) {
+        assertEqual(b, "foo");
+        assertEqual(c, -2);
+        assertTrue(5 <= a && a <= 7);
+      }
+    },
 
   };
 }
