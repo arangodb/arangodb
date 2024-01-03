@@ -583,9 +583,16 @@ auto zkd::supportsFilterCondition(
   costs.coveredAttributes = extractedBounds.size() + extractedPrefix.size();
 
   // we look up a single point using the prefix values
-  const double estimatedElementsOnCurve =
-      index->hasSelectivityEstimate() ? 1. / index->selectivityEstimate()
-                                      : static_cast<double>(itemsInIndex);
+  auto const estimatedElementsOnCurve = [&]() -> double {
+    if (index->hasSelectivityEstimate()) {
+      auto estimate = index->selectivityEstimate();
+      if (estimate > 0) {
+        return 1. / estimate;
+      }
+    }
+
+    return static_cast<double>(itemsInIndex);
+  }();
 
   // each additional bound reduces the volume
   const double volumeReductionFactor = 1.4;  // guessed, 2 might be too much
@@ -711,7 +718,7 @@ Result RocksDBZkdIndex::insert(transaction::Methods& trx,
     auto prefixValues = extractAttributeValues(trx, _prefixFields, doc);
     rocksdbKey.constructZkdIndexValue(objectId(), prefixValues->slice(),
                                       keyValue, documentId);
-    hash = prefixValues->slice().normalizedHash();
+    hash = _estimates ? prefixValues->slice().normalizedHash() : 0;
   }
 
   auto storedValues = extractAttributeValues(trx, _storedValues, doc);
@@ -768,7 +775,7 @@ Result RocksDBZkdIndex::remove(transaction::Methods& trx,
     auto prefixValues = extractAttributeValues(trx, _prefixFields, doc);
     rocksdbKey.constructZkdIndexValue(objectId(), prefixValues->slice(),
                                       keyValue, documentId);
-    hash = prefixValues->slice().normalizedHash();
+    hash = _estimates ? prefixValues->slice().normalizedHash() : 0;
   }
 
   auto s = methods->SingleDelete(_cf, rocksdbKey);
