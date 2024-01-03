@@ -1194,12 +1194,12 @@ void TraversalNode::prepareOptions() {
         case TRI_EDGE_IN:
           opts->addDepthLookupInfo(
               _plan, _edgeColls[i]->name(), StaticStrings::ToString,
-              builder->getInboundCondition()->clone(ast), depth, false, dir);
+              builder->getInboundCondition()->clone(ast), depth, dir);
           break;
         case TRI_EDGE_OUT:
           opts->addDepthLookupInfo(
               _plan, _edgeColls[i]->name(), StaticStrings::FromString,
-              builder->getOutboundCondition()->clone(ast), depth, false, dir);
+              builder->getOutboundCondition()->clone(ast), depth, dir);
           break;
         case TRI_EDGE_ANY:
           TRI_ASSERT(false);

@@ -142,7 +142,7 @@ struct TraverserOptions : public graph::BaseOptions {
                           std::string const& collectionName,
                           std::string const& attributeName,
                           aql::AstNode* condition, uint64_t depth,
-                          bool onlyEdgeIndexes, TRI_edge_direction_e direction);
+                          TRI_edge_direction_e direction);
 
   bool hasDepthLookupInfo() const { return !_depthLookupInfo.empty(); }
 

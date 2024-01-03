@@ -291,7 +291,7 @@ struct ZkdIndexFactory : public DefaultIndexFactory {
                     "`mdi` index does not support prefixed fields. use "
                     "`mdi-prefixed` as type instead.");
     }
-    // a zdk index never uses index estimates
+    // a zkd index never uses index estimates
     normalized.add(StaticStrings::IndexEstimates, velocypack::Value(false));
 
     return IndexFactory::enhanceJsonIndexZkd(definition, normalized,

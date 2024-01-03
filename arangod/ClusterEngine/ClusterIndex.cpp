@@ -514,6 +514,8 @@ ClusterIndex::coveredFields() const {
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
     case TRI_IDX_TYPE_TTL_INDEX:
     case TRI_IDX_TYPE_IRESEARCH_LINK:
+    case TRI_IDX_TYPE_ZKD_INDEX:
+    case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
     case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
       return Index::emptyCoveredFields;
     }
