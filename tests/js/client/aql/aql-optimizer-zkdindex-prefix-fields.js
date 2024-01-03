@@ -43,7 +43,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
     testSimplePrefix: function () {
       col = db._create(colName);
       col.ensureIndex({
-        type: 'zkd',
+        type: 'mdi-prefixed',
         name: 'zkdIndex',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
@@ -72,7 +72,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
     testEstimates: function () {
       col = db._create(colName);
       col.ensureIndex({
-        type: 'zkd',
+        type: 'mdi-prefixed',
         name: 'zkdIndex',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
@@ -93,7 +93,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
     testMultiPrefix: function () {
       col = db._create(colName);
       col.ensureIndex({
-        type: 'zkd',
+        type: 'mdi-prefixed',
         name: 'zkdIndex',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
@@ -124,7 +124,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
     testProjections: function () {
       col = db._create(colName);
       col.ensureIndex({
-        type: 'zkd',
+        type: 'mdi-prefixed',
         name: 'zkdIndex',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
@@ -163,7 +163,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
     testNoStoredValues: function () {
       col = db._create(colName);
       col.ensureIndex({
-        type: 'zkd',
+        type: 'mdi-prefixed',
         name: 'zkdIndex',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
@@ -196,6 +196,40 @@ function optimizerRuleZkd2dIndexTestSuite() {
         assertEqual(c, -2);
       }
     },
+
+    testTruncate: function () {
+      let col = db._create(colName);
+      col.ensureIndex({
+        type: 'mdi-prefixed',
+        name: 'zkdIndex',
+        fields: ['x', 'y'],
+        fieldValueTypes: 'double',
+        prefixFields: ["z"]
+      });
+
+      db._query(aql`
+          FOR i IN 1..100
+            INSERT {x: i, y: i, z: 0} INTO ${col}
+      `);
+
+      let res = db._query(aql`
+        FOR doc in ${col}
+          FILTER doc.x > -100
+          FILTER doc.z == 0
+          RETURN doc
+      `).toArray();
+      assertEqual(100, res.length);
+
+      col.truncate();
+
+      res = db._query(aql`
+        FOR doc in ${col}
+          FILTER doc.x > -100
+          FILTER doc.z == 0
+          RETURN doc
+      `).toArray();
+      assertEqual(0, res.length);
+    },
   };
 }
 
@@ -221,14 +255,14 @@ function optimizerRuleZkdTraversal() {
           {numberOfShards: 2});
 
       db[edgeCollection].ensureIndex({
-        type: 'zkd',
+        type: 'mdi-prefixed',
         name: indexName,
         fields: ["x", "y"],
         prefixFields: ["_from"],
         fieldValueTypes: 'double',
       });
       db[edgeCollection].ensureIndex({
-        type: 'zkd',
+        type: 'mdi-prefixed',
         name: levelIndexName,
         fields: ["x", "y", "w"],
         storedValues: ["foo"],

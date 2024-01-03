@@ -35,10 +35,12 @@ class RocksDBZkdIndexBase : public RocksDBIndex {
   void toVelocyPack(
       velocypack::Builder& builder,
       std::underlying_type<Index::Serialize>::type type) const override;
-  char const* typeName() const override { return "zkd"; };
-  IndexType type() const override { return TRI_IDX_TYPE_ZKD_INDEX; };
+  char const* typeName() const override;
+  IndexType type() const override;
   bool canBeDropped() const override { return true; }
   bool isSorted() const override { return false; }
+
+  bool isPrefixed() const noexcept { return !_prefixFields.empty(); }
 
   std::vector<std::vector<basics::AttributeName>> const& coveredFields()
       const override {

@@ -705,7 +705,7 @@ Result RocksDBZkdIndex::insert(transaction::Methods& trx,
 
   RocksDBKey rocksdbKey;
   uint64_t hash = 0;
-  if (_prefixFields.empty()) {
+  if (!isPrefixed()) {
     rocksdbKey.constructZkdIndexValue(objectId(), keyValue, documentId);
   } else {
     auto prefixValues = extractAttributeValues(trx, _prefixFields, doc);
@@ -762,7 +762,7 @@ Result RocksDBZkdIndex::remove(transaction::Methods& trx,
 
   RocksDBKey rocksdbKey;
   uint64_t hash = 0;
-  if (_prefixFields.empty()) {
+  if (!isPrefixed()) {
     rocksdbKey.constructZkdIndexValue(objectId(), keyValue, documentId);
   } else {
     auto prefixValues = extractAttributeValues(trx, _prefixFields, doc);
@@ -863,7 +863,7 @@ void RocksDBZkdIndexBase::toVelocyPack(
 
 bool RocksDBZkdIndex::hasSelectivityEstimate() const {
   TRI_ASSERT(!_unique);
-  return _estimates && !_prefixFields.empty();
+  return _estimates && isPrefixed();
 }
 
 double RocksDBZkdIndex::selectivityEstimate(std::string_view) const {
@@ -935,6 +935,15 @@ aql::AstNode* RocksDBZkdIndexBase::specializeCondition(
   return zkd::specializeCondition(this, condition, reference);
 }
 
+Index::IndexType RocksDBZkdIndexBase::type() const {
+  return isPrefixed() ? TRI_IDX_TYPE_MDI_PREFIXED_INDEX
+                      : TRI_IDX_TYPE_ZKD_INDEX;
+}
+
+char const* RocksDBZkdIndexBase::typeName() const {
+  return Index::oldtypeName(type());
+}
+
 std::unique_ptr<IndexIterator> RocksDBZkdIndex::iteratorForCondition(
     ResourceMonitor& monitor, transaction::Methods* trx,
     aql::AstNode const* node, aql::Variable const* reference,
@@ -942,7 +951,7 @@ std::unique_ptr<IndexIterator> RocksDBZkdIndex::iteratorForCondition(
   transaction::BuilderLeaser leaser(trx);
   auto&& [min, max] = boundsForIterator(this, node, reference, opts, *leaser);
 
-  if (_prefixFields.empty()) {
+  if (!isPrefixed()) {
     return std::make_unique<RocksDBZkdIndexIterator<false, false>>(
         monitor, &_collection, this, trx, std::move(min), std::move(max),
         std::move(leaser), fields().size(), readOwnWrites, opts.lookahead);
@@ -963,7 +972,7 @@ RocksDBZkdIndex::RocksDBZkdIndex(IndexId iid, LogicalCollection& coll,
     _estimates = s.getBoolean();
   }
 
-  if (_prefixFields.empty()) {
+  if (!isPrefixed()) {
     _estimates = false;
   }
 
@@ -988,7 +997,7 @@ std::unique_ptr<IndexIterator> RocksDBUniqueZkdIndex::iteratorForCondition(
   transaction::BuilderLeaser leaser(trx);
   auto&& [min, max] = boundsForIterator(this, node, reference, opts, *leaser);
 
-  if (_prefixFields.empty()) {
+  if (!isPrefixed()) {
     return std::make_unique<RocksDBZkdIndexIterator<true, false>>(
         monitor, &_collection, this, trx, std::move(min), std::move(max),
         std::move(leaser), fields().size(), readOwnWrites, opts.lookahead);
@@ -1012,7 +1021,7 @@ Result RocksDBUniqueZkdIndex::insert(transaction::Methods& trx,
   auto keyValue = readDocumentKey(doc, _fields);
 
   RocksDBKey rocksdbKey;
-  if (_prefixFields.empty()) {
+  if (!isPrefixed()) {
     rocksdbKey.constructZkdIndexValue(objectId(), keyValue);
   } else {
     auto prefixValues = extractAttributeValues(trx, _prefixFields, doc);
@@ -1054,7 +1063,7 @@ Result RocksDBUniqueZkdIndex::remove(transaction::Methods& trx,
   auto keyValue = readDocumentKey(doc, _fields);
 
   RocksDBKey rocksdbKey;
-  if (_prefixFields.empty()) {
+  if (!isPrefixed()) {
     rocksdbKey.constructZkdIndexValue(objectId(), keyValue);
   } else {
     auto prefixValues = extractAttributeValues(trx, _prefixFields, doc);

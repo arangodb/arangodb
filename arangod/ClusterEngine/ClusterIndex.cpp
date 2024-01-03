@@ -90,6 +90,10 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
                              /*allowEmpty*/ true, /*allowExpansion*/ false));
     } else if (_indexType == TRI_IDX_TYPE_ZKD_INDEX) {
+      _coveredFields =
+          Index::parseFields(info.get(StaticStrings::IndexStoredValues),
+                             /*allowEmpty*/ true, /*allowExpansion*/ false);
+    } else if (_indexType == TRI_IDX_TYPE_MDI_PREFIXED_INDEX) {
       _prefixFields =
           Index::parseFields(info.get(StaticStrings::IndexPrefixFields),
                              /*allowEmpty*/ true, /*allowExpansion*/ false);
@@ -105,13 +109,10 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
     } else if (_indexType == TRI_IDX_TYPE_HASH_INDEX ||
                _indexType == TRI_IDX_TYPE_SKIPLIST_INDEX ||
                _indexType == TRI_IDX_TYPE_PERSISTENT_INDEX ||
-               _indexType == TRI_IDX_TYPE_ZKD_INDEX) {
+               _indexType == TRI_IDX_TYPE_MDI_PREFIXED_INDEX) {
       if (VPackSlice s = info.get(StaticStrings::IndexEstimates);
           s.isBoolean()) {
         _estimates = s.getBoolean();
-      }
-      if (_indexType == TRI_IDX_TYPE_ZKD_INDEX && _prefixFields.empty()) {
-        _estimates = false;
       }
     } else if (_indexType == TRI_IDX_TYPE_TTL_INDEX) {
       _estimates = false;
@@ -138,14 +139,14 @@ void ClusterIndex::toVelocyPack(
   if (_indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
       _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
       _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX ||
-      _indexType == Index::TRI_IDX_TYPE_ZKD_INDEX) {
+      _indexType == Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX) {
     builder.add(StaticStrings::IndexEstimates, VPackValue(_estimates));
   } else if (_indexType == Index::TRI_IDX_TYPE_TTL_INDEX) {
     // no estimates for the ttl index
     builder.add(StaticStrings::IndexEstimates, VPackValue(false));
   }
 
-  if (_indexType == Index::TRI_IDX_TYPE_ZKD_INDEX) {
+  if (_indexType == Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX) {
     builder.add(arangodb::velocypack::Value(StaticStrings::IndexPrefixFields));
     builder.openArray();
 
@@ -240,10 +241,11 @@ bool ClusterIndex::hasSelectivityEstimate() const {
     return _indexType == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_EDGE_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_TTL_INDEX ||
-           (_estimates && (_indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
-                           _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
-                           _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX ||
-                           _indexType == Index::TRI_IDX_TYPE_ZKD_INDEX));
+           (_estimates &&
+            (_indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
+             _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
+             _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX ||
+             _indexType == Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX));
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   } else if (_engineType == ClusterEngineType::MockEngine) {
     return false;
@@ -381,6 +383,7 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
     }
 
     case TRI_IDX_TYPE_ZKD_INDEX:
+    case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
       return zkd::supportsFilterCondition(this, allIndexes, node, reference,
                                           itemsInIndex);
 
@@ -427,6 +430,7 @@ Index::SortCosts ClusterIndex::supportsSortCondition(
     }
 
     case TRI_IDX_TYPE_ZKD_INDEX:
+    case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
       // Sorting not supported
       return Index::SortCosts{};
 
@@ -481,6 +485,7 @@ aql::AstNode* ClusterIndex::specializeCondition(
     }
 
     case TRI_IDX_TYPE_ZKD_INDEX:
+    case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
       return zkd::specializeCondition(this, node, reference);
 
     case TRI_IDX_TYPE_UNKNOWN:
@@ -508,7 +513,6 @@ ClusterIndex::coveredFields() const {
     case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
     case TRI_IDX_TYPE_TTL_INDEX:
-    case TRI_IDX_TYPE_ZKD_INDEX:
     case TRI_IDX_TYPE_IRESEARCH_LINK:
     case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
       return Index::emptyCoveredFields;
