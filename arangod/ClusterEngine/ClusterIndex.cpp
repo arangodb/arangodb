@@ -114,7 +114,8 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
           s.isBoolean()) {
         _estimates = s.getBoolean();
       }
-    } else if (_indexType == TRI_IDX_TYPE_TTL_INDEX) {
+    } else if (_indexType == TRI_IDX_TYPE_TTL_INDEX ||
+               _indexType == TRI_IDX_TYPE_ZKD_INDEX) {
       _estimates = false;
     }
   }
@@ -141,7 +142,9 @@ void ClusterIndex::toVelocyPack(
       _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX ||
       _indexType == Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX ||
       _indexType == Index::TRI_IDX_TYPE_ZKD_INDEX) {
-    TRI_ASSERT(_indexType != TRI_IDX_TYPE_ZKD_INDEX || !_estimates || _unique);
+    TRI_ASSERT(_indexType != TRI_IDX_TYPE_ZKD_INDEX || !_estimates || _unique)
+        << oldtypeName(_indexType) << std::boolalpha
+        << " estimates = " << _estimates << " unique = " << _unique;
     builder.add(StaticStrings::IndexEstimates, VPackValue(_estimates));
   } else if (_indexType == Index::TRI_IDX_TYPE_TTL_INDEX) {
     // no estimates for the ttl index
