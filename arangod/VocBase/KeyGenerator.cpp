@@ -814,6 +814,15 @@ std::string const KeyGeneratorHelper::highestKey(
     KeyGeneratorHelper::maxKeyLength,
     std::numeric_limits<std::string::value_type>::max());
 
+std::vector<std::string> KeyGeneratorHelper::generatorNames() {
+  std::vector<std::string> names;
+  names.reserve(::generatorNames.size());
+  for (auto const& it : ::generatorNames) {
+    names.push_back(it.first);
+  }
+  return names;
+}
+
 uint64_t KeyGeneratorHelper::decodePadded(char const* data,
                                           size_t length) noexcept {
   uint64_t result = 0;
