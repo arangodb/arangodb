@@ -769,11 +769,11 @@ Result processIndexSortedPrefixFields(VPackSlice definition,
 
   auto prefixFieldsSlice = definition.get(StaticStrings::IndexPrefixFields);
 
-  if (prefixFieldsSlice.isArray()) {
+  if (prefixFieldsSlice.isArray() && !prefixFieldsSlice.isEmptyArray()) {
     res = IndexFactory::validateFieldsDefinition(
         definition, StaticStrings::IndexPrefixFields, minFields, maxFields,
         allowSubAttributes, /*allowIdAttribute*/ true);
-    if (res.ok() && prefixFieldsSlice.length() > 0) {
+    if (res.ok()) {
       std::unordered_set<std::string_view> fields;
       for (VPackSlice it : VPackArrayIterator(prefixFieldsSlice)) {
         fields.insert(it.stringView());
@@ -807,7 +807,8 @@ Result processIndexSortedPrefixFields(VPackSlice definition,
       builder.close();
     }
   } else {
-    res.reset(TRI_ERROR_BAD_PARAMETER, "prefixFields must be an array");
+    res.reset(TRI_ERROR_BAD_PARAMETER,
+              "prefixFields is required for `mdi-prefixed`");
   }
 
   return res;
