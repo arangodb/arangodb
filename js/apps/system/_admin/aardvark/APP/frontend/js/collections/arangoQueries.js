@@ -123,7 +123,7 @@
         $.ajax({
           cache: false,
           type: 'PATCH',
-          url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(this.activeUser)),
+          url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(window.App.currentUser)),
           data: JSON.stringify({
             extra: {
               queries: queries
@@ -202,7 +202,7 @@
             $.ajax({
               cache: false,
               type: 'POST',
-              url: 'query/upload/' + encodeURIComponent(this.activeUser),
+              url: 'query/upload/' + encodeURIComponent(window.App.currentUser),
               data: JSON.stringify(sanitizedQueries),
               contentType: 'application/json',
               processData: false,
