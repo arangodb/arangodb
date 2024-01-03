@@ -51,7 +51,11 @@
       return version;
     },
     getDocuVersion: function () {
-      return this.toDocuVersion(window.frontendConfig.version.version);
+      var version =
+        window.frontendConfig &&
+        window.frontendConfig.version &&
+        window.frontendConfig.version.version;
+      return this.toDocuVersion(version || "");
     }
   };
 
