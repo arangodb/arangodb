@@ -1,6 +1,14 @@
 devel
 -----
 
+* Introduce alternative syntax for AQL array iteration using FOR loop:
+  * `FOR [value] IN expression`: identical to `FOR value IN expression`, but
+    more clearly indicates that they iteration is over an array of values.
+  * FOR [idx, value] IN expression`: populates an additional output variable
+    (`idx` in this case) with the row number, starting at 0.
+  Both syntaxes cannot be used to iterate directly over collections or view,
+  i.e. the input expression cannot be a collection or a view.
+
 * Make AQL optimizer rule `move-filters-into-enumerate` also move filters into
   EnumerateListNodes for early pruning. Previously it could only pull filters 
   into IndexNodes and EnumerateCollectionNodes.

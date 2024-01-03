@@ -754,7 +754,8 @@ class EnumerateListNode : public ExecutionNode {
 
  public:
   EnumerateListNode(ExecutionPlan* plan, ExecutionNodeId id,
-                    Variable const* inVariable, Variable const* outVariable);
+                    Variable const* inVariable, Variable const* outVariable,
+                    Variable const* keyVariable);
 
   EnumerateListNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
@@ -805,8 +806,11 @@ class EnumerateListNode : public ExecutionNode {
   /// @brief return in variable
   Variable const* inVariable() const;
 
-  /// @brief return out variable
+  /// @brief return out variable (for value)
   Variable const* outVariable() const;
+
+  /// @brief return out variable (for key - can be a nullptr)
+  Variable const* keyVariable() const;
 
  protected:
   /// @brief export to VelocyPack
@@ -817,8 +821,11 @@ class EnumerateListNode : public ExecutionNode {
   /// @brief input variable to read from
   Variable const* _inVariable;
 
-  /// @brief output variable to write to
+  /// @brief output variable that value is written to
   Variable const* _outVariable;
+
+  /// @brief output variable that key is written to (can be nullptr)
+  Variable const* _keyVariable;
 
   /// @brief early filtering condition
   std::unique_ptr<Expression> _filter;

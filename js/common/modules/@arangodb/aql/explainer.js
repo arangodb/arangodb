@@ -1393,7 +1393,13 @@ function processQuery(query, explain, planIndex) {
         if (node.filter) {
           filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
         }
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */') + filter;
+        let variables;
+        if (node.hasOwnProperty('keyVariable')) {
+          variables = '[ ' + variableName(node.keyVariable) + ' ' + annotation('/* key */') + ', ' + variableName(node.outVariable) + ' ]';
+        } else {
+          variables = variableName(node.outVariable);
+        }
+        return keyword('FOR') + ' ' + variables + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */') + filter;
       case 'EnumerateViewNode':
         var condition = '';
         if (node.condition && node.condition.hasOwnProperty('type')) {

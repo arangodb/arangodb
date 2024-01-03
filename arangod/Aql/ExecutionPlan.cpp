@@ -1175,6 +1175,47 @@ ExecutionNode* ExecutionPlan::addDependency(ExecutionNode* previous,
   }
 }
 
+/// @brief create an execution plan element from an AST FOR ARRAY node
+ExecutionNode* ExecutionPlan::fromNodeForArray(ExecutionNode* previous,
+                                               AstNode const* node) {
+  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FOR_ARRAY);
+  TRI_ASSERT(node->numMembers() == 3);
+
+  auto key = node->getMember(0);
+  // key
+  Variable const* k = nullptr;
+  if (key != nullptr && key->type != NODE_TYPE_NOP) {
+    k = static_cast<Variable*>(key->getData());
+    TRI_ASSERT(k != nullptr);
+  }
+
+  // value
+  auto value = node->getMember(1);
+  TRI_ASSERT(value->type == NODE_TYPE_VARIABLE);
+  auto v = static_cast<Variable*>(value->getData());
+  TRI_ASSERT(v != nullptr);
+
+  auto expression = node->getMember(2);
+  ExecutionNode* en = nullptr;
+
+  if (expression->type == NODE_TYPE_REFERENCE) {
+    // expression is already a variable
+    auto inVariable = static_cast<Variable*>(expression->getData());
+    TRI_ASSERT(inVariable != nullptr);
+    en = createNode<EnumerateListNode>(this, nextId(), inVariable, v, k);
+  } else {
+    // expression is some misc. expression
+    auto calc = createTemporaryCalculation(expression, previous);
+    en = createNode<EnumerateListNode>(this, nextId(), getOutVariable(calc), v,
+                                       k);
+    previous = calc;
+  }
+
+  TRI_ASSERT(en != nullptr);
+
+  return addDependency(previous, en);
+}
+
 /// @brief create an execution plan element from an AST FOR node
 ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
                                           AstNode const* node) {
@@ -1248,12 +1289,13 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
     // second operand is already a variable
     auto inVariable = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(inVariable != nullptr);
-    en = createNode<EnumerateListNode>(this, nextId(), inVariable, v);
+    en = createNode<EnumerateListNode>(this, nextId(), inVariable, v,
+                                       /*keyVariable*/ nullptr);
   } else {
     // second operand is some misc. expression
     auto calc = createTemporaryCalculation(expression, previous);
-    en = registerNode(
-        new EnumerateListNode(this, nextId(), getOutVariable(calc), v));
+    en = createNode<EnumerateListNode>(this, nextId(), getOutVariable(calc), v,
+                                       /*keyVariable*/ nullptr);
     previous = calc;
   }
 
@@ -2327,6 +2369,11 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
     switch (member->type) {
       case NODE_TYPE_WITH: {
         // the using declaration...
+        break;
+      }
+
+      case NODE_TYPE_FOR_ARRAY: {
+        en = fromNodeForArray(en, member);
         break;
       }
 

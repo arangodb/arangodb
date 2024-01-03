@@ -59,10 +59,13 @@ EnumerateListExpressionContext::EnumerateListExpressionContext(
     transaction::Methods& trx, QueryContext& context,
     AqlFunctionsInternalCache& cache,
     std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister,
-    VariableId outputVariableId)
+    std::optional<VariableId> outputVariableId,
+    std::optional<VariableId> keyVariableId)
     : QueryExpressionContext(trx, context, cache),
       _varsToRegister(varsToRegister),
-      _outputVariableId(outputVariableId) {}
+      _outputVariableId(outputVariableId),
+      _keyVariableId(keyVariableId),
+      _currentRowIndex(0) {}
 
 AqlValue EnumerateListExpressionContext::getVariableValue(
     Variable const* variable, bool doCopy, bool& mustDestroy) const {
@@ -73,8 +76,11 @@ AqlValue EnumerateListExpressionContext::getVariableValue(
              bool& mustDestroy) -> AqlValue {
         mustDestroy = doCopy;
         auto const searchId = variable->id;
-        if (searchId == _outputVariableId) {
+        if (_outputVariableId.has_value() && searchId == *_outputVariableId) {
           return *_currentValue;
+        }
+        if (_keyVariableId.has_value() && searchId == *_keyVariableId) {
+          return AqlValue(AqlValueHintUInt(_currentRowIndex));
         }
         for (auto const& [varId, regId] : _varsToRegister) {
           if (varId == searchId) {
@@ -96,29 +102,34 @@ void EnumerateListExpressionContext::adjustCurrentValue(AqlValue const& value) {
   _currentValue = value;
 }
 
+void EnumerateListExpressionContext::adjustCurrentRowIndex(uint64_t rowIndex) {
+  _currentRowIndex = rowIndex;
+}
+
 void EnumerateListExpressionContext::adjustCurrentRow(
     InputAqlItemRow const& inputRow) {
   _inputRow = inputRow;
 }
 
 EnumerateListExecutorInfos::EnumerateListExecutorInfos(
-    RegisterId inputRegister, RegisterId outputRegister, QueryContext& query,
-    Expression* filter,
+    RegisterId inputRegister, RegisterId outputRegister, RegisterId keyRegister,
+    QueryContext& query, Expression* filter,
     std::vector<std::pair<VariableId, RegisterId>>&& varsToRegs)
     : _query(query),
       _inputRegister(inputRegister),
       _outputRegister(outputRegister),
-      _outputVariableId(std::numeric_limits<VariableId>::max()),
+      _keyRegister(keyRegister),
       _filter(filter),
       _varsToRegs(std::move(varsToRegs)) {
   if (hasFilter()) {
     for (auto const& it : _varsToRegs) {
       if (it.second == _outputRegister) {
         _outputVariableId = it.first;
-        break;
+      } else if (it.second == _keyRegister) {
+        _keyVariableId = it.first;
       }
     }
-    TRI_ASSERT(_outputVariableId != std::numeric_limits<VariableId>::max());
+    TRI_ASSERT(_outputVariableId.has_value() || _keyVariableId.has_value());
   }
 }
 
@@ -134,8 +145,18 @@ RegisterId EnumerateListExecutorInfos::getOutputRegister() const noexcept {
   return _outputRegister;
 }
 
-VariableId EnumerateListExecutorInfos::getOutputVariableId() const noexcept {
+std::optional<VariableId> EnumerateListExecutorInfos::getOutputVariableId()
+    const noexcept {
   return _outputVariableId;
+}
+
+RegisterId EnumerateListExecutorInfos::getKeyRegister() const noexcept {
+  return _keyRegister;
+}
+
+std::optional<VariableId> EnumerateListExecutorInfos::getKeyVariableId()
+    const noexcept {
+  return _keyVariableId;
 }
 
 bool EnumerateListExecutorInfos::hasFilter() const noexcept {
@@ -157,11 +178,13 @@ EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher,
       _trx(_infos.getQuery().newTrxContext()),
       _currentRow{CreateInvalidInputRowHint{}},
       _inputArrayPosition(0),
-      _inputArrayLength(0) {
+      _inputArrayLength(0),
+      _rowIndex(0) {
   if (_infos.hasFilter()) {
     _expressionContext = std::make_unique<EnumerateListExpressionContext>(
         _trx, _infos.getQuery(), _aqlFunctionsInternalCache,
-        _infos.getVarsToRegs(), _infos.getOutputVariableId());
+        _infos.getVarsToRegs(), _infos.getOutputVariableId(),
+        _infos.getKeyVariableId());
   }
 }
 
@@ -184,7 +207,6 @@ void EnumerateListExecutor::initializeNewRow(
     throwArrayExpectedException(inputList);
   }
   _inputArrayLength = inputList.length();
-
   _inputArrayPosition = 0;
 }
 
@@ -204,6 +226,13 @@ bool EnumerateListExecutor::processArrayElement(OutputAqlItemRow& output) {
   }
 
   output.moveValueInto(_infos.getOutputRegister(), _currentRow, &guard);
+  if (_infos.getKeyRegister() != RegisterId::maxRegisterId) {
+    // populate key register with row index
+    bool mustDestroy = false;
+    AqlValue key{AqlValueHintUInt{_rowIndex}};
+    AqlValueGuard guard(key, mustDestroy);
+    output.moveValueInto(_infos.getKeyRegister(), _currentRow, &guard);
+  }
   output.advanceRow();
 
   return true;
@@ -248,6 +277,7 @@ EnumerateListExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       stats.incrFiltered();
     }
     ++_inputArrayPosition;
+    ++_rowIndex;
   }
 
   if (_inputArrayLength == _inputArrayPosition) {
@@ -293,6 +323,7 @@ EnumerateListExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
 
       // always advance input position
       ++_inputArrayPosition;
+      ++_rowIndex;
     } else {
       // no filter. we can skip many documents at once
       auto const skip = std::invoke([&] {
@@ -309,6 +340,7 @@ EnumerateListExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
       auto const skipped = skipArrayElement(skip);
       // the call to skipArrayElement has advanced the input position already
       call.didSkip(skipped);
+      _rowIndex += skipped;
     }
   }
 
@@ -325,6 +357,7 @@ bool EnumerateListExecutor::checkFilter(AqlValue const& currentValue) {
 
   _expressionContext->adjustCurrentRow(_currentRow);
   _expressionContext->adjustCurrentValue(currentValue);
+  _expressionContext->adjustCurrentRowIndex(_rowIndex);
 
   bool mustDestroy;  // will get filled by execution
   AqlValue a =
@@ -334,6 +367,8 @@ bool EnumerateListExecutor::checkFilter(AqlValue const& currentValue) {
 }
 
 void EnumerateListExecutor::initialize() {
+  // TODO
+  TRI_ASSERT(false);
   _inputArrayLength = 0;
   _inputArrayPosition = 0;
   _currentRow = InputAqlItemRow{CreateInvalidInputRowHint{}};

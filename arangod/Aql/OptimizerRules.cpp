@@ -7717,6 +7717,7 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(
     }
 
     Variable const* outVariable = nullptr;
+    Variable const* keyVariable = nullptr;
     if (n->getType() == EN::INDEX || n->getType() == EN::ENUMERATE_COLLECTION) {
       auto en = dynamic_cast<DocumentProducingNode*>(n);
       if (en == nullptr) {
@@ -7729,9 +7730,12 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(
       TRI_ASSERT(n->getType() == EN::ENUMERATE_LIST);
       outVariable =
           ExecutionNode::castTo<EnumerateListNode const*>(n)->outVariable();
+      keyVariable =
+          ExecutionNode::castTo<EnumerateListNode const*>(n)->keyVariable();
     }
 
-    if (!n->isVarUsedLater(outVariable)) {
+    if (!n->isVarUsedLater(outVariable) &&
+        (keyVariable == nullptr || !n->isVarUsedLater(keyVariable))) {
       // e.g. FOR doc IN collection RETURN 1
       continue;
     }
@@ -7814,7 +7818,8 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(
         TRI_ASSERT(!expr->willUseV8());
         found.clear();
         Ast::getReferencedVariables(expr->node(), found);
-        if (found.find(outVariable) != found.end()) {
+        if (found.contains(outVariable) ||
+            (keyVariable != nullptr && found.contains(keyVariable))) {
           // check if the introduced variable refers to another temporary
           // variable that is not valid yet in the EnumerateCollection/Index
           // node, which would prevent moving the calculation and filter
@@ -7823,9 +7828,8 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(
           //     LET a = RAND()
           //     FILTER doc.value == 2 && doc.value > a
           bool eligible = std::none_of(
-              introduced.begin(), introduced.end(), [&](Variable const* temp) {
-                return (found.find(temp) != found.end());
-              });
+              introduced.begin(), introduced.end(),
+              [&](Variable const* temp) { return found.contains(temp); });
 
           if (eligible) {
             calculations.emplace(calculationNode->outVariable(),

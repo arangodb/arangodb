@@ -577,13 +577,6 @@ AqlValue L1Distance(arangodb::aql::ExpressionContext*, AstNode const&,
 AqlValue L2Distance(arangodb::aql::ExpressionContext*, AstNode const&,
                     VPackFunctionParametersView);
 
-/// @brief dummy function that will only throw an error when called
-AqlValue NotImplemented(arangodb::aql::ExpressionContext*, AstNode const&,
-                        VPackFunctionParametersView);
-
-aql::AqlValue NotImplementedEE(aql::ExpressionContext*, aql::AstNode const&,
-                               std::span<aql::AqlValue const>);
-
 aql::AqlValue MinHash(aql::ExpressionContext*, aql::AstNode const&,
                       std::span<aql::AqlValue const>);
 
@@ -595,6 +588,17 @@ aql::AqlValue MinHashCount(aql::ExpressionContext*, aql::AstNode const&,
 
 aql::AqlValue MinHashMatch(aql::ExpressionContext*, aql::AstNode const&,
                            std::span<aql::AqlValue const>);
+
+/// @brief dummy function that will only throw an error when called
+AqlValue NotImplemented(arangodb::aql::ExpressionContext*, AstNode const&,
+                        VPackFunctionParametersView);
+
+aql::AqlValue NotImplementedEE(aql::ExpressionContext*, aql::AstNode const&,
+                               std::span<aql::AqlValue const>);
+
+aql::AqlValue NotImplementedAggregator(aql::ExpressionContext*,
+                                       aql::AstNode const&,
+                                       std::span<aql::AqlValue const>);
 
 /// @brief maximum precision for bit operations
 constexpr uint64_t bitFunctionsMaxSupportedBits = 32;

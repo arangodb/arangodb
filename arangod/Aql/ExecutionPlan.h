@@ -340,6 +340,9 @@ class ExecutionPlan {
   /// @brief adds "previous" as dependency to "plan", returns "plan"
   ExecutionNode* addDependency(ExecutionNode*, ExecutionNode*);
 
+  /// @brief create an execution plan element from an AST FOR ARRAY node
+  ExecutionNode* fromNodeForArray(ExecutionNode*, AstNode const*);
+
   /// @brief create an execution plan element from an AST FOR (non-view) node
   ExecutionNode* fromNodeFor(ExecutionNode*, AstNode const*);
 

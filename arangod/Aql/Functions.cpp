@@ -10360,22 +10360,6 @@ AqlValue functions::L2Distance(aql::ExpressionContext* expressionContext,
   return DistanceImpl(expressionContext, node, parameters, L2DistFunc);
 }
 
-AqlValue functions::NotImplemented(ExpressionContext* expressionContext,
-                                   AstNode const&,
-                                   VPackFunctionParametersView) {
-  registerError(expressionContext, "UNKNOWN", TRI_ERROR_NOT_IMPLEMENTED);
-  return AqlValue(AqlValueHintNull());
-}
-
-aql::AqlValue functions::NotImplementedEE(aql::ExpressionContext*,
-                                          aql::AstNode const& node,
-                                          std::span<aql::AqlValue const>) {
-  THROW_ARANGO_EXCEPTION_FORMAT(
-      TRI_ERROR_NOT_IMPLEMENTED,
-      "Function '%s' is available in ArangoDB Enterprise Edition only.",
-      getFunctionName(node).data());
-}
-
 #ifndef USE_ENTERPRISE
 aql::AqlValue functions::MinHashCount(aql::ExpressionContext* ctx,
                                       aql::AstNode const& node,
@@ -10401,3 +10385,28 @@ aql::AqlValue functions::MinHashMatch(aql::ExpressionContext* ctx,
   return NotImplementedEE(ctx, node, values);
 }
 #endif
+
+AqlValue functions::NotImplemented(ExpressionContext* expressionContext,
+                                   AstNode const&,
+                                   VPackFunctionParametersView) {
+  registerError(expressionContext, "UNKNOWN", TRI_ERROR_NOT_IMPLEMENTED);
+  return AqlValue(AqlValueHintNull());
+}
+
+aql::AqlValue functions::NotImplementedEE(aql::ExpressionContext*,
+                                          aql::AstNode const& node,
+                                          std::span<aql::AqlValue const>) {
+  THROW_ARANGO_EXCEPTION_FORMAT(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "AQL function '%s' is available in ArangoDB Enterprise Edition only.",
+      getFunctionName(node).data());
+}
+
+aql::AqlValue functions::NotImplementedAggregator(
+    aql::ExpressionContext*, aql::AstNode const& node,
+    std::span<aql::AqlValue const>) {
+  THROW_ARANGO_EXCEPTION_FORMAT(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "AQL function '%s' can only be used in aggregators.",
+      getFunctionName(node).data());
+}

@@ -793,7 +793,31 @@ all_shortest_paths_graph_info:
   ;
 
 for_statement:
-    T_FOR for_output_variables T_IN expression {
+    T_FOR T_ARRAY_OPEN for_output_variables T_ARRAY_CLOSE T_IN expression {
+      AstNode* variablesNode = static_cast<AstNode*>($3);
+      ::checkOutVariables(parser, variablesNode, 1, 2, "Array FOR loops only allow one or two return variables", yyloc);
+      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
+      AstNode* keyNode = nullptr;
+      AstNode* valueNode = nullptr;
+      if (variablesNode->numMembers() == 1) {
+        // only value
+        AstNode* variableNameNode = variablesNode->getMemberUnchecked(0);
+        TRI_ASSERT(variableNameNode->isStringValue());
+        valueNode = parser->ast()->createNodeVariable(variableNameNode->getStringView(), true);
+      } else {
+        // key and value
+        TRI_ASSERT(variablesNode->numMembers() == 2);
+        AstNode* variableNameNode = variablesNode->getMemberUnchecked(0);
+        TRI_ASSERT(variableNameNode->isStringValue());
+        keyNode = parser->ast()->createNodeVariable(variableNameNode->getStringView(), true);
+        variableNameNode = variablesNode->getMemberUnchecked(1);
+        TRI_ASSERT(variableNameNode->isStringValue());
+        valueNode = parser->ast()->createNodeVariable(variableNameNode->getStringView(), true);
+      }
+      AstNode* node = parser->ast()->createNodeForArray(keyNode, valueNode, $6);
+      parser->ast()->addOperation(node);
+    }
+  | T_FOR for_output_variables T_IN expression {
       AstNode* variablesNode = static_cast<AstNode*>($2);
       ::checkOutVariables(parser, variablesNode, 1, 1, "Collections and views FOR loops only allow a single return variable", yyloc);
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);

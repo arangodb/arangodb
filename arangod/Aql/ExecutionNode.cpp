@@ -1935,20 +1935,29 @@ AsyncPrefetchEligibility EnumerateCollectionNode::canUseAsyncPrefetching()
 
 EnumerateListNode::EnumerateListNode(ExecutionPlan* plan, ExecutionNodeId id,
                                      Variable const* inVariable,
-                                     Variable const* outVariable)
+                                     Variable const* outVariable,
+                                     Variable const* keyVariable)
     : ExecutionNode(plan, id),
       _inVariable(inVariable),
-      _outVariable(outVariable) {
+      _outVariable(outVariable),
+      _keyVariable(keyVariable) {
   TRI_ASSERT(_inVariable != nullptr);
   TRI_ASSERT(_outVariable != nullptr);
+  // note: keyVariable can be a nullptr!
 }
 
 EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
                                      arangodb::velocypack::Slice base)
     : ExecutionNode(plan, base),
       _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")),
-      _outVariable(
-          Variable::varFromVPack(plan->getAst(), base, "outVariable")) {
+      _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")),
+      _keyVariable(nullptr) {
+  if (VPackSlice p = base.get("keyVariable"); !p.isNone()) {
+    _keyVariable = Variable::varFromVPack(plan->getAst(), base, "keyVariable");
+  }
+  TRI_ASSERT(_inVariable != nullptr);
+  TRI_ASSERT(_outVariable != nullptr);
+
   if (VPackSlice p = base.get(StaticStrings::Filter); !p.isNone()) {
     Ast* ast = plan->getAst();
     // new AstNode is memory-managed by the Ast
@@ -1965,6 +1974,11 @@ void EnumerateListNode::doToVelocyPack(velocypack::Builder& nodes,
   nodes.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(nodes);
 
+  if (_keyVariable != nullptr) {
+    nodes.add(VPackValue("keyVariable"));
+    _keyVariable->toVelocyPack(nodes);
+  }
+
   if (_filter != nullptr) {
     nodes.add(VPackValue(StaticStrings::Filter));
     _filter->toVelocyPack(nodes, flags);
@@ -1978,8 +1992,16 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
   RegisterId inputRegister = variableToRegisterId(_inVariable);
   RegisterId outRegister = variableToRegisterId(_outVariable);
+  RegisterId keyRegister = RegisterId::maxRegisterId;
+
+  RegIdSet outRegisters{outRegister};
+  if (_keyVariable != nullptr) {
+    keyRegister = variableToRegisterId(_keyVariable);
+    outRegisters.emplace(keyRegister);
+  }
+
   auto registerInfos =
-      createRegisterInfos(RegIdSet{inputRegister}, RegIdSet{outRegister});
+      createRegisterInfos(RegIdSet{inputRegister}, std::move(outRegisters));
 
   std::vector<std::pair<VariableId, RegisterId>> varsToRegs;
   if (hasFilter()) {
@@ -1991,9 +2013,9 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
       varsToRegs.emplace_back(var->id, regId);
     }
   }
-  auto executorInfos =
-      EnumerateListExecutorInfos(inputRegister, outRegister, engine.getQuery(),
-                                 filter(), std::move(varsToRegs));
+  auto executorInfos = EnumerateListExecutorInfos(
+      inputRegister, outRegister, keyRegister, engine.getQuery(), filter(),
+      std::move(varsToRegs));
   return std::make_unique<ExecutionBlockImpl<EnumerateListExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
@@ -2001,8 +2023,8 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
 /// @brief clone ExecutionNode recursively
 ExecutionNode* EnumerateListNode::clone(ExecutionPlan* plan,
                                         bool withDependencies) const {
-  auto c =
-      std::make_unique<EnumerateListNode>(plan, _id, _inVariable, _outVariable);
+  auto c = std::make_unique<EnumerateListNode>(plan, _id, _inVariable,
+                                               _outVariable, _keyVariable);
 
   if (hasFilter()) {
     c->setFilter(_filter->clone(plan->getAst(), true));
@@ -2059,11 +2081,20 @@ void EnumerateListNode::getVariablesUsedHere(VarSet& vars) const {
     // planning's assumption is that all variables that are used in a
     // node must also be used later.
     vars.erase(outVariable());
+    if (_keyVariable != nullptr) {
+      vars.erase(_keyVariable);
+    }
   }
 }
 
 std::vector<Variable const*> EnumerateListNode::getVariablesSetHere() const {
-  return std::vector<Variable const*>{_outVariable};
+  std::vector<Variable const*> result;
+  result.reserve(1 + (_keyVariable != nullptr ? 1 : 0));
+  result.push_back(_outVariable);
+  if (_keyVariable != nullptr) {
+    result.push_back(_keyVariable);
+  }
+  return result;
 }
 
 /// @brief remember the condition to execute for early filtering
@@ -2074,6 +2105,8 @@ void EnumerateListNode::setFilter(std::unique_ptr<Expression> filter) {
 Variable const* EnumerateListNode::inVariable() const { return _inVariable; }
 
 Variable const* EnumerateListNode::outVariable() const { return _outVariable; }
+
+Variable const* EnumerateListNode::keyVariable() const { return _keyVariable; }
 
 LimitNode::LimitNode(ExecutionPlan* plan, arangodb::velocypack::Slice base)
     : ExecutionNode(plan, base),
