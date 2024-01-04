@@ -14,7 +14,7 @@
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "CMAKE_C_FLAGS": "-fno-stack-protector",
         "CMAKE_CXX_FLAGS": "-fno-stack-protector",
-        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id",
+        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1",
         "USE_IPO": "Off",
         "USE_STRICT_OPENSSL_VERSION": "On",
         "USE_MINIMAL_DEBUGINFO": "On",
