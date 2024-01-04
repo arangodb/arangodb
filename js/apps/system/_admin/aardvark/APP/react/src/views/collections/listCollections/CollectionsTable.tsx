@@ -1,7 +1,8 @@
-import { Link, Stack } from "@chakra-ui/react";
+import { Flex, Link, Stack } from "@chakra-ui/react";
 import { createColumnHelper } from "@tanstack/react-table";
 import React from "react";
 import { FiltersList } from "../../../components/table/FiltersList";
+import { TableControl } from "../../../components/table/TableControl";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { useCollectionsContext } from "../CollectionsContext";
@@ -92,10 +93,16 @@ export const CollectionsTable = () => {
   });
   return (
     <Stack>
-      <FiltersList<LockableCollectionDescription>
-        columns={TABLE_COLUMNS}
-        table={tableInstance}
-      />
+      <Flex justifyContent="space-between">
+        <FiltersList<LockableCollectionDescription>
+          columns={TABLE_COLUMNS}
+          table={tableInstance}
+        />
+        <TableControl<LockableCollectionDescription>
+          table={tableInstance}
+          columns={TABLE_COLUMNS}
+        />
+      </Flex>
       <ReactTable<LockableCollectionDescription>
         table={tableInstance}
         emptyStateMessage="No collections found"
