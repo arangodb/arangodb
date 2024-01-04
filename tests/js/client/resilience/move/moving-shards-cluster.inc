@@ -189,8 +189,6 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         getCoordinators()[0];
 
     var request = require("@arangodb/request");
-    // var endpointToURL = require("@arangodb/cluster").endpointToURL;
-    // var url = endpointToURL(coordEndpoint);
     var url = coordEndpoint.url;
 
 
@@ -229,8 +227,6 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     var coordEndpoint =
         getCoordinators()[0];
     var request = require("@arangodb/request");
-    // var endpointToURL = require("@arangodb/cluster").endpointToURL;
-    // var url = endpointToURL(coordEndpoint);
     var url = coordEndpoint.url;
 
     var res;
@@ -396,8 +392,6 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     var coordEndpoint =
         getCoordinators()[0];
     var request = require("@arangodb/request");
-    // var endpointToURL = require("@arangodb/cluster").endpointToURL;
-    // var url = endpointToURL(coordEndpoint);
     var url = coordEndpoint.url;
     var body = {"server": id};
     var result;
@@ -447,8 +441,6 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     var coordEndpoint =
         getCoordinators()[0];
     var request = require("@arangodb/request");
-    // var endpointToURL = require("@arangodb/cluster").endpointToURL;
-    // var url = endpointToURL(coordEndpoint);
     var url = coordEndpoint.url;
     var body = {"server": id, undoMoves};
     var result;
@@ -491,8 +483,6 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     var coordEndpoint =
         getCoordinators()[0];
     var request = require("@arangodb/request");
-    // var endpointToURL = require("@arangodb/cluster").endpointToURL;
-    // var url = endpointToURL(coordEndpoint);
     var url = coordEndpoint.url;
     var body = {"numberOfDBServers": toNum};
     let res = {};
@@ -518,8 +508,6 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     var coordEndpoint =
         getCoordinators()[0];
     var request = require("@arangodb/request");
-    // var endpointToURL = require("@arangodb/cluster").endpointToURL;
-    // var url = endpointToURL(coordEndpoint);
     var url = coordEndpoint.url;
     var numberOfDBServers = dbservers.length;
     var body = {"cleanedServers": [], "numberOfDBServers": numberOfDBServers};
@@ -566,8 +554,6 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     var coordEndpoint =
         getCoordinators()[0];
     var request = require("@arangodb/request");
-    // var endpointToURL = require("@arangodb/cluster").endpointToURL;
-    // var url = endpointToURL(coordEndpoint);
     var url = coordEndpoint.url;
     var body = {database, collection, shard, fromServer, toServer};
     var result;
@@ -615,8 +601,6 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     var coordEndpoint =
         getCoordinators()[0];
     var request = require("@arangodb/request");
-    // var endpointToURL = require("@arangodb/cluster").endpointToURL;
-    // var url = endpointToURL(coordEndpoint);
     var url = coordEndpoint.url;
     var req;
     try {
@@ -644,8 +628,6 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     var coordEndpoint =
         getCoordinators()[0];
     var request = require("@arangodb/request");
-    // var endpointToURL = require("@arangodb/cluster").endpointToURL;
-    // var url = endpointToURL(coordEndpoint);
     var url = coordEndpoint.url;
     var req;
     for (let i = 0; i < 10; i++) {

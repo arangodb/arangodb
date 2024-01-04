@@ -131,7 +131,6 @@ audit_client,audit_server enterprise name=audit -- --dumpAgencyOnError true
 shell_fuzzer full !mac cluster priority=500 parallelity=6 -- --dumpAgencyOnError true
 shell_fuzzer full !mac single priority=500 -- --dumpAgencyOnError true
 authentication_parameters single full priority=1000
-authentication_server single full priority=1000
 config single full priority=1000
 foxx_manager single full priority=500
 queryCacheAuthorization single full priority=500
