@@ -73,6 +73,8 @@ class ClusterCollection final : public PhysicalCollection {
   RevisionId revision(transaction::Methods* trx) const override;
   uint64_t numberDocuments(transaction::Methods* trx) const override;
 
+  bool cacheEnabled() const noexcept override;
+
   ////////////////////////////////////
   // -- SECTION Indexes --
   ///////////////////////////////////
