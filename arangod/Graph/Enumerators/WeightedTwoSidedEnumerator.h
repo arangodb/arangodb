@@ -101,9 +101,29 @@ class WeightedTwoSidedEnumerator {
 
     [[nodiscard]] bool isEmpty() const { return _queue.empty(); }
 
-    [[nodiscard]] std::vector<CalculatedCandidate> getQueue() const& {
-      return _queue;
-    };
+    [[nodiscard]] std::vector<Step*> getLeftLooseEnds() {
+      std::vector<Step*> steps;
+
+      for (auto& [_, step, __] : _queue) {
+        if (!step.isProcessable()) {
+          steps.emplace_back(&step);
+        }
+      }
+
+      return steps;
+    }
+
+    [[nodiscard]] std::vector<Step*> getRightLooseEnds() {
+      std::vector<Step*> steps;
+
+      for (auto& [_, __, step] : _queue) {
+        if (!step.isProcessable()) {
+          steps.emplace_back(&step);
+        }
+      }
+
+      return steps;
+    }
 
     [[nodiscard]] CalculatedCandidate& peek() {
       TRI_ASSERT(!_queue.empty());

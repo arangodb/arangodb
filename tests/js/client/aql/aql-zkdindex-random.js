@@ -68,7 +68,7 @@ function optimizerRuleZkd2dIndexTestSuite(unique) {
     setUpAll: function () {
       col = db._create(colName);
       col.ensureIndex({
-        type: 'zkd',
+        type: 'mdi-prefixed',
         name: 'zkdIndex',
         fields: ['x', 'y'],
         storedValues: ['k'],

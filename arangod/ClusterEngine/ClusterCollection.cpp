@@ -200,6 +200,11 @@ uint64_t ClusterCollection::numberDocuments(transaction::Methods* trx) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
+bool ClusterCollection::cacheEnabled() const noexcept {
+  return basics::VelocyPackHelper::getBooleanValue(
+      _info.slice(), StaticStrings::CacheEnabled, false);
+}
+
 futures::Future<std::shared_ptr<Index>> ClusterCollection::createIndex(
     velocypack::Slice info, bool restore, bool& created,
     std::shared_ptr<std::function<arangodb::Result(double)>> progress) {

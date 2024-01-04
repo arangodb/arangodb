@@ -35,28 +35,21 @@ class RocksDBZkdIndexBase : public RocksDBIndex {
   void toVelocyPack(
       velocypack::Builder& builder,
       std::underlying_type<Index::Serialize>::type type) const override;
-  char const* typeName() const override { return "zkd"; };
-  IndexType type() const override { return TRI_IDX_TYPE_ZKD_INDEX; };
+  char const* typeName() const override;
+  IndexType type() const override;
   bool canBeDropped() const override { return true; }
   bool isSorted() const override { return false; }
-  bool hasSelectivityEstimate() const override { return false; /* TODO */ }
+
+  bool isPrefixed() const noexcept { return !_prefixFields.empty(); }
 
   std::vector<std::vector<basics::AttributeName>> const& coveredFields()
       const override {
-    // The index only covers stored values
-    return _storedValues;
+    return _coveredFields;
   }
   std::vector<std::vector<basics::AttributeName>> const& prefixFields()
       const noexcept {
     return _prefixFields;
   }
-
-  Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId documentId, velocypack::Slice doc,
-                OperationOptions const& options, bool performChecks) override;
-  Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId documentId, velocypack::Slice doc,
-                OperationOptions const& /*options*/) override;
 
   FilterCosts supportsFilterCondition(
       transaction::Methods& /*trx*/,
@@ -68,19 +61,43 @@ class RocksDBZkdIndexBase : public RocksDBIndex {
       transaction::Methods& trx, aql::AstNode* condition,
       aql::Variable const* reference) const override;
 
-  std::unique_ptr<IndexIterator> iteratorForCondition(
-      ResourceMonitor& monitor, transaction::Methods* trx,
-      aql::AstNode const* node, aql::Variable const* reference,
-      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
-      int) override;
-
   std::vector<std::vector<basics::AttributeName>> const _storedValues;
   std::vector<std::vector<basics::AttributeName>> const _prefixFields;
   std::vector<std::vector<basics::AttributeName>> const _coveredFields;
 };
 
 class RocksDBZkdIndex final : public RocksDBZkdIndexBase {
-  using RocksDBZkdIndexBase::RocksDBZkdIndexBase;
+ public:
+  RocksDBZkdIndex(IndexId iid, LogicalCollection& coll, velocypack::Slice info);
+  bool hasSelectivityEstimate() const override;
+
+  double selectivityEstimate(std::string_view) const override;
+
+  RocksDBCuckooIndexEstimatorType* estimator() override;
+  void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType>) override;
+  void recalculateEstimates() override;
+
+  Result insert(transaction::Methods& trx, RocksDBMethods* methods,
+                LocalDocumentId documentId, velocypack::Slice doc,
+                OperationOptions const& options, bool performChecks) override;
+  Result remove(transaction::Methods& trx, RocksDBMethods* methods,
+                LocalDocumentId documentId, velocypack::Slice doc,
+                OperationOptions const& /*options*/) override;
+
+  void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
+                      transaction::Methods* trx) override;
+
+  Result drop() override;
+
+  std::unique_ptr<IndexIterator> iteratorForCondition(
+      ResourceMonitor& monitor, transaction::Methods* trx,
+      aql::AstNode const* node, aql::Variable const* reference,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+      int) override;
+
+ private:
+  bool _estimates;
+  std::unique_ptr<RocksDBCuckooIndexEstimatorType> _estimator;
 };
 
 class RocksDBUniqueZkdIndex final : public RocksDBZkdIndexBase {
@@ -98,6 +115,10 @@ class RocksDBUniqueZkdIndex final : public RocksDBZkdIndexBase {
       aql::AstNode const* node, aql::Variable const* reference,
       IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
       int) override;
+
+  bool hasSelectivityEstimate() const override { return true; }
+
+  double selectivityEstimate(std::string_view) const override { return 1; }
 };
 
 namespace zkd {

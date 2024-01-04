@@ -286,8 +286,58 @@ struct ZkdIndexFactory : public DefaultIndexFactory {
           arangodb::velocypack::Value(std::to_string(TRI_NewTickServer())));
     }
 
+    if (definition.hasKey(StaticStrings::IndexPrefixFields)) {
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    "`mdi` index does not support prefixed fields. use "
+                    "`mdi-prefixed` as type instead.");
+    }
+    // a zkd index never uses index estimates
+    normalized.add(StaticStrings::IndexEstimates, velocypack::Value(false));
+
     return IndexFactory::enhanceJsonIndexZkd(definition, normalized,
                                              isCreation);
+  }
+};
+
+struct MdiPrefixedIndexFactory : public DefaultIndexFactory {
+  explicit MdiPrefixedIndexFactory(ArangodServer& server)
+      : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX) {}
+
+  std::shared_ptr<arangodb::Index> instantiate(
+      arangodb::LogicalCollection& collection,
+      arangodb::velocypack::Slice definition, IndexId id,
+      bool /*isClusterConstructor*/) const override {
+    if (auto isUnique = definition.get(StaticStrings::IndexUnique).isTrue();
+        isUnique) {
+      return std::make_shared<RocksDBUniqueZkdIndex>(id, collection,
+                                                     definition);
+    }
+
+    return std::make_shared<RocksDBZkdIndex>(id, collection, definition);
+  }
+
+  virtual arangodb::Result normalize(
+      velocypack::Builder& normalized, velocypack::Slice definition,
+      bool isCreation, TRI_vocbase_t const& /*vocbase*/) const override {
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add(arangodb::StaticStrings::IndexType,
+                   arangodb::velocypack::Value(arangodb::Index::oldtypeName(
+                       Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX)));
+
+    if (isCreation && !ServerState::instance()->isCoordinator() &&
+        !definition.hasKey(StaticStrings::ObjectId)) {
+      normalized.add(
+          StaticStrings::ObjectId,
+          arangodb::velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
+    if (isCreation) {
+      bool est = basics::VelocyPackHelper::getBooleanValue(
+          definition, StaticStrings::IndexEstimates, true);
+      normalized.add(StaticStrings::IndexEstimates, velocypack::Value(est));
+    }
+
+    return IndexFactory::enhanceJsonIndexMdiPrefixed(definition, normalized,
+                                                     isCreation);
   }
 };
 
@@ -379,6 +429,7 @@ RocksDBIndexFactory::RocksDBIndexFactory(ArangodServer& server)
   static const ZkdIndexFactory zkdIndexFactory(server);
   static const iresearch::IResearchRocksDBInvertedIndexFactory
       iresearchInvertedIndexFactory(server);
+  static const MdiPrefixedIndexFactory mdiPrefixedIndexFactory(server);
 
   emplace("edge", edgeIndexFactory);
   emplace("fulltext", fulltextIndexFactory);
@@ -392,6 +443,7 @@ RocksDBIndexFactory::RocksDBIndexFactory(ArangodServer& server)
   emplace("skiplist", skiplistIndexFactory);
   emplace("ttl", ttlIndexFactory);
   emplace("zkd", zkdIndexFactory);
+  emplace("mdi-prefixed", mdiPrefixedIndexFactory);
   emplace(arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data(),
           iresearchInvertedIndexFactory);
 }
@@ -403,6 +455,7 @@ RocksDBIndexFactory::indexAliases() const {
   return {
       {"hash", "persistent"},
       {"skiplist", "persistent"},
+      {"mdi", "zkd"},
   };
 }
 

@@ -56,7 +56,6 @@ const setup = require(base);
   setup.createSmartArangoSearch();
   setup.createSatelliteCollections();
   setup.createSatelliteGraphs();
-  setup.createSmartGraphRegressionTest();
   setup.createReplicationFactors();
   setup.createJobs();
   setup.createFoxx();

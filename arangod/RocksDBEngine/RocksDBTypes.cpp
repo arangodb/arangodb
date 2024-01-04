@@ -161,16 +161,30 @@ static rocksdb::Slice RevisionTreeValue(
     1);
 
 static RocksDBEntryType zkdIndexValue = RocksDBEntryType::ZkdIndexValue;
-static rocksdb::Slice ZdkIndexValue(
+static rocksdb::Slice ZkdIndexValue(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
         &zkdIndexValue),
     1);
 
 static RocksDBEntryType uniqueZkdIndexValue =
     RocksDBEntryType::UniqueZkdIndexValue;
-static rocksdb::Slice UniqueZdkIndexValue(
+static rocksdb::Slice UniqueZkdIndexValue(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
         &uniqueZkdIndexValue),
+    1);
+
+static RocksDBEntryType zkdVPackIndexValue =
+    RocksDBEntryType::ZkdVPackIndexValue;
+static rocksdb::Slice ZkdVPackIndexValue(
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
+        &zkdVPackIndexValue),
+    1);
+
+static RocksDBEntryType uniqueZkdVPackIndexValue =
+    RocksDBEntryType::UniqueZkdVPackIndexValue;
+static rocksdb::Slice UniqueZkdVPackIndexValue(
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
+        &uniqueZkdVPackIndexValue),
     1);
 }  // namespace
 
@@ -217,6 +231,10 @@ std::string_view arangodb::rocksDBEntryTypeName(
       return "ZkdIndexValue";
     case arangodb::RocksDBEntryType::UniqueZkdIndexValue:
       return "UniqueZkdIndexValue";
+    case arangodb::RocksDBEntryType::ZkdVPackIndexValue:
+      return "ZkdVPackIndexValue";
+    case arangodb::RocksDBEntryType::UniqueZkdVPackIndexValue:
+      return "UniqueZkdVPackIndexValue";
     case RocksDBEntryType::LogEntry:
       return "ReplicatedLogEntry";
     case RocksDBEntryType::ReplicatedState:
@@ -320,9 +338,13 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
     case RocksDBEntryType::RevisionTreeValue:
       return RevisionTreeValue;
     case RocksDBEntryType::ZkdIndexValue:
-      return ZdkIndexValue;
+      return ZkdIndexValue;
     case RocksDBEntryType::UniqueZkdIndexValue:
-      return UniqueZdkIndexValue;
+      return UniqueZkdIndexValue;
+    case RocksDBEntryType::ZkdVPackIndexValue:
+      return ZkdVPackIndexValue;
+    case RocksDBEntryType::UniqueZkdVPackIndexValue:
+      return UniqueZkdVPackIndexValue;
     case RocksDBEntryType::LogEntry:
       return LogEntry;
     case RocksDBEntryType::ReplicatedState:

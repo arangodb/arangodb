@@ -1735,7 +1735,7 @@ function IndexUpdateSuite() {
         internal.db[cn].properties({ cacheEnabled: true, schema }); 
 
         let props = internal.db[cn].properties();
-        assertTrue(props.cacheEnabled);
+        assertTrue(props.cacheEnabled, props);
         let s = props.schema;
         delete s.type;
         assertEqual(schema, s);
