@@ -19,6 +19,9 @@ devel
   - `public`: everyone with access to `_system` database can access the
     options APIs.
 
+* Added REST API `/_api/key-generators` to query the available key generators
+  for collections.
+
 * Make AQL optimizer rule `move-filters-into-enumerate` also move filters into
   EnumerateListNodes for early pruning. Previously it could only pull filters 
   into IndexNodes and EnumerateCollectionNodes.
@@ -39,9 +42,6 @@ devel
   turned off when there are performance concerns.
 
 * Fixed BTS-1703: Cannot chain multiple UPSERTS.
-
-* Fixed issue #17673: Adds timezone conversion as an optional parameter in
-  all relevant date functions.
 
 * Added AQL function `TO_CHAR(number)`, which produces a character from the
   given character number.

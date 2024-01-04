@@ -211,6 +211,9 @@ class IndexFactory {
   static Result enhanceJsonIndexZkd(arangodb::velocypack::Slice definition,
                                     arangodb::velocypack::Builder& builder,
                                     bool create);
+  static Result enhanceJsonIndexMdiPrefixed(
+      arangodb::velocypack::Slice definition,
+      arangodb::velocypack::Builder& builder, bool create);
 
  protected:
   /// @brief clear internal factory/normalizer maps

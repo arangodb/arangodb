@@ -43,7 +43,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
     testSimplePrefix: function () {
       col = db._create(colName);
       col.ensureIndex({
-        type: 'zkd',
+        type: 'mdi-prefixed',
         name: 'zkdIndex',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
@@ -69,10 +69,31 @@ function optimizerRuleZkd2dIndexTestSuite() {
       assertEqual(result.map(([a, b]) => a).sort(), [5, 6, 7]);
     },
 
+    testEstimates: function () {
+      col = db._create(colName);
+      col.ensureIndex({
+        type: 'mdi-prefixed',
+        name: 'zkdIndex',
+        fields: ['x', 'y'],
+        fieldValueTypes: 'double',
+        storedValues: ["z"],
+        prefixFields: ["stringValue"],
+      });
+
+      db._query(aql`
+        FOR str IN ["foo", "bar", "baz"]
+          FOR i IN 1..2
+            INSERT {x: i, y: i, z: i, stringValue: str} INTO ${col}
+      `);
+      const index = col.index("zkdIndex");
+      assertTrue(index.estimates);
+      assertTrue(index.hasOwnProperty("selectivityEstimate"));
+    },
+
     testMultiPrefix: function () {
       col = db._create(colName);
       col.ensureIndex({
-        type: 'zkd',
+        type: 'mdi-prefixed',
         name: 'zkdIndex',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
@@ -103,7 +124,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
     testProjections: function () {
       col = db._create(colName);
       col.ensureIndex({
-        type: 'zkd',
+        type: 'mdi-prefixed',
         name: 'zkdIndex',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
@@ -139,9 +160,187 @@ function optimizerRuleZkd2dIndexTestSuite() {
       }
     },
 
+    testNoStoredValues: function () {
+      col = db._create(colName);
+      col.ensureIndex({
+        type: 'mdi-prefixed',
+        name: 'zkdIndex',
+        fields: ['x', 'y'],
+        fieldValueTypes: 'double',
+        prefixFields: ["stringValue", "value"],
+      });
+
+      db._query(aql`
+        FOR str IN ["foo", "bar", "baz"]
+        FOR v IN [1, 19, -2]
+          FOR i IN 1..100
+            INSERT {x: i, y: i, z: i, stringValue: str, value: v} INTO ${col}
+      `);
+
+      const query = aql`
+        FOR doc IN ${col}
+          FILTER doc.x >= 5 && doc.y <= 7 && doc.stringValue == "foo" && doc.value == -2
+          return [doc.stringValue, doc.value]
+      `;
+
+      const res = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
+      const indexNodes = res.plan.nodes.filter(n => n.type === "IndexNode");
+      assertEqual(indexNodes.length, 1);
+      const index = indexNodes[0];
+      assertTrue(index.indexCoversProjections, true);
+      assertEqual(normalize(index.projections), normalize(["stringValue", "value"]));
+
+      const result = db._createStatement({query: query.query, bindVars: query.bindVars}).execute().toArray();
+      for (const [b, c] of result) {
+        assertEqual(b, "foo");
+        assertEqual(c, -2);
+      }
+    },
+
+    testTruncate: function () {
+      let col = db._create(colName);
+      col.ensureIndex({
+        type: 'mdi-prefixed',
+        name: 'zkdIndex',
+        fields: ['x', 'y'],
+        fieldValueTypes: 'double',
+        prefixFields: ["z"]
+      });
+
+      db._query(aql`
+          FOR i IN 1..100
+            INSERT {x: i, y: i, z: 0} INTO ${col}
+      `);
+
+      let res = db._query(aql`
+        FOR doc in ${col}
+          FILTER doc.x > -100
+          FILTER doc.z == 0
+          RETURN doc
+      `).toArray();
+      assertEqual(100, res.length);
+
+      col.truncate();
+
+      res = db._query(aql`
+        FOR doc in ${col}
+          FILTER doc.x > -100
+          FILTER doc.z == 0
+          RETURN doc
+      `).toArray();
+      assertEqual(0, res.length);
+    },
+  };
+}
+
+const gm = require("@arangodb/general-graph");
+const waitForEstimatorSync = require('@arangodb/test-helper').waitForEstimatorSync;
+
+function optimizerRuleZkdTraversal() {
+  const database = "MyTestZkdTraversalDB";
+  const graph = "mygraph";
+  const vertexCollection = "v";
+  const edgeCollection = "e";
+  const indexName = "myZkdIndex";
+  const levelIndexName = "myZkdIndexLevel";
+
+  return {
+    setUpAll: function () {
+      db._createDatabase(database);
+      db._useDatabase(database);
+
+      gm._create(graph,
+          [{"collection": edgeCollection, "to": [vertexCollection], "from": [vertexCollection]}],
+          [],
+          {numberOfShards: 2});
+
+      db[edgeCollection].ensureIndex({
+        type: 'mdi-prefixed',
+        name: indexName,
+        fields: ["x", "y"],
+        prefixFields: ["_from"],
+        fieldValueTypes: 'double',
+      });
+      db[edgeCollection].ensureIndex({
+        type: 'mdi-prefixed',
+        name: levelIndexName,
+        fields: ["x", "y", "w"],
+        storedValues: ["foo"],
+        prefixFields: ["_from"],
+        fieldValueTypes: 'double',
+      });
+      db._query(`
+        for i in 0..99
+          insert {_key: CONCAT("${vertexCollection}", i)} into ${vertexCollection}
+          for j in 1..200
+            let x = RAND() * 10
+            let y = RAND() * 10
+            let w = RAND() * 10
+            let from = CONCAT("${vertexCollection}/v", i)
+            let to = CONCAT("${vertexCollection}/v", (j+1)%100)
+            insert {_from: from, _to: to, x, y, w} into ${edgeCollection}
+      `);
+
+      waitForEstimatorSync();
+    },
+
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(database);
+    },
+
+    testZkdTraversal: function () {
+      const query = `
+        for v, e, p in 0..3 outbound "${vertexCollection}/v1" graph "${graph}"
+        options {bfs: true, uniqueVertices: "path"}
+          filter p.edges[*].x all >= 5 and p.edges[*].y all <= 7
+          filter p.edges[2].w >= 5 and p.edges[2].y <= 8 and p.edges[2].foo == "bar"
+          return p
+      `;
+
+      const res = db._createStatement(query).explain();
+      const traversalNodes = res.plan.nodes.filter(n => n.type === "TraversalNode");
+
+      traversalNodes.forEach(function (node) {
+        node.indexes.base.forEach(function (idx) {
+          assertEqual(idx.name, indexName, node.indexes);
+        });
+
+        assertEqual(["2"], Object.keys(node.indexes.levels), node.indexes);
+        node.indexes.levels["2"].forEach(function (idx) {
+          assertEqual(idx.name, levelIndexName, node.indexes);
+        });
+
+      });
+    },
+
+    testZkdTraversalOnlyOneLevel: function () {
+      const query = `
+        for v, e, p in 0..3 outbound "${vertexCollection}/v1" graph "${graph}"
+        options {bfs: true, uniqueVertices: "path"}
+          filter p.edges[2].x >= 5 and p.edges[2].w >= 5 and p.edges[2].y <= 8 and p.edges[2].foo == "bar"
+          return p
+      `;
+
+      const res = db._createStatement(query).explain();
+      const traversalNodes = res.plan.nodes.filter(n => n.type === "TraversalNode");
+
+      traversalNodes.forEach(function (node) {
+        const baseIndexes = node.indexes.base;
+        assertEqual(1, baseIndexes.length);
+        assertEqual(baseIndexes[0].name, "edge");
+
+        assertEqual(["2"], Object.keys(node.indexes.levels));
+        const levelIndexes = node.indexes.levels["2"];
+        assertEqual(1, levelIndexes.length);
+        assertEqual(levelIndexes[0].name, levelIndexName);
+      });
+    },
+
   };
 }
 
 jsunity.run(optimizerRuleZkd2dIndexTestSuite);
+jsunity.run(optimizerRuleZkdTraversal);
 
 return jsunity.done();
