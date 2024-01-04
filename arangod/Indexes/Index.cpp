@@ -347,6 +347,9 @@ Index::IndexType Index::type(std::string_view type) {
   if (type == "zkd") {
     return TRI_IDX_TYPE_ZKD_INDEX;
   }
+  if (type == "mdi-prefixed") {
+    return TRI_IDX_TYPE_MDI_PREFIXED_INDEX;
+  }
   if (type == iresearch::StaticStrings::ViewArangoSearchType) {
     return TRI_IDX_TYPE_IRESEARCH_LINK;
   }
@@ -394,6 +397,8 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return "noaccess";
     case TRI_IDX_TYPE_ZKD_INDEX:
       return "zkd";
+    case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
+      return "mdi-prefixed";
     case TRI_IDX_TYPE_INVERTED_INDEX:
       return arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data();
     case TRI_IDX_TYPE_UNKNOWN: {
