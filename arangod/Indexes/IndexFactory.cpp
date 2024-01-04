@@ -545,7 +545,12 @@ Result IndexFactory::processIndexStoredValues(VPackSlice definition,
     }
   }
 
-  return res;
+  return res.mapError([&](result::Error const& error) {
+    return result::Error(
+        error.errorNumber(),
+        basics::StringUtils::concatT("when parsing fields for stored values: ",
+                                     error.errorMessage()));
+  });
 }
 
 void IndexFactory::processIndexCacheEnabled(VPackSlice definition,
@@ -811,7 +816,12 @@ Result processIndexSortedPrefixFields(VPackSlice definition,
               "prefixFields is required for `mdi-prefixed`");
   }
 
-  return res;
+  return res.mapError([&](result::Error const& error) {
+    return result::Error(
+        error.errorNumber(),
+        basics::StringUtils::concatT("when parsing prefix fields: ",
+                                     error.errorMessage()));
+  });
 }
 
 }  // namespace
@@ -844,12 +854,7 @@ Result IndexFactory::enhanceJsonIndexZkd(VPackSlice definition,
   }
 
   if (res.ok()) {
-    if (auto isSparse = definition.get(StaticStrings::IndexSparse).isTrue();
-        isSparse) {
-      return Result(TRI_ERROR_BAD_PARAMETER,
-                    "zkd index does not support sparse property");
-    }
-
+    processIndexSparseFlag(definition, builder, create);
     processIndexUniqueFlag(definition, builder);
     processIndexInBackground(definition, builder);
   }

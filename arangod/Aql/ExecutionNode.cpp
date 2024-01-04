@@ -1987,13 +1987,15 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
     _filter->variables(inVars);
 
     for (auto const& var : inVars) {
-      auto regId = variableToRegisterId(var);
-      varsToRegs.emplace_back(var->id, regId);
+      if (var->id != _outVariable->id) {
+        auto regId = variableToRegisterId(var);
+        varsToRegs.emplace_back(var->id, regId);
+      }
     }
   }
-  auto executorInfos =
-      EnumerateListExecutorInfos(inputRegister, outRegister, engine.getQuery(),
-                                 filter(), std::move(varsToRegs));
+  auto executorInfos = EnumerateListExecutorInfos(
+      inputRegister, outRegister, engine.getQuery(), filter(), _outVariable->id,
+      std::move(varsToRegs));
   return std::make_unique<ExecutionBlockImpl<EnumerateListExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
