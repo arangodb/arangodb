@@ -212,7 +212,7 @@ function runArangodRecovery (params, useEncryption) {
   }
   if (params.setup) {
     let dbServers = params.instanceManager.arangods;
-    if (params.cluster) {
+    if (params.options.cluster) {
       dbServers = dbServers.filter(
         (a) => {
           return a.isRole(inst.instanceRole.dbServer) ||
@@ -220,7 +220,7 @@ function runArangodRecovery (params, useEncryption) {
         });
     }
 
-    print(BLUE + "killing " + dbServers.length + " DBServers/Coordinators " + RESET);
+    print(BLUE + "killing " + dbServers.length + " DBServers/Coordinators/Singles " + RESET);
     dbServers.forEach((arangod) => {
       internal.debugTerminateInstance(arangod.endpoint);
       // need this to properly mark spawned process as killed in internal test data
