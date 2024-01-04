@@ -134,15 +134,15 @@ function runArangodRecovery (params, useEncryption) {
       }
     }
 
-    process.env["state-file"] = params.stateFile;
-    process.env["crash-log"] = params.crashLog;
-    process.env["isSan"] = params.options.isSan;
-
     params.args = args;
       
   } else {
     additionalTestParams['javascript.script-parameter'] = 'recovery';
   }
+
+  process.env["state-file"] = params.stateFile;
+  process.env["crash-log"] = params.crashLog;
+  process.env["isSan"] = params.options.isSan;
 
   if (params.setup) {
     params.args = Object.assign(params.args, additionalParams);
@@ -211,11 +211,15 @@ function runArangodRecovery (params, useEncryption) {
     };
   }
   if (params.setup) {
-    let dbServers = params.instanceManager.arangods.filter(
-      (a) => {
-        return a.isRole(inst.instanceRole.dbServer) ||
-          a.isRole(inst.instanceRole.coordinator);
-      });
+    let dbServers = params.instanceManager.arangods;
+    if (params.cluster) {
+      dbServers = dbServers.filter(
+        (a) => {
+          return a.isRole(inst.instanceRole.dbServer) ||
+            a.isRole(inst.instanceRole.coordinator);
+        });
+    }
+
     print(BLUE + "killing " + dbServers.length + " DBServers/Coordinators " + RESET);
     dbServers.forEach((arangod) => {
       internal.debugTerminateInstance(arangod.endpoint);

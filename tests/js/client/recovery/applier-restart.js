@@ -59,7 +59,6 @@ function recoverySuite () {
     testReplicationRestarted: function () {
       var replication = require("@arangodb/replication");
       var state = replication.applier.state().state;
-      print(state)
       // must be either still running or have some failed connections errors
       assertTrue(state.running || state.totalFailedConnects > 0); 
     }
