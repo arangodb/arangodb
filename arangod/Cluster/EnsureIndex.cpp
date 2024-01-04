@@ -156,9 +156,11 @@ bool EnsureIndex::first() {
       // continue with the job normally
     }
 
+    auto lambda = std::make_shared<std::function<arangodb::Result(double d)>>(
+        [this](double d) { return setProgress(d); });
     VPackBuilder index;
-    auto res =
-        methods::Indexes::ensureIndex(col.get(), body.slice(), true, index);
+    auto res = methods::Indexes::ensureIndex(col.get(), body.slice(), true,
+                                             index, std::move(lambda));
     result(res);
 
     if (res.ok()) {
