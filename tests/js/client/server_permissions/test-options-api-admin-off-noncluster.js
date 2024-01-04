@@ -76,6 +76,10 @@ function testSuite() {
       assertEqual(200, res.status);
       assertTrue(res.json.hasOwnProperty("server.storage-engine"));
       assertEqual("rocksdb", res.json["server.storage-engine"]);
+      
+      Object.keys(res.json).forEach((key) => {
+        assertNotMatch(/(passwd|password|secret)/, key, key);
+      });
     },
     
     testApiGetOptionsRo : function() {
@@ -99,6 +103,10 @@ function testSuite() {
       assertEqual(200, res.status);
       assertTrue(res.json.hasOwnProperty("server.storage-engine"));
       assertEqual("rocksdb", res.json["server.storage-engine"]);
+      
+      Object.keys(res.json).forEach((key) => {
+        assertNotMatch(/(passwd|password|secret)/, key, key);
+      });
     },
     
     testApiGetOptionsDescriptionRw : function() {

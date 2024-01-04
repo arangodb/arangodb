@@ -24,6 +24,7 @@
 #include "RestOptionsHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 
 #include <velocypack/Builder.h>
@@ -49,17 +50,8 @@ RestStatus RestOptionsHandler::execute() {
     return RestStatus::DONE;
   }
 
-  // filter out these attributes from the options
-  auto filter = [](std::string const& name) {
-    if (name.find("passwd") != std::string::npos ||
-        name.find("password") != std::string::npos ||
-        name.find("secret") != std::string::npos) {
-      return false;
-    }
-    return true;
-  };
-
-  VPackBuilder builder = server().options(filter);
+  VPackBuilder builder =
+      server().options(options::ProgramOptions::defaultOptionsFilter);
 
   generateResult(rest::ResponseCode::OK, builder.slice());
   return RestStatus::DONE;
