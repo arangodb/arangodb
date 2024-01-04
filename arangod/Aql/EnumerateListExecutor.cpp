@@ -62,11 +62,11 @@ EnumerateListExpressionContext::EnumerateListExpressionContext(
     VariableId outputVariableId)
     : QueryExpressionContext(trx, context, cache),
       _varsToRegister(varsToRegister),
-      _outputVariableId(outputVariableId) {}
+      _outputVariableId(outputVariableId),
+      _currentValue{AqlValueHintNull{}} {}
 
 AqlValue EnumerateListExpressionContext::getVariableValue(
     Variable const* variable, bool doCopy, bool& mustDestroy) const {
-  TRI_ASSERT(_currentValue.has_value());
   return QueryExpressionContext::getVariableValue(
       variable, doCopy, mustDestroy,
       [this](Variable const* variable, bool doCopy,
@@ -74,7 +74,10 @@ AqlValue EnumerateListExpressionContext::getVariableValue(
         mustDestroy = doCopy;
         auto const searchId = variable->id;
         if (searchId == _outputVariableId) {
-          return *_currentValue;
+          if (doCopy) {
+            return _currentValue.clone();
+          }
+          return _currentValue;
         }
         for (auto const& [varId, regId] : _varsToRegister) {
           if (varId == searchId) {
@@ -103,23 +106,16 @@ void EnumerateListExpressionContext::adjustCurrentRow(
 
 EnumerateListExecutorInfos::EnumerateListExecutorInfos(
     RegisterId inputRegister, RegisterId outputRegister, QueryContext& query,
-    Expression* filter,
+    Expression* filter, VariableId outputVariableId,
     std::vector<std::pair<VariableId, RegisterId>>&& varsToRegs)
     : _query(query),
       _inputRegister(inputRegister),
       _outputRegister(outputRegister),
-      _outputVariableId(std::numeric_limits<VariableId>::max()),
+      _outputVariableId(outputVariableId),
       _filter(filter),
       _varsToRegs(std::move(varsToRegs)) {
-  if (hasFilter()) {
-    for (auto const& it : _varsToRegs) {
-      if (it.second == _outputRegister) {
-        _outputVariableId = it.first;
-        break;
-      }
-    }
-    TRI_ASSERT(_outputVariableId != std::numeric_limits<VariableId>::max());
-  }
+  TRI_ASSERT(!hasFilter() ||
+             _outputVariableId != std::numeric_limits<VariableId>::max());
 }
 
 QueryContext& EnumerateListExecutorInfos::getQuery() const noexcept {
@@ -331,12 +327,6 @@ bool EnumerateListExecutor::checkFilter(AqlValue const& currentValue) {
       _infos.getFilter()->execute(_expressionContext.get(), mustDestroy);
   AqlValueGuard guard(a, mustDestroy);
   return a.toBoolean();
-}
-
-void EnumerateListExecutor::initialize() {
-  _inputArrayLength = 0;
-  _inputArrayPosition = 0;
-  _currentRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
 }
 
 /// @brief create an AqlValue from the inVariable using the current _index
