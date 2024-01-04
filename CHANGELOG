@@ -1,6 +1,8 @@
 v3.11.7 (XXXX-XX-XX)
 --------------------
 
+* Backported index visibility
+
 * Added stored values support for ZKD indexes.
 
 * Fixed a crash during recursive AstNode creation when an exception was thrown.
