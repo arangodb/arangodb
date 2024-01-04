@@ -257,6 +257,8 @@ class PhysicalCollection {
   virtual uint64_t placeRevisionTreeBlocker(TransactionId transactionId);
   virtual void removeRevisionTreeBlocker(TransactionId transactionId);
 
+  virtual bool cacheEnabled() const noexcept = 0;
+
  protected:
   explicit PhysicalCollection(LogicalCollection& collection);
 
