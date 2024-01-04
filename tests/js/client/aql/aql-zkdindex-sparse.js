@@ -99,9 +99,29 @@ function multiDimSparseTestSuite() {
       // Inserting a document with missing values for x or y should simply ignore the document for the index
       c.save([{}, {x: 5}, {y: 5}, {x: 7, y: 5}]);
 
-      const figures = c.figures(true);
-      assertEqual(4, figures.engine.documents);
-      assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 1));
+      {
+        const figures = c.figures(true);
+        assertEqual(4, figures.engine.documents);
+        assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 1));
+      }
+
+      // Test deletion
+      const doc1 = c.save({x: 8, y: 10});
+      const doc2 = c.save({x: 8});
+
+      {
+        const figures = c.figures(true);
+        assertEqual(6, figures.engine.documents);
+        assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 2));
+      }
+
+      c.remove([doc1, doc2]);
+
+      {
+        const figures = c.figures(true);
+        assertEqual(4, figures.engine.documents);
+        assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 1));
+      }
     },
 
     testMultiDimNonSparseUnique: function () {
@@ -158,9 +178,29 @@ function multiDimSparseTestSuite() {
       // Inserting a document with missing values for x or y should simply ignore the document for the index
       c.save([{}, {x: 5}, {y: 5}, {x: 7, y: 5}]);
 
-      const figures = c.figures(true);
-      assertEqual(4, figures.engine.documents);
-      assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 1));
+      {
+        const figures = c.figures(true);
+        assertEqual(4, figures.engine.documents);
+        assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 1));
+      }
+
+      // Test deletion
+      const doc1 = c.save({x: 8, y: 10});
+      const doc2 = c.save({x: 8});
+
+      {
+        const figures = c.figures(true);
+        assertEqual(6, figures.engine.documents);
+        assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 2));
+      }
+
+      c.remove([doc1, doc2]);
+
+      {
+        const figures = c.figures(true);
+        assertEqual(4, figures.engine.documents);
+        assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 1));
+      }
     },
   };
 }
@@ -240,9 +280,30 @@ function multiDimPrefixedSparseTestSuite() {
       // Inserting a document with missing values for attr, x or y should simply ignore the document for the index
       c.save([{}, {x: 5}, {y: 5}, {x: 7, y: 5}, {x: 7, y: 5, attr: "foo"}, {x: 7, y: 5, attr: null}]);
 
-      const figures = c.figures(true);
-      assertEqual(6, figures.engine.documents);
-      assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 1));
+      {
+        const figures = c.figures(true);
+        assertEqual(6, figures.engine.documents);
+        assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 1));
+      }
+
+      // Test deletion
+      const doc1 = c.save({x: 8, y: 10, attr: "foo"});
+      const doc2 = c.save({x: 8, y: 10});
+      const doc3 = c.save({x: 8,  attr: "foo"});
+
+      {
+        const figures = c.figures(true);
+        assertEqual(9, figures.engine.documents);
+        assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 2));
+      }
+
+      c.remove([doc1, doc2, doc3]);
+
+      {
+        const figures = c.figures(true);
+        assertEqual(6, figures.engine.documents);
+        assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 1));
+      }
     },
 
     testMultiDimPrefixedNonSparseUnique: function () {
@@ -306,9 +367,30 @@ function multiDimPrefixedSparseTestSuite() {
       // Inserting a document with missing values for attr, x or y should simply ignore the document for the index
       c.save([{}, {x: 5}, {y: 5}, {x: 7, y: 5}, {x: 7, y: 5, attr: "foo"}, {x: 7, y: 5, attr: null}]);
 
-      const figures = c.figures(true);
-      assertEqual(6, figures.engine.documents);
-      assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 1));
+      {
+        const figures = c.figures(true);
+        assertEqual(6, figures.engine.documents);
+        assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 1));
+      }
+
+      // Test deletion
+      const doc1 = c.save({x: 8, y: 10, attr: "foo"});
+      const doc2 = c.save({x: 8, y: 10});
+      const doc3 = c.save({x: 8,  attr: "foo"});
+
+      {
+        const figures = c.figures(true);
+        assertEqual(9, figures.engine.documents);
+        assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 2));
+      }
+
+      c.remove([doc1, doc2, doc3]);
+
+      {
+        const figures = c.figures(true);
+        assertEqual(6, figures.engine.documents);
+        assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 1));
+      }
     },
   };
 }
