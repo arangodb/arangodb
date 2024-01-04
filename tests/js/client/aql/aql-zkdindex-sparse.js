@@ -258,8 +258,26 @@ function multiDimPrefixedSparseTestSuite() {
       c.save({x: 7, y: 5, attr: "foo"});
 
       // missing prefix fields should be indexed as null
-      const res = db._query(aql`FOR d IN ${c} FILTER d.attr == NULL AND d.x > 0 RETURN d`).toArray();
-      assertEqual(1, res.length);
+      {
+        const res = db._query(aql`FOR d IN ${c} FILTER d.attr == NULL AND d.x > 0 RETURN d`).toArray();
+        assertEqual(1, res.length);
+      }
+
+      const doc1 = c.save({x: 17, y: -3, attr: null});
+      const doc2 = c.save({x: 17, y: -3, attr: "foo"});
+      const doc3 = c.save({x: 17, y: -3});
+
+      {
+        const res = db._query(aql`FOR d IN ${c} FILTER d.attr == NULL AND d.x > 0 RETURN d`).toArray();
+        assertEqual(3, res.length);
+      }
+
+      c.remove([doc1, doc2, doc3]);
+
+      {
+        const res = db._query(aql`FOR d IN ${c} FILTER d.attr == NULL AND d.x > 0 RETURN d`).toArray();
+        assertEqual(1, res.length);
+      }
     },
 
     testMultiDimPrefixedSparse: function () {
@@ -326,12 +344,12 @@ function multiDimPrefixedSparseTestSuite() {
 
       // Inserting a document with missing values for x or y should return an error
 
-      const expectErrorOnInsert = function (doc) {
+      const expectErrorOnInsert = function (doc, which = ERRORS.ERROR_QUERY_INVALID_ARITHMETIC_VALUE) {
         try {
           c.save(doc);
           fail();
         } catch (err) {
-          assertEqual(ERRORS.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, err.errorNum);
+          assertEqual(which.code, err.errorNum);
         }
       };
 
@@ -342,8 +360,27 @@ function multiDimPrefixedSparseTestSuite() {
       c.save({x: 7, y: 5, attr: "foo"});
 
       // missing prefix fields should be indexed as null
-      const res = db._query(aql`FOR d IN ${c} FILTER d.attr == NULL AND d.x > 0 RETURN d`).toArray();
-      assertEqual(1, res.length);
+      {
+        const res = db._query(aql`FOR d IN ${c} FILTER d.attr == NULL AND d.x > 0 RETURN d`).toArray();
+        assertEqual(1, res.length);
+      }
+
+      const doc1 = c.save({x: 17, y: -3, attr: null});
+      const doc2 = c.save({x: 17, y: -3, attr: "foo"});
+      // unset field `attr` is evaluated to `null` and thus violates unique constraint because of doc1
+      expectErrorOnInsert({x: 17, y: -3}, ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+
+      {
+        const res = db._query(aql`FOR d IN ${c} FILTER d.attr == NULL AND d.x > 0 RETURN d`).toArray();
+        assertEqual(2, res.length);
+      }
+
+      c.remove([doc1, doc2]);
+
+      {
+        const res = db._query(aql`FOR d IN ${c} FILTER d.attr == NULL AND d.x > 0 RETURN d`).toArray();
+        assertEqual(1, res.length);
+      }
     },
 
     testMultiDimPrefixedSparseUnique: function () {
