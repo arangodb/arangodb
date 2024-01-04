@@ -97,7 +97,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
           "uniqueVertices: 'global' is only "
-          "supported, with mode: bfs|weighted due to "
+          "supported, with order: bfs|weighted due to "
           "otherwise unpredictable results.");
     }
     uniqueVertices = TraverserOptions::UniquenessLevel::GLOBAL;
@@ -654,11 +654,11 @@ void TraverserOptions::addDepthLookupInfo(aql::ExecutionPlan* plan,
                                           std::string const& collectionName,
                                           std::string const& attributeName,
                                           aql::AstNode* condition,
-                                          uint64_t depth, bool onlyEdgeIndexes,
+                                          uint64_t depth,
                                           TRI_edge_direction_e direction) {
   auto& list = _depthLookupInfo[depth];
   injectLookupInfoInList(list, plan, collectionName, attributeName, condition,
-                         onlyEdgeIndexes, direction);
+                         false, direction);
 }
 
 bool TraverserOptions::hasSpecificCursorForDepth(uint64_t depth) const {

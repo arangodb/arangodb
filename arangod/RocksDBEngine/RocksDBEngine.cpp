@@ -3284,7 +3284,8 @@ auto RocksDBEngine::makeLogStorageMethods(
 #else
   auto logPersistor =
       std::make_unique<replication2::storage::rocksdb::LogPersistor>(
-          logId, objectId, vocbaseId, _db, logCf, _logPersistor, _logMetrics);
+          logId, objectId, vocbaseId, _db, logCf, _logPersistor, _logMetrics,
+          this);
 #endif
   auto statePersistor =
       std::make_unique<replication2::storage::rocksdb::StatePersistor>(

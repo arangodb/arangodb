@@ -3884,6 +3884,13 @@ function ahuacatlNumericFunctionsTestSuite () {
       }
     },
 
+    testRandom : function () {
+      let actual = getQueryResults("FOR r IN [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 ] RETURN RANDOM()");
+      actual.forEach((value) => {
+        assertTrue(value >= 0.0 && value < 1.0);
+      });
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test rand function
 ////////////////////////////////////////////////////////////////////////////////
