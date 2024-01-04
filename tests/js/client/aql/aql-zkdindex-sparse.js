@@ -27,7 +27,7 @@ const arangodb = require("@arangodb");
 const db = arangodb.db;
 const ERRORS = arangodb.errors;
 const aql = arangodb.aql;
-const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
+const {assertTrue, assertFalse, assertEqual, fail} = jsunity.jsUnity.assertions;
 const _ = require("lodash");
 
 function multiDimSparseTestSuite() {
