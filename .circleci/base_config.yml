@@ -205,6 +205,8 @@ jobs:
       SCCACHE_ERROR_LOG: /tmp/sccache.log
       SCCACHE_LOG: info,sccache::cache=debug,sccache::compiler::compiler=debug
       SCCACHE_S3_KEY_PREFIX: << parameters.s3-prefix >>
+      CC: clang
+      CXX: clang++
     steps:
       - checkout-arangodb:
           with-submodules: true
