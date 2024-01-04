@@ -298,6 +298,8 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                                            ResolvedPromiseSet> {
                           auto guarded = self->acquireMutex();
                           if (!guarded->_didResign) {
+                            // TODO: This can throw when we register the
+                            // Callback
                             return guarded->handleAppendEntriesResponse(
                                 *follower, lastIndex, currentCommitIndex,
                                 currentLITK, currentTerm, std::move(res),
@@ -970,16 +972,22 @@ void replicated_log::LogLeader::GuardedLeaderData::
     registerSafeRebootIdUpdateCallbackFor(
         std::shared_ptr<replicated_log::LogLeader::FollowerInfo> follower,
         PeerState peerState) {
-  auto ss = std::stringstream{};
-  ss << follower->logContext;
-  ss << " ";
-  auto description =
-      fmt::format("{} Trigger update of safe reboot id", ss.str());
+  // TODO this may fail if server is removed from the cluster
+  try {
+    auto ss = std::stringstream{};
+    ss << follower->logContext;
+    ss << " ";
+    auto description =
+        fmt::format("{} Trigger update of safe reboot id", ss.str());
 
-  auto callback = createSafeRebootIdUpdateCallback(follower->logContext);
-  follower->rebootIdCallbackGuard =
-      _self._rebootIdCache->registerCallbackOnChange(
-          std::move(peerState), std::move(callback), std::move(description));
+    auto callback = createSafeRebootIdUpdateCallback(follower->logContext);
+    follower->rebootIdCallbackGuard =
+        _self._rebootIdCache->registerCallbackOnChange(
+            std::move(peerState), std::move(callback), std::move(description));
+  } catch (...) {
+    LOG_CTX("2b8c6", INFO, follower->logContext)
+        << "Failed to register callback - follower is gone from Health.";
+  }
 }
 
 void replicated_log::LogLeader::GuardedLeaderData::

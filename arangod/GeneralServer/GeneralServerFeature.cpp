@@ -94,6 +94,7 @@
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestIndexHandler.h"
+#include "RestHandler/RestKeyGeneratorsHandler.h"
 #include "RestHandler/RestJobHandler.h"
 #include "RestHandler/RestLicenseHandler.h"
 #include "RestHandler/RestLogHandler.h"
@@ -803,6 +804,10 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler("/_api/explain",
                      RestHandlerCreator<RestExplainHandler>::createNoData);
+
+  f.addPrefixHandler(
+      "/_api/key-generators",
+      RestHandlerCreator<RestKeyGeneratorsHandler>::createNoData);
 
   f.addPrefixHandler("/_api/query",
                      RestHandlerCreator<RestQueryHandler>::createNoData);

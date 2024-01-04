@@ -285,7 +285,7 @@ def create_test_job(test, cluster, edition, arch, dist, replication_version=1):
 
     extra_args = test["args"].copy()
     if cluster:
-        extra_args.append(f"--extraArgs:database.default-replication-version {replication_version}")
+        extra_args.append(f"--replicationVersion {replication_version}")
     if extra_args != []:
         result["extraArgs"] = " ".join(extra_args)
 
