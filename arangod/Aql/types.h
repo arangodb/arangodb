@@ -29,6 +29,7 @@
 #include "Cluster/ClusterTypes.h"
 #include "Containers/HashSetFwd.h"
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <set>
