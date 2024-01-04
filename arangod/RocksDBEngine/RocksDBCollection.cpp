@@ -644,9 +644,9 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice info,
       }
 
       RocksDBFilePurgePreventer walKeeper(&engine);
-      res = buildIdx->fillIndexBackground(locker);
+      res = buildIdx->fillIndexBackground(locker, std::move(progress));
     } else {
-      res = buildIdx->fillIndexForeground();
+      res = buildIdx->fillIndexForeground(std::move(progress));
     }
     if (res.fail()) {
       return res;

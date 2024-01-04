@@ -171,7 +171,6 @@ arangodb::Result Indexes::getAll(
       }
     }
     tmp.close();
-
   } else {
     std::shared_ptr<transaction::Methods> trx;
     if (inputTrx) {
@@ -499,7 +498,8 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice input,
       }
     }
   } else {
-    res = EnsureIndexLocal(collection, indexDef, create, output);
+    res = EnsureIndexLocal(collection, indexDef, create, output,
+                           std::move(progress));
   }
 
   ensureIndexResult = res.errorNumber();
