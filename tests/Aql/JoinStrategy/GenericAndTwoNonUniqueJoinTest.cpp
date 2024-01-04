@@ -117,13 +117,13 @@ class GenericAndTwoNonUniqueIndexMerger
     if (getStrategyName() == "GenericJoin") {
       auto strategy = std::make_unique<GenericJoinStrategy>(std::move(iters));
       strategy.get()->reset({});
-      return std::move(strategy);
+      return strategy;
     } else {
       TRI_ASSERT(getStrategyName() == "TwoIndicesMergeJoin");
       auto strategy =
           std::make_unique<TwoIndexNonUniqueJoinStrategy>(std::move(iters));
       strategy.get()->reset({});
-      return std::move(strategy);
+      return strategy;
     }
   }
 };

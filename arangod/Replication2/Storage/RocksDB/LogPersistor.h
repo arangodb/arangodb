@@ -29,6 +29,10 @@
 #include "Replication2/Storage/IteratorPosition.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteContext.h"
 
+namespace arangodb {
+struct ICompactKeyRange;
+}
+
 namespace arangodb::replication2::storage::rocksdb {
 
 struct AsyncLogWriteBatcherMetrics;
@@ -40,7 +44,8 @@ struct LogPersistor final : ILogPersistor {
                ::rocksdb::DB* const db,
                ::rocksdb::ColumnFamilyHandle* const logCf,
                std::shared_ptr<IAsyncLogWriteBatcher> batcher,
-               std::shared_ptr<AsyncLogWriteBatcherMetrics> metrics);
+               std::shared_ptr<AsyncLogWriteBatcherMetrics> metrics,
+               arangodb::ICompactKeyRange* keyrangeCompactor);
 
   [[nodiscard]] auto getIterator(IteratorPosition position)
       -> std::unique_ptr<PersistedLogIterator> override;
@@ -68,6 +73,7 @@ struct LogPersistor final : ILogPersistor {
   std::shared_ptr<AsyncLogWriteBatcherMetrics> const _metrics;
   ::rocksdb::DB* const db;
   ::rocksdb::ColumnFamilyHandle* const logCf;
+  arangodb::ICompactKeyRange* _keyrangeCompactor;
 };
 
 }  // namespace arangodb::replication2::storage::rocksdb

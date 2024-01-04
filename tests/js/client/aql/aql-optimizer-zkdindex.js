@@ -34,186 +34,238 @@ const removeFilterCoveredByIndex = "remove-filter-covered-by-index";
 const moveFiltersIntoEnumerate = "move-filters-into-enumerate";
 
 function optimizerRuleZkd2dIndexTestSuite() {
-    const colName = 'UnitTestZkdIndexCollection';
-    let col;
+  const colName = 'UnitTestZkdIndexCollection';
+  let col;
 
-    return {
-        setUpAll: function () {
-            col = db._create(colName);
-            col.ensureIndex({type: 'zkd', name: 'zkdIndex', fields: ['x', 'y'], fieldValueTypes: 'double'});
-            // Insert 1001 points
-            // (-500, -499.5), (-499.1, -499.4), ..., (0, 0.5), ..., (499.9, 500.4), (500, 500.5)
-            db._query(aql`
+  return {
+    setUpAll: function () {
+      col = db._create(colName);
+      col.ensureIndex({type: 'zkd', name: 'zkdIndex', fields: ['x', 'y'], fieldValueTypes: 'double'});
+      // Insert 1001 points
+      // (-500, -499.5), (-499.1, -499.4), ..., (0, 0.5), ..., (499.9, 500.4), (500, 500.5)
+      db._query(aql`
         FOR i IN 0..1000
           LET x = (i - 500) / 10
           LET y = x + 0.5
           INSERT {x, y, i} INTO ${col}
       `);
-        },
+    },
 
-        tearDownAll: function () {
-            col.drop();
-        },
+    tearDownAll: function () {
+      col.drop();
+    },
 
-        test1: function () {
-            const query = aql`
+    test1: function () {
+      const query = aql`
         FOR d IN ${col}
           FILTER d.i == 0
           RETURN d
       `;
-            const res = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
-            const nodeTypes = res.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
-            const appliedRules = res.plan.rules;
-            assertEqual(["SingletonNode", "EnumerateCollectionNode", "ReturnNode"], nodeTypes);
-            assertFalse(appliedRules.includes(useIndexes));
-            assertFalse(appliedRules.includes(removeFilterCoveredByIndex));
-        },
+      const res = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
+      const nodeTypes = res.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
+      const appliedRules = res.plan.rules;
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "ReturnNode"], nodeTypes);
+      assertFalse(appliedRules.includes(useIndexes));
+      assertFalse(appliedRules.includes(removeFilterCoveredByIndex));
+    },
 
-        test1_2: function () {
-            const query = aql`
+    test1_2: function () {
+      const query = aql`
         FOR d IN ${col}
           FILTER d.x >= 0 && d.i == 0
           RETURN d
       `;
-            const res = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
-            const nodeTypes = res.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
-            const appliedRules = res.plan.rules;
-            assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
-            assertTrue(appliedRules.includes(useIndexes));
-            assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
-            assertTrue(appliedRules.includes(moveFiltersIntoEnumerate));
-        },
+      const res = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
+      const nodeTypes = res.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
+      const appliedRules = res.plan.rules;
+      assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      assertTrue(appliedRules.includes(moveFiltersIntoEnumerate));
+    },
 
-        test2: function () {
-            const query = aql`
+    test2: function () {
+      const query = aql`
         FOR d IN ${col}
           FILTER 0 <= d.x && d.x <= 1
           RETURN d.x
       `;
-            const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
-            const appliedRules = explainRes.plan.rules;
-            const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
-            assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
-            assertTrue(appliedRules.includes(useIndexes));
-            assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
-            const executeRes = db._query(query.query, query.bindVars);
-            const res = executeRes.toArray();
-            res.sort();
-            assertEqual([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], res);
-        },
+      const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
+      const appliedRules = explainRes.plan.rules;
+      const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
+      assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      const executeRes = db._query(query.query, query.bindVars);
+      const res = executeRes.toArray();
+      res.sort();
+      assertEqual([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], res);
+    },
 
-        test3: function () {
-            const query = aql`
+    test3: function () {
+      const query = aql`
         FOR d IN ${col}
           FILTER 0 <= d.x && d.y <= 1
           RETURN d.x
       `;
-            const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
-            const appliedRules = explainRes.plan.rules;
-            const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
-            assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
-            assertTrue(appliedRules.includes(useIndexes));
-            assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
-            const executeRes = db._query(query.query, query.bindVars);
-            const res = executeRes.toArray();
-            res.sort();
-            assertEqual([0, 0.1, 0.2, 0.3, 0.4, 0.5], res);
-        },
+      const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
+      const appliedRules = explainRes.plan.rules;
+      const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
+      assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      const executeRes = db._query(query.query, query.bindVars);
+      const res = executeRes.toArray();
+      res.sort();
+      assertEqual([0, 0.1, 0.2, 0.3, 0.4, 0.5], res);
+    },
 
-        test4: function () {
-            const query = aql`
+    test4: function () {
+      const query = aql`
         FOR d IN ${col}
           FILTER 0 >= d.x
           FILTER 10 <= d.y && d.y <= 16
           RETURN d.x
       `;
-            const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
-            const appliedRules = explainRes.plan.rules;
-            const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
-            assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
-            assertTrue(appliedRules.includes(useIndexes));
-            assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
-            const executeRes = db._query(query.query, query.bindVars);
-            const res = executeRes.toArray();
-            res.sort();
-            assertEqual([], res);
-        },
+      const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
+      const appliedRules = explainRes.plan.rules;
+      const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
+      assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      const executeRes = db._query(query.query, query.bindVars);
+      const res = executeRes.toArray();
+      res.sort();
+      assertEqual([], res);
+    },
 
-        test5: function () {
-            const query = aql`
+    test5: function () {
+      const query = aql`
         FOR d IN ${col}
           FILTER 0 >= d.x || d.x >= 10
           FILTER d.y >= 0 && d.y <= 11
           RETURN d.x
       `;
-            const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
-            const appliedRules = explainRes.plan.rules;
-            const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
-            assertEqual(["SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "ReturnNode"], nodeTypes);
-            assertTrue(appliedRules.includes(useIndexes));
-            //assertTrue(appliedRules.includes(removeFilterCoveredByIndex)); -- TODO
-            const executeRes = db._query(query.query, query.bindVars);
-            const res = executeRes.toArray();
-            res.sort();
-            assertEqual([-0.1, -0.2, -0.3, -0.4, -0.5, 0, 10, 10.1, 10.2, 10.3, 10.4, 10.5].sort(), res);
-        },
+      const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
+      const appliedRules = explainRes.plan.rules;
+      const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
+      assertEqual(["SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "ReturnNode"], nodeTypes);
+      assertTrue(appliedRules.includes(useIndexes));
+      //assertTrue(appliedRules.includes(removeFilterCoveredByIndex)); -- TODO
+      const executeRes = db._query(query.query, query.bindVars);
+      const res = executeRes.toArray();
+      res.sort();
+      assertEqual([-0.1, -0.2, -0.3, -0.4, -0.5, 0, 10, 10.1, 10.2, 10.3, 10.4, 10.5].sort(), res);
+    },
 
-        test6: function () {
-            const query = aql`
+    test6: function () {
+      const query = aql`
         FOR d IN ${col}
           FILTER 0 == d.x
           RETURN d.x
       `;
-            const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
-            const appliedRules = explainRes.plan.rules;
-            const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
-            assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
-            assertTrue(appliedRules.includes(useIndexes));
-            assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
-            const executeRes = db._query(query.query, query.bindVars);
-            const res = executeRes.toArray();
-            res.sort();
-            assertEqual([0].sort(), res);
-        },
+      const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
+      const appliedRules = explainRes.plan.rules;
+      const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
+      assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      const executeRes = db._query(query.query, query.bindVars);
+      const res = executeRes.toArray();
+      res.sort();
+      assertEqual([0].sort(), res);
+    },
 
-        test7: function () {
-            const query = aql`
+    test7: function () {
+      const query = aql`
         FOR d IN ${col}
           FILTER 0 == d.x && 0 == d.y
           RETURN d.x
       `;
-            const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
-            const appliedRules = explainRes.plan.rules;
-            const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
-            assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
-            assertTrue(appliedRules.includes(useIndexes));
-            assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
-            const executeRes = db._query(query.query, query.bindVars);
-            const res = executeRes.toArray();
-            res.sort();
-            assertEqual([].sort(), res);
-        },
+      const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
+      const appliedRules = explainRes.plan.rules;
+      const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
+      assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      const executeRes = db._query(query.query, query.bindVars);
+      const res = executeRes.toArray();
+      res.sort();
+      assertEqual([].sort(), res);
+    },
 
-        test8: function () {
-            const query = aql`
+    test8: function () {
+      const query = aql`
         FOR d IN ${col}
           FILTER 0 < d.x && d.y <= 1
           RETURN d.x
       `;
-            const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
-            const appliedRules = explainRes.plan.rules;
-            const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
-            assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
-            assertTrue(appliedRules.includes(useIndexes));
-            assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
-            assertTrue(appliedRules.includes(moveFiltersIntoEnumerate));
-            const executeRes = db._query(query.query, query.bindVars);
-            const res = executeRes.toArray();
-            res.sort();
-            assertEqual([0.1, 0.2, 0.3, 0.4, 0.5].sort(), res);
-        },
+      const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
+      const appliedRules = explainRes.plan.rules;
+      const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
+      assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      assertTrue(appliedRules.includes(moveFiltersIntoEnumerate));
+      const executeRes = db._query(query.query, query.bindVars);
+      const res = executeRes.toArray();
+      res.sort();
+      assertEqual([0.1, 0.2, 0.3, 0.4, 0.5].sort(), res);
+    },
 
-    };
+    testEstimates: function () {
+      let col = db._create(colName + "2");
+      col.ensureIndex({
+        type: 'zkd',
+        name: 'zkdIndex',
+        fields: ['x', 'y'],
+        fieldValueTypes: 'double',
+      });
+
+      db._query(aql`
+        FOR str IN ["foo", "bar", "baz"]
+          FOR i IN 1..2
+            INSERT {x: i, y: i, z: i, stringValue: str} INTO ${col}
+      `);
+      const index = col.index("zkdIndex");
+      assertFalse(index.estimates);
+      assertFalse(index.hasOwnProperty("selectivityEstimate"));
+      col.drop();
+    },
+
+    testTruncate: function () {
+      let col = db._create(colName + "3");
+      col.ensureIndex({
+        type: 'zkd',
+        name: 'zkdIndex',
+        fields: ['x', 'y'],
+        fieldValueTypes: 'double',
+      });
+
+      db._query(aql`
+          FOR i IN 1..100
+            INSERT {x: i, y: i, z: i} INTO ${col}
+      `);
+
+      let res = db._query(aql`
+        FOR doc in ${col}
+          FILTER doc.x > -100
+          RETURN doc
+      `).toArray();
+      assertEqual(100, res.length);
+
+      col.truncate();
+
+      res = db._query(aql`
+        FOR doc in ${col}
+          FILTER doc.x > -100
+          RETURN doc
+      `).toArray();
+      assertEqual(0, res.length);
+      col.drop();
+    },
+
+  };
 }
 
 jsunity.run(optimizerRuleZkd2dIndexTestSuite);
