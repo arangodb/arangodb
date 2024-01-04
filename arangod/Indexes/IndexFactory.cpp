@@ -339,11 +339,17 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
 
 /// same for both storage engines
 std::vector<std::string_view> IndexFactory::supportedIndexes() const {
-  return {"primary", "edge",
-          "hash",    "skiplist",
-          "ttl",     "persistent",
-          "geo",     "fulltext",
-          "zkd",     arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE};
+  return {"primary",
+          "edge",
+          "hash",
+          "skiplist",
+          "ttl",
+          "persistent",
+          "geo",
+          "fulltext",
+          "zkd",
+          "mdi-prefixed",
+          arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE};
 }
 
 std::vector<std::pair<std::string_view, std::string_view>>
@@ -761,22 +767,21 @@ Result processIndexSortedPrefixFields(VPackSlice definition,
 
   Result res;
 
-  auto fieldsSlice = definition.get(StaticStrings::IndexPrefixFields);
+  auto prefixFieldsSlice = definition.get(StaticStrings::IndexPrefixFields);
 
-  // prefixFields are fully optional
-  if (!fieldsSlice.isNone()) {
-    if (fieldsSlice.isArray()) {
-      res = IndexFactory::validateFieldsDefinition(
-          definition, StaticStrings::IndexStoredValues, minFields, maxFields,
-          allowSubAttributes, /*allowIdAttribute*/ true);
-      if (res.ok() && fieldsSlice.length() > 0) {
-        std::unordered_set<std::string_view> fields;
-        for (VPackSlice it : VPackArrayIterator(fieldsSlice)) {
-          fields.insert(it.stringView());
-        }
-        auto normalFields = definition.get(StaticStrings::IndexStoredValues);
-        TRI_ASSERT(normalFields.isArray());
-        for (VPackSlice it : VPackArrayIterator(normalFields)) {
+  if (prefixFieldsSlice.isArray() && !prefixFieldsSlice.isEmptyArray()) {
+    res = IndexFactory::validateFieldsDefinition(
+        definition, StaticStrings::IndexPrefixFields, minFields, maxFields,
+        allowSubAttributes, /*allowIdAttribute*/ true);
+    if (res.ok()) {
+      std::unordered_set<std::string_view> fields;
+      for (VPackSlice it : VPackArrayIterator(prefixFieldsSlice)) {
+        fields.insert(it.stringView());
+      }
+      auto storedValues = definition.get(StaticStrings::IndexStoredValues);
+      if (!storedValues.isNone()) {
+        TRI_ASSERT(storedValues.isArray());
+        for (VPackSlice it : VPackArrayIterator(storedValues)) {
           if (!fields.insert(it.stringView()).second) {
             res.reset(TRI_ERROR_BAD_PARAMETER,
                       "duplicate attribute name (overlap between index sorted "
@@ -786,23 +791,24 @@ Result processIndexSortedPrefixFields(VPackSlice definition,
             break;
           }
         }
-
-        builder.add(velocypack::Value(StaticStrings::IndexPrefixFields));
-        builder.openArray();
-
-        for (VPackSlice it : VPackArrayIterator(fieldsSlice)) {
-          std::vector<basics::AttributeName> temp;
-          TRI_ParseAttributeString(it.stringView(), temp,
-                                   /*allowExpansion*/ false);
-
-          builder.add(it);
-        }
-
-        builder.close();
       }
-    } else {
-      res.reset(TRI_ERROR_BAD_PARAMETER, "prefixFields must be an array");
+
+      builder.add(velocypack::Value(StaticStrings::IndexPrefixFields));
+      builder.openArray();
+
+      for (VPackSlice it : VPackArrayIterator(prefixFieldsSlice)) {
+        std::vector<basics::AttributeName> temp;
+        TRI_ParseAttributeString(it.stringView(), temp,
+                                 /*allowExpansion*/ false);
+
+        builder.add(it);
+      }
+
+      builder.close();
     }
+  } else {
+    res.reset(TRI_ERROR_BAD_PARAMETER,
+              "prefixFields is required for `mdi-prefixed`");
   }
 
   return res;
@@ -838,11 +844,6 @@ Result IndexFactory::enhanceJsonIndexZkd(VPackSlice definition,
   }
 
   if (res.ok()) {
-    res = processIndexSortedPrefixFields(definition, builder, 1, 32, create,
-                                         true);
-  }
-
-  if (res.ok()) {
     if (auto isSparse = definition.get(StaticStrings::IndexSparse).isTrue();
         isSparse) {
       return Result(TRI_ERROR_BAD_PARAMETER,
@@ -851,6 +852,17 @@ Result IndexFactory::enhanceJsonIndexZkd(VPackSlice definition,
 
     processIndexUniqueFlag(definition, builder);
     processIndexInBackground(definition, builder);
+  }
+
+  return res;
+}  /// @brief enhances the json of a zkd index
+Result IndexFactory::enhanceJsonIndexMdiPrefixed(VPackSlice definition,
+                                                 VPackBuilder& builder,
+                                                 bool create) {
+  auto res = enhanceJsonIndexZkd(definition, builder, create);
+  if (res.ok()) {
+    res = processIndexSortedPrefixFields(definition, builder, 1, 32, create,
+                                         true);
   }
 
   return res;

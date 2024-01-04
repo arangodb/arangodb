@@ -60,6 +60,14 @@ auto ApplyEntriesHandler<Runtime>::operator()(message::Resign&& msg) noexcept
     -> std::unique_ptr<ApplyEntriesState> {
   LOG_CTX("b0788", DEBUG, this->state->loggerContext)
       << "AppliesEntry actor received resign message";
+  // We have to explicitly finish all started transaction actors.
+  // This is necessary because we have a potential race. The DocumentState can
+  // call softShutdown while we still process some entries. In this case we can
+  // spawn a new actor after softShutdown has been called, and this actor will
+  // never be finished
+  for (auto& [tid, pid] : this->state->_transactionMap) {
+    this->runtime().finishActor(pid, ExitReason::kShutdown);
+  }
   resign();
   this->finish(ExitReason::kFinished);
   return std::move(this->state);
