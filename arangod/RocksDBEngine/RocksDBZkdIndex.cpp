@@ -881,6 +881,7 @@ void RocksDBZkdIndexBase::toVelocyPack(
     std::underlying_type<Index::Serialize>::type type) const {
   VPackObjectBuilder ob(&builder);
   RocksDBIndex::toVelocyPack(builder, type);
+  builder.add("fieldValueTypes", VPackValue("double"));
   builder.add(StaticStrings::IndexEstimates,
               VPackValue(hasSelectivityEstimate()));
   if (!_storedValues.empty()) {
@@ -907,6 +908,45 @@ void RocksDBZkdIndexBase::toVelocyPack(
 
     builder.close();
   }
+}
+
+/// @brief Test if this index matches the definition
+bool RocksDBZkdIndexBase::matchesDefinition(VPackSlice const& info) const {
+  // call compare method of parent first
+  if (!RocksDBIndex::matchesDefinition(info)) {
+    return false;
+  }
+  // compare prefix values
+  auto value = info.get(arangodb::StaticStrings::IndexPrefixFields);
+
+  if (value.isNone()) {
+    return _prefixFields.empty();
+  }
+
+  if (!value.isArray()) {
+    return false;
+  }
+
+  size_t const n = static_cast<size_t>(value.length());
+  if (n != _prefixFields.size()) {
+    return false;
+  }
+
+  std::vector<arangodb::basics::AttributeName> translate;
+  for (size_t i = 0; i < n; ++i) {
+    translate.clear();
+    VPackSlice f = value.at(i);
+    if (!f.isString()) {
+      // Invalid field definition!
+      return false;
+    }
+    TRI_ParseAttributeString(f.stringView(), translate, true);
+    if (!arangodb::basics::AttributeName::isIdentical(_prefixFields[i],
+                                                      translate, false)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 bool RocksDBZkdIndex::hasSelectivityEstimate() const {

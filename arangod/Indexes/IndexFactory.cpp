@@ -165,6 +165,14 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
         return false;
       }
     }
+  } else if (Index::IndexType::TRI_IDX_TYPE_MDI_PREFIXED_INDEX == type) {
+    value = lhs.get(StaticStrings::IndexPrefixFields);
+
+    if (value.isArray() &&
+        !basics::VelocyPackHelper::equal(
+            value, rhs.get(StaticStrings::IndexPrefixFields), false)) {
+      return false;
+    }
   }
 
   // other index types: fields must be identical if present
