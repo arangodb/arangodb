@@ -9,7 +9,7 @@ parameters:
     default: ""
   build-docker-image:
     type: string
-    default: "arangodb/ubuntubuildarangodb-devel:0"
+    default: "arangodb/ubuntubuildarangodb-devel:1"
   build-windows-image:
     type: string
     default: "arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.4-399cc6a6e26"
@@ -205,6 +205,8 @@ jobs:
       SCCACHE_ERROR_LOG: /tmp/sccache.log
       SCCACHE_LOG: info,sccache::cache=debug,sccache::compiler::compiler=debug
       SCCACHE_S3_KEY_PREFIX: << parameters.s3-prefix >>
+      CC: /tools/clang
+      CXX: /tools/clang++
     steps:
       - checkout-arangodb:
           with-submodules: true
