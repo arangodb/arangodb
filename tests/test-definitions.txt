@@ -25,11 +25,13 @@ agency,agency-restart priority=350 parallelity=3 size=small single -- --dumpAgen
 authentication priority=1000 single
 endpoints priority=250 single -- --skipEndpointsIpv6 true
 
-recovery priority=2000 buckets=6 parallelity=5 size=small single
-recovery priority=2000 buckets=6 parallelity=5 size=small # cluster
+recovery priority=2000 buckets=3 parallelity=3 size=small single
+# cluster
+recovery priority=2000 buckets=3 parallelity=3 size=small
 
-recovery_server priority=2000 buckets=6 parallelity=5 size=small single
-recovery_server_cluster priority=2000 buckets=6 parallelity=5 size=small # cluster
+recovery_server priority=2000 buckets=3 parallelity=3 size=small single
+# cluster
+recovery_server_cluster priority=2000 buckets=3 parallelity=3 size=small
 
 shell_api priority=500 single -- $EncryptionAtRest
 
