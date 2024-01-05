@@ -33,14 +33,14 @@ const useIndexes = 'use-indexes';
 const removeFilterCoveredByIndex = "remove-filter-covered-by-index";
 const moveFiltersIntoEnumerate = "move-filters-into-enumerate";
 
-function optimizerRuleZkd2dIndexTestSuite() {
-  const colName = 'UnitTestZkdIndexCollection';
+function optimizerRuleMdi2dIndexTestSuite() {
+  const colName = 'UnitTestMdiIndexCollection';
   let col;
 
   return {
     setUpAll: function () {
       col = db._create(colName);
-      col.ensureIndex({type: 'zkd', name: 'zkdIndex', fields: ['x', 'y'], fieldValueTypes: 'double'});
+      col.ensureIndex({type: 'mdi', name: 'mdiIndex', fields: ['x', 'y'], fieldValueTypes: 'double'});
       // Insert 1001 points
       // (-500, -499.5), (-499.1, -499.4), ..., (0, 0.5), ..., (499.9, 500.4), (500, 500.5)
       db._query(aql`
@@ -216,8 +216,8 @@ function optimizerRuleZkd2dIndexTestSuite() {
     testEstimates: function () {
       let col = db._create(colName + "2");
       col.ensureIndex({
-        type: 'zkd',
-        name: 'zkdIndex',
+        type: 'mdi',
+        name: 'mdiIndex',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
       });
@@ -227,7 +227,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
           FOR i IN 1..2
             INSERT {x: i, y: i, z: i, stringValue: str} INTO ${col}
       `);
-      const index = col.index("zkdIndex");
+      const index = col.index("mdiIndex");
       assertFalse(index.estimates);
       assertFalse(index.hasOwnProperty("selectivityEstimate"));
       col.drop();
@@ -236,8 +236,8 @@ function optimizerRuleZkd2dIndexTestSuite() {
     testTruncate: function () {
       let col = db._create(colName + "3");
       col.ensureIndex({
-        type: 'zkd',
-        name: 'zkdIndex',
+        type: 'mdi',
+        name: 'mdiIndex',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
       });
@@ -268,8 +268,8 @@ function optimizerRuleZkd2dIndexTestSuite() {
     testFieldValuesTypes: function () {
       let col = db._create(colName + "4");
       const idx = col.ensureIndex({
-        type: 'zkd',
-        name: 'zkdIndex',
+        type: 'mdi',
+        name: 'mdiIndex',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
       });
@@ -283,19 +283,19 @@ function optimizerRuleZkd2dIndexTestSuite() {
     testCompareIndex: function () {
       let col = db._create(colName + "4");
       const idx1 = col.ensureIndex({
-        type: 'zkd',
+        type: 'mdi',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
       });
 
       const idx2 = col.ensureIndex({
-        type: 'zkd',
+        type: 'mdi',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
       });
 
       const idx3 = col.ensureIndex({
-        type: 'zkd',
+        type: 'mdi',
         fields: ['y', 'x'],
         fieldValueTypes: 'double',
       });
@@ -307,6 +307,6 @@ function optimizerRuleZkd2dIndexTestSuite() {
   };
 }
 
-jsunity.run(optimizerRuleZkd2dIndexTestSuite);
+jsunity.run(optimizerRuleMdi2dIndexTestSuite);
 
 return jsunity.done();
