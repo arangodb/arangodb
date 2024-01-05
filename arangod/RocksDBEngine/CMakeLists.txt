@@ -1,5 +1,6 @@
 add_library(arango_rocksdb STATIC
   RocksDBBackgroundThread.cpp
+  ReplicatedRocksDBTransactionCollection.cpp
   RocksDBBuilderIndex.cpp
   RocksDBChecksumEnv.cpp
   RocksDBCollection.cpp
@@ -28,6 +29,7 @@ add_library(arango_rocksdb STATIC
   RocksDBMetadata.cpp
   RocksDBMethods.cpp
   RocksDBMethodsMemoryTracker.cpp
+  RocksDBMultiDimIndex.cpp
   RocksDBOptimizerRules.cpp
   RocksDBOptionFeature.cpp
   RocksDBOptionsProvider.cpp
@@ -45,8 +47,8 @@ add_library(arango_rocksdb STATIC
   RocksDBRestWalHandler.cpp
   RocksDBSavePoint.cpp
   RocksDBSettingsManager.cpp
-  RocksDBSyncThread.cpp
   RocksDBSortedRowsStorageContext.cpp
+  RocksDBSyncThread.cpp
   RocksDBTempStorage.cpp
   RocksDBTransactionCollection.cpp
   RocksDBTransactionMethods.cpp
@@ -57,8 +59,6 @@ add_library(arango_rocksdb STATIC
   RocksDBVPackIndex.cpp
   RocksDBValue.cpp
   RocksDBWalAccess.cpp
-  RocksDBZkdIndex.cpp
-  ReplicatedRocksDBTransactionCollection.cpp
   ReplicatedRocksDBTransactionState.cpp
   SimpleRocksDBTransactionState.cpp
   SortedRowsStorageBackendRocksDB.cpp)

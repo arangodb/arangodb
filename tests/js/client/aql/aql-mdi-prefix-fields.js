@@ -26,25 +26,24 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const aql = arangodb.aql;
-const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
+const {assertTrue, assertFalse, assertEqual, assertNotEqual} = jsunity.jsUnity.assertions;
 const _ = require("lodash");
 const normalize = require("@arangodb/aql-helper").normalizeProjections;
 
-function optimizerRuleZkd2dIndexTestSuite() {
-  const colName = 'UnitTestZkdIndexCollection';
+function optimizerRuleMdi2dIndexTestSuite() {
+  const colName = 'UnitTestMdiIndexCollection';
   let col;
 
   return {
-
     tearDown: function () {
-      db[colName].drop();
+      db._drop(colName);
     },
 
     testSimplePrefix: function () {
       col = db._create(colName);
       col.ensureIndex({
         type: 'mdi-prefixed',
-        name: 'zkdIndex',
+        name: 'mdiIndex',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
         storedValues: ["z"],
@@ -73,7 +72,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
       col = db._create(colName);
       col.ensureIndex({
         type: 'mdi-prefixed',
-        name: 'zkdIndex',
+        name: 'mdiIndex',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
         storedValues: ["z"],
@@ -85,7 +84,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
           FOR i IN 1..2
             INSERT {x: i, y: i, z: i, stringValue: str} INTO ${col}
       `);
-      const index = col.index("zkdIndex");
+      const index = col.index("mdiIndex");
       assertTrue(index.estimates);
       assertTrue(index.hasOwnProperty("selectivityEstimate"));
     },
@@ -94,7 +93,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
       col = db._create(colName);
       col.ensureIndex({
         type: 'mdi-prefixed',
-        name: 'zkdIndex',
+        name: 'mdiIndex',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
         storedValues: ["z"],
@@ -125,7 +124,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
       col = db._create(colName);
       col.ensureIndex({
         type: 'mdi-prefixed',
-        name: 'zkdIndex',
+        name: 'mdiIndex',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
         storedValues: ["z"],
@@ -164,7 +163,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
       col = db._create(colName);
       col.ensureIndex({
         type: 'mdi-prefixed',
-        name: 'zkdIndex',
+        name: 'mdiIndex',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
         prefixFields: ["stringValue", "value"],
@@ -201,7 +200,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
       let col = db._create(colName);
       col.ensureIndex({
         type: 'mdi-prefixed',
-        name: 'zkdIndex',
+        name: 'mdiIndex',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
         prefixFields: ["z"]
@@ -230,19 +229,56 @@ function optimizerRuleZkd2dIndexTestSuite() {
       `).toArray();
       assertEqual(0, res.length);
     },
+
+    testCompareIndex: function () {
+      let col = db._create(colName + "4");
+      const idx1 = col.ensureIndex({
+        type: 'mdi-prefixed',
+        prefixFields: ["attr1"],
+        fields: ['x', 'y'],
+        fieldValueTypes: 'double',
+      });
+
+      const idx2 = col.ensureIndex({
+        type: 'mdi-prefixed',
+        prefixFields: ["attr1"],
+        fields: ['x', 'y'],
+        fieldValueTypes: 'double',
+      });
+
+      const idx3 = col.ensureIndex({
+        type: 'mdi-prefixed',
+        prefixFields: ["attr1"],
+        fields: ['y', 'x'],
+        fieldValueTypes: 'double',
+      });
+
+      const idx4 = col.ensureIndex({
+        type: 'mdi-prefixed',
+        prefixFields: ["attr2"],
+        fields: ['y', 'x'],
+        fieldValueTypes: 'double',
+      });
+
+      assertEqual(idx1.id, idx2.id);
+      assertNotEqual(idx3.id, idx2.id);
+      assertNotEqual(idx4.id, idx2.id);
+      assertNotEqual(idx4.id, idx3.id);
+      col.drop();
+    },
   };
 }
 
 const gm = require("@arangodb/general-graph");
 const waitForEstimatorSync = require('@arangodb/test-helper').waitForEstimatorSync;
 
-function optimizerRuleZkdTraversal() {
-  const database = "MyTestZkdTraversalDB";
+function optimizerRuleMdiTraversal() {
+  const database = "MyTestMdiTraversalDB";
   const graph = "mygraph";
   const vertexCollection = "v";
   const edgeCollection = "e";
-  const indexName = "myZkdIndex";
-  const levelIndexName = "myZkdIndexLevel";
+  const indexName = "myMdiIndex";
+  const levelIndexName = "myMdiIndexLevel";
 
   return {
     setUpAll: function () {
@@ -289,7 +325,7 @@ function optimizerRuleZkdTraversal() {
       db._dropDatabase(database);
     },
 
-    testZkdTraversal: function () {
+    testMdiTraversal: function () {
       const query = `
         for v, e, p in 0..3 outbound "${vertexCollection}/v1" graph "${graph}"
         options {bfs: true, uniqueVertices: "path"}
@@ -314,7 +350,7 @@ function optimizerRuleZkdTraversal() {
       });
     },
 
-    testZkdTraversalOnlyOneLevel: function () {
+    testMdiTraversalOnlyOneLevel: function () {
       const query = `
         for v, e, p in 0..3 outbound "${vertexCollection}/v1" graph "${graph}"
         options {bfs: true, uniqueVertices: "path"}
@@ -340,7 +376,7 @@ function optimizerRuleZkdTraversal() {
   };
 }
 
-jsunity.run(optimizerRuleZkd2dIndexTestSuite);
-jsunity.run(optimizerRuleZkdTraversal);
+jsunity.run(optimizerRuleMdi2dIndexTestSuite);
+jsunity.run(optimizerRuleMdiTraversal);
 
 return jsunity.done();
