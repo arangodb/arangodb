@@ -72,6 +72,8 @@ COPY ./scripts /scripts
 
 RUN update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-${CLANG_VERSION} 100 && update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${CLANG_VERSION} 100
 
+RUN /scripts/create-sccache-hardlinks.sh
+
 RUN LC_ALL="C" update-ccache-symlinks
 
 RUN git config --global --add safe.directory '*'

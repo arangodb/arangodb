@@ -161,6 +161,11 @@ function FollowersSuite () {
       // now check Current
       assertTrue(result.hasOwnProperty("Current"));
 
+      if (db._properties().replicationVersion === "2") {
+        // The following assertion on current is faked
+        // for replication1, and not in use for replication2
+        return;
+      }
       let tries = 0;
       // try for 10 seconds, and in this period no followers must show up 
       while (++tries < 20) {

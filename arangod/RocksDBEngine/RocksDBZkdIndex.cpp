@@ -328,17 +328,16 @@ auto accessDocumentPath(VPackSlice doc,
   return doc;
 }
 
-auto readDocumentKey(
+ResultT<zkd::byte_string> readDocumentKey(
     VPackSlice doc,
-    std::vector<std::vector<basics::AttributeName>> const& fields)
-    -> zkd::byte_string {
+    std::vector<std::vector<basics::AttributeName>> const& fields) {
   std::vector<zkd::byte_string> v;
   v.reserve(fields.size());
 
   for (auto const& path : fields) {
     VPackSlice value = accessDocumentPath(doc, path);
     if (!value.isNumber<double>()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+      return {TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE};
     }
     auto dv = value.getNumericValue<double>();
     if (std::isnan(dv)) {
@@ -666,10 +665,10 @@ auto zkd::specializeCondition(Index const* index, aql::AstNode* condition,
 }
 
 namespace {
-auto extractAttributeValues(
+ResultT<transaction::BuilderLeaser> extractAttributeValues(
     transaction::Methods& trx,
     std::vector<std::vector<basics::AttributeName>> const& storedValues,
-    velocypack::Slice doc) {
+    velocypack::Slice doc, bool nullAllowed) {
   transaction::BuilderLeaser leased(&trx);
   leased->openArray(true);
   for (auto const& it : storedValues) {
@@ -682,6 +681,10 @@ auto extractAttributeValues(
     } else {
       s = doc;
       for (auto const& part : it) {
+        if (!s.isObject()) {
+          s = VPackSlice ::noneSlice();
+          break;
+        }
         s = s.get(part.name);
         if (s.isNone()) {
           break;
@@ -691,6 +694,11 @@ auto extractAttributeValues(
     if (s.isNone()) {
       s = VPackSlice::nullSlice();
     }
+
+    if (s.isNull() && !nullAllowed) {
+      return {TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING};
+    }
+
     leased->add(s);
   }
   leased->close();
@@ -706,22 +714,39 @@ Result RocksDBZkdIndex::insert(transaction::Methods& trx,
                                OperationOptions const& options,
                                bool performChecks) {
   TRI_ASSERT(_unique == false);
-  TRI_ASSERT(_sparse == false);
 
-  auto keyValue = readDocumentKey(doc, _fields);
+  zkd::byte_string keyValue;
+  {
+    auto result = readDocumentKey(doc, _fields);
+    if (result.fail()) {
+      if (result.errorNumber() == TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE &&
+          _sparse) {
+        return {};
+      }
+      THROW_ARANGO_EXCEPTION(result.result());
+    }
+    keyValue = std::move(result.get());
+  }
 
   RocksDBKey rocksdbKey;
   uint64_t hash = 0;
   if (!isPrefixed()) {
     rocksdbKey.constructZkdIndexValue(objectId(), keyValue, documentId);
   } else {
-    auto prefixValues = extractAttributeValues(trx, _prefixFields, doc);
+    auto result = extractAttributeValues(trx, _prefixFields, doc, !_sparse);
+    if (result.fail()) {
+      TRI_ASSERT(_sparse);
+      TRI_ASSERT(result.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING);
+      return TRI_ERROR_NO_ERROR;
+    }
+    auto& prefixValues = result.get();
     rocksdbKey.constructZkdIndexValue(objectId(), prefixValues->slice(),
                                       keyValue, documentId);
     hash = _estimates ? prefixValues->slice().normalizedHash() : 0;
   }
 
-  auto storedValues = extractAttributeValues(trx, _storedValues, doc);
+  auto storedValues =
+      std::move(extractAttributeValues(trx, _storedValues, doc, true).get());
   auto value = RocksDBValue::ZkdIndexValue(storedValues->slice());
   auto s = methods->PutUntracked(_cf, rocksdbKey, value.string());
   if (!s.ok()) {
@@ -763,16 +788,32 @@ Result RocksDBZkdIndex::remove(transaction::Methods& trx,
                                velocypack::Slice doc,
                                OperationOptions const& /*options*/) {
   TRI_ASSERT(_unique == false);
-  TRI_ASSERT(_sparse == false);
 
-  auto keyValue = readDocumentKey(doc, _fields);
+  zkd::byte_string keyValue;
+  {
+    auto result = readDocumentKey(doc, _fields);
+    if (result.fail()) {
+      if (result.errorNumber() == TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE &&
+          _sparse) {
+        return {};
+      }
+      THROW_ARANGO_EXCEPTION(result.result());
+    }
+    keyValue = std::move(result.get());
+  }
 
   RocksDBKey rocksdbKey;
   uint64_t hash = 0;
   if (!isPrefixed()) {
     rocksdbKey.constructZkdIndexValue(objectId(), keyValue, documentId);
   } else {
-    auto prefixValues = extractAttributeValues(trx, _prefixFields, doc);
+    auto result = extractAttributeValues(trx, _prefixFields, doc, !_sparse);
+    if (result.fail()) {
+      TRI_ASSERT(_sparse);
+      TRI_ASSERT(result.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING);
+      return TRI_ERROR_NO_ERROR;
+    }
+    auto& prefixValues = result.get();
     rocksdbKey.constructZkdIndexValue(objectId(), prefixValues->slice(),
                                       keyValue, documentId);
     hash = _estimates ? prefixValues->slice().normalizedHash() : 0;
@@ -1022,16 +1063,31 @@ Result RocksDBUniqueZkdIndex::insert(transaction::Methods& trx,
                                      OperationOptions const& options,
                                      bool performChecks) {
   TRI_ASSERT(_unique == true);
-  TRI_ASSERT(_sparse == false);
 
-  // TODO what about performChecks
-  auto keyValue = readDocumentKey(doc, _fields);
+  zkd::byte_string keyValue;
+  {
+    auto result = readDocumentKey(doc, _fields);
+    if (result.fail()) {
+      if (result.errorNumber() == TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE &&
+          _sparse) {
+        return {};
+      }
+      THROW_ARANGO_EXCEPTION(result.result());
+    }
+    keyValue = std::move(result.get());
+  }
 
   RocksDBKey rocksdbKey;
   if (!isPrefixed()) {
     rocksdbKey.constructZkdIndexValue(objectId(), keyValue);
   } else {
-    auto prefixValues = extractAttributeValues(trx, _prefixFields, doc);
+    auto result = extractAttributeValues(trx, _prefixFields, doc, !_sparse);
+    if (result.fail()) {
+      TRI_ASSERT(_sparse);
+      TRI_ASSERT(result.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING);
+      return TRI_ERROR_NO_ERROR;
+    }
+    auto& prefixValues = result.get();
     rocksdbKey.constructZkdIndexValue(objectId(), prefixValues->slice(),
                                       keyValue);
   }
@@ -1047,7 +1103,8 @@ Result RocksDBUniqueZkdIndex::insert(transaction::Methods& trx,
     }
   }
 
-  auto storedValues = extractAttributeValues(trx, _storedValues, doc);
+  auto storedValues =
+      std::move(extractAttributeValues(trx, _storedValues, doc, true).get());
   auto value =
       RocksDBValue::UniqueZkdIndexValue(documentId, storedValues->slice());
 
@@ -1065,15 +1122,31 @@ Result RocksDBUniqueZkdIndex::remove(transaction::Methods& trx,
                                      velocypack::Slice doc,
                                      OperationOptions const& /*options*/) {
   TRI_ASSERT(_unique == true);
-  TRI_ASSERT(_sparse == false);
 
-  auto keyValue = readDocumentKey(doc, _fields);
+  zkd::byte_string keyValue;
+  {
+    auto result = readDocumentKey(doc, _fields);
+    if (result.fail()) {
+      if (result.errorNumber() == TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE &&
+          _sparse) {
+        return {};
+      }
+      THROW_ARANGO_EXCEPTION(result.result());
+    }
+    keyValue = std::move(result.get());
+  }
 
   RocksDBKey rocksdbKey;
   if (!isPrefixed()) {
     rocksdbKey.constructZkdIndexValue(objectId(), keyValue);
   } else {
-    auto prefixValues = extractAttributeValues(trx, _prefixFields, doc);
+    auto result = extractAttributeValues(trx, _prefixFields, doc, !_sparse);
+    if (result.fail()) {
+      TRI_ASSERT(_sparse);
+      TRI_ASSERT(result.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING);
+      return TRI_ERROR_NO_ERROR;
+    }
+    auto& prefixValues = result.get();
     rocksdbKey.constructZkdIndexValue(objectId(), prefixValues->slice(),
                                       keyValue);
   }

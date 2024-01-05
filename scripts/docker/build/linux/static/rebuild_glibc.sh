@@ -2,7 +2,7 @@
 cd /root
 apt-get source glibc
 cd glibc-*
-patch -u debian/rules.d/build.mk /static/enable_static_nss.patch
+patch -u debian/rules.d/build.mk /static/enable_static_nss.pat
 export EMAIL="Max Neunhoeffer <max@arangodb.com>"
 debchange -n "Switched on --enable-static-nss=yes"
 debchange -r ignored

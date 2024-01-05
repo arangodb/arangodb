@@ -6,6 +6,11 @@ devel
   the server will answer all HTTP GET requests to robots.txt with the contents
   from that file.
 
+* Only schedule a single compaction per RocksDB column family at any given
+  time. Scheduling mutliple concurrent compactions on the same column family
+  can lead to scheduler threads being stalled under some adverse conditions
+  that lead to a stall inside RocksDB.
+
 * Added REST API `/_api/key-generators` to query the available key generators
   for collections.
 
