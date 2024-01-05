@@ -46,8 +46,8 @@ struct RocksDBColumnFamilyManager {
     GeoIndex = 5,
     FulltextIndex = 6,
     ReplicatedLogs = 7,
-    ZkdIndex = 8,
-    ZkdVPackIndex = 9,
+    MdiIndex = 8,
+    MdiVPackIndex = 9,
 
     Invalid = 1024  // special placeholder
   };

@@ -315,7 +315,6 @@ void RocksDBIndex::refillCache(transaction::Methods& trx,
 size_t RocksDBIndex::memory() const {
   rocksdb::TransactionDB* db = _engine.db();
   RocksDBKeyBounds bounds = getBounds();
-  // ZKD Index uses multiple column families depending on its configuration
   TRI_ASSERT(_cf == bounds.columnFamily());
   rocksdb::Range r(bounds.start(), bounds.end());
   uint64_t out;
@@ -400,10 +399,10 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type,
       return RocksDBKeyBounds::GeoIndex(objectId);
     case RocksDBIndex::TRI_IDX_TYPE_IRESEARCH_LINK:
       return RocksDBKeyBounds::DatabaseViews(objectId);
-    case RocksDBIndex::TRI_IDX_TYPE_ZKD_INDEX:
-      return RocksDBKeyBounds::ZkdIndex(objectId);
+    case RocksDBIndex::TRI_IDX_TYPE_MDI_INDEX:
+      return RocksDBKeyBounds::MdiIndex(objectId);
     case RocksDBIndex::TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
-      return RocksDBKeyBounds::ZkdVPackIndex(objectId);
+      return RocksDBKeyBounds::MdiVPackIndex(objectId);
     case RocksDBIndex::TRI_IDX_TYPE_UNKNOWN:
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

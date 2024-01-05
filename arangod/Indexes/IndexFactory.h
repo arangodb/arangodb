@@ -207,8 +207,8 @@ class IndexFactory {
                                          velocypack::Builder& builder,
                                          bool create);
 
-  /// @brief enhances the json of a zkd index
-  static Result enhanceJsonIndexZkd(arangodb::velocypack::Slice definition,
+  /// @brief enhances the json of a mdi
+  static Result enhanceJsonIndexMdi(arangodb::velocypack::Slice definition,
                                     arangodb::velocypack::Builder& builder,
                                     bool create);
   static Result enhanceJsonIndexMdiPrefixed(
