@@ -118,22 +118,24 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
                              velocypack::Slice rhs,
                              bool attributeOrderMatters) const {
   // unique must be identical if present
-  auto value = lhs.get(StaticStrings::IndexUnique);
-
-  if (value.isBoolean() &&
-      !basics::VelocyPackHelper::equal(
-          value, rhs.get(StaticStrings::IndexUnique), false)) {
+  bool lhsUnique = basics::VelocyPackHelper::getBooleanValue(
+      lhs, StaticStrings::IndexUnique, false);
+  bool rhsUnique = basics::VelocyPackHelper::getBooleanValue(
+      rhs, StaticStrings::IndexUnique, false);
+  if (lhsUnique != rhsUnique) {
     return false;
   }
 
   // sparse must be identical if present
-  value = lhs.get(StaticStrings::IndexSparse);
-
-  if (value.isBoolean() &&
-      !basics::VelocyPackHelper::equal(
-          value, rhs.get(StaticStrings::IndexSparse), false)) {
+  bool lhsSparse = basics::VelocyPackHelper::getBooleanValue(
+      lhs, StaticStrings::IndexSparse, false);
+  bool rhsSparse = basics::VelocyPackHelper::getBooleanValue(
+      rhs, StaticStrings::IndexSparse, false);
+  if (lhsSparse != rhsSparse) {
     return false;
   }
+
+  VPackSlice value;
 
   if (Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX == type ||
       Index::IndexType::TRI_IDX_TYPE_GEO_INDEX == type) {
