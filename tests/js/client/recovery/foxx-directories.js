@@ -29,7 +29,7 @@
 
 var db = require('@arangodb').db;
 var internal = require('internal');
-var FoxxService = require('@arangodb/foxx/service');
+var FoxxServiceAppPath = arango.POST("/_admin/execute", `return require('@arangodb/foxx/service')._appPath`);
 var jsunity = require('jsunity');
 var fs = require('fs');
 
@@ -37,7 +37,7 @@ function runSetup () {
   'use strict';
   internal.debugClearFailAt();
 
-  let appPath = fs.join(FoxxService._appPath, '..');
+  let appPath = fs.join(FoxxServiceAppPath, '..');
 
   try {
     db._dropDatabase('UnitTestsRecovery1');
@@ -105,7 +105,7 @@ function recoverySuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testFoxxDirectories: function () {
-      var appPath = fs.join(FoxxService._appPath, '..');
+      var appPath = fs.join(FoxxServiceAppPath, '..');
 
       assertTrue(fs.isDirectory(fs.join(appPath, 'UnitTestsRecovery1')));
       assertTrue(fs.isFile(fs.join(appPath, 'UnitTestsRecovery1', 'foo.json')));

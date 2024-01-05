@@ -26,8 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'recovery': 'run recovery tests',
-  'recovery_cluster': 'run recovery cluster tests'
+  'recovery_cluster_server': 'run recovery tests for cluster'
 };
 const optionsDocumentation = [
 ];
@@ -50,14 +49,22 @@ const BLUE = require('internal').COLORS.COLOR_BLUE;
 
 const termSignal = 15;
 
-// At the moment only view-tests supported by cluster recovery tests:
 const testPaths = {
-  'recovery': [tu.pathForTesting('client/recovery')],
-  'recovery_cluster': [tu.pathForTesting('client/recovery/search')]
+  'recovery_cluster_server': [tu.pathForTesting('server/recovery')]
 };
 
+/// ensure that we have enough db servers in cluster tests
+function ensureServers(options, numServers) {
+  if (options.cluster && options.dbServers < numServers) {
+    let localOptions = _.clone(options);
+    localOptions.dbServers = numServers;
+    return localOptions;
+  }
+  return options;
+}
+
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: recovery
+// / @brief TEST: recovery_cluster_server
 // //////////////////////////////////////////////////////////////////////////////
 
 function runArangodRecovery (params, useEncryption) {
@@ -99,7 +106,7 @@ function runArangodRecovery (params, useEncryption) {
     }
 
     params.options.disableMonitor = true;
-    
+    params.options = ensureServers(params.options);
     let args = {};
     
     // enable development debugging if extremeVerbosity is set
@@ -109,8 +116,7 @@ function runArangodRecovery (params, useEncryption) {
     args = Object.assign(args, params.options.extraArgs);
     args = Object.assign(args, {
       'rocksdb.wal-file-timeout-initial': 10,
-      'replication.auto-start': 'true',
-      'log.output': 'file://' + params.crashLog
+      'replication.auto-start': 'true'
     });
 
     if (useEncryption) {
@@ -140,16 +146,12 @@ function runArangodRecovery (params, useEncryption) {
     additionalTestParams['javascript.script-parameter'] = 'recovery';
   }
 
-  process.env["state-file"] = params.stateFile;
-  process.env["crash-log"] = params.crashLog;
-  process.env["isSan"] = params.options.isSan;
-
   if (params.setup) {
     params.args = Object.assign(params.args, additionalParams);
     params.instanceManager = new im.instanceManager(params.options.protocol,
                                                     params.options,
                                                     params.args,
-                                                    fs.join('recovery',
+                                                    fs.join('recovery_cluster_server',
                                                             params.count.toString()));
     params.instanceManager.prepareInstance();
     params.instanceManager.launchTcpDump("");
@@ -164,8 +166,14 @@ function runArangodRecovery (params, useEncryption) {
       };
     }
   } else {
-    print(BLUE + "Restarting single " + RESET);
+    print(BLUE + "Restarting cluster " + RESET);
     params.instanceManager.reStartInstance();
+    let tryCount = 10;
+    while(tryCount > 0 && !params.instanceManager._checkServersGOOD()) {
+      print(RESET + "Waiting for all servers to go GOOD");
+      internal.sleep(3); // give agency time to bootstrap DBServers
+      --tryCount;
+    }
   }
   params.instanceManager.reconnect();
   let agentArgs = pu.makeArgs.arangosh(params.options);
@@ -211,16 +219,12 @@ function runArangodRecovery (params, useEncryption) {
     };
   }
   if (params.setup) {
-    let dbServers = params.instanceManager.arangods;
-    if (params.options.cluster) {
-      dbServers = dbServers.filter(
-        (a) => {
-          return a.isRole(inst.instanceRole.dbServer) ||
-            a.isRole(inst.instanceRole.coordinator);
-        });
-    }
-
-    print(BLUE + "killing " + dbServers.length + " DBServers/Coordinators/Singles " + RESET);
+    let dbServers = params.instanceManager.arangods.filter(
+      (a) => {
+        return a.isRole(inst.instanceRole.dbServer) ||
+          a.isRole(inst.instanceRole.coordinator);
+      });
+    print(BLUE + "killing " + dbServers.length + " DBServers/Coordinators " + RESET);
     dbServers.forEach((arangod) => {
       internal.debugTerminateInstance(arangod.endpoint);
       // need this to properly mark spawned process as killed in internal test data
@@ -239,10 +243,10 @@ function runArangodRecovery (params, useEncryption) {
   };
 }
 
-function _recovery (options, recoveryTests) {
+function recovery_cluster_server (options) {
   if (!versionHas('failure-tests') || !versionHas('maintainer-mode')) {
     return {
-      recovery: {
+      recovery_cluster_server: {
         status: false,
         message: 'failure-tests not enabled. please recompile with -DUSE_FAILURE_TESTS=On and -DUSE_MAINTAINER_MODE=On'
       },
@@ -250,6 +254,7 @@ function _recovery (options, recoveryTests) {
     };
   }
   let localOptions = _.clone(options);
+  localOptions.cluster = true;
   localOptions.enableAliveMonitor = false;
 
   let results = {
@@ -257,10 +262,15 @@ function _recovery (options, recoveryTests) {
   };
   let useEncryption = isEnterprise();
 
+  let recoveryTests = tu.scanTestPaths(testPaths.recovery_cluster_server, localOptions,
+                                       // At the moment only view-tests supported by cluster recovery tests:
+                                       function(testname) { return testname.search('search') >= 0; }
+                                      );
+
   recoveryTests = tu.splitBuckets(localOptions, recoveryTests);
 
   let count = 0;
-  let tmpMgr = new tmpDirMmgr('recovery', localOptions);
+  let tmpMgr = new tmpDirMmgr('recovery_cluster_server', localOptions);
 
   for (let i = 0; i < recoveryTests.length; ++i) {
     let test = recoveryTests[i];
@@ -272,18 +282,14 @@ function _recovery (options, recoveryTests) {
       print(BLUE + "running setup of test " + count + " - " + test + RESET);
       let params = {
         tempDir: tmpMgr.tempDir,
-        rootDir: fs.join(fs.getTempPath(), 'recovery', count.toString()),
+        rootDir: fs.join(fs.getTempPath(), 'recovery_cluster_server', count.toString()),
         options: _.cloneDeep(localOptions),
         script: test,
         setup: true,
         count: count,
         keyDir: "",
-        temp_path: fs.join(tmpMgr.tempDir, count.toString()),
-        crashLogDir: fs.join(fs.getTempPath(), `crash_${count}`),
-        crashLog: "",
+        temp_path: fs.join(tmpMgr.tempDir, count.toString())
       };
-      fs.makeDirectoryRecursive(params.crashLogDir);
-      params.crashLog = fs.join(params.crashLogDir, 'crash.log');
       fs.makeDirectoryRecursive(params.rootDir);
       fs.makeDirectoryRecursive(params.temp_path);
       let ret = runArangodRecovery(params, useEncryption);
@@ -362,24 +368,9 @@ function _recovery (options, recoveryTests) {
   return results;
 }
 
-function recovery (options) {
-  options.agency = undefined;
-  options.cluster = false; 
-  options.singles = 1;
-  let recoveryTests = tu.scanTestPaths(testPaths.recovery, options);
-  return _recovery(options, recoveryTests);
-}
-
-function recovery_cluster (options) {
-  options.cluster = true;
-  let recoveryTests = tu.scanTestPaths(testPaths.recovery_cluster, options);
-  return _recovery(options, recoveryTests);
-}
-
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
-  testFns['recovery'] = recovery;
-  testFns['recovery_cluster'] = recovery_cluster;
+  testFns['recovery_cluster_server'] = recovery_cluster_server;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
 };

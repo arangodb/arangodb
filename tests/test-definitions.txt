@@ -24,7 +24,12 @@ http_replication priority=500 parallelity=3 size=small single
 agency,agency-restart priority=350 parallelity=3 size=small single -- --dumpAgencyOnError true
 authentication priority=1000 single
 endpoints priority=250 single -- --skipEndpointsIpv6 true
+
 recovery priority=2000 buckets=6 parallelity=5 size=small single
+recovery priority=2000 buckets=6 parallelity=5 size=small # cluster
+
+recovery_server priority=2000 buckets=6 parallelity=5 size=small single
+recovery_server_cluster priority=2000 buckets=6 parallelity=5 size=small # cluster
 
 shell_api priority=500 single -- $EncryptionAtRest
 

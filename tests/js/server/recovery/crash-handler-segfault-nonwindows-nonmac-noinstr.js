@@ -64,7 +64,6 @@ function recoverySuite () {
 
       assertTrue(fs.isFile(crashFile), crashFile);
 
-      print("File: ", fs.readFileSync(crashFile).toString())
       let lines = fs.readFileSync(crashFile).toString().split("\n").filter(function(line) {
         return line.match(/\{crash\}/);
       });
