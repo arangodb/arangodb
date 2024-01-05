@@ -96,6 +96,7 @@ T getMetric(IResearchLink const& link) {
   metric.addLabel("view", link.getViewId());
   metric.addLabel("collection", link.getCollectionName());
   metric.addLabel("shard", link.getShardName());
+  metric.addLabel("indexId", std::to_string(link.index().id().id()));
   return metric;
 }
 
