@@ -42,6 +42,8 @@ class RocksDBZkdIndexBase : public RocksDBIndex {
 
   bool isPrefixed() const noexcept { return !_prefixFields.empty(); }
 
+  bool matchesDefinition(VPackSlice const& info) const override;
+
   std::vector<std::vector<basics::AttributeName>> const& coveredFields()
       const override {
     return _coveredFields;

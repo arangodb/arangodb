@@ -26,7 +26,7 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const aql = arangodb.aql;
-const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
+const {assertTrue, assertFalse, assertEqual, assertNotEqual} = jsunity.jsUnity.assertions;
 const _ = require("lodash");
 const normalize = require("@arangodb/aql-helper").normalizeProjections;
 
@@ -35,9 +35,10 @@ function optimizerRuleZkd2dIndexTestSuite() {
   let col;
 
   return {
-
     tearDown: function () {
-      db[colName].drop();
+      if (db[colName]) {
+        db[colName].drop();
+      }
     },
 
     testSimplePrefix: function () {
@@ -229,6 +230,43 @@ function optimizerRuleZkd2dIndexTestSuite() {
           RETURN doc
       `).toArray();
       assertEqual(0, res.length);
+    },
+
+    testCompareIndex: function () {
+      let col = db._create(colName + "4");
+      const idx1 = col.ensureIndex({
+        type: 'mdi-prefixed',
+        prefixFields: ["attr1"],
+        fields: ['x', 'y'],
+        fieldValueTypes: 'double',
+      });
+
+      const idx2 = col.ensureIndex({
+        type: 'mdi-prefixed',
+        prefixFields: ["attr1"],
+        fields: ['x', 'y'],
+        fieldValueTypes: 'double',
+      });
+
+      const idx3 = col.ensureIndex({
+        type: 'mdi-prefixed',
+        prefixFields: ["attr1"],
+        fields: ['y', 'x'],
+        fieldValueTypes: 'double',
+      });
+
+      const idx4 = col.ensureIndex({
+        type: 'mdi-prefixed',
+        prefixFields: ["attr2"],
+        fields: ['y', 'x'],
+        fieldValueTypes: 'double',
+      });
+
+      assertEqual(idx1.id, idx2.id);
+      assertNotEqual(idx3.id, idx2.id);
+      assertNotEqual(idx4.id, idx2.id);
+      assertNotEqual(idx4.id, idx3.id);
+      col.drop();
     },
   };
 }

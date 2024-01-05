@@ -26,7 +26,7 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const aql = arangodb.aql;
-const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
+const {assertTrue, assertFalse, assertEqual, assertNotEqual} = jsunity.jsUnity.assertions;
 const _ = require("lodash");
 
 const useIndexes = 'use-indexes';
@@ -265,6 +265,45 @@ function optimizerRuleZkd2dIndexTestSuite() {
       col.drop();
     },
 
+    testFieldValuesTypes: function () {
+      let col = db._create(colName + "4");
+      const idx = col.ensureIndex({
+        type: 'zkd',
+        name: 'zkdIndex',
+        fields: ['x', 'y'],
+        fieldValueTypes: 'double',
+      });
+
+      assertEqual('double', idx.fieldValueTypes);
+      const idx2 = col.index(idx.name);
+      assertEqual('double', idx2.fieldValueTypes);
+      col.drop();
+    },
+
+    testCompareIndex: function () {
+      let col = db._create(colName + "4");
+      const idx1 = col.ensureIndex({
+        type: 'zkd',
+        fields: ['x', 'y'],
+        fieldValueTypes: 'double',
+      });
+
+      const idx2 = col.ensureIndex({
+        type: 'zkd',
+        fields: ['x', 'y'],
+        fieldValueTypes: 'double',
+      });
+
+      const idx3 = col.ensureIndex({
+        type: 'zkd',
+        fields: ['y', 'x'],
+        fieldValueTypes: 'double',
+      });
+
+      assertEqual(idx1.id, idx2.id);
+      assertNotEqual(idx3.id, idx2.id);
+      col.drop();
+    },
   };
 }
 
