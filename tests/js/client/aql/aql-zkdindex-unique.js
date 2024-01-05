@@ -34,7 +34,6 @@ const _ = require("lodash");
 
 const useIndexes = 'use-indexes';
 const removeFilterCoveredByIndex = "remove-filter-covered-by-index";
-const moveFiltersIntoEnumerate = "move-filters-into-enumerate";
 
 function optimizerRuleZkd2dIndexTestSuite() {
     const colName = 'UnitTestZkdIndexCollection';
@@ -42,7 +41,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
 
     return {
         setUpAll: function () {
-            col = db._create(colName);
+            col = db._create(colName, {numberOfShards: 2, shardKeys: ["x"]});
             col.ensureIndex({
                 type: 'zkd',
                 name: 'zkdIndex',
