@@ -36,9 +36,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
 
   return {
     tearDown: function () {
-      if (db[colName]) {
-        db[colName].drop();
-      }
+      db._drop(colName);
     },
 
     testSimplePrefix: function () {
