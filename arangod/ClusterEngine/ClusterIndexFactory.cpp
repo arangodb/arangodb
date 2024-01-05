@@ -212,6 +212,7 @@ void ClusterIndexFactory::linkIndexFactories(ArangodServer& server,
   factory.emplace(mdiIndexFactory._type, mdiIndexFactory);
   factory.emplace(mdiPrefixedIndexFactory._type, mdiPrefixedIndexFactory);
   factory.emplace(invertedIndexFactory._type, invertedIndexFactory);
+  factory.emplace("zkd", mdiIndexFactory);
 }
 
 ClusterIndexFactory::ClusterIndexFactory(ArangodServer& server)
