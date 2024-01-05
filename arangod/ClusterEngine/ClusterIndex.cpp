@@ -390,7 +390,7 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
 
     case TRI_IDX_TYPE_ZKD_INDEX:
     case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
-      return zkd::supportsFilterCondition(this, allIndexes, node, reference,
+      return mdi::supportsFilterCondition(this, allIndexes, node, reference,
                                           itemsInIndex);
 
     case TRI_IDX_TYPE_UNKNOWN:
@@ -492,7 +492,7 @@ aql::AstNode* ClusterIndex::specializeCondition(
 
     case TRI_IDX_TYPE_ZKD_INDEX:
     case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
-      return zkd::specializeCondition(this, node, reference);
+      return mdi::specializeCondition(this, node, reference);
 
     case TRI_IDX_TYPE_UNKNOWN:
       break;

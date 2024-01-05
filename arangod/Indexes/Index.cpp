@@ -344,7 +344,7 @@ Index::IndexType Index::type(std::string_view type) {
   if (type == "geo2") {
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
-  if (type == "zkd") {
+  if (type == "mdi" || type == "zkd") {
     return TRI_IDX_TYPE_ZKD_INDEX;
   }
   if (type == "mdi-prefixed") {
@@ -396,7 +396,7 @@ char const* Index::oldtypeName(Index::IndexType type) {
     case TRI_IDX_TYPE_NO_ACCESS_INDEX:
       return "noaccess";
     case TRI_IDX_TYPE_ZKD_INDEX:
-      return "zkd";
+      return "mdi";
     case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
       return "mdi-prefixed";
     case TRI_IDX_TYPE_INVERTED_INDEX:

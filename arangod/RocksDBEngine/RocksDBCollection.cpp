@@ -1399,12 +1399,12 @@ void RocksDBCollection::figuresSpecific(
             break;
           case Index::TRI_IDX_TYPE_ZKD_INDEX:
             count = rocksutils::countKeyRange(
-                db, RocksDBKeyBounds::ZkdIndex(rix->objectId()), snapshot,
+                db, RocksDBKeyBounds::MdiIndex(rix->objectId()), snapshot,
                 true);
             break;
           case Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
             count = rocksutils::countKeyRange(
-                db, RocksDBKeyBounds::ZkdVPackIndex(rix->objectId()), snapshot,
+                db, RocksDBKeyBounds::MdiVPackIndex(rix->objectId()), snapshot,
                 true);
             break;
           case Index::TRI_IDX_TYPE_HASH_INDEX:

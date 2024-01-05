@@ -1143,8 +1143,8 @@ void RocksDBEngine::start() {
   addFamily(RocksDBColumnFamilyManager::Family::GeoIndex);
   addFamily(RocksDBColumnFamilyManager::Family::FulltextIndex);
   addFamily(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
-  addFamily(RocksDBColumnFamilyManager::Family::ZkdIndex);
-  addFamily(RocksDBColumnFamilyManager::Family::ZkdVPackIndex);
+  addFamily(RocksDBColumnFamilyManager::Family::MdiIndex);
+  addFamily(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
 
   bool dbExisted = checkExistingDB(cfFamilies);
 
@@ -1209,10 +1209,10 @@ void RocksDBEngine::start() {
       RocksDBColumnFamilyManager::Family::FulltextIndex, cfHandles[6]);
   RocksDBColumnFamilyManager::set(
       RocksDBColumnFamilyManager::Family::ReplicatedLogs, cfHandles[7]);
-  RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::ZkdIndex,
+  RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::MdiIndex,
                                   cfHandles[8]);
   RocksDBColumnFamilyManager::set(
-      RocksDBColumnFamilyManager::Family::ZkdVPackIndex, cfHandles[9]);
+      RocksDBColumnFamilyManager::Family::MdiVPackIndex, cfHandles[9]);
   TRI_ASSERT(RocksDBColumnFamilyManager::get(
                  RocksDBColumnFamilyManager::Family::Definitions)
                  ->GetID() == 0);
@@ -3698,9 +3698,9 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addCf(RocksDBColumnFamilyManager::Family::VPackIndex);
   addCf(RocksDBColumnFamilyManager::Family::GeoIndex);
   addCf(RocksDBColumnFamilyManager::Family::FulltextIndex);
-  addCf(RocksDBColumnFamilyManager::Family::ZkdIndex);
+  addCf(RocksDBColumnFamilyManager::Family::MdiIndex);
   addCf(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
-  addCf(RocksDBColumnFamilyManager::Family::ZkdVPackIndex);
+  addCf(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
   builder.close();
 
   if (_throttleListener) {
@@ -4078,17 +4078,17 @@ bool RocksDBEngine::checkExistingDB(
         << "found existing column families: " << names;
     auto const replicatedLogsName = RocksDBColumnFamilyManager::name(
         RocksDBColumnFamilyManager::Family::ReplicatedLogs);
-    auto const zkdIndexName = RocksDBColumnFamilyManager::name(
-        RocksDBColumnFamilyManager::Family::ZkdIndex);
-    auto const zkdVPackIndexName = RocksDBColumnFamilyManager::name(
-        RocksDBColumnFamilyManager::Family::ZkdVPackIndex);
+    auto const mdiIndexName = RocksDBColumnFamilyManager::name(
+        RocksDBColumnFamilyManager::Family::MdiIndex);
+    auto const mdiVPackIndexName = RocksDBColumnFamilyManager::name(
+        RocksDBColumnFamilyManager::Family::MdiVPackIndex);
 
     for (auto const& it : cfFamilies) {
       auto it2 = std::find(existingColumnFamilies.begin(),
                            existingColumnFamilies.end(), it.name);
       if (it2 == existingColumnFamilies.end()) {
-        if (it.name == replicatedLogsName || it.name == zkdIndexName ||
-            it.name == zkdVPackIndexName) {
+        if (it.name == replicatedLogsName || it.name == mdiIndexName ||
+            it.name == mdiVPackIndexName) {
           LOG_TOPIC("293c3", INFO, Logger::STARTUP)
               << "column family " << it.name
               << " is missing and will be created.";
