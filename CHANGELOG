@@ -1,6 +1,8 @@
 v3.11.7 (XXXX-XX-XX)
 --------------------
 
+* BTS-1727: Return proper EXIT_UPGRADE_REQUIRED in cluster mode.
+
 * Added stored values support for ZKD indexes.
 
 * Fixed a crash during recursive AstNode creation when an exception was thrown.
