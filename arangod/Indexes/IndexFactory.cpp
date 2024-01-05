@@ -355,7 +355,7 @@ std::vector<std::string_view> IndexFactory::supportedIndexes() const {
           "persistent",
           "geo",
           "fulltext",
-          "zkd",
+          "mdi",
           "mdi-prefixed",
           arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE};
 }
@@ -834,14 +834,14 @@ Result processIndexSortedPrefixFields(VPackSlice definition,
 
 }  // namespace
 
-/// @brief enhances the json of a zkd index
-Result IndexFactory::enhanceJsonIndexZkd(VPackSlice definition,
+/// @brief enhances the json of a mdi index
+Result IndexFactory::enhanceJsonIndexMdi(VPackSlice definition,
                                          VPackBuilder& builder, bool create) {
   if (auto fieldValueTypes = definition.get("fieldValueTypes");
       !fieldValueTypes.isString() || !fieldValueTypes.isEqualString("double")) {
     return Result(
         TRI_ERROR_BAD_PARAMETER,
-        "zkd index requires `fieldValueTypes` to be set to `double` - future "
+        "mdi requires `fieldValueTypes` to be set to `double` - future "
         "releases might lift this requirement");
   }
 
@@ -868,11 +868,11 @@ Result IndexFactory::enhanceJsonIndexZkd(VPackSlice definition,
   }
 
   return res;
-}  /// @brief enhances the json of a zkd index
+}  /// @brief enhances the json of a mdi
 Result IndexFactory::enhanceJsonIndexMdiPrefixed(VPackSlice definition,
                                                  VPackBuilder& builder,
                                                  bool create) {
-  auto res = enhanceJsonIndexZkd(definition, builder, create);
+  auto res = enhanceJsonIndexMdi(definition, builder, create);
   if (res.ok()) {
     res = processIndexSortedPrefixFields(definition, builder, 1, 32, create,
                                          true);

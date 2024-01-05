@@ -132,7 +132,7 @@ function parseCollections(colls) {
     assertTrue(coll.hasOwnProperty("n_skiplist"));
     assertTrue(coll.hasOwnProperty("n_ttl"));
     assertTrue(coll.hasOwnProperty("n_unknown"));
-    assertTrue(coll.hasOwnProperty("n_zkd"));
+    assertTrue(coll.hasOwnProperty("n_mdi"));
     const idxs = coll["idxs"];
     parseIndexes(idxs);
   });
