@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "Basics/FutureSharedLock.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ResultT.h"
 #include "Containers/MerkleTree.h"
@@ -157,7 +158,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
                                     rocksdb::SequenceNumber commitSeq,
                                     std::unique_lock<std::mutex>& lock) const;
 
-  ErrorCode doLock(double timeout, AccessMode::Type mode);
+  futures::Future<ErrorCode> doLock(double timeout, AccessMode::Type mode);
   bool haveBufferedOperations(std::unique_lock<std::mutex> const& lock) const;
   std::unique_ptr<containers::RevisionTree> allocateEmptyRevisionTree(
       std::size_t depth) const;
@@ -193,7 +194,18 @@ class RocksDBMetaCollection : public PhysicalCollection {
  protected:
   RocksDBMetadata _meta;  /// collection metadata
   /// @brief collection lock used for write access
-  mutable basics::ReadWriteLock _exclusiveLock;
+
+  struct SchedulerWrapper {
+    using WorkHandle = Scheduler::WorkHandle;
+    template<typename F>
+    void queue(F&&);
+    template<typename F>
+    WorkHandle queueDelayed(F&&, std::chrono::milliseconds);
+  };
+
+  SchedulerWrapper _schedulerWrapper;
+  using FutureLock = arangodb::futures::FutureSharedLock<SchedulerWrapper>;
+  mutable FutureLock _exclusiveLock;
   /// @brief collection lock used for recalculation count values
   mutable std::mutex _recalculationLock;
 
