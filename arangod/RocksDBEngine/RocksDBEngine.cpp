@@ -1998,10 +1998,26 @@ void RocksDBEngine::processCompactions() {
           _runningCompactions >= _maxParallelCompactions) {
         // nothing to do, or too much to do
         LOG_TOPIC("d5108", TRACE, Logger::ENGINES)
-            << "checking compactions. pending: " << _pendingCompactions.size()
+            << "not scheduling compactions. pending: "
+            << _pendingCompactions.size()
             << ", running: " << _runningCompactions;
         return;
       }
+      rocksdb::ColumnFamilyHandle* cfh =
+          _pendingCompactions.front().columnFamily();
+
+      if (!_runningCompactionsColumnFamilies.emplace(cfh).second) {
+        // a compaction is already running for the same column family.
+        // we don't want to schedule parallel compactions for the same column
+        // family because they can lead to shutdown issues (this is an issue of
+        // RocksDB).
+        LOG_TOPIC("ac8b9", TRACE, Logger::ENGINES)
+            << "not scheduling compactions. already have a compaction running "
+               "for column family '"
+            << cfh->GetName() << "', running: " << _runningCompactions;
+        return;
+      }
+
       // found something to do, now steal the item from the queue
       bounds = std::move(_pendingCompactions.front());
       _pendingCompactions.pop_front();
@@ -2015,10 +2031,11 @@ void RocksDBEngine::processCompactions() {
       // set it to running already, so that concurrent callers of this method
       // will not kick off additional jobs
       ++_runningCompactions;
-    }
 
-    LOG_TOPIC("6ea1b", TRACE, Logger::ENGINES)
-        << "scheduling compaction for execution";
+      LOG_TOPIC("6ea1b", TRACE, Logger::ENGINES)
+          << "scheduling compaction in column family '" << cfh->GetName()
+          << "' for execution";
+    }
 
     scheduler->queue(arangodb::RequestLane::CLIENT_SLOW, [this, bounds]() {
       if (server().isStopping()) {
@@ -2050,8 +2067,16 @@ void RocksDBEngine::processCompactions() {
       }
       // always count down _runningCompactions!
       WRITE_LOCKER(locker, _pendingCompactionsLock);
+
+      TRI_ASSERT(_runningCompactionsColumnFamilies.size() ==
+                 _runningCompactions);
+
       TRI_ASSERT(_runningCompactions > 0);
       --_runningCompactions;
+
+      TRI_ASSERT(
+          _runningCompactionsColumnFamilies.contains(bounds.columnFamily()));
+      _runningCompactionsColumnFamilies.erase(bounds.columnFamily());
     });
   }
 }
