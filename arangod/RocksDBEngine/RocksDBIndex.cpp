@@ -315,7 +315,6 @@ void RocksDBIndex::refillCache(transaction::Methods& trx,
 size_t RocksDBIndex::memory() const {
   rocksdb::TransactionDB* db = _engine.db();
   RocksDBKeyBounds bounds = getBounds();
-  // ZKD Index uses multiple column families depending on its configuration
   TRI_ASSERT(_cf == bounds.columnFamily());
   rocksdb::Range r(bounds.start(), bounds.end());
   uint64_t out;

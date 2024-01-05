@@ -304,6 +304,17 @@ function optimizerRuleMdi2dIndexTestSuite() {
       assertNotEqual(idx3.id, idx2.id);
       col.drop();
     },
+
+    testCreateAsZkd: function () {
+      let col = db._create(colName + "5");
+      const idx = col.ensureIndex({
+        type: 'zkd',
+        fields: ['x', 'y'],
+        fieldValueTypes: 'double',
+      });
+      assertEqual('mdi', idx.type);
+      col.drop();
+    }
   };
 }
 

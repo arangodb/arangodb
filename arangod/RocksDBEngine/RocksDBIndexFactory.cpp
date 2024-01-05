@@ -442,6 +442,7 @@ RocksDBIndexFactory::RocksDBIndexFactory(ArangodServer& server)
   emplace("rocksdb", persistentIndexFactory);
   emplace("skiplist", skiplistIndexFactory);
   emplace("ttl", ttlIndexFactory);
+  emplace("zkd", mdiIndexFactory);
   emplace("mdi", mdiIndexFactory);
   emplace("mdi-prefixed", mdiPrefixedIndexFactory);
   emplace(arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data(),
