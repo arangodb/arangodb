@@ -22,7 +22,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBZkdIndex.h"
+#include "RocksDBMultiDimIndex.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Variable.h"
@@ -1025,7 +1025,7 @@ aql::AstNode* RocksDBMdiIndexBase::specializeCondition(
 
 Index::IndexType RocksDBMdiIndexBase::type() const {
   return isPrefixed() ? TRI_IDX_TYPE_MDI_PREFIXED_INDEX
-                      : TRI_IDX_TYPE_ZKD_INDEX;
+                      : TRI_IDX_TYPE_MDI_INDEX;
 }
 
 char const* RocksDBMdiIndexBase::typeName() const {

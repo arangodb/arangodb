@@ -33,11 +33,11 @@
 #include "RocksDBEngine/RocksDBFulltextIndex.h"
 #include "RocksDBEngine/RocksDBGeoIndex.h"
 #include "RocksDBEngine/RocksDBHashIndex.h"
+#include "RocksDBEngine/RocksDBMultiDimIndex.h"
 #include "RocksDBEngine/RocksDBPersistentIndex.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBSkiplistIndex.h"
 #include "RocksDBEngine/RocksDBTtlIndex.h"
-#include "RocksDBEngine/RocksDBZkdIndex.h"
 #include "RocksDBIndexFactory.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -256,7 +256,7 @@ struct SecondaryIndexFactory : public DefaultIndexFactory {
 
 struct MdiIndexFactory : public DefaultIndexFactory {
   explicit MdiIndexFactory(ArangodServer& server)
-      : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_ZKD_INDEX) {}
+      : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_MDI_INDEX) {}
 
   std::shared_ptr<arangodb::Index> instantiate(
       arangodb::LogicalCollection& collection,
@@ -277,7 +277,7 @@ struct MdiIndexFactory : public DefaultIndexFactory {
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(arangodb::StaticStrings::IndexType,
                    arangodb::velocypack::Value(arangodb::Index::oldtypeName(
-                       Index::TRI_IDX_TYPE_ZKD_INDEX)));
+                       Index::TRI_IDX_TYPE_MDI_INDEX)));
 
     if (isCreation && !ServerState::instance()->isCoordinator() &&
         !definition.hasKey(StaticStrings::ObjectId)) {

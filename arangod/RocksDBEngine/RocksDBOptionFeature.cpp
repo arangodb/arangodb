@@ -1503,7 +1503,7 @@ limited number of edge collections/shards/indexes.)");
 
   options
       ->addOption("--rocksdb.partition-files-for-mdi-index",
-                  "If enabled, the index data for different zkd "
+                  "If enabled, the index data for different mdi "
                   "indexes will end up in different .sst files.",
                   new BooleanParameter(&_partitionFilesForMdiIndexCf),
                   arangodb::options::makeFlags(
@@ -1515,7 +1515,7 @@ limited number of edge collections/shards/indexes.)");
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31200)
       .setLongDescription(R"(Enabling this option will make RocksDB's
-  compaction write the persistent index data for different zkd
+  compaction write the persistent index data for different mdi
   indexes (also indexes from different collections/shards) into different
   .sst files. Otherwise the persistent index data from different
   collections/shards/indexes can be mixed and written into the same .sst files.
