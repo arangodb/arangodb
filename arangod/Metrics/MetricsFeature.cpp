@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "Metrics/MetricsFeature.h"
 
+#include <absl/strings/str_cat.h>
 #include <frozen/unordered_set.h>
 #include <velocypack/Builder.h>
 
@@ -98,10 +99,10 @@ std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder) {
   MetricKeyView key{metric->name(), metric->labels()};
   std::lock_guard lock{_mutex};
   if (!_registry.try_emplace(key, metric).second) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   std::string{builder.type()} + " " +
-                                       std::string{builder.name()} +
-                                       " already exists");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        absl::StrCat(builder.type(), " ", metric->name(), ":", metric->labels(),
+                     " already exists"));
   }
   return metric;
 }
