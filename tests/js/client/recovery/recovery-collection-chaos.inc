@@ -190,7 +190,7 @@ function recoverySuite () {
 
   return {
     setUp: function () {
-      internal.waitForEstimatorSync(); // make sure estimates are consistent
+      // internal.waitForEstimatorSync(); // make sure estimates are consistent
     },
 
     testConsistency: function() {

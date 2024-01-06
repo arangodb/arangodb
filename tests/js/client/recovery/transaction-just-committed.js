@@ -52,7 +52,7 @@ function runSetup () {
           c.save({ _key: 'test' + i, value1: 'test' + i, value2: i }, { waitForSync: true });
         }
 
-        internal.debugSetFailAt('TransactionWriteCommitMarkerSegfault');
+        require('internal').debugSetFailAt('TransactionWriteCommitMarkerSegfault');
       }
     });
   } catch (err) {
