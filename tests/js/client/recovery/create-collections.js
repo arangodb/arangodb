@@ -75,7 +75,7 @@ function runSetup () {
   c.ensureIndex({ type: "hash", fields: ["value42"], unique: true });
   c.save({ _key: 'crashme' }, true);
   
-  internal.debugTerminate('crashing server');
+  //internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

@@ -51,7 +51,7 @@ function runSetup () {
   c.drop();
   internal.wait(3);
 
-  internal.debugTerminate('crashing server');
+  //internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

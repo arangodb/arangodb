@@ -57,7 +57,7 @@ function runSetup () {
   // though this is not guaranteed under high load
   c.recalculateCount();
 
-  internal.debugTerminate('crashing server');
+  //internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

@@ -48,7 +48,7 @@ function runSetup () {
     // intentionally fail
   }
 
-  internal.debugTerminate('crashing server');
+  //internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

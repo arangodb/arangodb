@@ -41,7 +41,7 @@ function runSetup () {
 
   db._dropView('UnitTestsRecovery');
 
-  internal.debugTerminate('crashing server');
+  //internal.debugTerminate('crashing server');
 }
 
 function recoverySuite () {

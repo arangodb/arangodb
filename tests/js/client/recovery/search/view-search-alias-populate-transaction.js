@@ -61,7 +61,7 @@ function runSetup () {
 
   db._executeTransaction(tx);
 
-  internal.debugTerminate('crashing server');
+  //internal.debugTerminate('crashing server');
 }
 
 function recoverySuite () {

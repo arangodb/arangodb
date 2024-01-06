@@ -40,7 +40,7 @@ function runSetup () {
   replication.applier.stop(); // should not be running anyway
   replication.applier.properties({ endpoint: "tcp://ignoreme.arangodb.com:9999", autoStart: true });
 
-  internal.debugTerminate('crashing server');
+  //internal.debugTerminate('crashing server');
   return 0;
 }
 

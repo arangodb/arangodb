@@ -37,7 +37,7 @@ function runSetup () {
   db._useDatabase(extendedName);
   db._create("test");
   db.test.insert({_key: "testi"}, {waitForSync: true});
-  internal.debugTerminate('crashing server');
+  //internal.debugTerminate('crashing server');
 }
 
 function recoverySuite () {

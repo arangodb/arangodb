@@ -85,7 +85,7 @@ function runSetup () {
   if (!gone) {
     throw new Error(`"${path}" did not disappear in 120s!`);
   }
-  internal.debugTerminate('crashing server');
+  //internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

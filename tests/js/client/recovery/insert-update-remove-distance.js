@@ -69,7 +69,7 @@ function runSetup () {
     }
   });
 
-  internal.debugTerminate('crashing server');
+  //internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

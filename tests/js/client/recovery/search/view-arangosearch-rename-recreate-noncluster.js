@@ -52,7 +52,7 @@ function runSetup () {
 
   db.UnitTestsDummy.save({ _key: 'foo' }, { waitForSync: true });
 
-  internal.debugTerminate('crashing server');
+  //internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

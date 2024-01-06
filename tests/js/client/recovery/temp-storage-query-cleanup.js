@@ -48,7 +48,7 @@ function runSetup() {
 
   db._query(`FOR doc IN ${cn} SORT doc.value1 ASC RETURN doc`, null, {spillOverThresholdNumRows: 5000, stream: true});
 
-  internal.debugTerminate('crashing server');
+  //internal.debugTerminate('crashing server');
 }
 
 function recoverySuite() {

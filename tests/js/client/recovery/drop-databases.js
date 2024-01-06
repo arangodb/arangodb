@@ -59,7 +59,7 @@ function runSetup () {
   db._useDatabase('UnitTestsRecovery4');
   db.test.save({ _key: 'crashme' }, true);
 
-  internal.debugTerminate('crashing server');
+  //internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

@@ -45,7 +45,7 @@ function runSetup () {
   db._createView('UnitTestsRecoveryView', 'search-alias', { indexes: [ { collection: c.name(), index: "pupa" } ] });
 
   c.save({ name: 'crashme' }, { waitForSync: true });
-  internal.debugTerminate('crashing server');
+  //internal.debugTerminate('crashing server');
 }
 
 function recoverySuite () {

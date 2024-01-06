@@ -56,11 +56,16 @@ const testPaths = {
   'recovery_cluster': [tu.pathForTesting('client/recovery/search')]
 };
 
+// These tests should NOT be killed after the setup phase.
+const doNotKillTests = [
+  "tests/js/client/recovery/check-warnings-exitzero.js"
+];
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: recovery
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangodRecovery (params, useEncryption) {
+function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
   let additionalParams= {
     'foxx.queues': 'false',
     'server.statistics': 'false',
@@ -77,8 +82,7 @@ function runArangodRecovery (params, useEncryption) {
     // incompatibility between the two modes, this will likely find it
     additionalParams['rocksdb.encryption-hardware-acceleration'] = (Math.random() * 100 >= 50) ? "true" : "false";
   }
-  let argv = [];
-  let binary = pu.ARANGOD_BIN;
+
   // for cluster runs we have separate parameter set for servers and for testagent(arangosh)
   let additionalTestParams  = {
     // arangosh has different name for parameter :(
@@ -220,13 +224,15 @@ function runArangodRecovery (params, useEncryption) {
         });
     }
 
-    print(BLUE + "killing " + dbServers.length + " DBServers/Coordinators/Singles " + RESET);
-    dbServers.forEach((arangod) => {
-      internal.debugTerminateInstance(arangod.endpoint);
-      // need this to properly mark spawned process as killed in internal test data
-      arangod.exitStatus = internal.killExternal(arangod.pid, termSignal); 
-      arangod.pid = 0;
-    });
+    if (isKillAfterSetup) {
+      print(BLUE + "killing " + dbServers.length + " DBServers/Coordinators/Singles " + RESET);
+      dbServers.forEach((arangod) => {
+        internal.debugTerminateInstance(arangod.endpoint);
+        // need this to properly mark spawned process as killed in internal test data
+        arangod.exitStatus = internal.killExternal(arangod.pid, termSignal); 
+        arangod.pid = 0;
+      });
+    }
   } else {
     return {
       status: params.instanceManager.shutdownInstance(false),
@@ -286,7 +292,7 @@ function _recovery (options, recoveryTests) {
       params.crashLog = fs.join(params.crashLogDir, 'crash.log');
       fs.makeDirectoryRecursive(params.rootDir);
       fs.makeDirectoryRecursive(params.temp_path);
-      let ret = runArangodRecovery(params, useEncryption);
+      let ret = runArangodRecovery(params, useEncryption, !doNotKillTests.includes(test));
       if (!ret.status) {
         results[test] = ret;
         continue;

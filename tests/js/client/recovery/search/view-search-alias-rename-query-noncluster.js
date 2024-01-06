@@ -52,7 +52,7 @@ function runSetup () {
 
   db._collection('UnitTestsDummy').save({ _key: 'bar', num: 2 }, { waitForSync: true });
 
-  internal.debugTerminate('crashing server');
+  //internal.debugTerminate('crashing server');
 }
 
 function recoverySuite () {

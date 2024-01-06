@@ -46,7 +46,7 @@ function runSetup () {
   c.insert(docs);
 
   c.truncate({ waitForSync: true, intermediateCommitCount: 1000 });
-  internal.debugTerminate('crashing server');
+  //internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

@@ -64,7 +64,7 @@ function runSetup () {
 
   db.UnitTestsRecovery1.save({ _key: 'foo' }, true); // 100 documents in collection 1
 
-  internal.debugTerminate('crashing server');
+  //internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

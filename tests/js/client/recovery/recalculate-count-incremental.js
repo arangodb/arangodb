@@ -75,7 +75,7 @@ function runSetup () {
   c.recalculateCount();
   control.insert({ _key: "step7", expected: 0, actual: c.count() }, { waitForSync: true });
 
-  internal.debugTerminate('crashing server');
+  //internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

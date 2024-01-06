@@ -173,7 +173,7 @@ function runSetup (config) {
 
   require("console").warn("Collection counts written to control:", JSON.stringify(collectionCounts));
 
-  internal.debugTerminate('crashing server');
+  //internal.debugTerminate('crashing server');
 }
 
 function recoverySuite () {
