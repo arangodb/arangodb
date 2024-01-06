@@ -26,15 +26,15 @@
 // / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-const base = require("fs").join(process.cwd(), require('internal').pathForTesting('client'),
+const base = require("fs").join(process.cwd(), require('internal').pathForTesting('server'),
   'recovery', 'recovery-collection-chaos.inc');
 const chaos = require(base);
 
 function main(argv) {
   return chaos.main(argv, {
-    withFailurePoints: true,
+    withFailurePoints: false,
     numberOfCollections: 5,
-    maxIterations: 30,
-    maxRunTime: 45,
+    maxIterations: 5,
+    maxRunTime: 20,
   });
 }
