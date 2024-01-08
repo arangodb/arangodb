@@ -31,9 +31,9 @@ const {assertTrue, assertFalse, assertEqual, fail} = jsunity.jsUnity.assertions;
 const _ = require("lodash");
 
 function multiDimSparseTestSuite() {
-  const collectionName = 'UnitTestZkdIndexCollection';
-  const indexName = 'UnitTestZkdIndex';
-  const database = 'UnitTestZkdIndexDB';
+  const collectionName = 'UnitTestMdiIndexCollection';
+  const indexName = 'UnitTestMdiIndex';
+  const database = 'UnitTestMdiIndexDB';
 
   return {
     setUpAll: function () {
@@ -54,7 +54,7 @@ function multiDimSparseTestSuite() {
     testMultiDimNonSparse: function () {
       const c = db._create(collectionName);
       const idx = c.ensureIndex({
-        type: 'zkd',
+        type: 'mdi',
         name: indexName,
         fields: ["x", "y"],
         sparse: false,
@@ -85,7 +85,7 @@ function multiDimSparseTestSuite() {
     testMultiDimSparse: function () {
       const c = db._create(collectionName);
       const idx = c.ensureIndex({
-        type: 'zkd',
+        type: 'mdi',
         name: indexName,
         fields: ["x", "y"],
         sparse: true,
@@ -102,7 +102,7 @@ function multiDimSparseTestSuite() {
       {
         const figures = c.figures(true);
         assertEqual(4, figures.engine.documents);
-        assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 1));
+        assertTrue(figures.engine.indexes.filter(x => x.type === 'mdi').every(x => x.count === 1));
       }
 
       // Test deletion
@@ -112,7 +112,7 @@ function multiDimSparseTestSuite() {
       {
         const figures = c.figures(true);
         assertEqual(6, figures.engine.documents);
-        assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 2));
+        assertTrue(figures.engine.indexes.filter(x => x.type === 'mdi').every(x => x.count === 2));
       }
 
       c.remove([doc1, doc2]);
@@ -120,14 +120,14 @@ function multiDimSparseTestSuite() {
       {
         const figures = c.figures(true);
         assertEqual(4, figures.engine.documents);
-        assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 1));
+        assertTrue(figures.engine.indexes.filter(x => x.type === 'mdi').every(x => x.count === 1));
       }
     },
 
     testMultiDimNonSparseUnique: function () {
       const c = db._create(collectionName);
       const idx = c.ensureIndex({
-        type: 'zkd',
+        type: 'mdi',
         name: indexName,
         fields: ["x", "y"],
         sparse: false,
@@ -161,7 +161,7 @@ function multiDimSparseTestSuite() {
     testMultiDimSparseUnique: function () {
       const c = db._create(collectionName);
       const idx = c.ensureIndex({
-        type: 'zkd',
+        type: 'mdi',
         name: indexName,
         fields: ["x", "y"],
         sparse: true,
@@ -181,7 +181,7 @@ function multiDimSparseTestSuite() {
       {
         const figures = c.figures(true);
         assertEqual(4, figures.engine.documents);
-        assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 1));
+        assertTrue(figures.engine.indexes.filter(x => x.type === 'mdi').every(x => x.count === 1));
       }
 
       // Test deletion
@@ -191,7 +191,7 @@ function multiDimSparseTestSuite() {
       {
         const figures = c.figures(true);
         assertEqual(6, figures.engine.documents);
-        assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 2));
+        assertTrue(figures.engine.indexes.filter(x => x.type === 'mdi').every(x => x.count === 2));
       }
 
       c.remove([doc1, doc2]);
@@ -199,16 +199,16 @@ function multiDimSparseTestSuite() {
       {
         const figures = c.figures(true);
         assertEqual(4, figures.engine.documents);
-        assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 1));
+        assertTrue(figures.engine.indexes.filter(x => x.type === 'mdi').every(x => x.count === 1));
       }
     },
   };
 }
 
 function multiDimPrefixedSparseTestSuite() {
-  const collectionName = 'UnitTestZkdIndexCollection';
-  const indexName = 'UnitTestZkdIndex';
-  const database = 'UnitTestZkdIndexDB';
+  const collectionName = 'UnitTestMdiIndexCollection';
+  const indexName = 'UnitTestMdiIndex';
+  const database = 'UnitTestMdiIndexDB';
 
   return {
     setUpAll: function () {
@@ -301,7 +301,7 @@ function multiDimPrefixedSparseTestSuite() {
       {
         const figures = c.figures(true);
         assertEqual(6, figures.engine.documents);
-        assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 1));
+        assertTrue(figures.engine.indexes.filter(x => x.type === 'mdi').every(x => x.count === 1));
       }
 
       // Test deletion
@@ -312,7 +312,7 @@ function multiDimPrefixedSparseTestSuite() {
       {
         const figures = c.figures(true);
         assertEqual(9, figures.engine.documents);
-        assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 2));
+        assertTrue(figures.engine.indexes.filter(x => x.type === 'mdi').every(x => x.count === 2));
       }
 
       c.remove([doc1, doc2, doc3]);
@@ -320,7 +320,7 @@ function multiDimPrefixedSparseTestSuite() {
       {
         const figures = c.figures(true);
         assertEqual(6, figures.engine.documents);
-        assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 1));
+        assertTrue(figures.engine.indexes.filter(x => x.type === 'mdi').every(x => x.count === 1));
       }
     },
 
@@ -407,7 +407,7 @@ function multiDimPrefixedSparseTestSuite() {
       {
         const figures = c.figures(true);
         assertEqual(6, figures.engine.documents);
-        assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 1));
+        assertTrue(figures.engine.indexes.filter(x => x.type === 'mdi').every(x => x.count === 1));
       }
 
       // Test deletion
@@ -418,7 +418,7 @@ function multiDimPrefixedSparseTestSuite() {
       {
         const figures = c.figures(true);
         assertEqual(9, figures.engine.documents);
-        assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 2));
+        assertTrue(figures.engine.indexes.filter(x => x.type === 'mdi').every(x => x.count === 2));
       }
 
       c.remove([doc1, doc2, doc3]);
@@ -426,7 +426,7 @@ function multiDimPrefixedSparseTestSuite() {
       {
         const figures = c.figures(true);
         assertEqual(6, figures.engine.documents);
-        assertTrue(figures.engine.indexes.filter(x => x.type === 'zkd').every(x => x.count === 1));
+        assertTrue(figures.engine.indexes.filter(x => x.type === 'mdi').every(x => x.count === 1));
       }
     },
   };

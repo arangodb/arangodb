@@ -28,16 +28,16 @@ const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
 const _ = require("lodash");
 const normalize = require("@arangodb/aql-helper").normalizeProjections;
 
-function zkdIndexStoredValues() {
-  const colName = 'UnitTestZkdIndexCollection';
+function mdiIndexStoredValues() {
+  const colName = 'UnitTestMdiIndexCollection';
   let col;
 
   return {
     setUpAll: function () {
       col = db._create(colName);
       col.ensureIndex({
-        type: 'zkd',
-        name: 'zkdIndex',
+        type: 'mdi',
+        name: 'mdiIndex',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
         storedValues: ['x', 'y', 'z', 'w.w', '_id']
@@ -103,6 +103,6 @@ function zkdIndexStoredValues() {
   };
 }
 
-jsunity.run(zkdIndexStoredValues);
+jsunity.run(mdiIndexStoredValues);
 
 return jsunity.done();

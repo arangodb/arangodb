@@ -35,16 +35,16 @@ const _ = require("lodash");
 const useIndexes = 'use-indexes';
 const removeFilterCoveredByIndex = "remove-filter-covered-by-index";
 
-function optimizerRuleZkd2dIndexTestSuite() {
-    const colName = 'UnitTestZkdIndexCollection';
+function optimizerRuleMdi2dIndexTestSuite() {
+    const colName = 'UnitTestMdiIndexCollection';
     let col;
 
     return {
         setUpAll: function () {
             col = db._create(colName, {numberOfShards: 2, shardKeys: ["x"]});
             col.ensureIndex({
-                type: 'zkd',
-                name: 'zkdIndex',
+                type: 'mdi',
+                name: 'mdiIndex',
                 fields: ['x', 'y'],
                 storedValues: ['i'],
                 unique: true,
@@ -83,7 +83,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
         },
 
       testEstimates: function () {
-          const index = col.index("zkdIndex");
+          const index = col.index("mdiIndex");
           assertTrue(index.estimates);
           assertEqual(index.selectivityEstimate, 1);
       },
@@ -141,6 +141,6 @@ function optimizerRuleZkd2dIndexTestSuite() {
     };
 }
 
-jsunity.run(optimizerRuleZkd2dIndexTestSuite);
+jsunity.run(optimizerRuleMdi2dIndexTestSuite);
 
 return jsunity.done();

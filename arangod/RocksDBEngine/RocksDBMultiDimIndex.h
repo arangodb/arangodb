@@ -28,9 +28,9 @@
 
 namespace arangodb {
 
-class RocksDBZkdIndexBase : public RocksDBIndex {
+class RocksDBMdiIndexBase : public RocksDBIndex {
  public:
-  RocksDBZkdIndexBase(IndexId iid, LogicalCollection& coll,
+  RocksDBMdiIndexBase(IndexId iid, LogicalCollection& coll,
                       velocypack::Slice info);
   void toVelocyPack(
       velocypack::Builder& builder,
@@ -68,9 +68,9 @@ class RocksDBZkdIndexBase : public RocksDBIndex {
   std::vector<std::vector<basics::AttributeName>> const _coveredFields;
 };
 
-class RocksDBZkdIndex final : public RocksDBZkdIndexBase {
+class RocksDBMdiIndex final : public RocksDBMdiIndexBase {
  public:
-  RocksDBZkdIndex(IndexId iid, LogicalCollection& coll, velocypack::Slice info);
+  RocksDBMdiIndex(IndexId iid, LogicalCollection& coll, velocypack::Slice info);
   bool hasSelectivityEstimate() const override;
 
   double selectivityEstimate(std::string_view) const override;
@@ -102,8 +102,8 @@ class RocksDBZkdIndex final : public RocksDBZkdIndexBase {
   std::unique_ptr<RocksDBCuckooIndexEstimatorType> _estimator;
 };
 
-class RocksDBUniqueZkdIndex final : public RocksDBZkdIndexBase {
-  using RocksDBZkdIndexBase::RocksDBZkdIndexBase;
+class RocksDBUniqueMdiIndex final : public RocksDBMdiIndexBase {
+  using RocksDBMdiIndexBase::RocksDBMdiIndexBase;
 
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId documentId, velocypack::Slice doc,
@@ -123,7 +123,7 @@ class RocksDBUniqueZkdIndex final : public RocksDBZkdIndexBase {
   double selectivityEstimate(std::string_view) const override { return 1; }
 };
 
-namespace zkd {
+namespace mdi {
 
 struct ExpressionBounds {
   struct Bound {
@@ -151,6 +151,6 @@ auto supportsFilterCondition(
 
 auto specializeCondition(Index const* index, aql::AstNode* condition,
                          aql::Variable const* reference) -> aql::AstNode*;
-}  // namespace zkd
+}  // namespace mdi
 
 }  // namespace arangodb

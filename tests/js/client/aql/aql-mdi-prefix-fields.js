@@ -30,8 +30,8 @@ const {assertTrue, assertFalse, assertEqual, assertNotEqual} = jsunity.jsUnity.a
 const _ = require("lodash");
 const normalize = require("@arangodb/aql-helper").normalizeProjections;
 
-function optimizerRuleZkd2dIndexTestSuite() {
-  const colName = 'UnitTestZkdIndexCollection';
+function optimizerRuleMdi2dIndexTestSuite() {
+  const colName = 'UnitTestMdiIndexCollection';
   let col;
 
   return {
@@ -43,7 +43,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
       col = db._create(colName);
       col.ensureIndex({
         type: 'mdi-prefixed',
-        name: 'zkdIndex',
+        name: 'mdiIndex',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
         storedValues: ["z"],
@@ -72,7 +72,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
       col = db._create(colName);
       col.ensureIndex({
         type: 'mdi-prefixed',
-        name: 'zkdIndex',
+        name: 'mdiIndex',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
         storedValues: ["z"],
@@ -84,7 +84,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
           FOR i IN 1..2
             INSERT {x: i, y: i, z: i, stringValue: str} INTO ${col}
       `);
-      const index = col.index("zkdIndex");
+      const index = col.index("mdiIndex");
       assertTrue(index.estimates);
       assertTrue(index.hasOwnProperty("selectivityEstimate"));
     },
@@ -93,7 +93,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
       col = db._create(colName);
       col.ensureIndex({
         type: 'mdi-prefixed',
-        name: 'zkdIndex',
+        name: 'mdiIndex',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
         storedValues: ["z"],
@@ -124,7 +124,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
       col = db._create(colName);
       col.ensureIndex({
         type: 'mdi-prefixed',
-        name: 'zkdIndex',
+        name: 'mdiIndex',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
         storedValues: ["z"],
@@ -163,7 +163,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
       col = db._create(colName);
       col.ensureIndex({
         type: 'mdi-prefixed',
-        name: 'zkdIndex',
+        name: 'mdiIndex',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
         prefixFields: ["stringValue", "value"],
@@ -200,7 +200,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
       let col = db._create(colName);
       col.ensureIndex({
         type: 'mdi-prefixed',
-        name: 'zkdIndex',
+        name: 'mdiIndex',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
         prefixFields: ["z"]
@@ -272,13 +272,13 @@ function optimizerRuleZkd2dIndexTestSuite() {
 const gm = require("@arangodb/general-graph");
 const waitForEstimatorSync = require('@arangodb/test-helper').waitForEstimatorSync;
 
-function optimizerRuleZkdTraversal() {
-  const database = "MyTestZkdTraversalDB";
+function optimizerRuleMdiTraversal() {
+  const database = "MyTestMdiTraversalDB";
   const graph = "mygraph";
   const vertexCollection = "v";
   const edgeCollection = "e";
-  const indexName = "myZkdIndex";
-  const levelIndexName = "myZkdIndexLevel";
+  const indexName = "myMdiIndex";
+  const levelIndexName = "myMdiIndexLevel";
 
   return {
     setUpAll: function () {
@@ -325,7 +325,7 @@ function optimizerRuleZkdTraversal() {
       db._dropDatabase(database);
     },
 
-    testZkdTraversal: function () {
+    testMdiTraversal: function () {
       const query = `
         for v, e, p in 0..3 outbound "${vertexCollection}/v1" graph "${graph}"
         options {bfs: true, uniqueVertices: "path"}
@@ -350,7 +350,7 @@ function optimizerRuleZkdTraversal() {
       });
     },
 
-    testZkdTraversalOnlyOneLevel: function () {
+    testMdiTraversalOnlyOneLevel: function () {
       const query = `
         for v, e, p in 0..3 outbound "${vertexCollection}/v1" graph "${graph}"
         options {bfs: true, uniqueVertices: "path"}
@@ -376,7 +376,7 @@ function optimizerRuleZkdTraversal() {
   };
 }
 
-jsunity.run(optimizerRuleZkd2dIndexTestSuite);
-jsunity.run(optimizerRuleZkdTraversal);
+jsunity.run(optimizerRuleMdi2dIndexTestSuite);
+jsunity.run(optimizerRuleMdiTraversal);
 
 return jsunity.done();
