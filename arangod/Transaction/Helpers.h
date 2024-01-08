@@ -132,8 +132,9 @@ Result mergeObjectsForUpdate(Methods& trx, LogicalCollection& collection,
 /// @brief new object for replace
 Result newObjectForReplace(Methods& trx, LogicalCollection& collection,
                            velocypack::Slice oldValue,
-                           velocypack::Slice newValue, RevisionId& revisionId,
-                           velocypack::Builder& builder,
+                           velocypack::Slice newValue, bool isNoOpReplace,
+                           RevisionId previousRevisionId,
+                           RevisionId& revisionId, velocypack::Builder& builder,
                            OperationOptions const& options,
                            BatchOptions& batchOptions);
 
