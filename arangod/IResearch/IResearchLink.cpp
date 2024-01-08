@@ -104,7 +104,8 @@ std::string getLabels(IResearchLink const& link) {
   return absl::StrCat("db=\"", link.getDbName(),                     //
                       "\",view=\"", link.getViewId(),                //
                       "\",collection=\"", link.getCollectionName(),  //
-                      "\",shard=\"", link.getShardName(), "\"");
+                      "\",shard=\"", link.getShardName(),            //
+                      "\",indexId=\"", link.index().id().id(), "\"");
 }
 
 Result linkWideCluster(LogicalCollection const& logical, IResearchView* view) {
