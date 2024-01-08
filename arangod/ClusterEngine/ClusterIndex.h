@@ -127,7 +127,7 @@ class ClusterIndex : public Index {
 
   // Only used in RocksDB edge index.
   std::vector<std::vector<basics::AttributeName>> _coveredFields;
-  // Only used in RocksDB zkd index
+  // Only used in TRI_IDX_TYPE_MDI_PREFIXED_INDEX
   std::vector<std::vector<basics::AttributeName>> _prefixFields;
 };
 }  // namespace arangodb

@@ -118,22 +118,24 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
                              velocypack::Slice rhs,
                              bool attributeOrderMatters) const {
   // unique must be identical if present
-  auto value = lhs.get(StaticStrings::IndexUnique);
-
-  if (value.isBoolean() &&
-      !basics::VelocyPackHelper::equal(
-          value, rhs.get(StaticStrings::IndexUnique), false)) {
+  bool lhsUnique = basics::VelocyPackHelper::getBooleanValue(
+      lhs, StaticStrings::IndexUnique, false);
+  bool rhsUnique = basics::VelocyPackHelper::getBooleanValue(
+      rhs, StaticStrings::IndexUnique, false);
+  if (lhsUnique != rhsUnique) {
     return false;
   }
 
   // sparse must be identical if present
-  value = lhs.get(StaticStrings::IndexSparse);
-
-  if (value.isBoolean() &&
-      !basics::VelocyPackHelper::equal(
-          value, rhs.get(StaticStrings::IndexSparse), false)) {
+  bool lhsSparse = basics::VelocyPackHelper::getBooleanValue(
+      lhs, StaticStrings::IndexSparse, false);
+  bool rhsSparse = basics::VelocyPackHelper::getBooleanValue(
+      rhs, StaticStrings::IndexSparse, false);
+  if (lhsSparse != rhsSparse) {
     return false;
   }
+
+  VPackSlice value;
 
   if (Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX == type ||
       Index::IndexType::TRI_IDX_TYPE_GEO_INDEX == type) {
@@ -164,6 +166,14 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
               FloatingPoint<double>{value.getNumber<double>()})) {
         return false;
       }
+    }
+  } else if (Index::IndexType::TRI_IDX_TYPE_MDI_PREFIXED_INDEX == type) {
+    value = lhs.get(StaticStrings::IndexPrefixFields);
+
+    if (value.isArray() &&
+        !basics::VelocyPackHelper::equal(
+            value, rhs.get(StaticStrings::IndexPrefixFields), false)) {
+      return false;
     }
   }
 
@@ -339,11 +349,17 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
 
 /// same for both storage engines
 std::vector<std::string_view> IndexFactory::supportedIndexes() const {
-  return {"primary", "edge",
-          "hash",    "skiplist",
-          "ttl",     "persistent",
-          "geo",     "fulltext",
-          "zkd",     arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE};
+  return {"primary",
+          "edge",
+          "hash",
+          "skiplist",
+          "ttl",
+          "persistent",
+          "geo",
+          "fulltext",
+          "mdi",
+          "mdi-prefixed",
+          arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE};
 }
 
 std::vector<std::pair<std::string_view, std::string_view>>
@@ -539,7 +555,12 @@ Result IndexFactory::processIndexStoredValues(VPackSlice definition,
     }
   }
 
-  return res;
+  return res.mapError([&](result::Error const& error) {
+    return result::Error(
+        error.errorNumber(),
+        basics::StringUtils::concatT("when parsing fields for stored values: ",
+                                     error.errorMessage()));
+  });
 }
 
 void IndexFactory::processIndexCacheEnabled(VPackSlice definition,
@@ -761,22 +782,21 @@ Result processIndexSortedPrefixFields(VPackSlice definition,
 
   Result res;
 
-  auto fieldsSlice = definition.get(StaticStrings::IndexPrefixFields);
+  auto prefixFieldsSlice = definition.get(StaticStrings::IndexPrefixFields);
 
-  // prefixFields are fully optional
-  if (!fieldsSlice.isNone()) {
-    if (fieldsSlice.isArray()) {
-      res = IndexFactory::validateFieldsDefinition(
-          definition, StaticStrings::IndexStoredValues, minFields, maxFields,
-          allowSubAttributes, /*allowIdAttribute*/ true);
-      if (res.ok() && fieldsSlice.length() > 0) {
-        std::unordered_set<std::string_view> fields;
-        for (VPackSlice it : VPackArrayIterator(fieldsSlice)) {
-          fields.insert(it.stringView());
-        }
-        auto normalFields = definition.get(StaticStrings::IndexStoredValues);
-        TRI_ASSERT(normalFields.isArray());
-        for (VPackSlice it : VPackArrayIterator(normalFields)) {
+  if (prefixFieldsSlice.isArray() && !prefixFieldsSlice.isEmptyArray()) {
+    res = IndexFactory::validateFieldsDefinition(
+        definition, StaticStrings::IndexPrefixFields, minFields, maxFields,
+        allowSubAttributes, /*allowIdAttribute*/ true);
+    if (res.ok()) {
+      std::unordered_set<std::string_view> fields;
+      for (VPackSlice it : VPackArrayIterator(prefixFieldsSlice)) {
+        fields.insert(it.stringView());
+      }
+      auto storedValues = definition.get(StaticStrings::IndexStoredValues);
+      if (!storedValues.isNone()) {
+        TRI_ASSERT(storedValues.isArray());
+        for (VPackSlice it : VPackArrayIterator(storedValues)) {
           if (!fields.insert(it.stringView()).second) {
             res.reset(TRI_ERROR_BAD_PARAMETER,
                       "duplicate attribute name (overlap between index sorted "
@@ -786,38 +806,44 @@ Result processIndexSortedPrefixFields(VPackSlice definition,
             break;
           }
         }
-
-        builder.add(velocypack::Value(StaticStrings::IndexPrefixFields));
-        builder.openArray();
-
-        for (VPackSlice it : VPackArrayIterator(fieldsSlice)) {
-          std::vector<basics::AttributeName> temp;
-          TRI_ParseAttributeString(it.stringView(), temp,
-                                   /*allowExpansion*/ false);
-
-          builder.add(it);
-        }
-
-        builder.close();
       }
-    } else {
-      res.reset(TRI_ERROR_BAD_PARAMETER, "prefixFields must be an array");
+
+      builder.add(velocypack::Value(StaticStrings::IndexPrefixFields));
+      builder.openArray();
+
+      for (VPackSlice it : VPackArrayIterator(prefixFieldsSlice)) {
+        std::vector<basics::AttributeName> temp;
+        TRI_ParseAttributeString(it.stringView(), temp,
+                                 /*allowExpansion*/ false);
+
+        builder.add(it);
+      }
+
+      builder.close();
     }
+  } else {
+    res.reset(TRI_ERROR_BAD_PARAMETER,
+              "prefixFields is required for `mdi-prefixed`");
   }
 
-  return res;
+  return res.mapError([&](result::Error const& error) {
+    return result::Error(
+        error.errorNumber(),
+        basics::StringUtils::concatT("when parsing prefix fields: ",
+                                     error.errorMessage()));
+  });
 }
 
 }  // namespace
 
-/// @brief enhances the json of a zkd index
-Result IndexFactory::enhanceJsonIndexZkd(VPackSlice definition,
+/// @brief enhances the json of a mdi index
+Result IndexFactory::enhanceJsonIndexMdi(VPackSlice definition,
                                          VPackBuilder& builder, bool create) {
   if (auto fieldValueTypes = definition.get("fieldValueTypes");
       !fieldValueTypes.isString() || !fieldValueTypes.isEqualString("double")) {
     return Result(
         TRI_ERROR_BAD_PARAMETER,
-        "zkd index requires `fieldValueTypes` to be set to `double` - future "
+        "mdi requires `fieldValueTypes` to be set to `double` - future "
         "releases might lift this requirement");
   }
 
@@ -838,19 +864,20 @@ Result IndexFactory::enhanceJsonIndexZkd(VPackSlice definition,
   }
 
   if (res.ok()) {
-    res = processIndexSortedPrefixFields(definition, builder, 1, 32, create,
-                                         true);
-  }
-
-  if (res.ok()) {
-    if (auto isSparse = definition.get(StaticStrings::IndexSparse).isTrue();
-        isSparse) {
-      return Result(TRI_ERROR_BAD_PARAMETER,
-                    "zkd index does not support sparse property");
-    }
-
+    processIndexSparseFlag(definition, builder, create);
     processIndexUniqueFlag(definition, builder);
     processIndexInBackground(definition, builder);
+  }
+
+  return res;
+}  /// @brief enhances the json of a mdi
+Result IndexFactory::enhanceJsonIndexMdiPrefixed(VPackSlice definition,
+                                                 VPackBuilder& builder,
+                                                 bool create) {
+  auto res = enhanceJsonIndexMdi(definition, builder, create);
+  if (res.ok()) {
+    res = processIndexSortedPrefixFields(definition, builder, 1, 32, create,
+                                         true);
   }
 
   return res;

@@ -109,6 +109,7 @@ TEST_F(CollectionMutablePropertiesTest, test_minimal_user_input) {
   // does not test internals yet
   EXPECT_TRUE(testee->computedValues.slice().isNull());
   EXPECT_FALSE(testee->schema.has_value());
+  EXPECT_FALSE(testee->cacheEnabled);
 }
 
 TEST_F(CollectionMutablePropertiesTest, test_illegal_names) {

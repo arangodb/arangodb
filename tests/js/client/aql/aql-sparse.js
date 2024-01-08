@@ -392,8 +392,14 @@ function optimizerSparseTestSuite () {
     
     testSparseJoin : function () {
       c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
-      
-      let query = "FOR doc1 IN " + c.name() + " FOR doc2 IN " + c.name() + " FILTER doc1.value1 == 10 FILTER doc1.value1 == doc2.value1 RETURN doc1";
+
+      let query = `
+        FOR doc1 IN ${c.name()}
+          FOR doc2 IN ${c.name()}
+            FILTER doc1.value1 == 10
+            FILTER doc1.value1 == doc2.value1
+            RETURN doc1
+      `;
       let results = db._query(query).toArray();
       assertEqual(1, results.length);
 
@@ -450,8 +456,17 @@ function optimizerSparseTestSuite () {
     
     testSparseJoinFuncNeNullNeNull : function () {
       c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
-      
-      let query = "FOR doc1 IN " + c.name() + " FOR doc2 IN " + c.name() + " FILTER doc1.value1 == NOOPT(10) FILTER doc1.value1 == doc2.value1 FILTER doc1.value1 != null FILTER doc2.value1 != null RETURN doc1";
+
+      let query = `
+        FOR doc1 IN ${c.name()}
+          FOR doc2 IN ${c.name()}
+            FILTER doc1.value1 == NOOPT(10)
+            FILTER doc1.value1 == doc2.value1
+            FILTER doc1.value1 != null
+            FILTER doc2.value1 != null
+            RETURN doc1`
+      ;
+
       let results = db._query(query).toArray();
       assertEqual(1, results.length);
 
