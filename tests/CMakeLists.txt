@@ -127,7 +127,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/InputRangeTest.cpp
   Aql/InsertExecutorTest.cpp
   Aql/JaccardFunctionTest.cpp
-  Aql/JoinStrategy/GenericJoinTest.cpp
+  Aql/JoinStrategy/GenericAndTwoNonUniqueJoinTest.cpp
   Aql/JoinStrategy/TwoIndicesUniqueJoinTest.cpp
   Aql/LevenshteinMatchFunctionTest.cpp
   Aql/LimitExecutorTest.cpp
@@ -195,6 +195,7 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/QueryAnalyzerRevisionsTest.cpp
   Cluster/RebootTrackerTest.cpp
   Cluster/ShardAutoRebalancerTest.cpp
+  Cluster/ShardIDTest.cpp
   Containers/EnumerateTest.cpp
   Containers/HashSetTest.cpp
   Containers/MerkleTreeTest.cpp

@@ -1,4 +1,5 @@
 if (MSVC AND NOT(SKIP_PACKAGING))
+  set(ARANGO_DUMP_FRIENDLY_STRING    "arangodump - data and configuration dumping tool")
   generate_product_version(ProductVersionFiles_arangodump
     NAME arangodump
     FILE_DESCRIPTION ${ARANGO_DUMP_FRIENDLY_STRING}

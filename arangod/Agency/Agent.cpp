@@ -781,12 +781,14 @@ void Agent::sendAppendEntriesRPC() {
 
       // Send request
       auto ac = AgentCallback{this, followerId, highest, toLog};
-      network::sendRequest(
-          cp, _config.poolAt(followerId), fuerte::RestVerb::Post,
-          // cppcheck-suppress accessMoved
-          "/_api/agency_priv/appendEntries", std::move(buffer), reqOpts)
-          .thenValue(
-              [ac = std::move(ac)](network::Response r) { ac.operator()(r); });
+      std::ignore = network::sendRequest(cp, _config.poolAt(followerId),
+                                         fuerte::RestVerb::Post,
+                                         // cppcheck-suppress accessMoved
+                                         "/_api/agency_priv/appendEntries",
+                                         std::move(buffer), reqOpts)
+                        .thenValue([ac = std::move(ac)](network::Response r) {
+                          ac.operator()(r);
+                        });
 
       // Note the timeout is relatively long, but due to the 30 seconds
       // above, we only ever have at most 5 messages in flight.
@@ -867,11 +869,12 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
              std::to_string(std::llround(steadyClockToDouble() * 1000)));
 
   double now = TRI_microtime();
-  network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post,
-                       // cppcheck-suppress accessMoved
-                       "/_api/agency_priv/appendEntries", std::move(buffer),
-                       reqOpts)
-      .thenValue([=](network::Response r) { ac.operator()(r); });
+  std::ignore = network::sendRequest(cp, _config.poolAt(followerId),
+                                     fuerte::RestVerb::Post,
+                                     // cppcheck-suppress accessMoved
+                                     "/_api/agency_priv/appendEntries",
+                                     std::move(buffer), reqOpts)
+                    .thenValue([=](network::Response r) { ac.operator()(r); });
   double diff = TRI_microtime() - now;
   if (diff > 0.01) {
     LOG_TOPIC("cfb7c", DEBUG, Logger::AGENCY)

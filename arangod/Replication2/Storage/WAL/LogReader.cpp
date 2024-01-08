@@ -172,9 +172,7 @@ auto LogReader::seekLogIndexBackward(LogIndex index)
     }
     _reader->seek(pos - sizeof(Record::Footer));
   }
-  return RT::error(TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
-                   "log index " + to_string(index) + " not found in file " +
-                       _reader->path());
+  ADB_UNREACHABLE;
 }
 
 auto LogReader::getFirstRecordHeader() -> ResultT<Record::CompressedHeader> {

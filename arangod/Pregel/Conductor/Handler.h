@@ -159,7 +159,7 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
         this->state->executionState->receive(this->sender, start);
     if (stateChange.has_value()) {
       changeState(std::move(stateChange.value()));
-      this->finish();
+      this->finish(actor::ExitReason::kFinished);
       this->template dispatch<pregel::message::SpawnMessages>(
           this->state->spawnActor, pregel::message::SpawnCleanup{});
       this->template dispatch<pregel::message::StatusMessages>(

@@ -1,4 +1,5 @@
 if (MSVC AND NOT(SKIP_PACKAGING))
+  set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - data and configuration restoration tool")
   generate_product_version(ProductVersionFiles_arangorestore
     NAME arangorestore
     FILE_DESCRIPTION ${ARANGO_RESTORE_FRIENDLY_STRING}

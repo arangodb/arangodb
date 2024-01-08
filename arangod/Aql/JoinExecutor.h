@@ -71,6 +71,8 @@ struct JoinExecutorInfos {
   struct IndexInfo {
     // Register to load the document into
     RegisterId documentOutputRegister;
+    RegisterId docIdOutputRegister;
+    bool isLateMaterialized;
 
     // Associated document collection for this index
     Collection const* collection;
@@ -99,6 +101,14 @@ struct JoinExecutorInfos {
     };
 
     std::optional<FilterInformation> filter;
+
+    // used for jumping to the correct location during reset calls
+    std::vector<std::unique_ptr<Expression>> constantExpressions;
+    // mapping of other variables to register in the input row
+    std::vector<std::pair<VariableId, RegisterId>> expressionVarsToRegs;
+
+    std::vector<size_t> usedKeyFields;
+    std::vector<size_t> constantFields;
   };
 
   RegisterId registerForVariable(VariableId id) const noexcept;
@@ -140,6 +150,7 @@ class JoinExecutor {
 
  private:
   void constructStrategy();
+  [[nodiscard]] ResourceMonitor& resourceMonitor();
 
   aql::AqlFunctionsInternalCache _functionsCache;
   Fetcher& _fetcher;
@@ -147,11 +158,18 @@ class JoinExecutor {
   std::unique_ptr<AqlIndexJoinStrategy> _strategy;
 
   transaction::Methods _trx;
+  ResourceMonitor& _resourceMonitor;
 
   InputAqlItemRow _currentRow{CreateInvalidInputRowHint()};
   ExecutorState _currentRowState{ExecutorState::HASMORE};
   velocypack::Builder _projectionsBuilder;
-  std::vector<std::unique_ptr<std::string>> _documents;
+  // first value holds the unique ptr to a string (obvious), second value holds
+  // the amount of bytes used by that string
+  std::vector<std::pair<std::unique_ptr<std::string>, size_t>> _documents;
+
+  // used for constant expressions, will stay a
+  VPackBuilder _constantBuilder;
+  std::vector<VPackSlice> _constantSlices;
 };
 
 }  // namespace aql

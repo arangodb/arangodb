@@ -325,6 +325,10 @@ void optimizeSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void replaceNearWithinFulltextRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                    OptimizerRule const&);
 
+/// @brief replace LIKE function with range scan where possible
+void replaceLikeWithRangeRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                              OptimizerRule const&);
+
 /// @brief move filters into EnumerateCollection nodes
 void moveFiltersIntoEnumerateRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                   OptimizerRule const&);
@@ -389,6 +393,12 @@ void joinIndexNodesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 
 void optimizeProjections(Optimizer*, std::unique_ptr<ExecutionPlan>,
                          OptimizerRule const&);
+
+void replaceEqualAttributeAccesses(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                   OptimizerRule const&);
+
+void batchMaterializeDocumentsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                   OptimizerRule const&);
 
 }  // namespace aql
 }  // namespace arangodb

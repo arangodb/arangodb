@@ -66,7 +66,7 @@ class TransactionStateMock : public arangodb::TransactionState {
   [[nodiscard]] bool ensureSnapshot() override { return false; }
   arangodb::Result abortTransaction(
       arangodb::transaction::Methods* trx) override;
-  arangodb::Result beginTransaction(
+  arangodb::futures::Future<arangodb::Result> beginTransaction(
       arangodb::transaction::Hints hints) override;
   arangodb::futures::Future<arangodb::Result> commitTransaction(
       arangodb::transaction::Methods* trx) override;

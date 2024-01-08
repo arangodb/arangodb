@@ -162,7 +162,7 @@ TEST_F(StateManagerTest_EmptyState, get_leader_state_machine_early) {
       1, agency::ParticipantsFlagsMap{{myself.serverId, {}}},
       agency::LogPlanConfig{}};
   EXPECT_CALL(*rebootIdCache, getRebootIdsFor);
-  log->updateConfig(term, config, myself);
+  std::ignore = log->updateConfig(term, config, myself);
   {
     auto logStatus = log->getQuickStatus();
     ASSERT_EQ(logStatus.role, ParticipantRole::kLeader);
@@ -253,7 +253,7 @@ TEST_F(StateManagerTest_EmptyState,
   auto const config = agency::ParticipantsConfig{
       1, agency::ParticipantsFlagsMap{{myself.serverId, {}}},
       agency::LogPlanConfig{}};
-  log->updateConfig(planTerm, config, myself);
+  std::ignore = log->updateConfig(planTerm, config, myself);
   {
     auto const logStatus = log->getQuickStatus();
     ASSERT_EQ(logStatus.role, ParticipantRole::kFollower);
@@ -357,7 +357,7 @@ TEST_F(
   auto const config = agency::ParticipantsConfig{
       1, agency::ParticipantsFlagsMap{{myself.serverId, {}}},
       agency::LogPlanConfig{}};
-  log->updateConfig(planTerm, config, myself);
+  std::ignore = log->updateConfig(planTerm, config, myself);
   {
     auto const logStatus = log->getQuickStatus();
     ASSERT_EQ(logStatus.role, ParticipantRole::kFollower);
@@ -482,7 +482,7 @@ TEST_F(
   auto const config = agency::ParticipantsConfig{
       1, agency::ParticipantsFlagsMap{{myself.serverId, {}}},
       agency::LogPlanConfig{}};
-  log->updateConfig(planTerm, config, myself);
+  std::ignore = log->updateConfig(planTerm, config, myself);
   {
     auto const logStatus = log->getQuickStatus();
     ASSERT_EQ(logStatus.role, ParticipantRole::kFollower);
@@ -606,7 +606,7 @@ TEST_F(
   futures::Promise<Result> p;
   EXPECT_CALL(*leaderComm, reportSnapshotAvailable(MessageId{1}))
       .WillOnce([&](MessageId) { return p.getFuture(); });
-  log->updateConfig(planTerm, config, myself);
+  std::ignore = log->updateConfig(planTerm, config, myself);
   {
     auto const logStatus = log->getQuickStatus();
     ASSERT_EQ(logStatus.role, ParticipantRole::kFollower);
@@ -719,7 +719,7 @@ TEST_F(
       1, agency::ParticipantsFlagsMap{{myself.serverId, {}}},
       agency::LogPlanConfig{}};
 
-  log->updateConfig(planTerm, config, myself);
+  std::ignore = log->updateConfig(planTerm, config, myself);
   {
     auto const logStatus = log->getQuickStatus();
     ASSERT_EQ(logStatus.role, ParticipantRole::kFollower);
@@ -841,7 +841,7 @@ TEST_F(StateManagerTest_FakeState, follower_acquire_snapshot) {
   auto const config = agency::ParticipantsConfig{
       1, agency::ParticipantsFlagsMap{{myself.serverId, {}}},
       agency::LogPlanConfig{}};
-  log->updateConfig(planTerm, config, myself);
+  std::ignore = log->updateConfig(planTerm, config, myself);
   {
     auto const logStatus = log->getQuickStatus();
     ASSERT_EQ(logStatus.role, ParticipantRole::kFollower);

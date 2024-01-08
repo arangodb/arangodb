@@ -151,7 +151,7 @@ void PhysicalCollection::drop() {
 
 void PhysicalCollection::freeMemory() noexcept {}
 
-uint64_t PhysicalCollection::recalculateCounts() {
+futures::Future<uint64_t> PhysicalCollection::recalculateCounts() {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED,
       "recalculateCounts not implemented for this engine");
@@ -238,7 +238,7 @@ PhysicalCollection::computeRevisionTree(uint64_t batchId) {
   return nullptr;
 }
 
-Result PhysicalCollection::rebuildRevisionTree() {
+futures::Future<Result> PhysicalCollection::rebuildRevisionTree() {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

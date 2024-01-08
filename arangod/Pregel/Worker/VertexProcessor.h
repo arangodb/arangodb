@@ -101,7 +101,7 @@ struct ActorVertexProcessor {
       std::function<void(actor::DistributedActorPID receiver,
                          worker::message::PregelMessage message)>
           dispatch,
-      std::unordered_map<ShardID, actor::DistributedActorPID> const&
+      std::unordered_map<PregelShardID, actor::DistributedActorPID> const&
           responsibleActorPerShard);
   ~ActorVertexProcessor();
 

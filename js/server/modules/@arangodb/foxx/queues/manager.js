@@ -179,13 +179,16 @@ const resetDeadJobs = function () {
           global.KEYSPACE_CREATE('queue-control', 1, true);
         }
         done = true;
-      } catch(e) {
-        if (e.code === errors.ERROR_SHUTTING_DOWN.code) {
+      } catch (e) {
+        if (e.errorNum === errors.ERROR_SHUTTING_DOWN.code) {
           warn("Shutting down while resetting dead jobs on database " + name + ", aborting.");
           done = true; // we're quitting because shutdown is in progress
-        } else if (e.code === errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
+        } else if (e.errorNum === errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
           warn("'_jobs' collection not found while resetting dead jobs on database " + name + ", aborting.");
           done = true; // we're quitting because the _jobs collection is missing
+        } else if (e.errorNum === errors.ERROR_ARANGO_READ_ONLY.code) {
+          warn("'_jobs' collection is read only while resetting dead jobs on database " + name + ", aborting.");
+          done = true;
         } else {
           maxTries--;
           warn("Exception while resetting dead jobs on database " + name + ": " + e.message +

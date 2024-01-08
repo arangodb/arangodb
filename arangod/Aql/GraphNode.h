@@ -25,7 +25,6 @@
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
-#include "Aql/Graphs.h"
 #include "Aql/types.h"
 #include "Cluster/ClusterTypes.h"
 #include "Transaction/OperationOrigin.h"
@@ -98,8 +97,6 @@ class GraphNode : public ExecutionNode {
 
   struct THIS_THROWS_WHEN_CALLED {};
   explicit GraphNode(THIS_THROWS_WHEN_CALLED);
-
-  std::string const& collectionToShardName(std::string const& collName) const;
 
  public:
   ~GraphNode() override = default;
@@ -197,7 +194,7 @@ class GraphNode : public ExecutionNode {
 
   std::vector<aql::Collection const*> collections() const;
   void resetCollectionToShard() { _collectionToShard.clear(); }
-  void addCollectionToShard(std::string const& coll, std::string const& shard) {
+  void addCollectionToShard(std::string const& coll, ShardID const& shard) {
     // NOTE: Do not replace this by emplace or insert.
     // This is also used to overwrite the existing entry.
     _collectionToShard[coll] = shard;
@@ -227,8 +224,7 @@ class GraphNode : public ExecutionNode {
   void doToVelocyPack(arangodb::velocypack::Builder& nodes,
                       unsigned flags) const override;
 
-  void graphCloneHelper(ExecutionPlan& plan, GraphNode& clone,
-                        bool withProperties) const;
+  void graphCloneHelper(ExecutionPlan& plan, GraphNode& clone) const;
 
  private:
   void addEdgeCollection(aql::Collections const& collections,
@@ -315,7 +311,7 @@ class GraphNode : public ExecutionNode {
   std::unordered_map<ServerID, aql::EngineId> _engines;
 
   /// @brief list of shards involved, required for one-shard-databases
-  std::unordered_map<std::string, std::string> _collectionToShard;
+  std::unordered_map<std::string, ShardID> _collectionToShard;
 };
 
 }  // namespace aql

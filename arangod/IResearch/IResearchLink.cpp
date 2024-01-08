@@ -118,7 +118,8 @@ Result linkWideCluster(LogicalCollection const& logical, IResearchView* view) {
     return {};
   }
   for (auto& entry : *shardIds) {  // per-shard collection is always in vocbase
-    auto collection = logical.vocbase().lookupCollection(entry.first);
+    auto collection =
+        logical.vocbase().lookupCollection(std::string{entry.first});
     if (!collection) {
       // missing collection should be created after Plan becomes Current
       continue;

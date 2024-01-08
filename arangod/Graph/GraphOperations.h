@@ -77,52 +77,53 @@ class GraphOperations {
   /// (trx.document(), trx.finish()) are returned as a pair. This is because
   /// in case of a precondition error during trx.document(), the
   /// OperationResult may still be needed.
-  OperationResult getVertex(std::string const& collectionName,
-                            std::string const& key,
-                            std::optional<RevisionId> rev);
+  futures::Future<OperationResult> getVertex(std::string const& collectionName,
+                                             std::string const& key,
+                                             std::optional<RevisionId> rev);
 
   /// @brief Get a single edge document from definitionName.
   /// Similar to getVertex().
-  OperationResult getEdge(std::string const& definitionName,
-                          std::string const& key,
-                          std::optional<RevisionId> rev);
+  futures::Future<OperationResult> getEdge(std::string const& definitionName,
+                                           std::string const& key,
+                                           std::optional<RevisionId> rev);
 
   /// @brief Remove a single edge document from definitionName.
-  OperationResult removeEdge(std::string const& definitionName,
-                             std::string const& key,
-                             std::optional<RevisionId> rev, bool waitForSync,
-                             bool returnOld);
+  futures::Future<OperationResult> removeEdge(std::string const& definitionName,
+                                              std::string const& key,
+                                              std::optional<RevisionId> rev,
+                                              bool waitForSync, bool returnOld);
 
   /// @brief Remove a vertex and all incident edges in the graph
-  OperationResult removeVertex(std::string const& collectionName,
-                               std::string const& key,
-                               std::optional<RevisionId> rev, bool waitForSync,
-                               bool returnOld);
+  futures::Future<OperationResult> removeVertex(
+      std::string const& collectionName, std::string const& key,
+      std::optional<RevisionId> rev, bool waitForSync, bool returnOld);
 
   /// @brief Remove an edge or vertex and all incident edges in the graph
-  OperationResult removeEdgeOrVertex(std::string const& collectionName,
-                                     std::string const& key,
-                                     std::optional<RevisionId> rev,
-                                     bool waitForSync, bool returnOld);
+  futures::Future<OperationResult> removeEdgeOrVertex(
+      std::string const& collectionName, std::string const& key,
+      std::optional<RevisionId> rev, bool waitForSync, bool returnOld);
 
-  OperationResult updateEdge(std::string const& definitionName,
-                             std::string const& key, VPackSlice document,
-                             std::optional<RevisionId> rev, bool waitForSync,
-                             bool returnOld, bool returnNew, bool keepNull);
+  futures::Future<OperationResult> updateEdge(std::string const& definitionName,
+                                              std::string const& key,
+                                              VPackSlice document,
+                                              std::optional<RevisionId> rev,
+                                              bool waitForSync, bool returnOld,
+                                              bool returnNew, bool keepNull);
 
-  OperationResult replaceEdge(std::string const& definitionName,
-                              std::string const& key, VPackSlice document,
-                              std::optional<RevisionId> rev, bool waitForSync,
-                              bool returnOld, bool returnNew, bool keepNull);
+  futures::Future<OperationResult> replaceEdge(
+      std::string const& definitionName, std::string const& key,
+      VPackSlice document, std::optional<RevisionId> rev, bool waitForSync,
+      bool returnOld, bool returnNew, bool keepNull);
 
-  OperationResult createEdge(std::string const& definitionName,
-                             VPackSlice document, bool waitForSync,
-                             bool returnNew);
+  futures::Future<OperationResult> createEdge(std::string const& definitionName,
+                                              VPackSlice document,
+                                              bool waitForSync, bool returnNew);
 
   // @brief This function is a helper function which is setting up a
   // transaction and calls validateEdgeVertices and validateEdgeContent
   // methods.
-  std::pair<OperationResult, std::unique_ptr<transaction::Methods>>
+  futures::Future<
+      std::pair<OperationResult, std::unique_ptr<transaction::Methods>>>
   validateEdge(std::string const& definitionName, const VPackSlice& document,
                bool waitForSync, bool isUpdate);
 
@@ -142,59 +143,60 @@ class GraphOperations {
       std::string& fromCollectionKey, std::string& toCollectionName,
       std::string& toCollectionKey, bool isUpdate);
 
-  OperationResult updateVertex(std::string const& collectionName,
-                               std::string const& key, VPackSlice document,
-                               std::optional<RevisionId> rev, bool waitForSync,
-                               bool returnOld, bool returnNew, bool keepNull);
+  futures::Future<OperationResult> updateVertex(
+      std::string const& collectionName, std::string const& key,
+      VPackSlice document, std::optional<RevisionId> rev, bool waitForSync,
+      bool returnOld, bool returnNew, bool keepNull);
 
-  OperationResult replaceVertex(std::string const& collectionName,
-                                std::string const& key, VPackSlice document,
-                                std::optional<RevisionId> rev, bool waitForSync,
-                                bool returnOld, bool returnNew, bool keepNull);
+  futures::Future<OperationResult> replaceVertex(
+      std::string const& collectionName, std::string const& key,
+      VPackSlice document, std::optional<RevisionId> rev, bool waitForSync,
+      bool returnOld, bool returnNew, bool keepNull);
 
-  OperationResult createVertex(std::string const& collectionName,
-                               VPackSlice document, bool waitForSync,
-                               bool returnNew);
+  futures::Future<OperationResult> createVertex(
+      std::string const& collectionName, VPackSlice document, bool waitForSync,
+      bool returnNew);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief add an orphan to collection to an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult addOrphanCollection(VPackSlice document, bool waitForSync,
-                                      bool createCollection);
+  futures::Future<OperationResult> addOrphanCollection(VPackSlice document,
+                                                       bool waitForSync,
+                                                       bool createCollection);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an orphan collection from an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult eraseOrphanCollection(bool waitForSync,
-                                        std::string const& collectionName,
-                                        bool dropCollection);
+  futures::Future<OperationResult> eraseOrphanCollection(
+      bool waitForSync, std::string const& collectionName, bool dropCollection);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create a new edge definition in an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult addEdgeDefinition(VPackSlice edgeDefinition,
-                                    VPackSlice options, bool waitForSync);
+  futures::Future<OperationResult> addEdgeDefinition(VPackSlice edgeDefinition,
+                                                     VPackSlice options,
+                                                     bool waitForSync);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an edge definition from an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult eraseEdgeDefinition(bool waitForSync,
-                                      std::string const& edgeDefinitionName,
-                                      bool dropCollection);
+  futures::Future<OperationResult> eraseEdgeDefinition(
+      bool waitForSync, std::string const& edgeDefinitionName,
+      bool dropCollection);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create edge definition in an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult editEdgeDefinition(VPackSlice edgeDefinitionSlice,
-                                     VPackSlice options, bool waitForSync,
-                                     std::string const& edgeDefinitionName);
+  futures::Future<OperationResult> editEdgeDefinition(
+      VPackSlice edgeDefinitionSlice, VPackSlice options, bool waitForSync,
+      std::string const& edgeDefinitionName);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief change the edge definition for a specified graph
   /// if the graph doesn't already contain a definition for the same edge
   /// collection, this does nothing and returns success.
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult changeEdgeDefinitionForGraph(
+  futures::Future<OperationResult> changeEdgeDefinitionForGraph(
       Graph& graph, EdgeDefinition const& edgeDefinition, bool waitForSync,
       transaction::Methods& trx);
 
@@ -205,26 +207,24 @@ class GraphOperations {
  private:
   using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;
 
-  OperationResult getDocument(std::string const& collectionName,
-                              std::string const& key,
-                              std::optional<RevisionId> rev);
+  futures::Future<OperationResult> getDocument(
+      std::string const& collectionName, std::string const& key,
+      std::optional<RevisionId> rev);
 
   /// @brief creates a vpack { _key: key } or { _key: key, _rev: rev }
   /// (depending on whether rev is set)
   VPackBufferPtr _getSearchSlice(std::string const& key,
                                  std::optional<RevisionId>& rev) const;
 
-  OperationResult modifyDocument(std::string const& collectionName,
-                                 std::string const& key, VPackSlice document,
-                                 bool isPatch, std::optional<RevisionId> rev,
-                                 bool waitForSync, bool returnOld,
-                                 bool returnNew, bool keepNull,
-                                 transaction::Methods& trx);
+  futures::Future<OperationResult> modifyDocument(
+      std::string const& collectionName, std::string const& key,
+      VPackSlice document, bool isPatch, std::optional<RevisionId> rev,
+      bool waitForSync, bool returnOld, bool returnNew, bool keepNull,
+      transaction::Methods& trx);
 
-  OperationResult createDocument(transaction::Methods* trx,
-                                 std::string const& collectionName,
-                                 VPackSlice document, bool waitForSync,
-                                 bool returnNew);
+  futures::Future<OperationResult> createDocument(
+      transaction::Methods* trx, std::string const& collectionName,
+      VPackSlice document, bool waitForSync, bool returnNew);
 
   Result checkEdgeCollectionAvailability(std::string const& edgeCollectionName);
   Result checkVertexCollectionAvailability(

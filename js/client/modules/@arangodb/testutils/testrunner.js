@@ -410,7 +410,7 @@ class testRunner {
     }
     if (this.options.agency) {
       // pure agency tests won't need user checks.
-      if (this.options.cluster || this.options.activefailover) {
+      if (this.options.cluster) {
         this.cleanupChecks.push(databasesTest);
       }
     } else {

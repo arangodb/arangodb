@@ -150,29 +150,29 @@ class Manager final : public IManager {
   void unregisterAQLTrx(TransactionId tid) noexcept;
 
   /// @brief create managed transaction, also generate a tranactionId
-  ResultT<TransactionId> createManagedTrx(TRI_vocbase_t& vocbase,
-                                          velocypack::Slice trxOpts,
-                                          OperationOrigin operationOrigin,
-                                          bool allowDirtyReads);
+  futures::Future<ResultT<TransactionId>> createManagedTrx(
+      TRI_vocbase_t& vocbase, velocypack::Slice trxOpts,
+      OperationOrigin operationOrigin, bool allowDirtyReads);
 
   /// @brief ensure managed transaction, either use the one on the given tid
   ///        or create a new one with the given tid
-  Result ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
-                          velocypack::Slice trxOpts,
-                          OperationOrigin operationOrigin,
-                          bool isFollowerTransaction);
+  futures::Future<Result> ensureManagedTrx(TRI_vocbase_t& vocbase,
+                                           TransactionId tid,
+                                           velocypack::Slice trxOpts,
+                                           OperationOrigin operationOrigin,
+                                           bool isFollowerTransaction);
 
   /// @brief ensure managed transaction, either use the one on the given tid
   ///        or create a new one with the given tid
-  Result ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
-                          std::vector<std::string> const& readCollections,
-                          std::vector<std::string> const& writeCollections,
-                          std::vector<std::string> const& exclusiveCollections,
-                          Options options, OperationOrigin operationOrigin,
-                          double ttl);
+  futures::Future<Result> ensureManagedTrx(
+      TRI_vocbase_t& vocbase, TransactionId tid,
+      std::vector<std::string> const& readCollections,
+      std::vector<std::string> const& writeCollections,
+      std::vector<std::string> const& exclusiveCollections, Options options,
+      OperationOrigin operationOrigin, double ttl);
 
-  Result beginTransaction(transaction::Hints hints,
-                          std::shared_ptr<TransactionState>& state);
+  futures::Future<Result> beginTransaction(
+      transaction::Hints hints, std::shared_ptr<TransactionState>& state);
 
   /// @brief lease the transaction, increases nesting
   std::shared_ptr<transaction::Context> leaseManagedTrx(TransactionId tid,
@@ -250,7 +250,7 @@ class Manager final : public IManager {
 
  private:
   /// @brief create managed transaction, also generate a tranactionId
-  ResultT<TransactionId> createManagedTrx(
+  futures::Future<ResultT<TransactionId>> createManagedTrx(
       TRI_vocbase_t& vocbase, std::vector<std::string> const& readCollections,
       std::vector<std::string> const& writeCollections,
       std::vector<std::string> const& exclusiveCollections, Options options,
@@ -259,11 +259,11 @@ class Manager final : public IManager {
   Result prepareOptions(transaction::Options& options);
   bool isFollowerTransactionOnDBServer(
       transaction::Options const& options) const;
-  Result lockCollections(TRI_vocbase_t& vocbase,
-                         std::shared_ptr<TransactionState> state,
-                         std::vector<std::string> const& exclusiveCollections,
-                         std::vector<std::string> const& writeCollections,
-                         std::vector<std::string> const& readCollections);
+  futures::Future<Result> lockCollections(
+      TRI_vocbase_t& vocbase, std::shared_ptr<TransactionState> state,
+      std::vector<std::string> const& exclusiveCollections,
+      std::vector<std::string> const& writeCollections,
+      std::vector<std::string> const& readCollections);
   transaction::Hints ensureHints(transaction::Options& options) const;
 
   /// @brief performs a status change on a transaction using a timeout

@@ -37,13 +37,14 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "Containers/FlatHashSet.h"
+#include "Metrics/Fwd.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
-#include "Metrics/Fwd.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBEngineEE.h"
@@ -146,7 +147,12 @@ class RocksDBFilePurgeEnabler {
   RocksDBEngine* _engine;
 };
 
-class RocksDBEngine final : public StorageEngine {
+struct ICompactKeyRange {
+  virtual ~ICompactKeyRange() = default;
+  virtual void compactRange(RocksDBKeyBounds bounds) = 0;
+};
+
+class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   friend class RocksDBFilePurgePreventer;
   friend class RocksDBFilePurgeEnabler;
 
@@ -286,7 +292,7 @@ class RocksDBEngine final : public StorageEngine {
                            std::string const& collection);
   void processTreeRebuilds();
 
-  void compactRange(RocksDBKeyBounds bounds);
+  void compactRange(RocksDBKeyBounds bounds) override;
   void processCompactions();
 
   auto dropReplicatedState(
@@ -720,6 +726,12 @@ class RocksDBEngine final : public StorageEngine {
   std::deque<RocksDBKeyBounds> _pendingCompactions;
   /// @brief number of currently running compaction jobs
   size_t _runningCompactions;
+  /// @brief column families for which we are currently running a compaction.
+  /// we track this because we want to avoid running multiple compactions on
+  /// the same column family concurrently. this can help to avoid a shutdown
+  /// hanger in rocksdb.
+  containers::FlatHashSet<rocksdb::ColumnFamilyHandle*>
+      _runningCompactionsColumnFamilies;
 
   // frequency for throttle in milliseconds between iterations
   uint64_t _throttleFrequency = 1000;

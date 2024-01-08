@@ -31,6 +31,10 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
+namespace futures {
+template<typename T>
+class Future;
+}
 class LogicalCollection;
 namespace transaction {
 class Methods;
@@ -77,7 +81,7 @@ class TransactionCollection {
 
   virtual bool canAccess(AccessMode::Type accessType) const = 0;
 
-  virtual Result lockUsage() = 0;
+  virtual futures::Future<Result> lockUsage() = 0;
   virtual void releaseUsage() = 0;
 
  protected:
@@ -89,7 +93,7 @@ class TransactionCollection {
 
  private:
   // perform lock, sets _lockType
-  virtual Result doLock(AccessMode::Type) = 0;
+  virtual futures::Future<Result> doLock(AccessMode::Type) = 0;
   virtual Result doUnlock(AccessMode::Type) = 0;
 };
 

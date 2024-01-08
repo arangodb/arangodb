@@ -12,7 +12,7 @@ export const ResultTypeBox = ({
       display="inline-block"
       padding="1"
       borderRadius="4"
-      backgroundColor="blue.400"
+      backgroundColor="green.700"
       color="white"
       textTransform="capitalize"
     >

@@ -200,7 +200,12 @@ uint64_t ClusterCollection::numberDocuments(transaction::Methods* trx) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-std::shared_ptr<Index> ClusterCollection::createIndex(
+bool ClusterCollection::cacheEnabled() const noexcept {
+  return basics::VelocyPackHelper::getBooleanValue(
+      _info.slice(), StaticStrings::CacheEnabled, false);
+}
+
+futures::Future<std::shared_ptr<Index>> ClusterCollection::createIndex(
     velocypack::Slice info, bool restore, bool& created,
     std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
@@ -213,7 +218,7 @@ std::shared_ptr<Index> ClusterCollection::createIndex(
   if (idx) {
     created = false;
     // We already have this index.
-    return idx;
+    co_return idx;
   }
 
   StorageEngine& engine = _logicalCollection.vocbase()
@@ -232,7 +237,7 @@ std::shared_ptr<Index> ClusterCollection::createIndex(
   _indexes.emplace(idx);
 
   created = true;
-  return idx;
+  co_return idx;
 }
 
 std::unique_ptr<IndexIterator> ClusterCollection::getAllIterator(
@@ -275,6 +280,13 @@ Result ClusterCollection::lookup(transaction::Methods* trx,
                                  IndexIterator::DocumentCallback const& cb,
                                  LookupOptions options,
                                  StorageSnapshot const* snapshot) const {
+  return {TRI_ERROR_NOT_IMPLEMENTED};
+}
+
+Result ClusterCollection::lookup(transaction::Methods* trx,
+                                 std::span<LocalDocumentId> tokens,
+                                 MultiDocumentCallback const& cb,
+                                 LookupOptions options) const {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 

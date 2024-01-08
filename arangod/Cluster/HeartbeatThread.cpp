@@ -1052,8 +1052,8 @@ void HeartbeatThread::runSingleServer() {
           auto database = sysDbFeature.use();
           server()
               .getFeature<V8DealerFeature>()
-              .loadJavaScriptFileInAllContexts(database.get(),
-                                               "server/leader.js", nullptr);
+              .loadJavaScriptFileInAllExecutors(database.get(),
+                                                "server/leader.js", nullptr);
           LOG_TOPIC("98325", INFO, Logger::HEARTBEAT)
               << "Successful leadership takeover: "
               << "All your base are belong to us";

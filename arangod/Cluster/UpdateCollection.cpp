@@ -35,6 +35,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Replication2/AgencyCollectionSpecification.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/ClusterUtils.h"
@@ -132,7 +133,7 @@ bool UpdateCollection::first() {
         }
 
         OperationOptions options(ExecContext::current());
-        return Collections::updateProperties(*coll, props, options);
+        return Collections::updateProperties(*coll, props, options).get();
       }));
       result(res);
 

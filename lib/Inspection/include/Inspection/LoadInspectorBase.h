@@ -383,7 +383,7 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
       auto v = Factory<typename Arg::Type>::make_value();
       auto res = parse(v);
       if (res.ok()) {
-        result = v;
+        result = std::move(v);
       } else if constexpr (!std::is_same_v<FieldNameFn, std::monostate>) {
         return {std::move(res), fieldName(arg), Status::AttributeTag{}};
       }

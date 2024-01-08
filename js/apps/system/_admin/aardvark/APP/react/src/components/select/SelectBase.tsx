@@ -62,12 +62,37 @@ export const getSelectBase = <IsMulti extends boolean = false>(
             Option,
             SingleValue
           }}
+          theme={theme => {
+            return {
+              ...theme,
+              colors: {
+                ...theme.colors,
+                primary: "var(--green-600)",
+                primary75: "var(--gray-400)",
+                primary50: "var(--gray-300)",
+                primary25: "var(--gray-200)"
+              }
+            };
+          }}
           styles={{
             ...props.styles,
             option: baseStyles => ({
               ...baseStyles,
               overflow: "hidden",
               textOverflow: "ellipsis"
+            }),
+            control: (baseStyles, inputProps) => ({
+              ...baseStyles,
+              borderColor: inputProps.isFocused ? "var(--blue-600)" : undefined,
+              boxShadow: inputProps.isFocused
+                ? "0 0 0 1px var(--blue-600)"
+                : undefined,
+              ":hover": {
+                borderColor: inputProps.isFocused
+                  ? "var(--blue-600)"
+                  : "var(--gray-300)"
+              },
+              ...props.styles?.control?.(baseStyles, inputProps)
             }),
             menuPortal: base => ({ ...base, zIndex: 9999 }),
             input: (baseStyles, inputProps) => ({

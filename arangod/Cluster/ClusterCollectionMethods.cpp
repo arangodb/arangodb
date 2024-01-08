@@ -71,6 +71,11 @@ inline auto pathDatabaseInTarget(std::string_view databaseName) {
   return paths::plan()->databases()->database(std::string{databaseName});
 }
 
+inline auto pathCollectionGroupInCurrent(std::string_view databaseName) {
+  return paths::current()->collectionGroups()->database(
+      std::string{databaseName});
+}
+
 auto reactToPreconditions(AsyncAgencyCommResult&& agencyRes)
     -> ResultT<uint64_t> {
   // We ordered the creation of collection, if this was not
@@ -110,15 +115,14 @@ auto reactToPreconditionsCreate(AsyncAgencyCommResult&& agencyRes)
   return slice.at(slice.length() - 1).getNumericValue<uint64_t>();
 }
 
-auto waitForOperationRoundtrip(ClusterInfo& ci) {
-  return [&ci](ResultT<uint64_t>&& agencyRaftIndex) -> Result {
-    // Got the Plan version while building.
-    // Let us wait for it
-    if (agencyRaftIndex.fail()) {
-      return agencyRaftIndex.result();
-    }
-    return ci.waitForPlan(agencyRaftIndex.get()).get();
-  };
+auto waitForOperationRoundtrip(ClusterInfo& ci,
+                               ResultT<uint64_t>&& agencyRaftIndex) {
+  // Got the Plan version while building.
+  // Let us wait for it
+  if (agencyRaftIndex.fail()) {
+    return agencyRaftIndex.result();
+  }
+  return ci.waitForPlan(agencyRaftIndex.get()).get();
 }
 
 auto waitForCurrentToCatchUp(
@@ -126,65 +130,58 @@ auto waitForCurrentToCatchUp(
     std::vector<std::pair<std::shared_ptr<AgencyCallback>, std::string>>&
         callbackList,
     double pollInterval) {
-  return [&server, &callbackInfos, &callbackList, pollInterval](Result&& res) {
-    // We waited on the buildingPlan to be loaded in the local cache
-    // Now let us watch for CURRENT to check if all requried changes
-    // ahve been applied
-    if (res.fail()) {
-      // TODO: TRIGGER_CLEANUP
-      return res;
+  // We waited on the buildingPlan to be loaded in the local cache
+  // Now let us watch for CURRENT to check if all required changes
+  // have been applied
+  TRI_IF_FAILURE("ClusterInfo::createCollectionsCoordinator") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  // NOTE: LOGID was 98bca before, duplicate from below
+  LOG_TOPIC("98bc9", DEBUG, Logger::CLUSTER)
+      << "createCollectionCoordinator, Plan changed, waiting for "
+         "success...";
+
+  // Now "busy-loop"
+  while (!server.isStopping()) {
+    auto maybeFinalResult = callbackInfos->getResultIfAllReported();
+    if (maybeFinalResult.has_value()) {
+      // We have a final result. we are complete
+      return maybeFinalResult.value();
     }
 
-    TRI_IF_FAILURE("ClusterInfo::createCollectionsCoordinator") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    // NOTE: LOGID was 98bca before, duplicate from below
-    LOG_TOPIC("98bc9", DEBUG, Logger::CLUSTER)
-        << "createCollectionCoordinator, Plan changed, waiting for "
-           "success...";
-
-    // Now "busy-loop"
-    while (!server.isStopping()) {
-      auto maybeFinalResult = callbackInfos->getResultIfAllReported();
-      if (maybeFinalResult.has_value()) {
-        // We have a final result. we are complete
-        return maybeFinalResult.value();
-      }
-
-      // We do not have a final result. Let's wait for more input
-      // Wait for the next incomplete callback
-      for (auto& [cb, cid] : callbackList) {
-        if (!callbackInfos->hasReported(cid)) {
-          // We do not have result for this collection, wait for it.
-          bool gotTimeout;
-          {
-            // This one has not responded, wait for it.
-            std::unique_lock guard(cb->_cv.mutex);
-            gotTimeout = cb->executeByCallbackOrTimeout(pollInterval);
-          }
-          if (gotTimeout) {
-            // We got woken up by waittime, not by  callback.
-            // Let us check if we skipped other callbacks as well
-            for (auto& [cb2, cid2] : callbackList) {
-              if (callbackInfos->hasReported(cid2)) {
-                // Only re check those where we have not yet found a
-                // result.
-                cb2->refetchAndUpdate(true, false);
-              }
+    // We do not have a final result. Let's wait for more input
+    // Wait for the next incomplete callback
+    for (auto& [cb, cid] : callbackList) {
+      if (!callbackInfos->hasReported(cid)) {
+        // We do not have result for this collection, wait for it.
+        bool gotTimeout;
+        {
+          // This one has not responded, wait for it.
+          std::unique_lock guard(cb->_cv.mutex);
+          gotTimeout = cb->executeByCallbackOrTimeout(pollInterval);
+        }
+        if (gotTimeout) {
+          // We got woken up by waittime, not by  callback.
+          // Let us check if we skipped other callbacks as well
+          for (auto& [cb2, cid2] : callbackList) {
+            if (callbackInfos->hasReported(cid2)) {
+              // Only re check those where we have not yet found a
+              // result.
+              cb2->refetchAndUpdate(true, false);
             }
           }
-          // Break the callback loop,
-          // continue on the check if we completed loop
-          break;
         }
+        // Break the callback loop,
+        // continue on the check if we completed loop
+        break;
       }
     }
+  }
 
-    // If we get here we are not allowed to retry.
-    // The loop above does not contain a break
-    TRI_ASSERT(server.isStopping());
-    return Result{TRI_ERROR_SHUTTING_DOWN};
-  };
+  // If we get here we are not allowed to retry.
+  // The loop above does not contain a break
+  TRI_ASSERT(server.isStopping());
+  return Result{TRI_ERROR_SHUTTING_DOWN};
 }
 
 Result impl(ClusterInfo& ci, ArangodServer& server,
@@ -205,13 +202,6 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
       return planVersion.result();
     }
     std::vector<ServerID> availableServers = ci.getCurrentDBServers();
-
-    TRI_IF_FAILURE("allShardsOnSameServer") {
-      std::sort(availableServers.begin(), availableServers.end());
-      while (availableServers.size() > 1) {
-        availableServers.pop_back();
-      }
-    }
 
     auto buildingTransaction = writer.prepareStartBuildingTransaction(
         databaseName, planVersion.get(), availableServers);
@@ -442,13 +432,11 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
 Result impl(ClusterInfo& ci, ArangodServer& server,
             std::string_view databaseName, TargetCollectionAgencyWriter& writer,
             bool waitForSyncReplication) {
-  AgencyComm ac(server);
-  double pollInterval = ci.getPollInterval();
-  AgencyCallbackRegistry& callbackRegistry = ci.agencyCallbackRegistry();
+  std::vector<ServerID> availableServers = ci.getCurrentDBServers();
 
   // TODO Timeout?
-  std::vector<std::string> collectionNames = writer.collectionNames();
-  auto buildingTransaction = writer.prepareCreateTransaction(databaseName);
+  auto buildingTransaction =
+      writer.prepareCreateTransaction(databaseName, availableServers);
   if (buildingTransaction.fail()) {
     return buildingTransaction.result();
   }
@@ -458,6 +446,7 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
 
   std::vector<std::pair<std::shared_ptr<AgencyCallback>, std::string>>
       callbackList;
+  AgencyCallbackRegistry& callbackRegistry = ci.agencyCallbackRegistry();
   auto unregisterCallbacksGuard =
       scopeGuard([&callbackList, &callbackRegistry]() noexcept {
         try {
@@ -488,16 +477,20 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
   AsyncAgencyComm aac;
   // TODO do we need to handle Error message (thenError?)
 
-  auto future =
-      aac.sendWriteTransaction(120s, std::move(buildingTransaction.get()))
+  double pollInterval = ci.getPollInterval();
+  auto res =
+      aac.withSkipScheduler(true)
+          .sendWriteTransaction(120s, std::move(buildingTransaction.get()))
           .thenValue(::reactToPreconditionsCreate)
-          .thenValue(waitForOperationRoundtrip(ci))
-          .thenValue(waitForCurrentToCatchUp(server, callbackInfos,
-                                             callbackList, pollInterval));
-  // Wait synchronously here.
-  // We cannot easily return the future as the callbacks capture local
-  // variables.
-  return future.get();
+          .get();
+
+  if (auto r = waitForOperationRoundtrip(ci, std::move(res)); r.fail()) {
+    // TODO: TRIGGER_CLEANUP
+    return r;
+  }
+
+  return waitForCurrentToCatchUp(server, callbackInfos, callbackList,
+                                 pollInterval);
 }
 
 template<replication::Version ReplicationVersion>
@@ -748,11 +741,10 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
           TRI_ASSERT(shardingInfo != nullptr);
 
           auto shardNames = shardingInfo->shardListAsShardID();
-          TRI_ASSERT(shardNames != nullptr);
           std::vector<ResponsibleServerList> result{};
           auto shardIds = shardingInfo->shardIds();
           result.reserve(shardIds->size());
-          for (auto const& s : *shardNames) {
+          for (auto const& s : shardNames) {
             auto servers = shardIds->find(s);
             result.emplace_back(ResponsibleServerList{servers->second});
           }
@@ -826,7 +818,6 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
     VPackBufferUInt8 data;
     VPackBuilder builder(data);
     auto envelope = arangodb::agency::envelope::into_builder(builder);
-    auto properties = col.getCollectionProperties();
     // NOTE: We could do this better with partial updates.
     // e.g. we do not need to update the group if only the schema of the
     // collection is modified
@@ -855,6 +846,11 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
           [&](VPackBuilder& builder) { col.schemaToVelocyPack(builder); });
 
       writes = std::move(writes).emplace_object(
+          colBase->cacheEnabled()->str(), [&](VPackBuilder& builder) {
+            builder.add(VPackValue(col.cacheEnabled()));
+          });
+
+      writes = std::move(writes).emplace_object(
           colBase->computedValues()->str(), [&](VPackBuilder& builder) {
             col.computedValuesToVelocyPack(builder);
           });
@@ -868,6 +864,17 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
     // Increment the Group Version
     writes = std::move(writes).inc(groupBase->version()->str());
 
+    // First read set version (sorry we have to do this as the increment call to
+    // version does not give us the new value back)
+    VPackBuilder response;
+    agencyCache.get(response, groupBase->version()->str(
+                                  arangodb::cluster::paths::SkipComponents{1}));
+    uint64_t versionToWaitFor =
+        basics::VelocyPackHelper::getNumericValue(response.slice(), 0ull);
+    // We may get 0 here if the Target Group Entry does not exist anymore.
+    // This indicates that the Group does not exist anymore. If this happens the
+    // below preconditions will catch this.
+
     // Preconditions: Database exists, Collection exists. Group exists.
     auto preconditions = std::move(writes).precs();
     preconditions = std::move(preconditions)
@@ -878,11 +885,41 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
 
     // Now data contains the transaction;
     using namespace std::chrono_literals;
-    auto future = aac.sendWriteTransaction(120s, std::move(data))
-                      .thenValue(::reactToPreconditions)
-                      .thenValue(waitForOperationRoundtrip(ci));
-    return future.get();
+    auto res = aac.sendWriteTransaction(120s, std::move(data))
+                   .thenValue(::reactToPreconditions)
+                   .get();
 
+    if (res.fail()) {
+      return res.result();
+    }
+    // Now wait for the change to be happening
+    AgencyCallbackRegistry& callbackRegistry = ci.agencyCallbackRegistry();
+    auto currentGroup = pathCollectionGroupInCurrent(databaseName)
+                            ->group(std::to_string(col.groupID().id()))
+                            ->supervision()
+                            ->str(arangodb::cluster::paths::SkipComponents(1));
+    auto waitForSuccess = callbackRegistry.waitFor(
+        currentGroup, [versionToWaitFor](VPackSlice slice) {
+          TRI_ASSERT(versionToWaitFor > 0)
+              << "We have found a CollectionGroup without a current version";
+          if (slice.isNone()) {
+            // TODO: Should this actual set an "error"? It indicates
+            // that the collection is dropped if i am not mistaken
+            return false;
+          }
+          auto groupSupervision = velocypack::deserialize<
+              replication2::agency::CollectionGroupCurrentSpecification::
+                  Supervision>(slice);
+          // We need to wait for a version that is greater than the one we
+          // started with
+          return groupSupervision.version.has_value() &&
+                 groupSupervision.version.value() > versionToWaitFor;
+        });
+    // WE do not really need the change to be appied.
+    // We just have to wait for DBServers to apply it.
+    std::ignore = waitForSuccess.get();
+    // Everything works as expected.
+    return TRI_ERROR_NO_ERROR;
   } else {
     AgencyPrecondition databaseExists("Plan/Databases/" + databaseName,
                                       AgencyPrecondition::Type::EMPTY, false);
@@ -939,9 +976,10 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
                                  {databaseExists, oldValue});
 
     using namespace std::chrono_literals;
-    auto future = aac.sendTransaction(120s, trans)
-                      .thenValue(::reactToPreconditions)
-                      .thenValue(waitForOperationRoundtrip(ci));
-    return future.get();
+    auto res = aac.withSkipScheduler(true)
+                   .sendTransaction(120s, trans)
+                   .thenValue(::reactToPreconditions)
+                   .get();
+    return waitForOperationRoundtrip(ci, std::move(res));
   }
 }

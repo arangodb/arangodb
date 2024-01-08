@@ -965,7 +965,8 @@ PhysicalCollectionMock::PhysicalCollectionMock(
     arangodb::LogicalCollection& collection)
     : PhysicalCollection(collection), _lastDocumentId{0} {}
 
-std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
+arangodb::futures::Future<std::shared_ptr<arangodb::Index>>
+PhysicalCollectionMock::createIndex(
     arangodb::velocypack::Slice info, bool restore, bool& created,
     std::shared_ptr<std::function<arangodb::Result(double)>>) {
   before();
@@ -1014,7 +1015,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
   }
 
   if (!index) {
-    return nullptr;
+    return std::shared_ptr<arangodb::Index>{nullptr};
   }
 
   TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
@@ -1321,6 +1322,29 @@ arangodb::Result PhysicalCollectionMock::lookup(
   return arangodb::Result{TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND};
 }
 
+arangodb::Result PhysicalCollectionMock::lookup(
+    arangodb::transaction::Methods* trx,
+    std::span<arangodb::LocalDocumentId> tokens,
+    MultiDocumentCallback const& cb, LookupOptions options) const {
+  before();
+  for (auto token : tokens) {
+    bool found = false;
+    for (auto const& entry : _documents) {
+      auto& doc = entry.second;
+      if (doc.docId() == token) {
+        cb(arangodb::Result{}, token, nullptr, doc.data());
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      cb(arangodb::Result{TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND}, token, nullptr,
+         {});
+    }
+  }
+  return arangodb::Result{};
+}
+
 arangodb::Result PhysicalCollectionMock::remove(
     arangodb::transaction::Methods& trx,
     arangodb::IndexesSnapshot const& /*indexesSnapshot*/,
@@ -1428,9 +1452,9 @@ arangodb::Result PhysicalCollectionMock::updateInternal(
               .stringView();
 
     auto docId = it->second.docId();
-    // must remove and insert, because our map's key type is a string_view. the
-    // string_view could point to invalid memory if we change a map entry's
-    // contents.
+    // must remove and insert, because our map's key type is a string_view.
+    // the string_view could point to invalid memory if we change a map
+    // entry's contents.
     _documents.erase(it);
     auto const& [ref, didInsert] =
         _documents.emplace(key, DocElement{std::move(newBuffer), docId.id()});

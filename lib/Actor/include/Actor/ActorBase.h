@@ -24,7 +24,7 @@
 
 #pragma once
 
-#include "Actor/DistributedActorPID.h"
+#include "Actor/ExitReason.h"
 #include "Actor/IWorkable.h"
 #include "Actor/Message.h"
 
@@ -38,7 +38,7 @@ struct ActorBase : IWorkable {
       -> void = 0;
   virtual auto typeName() -> std::string_view = 0;
   virtual auto serialize() -> velocypack::SharedSlice = 0;
-  virtual auto finish() -> void = 0;
+  virtual auto finish(ExitReason reason) -> void = 0;
   virtual auto isFinishedAndIdle() -> bool = 0;
   virtual auto isIdle() -> bool = 0;
 };

@@ -1,16 +1,14 @@
 import { useEffect } from "react";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
-import { useQueryContext } from "../QueryContextProvider";
 import { QueryResultType } from "../ArangoQuery.types";
+import { useQueryContext } from "../QueryContextProvider";
 
 export const useSyncQueryExecuteJob = ({
   queryResult,
-  asyncJobId,
-  index
+  asyncJobId
 }: {
   queryResult: QueryResultType;
-  asyncJobId?: string;
-  index: number;
+  asyncJobId: string;
 }) => {
   const {
     setQueryResultById,
@@ -27,7 +25,7 @@ export const useSyncQueryExecuteJob = ({
       cursorId
     }: {
       cursorId: any;
-      asyncJobId: string | undefined;
+      asyncJobId: string;
     }) => {
       if (!cursorId) {
         return Promise.resolve();
@@ -153,5 +151,5 @@ export const useSyncQueryExecuteJob = ({
     };
     // disabled because these functions don't need to be in deps
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [asyncJobId, index]);
+  }, [asyncJobId]);
 };

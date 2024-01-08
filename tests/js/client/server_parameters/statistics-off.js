@@ -76,6 +76,15 @@ function testSuite() {
       assertEqual(0, count);
     },
 
+    testMemoryUsage : function() {
+      // issue some random requests to the server
+      for (let i = 0; i < 10; ++i) {
+         arango.GET_RAW("/_admin/metrics");
+      }
+      // metric values should always be 0 if statistics are disabled
+      assertEqual(0, getMetric("arangodb_connection_statistics_memory_usage"));
+      assertEqual(0, getMetric("arangodb_request_statistics_memory_usage"));
+    },
   };
 }
 

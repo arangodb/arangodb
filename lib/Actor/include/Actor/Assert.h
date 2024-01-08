@@ -25,7 +25,7 @@
 
 #ifdef STANDALONE
 #define ACTOR_ASSERT(expr) \
-  if (not expr) {          \
+  if (not(expr)) {         \
     std::abort();          \
   }
 #else

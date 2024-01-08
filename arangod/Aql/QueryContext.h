@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Aql/Collections.h"
-#include "Aql/Graphs.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryOptions.h"
 #include "Aql/QueryWarnings.h"
@@ -150,11 +149,11 @@ class QueryContext {
   virtual double getLockTimeout() const noexcept = 0;
   virtual void setLockTimeout(double timeout) = 0;
 
-  virtual void enterV8Context();
+  virtual void enterV8Executor();
 
-  virtual void exitV8Context() {}
+  virtual void exitV8Executor() {}
 
-  virtual bool hasEnteredV8Context() const { return false; }
+  virtual bool hasEnteredV8Executor() const { return false; }
 
   // base overhead for each query. the number used here is somewhat arbitrary.
   // it is just that all the basics data structures of a query are not totally

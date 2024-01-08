@@ -29,6 +29,11 @@ namespace arangodb::actor::test {
 struct MockScheduler : IScheduler {
   auto start(size_t number_of_threads) -> void{};
   auto stop() -> void{};
+  template<class Fn>
+  auto isIdle(Fn idleCheck) const -> bool {
+    return idleCheck();
+  }
+
   void queue(LazyWorker&& worker) override { worker(); }
   void delay(std::chrono::seconds delay,
              std::function<void(bool)>&& fn) override {

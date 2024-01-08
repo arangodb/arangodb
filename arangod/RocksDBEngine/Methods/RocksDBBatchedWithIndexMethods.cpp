@@ -45,6 +45,19 @@ rocksdb::Status RocksDBBatchedWithIndexMethods::Get(
   return _db->Get(ro, cf, key, val);
 }
 
+void RocksDBBatchedWithIndexMethods::MultiGet(
+    rocksdb::ColumnFamilyHandle& family, size_t count,
+    rocksdb::Slice const* keys, rocksdb::PinnableSlice* values,
+    rocksdb::Status* statuses, ReadOwnWrites readOwnWrites) {
+  rocksdb::ReadOptions ro;
+  if (readOwnWrites == ReadOwnWrites::yes) {
+    _wb->MultiGetFromBatchAndDB(_db, ro, &family, count, keys, values, statuses,
+                                false);
+  } else {
+    _db->MultiGet(ro, &family, count, keys, values, statuses, false);
+  }
+}
+
 rocksdb::Status RocksDBBatchedWithIndexMethods::GetForUpdate(
     rocksdb::ColumnFamilyHandle* cf, rocksdb::Slice const& key,
     rocksdb::PinnableSlice* val) {

@@ -75,10 +75,17 @@ ErrorCode resolveDestination(ClusterInfo& ci, DestinationId const& dest,
   if (dest.starts_with("shard:")) {
     spec.shardId = dest.substr(6);
     {
-      auto resp = ci.getResponsibleServer(spec.shardId);
-      if (!resp->empty()) {
-        spec.serverId = (*resp)[0];
-      } else {
+      auto maybeShard = ShardID::shardIdFromString(spec.shardId);
+      bool gotError = true;
+      if (maybeShard.ok()) {
+        auto resp = ci.getResponsibleServer(maybeShard.get());
+        if (!resp->empty()) {
+          spec.serverId = (*resp)[0];
+          gotError = false;
+        }
+      }
+
+      if (gotError) {
         LOG_TOPIC("60ee8", ERR, Logger::CLUSTER)
             << "cannot find responsible server for shard '" << spec.shardId
             << "'";

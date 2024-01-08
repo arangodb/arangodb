@@ -777,7 +777,22 @@ function ahuacatlModifySuite () {
 
       assertEqual(999999, c1.document("test999999").value1);
       assertEqual(1, c1.document("test999999").value2);
-    }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief multiple upserts on top level
+////////////////////////////////////////////////////////////////////////////////
+    
+    testMultipleUpsertsOnTopLevel : function () {
+      const actual = db._query("UPSERT { _key: 'foo' } INSERT {} UPDATE { updated: true } IN @@cn1 UPSERT { _key: 'foo' } INSERT {} UPDATE { updated: true } IN @@cn2", { "@cn1": cn1, "@cn2": cn2 });
+
+      const expected = { writesExecuted: 2, writesIgnored: 0 };
+      assertEqual(expected, sanitizeStats(actual.getExtra().stats));
+      assertEqual([], actual.toArray());
+
+      assertTrue(c1.document("foo").updated);
+      assertTrue(c2.document("foo").updated);
+    },
 
   };
 }

@@ -34,6 +34,7 @@ struct IResearchExecutionPool final : public metrics::Gauge<uint64_t> {
   void setLimit(int newLimit) noexcept {
     // should not be called during execution of queries!
     TRI_ASSERT(load() == 0);
+    _pool.start(newLimit, IR_NATIVE_STRING("ARS-2"));
     _limit = newLimit;
   }
 
@@ -42,19 +43,17 @@ struct IResearchExecutionPool final : public metrics::Gauge<uint64_t> {
     _pool.stop(true);
   }
 
-  uint64_t allocateThreads(uint64_t deltaActive, uint64_t deltaDemand);
+  uint64_t allocateThreads(uint64_t active, uint64_t demand);
 
   void releaseThreads(uint64_t active, uint64_t demand);
 
-  using Pool = irs::async_utils::thread_pool<false>;
+  using Pool = irs::async_utils::ThreadPool<false>;
 
-  bool run(Pool::func_t&& fn) {
-    return _pool.run(std::forward<Pool::func_t>(fn));
-  }
+  bool run(Pool::Func&& fn) { return _pool.run(std::move(fn)); }
 
  private:
-  Pool _pool{0, 0, IR_NATIVE_STRING("ARS-2")};
-  std::atomic<uint64_t> _active;
+  Pool _pool;
+  std::atomic_uint64_t _active{0};
   uint64_t _limit{0};
 };
 }  // namespace arangodb::iresearch

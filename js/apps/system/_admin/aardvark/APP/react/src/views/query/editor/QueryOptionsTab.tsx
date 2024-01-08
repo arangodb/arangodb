@@ -41,8 +41,8 @@ const BASIC_QUERY_OPTIONS = {
 const ADVANCED_QUERY_OPTIONS = {
   fillBlockCache: {
     type: "boolean",
-    label: "Fail on Warning",
-    name: "failOnWarning"
+    label: "Fill Block Cache",
+    name: "fillBlockCache"
   },
   maxNumberOfPlans: {
     type: "number",

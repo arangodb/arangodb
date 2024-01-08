@@ -363,6 +363,8 @@ bool FailedLeader::start(bool& aborts) {
                                     Supervision::HEALTH_STATUS_GOOD);
         // Server list in plan still as before
         addPreconditionUnchanged(pending, planPath, planned);
+        // All clones still exist
+        addPreconditionClonesStillExist(pending, _database, shardsLikeMe);
         // Check that Current/servers and failoverCandidates are still as
         // we inspected them:
         doForAllShards(
@@ -461,7 +463,7 @@ bool FailedLeader::start(bool& aborts) {
     if (!slice.isNone()) {
       LOG_TOPIC("aff11", INFO, Logger::SUPERVISION)
           << "Destination server " << _to << " meanwhile is blocked by job "
-          << slice.copyString();
+          << slice.stringView();
     }
 
     // This shard blocked by other job?
@@ -470,7 +472,7 @@ bool FailedLeader::start(bool& aborts) {
     if (!slice.isNone()) {
       LOG_TOPIC("71bb2", INFO, Logger::SUPERVISION)
           << "Shard  " << _shard << " meanwhile is blocked by job "
-          << slice.copyString();
+          << slice.stringView();
     }
   }
 

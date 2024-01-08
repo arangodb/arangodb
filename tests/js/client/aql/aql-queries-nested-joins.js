@@ -62,12 +62,12 @@ function nestedJoinsTestSuite () {
 
     testJoinWithRange : function () {
       [1, 10, 100, 1000, 10000].forEach((max) => {
-        const q = `FOR i IN 0..${max - 1} FOR doc IN ${cn} FILTER doc.value == i RETURN doc.value`;
+        const q = `FOR i IN 0..${max - 1} FOR doc IN ${cn} FILTER doc.value == i RETURN doc.value2`;
 
         let nodes = db._createStatement(q).explain().plan.nodes.filter((node) => node.type === 'IndexNode');
         assertEqual(1, nodes.length);
         assertEqual(1, nodes[0].indexes.length);
-        assertEqual(normalize(["value"]), normalize(nodes[0].projections));
+        assertEqual(normalize(["value2"]), normalize(nodes[0].projections));
 
         let results = db._query(q).toArray();
         assertEqual(max, results.length);
@@ -76,14 +76,13 @@ function nestedJoinsTestSuite () {
     
     testJoinWithCollectionEquality : function () {
       [1, 10, 100, 1000, 10000].forEach((max) => {
-        const q = `FOR doc1 IN ${cn} FILTER doc1.value == ${max - 1} FOR doc2 IN ${cn} FILTER doc2.value == doc1.value RETURN doc2.value`;
-
+        const q = `FOR doc1 IN ${cn} FILTER doc1.value == ${max - 1} FOR doc2 IN ${cn} FILTER doc2.value == doc1.value RETURN doc2.value2`;
         let nodes = db._createStatement(q).explain().plan.nodes.filter((node) => node.type === 'IndexNode');
         assertEqual(2, nodes.length);
         assertEqual(1, nodes[0].indexes.length);
         assertEqual(1, nodes[1].indexes.length);
         assertEqual(normalize([]), normalize(nodes[0].projections));
-        assertEqual(normalize(["value"]), normalize(nodes[1].projections));
+        assertEqual(normalize(["value2"]), normalize(nodes[1].projections));
 
         let results = db._query(q).toArray();
         assertEqual(1, results.length);
@@ -92,14 +91,14 @@ function nestedJoinsTestSuite () {
 
     testJoinWithCollectionRange : function () {
       [1, 10, 100, 1000, 10000].forEach((max) => {
-        const q = `FOR doc1 IN ${cn} FILTER doc1.value < ${max} FOR doc2 IN ${cn} FILTER doc2.value == doc1.value RETURN doc2.value`;
+        const q = `FOR doc1 IN ${cn} FILTER doc1.value < ${max} FOR doc2 IN ${cn} FILTER doc2.value == doc1.value RETURN doc2.value2`;
 
         let nodes = db._createStatement(q).explain().plan.nodes.filter((node) => node.type === 'IndexNode');
         assertEqual(2, nodes.length);
         assertEqual(1, nodes[0].indexes.length);
         assertEqual(1, nodes[1].indexes.length);
         assertEqual(normalize(["value"]), normalize(nodes[0].projections));
-        assertEqual(normalize(["value"]), normalize(nodes[1].projections));
+        assertEqual(normalize(["value2"]), normalize(nodes[1].projections));
 
         let results = db._query(q).toArray();
         assertEqual(max, results.length);
@@ -108,14 +107,14 @@ function nestedJoinsTestSuite () {
     
     testJoinWithCollectionStringEquality1 : function () {
       [1, 10, 100, 1000, 10000].forEach((max) => {
-        const q = `FOR doc1 IN ${cn} FILTER doc1.value == CONCAT('this-is-a-longer-string-', ${max - 1}) FOR doc2 IN ${cn} FILTER doc2.value == doc1.value RETURN doc2.value`;
+        const q = `FOR doc1 IN ${cn} FILTER doc1.value == CONCAT('this-is-a-longer-string-', ${max - 1}) FOR doc2 IN ${cn} FILTER doc2.value == doc1.value RETURN doc2.value2`;
 
         let nodes = db._createStatement(q).explain().plan.nodes.filter((node) => node.type === 'IndexNode');
         assertEqual(2, nodes.length);
         assertEqual(1, nodes[0].indexes.length);
         assertEqual(1, nodes[1].indexes.length);
         assertEqual(normalize([]), normalize(nodes[0].projections));
-        assertEqual(normalize(["value"]), normalize(nodes[1].projections));
+        assertEqual(normalize(["value2"]), normalize(nodes[1].projections));
 
         let results = db._query(q).toArray();
         assertEqual(1, results.length);

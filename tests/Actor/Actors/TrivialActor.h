@@ -58,6 +58,10 @@ auto inspect(Inspector& f, TrivialStart& x) {
 
 struct TrivialMessage {
   TrivialMessage() = default;
+  // we intentionally make this message type move-only
+  TrivialMessage(TrivialMessage&) = delete;
+  TrivialMessage(TrivialMessage&&) = default;
+  TrivialMessage& operator=(TrivialMessage&&) = default;
   TrivialMessage(std::string value) : store(std::move(value)) {}
   std::string store;
 };

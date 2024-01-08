@@ -97,7 +97,9 @@ function foxxInterfaceSuite () {
                                       pixelStr
                                     },
                                     {
-                                      'content-type': jsonMime
+                                      'content-type': jsonMime,
+                                      'content-encoding': 'identity',
+                                      'accept-encoding': 'identity',
                                     });
         assertEqual(res.code, 200, { meth: reqMethod, replyBody: res.parsedBody });
         assertTrue(typeof res.parsedBody === 'object');
@@ -110,7 +112,7 @@ function foxxInterfaceSuite () {
       });
     },
     testFoxxInterfaceGet: function () {
-      let res = arango.GET_RAW(url);
+      let res = arango.GET_RAW(url, { 'accept-encoding': 'identity' });
       assertEqual(res.code, 200, res.parsedBody);
       assertTrue(typeof res.parsedBody === 'object');
       
@@ -121,7 +123,7 @@ function foxxInterfaceSuite () {
       assertEqual(res.headers['request-type'], 'GET_RAW');
     },
     testFoxxInterfaceHead: function () {
-      let res = arango.HEAD_RAW(url);
+      let res = arango.HEAD_RAW(url, { 'accept-encoding': 'identity' });
       assertEqual(res.code, 200, res.parsedBody);
       assertUndefined(res.body);
       assertEqual(res.headers['content-length'], vpackObjectSize);
@@ -139,7 +141,9 @@ function foxxInterfaceSuite () {
         let res = arango[reqMethod](binUrl,
                                     pixelGif,
                                     {
-                                      'content-type': binaryMime
+                                      'content-type': binaryMime,
+                                      'content-encoding': 'identity',
+                                      'accept-encoding': 'identity',
                                     });
         assertEqual(res.code, 200, { meth: reqMethod, replyBody: res.parsedBody });
         assertTrue(res.body instanceof Buffer);
@@ -184,7 +188,9 @@ function foxxInterfaceSuite () {
         let res = arango[reqMethod](txtUrl,
                                     pixelStr,
                                     {
-                                      'content-type': textMime
+                                      'content-type': textMime,
+                                      'content-encoding': 'identity',
+                                      'accept-encoding': 'identity',
                                     });
         assertEqual(res.code, 200, { meth: reqMethod, replyBody: res.parsedBody });
         assertTrue(typeof res.body === 'string');
@@ -197,7 +203,7 @@ function foxxInterfaceSuite () {
       });
     },
     testFoxxInterfaceGetText: function () {
-      let res = arango.GET_RAW(txtUrl);
+      let res = arango.GET_RAW(txtUrl, { 'accept-encoding': 'identity' });
       assertEqual(res.code, 200, res.parsedBody);
       assertTrue(typeof res.body === 'string');
 
@@ -208,7 +214,7 @@ function foxxInterfaceSuite () {
       assertEqual(res.headers['request-type'], 'GET_RAW');
     },
     testFoxxInterfaceHeadText: function () {
-      let res = arango.HEAD_RAW(txtUrl);
+      let res = arango.HEAD_RAW(txtUrl, { 'accept-encoding': 'identity' });
       assertEqual(res.code, 200, res.parsedBody);
       assertUndefined(res.body);
       assertEqual(res.headers['content-length'], pixelStr.length);

@@ -18,6 +18,10 @@ export const getRouteForDB = memoize(
   (db: string, route: string) => `${db}/${route}`
 );
 
+export const getRouteForCurrentDB = (route: string) => {
+  return getRouteForDB(window.frontendConfig.db, route);
+};
+
 export const getAardvarkRouteForCurrentDb = (url: string) =>
   getRouteForDB(window.frontendConfig.db, `_admin/aardvark/${url}`);
 export const getApiRouteForCurrentDB = () =>

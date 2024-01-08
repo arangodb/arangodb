@@ -43,6 +43,9 @@ auto DocumentStateErrorHandler::handleOpResult(
 auto DocumentStateErrorHandler::handleOpResult(
     ReplicatedOperation::DropShard const& op, Result const& res) const noexcept
     -> Result {
+  // This method is also used to prevent crashes on the leader while dropping a
+  // shard locally. If the shard is not there, there's not reason to panic -
+  // followers will probably notice the same thing.
   if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
     // During follower applyEntries or leader recovery, we might have already
     // dropped the shard.
@@ -93,12 +96,28 @@ auto DocumentStateErrorHandler::handleOpResult(
         << res;
     return TRI_ERROR_NO_ERROR;
   }
+  if (res.is(TRI_ERROR_BAD_PARAMETER)) {
+    // If there is another TTL index already, the
+    // `RocksDBCollection::createIndex` throws the bad parameter error code.
+    LOG_CTX("b4f7a", DEBUG, _loggerContext)
+        << "Index creation " << op.properties.toJson() << " on shard "
+        << op.shard
+        << " failed because a TTL index already exists, ignoring: " << res;
+    return TRI_ERROR_NO_ERROR;
+  }
   return res;
 }
 
 auto DocumentStateErrorHandler::handleOpResult(
     ReplicatedOperation::DropIndex const& op, Result const& res) const noexcept
     -> Result {
+  // This method is also used to prevent crashes on the leader while
+  // creating/dropping an index. While applying a DropIndex, there's no
+  // guarantee that the index or the shard is still there. However, if this
+  // happens, we can safely ignore the error - the index is already gone. Note
+  // that the undo operation after a failed CreateIndex is a DropIndex, so the
+  // same logic is applied there.
+
   if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
     // During follower applyEntries or leader recovery, we might have already
     // dropped the shard.

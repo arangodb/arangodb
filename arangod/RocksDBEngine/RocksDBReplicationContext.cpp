@@ -229,14 +229,14 @@ void RocksDBReplicationContext::releaseIterators(TRI_vocbase_t& vocbase,
 }
 
 /// Bind collection for incremental sync
-std::tuple<Result, DataSourceId, uint64_t>
+futures::Future<std::tuple<Result, DataSourceId, uint64_t>>
 RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
                                                      std::string const& cname) {
   std::shared_ptr<LogicalCollection> logical{vocbase.lookupCollection(cname)};
 
   if (!logical) {
-    return std::make_tuple(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                           DataSourceId::none(), 0);
+    co_return std::make_tuple(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                              DataSourceId::none(), 0);
   }
   DataSourceId cid = logical->id();
 
@@ -244,23 +244,29 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
       << "binding replication context " << id() << " to collection '" << cname
       << "'";
 
-  std::lock_guard writeLocker{_contextLock};
+  std::unique_lock<std::mutex> writeLocker{_contextLock};
 
   auto it = _iterators.find(cid);
   if (it != _iterators.end()) {  // nothing to do here
-    return std::make_tuple(Result{}, it->second->logical->id(),
-                           it->second->numberDocuments);
+    co_return std::make_tuple(Result{}, it->second->logical->id(),
+                              it->second->numberDocuments);
   }
 
   uint64_t numberDocuments;
   uint64_t documentCountAdjustmentTicket = 0;
   auto* rcoll = static_cast<RocksDBMetaCollection*>(logical->getPhysical());
   if (_snapshot == nullptr) {
+    // we have to release the lock before we execute the co_await. the
+    // problem is that if we keep holding the lock, this coroutine may be
+    // resumed in a different thread, and it is UB to unlock a mutex in a
+    // different thread than the one it was acquired in
+    writeLocker.unlock();
+
     // only DBServers require a corrected document count
     const double to = ServerState::instance()->isDBServer() ? 10.0 : 1.0;
     auto lockGuard = scopeGuard([rcoll]() noexcept { rcoll->unlockWrite(); });
     if (!_patchCount.empty() && _patchCount == cname &&
-        rcoll->lockWrite(to) == TRI_ERROR_NO_ERROR) {
+        co_await rcoll->lockWrite(to) == TRI_ERROR_NO_ERROR) {
       // fetch number docs and snapshot under exclusive lock
       // this should enable us to correct the count later
       documentCountAdjustmentTicket =
@@ -268,11 +274,24 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
     } else {
       lockGuard.cancel();
     }
+
+    // re-acquire the mutex. we need it for checking and modifying _iterators.
+    writeLocker.lock();
+
+    it = _iterators.find(cid);
+    if (it !=
+        _iterators.end()) {  // someone else inserted the iterator in-between
+      co_return std::make_tuple(Result{}, it->second->logical->id(),
+                                it->second->numberDocuments);
+    }
+
     numberDocuments = rcoll->meta().numberDocuments();
     lazyCreateSnapshot();
   } else {  // fetch non-exclusive
     numberDocuments = rcoll->meta().numberDocuments();
   }
+
+  TRI_ASSERT(writeLocker.owns_lock());
   TRI_ASSERT(_snapshot != nullptr);
   TRI_ASSERT(_snapshot->snapshot() != nullptr);
   TRI_ASSERT(documentCountAdjustmentTicket == 0 ||
@@ -286,7 +305,7 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
   CollectionIterator* cIter = result.first->second.get();
   if (nullptr == cIter->iter) {
     _iterators.erase(cid);
-    return std::make_tuple(
+    co_return std::make_tuple(
         Result(TRI_ERROR_INTERNAL, "could not create db iterators"),
         DataSourceId::none(), 0);
   }
@@ -311,7 +330,7 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
 
   // we should have a valid iterator if there are documents in here
   TRI_ASSERT(numberDocuments == 0 || cIter->hasMore());
-  return std::make_tuple(Result{}, cid, numberDocuments);
+  co_return std::make_tuple(Result{}, cid, numberDocuments);
 }
 
 void RocksDBReplicationContext::removeBlocker(

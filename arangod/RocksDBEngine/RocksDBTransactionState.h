@@ -68,7 +68,8 @@ class RocksDBTransactionState : public TransactionState {
   ~RocksDBTransactionState() override;
 
   /// @brief begin a transaction
-  [[nodiscard]] Result beginTransaction(transaction::Hints hints) override;
+  [[nodiscard]] futures::Future<Result> beginTransaction(
+      transaction::Hints hints) override;
 
   /// @brief commit a transaction
   [[nodiscard]] futures::Future<Result> commitTransaction(

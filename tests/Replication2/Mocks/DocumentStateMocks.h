@@ -23,8 +23,9 @@
 #include <gmock/gmock.h>
 
 #include "Replication2/StateMachines/Document/CollectionReader.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateErrorHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
@@ -41,6 +42,7 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/LogicalCollection.h"
 
+#include "Replication2/Mocks/SchedulerMocks.h"
 namespace arangodb::replication2::tests {
 struct MockDocumentStateTransactionHandler;
 struct MockDocumentStateSnapshotHandler;
@@ -247,8 +249,7 @@ struct MockDocumentStateTransactionHandler
   MOCK_METHOD(void, removeTransaction, (TransactionId tid), (override));
   MOCK_METHOD(std::vector<TransactionId>, getTransactionsForShard,
               (ShardID const&), (override));
-  MOCK_METHOD(TransactionMap const&, getUnfinishedTransactions, (),
-              (const, override));
+  MOCK_METHOD(TransactionMap, getUnfinishedTransactions, (), (const, override));
 
  private:
   std::shared_ptr<replicated_state::document::IDocumentStateTransactionHandler>
@@ -299,6 +300,7 @@ struct MockDocumentStateShardHandler
   MOCK_METHOD(ResultT<std::unique_ptr<transaction::Methods>>, lockShard,
               (ShardID const&, AccessMode::Type, transaction::OperationOrigin),
               (override));
+  MOCK_METHOD(void, prepareShardsForLogReplay, (), (noexcept, override));
 };
 
 struct MockDocumentStateSnapshotHandler
@@ -363,8 +365,9 @@ struct DocumentFollowerStateWrapper
       std::unique_ptr<replicated_state::document::DocumentCore> core,
       std::shared_ptr<
           replicated_state::document::IDocumentStateHandlersFactory> const&
-          handlersFactory)
-      : DocumentFollowerState(std::move(core), handlersFactory) {}
+          handlersFactory,
+      std::shared_ptr<IScheduler> scheduler)
+      : DocumentFollowerState(std::move(core), handlersFactory, scheduler) {}
 
   auto resign() && noexcept
       -> std::unique_ptr<replicated_state::document::DocumentCore> override {

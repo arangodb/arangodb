@@ -135,7 +135,7 @@ struct ResultHandler : actor::HandlerBase<Runtime, ResultState> {
   auto operator()(message::CleanupResultWhenExpired msg)
       -> std::unique_ptr<ResultState> {
     if (this->state->expiration <= std::chrono::system_clock::now()) {
-      this->finish();
+      this->finish(actor::ExitReason::kFinished);
     } else {
       // send this message every 20 seconds
       std::chrono::seconds offset = std::chrono::seconds(20);
@@ -146,7 +146,7 @@ struct ResultHandler : actor::HandlerBase<Runtime, ResultState> {
   }
 
   auto operator()(message::CleanupResults msg) -> std::unique_ptr<ResultState> {
-    this->finish();
+    this->finish(actor::ExitReason::kFinished);
     for (auto const& actor : this->state->otherResultActors) {
       this->template dispatch<pregel::message::ResultMessages>(
           actor, pregel::message::CleanupResults{});

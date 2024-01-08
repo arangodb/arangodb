@@ -111,7 +111,6 @@ class IResearchFeature final : public ArangodFeature {
 
   explicit IResearchFeature(Server& server);
 
-  void beginShutdown() final;
   void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
   void prepare() final;
   void start() final;
@@ -165,19 +164,11 @@ class IResearchFeature final : public ArangodFeature {
   void registerRecoveryHelper();
   void registerIndexFactory();
 
-  struct State {
-    std::mutex mtx;
-    std::condition_variable cv;
-    size_t counter{0};
-  };
-
-  std::shared_ptr<State> _startState;
   std::shared_ptr<IResearchAsync> _async;
-  std::atomic<bool> _running;
 
   // whether or not to fail queries on links/indexes that are marked as
   // out of sync
-  bool _failQueriesOnOutOfSync;
+  bool _failQueriesOnOutOfSync{false};
 
   // names/ids of links/indexes to *NOT* recover. all entries should
   // be in format "collection-name/index-name" or "collection/index-id".
@@ -193,14 +184,13 @@ class IResearchFeature final : public ArangodFeature {
   bool _columnsCacheOnlyLeader{false};
 #endif
 
-  uint32_t _consolidationThreads;
-  uint32_t _consolidationThreadsIdle;
-  uint32_t _commitThreads;
-  uint32_t _commitThreadsIdle;
-  uint32_t _threads;
-  uint32_t _threadsLimit;
-  uint32_t _searchExecutionThreadsLimit;
-  uint32_t _defaultParallelism;
+  uint32_t _deprecatedOptions{0};
+  uint32_t _consolidationThreads{0};
+  uint32_t _commitThreads{0};
+  uint32_t _threads{0};
+  uint32_t _threadsLimit{0};
+  uint32_t _searchExecutionThreadsLimit{0};
+  uint32_t _defaultParallelism{1};
 
   std::shared_ptr<IndexTypeFactory> _clusterFactory;
   std::shared_ptr<IndexTypeFactory> _rocksDBFactory;

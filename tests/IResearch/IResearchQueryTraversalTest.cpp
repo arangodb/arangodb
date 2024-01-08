@@ -132,7 +132,8 @@ class QueryTraversal : public QueryTest {
       auto createIndexJson =
           arangodb::velocypack::Parser::fromJson("{ \"type\": \"edge\" }");
       bool created = false;
-      auto index = collection->createIndex(createIndexJson->slice(), created);
+      auto index =
+          collection->createIndex(createIndexJson->slice(), created).get();
       EXPECT_TRUE(index);
       EXPECT_TRUE(created);
 
@@ -365,7 +366,7 @@ TEST_P(QueryTraversalSearch, Test) {
         version()));
     auto collection = _vocbase.lookupCollection("edges");
     ASSERT_TRUE(collection);
-    collection->createIndex(createJson->slice(), created);
+    collection->createIndex(createJson->slice(), created).get();
     ASSERT_TRUE(created);
   }
   // create view on edge collection

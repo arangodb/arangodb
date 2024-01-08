@@ -152,8 +152,6 @@ class MemoryBlockAllocator {
 struct AggregatorLength final : public Aggregator {
   explicit AggregatorLength(velocypack::Options const* opts)
       : Aggregator(opts), count(0) {}
-  AggregatorLength(velocypack::Options const* opts, uint64_t initialCount)
-      : Aggregator(opts), count(initialCount) {}
 
   void reset() override { count = 0; }
 

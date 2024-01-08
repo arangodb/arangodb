@@ -42,13 +42,6 @@ class EdgeCursor;
 
 struct ShortestPathOptions : public BaseOptions {
  public:
-  uint64_t minDepth;
-  uint64_t maxDepth;
-  std::string start;
-  std::string end;
-  bool bidirectional;
-  bool multiThreaded;
-
   explicit ShortestPathOptions(aql::QueryContext& query);
 
   ShortestPathOptions(aql::QueryContext& query,
@@ -58,7 +51,7 @@ struct ShortestPathOptions : public BaseOptions {
   ShortestPathOptions(aql::QueryContext& query,
                       arangodb::velocypack::Slice info,
                       arangodb::velocypack::Slice collections);
-  ~ShortestPathOptions() override;
+  ~ShortestPathOptions() override = default;
 
   /// @brief This copy constructor is only working during planning phase.
   ///        After planning this node should not be copied anywhere.
@@ -101,16 +94,27 @@ struct ShortestPathOptions : public BaseOptions {
 
   auto estimateDepth() const noexcept -> uint64_t override;
 
+  auto setMinDepth(uint64_t minDepth) noexcept -> void;
+  auto getMinDepth() const noexcept -> uint64_t;
+
+  auto setMaxDepth(uint64_t maxDepth) noexcept -> void;
+  auto getMaxDepth() const noexcept -> uint64_t;
+
   auto setWeightAttribute(std::string attribute) -> void;
   auto getWeightAttribute() const& -> std::string;
+
   auto setDefaultWeight(double weight) -> void;
   auto getDefaultWeight() const -> double;
 
  private:
-  /// @brief Lookup info to find all reverse edges.
-  std::vector<LookupInfo> _reverseLookupInfos;
+  /// These options come from the query's text
+  uint64_t _minDepth;
+  uint64_t _maxDepth;
   std::string _weightAttribute;
   double _defaultWeight;
+
+  /// @brief Lookup info to find all reverse edges.
+  std::vector<LookupInfo> _reverseLookupInfos;
 };
 
 }  // namespace graph

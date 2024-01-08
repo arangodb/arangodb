@@ -1390,7 +1390,10 @@ function processQuery(query, explain, planIndex) {
         const enumAnnotation = annotation('/* full collection scan' + (node.random ? ', random order' : '') + projections(node, 'projections', 'projections') + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + (node.count ? ', with count optimization' : '') + `${restriction(node)} ${node.readOwnWrites ? '; read own writes' : ''} */`);
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + enumAnnotation + filter;
       case 'EnumerateListNode':
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
+        if (node.filter) {
+          filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
+        }
+        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */') + filter;
       case 'EnumerateViewNode':
         var condition = '';
         if (node.condition && node.condition.hasOwnProperty('type')) {
@@ -2097,6 +2100,9 @@ function processQuery(query, explain, planIndex) {
         } else {
           accessString += "index scan only";
         }
+        if (info.isLateMaterialized === true) {
+          accessString += ' with late materialization';
+        }
         if (info.projections) {
           accessString += projections(info, "projections", "projections");
         }
@@ -2279,7 +2285,7 @@ function explain(data, options, shouldPrint) {
   stringBuilder.clearOutput();
   let stmt = db._createStatement(data);
   let result = stmt.explain(options);
-  if (options.allPlans) {
+  if (options.allPlans === true) {
     // multiple plans
     printQuery(data.query);
     for (let i = 0; i < result.plans.length; ++i) {

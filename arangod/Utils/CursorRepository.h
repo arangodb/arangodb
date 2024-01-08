@@ -54,7 +54,8 @@ class CursorRepository {
 
  public:
   explicit CursorRepository(TRI_vocbase_t& vocbase,
-                            metrics::Gauge<uint64_t>* metric);
+                            metrics::Gauge<uint64_t>* numberOfCursorsMetric,
+                            metrics::Gauge<uint64_t>* memoryUsageMetric);
 
   ~CursorRepository();
 
@@ -85,10 +86,10 @@ class CursorRepository {
   void release(Cursor*);
 
   /// @brief whether or not the repository contains a used cursor
-  bool containsUsedCursor();
+  bool containsUsedCursor() const;
 
   /// @brief return the number of cursors
-  size_t count();
+  size_t count() const;
 
   /// @brief run a garbage collection on the cursors
   bool garbageCollect(bool force);
@@ -98,13 +99,19 @@ class CursorRepository {
   /// the repository will take ownership of the cursor
   Cursor* addCursor(std::unique_ptr<Cursor> cursor);
 
+  void increaseNumberOfCursorsMetric(size_t value) noexcept;
+  void decreaseNumberOfCursorsMetric(size_t value) noexcept;
+
+  void increaseMemoryUsageMetric(size_t value) noexcept;
+  void decreaseMemoryUsageMetric(size_t value) noexcept;
+
   /// @brief maximum number of cursors to garbage-collect in one go
   static constexpr size_t maxCollectCount = 1024;
 
   TRI_vocbase_t& _vocbase;
 
   /// @brief mutex for the cursors repository
-  std::mutex _lock;
+  std::mutex mutable _lock;
 
   /// @brief list of current cursors
   std::unordered_map<CursorId, std::pair<Cursor*, std::string>> _cursors;
@@ -116,7 +123,13 @@ class CursorRepository {
 
   /// @brief metric to increase/decrease for the number of cursors.
   /// can be a nullptr in tests
-  metrics::Gauge<uint64_t>* _metric;
+  metrics::Gauge<uint64_t>* _numberOfCursorsMetric;
+
+  /// @brief metric to increase/decrease for the memory usage of cursors.
+  /// is only used for non-streaming cursors. streaming cursors already
+  /// count their memory against other AQL metrics
+  /// can be a nullptr in tests
+  metrics::Gauge<uint64_t>* _memoryUsageMetric;
 };
 
 }  // namespace arangodb

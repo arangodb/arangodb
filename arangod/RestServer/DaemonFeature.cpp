@@ -203,7 +203,7 @@ void DaemonFeature::checkPidFile() {
 
         try {
           oldPid = std::stol(oldPidS);
-        } catch (std::invalid_argument const& ex) {
+        } catch (std::invalid_argument const&) {
           LOG_TOPIC("bd20c", FATAL, arangodb::Logger::FIXME)
               << "pid-file '" << _pidFile << "' doesn't contain a number.";
           FATAL_ERROR_EXIT();

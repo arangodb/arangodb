@@ -27,8 +27,7 @@
 #include <ostream>
 #include <string>
 
-namespace arangodb {
-namespace rest {
+namespace arangodb::rest {
 
 enum class RequestType {
   DELETE_REQ = 0,  // windows redefines DELETE
@@ -80,6 +79,12 @@ enum class ContentType {
 
 std::string contentTypeToString(ContentType type);
 ContentType stringToContentType(std::string const& input, ContentType def);
+
+enum class ResponseCompressionType {
+  kUnset,
+  kNoCompression,
+  kAllowCompression
+};
 
 enum class EncodingType { DEFLATE, GZIP, UNSET };
 
@@ -252,5 +257,4 @@ inline std::ostream& operator<<(std::ostream& ostream,
                                 ResponseCode responseCode) {
   return ostream << std::string(responseToString(responseCode));
 }
-}  // namespace rest
-}  // namespace arangodb
+}  // namespace arangodb::rest

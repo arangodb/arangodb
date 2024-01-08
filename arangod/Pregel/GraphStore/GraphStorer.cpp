@@ -63,7 +63,7 @@ auto GraphStorer<V, E>::storeQuiver(std::shared_ptr<Quiver<V, E>> quiver)
 
   std::unique_ptr<arangodb::SingleCollectionTransaction> trx;
 
-  ShardID shard;
+  PregelShardID shard;
   PregelShard currentShard = InvalidPregelShard;
   Result res;
 

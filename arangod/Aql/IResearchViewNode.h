@@ -157,8 +157,8 @@ class IResearchViewNode final : public aql::ExecutionNode,
   size_t getMemoryUsedBytes() const override final;
 
   // Clone ExecutionNode recursively.
-  aql::ExecutionNode* clone(aql::ExecutionPlan* plan, bool withDependencies,
-                            bool withProperties) const final;
+  aql::ExecutionNode* clone(aql::ExecutionPlan* plan,
+                            bool withDependencies) const final;
 
   using Collections =
       std::vector<std::pair<std::reference_wrapper<aql::Collection const>,
@@ -432,7 +432,7 @@ class IResearchViewNode final : public aql::ExecutionNode,
   std::vector<SearchFunc> _scorers;
 
   // List of shards involved, need this for the cluster.
-  containers::FlatHashMap<std::string, LogicalView::Indexes> _shards;
+  containers::FlatHashMap<ShardID, LogicalView::Indexes> _shards;
 
   // Node options.
   Options _options;

@@ -40,7 +40,7 @@ class SimpleRocksDBTransactionState final : public RocksDBTransactionState,
   ~SimpleRocksDBTransactionState() override;
 
   /// @brief begin a transaction
-  Result beginTransaction(transaction::Hints hints) override;
+  futures::Future<Result> beginTransaction(transaction::Hints hints) override;
 
   RocksDBTransactionMethods* rocksdbMethods(DataSourceId) const override {
     return _rocksMethods.get();

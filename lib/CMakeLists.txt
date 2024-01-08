@@ -234,11 +234,6 @@ add_library(arango STATIC
   Zip/zip.cpp
 )
 
-if (USE_V8) 
-  target_sources(arango PRIVATE
-    ApplicationFeatures/V8PlatformFeature.cpp)
-endif()
-
 target_link_libraries(arango
   PUBLIC s2
          arango_build_id

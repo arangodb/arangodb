@@ -42,6 +42,9 @@ namespace basics {
 struct AttributeName;
 }  // namespace basics
 
+template<typename T>
+class FixedSizeAllocator;
+
 namespace aql {
 class Ast;
 struct Variable;
@@ -230,6 +233,11 @@ static_assert(NODE_TYPE_ARRAY < NODE_TYPE_OBJECT, "incorrect node types order");
 /// @brief the node
 struct AstNode {
   friend class Ast;
+  friend class FixedSizeAllocator<AstNode>;
+
+  /// @brief a simple tag that marks the AstNode as a constant node
+  /// that will never change after being created
+  struct InternalNode {};
 
   /// @brief array values with at least this number of members that
   /// are in IN or NOT IN lookups will be sorted, so that we can use
@@ -237,10 +245,15 @@ struct AstNode {
   static constexpr size_t kSortNumberThreshold = 8;
 
   /// @brief create the node
-  explicit AstNode(AstNodeType);
+  explicit AstNode(AstNodeType type) noexcept(
+      noexcept(decltype(members)::allocator_type()));
+
+  explicit AstNode(AstNodeType, InternalNode);
 
   /// @brief create a node, with defining a value
   explicit AstNode(AstNodeValue const& value);
+
+  explicit AstNode(AstNodeValue const& value, InternalNode);
 
   /// @brief create the node from VPack
   explicit AstNode(Ast*, arangodb::velocypack::Slice slice);
@@ -280,6 +293,8 @@ struct AstNode {
 
   /// @brief return the type name of a node
   std::string_view getTypeString() const;
+
+  static std::string_view getTypeString(AstNodeType);
 
   /// @brief return the value type name of a node
   std::string_view getValueTypeString() const;
@@ -581,6 +596,16 @@ struct AstNode {
   AstNodeValue value;
 
  private:
+  // private ctor, only called during by FixedSizeAllocator in case of emergency
+  // to properly initialize the node
+  // Note that since C++17 the default constructor of `std::vector` is
+  // `noexcept` iff and only if the  default constructor of its `allocator_type`
+  // is. Therefore, we can say that `AstNode::AstNode()` is noexcept, if and
+  // only if the default constructor of the allocator type of
+  // `std::vector<AstNode*>` is noexcept, which is exactly what this fancy
+  // `noexcept` expression does.
+  AstNode() noexcept(noexcept(decltype(members)::allocator_type()));
+
   /// @brief helper for building flags
   template<typename... Args>
   static std::underlying_type<AstNodeFlagType>::type makeFlags(

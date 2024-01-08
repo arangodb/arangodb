@@ -51,7 +51,7 @@ class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
 
  private:
   RestStatus getIndexes();
-  RestStatus getSelectivityEstimates();
+  [[nodiscard]] futures::Future<futures::Unit> getSelectivityEstimates();
   RestStatus createIndex();
   RestStatus dropIndex();
   RestStatus syncCaches();

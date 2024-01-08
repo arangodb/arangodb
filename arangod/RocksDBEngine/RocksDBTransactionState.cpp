@@ -85,7 +85,8 @@ void RocksDBTransactionState::unuse() noexcept {
 #endif
 
 /// @brief start a transaction
-Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
+futures::Future<Result> RocksDBTransactionState::beginTransaction(
+    transaction::Hints hints) {
   LOG_TRX("0c057", TRACE, this)
       << "beginning " << AccessMode::typeString(_type) << " transaction";
 
@@ -97,12 +98,12 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   if (isReadOnlyTransaction()) {
     // for read-only transactions there will be no locking. so we will not
     // even call TRI_microtime() to save some cycles
-    res = useCollections();
+    res = co_await useCollections();
   } else {
     // measure execution time of "useCollections" operation, which is
     // responsible for acquring locks as well
     double start = TRI_microtime();
-    res = useCollections();
+    res = co_await useCollections();
 
     double diff = TRI_microtime() - start;
     stats._lockTimeMicros += static_cast<uint64_t>(1000000.0 * diff);
@@ -112,7 +113,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   if (res.fail()) {
     // something is wrong
     updateStatus(transaction::Status::ABORTED);
-    return res;
+    co_return res;
   }
 
   updateStatus(transaction::Status::RUNNING);
@@ -145,7 +146,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     manager->beginTransaction(_cacheTx, isReadOnlyTransaction());
   }
 
-  return res;
+  co_return res;
 }
 
 void RocksDBTransactionState::cleanupTransaction() noexcept {

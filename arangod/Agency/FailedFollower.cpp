@@ -302,6 +302,8 @@ bool FailedFollower::start(bool& aborts) {
         }
         // Plan still as we see it:
         addPreconditionUnchanged(job, planPath, planned);
+        // All clones still exist
+        addPreconditionClonesStillExist(job, _database, shardsLikeMe);
         // Check that failoverCandidates are still as we inspected them:
         doForAllShards(
             _snapshot, _database, shardsLikeMe,

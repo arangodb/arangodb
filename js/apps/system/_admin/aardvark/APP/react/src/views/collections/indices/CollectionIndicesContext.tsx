@@ -7,7 +7,7 @@ import {
   useFetchCollectionIndices
 } from "./useFetchCollectionIndices";
 import { usePermissionsCheck } from "./usePermissionsCheck";
-import { useSetupBreadcrumbs } from "./useSetupBreadcrumbs";
+import { useSetupIndicesViewBreadcrumbs } from "./useSetupIndicesViewBreadcrumbs";
 import { useSetupNav } from "./useSetupNav";
 import { useSupportedIndexTypes } from "./useSupportedIndexTypes";
 
@@ -42,7 +42,7 @@ export const CollectionIndicesProvider = ({
   } = useDisclosure();
   const [readOnly, setReadOnly] = useState(false);
   usePermissionsCheck({ setReadOnly, collectionName });
-  useSetupBreadcrumbs({ readOnly, collectionName });
+  useSetupIndicesViewBreadcrumbs({ readOnly, collectionName });
   useSetupNav({ collectionName });
   const { indexTypeOptions } = useSupportedIndexTypes();
   const { collectionIndices } = useFetchCollectionIndices(collectionName);

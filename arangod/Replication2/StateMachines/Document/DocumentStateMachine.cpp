@@ -23,6 +23,7 @@
 
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 
+#include "Inspection/VPack.h"
 #include "Replication2/StateMachines/Document/DocumentCore.h"
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
@@ -49,10 +50,11 @@ DocumentFactory::DocumentFactory(
     : _handlersFactory(std::move(handlersFactory)),
       _transactionManager(transactionManager){};
 
-auto DocumentFactory::constructFollower(std::unique_ptr<DocumentCore> core)
+auto DocumentFactory::constructFollower(std::unique_ptr<DocumentCore> core,
+                                        std::shared_ptr<IScheduler> scheduler)
     -> std::shared_ptr<DocumentFollowerState> {
   return std::make_shared<DocumentFollowerState>(std::move(core),
-                                                 _handlersFactory);
+                                                 _handlersFactory, scheduler);
 }
 
 auto DocumentFactory::constructLeader(std::unique_ptr<DocumentCore> core)

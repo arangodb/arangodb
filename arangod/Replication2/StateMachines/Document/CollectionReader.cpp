@@ -46,7 +46,8 @@ auto SnapshotTransaction::options() -> transaction::Options {
 
 void SnapshotTransaction::addCollection(LogicalCollection const& collection) {
   transaction::Methods::addCollectionAtRuntime(
-      collection.id(), collection.name(), AccessMode::Type::READ);
+      collection.id(), collection.name(), AccessMode::Type::READ)
+      .get();
 }
 
 DatabaseSnapshot::DatabaseSnapshot(TRI_vocbase_t& vocbase)

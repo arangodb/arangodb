@@ -58,9 +58,9 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/FoxxFeature.h"
-#include "V8Server/GlobalContextMethods.h"
-#include "V8Server/V8Context.h"
+#include "V8Server/GlobalExecutorMethods.h"
 #include "V8Server/V8DealerFeature.h"
+#include "V8Server/V8Executor.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -87,10 +87,7 @@ static TRI_action_result_t ExecuteActionVocbase(
 class v8_action_t final : public TRI_action_t {
  public:
   explicit v8_action_t(ActionFeature const& actionFeature)
-      : TRI_action_t(),
-        _actionFeature(actionFeature),
-        _callbacks(),
-        _callbacksLock() {}
+      : TRI_action_t(), _actionFeature(actionFeature) {}
 
   void visit(void* data) override {
     v8::Isolate* isolate = static_cast<v8::Isolate*>(data);
@@ -131,8 +128,8 @@ class v8_action_t final : public TRI_action_t {
     bool allowUseDatabase =
         _allowUseDatabase || _actionFeature.allowUseDatabase();
 
-    // get a V8 context
-    V8ContextGuard guard(
+    // get a V8 executor
+    V8ExecutorGuard guard(
         vocbase, _isSystem ? JavaScriptSecurityContext::createInternalContext()
                            : JavaScriptSecurityContext::createRestActionContext(
                                  allowUseDatabase));
@@ -163,28 +160,34 @@ class v8_action_t final : public TRI_action_t {
           return result;
         }
 
-        *data = (void*)guard.isolate();
-      }
-      v8::HandleScope scope(guard.isolate());
-      auto localFunction =
-          v8::Local<v8::Function>::New(guard.isolate(), it->second);
-
-      // we can release the lock here already as no other threads will
-      // work in our isolate at this time
-      readLocker.unlock();
-
-      try {
-        result = ExecuteActionVocbase(vocbase, guard.isolate(), this,
-                                      localFunction, request, response);
-      } catch (...) {
-        result.isValid = false;
+        *data = static_cast<void*>(guard.isolate());
       }
 
-      {
-        // cppcheck-suppress redundantPointerOp
-        std::lock_guard mutexLocker{*dataLock};
-        *data = nullptr;
-      }
+      guard.runInContext([&](v8::Isolate* isolate) -> Result {
+        v8::HandleScope scope(isolate);
+
+        v8::Handle<v8::Function> func =
+            v8::Local<v8::Function>::New(isolate, it->second);
+
+        // we can release the lock here already as no other threads will
+        // work in our isolate at this time
+        readLocker.unlock();
+
+        try {
+          result = ExecuteActionVocbase(vocbase, isolate, this, func, request,
+                                        response);
+        } catch (...) {
+          result.isValid = false;
+        }
+
+        {
+          // cppcheck-suppress redundantPointerOp
+          std::lock_guard mutexLocker{*dataLock};
+          *data = nullptr;
+        }
+
+        return {};
+      });
     }
 
     return result;
@@ -857,11 +860,10 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
               // set the correct content-encoding header
               response->setHeaderNC(StaticStrings::ContentEncoding,
                                     StaticStrings::Binary);
-            } else if (name == StaticStrings::EncodingGzip) {
-              response->setAllowCompression(true);
-              setRegularBody = true;
-            } else if (name == StaticStrings::EncodingDeflate) {
-              response->setAllowCompression(true);
+            } else if (name == StaticStrings::EncodingGzip ||
+                       name == StaticStrings::EncodingDeflate) {
+              response->setAllowCompression(
+                  rest::ResponseCompressionType::kAllowCompression);
               setRegularBody = true;
             }
           }
@@ -928,10 +930,10 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
               std::string dst;
               absl::Base64Unescape(out, &dst);
               out = std::move(dst);
-            } else if (name == StaticStrings::EncodingGzip) {
-              response->setAllowCompression(true);
-            } else if (name == StaticStrings::EncodingDeflate) {
-              response->setAllowCompression(true);
+            } else if (name == StaticStrings::EncodingGzip ||
+                       name == StaticStrings::EncodingDeflate) {
+              response->setAllowCompression(
+                  rest::ResponseCompressionType::kAllowCompression);
             }
           }
         }
@@ -1105,12 +1107,12 @@ static TRI_action_result_t ExecuteActionVocbase(
     TRI_vocbase_t* vocbase, v8::Isolate* isolate, TRI_action_t const* action,
     v8::Handle<v8::Function> callback, GeneralRequest* request,
     GeneralResponse* response) {
-  v8::HandleScope scope(isolate);
-  v8::TryCatch tryCatch(isolate);
-
   if (response == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response");
   }
+
+  v8::HandleScope scope(isolate);
+  v8::TryCatch tryCatch(isolate);
 
   TRI_GET_GLOBALS();
 
@@ -1121,8 +1123,8 @@ static TRI_action_result_t ExecuteActionVocbase(
   v8::Handle<v8::Object> res = v8::Object::New(isolate);
 
   // register request & response in the context
-  v8g->_currentRequest = req;
-  v8g->_currentResponse = res;
+  v8g->_currentRequest.Reset(isolate, req);
+  v8g->_currentResponse.Reset(isolate, res);
 
   // execute the callback
   v8::Handle<v8::Value> args[2] = {req, res};
@@ -1145,8 +1147,8 @@ static TRI_action_result_t ExecuteActionVocbase(
   }
 
   // invalidate request / response objects
-  v8g->_currentRequest = v8::Undefined(isolate);
-  v8g->_currentResponse = v8::Undefined(isolate);
+  v8g->_currentRequest.Reset();
+  v8g->_currentResponse.Reset();
 
   // convert the result
   TRI_action_result_t result;
@@ -1166,14 +1168,10 @@ static TRI_action_result_t ExecuteActionVocbase(
     VPackBuilder b(buffer);
     b.add(VPackValue(errorMessage));
     response->addPayload(std::move(buffer));
-  }
-
-  else if (v8g->_canceled) {
+  } else if (v8g->_canceled) {
     result.isValid = false;
     result.canceled = true;
-  }
-
-  else if (tryCatch.HasCaught()) {
+  } else if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
       response->setResponseCode(rest::ResponseCode::SERVER_ERROR);
 
@@ -1190,9 +1188,7 @@ static TRI_action_result_t ExecuteActionVocbase(
       result.isValid = false;
       result.canceled = true;
     }
-  }
-
-  else {
+  } else {
     ResponseV8ToCpp(isolate, v8g, request, res, response);
   }
 
@@ -1280,8 +1276,8 @@ static void JS_ReloadRouting(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
-  if (!v8g->server().getFeature<V8DealerFeature>().addGlobalContextMethod(
-          GlobalContextMethods::MethodType::kReloadRouting)) {
+  if (!v8g->server().getFeature<V8DealerFeature>().addGlobalExecutorMethod(
+          GlobalExecutorMethods::MethodType::kReloadRouting)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "unable to reload routing");
   }
@@ -1306,7 +1302,9 @@ static void JS_GetCurrentRequest(
     TRI_V8_THROW_EXCEPTION_USAGE("getCurrentRequest()");
   }
 
-  TRI_V8_RETURN(v8g->_currentRequest);
+  v8::Handle<v8::Value> r =
+      v8::Handle<v8::Value>::New(isolate, v8g->_currentRequest);
+  TRI_V8_RETURN(r);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1572,7 +1570,9 @@ static void JS_GetCurrentResponse(
     TRI_V8_THROW_EXCEPTION_USAGE("getCurrentResponse()");
   }
 
-  TRI_V8_RETURN(v8g->_currentResponse);
+  v8::Handle<v8::Value> r =
+      v8::Handle<v8::Value>::New(isolate, v8g->_currentResponse);
+  TRI_V8_RETURN(r);
   TRI_V8_TRY_CATCH_END
 }
 

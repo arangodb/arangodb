@@ -526,10 +526,11 @@ class TransactionCollectionMock : public arangodb::TransactionCollection {
   bool canAccess(arangodb::AccessMode::Type accessType) const override;
   bool hasOperations() const override;
   void releaseUsage() override;
-  arangodb::Result lockUsage() override;
+  arangodb::futures::Future<arangodb::Result> lockUsage() override;
 
  private:
-  arangodb::Result doLock(arangodb::AccessMode::Type type) override;
+  arangodb::futures::Future<arangodb::Result> doLock(
+      arangodb::AccessMode::Type type) override;
   arangodb::Result doUnlock(arangodb::AccessMode::Type type) override;
 };
 
@@ -557,12 +558,13 @@ void TransactionCollectionMock::releaseUsage() {
   }
 }
 
-arangodb::Result TransactionCollectionMock::lockUsage() {
+arangodb::futures::Future<arangodb::Result>
+TransactionCollectionMock::lockUsage() {
   bool shouldLock = !arangodb::AccessMode::isNone(_accessType);
 
   if (shouldLock && !isLocked()) {
     // r/w lock the collection
-    arangodb::Result res = doLock(_accessType);
+    arangodb::Result res = co_await doLock(_accessType);
 
     if (res.is(TRI_ERROR_LOCKED)) {
       // TRI_ERROR_LOCKED is not an error, but it indicates that the lock
@@ -570,7 +572,7 @@ arangodb::Result TransactionCollectionMock::lockUsage() {
       // been held before)
       res.reset();
     } else if (res.fail()) {
-      return res;
+      co_return res;
     }
   }
 
@@ -587,19 +589,20 @@ arangodb::Result TransactionCollectionMock::lockUsage() {
     }
   }
 
-  return arangodb::Result(_collection ? TRI_ERROR_NO_ERROR
-                                      : TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  co_return arangodb::Result(_collection
+                                 ? TRI_ERROR_NO_ERROR
+                                 : TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
-arangodb::Result TransactionCollectionMock::doLock(
+arangodb::futures::Future<arangodb::Result> TransactionCollectionMock::doLock(
     arangodb::AccessMode::Type type) {
   if (_lockType > _accessType) {
-    return {TRI_ERROR_INTERNAL};
+    co_return {TRI_ERROR_INTERNAL};
   }
 
   _lockType = type;
 
-  return {};
+  co_return {};
 }
 
 arangodb::Result TransactionCollectionMock::doUnlock(
@@ -636,23 +639,23 @@ arangodb::Result TransactionStateMock::abortTransaction(
   return arangodb::Result();
 }
 
-arangodb::Result TransactionStateMock::beginTransaction(
-    arangodb::transaction::Hints hints) {
+arangodb::futures::Future<arangodb::Result>
+TransactionStateMock::beginTransaction(arangodb::transaction::Hints hints) {
   ++beginTransactionCount;
   _hints = hints;
 
-  arangodb::Result res = useCollections();
+  arangodb::Result res = co_await useCollections();
   if (res.fail()) {  // something is wrong
-    return res;
+    co_return res;
   }
 
   if (!res.ok()) {
     updateStatus(arangodb::transaction::Status::ABORTED);
     resetTransactionId();
-    return res;
+    co_return res;
   }
   updateStatus(arangodb::transaction::Status::RUNNING);
-  return arangodb::Result();
+  co_return arangodb::Result();
 }
 
 arangodb::futures::Future<arangodb::Result>
