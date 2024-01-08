@@ -5,6 +5,31 @@ devel
 
 * Upgraded bundled version of ICU to 73.
 
+* Expose REST API endpoints for server options discovery:
+  - GET `/_admin/options-description`: returns a JSON description of all
+    available server options.
+  - GET `/_admin/options`: returns a JSON object with the currently set server
+    options.
+
+  As these API may reveal sensitive data about the deployment, they can only
+  be accessed from inside the `_system` database. In addition, there is a
+  policy control startup option `--server.options-api` that determines if and
+  to whom the APIs are made available. This option can have the following 
+  values:
+  - `disabled`: options APIs is disabled.
+  - `jwt`: options APIs can only be accessed via superuser JWT.
+  - `admin`: options APIs can be accessed by admin users in the `_system`
+    database only.
+  - `public`: everyone with access to `_system` database can access the
+    options APIs.
+
+* BTS-1727: Return proper EXIT_UPGRADE_REQUIRED in cluster mode.
+
+* Only schedule a single compaction per RocksDB column family at any given
+  time. Scheduling mutliple concurrent compactions on the same column family
+  can lead to scheduler threads being stalled under some adverse conditions
+  that lead to a stall inside RocksDB.
+
 * Added REST API `/_api/key-generators` to query the available key generators
   for collections.
 

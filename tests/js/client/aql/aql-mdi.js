@@ -26,21 +26,21 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const aql = arangodb.aql;
-const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
+const {assertTrue, assertFalse, assertEqual, assertNotEqual} = jsunity.jsUnity.assertions;
 const _ = require("lodash");
 
 const useIndexes = 'use-indexes';
 const removeFilterCoveredByIndex = "remove-filter-covered-by-index";
 const moveFiltersIntoEnumerate = "move-filters-into-enumerate";
 
-function optimizerRuleZkd2dIndexTestSuite() {
-  const colName = 'UnitTestZkdIndexCollection';
+function optimizerRuleMdi2dIndexTestSuite() {
+  const colName = 'UnitTestMdiIndexCollection';
   let col;
 
   return {
     setUpAll: function () {
       col = db._create(colName);
-      col.ensureIndex({type: 'zkd', name: 'zkdIndex', fields: ['x', 'y'], fieldValueTypes: 'double'});
+      col.ensureIndex({type: 'mdi', name: 'mdiIndex', fields: ['x', 'y'], fieldValueTypes: 'double'});
       // Insert 1001 points
       // (-500, -499.5), (-499.1, -499.4), ..., (0, 0.5), ..., (499.9, 500.4), (500, 500.5)
       db._query(aql`
@@ -216,8 +216,8 @@ function optimizerRuleZkd2dIndexTestSuite() {
     testEstimates: function () {
       let col = db._create(colName + "2");
       col.ensureIndex({
-        type: 'zkd',
-        name: 'zkdIndex',
+        type: 'mdi',
+        name: 'mdiIndex',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
       });
@@ -227,7 +227,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
           FOR i IN 1..2
             INSERT {x: i, y: i, z: i, stringValue: str} INTO ${col}
       `);
-      const index = col.index("zkdIndex");
+      const index = col.index("mdiIndex");
       assertFalse(index.estimates);
       assertFalse(index.hasOwnProperty("selectivityEstimate"));
       col.drop();
@@ -236,8 +236,8 @@ function optimizerRuleZkd2dIndexTestSuite() {
     testTruncate: function () {
       let col = db._create(colName + "3");
       col.ensureIndex({
-        type: 'zkd',
-        name: 'zkdIndex',
+        type: 'mdi',
+        name: 'mdiIndex',
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
       });
@@ -265,9 +265,59 @@ function optimizerRuleZkd2dIndexTestSuite() {
       col.drop();
     },
 
+    testFieldValuesTypes: function () {
+      let col = db._create(colName + "4");
+      const idx = col.ensureIndex({
+        type: 'mdi',
+        name: 'mdiIndex',
+        fields: ['x', 'y'],
+        fieldValueTypes: 'double',
+      });
+
+      assertEqual('double', idx.fieldValueTypes);
+      const idx2 = col.index(idx.name);
+      assertEqual('double', idx2.fieldValueTypes);
+      col.drop();
+    },
+
+    testCompareIndex: function () {
+      let col = db._create(colName + "4");
+      const idx1 = col.ensureIndex({
+        type: 'mdi',
+        fields: ['x', 'y'],
+        fieldValueTypes: 'double',
+      });
+
+      const idx2 = col.ensureIndex({
+        type: 'mdi',
+        fields: ['x', 'y'],
+        fieldValueTypes: 'double',
+      });
+
+      const idx3 = col.ensureIndex({
+        type: 'mdi',
+        fields: ['y', 'x'],
+        fieldValueTypes: 'double',
+      });
+
+      assertEqual(idx1.id, idx2.id);
+      assertNotEqual(idx3.id, idx2.id);
+      col.drop();
+    },
+
+    testCreateAsZkd: function () {
+      let col = db._create(colName + "5");
+      const idx = col.ensureIndex({
+        type: 'zkd',
+        fields: ['x', 'y'],
+        fieldValueTypes: 'double',
+      });
+      assertEqual('mdi', idx.type);
+      col.drop();
+    }
   };
 }
 
-jsunity.run(optimizerRuleZkd2dIndexTestSuite);
+jsunity.run(optimizerRuleMdi2dIndexTestSuite);
 
 return jsunity.done();

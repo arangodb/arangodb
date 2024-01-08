@@ -118,22 +118,24 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
                              velocypack::Slice rhs,
                              bool attributeOrderMatters) const {
   // unique must be identical if present
-  auto value = lhs.get(StaticStrings::IndexUnique);
-
-  if (value.isBoolean() &&
-      !basics::VelocyPackHelper::equal(
-          value, rhs.get(StaticStrings::IndexUnique), false)) {
+  bool lhsUnique = basics::VelocyPackHelper::getBooleanValue(
+      lhs, StaticStrings::IndexUnique, false);
+  bool rhsUnique = basics::VelocyPackHelper::getBooleanValue(
+      rhs, StaticStrings::IndexUnique, false);
+  if (lhsUnique != rhsUnique) {
     return false;
   }
 
   // sparse must be identical if present
-  value = lhs.get(StaticStrings::IndexSparse);
-
-  if (value.isBoolean() &&
-      !basics::VelocyPackHelper::equal(
-          value, rhs.get(StaticStrings::IndexSparse), false)) {
+  bool lhsSparse = basics::VelocyPackHelper::getBooleanValue(
+      lhs, StaticStrings::IndexSparse, false);
+  bool rhsSparse = basics::VelocyPackHelper::getBooleanValue(
+      rhs, StaticStrings::IndexSparse, false);
+  if (lhsSparse != rhsSparse) {
     return false;
   }
+
+  VPackSlice value;
 
   if (Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX == type ||
       Index::IndexType::TRI_IDX_TYPE_GEO_INDEX == type) {
@@ -164,6 +166,14 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
               FloatingPoint<double>{value.getNumber<double>()})) {
         return false;
       }
+    }
+  } else if (Index::IndexType::TRI_IDX_TYPE_MDI_PREFIXED_INDEX == type) {
+    value = lhs.get(StaticStrings::IndexPrefixFields);
+
+    if (value.isArray() &&
+        !basics::VelocyPackHelper::equal(
+            value, rhs.get(StaticStrings::IndexPrefixFields), false)) {
+      return false;
     }
   }
 
@@ -347,7 +357,7 @@ std::vector<std::string_view> IndexFactory::supportedIndexes() const {
           "persistent",
           "geo",
           "fulltext",
-          "zkd",
+          "mdi",
           "mdi-prefixed",
           arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE};
 }
@@ -545,7 +555,12 @@ Result IndexFactory::processIndexStoredValues(VPackSlice definition,
     }
   }
 
-  return res;
+  return res.mapError([&](result::Error const& error) {
+    return result::Error(
+        error.errorNumber(),
+        basics::StringUtils::concatT("when parsing fields for stored values: ",
+                                     error.errorMessage()));
+  });
 }
 
 void IndexFactory::processIndexCacheEnabled(VPackSlice definition,
@@ -811,19 +826,24 @@ Result processIndexSortedPrefixFields(VPackSlice definition,
               "prefixFields is required for `mdi-prefixed`");
   }
 
-  return res;
+  return res.mapError([&](result::Error const& error) {
+    return result::Error(
+        error.errorNumber(),
+        basics::StringUtils::concatT("when parsing prefix fields: ",
+                                     error.errorMessage()));
+  });
 }
 
 }  // namespace
 
-/// @brief enhances the json of a zkd index
-Result IndexFactory::enhanceJsonIndexZkd(VPackSlice definition,
+/// @brief enhances the json of a mdi index
+Result IndexFactory::enhanceJsonIndexMdi(VPackSlice definition,
                                          VPackBuilder& builder, bool create) {
   if (auto fieldValueTypes = definition.get("fieldValueTypes");
       !fieldValueTypes.isString() || !fieldValueTypes.isEqualString("double")) {
     return Result(
         TRI_ERROR_BAD_PARAMETER,
-        "zkd index requires `fieldValueTypes` to be set to `double` - future "
+        "mdi requires `fieldValueTypes` to be set to `double` - future "
         "releases might lift this requirement");
   }
 
@@ -844,22 +864,17 @@ Result IndexFactory::enhanceJsonIndexZkd(VPackSlice definition,
   }
 
   if (res.ok()) {
-    if (auto isSparse = definition.get(StaticStrings::IndexSparse).isTrue();
-        isSparse) {
-      return Result(TRI_ERROR_BAD_PARAMETER,
-                    "zkd index does not support sparse property");
-    }
-
+    processIndexSparseFlag(definition, builder, create);
     processIndexUniqueFlag(definition, builder);
     processIndexInBackground(definition, builder);
   }
 
   return res;
-}  /// @brief enhances the json of a zkd index
+}  /// @brief enhances the json of a mdi
 Result IndexFactory::enhanceJsonIndexMdiPrefixed(VPackSlice definition,
                                                  VPackBuilder& builder,
                                                  bool create) {
-  auto res = enhanceJsonIndexZkd(definition, builder, create);
+  auto res = enhanceJsonIndexMdi(definition, builder, create);
   if (res.ok()) {
     res = processIndexSortedPrefixFields(definition, builder, 1, 32, create,
                                          true);

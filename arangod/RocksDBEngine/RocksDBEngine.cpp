@@ -1143,8 +1143,8 @@ void RocksDBEngine::start() {
   addFamily(RocksDBColumnFamilyManager::Family::GeoIndex);
   addFamily(RocksDBColumnFamilyManager::Family::FulltextIndex);
   addFamily(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
-  addFamily(RocksDBColumnFamilyManager::Family::ZkdIndex);
-  addFamily(RocksDBColumnFamilyManager::Family::ZkdVPackIndex);
+  addFamily(RocksDBColumnFamilyManager::Family::MdiIndex);
+  addFamily(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
 
   bool dbExisted = checkExistingDB(cfFamilies);
 
@@ -1209,10 +1209,10 @@ void RocksDBEngine::start() {
       RocksDBColumnFamilyManager::Family::FulltextIndex, cfHandles[6]);
   RocksDBColumnFamilyManager::set(
       RocksDBColumnFamilyManager::Family::ReplicatedLogs, cfHandles[7]);
-  RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::ZkdIndex,
+  RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::MdiIndex,
                                   cfHandles[8]);
   RocksDBColumnFamilyManager::set(
-      RocksDBColumnFamilyManager::Family::ZkdVPackIndex, cfHandles[9]);
+      RocksDBColumnFamilyManager::Family::MdiVPackIndex, cfHandles[9]);
   TRI_ASSERT(RocksDBColumnFamilyManager::get(
                  RocksDBColumnFamilyManager::Family::Definitions)
                  ->GetID() == 0);
@@ -1998,10 +1998,26 @@ void RocksDBEngine::processCompactions() {
           _runningCompactions >= _maxParallelCompactions) {
         // nothing to do, or too much to do
         LOG_TOPIC("d5108", TRACE, Logger::ENGINES)
-            << "checking compactions. pending: " << _pendingCompactions.size()
+            << "not scheduling compactions. pending: "
+            << _pendingCompactions.size()
             << ", running: " << _runningCompactions;
         return;
       }
+      rocksdb::ColumnFamilyHandle* cfh =
+          _pendingCompactions.front().columnFamily();
+
+      if (!_runningCompactionsColumnFamilies.emplace(cfh).second) {
+        // a compaction is already running for the same column family.
+        // we don't want to schedule parallel compactions for the same column
+        // family because they can lead to shutdown issues (this is an issue of
+        // RocksDB).
+        LOG_TOPIC("ac8b9", TRACE, Logger::ENGINES)
+            << "not scheduling compactions. already have a compaction running "
+               "for column family '"
+            << cfh->GetName() << "', running: " << _runningCompactions;
+        return;
+      }
+
       // found something to do, now steal the item from the queue
       bounds = std::move(_pendingCompactions.front());
       _pendingCompactions.pop_front();
@@ -2015,10 +2031,11 @@ void RocksDBEngine::processCompactions() {
       // set it to running already, so that concurrent callers of this method
       // will not kick off additional jobs
       ++_runningCompactions;
-    }
 
-    LOG_TOPIC("6ea1b", TRACE, Logger::ENGINES)
-        << "scheduling compaction for execution";
+      LOG_TOPIC("6ea1b", TRACE, Logger::ENGINES)
+          << "scheduling compaction in column family '" << cfh->GetName()
+          << "' for execution";
+    }
 
     scheduler->queue(arangodb::RequestLane::CLIENT_SLOW, [this, bounds]() {
       if (server().isStopping()) {
@@ -2050,8 +2067,16 @@ void RocksDBEngine::processCompactions() {
       }
       // always count down _runningCompactions!
       WRITE_LOCKER(locker, _pendingCompactionsLock);
+
+      TRI_ASSERT(_runningCompactionsColumnFamilies.size() ==
+                 _runningCompactions);
+
       TRI_ASSERT(_runningCompactions > 0);
       --_runningCompactions;
+
+      TRI_ASSERT(
+          _runningCompactionsColumnFamilies.contains(bounds.columnFamily()));
+      _runningCompactionsColumnFamilies.erase(bounds.columnFamily());
     });
   }
 }
@@ -3673,9 +3698,9 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addCf(RocksDBColumnFamilyManager::Family::VPackIndex);
   addCf(RocksDBColumnFamilyManager::Family::GeoIndex);
   addCf(RocksDBColumnFamilyManager::Family::FulltextIndex);
-  addCf(RocksDBColumnFamilyManager::Family::ZkdIndex);
+  addCf(RocksDBColumnFamilyManager::Family::MdiIndex);
   addCf(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
-  addCf(RocksDBColumnFamilyManager::Family::ZkdVPackIndex);
+  addCf(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
   builder.close();
 
   if (_throttleListener) {
@@ -4053,17 +4078,17 @@ bool RocksDBEngine::checkExistingDB(
         << "found existing column families: " << names;
     auto const replicatedLogsName = RocksDBColumnFamilyManager::name(
         RocksDBColumnFamilyManager::Family::ReplicatedLogs);
-    auto const zkdIndexName = RocksDBColumnFamilyManager::name(
-        RocksDBColumnFamilyManager::Family::ZkdIndex);
-    auto const zkdVPackIndexName = RocksDBColumnFamilyManager::name(
-        RocksDBColumnFamilyManager::Family::ZkdVPackIndex);
+    auto const mdiIndexName = RocksDBColumnFamilyManager::name(
+        RocksDBColumnFamilyManager::Family::MdiIndex);
+    auto const mdiVPackIndexName = RocksDBColumnFamilyManager::name(
+        RocksDBColumnFamilyManager::Family::MdiVPackIndex);
 
     for (auto const& it : cfFamilies) {
       auto it2 = std::find(existingColumnFamilies.begin(),
                            existingColumnFamilies.end(), it.name);
       if (it2 == existingColumnFamilies.end()) {
-        if (it.name == replicatedLogsName || it.name == zkdIndexName ||
-            it.name == zkdVPackIndexName) {
+        if (it.name == replicatedLogsName || it.name == mdiIndexName ||
+            it.name == mdiVPackIndexName) {
           LOG_TOPIC("293c3", INFO, Logger::STARTUP)
               << "column family " << it.name
               << " is missing and will be created.";

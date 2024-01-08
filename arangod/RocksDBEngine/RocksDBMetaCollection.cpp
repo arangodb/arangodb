@@ -75,6 +75,7 @@ rocksdb::SequenceNumber forceWrite(RocksDBEngine& engine) {
 RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
                                              velocypack::Slice info)
     : PhysicalCollection(collection),
+      _exclusiveLock(_schedulerWrapper),
       _engine(collection.vocbase()
                   .server()
                   .getFeature<EngineSelectorFeature>()
@@ -91,6 +92,19 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
   TRI_ASSERT(_logicalCollection.isAStub() || _objectId != 0);
   _engine.addCollectionMapping(_objectId, _logicalCollection.vocbase().id(),
                                _logicalCollection.id());
+}
+template<typename F>
+void RocksDBMetaCollection::SchedulerWrapper::queue(F&& fn) {
+  SchedulerFeature::SCHEDULER->queue(RequestLane::CLUSTER_INTERNAL,
+                                     std::forward<F>(fn));
+}
+template<typename F>
+RocksDBMetaCollection::SchedulerWrapper::WorkHandle
+RocksDBMetaCollection::SchedulerWrapper::queueDelayed(
+    F&& fn, std::chrono::milliseconds timeout) {
+  return SchedulerFeature::SCHEDULER->queueDelayed(
+      "rocksdb-meta-collection-lock-timeout", RequestLane::CLUSTER_INTERNAL,
+      timeout, std::forward<F>(fn));
 }
 
 RocksDBMetaCollection::~RocksDBMetaCollection() { freeMemory(); }
@@ -153,33 +167,6 @@ uint64_t RocksDBMetaCollection::numberDocuments(
 
   return trxCollection->numberDocuments();
 }
-
-/// @brief write locks a collection, with a timeout
-futures::Future<ErrorCode> RocksDBMetaCollection::lockWrite(double timeout) {
-  return doLock(timeout, AccessMode::Type::WRITE);
-}
-
-/// @brief write unlocks a collection
-void RocksDBMetaCollection::unlockWrite() noexcept {
-  _exclusiveLock.unlockWrite();
-}
-
-/// @brief read locks a collection, with a timeout
-futures::Future<ErrorCode> RocksDBMetaCollection::lockRead(double timeout) {
-  TRI_IF_FAILURE("assertLockTimeoutLow") {
-    // In the test we expect that fast path locking is done with 2s timeout.
-    TRI_ASSERT(timeout < 10);
-  }
-  TRI_IF_FAILURE("assertLockTimeoutHigh") {
-    // In the test we expect that an lazy locking happens on the follower
-    // with the default timeout of more than 2 seconds:
-    TRI_ASSERT(timeout > 10);
-  }
-  return doLock(timeout, AccessMode::Type::READ);
-}
-
-/// @brief read unlocks a collection
-void RocksDBMetaCollection::unlockRead() { _exclusiveLock.unlockRead(); }
 
 // rescans the collection to update document count
 futures::Future<uint64_t> RocksDBMetaCollection::recalculateCounts() {
@@ -1712,8 +1699,25 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(
   });
 }
 
+/// @brief write locks a collection, with a timeout
+futures::Future<ErrorCode> RocksDBMetaCollection::lockWrite(double timeout) {
+  return doLock(timeout, AccessMode::Type::WRITE);
+}
+
+/// @brief write unlocks a collection
+void RocksDBMetaCollection::unlockWrite() noexcept { _exclusiveLock.unlock(); }
+
+/// @brief read locks a collection, with a timeout
+futures::Future<ErrorCode> RocksDBMetaCollection::lockRead(double timeout) {
+  return doLock(timeout, AccessMode::Type::READ);
+}
+
+/// @brief read unlocks a collection
+void RocksDBMetaCollection::unlockRead() { _exclusiveLock.unlock(); }
+
 /// @brief lock a collection, with a timeout
-ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
+futures::Future<ErrorCode> RocksDBMetaCollection::doLock(
+    double timeout, AccessMode::Type mode) {
   // user read operations don't require any lock in RocksDB, so we won't get
   // here. user write operations will acquire the R/W lock in read mode, and
   // user exclusive operations will acquire the R/W lock in write mode.
@@ -1722,50 +1726,29 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
   if (timeout <= 0) {
     timeout = defaultLockTimeout;
   }
-  auto timeout_us = std::chrono::duration_cast<std::chrono::microseconds>(
+  auto timeout_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::duration<double>(timeout));
 
-  constexpr auto detachThreshold = std::chrono::microseconds(1000000);
-
   bool gotLock = false;
-  if (timeout_us > detachThreshold) {
-    if (mode == AccessMode::Type::WRITE) {
-      gotLock = _exclusiveLock.tryLockWriteFor(detachThreshold);
-    } else {
-      gotLock = _exclusiveLock.tryLockReadFor(detachThreshold);
-    }
-    if (gotLock) {
-      // keep the lock and exit
-      return TRI_ERROR_NO_ERROR;
-    }
-    LOG_TOPIC("dd231", INFO, Logger::THREADS)
-        << "Did not get lock within 1 seconds, detaching scheduler thread.";
-    uint64_t currentNumberDetached = 0;
-    uint64_t maximumNumberDetached = 0;
-    Result r = arangodb::SchedulerFeature::SCHEDULER->detachThread(
-        &currentNumberDetached, &maximumNumberDetached);
-    if (r.is(TRI_ERROR_TOO_MANY_DETACHED_THREADS)) {
-      LOG_TOPIC("dd232", WARN, Logger::THREADS)
-          << "Could not detach scheduler thread (currently detached threads: "
-          << currentNumberDetached
-          << ", maximal number of detached threads: " << maximumNumberDetached
-          << "), will continue to acquire "
-             "lock in scheduler thread, this can potentially lead to "
-             "blockages!";
-    }
-  }
-
-  timeout_us -= detachThreshold;
-
   if (mode == AccessMode::Type::WRITE) {
-    gotLock = _exclusiveLock.tryLockWriteFor(timeout_us);
+    auto result =
+        co_await asTry(_exclusiveLock.asyncTryLockExclusiveFor(timeout_ms));
+    gotLock = result.hasValue();
+    if (gotLock) {
+      result.get().release();
+    }
   } else {
-    gotLock = _exclusiveLock.tryLockReadFor(timeout_us);
+    auto result =
+        co_await asTry(_exclusiveLock.asyncTryLockSharedFor(timeout_ms));
+    gotLock = result.hasValue();
+    if (gotLock) {
+      result.get().release();
+    }
   }
 
   if (gotLock) {
     // keep the lock and exit
-    return TRI_ERROR_NO_ERROR;
+    co_return TRI_ERROR_NO_ERROR;
   }
 
   LOG_TOPIC("d1e52", TRACE, arangodb::Logger::ENGINES)
@@ -1773,7 +1756,7 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
       << AccessMode::typeString(mode) << " lock on collection '"
       << _logicalCollection.name() << "'";
 
-  return TRI_ERROR_LOCK_TIMEOUT;
+  co_return TRI_ERROR_LOCK_TIMEOUT;
 }
 
 bool RocksDBMetaCollection::haveBufferedOperations(
