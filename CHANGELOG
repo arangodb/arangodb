@@ -1,4 +1,4 @@
-v3.10.12.2 (XXXX-XX-XX)
+v3.10.12.2 (2024-01-08)
 -----------------------
 
 * Allow a scheduler thread to detach itself from the scheduler if it sees that
