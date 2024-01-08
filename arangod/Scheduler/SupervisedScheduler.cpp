@@ -524,13 +524,9 @@ Result SupervisedScheduler::detachThread(uint64_t* detachedThreads,
   // Now we have access to the _workerStates and _detachedWorkerStates
   // Let's first find ourselves in the _workerStates:
   uint64_t myNumber = Thread::currentThreadNumber();
-  auto it = _workerStates.begin();
-  while (it != _workerStates.end()) {
-    if ((*it)->_thread->threadNumber() == myNumber) {
-      break;
-    }
-    ++it;
-  }
+  auto it = std::find_if(
+      _workerStates.begin(), _workerStates.end(),
+      [&](auto const& v) { return v->_thread->threadNumber() == myNumber; });
   if (it == _workerStates.end()) {
     return Result(TRI_ERROR_INTERNAL,
                   "scheduler thread for detaching not found");
@@ -540,12 +536,9 @@ Result SupervisedScheduler::detachThread(uint64_t* detachedThreads,
   // Since the thread is effectively taken out of the pool, decrease the
   // number of workers.
   --_numWorkers;
-  {
-    std::unique_lock<std::mutex> guard(state->_mutex);
-    state->_stop = true;  // We will be stopped after the current task is done
-                          // We know that we are working, so we do not
-                          // have to wake the thread.
-  }
+  state->_stop = true;  // We will be stopped after the current task is done
+                        // We know that we are working, so we do not
+                        // have to wake the thread.
   ++_metricsThreadsStopped;
   try {
     _detachedWorkerStates.push_back(std::move(state));
