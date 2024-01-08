@@ -222,6 +222,7 @@ T getMetric(IResearchRocksDBInvertedIndex const& index) {
   metric.addLabel("index", index.name());
   metric.addLabel("collection", index.getCollectionName());
   metric.addLabel("shard", index.getShardName());
+  metric.addLabel("indexId", std::to_string(index.id().id()));
   return metric;
 }
 
@@ -230,7 +231,8 @@ std::string getLabels(IResearchRocksDBInvertedIndex const& index) {
       "db=\"", index.getDbName(), "\","
       "index=\"", index.name(), "\","
       "collection=\"", index.getCollectionName(), "\","
-      "shard=\"", index.getShardName(), "\"");  // clang-format on
+      "shard=\"", index.getShardName(), "\","
+      "indexId=\"", index.id().id(), "\"");  // clang-format on
 }
 
 }  // namespace
